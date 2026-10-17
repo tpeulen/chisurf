@@ -22,7 +22,7 @@ pytestmark = pytest.mark.skipif(not HAVE_EMTK, reason="emtk not importable")
 
 
 @pytest.fixture()
-def info(qapp):
+def info():
     """A FitInfo over a minimal fit, the same recipe the info-view test uses."""
     import chisurf.core.data
     import chisurf.core.models.parse
@@ -45,8 +45,7 @@ def test_analysis_tab_is_an_emtk_form(info):
     assert info.tabs.titles[0] == "Analysis"
 
 
-def test_sample_typing_updates_the_uuid_line(info, qapp):
-    qapp.processEvents()
+def test_sample_typing_updates_the_uuid_line(info):
     info.sample_type("S3")
     assert info.sample_uuid_label.text(), "a new sample id gets a UUID"
     assert info.method_value() == "ParseModel", "the model hint prefills"
@@ -58,9 +57,8 @@ def test_sample_typing_updates_the_uuid_line(info, qapp):
     assert info.condition_details_value() == "pH=7.4; T=293.15 K"
 
 
-def test_qt_api_surface_still_serves_readers(info, qapp):
+def test_qt_api_surface_still_serves_readers(info):
     """Every reader of the old attributes finds the same call surface."""
-    qapp.processEvents()
     info.sample_combo.setEditText("from-qt-code")
     assert info.sample_value() == "from-qt-code"
     info.method_edit.setText("over-the-top")
@@ -69,8 +67,7 @@ def test_qt_api_surface_still_serves_readers(info, qapp):
     assert info.sample_details_value() == "details"
 
 
-def test_picking_a_known_sample_from_the_list(info, qapp):
-    qapp.processEvents()
+def test_picking_a_known_sample_from_the_list(info):
     info._populate_sample_combo()
     info.sample_pick(0) if info.sample_count() else None
     # No database here, so the list is empty and nothing may blow up.

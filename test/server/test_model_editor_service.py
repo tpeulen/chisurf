@@ -24,7 +24,7 @@ def _reader(name: str):
     import chisurf
     from chisurf.core.experiments.bootstrap import ensure_experiments_registered
 
-    ensure_experiments_registered(allow_widgets=False)
+    ensure_experiments_registered()
     return next(r for r in chisurf.experiment["FCS"].readers if str(r.name) == name)
 
 

@@ -6,7 +6,7 @@ import pytest
 
 from chisurf.core.api.context import PluginContext
 from chisurf.core.plugin.manifest import PluginManifest, validate_manifest, validate_manifest_schema
-from chisurf.core.plugin.registry import PluginRegistry, execute_plugin_action
+from chisurf.core.plugin.registry import execute_plugin_action
 
 
 def declaration(**overrides):
@@ -100,30 +100,6 @@ def test_action_receives_exact_context_without_registering_global_state():
         assert registry.list_actions() == before
 
 
-def test_registry_qaction_is_lazy_and_creates_no_window(qapp):
-    """Actual menu activation dispatches the action without a ControlHost factory."""
-    from qtpy.QtWidgets import QMenu
-
-    calls = []
-    loader = Loader(lambda context: (calls.append(context), {"ok": True})[1])
-    context = PluginContext(main_window=object())
-    manifest = PluginManifest.from_dict(declaration())
-    registry = PluginRegistry(loader)
-    registry._manifests = {manifest.id: manifest}
-    menu = QMenu()
-    registry.register_gui(menu, context=context)
-    assert loader.loaded == []
-    assert menu.actions()[0].toolTip() == manifest.entrypoints.action.description
-    menu.actions()[0].trigger()
-    assert calls == [context] and registry._gui_windows == {}
-    unavailable = QMenu()
-    registry.register_gui(unavailable)
-    assert not unavailable.actions()[0].isEnabled()
-    assert "main window" in unavailable.actions()[0].toolTip()
-    menu.close()
-    unavailable.close()
-
-
 def test_action_runtime_failure_is_reported_without_legacy_fallback(caplog):
     """A raised action is a reported failure rather than an exception escaping a Qt slot."""
 
@@ -138,17 +114,3 @@ def test_action_runtime_failure_is_reported_without_legacy_fallback(caplog):
     )
     assert result["ok"] is False and "expected backend refusal" in result["error"]
     assert "host_action" in caplog.text
-
-
-def test_log_mirror_survives_a_deleted_relay(qapp):
-    """A log call after the GUI relay is destroyed is dropped, not raised into the caller."""
-    import logging
-
-    from PyQt5 import sip
-    from qtpy.QtWidgets import QPlainTextEdit
-
-    from chisurf.gui import QTextEditLogger
-
-    handler = QTextEditLogger(QPlainTextEdit())
-    sip.delete(handler._relay)
-    handler.emit(logging.LogRecord("x", logging.ERROR, __file__, 1, "after teardown", None, None))

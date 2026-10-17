@@ -49,27 +49,6 @@ def test_saved_resize_wins_when_reopening_the_actual_tool(tmp_path, monkeypatch)
         reopened.close()
 
 
-def test_qt_host_resolves_declared_tool_size_on_an_adequate_screen(qapp, tmp_path, monkeypatch):
-    """The host reads the real factory declaration before applying screen bounds."""
-    from types import SimpleNamespace
-
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtGui
-
-    monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path))
-    app = module.make_app()
-    host = ControlHost(app)
-    try:
-        monkeypatch.setattr(
-            QtGui.QGuiApplication,
-            "primaryScreen",
-            lambda: SimpleNamespace(availableGeometry=lambda: QtCore.QRect(0, 0, 1920, 1080)),
-        )
-        assert host.window_size_hint() == (1100, 720)
-    finally:
-        host.close()
-
-
 @pytest.mark.parametrize("size", [(1100, 720), (800, 600)])
 def test_result_selector_wraps_with_complete_labels_and_pointer_reachability(
     tmp_path, monkeypatch, size

@@ -184,7 +184,8 @@ class ReaderSettingsApp(ImApp):
         self.file_source: _DataSource | None = None
         self.picker: DatasetPicker | None = None
         self.closed = False
-        self.calibration_host: Any = None
+        #: The open G-factor calculator whose values return to this reader on close.
+        self.calibration: Any = None
         self.g_factor_factory = g_factor_factory
         self._input_selected: Any = None
         #: Set by the host: ``load_files(filename)`` reads *filename* with this reader
@@ -224,30 +225,52 @@ class ReaderSettingsApp(ImApp):
         self.request_frame()
 
     def _open_gfactor(self) -> None:
-        """Host the existing calibration app and apply completed values on close."""
-        from emtk.qt_host import ControlHost
-        from qtpy import QtCore
+        """Open the G-factor calculator for this reader; its values come back when it closes.
 
-        from chisurf.gui.qt_lifetime import is_deleted
-
-        if not is_deleted(self.calibration_host) and self.calibration_host.isVisible():
-            self.calibration_host.raise_()
-            self.calibration_host.activateWindow()
+        In the emtk shell the calculator is a dock (the ``vv_vh_g_factor`` plugin's
+        ``reader_calibration`` hand-off), primed with the reader's channel width and VH
+        shift. An embedder or a test passes ``g_factor_factory`` and draws the child itself.
+        """
+        if self.calibration is not None and not getattr(self.calibration, "_reader_closed", False):
             return
-        if self.g_factor_factory is None:
-            from chisurf.plugins.vv_vh_g_factor.gui.app import create_app
-
-            child = create_app()
-        else:
+        payload = {
+            "dt_ns": float(getattr(self.model, "effective_dt", 1.0)),
+            "shift": float(getattr(self.model, "vh_shift", 0)),
+        }
+        if self.g_factor_factory is not None:
             child = self.g_factor_factory()
-        child.model.fp_dt_ns = float(getattr(self.model, "effective_dt", 1.0))
-        child.model.shift = float(getattr(self.model, "vh_shift", 0))
+            receive_reader_calibration(child, payload)
+            self.attach_calibration(child)
+            return
+        from chisurf.core.plugin import handoff
+
+        try:
+            handoff.hand_off(
+                "vv_vh_g_factor",
+                "reader_calibration",
+                payload,
+                on_delivered=self.attach_calibration,
+            )
+        except handoff.HandoffError as error:
+            from chisurf import logging
+
+            logging.warning("G-factor calculator: %s", error)
+
+    def attach_calibration(self, child: Any) -> None:
+        """Apply *child*'s G, VH shift and mixing to the reader when the calculator closes.
+
+        Nothing is applied while its calculation still runs, or once this view has closed.
+        """
+        self.calibration = child
         prior_close = child.close
 
         def closed() -> None:
             """Cancel child work and prevent late delivery to a closed reader view."""
-            busy = bool(child.job.running)
+            busy = bool(getattr(getattr(child, "job", None), "running", False))
+            child._reader_closed = True
             prior_close()
+            if self.calibration is child:
+                self.calibration = None
             if self.closed or busy:
                 return
             factor = child.model.g_factor
@@ -265,9 +288,6 @@ class ReaderSettingsApp(ImApp):
             self.request_frame()
 
         child.close = closed
-        self.calibration_host = ControlHost(child, background=(30, 32, 38))
-        self.calibration_host.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
-        self.calibration_host.show()
 
     @property
     def primary_sources(self) -> dict[str, _DataSource]:
@@ -413,11 +433,8 @@ class ReaderSettingsApp(ImApp):
         self._input_selected = None
         self.load_files = None
         self.drop_handlers.clear()
-        if self.calibration_host is not None:
-            from chisurf.gui.qt_lifetime import is_deleted
-
-            if not is_deleted(self.calibration_host):
-                self.calibration_host.close()
+        if self.calibration is not None:
+            self.calibration.close()
         if self.picker is not None:
             self.picker.close()
         self.file_dialog = None
@@ -439,3 +456,14 @@ def reader_settings_app(reader: Any, *, context: Any = None) -> ReaderSettingsAp
 
         return SimulatorSettingsApp(reader, context=context)
     return ReaderSettingsApp(reader)
+
+
+def receive_reader_calibration(app: Any, payload: Mapping) -> None:
+    """Prime a G-factor calculator with a reader's channel width and VH shift.
+
+    The ``vv_vh_g_factor`` plugin's ``reader_calibration`` hand-off hook
+    (``function(app, payload)``); payload keys ``dt_ns`` and ``shift``.
+    """
+    app.model.fp_dt_ns = float(payload["dt_ns"])
+    app.model.shift = float(payload.get("shift", 0.0))
+

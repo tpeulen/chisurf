@@ -184,14 +184,14 @@ def test_the_shell_module_does_not_import_qt():
     "argv", [["--screenshot", "SHOT"], ["--emtk-shell", "--screenshot", "SHOT"]]
 )
 def test_python_m_chisurf_opens_the_emtk_surface(argv, tmp_path):
-    """``python -m chisurf`` runs the emtk host, not the Qt application; ``--emtk-shell`` is accepted."""
+    """``python -m chisurf`` runs the emtk host; ``--emtk-shell`` is accepted."""
     pytest.importorskip("wgpu")
     pytest.importorskip("rendercanvas")
     shot = tmp_path / "shell.png"
     argv = [str(shot) if arg == "SHOT" else arg for arg in argv]
     # A scratch settings folder: the run must never reach the user's layout or preferences.
     settings = tmp_path / "settings"
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", CHISURF_SETTINGS_DIR=str(settings))
+    env = dict(os.environ, CHISURF_SETTINGS_DIR=str(settings))
     real = Path.home() / ".chisurf" / "emtk" / "emtk_shell.docks.layout.json"
     before = real.stat().st_mtime_ns if real.exists() else None
     result = subprocess.run(
@@ -216,24 +216,38 @@ class _Opened(Exception):
     """Raised by the stand-ins below to report which window ``chisurf.__main__.main`` opened."""
 
 
-def test_qt_flag_opens_the_qt_window_kept_for_parity(monkeypatch):
-    """``--qt`` opens the Qt main window, the reference the emtk window is measured against."""
+def test_python_m_chisurf_opens_the_emtk_window_whatever_the_flags(monkeypatch):
+    """The emtk shell is the only window: ``--emtk-shell`` is dropped, every other flag reaches it."""
     import chisurf.__main__ as entry
     import chisurf.emtk.main_app as main_app
 
     def emtk(argv):
-        raise _Opened("emtk")
-
-    class _App:
-        def exec(self):
-            raise _Opened("qt " + " ".join(sys.argv[1:]))
+        raise _Opened("emtk " + " ".join(argv))
 
     monkeypatch.setattr(main_app, "main", emtk)
-    gui = pytest.importorskip("chisurf.gui")
-    monkeypatch.setattr(gui, "get_app", lambda: _App())
-    monkeypatch.setattr(sys, "argv", ["chisurf", "--qt", "project.cs.pto"])
-    with pytest.raises(_Opened, match=r"^qt project\.cs\.pto$"):
+    monkeypatch.setattr(sys, "argv", ["chisurf", "--emtk-shell", "--size", "800x600"])
+    with pytest.raises(_Opened, match=r"^emtk --size 800x600$"):
         entry.main()
-    monkeypatch.setattr(sys, "argv", ["chisurf", "project.cs.pto"])
-    with pytest.raises(_Opened, match="^emtk$"):
-        entry.main()
+
+
+def test_help_prints_the_usage_without_opening_a_window(tmp_path):
+    """``python -m chisurf --help`` answers and exits 0, with Qt not even importable."""
+    launcher = (
+        "import importlib.abc, runpy, sys\n"
+        "class _NoQt(importlib.abc.MetaPathFinder):\n"
+        "    def find_spec(self, name, path=None, target=None):\n"
+        "        if name.split('.')[0] in ('qtpy', 'PyQt5', 'PyQt6', 'PySide2', 'PySide6'):\n"
+        "            raise ImportError('Qt is retired: ' + name)\n"
+        "sys.meta_path.insert(0, _NoQt())\n"
+        "runpy.run_module('chisurf', run_name='__main__')\n"
+    )
+    env = dict(os.environ, CHISURF_SETTINGS_DIR=str(tmp_path / "settings"))
+    result = subprocess.run(
+        [sys.executable, "-c", launcher, "--help"],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=env,
+    )
+    assert result.returncode == 0, result.stderr[-2000:]
+    assert result.stdout.startswith("usage: python -m chisurf"), result.stdout

@@ -22,15 +22,15 @@ SETUP = {
 }
 
 
-def test_rpc_save_is_visible_in_the_picker_loader(db_path):
-    """A setup saved through the server service is listed by the GUI picker path."""
-    from chisurf.gui.widgets.setup_selector import _default_loader as _load_setups
+def test_rpc_save_is_visible_in_the_shared_loader(db_path):
+    """A setup saved through the server service is listed by the shared store loader."""
+    from chisurf.core.data_io.detector_setups import load_detector_setups
     from chisurf.server.services.detector_setups import save_setup
     from chisurf.server.session import SessionState
 
     result = save_setup(SessionState(), "ALEX run", SETUP)
     assert result["ok"], result
-    listed = _load_setups(None)["setups"]
+    listed = load_detector_setups()["setups"]
     assert listed["ALEX run"]["detectors"]["green"]["chs"] == [0, 2]
 
 

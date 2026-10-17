@@ -6,10 +6,10 @@ distribution -- and nothing complains. The package keeps working from a source
 checkout, so the failure only appears for someone who installed it, which is the
 worst possible place to find out.
 
-This caught a real one: chigame's ``sprite.wgsl`` is read from disk when the
-render pipeline is built, and ``*.wgsl`` was not in the list.
+This caught a real one: a shader read from disk when the render pipeline is built
+was missed because ``*.wgsl`` was not in the list.
 
-This is a static check: no Qt, no display, no install.
+This is a static check: no display, no install.
 """
 
 from __future__ import annotations
@@ -274,7 +274,6 @@ def test_sdist_and_wheel_data_selection_exclude_test_trees(tmp_path, monkeypatch
         assert match and {"test", "tests"}.intersection(match[1].split(".")), str(message.message)
     assert not [path for path in selected if {"test", "tests"}.intersection(path.parts)]
     runtime = {
-        pathlib.Path("chisurf/gui/chigame/shaders/sprite.wgsl"),
         pathlib.Path("chisurf/core/experiments/tcspc/tcspc_simulator.view.json"),
         pathlib.Path("chisurf/core/settings/settings_chisurf.yaml"),
     }
@@ -303,17 +302,6 @@ def test_every_shipped_data_extension_has_a_package_data_pattern():
             for suffix, example in sorted(uncovered.items())
         )
     )
-
-
-def test_the_chigame_shader_is_covered():
-    """The shader chigame reads at runtime is installed.
-
-    Pinned by name rather than only by the sweep above, because this file has a
-    hard runtime dependency: without it no render pipeline can be built at all.
-    """
-    shader = PACKAGE / "gui" / "chigame" / "shaders" / "sprite.wgsl"
-    assert shader.is_file(), "the sprite shader moved; update this test and the packaging"
-    assert any(fnmatch.fnmatch(shader.name, pattern) for pattern in _patterns())
 
 
 def test_the_known_uncovered_list_does_not_rot():

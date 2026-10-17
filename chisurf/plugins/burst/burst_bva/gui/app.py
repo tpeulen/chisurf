@@ -6,8 +6,7 @@ An immediate-mode emtk application (:class:`BurstBvaApp`) over
   (BVA Settings and Channel Definitions), and status.
 - Right pane: BVA 2D plot with static line, scatter bursts, and profile mean ± std error.
 
-Runs toolkit-free under :class:`emtk.qt_host.ControlHost` in Qt,
-in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emtk.web`).
+Runs toolkit-free in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emtk.web`).
 """
 
 import json

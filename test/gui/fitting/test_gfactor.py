@@ -1,26 +1,17 @@
-"""Public wizard navigation uses the genuine native detector model and controls."""
+"""The detector editor uses the genuine native detector model and controls."""
 
-from test.gui.test_detector_native_callers import isolated_detector_settings, native_driver
-
-
-def test_detector_wizard_page_creation(qtbot):
-    """The existing Qt navigation page contains the real native host."""
-    from qtpy.QtWidgets import QWidget
-
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
-
-    page = DetectorWizardPage()
-    qtbot.addWidget(page)
-    assert isinstance(page.host, QWidget) and page.host.control is page.app
-    page.close()
+from test.gui.test_channel_definition_lut_box import (
+    _Page,
+    isolated_detector_settings,
+    native_driver,
+)
 
 
-def test_add_detector_rows(qtbot):
+def test_add_detector_rows(tmp_path):
     """Two actual Add actions populate portable detector rows and their numeric defaults."""
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
-
-    page = DetectorWizardPage(settings={"detectors": {}, "windows": {}})
-    qtbot.addWidget(page)
+    page = _Page(
+        settings={"detectors": {}, "windows": {}}, setups_file=str(tmp_path / "setups.json")
+    )
     try:
         ui = native_driver(page)
         ui.draw(2)

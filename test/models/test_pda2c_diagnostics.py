@@ -14,13 +14,6 @@ import numpy as np
 import pytest
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
 PDA_MODELS = [
     "chisurf.core.models.pda2c.simple.Pda2cSimpleModel",
     "chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel",
@@ -40,7 +33,7 @@ def _fit(path):
 
 
 @pytest.mark.parametrize("model_path", PDA_MODELS)
-def test_every_pda_model_offers_both_diagnostics(qapp, model_path):
+def test_every_pda_model_offers_both_diagnostics(model_path):
     model = _fit(model_path).model
     assert callable(model.run_consistency_check)
     assert callable(model.apply_light_path)
@@ -50,7 +43,7 @@ def test_every_pda_model_offers_both_diagnostics(qapp, model_path):
 
 
 @pytest.mark.parametrize("model_path", PDA_MODELS)
-def test_the_diagnostics_panel_is_wired_to_real_methods(qapp, model_path):
+def test_the_diagnostics_panel_is_wired_to_real_methods(model_path):
     """Every button action names a method that exists, and every info a property."""
     model = _fit(model_path).model
     spec = model.view_spec()
@@ -68,7 +61,7 @@ def test_the_diagnostics_panel_is_wired_to_real_methods(qapp, model_path):
 # --- the consistency check ----------------------------------------------------------
 
 
-def test_the_check_runs_and_reports_a_p_value(qapp):
+def test_the_check_runs_and_reports_a_p_value():
     model = _fit("chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel").model
     model.consistency_resamples = 30
     result = model.run_consistency_check()
@@ -79,7 +72,7 @@ def test_the_check_runs_and_reports_a_p_value(qapp):
     assert "consistent" in model.consistency_html()
 
 
-def test_data_the_model_did_not_generate_is_reported_inconsistent(qapp):
+def test_data_the_model_did_not_generate_is_reported_inconsistent():
     """The check has to be able to say no, or it is not a check."""
     import chisurf.core.fluorescence.tcspc as tcspc
 
@@ -104,7 +97,7 @@ def test_data_the_model_did_not_generate_is_reported_inconsistent(qapp):
     assert "inconsistent" in model.consistency_html()
 
 
-def test_the_plot_accessor_is_empty_until_the_check_has_run(qapp):
+def test_the_plot_accessor_is_empty_until_the_check_has_run():
     from chisurf.core.models.pda2c.common import get_pda_consistency
 
     fit = _fit("chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel")
@@ -118,7 +111,7 @@ def test_the_plot_accessor_is_empty_until_the_check_has_run(qapp):
     assert all(np.all(np.isfinite(c["y"])) for c in curves)
 
 
-def test_a_model_without_a_pda_engine_reports_instead_of_raising(qapp):
+def test_a_model_without_a_pda_engine_reports_instead_of_raising():
     """The button must not propagate an exception into the editor."""
     fit = _fit("chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel")
     fit.data.pda["s1s2"] = None
@@ -129,14 +122,14 @@ def test_a_model_without_a_pda_engine_reports_instead_of_raising(qapp):
 # --- the light-path link ------------------------------------------------------------
 
 
-def test_a_missing_light_path_is_reported_not_raised(qapp, tmp_path):
+def test_a_missing_light_path_is_reported_not_raised(tmp_path):
     model = _fit("chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel").model
     model.lightpath_graph = str(tmp_path / "nope.json")
     assert model.apply_light_path() == {}
     assert "No light path found" in model.lightpath_html()
 
 
-def test_an_unreadable_light_path_is_reported_not_raised(qapp, tmp_path):
+def test_an_unreadable_light_path_is_reported_not_raised(tmp_path):
     path = tmp_path / "broken.json"
     path.write_text("{not json")
     model = _fit("chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel").model
@@ -145,7 +138,7 @@ def test_an_unreadable_light_path_is_reported_not_raised(qapp, tmp_path):
     assert "failed" in model.lightpath_html()
 
 
-def test_a_setup_that_is_not_two_by_two_is_refused_with_its_labels(qapp, tmp_path, monkeypatch):
+def test_a_setup_that_is_not_two_by_two_is_refused_with_its_labels(tmp_path, monkeypatch):
     """Guessing the donor/acceptor pair would silently rescale every correction."""
     from chisurf.core.models.pda2c import common
 
@@ -170,7 +163,7 @@ def test_a_setup_that_is_not_two_by_two_is_refused_with_its_labels(qapp, tmp_pat
     assert common is not None
 
 
-def test_a_two_by_two_setup_is_applied_and_summarised(qapp, tmp_path, monkeypatch):
+def test_a_two_by_two_setup_is_applied_and_summarised(tmp_path, monkeypatch):
     graph = tmp_path / "graph.json"
     graph.write_text(json.dumps({"nodes": [], "edges": []}))
     matrices = {

@@ -26,7 +26,7 @@ def _chain(n_draws):
 
 
 @pytest.fixture
-def page_for(qapp):
+def page_for():
     from chisurf.emtk.fit_pages.pages.sampling_diagnostics import SamplingDiagnosticsPlot
 
     def make(fit):

@@ -2,8 +2,8 @@ r"""The fit Info page's Analysis tab, drawn by emtk.
 
 The Qt page laid a ``QFormLayout`` over two line edits, an editable sample
 combo, a UUID tool button and two small plain-text edits. This module keeps
-every behaviour but draws the controls with emtk widgets inside one
-:class:`emtk.qt_host.ControlHost`, like every other surface on the page:
+every behaviour but draws the controls with emtk widgets in one control,
+like every other surface on the page:
 
 * *Sample* is emtk's :class:`~emtk.widgets.combo.EditableComboBox` -- the
   database's samples in the list, a new id typed straight into the frame;

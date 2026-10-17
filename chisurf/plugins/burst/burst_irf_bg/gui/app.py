@@ -10,8 +10,7 @@ An immediate-mode emtk application (:class:`BurstIrfBackgroundApp`) over
   - Drop targets allow dropping region presets directly onto the plot.
 - Compute & Send-to-MLE actions to drive downstream burst-MLE fits.
 
-Runs toolkit-free under :class:`emtk.qt_host.ControlHost` in Qt,
-in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emtk.web`).
+Runs toolkit-free in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emtk.web`).
 """
 
 from __future__ import annotations

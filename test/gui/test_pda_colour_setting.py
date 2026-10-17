@@ -5,21 +5,13 @@ row of a five-column photon table — but nothing else about PDA changes with it
 the same reader reads the same files, the same burst search finds the same
 windows. These tests pin the consequences of that: one experiment holds both
 model families, the model list is filtered by what the loaded dataset actually
-carries, and the reader panel grows a third detector row when the setting says
-three.
+carries.
 """
 
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 def _two_colour_curve():
@@ -124,62 +116,3 @@ def test_a_model_that_declares_nothing_stays_offered():
     experiment = Experiment(name="TCSPC")
     experiment.add_model_class(LifetimeModel)
     assert experiment.get_model_names(_two_colour_curve()) == [LifetimeModel.name]
-
-
-# ── the reader panel follows the setting ───────────────────────────────────
-
-
-def _controller(n_colors: int):
-    from chisurf.core.experiments.pda2c import Pda2cReader
-    from chisurf.gui.widgets.experiments.pda2c.controller import Pda2cTTTRWidget
-
-    reader = Pda2cReader(
-        channels=([0], [1], [2])[:n_colors],
-        micro_time_ranges=[(0, 8000), (8000, 16000)],
-        n_colors=n_colors,
-    )
-    return Pda2cTTTRWidget(experiment_reader=reader), reader
-
-
-def test_the_panel_has_one_detector_row_per_colour(qapp):
-    two, _ = _controller(2)
-    assert len(two.detector_combos) == 2
-    assert len(two.channel_edits) == 2
-    # Two colours: one photon-selection window per detector.
-    assert len(two.window_edits) == 2
-
-    three, _ = _controller(3)
-    assert len(three.detector_combos) == 3
-    assert len(three.channel_edits) == 3
-    # Three colours: two excitation periods for three detectors.
-    assert len(three.window_edits) == 2
-
-
-def test_the_three_colour_panel_configures_the_reader(qapp):
-    controller, reader = _controller(3)
-    for edit, text in zip(controller.channel_edits, ("0", "1", "2")):
-        edit.setText(text)
-    for edit, text in zip(controller.window_edits, ("0-8000", "8000-16000")):
-        edit.setText(text)
-    controller.onParametersChanged()
-
-    assert reader.channels == [[0], [1], [2]]
-    assert reader.micro_time_ranges == [[0, 8000], [8000, 16000]]
-    # Five detection combinations is what makes it a three-colour read.
-    assert len(reader.detection_windows()) == 5
-
-
-def test_switching_the_colour_count_rebuilds_the_panel(qapp):
-    """The rebuild deletes every grabbed widget; the controller must re-adopt them."""
-    controller, reader = _controller(2)
-    assert len(controller.channel_edits) == 2
-
-    reader.n_colors = 3
-    controller._settings_form.rebuild()
-
-    assert len(controller.channel_edits) == 3
-    assert len(controller.window_edits) == 2
-    # The re-adopted widgets are live: editing one still reaches the reader.
-    controller.channel_edits[2].setText("7")
-    controller.onParametersChanged()
-    assert reader.channels[2] == [7]

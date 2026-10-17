@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 """Generate GUI screenshots for the TTTR-LUT tutorial (headless, offscreen).
 
-Grabs real ChiSurf widgets via ``QWidget.grab()`` under the offscreen Qt platform
-so the tutorial shows the actual UI, not mockups. Run with the project on the
-path and an offscreen platform::
+Draws the real emtk apps offscreen (``PilPainter``) so the tutorial shows the actual UI,
+not mockups. Run with the project on the path::
 
-    QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/tutorials/make_screenshots.py
+    PYTHONPATH=. python docs/guides/make_screenshots.py
 
 Requires the full GUI environment (the arm64 conda env), unlike
 ``make_figures.py`` which only needs matplotlib.
@@ -13,19 +12,16 @@ Requires the full GUI environment (the arm64 conda env), unlike
 
 from __future__ import annotations
 
-import json
 import os
 import pathlib
 import shutil
 import tempfile
 import time
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 # LLTF's fitter calls plt.show(); keep it off-screen.
 os.environ.setdefault("MPLBACKEND", "Agg")
 
 import numpy as np  # noqa: E402
-from qtpy.QtWidgets import QApplication  # noqa: E402
 
 os.environ.setdefault("CHISURF_SETTINGS_DIR", tempfile.mkdtemp(prefix="chisurf_grab_settings_"))
 import chisurf.core.settings  # noqa: E402,F401
@@ -39,18 +35,8 @@ _T4L_TOP = _T4L / "3GUN_NMSim_cl-rep-001.pdb"
 _T4L_DCD = _T4L / "3GUN_NMSim_cl-rep_894.dcd"
 
 
-def _grab(widget, name):
-    """Show *widget*, process events, and save a PNG grab into ``figures/``."""
-    widget.show()
-    QApplication.instance().processEvents()
-    widget.grab().save(str(FIG / name))
-    print("wrote", name)
-
-
 def _grab_ndx_overlay_axes():
     """Measured MFD bursts: pushing a FRET line selects its lifetime/E projection."""
-    from emtk.qt_host import ControlHost
-
     from chisurf.plugins.fret_line.gui.model import FretLineModel, push_to_ndx
     from chisurf.plugins.ndxplorer.gui.app import make_app
 
@@ -58,10 +44,8 @@ def _grab_ndx_overlay_axes():
     with tempfile.TemporaryDirectory(prefix="ndx-overlay-", dir=os.environ.get("TMPDIR")) as folder:
         copied = pathlib.Path(folder) / source.name
         shutil.copytree(source, copied)
-        # The emtk app in the host the --qt shell gives it.
         app = make_app(session_autosave=False)
         app.open_path(str(copied))
-        window = ControlHost(app)
         tool = FretLineModel()
         try:
             assert app.model.has_data, app.model.error
@@ -74,65 +58,10 @@ def _grab_ndx_overlay_axes():
             assert not tool.dialog_text, tool.dialog_text
             assert (app.model.x.name, app.model.y.name) == ("Tau (green)", "FRET efficiency")
             app.docks.focus("Overlays")
-            window.resize(900, 600)
-            for _ in range(4):
-                QApplication.instance().processEvents()
-                window.update()
-            _grab(window, "ndxplorer_overlay_axes.png")
+            _native_shot(app, "ndxplorer_overlay_axes.png", size=(900, 600))
         finally:
-            window.close()
             app.close()
             tool.close()
-
-
-def _grab_parameter_link_menu():
-    """Grab the parameter link menu of the emtk shell for the linking reference.
-
-    Two FCS fits (Kristine_with_error and the FCS demo, the general diffusion
-    model); the link menu of the first fit's N is opened from its parameter
-    table with *Link N to* and the second fit expanded, then the Analysis dock and
-    the open menu are cropped out of the 1500x950 shell.
-    """
-    import io
-    import sys
-
-    from PIL import Image
-
-    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
-    from screenshots.shell_driver import idle, shell
-
-    from chisurf.core.experiments.fcs.demo import DEMO, make_demo
-    from chisurf.emtk.model_sections import LinkMenu
-    from test.native_emtk.test_emtk_shell_fits import KRISTINE, MODEL, _add_fit, _load
-
-    driver, wait = shell(size=(1500, 950))
-    app = driver.app
-    _load(driver, app, KRISTINE)
-    first = _add_fit(driver, app)
-    _load(driver, app, make_demo(), DEMO["experiment"], DEMO["reader"])
-    result = app.data.session.api.add_fit(
-        [len(app.data.datasets.datasets) - 1], model_name=MODEL
-    )
-    wait(lambda: idle(app) and result.get("uid") in app.data.windows)
-    app.data.show_fit(first)
-    wait(lambda: idle(app) and app.data.analysis.info)
-    fits: list = []
-    app.data.read_fits_for_links(fits.extend)
-    wait(lambda: idle(app) and fits)
-    record = next(p for p in app.data.analysis.parameters if p["name"] == "N")
-    views = app.data.editor.sections
-    menu = LinkMenu(views, record, fits, (150.0, 812.0))
-    views.dialogs.append(menu)
-    link_to = menu.panel.entries[0]
-    link_to.open = True
-    link_to.entries[1].open = True
-    driver.frame(4)
-    driver.hover((1400.0, 900.0))
-    driver.frame(3)
-    image = Image.open(io.BytesIO(driver.screenshot()))
-    image.crop((0, 520, 1000, 950)).save(FIG / "parameter_link_menu.png")
-    app.close()
-    print("wrote parameter_link_menu.png")
 
 
 def _grab_burst_browser():
@@ -482,12 +411,9 @@ def _grab_chimol_viewer():
 
     Two mechanisms, because neither covers both:
 
-    * the **panel** is an ordinary widget grab;
+    * the **panel** is drawn by ``docs/guides/screenshots/guides_plugins_emtk.py`` (emtk);
     * the **render** goes through chimol's own ray tracer, which needs no GPU and
-      no display -- the same path the plugin's visual tests use. A GL grab is not
-      an option: ``QWidget.grab()`` reads the backing store and never sees OpenGL
-      content, and ``grabFramebuffer`` returns black without a display session, so
-      a window grab shows the panels over an empty viewport.
+      no display -- the same path the plugin's visual tests use.
 
     Note ``objects.widget`` is a **property**; calling it raises ``TypeError``
     rather than doing anything useful.
@@ -874,9 +800,6 @@ def _grab_global_view():
     is about the shared parameter, and an unlinked network has nothing in it
     that a list of fits would not have shown.
     """
-    import numpy as np
-    from emtk.pil_painter import PilPainter
-
     import chisurf
     from chisurf.core.api.fitting_client import install_fitting_client
     from chisurf.core.data import DataCurve, DataCurveGroup
@@ -902,20 +825,13 @@ def _grab_global_view():
     for fit in fits[1:]:
         fit.model.parameters_all_dict["t0"].link = source
 
-    app = make_app(GlobalViewModel(fits=lambda: fits), remember_layout=False)
-    for name, representation in (
-        ("globalview_network.png", "network"),
-        ("globalview_factor_graph.png", "factor graph"),
-    ):
-        app.model.representation = representation
-        app.model.rebuild(force=True)
-        app.model.relayout()
-        for _ in range(4):
-            painter = PilPainter(1150, 760)
-            app.draw(painter, 0, 0, 1150, 760)
-        painter.frame.save(FIG / name)
-        print("wrote", name)
-    app.close()
+    model = GlobalViewModel(fits=lambda: fits, groups=lambda: [])
+    app = make_app(model=model, remember_layout=False)
+    model.rebuild(force=True)
+    _native_shot(app, "globalview_network.png", size=(1150, 760))
+    model.representation = "factor graph"
+    model.relayout()
+    _native_shot(app, "globalview_factor_graph.png", size=(1150, 760))
 
 
 def _grab_ebfret_tool():
@@ -1031,19 +947,62 @@ def _grab_irf_estimator():
 
 
 def _grab_console():
-    """``console.png`` of guide 59: delegated to ``guides_56_65._grab_59_console``.
+    """The console answering a question about two fits that were really run.
 
-    That recipe asks ``api`` about a fit the shell really ran; the older body here set
-    ``cs.fits`` by hand and overwrote the guide's figure on every bulk run.
+    The console echoes nothing on its own -- the prompt shows whatever is in
+    the input buffer -- so a transcript has to be "typed" into the buffer
+    before each line is executed, or the figure shows bare ``In []:`` prompts.
     """
-    import sys
+    import chisurf
+    from chisurf.core.fluorescence.decay_fit_model import build_lifetime_fit
+    n, dt = 512, 0.0323
+    t = np.arange(n) * dt
+    irf = np.exp(-0.5 * ((t - 1.0) / 0.12) ** 2)
+    irf /= irf.sum()
+    rng = np.random.default_rng(7)
+    fits = []
+    for name, tau in (("Donor-only", 3.8), ("FRET-high", 1.6)):
+        conv = np.convolve(np.exp(-t / tau), irf)[:n]
+        decay = rng.poisson(3.0e4 * conv / conv.max() + 5.0).astype(float)
+        fit = build_lifetime_fit(
+            decay, bin_width=dt, irf=irf, n_components=2,
+            start_bin=int(1.2 / dt), stop_bin=n - 1,
+        )
+        fit.data.name = name
+        fit.run()
+        fits.append(fit)
+    chisurf.fits = fits
 
-    shots = str(pathlib.Path(__file__).resolve().parent / "screenshots")
-    if shots not in sys.path:
-        sys.path.insert(0, shots)
-    import guides_56_65
+    # The emtk shell's console (the Qt Chinsole is legacy), hosted alone on the frame loop.
+    from emtk.app import ImApp
+    from emtk.testing import Driver
 
-    guides_56_65._grab_59_console()
+    from chisurf.emtk.console import ShellConsole
+
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="chisurf_console_"))
+    console = ShellConsole({"cs": chisurf, "np": np}, history_path=tmp / "history.txt",
+                           session_file=tmp / "session.py")
+    size = (1000, 320)
+
+    def gui() -> None:
+        console.draw((0, 0, *size))
+        console.draw_overlays((0, 0, *size))
+
+    driver = Driver(ImApp(gui), size)
+    driver.frame(2)
+    for line in (
+        "cs.fits",
+        "fit = cs.fits[0]",
+        "fit.chi2r",
+        "[(f.name, round(f.chi2r, 3)) for f in cs.fits]",
+        "sorted(fit.model.parameters_all_dict)[:6]",
+    ):
+        console.execute(line)
+        driver.frame(2)
+    console.set_input("")  # leave the prompt bare, as a user would after running the lines
+    driver.frame(2)
+    driver.screenshot(FIG / "console.png")
+    print("wrote console.png", flush=True)
 
 
 def _simulate_us_alex(path, *, frac_high=0.5, seed=11, duration=25.0):
@@ -1385,14 +1344,6 @@ def _grab_fcs_toolbox():
     app.close()
 
 
-def _pump(seconds):
-    app = QApplication.instance()
-    end = time.time() + seconds
-    while time.time() < end:
-        app.processEvents()
-        time.sleep(0.02)
-
-
 def _grab_vv_vh_g_factor_window():
     """The VV/VH G-Factor Calculator (Spectroscopy > Decay), a fast dye and a slow protein loaded.
 
@@ -1705,10 +1656,7 @@ def _grab_fret_line_tool():
 
 def main():
     """Generate all guide screenshots."""
-    app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
-
     for grab in (
-        _grab_parameter_link_menu,
         _grab_burst_browser,
         _grab_2cde_tool,
         _grab_coloc_tool,

@@ -255,7 +255,7 @@ def test_observers_are_notified(fake_dir):
 
 
 # ---- traces (computed by the Qt-free binner, core.binning) -----------------------------
-def test_trace_matches_the_reference(qapp, real_dir):
+def test_trace_matches_the_reference(real_dir):
     # Reference: pre-change Qt widget, ``TraceBrowser._compute_trace_cached`` (git HEAD) on a
     # copy of test/data/tttr/BH/132/BH_SPC132.spc with the default ALEX setup, offscreen.
     m = TraceBrowserModel()
@@ -272,7 +272,7 @@ def test_trace_matches_the_reference(qapp, real_dir):
     assert int(pad.max()) == 467
 
 
-def test_load_trace_uses_and_fills_the_disk_cache(qapp, real_dir):
+def test_load_trace_uses_and_fills_the_disk_cache(real_dir):
     m = TraceBrowserModel()
     m.image_probe = lambda p: False
     m.apply_setup(SETUP)
@@ -289,7 +289,7 @@ def test_load_trace_uses_and_fills_the_disk_cache(qapp, real_dir):
     assert m.trace_signature(f, 10.0) == m.trace_signature(f, 10.0)
 
 
-def test_precompute_all_traces_reports_progress(qapp, real_dir):
+def test_precompute_all_traces_reports_progress(real_dir):
     m = TraceBrowserModel()
     m.image_probe = lambda p: False
     m.apply_setup(SETUP)
@@ -301,7 +301,7 @@ def test_precompute_all_traces_reports_progress(qapp, real_dir):
     assert m.precompute_all_traces() == 0  # everything cached now
 
 
-def test_trace_job_runs_on_a_snapshot(qapp, real_dir):
+def test_trace_job_runs_on_a_snapshot(real_dir):
     """Heavy methods run inside SnapshotJob and the result is copied back.
 
     The trace is not cached: the Qt-free binner (``core.binning``) computes it on the

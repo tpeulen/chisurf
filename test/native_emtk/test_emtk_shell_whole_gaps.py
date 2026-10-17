@@ -364,28 +364,23 @@ def test_current_fit_all_fits_and_load_fit_round_trip(fitted, tmp_path):
     assert len(state.fits) == fits_before + 1
 
 
-def test_the_qt_windows_save_fit_macro_writes_the_same_files_without_qt(fitted, tmp_path):
-    """``chisurf.macros.core_fit.save_fit`` (the Qt window's *Current Fit*) draws its report with emtk."""
+def test_the_save_fit_macro_writes_the_report_files(fitted, tmp_path):
+    """``chisurf.macros.core_fit.save_fit`` (*Current Fit*) draws its report with emtk."""
     from types import SimpleNamespace
 
     import docx
 
     from chisurf.macros import core_fit
 
-    from qtpy import QtWidgets
-
     _shell, _driver_, session = fitted
     fit = session.server.state.fits[-1]
-    # Any earlier test in the process may have made the application; the export must not make one.
-    app_before = QtWidgets.QApplication.instance()
     core_fit.save_fit(str(tmp_path), fit_window=SimpleNamespace(fit=fit))
     report = docx.Document(str(tmp_path / "fcs_demo.docx"))
     assert len(report.inline_shapes) == 2
     assert (tmp_path / "fcs_demo.fit.cs.pto").is_file()
-    assert QtWidgets.QApplication.instance() is app_before, "the export made a Qt application"
 
 
-def test_current_fit_has_the_qt_shortcut(fitted):
+def test_current_fit_has_its_shortcut(fitted):
     from chisurf.emtk.main_app import parse_shortcut
 
     shell, _driver_, _session = fitted

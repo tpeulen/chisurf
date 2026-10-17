@@ -52,20 +52,6 @@ def test_actual_save_load_preserves_public_scalar_identity_and_metadata(
     assert "GraphPort;" not in path.read_text()
 
 
-def test_file_load_refreshes_actual_editor(parameter, tmp_path, qtbot):
-    """State restoration repaints the attached real controller after restoring the identity."""
-    from chisurf.gui.widgets.fitting.parameter_widgets import make_fitting_parameter_widget
-
-    path = tmp_path / "scalar.json"
-    parameter.save(str(path), file_type="json")
-    restored = Parameter(value=8.0)
-    editor = make_fitting_parameter_widget(restored)
-    qtbot.addWidget(editor)
-    restored.load(str(path), file_type="json")
-    assert restored.value == editor.widget_value.value() == 2.0
-    assert restored.name == "kQ scale"
-
-
 def test_json_file_is_readable_by_a_fresh_process(parameter, tmp_path):
     """A cold process reads public data rather than sharing the writer's in-process port."""
     path = tmp_path / "scalar.json"

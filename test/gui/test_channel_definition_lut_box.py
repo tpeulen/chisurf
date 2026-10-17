@@ -1,8 +1,9 @@
-"""Widget tests for the channel-definition LUT-handling box (Phase 4).
+"""Native tests for the channel-definition LUT-handling box.
 
 Verifies the editor reorganizes into foldable boxes, the LUT box reflects the
 loaded setup's ``apply_lut`` + per-channel LUTs, and ``get_settings`` round-trips
-the LUT keys.
+the LUT keys. The editor is driven through ``emtk.testing.Driver`` over the
+plugin's emtk app, with no Qt host.
 """
 
 import json
@@ -11,7 +12,31 @@ import pathlib
 import numpy as np
 import pytest
 
-from test.gui.test_detector_native_callers import isolated_detector_settings, native_driver
+
+@pytest.fixture(autouse=True)
+def isolated_detector_settings(tmp_path, monkeypatch):
+    """Keep the settings, setups file and object store of each test in its own directory."""
+    for key, path in {
+        "CHISURF_SETTINGS_DIR": tmp_path / "settings",
+        "MMFDB_SETTINGS_DIR": tmp_path / "mmfdb",
+        "MMFDB_DATABASE_PATH": tmp_path / "database.sqlite",
+        "MMFDB_OBJECT_STORE": tmp_path / "objects",
+        "MMFDB_OBJECT_STORE_ROOT": tmp_path / "objects",
+        "XDG_CACHE_HOME": tmp_path / "cache",
+    }.items():
+        monkeypatch.setenv(key, str(path))
+    from chisurf.core import settings, setup_channel_definition
+
+    monkeypatch.setattr(settings, "chisurf_settings_path", tmp_path / "settings")
+    monkeypatch.setattr(setup_channel_definition.CONFIG, "canonical_file", tmp_path / "setups.json")
+    monkeypatch.setitem(settings.cs_settings, "mmfdb", {"default_user_id": "caller-owner"})
+
+
+def native_driver(page):
+    """Drive the actual app with canonical SDK font, input and clipping metrics."""
+    from emtk.testing import Driver
+
+    return Driver(page.app, (1200, 900))
 
 _SPC = (
     pathlib.Path(__file__).resolve().parents[2]
@@ -55,15 +80,59 @@ def lut_setup(tmp_path):
     return str(p)
 
 
+class _Page:
+    """The detector editor as the retired wizard page held it: app, model, editor, settings."""
+
+    def __init__(
+        self,
+        json_file=None,
+        settings=None,
+        setups_file=None,
+        on_changed=None,
+        show_setup_selection=False,
+    ):
+        from chisurf.plugins.core.setup_channel_definition.gui.app import SetupChannelDefinitionApp
+
+        data = (
+            json.loads(pathlib.Path(json_file).read_text(encoding="utf-8"))
+            if json_file
+            else settings
+        )
+        self.app = SetupChannelDefinitionApp(
+            settings=data,
+            file_path=setups_file,
+            on_changed=on_changed,
+            open_last_used=False,
+            visibility={
+                "edit_json": False,
+                "save_definition": False,
+                "setups_file": True,
+                "setup_selection": show_setup_selection,
+                "help": True,
+                "tttr_reading": True,
+                "tables": True,
+                "add_inputs": True,
+            },
+        )
+        self.model = self.app.model
+        self.editor = self.app.page
+
+    def get_settings(self):
+        return self.app.get_settings()
+
+    @property
+    def detectors(self):
+        return self.get_settings()["detectors"]
+
+    def close(self):
+        self.app.close()
+
+
 def _page(json_file):
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
-        DetectorWizardPage,
-    )
-
-    return DetectorWizardPage(json_file=json_file, show_setup_selection=False)
+    return _Page(json_file)
 
 
-def test_foldable_boxes_and_lut_box_present(qapp, lut_setup):
+def test_foldable_boxes_and_lut_box_present(lut_setup):
     """The native section controls actually collapse and reopen the reading fields."""
     page = _page(lut_setup)
     try:
@@ -81,7 +150,7 @@ def test_foldable_boxes_and_lut_box_present(qapp, lut_setup):
         page.close()
 
 
-def test_lut_box_reflects_setup(qapp, lut_setup):
+def test_lut_box_reflects_setup(lut_setup):
     """The real native LUT rows display the loaded sources and routing-channel union."""
     page = _page(lut_setup)
     try:
@@ -96,7 +165,7 @@ def test_lut_box_reflects_setup(qapp, lut_setup):
         page.close()
 
 
-def test_get_settings_round_trips_lut_keys(qapp, lut_setup):
+def test_get_settings_round_trips_lut_keys(lut_setup):
     page = _page(lut_setup)
     s = page.get_settings()
     assert s["apply_lut"] is True
@@ -117,7 +186,7 @@ def _wait_preview(page, ui):
     ui.draw(2)
 
 
-def test_microtime_preview_applies_lut(qapp, tmp_path):
+def test_microtime_preview_applies_lut(tmp_path):
     """The physical preview follows the actual LUT gate and returns exactly to raw counts."""
     from chisurf.plugins.tttr.tttr_lut_tools.api import compute
 
@@ -149,7 +218,7 @@ def test_microtime_preview_applies_lut(qapp, tmp_path):
         page.close()
 
 
-def test_assigning_a_lut_auto_enables_apply(qapp, tmp_path):
+def test_assigning_a_lut_auto_enables_apply(tmp_path):
     """A real assigned LUT enables its master gate rather than storing an unused correction."""
     data = {"detectors": {"g": {"chs": [0]}}, "tttr_reading": {"file_type": "SPC-130"}}
     setup = tmp_path / "s.json"
@@ -167,7 +236,7 @@ def test_assigning_a_lut_auto_enables_apply(qapp, tmp_path):
         page.close()
 
 
-def test_shift_dialog_loads_lut_corrected_and_round_trips(qapp, tmp_path):
+def test_shift_dialog_loads_lut_corrected_and_round_trips(tmp_path):
     """The real native shift modal edits corrected physical histograms and persists its draft."""
     from emtk.events import CONTROL_MODIFIER
     from emtk.keys import KEY_RETURN
@@ -206,7 +275,7 @@ def test_shift_dialog_loads_lut_corrected_and_round_trips(qapp, tmp_path):
         page.close()
 
 
-def test_polarization_resolved_flag_defaults_on_and_round_trips(qapp, tmp_path):
+def test_polarization_resolved_flag_defaults_on_and_round_trips(tmp_path):
     """An actual native checkbox persists the portable polarization flag."""
     data = {"detectors": {"g": {"chs": [0]}}, "tttr_reading": {"file_type": "SPC-130"}}
     setup = tmp_path / "s.json"
@@ -222,7 +291,7 @@ def test_polarization_resolved_flag_defaults_on_and_round_trips(qapp, tmp_path):
         page.close()
 
 
-def test_toggle_apply_lut_updates_state(qapp, lut_setup):
+def test_toggle_apply_lut_updates_state(lut_setup):
     """The real checkbox changes the owning model and exported portable settings."""
     page = _page(lut_setup)
     try:

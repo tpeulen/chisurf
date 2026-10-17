@@ -57,7 +57,7 @@ def test_the_example_starts_with_the_qt_widgets_fit_range_and_components():
         app.close()
 
 
-def test_the_instrument_rows_are_the_qt_instrument_options(qapp):
+def test_the_instrument_rows_are_the_instrument_options():
     from chisurf.plugins.fcs.fcs_filter_calculator.gui_parts.instrument_options import (
         InstrumentViewModel,
     )

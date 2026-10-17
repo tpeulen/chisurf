@@ -62,8 +62,7 @@ layout as well as re-applying the default, so the reset survives the next start.
 
 ### The ribbon in the native window
 
-The native window (the default window; `python -m chisurf --qt` opens the
-Qt window it replaces) has the same ribbon: the tabs *File*, *Main*, *Spectroscopy*,
+The ChiSurf window has the same ribbon: the tabs *File*, *Main*, *Spectroscopy*,
 *Structure* and *Tools*, each tool in the group its plugin manifest names and
 with the manifest's icon. In a narrow window the rightmost groups fold into one
 button each (▾) that lists their tools, and what still does not fit goes behind

@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-
 
 def test_view_model_add_and_collect() -> None:
     """add_pair appends a record and save-time collection derives kind/name."""
@@ -21,19 +17,3 @@ def test_view_model_add_and_collect() -> None:
     assert pairs[0]["kind"] == "CCF"
     assert pairs[1]["kind"] == "ACF"
     assert pairs[1]["name"].endswith("_ACF")
-
-
-def test_the_qt_embed_hosts_the_emtk_app(
-    qapp, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Qt surfaces that embed the editor get a QWidget around the emtk app, nothing of their own."""
-    pytest.importorskip("qtpy.QtWidgets")
-    monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path))
-    from chisurf.gui.widgets.emtk_embed import FCSChannelEmbed
-
-    widget = FCSChannelEmbed()
-    try:
-        assert "FCS Channel Definitions" in widget.windowTitle()
-        assert widget.app is widget.host.control
-    finally:
-        widget.close()

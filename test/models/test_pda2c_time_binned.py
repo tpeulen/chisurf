@@ -22,13 +22,6 @@ import pytest
 from scipy import stats
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
 def _pda_data(observation_time: float, nmax: int = 60, nmin: int = 5):
     """Return a synthetic PDA dataset segmented into fixed bins of ``observation_time``."""
     import chisurf.core.fluorescence.tcspc as tcspc
@@ -100,7 +93,7 @@ def _dynamic_fit(observation_time, rate, total=3e5, seed=1, states=(40.0, 62.0, 
 # --- the observation time is data, not a setting ------------------------------------
 
 
-def test_the_model_takes_its_observation_time_from_the_dataset(qapp):
+def test_the_model_takes_its_observation_time_from_the_dataset():
     import chisurf.core.fitting.fit as fit_mod
     from chisurf.core.models.pda2c.dynamic import Pda2cDynamicTwoStateModel
 
@@ -111,7 +104,7 @@ def test_the_model_takes_its_observation_time_from_the_dataset(qapp):
         assert fit.model.transitions_per_window == pytest.approx(500.0 * window)
 
 
-def test_data_without_an_observation_time_falls_back_to_the_window_bound(qapp):
+def test_data_without_an_observation_time_falls_back_to_the_window_bound():
     """Datasets read before the field existed must still load and compute."""
     import chisurf.core.fitting.fit as fit_mod
     from chisurf.core.models.pda2c.dynamic import Pda2cDynamicTwoStateModel
@@ -128,7 +121,7 @@ def test_data_without_an_observation_time_falls_back_to_the_window_bound(qapp):
 # --- the degeneracy one dataset cannot break ----------------------------------------
 
 
-def test_one_dataset_cannot_tell_a_fast_rate_from_a_long_window(qapp):
+def test_one_dataset_cannot_tell_a_fast_rate_from_a_long_window():
     """Equal ``rate * T`` gives an identical histogram — hence the need for several.
 
     This is not a defect being documented away: it is the statement that a single
@@ -175,7 +168,7 @@ def _joint_rate_fit(rate_short, rate_long, start=1500.0):
 
 
 @pytest.mark.slow
-def test_a_global_fit_over_two_bin_widths_recovers_one_absolute_rate(qapp):
+def test_a_global_fit_over_two_bin_widths_recovers_one_absolute_rate():
     """PRD-50: the time-binned analysis. One rate, several observation times.
 
     The two datasets are generated from the *same* rate at bin widths differing
@@ -195,7 +188,7 @@ def test_a_global_fit_over_two_bin_widths_recovers_one_absolute_rate(qapp):
 
 
 @pytest.mark.slow
-def test_bin_widths_that_disagree_on_the_rate_are_rejected_together(qapp):
+def test_bin_widths_that_disagree_on_the_rate_are_rejected_together():
     """The diagnostic a single bin width cannot perform.
 
     Each histogram on its own is fit perfectly by *some* exchange parameter --
@@ -247,7 +240,7 @@ def _synthetic_tttr(rate_hz=2e4, duration=1.0, p_green=0.6, seed=0):
     return tttr
 
 
-def test_fixed_width_binning_produces_bins_of_the_requested_width(qapp):
+def test_fixed_width_binning_produces_bins_of_the_requested_width():
     from chisurf.core.experiments.pda2c.reader import Pda2cReader
 
     tttr = _synthetic_tttr(rate_hz=2e4, duration=1.0)
@@ -281,7 +274,7 @@ def test_fixed_width_binning_produces_bins_of_the_requested_width(qapp):
     assert s1 / (s1 + s2) == pytest.approx(0.6, abs=0.02)
 
 
-def test_wider_bins_hold_proportionally_more_photons(qapp):
+def test_wider_bins_hold_proportionally_more_photons():
     from chisurf.core.experiments.pda2c.reader import Pda2cReader
 
     tttr = _synthetic_tttr(rate_hz=2e4, duration=1.0)
@@ -303,7 +296,7 @@ def test_wider_bins_hold_proportionally_more_photons(qapp):
     assert means[2] == pytest.approx(4 * means[0], rel=0.05)
 
 
-def test_the_photon_count_limits_drop_bins_outside_them(qapp):
+def test_the_photon_count_limits_drop_bins_outside_them():
     from chisurf.core.experiments.pda2c.reader import Pda2cReader
 
     tttr = _synthetic_tttr(rate_hz=2e4, duration=1.0)
@@ -323,7 +316,7 @@ def test_the_photon_count_limits_drop_bins_outside_them(qapp):
     assert strict[totals < 45].sum() == 0
 
 
-def test_an_empty_stream_gives_an_empty_histogram_rather_than_raising(qapp):
+def test_an_empty_stream_gives_an_empty_histogram_rather_than_raising():
     tttrlib = pytest.importorskip("tttrlib")
     from chisurf.core.experiments.pda2c.reader import Pda2cReader
 
@@ -356,7 +349,7 @@ def _n_state_fit(n_states=3):
 
 
 @pytest.mark.parametrize("n_states", [2, 3, 4, 5])
-def test_the_scheme_takes_any_number_of_states(qapp, n_states):
+def test_the_scheme_takes_any_number_of_states(n_states):
     _, model = _n_state_fit(n_states)
     assert model.states.rate_matrix().shape == (n_states, n_states)
     assert model.states.distances.size == n_states
@@ -366,7 +359,7 @@ def test_the_scheme_takes_any_number_of_states(qapp, n_states):
 
 
 @pytest.mark.parametrize("n_states", [2, 3, 4])
-def test_every_off_diagonal_rate_is_a_discoverable_fitting_parameter(qapp, n_states):
+def test_every_off_diagonal_rate_is_a_discoverable_fitting_parameter(n_states):
     """A rate the optimiser cannot see is a constant, whatever its fixed flag says.
 
     Regression: the rates used to live in a dict, and ``find_objects`` recurses
@@ -382,7 +375,7 @@ def test_every_off_diagonal_rate_is_a_discoverable_fitting_parameter(qapp, n_sta
     assert len(expected) == n_states * (n_states - 1)
 
 
-def test_freeing_a_rate_offers_it_to_the_optimiser(qapp):
+def test_freeing_a_rate_offers_it_to_the_optimiser():
     _, model = _n_state_fit(3)
     model.find_parameters()
     assert "k1_2" not in [p.name for p in model.parameters]  # fixed by default
@@ -391,7 +384,7 @@ def test_freeing_a_rate_offers_it_to_the_optimiser(qapp):
     assert "k1_2" in [p.name for p in model.parameters]
 
 
-def test_the_rate_matrix_places_each_rate_at_target_source(qapp):
+def test_the_rate_matrix_places_each_rate_at_target_source():
     """k_ij is i->j, and the matrix is indexed [target, source]."""
     _, model = _n_state_fit(3)
     rates = dict(model.states.rates_by_name())
@@ -406,7 +399,7 @@ def test_the_rate_matrix_places_each_rate_at_target_source(qapp):
     assert K.sum() == pytest.approx(290.0)
 
 
-def test_a_linear_chain_is_just_a_cycle_with_two_rates_at_zero(qapp):
+def test_a_linear_chain_is_just_a_cycle_with_two_rates_at_zero():
     """Scheme topology is set by the rates, not by a separate model."""
     from chisurf.core.fluorescence.kinetics import equilibrium_populations
 
@@ -431,7 +424,7 @@ def test_a_linear_chain_is_just_a_cycle_with_two_rates_at_zero(qapp):
     assert np.all(np.isfinite(np.asarray(model.y)))
 
 
-def test_resizing_keeps_the_rates_that_survive(qapp):
+def test_resizing_keeps_the_rates_that_survive():
     _, model = _n_state_fit(3)
     dict(model.states.rates_by_name())["k1_2"].value = 777.0
 
@@ -446,7 +439,7 @@ def test_resizing_keeps_the_rates_that_survive(qapp):
     assert model.states.rate_matrix().shape == (2, 2)
 
 
-def test_the_grid_view_and_the_parameters_are_the_same_numbers(qapp):
+def test_the_grid_view_and_the_parameters_are_the_same_numbers():
     """The editable matrix is a view on the parameters, not a second copy."""
     _, model = _n_state_fit(3)
     rates = dict(model.states.rates_by_name())
@@ -487,7 +480,7 @@ def _two_state_pair(rate, method, window=2e-3):
     return 0.5 * np.abs(a / a.sum() - b / b.sum()).sum()
 
 
-def test_the_sampled_n_state_route_reproduces_the_exact_two_state_law(qapp):
+def test_the_sampled_n_state_route_reproduces_the_exact_two_state_law():
     """At N=2 there is a closed-form answer, so the general route can be checked.
 
     Every other validation of the N-state path is against sampling; this one is
@@ -497,7 +490,7 @@ def test_the_sampled_n_state_route_reproduces_the_exact_two_state_law(qapp):
         assert _two_state_pair(rate, "monte-carlo") < 0.03, rate
 
 
-def test_the_moment_match_follows_the_boundary_atoms_on_the_reachable_support(qapp):
+def test_the_moment_match_follows_the_boundary_atoms_on_the_reachable_support():
     """Two states: the moment match holds even where the point masses dominate.
 
     The exact occupation-time law is not a density — a molecule that never

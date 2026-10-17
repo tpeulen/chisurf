@@ -217,3 +217,42 @@ def test_finished_translations_keep_whitespace_and_placeholders():
     assert not problems, f"{len(problems)} translations drift from their source:\n" + "\n".join(
         problems[:20]
     )
+
+
+def test_the_merge_keeps_adds_obsoletes_and_revives_without_qt_tools(tmp_path):
+    """The Python merge replaces pylupdate5: kept, new unfinished, gone obsolete, back revived."""
+    path = tmp_path / "chisurf_de.ts"
+    path.write_text(
+        '<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE TS>\n'
+        '<TS version="2.1" language="de"><context><name>MainWindow</name>'
+        "<message><source>Fit</source><translation>Anpassen</translation></message>"
+        "</context><context><name>chisurf</name>"
+        "<message><source>Open</source><translation>Öffnen</translation></message>"
+        "<message><source>Gone</source><translation>Weg</translation></message>"
+        '<message><source>Back</source><translation type="obsolete">Zurück</translation></message>'
+        "</context></TS>"
+    )
+    counts = extractor.merge_catalogue(path, {"Open", "Back", "New"}, "de")
+    assert counts == {"added": 1, "revived": 1, "obsoleted": 2, "kept": 1}
+    from chisurf.emtk.i18n import read_catalog
+
+    catalog = read_catalog(path)
+    assert catalog["chisurf"] == {"Open": "Öffnen", "Back": "Zurück"}
+    assert not catalog.get("MainWindow"), "a retired Qt form context installs nothing"
+    text = path.read_text(encoding="utf-8")
+    assert '<translation type="obsolete">Weg</translation>' in text
+    assert '<translation type="obsolete">Anpassen</translation>' in text
+    assert "<source>New</source>" in text
+    # A second merge with the same strings changes nothing.
+    assert extractor.merge_catalogue(path, {"Open", "Back", "New"}, "de") == {
+        "added": 0,
+        "revived": 0,
+        "obsoleted": 0,
+        "kept": 3,
+    }
+
+
+def test_a_missing_catalogue_is_created_with_unfinished_entries(tmp_path):
+    path = tmp_path / "chisurf_pt.ts"
+    assert extractor.merge_catalogue(path, {"Open"}, "pt")["added"] == 1
+    assert 'language="pt"' in path.read_text(encoding="utf-8")

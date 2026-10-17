@@ -16,8 +16,6 @@ env:
   # gets it in its environment, with no pixi task-injection layer to trust.
   PYTHONUNBUFFERED: "1"
   PYTHONUTF8: "1"
-  QT_API: pyqt5
-  QT_QPA_PLATFORM: offscreen
   LC_NUMERIC: C
   OMP_NUM_THREADS: "1"
   OPENBLAS_NUM_THREADS: "1"

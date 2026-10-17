@@ -2,13 +2,12 @@
 
 The window is the emtk app (``gui/editor_app.py``, ``gui/notebook_app.py``, ``gui/chat_app.py``);
 the toolkit-free parts are the document store, symbols, Ruff runner, ``.ipynb`` I/O, the shipped
-notebooks, assistant file writes and modes. ``gui/tool.py`` hosts the app in the Qt window.
+notebooks, assistant file writes and modes.
 """
 
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest
-from chisurf.core.plugin.registry import apply_manifest_statefulness
 from chisurf.plugins.core.code_editor.document_store import DocumentSnapshot, DocumentStore
 from chisurf.plugins.core.code_editor.shipped_notebooks import shipped_notebooks
 from chisurf.plugins.core.code_editor.symbols import CodeSymbol, extract_python_symbols
@@ -22,10 +21,10 @@ icon = "📝"  # Memo/notepad emoji for editor
 
 
 def load():
-    """Return the plugin's editor window (the emtk app in a Qt host)."""
-    from chisurf.plugins.core.code_editor.gui.tool import CodeEditorEmtkTool
+    """Return the plugin's editor window (the emtk app)."""
+    from chisurf.plugins.core.code_editor.gui.editor_app import make_editor_app
 
-    return CodeEditorEmtkTool()
+    return make_editor_app()
 
 
 load_emtk = load
@@ -41,11 +40,3 @@ __all__ = [
     "shipped_notebooks",
     "extract_python_symbols",
 ]
-
-if __name__ == "plugin":
-    from chisurf.plugins.core.code_editor.gui.tool import CodeEditorEmtkTool
-
-    window = CodeEditorEmtkTool()
-    if _manifest is not None:
-        apply_manifest_statefulness(window, _manifest)
-    window.show()

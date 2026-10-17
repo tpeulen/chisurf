@@ -1,4 +1,4 @@
-"""The Qt merger page reads a .cor chunk's count rate as the core reader does.
+"""The merger reads a .cor chunk's count rate as the core reader does.
 
 Its own copy of the reader split ``count_rate * duration`` over the two channels,
 a factor 2000 short of the kHz per-channel convention: a folder of 20 kHz chunks
@@ -8,7 +8,7 @@ showed 0.01 kHz in the table and merged to 0.01 kHz.
 import numpy as np
 
 
-def test_cor_chunks_keep_their_count_rate(qapp, qtbot, tmp_path):
+def test_cor_chunks_keep_their_count_rate(tmp_path):
     from chisurf.plugins.fcs.fcs_merger.gui.app import create_app
 
     folder = tmp_path / "chunks"

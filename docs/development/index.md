@@ -30,14 +30,12 @@ architecture
 architecture_client_server
 architecture_mvc_actions
 autoform_matrix_contract
-dialogs_and_progress
 ui_data_scheme
 ui_contracts
 emtk_interaction_testing
 chimol_widget_toolkit
 plugin_architecture
 plugin_cli_contract
-plugin_inventory
 proxy_rpc_design
 history_project_mcp
 client_server_migration_plan

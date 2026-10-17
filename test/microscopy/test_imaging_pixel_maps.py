@@ -197,9 +197,8 @@ def test_mean_micro_time_window_kind_is_positive_ns():
 
 
 # --- AutoForm view-models render + run (data-gated for run) ---------------
-def test_view_models_build_via_autoform(qtbot):
-    """All imaging tools render through AutoForm (view.json resolves)."""
-    from chisurf.gui.autoform import AutoForm
+def test_view_models_declare_their_view_spec():
+    """All imaging tools declare a view spec (view.json resolves)."""
     from chisurf.plugins.microscopy.img_pixel_intensity.gui.view_model import (
         IntensityViewModel,
     )
@@ -213,100 +212,6 @@ def test_view_models_build_via_autoform(qtbot):
 
     for vm in (IntensityViewModel(), NBViewModel(), MicroTimeViewModel(), PhasorImgViewModel()):
         assert vm.view_spec().sections
-        qtbot.addWidget(AutoForm(vm))  # must not raise; qtbot cleans it up
-
-
-def test_image_widget_channel_selector_and_movie(qtbot):
-    """The general image dock exposes a detector-channel combo + frame-movie controls."""
-    from chisurf.gui.autoform.sections.builtin import ImageMapWidget
-
-    class _M:
-        def __init__(self):
-            self.colormap = "magma"
-            self.display_window = "green"
-            self.img = None
-            self.calls = []
-
-        def window_names(self):
-            return ["green", "red"]
-
-        def refresh_display(self, value=None):
-            self.calls.append(value)
-
-        def the_map(self):
-            return self.img
-
-    m = _M()
-    w = ImageMapWidget(
-        m,
-        "the_map",
-        colormap=True,
-        colormap_attr="colormap",
-        movie=True,
-        channel_source="window_names",
-        channel_attr="display_window",
-        channel_call="refresh_display",
-    )
-    qtbot.addWidget(w)
-    assert [w._channel_combo.itemText(i) for i in range(w._channel_combo.count())] == [
-        "green",
-        "red",
-    ]
-
-    m.img = np.random.rand(8, 8)  # 2-D → movie disabled
-    w.refresh()
-    assert not w._play_btn.isEnabled()
-
-    m.img = np.random.rand(4, 8, 8)  # 3-D stack → movie enabled + toggles
-    w.refresh()
-    assert w._play_btn.isEnabled()
-    w._toggle_play()
-    assert w._playing
-    w._toggle_play()
-    assert not w._playing
-
-    w._channel_combo.setCurrentText("red")  # pick writes attr + calls back
-    assert m.display_window == "red" and m.calls[-1] == "red"
-
-
-def test_a_stack_frame_renders_like_the_2d_map(qtbot):
-    """A movie frame must be drawn exactly as the same array is in a 2-D dock.
-
-    This used to be a ``match_2d`` flag, and it was inverted: the mapping it
-    selected transposed every frame 90° from the 2-D map docked beside it, while
-    its docstring claimed the opposite, and six shipped panels set it. The frame
-    is ``(row, column)`` like any image, so x is the last axis and y the middle
-    one — there is nothing to choose, and the flag is gone.
-    """
-    from chisurf.gui.autoform.sections.builtin import ImageMapWidget
-
-    class _M:
-        def __init__(self, img):
-            self.img = img
-
-        def the(self):
-            return self.img
-
-    def base():
-        a = np.zeros((6, 14))  # asymmetric so a transpose is detectable
-        a[0, :] = 1.0
-        return a
-
-    stored = lambda w: np.asarray(w.view.native._entries[0].state["data"])  # noqa: E731
-    drawn = lambda w: w.view.native._entries[0].state["rect"]  # noqa: E731
-
-    ref = ImageMapWidget(_M(base()), "the")
-    qtbot.addWidget(ref)
-    ref.refresh()
-    movie = ImageMapWidget(_M(base()[None]), "the", movie=True)
-    qtbot.addWidget(movie)
-    movie.refresh()
-
-    assert stored(movie).shape == stored(ref).shape
-    assert np.allclose(stored(movie), stored(ref))
-    # Same pixels is not enough: the drawn extent is what a rotation shows up in.
-    assert drawn(movie)[2] == drawn(ref)[2] == 14
-    assert drawn(movie)[3] == drawn(ref)[3] == 6
 
 
 @_needs_data
@@ -330,26 +235,6 @@ def test_phasor_frames_movie_is_a_gs_stack():
     dens = vm.phasor_histogram_frames(bins=64)
     assert dens is not None and dens.shape == (g.shape[0], 64, 64)
     assert float(dens.max()) > 0.0
-
-
-def test_phasor_section_movie_controls(qtbot):
-    """The phasor section shows frame controls + slider when ``movie`` is set."""
-    from chisurf.gui.autoform.sections.phasor_section import PhasorSectionWidget
-
-    class _M:
-        PHASOR_G_RANGE = (-0.1, 1.1)
-        PHASOR_S_RANGE = (-0.05, 0.7)
-
-        def dens_frames(self):
-            return np.random.rand(5, 32, 32)
-
-    w = PhasorSectionWidget(_M(), target=None, movie=True, frames="dens_frames")
-    qtbot.addWidget(w)
-    w.refresh()
-    assert w._movie and w._frames is not None and w._frames.shape[0] == 5
-    assert w._slider.maximum() == 4 and w._play_btn.isEnabled()
-    w._advance_frame()
-    assert w._frame == 1
 
 
 @_needs_data

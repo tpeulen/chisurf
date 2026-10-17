@@ -1,6 +1,6 @@
-"""Run the Qt tool and the emtk toolbar through the same setup workflow, MMFDB mode, in one process.
+"""Run the emtk toolbar through the setup workflow, MMFDB mode, next to the frozen Qt observations.
 
-Run as ``python reference.py <tmp_dir>`` with ``QT_QPA_PLATFORM=offscreen``; the environment is
+Run as ``python reference.py <tmp_dir>``; the environment is
 pointed at the temporary folder *before* anything of ChiSurf is imported, so neither the user's
 settings, their MMFDB nor their keyring is touched. Prints one JSON document with, for each of
 the two implementations, the stored setups after every step. The test compares the two halves.

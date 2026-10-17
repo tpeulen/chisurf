@@ -1,11 +1,9 @@
-"""Measure first-frame and steady-frame time of every emtk plugin, plus startup stages.
+"""Measure first-frame and steady-frame time of every emtk plugin.
 
-Each plugin is loaded in its own hermetic subprocess (scratch settings, offscreen
-Qt), drawn at 1100x720 through :class:`emtk.testing.Driver` and timed::
+Each plugin is loaded in its own hermetic subprocess (scratch settings), drawn at 1100x720 through :class:`emtk.testing.Driver` and timed::
 
     python -m build_tools.dev_utils.plugin_frame_times            # all plugins, markdown table
     python -m build_tools.dev_utils.plugin_frame_times psf_calculator img_flow
-    python -m build_tools.dev_utils.plugin_frame_times --startup  # GUI startup stage timings
     python -m build_tools.dev_utils.plugin_frame_times --json out.json
 
 Targets: first frame < 100 ms, steady frame (median of 20 further frames) < 16 ms.
@@ -56,7 +54,7 @@ def _env(scratch: str) -> dict:
     if env.get("PYTHONPATH"):
         paths.append(env["PYTHONPATH"])
     env.update(
-        PYTHONPATH=os.pathsep.join(paths), QT_QPA_PLATFORM="offscreen", MPLBACKEND="Agg",
+        PYTHONPATH=os.pathsep.join(paths), MPLBACKEND="Agg",
         CHISURF_SETTINGS_DIR=str(Path(scratch) / "settings"), MMFDB_SETTINGS_DIR=str(Path(scratch) / "mmfdb"),
         MMFDB_DATABASE_PATH=str(Path(scratch) / "mmfdb.sqlite"),
         MMFDB_OBJECT_STORE_ROOT=str(Path(scratch) / "objects"),
@@ -68,9 +66,6 @@ def _env(scratch: str) -> dict:
 
 def worker(plugin_id: str) -> dict:
     """Load one plugin and time its frames (runs inside the subprocess)."""
-    from qtpy.QtWidgets import QApplication
-
-    QApplication.instance() or QApplication([])
     from emtk.testing import Driver
 
     from chisurf._import_gate import main_thread_waits
@@ -135,32 +130,6 @@ def run_plugin(plugin_id: str) -> dict:
     return {"plugin": plugin_id, "status": f"failed: {tail}"}
 
 
-def startup_stages() -> dict:
-    """Run the real GUI start offscreen and return ``AppStartupServiceManager.timings``."""
-    code = r'''
-import json, logging
-from qtpy.QtWidgets import QApplication
-app = QApplication([])
-from chisurf.startup.services import AppStartupServiceManager
-m = AppStartupServiceManager()
-for phase in ("splash", "post_show"):
-    try:
-        m.start(surface="gui", phase=phase)
-    except Exception as exc:
-        logging.exception("phase %s failed: %s", phase, exc)
-    app.processEvents()
-print("@@" + json.dumps(m.timings), flush=True)
-import os; os._exit(0)
-'''
-    with tempfile.TemporaryDirectory(prefix="chisurf-start-") as scratch:
-        done = subprocess.run([sys.executable, "-c", code], cwd=REPO, env=_env(scratch),
-                              capture_output=True, text=True, timeout=300)
-    for line in done.stdout.splitlines():
-        if line.startswith("@@"):
-            return json.loads(line[2:])
-    return {}
-
-
 def plugin_ids() -> list[str]:
     """Every plugin id with an ``emtk`` entrypoint."""
     sys.path.insert(0, str(REPO))
@@ -189,13 +158,8 @@ def main() -> None:
     """CLI entry point."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("plugins", nargs="*")
-    ap.add_argument("--startup", action="store_true", help="print GUI startup stage timings and exit")
     ap.add_argument("--json", help="also write the rows to this file")
     args = ap.parse_args()
-    if args.startup:
-        for k, v in sorted(startup_stages().items(), key=lambda kv: -kv[1]):
-            print(f"| {k} | {v * 1000:.0f} |")
-        return
     warm_caches()
     rows = [run_plugin(p) for p in (args.plugins or plugin_ids())]
     print(table(rows))

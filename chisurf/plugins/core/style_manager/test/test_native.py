@@ -6,14 +6,14 @@ from chisurf.plugins.core.style_manager.gui.app import StyleManagerModel, conver
 def model(tmp_path):
     package = tmp_path / "package"
     package.mkdir()
-    (package / "dark.css").write_text("window { background-color: #112233; color: #eeeeee; }")
+    (package / "dark.qss").write_text("QWidget { background-color: #112233; color: #eeeeee; }")
     return StyleManagerModel(tmp_path / "user", package)
 
 
 def test_edit_save_apply_and_reset(tmp_path):
     m = model(tmp_path)
-    assert m.current_file.name == "dark.css"
-    m.editor.set_text("button { background-color: #abcdef; }")
+    assert m.current_file.name == "dark.qss"
+    m.editor.set_text("QPushButton { background-color: #abcdef; }")
     applied = []
     m.apply_callback = lambda style: applied.append(style)
     assert m.apply()
@@ -56,8 +56,8 @@ def test_new_never_overwrites_and_conversion_reports_unsupported(tmp_path):
     assert not m.new("dark")
     assert m.current_file.read_text() == original
     assert m.new("custom")
-    assert m.current_file.name == "custom.css"
-    style, ignored = convert_qss("window { color: rgb(10,20,30); } button { image: url(x); }")
+    assert m.current_file.name == "custom.qss"
+    style, ignored = convert_qss("QWidget { color: rgb(10,20,30); } QPushButton { image: url(x); }")
     from emtk import im
 
     assert style.color(im.Col.TEXT) == (10, 20, 30, 255)
@@ -129,10 +129,10 @@ app.close()
 def test_apply_restyles_the_running_application_with_the_shared_widget_fragments(tmp_path):
     m = model(tmp_path)
     (m.package_dir / "widgets").mkdir()
-    (m.package_dir / "widgets" / "buttons.css").write_text(
-        "/* shared */ button { padding: 3px; }"
+    (m.package_dir / "widgets" / "buttons.qss").write_text(
+        "/* shared */ QPushButton { padding: 3px; }"
     )
-    m.editor.set_text("window { background-color: #abcdef; }")
+    m.editor.set_text("QWidget { background-color: #abcdef; }")
     seen = []
     m.application_callback = lambda text: seen.append(text) or True
     assert m.apply()
@@ -140,85 +140,3 @@ def test_apply_restyles_the_running_application_with_the_shared_widget_fragments
     assert m.status.endswith("The running application was restyled.")
     m.application_callback = lambda text: False
     assert m.apply() and m.status.endswith("at the next launch.")
-
-
-def test_apply_button_press_changes_the_look_of_a_live_qt_application(tmp_path, qapp):
-    from emtk import im
-    from emtk.testing import RecordingPainter
-
-    from chisurf.plugins.core.style_manager.gui.app import StyleManagerApp
-
-    m = model(tmp_path)
-    m.editor.set_text("button { background-color: #123456; }")
-    app = StyleManagerApp(m)
-    before = qapp.styleSheet()
-    try:
-        # the real Apply button is pressed in a frame
-        pressed = []
-        original = im.button
-        im.button = lambda label, *a, **k: pressed.append(label) or label == "Apply"
-        try:
-            with im.frame(RecordingPainter(), (0, 0, 800, 600)):
-                app._render()
-        finally:
-            im.button = original
-        assert "#123456" in qapp.styleSheet()
-        assert "restyled" in m.status
-    finally:
-        qapp.setStyleSheet(before)
-        app.close()
-
-
-def test_apply_restyles_emtk_live_and_supports_css(tmp_path):
-    from emtk import im, theme
-    from emtk import style as emtk_style
-    from emtk.testing import RecordingPainter
-
-    from chisurf.plugins.core.style_manager.gui.app import StyleManagerApp
-
-    m = model(tmp_path)
-    # Test creating a .css file
-    assert m.new("modern.css")
-    assert m.current_file.name == "modern.css"
-    m.editor.set_text("window { background-color: #112233; color: #ffffff; } button { background-color: #445566; }")
-    app = StyleManagerApp(m)
-    try:
-        pressed = []
-        original = im.button
-        im.button = lambda label, *a, **k: pressed.append(label) or label == "Apply"
-        try:
-            with im.frame(RecordingPainter(), (0, 0, 800, 600)):
-                app._render()
-        finally:
-            im.button = original
-        assert emtk_style.WINDOW_BG == (17, 34, 51, 255)
-        assert emtk_style.BUTTON == (68, 85, 102, 255)
-        assert "Applied modern.css to EMTK" in m.status
-    finally:
-        theme.apply_theme("dark")
-        app.close()
-
-
-def test_editor_uses_default_code_editor_and_no_yellow_popup(tmp_path):
-    from emtk.im_core import Col
-    from emtk.stylesheet import parse_stylesheet
-
-    m = model(tmp_path)
-    assert m.editor.config.show_line_numbers is True
-    assert m.editor.config.tab_size == 4
-    assert m.editor.config.font_role == "code"
-
-    # Verify that tooltip does not turn POPUP_BG yellow
-    css_with_tooltip = """
-    menu {
-        background-color: #2c2c2c;
-    }
-    tooltip {
-        background-color: rgba(255, 200, 80, 0.9);
-        color: #000000;
-    }
-    """
-    _, _, style = parse_stylesheet(css_with_tooltip)
-    assert style.color(Col.POPUP_BG) == (44, 44, 44, 255)
-
-

@@ -302,24 +302,3 @@ def test_component_groups_render_as_tables(spec_name):
 
     for section in walk(spec["sections"]):
         assert section.get("style") == "table", f"{spec_name}: {section['target']}"
-
-
-def test_fit_settings_panel_builds_real_widgets(qtbot):
-    """The declarative panel must resolve to live, bound controls."""
-    from chisurf.gui.autoform.sections.builtin import ChoiceWidget
-    from chisurf.gui.autoform.sections.scalar_table_section import ScalarTableWidget
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    fit = _gaussian_fit()
-    editor = build_model_editor(fit.model)
-    qtbot.addWidget(editor)
-
-    labels = {c._section.label for c in editor.findChildren(ChoiceWidget)}
-    assert {"Axis", "Statistic"} <= labels
-    assert editor.findChildren(ScalarTableWidget), "binning table did not render"
-
-    # The combo commits through to the model (the binding, not just the layout).
-    axis_combo = [c for c in editor.findChildren(ChoiceWidget) if c._section.label == "Axis"][0]
-    axis_combo.combo.setCurrentIndex(axis_combo._options.index("R"))
-    assert fit.model.fit_settings.axis == "R"
-    assert fit.model.fit_settings.x_max == 100.0

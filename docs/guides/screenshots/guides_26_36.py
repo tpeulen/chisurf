@@ -1,37 +1,18 @@
 """Grab functions for guides 26, 27, 29, 30, 31, 32, 33, 35 .
 
-Uses FIG and _grab from common.py (run through run.py). The burst
+Uses FIG from common.py (run through run.py). The burst
 fixture is copied to a temp dir because the tools write output folders beside
 their inputs.
 """
 import pathlib
 
-from common import FIG, _grab  # noqa: F401
+from common import FIG  # noqa: F401
 import shutil
 import tempfile
-import time
 
 import numpy as np
-from qtpy.QtWidgets import QApplication, QTabBar
 
 _SM_DNA = pathlib.Path("chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna")
-
-
-def _pump(seconds):
-    t = time.time()
-    while time.time() - t < seconds:
-        QApplication.instance().processEvents()
-        time.sleep(0.02)
-
-
-def _select_tab(widget, name):
-    for bar in widget.findChildren(QTabBar):
-        for i in range(bar.count()):
-            if bar.tabText(i) == name:
-                bar.setCurrentIndex(i)
-                _pump(0.5)
-                return True
-    return False
 
 
 def _sm_dna_copy():

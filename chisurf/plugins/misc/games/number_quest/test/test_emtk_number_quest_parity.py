@@ -1,15 +1,12 @@
-"""The native Number Quest at parity with the Qt chigame view.
+"""The native Number Quest against the retired Qt chigame view.
 
-The Qt game (``gui/tool.py``: ``NumberQuestChiGame``) is driven in a subprocess with
-a stub host -- the same rounds, the same keys -- and its messages, estimates and
-bindings are compared with the emtk app's.
+The Qt view's ``submit`` is transcribed below from its last committed source over the shared core
+rules (:class:`..core.game.NumberQuestGame`); the same rounds are played on the emtk app and
+compared, and the view's key bindings are frozen from the same source.
 """
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -19,32 +16,49 @@ from emtk.keys import KEY_ENTER, KEY_LEFT, KEY_RIGHT
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.emtk_layout import SOUND_OFF_ICON, action_caption
+from chisurf.plugins.misc.games.number_quest.core.game import GuessStatus, NumberQuestGame
 from chisurf.plugins.misc.games.number_quest.gui.app import NumberQuestApp, make_app
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 ROUNDS = [[10], [90], [37], [10, 20, 30, 40, 50, 60, 70], [50, 25, 37]]
 
-_QT = r"""
-import json, sys
-from types import SimpleNamespace
-from chisurf.plugins.misc.games.number_quest.gui.tool import BINDINGS, NumberQuestChiGame
-rounds = json.loads(sys.argv[1])
-results = []
-for seq in rounds:
-    game = NumberQuestChiGame()
-    host = SimpleNamespace(keys=SimpleNamespace(bindings={}), camera=SimpleNamespace(center=[0.0, 0.0], height=0.0),
-                           audio=SimpleNamespace(sfx=lambda *a, **k: None))
-    game.setup(host)
-    game.game.reset(target=37)
-    trail = []
-    for value in seq:
-        game.estimate = value
-        game.submit()
-        trail.append([game.message, game.game.attempts_remaining, game.game.score, game.game.status.value])
-    results.append(trail)
-print("FACTS" + json.dumps({"rounds": results, "bindings": {k: v.name for k, v in BINDINGS.items()}}))
-"""
+#: The Qt view's bindings (last committed ``gui/tool.py``), key -> chigame action name.
+QT_BINDINGS = {
+    "ArrowLeft": "LEFT",
+    "ArrowRight": "RIGHT",
+    "Enter": "CONFIRM",
+    " ": "CONFIRM",
+    "r": "CANCEL",
+    "q": "SHOULDER_L",
+    "e": "SHOULDER_R",
+}
+
+
+def _qt_view_rounds():
+    """Play ROUNDS the way the retired view's ``submit`` did, over the core rules."""
+    rounds = []
+    for seq in ROUNDS:
+        game = NumberQuestGame()
+        game.reset(target=37)
+        trail = []
+        message = ""
+        for value in seq:
+            if game.status is not GuessStatus.ACTIVE:
+                game.reset()
+                message = "Dial an estimate, then confirm."
+            else:
+                result = game.guess(value)
+                message = (
+                    result.message.replace("Higher!", "Longer lifetime.")
+                    .replace("Lower!", "Shorter lifetime.")
+                    .replace("Try again.", "")
+                    .strip()
+                )
+            trail.append([message, game.attempts_remaining, game.score, game.status.value])
+        rounds.append(trail)
+    return rounds
+
 
 #: Qt chigame actions -> the emtk app's action names.
 ACTION = {
@@ -58,32 +72,9 @@ ACTION = {
 KEYCODE = {"ArrowLeft": (KEY_LEFT, ""), "ArrowRight": (KEY_RIGHT, ""), "Enter": (KEY_ENTER, "")}
 
 
-@pytest.fixture(scope="module")
-def qt():
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, json.dumps(ROUNDS)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt game's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
-
-
 # 1. the same rounds end the same way
-def test_rounds_match_the_qt_game(qt):
-    for seq, qt_trail in zip(ROUNDS, qt["rounds"]):
+def test_rounds_match_the_qt_game():
+    for seq, qt_trail in zip(ROUNDS, _qt_view_rounds()):
         app = NumberQuestApp()
         app.game.reset(target=37)
         trail = []
@@ -97,8 +88,8 @@ def test_rounds_match_the_qt_game(qt):
 
 
 # 2. the same keys do the same things
-def test_bindings_match_the_qt_game(qt):
-    for key, action in qt["bindings"].items():
+def test_bindings_match_the_qt_game():
+    for key, action in QT_BINDINGS.items():
         code, text = KEYCODE.get(
             key, (ord(key) if len(key) == 1 else 0, key if len(key) == 1 else "")
         )

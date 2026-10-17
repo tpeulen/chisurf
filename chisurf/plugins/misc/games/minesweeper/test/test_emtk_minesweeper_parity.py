@@ -1,15 +1,12 @@
-"""The native Minesweeper at parity with the Qt chigame view.
+"""The native Minesweeper against the retired Qt chigame view.
 
-The Qt view (``gui/tool.py``: ``MinesweeperChiGame``) is driven in a subprocess with a
-stub host on the same fixed board and the same presses; its messages, cursor and
-board state are compared with the emtk app's, and its bindings with the emtk keys.
+The Qt view forwarded confirm/flag presses to the shared core rules, so the oracle for a scripted
+game is the core (:class:`..core.game.MinesweeperGame`) driven directly on the same fixed board;
+the view's key bindings are frozen below from its last committed source.
 """
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -18,6 +15,7 @@ from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_LEFT, KEY_RIGHT, KEY_UP
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.emtk_layout import SOUND_OFF_ICON, action_caption
+from chisurf.plugins.misc.games.minesweeper.core.game import DIFFICULTIES, MinesweeperGame
 from chisurf.plugins.misc.games.minesweeper.gui.app import make_app
 from chisurf.plugins.misc.games.minesweeper.test.capture_native import MINES
 
@@ -26,58 +24,34 @@ REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 #: (action, row, col) presses: scan, flag, scan a mine, then input after the loss.
 SCRIPT = [("confirm", 8, 5), ("menu", 0, 1), ("confirm", 2, 4), ("confirm", 7, 0), ("menu", 6, 6)]
 
-_QT = r"""
-import json, sys
-from types import SimpleNamespace
-from chisurf.gui.chigame.input import Action
-from chisurf.plugins.misc.games.minesweeper.gui.tool import BINDINGS, MinesweeperChiGame
-mines = {tuple(m) for m in json.loads(sys.argv[1])}
-script = json.loads(sys.argv[2])
-class Keys:
-    def __init__(self): self.bindings = {}; self.pressed = set()
-    def just_pressed(self, a): return a in self.pressed
-    def is_held(self, a): return False
-game = MinesweeperChiGame()
-keys = Keys()
-host = SimpleNamespace(keys=keys, camera=SimpleNamespace(center=[0.0, 0.0], height=0.0),
-                       audio=SimpleNamespace(sfx=lambda *a, **k: None))
-game.setup(host)
-game.game._fixed_mine_positions = mines
-game.game.reset()
-trail = []
-for action, row, col in script:
-    game.cursor_row, game.cursor_col = row, col
-    keys.pressed = {Action.CONFIRM if action == "confirm" else Action.MENU}
-    game.update(1 / 60, keys)
-    keys.pressed = set()
-    g = game.game
-    trail.append([game.message, g.status.value, sum(c.revealed for r in g.board for c in r),
-                  sum(c.flagged for r in g.board for c in r)])
-print("FACTS" + json.dumps({"trail": trail, "bindings": {k: v.name for k, v in BINDINGS.items()}}))
-"""
+#: The Qt view's bindings (last committed ``gui/tool.py``), key -> chigame action name.
+QT_BINDINGS = {
+    "ArrowUp": "UP",
+    "ArrowDown": "DOWN",
+    "ArrowLeft": "LEFT",
+    "ArrowRight": "RIGHT",
+    "Enter": "CONFIRM",
+    " ": "CONFIRM",
+    "f": "MENU",
+    "r": "CANCEL",
+    "q": "SHOULDER_L",
+    "e": "SHOULDER_R",
+}
 
-
-@pytest.fixture(scope="module")
-def qt():
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, json.dumps(sorted(MINES)), json.dumps(SCRIPT)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt view's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+def _core_trail():
+    """The retired view's trail: the core rules, one press at a time, as the view forwarded them."""
+    game = MinesweeperGame()
+    game.configure(*DIFFICULTIES[next(iter(DIFFICULTIES))])
+    game._fixed_mine_positions = MINES
+    game.reset()
+    trail = []
+    message = ""
+    for action, row, col in SCRIPT:
+        if game.status.value == "active":
+            result = (game.reveal if action == "confirm" else game.toggle_flag)(row, col)
+            message = result.message
+        trail.append([message, game.status.value, *_board_counts(game)])
+    return trail
 
 
 def _board_counts(game):
@@ -88,7 +62,7 @@ def _board_counts(game):
 
 
 # 1. the same presses on the same board give the same game
-def test_a_scripted_game_matches_the_qt_view(qt):
+def test_a_scripted_game_matches_the_core_rules():
     app = make_app()
     app.game._fixed_mine_positions = MINES
     app.game.reset()
@@ -97,11 +71,11 @@ def test_a_scripted_game_matches_the_qt_view(qt):
         app.cursor_row, app.cursor_col = row, col
         (app.reveal if action == "confirm" else app.flag)()
         trail.append([app.message, app.game.status.value, *_board_counts(app.game)])
-    assert trail == qt["trail"]
+    assert trail == _core_trail()
 
 
 # 2. the same keys
-def test_bindings_match_the_qt_view(qt):
+def test_bindings_match_the_qt_view():
     keycode = {
         "ArrowUp": KEY_UP,
         "ArrowDown": KEY_DOWN,
@@ -120,7 +94,7 @@ def test_bindings_match_the_qt_view(qt):
         "SHOULDER_L": ("change_difficulty", -1),
         "SHOULDER_R": ("change_difficulty", 1),
     }
-    for key, action in qt["bindings"].items():
+    for key, action in QT_BINDINGS.items():
         app = make_app()
         seen = []
         app.move = lambda dr, dc: seen.append(("move", (dr, dc)))

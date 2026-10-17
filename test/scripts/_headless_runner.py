@@ -8,25 +8,18 @@ the same registration the main window does, and ``chisurf`` itself is the ``cs``
 namespace the endpoints hand out.
 
 This module is executed as a subprocess by ``test_scripts.py`` -- never in the
-pytest process itself -- because registering the Qt model classes needs an
-off-screen ``QApplication`` that must not leak into the Qt-free test suite.
+pytest process itself -- so a script's registrations do not leak into the test suite.
 
 Exit codes
 ----------
 0
     The script ran to completion.
-:data:`EXIT_NO_QT`
-    No Qt binding / off-screen application is available; the caller skips.
 """
 
 from __future__ import annotations
 
-import os
 import pathlib
 import sys
-
-#: Exit code telling the caller that this machine cannot provide Qt.
-EXIT_NO_QT = 77
 
 
 def main(argv: list[str]) -> int:
@@ -42,21 +35,12 @@ def main(argv: list[str]) -> int:
     int
         Process exit code (see the module docstring).
     """
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     script = pathlib.Path(argv[0]).resolve()
 
     import chisurf as cs
-    from chisurf.core.experiments.bootstrap import (
-        ensure_experiments_registered,
-        ensure_qt_application,
-    )
+    from chisurf.core.experiments.bootstrap import ensure_experiments_registered
 
-    # Most reader and model classes are QWidget subclasses; without an
-    # application they are silently dropped and the script cannot resolve its
-    # models by name.
-    if not ensure_qt_application():
-        return EXIT_NO_QT
-    ensure_experiments_registered(allow_widgets=True)
+    ensure_experiments_registered()
 
     namespace = {"__name__": "__main__", "__file__": str(script), "cs": cs}
     source = script.read_text(encoding="utf-8")

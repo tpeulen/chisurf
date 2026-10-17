@@ -9,14 +9,13 @@ from . import test_click_all_plugins as harness
 
 
 def test_discovery_covers_every_gui_manifest_exactly_once():
-    """Native factories take precedence over the shrinking Qt fallback."""
+    """Every emtk manifest is swept exactly once."""
     declared = {
         key
         for key, manifest in harness.CATALOG.items()
-        if manifest.get("entrypoints", {}).get("gui") or manifest.get("entrypoints", {}).get("emtk")
+        if manifest.get("entrypoints", {}).get("emtk")
     }
-    assert set(harness.IDS_EMTK).isdisjoint(harness.IDS_QT)
-    assert set(harness.IDS_EMTK) | set(harness.IDS_QT) == declared
+    assert set(harness.IDS_EMTK) == declared
     assert len(harness.IDS_EMTK) > 100
 
 
@@ -271,21 +270,15 @@ def test_overlapping_guide_targets_are_explicitly_ambiguous():
         harness.resolved_tour_control(rows, "gain", (10, 20, 40, 20))
 
 
-def test_native_and_qt_dialog_guards_cancel_without_selecting_files(qapp):
+def test_native_dialog_guards_cancel_without_selecting_files():
     """A safe Help click must not block on a real modal event loop."""
     from contextlib import ExitStack
 
     from emtk.file_dialog import FileDialog
-    from qtpy.QtWidgets import QDialog, QFileDialog
 
     result = {"dialogs_closed": 0, "blocked_actions": []}
     with ExitStack() as stack:
         harness._guards(stack, result)
-        dialog = QDialog()
-        assert dialog.exec_() == QDialog.Rejected
-        if hasattr(dialog, "exec"):
-            assert dialog.exec() == QDialog.Rejected
-        assert QFileDialog.getOpenFileName() == ("", "")
         assert FileDialog().draw() is False
         import zmq
 
@@ -305,9 +298,7 @@ def test_native_and_qt_dialog_guards_cancel_without_selecting_files(qapp):
 
         with pytest.raises(RuntimeError, match="external process"):
             os.system("must-not-run")
-        dialog.deleteLater()
-        qapp.processEvents()
-    assert result["dialogs_closed"] >= 2
+    assert result["dialogs_closed"] >= 1
 
 
 def run_fixture(app, tmp_path, monkeypatch):
@@ -571,7 +562,7 @@ def test_translated_independent_contexts_deliver_same_named_buttons(tmp_path, mo
 def test_action_entrypoints_are_not_windows():
     """Action-only manifests are classified as actions, not failed for lacking a window."""
     assert "menu_switch" in harness.IDS_ACTION
-    assert "menu_switch" not in set(harness.IDS_EMTK) | set(harness.IDS_QT)
+    assert "menu_switch" not in set(harness.IDS_EMTK)
 
 
 def test_demo_choice_feeds_matching_file_and_folder_never_save(tmp_path):

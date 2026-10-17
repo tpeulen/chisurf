@@ -12,8 +12,7 @@ An immediate-mode emtk application (:class:`BurstBackgroundApp`) over
 - Rate Bars & Results: Per-detector background rate bar chart with custom colors and
   results summary table.
 
-Runs toolkit-free under :class:`emtk.qt_host.ControlHost` in Qt,
-in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emtk.web`).
+Runs toolkit-free in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emtk.web`).
 """
 
 from __future__ import annotations

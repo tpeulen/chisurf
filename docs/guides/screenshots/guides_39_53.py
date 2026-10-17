@@ -1,8 +1,7 @@
 """Screenshot grabs for guides 39 (parameter uncertainty) and 53 (reusing results).
 
-make_screenshots.py style: uses the module constants ``FIG``, ``_SPC_FILE`` and
-``_grab`` of that file; the ``__main__`` block below supplies them when run
-standalone.
+Run through ``run.py`` (or standalone with the ``__main__`` block below); ``FIG`` and
+``_SPC_FILE`` come from ``common.py``.
 """
 
 from __future__ import annotations
@@ -12,7 +11,7 @@ import pathlib
 import tempfile
 
 import numpy as np
-from common import _SPC_FILE, FIG, _grab, _pump  # noqa: F401,E402
+from common import _SPC_FILE, FIG, _pump  # noqa: F401,E402
 
 
 def _quadratic_fit_39(sample=True):
@@ -51,25 +50,22 @@ def _quadratic_fit_39(sample=True):
     return fit
 
 
-def _page_host(page, width=900, height=620):
-    """*page* on a fit-window surface, as the fit window draws it (emtk)."""
-    from emtk.qt_host import ControlHost
+def _page_driver(page, width=900, height=620):
+    """*page* on a fit-window surface, as the fit window draws it (emtk), in a Driver."""
+    from emtk.testing import Driver
 
     from chisurf.emtk.fit_pages.surface import make_surface
 
     surface = make_surface()
     surface.add_page("0:" + type(page).name, type(page).name, lambda: page)
-    host = ControlHost(surface)
-    host.resize(width, height)
-    host._keep = (surface, page)
-    host.show()
-    return host
+    driver = Driver(surface, (width, height))
+    driver._keep = (surface, page)
+    driver.frame(3)
+    return driver
 
 
 def _grab_39_posterior_plots():
     """Dependence tab of the posterior graph and the rank tab of chain diagnostics, after sampling."""
-    from qtpy import QtWidgets
-
     from chisurf.emtk.fit_pages.pages.posterior_graph import PosteriorGraphPlot
     from chisurf.emtk.fit_pages.pages.sampling_diagnostics import SamplingDiagnosticsPlot
 
@@ -77,20 +73,19 @@ def _grab_39_posterior_plots():
     graph = PosteriorGraphPlot(fit)
     graph.update()
     graph.tabs.select(1)  # Dependence
-    host = _page_host(graph)
-    _pump(0.3)
-    _grab(host, "39_posterior_dependence.png")
+    driver = _page_driver(graph)
+    driver.screenshot(FIG / "39_posterior_dependence.png")
+    print("wrote 39_posterior_dependence.png")
 
     diag = SamplingDiagnosticsPlot(fit)
     diag.update()
-    host = _page_host(diag)
-    _pump(0.3)
-    _grab(host, "39_chain_diagnostics.png")
+    driver = _page_driver(diag)
+    driver.screenshot(FIG / "39_chain_diagnostics.png")
+    print("wrote 39_chain_diagnostics.png")
     diag.tabs.select(1)
-    host.repaint()
-    _pump(0.3)
-    _grab(host, "39_chain_ess.png")
-    QtWidgets.QApplication.instance().processEvents()
+    driver.frame(3)
+    driver.screenshot(FIG / "39_chain_ess.png")
+    print("wrote 39_chain_ess.png")
 
 
 def _global_fit_39(n_datasets=4, seed=0):
@@ -225,23 +220,10 @@ def _grab_53_bva_unchanged():
 
 
 if __name__ == "__main__":
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    os.environ.setdefault("MPLBACKEND", "Agg")
     import sys
-
-    from qtpy.QtWidgets import QApplication
 
     import chisurf.core.settings  # noqa: F401
 
-    app = QApplication.instance() or QApplication([])
-    FIG = pathlib.Path(os.environ.get("FIGDIR", "docs/guides/figures"))
-    _SPC_FILE = pathlib.Path("test") / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
-
-    def _grab(widget, name):
-        widget.show()
-        QApplication.instance().processEvents()
-        widget.grab().save(str(FIG / name))
-        print("wrote", name)
-
+    os.environ.setdefault("MPLBACKEND", "Agg")
     for name in sys.argv[1:]:
         globals()[name]()

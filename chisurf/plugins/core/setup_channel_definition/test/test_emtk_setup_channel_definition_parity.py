@@ -230,13 +230,11 @@ def test_setup_choice_loads_a_saved_setup_and_the_blank_entry_keeps_the_tables(d
     assert not bar.can_public() and data_app.page.calibrations == []
 
 
-def test_crud_and_calibration_in_the_mmfdb_equal_the_qt_tool(tmp_path):
-    """Save, Public, Calibration, Rename and Delete against a temporary MMFDB, Qt and emtk side by side."""
-    pytest.importorskip("qtpy")
+def test_crud_and_calibration_in_the_mmfdb_equal_the_frozen_qt_record(tmp_path):
+    """Save, Public, Calibration, Rename and Delete against a temporary MMFDB, the emtk toolbar against the frozen Qt observations."""
     pytest.importorskip("mmfdb.repository")
     env = dict(
         os.environ,
-        QT_QPA_PLATFORM="offscreen",
         PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")]),
     )
     done = subprocess.run(

@@ -8,18 +8,23 @@ from types import SimpleNamespace
 import pytest
 
 
+class _Area:
+    """The container the project state asks for its fit windows: it only lists them."""
+
+    def __init__(self, windows):
+        self._windows = windows
+
+    def subWindowList(self):  # noqa: N802 - the name the project state looks up
+        """Return the windows in display order."""
+        return list(self._windows)
+
+
 @pytest.fixture
 def native_ui():
-    """Build real MDI views with the supported project plot-state hooks."""
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    area = QtWidgets.QMdiArea()
+    """Build fit views with the supported project plot-state hooks."""
     windows = []
     for uid, selected in (("fit-a", 1), ("fit-b", 0)):
-        window = QtWidgets.QMdiSubWindow()
-        window.setWidget(QtWidgets.QWidget())
-        window.fit = SimpleNamespace(unique_identifier=uid)
+        window = SimpleNamespace(fit=SimpleNamespace(unique_identifier=uid))
         window.project_view = {
             "version": 1,
             "current_plot_index": selected,
@@ -30,13 +35,9 @@ def native_ui():
         window.set_project_plot_state = lambda state, view=window: (
             setattr(view, "project_view", copy.deepcopy(state)) or True
         )
-        area.addSubWindow(window)
         windows.append(window)
-    main = SimpleNamespace(mdiarea=area, fit_idx=0)
-    yield main, windows, app
-    area.close()
-    area.deleteLater()
-    app.processEvents()
+    main = SimpleNamespace(mdiarea=_Area(windows), fit_idx=0)
+    return main, windows, None
 
 
 def test_capture_preserves_each_fit_window_state_without_aliasing(native_ui):
@@ -112,46 +113,3 @@ def test_unknown_fit_ui_is_rejected_before_any_application(native_ui):
     with pytest.raises(Exception, match="unowned-fit"):
         set_ui_state(main, state)
     assert [window.project_view for window in windows] == before
-
-
-def test_history_browser_presentation_is_restored_without_scientific_navigation(native_ui):
-    """Restore the actual browser filter/splitter without moving science's cursor."""
-    from chisurf.core.project.ui_state import get_ui_state, set_ui_state
-    from chisurf.gui.widgets.history_browser import HistoryBrowserWidget
-    from chisurf.history.core import OperationHistory
-
-    main, _windows, app = native_ui
-    browser = HistoryBrowserWidget()
-    history = OperationHistory()
-    browser.set_history(history)
-    main.historyBrowser = browser
-    browser.filter_edit.setText("slope")
-    state = get_ui_state(main)
-    browser.filter_edit.setText("different")
-    set_ui_state(main, state)
-    assert browser.filter_edit.text() == "slope"
-    assert history.cursor_index() == -1
-    assert history.list_events() == []
-    browser.deleteLater()
-    app.processEvents()
-
-
-def test_active_model_panel_tabs_are_captured_and_restored(native_ui):
-    """The shown model panel is presentation state, not a global preference."""
-    from qtpy import QtWidgets
-
-    from chisurf.core.project.ui_state import get_ui_state, set_ui_state
-
-    main, _windows, app = native_ui
-    panel = QtWidgets.QTabWidget()
-    panel.addTab(QtWidgets.QWidget(), "Parameters")
-    panel.addTab(QtWidgets.QWidget(), "Model")
-    main.analysisPanel = panel
-    panel.setCurrentIndex(1)
-    state = get_ui_state(main)
-    assert state["active_tabs"]["analysisPanel"] == 1
-    panel.setCurrentIndex(0)
-    set_ui_state(main, state)
-    assert panel.currentIndex() == 1
-    panel.deleteLater()
-    app.processEvents()

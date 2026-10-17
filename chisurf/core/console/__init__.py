@@ -7,14 +7,14 @@ imports Qt, which is what lets the whole interpreter be tested without a
 ``QApplication`` -- the thing the qtconsole-based console it replaces could
 never do, because execution lived inside an in-process Jupyter kernel.
 
-The Qt widget that draws it is :mod:`chisurf.gui.chinsole`. The seam between
+The emtk console that draws it is :mod:`chisurf.emtk.console`. The seam between
 them is five callbacks passed to :class:`~chisurf.core.console.shell.Shell`
 (write, display, read_input, clear, edit_file); pass none of them and the shell
 is a perfectly usable head-less REPL that writes to ``sys.stdout``.
 
 See Also
 --------
-:mod:`chisurf.gui.chinsole` : the console widget.
+:mod:`chisurf.emtk.console` : the console view.
 """
 
 from __future__ import annotations

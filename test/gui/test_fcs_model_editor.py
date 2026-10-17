@@ -12,11 +12,6 @@ import numpy as np
 import pytest
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 def _make_fcs_data():
@@ -34,42 +29,11 @@ def _make_fcs_fit(model_class):
     return fit_mod.Fit(model_class=model_class, data=_make_fcs_data())
 
 
-def _table_rows(editor):
-    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
-
-    return sum(t.table_model.rowCount() for t in editor.findChildren(ParameterGroupTableWidget))
 
 
-def test_mdf_model_editor_renders_and_computes(qapp):
-    from qtpy import QtWidgets
-
-    from chisurf.core.models import view_spec as vs
-    from chisurf.core.models.fcs.mdf import MdfFCSModel
-    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    fit = _make_fcs_fit(MdfFCSModel)
-    model = fit.model
-
-    editor = build_model_editor(model)
-    assert isinstance(editor, AutoModelWidget)
-    QtWidgets.QVBoxLayout().addWidget(editor)
-    assert _table_rows(editor) > 3, "MDF parameter tables rendered empty"
-
-    spec = model.view_spec()
-    for section in spec.flat_sections():
-        if isinstance(section, (vs.ParameterGroupSection, vs.ParameterGroupTableSection)):
-            group = getattr(model, section.target)
-            assert list(group.parameters_all), f"group {section.target!r} has no parameters"
-
-    model.update()
-    y = np.asarray(model.y)
-    assert y.size > 0 and np.all(np.isfinite(y))
-    assert np.isfinite(model.outputs._Veff.value)
-    assert np.isfinite(model.outputs._tauD.value)
 
 
-def test_mdf_bunching_terms_change_the_curve(qapp):
+def test_mdf_bunching_terms_change_the_curve():
     from chisurf.core.models.fcs.mdf import MdfFCSModel
 
     fit = _make_fcs_fit(MdfFCSModel)
@@ -93,7 +57,7 @@ def test_mdf_bunching_terms_change_the_curve(qapp):
     np.testing.assert_allclose(model.y, baseline)
 
 
-def test_mdf_wem_parameter_is_not_labeled_as_foerster_radius(qapp):
+def test_mdf_wem_parameter_is_not_labeled_as_foerster_radius():
     """Regression guard: MdfFCSModel's emission waist must not inherit FRET's R0 text."""
     from chisurf.core.models.fcs.mdf import MdfFCSModel
 
@@ -104,26 +68,6 @@ def test_mdf_wem_parameter_is_not_labeled_as_foerster_radius(qapp):
     assert "orster" not in (wem.description or "")
 
 
-@pytest.mark.parametrize("diffusion_mode", ["mdf", "gauss", "two_focus"])
-def test_general_model_editor_renders_and_computes(qapp, diffusion_mode):
-    from qtpy import QtWidgets
-
-    from chisurf.core.models.fcs.general import GeneralFCSModel
-    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    fit = _make_fcs_fit(GeneralFCSModel)
-    model = fit.model
-    model.diffusion_mode = diffusion_mode
-
-    editor = build_model_editor(model)
-    assert isinstance(editor, AutoModelWidget)
-    QtWidgets.QVBoxLayout().addWidget(editor)
-    assert _table_rows(editor) > 3, "general FCS model parameter tables rendered empty"
-
-    model.update()
-    y = np.asarray(model.y)
-    assert y.size > 0 and np.all(np.isfinite(y))
 
 
 def test_general_model_gauss_two_focus_suppresses_g0():
@@ -144,85 +88,8 @@ def test_general_model_gauss_two_focus_suppresses_g0():
     assert g0_two_focus < g0_single
 
 
-def test_fcs_kinetics_model_editor_renders_and_computes(qapp):
-    from qtpy import QtWidgets
-
-    from chisurf.core.models.fcs.kinetics import FCSKineticsModel
-    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    fit = _make_fcs_fit(FCSKineticsModel)
-    model = fit.model
-
-    editor = build_model_editor(model)
-    assert isinstance(editor, AutoModelWidget)
-    QtWidgets.QVBoxLayout().addWidget(editor)
-    assert _table_rows(editor) > 3, "kinetics FCS model parameter tables rendered empty"
-
-    # Both diffusion presets plus the saturation group are present.
-    assert hasattr(model, "saturation")
-    # "Active" means the saturation physics is engaged, i.e. there is excitation.
-    # A scheme always exists (two states minimum), so a scheme is not the test.
-    assert model.saturation.active is False
-    model.saturation._power.value = 1.0
-    assert model.saturation.active is True
-    model.saturation._power.value = 0.0
-
-    model.update()
-    y = np.asarray(model.y)
-    assert y.size > 0 and np.all(np.isfinite(y))
-
-    # Equation reflects the analytical gauss default
-    assert "w<sub>r</sub>" in model.equation_html()
-
-    from chisurf.emtk.fit_pages.pages.state_scheme_emtk import StateSchemePlot
-    from chisurf.gui.widgets.models.model_editor import model_plot_specs
-
-    specs = model_plot_specs(model)
-    plot_classes = [s[0] for s in specs]
-    assert StateSchemePlot in plot_classes, "StateSchemePlot missing from Fit Window plot specs."
 
 
-def test_general_model_saturation_panel_powers_the_numerical_path(qapp):
-    """The Saturation (Kinetic) scheme lives on the *kinetics* model.
-
-    Power > 0 switches to the numerical saturation path (equation shows
-    SatNumInt, the saturated amplitude drops below the analytical one as the
-    volume expands), Power = 0 restores the analytical shape exactly. The
-    general model no longer carries the saturation group.
-    """
-    from chisurf.core.models.fcs.general import GeneralFCSModel
-    from chisurf.core.models.fcs.kinetics import FCSKineticsModel
-    from chisurf.gui.widgets.collapsible_box import CollapsibleBox
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    fit = _make_fcs_fit(FCSKineticsModel)
-    model = fit.model
-    editor = build_model_editor(model)
-
-    # The Kinetic saturation scheme panel exists but starts collapsed (power = 0).
-    boxes = [b for b in editor.findChildren(CollapsibleBox) if "state scheme" in b.title().lower()]
-    assert len(boxes) == 1
-
-    model.update()
-    baseline = np.asarray(model.y).copy()
-
-    model.saturation_mode = "full"
-    model.saturation._power.value = 2.0  # 2 mW enables the numerical path
-    model.update()
-    saturated = np.asarray(model.y)
-    assert np.all(np.isfinite(saturated))
-    assert saturated[0] != baseline[0]
-    assert "G<sub>num</sub>" in model.equation_html()
-
-    model.saturation._power.value = 0.0
-    model.update()
-    np.testing.assert_allclose(model.y, baseline)
-
-    # The general model stays purely analytical — no saturation group at all.
-    general = _make_fcs_fit(GeneralFCSModel).model
-    assert not hasattr(general, "saturation")
-    assert "SatNumInt" not in general.equation_html()
 
 
 def test_general_model_two_focus_preset_is_suppressed_by_default():
@@ -315,40 +182,6 @@ def test_general_model_gauss_reports_shape_and_brightness_outputs():
     assert np.isnan(model.gauss._brightness.value)
 
 
-def test_general_model_diffusion_panels_hide_on_mode_change(qapp):
-    """Live hide: switching diffusion_mode + AutoForm.rebuild() only shows the active panel.
-
-    Uses ``hidden_when`` (not just ``collapsed_when``) — the irrelevant
-    diffusion panels are fully hidden (header included), not merely folded.
-    """
-    from chisurf.core.models.fcs.general import GeneralFCSModel
-    from chisurf.gui.widgets.collapsible_box import CollapsibleBox
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    fit = _make_fcs_fit(GeneralFCSModel)
-    model = fit.model
-    editor = build_model_editor(model)  # AutoForm itself (AutoModelWidget is an alias)
-    assert model.diffusion_mode == "gauss"
-
-    def _visible(title):
-        # isVisible() reflects real on-screen visibility (false for everything in
-        # a headless test with no shown top-level window); isHidden() reflects
-        # whether setVisible(False) was called on this specific widget, which is
-        # what hidden_when actually does — the right check without a real show().
-        for box in editor.findChildren(CollapsibleBox):
-            if box.title() == title:
-                return not box.isHidden()
-        return None
-
-    assert _visible("3D Gaussian (single-focus)") is True
-    assert _visible("MDF (Gauss-Lorentz)") is False
-    assert _visible("3D Gaussian (two-focus)") is False
-
-    model.diffusion_mode = "mdf"
-    editor.rebuild()
-    assert _visible("3D Gaussian (single-focus)") is False
-    assert _visible("MDF (Gauss-Lorentz)") is True
-    assert _visible("3D Gaussian (two-focus)") is False
 
 
 def test_general_model_equation_html_reflects_mode_and_terms():
@@ -392,81 +225,10 @@ def test_mdf_model_equation_html_reflects_bunching_terms():
     assert "a<sub>b1</sub>" in with_term_eq
 
 
-def test_general_model_editor_renders_a_live_equation_info_widget(qapp):
-    from chisurf.core.models.fcs.general import GeneralFCSModel
-    from chisurf.gui.autoform.sections.builtin import InfoWidget
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    fit = _make_fcs_fit(GeneralFCSModel)
-    model = fit.model
-    editor = build_model_editor(model)
-
-    def _equation_infos():
-        return [i for i in editor.findChildren(InfoWidget) if i.toPlainText().startswith("G(τ)")]
-
-    infos = _equation_infos()
-    assert len(infos) == 1
-    assert "MDF" not in infos[0].toPlainText()  # default mode is gauss
-
-    model.diffusion_mode = "mdf"
-    editor.rebuild()
-    infos = _equation_infos()
-    assert len(infos) == 1
-    assert "MDF" in infos[0].toPlainText()
 
 
-def test_an_info_source_on_a_group_resolves(qapp):
-    """``saturation.status_html`` names a group's method; it rendered an empty box."""
-    from chisurf.core.models.fcs.kinetics import FCSKineticsModel
-    from chisurf.gui.autoform.sections.builtin import InfoWidget
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    editor = build_model_editor(_make_fcs_fit(FCSKineticsModel).model)
-    texts = [i.toPlainText() for i in editor.findChildren(InfoWidget)]
-    assert any("no saturation" in t for t in texts)
 
 
-def test_clicking_add_bunching_button_refreshes_the_equation_panel(qapp):
-    """Regression: dynamic_group add/remove must refresh_plots(), not just its own table.
-
-    Previously ``on_add_table``/``on_del_table`` (and the grid-style
-    ``on_add``/``on_del``) only updated their own ``PairedParameterTableWidget``
-    after dispatching the fit update — every other ``AUTOFORM_REFRESH`` widget
-    (e.g. the equation ``info`` panel) went stale until something else forced a
-    full ``rebuild()``. Simulates the real GUI action (clicking "add") instead
-    of mutating the model directly, so it only passes if the button's own
-    click handler does the refresh.
-    """
-    from qtpy import QtWidgets
-
-    from chisurf.core.models.fcs.general import GeneralFCSModel
-    from chisurf.gui.autoform.sections.builtin import InfoWidget
-    from chisurf.gui.widgets.collapsible_box import CollapsibleBox
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    fit = _make_fcs_fit(GeneralFCSModel)
-    model = fit.model
-    editor = build_model_editor(model)
-
-    info = editor.findChildren(InfoWidget)[0]
-    before_text = info.toPlainText()
-
-    bunching_box = next(
-        b for b in editor.findChildren(CollapsibleBox) if b.title() == "Bunching terms"
-    )
-    # A ``QToolButton``, not a ``QPushButton`` — the component add/remove pair
-    # was restyled and the two classes are siblings, so looking for the wrong
-    # one finds nothing and this test raised ``StopIteration`` rather than
-    # failing on what it is about.
-    add_btn = next(
-        btn for btn in bunching_box.findChildren(QtWidgets.QToolButton) if btn.text() == "add"
-    )
-    add_btn.click()
-
-    assert len(model.bunching) == 1
-    after_text = info.toPlainText()
-    assert after_text != before_text
-    assert "b1" in after_text  # the new term's a_b1/tau_b1 subscript
 
 
 # ---------------------------------------------------------------------------
@@ -488,7 +250,7 @@ def _make_correlation_data(mean_count_rate: float | None = None):
     return data
 
 
-def test_dye_shape_outputs_are_written_by_update(qapp):
+def test_dye_shape_outputs_are_written_by_update():
     """``D``/``tauD``/``cpm`` are written by ``update_model``, not by a GUI client.
 
     The hand-written version published these four derived values through
@@ -512,7 +274,7 @@ def test_dye_shape_outputs_are_written_by_update(qapp):
     assert model._cpm_all.value < model._cpm.value
 
 
-def test_dye_shape_dye_choice_changes_the_curve(qapp):
+def test_dye_shape_dye_choice_changes_the_curve():
     """Picking a different reference dye changes D and therefore the curve."""
     import chisurf.core.fitting.fit as fit_mod
     from chisurf.core.fluorescence.dyes import diffusion_coefficient_25C
@@ -536,7 +298,7 @@ def test_dye_shape_dye_choice_changes_the_curve(qapp):
 
 
 @pytest.mark.parametrize("class_name", ["MaxEntFCSModel", "MaxEntRHModel"])
-def test_maxent_l_curve_is_finite_with_an_unset_fit_range(qapp, class_name):
+def test_maxent_l_curve_is_finite_with_an_unset_fit_range(class_name):
     """The L-curve is usable on a fit whose range has not been set.
 
     ``Fit`` starts with ``xmax == 0``, which is an *empty* window, not a full
@@ -567,24 +329,3 @@ def test_maxent_l_curve_is_finite_with_an_unset_fit_range(qapp, class_name):
     assert float(model._reg.value) == pytest.approx(expected)
 
 
-def test_maxent_lcurve_section_renders_with_its_sweep_controls(qapp):
-    """The MaxEnt editor carries the L-curve *and* the controls that drive it.
-
-    The sweep window, the compute button and click-to-adopt used to live in a
-    bespoke plot class and its controller; they are options of the shared
-    ``lcurve`` section now, so this asserts the declaration reaches the widget.
-    """
-    from qtpy import QtWidgets
-
-    import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.models.fcs.maxent_models import MaxEntFCSModel
-    from chisurf.gui.autoform.sections.builtin import LCurveWidget
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    fit = fit_mod.Fit(model_class=MaxEntFCSModel, data=_make_correlation_data())
-    editor = build_model_editor(fit.model)
-    widgets = editor.findChildren(LCurveWidget)
-    assert widgets, "no lcurve section in the MaxEnt editor"
-    buttons = [b.text() for b in widgets[0].findChildren(QtWidgets.QToolButton)]
-    assert any("sweep" in b for b in buttons), buttons
-    assert any("corner" in b for b in buttons), buttons

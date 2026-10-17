@@ -17,21 +17,18 @@ Usage
 -----
 ::
 
-    QT_QPA_PLATFORM=offscreen \\
     CHISURF_SETTINGS_DIR=/tmp/qa-settings \\
     PYTHONPATH="modules/mmfdb/src:modules/imp-tricks/src:." \\
     python build_tools/dev_utils/check_plugin_guide.py \\
-        burst_analysis /tmp/shots --native
+        burst_analysis /tmp/shots
 
-Pass ``--all`` instead of a target to check every native declaration and each
-legacy plugin that ships a tour. Pass ``--native`` when the target is a plugin id.
+Pass ``--all`` instead of a target to check every native declaration.
 Exit status is non-zero when any check fails, so it can gate a change.
 
 Notes
 -----
 Native checks press only an actual ``load_example`` control. Other awaited
-user, file or external actions remain explicit pending gates. Legacy Qt checks
-inspect the original widget layout but never fabricate satisfied waits.
+user, file or external actions remain explicit pending gates.
 Every --all worker has a timeout and its own scratch settings and report.
 
 """
@@ -39,7 +36,6 @@ Every --all worker has a timeout and its own scratch settings and report.
 from __future__ import annotations
 
 import argparse
-import importlib
 import json
 import pathlib
 import sys
@@ -112,22 +108,6 @@ def _has_resource(paths: set[str], folders: set[str], *, guide: bool) -> bool:
                and ("guide" in pathlib.Path(name).name and name.endswith(".json")
                     if guide else "help" in pathlib.Path(name).name and name.endswith(".md"))
                for name in paths)
-
-
-def _gui_plugins_with_tours(*, revision: str = "HEAD", live: bool = False) -> list[tuple[str, str]]:
-    """Return legacy factories with a guide in the selected source snapshot."""
-    revision = _resolve_revision(revision, live)
-    paths = _source_paths(revision=revision, live=live)
-    found = []
-    for manifest, data in _manifest_records(revision=revision, live=live):
-        entry = (data.get("entrypoints") or {}).get("gui")
-        if not entry or not isinstance(entry, str) or ":" not in entry:
-            continue
-        folders = _resource_directories(manifest, entry, paths)
-        if _has_resource(paths, folders, guide=True):
-            module, name = entry.split(":", 1)
-            found.append((module, name))
-    return found
 
 
 def _native_plugins(*, revision: str = "HEAD", live: bool = False) -> list[str]:
@@ -362,7 +342,7 @@ def _run_isolated(targets: list[tuple[str, str]], out_root: pathlib.Path,
     for index, (kind, target) in enumerate(targets):
         out = out_root / f"{index:03d}-{kind}-{target.rsplit(':', 1)[-1]}"
         out.mkdir(parents=True, exist_ok=True)
-        env = dict(os.environ, QT_QPA_PLATFORM="offscreen",
+        env = dict(os.environ,
                    CHISURF_SETTINGS_DIR=str(out / "settings"),
                    MMFDB_SETTINGS_DIR=str(out / "mmfdb-settings"))
         cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), target, str(out),
@@ -370,8 +350,6 @@ def _run_isolated(targets: list[tuple[str, str]], out_root: pathlib.Path,
                "--settle-timeout", str(min(timeout, 30.0)), "--revision", revision]
         if live:
             cmd.append("--live")
-        if kind == "native":
-            cmd.append("--native")
         row: dict[str, Any] = {"kind": kind, "target": target,
                               "source": "working-tree-diagnostic" if live else "committed",
                               "revision": None if live else revision,
@@ -389,8 +367,7 @@ def _run_isolated(targets: list[tuple[str, str]], out_root: pathlib.Path,
                 except (OSError, ValueError, AttributeError) as exc:
                     row.update(status="failed", error=f"Missing native report: {exc}")
             if not (out / "report.json").exists():
-                # Legacy Qt checks remain usable; their process result is
-                # explicit and never confused with a native step ledger.
+                # The process result is explicit and never confused with a step ledger.
                 (out / "report.json").write_text(json.dumps(row, indent=2) + "\n")
         except subprocess.TimeoutExpired as exc:
             if (out / "report.json").exists():
@@ -414,70 +391,14 @@ def _run_isolated(targets: list[tuple[str, str]], out_root: pathlib.Path,
     return reports
 
 
-def check(target: str, out_dir: pathlib.Path, size: tuple[int, int]) -> bool:
-    """Walk one tool's tour, writing a PNG per step. True when everything holds."""
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    module_path, class_name = target.split(":")
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    widget_class = getattr(importlib.import_module(module_path), class_name)
-    window = widget_class()
-    window.resize(*size)
-    window.show()
-    for _ in range(8):
-        app.processEvents()
-
-    captions = [b.text() for b in window.findChildren(QtWidgets.QToolButton)]
-    missing = [name for name in ("Guide", "?") if name not in captions]
-    if missing:
-        print(f"FAIL {class_name}: no {missing} button — is help.md/guide.json beside the tool?")
-        return False
-    window.grab().save(str(out_dir / "00_window.png"))
-
-    window._guide_button.click()
-    for _ in range(4):
-        app.processEvents()
-    tour = window._guided_tour
-
-    unresolved: list[str] = []
-    truncated: list[str] = []
-    pending: list[str] = []
-    for index, step in enumerate(tour._steps):
-        tour._index = index
-        # Render each step without completing file or external actions;
-        # unfinished waits remain explicit failures in this layout check.
-        if step.waits:
-            pending.append(step.title)
-        tour._show_step()
-        for _ in range(3):
-            app.processEvents()
-        if step.target and tour.resolve_target(step.target) is None:
-            unresolved.append(step.title)
-        if tour._bubble.body_scroll.verticalScrollBar().maximum() > 0:
-            truncated.append(step.title)
-        window.grab().save(str(out_dir / f"step_{index + 1:02d}.png"))
-    tour.stop()
-    window.close()
-
-    ok = not unresolved and not truncated and not pending
-    print(
-        f"{'OK  ' if ok else 'FAIL'} {class_name:28} steps={len(tour._steps):2} "
-        f"unresolved={unresolved} scrolled={truncated} pending={pending}"
-    )
-    return ok
-
-
 def main(argv: list[str] | None = None) -> int:
     """Command-line entry point."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("target", nargs="?", help="module.path:ClassName")
+    parser.add_argument("target", nargs="?", help="plugin id")
     parser.add_argument("out", nargs="?", default="/tmp/guide-shots")
     parser.add_argument("--all", action="store_true", help="walk every tour in the tree")
     parser.add_argument("--revision", default="HEAD", help="committed release snapshot")
     parser.add_argument("--live", action="store_true", help="explicit working-tree diagnostic")
-    parser.add_argument("--native", action="store_true", help="target is a native plugin id")
     parser.add_argument("--timeout", type=float, default=120.0, help="per-tool subprocess seconds")
     parser.add_argument("--settle-timeout", type=float, default=30.0, help="demo worker seconds")
     parser.add_argument("--width", type=int, default=1200)
@@ -489,20 +410,17 @@ def main(argv: list[str] | None = None) -> int:
                             and args.out == "/tmp/guide-shots" else args.out)
     size = (args.width, args.height)
     if args.all:
-        targets = [("qt", f"{module}:{name}") for module, name in _gui_plugins_with_tours(revision=args.revision, live=args.live)]
-        targets += [("native", plugin) for plugin in _native_plugins(revision=args.revision, live=args.live)]
+        targets = [("native", plugin) for plugin in _native_plugins(revision=args.revision, live=args.live)]
         rows = _run_isolated(targets, out_root, size, args.timeout,
                              revision=args.revision, live=args.live)
         failed = [row for row in rows if row["status"] != "passed"]
         print(f"\n{len(rows) - len(failed)}/{len(rows)} tour checks passed")
         return 1 if failed else 0
     if not args.target:
-        parser.error("give a module:Class target, or --all")
-    if args.native:
-        return 0 if check_emtk(args.target, out_root, size,
-                               settle_timeout=args.settle_timeout,
-                               revision=args.revision, live=args.live) else 1
-    return 0 if check(args.target, out_root, size) else 1
+        parser.error("give a plugin id, or --all")
+    return 0 if check_emtk(args.target, out_root, size,
+                           settle_timeout=args.settle_timeout,
+                           revision=args.revision, live=args.live) else 1
 
 
 if __name__ == "__main__":

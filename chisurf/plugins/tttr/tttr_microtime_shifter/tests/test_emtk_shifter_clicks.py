@@ -1,7 +1,7 @@
 """Click coverage of the native micro-time shifter: every control is operated with real pointer, key, wheel and drop input.
 
-Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` and the host's drop hook (``on_paths_dropped``, which
-``emtk.qt_host`` calls for a window without ``files_dropped``) reach the window; each test asserts what a user sees or
+Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` and the shell's drop hook (``on_paths_dropped``, which
+it calls for a window without ``files_dropped``) reach the window; each test asserts what a user sees or
 gets (the strings of the frame, the histogram's drawn lines, the shifted file). The control -> test list is in
 ``okf/plugins/emtk-ports/microtime_shifter/REPORT.md``.
 """

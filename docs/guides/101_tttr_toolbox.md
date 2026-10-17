@@ -69,8 +69,8 @@ tool.
 ```
 
 Launch the native tool with `pixi run -e test python -m chisurf.emtk --plugin tttr_toolbox`.
-For headless interaction, use `QT_QPA_PLATFORM=offscreen`, a scratch
-`CHISURF_SETTINGS_DIR`, and `emtk.testing.Driver`:
+For headless interaction, use a scratch
+`CHISURF_SETTINGS_DIR` and `emtk.testing.Driver`:
 
 ```python
 from emtk.testing import Driver

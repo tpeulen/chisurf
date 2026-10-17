@@ -104,11 +104,8 @@ def _add_libpath(path: pathlib.Path) -> None:
         # searched *first* and therefore overrides what an extension module was
         # linked against -- which is fatal rather than best-effort: dyld reads it
         # at process start, so the process that sets it is unaffected while every
-        # child it spawns inherits the override. A subprocess that renders any Qt
-        # text or icon (``chisurf.gui.plugin_icons.create_text_icon``) then
-        # bus-errors inside Qt's font engine, which is what made a per-tool
-        # construction test crash on exactly one tool while the same code ran
-        # fine when started directly.
+        # child it spawns inherits the override; a subprocess that loads a font
+        # engine linked against another libfreetype then bus-errors in it.
         _ensure_prepend_env_path("DYLD_FALLBACK_LIBRARY_PATH", path)
     _add_path(path)
 
@@ -142,55 +139,6 @@ def _init_paths() -> None:
         _add_path(p)
     for p in cand_lib:
         _add_libpath(p)
-
-
-def _init_qt_plugins() -> None:
-    # Known Qt plugin layouts
-    candidates: list[pathlib.Path] = [
-        APPROOT / "Qt6" / "plugins",
-        APPROOT / "Library" / "Qt6" / "plugins",
-        APPROOT / "plugins",
-        APPROOT / "Library" / "plugins",  # conda/Win
-    ]
-
-    # Pip site-packages locations
-    try:
-        sp = []
-        try:
-            sp.extend(site.getsitepackages() or [])
-        except Exception:
-            pass
-        try:
-            usp = site.getusersitepackages()
-            if usp:
-                sp.append(usp)
-        except Exception:
-            pass
-        for s in sp:
-            base = pathlib.Path(s)
-            candidates.extend(
-                [
-                    base / "PyQt6" / "Qt6" / "plugins",
-                    base / "PyQt5" / "Qt5" / "plugins",
-                ]
-            )
-    except Exception:
-        pass
-
-    qt_plugins = _first_existing(candidates)
-    if qt_plugins:
-        os.environ.setdefault("QT_PLUGIN_PATH", str(qt_plugins))
-        plat_dir = qt_plugins / "platforms"
-        if plat_dir.is_dir():
-            os.environ.setdefault("QT_QPA_PLATFORM_PLUGIN_PATH", str(plat_dir))
-
-    if IS_MAC:
-        os.environ.setdefault("QT_MAC_WANTS_LAYER", "1")
-
-
-def _init_vispy() -> None:
-    # Prefer a Qt backend for vispy; user can override
-    os.environ.setdefault("VISPY_APP", "PyQt6")
 
 
 def _preload_freetype() -> None:
@@ -383,8 +331,6 @@ try:
     _apply_thread_env_from_settings()
     _apply_custom_env_from_settings()
     _init_paths()
-    _init_qt_plugins()
-    _init_vispy()
     _preload_freetype()
 except Exception as _e:
     # Never fail application startup because of best-effort environment tweaks

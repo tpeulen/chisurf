@@ -15,7 +15,6 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-from qtpy import QtWidgets
 
 from chisurf.core.models.structure.proteinmc import ProteinMCProgress
 
@@ -82,9 +81,9 @@ def _labeling_file(tmp_path, score_sets=None):
 # ---------------------------------------------------------------------------
 # the model
 # ---------------------------------------------------------------------------
-def test_proteinmc_declares_structure_and_trajectory_plots(qapp):
+def test_proteinmc_declares_structure_and_trajectory_plots():
     """The view spec resolves to the same three plot tabs the widget listed."""
-    from chisurf.gui.widgets.models.model_editor import model_plot_specs
+    from chisurf.emtk.fit_pages.plots import model_plot_specs
 
     names = [plot_class.name for plot_class, _ in model_plot_specs(_model())]
     assert names[:3] == ["Structure", "Distance Network", "Trajectory-Plot"]
@@ -278,47 +277,35 @@ def test_start_sampling_without_an_output_directory_does_not_run():
 # ---------------------------------------------------------------------------
 # the editor
 # ---------------------------------------------------------------------------
-def test_editor_renders_the_run_controls_and_the_term_tables(qapp):
-    """The generated editor carries the run controls and both term tables."""
-    from chisurf.gui.autoform.sections.background_run_section import BackgroundRunWidget
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
+def test_spec_carries_the_run_controls_and_both_term_tables():
+    """The view spec carries the run controls and both term tables."""
+    import json
+    from pathlib import Path
 
-    model = _model()
-    editor = build_model_editor(model)
+    import chisurf.core.models.structure.proteinmc_model as module
 
-    runners = editor.findChildren(BackgroundRunWidget)
-    assert runners, "no background_run section in the ProteinMC editor"
-    assert runners[0].start_button.isEnabled()
-    assert not runners[0].stop_button.isEnabled(), "Stop is live before a run starts"
+    spec = json.loads(Path(module.__file__).with_name("proteinmc.view.json").read_text())
+    tables, customs = [], []
 
-    tables = editor.findChildren(QtWidgets.QTableWidget)
-    headers = [
-        {
-            t.horizontalHeaderItem(c).text()
-            for c in range(t.columnCount())
-            if t.horizontalHeaderItem(c) is not None
-        }
-        for t in tables
-    ]
-    assert any({"Term", "Weight"} <= h for h in headers), headers
-    assert any({"Setting", "Value"} <= h for h in headers), headers
+    def walk(node):
+        if isinstance(node, dict):
+            if node.get("type") == "table":
+                tables.append({c["label"] for c in node["columns"]})
+            if node.get("type") == "custom":
+                customs.append(node)
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
 
-
-def test_fitting_controller_finds_the_proteinmc_model(qapp):
-    """The fit controller still recognises ProteinMC and hands it Sampling."""
-    from chisurf.gui.widgets.fitting.fit_controller import FittingControllerWidget
-
-    controller = FittingControllerWidget.__new__(FittingControllerWidget)
-    controller.fit = SimpleNamespace(model=_model())
-    controller.comboBox = QtWidgets.QComboBox()
-    controller.comboBox.addItem("ProteinMC")
-
-    assert controller._proteinmc_model_widget() is controller.fit.model
-    # The Sampling button calls this with the folder and run length it collected.
-    assert controller._model_sampling_handler() is not None
+    walk(spec)
+    assert any({"Term", "Weight"} <= h for h in tables), tables
+    assert any({"Setting", "Value"} <= h for h in tables), tables
+    assert customs, "no run-control section in the ProteinMC spec"
 
 
-def test_distance_network_plot_constructs(qapp, qtbot, tmp_path):
+def test_distance_network_plot_constructs(tmp_path):
     """The network plot reads the labelling file off the *model*, not a line edit."""
     from chisurf.emtk.fit_pages.pages.proteinMC import (
         ProteinMCDistanceNetworkPlot,
@@ -355,7 +342,7 @@ def test_distance_network_plot_constructs(qapp, qtbot, tmp_path):
     assert _agreement_color(-3.0) == _agreement_color(3.0)
 
 
-def test_network_playback_steps_on_drawn_frames_and_round_trips(qapp, tmp_path):
+def test_network_playback_steps_on_drawn_frames_and_round_trips(tmp_path):
     """No timer: a playing page steps when a frame draws it, and the project keeps it."""
     from chisurf.emtk.fit_pages.pages.proteinMC import PLAY_INTERVAL, ProteinMCDistanceNetworkPlot
 
@@ -393,7 +380,7 @@ def test_network_playback_steps_on_drawn_frames_and_round_trips(qapp, tmp_path):
     assert (model.current_frame_index, plot.step, plot.playing) == (2, 1, False)
 
 
-def test_trajectory_settings_hide_panels_and_keep_the_old_keys(qapp):
+def test_trajectory_settings_hide_panels_and_keep_the_old_keys():
     """The four curve toggles choose the panels drawn; their state uses the old keys."""
     from chisurf.emtk.fit_pages.pages.proteinMC import ProteinMCPlot
 
@@ -422,77 +409,6 @@ def test_trajectory_settings_hide_panels_and_keep_the_old_keys(qapp):
     plot.set_settings_state({"show_rmsd": False, "show_drmsd": False})
     assert plot._grid() is None
     plot.autoscale()
-
-
-def test_progress_dialog_minimize_and_restore(qapp, qtbot, monkeypatch):
-    """Test progress dialog hide to status bar and double-click to restore."""
-    from qtpy import QtCore, QtGui
-
-    from chisurf.gui.widgets.progress import EnhancedProgressDialog, MinimisedProgressWidget
-
-    # Create dummy main window with a status bar
-    main_win = QtWidgets.QMainWindow()
-    main_win.setStatusBar(QtWidgets.QStatusBar(main_win))
-    main_win.show()
-    qtbot.addWidget(main_win)
-
-    # Mock _find_main_window to return our main_win
-    monkeypatch.setattr(EnhancedProgressDialog, "_find_main_window", lambda self: main_win)
-
-    dialog = EnhancedProgressDialog(
-        title="Test Progress",
-        label_text="Running test...",
-        min_value=0,
-        max_value=100,
-        parent=main_win,
-        window_modality=QtCore.Qt.NonModal,
-    )
-    dialog.show()
-    qtbot.addWidget(dialog)
-
-    # 1. Verify "Hide" button is created
-    assert dialog._hide_btn is not None
-    assert dialog._hide_btn.text() == "Hide"
-
-    # 2. Hide to status bar
-    dialog.hide_to_statusbar()
-    assert dialog.isHidden()
-    assert dialog._statusbar_widget is not None
-    assert isinstance(dialog._statusbar_widget, MinimisedProgressWidget)
-
-    # Verify widget is added to status bar
-    statusbar_widgets = main_win.statusBar().findChildren(MinimisedProgressWidget)
-    assert len(statusbar_widgets) == 1
-
-    # 3. Restore by double-clicking status bar widget
-    event = (
-        QtGui.QMouseEvent(
-            QtCore.QEvent.MouseButtonDblClick,
-            QtCore.QPointF(5, 5),
-            QtCore.Qt.LeftButton,
-            QtCore.Qt.LeftButton,
-            QtCore.Qt.NoModifier,
-        )
-        if hasattr(QtGui, "QMouseEvent")
-        else None
-    )
-
-    if event:
-        dialog._statusbar_widget.mouseDoubleClickEvent(event)
-    else:
-        dialog.restore_from_statusbar()
-
-    qapp.processEvents()
-
-    assert dialog.isVisible()
-    assert dialog._statusbar_widget is None
-    assert len(main_win.statusBar().findChildren(MinimisedProgressWidget)) == 0
-
-    # 4. Hide again and finish to ensure cleanup
-    dialog.hide_to_statusbar()
-    dialog.finish(close_delay_ms=0)
-    qapp.processEvents()
-    assert len(main_win.statusBar().findChildren(MinimisedProgressWidget)) == 0
 
 
 def test_sampling_without_rmf_keeps_its_frames_and_writes_no_file(monkeypatch, tmp_path):

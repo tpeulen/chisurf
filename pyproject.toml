@@ -43,9 +43,6 @@ classifiers = [
 # and the conda-package deps in rattler-recipe/recipe.yaml (run:). The app runs
 # on numpy 2.x (the canonical pixi env resolves numpy 2.4), so numpy is uncapped.
 dependencies = [
-    "PyQt5",
-    "qtpy",
-    "sip",
     "numpy",
     # Mandatory: structure I/O, AV backend and kappa-squared correction import
     # IMP.bff unguarded. Bare `imp` (the full IMP suite) is no longer needed --
@@ -58,17 +55,17 @@ dependencies = [
     # in the tree, every estimator the tree uses is in chisurf.core.ml, and the
     # region measurements and segmentation primitives are in chisurf.core.roi.
     "PyOpenGL",
-    # WebGPU, used by the chigame engine (chisurf.gui.chigame). wgpu is the
-    # graphics API; rendercanvas is the per-platform surface and the offscreen
-    # backend the headless render tests depend on.
+    # WebGPU, which emtk draws with. wgpu is the graphics API; rendercanvas is the
+    # per-platform surface and the offscreen backend the headless render tests
+    # depend on.
     "wgpu",
     "rendercanvas",
     # The window backend for chimol's Qt-free default run mode; without it that
     # path falls back to rendercanvas's offscreen canvas.
     "glfw",
     "labellib",
-    # The node-graph editor toolkit: chisurf.gui.widgets.node_editor and
-    # chimol import emtk.qt_host unguarded, so it is not optional.
+    # The UI toolkit: the ChiSurf window, every plugin, the node editor and
+    # chimol draw with it, so it is not optional.
     # emtk is on PyPI (source: github.com/tpeulen/emtk). The bound is
     # chisurf.emtk.requirement.EMTK_MIN_VERSION, checked at startup.
     "emtk>=0.1.20",
@@ -95,20 +92,17 @@ dependencies = [
 
 [project.optional-dependencies]
 # Features the application detects at runtime and works without: fast
-# histogramming, syntax highlighting, and the LaTeX view of a parse model (an
-# in-tree AST converter is the fallback). The external notebook server and its
+# histogramming and syntax highlighting. The external notebook server and its
 # `notebook` dependency were removed in 2026-08; scikit-learn and hdbscan in the
 # same way, once chisurf.core.ml (and tttrlib, for HDBSCAN) held every
 # estimator the tree reaches for.
 full = [
     "Pygments",
-    "latexify-py",
 ]
 dev = [
     "python-lsp-server>=1.14",
     "pytest",
     "pytest-cov",
-    "pytest-qt",
     "mypy",
     "ruff",
 ]
@@ -209,7 +203,6 @@ namespaces = true
 ]
 "chisurf.settings.constants" = ["*.json"]
 
-"chisurf.gui" = ["gui.ui"]
 # QuEst's demo structure (T4 lysozyme, 148L): the guided tour runs on it.
 "chisurf.plugins.quenching_estimator" = ["examples/*.pdb"]
 
@@ -221,7 +214,6 @@ namespaces = true
 version = {attr = "chisurf.core.info.__version__"}
 
 [tool.pytest.ini_options]
-qt_api = "pyqt5"
 # Coverage is opt-in (use `pixi run test-cov`); keeping it off by default avoids
 # dumping .coverage*/htmlcov into the repo root on every test run.
 addopts = ""
@@ -236,7 +228,7 @@ markers = [
     "slow: marks tests as slow (reader-heavy) and excluded from default runs",
     "live_llm: hits a real LLM provider; skipped unless an API key is configured",
     "gui: marks tests that require or drive the graphical user interface",
-    "widget: marks tests that instantiate Qt widgets",
+    "widget: marks tests that drive an emtk app or control",
 ]
 
 # Coverage.py config (read by pytest-cov on `pixi run test-cov`). Output is
@@ -359,12 +351,3 @@ exclude = [
     "^chisurf/plugins/cookiecutter-chisurf-plugin$",
 ]
 
-# The conda PyQt5 ships no .pyi stubs, so qtpy's `from PyQt5.QtCore import *`
-# re-exports resolve to nothing and mypy reports ~700 phantom errors
-# (`Name "QtCore.QObject" is not defined`, `Module "qtpy.QtCore" has no
-# attribute "QUrl"`). Treat the Qt binding as untyped (Any) instead.
-[[tool.mypy.overrides]]
-module = ["qtpy", "qtpy.*", "PyQt5", "PyQt5.*", "PyQt6", "PyQt6.*", "PySide2", "PySide2.*", "PySide6", "PySide6.*"]
-follow_imports = "skip"
-follow_imports_for_stubs = true
-ignore_missing_imports = true

@@ -11,23 +11,12 @@ converged fit with at least two free parameters" message overwritten in the same
 call.
 """
 
-import os
-
 import numpy as np
 import pytest
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
-from qtpy import QtWidgets  # noqa: E402
 
 import chisurf.core.data  # noqa: E402
 import chisurf.core.fitting.fit  # noqa: E402
 import chisurf.core.models.parse  # noqa: E402
-
-
-@pytest.fixture(scope="module")
-def app():
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 @pytest.fixture
@@ -55,7 +44,7 @@ def _fix(fit, *names) -> None:
             parameter.fixed = True
 
 
-def test_what_if_plot_answers_the_current_fit(app, quadratic_fit):
+def test_what_if_plot_answers_the_current_fit(quadratic_fit):
     """Three free parameters: every one of them is offered and swept."""
     from chisurf.emtk.fit_pages.pages.conditional_scan import ConditionalScanPlot
 
@@ -67,7 +56,7 @@ def test_what_if_plot_answers_the_current_fit(app, quadratic_fit):
     assert len(widget._full_names) == 3
 
 
-def test_what_if_plot_drops_the_stale_scan_when_it_degrades(app, quadratic_fit):
+def test_what_if_plot_drops_the_stale_scan_when_it_degrades(quadratic_fit):
     """One free parameter left: no engine, no sweep, and the message survives.
 
     Regression: ``_scan`` stayed populated and the readout held the previous
@@ -95,7 +84,7 @@ def test_what_if_plot_drops_the_stale_scan_when_it_degrades(app, quadratic_fit):
     assert not any(isinstance(note, N.Table) for note in widget.readout)
 
 
-def test_what_if_plot_ignores_the_combo_once_it_has_degraded(app, quadratic_fit):
+def test_what_if_plot_ignores_the_combo_once_it_has_degraded(quadratic_fit):
     """A selection change after degrading must not redraw from the old engine."""
     from chisurf.emtk.fit_pages.pages.conditional_scan import ConditionalScanPlot
 
@@ -109,7 +98,7 @@ def test_what_if_plot_ignores_the_combo_once_it_has_degraded(app, quadratic_fit)
     assert widget._scan is None, "no sweep may come out of a dropped engine"
 
 
-def test_what_if_readout_reads_the_held_value(app, quadratic_fit):
+def test_what_if_readout_reads_the_held_value(quadratic_fit):
     """Moving the held value moves the 'would be' column, not the 'free' one."""
     from chisurf.emtk.fit_pages.pages import emtk_notes as N
     from chisurf.emtk.fit_pages.pages.conditional_scan import ConditionalScanPlot

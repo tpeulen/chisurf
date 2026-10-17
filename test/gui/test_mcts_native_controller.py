@@ -1,18 +1,18 @@
-"""GUI contracts for strict BFF-native model search dispatch."""
+"""Contracts for strict BFF-native model search dispatch, through the server service.
+
+The Qt fit controller that used to dispatch the search is gone; ``fit_model_search`` and
+``fit_model_search_available`` in ``chisurf.server.services.fits`` are the one entry point now.
+"""
 
 from __future__ import annotations
 
-import inspect
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
-from chisurf.core.fitting.mcts.native import (
-    NativeSearchPreparation,
-    NativeSearchReason,
-)
-from chisurf.gui.widgets.fitting.fit_controller import FittingControllerWidget
+from chisurf.core.fitting.mcts.native import NativeSearchPreparation, NativeSearchReason
+from chisurf.server.services import fits as fits_service
 
 
 class _State:
@@ -39,226 +39,6 @@ class _Result:
     def get_improvement(self):
         return 4.25
 
-    def get_number_of_simulations(self):
-        return 19
-
-    def get_number_of_states_evaluated(self):
-        return 3
-
-
-def _controller():
-    controller = FittingControllerWidget.__new__(FittingControllerWidget)
-    controller.fit = SimpleNamespace(name="global fit", unique_identifier="fit-1")
-    controller.controls = SimpleNamespace(search_fit_settings=False)
-    controller._snapshots = iter(([{"value": 1.0}], [{"value": 2.0}]))
-    controller._collect_parameter_snapshot = lambda: next(controller._snapshots)
-    controller.history = []
-    controller._record_history = lambda **entry: controller.history.append(entry)
-    controller.refreshed = []
-    controller._refresh_mcts_structure_ui = controller.refreshed.append
-    return controller
-
-
-def _run_inline(monkeypatch):
-    def run_in_background(_parent, _text, worker, **kwargs):
-        try:
-            result = worker(SimpleNamespace(is_cancelled=False))
-        except Exception as error:
-            kwargs["on_error"](error)
-        else:
-            kwargs["on_result"](result)
-        return SimpleNamespace()
-
-    monkeypatch.setattr("chisurf.gui.task.run_in_background", run_in_background)
-
-
-def test_unsupported_fit_reports_reason_without_running_or_mutating(monkeypatch):
-    import chisurf as cs
-
-    controller = _controller()
-    warnings = []
-    prepared = NativeSearchPreparation(
-        "test.unsupported",
-        reasons=(NativeSearchReason("no_native_graph", "model uses a Python node"),),
-    )
-    monkeypatch.setattr(
-        "chisurf.core.fitting.mcts.dispatcher.prepare_model_search",
-        lambda _fit, **_kw: prepared,
-    )
-    monkeypatch.setattr(cs.logging, "warning", warnings.append)
-    monkeypatch.setattr(
-        "chisurf.gui.task.run_in_background",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("search ran")),
-    )
-
-    controller.onRunMCTS()
-
-    assert controller.history == []
-    assert controller.refreshed == []
-    assert warnings == [
-        "BFF model search is unavailable for 'global fit': "
-        "no_native_graph: model uses a Python node"
-    ]
-
-
-def test_gui_entry_point_has_no_legacy_search_engine_path():
-    source = inspect.getsource(FittingControllerWidget.onRunMCTS)
-
-    assert "MCTSFittingEngine" not in source
-    assert "environment_from_fit" not in source
-    assert "run_native_search" in source
-
-
-def test_native_winner_is_applied_once_and_records_one_accepted_event(monkeypatch):
-    controller = _controller()
-    applied = []
-    problem = object()
-    binding = SimpleNamespace(
-        apply_state=lambda received_problem, state: applied.append(
-            (received_problem, state.get_structure_key())
-        )
-    )
-    prepared = NativeSearchPreparation("test.native", problem=problem, binding=binding)
-    monkeypatch.setattr(
-        "chisurf.core.fitting.mcts.dispatcher.prepare_model_search",
-        lambda _fit, **_kw: prepared,
-    )
-    searches = []
-
-    def run_native(received_problem, settings, *, should_cancel):
-        searches.append((received_problem, settings, should_cancel()))
-        return _Result()
-
-    monkeypatch.setattr("chisurf.core.fitting.mcts.execution.run_native_search", run_native)
-    _run_inline(monkeypatch)
-
-    controller.onRunMCTS()
-
-    assert searches[0][0] is problem
-    assert searches[0][2] is False
-    assert applied == [(problem, "selected-structure")]
-    assert controller.refreshed == [controller.fit]
-    assert len(controller.history) == 1
-    event = controller.history[0]
-    assert event["action_type"] == "fit_run_finish"
-    assert event["payload"]["operation"] == "bff_model_search"
-    assert event["payload"]["capability_id"] == "test.native"
-    assert event["payload"]["parameter_snapshot_before"] == [{"value": 1.0}]
-    assert event["payload"]["parameter_snapshot_after"] == [{"value": 2.0}]
-
-
-def test_cancelled_native_search_never_applies_or_records(monkeypatch):
-    controller = _controller()
-    applied = []
-    prepared = NativeSearchPreparation(
-        "test.native",
-        problem=object(),
-        binding=SimpleNamespace(apply_state=lambda *_args: applied.append(True)),
-    )
-    monkeypatch.setattr(
-        "chisurf.core.fitting.mcts.dispatcher.prepare_model_search",
-        lambda _fit, **_kw: prepared,
-    )
-    monkeypatch.setattr(
-        "chisurf.core.fitting.mcts.execution.run_native_search",
-        lambda *_args, **_kwargs: _Result(cancelled=True),
-    )
-    _run_inline(monkeypatch)
-
-    controller.onRunMCTS()
-
-    assert applied == []
-    assert controller.history == []
-    assert controller.refreshed == []
-
-
-def test_controller_runs_a_real_parse_fit_through_bff(monkeypatch):
-    """The GUI entry point reaches BFF for a non-TCSPC model family."""
-    import chisurf
-    from chisurf.core.data import DataCurve
-    from chisurf.core.fitting.fit import Fit
-    from chisurf.core.models.parse import ParseModel
-
-    x = np.linspace(0.0, 5.0, 64)
-    y = 1.5 + 2.25 * x
-    fit = Fit(
-        data=DataCurve(x=x, y=y, ey=np.ones_like(y)),
-        model_class=ParseModel,
-    )
-    fit.fit_range = (0, len(x))
-    fit.model.func = "offset+slope*x"
-    fit.model.find_parameters()
-    fit.model.parameters_all_dict["offset"].value = 0.0
-    fit.model.parameters_all_dict["slope"].value = 1.0
-
-    controller = FittingControllerWidget.__new__(FittingControllerWidget)
-    controller.fit = fit
-    controller.controls = SimpleNamespace(search_fit_settings=False)
-    controller.history = []
-    controller._record_history = lambda **entry: controller.history.append(entry)
-    controller._refresh_mcts_structure_ui = lambda _fit: None
-    _run_inline(monkeypatch)
-    monkeypatch.setitem(
-        chisurf.core.settings.cs_settings["optimization"],
-        "mcts",
-        {"n_simulations": 12, "seed": 3},
-    )
-
-    controller.onRunMCTS()
-
-    assert fit.model.parameter_dict["offset"].value == pytest.approx(1.5)
-    assert fit.model.parameter_dict["slope"].value == pytest.approx(2.25)
-    assert len(controller.history) == 1
-    assert controller.history[0]["payload"]["capability_id"] == ("chisurf.fixed-structure.v1")
-
-
-@pytest.mark.parametrize("available", [True, False])
-def test_the_search_button_is_shown_only_when_bff_can_search(monkeypatch, available):
-    controller = _controller()
-    shown, enabled = [], []
-    controller.button_mcts = SimpleNamespace(setVisible=shown.append)
-    controller.actionMCTS = SimpleNamespace(setEnabled=enabled.append)
-    monkeypatch.setattr(
-        "chisurf.core.fitting.mcts.dispatcher.model_search_available",
-        lambda _fit: available,
-    )
-
-    controller._refresh_mcts_availability()
-
-    assert shown == [available] and enabled == [available]
-
-
-def test_search_fit_settings_reaches_the_preparation_and_is_kept(monkeypatch):
-    controller = _controller()
-    controller.controls = SimpleNamespace(search_fit_settings=True)
-    asked, stored = [], []
-    prepared = NativeSearchPreparation(
-        "test.native",
-        problem=object(),
-        binding=SimpleNamespace(apply_state=lambda *_args: None),
-    )
-
-    def prepare(_fit, *, search_fit_settings=False):
-        asked.append(search_fit_settings)
-        return prepared
-
-    monkeypatch.setattr("chisurf.core.fitting.mcts.dispatcher.prepare_model_search", prepare)
-    monkeypatch.setattr(
-        "chisurf.gui.widgets.fitting.fit_controller._store_mcts_setting",
-        lambda key, value: stored.append((key, value)),
-    )
-    monkeypatch.setattr(
-        "chisurf.core.fitting.mcts.execution.run_native_search",
-        lambda *_args, **_kwargs: _Result(),
-    )
-    _run_inline(monkeypatch)
-
-    controller.onRunMCTS()
-
-    assert asked == [True]
-    assert stored == [("search_fit_settings", True)]
-    assert len(controller.history) == 1
-
 
 class _AskingResult(_Result):
     def get_outcome(self):
@@ -268,49 +48,156 @@ class _AskingResult(_Result):
         return ["decay_aa"]
 
 
-def test_a_search_asking_for_a_measurement_keeps_the_users_model(monkeypatch):
-    import chisurf as cs
+@pytest.fixture
+def fit(monkeypatch):
+    """A stand-in fit the service resolves; the search machinery is what is under test."""
+    stub = SimpleNamespace(name="global fit", unique_identifier="fit-1")
+    monkeypatch.setattr(fits_service, "_resolve_fit", lambda *_a, **_k: (stub, 0))
+    return stub
 
-    controller = _controller()
-    applied, restored, warnings = [], [], []
-    prepared = NativeSearchPreparation(
-        "test.native",
-        problem=object(),
-        binding=SimpleNamespace(
-            apply_state=lambda *_args: applied.append(True),
-            restore=lambda problem: restored.append(problem),
-        ),
-    )
+
+def _prepared(monkeypatch, prepared):
     monkeypatch.setattr(
         "chisurf.core.fitting.mcts.dispatcher.prepare_model_search",
         lambda _fit, **_kw: prepared,
     )
+
+
+def test_unsupported_fit_reports_reason_without_running_or_mutating(monkeypatch, fit):
+    _prepared(
+        monkeypatch,
+        NativeSearchPreparation(
+            "test.unsupported",
+            reasons=(NativeSearchReason("no_native_graph", "model uses a Python node"),),
+        ),
+    )
     monkeypatch.setattr(
         "chisurf.core.fitting.mcts.execution.run_native_search",
-        lambda *_args, **_kwargs: _AskingResult(),
+        lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("search ran")),
     )
-    monkeypatch.setattr(cs.logging, "warning", warnings.append)
-    _run_inline(monkeypatch)
 
-    controller.onRunMCTS()
+    result = fits_service.fit_model_search(None, 0)
 
-    assert applied == [] and controller.history == []
-    assert restored == [prepared.problem]
-    assert len(warnings) == 1 and "decay_aa" in warnings[0]
+    assert result["ok"] is False
+    assert "no_native_graph: model uses a Python node" in str(result)
 
 
-def test_the_fit_settings_checkbox_is_declared_with_a_tooltip():
-    import json
-    import pathlib
+def test_native_winner_is_applied_once(monkeypatch, fit):
+    applied = []
+    problem = object()
+    binding = SimpleNamespace(
+        apply_state=lambda received, state: applied.append((received, state.get_structure_key()))
+    )
+    _prepared(monkeypatch, NativeSearchPreparation("test.native", problem=problem, binding=binding))
+    searches = []
 
-    import chisurf.gui.widgets.fitting.fitting_controls as controls
+    def run_native(received_problem, settings, **_kw):
+        searches.append(received_problem)
+        return _Result()
 
-    spec = json.loads(pathlib.Path(controls._VIEW).read_text())
-    fields = {
-        section.get("attr"): section
-        for panel in spec["sections"]
-        for section in panel.get("sections", [])
-    }
-    toggle = fields["search_fit_settings"]
-    assert toggle["type"] == "toggle" and toggle["description"]
-    assert controls.FittingControlsModel(None).search_fit_settings is False
+    monkeypatch.setattr("chisurf.core.fitting.mcts.execution.run_native_search", run_native)
+
+    result = fits_service.fit_model_search(None, 0)
+
+    assert searches == [problem]
+    assert applied == [(problem, "selected-structure")]
+    assert result["ok"] is True and result["outcome"] == "selected"
+    assert result["structure"] == "selected-structure"
+    assert result["reward"] == 12.5 and result["improvement"] == 4.25
+
+
+def test_cancelled_native_search_never_applies(monkeypatch, fit):
+    applied, restored = [], []
+    problem = object()
+    binding = SimpleNamespace(
+        apply_state=lambda *_a: applied.append(True),
+        restore=lambda p: restored.append(p),
+    )
+    _prepared(monkeypatch, NativeSearchPreparation("test.native", problem=problem, binding=binding))
+    monkeypatch.setattr(
+        "chisurf.core.fitting.mcts.execution.run_native_search",
+        lambda *_a, **_k: _Result(cancelled=True),
+    )
+
+    result = fits_service.fit_model_search(None, 0)
+
+    assert applied == []
+    assert result["outcome"] == "cancelled"
+    assert restored == [problem]
+
+
+def test_a_search_asking_for_a_measurement_keeps_the_users_model(monkeypatch, fit):
+    applied, restored = [], []
+    problem = object()
+    binding = SimpleNamespace(
+        apply_state=lambda *_a: applied.append(True),
+        restore=lambda p: restored.append(p),
+    )
+    _prepared(monkeypatch, NativeSearchPreparation("test.native", problem=problem, binding=binding))
+    monkeypatch.setattr(
+        "chisurf.core.fitting.mcts.execution.run_native_search",
+        lambda *_a, **_k: _AskingResult(),
+    )
+
+    result = fits_service.fit_model_search(None, 0)
+
+    assert applied == [] and restored == [problem]
+    assert result["outcome"] == "request_information" and result["missing"] == ["decay_aa"]
+
+
+def test_search_fit_settings_reaches_the_preparation(monkeypatch, fit):
+    asked = []
+    prepared = NativeSearchPreparation(
+        "test.native", problem=object(), binding=SimpleNamespace(apply_state=lambda *_a: None)
+    )
+
+    def prepare(_fit, *, search_fit_settings=False):
+        asked.append(search_fit_settings)
+        return prepared
+
+    monkeypatch.setattr("chisurf.core.fitting.mcts.dispatcher.prepare_model_search", prepare)
+    monkeypatch.setattr(
+        "chisurf.core.fitting.mcts.execution.run_native_search",
+        lambda *_a, **_k: _Result(),
+    )
+
+    fits_service.fit_model_search(None, 0, search_fit_settings=True)
+
+    assert asked == [True]
+
+
+@pytest.mark.parametrize("available", [True, False])
+def test_the_search_is_offered_only_when_bff_can_search(monkeypatch, fit, available):
+    monkeypatch.setattr(
+        "chisurf.core.fitting.mcts.dispatcher.model_search_available", lambda _fit: available
+    )
+    assert fits_service.fit_model_search_available(None, 0)["available"] is available
+
+
+def test_a_real_parse_fit_is_searched_through_bff(monkeypatch):
+    """The service reaches BFF for a non-TCSPC model family."""
+    import chisurf
+    from chisurf.core.data import DataCurve
+    from chisurf.core.fitting.fit import Fit
+    from chisurf.core.models.parse import ParseModel
+
+    x = np.linspace(0.0, 5.0, 64)
+    y = 1.5 + 2.25 * x
+    real = Fit(data=DataCurve(x=x, y=y, ey=np.ones_like(y)), model_class=ParseModel)
+    real.fit_range = (0, len(x))
+    real.model.func = "offset+slope*x"
+    real.model.find_parameters()
+    real.model.parameters_all_dict["offset"].value = 0.0
+    real.model.parameters_all_dict["slope"].value = 1.0
+    monkeypatch.setattr(fits_service, "_resolve_fit", lambda *_a, **_k: (real, 0))
+    monkeypatch.setitem(
+        chisurf.core.settings.cs_settings["optimization"],
+        "mcts",
+        {"n_simulations": 12, "seed": 3},
+    )
+
+    result = fits_service.fit_model_search(None, 0)
+
+    assert result["ok"] is True, result
+    assert real.model.parameter_dict["offset"].value == pytest.approx(1.5)
+    assert real.model.parameter_dict["slope"].value == pytest.approx(2.25)

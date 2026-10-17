@@ -11,7 +11,7 @@ Two objects
 :class:`GraphControl`
     The whole editor, as a emtk *control*: ``draw``, ``press``, ``drag``,
     ``release``, ``hover``, ``scroll``, ``key``. That is the contract
-    :func:`emtk.qt_host.ControlHost` hosts, and it is also the contract a
+    every emtk host drives (a dock, a window), and it is also the contract a
     browser host and a headless test satisfy, so there is one implementation
     rather than one per surface.
 :class:`NodeContentRenderer`
@@ -806,7 +806,7 @@ class GraphControl:
 
         Notes
         -----
-        ``emtk.qt_host`` calls ``press(px, py, x, y, w, h, modifiers, clicks)``
+        Some hosts call ``press(px, py, x, y, w, h, modifiers, clicks)``
         positionally, and other hosts pass them by keyword. Accepting both is
         two lines here and saves every host from agreeing on one.
         """

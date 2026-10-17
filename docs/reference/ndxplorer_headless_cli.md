@@ -17,8 +17,7 @@ layers:
   artifact to a local path, run the primitive, and optionally register the result
   back under a sample.
 
-All commands run headless; set `QT_QPA_PLATFORM=offscreen` if a `QApplication`
-needs to construct.
+All commands run headless.
 
 ## 1. ndX as a burst filter
 

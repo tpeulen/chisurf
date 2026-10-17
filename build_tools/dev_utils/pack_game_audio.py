@@ -1,4 +1,4 @@
-"""Turn a downloaded CC0 audio pack into the clips chigame ships.
+"""Turn a downloaded CC0 audio pack into the clips the games ship.
 
 This is a **developer tool**, not a runtime path: it runs once when a pack is
 adopted or updated, and its output is committed. Nothing in the game imports it.

@@ -8,8 +8,7 @@ the handles edit entries in that list, and the control redraws the whole list
 whenever its host asks for a repaint.
 
 The module imports no toolkit. Whatever shows a panel -- an emtk surface that
-draws the canvas as a control, or a host widget built by
-:mod:`chisurf.gui.chiplot` -- attaches itself with :meth:`EmtkCanvas.attach_host`;
+draws the canvas as a control, or any other host -- attaches itself with :meth:`EmtkCanvas.attach_host`;
 a host is any object with ``update()`` (and optionally ``size()`` and
 ``set_background(rgb)``), so nothing here knows which toolkit made it.
 

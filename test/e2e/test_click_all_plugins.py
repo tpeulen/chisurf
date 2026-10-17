@@ -40,16 +40,11 @@ else:
     # The worker installs scratch paths before importing ChiSurf settings.
     CATALOG = {}
 IDS_EMTK = sorted(i for i, m in CATALOG.items() if m.get("entrypoints", {}).get("emtk"))
-IDS_QT = sorted(
-    i
-    for i, m in CATALOG.items()
-    if m.get("entrypoints", {}).get("gui") and not m.get("entrypoints", {}).get("emtk")
-)
 IDS_ACTION = sorted(
     i
     for i, m in CATALOG.items()
     if m.get("entrypoints", {}).get("action")
-    and not (m["entrypoints"].get("gui") or m["entrypoints"].get("emtk"))
+    and not m["entrypoints"].get("emtk")
 )
 SIZE = (1100, 720)
 #: The real-use QA matrix (okf/workflows/testing.md, "Real-use QA matrix"). The base sweep above
@@ -202,7 +197,6 @@ def _isolated(plugin_id, mode, variant=None):
     )
     env = dict(os.environ)
     env.update(
-        QT_QPA_PLATFORM="offscreen",
         MPLBACKEND="Agg",
         PYTHONUNBUFFERED="1",
         CHISURF_E2E_DIR=str(directory),
@@ -281,13 +275,6 @@ def test_emtk_plugin_real_use(variant, plugin_id):
 
 
 @pytest.mark.e2e
-@pytest.mark.parametrize("plugin_id", IDS_QT, ids=str)
-def test_qt_plugin_survives_every_button(plugin_id):
-    """Exercise the remaining legacy Qt factories with native state isolated."""
-    _isolated(plugin_id, "qt")
-
-
-@pytest.mark.e2e
 @pytest.mark.parametrize("plugin_id", IDS_ACTION, ids=str)
 def test_action_plugin_resolves_to_a_callable(plugin_id):
     """An action entrypoint opens no window: prove its target imports and is callable.
@@ -309,37 +296,7 @@ def _guards(stack, result):
     import webbrowser
 
     from emtk.file_dialog import FileDialog
-    from qtpy import QtGui, QtWidgets
 
-    from chisurf.gui.dialogs import ChiSurfMessageBox, auto_answer
-
-    for method, answer in (
-        ("getOpenFileName", ("", "")),
-        ("getOpenFileNames", ([], "")),
-        ("getSaveFileName", ("", "")),
-        ("getExistingDirectory", ""),
-    ):
-        stack.enter_context(patch.object(QtWidgets.QFileDialog, method, return_value=answer))
-    stack.enter_context(
-        auto_answer(
-            question=ChiSurfMessageBox.No, warning=None, critical=None, information=None, about=None
-        )
-    )
-
-    def reject_modal(dialog, *args, **kwargs):
-        """Construct real dialogs, but reject synchronous modal execution."""
-        result["dialogs_closed"] += 1
-        result.setdefault("cancelled_modals", []).append(type(dialog).__name__)
-        dialog.reject()
-        return QtWidgets.QDialog.Rejected
-
-    for method in ("exec", "exec_"):
-        if hasattr(QtWidgets.QDialog, method):
-            stack.enter_context(patch.object(QtWidgets.QDialog, method, reject_modal))
-    for method in ("question", "warning", "critical", "information", "about", "aboutQt"):
-        stack.enter_context(
-            patch.object(QtWidgets.QMessageBox, method, return_value=QtWidgets.QMessageBox.No)
-        )
     # A "Copy …" button or menu row must not overwrite the user's clipboard: keep it in memory.
     from emtk import clipboard as emtk_clipboard
 
@@ -351,7 +308,6 @@ def _guards(stack, result):
     stack.enter_context(patch.object(webbrowser, "open", return_value=False))
     stack.enter_context(patch.object(webbrowser, "open_new", return_value=False))
     stack.enter_context(patch.object(webbrowser, "open_new_tab", return_value=False))
-    stack.enter_context(patch.object(QtGui.QDesktopServices, "openUrl", return_value=False))
 
     def feed_file_dialog(dialog, *args, **kwargs):
         """Open/folder dialogs take the plugin's demo; save dialogs and demo-less ones cancel."""
@@ -366,22 +322,6 @@ def _guards(stack, result):
         return False
 
     stack.enter_context(patch.object(FileDialog, "draw", feed_file_dialog))
-    for method, many in (("getOpenFileName", False), ("getOpenFileNames", True)):
-
-        def qt_open(*args, _many=many, **kwargs):
-            """Qt open dialogs get the same demo file the native dialog would."""
-            chosen = demo_choice(result.get("demo_dir"), "open", ())
-            if chosen:
-                result.setdefault("demo_fed", []).append(chosen[0])
-            return (chosen if _many else (chosen[0] if chosen else ""), "")
-
-        stack.enter_context(patch.object(QtWidgets.QFileDialog, method, qt_open))
-
-    def qt_folder(*args, **kwargs):
-        """A directory chooser gets the demo folder, if the plugin shipped one."""
-        return str(result.get("demo_dir") or "")
-
-    stack.enter_context(patch.object(QtWidgets.QFileDialog, "getExistingDirectory", qt_folder))
     connect = socket.socket.connect
 
     def local_only(sock, address):
@@ -428,10 +368,6 @@ def _guards(stack, result):
         raise Blocked("E2E blocks external process launch")
 
     stack.enter_context(patch.object(subprocess, "Popen", no_external_process))
-    from qtpy.QtCore import QProcess
-
-    for method in ("start", "startDetached", "execute"):
-        stack.enter_context(patch.object(QProcess, method, no_external_process))
     for method in dir(os):
         if method.startswith(("exec", "spawn")) or method in ("system", "popen", "startfile"):
             if callable(getattr(os, method)):
@@ -1412,11 +1348,7 @@ def operate_awaited_tour_step(driver, tour, result, recorder, spec=None):
             rect = visible_rectangle({"rect": rect}, getattr(driver, "size", SIZE))
             assert rect is not None, f"coverage: awaited target {target!r} is offscreen"
         value = recorder.input_values.get(matches[-1]["visit_id"]) if matches else None
-        from chisurf.gui.dialogs import ChiSurfMessageBox, auto_answer
-
-        # A tour's own example confirms its question boxes; the general sweep declines them.
-        with auto_answer(question=ChiSurfMessageBox.Yes):
-            driver.click(rect)
+        driver.click(rect)
         if matches and matches[-1]["kind"] == "combo":
             from emtk import keys
 
@@ -1458,8 +1390,7 @@ def operate_awaited_tour_step(driver, tour, result, recorder, spec=None):
                     companion = driver.rect(target + suffix)
                 except LookupError:
                     continue
-                with auto_answer(question=ChiSurfMessageBox.Yes):
-                    driver.click(companion)
+                driver.click(companion)
                 driver.frame(2)
                 settle_with_cancel(driver, recorder, result)
                 result.setdefault("tour_companions", []).append(target + suffix)
@@ -1473,8 +1404,7 @@ def operate_awaited_tour_step(driver, tour, result, recorder, spec=None):
                 for fx in (0.5, 0.2, 0.8):
                     if not tour.awaiting:
                         break
-                    with auto_answer(question=ChiSurfMessageBox.Yes):
-                        driver.click((x0 + w0 * fx - 1, y0 + h0 * fy - 1, 2, 2))
+                    driver.click((x0 + w0 * fx - 1, y0 + h0 * fy - 1, 2, 2))
                     driver.frame(2)
                     result["tour_region_probes"] = result.get("tour_region_probes", 0) + 1
         if tour.awaiting and matches == [] and callable(getattr(driver, "press", None)):
@@ -2402,50 +2332,6 @@ def _native(plugin_id, result, png_path):
                 close()
 
 
-def _qt(plugin_id, result, png_path, qapp):
-    """Click safe legacy buttons and grab the widget before closing it."""
-    from qtpy.QtWidgets import QAbstractButton
-
-    from chisurf.core.plugin.manifest import load_manifest
-    from chisurf.core.plugin.registry import build_plugin_widget
-    from chisurf.core.settings import cs_settings
-
-    path = next(
-        p
-        for p in (REPO / "chisurf" / "plugins").rglob("manifest.json")
-        if json.loads(p.read_text(encoding="utf-8")).get("id") == plugin_id
-    )
-    cs_settings.setdefault("plugins", {})["gui_mode"] = "qt"
-    result["phase"] = "factory"
-    checkpoint(result)
-    widget = build_plugin_widget(load_manifest(path))
-    try:
-        widget.resize(*SIZE)
-        widget.show()
-        for _ in range(3):
-            qapp.processEvents()
-        for button in widget.findChildren(QAbstractButton):
-            if not button.isEnabled():
-                continue
-            name = button.objectName() + " " + button.text()
-            reason = skip_reason(name)
-            if reason:
-                result["skipped"].append({"control": name, "reason": reason})
-            else:
-                result["current_control"] = name
-                result["phase"] = "click"
-                checkpoint(result)
-                button.click()
-                result["clicked"].append(name)
-                for _ in range(3):
-                    qapp.processEvents()
-        assert widget.grab().save(str(png_path)), "Qt PNG save failed"
-    finally:
-        widget.close()
-        widget.deleteLater()
-        qapp.processEvents()
-
-
 def run_one(plugin_id, mode, variant=None):
     """Create scratch state before imports, then always write a worker result."""
     global VARIANT
@@ -2479,7 +2365,6 @@ def run_one(plugin_id, mode, variant=None):
             "MMFDB_OBJECT_STORE_ROOT": str(Path(scratch) / "objects"),
             "XDG_CACHE_HOME": str(Path(scratch) / "cache"),
             "LUMIS_QUEST_HOME": str(Path(scratch) / "lumis"),
-            "QT_QPA_PLATFORM": "offscreen",
         }
         if VARIANT.get("lang"):
             env["EMTK_LANG"] = VARIANT["lang"]
@@ -2495,24 +2380,16 @@ def run_one(plugin_id, mode, variant=None):
                     os.chdir(workspace)
                     stack.callback(os.chdir, previous_directory)
                 from mmfdb.repository import MFDatabase
-                from qtpy.QtWidgets import QApplication
-
-                from test.e2e.conftest import close_created_plots
 
                 MFDatabase(env["MMFDB_DATABASE_PATH"]).close()
-                qapp = QApplication.instance() or QApplication([])
                 demo_dir = provision_demo(plugin_id, scratch, result) if mode == "emtk" else None
                 if demo_dir:
                     result["demo_dir"] = str(demo_dir)
                 result["stub_dir"] = str(Path(scratch) / "stubs")
                 _guards(stack, result)
-                stack.enter_context(close_created_plots())
                 with warnings.catch_warnings(record=True) as seen:
                     warnings.simplefilter("always")
-                    if mode == "emtk":
-                        _native(plugin_id, result, directory / f"{stem}.png")
-                    else:
-                        _qt(plugin_id, result, directory / f"{stem}.png", qapp)
+                    _native(plugin_id, result, directory / f"{stem}.png")
                 # A refused network/process attempt is evidence, not a failure by itself: the
                 # guard raised an OSError, so a plugin that survives its offline path passes,
                 # and one that lets it escape fails with the traceback of the click.
@@ -2528,14 +2405,6 @@ def run_one(plugin_id, mode, variant=None):
                     }
                 result["errors"].append(traceback.format_exc())
             finally:
-                if "qapp" in locals():
-                    for widget in qapp.topLevelWidgets():
-                        try:
-                            widget.close()
-                            widget.deleteLater()
-                        except RuntimeError:
-                            continue
-                    qapp.processEvents()
                 if result["status"] == "running":
                     result["status"] = "failed"
                 (directory / f"{stem}.json").write_text(
@@ -2547,7 +2416,7 @@ def run_one(plugin_id, mode, variant=None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-one", required=True)
-    parser.add_argument("--mode", choices=("emtk", "qt"), required=True)
+    parser.add_argument("--mode", choices=("emtk",), required=True)
     parser.add_argument("--variant", choices=sorted(VARIANTS), default=None)
     args = parser.parse_args()
     raise SystemExit(run_one(args.run_one, args.mode, args.variant))

@@ -2,9 +2,7 @@
 
 Wires up a written, tested, Qt-free conversion
 (``pto.Measurement.create``/``disassemble``) that nothing in the tree called
-before (see the drop-guard pattern in
-:mod:`chisurf.gui.widgets.dropguard`). These tests pin the contract the drop
-guard and the bare drop tool both rely on: pack keeps the source untouched,
+before. These tests pin the contract the bare drop tool relies on: pack keeps the source untouched,
 delete only happens after verification, and unpack recovers byte-identical
 bytes.
 """

@@ -1,23 +1,20 @@
-"""The emtk parameter table drops columns for width in the order the Qt one does.
+"""The emtk parameter table drops columns for width in the order the Qt one did.
 
-The Qt ``ParameterGroupTableWidget`` hides whole column tiers when its viewport
+The retired Qt ``ParameterGroupTableWidget`` hid whole column tiers when its viewport
 is too narrow (``_ContentSizedTable.RESPONSIVE_TIERS``): the bounds (Lo, Hi,
 Bounds) first, then the error, then Fixed; the name and the value never. The
 emtk editor declares the same priorities as ``collapse_order`` on its column
-spec and emtk's data table applies them. Both renderers draw one lifetime fit
-(one linked parameter) across a width sweep; the sequence of column sets each
-passes through must be the same, narrowing and widening.
+spec and emtk's data table applies them. The emtk renderer draws one lifetime fit
+(one linked parameter) across a width sweep; the sequence of column sets it passes
+through must equal the recorded Qt stages, narrowing and widening.
 """
 
 from __future__ import annotations
 
-import os
 import types
 
 import numpy as np
 import pytest
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 #: The column sets the Qt table passes through as it narrows.
 STAGES = [
@@ -54,31 +51,6 @@ def _stages(sets: list) -> list:
         if not out or out[-1] != s:
             out.append(s)
     return out
-
-
-def _qt_columns(params, widths) -> list:
-    from qtpy import QtWidgets
-
-    from chisurf.gui.autoform.sections.parameter_table import (
-        COLUMN_IDS,
-        ParameterGroupTableWidget,
-    )
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    widget = ParameterGroupTableWidget(params, remote=False)
-    widget.show()
-    seen = []
-    try:
-        for w in widths:
-            widget.resize(w, 260)
-            app.processEvents()
-            view = widget.table_view
-            seen.append(tuple(c for i, c in enumerate(COLUMN_IDS) if not view.isColumnHidden(i)))
-    finally:
-        widget.close()
-        widget.deleteLater()
-        app.processEvents()
-    return seen
 
 
 def _emtk_columns(params, widths) -> list:
@@ -125,17 +97,14 @@ def _emtk_columns(params, widths) -> list:
 
 
 def test_both_tables_drop_bounds_then_error_then_fixed_and_restore_in_reverse(params):
-    """One table per renderer, narrowed to name + value and widened again.
+    """The emtk table, narrowed to name + value and widened again.
 
-    Each walks the same stages in the same order: bounds, error, Fixed go; then
-    Fixed, error, bounds come back.
+    It walks the stages recorded from the retired Qt table (``STAGES``): bounds, error, Fixed go;
+    then Fixed, error, bounds come back.
     """
     widths = SWEEP + SWEEP[::-1]
-    for name, seen in (
-        ("qt", _qt_columns(params, widths)),
-        ("emtk", _emtk_columns(params, widths)),
-    ):
-        assert _stages(seen) == STAGES + STAGES[-2::-1], (name, seen)
+    seen = _emtk_columns(params, widths)
+    assert _stages(seen) == STAGES + STAGES[-2::-1], seen
 
 
 def test_the_emtk_column_declarations_carry_the_qt_priorities():

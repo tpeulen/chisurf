@@ -1,9 +1,8 @@
 """Startup diagnostics retain failures without importing a fallback GUI.
 
-``python -m chisurf`` opens the emtk shell (behind its splash window); ``--qt`` opens the Qt
-window. Both go through the same crash-log wrapper, so every test here runs on both paths: a
-failed start is logged with its traceback, re-raised as the original object (the terminal shows
-it), and leaves a closed ``crash_*.log`` in the settings folder.
+``python -m chisurf`` opens the emtk shell (behind its splash window) through a crash-log
+wrapper: a failed start is logged with its traceback, re-raised as the original object (the
+terminal shows it), and leaves a closed ``crash_*.log`` in the settings folder.
 """
 
 from __future__ import annotations
@@ -26,21 +25,15 @@ class _HardExit(BaseException):
     """Stand in for successful process termination without exiting pytest."""
 
 
-@pytest.fixture(params=["emtk", "qt"])
-def startup(request, monkeypatch, tmp_path):
-    """Isolate application startup, crash logs and process termination, on either window."""
-    window = request.param
+@pytest.fixture()
+def startup(monkeypatch, tmp_path):
+    """Isolate application startup, crash logs and process termination."""
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path))
     monkeypatch.setattr(pathlib.Path, "home", lambda: tmp_path / "unused-home")
-    app = types.SimpleNamespace(exec=Mock(return_value=7))
-    gui = types.ModuleType("chisurf.gui")
-    gui.get_app = Mock(return_value=app)
-    monkeypatch.setitem(sys.modules, "chisurf.gui", gui)
     shell = types.ModuleType("chisurf.emtk.main_app")
     shell.main = Mock(return_value=7)
     monkeypatch.setitem(sys.modules, "chisurf.emtk.main_app", shell)
-    monkeypatch.setattr(sys, "argv", ["chisurf", "--qt"] if window == "qt" else ["chisurf"])
-    monkeypatch.setattr(chisurf_main, "QtWidgets", None, raising=False)
+    monkeypatch.setattr(sys, "argv", ["chisurf"])
     opened = []
     path_open = pathlib.Path.open
 
@@ -64,12 +57,9 @@ def startup(request, monkeypatch, tmp_path):
     monkeypatch.setattr(faulthandler, "disable", disable)
     monkeypatch.setattr(os, "_exit", hard_exit)
     yield types.SimpleNamespace(
-        window=window,
-        gui=gui,
-        app=app,
         shell=shell,
-        # What opens the window: the emtk shell's main, or the Qt application factory.
-        launch=shell.main if window == "emtk" else gui.get_app,
+        # What opens the window: the emtk shell's main.
+        launch=shell.main,
         opened=opened,
         enable=enable,
         disable=disable,
@@ -97,10 +87,9 @@ def _assert_logged_reraised_and_closed(startup, caplog, failure, captured, *, di
 
 @pytest.mark.parametrize("phase", ["faulthandler", "launch"])
 def test_startup_failure_retains_exception_and_closes_crash_file(startup, caplog, phase):
-    """Every startup phase of either window logs and re-raises the original exception object.
+    """Every startup phase logs and re-raises the original exception object.
 
-    ``launch`` is building/opening the window: for the emtk shell that is its ``main`` (the
-    splash, the shell and its event loop); for Qt the application factory.
+    ``launch`` is the emtk shell's ``main`` (the splash, the shell and its event loop).
     """
     failure = RuntimeError(f"startup failed in {phase}")
     {"faulthandler": startup.enable, "launch": startup.launch}[phase].side_effect = failure
@@ -113,30 +102,13 @@ def test_startup_failure_retains_exception_and_closes_crash_file(startup, caplog
     )
 
 
-@pytest.mark.parametrize("startup", ["qt"], indirect=True)
-def test_qt_event_loop_failure_retains_exception_and_closes_crash_file(startup, caplog):
-    """The Qt window has a separate event-loop phase (``exec``); it fails the same way."""
-    failure = RuntimeError("startup failed in event_loop")
-    startup.app.exec.side_effect = failure
-
-    with caplog.at_level(logging.ERROR), pytest.raises(RuntimeError) as captured:
-        chisurf_main.main()
-
-    _assert_logged_reraised_and_closed(startup, caplog, failure, captured, disabled=1)
-
-
 def test_success_exits_with_the_window_code_and_releases_crash_file(startup):
-    """A closed window ends the process with its exit code; only the Qt window needs the hard exit."""
-    if startup.window == "qt":
-        with pytest.raises(_HardExit):
-            chisurf_main.main()
-        startup.hard_exit.assert_called_once_with(7)
-    else:
-        with pytest.raises(SystemExit) as exited:
-            chisurf_main.main()
-        assert exited.value.code == 7
-        startup.hard_exit.assert_not_called()
-        startup.shell.main.assert_called_once_with([])
+    """A closed window ends the process with its exit code."""
+    with pytest.raises(SystemExit) as exited:
+        chisurf_main.main()
+    assert exited.value.code == 7
+    startup.hard_exit.assert_not_called()
+    startup.shell.main.assert_called_once_with([])
 
     startup.disable.assert_called_once_with()
     assert startup.opened[0][0].parent == startup.directory

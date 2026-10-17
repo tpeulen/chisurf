@@ -10,15 +10,5 @@ __all__ = [
     "CodeEditorApp",
     "CodeEditorGui",
     "EditorModel",
-    "CodeEditorEmtkTool",
-    "AgentChatEmtkTool",
 ]
 
-
-def __getattr__(name):
-    """Load optional Qt hosting adapters only when explicitly requested."""
-    if name in ["CodeEditorEmtkTool", "AgentChatEmtkTool"]:
-        from . import tool
-
-        return getattr(tool, name)
-    raise AttributeError(name)

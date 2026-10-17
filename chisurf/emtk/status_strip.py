@@ -3,14 +3,12 @@
 It is the emtk side of the Qt main window's status bar (``chisurf/gui/main.py``) and shows the
 same things, fed by the same sources:
 
-* on the left, the **message**: the newest ChiSurf log record that passes the log level (the Qt
-  shell's root handler, :class:`chisurf.gui.QTextEditLogger` in ``"set"`` mode, does the same) or
+* on the left, the **message**: the newest ChiSurf log record that passes the log level, or
   the newest status line of the shell, its data docks or its project; with no message, the
   persistent label *Ready*. Messages go through ``tr`` and are cut with an ellipsis, the whole
   text on the tooltip (the Qt bar cuts in the middle, ``TruncatingStatusBar``);
 * on the right, the **operation under way**: its text, a bar (a sliding segment while its size is
-  unknown) and, when it can be cancelled, ✕. Hosts the same contract as the Qt status bar's
-  progress host (``chisurf.gui.widgets.progress.StatusBarProgressHost``): :meth:`begin_task`
+  unknown) and, when it can be cancelled, ✕. Hosts the progress-host contract: :meth:`begin_task`
   returns a handle with ``setLabelText`` / ``setRange`` / ``setValue`` / ``wasCanceled`` /
   ``finish`` / ``close``; the newest operation is the one shown.
 
@@ -44,7 +42,7 @@ BUSY_SPEED = 0.6
 
 
 class StripTask:
-    """One operation on the strip; the surface ``chisurf.gui.progress.ChiSurfProgress`` drives.
+    """One operation on the strip, driven through the progress-host contract.
 
     Parameters
     ----------

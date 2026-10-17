@@ -65,28 +65,6 @@ def test_a_language_chosen_by_a_test_is_taken_back(isolated):
     )
 
 
-def test_an_application_palette_set_by_a_test_is_taken_back(isolated):
-    _passes(
-        isolated,
-        '''
-        import os
-        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-        from qtpy import QtGui, QtWidgets
-
-        APP = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-        TEXT = APP.palette().color(QtGui.QPalette.Text).name()
-
-        def test_a_applies_a_dark_palette_like_the_ribbon():
-            dark = QtGui.QPalette()
-            dark.setColor(QtGui.QPalette.Text, QtGui.QColor("white"))
-            APP.setPalette(dark)
-
-        def test_b_paints_with_the_original_text_colour():
-            assert APP.palette().color(QtGui.QPalette.Text).name() == TEXT
-        ''',
-    )
-
-
 def test_a_cached_mmfdb_login_is_forgotten(isolated):
     _passes(
         isolated,

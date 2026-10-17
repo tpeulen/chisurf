@@ -79,8 +79,8 @@ gui:
   confirm_close_fit: true
   confirm_close_program: true
   # UI language (two-letter locale code). "en" is the canonical source language
-  # and needs no catalogue; other codes load chisurf/gui/i18n/chisurf_<code>.qm
-  # at startup. Applied on the next GUI start.
+  # and needs no catalogue; other codes read chisurf/gui/i18n/chisurf_<code>.ts
+  # at startup. Applied on the next start.
   language: en
   # Colour theme of the window (Settings > Theme): dark (the default) or light.
   # emtk.theme holds the colours; switching applies at once and is kept here.
@@ -205,8 +205,6 @@ gui:
     "Plot settings": "#5c3b67"
     "Logging": "#3b6767"
   show_console: true
-  qt_style: auto
-  style_sheet: dark_blue_flat.qss
   memory_widget_update_interval_ms: 5000 # Memory usage widget update interval in milliseconds
   acquisition:
     # Standard output folder for new acquisition runs. When left empty, the

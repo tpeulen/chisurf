@@ -2,21 +2,14 @@
 
 The window is one emtk surface over a Qt-free model; what it draws and what a
 gesture does is covered by the plugin's ``tests/test_model.py``. These tests
-cover the graph builder the model reads and the Qt host: that nothing but the
-host is Qt, that every guide step finds its control, and that fit events are
-coalesced.
+cover the graph builder the model reads.
 """
 
 from __future__ import annotations
 
-import os
 import pathlib
 
-import pytest
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
-import utils  # noqa: E402
+import utils
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
@@ -71,14 +64,6 @@ def test_the_link_edge_points_from_follower_to_master():
     edge = next(e for e in result.edges if e.source in params and e.target in params)
     assert by_idx[edge.source].is_linked  # follower
     assert not by_idx[edge.target].is_linked  # master
-
-
-# ── the window ───────────────────────────────────────────────────────
-# 2f6fee28b retired the Qt GraphWizard host: the emtk app is the only window.
-# The window-level contract (one emtk surface, every guide step pointing at a
-# real control, the tour awaiting its control, refresh coalescing) moved to
-# chisurf/plugins/core/globalview/tests/test_emtk_globalview.py, which drives
-# the native GlobalViewApp directly.
 
 
 def test_connect_base_joins_plugin_groups_to_the_fits():

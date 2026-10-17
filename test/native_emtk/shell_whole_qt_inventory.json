@@ -99,7 +99,7 @@
     },
     {
      "text": "TTTR Header editor",
-     "tooltip": "TTTR Header Editor plugin.\n\nThis plugin provides a tool for viewing and editing header tags of any\ntime-tagged time-resolved (TTTR) file that :mod:`tttrlib` can read — PicoQuant\nPTU and HT3, Becker&Hi"
+     "tooltip": "TTTR Header Editor plugin.\n\nThis plugin provides a tool for viewing and editing header tags of any\ntime-tagged time-resolved (TTTR) file that :mod:`tttrlib` can read — PicoQuant\nPTU and HT3, BeckerHic"
     },
     {
      "text": "TTTR→Time-Window BIDs",
@@ -235,7 +235,7 @@
     },
     {
      "text": "FPS JSON Editor",
-     "tooltip": "Edit fps.json files for FRET accessible-volume modeling and fetch reference PDB structures by RCSB ID."
+     "tooltip": "Edit fps.json labelling plans in ChiMOL's labelling editor (positions, distances, FlexFit, accessible volumes); validate payloads and fetch PDB structures headlessly."
     }
    ],
    "Computation": [
@@ -259,7 +259,7 @@
    "Photon data": [
     {
      "text": "TTTR Tools",
-     "tooltip": "Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File tools."
+     "tooltip": "Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File › Data."
     }
    ],
    "Calculators": [
@@ -1117,18 +1117,19 @@
   },
   "dockWidgetHistory": {
    "controls": [
-    "/users/tpeulen/dev/chisurf/chisur…",
+    "/users/tpeulen/dev/chisurf/.claud…",
     "0.0ms",
     "1",
-    "15:49:33",
-    "15:49:34",
+    "10:04:11",
+    "10:04:13",
+    "10:04:14",
     "2",
-    "2026-10-11t13:49:26.518852+00:00",
-    "2026-10-11t13:49:26.529710+00:00",
-    "2026-10-11t13:49:27.006074+00:00",
-    "2026-10-11t13:49:27.033557+00:00",
+    "2026-10-14t08:04:02.447810+00:00",
+    "2026-10-14t08:04:02.513227+00:00",
+    "2026-10-14t08:04:03.469947+00:00",
+    "2026-10-14t08:04:03.550357+00:00",
     "3",
-    "68.9ms",
+    "82.0ms",
     "action",
     "adddataset(s):globaldataset",
     "auth.login",

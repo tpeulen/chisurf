@@ -150,38 +150,22 @@ def test_fusion_default_primary_and_settings_folder(tmp_path, monkeypatch):
 
 def test_native_eb_example_waits_for_real_click_without_starting_fit(tmp_path, monkeypatch):
     """The new declared toolbar loads the real input and releases its highlighted await."""
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtTest, QtWidgets
+    from emtk.testing import Driver
 
     from chisurf.plugins.burst.burst_ebfret.gui.app import make_app
 
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path))
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app = make_app()
-    host = ControlHost(app)
-    host.resize(1200, 800)
-    host.show()
-
-    def frame():
-        for _ in range(3):
-            host.repaint()
-            qapp.processEvents()
-
+    driver = Driver(app, (1200, 800))
     try:
-        frame()
+        driver.frame(3)
         assert "load_example" in app.item_rects
         assert app.tour.steps[1]["target"] == {"name": "load_example"}
         app.tour.start(1)
-        frame()
+        driver.frame(3)
         assert app.tour.awaiting and not app.gui.has_data
-        x, y, w, h = app.item_rects["load_example"]
-        QtTest.QTest.mouseClick(
-            host,
-            QtCore.Qt.LeftButton,
-            QtCore.Qt.NoModifier,
-            QtCore.QPoint(int(x + w / 2), int(y + h / 2)),
-        )
-        frame()
+        driver.click("load_example")
+        driver.frame(3)
         assert app.gui.has_data and not app.tour.awaiting
         assert not app.gui.running
         assert app.gui.view["n_series"] == 40
@@ -191,7 +175,6 @@ def test_native_eb_example_waits_for_real_click_without_starting_fit(tmp_path, m
             if step.get("target", {}).get("name")
         )
     finally:
-        host.close()
         app.gui.client.close()
 
 

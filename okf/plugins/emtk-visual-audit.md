@@ -36,14 +36,13 @@ Use disposable settings/database directories and a new output directory.
   [native factory checker](../../build_tools/dev_utils/emtk_migration/check_native.py)
   with `--factory MODULE:CALLABLE --screenshots /private/tmp/plugin-current-cpu.png`.
   Its renderer is `PilPainter`; it does not reproduce historical GPU evidence.
-- For a genuine historical **Qt reference**, use the tracked
-  [Qt reference capture tool](../../build_tools/dev_utils/emtk_migration/capture_qt_references.py)
-  with `--plugins PLUGIN_ID --jobs 1 --tab-pages --output /private/tmp/plugin-qt-reference`
-  under `QT_QPA_PLATFORM=offscreen pixi run -e test python`. The output records
-  the selected source revision; it need not match the revision originally scored.
+- A **Qt reference** can no longer be captured: the Qt tools, the Qt shell and the Qt
+  reference capture tool (`build_tools/dev_utils/emtk_migration/capture_qt_references.py`)
+  were retired with W9 slice S6; the frozen records (`qt_reference.json`,
+  `*_qt_inventory.json`, `retire_qt_before.json`) are the reference.
 - The help fixture is preserved at archive member
   `visual-audit/assets/help-rich-document/fixture/feature_reference.md`.
-  The Qt tool accepts it through `--document` with `--width 1280 --height 900`.
+  The retired Qt tool took it through `--document` with `--width 1280 --height 900`.
   The tracked [populated help capture](emtk-ports/help/scripts/capture_populated.py)
   uses a different page and viewport; it is a starting point, not an equivalent
   reproduction of the archived CPU v3/v4 images.

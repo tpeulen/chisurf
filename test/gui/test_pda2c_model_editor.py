@@ -1,9 +1,7 @@
-"""Headless model-editor tests for the AutoForm-ported PDA models (PRD-38/PRD-50).
+"""Headless tests for the PDA models: spec, plots, compute and fits (PRD-38/PRD-50).
 
-These mirror ``test_model_editor_integration.py`` but for the PDA family. They
-walk the real add-fit path for each pure PDA model:
+They walk the pure PDA models without any widget:
 
-* ``build_model_editor(model)`` returns an :class:`AutoModelWidget`;
 * every ``ParameterGroupSection`` resolves to a group that has parameters;
 * the dynamic species/distance/component groups render rows;
 * plot specs resolve (distribution accessor imports cleanly);
@@ -17,14 +15,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from scipy import stats
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    return app
 
 
 def _make_pda_data(nmax: int = 60, nmin: int = 5):
@@ -97,15 +87,9 @@ def _resolve(path):
 
 
 @pytest.mark.parametrize("model_path", PDA_MODELS)
-def test_pda_model_editor_renders_and_computes(qapp, model_path):
-    from qtpy import QtWidgets
-
+def test_pda_model_spec_resolves_and_computes(model_path):
     from chisurf.core.models import view_spec as vs
-    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
-    from chisurf.gui.widgets.models.model_editor import (
-        build_model_editor,
-        model_plot_specs,
-    )
+    from chisurf.emtk.fit_pages.plots import model_plot_specs
 
     model_class = _resolve(model_path)
     # AutoForm requires a declarative spec file on the pure model.
@@ -113,19 +97,6 @@ def test_pda_model_editor_renders_and_computes(qapp, model_path):
 
     fit = _make_pda_fit(model_class)
     model = fit.model
-
-    # (a) build_model_editor returns a real AutoForm widget (the add-fit crash site)
-    editor = build_model_editor(model)
-    assert isinstance(editor, AutoModelWidget)
-    QtWidgets.QVBoxLayout().addWidget(editor)
-
-    # (b) editor is not a row of empty titled boxes
-    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
-
-    table_rows = sum(
-        t.table_model.rowCount() for t in editor.findChildren(ParameterGroupTableWidget)
-    )
-    assert len(editor.parameter_widgets) + table_rows > 3, "parameter groups rendered empty"
 
     # (c) every parameter-group section resolves to a group that has parameters
     spec = model.view_spec()
@@ -177,7 +148,7 @@ def test_dynamic_two_state_limits():
     assert (w_fast[0] + w_fast[-1]) < 1e-6
 
 
-def test_dynamic_two_state_matches_static_in_slow_limit(qapp):
+def test_dynamic_two_state_matches_static_in_slow_limit():
     """Dynamic model computes a finite, positive histogram in the static limit.
 
     With K->0 the dynamic model reduces to a static two-population PDA; here we
@@ -250,7 +221,7 @@ def _dynamic_two_state_fit(true_kex, free_kex, total=2e5, seed=1):
     return fit, m
 
 
-def test_dynamic_pda_recovers_exchange_and_rejects_the_static_model(qapp):
+def test_dynamic_pda_recovers_exchange_and_rejects_the_static_model():
     """PRD-50 acceptance: 2-state exchange is recovered; static-only is rejected.
 
     Two halves, matching the PRD criterion:
@@ -332,7 +303,7 @@ def test_three_state_mc_gillespie_equilibrium():
     assert np.allclose(fr.mean(axis=0), p_eq, atol=0.05)
 
 
-def test_three_state_mc_model_computes(qapp):
+def test_three_state_mc_model_computes():
     """The 3-state MC PDA model builds a finite, positive histogram."""
     model_class = _resolve("chisurf.core.models.pda2c.dynamic_mc.Pda2cDynamicNStateModel")
     fit = _make_pda_fit(model_class)
@@ -347,7 +318,7 @@ def test_three_state_mc_model_computes(qapp):
     assert frac1 is frac2
 
 
-def test_pda_corrected_axes_e_and_r(qapp):
+def test_pda_corrected_axes_e_and_r():
     """The corrected FRET-efficiency and distance histogram axes compute."""
     from chisurf.core.models.pda2c.common import get_pda_distribution
 
@@ -404,14 +375,14 @@ def test_apply_lightpath_matrices():
         assert np.isfinite(getattr(n, name)), f"{name} not computed"
 
 
-def test_pda_gaussian_plots_pr_and_residual2d(qapp):
+def test_pda_gaussian_plots_pr_and_residual2d():
     """Gaussian PDA exposes the P(R) distribution and 2D S1S2 residual plots."""
     from chisurf.core.models.pda2c.common import (
         get_pda_distance_distribution,
         get_pda_residual_image,
     )
     from chisurf.emtk.fit_pages.pages.residual_image import Residual2DPlot
-    from chisurf.gui.widgets.models.model_editor import model_plot_specs
+    from chisurf.emtk.fit_pages.plots import model_plot_specs
 
     model_class = _resolve("chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel")
     fit = _make_pda_fit(model_class)
@@ -435,7 +406,7 @@ def test_pda_gaussian_plots_pr_and_residual2d(qapp):
     assert callable(res2d[0].get("accessor")), "residual2d accessor not resolved to a callable"
 
 
-def test_pda_gaussian_correction_factors(qapp):
+def test_pda_gaussian_correction_factors():
     """The Gaussian PDA model populates read-only alpha/gamma/delta outputs."""
     model_class = _resolve("chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel")
     fit = _make_pda_fit(model_class)
@@ -446,7 +417,7 @@ def test_pda_gaussian_correction_factors(qapp):
         assert np.isfinite(getattr(n, name)), f"{name} not computed"
 
 
-def test_pda_gaussian_fit_recovers_distance(qapp):
+def test_pda_gaussian_fit_recovers_distance():
     """PRD-50 primary acceptance: a fit recovers a known Gaussian mean distance.
 
     Self-recovery — the model's own S1S2 histogram at a known mean is used as the
@@ -530,7 +501,7 @@ def _pda_noisy_truth_fit(true_mean=52.0, true_sigma=6.0, total=1500.0, seed=3):
     return fit, m, mean_p
 
 
-def test_pda_error_surface_ci_brackets_truth(qapp):
+def test_pda_error_surface_ci_brackets_truth():
     """A support-plane (F-test) scan of the PDA mean yields a CI bracketing truth.
 
     Depends on the 1D-residual count-normalisation + cache-invalidation fixes in
@@ -556,7 +527,7 @@ def test_pda_error_surface_ci_brackets_truth(qapp):
     assert low < true_mean < high, f"99% CI [{low:.2f}, {high:.2f}] does not bracket {true_mean}"
 
 
-def test_pda_mcmc_posterior_brackets_truth_and_agrees_with_support_plane(qapp):
+def test_pda_mcmc_posterior_brackets_truth_and_agrees_with_support_plane():
     """MCMC sampling of a PDA parameter reproduces the support-plane interval.
 
     This is the second error-surface route required by PRD-50. It also guards the
@@ -600,7 +571,7 @@ def test_pda_mcmc_posterior_brackets_truth_and_agrees_with_support_plane(qapp):
     assert (mcmc_high - mcmc_low) == pytest.approx(spa_high - spa_low, rel=0.5)
 
 
-def test_dynamic_pda_recovers_exchange_at_unequal_populations(qapp):
+def test_dynamic_pda_recovers_exchange_at_unequal_populations():
     """The regime the old occupation-time density could not fit.
 
     PRD-50's original dynamic acceptance test recovered ``x1 = 0.503`` — the one
@@ -648,7 +619,7 @@ def test_dynamic_pda_recovers_exchange_at_unequal_populations(qapp):
 
 
 @pytest.mark.parametrize("model_path", PDA_MODELS)
-def test_pda_n_points_is_the_histogram_bin_count_before_and_after_a_fit(qapp, model_path):
+def test_pda_n_points_is_the_histogram_bin_count_before_and_after_a_fit(model_path):
     """The point count is a function of the data and the settings, not of a remembered residual.
 
     It read 251000 (the 2D size) before the first residual vector had been computed and 81 (the 1D

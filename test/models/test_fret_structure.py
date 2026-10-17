@@ -36,15 +36,12 @@ def test_structures_append_and_pop():
     assert model.names == []
 
 
-def test_the_editor_offers_labels_and_the_structure_list(qtbot):
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
+def test_the_view_spec_offers_labels_and_the_structure_list():
     model = fret_structure.FRETStructure(fit=_fit())
     titles = [getattr(s, "title", "") for s in model.view_spec().sections]
     assert "Labels / AV" in titles and "Structures" in titles
     model.res_1 = 18
     assert model.res_1 == 18
-    qtbot.addWidget(build_model_editor(model))
 
 
 def test_a_classic_project_reopens_with_its_structures():

@@ -1,16 +1,13 @@
-"""The native Pong at parity with the Qt chigame view.
+"""The native Pong against the retired Qt chigame view.
 
-Both drive :class:`..model.PongModel` (the Qt ``PongGame`` subclasses it; the
-committed Qt rules equal it method for method apart from action names and a host
-guard, ``okf/plugins/emtk-ports/pong/rules_diff_vs_head.txt``). Compared here: the
-Qt bindings (subprocess) against the emtk keys, a scripted rally, the Sound switch.
+Both drove :class:`..model.PongModel` (the Qt ``PongGame`` subclassed it; the committed Qt rules
+equalled it method for method apart from action names and a host guard,
+``okf/plugins/emtk-ports/pong/rules_diff_vs_head.txt``). Compared here: the Qt bindings (frozen
+from the last committed ``pong.py``) against the emtk keys, a scripted rally, the Sound switch.
 """
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -21,19 +18,22 @@ from emtk.testing import RecordingPainter
 
 from chisurf.plugins.emtk_layout import SOUND_OFF_ICON, action_caption
 from chisurf.plugins.misc.games.pong.app import PongApp, make_app
-from chisurf.plugins.misc.games.pong.model import PongModel
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 
-_QT = r"""
-import json
-from chisurf.plugins.misc.games.pong.pong import P1_BINDINGS, P2_BINDINGS, PongGame
-from chisurf.plugins.misc.games.pong.model import PongModel
-print("FACTS" + json.dumps({"p1": {k: v.name for k, v in P1_BINDINGS.items()},
-                            "p2": {k: v.name for k, v in P2_BINDINGS.items()},
-                            "shares_model": issubclass(PongGame, PongModel)}))
-"""
+#: The Qt view's bindings (last committed ``pong.py``): key -> chigame action name.
+QT_P1 = {
+    "ArrowUp": "UP",
+    "ArrowDown": "DOWN",
+    "Enter": "CONFIRM",
+    " ": "CONFIRM",
+    "p": "MENU",
+    "r": "CANCEL",
+    "m": "SHOULDER_L",
+    "n": "SHOULDER_R",
+}
+QT_P2 = {"w": "UP", "s": "DOWN"}
 
 ACTION = {
     "UP": "up",
@@ -47,44 +47,15 @@ ACTION = {
 KEYCODE = {"ArrowUp": (KEY_UP, ""), "ArrowDown": (KEY_DOWN, ""), "Enter": (KEY_ENTER, "")}
 
 
-@pytest.fixture(scope="module")
-def qt():
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt game's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
-
-
 def _code(key):
     return KEYCODE.get(key, (ord(key) if len(key) == 1 else 0, key if len(key) == 1 else ""))
 
 
-# 1. the same rules (the Qt game is a PongModel)
-def test_the_qt_game_runs_the_same_model(qt):
-    assert qt["shares_model"] is True
-    assert isinstance(PongApp().game, PongModel)
-
-
 # 2. the same keys, both players
-def test_bindings_match_the_qt_game(qt):
-    for key, action in qt["p1"].items():
+def test_bindings_match_the_qt_game():
+    for key, action in QT_P1.items():
         assert PongApp.binding(*_code(key)) == (ACTION[action], False), key
-    for key, action in qt["p2"].items():
+    for key, action in QT_P2.items():
         assert PongApp.binding(*_code(key)) == (ACTION[action], True), key
 
 

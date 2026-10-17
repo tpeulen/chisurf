@@ -72,8 +72,8 @@ they are discovered automatically because `Model` derives from
 `FittingParameterGroup`, so nothing has to be registered by hand. `lb`/`ub` only
 take effect when `bounds_on=True`.
 
-The compute model and its editor are separate: a model stays Qt-free, and its
-editor is generated from a `.view.json` view spec (set `view_spec_file` on the
+The compute model and its editor are deliberately separate: models stay
+Qt-free and the editor is generated from a `.view.json` view spec (set `view_spec_file` on the
 class). See {doc}`/development/index` for that framework.
 
 ### 1.2 Make it importable
@@ -122,9 +122,8 @@ when entries appear to be missing.
 
 ### 1.4 Restart
 
-Experiments are registered once per session
-(`chisurf.core.experiments.bootstrap.ensure_experiments_registered`; `init_setups`
-in the legacy Qt window). Restart ChiSurf; the model then appears in
+Experiments are constructed once at startup (`init_setups` →
+`_setup_experiment`). Restart ChiSurf; the model then appears in
 `Experiment.model_names` and in the **Model** combobox for that experiment.
 
 ---
@@ -168,19 +167,15 @@ Model setup is defensive at every step, which means **failures are silent in the
 GUI and only visible in the log**:
 
 - if the dotted path cannot be imported or the attribute is missing,
-  `chisurf.core.experiments.bootstrap.resolve_class` returns `None` and logs
-  `cannot import …` or `… has no attribute …` at DEBUG level (the legacy Qt
-  window logs `Failed to resolve class …` as an error);
-- in the Qt window, a class that cannot be added logs
+  `_resolve_class` logs `Failed to resolve class …` and returns `None`;
+- if the class cannot be added, `_setup_experiment` logs
   `Failed to setup model … in <experiment>`;
 - a broken user model never prevents the other models or experiments from
   loading.
 
-If your model does not appear in the dropdown, check the ChiSurf log with the
-level at DEBUG (`log_level: 10` in `settings_chisurf.yaml`) — a typo in the
-dotted path and a module that is not importable both fail this way, and neither
-raises a dialog. `resolve_class("my_package.my_models.MyScaledModel")` in the
-console tells you directly whether the path resolves.
+If your model does not appear in the dropdown, check the ChiSurf log — a typo in
+the dotted path and a module that is not importable both fail this way, and
+neither raises a dialog.
 
 ---
 

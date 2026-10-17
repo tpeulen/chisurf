@@ -7,15 +7,12 @@ stopped being a ChiSurf dependency), so nothing selected the inline backend and 
 figure went to a non-interactive one. The console now selects it itself
 (:func:`chisurf.core.console.mpl_inline.install`).
 
-The engine half runs without Qt; the Qt console (chinsole) half drives the widget
-off-screen and saves a screenshot for a person to look at.
+The engine half runs without Qt.
 """
 
 from __future__ import annotations
 
 import io
-import os
-import pathlib
 
 import numpy as np
 import pytest
@@ -28,9 +25,6 @@ from chisurf.core.console.mpl_inline import BACKEND  # noqa: E402
 
 #: The exact cell of the bug report.
 SNIPPET = "import pylab as plt; x = np.linspace(0, 10); y = np.sin(x); plt.plot(x, y)"
-SHOTS = pathlib.Path(
-    os.environ.get("CHISURF_CONSOLE_SCREENSHOTS", "/private/tmp/chisurf-console-plots")
-)
 #: matplotlib's first colour, the colour of the plotted line.
 C0 = (0x1F, 0x77, 0xB4)
 
@@ -176,87 +170,3 @@ def test_pil_images_and_emtk_figures_and_repr_svg_objects_are_images(shell):
         "Box()"
     )
     assert "image/svg+xml" in shell.shown[-1][0]
-
-
-# ----------------------------------------------------------------------
-# the Qt console (chinsole)
-# ----------------------------------------------------------------------
-
-
-@pytest.fixture()
-def chinsole(qtbot):
-    pytest.importorskip("qtpy")
-    from chisurf.gui.chinsole import Chinsole, ConsoleConfig
-
-    widget = Chinsole(ConsoleConfig(history_path=False, session_log=None, namespace={"np": np}))
-    qtbot.addWidget(widget)
-    widget.resize(760, 560)
-    widget.show()
-    qtbot.waitExposed(widget)
-    return widget
-
-
-def _run(console, source: str) -> None:
-    console.view.set_input_buffer(source)
-    console.view.executeRequested.emit(console.view.input_buffer())
-
-
-def _image_formats(view):
-    """The image formats in the document, in order."""
-    found = []
-    block = view.document().begin()
-    while block.isValid():
-        fragments = block.begin()
-        while not fragments.atEnd():
-            fragment = fragments.fragment()
-            fragments += 1
-            if fragment.isValid() and fragment.charFormat().isImageFormat():
-                found.append(fragment.charFormat().toImageFormat())
-        block = block.next()
-    return found
-
-
-def test_chinsole_shows_the_reported_snippet_as_an_image(chinsole, qtbot):
-    from qtpy import QtCore, QtGui, QtWidgets
-
-    _run(chinsole, SNIPPET)
-    qtbot.wait(50)
-    view = chinsole.view
-    assert "Line2D" in view.toPlainText()
-    (name,) = list(view._image_store)
-    data, fmt = view._image_store[name]
-    assert fmt == "png"
-    assert_plot(data)
-    resource = view.document().resource(QtGui.QTextDocument.ImageResource, QtCore.QUrl(name))
-    assert not QtGui.QImage(resource).isNull()
-
-    # Narrowed to the view, aspect kept; and again when the console is resized.
-    (image_format,) = _image_formats(view)
-    width, height = view._image_sizes[name]
-    assert image_format.width() <= view.viewport().width()
-    assert abs(image_format.height() / image_format.width() - height / width) < 0.01
-    SHOTS.mkdir(parents=True, exist_ok=True)
-    chinsole.grab().save(str(SHOTS / "chinsole_inline_plot.png"))
-    chinsole.resize(420, 560)
-    qtbot.wait(50)
-    (narrow,) = _image_formats(view)
-    assert narrow.width() <= view.viewport().width() < width
-    assert abs(narrow.height() / narrow.width() - height / width) < 0.01
-    chinsole.grab().save(str(SHOTS / "chinsole_inline_plot_narrow.png"))
-
-    # The context actions: copy puts the picture on the clipboard, save writes the file.
-    view._copy_image(name)
-    assert QtWidgets.QApplication.clipboard().image().width() == width
-
-
-def test_chinsole_save_image_writes_the_png(chinsole, qtbot, tmp_path, monkeypatch):
-    from qtpy import QtWidgets
-
-    _run(chinsole, SNIPPET)
-    (name,) = list(chinsole.view._image_store)
-    target = tmp_path / "plot.png"
-    monkeypatch.setattr(
-        QtWidgets.QFileDialog, "getSaveFileName", staticmethod(lambda *a, **k: (str(target), ""))
-    )
-    chinsole.view._save_image(name)
-    assert_plot(target.read_bytes())

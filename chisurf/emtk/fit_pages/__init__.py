@@ -6,6 +6,5 @@
   classes, with :func:`~chisurf.emtk.fit_pages.plots.model_plot_specs`;
 * :mod:`~chisurf.emtk.fit_pages.code_face` -- the model's source and ``view.json``, editable.
 
-Both shells use them: the emtk shell directly (:mod:`chisurf.emtk.fit_window`), the Qt shell
-inside an MDI sub-window (``chisurf.gui.widgets.fitting.fit_plots_area``).
+The emtk shell draws them in its fit windows (:mod:`chisurf.emtk.fit_window`).
 """

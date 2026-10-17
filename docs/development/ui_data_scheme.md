@@ -185,7 +185,7 @@ scalar keys, empty unknown objects and misspelled section fields still fail.
 Native tour string targets and tab/page/window routing are also part of the
 shared guide dialect. The guard tests exercise the appropriate native loader
 and preprocessing contract, rather than rejecting native controls through
-the legacy Qt dataclass parser.
+a dataclass parser.
 
 Run the focused guard with `pixi run -e test python -m pytest
 test/test_ui_schemas.py -q`; regenerate schema artifacts using

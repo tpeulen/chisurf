@@ -9,35 +9,6 @@ from chisurf.core.project.lifecycle import ProjectDocument
 from chisurf.plugins.core.project_browser.gui.model import ProjectBrowserModel
 
 
-def test_ordinary_save_resolves_backend_before_reusing_file_path(monkeypatch, tmp_path):
-    """A portable destination cannot override a newly configured real deployment."""
-    from chisurf.gui.main_helper import ProjectMixin
-
-    calls = []
-    document = ProjectDocument(path=tmp_path / "previous.cs.pto", name="live")
-    context = SimpleNamespace(
-        _get_project_document=lambda: document,
-        _project_display_name=ProjectMixin._project_display_name,
-        add_recent_project=lambda path: None,
-    )
-
-    def select():
-        calls.append("select")
-        raise storage.ProjectStorageError("configured authentication failure")
-
-    monkeypatch.setattr(storage, "select_backend", select)
-    monkeypatch.setattr(storage, "save_file", lambda *args: calls.append("file"))
-    monkeypatch.setattr(
-        "chisurf.macros.core_fit.get_project_payload",
-        lambda name: capture_session([], [], name=name),
-    )
-    monkeypatch.setattr("chisurf.gui.main_helper.dialogs.warning", lambda *args: None)
-
-    assert ProjectMixin._save_project_snapshot(context) is False
-    assert calls == ["select"]
-    assert document.path == tmp_path / "previous.cs.pto"
-
-
 def test_browser_configured_auth_failure_uses_exact_storage_transport(monkeypatch):
     """Browser discovery must use the adapter that cannot bootstrap a local token."""
     calls = []
@@ -266,114 +237,6 @@ def test_browser_window_failure_restores_actual_server_owner(active_session, mon
     assert context._project_document.project_id == context._current_project_id == "old"
 
 
-def test_open_file_window_failure_rolls_back_before_recents(active_session, monkeypatch, tmp_path):
-    """The actual file-opening path waits for synchronous presentation."""
-    import chisurf as cs
-    from chisurf.gui import project_helpers
-
-    curve, fit, history, context = active_session
-    path = storage.save_file(capture_session([], [], name="incoming"), tmp_path / "incoming")
-    recents = []
-    warnings = []
-    monkeypatch.setattr(
-        "chisurf.macros.core_fit.restore_gui_from_fits", lambda *args: _throwing_restorer(None)
-    )
-    monkeypatch.setattr(project_helpers, "add_recent_project", lambda *args: recents.append(args))
-    monkeypatch.setattr(project_helpers.dialogs, "warning", lambda *args: warnings.append(args))
-    assert project_helpers.open_recent_project(context, str(path)) is False
-    assert warnings
-    assert recents == []
-    assert cs.imported_datasets == [curve]
-    assert cs.fits == [fit]
-    assert cs.current_fit is fit
-    assert cs.current_fit_idx == 0
-    assert [(e["action_type"], e["payload"]) for e in history.list_events()] == [
-        ("old", {"value": 7})
-    ]
-    assert context._project_document.project_id == context._current_project_id == "old"
-
-
-def test_explicit_save_as_forces_portable_live_science(active_session, monkeypatch, tmp_path):
-    """Save As publishes current science without consulting configured MMFDB."""
-    import numpy as np
-
-    from chisurf.core.project import restore_session
-    from chisurf.gui.main_helper import ProjectMixin
-
-    curve, fit, history, context = active_session
-    context._project_display_name = ProjectMixin._project_display_name
-    recents = []
-    context.add_recent_project = recents.append
-    monkeypatch.setattr(
-        storage, "select_backend", lambda: pytest.fail("explicit Save As must force PTO")
-    )
-    target = tmp_path / "live.cs.pto"
-    assert ProjectMixin._save_project_snapshot(context, save_as=target) is True
-    loaded = storage.load_file(target)
-    restored = restore_session(loaded)
-    np.testing.assert_array_equal(restored.datasets[0].y, curve.y)
-    assert restored.fits[0].unique_identifier == fit.unique_identifier
-    assert restored.fits[0].grouped_fits[0].data is restored.datasets[0]
-    assert recents == [target]
-    assert context._project_document.path == context._current_project_path == target
-    assert context._current_project_id is None
-
-
-def test_ordinary_save_file_chooser_cancellation_keeps_active_identity(active_session, monkeypatch):
-    """Cancelling a destination chooser cannot authorize replacement."""
-    import chisurf as cs
-    from chisurf.gui.main_helper import ProjectMixin
-
-    curve, fit, history, context = active_session
-    context._project_display_name = ProjectMixin._project_display_name
-    context.add_recent_project = lambda path: pytest.fail(
-        "cancelled save cannot record a recent path"
-    )
-    monkeypatch.setattr(storage, "select_backend", lambda: "file")
-    monkeypatch.setattr(
-        "chisurf.gui.main_helper.QtWidgets.QFileDialog.getSaveFileName", lambda *args: ("", "")
-    )
-    assert ProjectMixin._save_project_snapshot(context) is False
-    assert cs.imported_datasets == [curve]
-    assert cs.fits == [fit]
-    assert cs.current_fit is fit
-    assert context._project_document.project_id == context._current_project_id == "old"
-
-
-def test_ordinary_save_existing_path_still_uses_database_dialog(
-    active_session, monkeypatch, tmp_path
-):
-    """A configured real backend controls Save even for a portable document."""
-    from qtpy import QtWidgets
-
-    from chisurf.gui.main_helper import ProjectMixin
-
-    curve, fit, history, context = active_session
-    calls = []
-    context._project_document.path = tmp_path / "previous.cs.pto"
-    context._project_display_name = ProjectMixin._project_display_name
-    context.add_recent_project = lambda path: pytest.fail(
-        "cancelled database save must not write a file"
-    )
-    monkeypatch.setattr(storage, "select_backend", lambda: calls.append("mmfdb") or "mmfdb")
-    monkeypatch.setattr(
-        storage, "save_file", lambda *args: pytest.fail("ordinary Save bypassed real backend")
-    )
-
-    class Dialog:
-        def __init__(self, **kwargs):
-            calls.append("dialog")
-
-        def exec(self):
-            return QtWidgets.QDialog.Rejected
-
-    monkeypatch.setattr("chisurf.gui.widgets.project_dialogs.SaveProjectDialog", Dialog)
-    assert ProjectMixin._save_project_snapshot(context) is False
-    assert calls == ["mmfdb", "dialog"]
-    assert context._project_document.project_id == "old"
-    assert context._project_document.path == tmp_path / "previous.cs.pto"
-
-
 def test_browser_cancel_keeps_active_session(active_session):
     """Direct browser replacement uses the shared owner's cancellation guard."""
     import chisurf as cs
@@ -426,40 +289,6 @@ def test_browser_failed_identity_publication_rolls_back_owner(active_session):
     assert cs.current_fit is fit
     assert cs.current_fit_idx == 0
     assert context._project_document.project_id == context._current_project_id == "old"
-
-
-def test_save_failed_identity_publication_keeps_previous_document(
-    active_session, monkeypatch, tmp_path
-):
-    """A written file does not accept a partially published document identity."""
-    import chisurf as cs
-    from chisurf.gui.main_helper import ProjectMixin
-
-    curve, fit, history, context = active_session
-    context._project_display_name = ProjectMixin._project_display_name
-    context.add_recent_project = lambda path: None
-    document = context._project_document
-    adopt = document.adopt
-    attempts = []
-
-    def fail_once(candidate):
-        attempts.append(candidate.path)
-        adopt(candidate)
-        if len(attempts) == 1:
-            raise RuntimeError("save identity publication failed")
-
-    document.adopt = fail_once
-    monkeypatch.setattr("chisurf.gui.main_helper.dialogs.warning", lambda *args: None)
-    assert ProjectMixin._save_project_snapshot(context, save_as=tmp_path / "new.cs.pto") is False
-    # The injected fault fired on publishing the new file's identity; the rollback
-    # then re-adopted the previous (database) identity, which has no path.
-    assert attempts == [tmp_path / "new.cs.pto", None]
-    assert cs.imported_datasets == [curve]
-    assert cs.fits == [fit]
-    assert cs.current_fit is fit
-    assert document.project_id == context._current_project_id == "old"
-    assert document.version_id == context._current_project_version_id == "old-v"
-    assert document.path is None
 
 
 def test_real_database_browser_restore_failure_keeps_active_science(

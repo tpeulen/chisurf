@@ -3,8 +3,7 @@
 ``PlotAPI`` is the verb-first drawing, axis and export API every chiplot panel
 shares; :class:`Panel` is that API over an emtk canvas with no widget behind it,
 for surfaces that draw panels as emtk controls (a fit window's pages). Nothing
-here imports a toolkit: the widget wrappers are the optional host layer
-:mod:`chisurf.gui.chiplot`.
+here imports a toolkit: an emtk surface draws a panel as a control.
 
 Design goals versus pyqtgraph call sites:
 
@@ -56,8 +55,7 @@ class PlotAPI:
 
     Everything here talks to the backend canvas (``self._canvas``) only. It is
     shared by :class:`Panel`, which is the canvas alone, for a surface that
-    draws it as a control (the fit window's emtk surface), and by the host
-    layer's widget wrapper (:mod:`chisurf.gui.chiplot`).
+    draws it as a control (the fit window's emtk surface).
     """
 
     # Set by the concrete class (``Plot``, ``Panel``, ``PanelPlot``).
@@ -1073,8 +1071,7 @@ class PanelGrid:
     """Several :class:`Panel` s (and colour ramps) in a grid, drawn as one emtk control.
 
     Rows, columns, spans and stretch factors as a grid layout has them; a colour
-    ramp's column stays narrow. :meth:`control` is what a surface draws (or
-    :func:`chisurf.gui.chiplot.host` hosts).
+    ramp's column stays narrow. :meth:`control` is what a surface draws.
 
     Parameters
     ----------

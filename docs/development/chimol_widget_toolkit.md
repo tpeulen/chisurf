@@ -180,8 +180,7 @@ Assertions cannot see a clipped label, a caption drawn over its neighbour, or a
 grab that covers the text underneath it. Render the sheet and read it:
 
 ```bash
-QT_QPA_PLATFORM=offscreen \
-    python -m chisurf.plugins.chimol.test.widget_gallery
+python -m chisurf.plugins.chimol.test.widget_gallery
 ```
 
 One PNG per family lands in `chisurf/plugins/chimol/test/renders/widget_gallery/`.

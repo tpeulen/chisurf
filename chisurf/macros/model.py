@@ -20,26 +20,6 @@ def _current_fit() -> cs.core.fitting.fit.FitGroup | None:
     return host.current_fit
 
 
-def _sync_editors(fit) -> None:
-    """Show a curve an action loaded or unloaded in the fit's open editors.
-
-    The classic hand-built widgets were told directly (``lineEdit.setText``);
-    a generated editor re-reads its model, and nothing else asks it to.
-    """
-    try:
-        from chisurf.gui.widgets.models.model_editor import model_editor_widget
-    except Exception:
-        return
-    for f in fit:
-        editor = model_editor_widget(getattr(f, "model", None))
-        sync = getattr(editor, "sync_fields", None)
-        if callable(sync):
-            try:
-                sync()
-            except Exception:
-                pass
-
-
 def _named_copy(curve, name: str = "") -> cs.core.data.DataCurve:
     """A copy of *curve* under its name: the model's field shows it, and a later rescale stays local."""
     return cs.core.data.DataCurve(
@@ -66,7 +46,7 @@ def _attach_dataset(model, curve, name: str = "", slot: str = "", **_fixed) -> N
 
 #: What each ``curve_input`` ``select_action`` does to one member model with the picked curve.
 #: The keys are the actions the view specs name; :func:`attach_curve` is their one implementation,
-#: shared by the action registry (the Qt editor) and the server (``model.curve.set``).
+#: shared by the action registry and the server (``model.curve.set``).
 CURVE_SELECT = {
     "model.change_irf": _attach_irf,
     "model.set_background_curve": _attach_background,
@@ -136,7 +116,6 @@ def set_linearization(
         return
 
     attach_curve(fit, "model.set_linearization", lin_table, str(curve_name or ""))
-    _sync_editors(fit)
 
 
 def update(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
@@ -150,7 +129,6 @@ def update(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
     if fit is None:
         return
     fit.update()
-    _sync_editors(fit)
 
 
 def unload_lintable(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
@@ -166,7 +144,6 @@ def unload_lintable(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
         except Exception:
             pass
     fit.update()
-    _sync_editors(fit)
 
 
 def set_correction(
@@ -363,14 +340,6 @@ def change_irf(
         return
 
     attach_curve(fit, "model.change_irf", irf_curve, str(irf_name or ""))
-    _sync_editors(fit)
-    for f in fit[fit.selected_fit_index :]:
-        # Presentation only: pure (Qt-free) models have no line edit, and a
-        # missing one must not undo the IRF that was just attached above.
-        try:
-            f.model.convolve.lineEdit.setText(str(getattr(irf_curve, "name", "") or irf_name or ""))
-        except AttributeError:
-            pass
 
 
 def unload_irf(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
@@ -385,13 +354,8 @@ def unload_irf(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
             f.model.convolve.unload_irf()
         except Exception:
             pass
-        try:
-            f.model.convolve.lineEdit.setText("")
-        except Exception:
-            pass
     try:
         fit.update()
-        _sync_editors(fit)
     except Exception:
         pass
 
@@ -427,7 +391,6 @@ def set_background_curve(
         return
 
     attach_curve(fit, "model.set_background_curve", curve, str(curve_name or ""))
-    _sync_editors(fit)
 
 
 def unload_background_curve(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
@@ -443,7 +406,6 @@ def unload_background_curve(fit: cs.core.fitting.fit.FitGroup | None = None) -> 
         # ``except`` below and unloading silently did nothing.
         f.model.generic.unload_background_curve()
     fit.update()
-    _sync_editors(fit)
 
 
 def _update_model(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:

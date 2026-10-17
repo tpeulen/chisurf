@@ -1,25 +1,22 @@
 """The emtk-backed node editor: the document, and the control that edits it.
 
-None of these need a display or a Qt binding -- the whole point of moving the
-editor off ``QGraphicsScene`` is that the graph and its behaviour are now
-testable without one. The Qt wrapper is thin enough that what it adds is
-signals, and those are covered in the GUI suite.
+None of these need a display: the graph and its behaviour are testable without one.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from chisurf.gui.widgets.node_editor.document import (
+from chisurf.emtk.node_editor.document import (
     GraphDocument,
     GraphEdge,
     GraphNode,
 )
-from chisurf.gui.widgets.node_editor.model import PortSpec
+from chisurf.emtk.node_editor.model import PortSpec
 
 emtk = pytest.importorskip("emtk")
 
-from chisurf.gui.widgets.node_editor.emtk_control import GraphControl  # noqa: E402
+from chisurf.emtk.node_editor.control import GraphControl  # noqa: E402
 
 #: A graph in schema v1 with every shape the loader has to cope with: bare
 #: string ports, typed object ports, config, and an edge between them.
