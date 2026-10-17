@@ -67216,6 +67216,2274 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
             <source>Analyzing probes for duplicates...</source>
             <translation>Analyse des sondes à la recherche de doublons...</translation>
         </message>
+        <message>
+            <source>1.6 µs</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>10 Bits</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>100 ns</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>12 Bits</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>14 Bits</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>16 Bits</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>200 ns</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>25 ns</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>3.2 µs</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>4 Bits</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>400 ns</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>50 ns</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>6 Bits</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>8 Bits</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>800 ns</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Data → VV/VH&lt;/b&gt; fits a parallel (VV) and a perpendicular (VH) decay &lt;i&gt;jointly&lt;/i&gt;: both share the lifetimes of the population decay F(t), and their difference is the anisotropy r(t) = Σ b&lt;sub&gt;j&lt;/sub&gt; exp(−t/ρ&lt;sub&gt;j&lt;/sub&gt;):&lt;br/&gt;&lt;br/&gt;VV = F (1 + (2 − 3 l1) r), VH = F (1 − (1 − 3 l2) r) / G.&lt;br/&gt;&lt;br/&gt;Fitting both channels, not the noisy ratio, keeps the Poisson statistics and resolves ρ shorter than the IRF.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Folder&lt;/b&gt; picks the folder the &lt;b&gt;Project&lt;/b&gt; dock lists; click a file there to open it. The &lt;b&gt;View&lt;/b&gt; menu shows or hides each dock (Project, Symbols, Diagnostics, Output, Kernel, Agent).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Lint&lt;/b&gt; reports Ruff diagnostics for the unsaved buffer in the Diagnostics tab; &lt;b&gt;Fix&lt;/b&gt; applies Ruff's safe fixes to the buffer, which you then save explicitly. Both need the optional Ruff executable.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; simulates a VV/VH pair with the example IRF: lifetimes 1 and 4 ns (fractions 0.3, 0.7), one rotation ρ = 1.5 ns with r0 = 0.35, and G = 1.2 in the file's footer. It switches the panel to VV/VH and selects the files.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Rotations&lt;/b&gt; sets how many correlation times r(t) has; &lt;b&gt;Residual anisotropy r∞&lt;/b&gt; adds one that does not decay.&lt;br/&gt;&lt;br/&gt;G, l1 and l2 come from the data when it carries them (a vv_vh footer, the TTTR reader's anisotropy panel), else from the configuration. &lt;b&gt;Override calibration&lt;/b&gt; uses the three fields instead. A wrong G biases r0 and ρ; measure it with the VV/VH G-Factor Calculator.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;r(t)&lt;/b&gt; shows the Schaffer-corrected anisotropy of the data and of the fit, both reconvolved with the IRF, so they are comparable channel by channel. The data's r(t) is noisy where counts are low; the fit is made on the two decays, not on this curve.&lt;br/&gt;&lt;br/&gt;On the example: about 4.0 / 1.0 ns, ρ ≈ 1.5 ns and r0 ≈ 0.35.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A long task running: how far it got, and Cancel.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A polarization-resolved VV/VH pair fitted jointly: shared lifetimes, an anisotropy decay r(t) and the G/l1/l2 calibration.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A polarized pair: VV/VH</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>ADC Resolution</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>ADC Resolution: one of the supported hardware values. Apply writes this choice to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Acquisition rate (Hz)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Acquisition rate (Hz), 1,000 to 5,000,000. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Add a member to a group. Admin or group manager/owner only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Add a sample/artifact to a study; a bad member_type returns an error.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Add an anisotropy that does not decay (hindered rotation); r0 is then Σ b_j + r∞.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Alias of mmfdb.v1.operations.link_artifact: link an operation and an artifact.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Anisotropy amplitude; they sum to r0.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Applied G</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Applied l1</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Applied l2</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Approve a fluorophore probe.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Atomically import remote experiments with an explicit conflict policy.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Attach a data entry (linked or stored) to an experiment.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Authenticate a user and return a session token.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Back to 1:1 zoom, unpanned.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Back up the active user database.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Back up the database file and return the backup path. Admin only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Batch Anisotropy</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Bin a TTTR photon stream into intensity traces per detector, histogram the counts per bin, and find discrete states with a hidden Markov model, with dwell-time histograms of each state.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Browse datasets with scope-based access control and pagination.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Browse, save, restore, export, and import ChiSurf projects using the MMFDB database with version control.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Buffer size / channel</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Buffer size / channel, 10,000 to 20,000,000. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>CFD</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>CFD Holdoff (ns)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>CFD Holdoff (ns), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>CFD Limit High (mV)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>CFD Limit High (mV), -1000 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>CFD Limit Low (mV)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>CFD Limit Low (mV), -1000 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>CFD Zero Cross Level (mV)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>CFD Zero Cross Level (mV), -100 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>CPU: {cpu:.0f}%</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Calibrated detector G-factor and polarization-mixing factors l1, l2.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Calibration results</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Change mode bits on an object. Requires the manage permission (`x`).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Change object owner. Requires the manage permission (`x`).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Change object owning group. Requires the manage permission (`x`).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Change the authenticated user's password.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Channel options.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Channels follow the counter window (end - start + 1); Apply writes them with the rest.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Check a project file against the database before importing it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>ChiSurf's logo, version, developer and contact details.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose a color style for the application.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose how κ² is averaged</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose the project folder</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Classes, functions, methods and sections of the active Python document, read from the unsaved text. Click a row to jump to it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Clear all files from batch list.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Clear all reference standards from list.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Close the card.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Close the connector.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Collection Time (s)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Collection Time (s), 0.001 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Colour scale of the map; the counts are unchanged.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Command-line Protein Monte Carlo: torsion-angle sampling of a structure under FRET distance restraints, written as an RMF trajectory.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Compute the κ² distribution and the apparent-distance statistics for the given model and anisotropies.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Conjugate-gradient local refinement of a pose.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Convert correlation-curve files between the supported FCS formats from the command line (csc).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy all visible</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy all visible calls to the clipboard.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy all visible log lines to the clipboard.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy all visible log messages to the clipboard.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy all visible server calls to the clipboard.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy call</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy file name</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy message</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy parameters</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy the full path of this file or folder to the clipboard.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy the message text of this row to the clipboard.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy the name of this file or folder to the clipboard.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy the parameters of this call to the clipboard.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy the path relative to the project folder to the clipboard.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy the selected rows (else the right-clicked one) as tab-separated text.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy this log row to the clipboard.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Copy this server call to the clipboard.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Corrected r(t)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Corrected ratio</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Counters, rate and buffer of the BrickMic backend.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create a FRET pair/Förster radius record.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create a branch pointer in the MMFDB provenance graph.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create a hot backup of the SQLite database to the specified target path.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create a new group. Admin only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create a parallel branch from an existing branch.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create a protocol (or a new version); an invalid category returns an error.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create a reagent lot; a bad kind / missing name returns an error.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create a sample from a structured description (entities, probes, conditions).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create a study; a missing name returns an error.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create and activate a user branch at a historical operation.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create or explicitly update an eLabFTW experiment from MMFDB.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create or update a branch record.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create or update a polymer probe-position row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create or update a probe identity row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create or update a sample condition.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create or update a sample; a structured payload goes through the structured-sample path.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create or update a user account, optionally renaming it or setting its password.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create or update an entity and its sequence.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create or update an experiment type (an empty name gets an untitled one).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create or update an experiment.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create or update an instrument setup and its configuration.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create or update an instrument/device row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Dark</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Dark Blue</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Dark Blue Flat</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Dark Green</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Dark Orange</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Dark Violet</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Date Modified</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Decay(s) built from the VV (routing) and VH channels.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Decay:</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Define which detector channels are correlated with which, per detector setup.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Delete a FRET pair/Förster radius record.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Delete a sample (write access required).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Delete a setup (write access required).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Delete a user account. Admin only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Delete an analysis run.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Delete an experiment type and return the remaining list.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Delete an experiment.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Delete an instrument/device and return the remaining list.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Delete one project version.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Detection-efficiency ratio (g-factor) between the parallel and perpendicular channels; weights VH in the VM sum and is attached to a VV/VH pair for the fit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Detector G-factor applied to sample anisotropy.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Device status and the card's actions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Discard an owner-bound remote connection handle.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Discover the BH modules.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Display Time (s)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Display Time (s), 0.001 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Drag the green lines to choose the r(inf) region.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Edit ChiSurf's style sheets (.qss files in the settings directory) and apply one to the running application.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>End counter index</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>End counter index, 0 to 31. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Estimate docking errors from repeated trials.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Example loaded: a simulated VV/VH pair. Press Fit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Export a project version as a .pto file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Export a provenance graph as JSON-serializable nodes and edges.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Export a sample as an FLR CIF file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Export a sample's FRET analysis as flrCIF, to a file or as text. Admin only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Export an archive manifest for one Burst Selection run.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Export the provenance subgraph as a JSON-serializable structure.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>FIFO</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>FRET-restrained Monte-Carlo rigid-body docking.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fetch all spectra data for a batch of probes.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>File or folder name.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>File size; empty for a folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Filter parameters…</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Find the BH modules.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>First bin of the region averaged to r-infinity.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fit both channels</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fitted rotational correlation times of a VV/VH fit, with r∞ when fitted.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fitting parameter name.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fix</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fluorescence lifetime (ns). Click to edit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Folder, or the file's type by its extension.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fundamental limiting anisotropy. Click to edit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>G = S∥/S⊥, the parallel/perpendicular detection sensitivity ratio; it divides the VH channel. The VV/VH G-Factor Calculator measures it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>G baseline</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Generate synthetic TCSPC fluorescence-decay histograms from lifetimes or lifetime spectra, with optional IRF convolution and Poisson shot noise; the same generator is available from the Python API, the CLI and RPC.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Get a single group by ID.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Get a single probe with its optical properties and spectra.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Get the ACL for an object. Requires read access on the object.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Grant or deny a permission on an object. Requires the manage permission (`x`).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Hardware acquisition</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Histogramming</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Hold parameter constant / manual override.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How far the task got.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How the photon stream is split into .spc files.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Import a project file as new project versions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Import a structure file into the database.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Import a structure/description file into the database and return a summary.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Import optical-component reference data from a scraped spectra.db.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>In the Live model editor, press static κ²: every molecule keeps its own orientation factor, so one distance becomes a spread of rates. Press Add FRET line again and the new line lies below the dynamic-κ² one. Press dynamic κ² to go back.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>In the tail where anisotropy decays to 0, the ratio VV/VH reaches the G-factor plateau. Drag lines to adjust tail.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Inspect time-resolved anisotropy r(t) and r-infinity of the sample decay.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Instrumental parameters</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Instrumental parameters.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Integer shift (bins) applied to the VH decay relative to VV.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Invert the ticks of the listed rows.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Kinetic scheme template; picking one replaces the rate matrix.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Last bin of the region averaged to r-infinity.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Light</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Line where it is defined.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Link a lot to an operation/setup/sample; a bad target_type returns an error.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Link an operation and an artifact.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List Burst Selection processing runs.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List FCS channel-pair definitions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List FRET pair/Förster radius records globally or for one sample.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List MMFDB branches.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List MMFDB project records.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List PIE window definitions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List active sessions. Admin can see all; users see their own.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List all available probe types.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List all groups.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List analysis operations.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List artifacts with optional filtering.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List audit log records with optional filtering.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List calibration records (type/method/value/notes), newest first.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List chinet session artifacts in MMFDB.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List detector channel definitions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List entities globally or for one sample.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List experiments with optional filters.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List experiments, optionally filtered by sample, project or type.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List fluorophore probes with optional filtering.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List lots whose expiry is in the past (QC).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List members of a group.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List operations with optional filtering.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List parameters with optional filters.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List probe positions by sample or probe.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List processed-data artifacts.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List processing operations.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List provenance edges.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List raw-data artifacts.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List reagent lots, optionally filtered by kind and excluding expired ones.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List registered analysis runs.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List runs (newest first) with operation counts, optionally for one pipeline.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List sample conditions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List samples.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List setup snapshots.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List stored pipeline definitions scoped mine/public/all.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List studies scoped mine/public/all.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the artifacts stored with a project version.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the branches of the readable project versions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the components whose name contains this: as you type (with Auto on), or on Enter.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the database users. Admin only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the experiment types.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the installed plugins: switch them off, pin them to the toolbar, rename their menu entry, set their icon and whether their window remembers its state.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the instruments/devices.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the latest version of each protocol, scoped own/public/all.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the parameters stored with a project version.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the probes with their optical properties.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the readable instrument setups.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the readable project versions, grouped by project.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the readable samples matching a free-text query (all of them without one).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the reagent lots used by an operation/setup/sample.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the registered fitting models and switch models off so they leave the model drop-down.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the samples the caller may read.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List uses whose calibration is superseded by a newer one of the same type.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load a chinet session artifact from MMFDB.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load a kinetics scheme from a JSON file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load a pair whose answer is known</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load a registered burst product into ndxplorer data structures.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load the measured decay and IRF, edit YAML settings if needed, choose a fixed or automatically selected lifetime count, then Fit. Analysis runs separately; inspect its output, fitted lifetimes and weighted residuals before interpreting the model. In VV/VH mode a polarized pair is fitted jointly: shared lifetimes, rotational correlation times and r0. Load example simulates one whose answer is known.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Look up the Förster radius R0 for a donor-acceptor pair.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Macro Time Clock</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Macro Time Clock: one of the supported hardware values. Apply writes this choice to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Magic angle</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Magic angle: one decay. VV/VH: a polarization-resolved pair fitted jointly — shared lifetimes, an anisotropy decay r(t) and the G/l1/l2 calibration. The decay file is then a stacked VV/VH file (one column), a three-column file (time, VV, VH), or the VV channel with a separate VH file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Magic-angle decay VV + 2 g VH.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Manage the users registered in the MMFDB: create, edit and remove accounts.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Mean anisotropy over the r-infinity region (five decimals).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Mem: {mem:.0f} MB</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Merge duplicate probes into a primary probe.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Mode: one of the supported hardware values. Apply writes this choice to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Module number.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Modules</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Move a branch head to an operation or clear it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Multi-tau correlation of TTTR photon streams: detectors and PIE windows, files, optional photon/burst filters, correlation and merging of the curves. Opened as the first section of the FCS tool, not as a menu entry of its own.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Name of the class, function, method or section (methods as Class.method).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No files queued. Add VV/VH decays to evaluate their r(inf) over the tail region with this calibration.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No trajectory curve is shown; tick one in Plot settings.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Noise Model</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>None (unload)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Objective of the fit. poisson (default): the Poisson deviance 2I*, unbiased; the decay must be raw photon counts. neyman: χ² weighted by the data, for curves that are not counts, but biased at low counts (3.0 + 4.5 ns comes back near 2.4 + 4.1 ns). Overrides the configuration's noise_model.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Off: G, l1 and l2 come from the data (a vv_vh footer, the TTTR reader's anisotropy panel), else from the configuration's polarization_parameter; after a fit the greyed fields show the values used. On: the three values below are used.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>One decay recorded at the magic angle, fitted with lifetimes only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a burst-analysis folder, a .pto or a table file, as File &gt; Open does.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a dataset and return a local readable path.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a source file in the code editor, optionally at a line, as a source link does.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open the connector on a database (the configured one by default).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open the selected product's file or folder in ndX; Save &gt; Burst IDs there records the selection against this product.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open this file in a tab of the editor.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Override calibration</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Package a full ZIP archive containing DB snapshot, graph, manifest and optionally data.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Parameter value. Double-click or Enter to edit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Photons after which the acquisition stops, 1,000 to 10,000,000. Press Enter or click elsewhere to commit; Apply makes it the acquisition's stop limit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Photons per .spc file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Photons per .spc file, 1,000 to 1,000,000,000. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Polarization channel(s) read from the file. With VH channels set, the routing channels are the parallel (VV) detectors.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Polarization mixing</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Polarization mixing factor l1 applied to sample anisotropy.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Polarization mixing factor l2 applied to sample anisotropy.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Polarization mixing parameters.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Populate the authenticated database with packaged synthetic burst tables.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Populate the database with the packaged synthetic smFRET burst tables (metadata examples with lineage; asks first).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press static κ² yourself.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Probability a further component must reach to be kept: the F distribution's CDF of the extra-sum-of-squares F statistic of the χ² drop against the added parameters.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Probe credentials once and retain them behind an opaque handle.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Quantity and value of the G-factor and polarization-mixing calibration.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Query the device and apply the stop limit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Queue TTTR files, set the time window and preview the first file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rate Count Time (s)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rate Count Time (s), 0.001 to 10. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Raw r(t)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Raw ratio</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Re-fit at each held value instead of assuming the posterior is Gaussian, and report how far the straight lines can be trusted.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Read and bin a TTTR file with the given bin window and detector setup.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Read, save, load and write the parameters.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Record a Burst Selection processing run and its products.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Record a general processing run and its inputs/products.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Record an analysis run with its parameters, inputs, products, and linkages.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Record an ndxplorer analysis run and its generated products.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Record an operation and related artifacts atomically.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Record or update a processing or analysis operation.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Record or update a semantic parameter.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Reference parameters</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Reference parameters.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Reference standard decay file name.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Register a calibration value (defaults to a user-provided / literature value).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Register a processed data product.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Register a raw TTTR/PTU/SPC/BH data reference.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Register or update a sample in the FLR domain layer.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Register or update an MMFDB artifact in the database.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Register or update an experiment in the FLR domain layer.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Reject a fluorophore probe.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Remove a data entry from an experiment.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Remove a member from a group. Admin or group manager/owner only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Remove selected reference standard from list.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Remove selected sample from batch list.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Repeat Time (s)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Repeat Time (s), 0.001 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Replace editable optical properties for a probe.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Replace the key/value annotations of a sample.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Replace the key/value annotations of an experiment.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Replace the user database with the curated seed and restore its admin.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Report the connector's state and the active database.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Report whether the IMP / IMP.bff backends are available.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Repository metadata, optionally with record counts.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Reset the user database from the curated source database.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Residual anisotropy r∞</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Restore a chinet session artifact from MMFDB.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Restore the exact session snapshot stored with a project version.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Retrieve a parameter by its UUID.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Retrieve a sample by identifier.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Retrieve a setup configuration by its identifier.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Retrieve an artifact by its identifier.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Retrieve an experiment by identifier.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Retrieve an operation by its identifier.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Retrieve audit log records with optional filtering.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Retrieve downstream dependencies for a node.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Retrieve one analysis run with all details.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Retrieve upstream dependencies for a node.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return a pipeline's structure (nodes + typed edges), or an error.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return a protocol (default latest) with its declared parameter schema.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return a study with its members and configurable fields.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return all non-deleted branches.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return all probe data for the frontend to compute duplicate groupings.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return all versions of a protocol name (oldest first).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return an entity's current lifecycle state (null when it has none).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return an entity's ordered transition history (already JSON-safe dicts).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return bounded remote experiment summaries for the Admin GUI.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return export validation warnings for a sample.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return matching PDBx/flrCIF dictionary keys.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one Burst Selection processing run.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one FRET pair/Förster radius row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one MMFDB project record by project ID or version operation ID.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one analysis operation with parameters and linked products.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one analysis operation.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one branch by UUID or name.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one entity row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one experiment type.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one experiment with its data entries.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one instrument/device row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one probe identity row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one probe-position row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one processed-data artifact.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one processing operation.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one raw-data artifact row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one sample with its full record (read access required).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one sample-condition row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return one setup (read access required).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return the active branch for a user (self, or any user when admin).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return the authenticated user, or fail if anonymous.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return the authored lifecycle definitions (states + transitions per entity).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return the database identity, backend type and entity counts.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return the nested public description of a sample.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return the optical properties of a probe.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return the protocol/version recorded on an operation (run provenance).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return the version history of a project as a graph.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Revoke a session by ID. Admin can revoke any; users revoke their own.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Revoke an ACL entry. Requires the manage permission (`x`) on the referenced object.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Revoke the current session.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rotation</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rotation model and detection calibration of the joint VV/VH fit: VV = F (1 + (2 − 3 l1) r), VH = F (1 − (1 − 3 l2) r) / G.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rotation number, or r∞.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rotational correlation time (ns). Click to edit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rotational correlation time in ns.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rotational correlation times in r(t) = Σ b_j exp(−t/ρ_j); the lifetimes are counted separately (Number of Lifetimes / Find Optimal).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rotations</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rotations and calibration</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Routing Mode</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Routing Mode: one of the supported hardware values. Apply writes this choice to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Routing channels of the perpendicular (VH) detectors, comma-separated. Empty: the routing channels give one decay and the polarization settings are not used.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Run AI-assisted triage (deterministic checks plus a model review) on one probe.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Run burst selection on photon files and record the run and its products with provenance.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>SPC file output</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sample decay</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Save a canonical chinet session schema payload to MMFDB.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Save or update an instrument/calibration setup configuration.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Save the current session as a new version of a project.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Schaffer polarization mixing of the VH channel; 0 for an ideal polarizer.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Schaffer polarization mixing of the VV channel (high-aperture objective); 0 for an ideal polarizer.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Score a single structure against the FRET restraints.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Score and rank a structure library.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Search the remote experiments (Enter lists them).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Search while typing (300 ms after the last key). Turn off for a large database and press Enter to search.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Seed ChiSurf's built-in default fluorophore spectra into the database.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select no row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select which decay to display in the VV/VH plot, or display all overlaid.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select which decay to display in the anisotropy plot, or display all overlaid.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select which decay's VV/VH ratio to display, or display all overlaid.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Selected sample:</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Set a configurable per-study field.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Set as tail match</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Set the active branch for a user (self, or any user when admin).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Set the quality level of a probe.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Set the validation status for a raw or processed artifact.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Settings the firmware and INI files own (read only).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show a documentation page (a docs/ path, optionally at a heading), as a link in a ? modal does.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show an in-memory table (a DataSource or a column store) a tool has just computed.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show horizontal baseline for calibrated detector G-factor.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show only the options whose name contains this text.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show or hide background-subtracted &amp; shifted ratio.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show or hide corrected anisotropy trace.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show or hide raw anisotropy trace.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show or hide raw intensity ratio VV(t) / VH(t).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show the right-clicked component's spectra and fields.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show this folder's files as the project.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Simulate a VV/VH pair whose answer is known (lifetimes 1 and 4 ns, ρ = 1.5 ns, r0 = 0.35, G = 1.2), select it in VV/VH mode with the example IRF.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Soft-delete a branch when it is not protected or active.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Soft-delete a branch.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Soft-delete a group. Admin only. Built-in groups cannot be deleted.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Soft-delete a polymer probe-position row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Soft-delete a probe identity row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Soft-delete a sample condition.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Soft-delete an artifact and its direct provenance links.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Soft-delete an entity.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Split a TTTR file into files of a fixed photon count, convert it to another container format, or bin its micro-times; one file or a batch.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start a branch from a project version.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start counter index</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start counter index, 0 to 31. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with a fixed number. &lt;b&gt;Find Optimal Number of Lifetimes&lt;/b&gt; fits 1 … Max components and keeps a further one while an F test of the χ² drop (extra-sum-of-squares, nested pair) passes the threshold. A component on a parameter boundary makes that probability approximate, and a tiny extra component can pass it.&lt;br/&gt;&lt;br/&gt;Use it to &lt;i&gt;see&lt;/i&gt; the sequence of χ², not to decide.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Steady-state anisotropy r_SS calculated from integrated counts using calibrated G, l1, l2.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Steady-state anisotropy r_SS determined using calibrated G, l1, l2.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stop on Overflow</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stop on Overflow: one of the supported hardware values. Apply writes this choice to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stop on Time</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stop on Time: one of the supported hardware values. Apply writes this choice to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stop the task.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stop the task; nothing is shown or changed.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers: accessible volume, Brownian dynamics and photon Monte-Carlo on IMP.bff.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Switches the open ChiSurf main window between the traditional menu bar and the ribbon, without a restart. The choice is saved and restored at the next start. Menu Switch opens no window of its own.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Symbol</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sync</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sync Frequency Divider</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sync Frequency Divider, 1 to 16 (a whole number). Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sync Holdoff (ns)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sync Holdoff (ns), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sync Threshold (mV)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sync Threshold (mV), -1000 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sync Zero Cross Level (mV)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sync Zero Cross Level (mV), -100 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TAC</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TAC Enable Hold (ns)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TAC Enable Hold (ns), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TAC Gain</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TAC Gain: one of the supported hardware values. Apply writes this choice to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TAC Limit High (%)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TAC Limit High (%), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TAC Limit Low (%)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TAC Limit Low (%), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TAC Offset (%)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TAC Offset (%), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TAC Range (ns)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TAC Range (ns), 0 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Tail match</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Tail matching bounds.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The CFD parameters of the selected module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The FCS workflow in one window: the correlator (detector → files → filter → correlate → merge) and the FCS tools — 2D-FLCS, Lifetime-FCS Sim, burst-wise FCS, the diffusion/volume and fFCS filter calculators and the channel presets — behind one navigation rail.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The Mode parameters of the selected module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The Settings window: one searchable list of every settings panel (ChiSurf settings, acquisition, styles, plots, models, users, plugins, updates, detector setup, ...).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The Sync parameters of the selected module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The TAC parameters of the selected module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The Timing parameters of the selected module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The acquisition's stop limit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The detected BH modules; ticked modules form the active-card selection that Apply writes.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The files of the project folder. Click a file to open it; expand a folder with its triangle or a double click. Right-click a row for its actions. Click a header to sort. In a narrow pane Date Modified, Kind and Size give way to Name (a row's tooltip lists them).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The fit runs as &lt;code&gt;lltf fit-vvvh&lt;/code&gt;. Results lists the lifetimes and the rotations (b, ρ), r0, the reduced χ² of each channel and of the joint fit, and the G, l1, l2 used with their source.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The instrumental parameters of the calibration and their fitted values; edit a value to apply it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The intensity ratio VV/VH and calibrated G-factor plateau appear here once decays are loaded.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The measured reference decays this calibration is built from; select a row to work on it, Delete removes it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The parameter to hold fixed.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The parameter whose per-chain ranks are drawn.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The retained BH parameters, by group.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>This fits a single TCSPC decay with a few exponentials, reconvolved with a measured IRF. What makes it &lt;b&gt;lazy&lt;/b&gt; is that the fit range, the background, the IRF shift and — if you ask — the number of components are decided by fixed rules instead of by you.&lt;br/&gt;&lt;br/&gt;That is convenient and it is also the risk: each rule can be wrong for your data. Six steps for one decay, then five for a polarized VV/VH pair.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Tick the selected rows (else the right-clicked one).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Toggle checkbox to use this reference for tail matching G-factor.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Trace a product back through raw inputs and settings.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Transition an entity; an illegal jump is returned as an error, not raised.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Transition an operation status.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Traverse downstream canonical graph edges.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Traverse the canonical graph recursively, cycle-safe.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Traverse upstream canonical graph edges.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Turn burst-ID files (first/last photon index per burst) into burst tables of the matching TTTR measurement: a bursts table in its .pto, or a legacy .bur + .mti, SL5 mask or HDF5 table. Scriptable as convert_bid_file(path).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Uncertainty / standard deviation from calibration.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Untick the selected rows (else the right-clicked one).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Update a group. Admin or group manager only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Use this reference standard for tail matching G-factor.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>VH channel background counts. Click to edit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>VH chs</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>VV channel background counts. Click to edit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>VV/VH</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Validate a stored setup without bypassing its read ACL.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Validate one PDBx/flrCIF key/value pair.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>View and edit the header tags of any TTTR file tttrlib reads (PTU, HT3, SPC, Photon-HDF5): change, add or remove tags and save the photons unchanged into a new PTU file, the only container that keeps arbitrary tags.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What is being done.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What the adapter reported for the module.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What the last action did, or why it did not.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What this card can and cannot set.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What this card can set and what the firmware owns.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What this card sets.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>When the file was last changed.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Where to hold it, in its own standard deviations.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Which map to show on these axes: the measured histogram, the model, the weighted residual or the difference.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the edited values, bounds, fixes and links to the fit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the sample table (one sample or all) to a file. Admin only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the settings.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>[Deprecated] Use the unified VV/VH G-Factor and Anisotropy plugin instead.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>at</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>class, function, method or section.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>e.g. 1,9 (empty: one decay)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>l1 mixing factor applied.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>l2 mixing factor applied.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>neyman</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>poisson</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>r(SS)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>r(t): data against fit</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>r-inf start (bin)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>r-inf stop (bin)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>re-fitting…</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>the tool is busy; try again when it has finished</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>{name} could not take it: {error}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>🔍 Check (re-fit)</source>
+            <translation type="unfinished"/>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>
