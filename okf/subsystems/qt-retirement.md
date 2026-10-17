@@ -744,6 +744,26 @@ chimol tests; and the desktop (`CanvasView`) and browser (`Page`) hosts both dec
 which both draw through `CanvasRenderer.frame_arguments` (label quads in `chrome`, a traced frame in
 `overlay`; `tests/test_host_features.py` checks the frame, `test_browser_picking.py` keeps the two sets equal).
 
+## Merge into mcts-native-baseline (2026-10-17)
+
+S6 landed: `s6-retire-qt-shell` merged as 855e54604 (43 conflicts resolved: S6's
+deletions stand; the branch's own leftovers fixed in 4715fdfd4 — the four tests whose
+probes drove the Qt Main now carry strict xfail naming the remaining port: an emtk-shell
+session/history probe that saves and reopens `.cs.pto` widget facts. The acquisition
+screenshot test followed its probe out; its five-live-pages contract is covered by the
+acq plugin's native tests).
+
+Open ports from the merge, in priority order:
+1. emtk-shell session restore + history (undo/redo across reopen) probes — the two
+   strict-xfail pairs in test_project_window_restore / test_project_history_restore.
+2. Licence axis: chisurf is planned to go MIT. Qt is out of the code (zero imports;
+   the three remaining grep hits are guards that assert Qt stays out). The GPL
+   LICENSE file and the `GPL-3.0-or-later AND CC-BY-SA-4.0` pyproject field remain
+   and are the owner's legal act. PyMOL is no dependency (no imports); the vendored
+   constants transcribed from PyMOL (atomic masses = IUPAC values, vdW radii, camera
+   constants measured from PyMOL) should be regenerated from primary sources and the
+   provenance comments re-worded before relicensing.
+
 # Citations
 
 [1] [PRD-154 W9](../prds/prd-154.md)
