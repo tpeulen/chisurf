@@ -74,81 +74,11 @@ def test_the_link_edge_points_from_follower_to_master():
 
 
 # ── the window ───────────────────────────────────────────────────────
-
-
-@pytest.fixture
-def tool(qapp):
-    from chisurf.plugins.core.globalview.gui.tool import GraphWizard
-
-    models = [_group(["tau", "x0"]) for _ in range(2)]
-    models[1].parameters_all_dict["tau"].link = models[0].parameters_all_dict["tau"]
-    window = GraphWizard(
-        fit_list=[_Fit(m, f"Fit {i}") for i, m in enumerate(models)], remember_layout=False
-    )
-    window.resize(1100, 760)
-    window.show()
-    qapp.processEvents()
-    window.host.repaint()
-    yield window
-    window.close()
-
-
-def test_the_window_is_one_emtk_surface(tool):
-    """Qt only hosts: no Qt control is left in the window but the host itself."""
-    from qtpy import QtWidgets
-
-    assert tool.centralWidget() is tool.host
-    for kind in (
-        QtWidgets.QToolBar,
-        QtWidgets.QCheckBox,
-        QtWidgets.QComboBox,
-        QtWidgets.QTableView,
-        QtWidgets.QAbstractSpinBox,
-    ):
-        assert not tool.findChildren(kind), f"a {kind.__name__} is back"
-
-
-def test_every_guide_step_points_at_a_real_control(tool):
-    """A step whose control is not found is shown centred and teaches nothing."""
-    import json
-    import pathlib
-
-    import chisurf.plugins.core.globalview.gui as gui
-
-    steps = json.loads((pathlib.Path(gui.__file__).parent / "guide.json").read_text())
-    for step in steps:
-        found = tool.tour_target(step["target"])
-        assert found is not None, f"guide step {step['title']!r} points at nothing"
-        widget, rect = found
-        assert widget is tool.host and rect.width() > 0 and rect.height() > 0
-
-
-def test_a_tour_step_waits_for_its_control(tool, qapp):
-    """An 'await' step is done when the user uses the control, not before."""
-    import pathlib
-
-    import chisurf.plugins.core.globalview.gui as gui
-    from chisurf.gui.widgets.tools.guided_tour import GuidedTour, load_tour
-
-    steps = load_tour(pathlib.Path(gui.__file__).parent / "guide.json")
-    tour = GuidedTour(tool, steps, model=tool.model)
-    tour.start(1)  # "Show the fixed parameters too"
-    assert not tour._bubble.next_button.isEnabled()
-    tool.tour_used.emit("graph_layout")
-    assert not tour._bubble.next_button.isEnabled(), "another control finished the step"
-    tool.tour_used.emit("include_fixed")
-    assert tour._bubble.next_button.isEnabled()
-    tour.stop()
-
-
-def test_change_events_are_coalesced_rather_than_answered_one_by_one(tool, monkeypatch):
-    calls = []
-    monkeypatch.setattr(tool.model, "fits_changed", lambda: calls.append(1))
-    for _ in range(50):
-        tool._refresh_timer.start()
-    assert calls == []
-    tool._refresh_timer.timeout.emit()
-    assert calls == [1]
+# 2f6fee28b retired the Qt GraphWizard host: the emtk app is the only window.
+# The window-level contract (one emtk surface, every guide step pointing at a
+# real control, the tour awaiting its control, refresh coalescing) moved to
+# chisurf/plugins/core/globalview/tests/test_emtk_globalview.py, which drives
+# the native GlobalViewApp directly.
 
 
 def test_connect_base_joins_plugin_groups_to_the_fits():
