@@ -2,7 +2,7 @@
 type: Concept
 title: The flrCIF and MMFDB vocabulary
 description: Generated reference of the categories and items ChiSurf persists, defined in the mmfdb extension dictionaries.
-tags: [concepts, database, mmfdb]
+tags: [concepts, mmfdb, flrcif, vocabulary]
 anchor: concept-flrcif-vocabulary
 ---
 
@@ -60,7 +60,7 @@ Fit/model parameters, by registry key.
 | `_flr_fit_parameter.BG` | float | Fit parameter BG. |
 | `_flr_fit_parameter.BR` | float | Fit parameter BR. |
 | `_flr_fit_parameter.BtA` | float | Model parameter BtA used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. |
-| `_flr_fit_parameter.D` | float | Model parameter D used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. |
+| `_flr_fit_parameter.D` | float | Translational diffusion coefficient of the diffusing species (µm²/s). |
 | `_flr_fit_parameter.E_FRET` | float | Apparent FRET efficiency parameter E_FRET (0e00..1). |
 | `_flr_fit_parameter.N` | float | Fit parameter N. |
 | `_flr_fit_parameter.N1` | float | Fit parameter N1. |
@@ -115,11 +115,11 @@ Fit/model parameters, by registry key.
 | `_flr_fit_parameter.fcs_aba4` | float | Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless). |
 | `_flr_fit_parameter.fcs_abf` | float | Total amplitude factor for a group of anticorrelation components. |
 | `_flr_fit_parameter.fcs_abt` | float | Time constant of an antibunching or anticorrelation component. |
-| `_flr_fit_parameter.fcs_abt1` | float | Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless). |
-| `_flr_fit_parameter.fcs_abt2` | float | Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless). |
-| `_flr_fit_parameter.fcs_abt3` | float | Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless). |
-| `_flr_fit_parameter.fcs_abt4` | float | Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless). |
-| `_flr_fit_parameter.fcs_abt5` | float | Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless). |
+| `_flr_fit_parameter.fcs_abt1` | float | Time constant of an individual antibunching / anticorrelation component. |
+| `_flr_fit_parameter.fcs_abt2` | float | Time constant of an individual antibunching / anticorrelation component. |
+| `_flr_fit_parameter.fcs_abt3` | float | Time constant of an individual antibunching / anticorrelation component. |
+| `_flr_fit_parameter.fcs_abt4` | float | Time constant of an individual antibunching / anticorrelation component. |
+| `_flr_fit_parameter.fcs_abt5` | float | Time constant of an individual antibunching / anticorrelation component. |
 | `_flr_fit_parameter.fcs_af` | float | Overall amplitude factor for a set of anticorrelation components. |
 | `_flr_fit_parameter.fcs_aroc` | float | Amplitude of the rotational correlation (anisotropy) contribution. |
 | `_flr_fit_parameter.fcs_b` | float | Additive baseline/offset of the correlation function. |
@@ -253,7 +253,7 @@ Fit/model parameters, by registry key.
 | `_flr_fit_parameter.tauT` | float | Fit parameter tauT. |
 | `_flr_fit_parameter.tcspc_Ddye` | float | Translational diffusion coefficient of the fluorescent dye. |
 | `_flr_fit_parameter.tcspc_Nq` | float | Effective number or concentration of quenchers in the interaction volume. |
-| `_flr_fit_parameter.tcspc_Rdye` | float | Characteristic interaction radius or distance parameter for the dye3quencher system. |
+| `_flr_fit_parameter.tcspc_Rdye` | float | Characteristic interaction radius or distance parameter for the dye–quencher system. |
 | `_flr_fit_parameter.tcspc_Vav` | float | Effective averaging volume used in the transient-quenching model. |
 | `_flr_fit_parameter.tcspc_a` | float | Pre-exponential amplitude or population fraction of this decay component (dimensionless contribution to the overall time-resolved signal). |
 | `_flr_fit_parameter.tcspc_a1` | float | Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless). |
