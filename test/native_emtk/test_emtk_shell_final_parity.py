@@ -185,3 +185,74 @@ def test_a_wide_tool_the_user_docked_stays_docked():
         assert shell.docks.region_of(hosted.key) == "left", "the saved layout keeps it docked"
     finally:
         shell.close()
+
+
+def test_watermark_folding_toggle_on_click():
+    """Clicking the watermark toggles between folded compact badge and expanded view."""
+    shell = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
+                         console_session_file=False)
+    try:
+        driver = Driver(shell, (1440, 900))
+        driver.frame(2)
+        assert "system_info" in shell.item_rects
+        assert shell._watermark_folded is False
+        bx, by, bw, bh = shell.item_rects["system_info"]
+        unfolded_h = bh
+        assert unfolded_h > 100.0  # Full panel is tall
+
+        # Click inside watermark bounds to fold
+        driver.click((bx + 10.0, by + 10.0))
+        driver.frame(1)
+
+        assert shell._watermark_folded is True
+        fbx, fby, fbw, fbh = shell.item_rects["system_info"]
+        assert fbh < 35.0  # Folded single-line badge is compact
+        folded_strings = [str(s) for s in driver.painter.strings]
+        assert any(s.startswith("▶ ChiSurf") for s in folded_strings)
+
+        # Click again to unfold
+        driver.click((fbx + 10.0, fby + 10.0))
+        driver.frame(1)
+
+        assert shell._watermark_folded is False
+        assert shell.item_rects["system_info"][3] > 100.0
+    finally:
+        shell.close()
+
+
+def test_tooltip_dismiss_on_pointer_leave_and_dock_exit():
+    """When the pointer moves away from a dock or leaves the window, inactive children get cleared."""
+    from emtk.app import ImApp
+
+    class MockChild(ImApp):
+        def __init__(self):
+            super().__init__(gui=lambda: None)
+            self.drawn = False
+
+        def draw(self, painter, x, y, w, h):
+            self.drawn = True
+            super().draw(painter, x, y, w, h)
+
+    shell = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
+                         console_session_file=False)
+    try:
+        child = MockChild()
+        shell._drawn["test_child"] = ("test_win", child, (100.0, 100.0, 200.0, 200.0))
+
+        # Pointer moves into child (under capture or active target)
+        shell._capture = "test_child"
+        shell.pointer_move(150.0, 150.0)
+        assert child.io.mouse_pos == (50.0, 50.0)
+
+        # Pointer moves outside child (capture released, pointer over workspace background)
+        shell._capture = None
+        shell.pointer_move(400.0, 400.0)
+        assert child.io.mouse_pos == (-1.0, -1.0), "child mouse_pos must reset to (-1.0, -1.0)"
+
+        # Pointer leaves window entirely (-1.0, -1.0)
+        child.io.mouse_pos = (50.0, 50.0)
+        shell.pointer_move(-1.0, -1.0)
+        assert child.io.mouse_pos == (-1.0, -1.0)
+    finally:
+        shell.close()
+

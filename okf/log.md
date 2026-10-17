@@ -3,6 +3,7 @@
 ## 2026-10-17
 
 - emtk shell: live CPU/memory tracking with cached psutil processes, integer RGBA sparklines, tracks, and 1s cadence refresh
+- emtk, watermark, gfactor: fold watermark into compact badge, display live rolling FPS and machine specs matching ChiMOL, dismiss tooltips on dock leave and window exit, and eliminate continuous redraw stall during subdock dragging.
 
 ## 2026-10-16
 

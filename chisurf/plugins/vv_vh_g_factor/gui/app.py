@@ -8,7 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
-from emtk import im, implot
+from emtk import im, implot, style
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
@@ -16,6 +16,7 @@ from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
+from chisurf.core.fio import read_vv_vh
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
@@ -30,7 +31,6 @@ from chisurf.plugins.emtk_layout import (
 from chisurf.plugins.microscopy.imaging_emtk.path_list import PathListView
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
-from chisurf.core.fio import read_vv_vh
 from .client import VvVhGFactorClient
 from .model import GFactorModel
 
@@ -130,7 +130,10 @@ class GFactorApp(TourTarget, ImApp):
         self.show_ratio_raw = True
         self.show_ratio_corrected = True
         self.show_g_line = True
-        super().__init__(gui=self.render, continuous=True)
+        super().__init__(gui=self.render, continuous=False)
+
+    def animating(self) -> bool:
+        return self.job.running or getattr(self.guide, "running", False) or super().animating()
 
     # -- plumbing ---------------------------------------------------------------------------- #
     def fingerprint(self):
@@ -428,7 +431,7 @@ class GFactorApp(TourTarget, ImApp):
         self.form("parameters", m)
         warn = m.fp_result.get("warning")
         if warn and ("outside" in warn or "error" in warn.lower() or m.fp_result.get("l1") is None):
-            im.text_colored((255, 180, 80, 255), warn)
+            im.text_colored(style.TEXT_WARNING, warn)
 
     @property
     def is_batch_mode(self) -> bool:
@@ -601,12 +604,12 @@ class GFactorApp(TourTarget, ImApp):
             l1_s = f"{m.l1:.5f}" if m.l1 is not None and np.isfinite(m.l1) else "0.00000"
             l2_s = f"{m.l2:.5f}" if m.l2 is not None and np.isfinite(m.l2) else "0.00000"
             im.text_colored(
-                (100, 200, 255, 255),
+                style.TEXT_NOTE,
                 f"Applied calibration: G = {m.g_factor:.5f} | l1 = {l1_s} | l2 = {l2_s}",
             )
         else:
             im.text_colored(
-                (255, 180, 50, 255),
+                style.TEXT_WARNING,
                 "Calibration pending: determine G on Calibration tab first.",
             )
 
@@ -623,7 +626,7 @@ class GFactorApp(TourTarget, ImApp):
             im.separator()
             im.text("Selected sample:")
             im.same_line()
-            im.text_colored((100, 200, 255, 255), Path(active_file).name)
+            im.text_colored(style.TEXT_NOTE, Path(active_file).name)
             im.set_item_tooltip(str(active_file))
             self.form("sample", m)
 

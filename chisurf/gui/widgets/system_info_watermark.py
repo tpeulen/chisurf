@@ -136,8 +136,11 @@ def build_system_info_text() -> str:
     except Exception:
         qt_binding = None
 
+    cores = os.cpu_count()
+    cores_str = f" ({cores} cores)" if cores else ""
     lines = [
         f"OS: {os_info}",
+        f"Machine: {platform.machine()}{cores_str}",
         f"RAM: {ram_str}",
         f"Python: {py_ver}",
     ]
@@ -474,7 +477,31 @@ class _WatermarkWidget(QtWidgets.QWidget):
         # Main layout
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(6, 4, 6, 4)
-        layout.setSpacing(2)
+        # Header with fold button and title
+        self._folded = False
+        self._last_cpu_str = "CPU: --"
+        self._last_mem_str = "Mem: --"
+
+        self._header = QtWidgets.QWidget(self)
+        self._header.setCursor(QtCore.Qt.PointingHandCursor)
+        header_layout = QtWidgets.QHBoxLayout(self._header)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(4)
+
+        self._fold_btn = QtWidgets.QLabel("▼", self._header)
+        self._fold_btn.setStyleSheet(
+            "color: rgba(255,255,255,180); font-size: 9px; background: transparent; font-weight: bold;"
+        )
+        header_layout.addWidget(self._fold_btn)
+
+        self._header_title = QtWidgets.QLabel("ChiSurf", self._header)
+        self._header_title.setStyleSheet(
+            "color: rgba(255,255,255,220); font-size: 9px; background: transparent; font-weight: bold;"
+        )
+        header_layout.addWidget(self._header_title)
+        header_layout.addStretch()
+
+        layout.addWidget(self._header)
 
         # CPU usage row (sparkline + label)
         self._cpu_row = QtWidgets.QWidget(self)
@@ -556,6 +583,33 @@ class _WatermarkWidget(QtWidgets.QWidget):
         """Set the system info text."""
         self._info_label.setText(text)
 
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        if self._folded or (hasattr(self, "_header") and self._header.geometry().contains(event.pos())):
+            self.toggle_folded()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def toggle_folded(self) -> None:
+        self._folded = not self._folded
+        self._fold_btn.setText("▶" if self._folded else "▼")
+        self._cpu_row.setVisible(not self._folded)
+        self._mem_row.setVisible(not self._folded)
+        self._info_label.setVisible(not self._folded)
+        self._update_header_title()
+        update_geometry(self)
+
+    def _update_header_title(self) -> None:
+        if self._folded:
+            try:
+                from chisurf.core import info as _info_mod
+                cs_ver = getattr(_info_mod, "__version__", None) or getattr(cs, "__version__", "?")
+            except Exception:
+                cs_ver = getattr(cs, "__version__", "?")
+            self._header_title.setText(f"ChiSurf {cs_ver} · {self._last_cpu_str} · {self._last_mem_str}")
+        else:
+            self._header_title.setText("ChiSurf")
+
     def _update_usage(self) -> None:
         """Fetch current CPU and memory usage and update display."""
         # Update CPU
@@ -574,9 +628,11 @@ class _WatermarkWidget(QtWidgets.QWidget):
                 color = QtGui.QColor(220, 80, 80)  # Red
             self._cpu_sparkline.set_color(color)
 
-            self._cpu_label.setText(f"CPU: {cpu_per_core:.0f}%")
+            self._last_cpu_str = f"CPU: {cpu_per_core:.0f}%"
+            self._cpu_label.setText(self._last_cpu_str)
         else:
-            self._cpu_label.setText("CPU: N/A")
+            self._last_cpu_str = "CPU: N/A"
+            self._cpu_label.setText(self._last_cpu_str)
 
         # Update Memory
         mem_mb = _get_memory_usage_mb()
@@ -598,9 +654,13 @@ class _WatermarkWidget(QtWidgets.QWidget):
             else:
                 mem_str = f"{mem_mb:.0f} MB"
 
-            self._mem_label.setText(f"Mem: {mem_str} ({pct:.0f}%)")
+            self._last_mem_str = f"Mem: {mem_str} ({pct:.0f}%)"
+            self._mem_label.setText(self._last_mem_str)
         else:
-            self._mem_label.setText("Mem: N/A")
+            self._last_mem_str = "Mem: N/A"
+            self._mem_label.setText(self._last_mem_str)
+
+        self._update_header_title()
 
 
 def ensure_watermark(

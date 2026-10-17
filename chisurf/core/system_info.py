@@ -82,6 +82,24 @@ def system_info_lines() -> list[str]:
     return lines
 
 
+def machine_info() -> str:
+    """One line naming the machine: processor, cores and memory (ChiMOL parity).
+
+    Returns
+    -------
+    str
+        e.g. ``"arm64 · 10 cores · 32 GB"``.
+    """
+    parts = [platform.machine() or platform.processor() or "cpu"]
+    cores = os.cpu_count()
+    if cores:
+        parts.append(f"{cores} cores")
+    ram = _ram()
+    if ram:
+        parts.append(ram)
+    return " · ".join(parts)
+
+
 _PROCESS_CACHE: dict[int, Any] = {}
 
 
@@ -134,4 +152,4 @@ def process_usage() -> tuple[float, float] | None:
         return None
 
 
-__all__ = ["process_usage", "system_info_lines"]
+__all__ = ["machine_info", "process_usage", "system_info_lines"]

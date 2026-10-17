@@ -39,6 +39,7 @@ offered here.
 
 from __future__ import annotations
 
+import collections
 import logging
 import time
 from dataclasses import dataclass, field
@@ -551,6 +552,7 @@ class EmtkShellApp(ImApp):
         self.docks.focus("tools")
         self.docks.focus("console")
         self.docks.focus("workspace")
+        self._watermark_folded = False
         try:
             from chisurf.core.system_info import process_usage
 
@@ -813,6 +815,22 @@ class EmtkShellApp(ImApp):
         finally:
             self._painter = None
         self.frames_drawn += 1
+        now_ts = time.perf_counter()
+        last_ts = getattr(self, "_last_frame_ts", None)
+        if last_ts is not None and now_ts > last_ts:
+            dt = now_ts - last_ts
+            self._frame_ms = dt * 1000.0
+            history = getattr(self, "_frame_durations", None)
+            if history is None:
+                self._frame_durations = collections.deque(maxlen=30)
+                history = self._frame_durations
+            history.append(dt)
+            self._fps = len(history) / sum(history) if sum(history) > 0 else 0.0
+        else:
+            self._frame_ms = getattr(self, "_frame_ms", 0.0)
+            self._fps = getattr(self, "_fps", 0.0)
+        self._last_frame_ts = now_ts
+
         if self._screenshot_pending:
             self._screenshot_pending = False
             self._copy_screenshot()
@@ -890,7 +908,7 @@ class EmtkShellApp(ImApp):
         im.set_next_window_pos((0.0, 0.0), im.Cond.ALWAYS)
         im.set_next_window_size((width, MENU_BAR), im.Cond.ALWAYS)
         self._menu_open = False
-        flags = im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
+        flags = im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE | im.WindowFlags.MENU_BAR
         if im.begin("shell menu bar", flags=flags):
             im.begin_menu_bar()
             plugins = {tr(menu): groups for menu, groups in self.menus.items()}
@@ -918,6 +936,21 @@ class EmtkShellApp(ImApp):
         """The items of a session menu: group captions, shortcut texts, check marks."""
         group = None
         for action in actions:
+            if action.children:
+                if action.group != group:
+                    if action.group:
+                        im.separator_text(action.group)
+                    elif group:
+                        im.separator()
+                group = action.group
+                if im.begin_menu(action.label, enabled=action.enabled()):
+                    self._draw_actions(action.children)
+                    im.end_menu()
+                self.item_rects[f"menu.{action.key}"] = im.get_item_rect()
+                if action.description:
+                    im.set_item_tooltip(action.description)
+                continue
+
             if action.group != group:
                 # A group is a captioned section (Qt's submenus: Project, Fits, Recent Projects, Docks).
                 if action.group:
@@ -964,28 +997,69 @@ class EmtkShellApp(ImApp):
     # ── session menus ─────────────────────────────────────────────────────
 
     def _theme_actions(self) -> list[MenuAction]:
-        """Settings ▸ Dark theme / Light theme: switch now, keep it for the next start (``gui.theme``)."""
+        """Settings ▸ Styles: submenu listing all available styles (switch now and keep for next start)."""
+        import pathlib
+
         from emtk import theme
 
+        from chisurf.core.settings import cs_settings
         from chisurf.core.settings import theme as stored_theme
 
         def choose(name: str) -> None:
-            stored_theme.choose(name, styles=[self.style])
+            st_list = [self.style] if getattr(self, "style", None) is not None else []
+            stored_theme.choose(name, styles=st_list)
             self.request_frame()
+
+        def style_display_label(name: str) -> str:
+            stem = pathlib.Path(name).stem
+            special = {
+                "dark_blue": tr("Dark Blue"),
+                "dark": tr("Dark"),
+                "light": tr("Light"),
+                "dark_green": tr("Dark Green"),
+                "dark_orange": tr("Dark Orange"),
+                "dark_violet": tr("Dark Violet"),
+                "dark_blue_flat": tr("Dark Blue Flat"),
+            }
+            if stem in special:
+                return special[stem]
+            return stem.replace("_", " ").title()
+
+        def is_checked(name: str) -> bool:
+            stem = pathlib.Path(name).stem
+            curr_theme = theme.current_theme()
+            if curr_theme == stem or curr_theme == name:
+                return True
+            curr_sheet = str((cs_settings.get("gui") or {}).get("style_sheet") or "")
+            if curr_sheet == name or curr_sheet == stem or pathlib.Path(curr_sheet).stem == stem:
+                return True
+            return False
+
+        seen_keys: set[str] = set()
+        style_items = []
+        for sheet in stored_theme.available_styles():
+            stem = pathlib.Path(sheet).stem
+            if stem in seen_keys:
+                continue
+            seen_keys.add(stem)
+            style_items.append(
+                MenuAction(
+                    f"style_{stem}",
+                    style_display_label(sheet),
+                    partial(choose, sheet),
+                    "",
+                    "",
+                    sheet,
+                    checked=partial(is_checked, sheet),
+                )
+            )
 
         return [
             MenuAction(
-                f"theme_{name}",
-                label,
-                partial(choose, name),
-                "",
-                "",
-                tip,
-                checked=lambda name=name: theme.current_theme() == name,
-            )
-            for name, label, tip in (
-                ("dark", tr("Dark theme"), tr("Light text on dark surfaces (the default).")),
-                ("light", tr("Light theme"), tr("Dark text on light surfaces.")),
+                "styles",
+                tr("Styles"),
+                children=style_items,
+                description=tr("Choose a color style for the application."),
             )
         ]
 
@@ -1334,11 +1408,17 @@ class EmtkShellApp(ImApp):
     def shortcuts(self) -> dict[tuple[int, int], MenuAction]:
         """``(key, modifiers) -> action`` of every session menu item with a shortcut."""
         table = {}
-        for _menu, actions in self.session_menus():
+
+        def _collect(actions):
             for action in actions:
                 parsed = parse_shortcut(action.shortcut)
                 if parsed is not None:
                     table[parsed] = action
+                if getattr(action, "children", None):
+                    _collect(action.children)
+
+        for _menu, actions in self.session_menus():
+            _collect(actions)
         return table
 
     def workspace_actions(self) -> list[MenuAction]:
@@ -1594,7 +1674,8 @@ class EmtkShellApp(ImApp):
 
         from emtk.style import is_dark
 
-        from chisurf.core.system_info import process_usage, system_info_lines
+        from chisurf.core import info as _info_mod
+        from chisurf.core.system_info import machine_info, process_usage, system_info_lines
 
         if getattr(self, "_system_lines", None) is None:
             self._system_lines = system_info_lines()
@@ -1608,6 +1689,13 @@ class EmtkShellApp(ImApp):
             if self._usage is not None:
                 history = getattr(self, "_usage_history", [])
                 self._usage_history = (history + [self._usage])[-self.WATERMARK_SAMPLES :]
+
+        fps = getattr(self, "_fps", 0.0)
+        frame_ms = getattr(self, "_frame_ms", 0.0)
+        try:
+            cs_ver = getattr(_info_mod, "__version__", None) or getattr(cs, "__version__", "?")
+        except Exception:
+            cs_ver = "?"
 
         # Under the workspace's tab strip too (where its floating windows may go), not on it.
         x, y, w, h = (float(v) for v in self.docks.floating_bounds())
@@ -1624,13 +1712,38 @@ class EmtkShellApp(ImApp):
         im.push_font_scale(0.85)
         try:
             line_h = max(im.get_text_line_height(), 13.0)
+            pad = 6.0
+            spark_w = 80.0
+            folded = getattr(self, "_watermark_folded", False)
+
+            if folded:
+                cpu_s = f"CPU {self._usage[0]:.0f}%" if self._usage is not None else "CPU --"
+                mem_s = f"Mem {self._usage[1]:.0f} MB" if self._usage is not None else "Mem --"
+                fps_s = f"{fps:.0f} fps" if fps > 0.0 else "-- fps"
+                badge_text = f"▶ ChiSurf {cs_ver} · {fps_s} · {cpu_s} · {mem_s}"
+                text_w = im.calc_text_size(badge_text)[0]
+                box_w = text_w + 2 * pad
+                box_h = line_h + 2 * pad
+                if box_w > w - 20.0 or box_h > h - 20.0:
+                    return
+                bx, by = x + w - box_w - 10.0, y + 10.0
+                draw = im.get_window_draw_list()
+                draw.add_rect_filled((bx, by), (bx + box_w, by + box_h), panel, 3.0)
+                draw.add_text((bx + pad, by + pad), ink, badge_text)
+                self.item_rects["system_info"] = (bx, by, box_w, box_h)
+                return
+
             rows: list[tuple[str, int]] = []  # (text, sparkline index or -1)
+            fps_hdr = f" ({fps:.1f} fps · {frame_ms:.1f} ms)" if fps > 0.0 else ""
+            rows.append((f"▼ ChiSurf {cs_ver}{fps_hdr}", -1))
             if self._usage is not None:
                 cpu, mem = self._usage
                 rows.append((tr("CPU: {cpu:.0f}%").format(cpu=cpu), 0))
                 rows.append((tr("Mem: {mem:.0f} MB").format(mem=mem), 1))
+            mach = machine_info()
+            if mach:
+                rows.append((f"Machine: {mach}", -1))
             rows += [(line, -1) for line in self._system_lines]
-            spark_w, pad = 80.0, 6.0
             text_w = max((im.calc_text_size(t)[0] for t, _ in rows), default=0.0)
             box_w = text_w + spark_w + 3 * pad
             box_h = len(rows) * line_h + 2 * pad
@@ -1746,6 +1859,13 @@ class EmtkShellApp(ImApp):
     def pointer_press(self, x, y, button, modifiers=0, clicks=1):
         if self.project.modal and not self.project.contains(x, y):
             return  # a question is open: a press beside it does nothing (it is modal)
+        wm_rect = self.item_rects.get("system_info")
+        if wm_rect is not None:
+            wx, wy, ww, wh = wm_rect
+            if wx <= x <= wx + ww and wy <= y <= wy + wh:
+                self._watermark_folded = not getattr(self, "_watermark_folded", False)
+                self.request_frame()
+                return
         target = self._plugin_at(x, y)
         self._capture = target
         # A press outside a child never reaches it, so it cannot see the press that closes its context menu
@@ -1773,6 +1893,11 @@ class EmtkShellApp(ImApp):
     def pointer_move(self, x, y, buttons=0, modifiers=0):
         super().pointer_move(x, y, buttons, modifiers)
         target = self._capture or self._plugin_at(x, y)
+        for child_id, (_window_key, other_child, _box) in self._drawn.items():
+            if child_id != target and other_child is not None and getattr(other_child, "io", None) is not None:
+                if other_child.io.mouse_pos != (-1.0, -1.0):
+                    other_child.pointer_move(-1.0, -1.0, 0, 0)
+                    self.request_frame()
         child, (ox, oy) = self._child(target)
         if child is not None:
             child.pointer_move(x - ox, y - oy, buttons, modifiers)
