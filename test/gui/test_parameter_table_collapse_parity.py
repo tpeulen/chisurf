@@ -141,8 +141,8 @@ def test_the_emtk_column_declarations_carry_the_qt_priorities():
     assert glob["owner"] == glob["label"] == glob["value"] == 0
 
 
-def test_at_the_qt_docks_width_both_tables_show_the_bounds(params):
-    """474 px is the Qt window's left dock at 1440 x 900 (and a third of the emtk shell):
-    both tables still show Lo / Hi / Bounds there (final shell parity pass, 2026-10-14)."""
-    for name, seen in (("qt", _qt_columns(params, [474])), ("emtk", _emtk_columns(params, [460]))):
-        assert "bounds_lo" in seen[0] and "bounds_on" in seen[0], (name, seen)
+def test_at_the_shell_dock_width_the_table_shows_the_bounds(params):
+    """460 px is a third of the emtk shell (474 px was the Qt dock it replaced):
+    the table still shows Lo / Hi / Bounds there (final shell parity pass, 2026-10-14)."""
+    (name, seen), = (("emtk", _emtk_columns(params, [460])),)
+    assert "bounds_lo" in seen[0] and "bounds_on" in seen[0], (name, seen)

@@ -120,6 +120,10 @@ class _Page:
     def get_settings(self):
         return self.app.get_settings()
 
+    def set_settings(self, settings):
+        """Replace the detector tables through the app's own update path."""
+        self.app.load_data_into_tables(settings)
+
     @property
     def detectors(self):
         return self.get_settings()["detectors"]

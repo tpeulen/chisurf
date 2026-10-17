@@ -41,6 +41,10 @@ def _run(stage: str, out: Path, variant: str = "") -> None:
 
 
 @pytest.mark.parametrize("variant", ["", "maximized", "tabbed"])
+@pytest.mark.xfail(reason="the probe drove the retired Qt Main; the emtk-shell session "
+                          "probe (shell_session save/restore of .cs.pto widget facts) is "
+                          "the remaining S6 port — tracked in okf/subsystems/qt-retirement",
+                   strict=True)
 def test_a_saved_session_reopens_exactly_as_it_was(tmp_path, variant):
     """Plain, one window maximized, and the window area in tabbed mode."""
     _run("A", tmp_path, variant)
