@@ -3,6 +3,7 @@
 ## 2026-10-17
 
 - emtk shell: live CPU/memory tracking with cached psutil processes, integer RGBA sparklines, tracks, and 1s cadence refresh
+
 - emtk, watermark, gfactor: fold watermark into compact badge, display live rolling FPS and machine specs matching ChiMOL, dismiss tooltips on dock leave and window exit, and eliminate continuous redraw stall during subdock dragging.
 
 ## 2026-10-16
@@ -15,119 +16,217 @@
   run, burst_mle_analysis runs Auto IRF before Fit bursts, mmfdb_admin completes the demo login
   before capturing. Record: [Qt retirement (shell)](subsystems/qt-retirement.md); board ticket
   T-20261014-FINAL-PARITY-PLUGINS.
+
 - Clean up G-factor calibration UI text density: suppress false orange warnings on successful Perrin mixing estimates, move diagnostic details into table and path tooltips, and remove duplicate mixing_results table.
+
 - vv_vh_g_factor: convert batch window to modal DialogWindow, add generalized multi-decay management with custom roles and rotational correlation times, compute dynamic Perrin l1/l2 mixing on slow reference change, add per-plot decay selector dropdowns, and format uncertainties on single line
+
 - vv_vh_g_factor: unified unknown samples tab with per-decay inspection, draggable tail bounds, CSV/TSV table and decay/anisotropy r(t) exports, multi-reference rho/tau calibration, and exact frozen parity (70/70 tests green)
+
 - Universal MMFDB dataset picker endpoint (PRD-10 Section 8), reference standards table with correlation times and inline editor, and time-resolved VV/VH ratio plot with calibrated G baseline and interactive tail region in vv_vh_g_factor plugin; 72/72 tests passing hermetically.
+
 - vv_vh_g_factor: interactive editable parameter table for calibration inputs and in-place reference standards editing (rho, tau, r0, tail match checkbox)
+
 - vv_vh_g_factor: adopt ChiSurf standard FittingParameter table (Parameter, Value, Fixed, Error) backed by live FittingParameterGroup/FittingParameter objects with deepcopy support, in-place value and fixed toggling, and declutter UI action buttons and tooltips; 73/73 tests pass
+
 - Streamline VV/VH G-factor UI by eliminating duplicate results table and duplicate controls, shortening table labels to l1 and l2, and recovering independent l1 != l2 mixing parameters
+
 - vv_vh_g_factor: eliminate duplicated G, l1, and l2 controls by consolidating overrides into FittingParameter table
+
 - Eliminated duplicate controls beneath calibration parameters table in VV/VH G-factor tool and ensured fitting parameter table is single source of truth for edits.
+
 - Split VV/VH calibration into Reference Parameters (sample-specific rho, tau, r0, BG VV, BG VH) and Instrumental Parameters, applied abbreviations (BG, Shift, Flip), and added declarative context menus to clear and remove samples.
+
 - vv_vh_g_factor: batch analysis determines steady-state anisotropy r(SS) from integrated counts using calibrated G, l1, l2 with per-sample background subtraction; exposed r_ss in batch table and export routines, verified with 75 passing tests and headless dock screenshot (gfactor_batch_dock.png).
+
 - vv_vh_g_factor: filter plots in batch analysis mode to render only decays selected in the batch table; wire selected_call/selection_attr bindings; add test_batch_mode_only_plots_selected_decays
 
 ## 2026-10-15
 
 - Dock tabs spacing: add 2px horizontal padding and 2px inter-tab gap in emtk.docking for distinct visual separation
+
 - HelpWindow close button: use top-right border (x) button on DialogWindow instead of content close button for consistent UX across modal windows
+
 - emtk shell: delegate is_visible to workspace_docks in ShellDockManager so fit window close queries evaluate correctly; implement _sync_order in ShellDockManager to place workspace dock windows at center region depth beneath floating shell windows (ensuring floating tools/log docks receive inputs above workspace center); verified with all 183 shell tests passing in test_emtk_shell*.py.
+
 - EMTK dock tabs and dialog windows: added close buttons (×) to each closable dock tab and removed the far-right region-level close button for better UX; set DialogWindow.HEADER_H to 16.0px matching DockManager title height uniformly across EMTK and ChiSurf.
+
 - Fit window Code button: moved Code toggle button into window title bar to the left of minimize and close buttons via EMTK DockWindow.title_buttons, removing the redundant vertical toolbar strip and reclaiming vertical space for fit plots and editors.
+
 - Fix simulated TCSPC duplicate scientific UID on repeated adds, queue parameter edits in DataDocks to prevent sluggish drops, improve DataTable cell editing and Enter commit, and add clipboard copy to log dock
+
 - emtk shell & server: defensive UID disambiguation during session traversal and ingestion to eliminate duplicate scientific UID crashes; unique Datasets tree row keys for independent row selection; allow None (unload) IRF in DatasetPicker; responsive single-click editing, keyboard capture, and robust bounds/int-to-float conversions in DataTable
+
 - Combine VV/VH plugins into unified Anisotropy & G/L1/L2 plugin (chisurf/plugins/vv_vh_g_factor), adding sample decay r(t), L1/L2 mixing overrides, interactive r_inf region, single-file and batch exports, with zero lost functionality.
+
 - Fixed L1/L2 polarization mixing fit calculation and output display in unified vv_vh_g_factor plugin; added dedicated L1/L2 mixing dock tab with 7-row estimate table; eliminated redundant backward-compatibility mixing controls and legacy state restores; deprecated legacy vv_vh_anisotropy with in-window notice; updated dependent parity tests.
+
 - Surface l1 and l2 polarization mixing prominently across all calibration, mixing, and sample panels: unified Calibration (G & L1/L2) primary view with live status banner, l1/l2 in primary results table, applied G and l1/l2 in sample view, and inspected headless renders.
+
 - Unify L1/L2 polarization mixing directly into primary G-factor calibration view of vv_vh_g_factor plugin, removing separate mixing tab and updating parity tests.
 
 ## 2026-10-14
 
 - PRD-154 mypy ratchet, non-plugin lane: chisurf/ outside plugins/ 1559 -> 979 in test/mypy_baseline.json across 12 commits (Parameter/FittingParameter/Fit/GlobalFit, Curve/DataCurve, dataspec RPC forms, HMM, shell session, PDA2c/PDA3c, FRET intensity functions, CSV sniffer, MFD fit, classic TCSPC editor, structure/trajectory, model/data macros, posterior engine, chiplot image view, emtk fit pages, ZMQ transport). Real bugs fixed with them: *args/keyword collisions in FittingParameter, Curve, Experiment and Residual2DPlot __init__; float(None) on unset bounds; ProbCh0 spectrum setter/link; FD/FA forward formula; leaking FRET globals; bars set_data; headless macro crashes on cs.cs None; tempfile.tempdir None; TrajectoryFile rmsd ndarray. Open: calc_transfer_matrix donor-only slice (known-issues); whole-tree --update owed.
+
 - PRD-154 mypy ratchet, plugins lane (chisurf/plugins/** less mmfdb_admin, acq setup dialogs, lightpath, batch_analysis, ndxplorer, chimol, number_quest): scope 1076 → ~310 errors in 7 commits, real types only (dataclasses for attribute bags, TYPE_CHECKING host bases for mixins, TypedDicts for demo configs, Protocols for duck-typed inputs, functools.partial for **dict calls). Bugs found and fixed with guards: PicoQuant wrapper read .value off plain-int MeasMode (every initDevice raised); ebFRET h_step_remap left A/pi unmasked (gap mappings failed to broadcast); flc2d.fit without max_bins hit max(1, None); chat Provider settings… imported the removed AISettingsGui; chat validation-failure lambda used an unbound except variable; lut.autodetect_region called compute.lut (AttributeError); traj2fret CLI used Python-2 string.letters and a missing Trajectory.timestep; CondaManager called the removed _get_conda_executable and a never-defined _run_command; lltf crashed without a time axis / fit result. Left: core annotations kappasq_all_delta (3 vs 4 returns) and write_csv_table (-> None, returns text) belong to the core lane; pre-existing test failures img_coloc/img_pixel_nb drop-while-running race and kappa2_dist compute-disabled-while-busy fail at HEAD too.
+
 - OKF bundle back to 0 findings and PRD-154 resume refreshed: known issues (calc_transfer_matrix status line, ndX-from-MMFDB status form, MMFDB Admin entries moved into date order), two dated tail bullets folded into 2026-10-13, mmfdb_admin REPORT pickup prefix, [qt-retirement](subsystems/qt-retirement.md) items 1 and 9 condensed to the current measurement with the slice record moved to its new History section; [PRD-154](prds/prd-154.md) status line, item 1, Part D gate 2 and the W9 status line say plugin Qt allow-list 0, chimol Qt-free, S6 waiting only on the owner, mypy ~1396, full gate not yet run on a settled tree.
+
 - PRD-154 mypy non-plugin lane, round 2: 979 -> 905. calc_transfer_matrix now zeroes its n_donor_bins donor-only rows (the slice was empty; only caller et2pRDA is unused, no expectation held the old matrix; first-principles test test_transfer_matrix_donor_only.py) and gaussian2rates honours kappa2 (hard-coded 0.66667; doctest regenerated); ParameterGroup.append -> add_parameter so component-adding append on model groups no longer clashes; distance_to_fret_* overloaded for arrays, write_csv_table overloaded (str when path is None), kappasq_all_delta returns 4 arrays (plugin entries traj2fret, fret_calculator, kappa2_dist, burst_selection mmfdb lowered); emtk canvas drag state is a tagged _Grab; ensemble run_mcmc(0) raises instead of returning None. Commit race: 7f9d60381 reverted 6d9f59389 (restored dc9ca5ec4); commits now compare-and-swap.
+
 - mypy non-plugin lane, round 3: `chisurf/` outside `plugins/` 905 → 447 in the baseline; every non-Qt file is clean except 20 design-level errors in 9 files, listed in [PRD-154](prds/prd-154.md) pickup 4. Real bugs fixed on the way: av_fret_rate_spectrum read kappa2 from the forster_radius key; Sticking passed its fit as the parameter list; refine_calibration took any prior with a sigma as Gaussian (half-normal raised, log-normal was misread); rdf.distance_between_gaussian's array branch, xcorr_fft for axis≠0 and GaussianMixture's covariance seed (clamped anticorrelation) were wrong; the model.update action called a macro that never existed; pto_reconstruct never applied the stored burst-search settings ([known issue](references/known-issues.md)); DeerBackground.model renamed kind (it shadowed the group's owning model).
+
 - Plugin dependency scan: a hand-off target counts as a use. `hand_off(id, kind, payload)` opens a plugin by manifest id with no import or dotted string between them, so trace_browser's real `optional_requires['ndxplorer']` read as stale; `collect_edges` now records an optional edge for each plugin id named in a module that imports `chisurf.core.plugin.handoff` ([plugin system](architecture/plugin-system.md)).
+
 - pto burst-search reproduction: `core/fio/pto_reconstruct.py` (read settings under keys nobody writes, searched with defaults, called a missing Measurement method) is deleted; `burst_selection.api.reproduce.reproduce_burst_search` re-runs a stored search from the container alone -- lineage to the photon stream, stored `settings_json` rebuilt into AnalysisSettings, the same `analyze_file`, read-only -- tested exact on real BH data ([photon container](subsystems/photon-container.md), [known issue](references/known-issues.md) resolved).
+
 - mypy ratchet (PRD-154 item 4), plugins lane: chisurf/plugins/** (excluding mmfdb_admin, lightpath_simulator, batch_analysis, ndxplorer, chimol, number_quest and the TCSPC setup dialogs) is at 0 errors, measured per 80-file chunk; its baseline entries are gone. Real defects fixed on the way include region-mle serve (called a non-existent dispatcher.serve), ProteinMCApiServer.stop (assigned a read-only property), the project browser client shadowing MMFDBClient branch methods, PhotonMeta.burst_rows bolted on after construction (now a field), and HelpClient.list_docs returning None. AgentSession is typed against the new ChatCompleter protocol; FRET core asks for a topology via trajectory.require_topology. Open: help tests test_doc_registers / test_every_source_link_in_the_documentation_resolves fail on docs that still name deleted Qt files (other lanes).
+
 - W9 slice S6 prepared on branch `s6-retire-qt-shell` (not merged; waits for the owner): the Qt shell's last control inventory frozen in `okf/plugins/emtk-ports/shell/retire_qt_before.json` (no drift; whole-window parity green, KNOWN_GAPS empty), then the Qt main window, `--qt`, every Qt module under `chisurf/` (309 files under `chisurf/gui/`, Qt startup services, the registry's Qt launch path, plugin Qt hosts) deleted; qtpy / pyqt / pytest-qt / latexify-py struck from pixi.toml, pyproject and the recipe (pixi.lock regenerates at merge); `test/test_no_qt_imports.py` bans Qt under `chisurf/` with no allow-list, `ui_file_allowlist` empty, the model/view boundary's KNOWN_LEAKS closed; the CSV reader's G-factor calculator is now a shell dock through a `reader_calibration` hand-off. Qt-only tests retired, behaviour tests ported ([Qt retirement](subsystems/qt-retirement.md) item 9 and History; leftovers in [known issues](references/known-issues.md)).
+
 - mypy non-plugin lane, design debt: outside `plugins/` 447 → 428; non-Qt left is DataGroup's list/Base hash (2, an identity-vs-contents decision, see [PRD-154](prds/prd-154.md) pickup 4) and gui_services' Qt Main (1). Fit.model raises NoModelError (AttributeError, so getattr/hasattr keep their meaning) and returns a Model, slicing goes through Fit.model_curve; FitGroup keeps data_group; minimizer/nodes/DataCurve take their bff base behind TYPE_CHECKING (DataCurve's body then showed Data.data meaning bytes and arrays -- now Data.embedded -- and DataCurve.load taking skiprows where Curve takes file_type); TrajectoryFile can be renamed and saves like both bases; console streams are typing.TextIO; cs.fits is list-or-proxy with chisurf.local_session_lists() for session builders.
+
 - DataGroup is identified by UID: it holds its members as a MutableSequence instead of subclassing list, so a group is hashable and two groups of the same curves are distinct (it compared by contents and was unhashable, contradicting its Base UID). Behaviour change: `isinstance(group, list)` is False; the group-receiving checks (session capture/visit, mfd payload lookup, reader import in the dataset service, emtk/fret_line member iteration) test for DataGroup. Copy keeps its own member list (Base.__copy__ used to return an *empty* list subclass); pickling carries members. mypy outside plugins 428 → 426 ([data model](subsystems/data-model.md), [PRD-154](prds/prd-154.md)).
+
 - Docs release gate: owner decision 2026-10-14 "AI review counts" — `csc help review-check` now passes ai-reviewed pages and fails only on unreviewed and stale ones (`api/review.py` `PageStatus.is_blocking`); help text, pixi comment, contract, test_review_levels, documentation-browser concept, core-tools, PRD-154 pickup 3 / Part D gate 1 / W14 updated.
+
 - Docs review slice 2 (PRD-154 Part D gate 1, AI review): 21 concept/fundamentals/reference pages and 61 generated plugin pages checked against the code and signed off. Fixes: QA/geometry prose removed from concept pages (maxent, MFD, micro-time histogram/shift, ndX exploration, N&B, pCF, photon-by-photon kinetics, photon container); MFD LaTeX in code spans and a missing heading break; micro-time histogram gains the inter-photon filter; photon container no longer cites a "Seidel folder" box that does not exist; ndX headless CLI used pandas-style queries and column ids no burst file has (`csc ndxplorer --query` help said "Pandas eval"); parameter linking described the Qt link menu and linked the RPC server to the ndX CLI page -- the emtk menu is documented and `parameter_link_menu.png` retaken from the emtk shell (`make_screenshots._grab_parameter_link_menu`); parameter registry: D (FCS diffusion coefficient, not TCSPC), fcs.abt1-5 (time constants, not amplitudes), Rdye control character, V_eff formula; manifest descriptions of about, bid_to_analysis, fcs_convert, fcs_correlator, fcs_toolbox, fcs_channel_preset rewritten and RPC summaries for fret.* and database_connector.*. Not signed off: plugins/acq.md (another lane has uncommitted edits to it).
+
 - PRD-154 Part D gate 1, docs review slice 3 (81 pages, AI review): 65 generated plugin reference pages fixed at their sources (generate_plugin_docs: hidden plugins say they are not in the menus, CLI-only/library plugins no longer claim Qt widgets; 15 manifest descriptions rewritten; project_browser/kappa2_dist RPC summaries) and regenerated for this slice only; 16 concept/fundamentals/reference pages corrected (stale modules/quest, AVDecayModel, removed settings keys, agent-status prose). make_registers.collect_tables no longer reads a body row starting with an empty cell as a separator nor an RST title in Markdown; tables.md regenerated. Root-cause fix: ChiSurfMessageBox ignored fortune.enabled and its limits (test/tcspc/test_microtime_histogram_fixes.py). Open: phasor_calculator page lists the legacy parity spec phasor.view.json beside phasor_emtk.view.json (duplicate rows); mmfdb_admin's ~200 RPC methods have no summaries; the rewritten manifest descriptions need de/fr catalogue entries (queued i18n job); figures.md/code.md registers stale (another lane is editing make_registers).
+
 - Docs review slice 2, acq: the dormant uncommitted acq.md edit (untouched since 2026-10-13, unclaimed) was regenerated from its sources instead -- it lost nothing (its only differing row, output_path typed float, is now str) and gains the BH, BrickMic and PicoQuant setup panels; `sim_setup_emtk.view.json` declared "Output folder" without a kind, so it rendered as a float field (guard: test_path_fields_are_declared_as_text). Page signed off (AI).
+
 - Docs review slice 3, two open items closed: phasor_calculator's Qt-era gui/phasor.view.json had no runtime reader and moved to tests/qt_spec.json as the frozen parity inventory (its page no longer lists duplicate rows); all 222 mmfdb_admin RPC methods now carry a one-line summary in the manifest, taken from the handler code (registration maps in modules/mmfdb admin/backend), and mmfdb_admin.md is regenerated.
+
 - Docs review slice 00 (83 pages: 8 stale concepts, references/index, guides 01-67 and 100-108) read against the source and signed off with --ai under the new gate. Qt-era figures re-captured from emtk (flow, console, kappa2, acquisition live tabs, N&B, MMFDB demo, ALEX Creator, TTTR Tools, burst FCS, anisotropy wizard, posterior structure/what-if, region MLE, Burst MLE, trace cancel, CLSM draw/MLE). Code fixed along the way: BasicAV.dRDA returned R_mp instead of <R_DA> (guard test_av_distance_metrics), Trace Browser CSV header time_ms -> time_s, chisurf.core.fitting.sample standalone import, acquisition live-decay plot hid the burst line, bibliography leading-zero pages read as YAML octal (guard in test_docs_links). Known-issues: Objects-overlay and flow-demo entries resolved; two bulk screenshot recipes that overwrite retaken figures recorded.
+
 - Three open items from the slice-00 docs review closed: Burst Selection opens on a fresh profile with a legacy detector_setups.json (end-to-end subprocess test; load_setups now deletes the imported JSON like load_detector_setups), fida_pch passes profile and oversample to tttrlib (tests: mean follows N q int x w dx, oversample removes tail aliasing; guide 04 defect removed), and make_screenshots._grab_console / guides_15_25._grab_24_clsm_draw delegate to the recipes the current figures were taken with. Known-issues entries resolved.
+
 - Docs review slice 01 (PRD-154 Part D gate 1): 83 pages under docs/guides (70-99, h2mm, irf_estimation, fret_calibration), docs/concepts, docs/fundamentals and docs/reference (incl. file_formats) read against the code and signed off ai-reviewed; ~17 figures re-captured from emtk (new scripts in docs/guides/screenshots/), Qt-era figures removed. Code defects found by the review fixed at the root with tests: make_registers image regex (re.M) and code-index Section column; stale SdtFile copy re-exports the maintained reader; TTTR TCSPC reader now applies pol./g/VH shift via a new VH chs field; Energy Calc scores all 8 potentials on a trajectory via CentroidFrameMap (AV-Potential stub removed); csc mfd-prepare fit runs and streams= matches detectors by name; LLTF gains noise_model (poisson resolves 3.0+4.5 ns), one packaged default set, CLI options override only when given; unused becker_hickl_set.py duplicate deleted; QuEst residue_types one per residue.
+
 - Final shell parity pass (Qt vs emtk, owner request before S6): 95 screenshot pairs in okf/plugins/emtk-ports/final-parity/shell (index.html, report.json); all four fits bit-identical. Fixed: Escape on shell modals (emtk 0.1.13, escape_pressed), global fit Data table, What-if table columns, Lo/Hi/Bounds at default width (left column a third, Prior drops first), system info in Start, server fit.create metadata/calibration/links, PDA weighted residuals/Durbin-Watson, PDA editor labels. Open: wide tools in narrow docks (known issues).
+
 - LLTF fits VV/VH pairs (owner request): lltf/core/polarized.py jointly fits both channels with ChiSurf's Schaffer forward model (calculcate_spectrum, made Schaffer for l1/l2 the same day, RF-954), shared lifetimes + rotations + r0 (+ r_inf), one scale, per-channel IRF/shift/background, Poisson deviance, F-test lifetime count; G/l1/l2 from override > data > settings. Panel Data switch + Anisotropy (VV/VH) panel + r(t) tab + Load example + 5 tour steps; csc lltf fit-vvvh / demo-vvvh. Demo seeds 1-5 recover 4/1 ns, rho 1.5, r0 0.35 (0.352-0.354); Wizard cross-check 3.999/1.997/0.380 vs ChiSurf 3.997/2.007/0.381. Also: IRF shift vectorised (26 s -> 9 s per fit). Resume point: okf/plugins/fluorescence-decay.md item 3.
+
 - Button roles. emtk 0.1.16 (7742d40, danger red deepened in fd8246c) adds im.button(role=...) and a button_row entry's "role": primary / success / danger, one variant per theme, WCAG AA, a disabled primary drawn mostly neutral. chisurf's vocabulary decides the role: PRIMARY_VERBS / DANGER_VERBS / verb_role, ACTIONS['run'] is primary, button_row's row_roles. 104 declared entries in 59 view specs, including the shell's Fit (primary) and Remove fit (danger). The per-app ACCENT_GREEN pushes in 9 files and 28 hand-drawn sites now use a role. EMTK_MIN_VERSION is 0.1.16. Guard: test/test_ui_vocabulary.py. Record: [UI vocabulary](subsystems/ui-vocabulary.md).
+
 - Shell parity follow-ups (owner, 2026-10-14): wide never-placed tools open floating at their declared size (emtk 0.1.14 keeps a removed dock window's place); the system-info watermark is the workspace background (emtk 0.1.15 DockManager.workspace_background); new fits open as cascaded windows inside the workspace by every path (test_emtk_shell_fit_windows.py). Report re-captured: 97 pairs, 1 cosmetic gap left (global parameter table columns).
+
 - Light theme. emtk 0.1.18 (4775223) adds emtk.theme: a light and the shipped dark value for every palette name, plus the border and ImPlot reset. 13 widget modules stopped binding colours at import; plot, markdown, scrollbar, chat and tour literals became palette names. emtk 0.1.19 (59aac99) clears host surfaces in HOST_BG. ChiSurf: Settings > Dark/Light theme (gui.theme, chisurf/core/settings/theme.py, applied at startup). chiplot backgrounds and axis text follow the theme, the console palette too. ~45 literal plugin colours became theme names; hand-painted buttons became roles. self.button wrappers and the kappa2 dialog got roles (ed5b171). EMTK_MIN_VERSION 0.1.19. Guard: test/test_theme_tokens.py. Record: [Light and dark theme](subsystems/theme.md).
+
 - Light theme, second pass. The guard (test/test_theme_tokens.py) now also catches literal colours in painter and draw-list calls and drawn surface constants; it reports zero. Fixed in light mode: the state-scheme canvas, the ProteinMC network, ebFRET, the node editor (emtk 0.1.20: nodes follow the theme; light mini map) and smaller sites in seven tools. The code editor's colour scheme defaults to Theme. LLTF radio tooltips added. emtk test_tk_host fixed at the root: tk_wheel_unit by platform and Tk version. EMTK_MIN_VERSION 0.1.20. Qt-host-only WINDOW_BG exports listed for S6. Record: [Light and dark theme](subsystems/theme.md).
+
 - Workspace as special dock window: per user request, workspace is a dock window docked in center of ShellDockManager (closable=False, core=True) containing self.workspace_docks where fit windows live; tools open in docks (center by default) taking full dock width without auto-floating; tests pass in test_emtk_shell_workspace.py, test_emtk_shell_fit_windows.py, and test_emtk_shell_final_parity.py; headless screenshots inspected.
+
 - emtk: density optimizations for tables (1.25 row scale, 4px cell padding, 50px flex min), buttons (16px min width floor), numeric steppers (0.6 frame height), comboboxes (3px pad, compact arrow); bumped to 0.1.21
+
 - shell density: MENU_BAR 30 -> 20 px, status strip HEIGHT 26 -> 18 px, tools tree indent 10 px; emtk docking MIN_TAB_W 32 px, DataTable CELL_PAD_X 3 px
+
 - docs: fix docs-release gate by adding local module resolution and tttrlib mock to docs/conf.py, fix list-of-dicts frontmatter in okf.py, and update prd-154
+
 - okf: update prd-154 status: W14 done on docs-release gate, Part D gate 3 verified passed
 
 ## 2026-10-13
 
 - FRET line generator: the κ² regime is back in its editor. The Qt-retirement record had listed the Qt editor's `static κ²` / `dynamic κ²` as "no effect on a FRET line"; measured, static isotropic κ² moves the standard Gaussian line (R0 52 Å, σ 6 Å, τ_D0 4 ns) by up to ΔE = 0.17 (τ_F 1.23 vs 0.12 ns at 20 Å). The emtk editor draws the fit editor's `kappa2_controls` drawer on its own components (`fret_line/gui/sections.py` over the new `model_sections.call_model_section`), with a guide step; `qt_reference.json` gains `kappa2_static`, tests `test_kappa2_regime.py` + a parity test; [FRET-line guide](../docs/guides/82_fret_lines.md), [κ² concept](../docs/concepts/kappa2_orientation.md), [qt-retirement](subsystems/qt-retirement.md), [fret_line port report](plugins/emtk-ports/fret_line/REPORT.md) updated. Found on the way: a computed κ² distribution never reaches the static average (native kernel is isotropic-only; [known issues](references/known-issues.md)); the fit mixer listed member-fit uids instead of the session's (`test_a_mixture_lists_the_fits_of_its_own_session`, fixed).
+
 - Qt out of chiplot, and its widgets out of ChiSurf (W9 S6 blockers; chisurf 6300bcb8f, baf8e7f75, 23004c834, 94c945927 + this commit): the core `chisurf/chiplot` names no Qt (source-grep guard `test/test_chiplot_core_qt_free.py`) -- hosts attach through a duck-typed hook, `PanelGrid` and the image viewer `ImagePanel` (picture, ramp, emtk-drawn frame slider, playback, brush, picking) are emtk controls, `export_image` draws on emtk's CPU rasteriser. The Qt widgets `Plot`/`PanelPlot`/`Grid`/`ImageView`/`VolumeView` are deleted; every Qt form draws a core panel and only hosts it (`chisurf.gui.chiplot.host`: `PanelHost` with the right-click menu, `ImagePanelHost` with the playback timer). Before/after from the HEAD snapshot: Qt-hosted exports byte-identical (9/9), 14 of 17 widgets pixel-equal, the 3 image viewers at control parity; a core panel's export is not pixel-equal (another rasteriser, 1 px curves). Fixed on the way: a core `Panel.export_image` segfaulted without a QApplication, and the fit window's right-click exports raised AttributeError (now emtk's save dialog). FRET line generator's Qt tool retired (`qt_reference.json`); `plugin_qt_allowlist.txt` 211 → 210. No emtk change (dev tree 238a467). Resume: `okf/subsystems/qt-retirement.md` items 1 and 9, `okf/subsystems/chiplot.md` item 0.
+
 - emtk shell startup deadlock fixed (about one launch in four: `_DeadlockError: deadlock detected by _ModuleLock('chisurf.server')`). The session worker first-imported `chisurf.server` while the main thread, still building the shell, imported `chisurf.server.dispatcher` for the Log dock, whose `protocol` re-imported the half-initialised package through `resources.files`. Now `chisurf.emtk.session` imports the server at module level (the `emtk_imports` splash stage is gone), the session worker starts last in `EmtkShellApp.__init__` (`DataDocks.start`), `protocol` reads its table beside its file, and the `emtk_warmup_imports` post-show stage is removed (it imported nothing by then and was a second importing thread). Guard `test/startup/test_startup_import_race.py` (fails at the previous HEAD). `test/startup/test_services.py` was red since the post-show commit (missing `emtk_check_updates`); fixed. mypy: `emtk/main_app.py`, `model_editor.py`, `fit_docks.py` clean (11 errors; `functools.partial` for default-argument lambdas, one `_Rows` instead of two). emtk: an API fingerprint (`tests/test_api_fingerprint.py`, snapshot `tests/api_fingerprint.json`) fails when the public API changes and `__version__` does not; pyproject's version caught up to 0.1.9. Record: [Qt retirement (shell)](subsystems/qt-retirement.md) item 5.
+
 - PRD-154 W12 done: imp.bff public headers split into `include/<theme>/` like `src/` (imp.bff bba9facbb, 131245b5b), every include site rewritten, no shim headers; in-tree IMP.bff build, targeted imp.bff tests, chisurf `build-extensions` and `test-smoke` green. Three chisurf docstrings now name the themed header paths. Not pushed, no pin bump (the wheel build is the next step, see imp.bff `okf/themes/index.md`).
+
 - Photon Table lists every record, not only photons: a Kind column (photon, pixel, line start, line stop, frame, other marker; marker kinds coloured from the shell's colour vocabulary), a Kind filter beside Channel and a per-kind count line. The kinds are tttrlib's (`CLSMImage.get_record_kinds` / `classify_records(_events)`, tttrlib `54422de06`, resolved from the header and reading routine); names, codes and colours are declared once in `photon_table/core/record_kinds.yaml`. Parity test keeps BH_SPC132 word-for-word except the deliberate renames (Record, First record, records 0–200); new de/fr entries; guide 108 + figure (BH scan at a frame boundary). Record: [TTTR tools](/plugins/tttr.md) "Photon Table lists every record".
+
 - Qt retirement ledger item 6 done: opening a fit window imports no Qt (`test/native_emtk/test_fit_window_is_qt_free.py`, strict xfail removed; all 24 `PLOT_CLASSES` keys resolve with `qtpy` unloaded). chiplot's core moved to `chisurf/chiplot/` (panel API, handles, styles, emtk backend; no Qt at import, guard `test/test_chiplot_core_qt_free.py`); `chisurf.gui.chiplot` is the Qt host layer (`Plot`/`Grid`/`ImageView`/`VolumeView` + core re-export). `style` parses colours without `QColor` (emtk's CSS table; `int_color` reproduces `QColor.fromHsvF` byte for byte). Fit pages moved `chisurf/gui/plots/` → `chisurf/emtk/fit_pages/pages/` (`StateSchemePlot` out of the autoform section), the Qt settings dock host to `chisurf/gui/widgets/fitting/plot_settings_host.py`, `glyphs` → `chisurf/core/glyphs.py`, `fitting_client` → `chisurf/core/api/fitting_client.py`; every importer rewritten, no shims. The 18 pages of two real fitted IBH fits render byte-identical before and after. Concepts: [Qt retirement](/subsystems/qt-retirement.md) item 6, [chiplot](/subsystems/chiplot.md).
+
 - Data-table page model-parameter editor (`gui/plots/table_plot_emtk.py`): columns sized to header and contents (`auto_fit`, as the model editor's `fit_columns`), human headers with the model editor's tooltips ("Link target", not `link_target`; new de/fr entries); emtk 7719ee2 re-measures a fitted table when the language changes, so translated headers are not elided.
+
 - Parameter tables collapse by width in emtk as in Qt (emtk 9bdd67a, generic `collapse_order` column key): short of room a table drops the bounds (and prior) first, then the error or link columns, then Fixed; name and value never. Declared on `PARAMETER_COLUMNS`/`_SLOT_COLLAPSE` (`chisurf/emtk/model_editor.py`), `GLOBAL_COLUMNS` (`model_sections.py`) and the Data-table page's model-parameter editor (`gui/plots/table_plot_emtk.py`); a dropped cell is in the row tooltip; no flicker (8 px slack, 16 px restore margin). Guard `test/gui/test_parameter_table_collapse_parity.py` sweeps one lifetime fit (one linked parameter) through the Qt and emtk tables, narrow and back. Concept: [GUI & AutoForm](/subsystems/gui-autoform.md).
+
 - W14 plugin reference links: the 45 hidden-plugin pages that linked no theory or no workflow now link both (0 of 126 lack either). Existing concepts and guides name the plugin directories they already covered (games, trajectory tools, Settings hub, detector setup, burst, imaging, FCS, MMFDB); new pages: concept `protein_monte_carlo` (+ `metropolis1953`, `ramachandran1963`, `miyazawa1996` in the bibliography), guides 106 Protein Monte Carlo, 107 FRET calculator, 108 Photon Table, each with a real figure and its script in `docs/guides/screenshots/`.
+
 - Qt retirement, plugin half: allow-list 221 → 211. The TCSPC device wrappers use a Qt-free `Signal` (`acq/tcspc_devices/abc.py`); `fret_line/__main__.py` opens the emtk `FRETLineApp`; the five "Qt host delivers a drop" parity tests and their helper left the microscopy plugins (the Qt host is emtk's own `tests/test_qt_host.py`); the Spectra tool's four legacy Qt widgets (`browser.py`, `download_manager.py`, `gui/overview_panel.py`, `gui/add_to_mmfdb_panel.py`) are deleted, their facts frozen in `spectra_downloader/tests/qt_reference.json` and their behaviour tests ported to the native model (`tests/test_native.py`); `docs/guides/screenshots/spectra_mfd.py` renders the emtk app.
+
 - Shared-file edits go through `build_tools/dev_utils/safe_edit.py` (`edit_file` atomic with empty/shrink/race refusal, `append_log_bullet` one heading per date, `add_ts_entries` byte-preserving); two agents had truncated `okf/log.md` and emptied `chisurf_de.ts`. Duplicate `## 2026-10-13` heading merged with the helper. Rule: [change-tracking](workflows/change-tracking.md) "Editing the shared files"; guard `test/dev_utils/test_safe_edit.py`.
+
 - Import gate: one thread at a time imports a module for the first time (`chisurf/_import_gate.py`, installed first in `chisurf/__init__.py`, wraps `importlib._bootstrap._find_and_load`; loaded modules skip it). This closes the worker-vs-frame-loop import deadlock for the whole class: session, hosted-plugin builds, post-show update check, hubs, jobs and about 90 plugin worker sites. Frames no longer wait on worker imports: `chisurf/emtk/frame_modules.py` imports what frames import lazily, measured over 120 plugins, before any worker starts; the shell constructor primes its own lazy imports; `fcs_saturation` imports `native_form` at module level. `plugin_frame_times` gains a *gate wait* column, 0 for all 119 plugins measured. Guards: `test/startup/test_startup_import_race.py` (sweep parks the session, plugin and update-check workers inside a package init; without the gate they fail with `_DeadlockError`) and `test/startup/test_import_gate.py`. Ledger: `okf/subsystems/qt-retirement.md` item 5; numbers in `docs/development/benchmarks.md` *Import gate*.
+
 - **Static κ² averages the computed κ² distribution** ([calculator](plugins/calculator.md), [known issues](references/known-issues.md)). imp.bff 127e1b104: the FRET families' static orientation reads a declared `kappa2_distribution` port (interleaved `(w, κ²)`, empty = isotropic) and few-pair distributions are not binned. `OrientationParameter.orientation_spectrum` writes that port (saved with the model's value ports); `kappa2_controls.used_kappa2_pairs` is the one rule *show κ²* draws (dynamic: the scalar; static: the computed distribution, else isotropic) and the legacy Qt dialog shares it. Measured: isotropic static FRET line bit-for-bit unchanged; static delta at 2/3 = dynamic at 2/3 (ΔE = Δτ_F = 0); narrow `[0.09,0.1,0.11]` vs isotropic max |ΔE| = 0.24 (was 0.0); uniform κ² on [0,1.5] matches the closed-form decay to 5.3e-7. Docs: concepts/kappa2_orientation (any-distribution static average), guide 82 defect note removed. No pixi.lock bump: the pixi `test` env needs the imp.bff pin moved.
+
 - Import cycles and import side effects banned outright: `test/test_import_cycles.py` builds chisurf's module-level import graph with ast and fails on any cycle, and on module-level calls that import by name or block. 17 cyclic components (56 cycle edges) and 11 side effects at HEAD, both 0 now, with no allow-list. A runtime probe of all 2381 modules agrees. Cycles were broken with `from pkg.sub import name`, the only spelling that does not wait on an initialising package's lock (`import pkg.sub as s` does on 3.12; a test pins the model to CPython). The gate's exit criterion and the derivation of `frame_modules.py` are in [qt-retirement](subsystems/qt-retirement.md) item 5.
+
 - **Qt allow-list leftovers, 210 → 186** (PRD-154 W9; [Qt retirement](subsystems/qt-retirement.md) item 1). "Cannot be frozen" did not hold: the switch_user, help and project_browser parity tests read recorded `qt_reference.json` files (LoginDialog per case; help's start page and breadcrumb frozen as a rule over the docs tree; project rows with ids normalised). Retired with before/after inventories (`okf/plugins/emtk-ports/<id>/retire_*.json`): the games' Qt hub, four Qt game containers and capture scripts, F-test `FTestTool`, Global View `GraphWizard`, Project Browser `ProjectBrowserTool` (its two Qt-window dialogs moved to `chisurf/gui/widgets/project_dialogs.py`); their widget tests ported to the emtk apps. Found: in the emtk shell the Trace Browser's HMM/TW/NDX hand-offs are greyed (only the Qt host fulfils them).
+
 - Plugin hand-off: `chisurf.core.plugin.handoff` + manifest `accepts` (HandoffSpec: name, receive hook, required keys); the emtk shell is the host (`EmtkShellApp.hand_off` opens the target as a dock, delivers once built). Intensity Trace / TTTR Time Window / ndX declare receivers; Trace Browser HMM/TW/NDX, H2MM dwells, Burst Selection and sampling diagnostics route through it. Trace Browser Qt host (`gui/host.py`, `host_lookup.py`) retired, T5 ported to the shell + emtk Driver with real BH_SPC132 data; allow-list 186 -> 184. Resume: [qt-retirement](subsystems/qt-retirement.md) item 1.
+
 - Qt allow-list: HydroPro, Help and Code Editor retired (W9; chisurf ea450ba78, 957164b77, 2d3c92abc, 53ad827ba, 94cb6cafe, 4d784af3c; emtk 38d6f8a, version 0.1.10, regex find; 25 lines struck, 186 -> 159 at HEAD with the Trace Browser's 2). HydroPro's 12 parity cases frozen as `qt_reference.json`; help's Qt browser, Ask panel and figure dialog deleted after their tests moved to the emtk app (ranked search with excerpts, bounded reading column, figure viewer, Shift+wheel zoom, Ask empty state and answer composition), `help/api/theme.py` Qt-free (`from_tokens`); the Code Editor reached control parity with the Qt `CodeEditorWindow` (lost [] against a baseline captured first), left `emtk_preview.json`, and its six Qt modules went once their 91 tests ran on the emtk app. Hand-offs `open_page` / `open_file` route `doc_links` / `code_links`. Guides 40, 64 and 70 re-rendered and read. Record: [Qt retirement](subsystems/qt-retirement.md) item 1, [known issues](references/known-issues.md).
+
 - chimol off Qt (W9 S7, ChiSurf side): the 110 chimol test files drive the toolkit-free ChimolApp (`chisurf/plugins/chimol/test/native_window.py`), the manifest has no `gui` entry (both shells open `app:make_app`), `__init__.py` imports no Qt; allow-list 171 → 64 (chimol 111 → 4). Six native-host gaps fixed in chimol be7d7e6 (structure reader, labels/box, sequence chain markers, degraded-load report, resize, backdrop); before/after 148L + 1RTD in `okf/plugins/emtk-ports/chimol/retire_*`. Resume: [qt-retirement](subsystems/qt-retirement.md) items 1 and 9.
+
 - Help docs: protein_monte_carlo.md's asymmetric-error `cases` block rewritten as two conditions on one line (mathtext has no cases); test_render passes; known-issue resolved. PRD-154 W1: arm64 sitecustomize re-verified fixed (imp-tricks eb198e2).
+
 - PRD-154 W4 remainder closed: burst rows read from a `.pto` carry
+
 - mypy ratchet 3900 -> 3068 ([PRD-154](prds/prd-154.md) pickup 4). `np.array` used as an annotation (a function, not a type) made mypy treat 107 values as unknown; they are `np.ndarray` now, and implicit-Optional defaults (RUF013) are explicit tree-wide. Real defects fixed on the way: `MMFDBClient.delete_probe` did not exist, `AV.save(mode='xyz')` called a removed `write_points`, `open_maybe_zipped` could neither read nor write `.zip`, `FitGroup` iterated through the legacy `__getitem__` protocol, `SessionState` lacked the attributes the API attaches. Left raised on purpose (other lanes' files): emtk `main_app`, `model_editor`, burst `transformer`, `fcs_channel_preset` view model.
+
 - emtk shell (PRD-154 W9 phase 2). The Workspace is where the fits live and every tool is a dock (owner's correction): fit windows and Start are its only documents; tools, help and the code editor open as docks right of it and are never Workspace windows (emtk `410f791`, `DockWindow.workspace`). S5 finished: the Qt post-show `check_updates` / `warmup_imports` run in the shell (`services.d/35_emtk_post_show.json`). A headless `python -m chisurf --screenshot` rewrote the user's shell layout; it now persists nothing. Record: [Qt retirement (shell)](subsystems/qt-retirement.md) items 5, 9, 10.
+
 - mypy ratchet 3068 -> 2827 ([PRD-154](prds/prd-154.md) pickup 4, round 2). Mixins now declare what their host owns (`ExtrasMixin(Panel)`, `ScientificOperations` state/hooks, `PlotAPI` canvas attributes and a self-bound return type) instead of leaning on untyped `self`; `fit.py`/`sample.py` explicit Optionals; two `int(None)` hazards in the burst transformer and channel-preset view model fixed. `emtk/main_app.py` and `model_editor.py` stay at their old counts (shell lane).
+
 - **W9 Qt retirement: ndX and the chimol leftovers off the plugin allow-list (8 lines → 0).** ChiSurf's Qt `NdxWindow` is deleted; the ndX manifest names only `entrypoints.emtk` (+ window statefulness), so the `--qt` shell hosts the app generically in a `ControlHost`; `open_in_ndx` / `show_table_in_ndx` / `record_burst_ids_against_product` replace its methods for the tools; `find_ndx_windows` (Accurate FRET *Load from / Push to ndX*) had never found the Qt window and now returns the ndx session sources. chimol's display-defaults prompt is an in-viewport choice window (chimol 19444d1, 087d4fb); the chimol screenshot/baseline helpers and both chimol benchmarks run on the offscreen canvas; project restore (`core_fit`) opens the emtk ChiMOL. Before/after: `okf/plugins/emtk-ports/{ndxplorer,chimol}/retire_*`. chisurf e84199fe5, 9a3b2b3f4, a68f2a244, 96d3b6f1d. What still blocks deleting chimol `hosts/qt`: [qt-retirement](subsystems/qt-retirement.md) item 9; leftovers in [known issues](references/known-issues.md).
+
 - W9 Qt allow-list, acq/lightpath/batch/number_quest/plugins-root slice (64 → 30 with the parallel lanes; −14 here): acq Qt device dialogs retired (fa6f18819, test_setup_widgets on the emtk dialog); Light Path Simulator Qt host + Qt Easy Mode retired (7e0514d95; _graph_to_config read pre-schema ports, so Easy Mode had shown no dichroic, splitter spectrum or bandpass); Batch Analysis Qt run retired, its per-run fit picture in the DOCX restored on the emtk FitWindow (3b978b173); Number Quest Qt container retired (5d6b6bf8b); icon_utils → chisurf/gui/plugin_icons.py, QtSvg rasteriser and plugins qapp fixture gone, cookiecutter template generates an emtk + AutoForm plugin (89a74df47). Leftovers in known issues; resume qt-retirement item 1.
+
 - mmfdb_admin Qt retired (W9 Qt allow-list 30 → 0, PRD-154): the Qt MMFDBWidget and every Qt-only module deleted, the 12 Qt widget test files ported to the emtk app/Driver, nine missing interactions added (Enter-to-login, eLabFTW Enter, Spectra live search + Auto, Spectra row menu, Find Duplicates progress/Cancel, provenance edge pick, UUID hover, rail pictograms) plus Open in ndX and Demo data; parity 459 → 1030 controls, lost []. Root fixes: emtk 0.1.11 (enter_call, live), emtk 0.1.12 (form-scoped widget ids), mmfdb 2180b1a (spectra bytes in sample description). Record: okf/subsystems/qt-retirement.md item 1, okf/plugins/emtk-ports/mmfdb_admin/REPORT.md, known issues 'MMFDB Admin after the Qt retirement'.
+
 - W9 chimol hosts/qt deleted (chimol a53e512): Viewer is never a widget (toolkit stand-ins only, no qtpy in chimol), Viewer() defaults to SceneSink, --qt and the lazy MolViewPluginWindow export gone; ChiSurf's unused Qt AutoForm chimol section retired; chimol plugin tests ported off the Qt host (Qt-only tests retired, listed in [qt-retirement](subsystems/qt-retirement.md) item 9), test_command_dispatch_rule on chimol.repl + ChimolDispatcher; emtk ChiMOL app pixel-identical before/after (okf/plugins/emtk-ports/chimol/retire_hostqt_*).
+
 - W9 acq/lightpath leftovers closed: acq BH/PicoQuant/BrickMic Device Setup cards are view.json specs over setup_forms.py (655a57efd, hand-drawn → spec lost []); lightpath window announced a finished backend call only if a frame saw it running — the race behind three click-test failures, now a finished-call count (26367e91e); Easy Mode names the default detectors Green/Red Channel again; the Detector Wizard's light-path simulation writes lightpath_easy_last.json again; plugin inventory regenerated (79280a157).
+
 - **PRD-154 cleanup: fit-page i18n/tooltip guards green, hand-off reaches the opened app, spectrum_view deleted.** (1) `chisurf/emtk/fit_pages/pages/*` sink literals go through `tr()`; the line plot's reference-parameter controls get a tooltip from the new `PlotReferenceParameter.description` (every shipped mode fills it; guard `test_every_reference_parameter_explains_itself`); the translation audit reads only the label before an `##` id (`"¶##toolbar_whitespace"` is not prose). No allow-list or catalogue entries. (2) `handoff.hand_off(..., on_delivered=)` / `EmtkShellApp.hand_off` call `on_delivered(app)` with the target's built app after its receive hook; ndX `open_in_ndx(path, on_opened=)` passes it through, and MMFDB Admin's *Open in ndX* attaches `record_burst_ids_against_product` from it in the shell too. (3) `chisurf/gui/widgets/spectrum_view.py` and its chiplot test deleted (no importer). Record: [known issues](references/known-issues.md) "MMFDB Admin after the Qt retirement" items 1 and 3 resolved.
+
 - W9 chimol Qt-retirement leftovers closed: toolkit stand-ins moved to chimol core/toolkit.py (core imports nothing from hosts; guard tests/test_core_layering.py), dead CHIMOL_TOOLKIT=none settings removed in chimol and the ChiSurf chimol tests, desktop and browser hosts both declare labels/ray_image (both draw them via CanvasRenderer.frame_arguments; tests/test_host_features.py); [qt-retirement](subsystems/qt-retirement.md) item 9, known-issues resolved.
 
 ## 2026-10-12
 
 - emtk pin 114a011: the image atlas places into the free tail of a closed shelf (253760c; the doc-render sweep refused a 1×1 glyph at 66 % fill) and a spin field steps once per wheel notch (114a011).
+
 - Gate lane C: ProteinMC samples without RMF (the trajectory is the model's and saved in the project; the IMP-free wheel skips the export file with a warning); `covariance_matrix` memoised per (free parameters, values, residuals), so a restored MFD 2D fit no longer differentiates 12× at 2.5 s (persistence test 133 s → 76 s); `PERTURBATION_LOCK` (`core/models/model.py`) serialises finite differences and χ² scans with `capture_session`, resolving the shell undo/autosave "prediction changed after reconstruction" on MFD 2D, global and scan fits (a GUI-thread vs server-thread race, A/B confirmed); `ASYMMETRY_NOISE` 2.4 → 6.5 (the old value flagged about a third of honest Gaussians at 200–500 draws) and thinned-draw ESS measured at the thinning stride; tests follow the Workspace menu rename, the dissolved File tools hub and `dataset.load` reading a real file.
+
 - Gate lane A, ten failures at their cause: chimol b2a3f2b (loading a labelling plan keeps the AV clouds it defines the same way; the T4L network demo kept 1 of 35 objects); emtk 114a011 (a spin field steps once per wheel notch, rides the next pin); imaging `ImagePanel.hold` compares pixels, not `id()`, so a recomputed source no longer resets zoom and pan every frame (and re-uploads its texture); `PlanePanel.to_pixels` maps through the drawn axis limits; ebFRET's Newton solvers leave non-finite states out of the convergence test (a state without traces ran 1000 iterations, 91 s → 1.4 s); ALEX Creator and TTTR toolbox translation rows agree with the catalogue they overrode process-wide (guard `test/test_i18n_domain_overlays.py`); IRF/background dock 0.42; five tests follow deliberate UI changes. Open: chimol's in-browser labelling circle (known issues).
+
 - Release-gate drift from 2026-10-12/13 fixed at its causes: doc registers and the plugin inventory regenerated; the FPS JSON Editor help cites `kalinin2012`; the 16 rewritten manual pages re-recorded as AI-reviewed (human review still owed); the two status-strip strings get de/fr entries (a re-extraction would have marked 114 live strings obsolete, so it was not used); the help/guide guard falls back to a plugin's `gui` entry when its emtk module is not on disk; the orphan-plot guard counts declared `"module:Class"` strings. The doc-render sweep's "glyph does not fit the host image atlas" was emtk's shelf packer losing the tails of closed shelves (emtk 253760c, rides the next pin).
+
 - QuEst reads structures without an IMP kernel: its only `IMP.atom`/`IMP.core`/`IMP.Model` use (`core/structure/reader.py`) now calls `IMP.bff.parse_structure_table` (imp.bff 5597964d8, b24c27554: IMP's PDB/mmCIF reading rules in the IMP-free core, plus `insertion_code`), matching the old IMP read on every field of 17 structures. On the way IMP.bff's radius table stopped keying hetero atoms as `HET: …` (file-read cofactor atoms had taken 1.7 Å) and gained every CHARMM topology residue. QuEst in the pixi env 486 passed / 119 failing → 605 passed. imp-bff pin b24c27554; arm64's IMP.bff rebuilt.
+
 - The emtk shell's centre is the Workspace (emtk bf74a55, `Region(workspace=True)`): every unbound window (floated docks, tools, fit windows) is kept inside it, and it cannot be closed. Tile (`tile_grid`/`MIN_TILE` moved to emtk; overflow minimized), Cascade, Tabbed, the Windows list and Ctrl+Tab are on its toolbar, its right-click menu and View ▸ Workspace; the arrangement and minimized windows persist with the layout. With a shell open, the help browser and code editor open as Workspace windows (`host_in_shell`) instead of separate processes whose OS window fell behind. S5 status strip (`chisurf/emtk/status_strip.py`) at control parity with the Qt status bar in five states (log message, shell status lines, data worker, sampling with ✕, startup stage; emtk dc763f5 for the sliding bar). The fit window's surface, page registry and Code face moved to the Qt-free `chisurf/emtk/fit_pages/`; chiplot importing Qt is what still loads it (`test_fit_window_is_qt_free.py`, full guard a strict xfail). emtk pin a9a2241.
+
 - Gate test-failure lane: the root `conftest.py` restores the `QApplication` palette and font after every test (the main window's ribbon left a white-text palette that made later delegates paint invisibly); `_maxent_simplex` finds its normalisation by a safeguarded secant (DEER L-curve sweep 167 s → 16 s, same result); the PSF, histogram and shifter control docks widened so 800x600 needs no truncation or wrapping; `LabelColumn.x` uses emtk's item spacing; `surrogate_available()` also requires `IMP.bff.HmmSurrogate`; the retired-dependency guard catches `importorskip`/`__import__` (tifffile tests read through `chisurf.core.fio.image`); the lut_tools de/fr table matches the catalogue; help, pto_inspector, intensity_trace, maxent, games, vv/vh, navigation and fcs_saturation tests follow the current UI and data. emtk a9a2241 (translucent fill by lookup table, model-editor inventory 564 s → 119 s) rides the next pin. Open: burst_irf_bg at 800x600; the test env's IMP.bff lacks HmmSurrogate (known issues).
+
 - chimol 36d8739: toolkit-free hosts (native/offscreen `ChimolApp`, the web page) build `HeadlessViewer`, never a QWidget, whatever bound `chimol.core.viewer` first. A test collected earlier imported the viewer with Qt bound, so `chimol_view` built a QWidget on a worker thread without a QApplication and aborted the whole shard (SIGABRT at `test_emtk_psf_rotate_fps.py`). chisurf stops setting `CHIMOL_TOOLKIT` (it also broke later Qt chimol tests). Regression: chimol `tests/test_headless_viewer_after_qt.py`.
+
 - PRD-154 status brought to 2026-10-13: gate 2 lists PRD mentions and help/guide empty, Qt allow-list 221, `gui.ui` waits on the Qt shell; gate 4 root clean, board pending its owners; mypy ratchet 3900; i18n complete; environment-only failures fixed; W6 left with the owner-only hardware and listening checks.
+
 - Fitting: `minimizer.minimize` resumes a run MINPACK ended on `xtol` while the resume still lowers χ² (at most 4; the VV/VH global fit stopped at χ²ᵣ 21.7 where a second Fit reached 1.4, `test/fitting/test_xtol_restart.py`); the Info report lists only the parameters the active equation reads, with `i:name` per local fit of a global fit (it listed ~130 fixed catalogue parameters and collapsed the curves' `N`); a global run refreshes its local fits' χ² (`test/fitting/test_fit_report_parameters.py`). Manual and guide figures re-shot through the emtk shell with the real plugin catalogue: FCS walkthrough refits the children after linking and runs the global fit (`fcs_global_fit.png`, new), the fit controller is cropped at its drawn rectangles, the main-window FRET decay uses two lifetimes. Open: shell undo/autosave capture fails on MFD 2D, global and parameter-scan fits (known issues).
+
 - Plugin Qt allow-list 244 → 221: 23 tests drive the native emtk host instead of the Qt host (S2 microscopy, tttr and ndX tests, calculators, vv/vh, updater, channel definition, F-test, Global View, project browser services, games, HydroPro). Drops go through `ControlSurface.on_files_dropped`, Qt "before" facts are recorded as `qt_reference.json` beside the test; ndX's line push moved to the Qt-free `ndxplorer/overlay_lines.py`. The ndX parity test read the owner's real dock layout (now isolated). Open: two microscopy native tests (known issues).
+
 - ProteinMC in the emtk shell: the server's `dataset.load` with only `reader_name` + `filename` made an empty `DataCurve` (ProteinMC held it as its structure and handed it to chimol); it now reads the file with the named reader (`find_reader` matches display or class name) and rejects an unknown one. ▶ Sample / ■ Stop pressed through the driver (`test_emtk_shell_recorded_models.py`). The W6 note that `test_all_model_document_gui.py` is red for every model was stale (fixed in 2d3493e9f).
+
 - Help/guide allow-list emptied (6 → 0): the guard anchors a plugin on its emtk entry (Qt-only plugins on `gui`), so the legacy chimol Qt host is out of scope and the games' `gui/` help and tours are found; a ChiMOL-hosted tool declaring `GUIDE = "tour <name>"` is checked against chimol's tour file. FPS JSON Editor has its own `?` page (`ChimolHostApp(help_resource=…)`). Root strays removed (`plugins/fcs_saturation_calc/` prototype, empty `ithp`, empty `tools/`); the license report moved from `doc/` to `docs/development/licenses.{md,json}`.
+
 - Machine repair, no source change: arm64 gained `IMP.cgmol` (imp-tricks src on its path), so the ProteinMC tests run there; `~/dev/tttrlib/build` reconfigured against arm64 (stale HDF5/OpenMP cache cleared) and `build/bin/tttr` rebuilt against `libhdf5.310`. Known issue "tttrlib dev build" resolved; how-to in `okf/workflows/build-and-env.md`.
+
 - mypy ratchet repaired: `test/test_mypy_baseline.py` read a missing mypy module (the pixi `test` env has none) as zero errors, so the baseline drifted 3835 → 3904 unseen; it now raises, and the baseline is re-recorded at 3900 (mypy 2.3). Re-derive in the `dev` env (`okf/workflows/testing.md`). Open: the files that gained errors while it was blind (`chisurf/emtk/*`, `core/api/__init__.py` +7, `core/structure/av/__init__.py` +6).
+
 - Every menu-visible plugin reference page links a Theory concept and a Workflow guide (16 gaps closed; the generator takes them from `chisurf/plugins/<dir>` mentions in `docs/concepts` and `docs/guides`). New `concepts/application_shell.md` and `guides/105_application_shell.md`. Open: 53 `menu_hidden` plugin pages still lack one or both.
+
 - PRD mention allow-list emptied: the 82 shipped `chisurf/` files that named a PRD now carry no PRD number (comments, docstrings, `view.json` `_comment`); `test/test_prd_mentions.py` has no exceptions left (PRD-154 Part D gate 2).
+
 - Suites partition by marker (test / test-gui / test-slow / test-e2e); testpaths = test + chisurf; `test/test_suite_partition.py` guards one-suite-per-test. 6235 tests no suite ran (test/gui, every `tests/` dir, flat `test_*.py`) now run. Root `conftest.py` restores process state per test (API proxies, RPC server, UI language, mmfdb login and token caches) and stops leaked servers per module; `ZmqServer.stop()` race fixed with ready/finished events and `wait_ready()`. ProteinMC fits report NaN chi2 instead of logging a failed C++ path; `get_instances()` skips deleted Qt wrappers; `cs.macros` resolves lazily; active-window registries are weak. emtk pin d5a1a05 (texel-bounded texture caches; `import emtk.i18n` no longer pulls the widget set).
+
 - Magenta ChiSurf window traced to an emtk older than chisurf needs (e0f8b67 lacks `DockManager.focused`): every
   frame raised, the canvas swallowed it and presented an unrendered Metal drawable. emtk be2add5 (0.1.8):
   `emtk.frame_errors.draw_control` logs each distinct frame error once, notifies handlers and draws an error panel in
@@ -135,10 +234,12 @@
   `chisurf.emtk.requirement.EMTK_MIN_VERSION` and names both versions; pyproject and the recipe carry the same bound
   (guard test); frame errors also reach `crash_*.log`. Rule: raise emtk `__version__` and `EMTK_MIN_VERSION` together
   when chisurf starts using newer emtk API. emtk pin to be2add5.
+
 - Anisotropy wizard: the repetition rate defaults from the file's footer (`rep_rate` or period keys) and reaches the
   model's period; the IRF-to-decay shift is bounded to the peak offset plus three response widths, so a one-lifetime
   global fit from a far start no longer slides the IRF away (chi2r 12947 → 1.65); the IRF response window excludes
   the gate-edge rise. The bundled 9 ps recording stays near chi2r 5, limited by its noisy IRF.
+
 - emtk shell reaches Qt parity on the fit panels: Datasets multi-select (one fit per selected curve), a context menu
   (Save, Load, Remove, Group, Ungroup, Refresh) and unfolding groups; member windows redraw after a global fit
   (`fit.ran` carries `member_fit_uids`); the Link-to menu lists the equation's parameters only; Tile Windows makes a
@@ -147,15 +248,18 @@
   distinguishable labels (`fit_labels.unique_labels`). Fixed on the way: nested global models were not frozen
   (frozen_structure warning), project capture failed for global fits over unequal curves, Qt dataset Save wrote no
   file (`dataset_pickle`), and `fit_create` resolved a shared model name ("Parse-Model") across experiments.
+
 - Anisotropy wizard fits register through the running shell session, carry the TCSPC experiment, and the model list is
   filtered by dataset. Global fits no longer stall at their start values (leastsq `xtol` 1e-10; the old shipped
   default is read as unset); the default TCSPC range stops before a rising gate edge (`_trim_rising_tail`); the wizard
   starts at 90 % of the peak and its repetition rate reaches the model's period. The bundled 8 ps recording fits to
   chi2r 1.1-1.5 from the defaults; g/l1/l2 are not identifiable from one fast dye.
+
 - Chat transcripts, Ask Docs and the documentation viewer render inline Markdown as rich-text runs: links drawn in
   place and clickable (also across a wrap), real bold and code spans, no duplicate link-chip rows and no literal
   backticks in table cells (emtk `draw_inline`, 8f2053a..20ffaf4). Ask Docs links open the docs browser; the
   assistant routes through `doc_links.open_link`. emtk pin to b16f504.
+
 - PRD-154 gate 1 run (not met; runs killed by exit 137 and a session restart while the tree moved): the run-1
   failures fixed at their cause. emtk 7ea9b2f (opaque fills are row slices), 83c6b01 (a fragmented full atlas repacks
   before it declines), e0f8b67 (a dock unwinds a window that raised); chimol b2152dd (help panel tooltips); macro
@@ -164,22 +268,27 @@
   measures instead of hard-coding pixels; boarding, burst and help strings go through `tr`; the click-all harness reads
   text-editor content as content. emtk pin moved to f893fce (grapheme clusters, plot margins, dock focus, table
   selection, chat markdown).
+
 - German and French catalogues complete again: today's new strings (simulation setup, Photon Table and TTTR toolbox
   help, plot settings, hub dissolution titles) translated, and 381 empty German entries finished (mostly units and
   names; 34 real translations). ndxplorer's one missing string translated (ndxplorer befd644).
+
 - Acquisition simulation: `ch_conversion` is tttrlib's index map (hardware channel per simulated channel), not
   detector/source pairs; the pair layout decoded the second detector as channel 0. The settings model, wrapper, CLI,
   `encode_records` fallback (now raises on a pair-length list) and `acq_sim_defaults.json` are fixed, and a test
   decodes each detector's photons to its declared channel.
+
 - The emtk Acquisition tool has a Simulation setup dialog (`acq/gui/sim_setup.py`, AutoForm specs): species,
   brightness and background as one editable table, the k_rad/k_nrad rate grids, and the per-species decay editor, all
   editing the Qt-free `SimulationSettingsModel` (split out of the Qt dialog, which now subclasses it). OK validates via
   `build_engine`; the emission seed is no longer overwritten by the tool's seed field. Tests check the simulated
   photons follow the edits. `18_sim_setup.png` drawn from emtk.
+
 - MMFDB seed ships measured dye spectra with provenance instead of 3-point placeholders (mmfdb 3846843, 53eed70,
   schema 51 upgrades installed databases); the Förster calculator's Alexa488 → Alexa594 R0 is 57.8 Å from 201/426-point
   curves (handbook 60 Å; excitation stands in for absorption). Guide 83 and its figure updated; the figure generator
   uses the app's own data path.
+
 - File tools and Decay Analysis hubs dissolved (owner): Split/Convert, ⇄ .pto, PTO Inspector, TTTR Header editor,
   TTTR→Time-Window BIDs, BID→Analysis and MFD Prepare are ordinary File › Data tools; IRF Estimation, MaxEnt MEM, Lazy
   Lifetime Analysis (experimental), Histogram-Microtime, VV/VH G-Factor, VV/VH Anisotropy Decay (deprecated) and
@@ -187,11 +296,13 @@
   drop handling; icons made distinct (MFD Prepare 📋, microtime histogram ⏲️). Hub plugins, tests and Qt-inventory rows
   removed; `test/plugins/test_decay_tools.py` and per-tool settings round-trips added. Remaining hubs listed in
   [ribbon](subsystems/ribbon.md).
+
 - Guide screenshots redrawn from the emtk UI: model editors, MFD and acquisition fit windows, sampling settings,
   F-test, HydroPro, Ask Docs, AI assistant, burst export, ChiMOL Objects/Groups/Map panels, console, H2MM per-state
   decays, ribbon. New generators `docs/guides/screenshots/{shell_emtk,guides_shell_models,guides_shell_tools,
   guides_plugins_emtk,handmade_replacements}.py`; the dead Qt grab functions are gone and `figures.yaml` records the
   new origins.
+
 - One atom-radius set for accessible volumes everywhere (owner): IMP's radius by residue and atom name times
   `IMP.bff.AV_DEFAULT_RADIUS_SCALE` (0.84). IMP.bff 113a0b1d6 adds `imp_atom_radius` (IMP's CHARMM mapping, usable
   without IMP linked) and makes the file door use it; ChiSurf's one accessor is `chisurf/core/structure/av/radii.py`.
@@ -199,73 +310,90 @@
   FRET plugin's and chimol's Bondi tables are gone (chimol 0bb73d6). Guard `test/core/test_av_single_radius_set.py`;
   `fret_structure_reference.json` regenerated (at most 0.48 % per channel). Lock: imp-bff 113a0b1d6, emtk e0f8b67.
   See [modelling](plugins/modelling.md).
+
 - emtk 807cdbc: an extended grapheme cluster (skin tone, ZWJ, VS16, keycap, flag, tag, combining mark) is one glyph,
   one caret step and one delete in every painter and editor (`emtk/grapheme.py`, no new dependency); a skin-tone emoji
   no longer draws as two glyphs. Reaches ChiSurf with the next emtk pin.
+
 - Plot appearance has one change notification, `appearance.notify`, that every plot page subscribes to
   (`plotbase.Plot.restyle`, weakly), so Settings > Plots restyles open fit windows at once instead of on re-plot.
   chiplot gained `Region.set_brush`, `Curve.set_fill` and `Plot.hide_legend`; the invariant test
   `test/gui/test_plot_appearance_restyles_open_plots.py` changes every setting and reads the open plot's drawn state.
+
 - FPS JSON Editor's Guide button starts ChiMOL's labelling tour (`tour fps_editor`): the ChiMOL host takes a
   `guide_command`. ChiMOL sessions keep the labelling plan (scoring groups, FlexFit sets; chimol 6487d07); the AV
   clouds are still not saved (chimol `okf/plugins/labelling.md`).
+
 - QuEst FRET efficiency against the static AV average explained: not a FRET bug. With stickiness off the simulated E
   is 0.265 against the static <E> 0.263 (E55->E124, R0 52 A); the default per-residue stickiness multiplies 0.1 per
   overlapping residue sphere (down to 1e-8, the documented amino_acid rule) and freezes the dyes, so the 0.473 -> 0.726
   move was the frozen position changing with the AV. Pinned by `quenching_estimator/test/test_fret_static_limit.py`;
   whether compounded stickiness should saturate is left to the owner (known-issues, QuEst Open 1).
+
 - Small-window defects found by the `zoom_125` sweep fixed at their causes (emtk a939f78: a button wider than its
   line elides, dock tabs elide before they scroll, tab bars wrap). The channel definition's Reading row and grid
   measure and stack, its PIE table goes compact in a narrow panel, and a tool hub's rail scrolls. The sweep compares
   the A button against the current plot area and clicks only visible reference controls.
+
 - AV radius scale 0.84, fitted to FPS: median FPS/IMP radius ratio 0.838 over 20,434 heavy atoms of 148L, 3GUN and
   1RTD; 148L CB volume against FPS 0.906 -> 0.990; empty sites 48 -> 40 (FPS 33; the rest are HETATM/waters or the
   nearest-grid-point start the owner kept); 3GUN bias against FPS +1.22 -> +0.90 Å at the same rmsd. `av_defaults()`
   carries `radius_scale`; QuEst baselines re-pinned with `_previous`, quenched sites (99, 129, 132). Open: chimol's
   file door and the FRET plugin still read an element Bondi table (a second radii set).
+
 - Structure Tools dissolved (owner decision): its tools are ordinary plugins on the Structure tab, grouped Modelling
   (ChiMOL), FRET (Docking & Screening, FPS JSON Editor), Computation (HydroPro, QuEst) and Trajectory (Traj Tools).
   The shared card window is `chisurf/emtk/card_shell.py`. The FPS editor is a chimol plugin (chimol 4d9eef9,
   7c20edb, 4f1f070): every control of ChiSurf's FPS card was ported and the card deleted; the menu entry opens chimol.
   Docking gained Load example; tour bubbles decode HTML entities. See [modelling](plugins/modelling.md).
+
 - Settings > Plots reached no plot: an import-time palette copy, a hard-coded line width, an ignored grid alpha and
   axis text size, and a crash with the fit-range band off. Plots now read `gui.plot` when built
   (`chisurf/core/plotting/appearance.py`; 19 of 19 settings change a rendered fit plot, was 2). The pyqtgraph-era
   keys are removed with a load-time migration and a guard bans the name in settings and UI text. The panel is
   rebuilt with a live fit-window preview on a simulated convolved decay (emtk 1dfa2b5 `Plot.grid_opacity`).
+
 - AV obstacle radii: one declared scale on IMP's radii, `AV_DEFAULT_RADIUS_SCALE` = 0.84 (IMP.bff 3b1751b7e, chimol
   5ba1c3b), instead of a second radii table (owner decision); QuEst and chimol's FPS editor expose it.
+
 - Fonts: emtk `emtk.fonts` (136d300) gives every text role (interface, code, prose, headings, math, captions) a
   face with a fallback chain, a size and a weight, plus interface magnification, glyph oversampling, antialiasing and
   the heading step, applied live. ChiSurf Settings -> Fonts stores it in `gui.fonts` (defaults are today's look) and
   applies it at startup; the code editor and console follow the editor face. emtk 334c83c elides over-wide row
   labels; 7bffd4f makes realistic screenshots the GPU's device-size frame. A `zoom_125` sweep variant finds the
   same small-window defects as a 640x480 window. See [fonts](subsystems/fonts.md).
+
 - The dock tab menu gained *Close other panels* and *Close all panels* (emtk cbe66f3: `DockWindow.core`,
   `DockManager.close_panels`); the shell keeps Tools, Start, Log, Console, the fit docks and fit windows. The blank
   last row of that menu is gone (its height is measured, not counted with the separator as a row). Tab titles are
   kept as source text and translated as drawn, so a live language switch retitles them.
+
 - AV: attachment atom excluded and allowed sphere on by default (owner decision; IMP.bff 8ce0dcc28, chimol b250441).
   FPS drops the attachment atom alone, which IMP.bff already did at every lattice door (now tested exactly);
   `AV_DEFAULT_ALLOWED_SPHERE` = 2.25 Å (FPS's LinkerInitialSphere 0.5 x 4.5), a position without one takes 0.5 W.
   QuEst gains an Allowed sphere field (2.1 -> 2.25 Å); BasicAV picked the wrong source atom past CB (fixed).
   Neither rule was the cause of 148L's empty sites (48 with IMP radii; FPS's Bondi radii give 34 vs FPS's 33).
+
 - Tree-wide ruff check and format clean again (123 files reformatted, import order fixed). The plugin-dependency
   extractor no longer counts an import under `if TYPE_CHECKING:` as a load-time edge, so a lazy shim can declare
   its names for type checkers without making two plugins require each other.
+
 - AV search default is FPS's (owner decision): three-voxel cube hops from every node (IMP.bff e4a3e2b9d, stencil 342;
   `link_search="fast"` keeps the seed-only search), also for docking, at 1.05-1.12x the seed-only cost after exact
   shortcuts (ring skipping, SIMD rows). Fixed on the way: `av_distance_quadrature` diverged for overlapping clouds.
   Finding: 148L's empty sites at W 4.5 come from the atom radii and the attachment handling, not the search.
+
 - Release gate 1 leftovers: QuEst's form model is Qt-free (the emtk window serves its file dialogs), its demo meets
   the plugin contract (Load example; QY 0.864 under FPS's search), and its code passes ruff and mypy (about 80 errors
   fixed, two stale baseline entries removed). `python -m chisurf` crash-logs and reports startup failures on the
   emtk path as on `--qt`, and the splash closes when the main window fails to open. Spectra's hand translations
   moved into the ChiSurf catalogue (one source per string); all catalogues re-extracted and compiled.
+
 - emtk shell tests green against emtk 6d998ed. At 800x600 the PDA reader form's 260 px floor overhung the Read
   data dock (about 209 px visible), so a wheel over its lower half went to the Analysis dock; the floor is now at most
   the dock's view. chimol's long-menu tests predated chimol folding its object list below 420x300 and now unfold it
   as a user would.
+
 - Release gate 1 measured (not met): pixi `test` 119 -> 21 failed in the last complete run (13623 passed),
   `test-gui` 6 failed / 1120 passed, `test-e2e` red against a then-unpinned emtk. Fixed: test isolation (the
   hermetic settings dir is removed at exit, mmfdb resolvers and the UI language restored, a leaked `cs.fits`), a
@@ -273,31 +401,37 @@
   tool refusing derived quantities, ALEX Creator's plot area. Pixi's IMP.bff wheel lacks RMF, IMP.atom and docking
   (recorded). Open: emtk shell tests, chimol long menus, QuEst leftovers, startup-failure tests. See
   [PRD-154](prds/prd-154.md).
+
 - One wheel notch is one step everywhere (emtk b82aa06): the frame loop spends one-shot input (wheel, key, click,
   char, drop) when the outermost frame ends, so a widget that leaves a notch unconsumed can no longer repeat it every
   frame while hovered (the runaway plot zoom). Three plugins' hand-written wheel resets are removed; chiplot gets a
   settle test.
+
 - QuEst is ChiSurf's `quenching_estimator` plugin (owner decision): the engine, settings, local API, RPC, CLI and the
   Qt-free form model and view specs moved in from the `quest` package and were ported to the flat IMP.bff API
   (`get_av`, `simulate_probe_diffusion`, the grid, FRET-rate and photon kernels; IMP.bff 2e7f56c32 makes
   `center_grid_indices` callable). The `quest` dependency, its build task, module link and CI checkouts are gone;
   `import quest` is banned. The window gains Load demo (148L E36: QY 0.913, ⟨τ⟩ 4.11 ns); guide 80 rewritten.
   Open: 51 of 151 T4L Cβ sites have no AV at IMP.bff's default width. See [known issues](references/known-issues.md).
+
 - Expanding tables measure what follows them (emtk 7c94678) and items share vertical room by weight (emtk 31d84a8,
   `"stretch"`/`"min_height"` in view.json, `im.stretch_height` in code). The hand-set `reserve` pixels are gone
   from every view spec; they broke whenever the rows below changed (a translation, a stacked label, 2x). The Datasets
   dock's two tables share its height 1:1 and the status takes one line. See [GUI/AutoForm](subsystems/gui-autoform.md).
+
 - The real-use sweep (`test/e2e/test_click_all_plugins.py`) gained three phases, selectable with
   `CHISURF_E2E_PHASES`: `auto_range` (every plot shows the A after a zoom and hides it after a click),
   `context_menu` (every plot and table menu closed by each path, then a click elsewhere must land) and `settle`
   (one wheel notch, then 30 idle frames must change nothing; emtk b82aa06 spends one-shot input in the frame loop).
   The rule is in [testing](workflows/testing.md): replay simple user sequences, not only single clicks.
+
 - A right-click menu no longer swallows every later click (emtk af31641). In ndX, highlighting the *Send selection
   to* submenu row raised (a submenu had no tooltip); the error escaped the overlay pass before its input hold was
   released, so ndX held the pointer forever and docks drawn after it went blank. emtk now closes a popup that
   raises, always restores the outer frame, and `overlays.dismiss` closes a hosted child's menu when the press goes
   elsewhere (the shell calls it). Long menu rows are capped with the full text as tooltip, and plot menus stay
   inside the window. The click-all sweep gained a context-menu phase over all 123 tools.
+
 - Documentation dock: figures draw and prose reads well (emtk b7b67f4, 3698315). Figures were white boxes because the
   GPU image atlas was a fixed 1024 px (601 of 980 doc PNGs are wider); it now repacks, grows to 4096 and stores
   oversize images reduced, and SVG figures load. Prose was glued (glyphs rasterised at a rounded size and each
@@ -305,27 +439,32 @@
   Sans) beside the Menlo interface. Layout was quadratic in line length (1 s per page frame, now 0.25 s). A sweep
   opens all 459 doc pages at 800x600 and 1400x900 and checks figures, overflow and overlaps. See
   [core tools](plugins/core-tools.md).
+
 - The emtk shell has a boot splash again, as its own frameless, transparent, centred window (emtk 93bc456:
   undecorated/floating/transparent native windows, `unpremultiplied` alpha on Metal, a redraw after an occluded
   frame). It shows the art, progress, stage and log line from the declared `25_emtk_splash.json` stages and
   gives way to the main window once the session is ready; first frame on screen 1.7-2.6 s (was 3.1-5.6 s). Fixed
   on the way: a second Global Dataset, ebFRET raising on every frame in the shell, and the splash art's licence
   paragraph, which repeated its warranty sentence (Qt resources recompiled). See [Qt retirement](subsystems/qt-retirement.md).
+
 - AV follow-ups: chimol's IMP.bff backend imported a module that does not exist and silently fell back; it now
   computes AVs with IMP.bff (chimol 4bd6a7a; a missing IMP.bff warns with the reason). QuEST's placeholder dyes and
   ChiSurf's quenching-estimator acceptor take IMP.bff's AV defaults (QuEST bdcf3e8, local). IMP.bff f95ddaa1a..0a61ee263:
   a shared slow radius over several centres read as zeros (fixed), stale AV tests follow the API, dictionary 1.11.
   Open: QuEST's AV and quenching code imports retired IMP.bff modules. See [known issues](references/known-issues.md).
+
 - Every emtk plot has the "A" auto-range button (emtk aea9d8b, `emtk/widgets/auto_range.py`): shown in the plot's
   lower-left while an axis is panned, zoomed or set; a click refits every axis and hides it. implot and chiplot's
   emtk canvas share it; opt out with `Plot.set_auto_range_button(False)` / `implot.FLAGS_NO_AUTO_RANGE_BUTTON`.
   See [chiplot](subsystems/chiplot.md).
+
 - AV defaults: one declaration everywhere and the fast search by default (owner decisions). The first linker step
   hops only from the seed (FPS hops from every node, about 4.6× the neighbours). IMP.bff c34e625c2 moves the
   Labelizer options, the position template and every grid default onto `AV_DEFAULT_*`; chimol 1f8abe1 restates
   them with a guard; ChiSurf's dye-diffusion Dye group, `dye_definition.json`, the FPS card and the FRET api/CLI
   read `av_defaults()`. The FPS card's Dye Preset now sets L, W and R (it read the wrong keys). See
   [known issues](references/known-issues.md).
+
 - Emoji in the code editor and console take two cells (emtk b16238d): caret, selection, clicks and drawing share
   one cell rule, and an arrow or backspace steps over a whole emoji. emtk's golden images regenerated for the
   intended window frame of 3287f89 (be6a9d2). Open: a skin-tone emoji draws as two glyphs.
@@ -335,37 +474,46 @@
 - Anisotropy wizard: its Add/Remove component row had slid under the status bar (a field now stacks under a long
   label, emtk d8ba4cf, and the tables' reserve was a fixed 112 px), and its German dock tab was cut at 800 px (fixed
   0.22 split). The split's minimum is now the measured tab width; the reserve is 144 px until emtk measures it.
+
 - Emoji typed into captions (Help, Guide, the language button, plugin action buttons) draw in colour (emtk
   605e7d4): the real painters split a caption into icon and text runs with one width rule; recorded strings are
   unchanged. A wrapped button row spreads evenly (emtk e7ba04d). See [UI vocabulary](subsystems/ui-vocabulary.md).
+
 - Wizards are translated (de, fr): the hub list, the Anisotropy and Batch analysis wizards' docks, steps,
   welcome and finish texts go through `emtk.i18n` (26 new entries each). The hub rail is as wide as its
   translated Guide and Help captions, and the Anisotropy navigation stacks them when they do not fit.
   Open: the hosted Anisotropy dock tab is cut at 800 px in German (fixed 0.22 dock split).
+
 - The emtk shell colours each task: one declared palette (`chisurf/emtk/task_colors.yaml`; documentation blue,
   wizards orange, imaging green, ...) colours dock tabs, frame stripes, ribbon group captions, Tools-tree rows and
   the hosted tool's headers, drawn by emtk 0ec0daf (`emtk/accents.py`, contrast 4.5:1 kept). Colour key in
   Getting Started; see [ribbon](subsystems/ribbon.md).
+
 - Accessible-volume defaults are FPS's and Olga's (owner decision): linker 20 / width 4.5, AV1 radius 3.5, AV3
   radii 5 / 4.5 / 1.5, grid 0.9, clearance 0.5 W and FPS's first linker step, declared once in IMP.bff
   (51a31f831, `IMP.bff.AV_DEFAULT_*`) and read by ChiSurf's AV, FRET-structure model and FPS card. 3GUN vs FPS's
   own routine: bias +0.00 Å, rmsd 0.84 Å over 24 pairs. The structure-ensemble reference curve is regenerated
   (0.52 % from the classic model). Open: FPS hops 3 voxels from every node, IMP.bff only from the seed, so
   T4L-132 CB is empty at a 0.5 Å grid. See [known issues](references/known-issues.md).
+
 - Plugin icons in the emtk shell draw in colour, one box size per class (emtk 04358f3, `emtk/icons.py`): every
   icon had been a text glyph rasterised to a one-colour mask in one monospace cell. Icons typed into a caption
   (Help, Guide, the language button) are still grey; see [UI vocabulary](subsystems/ui-vocabulary.md). Pins:
   emtk 04358f3; the test environment gains ihm, docutils and fastapi, which the tree imports.
+
 - The emtk shell is the default window (`python -m chisurf` and the installers' launchers); the Qt main window
   stays behind `python -m chisurf --qt` as the reference the emtk shell is measured against until parity.
   Docs and the launch tests follow. See [Qt retirement](subsystems/qt-retirement.md).
+
 - Owner decision: the Qt shell stays the default and ships; deleting it (S6) is deferred until the emtk shell is
   fully there. tttrlib dev pushed (photon counts in `tttr sm` burst tables, f986b73da). See
   [Qt retirement](subsystems/qt-retirement.md).
+
 - The shared detector-setup editor is translated (de, fr; 121 new catalogue entries) and measures its button
   columns and dropped table columns from the translated captions. The real-use sweep no longer skips ndX's Load
   example: that skip hid two ndX radios sharing one item id (ndX cfaa4aa, Draw Mask is `brush_mode`), and the
   tour keeps the awaited button drawn on its step. ndX's German *Screenshot* is *Bildschirmfoto*.
+
 - Demo contract and narrow-view QA: nine plugins meet the demo contract (shared cache
   `chisurf/plugins/demo_cache.py`, a real Load example, tour step 1 awaits it; the Trace Browser demo now writes
   SPC streams it can list); emtk checkboxes/radios wrap long labels and a form field stacks under a too-wide label
@@ -374,6 +522,7 @@
   a narrow embedded view (chimol 8212c1d); the PDA reader form scrolls in the emtk shell and `n_points` is the
   histogram bin count before and after a fit. The real-use matrix skips text inside editable fields. See
   [known issues](references/known-issues.md).
+
 - emtk.i18n is the shared translation seam (emtk d18512b..334278f): domains, Qt-free `.ts`/JSON catalogues,
   `python -m emtk.i18n.extract` (merge-safe; `--spec`, `--docstrings`), `emtk.i18n.testing.untranslated_literals`
   and `isolated()`, emtk's own strings in shipped de/fr catalogues, view_form/data_table/DialogWindow translate
@@ -381,6 +530,7 @@
   is bound; `chisurf.emtk.i18n.install` registers the catalogue directory instead of copying every `.ts` into
   the hand-added table. Three native_emtk tests moved off emtk.i18n private state. See
   [i18n](subsystems/i18n.md).
+
 - ChiMOL is multilingual (de, fr): chimol (own repo, 06fd4a9) is the `chimol` domain of `emtk.i18n` with
   catalogues `chimol/locales/chimol_{de,fr}.ts` (2160 messages) and guard `tests/test_i18n.py`. The ChiSurf
   host (`chisurf/plugins/chimol/app.py`) installs ChiSurf's language before starting the viewer, translates
@@ -395,6 +545,7 @@
   `tttr sm` writes photon counts and spans per window (tttrlib 73abd6f23); the bundled sm-DNA tables carry
   them, so the Burst Browser keeps 2980/2980 bursts (was 2057). ndX send resolves its files (ndX b2f4586);
   native Burst MLE skips an unchanged batch and has Restart.
+
 - QA round 2026-10-11 (four persona walks, real-use matrix, S2 defects, hand-overs): ~60 defects fixed with
   tests, among them generator scans unreadable by every imaging step (no scan geometry; a 100 Hz "laser"),
   the Anisotropy Wizard's global fit off its own simulation (IRF tail pedestal; χ²ᵣ 4.2 → 0.99), MMFDB
@@ -402,68 +553,83 @@
   read [0.] (imp.bff fceece9ed), no AV distance on 148L (imp.bff f2c272dc7 source hop), ProteinMC's
   Structure page and emtk-shell autosave; the real-use matrix (sizes, resize, scale 2, de/fr, realistic
   input) and the whole-app parity test; French catalogue complete; guide screenshot scripts all native.
+
 - QA walk, FCS/lifetime/PCH/console/project guides: 16 defects fixed with tests — the FCS general model's
   default fit was unidentifiable (D, w_r, w_z free; one focus measures D/w_r²; w_r now starts fixed), its MDF
   Outputs panel showed N/A outside MDF, the PCH fit was unweighted (χ²ᵣ ~1e20; now Poisson-weighted), FIDA
   bounds were off, Anisotropy Wizard fits had range (0,0), TCSPC text decays were named by full path, console
   printed SWIG proxies; guides 04/09/10/17/18/75/91 and saving_projects corrected.
+
 - W9 phase 2 slice S5 (ribbon): the emtk shell has the Qt ribbon (emtk `emtk/ribbon.py`: tabs, large/small
   buttons, fold-to-menu and overflow at narrow widths, search) built from the same placement rules, emoji on
   every plugin entry (41 manifests gained theirs; guards for presence and uniqueness), menus with groups and
   icons, and a Tools tree by menu path; a live 🌍 language switch. Checkpoint commit also carries the QA walks'
   in-progress fixes (FCS/lifetime, imaging, smFRET part 2, real-use matrix, S2 defects).
+
 - QA walk, smFRET guides (01–66 subset): 10 defects fixed with tests — `csc accurate-fret --simulate`
   crashed on its own `#` header, Accurate FRET dropped a Calibrate press during a read, `.bur` tables carried
   a blank column, H2MM transition arrows overlapped and per-state decays were indistinguishable, the `>>`
   button never appeared in Burst Analysis/ALEX, ALEX titration showed raw markdown rows; 12 guides corrected
   (wrong channels in two figures), 16 figures regenerated from the native apps. Record: [burst](plugins/burst.md).
+
 - One type scale for all text (emtk 8c39495): prose was rasterised at logical size and stretched on Retina
   (blurry, cramped) and measured with hinted advances; it is now rasterised at device resolution, laid out at
   the width it was measured at, with roles body/code/caption/h1-h4 from one interface-size setting (style
   editor). The doc viewer no longer draws at Qt's 13 pt; help windows have one close (the shared caption).
+
 - Console plots show inline again in both consoles: `chisurf.core.console.mpl_backend` (Agg, published into the
   running console; `plt.show()` never blocks, `%matplotlib inline` selects it), `display()`, PNG/SVG reprs;
   the emtk console draws images in its transcript (scaled to width, scrollable, Copy/Save image). The shipped
   console init had dropped `%matplotlib inline` with matplotlib as a dependency.
+
 - W9 phase 2 slice S2 complete: the emtk shell's model editor draws the IRF/background curve pickers and all
   nine custom sections (server-checked `model.curve.*`/`model.section.call`), matches ten Qt model editors and
   the PDA reader form (logic moved Qt-free into `core/experiments/pda2c`), and ports the parameter link menu,
   paired component rows, New… sample and the calc R0 dialog. Fixed: no PDA file could be read into the
   server, lifetime-mixture history refused every action, an IRF attached late crashed the Fit page, calc R0
   never changed R0.
+
 - W9 phase 2 slice S4: the emtk shell's Console dock (`chisurf/emtk/console.py`) matches the Qt console on 25
   driven behaviours (history, Ctrl+R, completion, signature hints, help, kill/yank, live output, macro
   recording through `chisurf.run`, which the emtk shell had silently dropped); Macro menu with Record and Run
   Macro…; composed (IME) text input in every emtk text field (emtk 3e61af1, afb4e40, aceb942).
+
 - W9 phase 2 slice S3: the emtk shell has the Qt shell's File/View/Settings menus and shortcuts, project
   save/open/import/export over the project services, recent projects, undo/redo, autosave and a close
   guard that asks once (`chisurf/emtk/shell_session.py`); emtk 5e8223c adds a scriptable message/confirm
   dialog. Gaps: fit export (Qt-bound Word report), Macro/Record (S4 console).
+
 - W7 click-all: all 124 native plugins pass (each failing id re-run alone 3–5×). Product fixes: BVA's
   settings pane scrolls (a button sat below the clip), the hub's fast-forward Stop stops the running step,
   intensity traces thin to 4000 points and publish rebins under a lock (a torn frame raised mid-plot),
   burst-selection diagnostics memoise their curves. The harness inventory ceiling is a named 1024.
+
 - W9 phase 2 slice S2 at control parity: the emtk shell draws each model's own editor (`model.editor`
   RPC, writes only through declared controls), the full fit controller (MCTS, Sample, fit settings, Local
   first, dataset re-target, result index, Code face), the Global-fit dataset, native settings for 23 of 24
   readers, the MMFDB sample question and dataset drag onto a fit; `KNOWN_GAPS` is empty. Fixed in passing:
   Qt's Local first never reached the run, re-targeting a fit to a curve of another length broke residuals,
   the global fit's Remove never worked, a log-axis range from lag 0 broke the fit window.
+
 - ndX is multilingual (de, fr): ndxplorer (own repo, e7c4acd) is the `ndxplorer` domain of `emtk.i18n`
   (1,413 strings, guard without allow-list, Settings > Language when standalone); hosted ndX follows
   ChiSurf's language live (`chisurf/gui/i18n.py` switches emtk's language too).
+
 - W6 remainders: the games play music and effects through emtk's Qt-free `emtk.audio` (WAV through
   afplay/paplay/aplay/ffplay); the Qt-free synthesis moved to `chisurf/core/audio/`; every game mutes on
   focus loss and unmutes on focus gain. The acquisition fit window gains a Count rate page. Channel
   Definition and the quest RPC backend known issues were re-measured and are already fixed.
+
 - PRD-154 W9 phase 2 started: [Qt retirement](subsystems/qt-retirement.md) ledger (every Qt piece of the
   shell, emtk equivalent, gap, slice S1–S7) and slice S1, an opt-in emtk main window
   (`python -m chisurf --emtk-shell`, `chisurf/emtk/main_app.py`, Qt-free) with manifest-built menus, a Tools
   dock and every native plugin as a dock window; the Qt shell stays the default.
+
 - mypy ratchet: Qt modules skipped in `pyproject.toml` (5078 → 3904 errors), per-file baseline
   `test/mypy_baseline.json` (3899) guarded by `test/test_mypy_baseline.py`, now a blocking CI step.
   Real bugs fixed: three `service_error` calls without `error_code` (TypeError on fit-service error paths)
   and two MMFDB-admin experiment-type calls passing an argument the method does not take.
+
 - PRD-154 W9 phase 1 (plugins): five parallel lanes retired the Qt tools of ~80 plugins across burst,
   microscopy, tttr/vv-vh/pch, fcs/decay/calculators and core/modelling/traj; each recorded the Qt tool's
   values first (`qt_reference.json` beside its tests) and checked control inventories. `plugin_qt_allowlist.txt`
@@ -474,14 +640,17 @@
   `test/e2e/test_release_scenario.py` (13 steps pass, run picker xfail); it found and fixed a `.pto` parsed
   as raw SPC in `staging.open_tttr`, a sub-ensemble decay never registered as a dataset, and a doubled
   "Save changes?" prompt.
+
 - Core plugin tests no longer write the developer's real `~/.chisurf`: `chisurf/plugins/core/conftest.py`
   redirects the settings dirs at import; lightpath easy mode and pda2c used `Path.home()/".chisurf"` and
   now use `get_path("settings")`. About's wrapped button row (German, 320 px) clipped Close; its height now
   follows the drawn lines. Rule in [testing](workflows/testing.md).
+
 - mmfdb `32e108d`: the project archiver's restore reads v5 fit records and the version's dependency edges;
   `test/fio` builds v5 payloads through `capture_session` (`test/fio/v5_payload.py`). mmfdb `806d19a`: the
   FLR export writes dictionary item names instead of database columns (`mmfdb_flr_ext.dic` 1.11), and
   `read_graph_cif` escalates every undeclared keyword.
+
 - PRD-154 W13 steps 3, 4, 6: a `.pto` / `.cs.pto` exports to `_mmfdb_provenance_*` mmCIF
   (`mmfdb project export-cif`), reads back through python-ihm with no `UnknownCategoryWarning`, and imports
   (`import-cif`) to an equal set of operations, artifacts, edges and parameters (project and a multi-run
@@ -489,21 +658,25 @@
   data, and `put_*` now defaults a missing `derived_from` to the container's primary streams; ELN gateway
   (`mmfdb.eln`: neutral model, Chemotion read of chemicals/instruments into reagent lots/setups, deposit of a
   container plus its mmCIF, keystore tokens). Details: [mmfdb](architecture/mmfdb.md), [PRD-48](prds/prd-48.md).
+
 - PRD-154 W11 first frames: all 122 measurable emtk plugins draw their first frame in < 100 ms at
   1100x720 (worst ndxplorer 85 ms; was 26 over, chimol 1634 ms). Hubs build the shown tool on a worker
   (`chisurf/emtk/background_build.py`) behind an "Opening …" placeholder; chimol starts off-thread;
   detector setups, the dye list and the MLE model registry load in the background; translation catalogs
   and manifests are parsed once per process; emtk caches the font-face scan on disk and builds colormaps
   lazily (emtk 4132e91, 63ce707, b3400cd). Record: [GUI startup](architecture/gui-startup.md).
+
 - W7 tours wired: boarding, globalview, lightpath simulator, setup channel definition, FCS merger, FCS
   channel preset, burst 2CDE, PTO inspector, ALEX suite, burst BVA, TTTR image browser, trace browser, plot
   settings and help pass the click-all (wrong notify ids, a toggle callback that raised before notifying,
   steps that awaited what no click can do, demos for the folder steps). Open: user_editor needs a seeded
   account to select.
+
 - W7 demos: f_test, hydropro, pch, burst_selection, img_pixel_mle, img_coloc and tr_anisotropy ship a
   cached `demo.py` whose answer is known, a Load example control and a tour step that awaits it; all seven
   pass the click-all. emtk `fb317a4`: a control disabled while held releases its active id (img_coloc).
   hydropro's demo solver is Stokes–Einstein only and says so.
+
 - PRD-154 W10: bff's model search gains a modality token (state width 78), a
   `request_information` outcome for moves whose measurement is missing, smFRET/MFD and PIE/ALEX
   self-play games, and a fit-settings action space; the retrained policy passes the gate (all
@@ -511,35 +684,44 @@
   ChiSurf: `prepare_model_search(search_fit_settings=)`, a "Search fit settings" checkbox in the
   fit controls, `optimization.mcts` defaults in `settings_chisurf.yaml`, and a search that asks
   for a measurement leaves the model alone. Resume: [PRD-152](prds/prd-152-native-experiment-self-play.md).
+
 - Docs for visible plugins that had none: concepts `file_tools`, `tttr_stream_tools`, `code_editor`,
   `molecular_viewer`; plugin sections in `games`, `us_alex`, `global_analysis`, `live_streaming_analysis`,
   `accurate_fret`; guide `104_lightpath_simulator`. The plugin-docs generator skips the cookiecutter template.
+
 - PRD-154 W14: guide screenshots of the retired Qt tools are rendered from the emtk apps
   (`docs/guides/screenshots/emtk_shot.py`, emtk Driver); docs registers and plugin pages regenerated;
   11 orphan pages put in toctrees; `docs-html` exits 0 (1 autodoc warning). `docs-release` stays red only
   at `docs-check-reviewed` (0 human-reviewed pages, 19 AI sign-offs stale) — the owner's review gate.
+
 - W7 tours: style_manager, code_editor, the games hub, structure_tools and ndX now build a guided tour
   whose awaited step the click-all drives (ndX gains `chisurf/plugins/ndxplorer/demo.py` and a Help >
   Guide menu); guardrail `test/gui/test_native_guides_wired.py`. Note: `check_plugin_guide.py --live`
   presses only `load_example`, so other awaited steps report "pending" there.
+
 - Linked fits refresh on an edit: `chisurf/core/fitting/link_propagation.py` finds every fit whose
   parameters follow the edited fit (transitively, once each, masters first, cycle-safe) and updates it
   after the owner's update on every edit path (server `fit.update`, the action, the local API, the GUI
   fallback); not in `Fit.update`, which fit runs and samplers call thousands of times. Record:
   [parameters](subsystems/parameters.md).
+
 - Help browser and code editor regain their Qt-era shortcuts: Ctrl+F, Alt+Left/Right, Alt+Home,
   Ctrl+Shift+A and zoom keys in help; F3/Shift+F3, F12, Ctrl+Space and a caret back/forward history
   (Cmd+[ / Cmd+] on macOS) in the editor. emtk `fde732c` (TextEditor.find_previous) and `c5d80ed`
   (Tab belongs to a focused text editor, which also fixes the two editor indent tests).
+
 - PRD-154 W8 closed, pyqtgraph retired. `chiplot.ImageView` became an image dock (frames + playback, extent, marks/labels over the picture, brush layer, resizable gate, RGBA overlays, colour ramp) and the AutoForm `image` section runs on it; `intensity_trace/qt_tool.py` and the Trace Browser Qt oracle (`widget.py`, `gui/tool.py`) were deleted with their oracle tests converted to recorded values; the pyqtgraph backend, `_passthrough.py`, `test/pyqtgraph_import_allowlist.txt` and the dependency were struck; `plot_settings` offers the one backend and normalizes a stale `pyqtgraph` value. Record: [chiplot](subsystems/chiplot.md).
+
 - W4 follow-up: burst MLE and burst FCS take a `.pto` (or `m000.pto/<run>`) with the Runs picker and
   write their results into the container (`mle <detector>`, `burst fcs`); legacy `.bur`/`.bst` inputs
   keep their folders. Open items in [burst companions](subsystems/burst-companions.md).
+
 - One action vocabulary, HELD emptied: the last ten files (help window, code editor, help browser,
   setup, lightpath simulator, ALEX suite, ALEX creator) draw their Help/Guide/Close/Cancel/Save/Open
   buttons through `action_button`; `test/test_ui_vocabulary.py` has no exemptions left. ~30 plugin tests
   that clicked a literal "Close" now use `action_caption("close")`. Record:
   [UI vocabulary](subsystems/ui-vocabulary.md).
+
 - PRD-154 W4: `.pto`-first burst workflow. Burst tools (BVA, 2CDE, fusion, H2MM, burst FCS) write
   runs into the measurement container instead of `<ending>4/` companion folders;
   `chisurf/core/fio/fluorescence/legacy_export.py` (`export_legacy`) re-creates the legacy burst-folder
@@ -548,12 +730,14 @@
   from selected bursts (`chisurf/core/fluorescence/burst/decay.py`); ndX opens `.pto` tables; ALEX hub
   hands its run to Accurate FRET again. Open: run picker for burst MLE and burst FCS (see
   [burst companions](subsystems/burst-companions.md)).
+
 - PRD-154 P-E: live acquisition is a fit window. `acq/demo.py` writes a known two-species SPC stream,
   `acq/dataset.py` (`AcquisitionDataset`) streams it on a worker thread, the parameterless
   `AcquisitionModel` (`chisurf/core/models/acquisition/`) shows Decay, Correlation, MCS and Macro time
   pages (`chisurf/gui/plots/acquisition.py`), and the native window gets **Load example**. The Qt
   acquisition tool (`gui/tool.py`, `windows.py`, `controllers.py`) is deleted. Open: count-rate page,
   the document-GUI harness exemption for a parameterless model, a hardware run.
+
 - PRD-154 W9 phase 1: the Qt tool of ten plugins is deleted and their `gui` entrypoint dropped
   (psf_calculator, calculator hub, fret_calculator, phasor_calculator, rics_precision,
   fcs_saturation_calc, fcs_lfcs_sim, flc_2d, irf_estimator, synthetic_decay); Qt parity tests
@@ -562,6 +746,7 @@
   PSF calculator's 3-D view is a hosted chimol volume view (`gui/volume_view.py`). Skipped with
   reasons in [PRD-154](prds/prd-154.md): kappa2_dist, fcs_calculator, fcs_channel_preset,
   fcs_filter_calculator, fcs_correlator/toolbox, maxent_decay, tr_anisotropy, lifetime_analysis.
+
 - Secondary Qt-to-emtk parity losses restored: Lightpath Simulator "Auto recalculate"
   (shared Easy Mode widget, 0.3 s debounce, off in the channel wizard); FPS JSON editor
   Distances multi-select and one-question bulk delete; trajectory number fields step on
@@ -569,16 +754,19 @@
   phasor overlay from the exact Kratky-Porod distance distribution. Open: help browser and
   code editor keyboard shortcuts (see the
   [functional parity audit](validation/functional-parity-audit-2026-10-10.md)).
+
 - PRD-154 W11: `build_tools/dev_utils/plugin_frame_times.py` measures first/steady frame of every emtk plugin
   (table in `docs/development/benchmarks.md`); steady frames all < 16 ms after fixes (emtk font-measure cache,
   fcs_saturation dye list, PSF 3-D view); 26 first frames still > 100 ms (lazy imports, see
   [GUI Startup](architecture/gui-startup.md)). PSF calculator 3-D view is now a chimol volume isosurface view
   (`gui/volume_view.py`, `ChimolView(skip_idle_frames=True)`, chimol `Renderer.bare_view`); rotates 64^3 at ~65 fps.
+
 - PRD-154 W12 (imp.bff): `src/` split into 12 theme folders compiled
   through `src/ThemeSources.cpp`; model search lives in `src/search/`. Path
   references in [imp local build](workflows/imp-local-build.md) and
   [PRD-154](prds/prd-154.md) updated. W7 click-all remeasured: 81/160 pass, owners
   in [release-readiness W7](validation/release-readiness-w7.md).
+
 - W8 (retire pyqtgraph), partial: `.native` allow-list emptied (chiplot `set_axis_style`, `set_tick_labels`, `set_legend_style`; emtk draws horizontal regions); Qt `burst_h2mm` tool + `gui/app.py` deleted (native app is the replacement); photon-filter wizard plots ported to chiplot. Open: `autoform/sections/builtin.py` image section and `intensity_trace/qt_tool.py` (see `okf/subsystems/chiplot.md`).
 
 - One action vocabulary for every emtk app (`ACTIONS` in `chisurf/plugins/emtk_layout.py`):
@@ -32210,3 +32398,4 @@ front, not this).
   is two runs. Part D gate 3 now says 4 runs. Record:
   [burst companions](subsystems/burst-companions.md),
   [photon container](subsystems/photon-container.md).
+

@@ -1,3 +1,11 @@
+---
+type: Subsystem
+title: 'Licence: GPL → MIT (2026-10-17)'
+description: 'Plan: ChiSurf distributed under MIT. Author is the sole copyright holder of chisurf, chimol, mmfdb, ndxplorer, emtk, tttrlib — every piece is his to relicense.'
+tags: [subsystems]
+timestamp: 2026-10-17T21:56:23+02:00
+---
+
 # Licence: GPL → MIT (2026-10-17)
 
 Plan: ChiSurf distributed under MIT. Author is the sole copyright holder of
