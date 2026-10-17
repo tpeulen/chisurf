@@ -810,25 +810,25 @@ class EmtkShellApp(ImApp):
             hosted.box = None
         self._drawn = {}
         self._canvas = (int(w), int(h))
+        frame_start = time.perf_counter()
         try:
             super().draw(painter, x, y, w, h)
         finally:
             self._painter = None
         self.frames_drawn += 1
         now_ts = time.perf_counter()
+        self._frame_ms = (now_ts - frame_start) * 1000.0
+
         last_ts = getattr(self, "_last_frame_ts", None)
         if last_ts is not None and now_ts > last_ts:
             dt = now_ts - last_ts
-            self._frame_ms = dt * 1000.0
-            history = getattr(self, "_frame_durations", None)
-            if history is None:
-                self._frame_durations = collections.deque(maxlen=30)
-                history = self._frame_durations
-            history.append(dt)
-            self._fps = len(history) / sum(history) if sum(history) > 0 else 0.0
-        else:
-            self._frame_ms = getattr(self, "_frame_ms", 0.0)
-            self._fps = getattr(self, "_fps", 0.0)
+            if dt <= 0.25:  # active frame delta (idle gaps > 250ms are not frame times)
+                history = getattr(self, "_frame_durations", None)
+                if history is None:
+                    self._frame_durations = collections.deque(maxlen=30)
+                    history = self._frame_durations
+                history.append(dt)
+                self._fps = len(history) / sum(history) if sum(history) > 0 else 0.0
         self._last_frame_ts = now_ts
 
         if self._screenshot_pending:
@@ -2065,7 +2065,8 @@ class EmtkShellApp(ImApp):
         busy = busy or self.status_strip.animating()
         busy = busy or self.project.busy
         children = any(app.animating() for _key, app, _box in self._drawn.values())
-        return super().animating() or busy or children
+        watermark_active = not getattr(self, "_watermark_folded", False)
+        return super().animating() or busy or children or watermark_active
 
     def next_frame_in(self):
         delays = [super().next_frame_in(), self.project.next_frame_in()]

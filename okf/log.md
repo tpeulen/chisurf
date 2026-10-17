@@ -4,6 +4,7 @@
 
 - emtk shell: live CPU/memory tracking with cached psutil processes, integer RGBA sparklines, tracks, and 1s cadence refresh
 - emtk, watermark, gfactor: fold watermark into compact badge, display live rolling FPS and machine specs matching ChiMOL, dismiss tooltips on dock leave and window exit, and eliminate continuous redraw stall during subdock dragging.
+- emtk shell: live FPS and frame render time calculation: measure actual frame CPU draw duration instead of sleep interval, filter out idle gaps (>0.25s), and keep frames rendering continuously when watermark is unfolded so FPS counter does not stall on mouse idle.
 
 ## 2026-10-16
 

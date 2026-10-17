@@ -196,6 +196,8 @@ def test_watermark_folding_toggle_on_click():
         driver.frame(2)
         assert "system_info" in shell.item_rects
         assert shell._watermark_folded is False
+        assert shell.animating() is True  # Active telemetry requests frames continuously
+        assert 0.0 < shell._frame_ms < 100.0  # Real frame CPU render time, not sleep interval
         bx, by, bw, bh = shell.item_rects["system_info"]
         unfolded_h = bh
         assert unfolded_h > 100.0  # Full panel is tall
@@ -205,6 +207,7 @@ def test_watermark_folding_toggle_on_click():
         driver.frame(1)
 
         assert shell._watermark_folded is True
+        assert shell.animating() is False  # Folded badge stops continuous animation
         fbx, fby, fbw, fbh = shell.item_rects["system_info"]
         assert fbh < 35.0  # Folded single-line badge is compact
         folded_strings = [str(s) for s in driver.painter.strings]
@@ -215,7 +218,32 @@ def test_watermark_folding_toggle_on_click():
         driver.frame(1)
 
         assert shell._watermark_folded is False
+        assert shell.animating() is True  # Resumes continuous telemetry
         assert shell.item_rects["system_info"][3] > 100.0
+    finally:
+        shell.close()
+
+
+def test_watermark_fps_does_not_stall_or_pollute_on_idle_gap():
+    """An idle sleep gap (> 0.25s) is not treated as a frame duration in FPS calculation."""
+    import time
+    shell = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
+                         console_session_file=False)
+    try:
+        driver = Driver(shell, (1440, 900))
+        driver.frame(5)
+        active_fps = getattr(shell, "_fps", 0.0)
+
+        # Simulate 1 second idle gap (as happens when sleeping between 1Hz polls)
+        shell._last_frame_ts = time.perf_counter() - 1.05
+        driver.frame(1)
+
+        # Frame render time must reflect actual drawing cost, not the 1.05s sleep
+        assert shell._frame_ms < 100.0
+        # The 1.05s gap must NOT be appended to frame durations
+        if hasattr(shell, "_frame_durations"):
+            for duration in shell._frame_durations:
+                assert duration <= 0.25, f"Duration {duration}s was wrongly recorded as a frame time"
     finally:
         shell.close()
 
