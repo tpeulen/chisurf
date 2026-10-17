@@ -8,9 +8,9 @@ Attribution-ShareAlike 4.0 International licence, whose full text follows.
     Copyright (c) Thomas-Otavio Peulen and the ChiSurf contributors
 
 This covers the documentation only. ChiSurf's *source code* is licensed under
-the GNU General Public License v3.0 or later; see the LICENSE file at the root
-of the repository. See docs/licensing.md for what the split means in practice
-and how to attribute material reused from these pages.
+the MIT license; see the LICENSE file at the root of the repository. See
+docs/licensing.md for what the split means in practice and how to attribute
+material reused from these pages.
 
 -----------------------------------------------------------------------
 

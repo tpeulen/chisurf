@@ -1,6 +1,6 @@
 {
-  "generated": "2026-10-14",
-  "project_license": "GPL-3.0-or-later AND CC-BY-SA-4.0",
+  "generated": "2026-10-17",
+  "project_license": "MIT",
   "binding_class": 2,
   "binding_class_name": "Weak copyleft, file-level (MPL)",
   "blockers": [
@@ -16,7 +16,7 @@
       "license": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
       "url": "https://numpy.org",
       "source": "metadata",
-      "version": "2.4.6",
+      "version": "2.4.3",
       "class": 1
     },
     {
@@ -82,11 +82,11 @@
     {
       "name": "emtk",
       "group": "runtime",
-      "requirement": "emtk>=0.1.8",
+      "requirement": "emtk>=0.1.20",
       "license": "MIT",
       "url": "https://github.com/tpeulen/emtk",
       "source": "metadata",
-      "version": "0.1.12",
+      "version": "0.1.24",
       "class": 1
     },
     {
@@ -106,7 +106,7 @@
       "license": "Apache-2.0 OR BSD-2-Clause",
       "url": "https://github.com/pypa/packaging",
       "source": "metadata",
-      "version": "26.3",
+      "version": "26.0",
       "class": 1
     },
     {
@@ -146,7 +146,7 @@
       "license": "BSD-3-Clause",
       "url": "https://Python-Markdown.github.io/",
       "source": "metadata",
-      "version": "3.10.3",
+      "version": "3.10.2",
       "class": 1
     },
     {
@@ -236,7 +236,7 @@
       "license": "BSD-2-Clause",
       "url": "https://pygments.org",
       "source": "metadata",
-      "version": "2.20.0",
+      "version": "2.21.0",
       "class": 1
     },
     {
@@ -316,7 +316,7 @@
       "license": "MIT",
       "url": "https://github.com/fastapi/fastapi",
       "source": "metadata",
-      "version": "0.141.1",
+      "version": "0.133.1",
       "class": 1
     },
     {
@@ -336,7 +336,7 @@
       "license": "Apache Software License",
       "url": "https://github.com/psf/requests",
       "source": "metadata",
-      "version": "2.34.2",
+      "version": "2.33.0",
       "class": 1
     },
     {

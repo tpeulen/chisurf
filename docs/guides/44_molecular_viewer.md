@@ -1698,9 +1698,10 @@ not implemented.
 ## Presets — one command to a figure
 
 A preset is a short recipe of ordinary commands that takes a freshly loaded
-structure to something worth looking at. They are PyMOL's, transcribed from
-`preset.py` with PyMOL's names, and they are in the object panel's **A** menu
-under *preset* as well as on the command line:
+structure to something worth looking at. They carry PyMOL's names and follow
+PyMOL's recipes — users navigate by them — but each recipe here is written for
+ChiSurf's own command set, not copied from PyMOL's code. They are in the object
+panel's **A** menu under *preset* as well as on the command line:
 
 ```text
 preset                       # list them

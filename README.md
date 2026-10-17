@@ -157,11 +157,11 @@ Please submit feature requests, questions, and bugs as GitHub issues. General qu
 
 ChiSurf is distributed under two licences:
 
-- **Source code** — GNU General Public License v3.0 or later (`LICENSE`).
+- **Source code** — MIT (`LICENSE`).
 - **Documentation** — everything under `docs/` is Creative Commons
   Attribution-ShareAlike 4.0 International (`docs/LICENSE`).
 
-`SPDX-License-Identifier: GPL-3.0-or-later AND CC-BY-SA-4.0`
+`SPDX-License-Identifier: MIT`
 
 The documentation is installed into the package and read by the built-in help
 browser, so an install carries both licences. Reuse the pages freely, including
