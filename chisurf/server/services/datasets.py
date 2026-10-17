@@ -668,6 +668,10 @@ def add_dataset(
                 error_code=OPERATION_FAILED,
                 exception=e,
             )
+        if name:
+            # The client's requested name wins over the reader's file-stem default,
+            # as the reader-provided branch below already does.
+            group.name = str(name)
         from chisurf.core.data import ensure_unique_dataset_uids
 
         ensure_unique_dataset_uids(group, state.datasets)
