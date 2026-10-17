@@ -6,12 +6,13 @@ import csv
 import json
 from copy import deepcopy
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
-from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.fio import read_vv_vh
 from chisurf.core.fio.vv_vh import write_vv_vh
+from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 
 from ..core.calculations import (
     calculate_g_factor_core,
@@ -1953,10 +1954,24 @@ class GFactorModel:
     def detector_parameters(
         self, prior_l1: float = 0.0, prior_l2: float = 0.0, micro_time_resolution: float | None = None
     ) -> dict[str, object]:
-        """Return the measured calibration plus detector-context mixing fallbacks."""
+        """Return the measured calibration plus detector-context mixing fallbacks.
+
+        A mixing factor that was never estimated (no slow reference, so
+        ``fp_result`` carries ``None``/NaN) falls back to the detector's prior
+        value; an estimated or manually-set zero is kept as the explicit value.
+        """
         parameters = self.archive_parameters()
-        parameters["l1"] = float(self.l1) if np.isfinite(self.l1) else float(prior_l1)
-        parameters["l2"] = float(self.l2) if np.isfinite(self.l2) else float(prior_l2)
+        # Manual overrides are explicit values and always win; an *automatic* factor
+        # that was never estimated falls back to the detector's prior.
+        if self.manual_l:
+            parameters["l1"], parameters["l2"] = float(self.l1), float(self.l2)
+        else:
+            estimates = self.fp_result if self.fp_result else {}
+            for key, prior in (("l1", prior_l1), ("l2", prior_l2)):
+                estimated = estimates.get(key)
+                parameters[key] = (
+                    float(estimated) if estimated is not None and np.isfinite(estimated) else float(prior)
+                )
         parameters.update(
             g_factor_uncorrected=self.result.get("g_factor_uncorrected"),
             g_factor_corrected=self.result.get("g_factor_corrected"),

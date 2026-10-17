@@ -145,9 +145,12 @@ def test_actual_native_apply_persists_once_with_sd_ids_actor_and_mixing(
     assert child is not None
     settle_child(child, ui)
     if manual_zero:
-        ui.click(reveal_reference(ui, app.page, "manual_l"))
+        # c27f562eb: the mixing controls are rows of the parameters table now; the
+        # manual override is the Fixed toggle on the l1 row.
+        l1_row = next(r for r in child.model.parameter_rows() if r["key"] == "l1")
+        child.model.edit_parameter(l1_row, "fixed", True)
         settle_child(child, ui)
-        assert child.model.manual_l and child.model.l_override == 0.0
+        assert child.model.manual_l and child.model.l1_override == 0.0
     reference, timing = child.model, app.page._reference_context["timing"]
     ui.click("calibration_apply")
     ui.draw(4)

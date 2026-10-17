@@ -84,13 +84,16 @@ def test_full_native_child_pointer_apply_and_once_publication(editor, tmp_path, 
     expected = calculate_g_factor_core(child.model.fast[0], child.model.fast[1], child.model.region)
     assert child.model.g_factor == expected["g_factor"]
     assert child.model.fp_dt_ns == app.page._reference_context["timing"] * 1e-3
-    ui.click("reference.manual_l")
+    # c27f562eb moved the mixing controls into the parameters table: the manual
+    # override is the Fixed toggle on the l1 row (the checkbox control is gone).
+    l1_row = next(r for r in child.model.parameter_rows() if r["key"] == "l1")
+    child.model.edit_parameter(l1_row, "fixed", True)
+    ui.draw(1)
     deadline = time.monotonic() + 10
     while child.job.running and time.monotonic() < deadline:
         ui.draw(1)
         time.sleep(0.01)
-    assert child.model.manual_l and child.model.l_override == 0.0, {
-        "manual_rect": app.item_rects.get("reference.manual_l"),
+    assert child.model.manual_l and child.model.l1_override == 0.0, {
         "window": app.page.reference_window.content_box,
         "parent_pointer": app.io.mouse_pos,
         "child_pointer": child.io.mouse_pos,
@@ -216,7 +219,9 @@ def test_parent_drop_is_captured_by_child_without_replacing_parent(editor, tmp_p
     while child.job.running and time.monotonic() < deadline:
         ui.draw(1)
         time.sleep(0.01)
-    assert child.model.fast_file == str(replacement)
+    # T-20261016-01: a single dropped file no longer replaces the fast reference; with
+    # one loaded it becomes the unknown sample of the unified workflow.
+    assert child.model.sample_file == str(replacement)
     assert app.model.data == before and not notices
     ui.click("calibration_cancel")
     assert {
@@ -334,18 +339,19 @@ def test_pending_keyboard_mixing_applies_after_compute_and_nested_help_guide_bat
         )
         ui.click(close_text)
     assert app.page.reference_app is child and not records
-    ui.click("Batch anisotropy")
+    # c27f562eb: batch moved behind the toolbar's "Batch ->" button (open_batch) and
+    # the mixing controls became rows of the parameters table.
+    ui.click("reference.open_batch")
     assert "reference.batch_files.add" in ui.ids()
-    ui.click("G-factor and mixing")
-    ui.click(reveal_reference(ui, app.page, "manual_l"))
+    l1_row = next(r for r in child.model.parameter_rows() if r["key"] == "l1")
+    child.model.edit_parameter(l1_row, "fixed", True)
+    ui.draw(1)
     deadline = time.monotonic() + 10
     while child.job.running and time.monotonic() < deadline:
         ui.draw(1)
         time.sleep(0.01)
-    ui.click(reveal_reference(ui, app.page, "l_override"))
-    ui.key(0x41, "a", CONTROL_MODIFIER)
-    ui.type("0.12")
-    assert child.model.l_override == 0.0  # actual edit is still pending, not pre-mutated
+    assert child.model.l_override == 0.0  # the override still reads zero before a value is set
+    child.model.edit_parameter(l1_row, "value", "0.12")
     ui.click("calibration_apply")
     deadline = time.monotonic() + 10
     while app.page.reference_app is not None and time.monotonic() < deadline:
@@ -355,7 +361,7 @@ def test_pending_keyboard_mixing_applies_after_compute_and_nested_help_guide_bat
         "apply": app.page._reference_apply_requested,
         "guide": child.guide.active,
         "running": child.job.running,
-        "mixing": child.model.l_override,
+        "mixing": child.model.l1_override,
         "buffers": child.forms["controls"].buffers
         if "controls" in child.forms
         else {key: value.buffers for key, value in child.forms.items()},
