@@ -1035,32 +1035,19 @@ class EmtkShellApp(ImApp):
                 return True
             return False
 
-        seen_keys: set[str] = set()
-        style_items = []
-        for sheet in stored_theme.available_styles():
-            stem = pathlib.Path(sheet).stem
-            if stem in seen_keys:
-                continue
-            seen_keys.add(stem)
-            style_items.append(
-                MenuAction(
-                    f"style_{stem}",
-                    style_display_label(sheet),
-                    partial(choose, sheet),
-                    "",
-                    "",
-                    sheet,
-                    checked=partial(is_checked, sheet),
-                )
-            )
-
+        # The shell's session menus are flat: one checked entry per theme
+        # (emtk's palette sets — "dark", "light"), no submenu layer.
         return [
             MenuAction(
-                "styles",
-                tr("Styles"),
-                children=style_items,
-                description=tr("Choose a color style for the application."),
+                f"style_{pathlib.Path(name).stem}",
+                style_display_label(name),
+                partial(choose, name),
+                "",
+                "",
+                name,
+                checked=partial(is_checked, name),
             )
+            for name in stored_theme.available_styles()
         ]
 
     def session_menus(self) -> list[tuple[str, list[MenuAction]]]:

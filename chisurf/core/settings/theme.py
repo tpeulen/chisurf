@@ -19,6 +19,13 @@ KEY = "theme"
 DEFAULT = "dark"
 
 
+def available_styles() -> tuple[str, ...]:
+    """The theme names the Settings menu can offer (emtk's palette sets)."""
+    from emtk.theme import THEMES
+
+    return tuple(THEMES)
+
+
 def stored() -> str:
     """The stored theme name (``gui.theme``), or :data:`DEFAULT` when unset or unknown."""
     try:
