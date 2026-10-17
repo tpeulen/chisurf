@@ -874,12 +874,16 @@ def _grab_global_view():
     is about the shared parameter, and an unlinked network has nothing in it
     that a list of fits would not have shown.
     """
+    import numpy as np
+    from emtk.pil_painter import PilPainter
+
     import chisurf
     from chisurf.core.api.fitting_client import install_fitting_client
     from chisurf.core.data import DataCurve, DataCurveGroup
     from chisurf.core.fitting.fit import FitGroup
     from chisurf.core.models.description import tcspc_lifetime
-    from chisurf.plugins.core.globalview.gui.tool import GraphWizard
+    from chisurf.plugins.core.globalview.gui.app import make_app
+    from chisurf.plugins.core.globalview.gui.model import GlobalViewModel
 
     def make(name, tau, n_curves=1):
         x = np.linspace(0.1, 25, 256)
@@ -898,13 +902,20 @@ def _grab_global_view():
     for fit in fits[1:]:
         fit.model.parameters_all_dict["t0"].link = source
 
-    tool = GraphWizard(fit_list=fits, remember_layout=False)
-    tool.resize(1150, 760)
-    tool.model.rebuild(force=True)
-    _grab(tool, "globalview_network.png")
-    tool.model.representation = "factor graph"
-    tool.model.relayout()
-    _grab(tool, "globalview_factor_graph.png")
+    app = make_app(GlobalViewModel(fits=lambda: fits), remember_layout=False)
+    for name, representation in (
+        ("globalview_network.png", "network"),
+        ("globalview_factor_graph.png", "factor graph"),
+    ):
+        app.model.representation = representation
+        app.model.rebuild(force=True)
+        app.model.relayout()
+        for _ in range(4):
+            painter = PilPainter(1150, 760)
+            app.draw(painter, 0, 0, 1150, 760)
+        painter.frame.save(FIG / name)
+        print("wrote", name)
+    app.close()
 
 
 def _grab_ebfret_tool():
