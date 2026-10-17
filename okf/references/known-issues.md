@@ -69,7 +69,7 @@ ignored its `kappa2` argument (hard-coded 0.66667); its doctest values were rege
 
 ## mmfdb: `AnalysisReconstructor` has never been run against a real container
 
-status: resolved
+status: resolved 2026-10-14
 
 **2026-10-14.** `chisurf/core/fio/pto_reconstruct.py` claimed to re-run a stored
 burst search from a `.pto`. It read the stored settings under keys the burst

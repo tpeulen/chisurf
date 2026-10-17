@@ -8846,7 +8846,8 @@ front, not this).
 * **The notebook kernel is a window panel, and a screenshot without the theme is not evidence.** The
   notebook's `Chinsole` moved out from under the cells into a **Kernel** dock of `CodeEditorWindow`,
   tabbed with Diagnostics and Output; every panel of that window is now the new shared
-  [`ChisurfDock`](../chisurf/gui/widgets/tools/chisurf_dock.py) rather than a bare `QDockWidget`, so they
+  `ChisurfDock` (the Qt-era `chisurf/gui/widgets/tools/chisurf_dock.py`, retired with
+  the Qt shell) rather than a bare `QDockWidget`, so they
   share one title bar, one feature set and one object-name scheme. The dock is backed by a stack that
   follows the active tab, because each notebook owns its own shell. Fixed on the way:
   `CodeEditorWindow.__init__` forwarded every `**kwarg` to both `QMainWindow` *and* `CodeEditor`, so
