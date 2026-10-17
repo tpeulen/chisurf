@@ -873,13 +873,15 @@ def test_the_wheel_over_the_pixel_size_field_steps_it(app, drv):
 
 
 def test_the_wheel_scrolls_the_settings_window_when_the_form_is_taller_than_it(app):
-    drv = Driver(app, (800, 300))
+    # emtk's density commits (d0567a0, e173c9e) compacted the form so it fits an 800x300
+    # window with room to spare; scroll only engages when the form really overflows.
+    drv = Driver(app, (800, 200))
     drv.draw(3)
     top = app.form.rects["measure"][1]
     drv.click("Estimator.fold")
-    drv.wheel(150, 200, -5)
+    drv.wheel(150, 120, -5)
     assert app.form.rects["measure"][1] < top
-    drv.wheel(150, 200, 8)
+    drv.wheel(150, 120, 8)
     assert app.form.rects["measure"][1] == top
 
 

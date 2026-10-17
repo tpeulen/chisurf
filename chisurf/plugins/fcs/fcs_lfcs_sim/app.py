@@ -21,7 +21,7 @@ from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import action_button, window_size
+from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
 from .model import LifetimeFcsSimModel
 from .strings import install_translations
@@ -123,7 +123,11 @@ class LifetimeFcsSimApp(ImApp):
         if action_button("guide"):
             self.tour.start()
         self.item_rects["guide"] = im.get_item_rect()
-        im.same_line()
+        # Wrap to the next line when the pane is too narrow (800 px window): an
+        # unconditional same_line() lets the frame clip the help button off the canvas.
+        pad = 2 * im.get_style().frame_padding[0]
+        if im.get_line_avail() >= im.calc_text_size(action_caption("help"))[0] + pad:
+            im.same_line()
         if action_button("help"):
             self.help_window.show()
         self.item_rects["help"] = im.get_item_rect()
