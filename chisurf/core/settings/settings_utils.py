@@ -242,8 +242,25 @@ def copy_styles_to_user_folder():
     user_settings_path = get_path("settings") / "styles"
     user_settings_path.mkdir(parents=True, exist_ok=True)
 
+    # Copy the shipped emtk stylesheets by FILESYSTEM PATH, never by import: this module
+    # runs at chisurf.core.settings import time, and importing emtk here would drag the
+    # GUI toolkit stack into every pure-compute process (the burst MLE engine must stay
+    # importable without it). find_spec() locates the package without executing it.
+    try:
+        import importlib.util
+
+        spec = importlib.util.find_spec("emtk")
+        if spec is not None and spec.origin:
+            for p in (pathlib.Path(spec.origin).parent / "styles").glob("*.css"):
+                if p.is_file():
+                    dest = user_settings_path / p.name
+                    if not dest.exists():
+                        shutil.copyfile(p, dest)
+    except Exception:
+        pass
+
     for file in package_path.iterdir():
-        if file.is_file() and file.suffix == ".qss":
+        if file.is_file() and file.suffix in (".css", ".qss"):
             destination_file = user_settings_path / file.name
             if destination_file.exists():
                 try:
