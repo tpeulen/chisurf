@@ -614,7 +614,7 @@
     "D": {
       "aliases": [],
       "ambiguous": true,
-      "description": "Translational diffusion coefficient of the diffusing species (µm²/s).",
+      "description": "Translational diffusion coefficient of the diffusing species (\u00b5m\u00b2/s).",
       "flrcif_item_id": "_flr_fit_parameter.D",
       "keywords": [
         "FCS",
@@ -4473,7 +4473,7 @@
         "Rdye"
       ],
       "ambiguous": false,
-      "description": "Characteristic interaction radius or distance parameter for the dye–quencher system.",
+      "description": "Characteristic interaction radius or distance parameter for the dye\u2013quencher system.",
       "flrcif_item_id": "_flr_fit_parameter.tcspc_Rdye",
       "keywords": [
         "TCSPC",

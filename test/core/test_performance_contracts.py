@@ -36,7 +36,10 @@ def test_table_plot_avoids_resize_to_contents_and_hidden_refresh_contract():
     needs a refresh instead of performing one, so a hidden tab costs nothing
     while a fit iterates.
     """
-    plot = (ROOT / "chisurf" / "gui" / "plots" / "table_plot_emtk.py").read_text(encoding="utf-8")
+    # 2808f41dc moved the table plot out of the Qt gui package, beside the fit pages.
+    plot = (ROOT / "chisurf" / "emtk" / "fit_pages" / "pages" / "table_plot_emtk.py").read_text(
+        encoding="utf-8"
+    )
     view = (ROOT / "chisurf" / "gui" / "widgets" / "chitable" / "view.py").read_text(
         encoding="utf-8"
     )

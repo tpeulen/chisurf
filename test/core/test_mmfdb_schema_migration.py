@@ -86,7 +86,9 @@ def test_ndxplorer_has_manifest():
     assert not errors, f"ndxplorer manifest invalid: {errors}"
     assert data["id"] == "ndxplorer"
     assert "entrypoints" in data
-    assert "gui" in data["entrypoints"]
+    # e84199fe5 retired the Qt NdxWindow: the manifest names only the emtk host + cli.
+    assert "emtk" in data["entrypoints"]
+    assert "gui" not in data["entrypoints"]
     assert "cli" in data["entrypoints"]
 
 
