@@ -4,6 +4,17 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## PTO explanation marker sits past 64 KiB (found 2026-10-18, branch `mcts-native-baseline`)
+
+status: open
+
+`test_the_explanation_is_findable_in_the_raw_bytes` expects `PTO.MFDB CONTAINER`
+within the first 64 KiB; it lands at ~132 KiB. It fails identically on `c85e8e83b`
+(pre-WIP), on the sidecar commit `13ddac2f4`, and on the merged tree — the marker
+position is decided by tttrlib's `PtoFile` zone layout, not by anything in this
+repo. Not a merge regression; needs a tttrlib-side look or a relaxed bound with
+the reason recorded.
+
 ## Chimol browser-demo tests need IMP, network fetches and real WebGPU (found 2026-10-18, branch `s6-merge`)
 
 status: open
