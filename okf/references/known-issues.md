@@ -4,6 +4,20 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Chimol browser-demo tests need IMP, network fetches and real WebGPU (found 2026-10-18, branch `s6-merge`)
+
+status: open
+
+Five of the 45 browser-demo/fps tests fail in this environment for causes upstream of
+chimol, each reproduced identically on the pre-clean-room tree (`5ad9d9b`): `labelling`
+and `npc_integrative` demos need IMP (`IMP.bff` atom radii) and an embl.de data fetch;
+`t4l_network` fps_load cannot compute positions in this settings dir; the fps-circle
+dye-position assertion sees `0,0` where headless WebGPU is asked for `1,2` — a
+headless-rendering gap, not a logic change. Playwright's chromium-headless-shell had
+to be installed once (`python -m playwright install chromium-headless-shell`); without
+it all 44 browser tests error at setup. Verified clean: the other 39 pass, and the
+full non-browser band is green.
+
 ## Qt-shell leftovers after S6 (found 2026-10-14, branch `s6-retire-qt-shell`)
 
 status: open
