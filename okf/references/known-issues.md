@@ -16,7 +16,13 @@ dye-position assertion sees `0,0` where headless WebGPU is asked for `1,2` — a
 headless-rendering gap, not a logic change. Playwright's chromium-headless-shell had
 to be installed once (`python -m playwright install chromium-headless-shell`); without
 it all 44 browser tests error at setup. Verified clean: the other 39 pass, and the
-full non-browser band is green.
+full non-browser band is green. `test_web_parity` additionally hangs: its capture
+subprocess (both hosts + browser automation) exceeds any timeout on THIS tree and
+identically on the pre-clean-room tree — environment, not regression. Non-browser
+band rerun in 9 chunks: 2914 passed / 4 failed, all four reproduced on `5ad9d9b`
+(rAF continuation check, frozen-RMF demo filename, layering stale baseline,
+hosts/qt path in object_registry — that last one is the known committed-gap
+cluster).
 
 ## Qt-shell leftovers after S6 (found 2026-10-14, branch `s6-retire-qt-shell`)
 
