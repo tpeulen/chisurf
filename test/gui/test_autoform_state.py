@@ -1,4 +1,4 @@
-"""Every AutoForm is restorable from JSON.
+"""Every AutoForm is restorable from JSON (``chisurf.core.dataspec.form_state``).
 
 A form is generated from a view spec that names, per control, the model
 attribute it binds to — which is already a complete description of where the
@@ -16,17 +16,9 @@ from __future__ import annotations
 import json
 
 import pytest
-from qtpy import QtWidgets
 
 from chisurf.core import dataspec as vs
-from chisurf.gui.autoform import state as af_state
-from chisurf.gui.autoform.auto_form import AutoForm
-
-
-@pytest.fixture(scope="module")
-def qt_app():
-    """A single QApplication for the module (offscreen)."""
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+from chisurf.core.dataspec import form_state as af_state
 
 
 class Settings:
@@ -76,12 +68,29 @@ class Model:
         )
 
 
+class _Form:
+    """The headless handle ``form_state`` accepts: the model is its own form (no widgets)."""
+
+    def __init__(self, model):
+        self.model = model
+
+    def state(self):
+        return af_state.collect_state(self.model)
+
+    def apply_state(self, state):
+        return af_state.apply_state(self.model, state)
+
+    def save_state(self, path, **extra):
+        return af_state.save_state(self.model, path, **extra)
+
+    def load_state(self, path):
+        return af_state.load_state(self.model, path)
+
+
 @pytest.fixture
-def form(qt_app):
-    """A built form over the model above."""
-    widget = AutoForm(Model())
-    yield widget
-    widget.close()
+def form():
+    """A headless form over the model above."""
+    return _Form(Model())
 
 
 def test_state_captures_every_bound_control_including_nested(form):
@@ -220,7 +229,7 @@ def test_numpy_values_survive_being_written(form):
     assert state["settings.window"] == 0.75
 
 
-def test_it_works_on_shipped_view_specs(qt_app):
+def test_it_works_on_shipped_view_specs():
     """Against the real ``.view.json`` files, not only the fixture above.
 
     Loads every shipped spec that declares attribute-bound controls and checks

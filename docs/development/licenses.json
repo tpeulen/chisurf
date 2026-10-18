@@ -1,54 +1,14 @@
 {
-  "generated": "2026-10-05",
-  "project_license": "GPL-3.0-or-later AND CC-BY-SA-4.0",
-  "binding_class": 4,
-  "binding_class_name": "Strong copyleft (GPL)",
+  "generated": "2026-10-17",
+  "project_license": "MIT",
+  "binding_class": 2,
+  "binding_class_name": "Weak copyleft, file-level (MPL)",
   "blockers": [
-    "PyQt5",
-    "sip"
+    "imp-bff",
+    "labellib"
   ],
   "unknown": [],
   "entries": [
-    {
-      "name": "PyQt5",
-      "group": "runtime",
-      "requirement": "PyQt5",
-      "license": "GPL-3.0-only",
-      "url": "https://www.riverbankcomputing.com/commercial/license-faq",
-      "source": "override",
-      "version": "5.15.11",
-      "class": 4
-    },
-    {
-      "name": "qtpy",
-      "group": "runtime",
-      "requirement": "qtpy",
-      "license": "MIT License",
-      "url": "https://github.com/spyder-ide/qtpy",
-      "source": "metadata",
-      "version": "2.4.3",
-      "class": 1
-    },
-    {
-      "name": "sip",
-      "group": "runtime",
-      "requirement": "sip",
-      "license": "SIP license / GPL-3.0-only",
-      "url": "https://www.riverbankcomputing.com/commercial/license-faq",
-      "source": "override",
-      "version": "6.16.0",
-      "class": 4
-    },
-    {
-      "name": "pyqtgraph",
-      "group": "runtime",
-      "requirement": "pyqtgraph",
-      "license": "MIT",
-      "url": "https://github.com/pyqtgraph/pyqtgraph",
-      "source": "metadata",
-      "version": "0.14.0",
-      "class": 1
-    },
     {
       "name": "numpy",
       "group": "runtime",
@@ -56,7 +16,7 @@
       "license": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
       "url": "https://numpy.org",
       "source": "metadata",
-      "version": "2.4.6",
+      "version": "2.4.3",
       "class": 1
     },
     {
@@ -68,16 +28,6 @@
       "source": "override",
       "version": "not installed",
       "class": 2
-    },
-    {
-      "name": "scipy",
-      "group": "runtime",
-      "requirement": "scipy",
-      "license": "BSD License",
-      "url": "https://scipy.org/",
-      "source": "metadata",
-      "version": "1.18.0",
-      "class": 1
     },
     {
       "name": "PyOpenGL",
@@ -113,9 +63,9 @@
       "name": "glfw",
       "group": "runtime",
       "requirement": "glfw",
-      "license": "MIT License",
-      "url": "https://github.com/FlorianRhiem/pyGLFW",
-      "source": "metadata",
+      "license": "MIT",
+      "url": "https://github.com/FlorianRhiem/pyGLFW/blob/master/LICENSE.txt",
+      "source": "override",
       "version": "2.10.2",
       "class": 1
     },
@@ -125,18 +75,18 @@
       "requirement": "labellib",
       "license": "MPL-2.0",
       "url": "https://github.com/Fluorescence-Tools/LabelLib",
-      "source": "metadata",
+      "source": "override",
       "version": "1!1.0.0",
       "class": 2
     },
     {
       "name": "emtk",
       "group": "runtime",
-      "requirement": "emtk",
+      "requirement": "emtk>=0.1.20",
       "license": "MIT",
       "url": "https://github.com/tpeulen/emtk",
       "source": "metadata",
-      "version": "0.1.0",
+      "version": "0.1.24",
       "class": 1
     },
     {
@@ -156,7 +106,7 @@
       "license": "Apache-2.0 OR BSD-2-Clause",
       "url": "https://github.com/pypa/packaging",
       "source": "metadata",
-      "version": "26.3",
+      "version": "26.0",
       "class": 1
     },
     {
@@ -170,23 +120,23 @@
       "class": 1
     },
     {
-      "name": "matplotlib",
-      "group": "runtime",
-      "requirement": "matplotlib",
-      "license": "Python Software Foundation License",
-      "url": "https://matplotlib.org",
-      "source": "metadata",
-      "version": "3.11.0",
-      "class": 1
-    },
-    {
       "name": "python-docx",
       "group": "runtime",
       "requirement": "python-docx",
       "license": "MIT",
       "url": "https://github.com/python-openxml/python-docx/blob/master/LICENSE",
       "source": "override",
-      "version": "not installed",
+      "version": "1.2.0",
+      "class": 1
+    },
+    {
+      "name": "ihm",
+      "group": "runtime",
+      "requirement": "ihm",
+      "license": "MIT",
+      "url": "https://github.com/ihmwg/python-ihm",
+      "source": "metadata",
+      "version": "2.11",
       "class": 1
     },
     {
@@ -196,7 +146,7 @@
       "license": "BSD-3-Clause",
       "url": "https://Python-Markdown.github.io/",
       "source": "metadata",
-      "version": "3.10.3",
+      "version": "3.10.2",
       "class": 1
     },
     {
@@ -207,26 +157,6 @@
       "url": "https://msgpack.org/",
       "source": "metadata",
       "version": "1.2.1",
-      "class": 1
-    },
-    {
-      "name": "ipython",
-      "group": "runtime",
-      "requirement": "ipython",
-      "license": "BSD-3-Clause",
-      "url": "https://ipython.org",
-      "source": "metadata",
-      "version": "9.16.1",
-      "class": 1
-    },
-    {
-      "name": "nbformat",
-      "group": "runtime",
-      "requirement": "nbformat",
-      "license": "BSD License",
-      "url": "https://jupyter.org",
-      "source": "metadata",
-      "version": "5.11.0",
       "class": 1
     },
     {
@@ -306,17 +236,7 @@
       "license": "BSD-2-Clause",
       "url": "https://pygments.org",
       "source": "metadata",
-      "version": "2.20.0",
-      "class": 1
-    },
-    {
-      "name": "latexify-py",
-      "group": "full",
-      "requirement": "latexify-py",
-      "license": "Apache Software License",
-      "url": "https://github.com/google/latexify_py",
-      "source": "metadata",
-      "version": "0.4.4",
+      "version": "2.21.0",
       "class": 1
     },
     {
@@ -347,16 +267,6 @@
       "url": "https://github.com/pytest-dev/pytest-cov/blob/master/LICENSE",
       "source": "override",
       "version": "not installed",
-      "class": 1
-    },
-    {
-      "name": "pytest-qt",
-      "group": "dev",
-      "requirement": "pytest-qt",
-      "license": "MIT License",
-      "url": "http://github.com/pytest-dev/pytest-qt",
-      "source": "metadata",
-      "version": "4.5.0",
       "class": 1
     },
     {
@@ -406,7 +316,7 @@
       "license": "MIT",
       "url": "https://github.com/fastapi/fastapi",
       "source": "metadata",
-      "version": "0.141.1",
+      "version": "0.133.1",
       "class": 1
     },
     {
@@ -426,7 +336,7 @@
       "license": "Apache Software License",
       "url": "https://github.com/psf/requests",
       "source": "metadata",
-      "version": "2.34.2",
+      "version": "2.33.0",
       "class": 1
     },
     {

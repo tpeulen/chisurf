@@ -79,11 +79,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging.")
     parser.add_argument(
-        "--no-qt",
-        action="store_true",
-        help="Do not create an off-screen Qt application (fewer readers and models).",
-    )
-    parser.add_argument(
         "--acp",
         action="store_true",
         help="Run as an Agent Client Protocol (ACP) server over stdio.",
@@ -123,10 +118,6 @@ def _confirm(tool: str, arguments: dict[str, Any]) -> bool:
 
 def build_cli_session(arguments: argparse.Namespace) -> AgentSession:
     """Create the agent session described by parsed command-line *arguments*."""
-    if not arguments.no_qt:
-        from chisurf.core.experiments.bootstrap import ensure_qt_application
-
-        ensure_qt_application()
     context = AgentContext(
         working_directory=arguments.directory,
         allow_code_execution=arguments.safety == SAFETY_DANGEROUS,
@@ -221,7 +212,6 @@ def main(argv: list[str] | None = None) -> int:
             cwd=arguments.directory,
             safety=arguments.safety,
             verbose=arguments.verbose,
-            no_qt=arguments.no_qt,
         )
 
     request = " ".join(arguments.request).strip()

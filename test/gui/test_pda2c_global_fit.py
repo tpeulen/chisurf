@@ -19,13 +19,6 @@ import pytest
 TRUTH_GR = 52.0
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
 def _three_colour_fit(n_bursts=2500, seed=31):
     """A PDA3c fit over simulated bursts, only R(GR) free."""
     import chisurf.core.fitting.fit as fit_mod
@@ -79,7 +72,7 @@ def _two_colour_fit(seed=7):
     return fit, model, mean
 
 
-def test_a_global_model_accepts_both_pda_families(qapp):
+def test_a_global_model_accepts_both_pda_families():
     """The residual vector is the two datasets' residuals, end to end."""
     import chisurf.core.fitting.fit as fit_mod
     from chisurf.core.models.global_model.globalfit import GlobalFitModel
@@ -102,7 +95,7 @@ def test_a_global_model_accepts_both_pda_families(qapp):
     assert host.model.n_points == two_model.n_points + three_model.n_points
 
 
-def test_linking_makes_one_distance_serve_both_datasets(qapp):
+def test_linking_makes_one_distance_serve_both_datasets():
     """A linked parameter must follow its target, not drift independently."""
     three, _, three_mean = _three_colour_fit()
     two, _, two_mean = _two_colour_fit()
@@ -122,7 +115,7 @@ def test_linking_makes_one_distance_serve_both_datasets(qapp):
 
 
 @pytest.mark.slow
-def test_the_joint_fit_recovers_the_shared_distance(qapp):
+def test_the_joint_fit_recovers_the_shared_distance():
     """PRD-65 stage 5: one distance, both datasets, one number out.
 
     The two-colour and three-colour measurements see the same dye pair, so the

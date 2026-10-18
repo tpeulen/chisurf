@@ -104,7 +104,7 @@ def test_it_is_the_published_equation_with_the_reciprocal_g():
             assert r_cor[0] == pytest.approx(published, abs=1e-12), f"G={G} l1={l1} l2={l2}"
 
 
-def test_the_curve_agrees_with_the_integrals_module(qapp=None):
+def test_the_curve_agrees_with_the_integrals_module():
     """One anisotropy equation, two call sites, the same number.
 
     ``anisotropy_from_integrals`` is the other implementation; a difference

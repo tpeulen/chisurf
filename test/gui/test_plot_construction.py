@@ -8,23 +8,12 @@ plot widgets:
   iterable`` and the plot could not be built at all.
 """
 
-import os
-
 import numpy as np
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
-from qtpy import QtWidgets  # noqa: E402
-
-import chisurf.core.data  # noqa: E402
-import chisurf.core.models.description as lifetime_model  # noqa: E402
-from chisurf.core.fitting.fit import Fit  # noqa: E402
-
-
-@pytest.fixture(scope="module")
-def app():
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+import chisurf.core.data
+import chisurf.core.models.description as lifetime_model
+from chisurf.core.fitting.fit import Fit
 
 
 @pytest.fixture
@@ -37,7 +26,7 @@ def single_fit():
     return Fit(model_class=lifetime_model.tcspc_lifetime, data=data, xmin=0, xmax=n - 1)
 
 
-def test_residual_plot_accepts_a_plain_fit(app, single_fit):
+def test_residual_plot_accepts_a_plain_fit(single_fit):
     """Regression: this raised TypeError: 'Fit' object is not iterable."""
     from chisurf.emtk.fit_pages.pages.wr_plot import ResidualPlot
 
@@ -55,33 +44,3 @@ def test_residual_plot_member_fits_helper():
     assert _member_fits(_Group(["a", "b"])) == ["a", "b"]
     sentinel = object()
     assert _member_fits(sentinel) == [sentinel]
-
-
-class _PlotModel:
-    """Minimal model exposing the series source a PlotSection reads."""
-
-    def series(self):
-        return [{"x": [0, 1, 2], "y": [1, 2, 3], "name": "s"}]
-
-
-def test_inline_plot_context_menu_on_by_default(app):
-    """A PlotSection keeps the right-click menu unless it opts out.
-
-    Asked through chiplot's own ``menu_enabled()`` rather than the renderer's
-    spelling: the point of the seam is that a plot answers this without the
-    caller knowing which library draws it.
-    """
-    from chisurf.core.dataspec import PlotSection
-    from chisurf.gui.autoform.sections.builtin import PlotWidget
-
-    widget = PlotWidget(_PlotModel(), PlotSection(source="series"))
-    assert widget.plot.menu_enabled() is True
-
-
-def test_inline_plot_context_menu_can_be_disabled(app):
-    """``context_menu: false`` suppresses the per-axis/log/export menu."""
-    from chisurf.core.dataspec import PlotSection
-    from chisurf.gui.autoform.sections.builtin import PlotWidget
-
-    widget = PlotWidget(_PlotModel(), PlotSection(source="series", context_menu=False))
-    assert widget.plot.menu_enabled() is False

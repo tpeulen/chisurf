@@ -20,8 +20,6 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 import chisurf as cs  # noqa: E402
-import chisurf.gui  # noqa: E402,F401  # ensure cs.gui is a module
-import chisurf.gui.widgets  # noqa: E402,F401  # ensure cs.gui.widgets resolves
 from chisurf.core.data import DataCurve  # noqa: E402
 from chisurf.core.project import capture_session, restore_session, save_project  # noqa: E402
 from chisurf.core.project.storage import ProjectStorageError  # noqa: E402
@@ -61,17 +59,6 @@ def _reset_state():
         cs.cs = None
     except Exception:
         pass
-
-
-def test_cs_gui_is_module():
-    """`chisurf.gui` must remain a module — code paths like
-    `cs.gui.widgets.hide_items_in_layout(...)` rely on it. A
-    regression where something assigns a Main instance to
-    ``cs.gui`` would break every GUI call site.
-    """
-    # Sanity: it's a module and exposes the standard submodules
-    assert isinstance(cs.gui.__name__, str) and cs.gui.__name__ == "chisurf.gui"
-    assert cs.gui.widgets.__name__ == "chisurf.gui.widgets"
 
 
 def _is_csp_project(path):
@@ -118,8 +105,6 @@ def test_t4l_chimol_project_loads(tmp_path):
     assert isinstance(fit_uids, list)
     # 0 fits by design
     assert len(cs.fits) == 0
-    # Loading must not have corrupted `cs.gui`.
-    assert cs.gui.__name__ == "chisurf.gui"
 
 
 def test_t4l_proteinmc_project_loads(tmp_path):
@@ -191,8 +176,6 @@ def test_t4l_proteinmc_project_loads(tmp_path):
     assert loaded_structure is not None
     np.testing.assert_array_equal(loaded_structure.atoms, curve.atoms)
     assert not source.exists()
-    # Loading must not have corrupted `cs.gui`.
-    assert cs.gui.__name__ == "chisurf.gui"
 
 
 def test_load_project_payload_does_not_reinitialize_gui_during_staging(monkeypatch):
@@ -221,37 +204,9 @@ def test_load_project_payload_does_not_reinitialize_gui_during_staging(monkeypat
     gui = FakeGui()
     monkeypatch.setattr(cs, "cs", gui)
     monkeypatch.setattr(cs, "_project_gui", gui, raising=False)
-    monkeypatch.setattr(chisurf.gui, "fit_windows", [])
+    monkeypatch.setattr("chisurf.gui.fit_windows", [], raising=False)
     result = load_project_payload(Project(name="test"), project_path=None)
 
     assert result["ok"] is True
     assert guard_calls and set(guard_calls) == {"confirm"}
     assert calls == []
-
-
-def test_reinitialize_application_does_not_overwrite_cs_gui():
-    """`reinitialize_application` previously did
-    ``setattr(cs, 'gui', main_window)`` which clobbered the
-    ``chisurf.gui`` module reference with a Main instance. Every
-    later call into ``cs.gui.widgets.*`` then raised
-    ``AttributeError: 'Main' object has no attribute 'widgets'``.
-    """
-    # Pre-import to ensure the package attribute is set
-    from chisurf.macros.core_data import reinitialize_application
-
-    class _MockMain:
-        def onCloseAllFits(self):
-            pass
-
-    # Save and restore cs.cs to avoid polluting subsequent tests
-    saved_cs_cs = getattr(cs, "cs", None)
-    try:
-        # Run the full reinitialize sequence. Internal steps that need
-        # a real Main window log a warning instead of crashing.
-        reinitialize_application(main_window=_MockMain())
-
-        # The critical assertion: cs.gui is still the module.
-        assert cs.gui.__name__ == "chisurf.gui"
-        assert cs.gui.widgets.__name__ == "chisurf.gui.widgets"
-    finally:
-        cs.cs = saved_cs_cs

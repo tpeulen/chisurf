@@ -29,16 +29,6 @@ import sys
 import webbrowser
 
 
-def _loaded_qt_core():
-    """Find an existing Qt module without loading a GUI backend."""
-    for name in ("qtpy.QtCore", "PySide6.QtCore", "PyQt6.QtCore", "PySide2.QtCore", "PyQt5.QtCore"):
-        module = sys.modules.get(name)
-        if module is not None:
-            return module
-    return None
-
-
-from chisurf.emtk.code_links import _is_qt_active
 from chisurf.plugins.core.help.api.source_links import is_source_path
 from chisurf.plugins.core.help.api.xref import (
     expand_roles,
@@ -136,129 +126,36 @@ def _open_web(url: str) -> bool:
 
 
 def _open_document(path: pathlib.Path, anchor: str = "") -> bool:
-    """Show *path* in the ChiSurf documentation browser with targeted anchor.
+    """Show *path* in the ChiSurf documentation browser at *anchor*.
 
-    Checks active pure EMTK help browser first, then open Qt widgets, or
-    creates a new HelpEmtkTool.
+    An open help browser takes it; else the open emtk shell docks one (the ``help``
+    plugin's ``open_page`` hand-off); else a standalone help window opens.
     """
     from chisurf.plugins.core.help.gui.help_app import open_help_page
 
-    # 1. Try targeting active EMTK help viewer
     if open_help_page(path, anchor=anchor or None):
-        if _is_qt_active():
-            try:
-                from qtpy import QtWidgets
-
-                from chisurf.plugins.core.help.gui.tool import HelpEmtkTool
-
-                for candidate in QtWidgets.QApplication.topLevelWidgets():
-                    if isinstance(candidate, HelpEmtkTool):
-                        candidate.show()
-                        candidate.raise_()
-                        candidate.activateWindow()
-                        break
-            except Exception:
-                pass
         return True
+    # The emtk shell is open: the help browser is one of its docks, not a second
+    # process whose OS window falls behind the main one.
+    from chisurf.core.plugin import handoff
 
-    # A Qt widget must never be constructed without a live QApplication.
-    if not _is_qt_active():
-        # The emtk shell is open: the help browser is one of its docks, not a second
-        # process whose OS window falls behind the main one.
-        from chisurf.core.plugin import handoff
-
-        if handoff.available("help", "open_page"):
-            try:
-                handoff.hand_off("help", "open_page", {"path": str(path), "anchor": anchor or ""})
-                return True
-            except handoff.HandoffError:
-                logger.debug("the shell refused the help hand-off", exc_info=True)
+    if handoff.available("help", "open_page"):
         try:
-            import subprocess
-
-            command = [
-                sys.executable,
-                "-m",
-                "chisurf.emtk",
-                "--plugin",
-                "help",
-                "--path",
-                str(path),
-            ]
-            if anchor:
-                command.extend(["--anchor", anchor])
-            subprocess.Popen(command)
+            handoff.hand_off("help", "open_page", {"path": str(path), "anchor": anchor or ""})
             return True
-        except Exception:
-            logger.debug("could not launch native documentation viewer", exc_info=True)
-            return False
-
-    # 2. Try launching or raising HelpEmtkTool
+        except handoff.HandoffError:
+            logger.debug("the shell refused the help hand-off", exc_info=True)
     try:
-        from chisurf.plugins.core.help.gui.tool import HelpEmtkTool
+        import subprocess
 
-        widget = None
-        if _is_qt_active():
-            try:
-                from qtpy import QtWidgets
-
-                for candidate in QtWidgets.QApplication.topLevelWidgets():
-                    if isinstance(candidate, HelpEmtkTool):
-                        widget = candidate
-                        break
-            except Exception:
-                pass
-
-        if widget is None:
-            widget = HelpEmtkTool(path=path)
-
-        if _is_qt_active() and hasattr(widget, "show"):
-            try:
-                widget.show()
-                widget.raise_()
-                widget.activateWindow()
-            except Exception:
-                pass
-        widget.open_markdown_path(path, anchor or None)
+        command = [sys.executable, "-m", "chisurf.emtk", "--plugin", "help", "--path", str(path)]
+        if anchor:
+            command.extend(["--anchor", anchor])
+        subprocess.Popen(command)
         return True
     except Exception:
-        logger.debug("the documentation browser is unavailable", exc_info=True)
+        logger.debug("could not launch native documentation viewer", exc_info=True)
         return _open_web(path.as_uri())
-
-
-def wire_text_browser(browser, base: pathlib.Path | None = None) -> None:
-    """Route a ``QTextBrowser``'s links through :func:`open_link`.
-
-    Parameters
-    ----------
-    browser : QtWidgets.QTextBrowser
-        The widget to wire.
-    base : pathlib.Path, optional
-        Directory the shown text came from, for relative document links.
-
-    Notes
-    -----
-    ``setOpenLinks(False)`` is what makes this work: left to itself the browser
-    tries to *navigate* to the target and, failing, blanks the page it was
-    showing — so a dead link would eat the help text.
-    """
-    try:
-        browser.setOpenLinks(False)
-        browser.setOpenExternalLinks(False)
-    except Exception:  # pragma: no cover - not a QTextBrowser
-        return
-
-    def _clicked(url) -> None:
-        if url.scheme() == "" and not url.path() and url.fragment():
-            # An in-page anchor: scroll rather than leave the document.
-            try:
-                browser.scrollToAnchor(url.fragment())
-            except Exception:
-                logger.debug("could not scroll to %s", url.fragment(), exc_info=True)
-            return
-        open_link(url, base)
-
-    browser.anchorClicked.connect(_clicked)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

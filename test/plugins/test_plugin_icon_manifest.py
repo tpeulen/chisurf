@@ -1,9 +1,7 @@
 """A plugin's manifest emoji is its icon even when the caller does not pass the manifest.
 
-The ribbon's plugin tabs and the plugin toolbar called the icon resolver without
-the manifest, so every plugin whose emoji lives only in ``manifest.json`` (Image
-Tools, File tools, ...) got a letter placeholder — and its whole module was
-imported to discover that.
+Every plugin whose emoji lives only in ``manifest.json`` (Image Tools, File tools,
+...) must show it, without its whole module being imported to discover that.
 """
 
 from __future__ import annotations
@@ -24,21 +22,11 @@ def plugin_dir(tmp_path):
     return tmp_path
 
 
-def test_the_manifest_icon_is_used_and_the_module_is_not_imported(qapp, plugin_dir, monkeypatch):
-    from chisurf.gui import plugin_icons as icon_utils
+def test_the_manifest_icon_is_read_without_importing_the_module(plugin_dir):
+    from chisurf.emtk.plugin_icons import _manifest_icon
 
-    resolved = []
-    monkeypatch.setattr(
-        icon_utils,
-        "resolve_plugin_icon",
-        lambda icon, size, base_dir: resolved.append(icon) or "ICON",
-    )
-
-    def provider():
-        raise AssertionError("the plugin module was imported to find its icon")
-
-    assert icon_utils.create_plugin_icon_with_fallback(provider, plugin_dir, size=16) == "ICON"
-    assert resolved == ["🔬"]
+    # The directory holds only a manifest: no module exists to import.
+    assert _manifest_icon(str(plugin_dir)) == "🔬"
 
 
 def test_every_plugin_manifest_declares_its_icon():

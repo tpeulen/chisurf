@@ -53,7 +53,7 @@ wheel events once; idle redraws must leave their scroll or zoom unchanged.
 Run targeted files through the project test environment:
 
 ```sh
-QT_QPA_PLATFORM=offscreen CHISURF_SETTINGS_DIR=/tmp/chisurf-ui-check \
+CHISURF_SETTINGS_DIR=/tmp/chisurf-ui-check \
 PYTHONPATH="/Users/tpeulen/dev/emtk:modules/chimol:modules/mmfdb/src:." \
 pixi run -e test python -m pytest test/gui/test_autoform_state.py -q
 ```

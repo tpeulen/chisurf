@@ -14,6 +14,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 PROBE = Path(__file__).with_name("restore_probe") / "history_probe.py"
 
@@ -35,6 +37,10 @@ def _run(stage: str, out: Path) -> dict:
     return json.loads((out / f"{stage}.json").read_text())
 
 
+@pytest.mark.xfail(reason="the probe drove the retired Qt Main; the emtk-shell history "
+                          "probe (shell_session undo/redo across a .cs.pto reopen) is "
+                          "the remaining S6 port — tracked in okf/subsystems/qt-retirement",
+                   strict=True)
 def test_undo_redo_revert_and_reapply_an_edit_before_and_after_reopening(tmp_path):
     a = _run("A", tmp_path)
     assert "edit_error" not in a, a.get("edit_error")

@@ -132,7 +132,7 @@ def test_an_unclaimed_step_says_so_instead_of_offering_a_button(model):
 
 
 def test_the_graph_is_valid_and_carries_the_focus(model):
-    from chisurf.gui.widgets.node_editor.validation import validate_graph_dict
+    from chisurf.emtk.node_editor.validation import validate_graph_dict
 
     graph = model.provenance_graph()
     validate_graph_dict(graph)

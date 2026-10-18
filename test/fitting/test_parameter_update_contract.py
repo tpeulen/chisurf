@@ -1,4 +1,4 @@
-"""Concrete scalar/fit parameters share their actual controller refresh contract."""
+"""Concrete scalar/fit parameters share their controller refresh contract."""
 
 from __future__ import annotations
 
@@ -7,61 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from chisurf.core.fitting.parameter import FittingParameter
-from chisurf.core.parameter import Parameter, ParameterGroup
-from chisurf.gui.widgets.fitting.parameter_widgets import make_fitting_parameter_widget
-
-
-@pytest.mark.parametrize("parameter_type", [Parameter, FittingParameter])
-@pytest.mark.parametrize("operation", ["update", "set_state"])
-def test_real_editor_follows_explicit_parameter_refresh(qtbot, parameter_type, operation):
-    """A real bare or fitting scalar editor follows model updates and restored state."""
-    parameter = parameter_type(name="scalar", value=2.0)
-    editor = make_fitting_parameter_widget(parameter)
-    qtbot.addWidget(editor)
-    uid = parameter.unique_identifier
-    if operation == "update":
-        parameter.value = 7.25
-        parameter.update()
-    else:
-        parameter.set_state({"value": 7.25})
-    assert parameter.value == editor.widget_value.value() == 7.25
-    assert parameter.unique_identifier == uid
-    assert editor.fitting_parameter is parameter
-
-
-@pytest.mark.parametrize("derived", ["linked", "callable"])
-@pytest.mark.parametrize("operation", ["update", "set_state"])
-def test_real_derived_editor_reflects_current_graph_value(qtbot, derived, operation):
-    """Refreshing shows the linked/computed scalar instead of its previous display value."""
-    master = Parameter(name="master", value=2.0)
-    if derived == "linked":
-        parameter = Parameter(name="follower", link=master)
-    else:
-        parameter = Parameter(name="computed", value=lambda: master.value * 3.0)
-    editor = make_fitting_parameter_widget(parameter)
-    qtbot.addWidget(editor)
-    master.value = 5.0
-    if operation == "update":
-        parameter.update()
-    else:
-        parameter.set_state({"description": "restored derived parameter"})
-    expected = 5.0 if derived == "linked" else 15.0
-    assert parameter.value == editor.widget_value.value() == expected
-
-
-@pytest.mark.parametrize("parameter_type", [Parameter, FittingParameter])
-def test_group_state_refreshes_its_existing_parameter_editor(qtbot, parameter_type):
-    """The group's existing state hook refreshes each owned parameter's actual controller."""
-    parameter = parameter_type(name="scale", value=2.0)
-    group = ParameterGroup(parameters=[parameter])
-    group.scale = parameter
-    editor = make_fitting_parameter_widget(parameter)
-    qtbot.addWidget(editor)
-    group.scale = 5.75
-    group.set_state({})
-    assert group.values == [5.75]
-    assert editor.widget_value.value() == 5.75
-    assert group.parameters[0] is parameter
+from chisurf.core.parameter import Parameter
 
 
 @pytest.mark.parametrize("parameter_type", [Parameter, FittingParameter])

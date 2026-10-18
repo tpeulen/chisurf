@@ -41,7 +41,7 @@ This module adds the other two:
     bursts occupy, and — for ``interior`` — an explicit ``selection_bias``
     warning string, so a caller that ignores the docs still sees it.
 
-Transport-agnostic and Qt-free: ``chisurf.gui`` is never imported.
+Transport-agnostic and toolkit-free.
 """
 
 from __future__ import annotations

@@ -152,7 +152,7 @@ class FitTablePlotEmtk(plotbase.Plot):
             self._refresh_arrays_into_model()
         im.host_control("##fit-table", self)
 
-    # ── emtk control surface (what ControlHost forwards) ────────────────
+    # ── emtk control surface (what a host forwards) ─────────────────────
 
     def animating(self) -> bool:
         """Nothing here moves on its own."""

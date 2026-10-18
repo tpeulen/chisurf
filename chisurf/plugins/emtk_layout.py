@@ -117,8 +117,8 @@ class Action:
 
 
 #: The shared action vocabulary. Keys are stable identifiers, not captions. The icons are the canonical
-#: glyphs of :class:`chisurf.core.glyphs.Glyphs`, so a Qt label and an emtk button agree; they are spelled
-#: out because importing ``chisurf.gui`` loads Qt, and ``test/test_ui_vocabulary.py`` pins them equal.
+#: glyphs of :class:`chisurf.core.glyphs.Glyphs`, so every surface agrees; they are spelled
+#: out so this module stays import-light, and ``test/test_ui_vocabulary.py`` pins them equal.
 ACTIONS: dict[str, Action] = {
     "help": Action("❓", "Help", "Open the help for this window.", fixed_tooltip=True),
     "guide": Action(

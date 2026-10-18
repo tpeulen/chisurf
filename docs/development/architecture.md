@@ -62,7 +62,7 @@ macro compatibility.
 |--------|---------|
 | `chisurf.fits` | Process-local list of current fit groups |
 | `chisurf.imported_datasets` | Process-local list of imported datasets |
-| `chisurf.cs` | Current Qt main window instance in the GUI process |
+| `chisurf.cs` | Current main window (the emtk shell) in the GUI process |
 | `chisurf.experiment` | Registered experiment objects keyed by name |
 | `chisurf.working_path` | Current working path used by GUI and macros |
 | `chisurf.action_dispatcher` | Lazily created `ActionDispatcher` |

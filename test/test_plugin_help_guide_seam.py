@@ -6,13 +6,9 @@ two different questions and a tool needs both — ``?`` says what a control
 well-documented settings is still unusable without the second one.
 
 A tool ships ``help.md`` and ``guide.json`` beside the module its
-``entrypoints.emtk`` (else ``entrypoints.gui``) names. ``NavigationPanelTool`` (and the bases built on it)
-draws the buttons by itself; a ``ChisurfDockTool`` must call
-``ensure_help_toolbar()`` once, and a tool on neither base calls
-:func:`~chisurf.gui.widgets.tools.help_guide.attach_help_and_guide`. Shipping the
-files without that call is the failure this file was blind to: eight tools
-passed with help nobody could open (see
-:func:`test_shipped_help_is_drawn`).
+``entrypoints.emtk`` (else ``entrypoints.gui``) names, and its app draws the ``?`` and
+**Guide** buttons (see :func:`test_shipped_help_is_drawn`). Shipping the files without
+drawing them is the failure that left tools with help nobody could open.
 
 ``test/plugin_help_guide_allowlist.txt`` is a **shrinking** record of plugins not
 yet modernised — never somewhere to add yourself to make this test pass. This
@@ -60,14 +56,9 @@ class GuiPlugin:
         self.manifest = manifest
         self.id = str(data.get("id") or manifest.parent.name)
         entrypoints = data.get("entrypoints") or {}
-        # The emtk surface is the one a user opens (Qt is the legacy host behind
-        # ``--qt``), so it is the one whose ``?`` and Guide are checked. A
-        # plugin's ``gui`` entry may name a legacy Qt host that lives somewhere
-        # else entirely -- chimol's was ``chimol.hosts.qt`` in the sibling
-        # checkout, since retired -- and anchoring on it demanded a tour for a Qt window nobody
-        # is to grow. Only a plugin with no emtk entry is anchored on ``gui`` --
-        # or one whose emtk module is not on disk (a factory declared ahead of
-        # its module), which keeps the Qt surface's resources where they are.
+        # The emtk surface is the one a user opens, so it is the one whose ``?`` and
+        # Guide are checked. Only a plugin with no emtk entry is anchored on ``gui`` --
+        # or one whose emtk module is not on disk (a factory declared ahead of its module).
         candidates = [str(entrypoints.get(key) or "") for key in ("emtk", "gui")]
         candidates = [entry for entry in candidates if entry]
         self.gui, self.directory = "", None
@@ -84,9 +75,8 @@ class GuiPlugin:
     def _module_directory(entry: str) -> pathlib.Path | None:
         """Resolve the directory the help files are looked for in.
 
-        This mirrors what
-        :func:`~chisurf.gui.widgets.tools.help_guide.resolve_tool_resource` does
-        at runtime — the directory of the module holding the tool class — but by
+        This mirrors the runtime lookup — the directory of the module holding the
+        tool class — but by
         path arithmetic rather than by importing it, so a plugin whose import
         raises is still checked.
         """

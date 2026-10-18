@@ -235,7 +235,7 @@ class ChimolHostApp(ImApp):
         chimol.renderer.resize(int(w), int(h))
 
     def animating(self) -> bool:
-        # The host's repaint contract (emtk.qt_host.ControlHost.paintEvent):
+        # The host's repaint contract:
         # while `animating()` is True the widget asks for its next frame
         # itself, and each frame ChimolHostApp.draw runs pumps the movie
         # (`canvas.frame()` -> `Playback.pump`) -- that is the whole clock an

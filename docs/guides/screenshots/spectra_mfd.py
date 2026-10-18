@@ -2,22 +2,10 @@
 import os, sys, pathlib, tempfile
 # Scratch settings, set before chisurf reads them: a capture never touches the user's preferences.
 os.environ.setdefault("CHISURF_SETTINGS_DIR", tempfile.mkdtemp(prefix="chisurf_grab_settings_"))
-from qtpy.QtWidgets import QApplication, QListWidget
-app = QApplication.instance() or QApplication([])
 import chisurf.core.settings  # noqa
 S = pathlib.Path(__import__("tempfile").mkdtemp(prefix="chisurf_grab_"))
 FIG = pathlib.Path(__file__).resolve().parents[1] / "figures"
 BURST = "chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/burstwise_All 0.1000#15"
-
-def _grab(w, name):
-    w.show(); QApplication.processEvents(); w.grab().save(str(FIG / name)); print("wrote", name)
-
-def _nav(tool, text):
-    for lw in tool.findChildren(QListWidget):
-        for i in range(lw.count()):
-            if text in lw.item(i).text():
-                lw.setCurrentRow(i); QApplication.processEvents(); return True
-    return False
 
 def _grab_spectra_tool():
     # A copy of the staging DB: opening it migrates/backs it up, and the docs

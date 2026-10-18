@@ -1,6 +1,6 @@
 """Guardrail: the third-party table editor stays out of the tree.
 
-ChiSurf's tables are :mod:`chisurf.gui.widgets.chitable`. The ``guidata``
+ChiSurf's tables are emtk table widgets (AutoForm ``table`` / ``data_table`` sections). The ``guidata``
 dependency existed solely for its ``DataFrameEditor`` and was removed once the
 last two call sites (the Data-table plot and the legacy burst selector) moved
 over. This test fails if an import or a packaging declaration reintroduces it,
@@ -40,7 +40,7 @@ def test_no_module_imports_guidata():
         if _IMPORT_PATTERN.search(path.read_text(encoding="utf-8", errors="ignore"))
     ]
     assert not offenders, (
-        "guidata is no longer a dependency; use chisurf.gui.widgets.chitable "
+        "guidata is no longer a dependency; use the AutoForm data_table section "
         f"instead. Importing modules: {offenders}"
     )
 

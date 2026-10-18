@@ -2,26 +2,9 @@
 
 from __future__ import annotations
 
-import sys
 from types import SimpleNamespace
 
 from test.gui import scientific_document_gui_probe as probe
-
-
-def test_probe_shutdown_runs_pyqtgraph_cleanup_before_python_teardown(monkeypatch):
-    """Standalone GUI children must not defer pyqtgraph cleanup to pytest exit."""
-    calls = []
-    monkeypatch.setitem(
-        sys.modules,
-        "pyqtgraph",
-        SimpleNamespace(cleanup=lambda: calls.append("cleanup")),
-    )
-
-    report = {}
-    probe._shutdown_qt_process(report)
-
-    assert calls == ["cleanup"]
-    assert report["shutdown"]["pyqtgraph_cleanup"] is True
 
 
 def test_reported_complete_children_exit_without_native_teardown(monkeypatch):

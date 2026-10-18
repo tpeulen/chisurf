@@ -27,11 +27,11 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def experiments():
-    """Register every experiment once, without Qt widget readers."""
+    """Register every experiment once, without widget readers."""
     import chisurf as cs
     from chisurf.core.experiments.bootstrap import ensure_experiments_registered
 
-    ensure_experiments_registered(allow_widgets=False, force=True)
+    ensure_experiments_registered(force=True)
     return cs.experiment
 
 
@@ -221,7 +221,7 @@ def test_states_and_rates_resize_together(dataset):
     assert np.all(np.isfinite(model.y))
 
 
-def test_the_summary_lives_in_the_info_plot_not_the_analysis_dock(fit, qapp):
+def test_the_summary_lives_in_the_info_plot_not_the_analysis_dock(fit):
     """It is reference text, and the dock is for the controls being edited.
 
     Seven rows of burst bookkeeping and a three-line caveat took the top of a
@@ -242,7 +242,7 @@ def test_the_summary_lives_in_the_info_plot_not_the_analysis_dock(fit, qapp):
     assert not hasattr(info, "model_summary")
 
 
-def test_a_model_without_a_summary_leaves_the_panel_hidden(qapp):
+def test_a_model_without_a_summary_leaves_the_panel_hidden():
     """The hook is optional: most models publish nothing and must show nothing."""
     import chisurf.core.data
     import chisurf.core.models.parse
@@ -293,7 +293,7 @@ def test_seeding_only_touches_free_parameters(dataset):
     assert model.state_group._distances[0].value != pytest.approx(11.0)
 
 
-def test_the_exchange_scheme_is_drawn_like_any_other(fit, qapp):
+def test_the_exchange_scheme_is_drawn_like_any_other(fit):
     """The same diagram the FCS kinetics model gets, on the MFD rate matrix.
 
     The canvas was written against the FCS saturation model, which nests its
@@ -302,7 +302,7 @@ def test_the_exchange_scheme_is_drawn_like_any_other(fit, qapp):
     learning two.
     """
     from chisurf.emtk.fit_pages.pages.state_scheme_emtk import StateSchemePlot
-    from chisurf.gui.autoform.sections.registry import get_plot_class
+    from chisurf.emtk.fit_pages.plots import get_plot_class
 
     spec = fit.model.view_spec()
     keys = [p.key if hasattr(p, "key") else p["key"] for p in spec.plots]
@@ -330,7 +330,7 @@ def test_the_exchange_scheme_is_drawn_like_any_other(fit, qapp):
     plot.update()
 
 
-def test_a_plain_rate_scheme_has_no_pumped_transition(fit, qapp):
+def test_a_plain_rate_scheme_has_no_pumped_transition(fit):
     """The hardcoded ``0 -> 1`` was the bug the user saw.
 
     It drew every scheme as though state 0 were a ground state being pumped, so
@@ -344,18 +344,18 @@ def test_a_plain_rate_scheme_has_no_pumped_transition(fit, qapp):
     assert plot.binding.scheme().excitation_edge is None
 
 
-def test_a_declared_pumped_transition_is_still_honoured(qapp):
+def test_a_declared_pumped_transition_is_still_honoured():
     """The photophysics models rely on it: their laser is not a fitted rate."""
-    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemeWidget
+    from chisurf.emtk.fit_pages.pages.state_scheme_emtk import SchemeBinding
 
     class _Model:
         saturation = None
 
-    widget = StateSchemeWidget(_Model(), target="saturation", excitation_edge=[0, 1])
-    assert widget._excitation_edge == (0, 1)
+    binding = SchemeBinding(_Model(), target="saturation", excitation_edge=[0, 1])
+    assert binding.excitation() == (0, 1)
 
 
-def test_the_preset_toolbar_is_hidden_when_it_would_do_nothing(fit, qapp):
+def test_the_preset_toolbar_is_hidden_when_it_would_do_nothing(fit):
     """A model with no presets got a combo reading "Custom" and two dead buttons."""
     from chisurf.emtk.fit_pages.pages.state_scheme_emtk import StateSchemePlot
 
@@ -364,7 +364,7 @@ def test_the_preset_toolbar_is_hidden_when_it_would_do_nothing(fit, qapp):
     assert not plot.show_toolbar
 
 
-def test_the_scheme_zooms_about_the_pointer(fit, qapp):
+def test_the_scheme_zooms_about_the_pointer(fit):
     """And hit-testing follows it, or a zoomed node cannot be clicked."""
     from emtk.testing import RecordingPainter
 
@@ -392,17 +392,17 @@ def test_the_scheme_zooms_about_the_pointer(fit, qapp):
     assert canvas.zoom <= ZOOM_RANGE[1]
 
 
-def test_the_node_palette_does_not_run_out(qapp):
+def test_the_node_palette_does_not_run_out():
     """It stopped at four, so every state past the third came out the same orange."""
-    from chisurf.gui.autoform.sections.state_scheme_section import _NODE_COLOURS
+    from chisurf.emtk.fit_pages.pages.state_scheme_emtk import NODE_PALETTE
 
-    assert len(_NODE_COLOURS) >= 6
-    assert len(set(_NODE_COLOURS)) == len(_NODE_COLOURS)
+    assert len(NODE_PALETTE) >= 6
+    assert len(set(NODE_PALETTE)) == len(NODE_PALETTE)
 
 
-def test_the_scheme_adapter_leaves_the_fcs_shape_alone(qapp):
+def test_the_scheme_adapter_leaves_the_fcs_shape_alone():
     """A model that already nests its generator must not be wrapped twice."""
-    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemeWidget
+    from chisurf.emtk.fit_pages.pages.state_scheme_emtk import SchemeBinding
 
     class _Dark:
         n_states = 3
@@ -418,13 +418,13 @@ def test_the_scheme_adapter_leaves_the_fcs_shape_alone(qapp):
     class _Model:
         saturation = _Saturation()
 
-    widget = StateSchemeWidget(_Model(), target="saturation")
-    assert widget._get_saturation() is _Model.saturation
+    binding = SchemeBinding(_Model(), target="saturation")
+    assert binding.scheme() is _Model.saturation
 
 
 def test_view_specs_load(fit, dataset):
     """Both view specs parse, and name plot keys that are actually registered."""
-    from chisurf.gui.autoform.sections.registry import get_plot_class
+    from chisurf.emtk.fit_pages.plots import get_plot_class
 
     for model in (fit.model,):
         spec = model.view_spec()
@@ -438,7 +438,7 @@ def test_view_specs_load(fit, dataset):
 # ──────────────────────────────────────────────────────────────────────────────
 # The plot
 # ──────────────────────────────────────────────────────────────────────────────
-def test_the_plot_draws_through_chiplot_alone(fit, qapp):
+def test_the_plot_draws_through_chiplot_alone(fit):
     """The plot is built from chiplot verbs only: drawing it reaches no renderer attribute.
 
     chiplot has no passthrough to a backing library any more, so a spelling it does not
@@ -448,10 +448,9 @@ def test_the_plot_draws_through_chiplot_alone(fit, qapp):
 
     plot = Mfd2DPlot(fit)
     plot.update_all()
-    qapp.processEvents()
 
 
-def test_the_marginal_plot_spans_the_axes_the_histogram_was_binned_on(fit, qapp):
+def test_the_marginal_plot_spans_the_axes_the_histogram_was_binned_on(fit):
     """Each marginal must span its own whole axis, not the model's support.
 
     Every ``set_data`` re-triggers the renderer's auto-range, so a range set before
@@ -462,7 +461,6 @@ def test_the_marginal_plot_spans_the_axes_the_histogram_was_binned_on(fit, qapp)
 
     plot = MfdMarginalPlot(fit)
     plot.update_all()
-    qapp.processEvents()
 
     ratio_range = plot.ratio_plot.get_range()[0]
     assert ratio_range[0] == pytest.approx(0.0, abs=1e-6)
@@ -471,7 +469,7 @@ def test_the_marginal_plot_spans_the_axes_the_histogram_was_binned_on(fit, qapp)
     assert micro_range[1] > micro_range[0]
 
 
-def test_the_2d_residual_is_placed_in_axis_coordinates(fit, qapp):
+def test_the_2d_residual_is_placed_in_axis_coordinates(fit):
     """The panel used to be blank, and for two separate reasons.
 
     A view spec names its accessor as a string, and nothing turned that into a
@@ -482,7 +480,7 @@ def test_the_2d_residual_is_placed_in_axis_coordinates(fit, qapp):
     just this one.
     """
     from chisurf.emtk.fit_pages.pages.residual_image import _resolve_accessor
-    from chisurf.gui.autoform.sections.registry import resolve_plot_specs
+    from chisurf.emtk.fit_pages.plots import resolve_plot_specs
 
     assert callable(
         _resolve_accessor("chisurf.core.models.mfd.two_dimensional:get_mfd_residual_image")
@@ -492,7 +490,6 @@ def test_the_2d_residual_is_placed_in_axis_coordinates(fit, qapp):
             continue
         plot = plot_class(fit, **options)
         plot.update()
-        qapp.processEvents()
         assert plot._image is not None, "the accessor produced no image"
         assert plot._image.shape == (41, 41)
         # Placed where the axes are, so it is actually inside the view.
@@ -502,7 +499,7 @@ def test_the_2d_residual_is_placed_in_axis_coordinates(fit, qapp):
     raise AssertionError("no Residual2DPlot in the view spec")
 
 
-def test_what_the_histogram_excluded_is_reported_once(fit, qapp):
+def test_what_the_histogram_excluded_is_reported_once(fit):
     """A 45%-excluded histogram must not look complete -- but say so in one place.
 
     It was under the marginals *and* in the Info tab. It is fixed for the
@@ -533,73 +530,13 @@ def test_no_module_here_imports_pyqtgraph_directly():
         assert "import" + " pyqtgraph" not in source, relative
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# The reader control, and the startup crash it caused
-# ──────────────────────────────────────────────────────────────────────────────
-def test_every_shipped_reader_can_show_something(qapp):
-    """A reader with no controller must not be able to abort the startup.
-
-    Registering an MFD reader without a ``controller_class`` took the *entire*
-    splash startup down: ``_refresh_setup_ui`` reached ``None.show()``, the
-    ``load_tools`` stage raised, and every later stage — including the QtConsole —
-    never ran. The visible symptom was "the console does not show", which points
-    nowhere near the cause.
-
-    ``controller_class: null`` is a legitimate configuration that a couple of
-    readers already ship, so the fix is both: MFD declares a controller, *and* a
-    reader without one is reported and skipped rather than raising.
-    """
-    import yaml
-
-    config = yaml.safe_load((REPO / "chisurf/core/settings/experiment_configs.yaml").read_text())
-    mfd = config["mfd"]["readers"][0]
-    assert mfd["controller_class"].endswith("mfd.MFDController")
-
-
-def test_the_mfd_controller_builds_and_picks_a_folder(qapp):
-    """An MFD dataset is a *folder*, so the control must ask for one."""
-    from chisurf.core.experiments.mfd import MfdReader
-    from chisurf.gui.widgets.experiments.mfd import MFDController
-
-    controller = MFDController(experiment_reader=MfdReader())
-    assert controller is not None
-    # The one thing it cannot inherit: a directory chooser rather than a file one.
-    assert callable(controller.get_filename)
-    assert "filename" in dir(controller)
-    controller.updateUI()
-
-
-def test_a_controllerless_reader_is_skipped_not_fatal(qapp, monkeypatch):
-    """The guard itself, exercised through the real refresh path."""
-    from qtpy import QtWidgets
-
-    from chisurf.gui import main_helper
-
-    class _Bare:
-        """A reader that never got a controller."""
-
-        name = "bare reader"
-        controller = None
-
-    class _Fake:
-        current_experiment = type("E", (), {"readers": [_Bare()]})()
-        current_setup = _Bare()
-        layout_experiment_reader = QtWidgets.QVBoxLayout()
-        comboBox_setupSelect = QtWidgets.QComboBox()
-        _current_setup_idx = 0
-
-    fake = _Fake()
-    # Must return quietly rather than raising AttributeError on None.show().
-    main_helper.SetupMixin._refresh_setup_ui(fake)
-
-
-def test_the_map_is_a_plot_not_a_form_section(fit, qapp):
+def test_the_map_is_a_plot_not_a_form_section(fit):
     """The map belongs with the plots; the analysis dock is for controls.
 
     It is a chiplot panel on the fit window's emtk surface, with the channel
     and colormap selectors above it and the real-world axes under it.
     """
-    from chisurf.gui.autoform.sections.registry import resolve_plot_specs
+    from chisurf.emtk.fit_pages.plots import resolve_plot_specs
 
     spec = fit.model.view_spec()
     keys = [p.key if hasattr(p, "key") else p["key"] for p in spec.plots]
@@ -614,7 +551,6 @@ def test_the_map_is_a_plot_not_a_form_section(fit, qapp):
             continue
         plot = plot_class(fit, **options)
         plot.update()
-        qapp.processEvents()
         assert plot._image is not None
         assert plot.channels() == list(fit.model.mfd_image_channels())
         assert callable(plot.emtk_draw)
@@ -622,24 +558,22 @@ def test_the_map_is_a_plot_not_a_form_section(fit, qapp):
     raise AssertionError("no MfdMapPlot in the view spec")
 
 
-def test_every_map_channel_stays_on_the_real_axes(fit, qapp):
+def test_every_map_channel_stays_on_the_real_axes(fit):
     """Switching channel must not drop the view back to pixel coordinates.
 
-    The Qt image dock reset its view to the image's pixel box on every new
+    The old image dock reset its view to the image's pixel box on every new
     image -- swapping a measured map for a residual left the axes reading 0 to 41
     with the image a speck in the corner. The image keeps its extent rectangle.
     """
-    from chisurf.gui.autoform.sections.registry import resolve_plot_specs
+    from chisurf.emtk.fit_pages.plots import resolve_plot_specs
 
     for plot_class, options in resolve_plot_specs(fit.model.view_spec()):
         if plot_class.__name__ != "MfdMapPlot":
             continue
         plot = plot_class(fit, **options)
         plot.update()
-        qapp.processEvents()
         for channel in fit.model.mfd_image_channels():
             plot.set_channel(channel)
-            qapp.processEvents()
             assert fit.model.image_channel == channel
             image = fit.model.mfd_image()
             # Row-major for this dock: (⟨t⟩, proximity ratio).

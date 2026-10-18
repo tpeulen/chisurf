@@ -7,9 +7,7 @@ Code face is turned over.
 
 The surface, the page registry, the Code face and the page classes are Qt-free
 (:mod:`chisurf.emtk.fit_pages`, pages in :mod:`chisurf.emtk.fit_pages.pages`), and the
-pages draw through the toolkit-free chiplot core (:mod:`chisurf.chiplot`); the Qt
-widgets of chiplot are the host layer :mod:`chisurf.gui.chiplot`, which only a Qt host
-imports (``okf/subsystems/qt-retirement.md``, item 6).
+pages draw through the toolkit-free chiplot core (:mod:`chisurf.chiplot`).
 """
 
 from __future__ import annotations

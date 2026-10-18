@@ -12,13 +12,7 @@ Both 1000×700 and 640×700 captures contain five staging components, properties
 
 The earlier overview-based 91 acceptance was rejected because it did not establish matched Browse parity. `visual-verdict-browse-rejected.json` records that correction. The final verdict is **90**, comparing `qt/spectra-browse-populated.png` against `native-normal-browse.png` using the same five rows and selected Alexa Fluor 488 curve. The corrected native table separates checkbox selection from IDs and uses explicit column widths; all fixture data values render without truncation at both sizes. This is a functional and visual comparison, not a pixel-equivalence claim.
 
-Reproduce the matched genuine Qt Browse reference with:
-
-```
-python -m chisurf.plugins.spectra_downloader.tests.capture_qt_browse
-```
-
-That plugin-local wrapper adds fixture population and Browse selection to the shared helper's in-memory historical capture workflow. It does not edit the shared helper or use the current native implementation as a Qt reference.
+The Qt reference captures in `qt/` are frozen records: the Qt widget that produced them (and its capture wrapper) was retired with the Qt shell and cannot be re-recorded.
 
 Verification: 49 plugin tests pass, one existing test is skipped; native registry construction and drawing block all Qt bindings, `qtpy`, `sip`, and `pyqtgraph`. Tests cover exact provenance tokens, category/name filters, spectra decoding, multiselection, import IDs, subprocess commands/output/concurrency, administrator authorization, cached server sessions, local replacement backup, approval flags, six locales, real native clicks and credentials excluded from exported state. Ruff and syntax compilation pass.
 

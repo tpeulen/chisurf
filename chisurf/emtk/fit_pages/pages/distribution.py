@@ -531,7 +531,7 @@ class DistributionPlot(plotbase.Plot):
         # Optionally derive weighted residuals and basic fit statistics from the
         # first two curves (data, model) using counting shot noise
         # sigma = sqrt(max(data, 1)). For PDA 1D histograms this matches the
-        # definition used in chisurf.gui.widgets.models.pda2c.get_distribution and
+        # definition the PDA model's distribution uses and
         # allows us to define DW directly from the currently shown histogram
         # rather than only from the global Fit object. Bins with zero
         # experimental counts do not contribute to DW or the effective

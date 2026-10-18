@@ -12,7 +12,6 @@ from chisurf.plugins.core.help.gui.help_app import (
     make_help_app,
     parse_markdown_blocks,
 )
-from chisurf.plugins.core.help.gui.tool import HelpEmtkTool
 
 
 def test_parse_markdown_blocks():
@@ -146,21 +145,6 @@ def test_help_main_defers_default_size_to_native_launcher(monkeypatch):
     assert calls == [["--app", "chisurf.plugins.core.help.gui.help_app:make_help_app"]]
 
 
-def test_help_emtk_tool_dock_integration(qapp, qtbot):
-    tool = HelpEmtkTool()
-    qtbot.addWidget(tool)
-
-    assert "Help" in tool.windowTitle()
-    assert (tool.width(), tool.height()) == tool.app.window_size
-    assert hasattr(tool, "model")
-    assert hasattr(tool, "app")
-    assert hasattr(tool, "host")
-
-    ok = tool.open_doc("docs/concepts/accurate_fret.md")
-    assert ok
-    assert "Accurate FRET" in tool.model.current_title
-
-
 def test_figure_and_math_parsing():
     md = """```{figure} ../guides/figures/accurate_fret_lines.png
 :alt: Static and dynamic FRET lines
@@ -248,27 +232,16 @@ def test_inline_markup_expansion():
     assert any("User Guide" in lbl for lbl in labels)
 
 
-def test_help_emtk_default_and_ribbon_handler(qapp, qtbot):
-    import chisurf.plugins.core.help as help_module
+def test_help_emtk_search_and_open_page():
+    app = make_help_app()
+    model = app.model
 
-    # Must be HelpEmtkTool by default
-    assert help_module.HelpTool is HelpEmtkTool
+    model.search("fret")
+    assert model.search_query == "fret"
 
-    tool = HelpEmtkTool()
-    qtbot.addWidget(tool)
-
-    # Duck typing and interface compatibility
-    assert hasattr(tool, "open_markdown_path")
-    assert hasattr(tool, "_open_document_path")
-    assert hasattr(tool, "filter_line_edit")
-
-    tool.filter_line_edit.setText("fret")
-    assert tool.model.search_query == "fret"
-
-    # Test open_markdown_path
-    ok = tool.open_markdown_path("docs/concepts/accurate_fret.md", "corrections")
+    ok = model.open_page("docs/concepts/accurate_fret.md", anchor="corrections")
     assert ok
-    assert tool.model.current_path is not None
+    assert model.current_path is not None
 
     # Test emtk upstream math integration
     from emtk import im, latex_to_unicode, render_math_to_texture
@@ -283,7 +256,7 @@ def test_help_emtk_default_and_ribbon_handler(qapp, qtbot):
     from emtk.testing import RecordingPainter
 
     with im.frame(RecordingPainter(), (0, 0, 1200.0, 800.0)):
-        tool.app.help_gui.draw(1200.0, 800.0)
+        app.help_gui.draw(1200.0, 800.0)
 
 
 def test_no_indentation_cascading_on_centered_elements():
@@ -364,7 +337,7 @@ def test_source_links_expansion_and_jump():
     assert app.model.source_line == 10
 
     # Test full code editor routing via open_source
-    from chisurf.gui.widgets.tools.code_links import _ACTIVE_EMTK_EDITORS
+    from chisurf.emtk.code_links import _ACTIVE_EMTK_EDITORS
     from chisurf.plugins.core.code_editor.gui.editor_app import make_editor_app
 
     editor_app = make_editor_app()
@@ -402,9 +375,9 @@ def test_targeted_anchor_navigation():
     assert app.model.target_anchor is None
 
 
-def test_plugin_to_help_doc_links(qapp):
+def test_plugin_to_help_doc_links():
     """Verify doc_links.open_link routes targeted anchors and source links."""
-    from chisurf.gui.widgets.tools import doc_links
+    from chisurf.emtk import doc_links
 
     app = make_help_app()
 
@@ -690,7 +663,7 @@ def test_help_address_routes_documents_sources_citations_and_search(tmp_path, mo
     monkeypatch.setattr(
         code_links,
         "open_source",
-        lambda target, base=None, prefer_emtk=None: opened.append(target) or True,
+        lambda target, base=None: opened.append(target) or True,
     )
     monkeypatch.setattr(
         doc_links, "open_link", lambda target, base=None: opened.append(target) or True

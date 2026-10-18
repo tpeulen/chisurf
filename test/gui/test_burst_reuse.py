@@ -17,8 +17,6 @@ import os
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-pytest.importorskip("qtpy")
 
 
 @pytest.fixture
@@ -222,7 +220,7 @@ def test_every_step_fingerprints_its_own_inputs(bva, two_cde, burst_folder):
 # ── burst search (step 2) ────────────────────────────────────────────
 
 
-def test_burst_search_is_not_repeated_for_an_identical_request(qapp, tmp_path):
+def test_burst_search_is_not_repeated_for_an_identical_request(tmp_path):
     """The longest step in the workflow, asked for again with nothing changed."""
     from chisurf.core.runtime import analysis_cache
 

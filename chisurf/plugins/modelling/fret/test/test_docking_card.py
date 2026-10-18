@@ -1,4 +1,4 @@
-"""The FRET docking card: request parity with the Qt model, project round trip, a real run. Hermetic: temp
+"""The FRET docking card: request parity with the form model, project round trip, a real run. Hermetic: temp
 settings, no network, real example files."""
 
 from __future__ import annotations
@@ -45,8 +45,7 @@ def inputs(tmp_path):
 # ---- docking ----------------------------------------------------------------------------------------------------
 
 
-def test_docking_request_equals_the_qt_models(inputs, tmp_path):
-    pytest.importorskip("qtpy")
+def test_docking_request_equals_the_form_model(inputs, tmp_path):
     from chisurf.plugins.modelling.fret.gui.docking_model import DockingModel as _DockingModel
 
     s, q = DockingSession(), _DockingModel()

@@ -9,8 +9,7 @@ thin ownership edges drawn on top of it. The Plot Settings panel owns a
 module is the one place that reads it onto an editor's style, so the panel,
 the defaults and the graphs cannot drift apart.
 
-Qt appears nowhere here except in :func:`refresh_open_graphs`, and even there
-behind a guarded import, so a Qt-free test can style an editor with these.
+No toolkit is imported here, so a headless test can style an editor with these.
 """
 
 from __future__ import annotations
@@ -129,37 +128,39 @@ def apply_node_graph_settings(style: typing.Any) -> None:
 
 
 def refresh_open_graphs() -> int:
-    """Re-apply the settings to every open node graph, and repaint it.
+    """Re-apply the settings to every node graph open in the emtk shell.
 
     Returns
     -------
     int
-        How many graphs caught up. Zero is normal: it means none is open, not
-        that anything failed.
+        How many graphs caught up. Zero is normal: it means none is open (or no
+        shell is), not that anything failed.
 
     Notes
     -----
-    Found by walking the top-level widgets and asking for an editor -- the
-    Graph View window keeps one at ``model.control``, a plain host at
-    ``control`` -- rather than by keeping a registry, because a registry
-    would have to remember to forget. Windows whose graph is embedded deeper
-    (an MDI subwindow's child, say) are not top-level and catch up when they
-    are next opened; a style is cheap to rebuild.
+    Found by asking each plugin app the shell hosts for an editor -- the Graph
+    View app keeps one at ``model.control``, a plain host at ``control`` --
+    rather than by keeping a registry, because a registry would have to
+    remember to forget. A graph opened later is styled when it is built.
     """
-    try:
-        from qtpy import QtWidgets
-    except Exception:  # noqa: BLE001 - no Qt, nothing to walk
-        return 0
+    import sys
 
+    shell_module = sys.modules.get("chisurf.emtk.main_app")
+    reference = getattr(shell_module, "_ACTIVE_SHELL", None)
+    shell = reference() if callable(reference) else None
+    if shell is None:
+        return 0
     touched = 0
-    for widget in QtWidgets.QApplication.topLevelWidgets():
-        model = getattr(widget, "model", None)
-        control = getattr(widget, "control", None) or getattr(model, "control", None)
+    for hosted in list(getattr(shell, "hosted", {}).values()):
+        app = getattr(hosted, "app", None)
+        model = getattr(app, "model", None)
+        control = getattr(app, "control", None) or getattr(model, "control", None)
         editor = getattr(control, "editor", None)
         if editor is None or getattr(editor, "style", None) is None:
             continue
         apply_node_graph_settings(editor.style)
-        host = getattr(widget, "host", widget)
-        host.update()
+        request = getattr(app, "request_frame", None)
+        if callable(request):
+            request()
         touched += 1
     return touched

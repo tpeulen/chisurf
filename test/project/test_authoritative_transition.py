@@ -292,43 +292,6 @@ def test_api_capture_includes_owning_history(live):
     assert api.capture_project("api-history").extra["history_events"] == live[1].events
 
 
-def test_macro_presentation_failure_keeps_old_windows(live, monkeypatch):
-    """The real macro must propagate construction failure and retain old views."""
-    from chisurf.core.fitting.fit import Fit
-    from test.project.test_server_project_snapshot import SnapshotLinearModel
-
-    curve, _, _, gui = live
-    fit = Fit(data=curve, model_class=SnapshotLinearModel)
-    cs.fits.append(fit)
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    area = QtWidgets.QMdiArea()
-    old = area.addSubWindow(QtWidgets.QWidget())
-    old.fit = fit
-    old.get_project_plot_state = lambda: {"version": 1, "current_plot_index": 0, "plots": []}
-    old.set_project_plot_state = lambda state: True
-    old.closed = False
-    old.show()
-    area.show()
-    app.processEvents()
-    calls = []
-    gui._close_all_fit_subwindows = lambda: (setattr(old, "closed", True), calls.append("close"))
-    gui.mdiarea = area
-
-    def fail_window(candidate, *, restored=False):
-        assert candidate is fit and restored is True
-        raise RuntimeError("window failed")
-
-    gui._open_fit_subwindow = fail_window
-    with pytest.raises(RuntimeError, match="window failed"):
-        core_fit.restore_gui_from_fits([fit.unique_identifier], {"current_fit_index": 0})
-    assert old.closed is False
-    assert calls == []
-    assert old in area.subWindowList()
-    area.hide()
-
-
 def test_actual_inprocess_installed_proxies_can_read_scientific_objects(live):
     """Installed real proxies consume the PluginClient.call contract directly."""
     from chisurf.core.fitting.fit import Fit
@@ -395,39 +358,6 @@ def test_failing_presentation_rollback_still_restores_document_and_gui_identity(
     assert document.path is None
     assert gui._current_project_id == "old"
     assert gui.current_fit is None
-
-
-def test_macro_failure_restores_original_control_visibility(live):
-    """Window construction may hide old editors before it fails internally."""
-    from qtpy import QtWidgets
-
-    from chisurf.core.fitting.fit import Fit
-    from test.project.test_server_project_snapshot import SnapshotLinearModel
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    curve, _, _, gui = live
-    fit = Fit(data=curve, model_class=SnapshotLinearModel)
-    cs.fits.append(fit)
-    host = QtWidgets.QWidget()
-    gui.modelLayout = QtWidgets.QVBoxLayout(host)
-    editor = QtWidgets.QLabel("Original scientific controls")
-    gui.modelLayout.addWidget(editor)
-    gui.mdiarea = QtWidgets.QMdiArea()
-    host.show()
-    app.processEvents()
-    assert editor.isVisible()
-
-    def fail_window(candidate, *, restored=False):
-        """Represent Main hiding an old editor before construction fails."""
-        assert restored is True
-        editor.hide()
-        raise RuntimeError("editor reconstruction failed")
-
-    gui._open_fit_subwindow = fail_window
-    with pytest.raises(RuntimeError, match="editor reconstruction failed"):
-        core_fit.restore_gui_from_fits([fit.unique_identifier])
-    assert editor.isVisible()
-    host.hide()
 
 
 def test_owner_retains_staged_native_scientific_session(live, monkeypatch):

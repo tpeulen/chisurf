@@ -340,14 +340,14 @@ TOOLBAR_ACTIONS = ("▶ map flow", "🧪 load demo", "💾 export csv")
 def test_the_view_spec_and_the_tour_are_well_formed():
     """The authored JSON is valid, and every tour target names something real."""
     from chisurf.core.dataspec import load_view_spec
-    from chisurf.gui.widgets.tools.guided_tour import load_tour
 
     here = pathlib.Path(__file__).resolve().parent.parent / "gui"
     assert load_view_spec(here / "flow.view.json") is not None
 
-    steps = load_tour(here / "guide.json")
+    raw = json.loads((here / "guide.json").read_text(encoding="utf-8"))
+    steps = raw["steps"] if isinstance(raw, dict) else raw
     assert len(steps) >= 5
-    assert all(step.title and step.text for step in steps)
+    assert all(step.get("title") and step.get("text") for step in steps)
 
     # Every attribute a step points at must exist on the view model, and every
     # toolbar action it names must exist on the tool -- a target that resolves to
@@ -358,23 +358,25 @@ def test_the_view_spec_and_the_tour_are_well_formed():
     model = FlowViewModel()
     spec = pathlib.Path(here / "flow.view.json").read_text()
     for step in steps:
-        attr = step.target.get("attr")
+        target = step.get("target") or {}
+        attr = target.get("attr")
         if attr:
             assert hasattr(model, attr), attr
-        title = step.target.get("title")
+        title = target.get("title")
         if title:
             assert f'"title": "{title}"' in spec, title
-        action = step.target.get("action")
+        action = target.get("action")
         if action:
             assert any(action.lower() in a for a in TOOLBAR_ACTIONS), action
 
     # The tour asks the user to press the buttons rather than pressing them for
     # them, so every waiting step must point at something clickable.
-    waiting = [s for s in steps if s.waits]
+    waiting = [s for s in steps if s.get("await") or s.get("expect")]
     assert waiting, "a tour that never asks the user to do anything is a slide deck"
     for step in waiting:
-        assert step.target.get("action"), step.title
-        assert step.expect.get("hint"), step.title
+        assert (step.get("target") or {}).get("action"), step["title"]
+        requested = step.get("await", step.get("expect"))
+        assert isinstance(requested, dict) and requested.get("hint"), step["title"]
 
 
 def test_the_manifest_declares_what_the_code_implements():
@@ -391,48 +393,3 @@ def test_the_manifest_declares_what_the_code_implements():
     for method in manifest.rpc_methods:
         for name, schema in (method.params_schema.get("properties") or {}).items():
             assert schema.get("description"), f"{method.name}.{name}"
-
-
-def test_the_field_is_drawn_through_chiplot_alone(qapp):
-    """No pyqtgraph import, and the field draws with chiplot's own verbs.
-
-    Importing pyqtgraph is caught by ``test/test_pyqtgraph_seam.py``; a spelling chiplot
-    does not have is an ``AttributeError`` (chiplot has no passthrough), so drawing the
-    field without one proves it.
-    """
-    import numpy as np
-
-    from chisurf.gui import chiplot
-    from chisurf.gui.autoform.sections.quiver_section import QuiverSectionWidget
-
-    class Model:
-        arrow_scale = 1.0
-
-        def flow_image(self):
-            return np.random.default_rng(0).random((24, 24))
-
-        def flow_vectors(self):
-            return [{"x": 1.0 + i, "y": 1.0, "dx": 0.4, "dy": 0.2} for i in range(4)]
-
-        def flow_extent(self):
-            return (0.0, 2.4, 0.0, 2.4)
-
-    widget = QuiverSectionWidget(
-        Model(),
-        "",
-        image_source="flow_image",
-        vectors_source="flow_vectors",
-        extent_source="flow_extent",
-        scale_attr="arrow_scale",
-        units="µm/s",
-    )
-    widget.refresh()
-    assert "4 of 4 arrows" in widget.caption.text()
-
-    banned = "import " + "pyqtgraph"  # split so this file is not its own hit
-    source = pathlib.Path(chisurf.plugins.microscopy.img_flow.__file__).parent
-    modules = [m for m in source.rglob("*.py") if "test" not in m.parts]
-    modules.append(pathlib.Path(QuiverSectionWidget.__module__.replace(".", "/") + ".py"))
-    for module in modules:
-        if module.is_file():
-            assert banned not in module.read_text(encoding="utf-8"), module

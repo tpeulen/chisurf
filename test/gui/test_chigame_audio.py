@@ -7,8 +7,8 @@ import math
 import numpy as np
 import pytest
 
-from chisurf.gui.chigame import audio
-from chisurf.gui.chigame.assets import TRACKS
+from chisurf.core.audio import synth as audio
+from chisurf.core.audio.tracks import TRACKS
 
 
 def _samples(track: dict) -> np.ndarray:
@@ -104,47 +104,10 @@ def test_every_shipped_track_is_long_enough_to_be_a_piece():
         assert any(entry is None or isinstance(entry, (list, tuple)) for entry in notes), name
 
 
-def test_every_context_has_a_track_and_they_are_not_the_same_piece():
-    """Where you are should be audible."""
-    from chisurf.gui.chigame.assets import ProceduralPack
-
-    pack = ProceduralPack()
-    roots = set()
-    for context in audio.CONTEXTS:
-        track = pack.music_track(context)
-        assert track is not None, context
-        roots.add((track["root"], track["tempo"]))
-    assert len(roots) == len(audio.CONTEXTS), "two contexts share a piece"
 
 
-def test_a_suspended_mixer_remembers_where_the_game_got_to():
-    """Coming back to the window starts the right piece, not the last one."""
-    from chisurf.gui.chigame.assets import ProceduralPack
-
-    mixer = audio.Audio(ProceduralPack(), enabled=False)
-    mixer.set_context("overworld")
-    mixer.suspend()
-    assert mixer.suspended
-    # The game keeps playing while nobody is listening; the context still moves.
-    mixer.set_context("battle")
-    assert mixer.context is None, "nothing plays while suspended"
-    mixer.resume()
-    assert not mixer.suspended
-    assert mixer.context == "battle"
 
 
-def test_suspending_twice_and_resuming_unsuspended_are_both_harmless():
-    """The window manager will send whatever it likes, twice."""
-    from chisurf.gui.chigame.assets import ProceduralPack
-
-    mixer = audio.Audio(ProceduralPack(), enabled=False)
-    mixer.resume()
-    mixer.set_context("town")
-    mixer.suspend()
-    mixer.suspend()
-    mixer.resume()
-    mixer.resume()
-    assert mixer.context == "town" and not mixer.suspended
 
 
 def test_a_blip_bends_and_fades_to_nothing():
@@ -165,38 +128,6 @@ def test_a_blip_bends_and_fades_to_nothing():
     assert second > first * 1.2, "the bend has to be audible"
 
 
-def test_a_game_in_a_window_nobody_is_looking_at_goes_quiet(qapp):
-    """The single most annoying thing a background process can do."""
-    pytest.importorskip("wgpu")
-    from chisurf.gui import chigame
-
-    class _Quiet(chigame.Game):
-        """A game that does nothing but exist."""
-
-        music_context = "overworld"
-
-        def draw(self, scene) -> None:
-            """Draw nothing at all."""
-
-    game = _Quiet()
-    context = chigame.create_offscreen(size=(64, 64))
-    host = chigame.GameHost(game, context, with_audio=False)
-    # An offscreen canvas is nobody's foreground, and must not be treated as
-    # backgrounded either -- a headless capture has to keep running.
-    assert host.attend() is True
-
-    host.audio.enabled = True  # pretend Qt multimedia is present
-    host.audio._sound_cls = None  # ...but never actually load a sample
-    host.sync_audio()
-    assert not host.audio.suspended
-
-    host.attend = lambda: False
-    host.sync_audio()
-    assert host.audio.suspended, "a window out of scope has to silence the game"
-    host.attend = lambda: True
-    host.sync_audio()
-    assert not host.audio.suspended
-    host.close()
 
 
 def test_the_synthesiser_is_fast_enough_to_run_at_load_time():

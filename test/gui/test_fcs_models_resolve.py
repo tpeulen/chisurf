@@ -1,14 +1,13 @@
-"""FCS model-selector resolution guard (headless, offscreen).
+"""FCS model-selector resolution guard (headless).
 
 Mirrors the TCSPC resolution check in ``test_model_editor_integration.py`` for
 the FCS experiment: every FCS model configured in the bundled experiment config
 must resolve to a class exposing a non-empty ``name`` (the string the model
 combobox shows and ``add_fit`` matches on), so a renamed/deleted model fails
 here instead of silently vanishing from the menu. Covers ``MdfFCSModel`` (Enderlein Gauss--Lorentz MDF), ``GeneralFCSModel``
-(PRD-62 composable diffusion + bunching/anticorrelation model) and
+(composable diffusion + bunching/anticorrelation model) and
 ``FCSKineticsModel`` (photokinetic saturation + diffusion + relaxation), all
-Qt-free pure models rendered by the generic ``AutoForm``/``AutoModelWidget``
-(see ``chisurf.gui.widgets.models.model_editor.build_model_editor``).
+Qt-free pure models rendered by the emtk shell from their ``view.json``.
 """
 
 from __future__ import annotations
@@ -17,15 +16,6 @@ import importlib
 import pathlib
 
 import pytest
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    try:
-        from qtpy import QtWidgets
-    except Exception as exc:  # pragma: no cover
-        pytest.skip(f"qtpy unavailable: {exc}")
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 def _fcs_model_paths():
@@ -43,7 +33,7 @@ def _resolve(path):
     return getattr(importlib.import_module(module_name), class_name)
 
 
-def test_every_configured_fcs_model_resolves_with_a_name(qapp):
+def test_every_configured_fcs_model_resolves_with_a_name():
     paths = _fcs_model_paths()
     assert paths, "no FCS models configured"
     problems, names = [], []
@@ -66,7 +56,7 @@ def test_every_configured_fcs_model_resolves_with_a_name(qapp):
     assert any("kinetic" in n.lower() for n in names), f"Kinetics FCS model missing from {names}"
 
 
-def test_mdf_model_class_is_a_model_curve(qapp):
+def test_mdf_model_class_is_a_model_curve():
     """The MDF model must inherit ModelCurve so it plugs into the fit machinery."""
     from chisurf.core.models.fcs.mdf import MdfFCSModel
     from chisurf.core.models.model import ModelCurve
@@ -75,7 +65,7 @@ def test_mdf_model_class_is_a_model_curve(qapp):
     assert str(getattr(MdfFCSModel, "name", "")).strip()
 
 
-def test_general_model_class_is_a_model_curve(qapp):
+def test_general_model_class_is_a_model_curve():
     """The general composable FCS model must inherit ModelCurve."""
     from chisurf.core.models.fcs.general import GeneralFCSModel
     from chisurf.core.models.model import ModelCurve
@@ -84,7 +74,7 @@ def test_general_model_class_is_a_model_curve(qapp):
     assert str(getattr(GeneralFCSModel, "name", "")).strip()
 
 
-def test_kinetics_model_class_is_a_model_curve(qapp):
+def test_kinetics_model_class_is_a_model_curve():
     """The photokinetic FCS model must inherit ModelCurve."""
     from chisurf.core.models.fcs.kinetics import FCSKineticsModel
     from chisurf.core.models.model import ModelCurve

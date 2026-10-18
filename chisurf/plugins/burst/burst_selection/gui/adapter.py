@@ -309,7 +309,7 @@ def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
     """
     from dataclasses import asdict, is_dataclass
 
-    from chisurf.gui.autoform.state import apply_state
+    from chisurf.core.dataspec.form_state import apply_state
 
     data = (
         asdict(settings)

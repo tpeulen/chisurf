@@ -5,9 +5,8 @@ Every key is optional. The defaults here are what the console uses when
 of every installation that predates chinsole, since ChiSurf merges packaged
 defaults *underneath* the user's file and never overwrites it.
 
-Qt-free: plain data, read by the engine, its head-less tests and both console
-views -- the Qt one (:mod:`chisurf.gui.chinsole`, which adds the Qt font) and
-the emtk shell's (:mod:`chisurf.emtk.console`).
+Qt-free: plain data, read by the engine, its head-less tests and the emtk shell's console
+(:mod:`chisurf.emtk.console`).
 """
 
 from __future__ import annotations
@@ -97,7 +96,7 @@ def console_init_source() -> str:
     ``get_ipython().cache_size = 0`` -- and so does every user's settings file,
     which ChiSurf never overwrites. chinsole therefore implements all three
     rather than asking anyone to edit their settings: see
-    :mod:`chisurf.gui.chinsole.magics_builtin` and ``Shell.cache_size``.
+    :mod:`chisurf.core.console.magics_builtin` and ``Shell.cache_size``.
 
     matplotlib is no longer a ChiSurf dependency, but older settings files
     still start the console with ``%matplotlib inline`` and ``import pylab as

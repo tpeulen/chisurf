@@ -15,7 +15,7 @@ The conda recipe (`pip install .`) produces a package containing only chisurf
 itself, so the installer assembles a full runtime env on top of
 it: chisurf (conda) + runtime libs + tttrlib + labellib + latexify-py +
 imp-tricks + the local ``modules/*`` (ndxplorer/quest). It then
-slims the env aggressively (strip unused Qt, debug symbols, build tools, test
+slims the env aggressively (strip debug symbols, build tools, test
 suites) before wrapping it.
 
 Usage:
@@ -52,17 +52,6 @@ IS_MAC = sys.platform == "darwin"
 
 IMP_TRICKS_REPO = os.environ.get("IMP_TRICKS_REPO", "https://gitlab.peulen.xyz/tpeulen/imp-tricks.git")
 IMP_TRICKS_REF = os.environ.get("IMP_TRICKS_REF", "main")
-
-# Qt feature tokens ChiSurf never imports (verified: only Core/Gui/Widgets +
-# Multimedia/OpenGL/Svg are used). Dropping these C++ libs + PyQt bindings is
-# the single biggest size win.
-QT_DROP_TOKENS = (
-    "WebEngine", "WebKit", "WebChannel", "WebSockets", "WebView",
-    "3DAnimation", "3DCore", "3DExtras", "3DInput", "3DLogic", "3DRender", "3DQuick",
-    "Quick", "Qml", "Designer", "Charts", "DataVisualization", "Pdf",
-    "Bluetooth", "Positioning", "Sensors", "NetworkAuth", "Location",
-    "RemoteObjects", "Gamepad", "SerialPort", "SerialBus", "Nfc",
-)
 
 # Packages whose bundled "tests" dirs are safe to drop (NOT tables/pytables,
 # which imports its tests at runtime).
@@ -134,7 +123,7 @@ def _render_template(text: str, params: dict) -> str:
 
 def load_info() -> dict:
     """Exec chisurf/core/info.py in isolation (stdlib-only) to read static app
-    metadata without importing the Qt-heavy chisurf package."""
+    metadata without importing the chisurf package."""
     info_path = REPO_ROOT / "chisurf" / "core" / "info.py"
     ns: dict = {"__file__": str(info_path)}
     exec(compile(info_path.read_text(), str(info_path), "exec"), ns)
@@ -305,9 +294,6 @@ def strip_bloat(prefix: Path) -> None:
     rmtree(sp / "pip")
     rmtree(sp / "wheel")
 
-    _step("stripping unused Qt")
-    _strip_qt(prefix, sp)
-
     _step("removing test suites")
     for pkg in TEST_PKGS:
         pkg_dir = sp / pkg
@@ -324,27 +310,6 @@ def strip_bloat(prefix: Path) -> None:
     _step("measuring size (after)")
     after = du_mb(prefix)
     print(f"[strip] env: {before:.0f} MB -> {after:.0f} MB (saved {before - after:.0f} MB)", flush=True)
-
-
-def _strip_qt(prefix: Path, sp: Path) -> None:
-    drop = tuple(t.lower() for t in QT_DROP_TOKENS)
-    roots = [prefix / "lib", prefix / "Library" / "bin", prefix / "Library" / "lib",
-             prefix / "Library" / "plugins", prefix / "plugins", sp / "PyQt5"]
-    for root in roots:
-        if not root.exists():
-            continue
-        for f in list(_walk_files(root)):
-            low = f.name.lower()
-            if any(tok in low for tok in drop):
-                f.unlink(missing_ok=True)
-    for root in (prefix / "lib", prefix / "Library", sp / "PyQt5"):
-        if not root.exists():
-            continue
-        for d in [d for d in _walk_dirs(root) if d.name in ("qml", "translations")]:
-            rmtree(d)
-    for d in [d for d in _walk_dirs(prefix)
-              if d.name.startswith("QtWebEngineProcess") or d.name.startswith("qtwebengine_")]:
-        rmtree(d)
 
 
 # --------------------------------------------------------------------------- #
@@ -583,9 +548,6 @@ PYVER=python3.12
 export PYTHONNOUSERSITE=1
 export PYTHONPATH="$SCRIPT_DIR/Contents/lib/$PYVER/site-packages"
 export PATH="$SCRIPT_DIR/Contents/bin:$PATH"
-export QT_PLUGIN_PATH="$SCRIPT_DIR/Contents/lib/$PYVER/site-packages/PyQt5/Qt5/plugins"
-export QT_MAC_DISABLE_APP_NAP=1
-export QT_MAC_WANTS_BEST_RESOLUTION_OPENGL_SURFACE=0
 cd "$HOME"
 exec "$SCRIPT_DIR/Contents/bin/python" -m chisurf "$@"
 """
@@ -594,7 +556,6 @@ _LINUX_APPRUN = """#!/bin/bash
 SELF="$(readlink -f "${0}")"
 APPDIR="$(dirname "${SELF}")"
 export PATH="$APPDIR/usr/runtime/bin:$PATH"
-export QT_PLUGIN_PATH="$APPDIR/usr/runtime/plugins"
 export LD_LIBRARY_PATH="$APPDIR/usr/runtime/lib:$LD_LIBRARY_PATH"
 exec "$APPDIR/usr/runtime/bin/python3" -m chisurf "$@"
 """

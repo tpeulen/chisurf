@@ -1,6 +1,5 @@
 """Regression tests for defects mypy flagged: attribute fallback, GMM settings, dead duplicate defs."""
 
-import ast
 from pathlib import Path
 
 import pytest
@@ -19,7 +18,6 @@ def test_parameter_group_missing_attribute_raises_attribute_error():
 
 
 def test_gmm_settings_coerce_to_default_type():
-    pytest.importorskip("PyQt5")
     from chisurf.plugins.burst.burst_selection.gui.model import BurstSelectionModel
 
     model = BurstSelectionModel()
@@ -29,29 +27,3 @@ def test_gmm_settings_coerce_to_default_type():
     assert model.gmm_settings["tol"] == 0.5
     with pytest.raises(AttributeError):
         model.gmm.not_a_setting = 1
-
-
-@pytest.mark.parametrize(
-    "path",
-    [
-        "chisurf/gui/widgets/fitting/parameter_widgets.py",
-    ],
-)
-def test_no_method_defined_twice_in_a_class(path):
-    tree = ast.parse((ROOT / path).read_text())
-    dupes = []
-    for cls in (n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)):
-        seen = set()
-        for fn in cls.body:
-            if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                has_decorator = any(
-                    isinstance(d, ast.Attribute)
-                    and d.attr in ("setter", "getter", "deleter")
-                    or isinstance(d, ast.Name)
-                    and d.id == "overload"
-                    for d in fn.decorator_list
-                )
-                if fn.name in seen and not has_decorator:
-                    dupes.append(f"{cls.name}.{fn.name}")
-                seen.add(fn.name)
-    assert not dupes

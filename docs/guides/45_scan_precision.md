@@ -16,8 +16,9 @@ see {ref}`concept-scan-precision`.
 
 ## Open the tool
 
-It lives in **Tools → Calculators → Calculators**, as the **📐 RICS precision**
-entry in the calculator list. It sits with the calculators rather than in the imaging pipeline because it is one:
+It lives in **Tools → Calculators**, as the **📐 RICS precision** entry
+in the calculator list (or standalone as *Tools → Calculators → RICS precision*). It
+sits with the calculators rather than in the imaging pipeline because it is one:
 it consumes no dataset, opens no file and produces no analysis — it turns the
 settings you type in into a predicted error, exactly like the FRET and FCS
 calculators beside it.
@@ -43,7 +44,7 @@ protocol for.
   µm²/s, a labelled protein a few tens, a membrane protein below one.
 * **Molecules in view** — too few and the correlation is noisy; too many and its
   amplitude (which goes as $1/N$) sinks into the background.
-* **Brightness [kHz/molecule]** — photons per second (in kHz) from a single molecule at the focus
+* **Brightness** — photons per second from a single molecule at the focus
   centre. After frame count this is the dominant lever, and a dim label cannot
   be rescued by scanning cleverly.
 
@@ -68,7 +69,7 @@ a message rather than computed from nothing. *Repeats* sets how many Monte-Carlo
 realisations stand behind each point. *Seed* makes a quoted prediction
 reproducible.
 
-Press **Predict**.
+Press **▶ Predict**.
 
 ## Read the result
 
@@ -104,7 +105,7 @@ Three things are worth knowing before acting on the minimum:
   **Numbers** tab gives the implied line and frame time next to each error, so
   you can weigh precision against beam time yourself.
 
-The **Numbers** tab lists the sweep as a table; **Export CSV** writes it out
+The **Numbers** tab lists the sweep as a table; **💾 Export CSV** writes it out
 for a methods section or a lab-book entry. A dwell time the estimator cannot
 evaluate shows as `—` rather than taking the rest of the curve down with it.
 
@@ -155,4 +156,9 @@ end of the working range this planner exists to keep you out of.
 
 ## See also
 
-- Tool: **RICS precision** (`chisurf/plugins/calculator/rics_precision/`).
+- Tool: **RICS-Precision** (`chisurf/plugins/calculator/rics_precision/`).
+
+The native calculator initially uses 640×480. Saved
+window dimensions are restored after that default; embedding retains the
+parent's sizing. Fold/field hints explain the scan settings, with unchanged
+prediction curves and reported error values.

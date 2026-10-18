@@ -403,12 +403,6 @@ def copy_defaults(overwrite: bool) -> tuple[bool, str]:
                 if file.name == "help_mappings.yaml":
                     continue
                 shutil.copyfile(file, user_dir / file.name)
-            try:
-                from chisurf.core.settings.settings_utils import copy_styles_to_user_folder
-
-                copy_styles_to_user_folder()
-            except Exception:
-                pass
             return True, "Defaults copied (overwrite)."
 
         cs.core.settings.copy_settings_to_user_folder()

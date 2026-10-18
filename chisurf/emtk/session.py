@@ -228,7 +228,7 @@ def stage_experiments(context: Any) -> None:
     """Register the experiments (readers and model classes) without their Qt widgets."""
     from chisurf.core.experiments.bootstrap import ensure_experiments_registered
 
-    ensure_experiments_registered(allow_widgets=False)
+    ensure_experiments_registered()
 
 
 def stage_server(context: Any) -> None:

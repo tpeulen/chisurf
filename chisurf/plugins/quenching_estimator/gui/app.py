@@ -1,6 +1,6 @@
 """The native QuEst window of this plugin: the QuEst card (:mod:`.card`) plus attachment-site picking.
 
-The card is the emtk counterpart of ``QuEstTool``: the project
+The card is the project
 form of ``quest.view.json``, the quenching table, the three result plots, a 3D trace of the structure and the project JSON.
 The import is inside the factory so that importing this module pulls in neither IMP nor quest.
 

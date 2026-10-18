@@ -10,7 +10,7 @@ import pytest
 
 from chisurf.core.audio import adpcm
 from chisurf.core.audio import synth as audio
-from chisurf.gui.chigame.assets import SOUNDS, TRACKS, ProceduralPack
+from chisurf.core.audio.tracks import SOUNDS, TRACKS
 
 
 def _tone(seconds: float = 1.0, rate: int = 22050, freq: float = 440.0) -> np.ndarray:
@@ -195,25 +195,6 @@ def test_the_threshold_is_the_measured_one():
     assert adpcm.MIN_BLOCKS_FOR_GPU == 0
 
 
-def test_the_host_lends_its_own_device_rather_than_making_a_second(qapp):
-    """Two devices to draw and decompress on one machine is pure waste."""
-    pytest.importorskip("wgpu")
-    from chisurf.gui import chigame
-
-    class _Quiet(chigame.Game):
-        """A game that does nothing but exist."""
-
-        def draw(self, scene) -> None:
-            """Draw nothing at all."""
-
-    context = chigame.create_offscreen(size=(64, 64))
-    host = chigame.GameHost(_Quiet(), context, with_audio=False, with_text=False)
-    try:
-        assert adpcm.device() is context.device
-    finally:
-        adpcm.use_device(None)
-        adpcm.device.cache_clear()
-        host.close()
 
 
 # -- what is shipped ------------------------------------------------------
@@ -308,30 +289,6 @@ def test_every_game_event_maps_onto_a_clip_that_exists():
     assert missing == {}, missing
 
 
-def test_the_events_the_games_actually_raise_are_all_mapped():
-    """A game asking for a sound nobody wired up gets a beep, silently."""
-    for event in (
-        "paddle",
-        "wall",
-        "launch",
-        "score",
-        "lost",
-        "break",
-        "crack",
-        "settle",
-        "clear",
-        "reveal",
-        "flag",
-        "guess",
-        "emit",
-        "unbind",
-        "seal",
-        "bleach",
-        "talk",
-        "cross",
-    ):
-        assert ProceduralPack().sound_clip(event), event
-    assert ProceduralPack().sound_clip("something nobody defined") is None
 
 
 def test_a_recorded_track_is_rendered_at_the_clip_rate_not_the_synth_rate():

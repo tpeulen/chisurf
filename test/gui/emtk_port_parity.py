@@ -5,27 +5,25 @@ a tooltip") that the porter typed. This module *measures* those claims, writes t
 to files a reviewer can diff, and is the only source of numbers allowed in a port
 report.
 
-Two halves, captured the same way
----------------------------------
+Two halves
+----------
 ``before``
-    The legacy Qt widget of the plugin (``entrypoints.gui`` in its manifest), shown
-    offscreen and grabbed. Capture this **before you change any code**: once the Qt
-    widget is edited or removed the baseline is gone.
+    Frozen evidence of the legacy Qt widget (``before.json`` / ``before.png``) committed
+    with each port. The Qt widgets are gone, so it can no longer be captured; the
+    committed record is what ``compare`` reads.
 ``after``
     The plugin's emtk app (``entrypoints.emtk``), drawn headlessly at the same
     sizes through ``app.draw(...)`` -- never ``app.gui()``, which skips the work
     hub apps do inside ``draw``.
 
-Parity is judged on **control inventory, not pixels** (see ``migration_parity``): a
+Parity is judged on **control inventory, not pixels**: a
 missing control is a blocker, a moved one is not.
 
 Command line
 ------------
 ::
 
-    QT_QPA_PLATFORM=offscreen PYTHONPATH=. python -m test.gui.emtk_port_parity \\
-        before <plugin_id> --out okf/plugins/emtk-ports/<plugin_id>
-    QT_QPA_PLATFORM=offscreen PYTHONPATH=. python -m test.gui.emtk_port_parity \\
+    PYTHONPATH=. python -m test.gui.emtk_port_parity \\
         after  <plugin_id> --out okf/plugins/emtk-ports/<plugin_id>
     PYTHONPATH=. python -m test.gui.emtk_port_parity \\
         compare <plugin_id> --out okf/plugins/emtk-ports/<plugin_id>
@@ -54,8 +52,6 @@ import re
 import subprocess
 import sys
 import typing
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 
@@ -327,36 +323,6 @@ print('QT-FREE OK')
 
 
 # --------------------------------------------------------------------------- #
-# the Qt half
-# --------------------------------------------------------------------------- #
-def qt_before(plugin_id: str, out: pathlib.Path) -> dict:
-    """Show the legacy Qt widget offscreen; write ``before.png`` and ``before.json``."""
-    from qtpy import QtWidgets
-
-    from test.gui import migration_parity as mp
-
-    manifest = manifest_of(plugin_id)
-    spec = manifest.get("entrypoints", {}).get("gui")
-    if not spec:
-        raise ValueError(f"{plugin_id}: manifest has no entrypoints.gui to capture")
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    widget_class = _resolve(spec)
-    widget = widget_class()
-    widget.resize(*SIZES[0])
-    widget.show()
-    for _ in range(20):
-        app.processEvents()
-    widget.grab().save(str(out / "before.png"))
-    inventory = mp.control_inventory(widget)
-    inventory["entrypoint"] = spec
-    inventory["size"] = list(SIZES[0])
-    inventory["controls"] = sorted({normalize(c) for c in inventory["controls"]} - {""})
-    widget.close()
-    (out / "before.json").write_text(json.dumps(inventory, indent=2, ensure_ascii=False))
-    return inventory
-
-
-# --------------------------------------------------------------------------- #
 # compare
 # --------------------------------------------------------------------------- #
 def compare(plugin_id: str, out: pathlib.Path) -> dict:
@@ -415,7 +381,7 @@ def after(plugin_id: str, out: pathlib.Path, entry: str | None = None) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("phase", choices=("before", "after", "compare"))
+    parser.add_argument("phase", choices=("after", "compare"))
     parser.add_argument("plugin_id")
     parser.add_argument("--out", required=True, help="evidence directory (created)")
     parser.add_argument(
@@ -427,10 +393,6 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    if args.phase == "before":
-        data = qt_before(args.plugin_id, out)
-        print(f"before: {len(data['controls'])} controls -> {out}")
-        return 0
     if args.phase == "after":
         data = after(args.plugin_id, out, args.entry)
         print(

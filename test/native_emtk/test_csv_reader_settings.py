@@ -1,7 +1,8 @@
-"""The full native CSV reader preserves controls and owns calibration child windows."""
+"""The full native CSV reader preserves controls and owns its G-factor calculator."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 from emtk.testing import Driver
@@ -66,8 +67,8 @@ def test_standard_leakage_controls_keep_the_declared_link():
     app.close()
 
 
-def test_g_factor_action_opens_real_native_inspector_and_applies_completed_values(qapp):
-    """A real native child delivers G, channel shift and mixing to the same reader."""
+def test_g_factor_action_primes_the_real_calculator_and_applies_completed_values():
+    """A real native calculator delivers G, channel shift and mixing to the same reader."""
     from chisurf.plugins.vv_vh_g_factor.gui.app import GFactorApp
 
     class Client:
@@ -82,19 +83,20 @@ def test_g_factor_action_opens_real_native_inspector_and_applies_completed_value
     driver = Driver(app, (900, 1050))
     driver.frame(2)
     driver.click("open_gfactor")
-    host = app.calibration_host
-    assert host is not None and host.isVisible()
-    assert host.control.model.fp_dt_ns == reader.effective_dt
-    host.control.model.result = {"g_factor": 1.7}
-    host.control.model.shift = 2.6
-    host.control.model.fp_result = {"l1": 0.12, "l2": 0.23}
-    host.close()
+    child = app.calibration
+    assert child is not None
+    assert child.model.fp_dt_ns == reader.effective_dt
+    child.model.result = {"g_factor": 1.7}
+    child.model.shift = 2.6
+    child.model.fp_result = {"l1": 0.12, "l2": 0.23}
+    child.close()
+    assert app.calibration is None
     assert reader.g_factor == 1.7 and reader.vh_shift == 3
     assert reader.l1 == 0.12 and reader.l2 == 0.23
     app.close()
 
 
-def test_closing_reader_cancels_owned_inspector_without_applying_late_results(qapp):
+def test_closing_reader_cancels_owned_inspector_without_applying_late_results():
     """The calibration child cannot mutate a reader after its owning settings view closes."""
     from chisurf.plugins.vv_vh_g_factor.gui.app import GFactorApp
 
@@ -103,7 +105,42 @@ def test_closing_reader_cancels_owned_inspector_without_applying_late_results(qa
     driver = Driver(app, (900, 1050))
     driver.frame(2)
     driver.click("open_gfactor")
-    host = app.calibration_host
-    host.control.model.result = {"g_factor": 1.7}
+    child = app.calibration
+    child.model.result = {"g_factor": 1.7}
     app.close()
-    assert not host.isVisible() and reader.g_factor == 1.2
+    assert reader.g_factor == 1.2
+
+
+def test_in_the_shell_the_calculator_is_a_dock_handed_the_readers_channel_width(monkeypatch):
+    """Without a factory the reader asks the shell (``reader_calibration`` hand-off); the delivered app is primed."""
+    from chisurf.core.plugin import handoff
+    from chisurf.core.plugin.manifest import load_manifest
+    from chisurf.emtk.reader_settings import receive_reader_calibration
+
+    asked = []
+
+    def hand_off(plugin_id, kind, payload, *, on_delivered=None):
+        asked.append((plugin_id, kind, dict(payload)))
+        delivered = SimpleNamespace(
+            model=SimpleNamespace(fp_dt_ns=0.0, shift=0.0, g_factor=1.4, fp_result={}),
+            close=lambda: None,
+        )
+        receive_reader_calibration(delivered, payload)
+        on_delivered(delivered)
+        return delivered
+
+    monkeypatch.setattr(handoff, "hand_off", hand_off)
+    reader = TCSPCReader(dt=0.05, record_provenance=False)
+    app = ReaderSettingsApp(reader)
+    driver = Driver(app, (900, 1050))
+    driver.frame(2)
+    driver.click("open_gfactor")
+    assert asked and asked[0][:2] == ("vv_vh_g_factor", "reader_calibration")
+    assert app.calibration.model.fp_dt_ns == reader.effective_dt
+    app.calibration.close()
+    assert reader.g_factor == 1.4
+    manifest = load_manifest(
+        Path(__file__).resolve().parents[2] / "chisurf/plugins/vv_vh_g_factor/manifest.json"
+    )
+    assert any(spec.name == "reader_calibration" for spec in manifest.accepts)
+    app.close()

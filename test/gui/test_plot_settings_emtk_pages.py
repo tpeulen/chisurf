@@ -13,7 +13,6 @@ import os
 import numpy as np
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
 def _draw_settings(page, width=440.0, height=640.0):
@@ -61,7 +60,7 @@ def quadratic_fit():
     return fit
 
 
-def test_the_parameter_scan_settings_drive_the_scan(qapp, quadratic_fit):
+def test_the_parameter_scan_settings_drive_the_scan(quadratic_fit):
     import chisurf.emtk.fit_pages.pages.parameter_scan.parameter_scan as module
 
     _no_qt(module)
@@ -95,7 +94,7 @@ def test_the_parameter_scan_settings_drive_the_scan(qapp, quadratic_fit):
     assert other.get_settings_state() == state
 
 
-def test_the_distribution_options_are_a_generated_form(qapp):
+def test_the_distribution_options_are_a_generated_form():
     import chisurf.emtk.fit_pages.pages.distribution as module
 
     _no_qt(module)
@@ -116,13 +115,13 @@ def test_the_distribution_options_are_a_generated_form(qapp):
     assert "stepMode" in str(form.spec("step")) and "connect" not in str(form.spec("step"))
 
 
-def test_the_distribution_page_reads_its_settings(qapp):
+def test_the_distribution_page_reads_its_settings():
     from chisurf.emtk.fit_pages.pages.distribution import DistributionPlot
     from test.gui.test_classic_tcspc_editor import _fit  # noqa: PLC0415
 
     fit, model = _fit("tcspc_fret_acceptor_density")
     model.update()
-    from chisurf.gui.widgets.models.model_editor import model_plot_specs
+    from chisurf.emtk.fit_pages.plots import model_plot_specs
 
     options = next(o for c, o in model_plot_specs(model) if c is DistributionPlot)
     page = DistributionPlot(fit, **options)
@@ -144,7 +143,7 @@ def test_the_distribution_page_reads_its_settings(qapp):
     assert state == {"distribution_type": page.distribution_type, "show_components": False}
 
 
-def test_the_residual_2d_settings_follow_the_image(qapp):
+def test_the_residual_2d_settings_follow_the_image():
     import chisurf.emtk.fit_pages.pages.residual_image as module
     from chisurf.core.models.grid_images import get_grid_residual_image
     from test.gui.test_ics_model_editor import _make_ics_fit

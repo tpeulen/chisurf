@@ -126,14 +126,13 @@ requirements:
     # pytools and msgpack-numpy removed: nothing in the tree (or in MMFDB)
     # imports them. tqdm removed: chisurf.core.runtime.progress draws the two
     # terminal progress bars the tree needs.
-    - qtpy
-    - pyqt
-    # The node-graph editor toolkit (emtk.qt_host), imported unguarded by the
-    # node editor widgets and chimol. emtk is on PyPI but not conda-forge:
+    # qtpy / pyqt removed: the window is the emtk shell and nothing imports Qt.
+    # The UI toolkit the window, the plugins, the node editor and chimol draw
+    # with. emtk is on PyPI but not conda-forge:
     # `pip install emtk` (source: github.com/tpeulen/emtk).
-    - emtk >=0.1.20
-    # The chigame WebGPU engine: wgpu is the graphics API, rendercanvas the
-    # per-platform surface, glfw the window backend chimol runs Qt-free on.
+    - emtk >=0.1.8
+    # WebGPU, which emtk draws with: wgpu is the graphics API, rendercanvas the
+    # per-platform surface, glfw the native window backend.
     # conda-forge spells it wgpu-py; PyPI spells it wgpu, imported as `wgpu`
     # either way.
     - wgpu-py
@@ -178,22 +177,17 @@ requirements:
     - packaging             # version comparisons in the startup shim
     - pillow                # PNG/JPEG/RGB-TIFF reader; TIFF stacks go through
                             # tttrlib's bundled libtiff instead
-    # Deliberately NOT declared: latexify-py, whose conda build stops at
-    # Python 3.11 -- the parse-model LaTeX view falls back to its in-tree
-    # converter. See okf/references/known-issues.md.
     - ${{ "hdf5" if win }}
 
 # `import chisurf` is deliberately the whole test. It is cheap and it is the one
 # thing that must hold for a package containing only chisurf: the top-level
-# import pulls nothing outside `run:` (no Qt, no tttrlib, no mmfdb), so it fails
+# import pulls nothing outside `run:` (no tttrlib, no mmfdb), so it fails
 # exactly when a run dependency has been forgotten.
 #
-# There used to be a second test, `chisurf --version`. That entry point takes no
-# arguments -- `chisurf.__main__.main` builds the QApplication and enters the Qt
-# event loop whatever the argv -- so the test would have opened a window and
-# blocked the build forever. It never ran (the driver passed `--test skip`),
-# which is why nobody found out. Anything added here must be headless and must
-# terminate.
+# There used to be a second test, `chisurf --version`, which would have opened the
+# window and blocked the build forever (the Qt entry point ignored its argv). The
+# emtk entry point now answers `--help` without opening a window. Anything added
+# here must be headless and must terminate.
 tests:
   - python:
       imports:
@@ -201,7 +195,7 @@ tests:
 
 about:
   homepage: https://github.com/Fluorescence-Tools/ChiSurf
-  license: GPL-3.0-or-later
+  license: MIT
   license_file: LICENSE
   summary: ChiSurf - an interactive global analysis platform for fluorescence data
   description: |

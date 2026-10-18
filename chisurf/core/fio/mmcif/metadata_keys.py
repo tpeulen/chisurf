@@ -1,8 +1,7 @@
 """The metadata key catalogue: common fluorescence keys plus the mmCIF/PDBx ones (Qt-free).
 
 What a key/value metadata editor offers as keys, and the one-line description of
-each. Used by the Qt :class:`~chisurf.gui.widgets.metadata_editor.MetadataEditor`
-and by the native emtk editors (MMFDB Admin's Sample Metadata).
+each. Used by the native emtk editors (MMFDB Admin's Sample Metadata).
 """
 
 from __future__ import annotations

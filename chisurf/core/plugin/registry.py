@@ -51,7 +51,6 @@ class PluginRegistry:
         self._manifests: dict[str, PluginManifest] = {}
         self._legacy_plugins: list[dict[str, Any]] = []
         self._dependency_report: DependencyReport | None = None
-        self._gui_windows: dict[int, Any] = {}
 
     # ── discovery ──────────────────────────────────────────────────
 
@@ -160,7 +159,7 @@ class PluginRegistry:
                         legacy_plugins.append(legacy)
 
         # Ordering happens once, here: ``_manifests`` is what register_services,
-        # register_cli, register_gui and the operation index all iterate, so
+        # register_cli and the operation index all iterate, so
         # sorting the dict is what gives every one of them dependency order
         # instead of the filesystem order rglob happened to produce.
         manifests, report = ordered_manifests(manifests)
@@ -243,7 +242,7 @@ class PluginRegistry:
 
         .. note::
            This is **not** how ``csc`` registers plugin commands. Attaching the
-           command objects here imports every plugin CLI module — Qt, tttrlib and
+           command objects here imports every plugin CLI module — tttrlib, emtk and
            all — which ``csc --help`` cannot afford. Production registration lives
            in :mod:`chisurf.core.cli`, which reads the same manifest
            ``entrypoints.cli`` during its filesystem scan and imports a plugin only
@@ -285,62 +284,6 @@ class PluginRegistry:
                     manifest.id,
                     entrypoint,
                 )
-
-    def register_gui(self, menu: Any, context: Any = None) -> None:
-        """Attach lazy plugin GUI actions without importing plugin code.
-
-        The selected Qt/emtk factory is resolved only when an action is triggered,
-        so a missing legacy Qt dependency cannot hide a working native factory.
-
-        Parameters
-        ----------
-        menu : QMenu
-            The plugins menu.
-
-        """
-        for manifest in self._manifests.values():
-            if (
-                not (
-                    manifest.entrypoints.gui
-                    or manifest.entrypoints.emtk
-                    or manifest.entrypoints.action
-                )
-                or manifest.menu_hidden
-            ):
-                continue
-            try:
-                action = menu.addAction(manifest.display_name or manifest.id)
-                if manifest.entrypoints.action is not None:
-                    declaration = manifest.entrypoints.action
-                    available = (
-                        not declaration.requires_main_window
-                        or getattr(context, "main_window", None) is not None
-                    )
-                    action.setToolTip(
-                        declaration.description
-                        if available
-                        else declaration.description + " " + _action_unavailable()
-                    )
-                    action.setEnabled(available)
-                    action.triggered.connect(
-                        lambda checked=False, manifest=manifest: execute_plugin_action(
-                            manifest,
-                            context,
-                            loader=self._loader,
-                        )
-                    )
-                else:
-                    action.triggered.connect(
-                        lambda checked=False, manifest=manifest: _show_plugin(
-                            None,
-                            manifest,
-                            loader=self._loader,
-                            windows=self._gui_windows,
-                        )
-                    )
-                _log.info("Registered GUI for plugin %r", manifest.id)
-            except Exception:
-                _log.exception("Failed to register GUI for plugin %r", manifest.id)
 
     # ── internals ──────────────────────────────────────────────────
 
@@ -432,103 +375,6 @@ def execute_plugin_action(
         }
 
 
-def select_gui_entrypoint(manifest: PluginManifest, mode: str = "auto") -> tuple[str, str] | None:
-    """Choose ``("emtk", spec)`` or ``("qt", spec)`` for a plugin launch."""
-    mode = str(mode or "auto").lower()
-    native = getattr(manifest.entrypoints, "emtk", None)
-    legacy = getattr(manifest.entrypoints, "gui", None)
-    if mode == "emtk":
-        return ("emtk", native) if native else (("qt", legacy) if legacy else None)
-    if mode == "qt":
-        return ("qt", legacy) if legacy else (("emtk", native) if native else None)
-    # Auto: a plugin whose emtk port is still a preview keeps its Qt tool (see emtk_readiness).
-    if native and legacy:
-        from chisurf.core.plugin.emtk_readiness import is_preview
-
-        if is_preview(getattr(manifest, "id", "")):
-            return ("qt", legacy)
-    return ("emtk", native) if native else (("qt", legacy) if legacy else None)
-
-
-def build_plugin_widget(
-    manifest: PluginManifest,
-    widget_class: Any = None,
-    *,
-    loader: _EntrypointLoader | None = None,
-) -> Any:
-    """Build a plugin's window, honouring the EMTK/Qt runtime selection.
-
-    Every launch path — the registry menus, the ribbon, the macro launcher —
-    goes through here so a plugin with a native factory opens as one no matter
-    which entry opened it. EMTK apps are wrapped in a ``ControlHost``; Qt
-    widgets come from *widget_class* (imported from the ``gui`` entrypoint when
-    not given).
-    """
-    mode = "auto"
-    try:
-        import chisurf as cs
-
-        mode = str(cs.core.settings.cs_settings.get("plugins", {}).get("gui_mode", "auto")).lower()
-    except Exception:
-        pass
-    selected = select_gui_entrypoint(manifest, mode)
-    if selected is None:
-        raise ValueError(f"Plugin {manifest.id!r} has no GUI entrypoint")
-    kind, spec = selected
-    entrypoint_loader = loader or _DefaultLoader()
-    if kind == "emtk":
-        factory = entrypoint_loader.load(spec)
-        from emtk.qt_host import ControlHost
-
-        widget = ControlHost(factory())
-        widget.is_emtk_native_host = True
-        widget.setWindowTitle(manifest.display_name or manifest.id)
-        return widget
-    if widget_class is None:
-        widget_class = entrypoint_loader.load(spec)
-    return widget_class()
-
-
-def _show_plugin(
-    widget_class: Any,
-    manifest: PluginManifest,
-    *,
-    loader: _EntrypointLoader | None = None,
-    windows: dict[int, Any] | None = None,
-) -> Any | None:
-    """Open a plugin and retain its window until an accepted close destroys it."""
-    widget = None
-    key = None
-    try:
-        widget = build_plugin_widget(manifest, widget_class, loader=loader)
-        apply_manifest_statefulness(widget, manifest)
-        if windows is not None:
-            from qtpy.QtCore import Qt
-
-            widget.setAttribute(Qt.WA_DeleteOnClose)
-            key = id(widget)
-            windows[key] = widget
-            widget.destroyed.connect(lambda _object=None, key=key: windows.pop(key, None))
-        widget.show()
-        widget.raise_()
-        widget.activateWindow()
-        if hasattr(widget, "setFocus"):
-            widget.setFocus()
-        return widget
-    except Exception:
-        if windows is not None and key is not None:
-            windows.pop(key, None)
-        if widget is not None:
-            try:
-                widget.deleteLater()
-            except Exception:
-                _log.debug(
-                    "Failed to dispose plugin %r after launch failure", manifest.id, exc_info=True
-                )
-        _log.exception("Failed to show plugin %r", manifest.id)
-        return None
-
-
 def resolve_plugin_statefulness(
     manifest: PluginManifest,
     plugin_settings: dict[str, Any] | None = None,
@@ -568,81 +414,3 @@ def resolve_plugin_statefulness(
     return manifest.statefulness.enabled
 
 
-def apply_manifest_statefulness(widget: Any, manifest: PluginManifest) -> None:
-    """Apply manifest-declared window-state persistence to a widget."""
-    _apply_manifest_statefulness(widget, manifest)
-
-
-def _apply_manifest_statefulness(widget: Any, manifest: PluginManifest) -> None:
-    """Apply window-state persistence declared in a plugin manifest."""
-    if not resolve_plugin_statefulness(manifest):
-        return
-    if not manifest.statefulness.window.enabled:
-        return
-    if getattr(widget, "_manifest_statefulness_applied", False):
-        return
-    if getattr(widget, "_persist_plugin_name", None):
-        return
-
-    settings_key = (
-        manifest.statefulness.window.settings_key or manifest.state_namespace or manifest.id
-    )
-
-    try:
-        from PyQt5.QtCore import Qt as _Qt
-
-        widget.setAttribute(_Qt.WA_DeleteOnClose)
-    except Exception:
-        pass
-
-    try:
-        from chisurf.gui.misc_helpers import (
-            restore_plugin_window_state,
-            save_plugin_window_state,
-        )
-    except Exception:
-        _log.debug(
-            "Failed to import plugin window-state helpers for %r",
-            manifest.id,
-            exc_info=True,
-        )
-        return
-
-    orig_show = getattr(widget, "showEvent", None)
-    orig_close = getattr(widget, "closeEvent", None)
-
-    def _restore_state(event: Any) -> None:
-        if not getattr(widget, "_manifest_state_restored", False):
-            setattr(widget, "_manifest_state_restored", True)
-            try:
-                restore_plugin_window_state(widget, settings_key)
-            except Exception:
-                _log.debug(
-                    "Failed to restore window state for plugin %r",
-                    manifest.id,
-                    exc_info=True,
-                )
-        if orig_show is not None:
-            orig_show(event)
-        elif hasattr(event, "accept"):
-            event.accept()
-
-    def _save_state(event: Any) -> None:
-        try:
-            save_plugin_window_state(widget, settings_key)
-        except Exception:
-            _log.debug(
-                "Failed to save window state for plugin %r",
-                manifest.id,
-                exc_info=True,
-            )
-        if orig_close is not None:
-            orig_close(event)
-        elif hasattr(event, "accept"):
-            event.accept()
-
-    setattr(widget, "_manifest_statefulness_applied", True)
-    setattr(widget, "_manifest_statefulness_key", settings_key)
-    setattr(widget, "_manifest_state_restored", False)
-    widget.showEvent = _restore_state
-    widget.closeEvent = _save_state

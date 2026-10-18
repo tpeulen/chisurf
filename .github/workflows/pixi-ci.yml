@@ -197,8 +197,6 @@ jobs:
 
       - name: Smoke tests (headless, macOS / Windows)
         if: runner.os != 'Linux'
-        env:
-          QT_QPA_PLATFORM: offscreen
         run: pixi run --environment test test-smoke
 
       # Single toolchain: pixi drives the whole packaging chain. The `build-installer`

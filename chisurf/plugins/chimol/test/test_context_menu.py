@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import pytest
 
-pytest.importorskip("qtpy")
 
 from chimol.ui.gui import GuiRow, InternalGui  # noqa: E402
 from chimol.ui.menus.objects import OBJECT_MENUS  # noqa: E402

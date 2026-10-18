@@ -359,13 +359,8 @@ def test_unknown_selection_and_mismatched_state_are_rejected():
     assert model.get_state() == before
 
 
-def test_restored_editor_keeps_reference_and_model_controls(tmp_path, monkeypatch):
-    """Render measured-data controls and use the actual restored reference picker."""
-    from qtpy import QtWidgets
-
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+def test_restored_model_keeps_reference_and_model_parameters(monkeypatch):
+    """A restored model switches its dye reference and keeps its parameter rows."""
     fit = _fit()
     model = fit.model
     model.dye_name = "Rh6G"
@@ -375,23 +370,14 @@ def test_restored_editor_keeps_reference_and_model_controls(tmp_path, monkeypatc
     monkeypatch.setattr(dyes, "_ALIASES", {})
     model.update()
     first = model.y.copy()
-    editor = build_model_editor(model)
-    editor.resize(780, 820)
-    editor.show()
-    app.processEvents()
-    combos = editor.findChildren(QtWidgets.QComboBox)
-    picker = next(combo for combo in combos if combo.findText("Cy5") >= 0)
-    assert picker.currentText() == "Rh6G"
-    picker.setCurrentIndex(picker.findText("Cy5"))
-    app.processEvents()
+    assert model.dye_name == "Rh6G"
+    model.dye_name = "Cy5"
     model.update()
     assert model.dye_name == "Cy5"
     assert not np.allclose(model.y, first)
     assert [p.name for p in model._shape_parameter_rows()] == ["N", "s", "w0", "b", "temp"]
     assert [p.name for p in model._bunching_parameter_rows()] == ["ba", "bt"]
     assert [p.name for p in model._output_parameter_rows()] == ["D", "tauD", "cpm", "cpm_all"]
-    assert editor.grab().save(str(tmp_path / "dye-restored-controls.png"))
-    editor.close()
 
 
 @pytest.mark.parametrize("operation", ["selection", "choices"])

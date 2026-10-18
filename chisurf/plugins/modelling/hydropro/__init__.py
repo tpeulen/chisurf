@@ -21,11 +21,3 @@ if __name__ == "__main__":
     from chisurf.emtk.__main__ import main as _launch
 
     _launch(["--plugin", "hydropro"])
-
-if __name__ == "plugin":  # pragma: no cover - the legacy macro launch; the manifest's emtk entry comes first
-    from emtk.qt_host import ControlHost
-
-    from chisurf.plugins.modelling.hydropro.app import make_app
-
-    window = ControlHost(make_app())
-    window.show()

@@ -23,8 +23,6 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 #: Distribution name -> the module name it installs, where the two differ.
 _IMPORT_NAMES = {
     "pyyaml": "yaml",
-    "pyqt": "PyQt5",
-    "pyqt5": "PyQt5",
     "python-docx": "docx",
     "pytables": "tables",
     "tables": "tables",
@@ -53,11 +51,6 @@ _EXTRA_ALLOWED = {
     "matplotlib",
     "mpl_toolkits",
     "contourpy",
-    "sip",
-    "shiboken6",
-    "PyQt5",
-    "PySide2",
-    "PySide6",
     "jupyter_client",
     "ipykernel",
     "traitlets",

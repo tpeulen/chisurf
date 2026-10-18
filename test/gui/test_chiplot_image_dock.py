@@ -180,21 +180,6 @@ def test_playback_ticks_on_the_clock_it_is_given(view):
     assert view.frame == 2 and not view.animating()
 
 
-def test_a_qt_host_plays_the_stack_on_a_timer(qapp):
-    """The Qt host is the panel's clock: a timer at 1/fps while it plays, stopped after."""
-    from chisurf import chiplot
-    from chisurf.gui import chiplot as qt_chiplot
-
-    panel = chiplot.ImagePanel()
-    widget = qt_chiplot.host(panel)
-    panel.set_image(_stack(3))
-    panel.play(20)
-    assert widget._timer.isActive() and widget._timer.interval() == 50
-    panel.pause()
-    assert not widget._timer.isActive()
-    widget.close()
-
-
 # -- placing the picture ------------------------------------------------------
 def test_an_extent_puts_the_picture_on_real_axes_and_maps_clicks_back(view):
     view.set_image(np.zeros((20, 60)))

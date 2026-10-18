@@ -62,16 +62,8 @@ viewer, and nothing has to be opened first.
 The movie transport and its scrubber appear only when there is something to
 play — a trajectory, or a timeline you set with `mset`. The **Hierarchy**,
 **RMF** and **Map** panels start closed and open themselves when a file gives
-them something to show; **Display** and **Tools ▸ Panels** open them by hand.
-
-```{figure} figures/chimol_native_host.png
-:name: fig-chimol-window
-:width: 100%
-
-ChiMOL in ChiSurf with T4 lysozyme (148L): menus and toolbar, the sequence strip
-(one row per chain), the Object List top right, the Mouse block bottom right,
-the info box, the command line, and the line with **Help** and **Guide**.
-```
+them something to show; **View ▸ Panel Tabs** opens any of them by hand, and
+right-clicking a tab bar brings back one you have closed.
 
 Inside ChiSurf a line under the view counts the open objects and holds
 **Help** and **Guide**. Help summarises the window, the mouse and the command
@@ -126,14 +118,14 @@ opens in the **Labelling network** window (**Tools ▸ Labelling**), the fps.jso
 editor — the same window the ChiSurf menu **Structure ▸ FRET ▸ FPS JSON Editor**
 opens.
 
-Objects appear in the **Object List**, one row each. Every row carries the same
+Objects appear in the **Objects** panel, one row each. Every row carries the same
 five menus PyMOL uses, and the grey `all` row applies them to everything at once:
 
 ```{figure} figures/chimol_objects_panel.png
 :name: fig-chimol-objects
 :width: 680px
 
-The Object List, here with the ligand and its peptidoglycan split off into
+The Objects panel, here with the ligand and its peptidoglycan split off into
 objects of their own. Each molecule gets a row with PyMOL's five menus —
 **A**ction, **S**how, **H**ide, **L**abel and **C**olour — and the grey `all`
 row applies a choice to every object at once.
@@ -341,7 +333,7 @@ load_map density.mrc         # MRC / CCP4 / MAP, gzipped or not
 fetch EMD-3061               # ...or straight from EMDB
 map_info                     # size, voxel step, origin, value range
 isosurface dens, density     # a solid contour at a level from the data
-isomesh dens, density, 0.08, color=skyblue
+isomesh dens, density, 0.08, skyblue
 volume_level density, 0.12   # move the contour
 ```
 
@@ -349,9 +341,9 @@ volume_level density, 0.12   # move the contour
 :name: fig-chimol-map
 :width: 640px
 
-T4 lysozyme (148L) inside its own `molmap` density at 6 Å, contoured at 0.25 as
-an `isomesh`. The wireframe leaves the model visible inside, which is the point
-of that mode; the same contour as `isosurface` is a solid envelope.
+A density contoured as an `isomesh` around the structure it belongs to. The
+wireframe leaves the model visible inside, which is the point of that mode; the
+same contour as `isosurface` is a solid envelope.
 ```
 
 **A map lands where the file says it does.** The reader honours the voxel step,
@@ -492,7 +484,7 @@ switches off like everything else. Menu actions that write files — Save
 Molecule As…, Save Image As…, and everything under File ▸ Export — ask with
 a real file dialog; the command line keeps taking paths as text.
 
-**Editing lives in Tools ▸ Build.** Bond/unbond (with bond orders), remove,
+**Editing lives in the Build menu.** Bond/unbond (with bond orders), remove,
 alter, pseudoatom, add hydrogens and the mutagenesis wizard — all
 long-existing commands — plus Edit ▸ Undo/Redo, which are PyMOL's scope
 exactly: sixteen coordinate snapshots per object; colours, representations
@@ -522,8 +514,8 @@ buttons: the eye (`o`) shows or hides the map object, the `x` unloads it —
 closing the *window* keeps the map; this closes the map.
 
 **Map tools live under Tools ▸ Map.** The **Tools** menu groups the working
-tools into submenus (Build, Wizard, Map, Measure, Panels), every entry a command
-you can also type. Two tools ported from the reference viewer:
+tools into submenus (Map, Measure, Panels), every entry a command you can also
+type. Two tools ported from the reference viewer:
 
 - **Hide Dust** (`hide_dust [map,] [size]`): a contour near an interesting
   level is surrounded by noise crumbs — disconnected blobs the size of a few
@@ -693,8 +685,8 @@ rotation must be an isometry, and each group must have exactly one identity —
 
 ### Trying it out: the Demo menu
 
-The **Demo** menu runs short scripts, so the viewer can be exercised without a
-lot of clicking. The first ones are a tour of the viewer itself:
+The **Demo** menu runs a set of short scripts, so the viewer can be exercised
+without a lot of clicking:
 
 | Entry | What it shows |
 | --- | --- |
@@ -705,30 +697,30 @@ lot of clicking. The first ones are a tour of the viewer itself:
 | Publication figure | Flat shading with silhouettes |
 | Trajectory + intra_fit | Why fitting makes a movie readable |
 | Measuring | Surface area, bonds, hydrogens |
-| Dye labelling, T4L FRET network | Accessible volumes and a labelling plan |
 | EMDB density map | Fetch a map and contour it |
-| NPC (yeast PDB-IHM assembly) | A model made of beads, not atoms |
+| NPC (integrative, PDB-IHM) | A model made of beads, not atoms |
 | Biofilm growth (simulated) | Cells divide, stack and change state |
 
-After them come the imaging and mesoscale ones — a cryo-electron tomogram, NPC
-localisation averages, and the **PetWorld Gigastructures** submenu (virions,
-synapses, phages). **List them at the prompt** (or `demo` with no argument)
-lists every one; a click runs it, and `demo cartoon` runs one by name.
-
-Each is a plain **ChiMOL script** (`.cml`, one command per line) shipped in
-chimol's `data/demos`. So a demo is also documentation you can read, and a
-development harness: a demo that stops working is a command that stopped
-working.
+Each is a plain **ChiMOL script** — one command per line — living in
+`chimol/demos/` and run exactly as `@file.pml` runs one. So a demo is also
+documentation you can read, and a development harness: a demo that stops working
+is a command that stopped working.
 
 Most name a file. **Biofilm growth** names one that does not exist until it is
 computed: the simulation runs on first use and is cached, so the demo shows a
 result rather than a picture of one. Where the simulator is not installed the
 menu entry says so instead of failing to open a file.
 
+Run one from the command line instead:
+
+```text
+@demos/cartoon.pml
+```
+
 **Demo ▸ Edit a demo script…** opens it in a script editor — ChiSurf's code
 editor when ChiSurf is present, and a small built-in one when ChiMOL is running
 standalone — so a demo is a starting point to modify rather than a fixed recital.
-**New script…** opens an empty one; `@file.cml` runs a script of your own.
+**New script…** opens an empty one.
 
 ### Making it look good
 
@@ -815,9 +807,9 @@ actually has. Set it to 0 explicitly for PyMOL's look.
 ### How finely the surface is built
 
 ```text
-set surface_quality, 0   # PyMOL's scale, and the default
-set surface_quality, 1   # "good" -- roughly 4x the triangles
-set surface_quality, -2  # coarse and fast, for a first look
+surface_quality 0        # PyMOL's scale, and the default
+surface_quality 1        # "good" -- roughly 4x the triangles
+surface_quality -2       # coarse and fast, for a first look
 set surface_normal, 0.6  # the separation level 0 selects, in Angstrom
 ```
 
@@ -939,8 +931,7 @@ wheel still scrolls it a row at a time.
 
 ### When a new version changes a default
 
-Your settings live in `chimol_display.json` in ChiSurf's settings folder
-(standalone chimol: `~/.chimol`), and they are yours —
+Your settings live in `~/.chisurf/chimol_display.json`, and they are yours —
 nothing rewrites them behind your back. But a default that improves between
 versions has to be able to reach you, or you keep a value nobody intended and
 the viewer quietly stops matching what the documentation describes.
@@ -1106,7 +1097,7 @@ ungroup lig                  # take one back out
 :name: fig-chimol-groups
 :width: 680px
 
-Two groups in the Object List. `ligands` is open, so its members are drawn
+Two groups in the Objects panel. `ligands` is open, so its members are drawn
 indented beneath it; `parts` is collapsed. A group row carries the same five
 menus an object row does, and a menu choice made there is applied to every
 member — so **H ▸ everything** on `ligands` hides both molecules.
@@ -1308,7 +1299,7 @@ rms polymer, other_object and polymer
 
 Naming two atoms in a selection expression means already knowing which two they
 are, which is the opposite of what you want when measuring something you are
-looking at. **Tools ▸ Wizard ▸ Measurement** — or `wizard measurement` — hands the mouse
+looking at. **Wizard ▸ Measurement** — or `wizard measurement` — hands the mouse
 to a wizard instead: click atoms in the viewport and every two of them become a
 distance, drawn and labelled in Ångström.
 
@@ -1588,7 +1579,7 @@ because nothing yet asks to be phi/psi-aware.
 ### The mutagenesis wizard
 
 Choosing a rotamer means *looking* at each one, so mutation is the one place a
-command is the wrong surface. **Tools ▸ Wizard ▸ Mutagenesis** opens PyMOL's simplest
+command is the wrong surface. **Wizard ▸ Mutagenesis** opens PyMOL's simplest
 GUI: a small panel under the object list, and a line in the top-left of the
 view saying what it is waiting for.
 
@@ -1699,18 +1690,18 @@ pair_fit mob and resi 10-25 and name CA, ref and resi 10-25 and name CA, \
 The fit moves the whole mobile object, not only the atoms named in it.
 
 :::{note}
-`intra_fit` and `intra_rms` work on the *states* of one trajectory object:
-`intra_fit polymer and name CA` superposes every state onto state 1 on the
-backbone (the whole object moves), and `intra_rms` reports each state's RMSD
-without moving anything.
+`intra_fit` and `intra_rms` fit the *states* of one object to each other. chimol
+holds a single coordinate set per object, so they have nothing to work on and are
+not implemented.
 :::
 
 ## Presets — one command to a figure
 
 A preset is a short recipe of ordinary commands that takes a freshly loaded
-structure to something worth looking at. They are PyMOL's, transcribed from
-`preset.py` with PyMOL's names, and they are in the Object List's **A** menu
-under *preset* as well as on the command line:
+structure to something worth looking at. They carry PyMOL's names and follow
+PyMOL's recipes — users navigate by them — but each recipe here is written for
+ChiSurf's own command set, not copied from PyMOL's code. They are in the object
+panel's **A** menu under *preset* as well as on the command line:
 
 ```text
 preset                       # list them
@@ -1725,14 +1716,13 @@ preset default               # back to lines and nonbonded, coloured by element
 ```
 
 `simple`, `simple_no_solv`, `ligands`, `ligand_sites`, `ligand_cartoon`,
-`pretty_solv` and `pub_solv` complete PyMOL's set. `preset_cx` lists a second,
-ChimeraX-style set that changes how the shown parts *look* rather than what is
-shown.
+`pretty_solv` and `pub_solv` complete PyMOL's set.
 
 :::{note}
 Where chimol cannot do one step of a recipe it does the rest and **says which
-step it skipped** — `cartoon_fancy_helices`, for one, is not implemented by
-chimol's cartoon. A preset never quietly produces less than it claims.
+step it skipped** — `preset technical` reports that it drew no polar contacts,
+because that needs a hydrogen-bond finder chimol has not got. A preset never
+quietly produces less than it claims.
 
 Two differences apply throughout: PyMOL scopes a setting to a selection
 (`set stick_radius, 0.14, sele`) while chimol's settings are one global display
@@ -1915,8 +1905,8 @@ does not draw, and reports rather than dropping in silence:
 
 ## Headless and scripted use
 
-The parts that compute do not need a window. The surface-area calculation is a
-plain function:
+The viewer is a Qt widget, but the parts that compute do not need a window. The
+surface-area calculation is a plain function:
 
 ```python
 import numpy as np
@@ -1938,26 +1928,38 @@ areas = atom_surface_areas(
 print(f"cysteine SASA: {areas.sum():.1f} A^2")
 ```
 
-To drive the command language without a window, build chimol's toolkit-free
-app on the offscreen canvas — the same viewer and the same `Cmd` the window
-uses, rendering into a buffer:
+To drive the command language without a GUI session, build a viewer and hand it
+to `Cmd`:
 
 ```python
-from chimol.hosts.native.app import ChimolApp
+from chimol.commands.command import Cmd
+from chimol.core.viewer import Viewer
 
-app = ChimolApp(size=(900, 650), backend="offscreen")
-app.cmd.set_message_callback(print)
-app.cmd.set_error_callback(print)
-app.load("148l.pdb")
-app.cmd.do("set dot_solvent, on")
-app.cmd.do("get_area polymer")        # get_area: 8039.319 A^2 (solvent-accessible, ...)
-app.cmd.do("ray render.png, 1200, 900")
-app.cmd.do("png view.png")            # the viewport, at the app's size
-app.close()
+view = Viewer()
+view.add_structure(_read_full_model(cs_struct.Structure, "148l.pdb"), name="148l")
+
+
+class Host:
+    viewer = view
+
+    def _refresh_objects_from_viewer(self):
+        pass
+
+    def windowTitle(self):
+        return "chimol"
+
+
+cmd = Cmd(Host())
+cmd.set_message_callback(print)
+cmd.set_error_callback(print)
+cmd.do("set dot_solvent, on")
+cmd.do("get_area polymer")
 ```
 
-Neither needs Qt or a display; the density figure above is made this way by
-`docs/guides/screenshots/chimol_map_shot.py`.
+The ray
+tracer needs no GPU and no display, which is how the figure above was made; the
+OpenGL viewport does need a display, so `png` will not work headlessly while
+`ray` will.
 
 ## Where things stand
 
@@ -1971,10 +1973,23 @@ Neither needs Qt or a display; the density figure above is made this way by
 | `get_area` | Follows `dot_solvent` / `dot_density` / `solvent_radius` |
 | Ray tracing | Every representation the viewport draws, except labels |
 | Undo | Coordinates only, per object, 16 deep (PyMOL's scope) |
-| Settings | 104 registered of PyMOL's 769 |
+| Settings | 47 registered of PyMOL's 769 |
 
 `okf/plugins/pymol-parity.md` tracks the rest.
 
 ## See also
 
 - Tool: **ChiMOL** (`chisurf/plugins/chimol/`).
+
+### Native host dimensions
+
+The ChiSurf native molecular viewer declares an initial 1200 × 800 host.
+Saved user dimensions take precedence. The renderer's internal initialization
+size is separate; it continues to render at the actual viewport dimensions
+when the host changes size. Loading, representation commands and pointer/wheel
+interaction retain the same atom coordinates and molecular state.
+
+Reopening restores host dimensions; the adapter does not add a molecular-scene
+snapshot to its preferences. ChiMOL keeps its own display and layout settings.
+
+![Native viewer with the T4 lysozyme fixture](figures/chimol_native_host.png)

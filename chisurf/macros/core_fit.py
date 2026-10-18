@@ -1290,16 +1290,8 @@ def change_selected_fit_of_group(selected_fit: int) -> None:
         cs.logging.error("change_selected_fit_of_group: no active main window (cs.cs is missing)")
         return
 
-    # Switching local fits changes the underlying model/parameter objects.
-    # Ensure any derived output parameters are recomputed and the parameter
-    # widgets refresh accordingly.
-    try:
-        from chisurf.gui.widgets.models.model_editor import hide_model_editor
-
-        hide_model_editor(gui.current_fit.model)
-    except Exception:
-        pass
-
+    # Switching local fits changes the underlying model/parameter objects;
+    # recompute the derived output parameters.
     gui.current_fit.selected_fit = selected_fit
     gui.current_fit.update()
     try:
@@ -1320,13 +1312,6 @@ def change_selected_fit_of_group(selected_fit: int) -> None:
                         ctrl.finalize()
                 except (AttributeError, RuntimeError, TypeError):
                     continue
-    except Exception:
-        pass
-
-    try:
-        from chisurf.gui.widgets.models.model_editor import show_model_editor
-
-        show_model_editor(gui.current_fit.model)
     except Exception:
         pass
 
@@ -1420,14 +1405,14 @@ def save_project(target_path: str, project_name: str = "chisurf_project"):
     project_path = save_file(project, project_path)
 
     log.info(f"Project saved to {project_path}")
-    try:
-        if gui is not None:
-            gui._current_project_path = project_path
-            from chisurf.gui.project_helpers import add_recent_project
+    if gui is not None:
+        gui._current_project_path = project_path
+    from chisurf.core.project import recent
 
-            add_recent_project(gui, project_path)
-    except Exception:
-        pass
+    try:
+        recent.store(recent.added(recent.load(), project_path))
+    except OSError:
+        log.debug("could not record %s in the recent projects", project_path, exc_info=True)
 
     return project_path
 
@@ -1544,66 +1529,6 @@ def _is_file_backed_dataset(payload: typing.Any) -> bool:
     return role in {"structure", "trajectory", "labeling_file", "labeling", "fps_json"}
 
 
-def _restore_chimol_project_files(
-    gui: typing.Any,
-    project_root: pathlib.Path | None,
-    ui_state: typing.Dict[str, typing.Any],
-    log: typing.Any,
-) -> None:
-    """Open project-local Chimol files in a Chimol plugin window."""
-    if gui is None or project_root is None:
-        return
-    chimol_state = ui_state.get("chimol") if isinstance(ui_state, dict) else None
-    if not isinstance(chimol_state, dict):
-        return
-    open_files = chimol_state.get("open_files")
-    if not isinstance(open_files, list) or not open_files:
-        return
-
-    paths: list[pathlib.Path] = []
-    for item in open_files:
-        path = _project_path(project_root, item)
-        if path is None:
-            continue
-        suffixes = "".join(path.suffixes).lower()
-        if suffixes.endswith(".fps.json"):
-            continue
-        if path.suffix.lower() not in {".pdb", ".pqr", ".cif", ".mmcif", ".gro", ".rmf", ".rmf3"}:
-            continue
-        if path.is_file():
-            paths.append(path)
-        else:
-            log.warning(f"load_project: Chimol file does not exist: {path}")
-
-    if not paths:
-        return
-
-    # The ChiMOL window is the plugin's emtk app (its manifest's only GUI entry);
-    # this Qt shell shows it in emtk's Qt host, as its menu does. The files are
-    # loaded by the viewer's own `load` once it has started.
-    try:
-        from emtk.qt_host import ControlHost
-
-        from chisurf.plugins.chimol.app import make_app
-    except Exception as exc:
-        log.warning(f"load_project: could not import Chimol window: {exc}")
-        return
-
-    try:
-        app = make_app(commands=tuple(f'load "{path}"' for path in paths))
-        window = ControlHost(app)
-        window.setWindowTitle("ChiMOL")
-        window.resize(1000, 700)
-        window.show()
-        refs = getattr(gui, "_project_chimol_windows", None)
-        if refs is None:
-            refs = []
-            setattr(gui, "_project_chimol_windows", refs)
-        refs.append(window)
-    except Exception as exc:
-        log.warning(f"load_project: could not restore Chimol files: {exc}")
-
-
 def _resolve_project_local_model_state(
     state: typing.Any,
     project_root: pathlib.Path | None,
@@ -1620,27 +1545,6 @@ def _resolve_project_local_model_state(
         if path is not None:
             proteinmc[key] = str(path)
     return state
-
-
-def _fitgroup_plot_state(fit_group: typing.Any) -> typing.Dict[str, typing.Any]:
-    """Return project-serializable plot/window state for a fit group."""
-    try:
-        import chisurf.gui as _gui_mod
-    except Exception:
-        return {}
-
-    for fit_window in list(getattr(_gui_mod, "fit_windows", []) or []):
-        try:
-            if getattr(fit_window, "fit", None) is not fit_group:
-                continue
-            get_state = getattr(fit_window, "get_project_plot_state", None)
-            if callable(get_state):
-                state = get_state()
-                if isinstance(state, dict):
-                    return state
-        except Exception:
-            continue
-    return {}
 
 
 def _apply_pending_plot_state(
@@ -2008,25 +1912,8 @@ def restore_gui_from_fits(
 
     def finalize_windows():
         """Retire detached view resources only after the scientific owner accepts."""
-        from qtpy import QtCore
-
-        try:
-            from qtpy import sip
-        except ImportError:
-            try:
-                from PyQt5 import sip
-            except ImportError:
-                try:
-                    import sip
-                except ImportError:
-                    sip = None
 
         def _is_deleted(w):
-            if sip is not None:
-                try:
-                    return bool(sip.isdeleted(w))
-                except Exception:
-                    pass
             try:
                 w.objectName()
                 return False
@@ -2038,8 +1925,6 @@ def restore_gui_from_fits(
             if id(widget) in retired or _is_deleted(widget):
                 continue
             retired.add(id(widget))
-            for timer in widget.findChildren(QtCore.QTimer):
-                timer.stop()
             # Deferred deletion also releases externally hosted plot controls
             # through their existing destroyed callbacks. Do not call close():
             # those handlers can dispatch removal into the newly installed fit.

@@ -214,11 +214,10 @@ def test_a_real_analysis_records_settings_that_can_be_read_back(tmp_path):
     assert any(k in restored for k in ("photon_filter", "burst_filter", "gmm"))
 
 
-def test_a_form_is_repopulated_from_the_folder(tmp_path, spc_tttr, qt_app_for_forms):
-    """The AutoForm path: a folder restores the tool's controls, key for key."""
+def test_a_form_is_repopulated_from_the_folder(tmp_path, spc_tttr):
+    """The form-state path: a folder restores the tool's controls, key for key."""
     from chisurf.core.dataspec import ModelView, ValueSection
     from chisurf.core.fio.fluorescence.burst_manifest import restore_form
-    from chisurf.gui.autoform.auto_form import AutoForm
 
     class Tool:
         def __init__(self):
@@ -239,14 +238,12 @@ def test_a_form_is_repopulated_from_the_folder(tmp_path, spc_tttr, qt_app_for_fo
         view_state={"threshold": 5, "min_photons": 60},
     )
 
-    form = AutoForm(Tool())
-    try:
-        result = restore_form(form, tmp_path)
-        assert result is not None and result.ok, result
-        assert form.model.threshold == 5
-        assert form.model.min_photons == 60
-    finally:
-        form.close()
+    # A model that describes itself is its own form for the state helpers.
+    tool = Tool()
+    result = restore_form(tool, tmp_path)
+    assert result is not None and result.ok, result
+    assert tool.threshold == 5
+    assert tool.min_photons == 60
 
 
 def test_restoring_from_a_folder_without_a_manifest_is_not_an_error(tmp_path):
@@ -258,11 +255,3 @@ def test_restoring_from_a_folder_without_a_manifest_is_not_an_error(tmp_path):
 
     assert restore_settings(tmp_path) == {}
     assert restore_form(object(), tmp_path) is None
-
-
-@pytest.fixture(scope="module")
-def qt_app_for_forms():
-    """A QApplication for the AutoForm case (offscreen)."""
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

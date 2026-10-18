@@ -3,7 +3,7 @@
 
 Each module here holds the ``_grab_*`` functions of a range of guides. Run one
 module per process -- several grabs start worker threads or servers -- from the
-repository root in the GUI environment, with settings isolated so a grab never
+repository root in the project environment, with settings isolated so a grab never
 writes the user's real preferences::
 
     CHISURF_SETTINGS_DIR=$(mktemp -d) \
@@ -23,11 +23,8 @@ import importlib
 import os
 import sys
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("MPLBACKEND", "Agg")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from qtpy.QtWidgets import QApplication  # noqa: E402
 
 import chisurf.core.settings  # noqa: E402,F401
 
@@ -40,7 +37,6 @@ def main(argv: list[str]) -> int:
     if not os.environ.get("CHISURF_SETTINGS_DIR"):
         print("set CHISURF_SETTINGS_DIR to a scratch directory first")
         return 2
-    app = QApplication.instance() or QApplication([])  # noqa: F841
     module = importlib.import_module(argv[0])
     names = argv[1:] or sorted(n for n in dir(module) if n.startswith("_grab_"))
     failed = 0

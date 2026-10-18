@@ -1,2 +1,2 @@
-# Deferred shell surface; remove with the native main-window replacement.
-chisurf/gui/gui.ui
+# Designer .ui files under chisurf/. Empty since the Qt shell (chisurf/gui/gui.ui) was
+# retired; test/test_no_ui_files.py rejects any .ui file and any loader call.

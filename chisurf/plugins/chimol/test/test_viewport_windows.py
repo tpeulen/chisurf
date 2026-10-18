@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import pytest
 
-pytest.importorskip("qtpy")
 
 from chimol.ui.gui import GuiWindow, InternalGui  # noqa: E402
 

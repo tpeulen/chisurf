@@ -1,39 +1,57 @@
-"""Breakout's rules survived the move to the chigame engine."""
+"""Breakout's rules, driven on the shared toolkit-free model (:class:`..model.BreakoutModel`).
+
+Ported from the tests of the retired chigame view: the same rules, stepped with a fixed timestep
+and a small input stand-in that speaks the model's action vocabulary.
+"""
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
-pytest.importorskip("wgpu")
-pytest.importorskip("rendercanvas")
-
-from chisurf.gui import chigame  # noqa: E402
-from chisurf.gui.chigame.input import Action  # noqa: E402
-from chisurf.plugins.misc.games.breakout.breakout import (  # noqa: E402
+from chisurf.plugins.misc.games.breakout.model import (
     BRICK_COLS,
     BRICK_ROWS,
+    EXCITATION_NM,
     LIVES,
     PADDLE_W,
-    BreakoutGame,
+    ROW_HARDNESS,
+    ROW_NM,
+    BreakoutModel,
     H,
+    photon_energy_rank,
 )
 
 
-@pytest.fixture
-def game(qapp):
-    """A game wired to a headless host.
+class Keys:
+    """Controller state: ``press``/``tap`` set actions, ``axis`` reads the held direction."""
 
-    Returns
-    -------
-    BreakoutGame
-        Ready to step.
-    """
-    try:
-        context = chigame.create_offscreen(size=(160, 130))
-    except Exception as error:  # pragma: no cover - depends on the machine
-        pytest.skip(f"no usable GPU adapter: {error}")
-    instance = BreakoutGame()
-    chigame.GameHost(instance, context, with_text=False, with_audio=False)
+    def __init__(self):
+        self.held = set()
+        self.pressed = set()
+
+    def press(self, action):
+        self.held.add(action)
+
+    def tap(self, action):
+        self.pressed.add(action)
+
+    def just_pressed(self, action):
+        return action in self.pressed
+
+    def axis(self):
+        return int("right" in self.held) - int("left" in self.held), 0
+
+    def end_frame(self):
+        self.pressed.clear()
+
+
+@pytest.fixture
+def game():
+    """A model with a silent audio host, ready to step."""
+    instance = BreakoutModel(host=SimpleNamespace(audio=SimpleNamespace(sfx=lambda *a: None)))
+    instance.keys = Keys()
     return instance
 
 
@@ -47,22 +65,22 @@ def test_the_level_is_a_full_brick_grid(game):
 def test_the_ball_sticks_to_the_paddle_until_launched(game):
     """A served ball tracks the paddle, then leaves on Confirm."""
     assert game.stuck
-    game.host.keys.press(Action.RIGHT)
+    game.keys.press("right")
     for _ in range(10):
-        game.update(1 / 60, game.host.keys)
+        game.update(1 / 60, game.keys)
     assert game.ball_x == pytest.approx(game.paddle_x)
 
-    game.host.keys.end_frame()
-    game.host.keys.tap(Action.CONFIRM)
-    game.update(1 / 60, game.host.keys)
+    game.keys.end_frame()
+    game.keys.tap("confirm")
+    game.update(1 / 60, game.keys)
     assert not game.stuck and game.ball_vy < 0.0, "the ball must launch upward"
 
 
 def test_the_paddle_clamps_to_the_field(game):
     """Holding a direction cannot walk the paddle off the edge."""
-    game.host.keys.press(Action.LEFT)
+    game.keys.press("left")
     for _ in range(600):
-        game.update(1 / 60, game.host.keys)
+        game.update(1 / 60, game.keys)
     assert game.paddle_x == pytest.approx(PADDLE_W * 0.5)
 
 
@@ -75,7 +93,7 @@ def test_hitting_a_brick_scores_and_bounces(game):
     game.ball_y = brick.y + brick.h * 0.5
     game.ball_vx = 0.0
     game.ball_vy = -200.0
-    game.update(1 / 60, game.host.keys)
+    game.update(1 / 60, game.keys)
     assert brick.hp == hp_before - 1
     assert game.ball_vy > 0.0, "the ball must bounce back down off the underside"
 
@@ -93,7 +111,7 @@ def test_losing_the_ball_costs_a_life_and_re_serves(game):
     game.stuck = False
     game.ball_y = H + 50.0
     game.ball_vy = 300.0
-    game.update(1 / 60, game.host.keys)
+    game.update(1 / 60, game.keys)
     assert game.lives == LIVES - 1
     assert game.stuck, "a lost ball must re-serve"
 
@@ -104,11 +122,11 @@ def test_running_out_of_lives_ends_the_game(game):
     game.stuck = False
     game.ball_y = H + 50.0
     game.ball_vy = 300.0
-    game.update(1 / 60, game.host.keys)
+    game.update(1 / 60, game.keys)
     assert game.message == "Sample bleached"
 
     before = game.ball_y
-    game.update(1 / 60, game.host.keys)
+    game.update(1 / 60, game.keys)
     assert game.ball_y == before, "play must stop once the game is over"
 
 
@@ -125,28 +143,15 @@ def test_clearing_every_brick_advances_the_level(game):
 
 def test_menu_pauses_and_cancel_restarts(game):
     """The pad actions replace the old P and R keys."""
-    game.host.keys.tap(Action.MENU)
-    game.update(1 / 60, game.host.keys)
+    game.keys.tap("menu")
+    game.update(1 / 60, game.keys)
     assert game.paused is True
 
-    game.host.keys.end_frame()
+    game.keys.end_frame()
     game.score = 500
-    game.host.keys.tap(Action.CANCEL)
-    game.update(1 / 60, game.host.keys)
+    game.keys.tap("cancel")
+    game.update(1 / 60, game.keys)
     assert game.score == 0 and game.paused is False
-
-
-def test_it_renders(qapp):
-    """A frame comes out with the brick wall on it."""
-    try:
-        frame = chigame.capture(BreakoutGame(), size=(400, 325), frames=2, with_audio=False)
-    except Exception as error:  # pragma: no cover - depends on the machine
-        pytest.skip(f"no usable GPU adapter: {error}")
-    assert frame.shape == (325, 400, 4)
-    # The wall occupies the upper quarter; the empty middle must be darker.
-    wall = int(frame[40, :, :3].sum())
-    empty = int(frame[220, :, :3].sum())
-    assert wall > empty * 3, (wall, empty)
 
 
 def test_the_wall_is_a_spectrum_and_hardness_follows_photon_energy():
@@ -155,8 +160,6 @@ def test_the_wall_is_a_spectrum_and_hardness_follows_photon_energy():
     Row hardness is not a curve someone picked: it is derived from 1/lambda, so
     "bluer" and "tougher" are the same fact rather than two to memorise.
     """
-    from chisurf.gui.chigame.assets import photon_energy_rank
-    from chisurf.plugins.misc.games.breakout.breakout import ROW_HARDNESS, ROW_NM
 
     assert ROW_NM == sorted(ROW_NM), "the wall must run short to long wavelength"
     assert len(set(ROW_NM)) == BRICK_ROWS, "every band needs its own wavelength"
@@ -167,8 +170,6 @@ def test_the_wall_is_a_spectrum_and_hardness_follows_photon_energy():
 
 def test_the_photon_takes_the_wavelength_of_the_band_it_strikes(game):
     """The probe's colour is a running record of what it last interacted with."""
-    from chisurf.plugins.misc.games.breakout.breakout import EXCITATION_NM
-
     assert game.ball_nm == EXCITATION_NM
     game.stuck = False
     brick = game.bricks[0]
@@ -176,5 +177,5 @@ def test_the_photon_takes_the_wavelength_of_the_band_it_strikes(game):
     game.ball_y = brick.y + brick.h * 0.5
     game.ball_vx = 0.0
     game.ball_vy = -200.0
-    game.update(1 / 60, game.host.keys)
+    game.update(1 / 60, game.keys)
     assert game.ball_nm == brick.nm != EXCITATION_NM

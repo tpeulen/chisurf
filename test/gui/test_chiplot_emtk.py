@@ -1,6 +1,6 @@
 """chiplot over emtk: what it draws, and what it says it cannot draw yet.
 
-emtk is the designated native renderer (PRD-104). The backend is a bridge
+emtk is the designated native renderer. The backend is a bridge
 between two opposite models -- chiplot hands out handles the caller keeps,
 emtk redraws from scratch every frame -- so what these tests pin is that the
 handles stay authoritative across redraws, and that the families not yet
@@ -13,7 +13,6 @@ import os
 
 import numpy as np
 import pytest
-from qtpy import QtGui
 
 pytest.importorskip("emtk")
 
@@ -36,29 +35,12 @@ def _emtk_backend():
             os.environ["CHISURF_PLOT_BACKEND"] = previous_env
 
 
-#: Qt hosts the tests built to paint panels through Qt, closed after each test.
-_HOSTS: dict = {}
-
-
 @pytest.fixture
-def plot(qapp):
-    """A toolkit-free panel drawn by emtk; any Qt host painted for it is closed afterwards."""
+def plot():
+    """A toolkit-free panel drawn by emtk."""
     from chisurf import chiplot as cp
 
-    panel = cp.Panel()
-    yield panel
-    for widget in _HOSTS.values():
-        widget.close()
-    _HOSTS.clear()
-
-
-def _host(plot):
-    """The Qt widget hosting *plot* (built on first use): what a legacy Qt form shows."""
-    from chisurf.gui import chiplot as cp
-
-    if id(plot) not in _HOSTS:
-        _HOSTS[id(plot)] = cp.host(plot)
-    return _HOSTS[id(plot)]
+    return cp.Panel()
 
 
 def _decay(n: int = 128):
@@ -66,7 +48,7 @@ def _decay(n: int = 128):
     return x, 1000.0 * np.exp(-x / 4.0) + 5.0
 
 
-def test_the_backend_is_selectable_by_name(qapp):
+def test_the_backend_is_selectable_by_name():
     """``CHISURF_PLOT_BACKEND=emtk`` reaches this backend."""
     backend = _backends.get_backend()
     assert backend.name == "emtk"
@@ -163,17 +145,16 @@ def test_a_log_autoscale_still_shows_data_inside_the_cap(plot):
     assert y0 <= 0.5 and y1 >= 3000.0
 
 
-def test_the_panel_paints(plot, qapp):
-    """Through Qt, not just into the display list."""
+def test_the_panel_paints(plot):
+    """Into pixels, not just into the display list."""
     x, y = _decay()
     plot.line(x, y, name="decay")
     plot.legend()
     plot.set_labels(bottom="t / ns", left="counts")
 
-    pixmap = _paint(plot, 400, 300)
+    painter = _paint(plot, 400, 300)
 
-    image = pixmap.toImage()
-    colours = {image.pixel(i, j) for i in range(0, 400, 7) for j in range(0, 300, 7)}
+    colours = {_rgb(painter, i, j) for i in range(0, 400, 7) for j in range(0, 300, 7)}
     assert len(colours) > 2, "the panel drew nothing but its background"
 
 
@@ -182,9 +163,8 @@ def test_an_image_is_mapped_through_its_colormap(plot):
     data = np.add.outer(np.arange(24.0), np.arange(32.0))
     image = plot.image(data, colormap="viridis")
 
-    pixmap = _paint(plot, 300, 220)
-    rendered = pixmap.toImage()
-    colours = {rendered.pixel(i, j) for i in range(0, 300, 5) for j in range(0, 220, 5)}
+    painter = _paint(plot, 300, 220)
+    colours = {_rgb(painter, i, j) for i in range(0, 300, 5) for j in range(0, 220, 5)}
     assert len(colours) > 8, "a mapped heatmap is not one flat colour"
 
     image.set_levels(0.0, 5.0)
@@ -210,13 +190,18 @@ def test_an_image_has_to_be_two_dimensional(plot):
 
 
 def _paint(plot, width=300, height=200):
-    """Paint the panel once through its Qt host, so the data-to-pixel mapping exists."""
-    widget = _host(plot)
-    widget.resize(width, height)
-    pixmap = QtGui.QPixmap(width, height)
-    pixmap.fill()
-    widget.render(pixmap)
-    return pixmap
+    """Paint the panel once into emtk's pixel painter, so the data-to-pixel mapping exists."""
+    from emtk.testing import PixelPainter
+
+    painter = PixelPainter(width, height, background=(255, 255, 255, 255))
+    plot._canvas.draw(painter, 0.0, 0.0, float(width), float(height))
+    return painter
+
+
+def _rgb(painter, i, j):
+    """The (r, g, b) the painter holds at column *i*, row *j*."""
+    at = (j * painter.width + i) * 4
+    return tuple(painter.px[at : at + 3])
 
 
 def test_a_region_reports_and_moves_between_its_edges(plot):
@@ -337,9 +322,8 @@ def test_bars_bands_errorbars_and_text_all_paint(plot):
     plot.errorbars(x, y, height=np.sqrt(y))
     plot.text("42", (10.0, 100.0))
 
-    pixmap = _paint(plot, 320, 240)
-    rendered = pixmap.toImage()
-    colours = {rendered.pixel(i, j) for i in range(0, 320, 5) for j in range(0, 240, 5)}
+    painter = _paint(plot, 320, 240)
+    colours = {_rgb(painter, i, j) for i in range(0, 320, 5) for j in range(0, 240, 5)}
     assert len(colours) > 4, "the panel drew more than its background and one curve"
 
 
@@ -414,8 +398,6 @@ def test_a_region_of_interest_refuses_a_shape_it_cannot_draw(plot):
 
 def test_an_arrow_is_drawn_where_it_points(plot):
     """The head lands on its tip, is sized in pixels, and turns with its angle."""
-    from qtpy import QtGui
-
     plot.set_xlim(0.0, 10.0, padding=0.0)
     plot.set_ylim(0.0, 10.0, padding=0.0)
     head = plot.arrow(5.0, 5.0, angle=0.0, size=30.0, brush=(255, 0, 0))
@@ -423,14 +405,12 @@ def test_an_arrow_is_drawn_where_it_points(plot):
     head.set_angle(90.0)
     assert head.angle == 90.0
 
-    pixmap = _paint(plot, 300, 300)
-    image = pixmap.toImage()
+    painter = _paint(plot, 300, 300)
     red = [
         (i, j)
         for i in range(300)
         for j in range(300)
-        if QtGui.QColor(image.pixel(i, j)).red() > 200
-        and QtGui.QColor(image.pixel(i, j)).green() < 60
+        if _rgb(painter, i, j)[0] > 200 and _rgb(painter, i, j)[1] < 60
     ]
     assert red, "the head was not drawn"
     # Pointing up (+y), the head sits below its tip on screen.
@@ -448,15 +428,15 @@ def test_a_filled_curve_is_shaded_down_to_zero(plot):
     plot.set_xlim(0.0, 10.0, padding=0.0)
     plot.set_ylim(0.0, 10.0, padding=0.0)
     plot.line([0.0, 5.0, 10.0], [8.0, 8.0, 8.0], pen=(0, 0, 255), fill=(255, 0, 0, 255))
-    image = _paint(plot).toImage()
-    width, height = image.width(), image.height()
+    painter = _paint(plot)
+    width, height = painter.width, painter.height
     red = [
         (i, j)
         for i in range(0, width, 3)
         for j in range(0, height, 3)
-        if QtGui.QColor(image.pixel(i, j)).red() > 200
-        and QtGui.QColor(image.pixel(i, j)).green() < 60
-        and QtGui.QColor(image.pixel(i, j)).blue() < 60
+        if _rgb(painter, i, j)[0] > 200
+        and _rgb(painter, i, j)[1] < 60
+        and _rgb(painter, i, j)[2] < 60
     ]
     assert red, "nothing was filled"
     ys = sorted(j for _, j in red)
@@ -464,7 +444,7 @@ def test_a_filled_curve_is_shaded_down_to_zero(plot):
     assert ys[-1] - ys[0] > height * 0.4
 
 
-def test_an_image_view_shows_a_stack_frame_by_frame(qapp):
+def test_an_image_view_shows_a_stack_frame_by_frame():
     """A (t, y, x) stack steps; a plain image is shown as it is."""
     from chisurf.chiplot import backends as backends_module
 
@@ -486,7 +466,7 @@ def test_an_image_view_shows_a_stack_frame_by_frame(qapp):
     assert view._image is None
 
 
-def test_an_image_view_reports_clicks_in_image_coordinates(qapp):
+def test_an_image_view_reports_clicks_in_image_coordinates():
     """What a pixel picker needs from it."""
     from chisurf.chiplot import backends as backends_module
 
@@ -498,7 +478,7 @@ def test_an_image_view_reports_clicks_in_image_coordinates(qapp):
     assert seen == [], "nothing is reported until something is clicked"
 
 
-def test_a_grid_lays_its_panels_out(qapp):
+def test_a_grid_lays_its_panels_out():
     """Each cell is a panel of its own, and the cursor walks the row."""
     from chisurf.chiplot import backends as backends_module
 
@@ -564,17 +544,13 @@ def test_a_panel_exports_itself_to_a_file(plot, tmp_path):
     """The export the plot menu offers."""
     x, y = _decay()
     plot.line(x, y, name="decay")
-    _host(plot).resize(240, 180)
 
-    target = tmp_path / "panel.png"
-    _host(plot).export_image(str(target))  # what the Qt host's menu writes
-    assert target.is_file() and target.stat().st_size > 0
     plain = tmp_path / "plain.png"
     plot.export_image(str(plain))  # the panel alone: emtk's CPU rasteriser
     assert plain.is_file() and plain.stat().st_size > 0
 
 
-def test_discarding_a_panel_leaves_no_qt_object_behind(qapp):
+def test_discarding_a_panel_leaves_nothing_behind():
     """The reason this backend exists, stated as a test.
 
     A pyqtgraph panel is a scene of QGraphicsItems that outlive it and receive
@@ -602,7 +578,7 @@ def test_tick_numbers_read_as_values():
     assert _tick_labels([-0.0, 50.0], log=False) == ["0", "50"]
 
 
-def test_linked_panels_share_the_x_range_of_all_their_data(plot, qapp):
+def test_linked_panels_share_the_x_range_of_all_their_data(plot):
     """Residual strips over a decay: one time axis, fitted to the union."""
     from chisurf import chiplot as cp
 

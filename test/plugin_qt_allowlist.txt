@@ -1,3 +1,0 @@
-# Plugin files that still import Qt (qtpy / PyQt / PySide). SHRINKING tracker for the
-# plugin half of the Qt retirement (test/test_plugin_qt_free.py). Strike a path when its
-# plugin moves to emtk; adding a path is a test failure. Goal: empty.

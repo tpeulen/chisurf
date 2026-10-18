@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from chisurf.chiplot import backends
-from chisurf.gui import chiplot as cp
+from chisurf import chiplot as cp
 
 
 @pytest.fixture(params=["emtk"])

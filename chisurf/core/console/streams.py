@@ -184,7 +184,7 @@ class OutputStream(_ConsoleTextIO):
     sink : callable
         ``sink(name, text)``. Called from whatever thread wrote, so the sink is
         responsible for thread-safety --
-        :class:`chisurf.gui.chinsole.bridge.OutputPump` is.
+        the view (:mod:`chisurf.emtk.console`) is.
     encoding : str, optional
         Reported by :attr:`encoding`; nothing is actually encoded.
 

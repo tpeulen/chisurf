@@ -225,12 +225,6 @@ class TestManifest:
 
         for kind, target in self._manifest()["entrypoints"].items():
             module_name, _, attribute = target.split("=", 1)[-1].partition(":")
-            if kind == "gui":
-                # Importing the widget needs a Qt binding; check the module path
-                # is real without importing it. It may be a module or a package.
-                base = REPO_ROOT.parents[2] / Path(module_name.replace(".", "/"))
-                assert base.with_suffix(".py").exists() or (base / "__init__.py").exists(), target
-                continue
             module = importlib.import_module(module_name)
             assert hasattr(module, attribute), target
 

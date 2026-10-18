@@ -16,7 +16,7 @@ analysis runs there, and the window polls for a new revision to redraw.
 Structure, as in the other emtk applications: :class:`EbfretGui` holds the
 state and draws the panel bodies (``draw_*``); :class:`App` is the host
 adapter -- layout, the menu bar, the modal dialog and pointer/key routing --
-and is what a ``ControlHost`` or a ``PixelPainter`` drives.
+and is what the shell or a ``PixelPainter`` drives.
 """
 
 from __future__ import annotations

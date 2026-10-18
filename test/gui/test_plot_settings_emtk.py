@@ -1,60 +1,45 @@
-"""The *Plot settings* dock is one emtk surface showing the current page's settings.
+"""A fit page declares its settings as an AutoForm spec over a plain model.
 
-Pages are not widgets and bring no Qt controller: a page declares its settings
-as an AutoForm spec (``settings_view``) over a plain model, and
-:class:`~chisurf.gui.widgets.fitting.plot_settings_host.PlotSettingsHost` draws the current
-page's. These drive the dock with real mouse input.
+Pages are not widgets and bring no toolkit controller: ``settings_view`` is drawn by emtk
+(``page.draw_settings``) onto the *Plot settings* dock. The dock's host was a Qt widget and is
+gone with the Qt shell; these drive the page's own settings model and draw it on an emtk
+``ImApp`` with the recording painter.
 """
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
-from qtpy import QtCore, QtWidgets  # noqa: E402
-from qtpy.QtTest import QTest  # noqa: E402
-
-from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot  # noqa: E402
-from chisurf.gui.widgets.fitting.plot_settings_host import PlotSettingsHost, host_in  # noqa: E402
-from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit  # noqa: E402
+from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
+from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
 
 
-def _frames(qapp, host, n: int = 4) -> None:
-    for _ in range(n):
-        qapp.processEvents()
-        host.host.repaint()
+def _draw_settings(page, width: float = 440.0, height: float = 640.0) -> set:
+    """Draw the page's settings onto an emtk app and return the names of the drawn fields."""
+    from emtk import im
+    from emtk.app import ImApp
+    from emtk.testing import RecordingPainter
 
+    def gui():
+        im.begin("##s", (0.0, 0.0, width, height), flags=im.WindowFlags.NO_TITLE_BAR)
+        page.draw_settings()
+        im.end()
 
-def _click(qapp, host, rect) -> None:
-    x, y, w, h = rect
-    point = QtCore.QPoint(int(x + min(w, 14) / 2), int(y + h / 2))
-    QTest.mouseClick(host.host, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, point)
-    _frames(qapp, host)
+    app = ImApp(gui)
+    for _ in range(2):
+        app.draw(RecordingPainter(), 0, 0, width, height)
+    return set(page.settings_form.rects)
 
 
 @pytest.fixture
-def lineplot_dock(qapp, qtbot):
+def lineplot():
     plot = LinePlot(_simulated_fit())
     plot.update()
-    host = PlotSettingsHost()
-    qtbot.addWidget(host)
-    host.resize(440, 640)
-    host.show()
-    host.show_page(plot)
-    _frames(qapp, host)
-    return plot, host
+    return plot
 
 
-def test_a_page_is_not_a_widget():
-    assert not issubclass(LinePlot, QtWidgets.QWidget)
-
-
-def test_the_lineplot_settings_are_drawn_from_its_spec(lineplot_dock):
-    plot, host = lineplot_dock
-    rects = plot.settings_form.rects
+def test_the_lineplot_settings_are_drawn_from_its_spec(lineplot):
+    rects = _draw_settings(lineplot)
     for name in (
         "log_x",
         "log_y",
@@ -67,86 +52,24 @@ def test_the_lineplot_settings_are_drawn_from_its_spec(lineplot_dock):
         "y_shift",
     ):
         assert name in rects, f"{name} was not drawn"
-    assert host.surface.last_error is None
 
 
-def test_clicking_logx_changes_the_plot(qapp, lineplot_dock):
-    plot, host = lineplot_dock
-    assert not plot.settings.data_is_log_x
-    _click(qapp, host, plot.settings_form.rects["log_x"])
-    assert plot.settings.data_is_log_x
-    assert plot.settings.get_state()["scale_x"] == "log"
+def test_the_log_x_setting_changes_the_plot(lineplot):
+    assert not lineplot.settings.data_is_log_x
+    lineplot.settings.log_x = True
+    assert lineplot.settings.get_state()["scale_x"] == "log"
 
 
-def test_a_curve_unticked_in_the_table_is_hidden(lineplot_dock):
-    plot, _host = lineplot_dock
-    rows = plot.settings.curve_rows()
+def test_a_curve_unticked_in_the_table_is_hidden(lineplot):
+    rows = lineplot.settings.curve_rows()
     assert rows and all(row["shown"] for row in rows)
-    plot.settings.curve_edited(rows[0], "shown", False)
-    assert not plot.settings.getCheckState(rows[0]["name"])
-    assert plot.settings.get_state()["curve_visibility"][rows[0]["name"]] is False
+    lineplot.settings.curve_edited(rows[0], "shown", False)
+    assert not lineplot.settings.getCheckState(rows[0]["name"])
+    assert lineplot.settings.get_state()["curve_visibility"][rows[0]["name"]] is False
 
 
-def test_a_page_without_settings_says_so(qapp, qtbot):
+def test_a_page_without_settings_says_so():
     from chisurf.emtk.fit_pages.pages.wr_plot import ResidualPlot
 
     page = ResidualPlot(_simulated_fit())
-    host = PlotSettingsHost()
-    qtbot.addWidget(host)
-    host.resize(300, 200)
-    host.show()
-    host.show_page(page)
-    _frames(qapp, host)
     assert not page.has_settings()
-    assert host.surface.last_error is None
-
-
-def test_one_host_per_options_layout(qtbot):
-    holder = QtWidgets.QWidget()
-    qtbot.addWidget(holder)
-    layout = QtWidgets.QVBoxLayout(holder)
-    assert host_in(layout) is host_in(layout)
-    assert layout.count() == 1
-
-
-def test_the_dock_follows_the_current_tab(qapp, qtbot):
-    from chisurf.gui.widgets.fitting.fit_subwindow import FitSubWindow
-
-    holder = QtWidgets.QWidget()
-    qtbot.addWidget(holder)
-    window = FitSubWindow(_simulated_fit(), QtWidgets.QVBoxLayout(holder))
-    window.close_confirm = False
-    qtbot.addWidget(window)
-    window.show()
-    area = window.plot_tab_widget
-    for index in range(area.count()):
-        area.setCurrentIndex(index)
-        window.on_change_plot()
-        assert window.plot_settings.page is window._plots_all[index]
-
-
-def test_files_dropped_on_the_dock_reach_the_page(qtbot):
-    taken = []
-
-    class Page:
-        name = "Dropper"
-
-        def has_settings(self):
-            return True
-
-        def draw_settings(self):
-            pass
-
-        def set_settings_refresh(self, callback):
-            pass
-
-        def on_paths_dropped(self, paths):
-            taken.extend(paths)
-
-    host = PlotSettingsHost()
-    qtbot.addWidget(host)
-    host.show_page(Page())
-    assert host.surface.on_files_dropped(["/tmp/a.ptu"]) is True
-    assert taken == ["/tmp/a.ptu"]
-    host.show_page(None)
-    assert host.surface.on_files_dropped(["/tmp/b.ptu"]) is False

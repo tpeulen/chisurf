@@ -8,7 +8,7 @@ natively and write through ``model.section.call``; any parameter table opens the
 right click. Every action is a click on the declared rectangles (``editor.*`` item rects), the
 callback a table calls, or a pick in the popup the click opened; every check reads what the shell
 shows or what the server answers. The parity test compares the Analysis dock against the Qt model
-editors captured by ``capture_shell_s2_models_qt_before.py``.
+editors recorded before the Qt shell was retired.
 """
 
 from __future__ import annotations
@@ -106,9 +106,9 @@ def _add_pda(driver: Driver, shell) -> dict:
     from chisurf.core.experiments.bootstrap import ensure_experiments_registered
 
     sys.path.insert(0, str(Path(__file__).parent))
-    from capture_shell_s2_models_qt_before import make_pda_curve
+    from pda_fixture import make_pda_curve
 
-    ensure_experiments_registered(allow_widgets=False)
+    ensure_experiments_registered()
     reader = next(r for r in chisurf.experiment["PDA"].readers if str(r.name) == "PTU/HT3/SPC")
     curve = make_pda_curve()
     curve.experiment = reader.experiment

@@ -4,52 +4,90 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
-## emtk shell: the global parameter table drops columns at the default layout (found 2026-10-14)
+## Chimol browser-demo tests need IMP, network fetches and real WebGPU (found 2026-10-18, branch `s6-merge`)
 
 status: open
 
-Measure: `okf/plugins/emtk-ports/final-parity/shell/` (row "Global fit (TCSPC + FCS): Analysis dock"). At
-the default left-column width (a third of 1440) the global parameter table drops Fixed, link row, bounds and
-error (collapse tiers; the row tooltip lists them; they return when the dock is widened) where the Qt table
-scrolls sideways. Nothing is lost, every control is reachable. Status: open, cosmetic.
-Resolved the same day: wide tools (Settings, declared 1200 x 800) clipped in the ~390 px tool dock -- a tool
-wider than its dock, never placed by the user, now opens floating at its declared size (a docked choice is
-kept: emtk 0.1.14). Tried and reverted first: widening the tool region on open (halved the workspace for
-almost every tool, broke tile / cascade).
+Five of the 45 browser-demo/fps tests fail in this environment for causes upstream of
+chimol, each reproduced identically on the pre-clean-room tree (`5ad9d9b`): `labelling`
+and `npc_integrative` demos need IMP (`IMP.bff` atom radii) and an embl.de data fetch;
+`t4l_network` fps_load cannot compute positions in this settings dir; the fps-circle
+dye-position assertion sees `0,0` where headless WebGPU is asked for `1,2` — a
+headless-rendering gap, not a logic change. Playwright's chromium-headless-shell had
+to be installed once (`python -m playwright install chromium-headless-shell`); without
+it all 44 browser tests error at setup. Verified clean: the other 39 pass, and the
+full non-browser band is green. `test_web_parity` additionally hangs: its capture
+subprocess (both hosts + browser automation) exceeds any timeout on THIS tree and
+identically on the pre-clean-room tree — environment, not regression. Non-browser
+band rerun in 9 chunks: 2914 passed / 4 failed, all four reproduced on `5ad9d9b`
+(rAF continuation check, frozen-RMF demo filename, layering stale baseline,
+hosts/qt path in object_registry — that last one is the known committed-gap
+cluster).
 
-## The Objects dock is retired, and the overlay that replaced it lists nothing (found 2026-10-14)
+## Qt-shell leftovers after S6 (found 2026-10-14, branch `s6-retire-qt-shell`)
 
-status: resolved 2026-10-14 — found so by the 2026-10-14 docs review
+status: open
 
-Resolved: the docs review of guide 44 (2026-10-14) found the emtk Object List
-drawing every loaded object (`all`, `148l`, `lig`, `nag`, `sele`), and
-`chimol_objects_panel.png` / `chimol_groups_panel.png` now show that overlay.
-The record below is kept as the history.
+Nothing here imports Qt (`test/test_no_qt_imports.py` is green); these are dead or degraded paths the Qt
+shell's deletion left, recorded rather than widened into the S6 change.
 
-`chimol/hosts/qt/window.py` states it plainly — *"Objects is permanently hidden
-(the list is in the viewport)"* — so `window.objects` no longer exists and the
-old grab raised `AttributeError`. That part is intended.
+- **`chisurf.cs` is never assigned.** It was the Qt main window. The duck-typed presenter paths that read it
+  are dead: `macros/core_fit.py` (`restore_gui_from_fits`, `change_selected_fit_of_group`, `save_fit_project`'s
+  MDI lookup), `macros/core_data.py` (`reinitialize_application`'s window steps),
+  `core/actions/project_actions.py`, `core/project/{transition,ui_state}.py`, `server/services/projects.py`'s
+  `present`. Measure: `grep -rn 'getattr(cs, "cs"' chisurf | wc -l`. Delete them with a review of what the
+  emtk shell's own session paths already cover (`chisurf/emtk/shell_session.py`).
+- **`skip_qt_widgets`** still threads through `core/base.py`, `core/data.py`, `core/parameter.py`
+  (`to_elementary`, `save`, `to_yaml`/`to_json`); with no Qt objects it never skips anything.
+- **Manifest `entrypoints.gui`** is still a schema field (`core/plugin/manifest.py`, `plugins/__init__.py`,
+  `plugin_manager/api/install.py`); one manifest still uses it (`spectra_downloader`, pointing at a Qt-free
+  launcher). **`controller_class`** in `experiment_configs.yaml` is null everywhere and read by nothing.
+- **`boarding.view.json`** still declares two `embed` sections naming deleted Qt widgets
+  (`DetectorWizardPage`, `FCSChannelEmbed`); it is the frozen declaration of the Qt wizard that
+  `test_emtk_boarding_parity.py` reads, the emtk wizard is `boarding_emtk.view.json`.
+- **Style Manager** still edits `.qss` files and converts them to emtk palette entries (`convert_qss`); its
+  default folder (`chisurf/gui/styles`) is gone, so it starts empty. Decide: emtk themes only, or keep `.qss` as
+  an import format.
+- **Behaviour without a Qt-free test any more**: the tttr_to_pto drop guard's remembered
+  ask / keep / delete choice (the drop-guard framework was Qt); Pong's acceptor-side bounce colour; the FRET
+  calculator's step-by-step and plot-series equality against the live Qt widget (its numbers stay pinned by
+  `qt_values.json`); img_flow's quiver caption through the Qt section; ptu_alex_creator's folder-drop expansion
+  through the Qt path list (check against the emtk `path_list` tests); burst settings round trip into the
+  photon-filter page with the `dT_max` ms-vs-s trap (`burst_selection/gui/adapter.py`'s `apply_*` functions are
+  duck-typed on the Qt wizard and now untested -- delete or port them); one undo reverting an edit plus its
+  derived recompute (`OperationHistory.undo_step` untested); macro file execution (`run_macro` error
+  propagation, `__file__`/globals isolation; the emtk `console.run_file` has no test); the release-scenario walk
+  through the app (`test/e2e/test_release_scenario.py` drove the Qt Main; each step is covered elsewhere, the
+  walk is not -- Part D gate 3 needs an emtk-shell version); sample picker / Förster calculator "MMFDB
+  unavailable" messages; the PDA fit-settings Axis commit writing `x_max`; MDI arrangement restore (no emtk
+  counterpart); `toolbar_plugins` legacy names; level-histogram, image and state-table sections in emtk.
+- **Possibly lost product code**, deleted with Qt and without a Qt-free twin found: the parse-model equation
+  LaTeX preview (`convert_python_expression_to_latex`, `expression_preview_png`), the LUT thumbnail renderer
+  (`render_lut_png`), `SyntheticDecayEditorModel`, the parameter link-menu figure
+  (`parameter_link_menu.png` has no emtk grab path). Old pickled class paths `chisurf.gui.widgets.models.*Widget`
+  no longer resolve.
+- **Prose**: OKF concepts and docs still describe Qt modules as current in places (e.g.
+  `okf/subsystems/gui-autoform.md`, `docs/development/plugin_architecture.md`, `docs/reference/settings.md`,
+  `docs/reference/plugins/*.md` "the Qt tool"); about 40 scripts and docs still set `QT_QPA_PLATFORM`, which is
+  now inert. `okf/log.md` keeps one historical link to the deleted `chisurf/gui/widgets/tools/chisurf_dock.py`
+  (append-only; the bundle lint may report it).
+- **Environment**: the arm64 env still has PyQt5 and pytest-qt; pytest-qt's plugin imports Qt at start-up, and
+  with `qt_api` no longer configured it picks whatever binding it finds. Run pytest with `-p no:pytest-qt` until
+  the env is rebuilt from the regenerated lock.
 
-What is **not** intended: the viewport Object List draws only `all` and `sele`.
-With three real objects loaded it still shows those two rows, before and after
-`refresh_objects()`:
+## `calc_transfer_matrix` never zeroes its donor-only bins (found 2026-10-14)
 
-```python
-win = MolViewPluginWindow(); win.load_structure_from_path(pdb)
-Cmd(win).do("create ligand, resn NAG")
-list(win.viewer.objects)      # ['obj2', 'obj3', 'obj4']
-win.refresh_objects()         # overlay still shows only `all` and `sele`
-```
+status: resolved 2026-10-14
 
-So the panel that replaced the dock does not yet do the dock's job. Consequence
-for the docs: `chimol_objects_panel.png` and `chimol_groups_panel.png` in guide
-44 show the **retired** Qt dock. They were deliberately *not* regenerated from
-the overlay — that would swap two figures that show the old UI correctly for two
-that show the new UI wrongly. The guide's prose around them (rows carrying
-the reference viewer's five **A S H L C** menus) still describes what the overlay draws, so it
-is not misleading, only dated.
+Resolved 2026-10-14. `chisurf/core/fluorescence/general.py::calc_transfer_matrix` documents
+that the `n_donor_bins` (default 10) longest distances get rate 0 (donor-only), but did
+`rates[-1:-n_donor_bins] = 0.0` -- an empty slice, so nothing was zeroed. It now zeroes
+`rates[-n_donor_bins:]` (none for `n_donor_bins=0`). Its only caller is `et2pRDA`, which
+nothing in the tree calls; no test held the old values. Pinned from first principles by
+`test/fluorescence/test_transfer_matrix_donor_only.py`. Found with it: `gaussian2rates`
+ignored its `kappa2` argument (hard-coded 0.66667); its doctest values were regenerated.
 
-## mmfdb: `AnalysisReconstructor` has never been run against a real container (found 2026-10-14)
+## mmfdb: `AnalysisReconstructor` has never been run against a real container
 
 status: resolved 2026-10-14
 
@@ -69,56 +107,7 @@ which walks `Measurement.lineage()` to the photon stream, rebuilds the
 reproduction on real BH data, and a second run proving the result depends on
 the stored settings).
 
-## Two screenshot recipes still overwrite review-retaken figures (found 2026-10-14)
-
-status: resolved 2026-10-14 — both functions now delegate to the recipes the figures were
-taken with (`guides_56_65._grab_59_console`, `guide_24_scan_images.grab_sp8`); re-running
-them reproduced `24_clsm_draw*.png` byte for byte and `console.png` up to the version string.
-
-The 2026-10-14 docs review re-captured some guide figures with new recipes, but
-older functions that write the same files still run from the bulk scripts:
-`docs/guides/make_screenshots.py::_grab_console` (called by its `main()`) writes
-`console.png` from a hand-set `cs.fits`, and
-`docs/guides/screenshots/guides_15_25.py::_grab_24_clsm_draw` writes
-`24_clsm_draw*.png` in the old PTU-preset state. Running either undoes the
-review's figures. Fix: make them call `guides_56_65._grab_59_console` and
-`guide_24_scan_images.py` respectively, or delete them. Left because both files
-carried other agents' uncommitted edits at the time.
-
-## TCSPC TTTR-file reader shows polarization controls it never applies (found 2026-10-14)
-
-status: resolved 2026-10-14
-
-Resolved 2026-10-14. The reader gained **VH chs** (`vh_channel_numbers`, recorded in the
-session): with it set the routing channels are VV and `read()` builds VV, VH, the stacked
-VV/VH pair (a `DataCurveGroup`, g/l1/l2 attached) or VM = VV + 2 g VH (errors
-sqrt(VV + 4 g² VH)), with `vh_shift` applied to VH. Without VH channels it still returns one
-decay of the routing channels. Pinned against direct tttrlib histograms of BH_SPC132 by
-`test/experiments/test_tttr_reader_polarization.py`. Original report:
-
-`chisurf/core/experiments/tcspc/tcspc_tttr.view.json` offers an *Anisotropy (VV/VH)* panel
-(**pol.**, **g-factor**, **VH shift [bins]**), inherited as attributes from `TCSPCReader`, but
-`TCSPCTTTRReader.read` (`tttr_reader.py`) overrides `read` and builds one decay from the
-selected routing channels: polarization, g-factor and VH shift are never read. Choosing
-`VV,VH` therefore still yields a single summed decay. Measure: read a PTU with two channel
-groups at `pol.` = `vm` and `vv/vh` — `tttr_reader.py` never references `polarization`,
-`g_factor` or `vh_shift`, so the results cannot differ (read from the code, not run). Blocks a VV/VH anisotropy
-fit straight from a photon stream through this reader (the CSV reader and the anisotropy
-wizard work). Fix belongs in the reader (two channel groups → stacked VV/VH curve), or the
-panel goes. Found during the docs review of `docs/reference/file_formats/tcspc_files.md`,
-which now states the current behaviour.
-
-## `calc_transfer_matrix` never zeroes its donor-only bins (found 2026-10-14)
-
-status: resolved 2026-10-14
-
-Resolved 2026-10-14. `chisurf/core/fluorescence/general.py::calc_transfer_matrix` documents
-that the `n_donor_bins` (default 10) longest distances get rate 0 (donor-only), but did
-`rates[-1:-n_donor_bins] = 0.0` -- an empty slice, so nothing was zeroed. It now zeroes
-`rates[-n_donor_bins:]` (none for `n_donor_bins=0`). Its only caller is `et2pRDA`, which
-nothing in the tree calls; no test held the old values. Pinned from first principles by
-`test/fluorescence/test_transfer_matrix_donor_only.py`. Found with it: `gaussian2rates`
-ignored its `kappa2` argument (hard-coded 0.66667); its doctest values were regenerated.
+---
 
 ## Leftovers of the acq / lightpath Qt retirement (found 2026-10-13)
 
@@ -2833,16 +2822,6 @@ Open:
    (YAML + two in `fit_lifetime`); CLI `-f` overwrites `selection_mode`; the
    `$TMPDIR/lltf_config.yml` copy is never refreshed; `plot_decay_curve` calls
    `plt.show()` unconditionally.
-   **Resolved 2026-10-14.** The scan uses the extra-sum-of-squares F test and
-   warm-starts n+1 from n. `fit_lifetime` and the CLI take their defaults from
-   the packaged `lifetime_settings.yml` only (`selection_mode: lower`); `-m`,
-   `-pt`, `-sm` override the file only when given
-   (`lltf/test/test_settings_source.py`). The panel writes a fresh per-run
-   config and no path calls `plt.show()`. The remaining 3.0+4.5 ns error (2.4 + 4.1 ns
-   on every seed) was the Neyman objective's low-count bias, not the test:
-   `lifetime_fit_parameter.noise_model: poisson` (CLI `--noise-model`) fits the
-   deviance and returns 2.8–3.0 + 4.4–4.5 ns at 2e6 photons
-   (`lltf/test/test_noise_model.py`).
 3. **F-test tool reports the variance-ratio form** (`core/math/statistics.py`
    `f_test_confidence`), conservative for two fits of the same data: 0.59 vs
    extra-sum-of-squares p=0.003 on ibh donor 2→3 exp. Add the ESS F as a second
@@ -2899,19 +2878,14 @@ Open, highest value first:
 2. **`Bursts.recurrence()` always raises** — `burst_analysis/api/workflow.py`
    ~1313 `select_bursts` builds its `AnalysisRequest` without the setup's
    detectors/windows, so the table has no per-detector counts (hit by two passes).
-3. ~~**Burst Selection won't open on a fresh profile**~~ **Fixed:** the setup
-   store creates the user row before the first save (`setup_store.save_setup_row`,
-   `test/fio/test_setup_store_fresh_database.py`). Verified 2026-10-14 by opening
-   the tool in a clean process on an empty `CHISURF_SETTINGS_DIR` holding a legacy
-   `detector_setups.json` (`burst_selection/tests/test_fresh_profile_opens.py`);
-   that run also found `load_setups` leaving the imported JSON behind, now removed.
+3. **Burst Selection won't open on a fresh profile** —
+   `tttr_detector_setups.load_detector_setups` (~228) with owner
+   "user_default" hits a sqlite FOREIGN KEY when that user row is absent.
 4. ~~**PCH plugin fit unusable**~~ **Fixed 2026-10-11** (Poisson-weighted fit, one χ²
    definition; FIDA bounds on by default — see the 2026-10-11 QA entry at the top).
-   `fida_pch` ignoring `profile`/`oversample` fixed 2026-10-14: both are passed to
-   `tttrlib.fida_pch` (`test/models/test_fida.py`, mean ∝ ∫x w dx and tail aliasing).
-5. ~~**Flow demo draws no arrows**~~ **No longer reproduces (2026-10-14 docs
-   review):** the demo maps 25 of 25 tiles and `flow_tool.png` (guide 55) was
-   re-captured from it.
+   Still open: `fida_pch` ignores `profile`/`oversample`.
+5. **Flow demo draws no arrows** — demo PTU reads 29 of 30 frames, all 25
+   tiles refused; plugin's own test fails. Guide 55 keeps the intended figure.
 6. **Acquisition**: routing-channel spinboxes never added to the dock (stay
    0–3) while the decay controller defaults to 8/9/10 → no decay at defaults;
    standalone window plot controllers overlap title bars.
@@ -2936,9 +2910,8 @@ Open, highest value first:
     spectrum (164/543 Chroma dyes carry excitation only); a cached R0
     silently overrides user Q_D/ε/n. Staging DB: ATTO-550 carries ATTO 565's
     data; the ATTO-TEC ATTO488 record is soft-deleted.
-14. **Smaller**: MFD Prepare unreachable from any menu/hub; (`csc mfd-prepare
-    fit` AttributeError and partial `streams=` IndexError fixed 2026-10-14);
-    burst fusion writes an
+14. **Smaller**: MFD Prepare unreachable from any menu/hub; `csc mfd-prepare
+    fit` AttributeError; partial `streams=` IndexError; burst fusion writes an
     empty folder before validating; burst-FCS progress bar never closes; H2MM
     floor rates printed as measured; `fcs-convert` etc. HDF5 "compressed ~4×"
     wording (measured 2.8×); CLSM-Draw "&" mnemonic; ndX
@@ -3583,7 +3556,34 @@ loudly in its docstring rather than hidden behind a fallback. This is the
 one recorded exception to PRD-128's "patterns.py computes no spectrum
 algebra of its own".
 
-## The ray tracer draws a mesh contour as streaks (found 2026-08-31)
+## The Objects dock is retired, and the overlay that replaced it lists nothing
+
+status: open
+
+`chimol/hosts/qt/window.py` states it plainly — *"Objects is permanently hidden
+(the list is in the viewport)"* — so `window.objects` no longer exists and the
+old grab raised `AttributeError`. That part is intended.
+
+What is **not** intended: the viewport Object List draws only `all` and `sele`.
+With three real objects loaded it still shows those two rows, before and after
+`refresh_objects()`:
+
+```python
+win = MolViewPluginWindow(); win.load_structure_from_path(pdb)
+Cmd(win).do("create ligand, resn NAG")
+list(win.viewer.objects)      # ['obj2', 'obj3', 'obj4']
+win.refresh_objects()         # overlay still shows only `all` and `sele`
+```
+
+So the panel that replaced the dock does not yet do the dock's job. Consequence
+for the docs: `chimol_objects_panel.png` and `chimol_groups_panel.png` in guide
+44 show the **retired** Qt dock. They were deliberately *not* regenerated from
+the overlay — that would swap two figures that show the old UI correctly for two
+that show the new UI wrongly. The guide's prose around them (rows carrying
+the reference viewer's five **A S H L C** menus) still describes what the overlay draws, so it
+is not misleading, only dated.
+
+## The ray tracer draws a mesh contour as streaks
 
 status: open
 
@@ -3600,9 +3600,6 @@ ray out.png, 900, 650
 
 This blocks regenerating `chimol_molmap.png` and `chimol_map_isomesh.png`, which
 are chrome-free ray renders; the existing files are correct and were left alone.
-(2026-10-14: `chimol_map_isomesh.png` is now made through the WebGPU path instead
-— `png` on the offscreen `ChimolApp`, `docs/guides/screenshots/chimol_map_shot.py`
-— which sidesteps this; `chimol_molmap.png` is still the old ray render.)
 
 **Worth knowing whichever path you use:** give `isomesh` **no level**. A map
 opens already contoured, and a level argument *appends* a second contour rather
@@ -8320,3 +8317,4 @@ point glyph in the application at once, and the render fixtures would all need
 re-inspecting; that is its own change, with its own before/after images.
 
 ---
+

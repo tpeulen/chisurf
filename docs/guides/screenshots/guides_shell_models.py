@@ -172,7 +172,7 @@ def _grab_pda() -> None:
     from chisurf.core.experiments.bootstrap import ensure_experiments_registered
 
     shell = _shell()
-    ensure_experiments_registered(allow_widgets=False)
+    ensure_experiments_registered()
     reader = next(r for r in chisurf.experiment["PDA"].readers if str(r.name) == "PTU/HT3/SPC")
     curve = _pda_curve()
     curve.experiment = reader.experiment
@@ -191,7 +191,7 @@ def _grab_pda3c() -> None:
     from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
 
     shell = _shell()
-    ensure_experiments_registered(allow_widgets=False)
+    ensure_experiments_registered()
     data = Pda3cSimulatorReader(n_bursts=200, seed=3).read()[0]
     row = shell.add_curve(data)
     shell.add_fit("PDA3c (three-colour)", row)

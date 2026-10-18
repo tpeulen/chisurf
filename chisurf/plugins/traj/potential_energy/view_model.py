@@ -6,12 +6,11 @@ trajectory and its topology, the read stride, the selected potential type and we
 and performs the actual work — iterating a trajectory frame by frame, scoring
 every configured potential for each frame and writing the per-potential energies
 to a CSV file. It is deliberately free of Qt so the logic can be unit-tested
-headlessly; the GUI (``sections`` + ``widget``) owns all Qt concerns and drives
-this model.
+headlessly; the emtk app (``app.py``) drives this model.
 
-The concrete potential *objects* added through :meth:`add_potential` are built
-by :func:`~.potential_specs.make_potential`; this model only calls their
-``getEnergy`` / ``name`` / ``structure`` / ``residue_level`` interface. Mirrors
+The concrete potential *objects* added through :meth:`add_potential` are built from
+the :mod:`.potential_specs` registry; this model only ever calls their
+``getEnergy`` / ``name`` / ``structure`` interface. Mirrors
 :class:`chisurf.plugins.traj.traj_align.view_model.AlignTrajectoryViewModel`.
 """
 
@@ -90,8 +89,8 @@ class PotentialEnergyViewModel:
 
     # ── potential registry ──────────────────────────────────────────────
     def potential_names(self) -> list[str]:
-        """Return the available potential-type names (the Qt-free spec registry)."""
-        from .potential_specs import potential_names
+        """Return the available potential-type names (the registry of :mod:`.potential_specs`)."""
+        from chisurf.plugins.traj.potential_energy.potential_specs import potential_names
 
         return potential_names()
 
@@ -116,8 +115,8 @@ class PotentialEnergyViewModel:
         ----------
         potential_obj : object
             Any object exposing the potential interface (a ``getEnergy()`` method
-            and a settable ``structure`` attribute); in the GUI this is the
-            selected ``potentialDict`` editor widget.
+            and a settable ``structure`` attribute); in the app this is built by
+            :func:`.potential_specs.make_potential`.
         weight : float
             Scaling factor applied to this potential's energy.
         name : str, optional
@@ -164,12 +163,10 @@ class PotentialEnergyViewModel:
         """Score every frame of the trajectory and write the energies to *energy_file*.
 
         Iterates the trajectory frame by frame (ports ``onProcessTrajectory``),
-        setting the structure coordinates to the frame's ``xyz`` (Å) and writing
-        one CSV row per frame (``FrameNbr`` followed by one weighted energy per
-        configured potential). A potential flagged ``residue_level`` scores the
-        frame projected onto its centroid structure
-        (:class:`~chisurf.core.structure.protein.CentroidFrameMap`); the others
-        score the full-atom frame.
+        setting the structure coordinates to the frame's ``xyz`` (Å), updating
+        the C-alpha distance matrix when the structure supports it, and writing one
+        CSV row per frame (``FrameNbr`` followed by one column per configured
+        potential of :meth:`Universe.getEnergies`).
 
         Parameters
         ----------
@@ -183,11 +180,8 @@ class PotentialEnergyViewModel:
         int
             The number of frames processed.
         """
-        import numpy as np
-
         import chisurf.core.fio as io
         import chisurf.core.structure
-        import chisurf.core.structure.protein
         from chisurf.core.structure import trajectory_data as mdtraj
 
         if not self.trajectory_file:
@@ -206,16 +200,6 @@ class PotentialEnergyViewModel:
             mdtraj.load_frame(self.trajectory_file, 0, top=topology)
         )[0]
         self.structure = structure
-        potentials = list(self.universe.potentials)
-        scales = np.asarray(self.universe.scaling, dtype=np.float64)
-        # The contact, H-bond, Gō, ASA and Ramachandran potentials score the
-        # residue-level (centroid) structure; the others the full-atom frame.
-        residue_level = [bool(getattr(p, "residue_level", False)) for p in potentials]
-        centroid_map = (
-            chisurf.core.structure.protein.CentroidFrameMap(structure)
-            if any(residue_level)
-            else None
-        )
 
         i = 0
         with open(energy_file, "a") as handle:
@@ -229,14 +213,11 @@ class PotentialEnergyViewModel:
                     # already, like the structure's: the ×10 here was a nm → Å
                     # conversion left behind when trajectories moved to Å.
                     structure.xyz = frame.xyz[0]
-                    centroid = (
-                        centroid_map.set_frame(frame.xyz[0]) if centroid_map is not None else None
-                    )
-                    for potential, coarse in zip(potentials, residue_level):
-                        potential.structure = centroid if coarse else structure
-                    energies = scales * np.array([p.getEnergy() for p in potentials])
+                    update_dist = getattr(structure, "update_dist", None)
+                    if callable(update_dist):
+                        update_dist()
                     row = f"{i * self.stride + 1}\t"
-                    for energy in energies:
+                    for energy in self.universe.getEnergies(structure):
                         row += f"{energy:.3f}\t"
                     row += "\n"
                     handle.write(row)

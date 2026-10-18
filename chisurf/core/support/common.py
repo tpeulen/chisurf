@@ -17,7 +17,7 @@ MAX_BONDS = structure_data.get("MAX_BONDS", {})
 
 _periodic_table = structure_data.get("Periodic Table", {})
 atom_weights = dict((key, _periodic_table[key]["Atomic weight"]) for key in _periodic_table.keys())
-"""Atomic weights (http://www.chem.qmul.ac.uk/iupac/AtWt/ & PyMol) """
+"""Atomic weights (IUPAC 2021 standard atomic weights, CIAAW; www.qmul.ac.uk/iupac/AtWt)"""
 
 PKA_DICT = structure_data.get("PKA_DICT", {})
 """Dictionary of pKa values and un-protonated charge state."""

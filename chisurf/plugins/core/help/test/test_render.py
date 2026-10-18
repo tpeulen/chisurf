@@ -557,20 +557,23 @@ def test_every_recorded_doi_looks_like_one():
     assert not supplementary, supplementary
 
 
-def test_the_help_modal_renders_like_the_browser(qapp=None):
+def test_the_help_modal_renders_like_the_browser():
     """A plugin's `?` shows the same dialect the browser does.
 
     The modal used Qt's own Markdown, which knows nothing of MyST: a plugin's
     help page showed `:::{note}`, `{cite}` and raw LaTeX as literal text —
     exactly the defects fixed in the browser, in the window most readers open.
     """
-    from chisurf.gui.widgets.tools.help_render import render_help
+    from chisurf.plugins.core.help.api.bibliography import expand_citations
+    from chisurf.plugins.core.help.api.render import render_document
     from chisurf.plugins.core.help.api.toc import repository_root
+    from chisurf.plugins.core.help.api.xref import expand_roles
 
     page = repository_root() / "chisurf/plugins/calculator/fcs_saturation_calc/gui/help.md"
     if not page.is_file():
         pytest.skip("plugin not present in this checkout")
-    html = render_help(page.read_text(encoding="utf-8"), page)
+    shown = expand_citations(expand_roles(page.read_text(encoding="utf-8"), page.parent))
+    html = render_document(shown, page, theme=theme_api.from_tokens())
     assert html is not None
     for marker in ("{cite}", ":::{", "```{"):
         assert marker not in html, marker

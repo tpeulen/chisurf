@@ -18,21 +18,27 @@ for the interpretation of the lifetime curve and the limits of these displays.
 :name: fig-games-breakout
 :width: 100%
 
-The hub with Breakout in play: the game list (with the hub's own **Guide** and **Help**) on the left, the header with
-the keys of the selected game, the game's **Sound / Help / Restart / Guide** row, and the game filling the rest.
+The hub with Breakout in play: the game list on the left, the header with the keys of the selected game, the game
+filling the rest.
 ```
 
 The list on the left selects the game (its description is the tooltip). The header repeats the description and the
 keys. Every game is built the first time it is selected and kept alive while you visit another, so a round survives
 a look at the list. Click into the game area before typing: the keys go to the game that is shown, press and release.
 
-Standalone, the games open at Breakout 820×690, Pong 820×640, Tetris 520×620, Minesweeper 560×620 and Number Quest
-560×420; the hub at 1200×800. A resized window keeps its size when it reopens, and a saved round is restored.
+Standalone defaults remain Breakout 820×690, Pong 820×640, Tetris 520×620,
+Minesweeper 560×620 and Number Quest 560×420; the launcher starts at 1200×800.
+Resizing a standalone window keeps that size when it reopens. A first launch
+starts with the game defaults; an existing saved round is restored when available.
 
 ### Help, Restart and Guide
 
-Each game has a **❓ Help / 🔁 Restart / 📖 Guide** row beside its **Sound** toggle. Sound shows 🔊 while on, 🔇 while
-off, and is greyed where the window has no audio output.
+Each game has a shared **❓ Help / 🔁 Restart / 📖 Guide** row beside the shared
+**Sound** toggle. All five games draw these controls identically, with the same
+icons, captions and tooltips as every other ChiSurf tool. Sound
+stays pressed with 🔊 while on, shows 🔇 while off, and is greyed where the
+window has no audio output. The game canvas, scores and any pause behavior
+remain below the row.
 
 1. Select a game. It supplies its own playable round; no measurement file or
    generated-data import is needed.
@@ -83,14 +89,14 @@ sound preference, and closing releases it once.
 
 ## 3. Application
 
-The games are tested with real key and pointer events delivered to their emtk surface as the native window delivers
-them (`chisurf/plugins/misc/games/test/test_games_real_input.py`): the paddle, piece, cursor and dial must actually move.
+The games are tested with real key and pointer events through the window that hosts them
+(`chisurf/plugins/misc/games/test/test_games_real_input.py`): the paddle, piece, cursor and dial must actually move.
 See also the generated reference pages for [Games](../reference/plugins/games.md) and
 [Breakout](../reference/plugins/breakout.md).
 
-## 4. Python
+## 4. Native Python entrypoint
 
-A game can be driven without a window, here Number Quest:
+The canonical Number Quest native app now lives in its GUI package:
 
 ```python
 from chisurf.plugins.misc.games.number_quest.gui.app import make_app
@@ -103,7 +109,8 @@ print(app.tau, app.game.attempts_remaining)
 app.close()
 ```
 
-The standalone launcher is `pixi run -e test python -m chisurf.emtk --plugin number_quest` (or `--plugin games` for
-the hub).
+The standalone launcher is `pixi run -e test python -m chisurf.emtk --plugin number_quest`.
+The richer app's controls, held/released keys, saved round and window dimensions
+are retained; the former alternate native implementation is retired.
 
 Tools: Number Quest (`chisurf/plugins/misc/games/number_quest/`), Minesweeper (`chisurf/plugins/misc/games/minesweeper/`), Tetris (`chisurf/plugins/misc/games/tetris/`), Pong (`chisurf/plugins/misc/games/pong/`), Breakout (`chisurf/plugins/misc/games/breakout/`).

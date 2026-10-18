@@ -1,23 +1,14 @@
 """A plugin that appears in the menu must have something for the click to do.
 
-The plugins menu opens a plugin through
-:func:`chisurf.gui.misc_helpers.run_plugin_from_dir`, which tries two things in
-order: the manifest (``entrypoints.action`` is run as an action,
-``entrypoints.emtk`` / ``entrypoints.gui`` build the window), and — failing that — executing
-``wizard.py`` or ``__init__.py`` as a macro with ``__name__`` set to
-``"plugin"``.
-
-A plugin with neither has a **dead menu entry, silently**: the launcher runs the
-file, the file only imports and documents, nothing opens, and nothing is logged.
-That is how the ALEX Suite shipped with a button that did nothing until its
-``__init__`` grew the launch block.
+The emtk shell opens a plugin from its manifest: ``entrypoints.action`` runs as
+an action, ``entrypoints.emtk`` builds the app. A plugin with neither has a
+**dead menu entry, silently**: nothing opens and nothing is logged.
 
 Static: no Qt, no plugin import.
 """
 
 from __future__ import annotations
 
-import ast
 import json
 import pathlib
 
@@ -45,37 +36,12 @@ def _menu_plugins() -> list[pathlib.Path]:
     return out
 
 
-def _has_plugin_launch_block(path: pathlib.Path) -> bool:
-    """Whether *path* runs something under ``if __name__ == "plugin"``."""
-    if not path.is_file():
-        return False
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-    except SyntaxError:
-        return False
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.If):
-            continue
-        for value in ast.walk(node.test):
-            if isinstance(value, ast.Constant) and value.value == "plugin":
-                return True
-    return False
-
-
 @pytest.mark.parametrize("plugin_dir", _menu_plugins(), ids=lambda p: p.name)
 def test_a_menu_plugin_can_be_opened(plugin_dir: pathlib.Path):
-    """Either a manifest GUI entry point, or a ``__name__ == "plugin"`` block."""
+    """A menu plugin declares an ``entrypoints.emtk`` app or an ``entrypoints.action``."""
     manifest = json.loads((plugin_dir / "manifest.json").read_text(encoding="utf-8"))
     entrypoints = manifest.get("entrypoints") or {}
-    if any(entrypoints.get(kind) for kind in ("action", "emtk", "gui")):
-        return
-    launchable = any(
-        _has_plugin_launch_block(plugin_dir / name) for name in ("wizard.py", "__init__.py")
-    )
-    assert launchable, (
+    assert any(entrypoints.get(kind) for kind in ("action", "emtk")), (
         f"{plugin_dir.relative_to(REPO_ROOT)} is offered in the plugins menu but "
-        "has no way to open: declare `entrypoints.emtk` (or `.action` / legacy `.gui`) in its manifest (the "
-        "current standard), or give its __init__.py an "
-        '`if __name__ == "plugin":` block. Without one the menu entry runs the '
-        "file and opens nothing, without an error."
+        "has no way to open: declare `entrypoints.emtk` (or `.action`) in its manifest."
     )

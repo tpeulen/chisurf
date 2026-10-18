@@ -215,7 +215,6 @@ PATTERNS = [
     # Remaining common names
     (r"^get_fortune$", "Get a random fortune message."),
     (r"^get_win$", "Get the main application window."),
-    (r"^get_app$", "Get the QApplication instance."),
     (r"^set_app_style$", "Set the application style."),
     (r"^create_plots$", "Create the plot widgets."),
     (r"^place_plots$", "Place and arrange the plot widgets."),
@@ -225,7 +224,6 @@ PATTERNS = [
     (r"^get_mdi_components$", "Get the MDI subwindow components."),
     (r"^on_calc_g_factor$", "Handle the calculate G-factor action."),
     (r"^custom_close_event$", "Custom close event handler."),
-    (r"^qtpy_loadUi$", "Load a UI file using qtpy."),
     (r"^apply_from_plugin$", "Apply settings from a plugin."),
     (r"^apply_alignment_fix$", "Apply alignment fix to the ribbon."),
     (r"^noop_mousePressEvent$", "No-op mouse press event handler."),

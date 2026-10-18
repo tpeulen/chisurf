@@ -156,7 +156,7 @@ Verification evidence and unresolved declaration debt are recorded in
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        GUI (Frontend)                           │
-│  PyQt MainWindow, console, Macros, WebUI (future)               │
+│  emtk shell, console, Macros, WebUI (future)                    │
 │                                                                 │
 │  Rules:                                                         │
 │  • NEVER import api/ or core/ modules for computation           │

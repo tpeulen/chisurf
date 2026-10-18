@@ -625,49 +625,6 @@ def test_register_result_fails_loud_on_real_error(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(
-    True,
-    reason="Qt smoke test disabled by default; "
-    "run manually with QT_QPA_PLATFORM=offscreen pytest ...",
-)
-def test_mmfdb_dataset_browser_constructs() -> None:
-    """MmfdbDatasetBrowser constructs without crashing (no client → disabled)."""
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication([])
-
-    from chisurf.gui.widgets.mmfdb.dataset_browser import MmfdbDatasetBrowser
-
-    browser = MmfdbDatasetBrowser(client=None)
-    assert browser is not None
-    assert browser._is_connected() is False
-    assert browser.status_label.text() == "MMFDB not connected"
-    browser.close()
-
-
-@pytest.mark.skipif(
-    True,
-    reason="Qt smoke test disabled by default; "
-    "run manually with QT_QPA_PLATFORM=offscreen pytest ...",
-)
-def test_mmfdb_dataset_picker_dialog_returns_none_when_no_client() -> None:
-    """pick_dataset returns None when client is None."""
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication([])
-
-    from chisurf.gui.widgets.mmfdb.dataset_browser import (
-        MmfdbDatasetPickerDialog,
-    )
-
-    result = MmfdbDatasetPickerDialog.pick_dataset(client=None)
-    assert result is None
-
-
 def test_processed_dataset_with_unseeded_user_registers_and_browses(tmp_path, monkeypatch):
     """Regression (PRD-10 bug): a processed dataset must register and appear in
     the browser even when the configured active user was never pre-seeded and the

@@ -6,8 +6,7 @@ An immediate-mode emtk application (:class:`BurstTwoCdeApp`) over
   (Variant, Kernel, tau, donor channels, acceptor channels, file type).
 - Right pane: 2CDE scatter plot (FRET efficiency vs 2CDE) or 1D histogram.
 
-Runs toolkit-free under :class:`emtk.qt_host.ControlHost` in Qt,
-in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emtk.web`).
+Runs toolkit-free in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emtk.web`).
 """
 
 from __future__ import annotations

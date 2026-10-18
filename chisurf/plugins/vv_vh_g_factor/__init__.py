@@ -18,7 +18,7 @@ else:
     name = "Spectroscopy:Fluorescence decay:VV/VH G-Factor Calculator"
     cli_entrypoint = ""
 
-__all__ = ["GFactorApp", "create_app", "create_host"]
+__all__ = ["GFactorApp", "create_app"]
 
 
 def __getattr__(name):

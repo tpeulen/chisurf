@@ -279,13 +279,15 @@ class MenuAction:
 
     key: str
     label: str
-    run: Callable[[], Any] = lambda: None
+    run: Callable[[], Any]
     shortcut: str = ""
     group: str = ""
     description: str = ""
     enabled: Callable[[], bool] = field(default=lambda: True)
     checked: Callable[[], bool] | None = None
-    children: list[MenuAction] = field(default_factory=list)
+    #: nested items when this entry opens a submenu; the session menus stay flat,
+    #: but the drawer reads this for any producer that nests (defaults to none).
+    children: tuple["MenuAction", ...] = ()
 
 
 class ShellProject:
@@ -1221,7 +1223,7 @@ class ShellProject:
         import chisurf
 
         folder = chisurf.core.settings.get_path("settings") / "styles"
-        files = [*folder.glob("*.css"), *folder.glob("*.qss")] if folder.is_dir() else []
+        files = list(folder.glob("*.qss")) if folder.is_dir() else []
         for path in files:
             try:
                 path.unlink()

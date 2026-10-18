@@ -145,7 +145,7 @@ def write_analysis_manifest(
     software_version : str, optional
         Version that produced the analysis.
     view_state : dict, optional
-        An AutoForm state (see :mod:`chisurf.gui.autoform.state`) captured from
+        An AutoForm state (see :mod:`chisurf.core.dataspec.form_state`) captured from
         the tool that ran the analysis. Stored separately from ``settings``
         because it restores *the form*, key for key, where ``settings`` records
         what the analysis actually used — the two agree in the ordinary case and
@@ -341,7 +341,7 @@ def restore_form(form: Any, start: pathlib.Path | str):
 
     The generic path: an AutoForm knows which model attribute each of its
     controls binds to, so a stored mapping restores it with no per-plugin code
-    (see :mod:`chisurf.gui.autoform.state`). A folder written by an older
+    (see :mod:`chisurf.core.dataspec.form_state`). A folder written by an older
     version restores the fields it still shares and reports the rest.
 
     Parameters
@@ -362,6 +362,6 @@ def restore_form(form: Any, start: pathlib.Path | str):
     stored = manifest.get("view_state") or manifest.get("settings")
     if not isinstance(stored, dict) or not stored:
         return None
-    from chisurf.gui.autoform.state import apply_state
+    from chisurf.core.dataspec.form_state import apply_state
 
     return apply_state(form, stored)

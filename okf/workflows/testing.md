@@ -40,9 +40,8 @@ PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." \
 ```
 
 `-p no:cov -o addopts=""` avoids the repo coverage config (which errors with
-"Can't combine branch coverage"). GUI/widget tests additionally need
-`QT_QPA_PLATFORM=offscreen` and their own pytest process (mixing GUI and non-GUI
-modules can segfault at Qt teardown).
+"Can't combine branch coverage"). GUI tests drive emtk apps on the offscreen
+canvas and need no display.
 
 # Test tasks
 
@@ -103,64 +102,23 @@ decision on the record rather than an anonymous `except`.
 
 # A failure path must not open a dialog nobody can close
 
-`QMessageBox.critical(...)` spins its own event loop until a button is pressed.
-Under `QT_QPA_PLATFORM=offscreen` — every headless suite, every CI job, every
-screenshot script — no button can ever be pressed, so a dialog on an `except`
-branch does not report the error: it **wedges the process**, and the traceback
-is never seen. That is worse than a crash, because a hung run is
-indistinguishable from a slow one. The fFCS filter-calculator module was hanging
-this way and had to be diagnosed with `sample(1)` and
-`faulthandler.dump_traceback_later`, which is the tell: if a suite stops
-producing dots and no test has failed, suspect a modal dialog before suspecting
-the machine.
+A modal question on an `except` branch of a headless run waits for a press that
+never comes: the run wedges and the traceback is never seen, which is worse than
+a crash because a hung run looks like a slow one. The emtk dialogs
+(`emtk.message_dialog.MessageDialogs`) take an `auto_answer` for tests and
+headless runs, and the shell logs before it asks. If a suite stops producing dots
+and no test has failed, suspect a modal question before suspecting the machine
+(`faulthandler.dump_traceback_later` names it). The Qt-era guard on raw
+`QMessageBox` calls went with the Qt shell (W9 slice S6).
 
-Report through [`chisurf/gui/dialogs.py`](../../chisurf/gui/dialogs.py) —
-`report_error` / `report_warning` / `report_information`. They log
-unconditionally and raise the box only when `QGuiApplication.platformName()` is
-a real window system, so interactive behaviour is unchanged. The same
-`is_interactive()` predicate is the right guard for any modal built by hand:
-"a `QApplication` exists" is *not* the same question as "a person is there".
+# A test that opens the shell must not write the developer's own settings
 
-`test/test_headless_dialog_seam.py` fails when a **new** file calls a raw
-`QMessageBox` static from inside an `except` handler, tracking the remaining
-ones in `test/headless_dialog_allowlist.txt` (the same allow-list-as-tracker
-convention as the pyqtgraph seam). A confirmation prompt on a button click is
-deliberately not flagged: there the user is right there, which is the point.
-
-# A test that closes the main window writes the developer's own settings
-
-`Main.closeEvent` calls `_save_window_state()`, which writes the dock layout to
-`QSettings("ChiSurf", "MainWindow")` — the **real** user preferences. Anything
-that closes the window therefore edits them, including `qtbot.addWidget(win)`,
-whose teardown closes every widget it was given. A test run then silently
-replaces the window layout the developer had, and the *next* run of that
-supposedly isolated test restores it and measures the wrong window.
-
-Redirecting `QSettings` is not enough, and on macOS the obvious redirect does
-not work at all: `QSettings.setPath` **has no effect on the native format**, so
-a script that sets it goes on reading and writing
-`~/Library/Preferences/com.chisurf.MainWindow.plist` while looking isolated.
-Two things that do work:
-
-* In a test — patch `QtCore.QSettings` with a subclass that ignores the
-  organisation/application arguments and opens an ini file under `tmp_path`,
-  **and** neutralise `_save_window_state` on the instance in the fixture's
-  finalizer, because `qtbot` closes the window *after* `monkeypatch` has put the
-  real class back. `test/gui/test_dock_layout.py` does both.
-* In a headless script — run it with `HOME` pointed at a scratch directory. The
-  native store is resolved under `$HOME`, so this isolates reads as well as
-  writes without touching the code under test.
-
-The symptom to recognise: a layout/geometry test that passes alone and drifts
-in a suite, or a "default layout" screenshot that quietly stops being the
-default.
-
-The same holds for `~/.chisurf` itself. `chisurf/plugins/core/conftest.py` points
-`CHISURF_SETTINGS_DIR` and `MMFDB_SETTINGS_DIR` at a scratch folder at import time,
-before `chisurf.core.settings` resolves its paths (an explicit value still wins),
-and `hmm`'s `test_zzz_the_real_chisurf_folder_was_not_touched` lists any path a
-session wrote there. Code never builds `Path.home() / ".chisurf"` itself: it asks
-`get_path("settings")`, or the redirect cannot reach it.
+The emtk shell persists its layout, size and open plugins under
+`<settings>/emtk/emtk_shell.*.json`. A test or a figure script that builds the
+real window therefore runs with `CHISURF_SETTINGS_DIR` pointed at a scratch
+folder; a headless frame (`--screenshot`, `make_headless_app`) persists nothing
+at all, and `test_python_m_chisurf_opens_the_emtk_surface` asserts the real file
+is untouched.
 
 # GUI work is never blind — screenshot and look at it
 
@@ -174,38 +132,24 @@ assertions and obvious in a PNG.
 
 The loop, for every GUI change:
 
-1. Build the widget headlessly in the `arm64` env with
-   `QT_QPA_PLATFORM=offscreen` — no display needed.
+1. Build the app headlessly in the `arm64` env: an emtk app on the offscreen
+   canvas (`emtk.testing.Driver(app, size)`, or the whole window with
+   `python -m chisurf --screenshot PATH --size WxH`) — no display needed.
 2. Drive it into the state a user would see (load a real test file, run the
-   analysis, switch to each tab) — an empty widget hides most layout defects.
-3. `widget.grab().save(...)` into the scratchpad, then **read the PNG and inspect
-   it**. The agent inspects it; do not hand PNGs to the user to eyeball.
-4. Fix what looks wrong and repeat until it looks right. Resize once before the
-   final grab — some layout artefacts only settle after the first real resize.
+   analysis, switch to each tab) — an empty app hides most layout defects.
+3. Save the frame into the scratchpad (`emtk.testing.render` / `save_png`), then
+   **read the PNG and inspect it**. The agent inspects it; do not hand PNGs to
+   the user to eyeball.
+4. Fix what looks wrong and repeat until it looks right. Draw at a second size
+   before the final grab — some layout artefacts only show after a resize.
 
-**A 3-D viewport needs a different shutter.** The offscreen platform cannot
-create an OpenGL context at all — it says so, once, and then every grab of a
-`QOpenGLWidget` is a black rectangle, which reads as a broken renderer rather
-than a broken camera. A `QOffscreenSurface` under that platform does not help:
-context creation still fails.
+**A 3-D viewport** (ChiMOL) draws through the same offscreen canvas:
+`ChimolApp` renders into `draw_frame`, and
+`chisurf/plugins/chimol/test/screenshot.py` (`grab_window` / `grab_view` /
+`save_png`) saves it and refuses a uniform image rather than passing a blank one.
 
-What works is the *ordinary* platform with `WA_DontShowOnScreen`. The window is
-realised — real backing store, real GL context, everything renders exactly as a
-user would see it — and is never mapped onto the display, so nothing appears and
-nothing steals focus. `chisurf/plugins/chimol/test/screenshot.py` wraps it:
-
-```python
-from chisurf.plugins.chimol.test.screenshot import ensure_app, shoot
-
-app = ensure_app()          # refuses QT_QPA_PLATFORM=offscreen rather than lying
-paths = shoot(window, "npc_demo")   # {"window": ..., "view": ...}
-```
-
-`grab_window` composites the GL children in at their own geometry, because
-`QWidget.grab()` renders the widget tree and does *not* read back a child GL
-surface — a plain whole-window grab of a 3-D application comes out with a hole
-where the interesting part is. It needs a logged-in session, so it is skipped
-rather than failed where there is no window server.
+The Qt-era recipe (`QT_QPA_PLATFORM=offscreen`, `widget.grab()`,
+`WA_DontShowOnScreen` for GL children) went with the Qt shell (W9 slice S6).
 
 Until this existed, the appearance of the one part of ChiMOL where appearance
 matters most was judged either through the ray tracer — a different renderer,
@@ -372,7 +316,7 @@ runs none. Artifacts go to `renders/e2e/<variant>/<id>.{json,png,log}`. The JSON
 extracted source whose translation is unfinished, which is recorded but does not fail) and
 `resized_at`. Realistic variants get 3× the worker timeout, and the others 1.5×. The base sweep is
 unchanged. Run one case with
-`QT_QPA_PLATFORM=offscreen python -m pytest test/e2e/test_click_all_plugins.py -k "real_use and lang_de-synthetic_decay"`.
+`python -m pytest test/e2e/test_click_all_plugins.py -k "real_use and lang_de-synthetic_decay"`.
 
 **3. Whole-app parity (`test/native_emtk/test_emtk_shell_whole_parity.py`).**
 `capture_shell_whole_qt_before.py` records everything the Qt main window offers in
@@ -529,7 +473,7 @@ module source paths; use a task-specific root and cache:
 
 ```sh
 READINESS_REPO_ROOT=/Users/tpeulen/dev/chisurf
-QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg PYTHONDONTWRITEBYTECODE=1 \
+MPLBACKEND=Agg PYTHONDONTWRITEBYTECODE=1 \
   PYTHONPATH=.:modules/mmfdb/src:$READINESS_REPO_ROOT/modules/chinet:$READINESS_REPO_ROOT/modules/imp-tricks/src:modules/chimol \
   NUMBA_CACHE_DIR=/private/tmp/readiness-numba-cache \
   /Users/tpeulen/mambaforge/envs/arm64/bin/python -m pytest <targeted-files> -q

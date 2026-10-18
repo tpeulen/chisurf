@@ -20,6 +20,14 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "reader_calibration",
+      "summary": "Calibrate G, VH shift and mixing for a reader; the values return to it on close.",
+      "receive": "chisurf.emtk.reader_settings:receive_reader_calibration",
+      "required": ["dt_ns"]
+    }
+  ],
   "entrypoints": {
     "cli": "vv-vh-g-factor=chisurf.plugins.vv_vh_g_factor.cli:cli",
     "services": "chisurf.plugins.vv_vh_g_factor.backend.services:register_services",

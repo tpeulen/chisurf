@@ -7,8 +7,7 @@ five near-identical copies become one.
 
 Music is **context-driven**: a game says where it is (``"overworld"``,
 ``"battle"``, …) and the mixer crossfades. It never manages playback. The track
-data itself comes from the active :class:`~chisurf.gui.chigame.assets.AssetPack`,
-so swapping the pack swaps the soundtrack along with the art.
+data itself comes from the active asset pack (:mod:`chisurf.core.audio.tracks`).
 """
 
 from __future__ import annotations

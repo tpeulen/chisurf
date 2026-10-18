@@ -19,8 +19,7 @@ produces a panel that is unreadable exactly when something has gone wrong:
 * the residuals need a symmetric band, or one bad channel sets the scale and
   every other residual becomes a flat line.
 
-Nothing here imports Qt. The widget that draws it is
-:mod:`chisurf.gui.widgets.decay_panel`.
+Nothing here imports a GUI toolkit; the emtk fit pages draw it.
 """
 
 from __future__ import annotations

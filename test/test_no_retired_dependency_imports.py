@@ -109,7 +109,7 @@ RETIRED = {
     ),
     "qtconsole": (
         "qtconsole",
-        "use chisurf.gui.chinsole",
+        "use chisurf.core.console (the emtk console)",
     ),
     "sklearn": (
         "scikit-learn",

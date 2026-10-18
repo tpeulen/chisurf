@@ -1,17 +1,13 @@
-"""The native Tetris at parity with the Qt chigame view.
+"""The native Tetris against the retired Qt chigame view.
 
-Both drive :class:`..model.TetrisModel` (the Qt ``TetrisGame`` subclasses it; the
-committed Qt rules equal it apart from action names and the draw helpers that
-moved to the view, ``okf/plugins/emtk-ports/tetris/rules_diff_vs_head.txt``).
-Compared here: the Qt bindings (subprocess) against the emtk keys, scripted keys,
-the Sound switch.
+Both drove :class:`..model.TetrisModel` (the Qt ``TetrisGame`` subclassed it; the committed Qt
+rules equalled it apart from action names and the draw helpers that moved to the view,
+``okf/plugins/emtk-ports/tetris/rules_diff_vs_head.txt``). Compared here: the Qt bindings (frozen
+from the last committed ``tetris.py``) against the emtk keys, scripted keys, the Sound switch.
 """
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -22,18 +18,20 @@ from emtk.testing import RecordingPainter
 
 from chisurf.plugins.emtk_layout import SOUND_OFF_ICON, action_caption
 from chisurf.plugins.misc.games.tetris.app import TetrisApp, make_app
-from chisurf.plugins.misc.games.tetris.model import TetrisModel
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 
-_QT = r"""
-import json
-from chisurf.plugins.misc.games.tetris.tetris import BINDINGS, TetrisGame
-from chisurf.plugins.misc.games.tetris.model import TetrisModel
-print("FACTS" + json.dumps({"bindings": {k: v.name for k, v in BINDINGS.items()},
-                            "shares_model": issubclass(TetrisGame, TetrisModel)}))
-"""
+#: The Qt view's bindings (last committed ``tetris.py``): key -> chigame action name.
+QT_BINDINGS = {
+    "ArrowLeft": "LEFT",
+    "ArrowRight": "RIGHT",
+    "ArrowDown": "DOWN",
+    "ArrowUp": "CONFIRM",
+    " ": "SHOULDER_R",
+    "p": "MENU",
+    "r": "CANCEL",
+}
 
 ACTION = {
     "LEFT": "left",
@@ -52,36 +50,8 @@ KEYCODE = {
 }
 
 
-@pytest.fixture(scope="module")
-def qt():
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt game's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
-
-
-def test_the_qt_game_runs_the_same_model(qt):
-    assert qt["shares_model"] is True
-    assert isinstance(TetrisApp().game, TetrisModel)
-
-
-def test_bindings_match_the_qt_game(qt):
-    for key, action in qt["bindings"].items():
+def test_bindings_match_the_qt_game():
+    for key, action in QT_BINDINGS.items():
         code, text = KEYCODE[key] if key in KEYCODE else (ord(key), key)
         assert TetrisApp.binding(code, text) == ACTION[action], key
 

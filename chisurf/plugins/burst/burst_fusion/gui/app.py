@@ -10,8 +10,7 @@ An immediate-mode emtk application (:class:`BurstFusionApp`) over
   with threshold and cutoff lines, Proximity ratio histogram, Photons per burst,
   Burst duration, and Fragments per fused burst).
 
-This app is toolkit-free and can run under :class:`emtk.qt_host.ControlHost` in Qt,
-in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emtk.web`).
+This app is toolkit-free and runs in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emtk.web`).
 """
 
 from __future__ import annotations

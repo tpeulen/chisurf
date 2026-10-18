@@ -45,28 +45,6 @@ def test_manifest_and_cli_and_rpc():
     assert "alex.convert" in list_methods() and "alex.merge" in list_methods()
 
 
-def test_general_path_list_drop_expands_files_and_folders(qapp, qtbot, tmp_path):
-    from chisurf.gui.autoform.sections.path_list_section import PathListWidget
-    from chisurf.plugins.tttr.ptu_alex_creator.gui.view_model import AlexViewModel
-
-    (tmp_path / "m1.sm").write_text("")
-    (tmp_path / "m2.sm").write_text("")
-    (tmp_path / "sub").mkdir()
-    (tmp_path / "sub" / "m3.ptu").write_text("")
-    (tmp_path / "notes.txt").write_text("")
-
-    model = AlexViewModel()
-    w = PathListWidget(model, "batch_files", extensions=[".sm", ".ptu"], add_folders=True)
-    qtbot.addWidget(w)
-    # a folder drop expands recursively to matching files only; plain files pass through
-    names = sorted(pathlib.Path(p).name for p in w.expand([str(tmp_path)]))
-    assert names == ["m1.sm", "m2.sm", "m3.ptu"]
-    assert len(w.expand([str(tmp_path / "m1.sm"), str(tmp_path / "m2.sm")])) == 2
-    # committing writes the bound model attribute
-    w._add([str(tmp_path / "m1.sm"), str(tmp_path / "m2.sm")])
-    assert model.batch_files == [str(tmp_path / "m1.sm"), str(tmp_path / "m2.sm")]
-
-
 @pytest.mark.skipif(not _PTU.exists(), reason="sample PTU not available")
 def test_core_convert_and_histogram(tmp_path):
     import tttrlib

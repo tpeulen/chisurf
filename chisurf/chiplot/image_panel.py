@@ -5,8 +5,7 @@ makes it an image *viewer*: a colour ramp with draggable levels beside it, a
 frame slider under it while a stack is shown, playback, a picture placed on real
 axes, symbols and labels over it, a paintable brush layer, region shapes and
 click-to-pick. The whole viewer is one control (``draw``/``press``/``drag``/
-``release``/``hover``/``scroll``): an emtk surface draws it directly, and a
-legacy widget form hosts it with :func:`chisurf.gui.chiplot.host`.
+``release``/``hover``/``scroll``): an emtk surface draws it directly.
 
 Events are hooks (``connect``/``disconnect``/``emit``): :attr:`ImagePanel.clicked`
 ``(x, y)``, :attr:`ImagePanel.picked` ``(PickedSpot)``, :attr:`ImagePanel.frame_changed`

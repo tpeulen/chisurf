@@ -48,7 +48,7 @@ def _gaussian_model_fit(background=(0.0, 0.0)):
 
 
 @pytest.mark.parametrize("background", [(0.0, 0.0), (2.0, 1.5)])
-def test_resampler_converges_to_the_engine_histogram(qapp, background):
+def test_resampler_converges_to_the_engine_histogram(background):
     """Sampling the forward model must reproduce what the engine convolves.
 
     Checked as a Monte-Carlo convergence: the total-variation distance has to
@@ -81,7 +81,7 @@ def test_resampler_converges_to_the_engine_histogram(qapp, background):
     assert tv_large < 0.5 * tv_small, "distance is not shrinking; a convention differs"
 
 
-def test_resampler_reproduces_the_engine_burst_size(qapp):
+def test_resampler_reproduces_the_engine_burst_size():
     """Mean burst size is the mean of pF *plus* both backgrounds.
 
     Pins the convention directly, independent of the histogram shape.
@@ -152,7 +152,7 @@ def _dynamic_fit(free_kex, total=2e5, seed=1):
     return fit, m
 
 
-def test_consistency_check_accepts_the_correct_kinetic_scheme(qapp):
+def test_consistency_check_accepts_the_correct_kinetic_scheme():
     """A correctly specified scheme must not be rejected.
 
     The measured score has to land inside the bootstrap distribution, not just
@@ -177,7 +177,7 @@ def test_consistency_check_accepts_the_correct_kinetic_scheme(qapp):
     assert result["chi2_measured"] == pytest.approx(median, rel=0.5)
 
 
-def test_consistency_check_rejects_the_wrong_kinetic_scheme(qapp):
+def test_consistency_check_rejects_the_wrong_kinetic_scheme():
     """The static (K_ex = 0) scheme fitted to dynamic data must be rejected."""
     from chisurf.core.models.pda2c.consistency import kinetic_consistency_check
 
@@ -190,7 +190,7 @@ def test_consistency_check_rejects_the_wrong_kinetic_scheme(qapp):
     assert result["chi2_measured"] > 10.0 * float(np.median(result["chi2_resampled"]))
 
 
-def test_p_value_is_never_zero(qapp):
+def test_p_value_is_never_zero():
     """The (k+1)/(n+1) correction keeps the p-value inside what n resamples resolve."""
     from chisurf.core.models.pda2c.consistency import kinetic_consistency_check
 
@@ -200,7 +200,7 @@ def test_p_value_is_never_zero(qapp):
 
 
 @pytest.mark.parametrize("axis", ["S1/(S0+S1)", "E", "S0/S1", "R"])
-def test_check_bins_on_the_fitted_axis(qapp, axis):
+def test_check_bins_on_the_fitted_axis(axis):
     """The binning must follow the selected axis, not a hard-coded 0-1 grid.
 
     Only two of the four selectable axes are 0-1 ratios; a distance (Angstrom)
@@ -221,7 +221,7 @@ def test_check_bins_on_the_fitted_axis(qapp, axis):
     assert not result["consistent"], f"wrong scheme accepted on {axis!r}"
 
 
-def test_check_refuses_an_empty_histogram(qapp):
+def test_check_refuses_an_empty_histogram():
     """A binning that excludes every burst is refused, not scored as a pass."""
     from chisurf.core.models.pda2c.consistency import kinetic_consistency_check
 
@@ -234,7 +234,7 @@ def test_check_refuses_an_empty_histogram(qapp):
         )
 
 
-def test_rejects_a_non_pda_model(qapp):
+def test_rejects_a_non_pda_model():
     """A model with no engine is a programming error, not a silent pass."""
     import chisurf.core.data
     import chisurf.core.fitting.fit as fit_module

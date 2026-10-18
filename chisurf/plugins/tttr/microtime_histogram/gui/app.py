@@ -771,12 +771,3 @@ class HistogramApp(TourTarget, ImApp):
 def create_app(reader=None, add_dataset=None):
     """Create the declared native histogram workflow and its optional I/O callbacks."""
     return HistogramApp(reader=reader, add_dataset=add_dataset)
-
-
-def create_host(parent=None):
-    """Host the existing native workflow for a remaining legacy Qt caller."""
-    from emtk.qt_host import ControlHost
-
-    host = ControlHost(create_app(), parent=parent)
-    host.setWindowTitle(tr("Histogram-Microtime"))
-    return host

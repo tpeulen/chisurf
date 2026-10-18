@@ -19,7 +19,7 @@ class TestTheManifest:
 
     def test_it_declares_the_three_entry_points(self) -> None:
         entrypoints = MANIFEST["entrypoints"]
-        assert entrypoints["gui"].endswith(":QuEstTool")
+        assert entrypoints["emtk"].endswith(".gui.app:make_app")
         assert "register_services" in entrypoints["services"]
         assert entrypoints["cli"].startswith("quest=")
 
@@ -171,35 +171,4 @@ class TestTheContractIsDefinedOnce:
 
         descriptor = contract.contract_descriptor()
         assert descriptor["host_plugin_id"] == "quenching_estimator"
-        assert descriptor["transport"]["gui"].endswith(":QuEstTool")
-
-
-class TestTheGuiIsDockable:
-    def test_it_is_a_chisurf_dock_tool(self, qapp) -> None:
-        """Not a QMainWindow used as a central widget."""
-        from chisurf.gui.widgets.tools import ChisurfDockTool
-        from chisurf.plugins.quenching_estimator import QuEstTool
-
-        assert issubclass(QuEstTool, ChisurfDockTool)
-
-    def test_the_old_name_is_the_same_widget(self) -> None:
-        from chisurf.plugins.quenching_estimator import QuEstTool, QuEstWindow
-
-        assert QuEstWindow is QuEstTool
-
-
-class TestTheToolHostsTheNativeWindow:
-    """The Qt tool is only a host: its central widget draws the emtk window."""
-
-    def test_the_central_widget_is_the_emtk_host(self, qapp) -> None:
-        from emtk.qt_host import host_class
-
-        from chisurf.plugins.quenching_estimator import QuEstTool
-
-        tool = QuEstTool()
-        try:
-            assert isinstance(tool.centralWidget(), host_class())
-            assert tool.quest_app.session.ready, tool.quest_app.session.error
-        finally:
-            tool.quest_app.close()
-            tool.close()
+        assert descriptor["transport"]["emtk"].endswith(".gui.app:make_app")

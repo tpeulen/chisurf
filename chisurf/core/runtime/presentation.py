@@ -2,7 +2,7 @@
 
 Some model-layer work has to *tell* a view something: a project finished
 loading and the fit list is new, a fit ran and the curves moved. Written the
-obvious way that is ``from chisurf.gui import run_on_gui_thread`` inside
+obvious way that is importing the front end's "run on the UI thread" inside
 :mod:`chisurf.core`, which inverts the dependency the architecture rests on --
 the model then cannot be imported without a widget toolkit present, cannot be
 driven by a script or the server, and cannot be tested headlessly.
@@ -10,8 +10,7 @@ driven by a script or the server, and cannot be tested headlessly.
 So the direction is turned around. The model calls :func:`notify` and knows
 nothing about who listens; the view calls :func:`set_presenter` once, at
 start-up, and supplies the only thing it is asked for: *run this callable
-where a view can safely be touched.* On Qt that is
-``chisurf.gui.run_on_gui_thread``; in a script, a test or the server there is
+where a view can safely be touched.* A front end supplies its own; in a script, a test or the server there is
 no presenter and the callable simply runs where it is.
 
 **No presenter is the normal case, not a degraded one.** Headless is how the
@@ -35,8 +34,7 @@ From the model, after something the view should see::
 
 From the view, once, at start-up::
 
-    import chisurf.gui
-    presentation.set_presenter(chisurf.gui.run_on_gui_thread)
+    presentation.set_presenter(run_on_ui_thread)
 """
 
 from __future__ import annotations
@@ -62,13 +60,13 @@ def set_presenter(presenter=None, deferrer=None) -> None:
     presenter : callable, optional
         ``presenter(func, *args, **kwargs)`` -- run *func* where a view may
         safely be touched, and return its result if it can.
-        ``chisurf.gui.run_on_gui_thread`` is the Qt one. ``None`` detaches,
+        ``None`` detaches,
         which is what a test that installed a fake should do afterwards.
     deferrer : callable, optional
         ``deferrer(func)`` -- run *func* after the current call has returned,
         for work that must not happen inside it: rebuilding the widgets that
-        the *currently running* action is loading data for, say. On Qt that
-        is a zero-delay single-shot timer. Falls back to *presenter*, and
+        the *currently running* action is loading data for, say (a frame
+        loop's next frame). Falls back to *presenter*, and
         then to running inline.
     """
     global _presenter, _deferrer

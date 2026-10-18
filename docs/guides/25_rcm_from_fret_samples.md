@@ -56,18 +56,16 @@ tuple in the donor-only order `(dd, da, aa)` does not fail — it returns
 ### In the Accurate FRET tool
 
 **Spectroscopy ▸ FRET ▸ Accurate FRET** does the same from a burst table:
-**Open burst table**, map its columns under *Channels* (**I_DD (donor)**,
-**I_DA (FRET)**, **I_AA (acceptor)**, optional **Donor lifetime**), optionally
-fill *Dyes (database)*, *Photophysics*, *Background*, *Optics prior (light path)*
-and *Procedure*, and press **Calibrate**. It finds the donor-only,
-acceptor-only and FRET populations itself (stoichiometry cuts plus clustering),
-reports the factors with bootstrap errors and what determined each (*Correction
-factors*, *Populations*, *Report*), and plots *E–S populations*, *E–lifetime and
-FRET lines* and the *Accurate-E histogram*. **Store calibration on setup** saves
-the factors on the detector setup so later sessions (e.g. the filter
-calculator's Instrument tab) start from them; **To ndX** / **From ndX** and
-**Export per-burst CSV** move the corrected table (all under *Data, session and
-catalogue actions*).
+pick the **Burst table** and map its columns (**I_DD**, **I_DA**, **I_AA**,
+optional **Donor lifetime**), optionally fill *Dyes (database)*,
+*Photophysics*, *Background*, *Optics prior (light path)* and *Procedure*, and
+press **🎯 Calibrate**. It finds the donor-only, acceptor-only and FRET
+populations itself (stoichiometry cuts plus clustering), reports the factors
+with bootstrap errors and what determined each, and shows *Populations*,
+*E–S*, *E–lifetime* and the *E histogram*. **Store on setup** saves the
+factors on the detector setup so later sessions (e.g. the filter calculator's
+Instrument dock) start from them; **To ndX** / **From ndX** and **Export CSV**
+move the corrected table.
 
 ```{figure} figures/25_accurate_fret_factors.png
 :name: fig-25-accurate-fret-factors
@@ -84,9 +82,10 @@ bursts); 485 donor-only, 484 acceptor-only and 3000 FRET bursts found.
 :name: fig-25-accurate-fret
 :width: 100%
 
-The *Report* of the same run beside the *E–S populations* view: corrected FRET
-populations at E ≈ 0.30 and 0.70, S ≈ 0.5; donor-only at S = 1;
-acceptor-only at S = 0 (its E is meaningless — no donor signal).
+The *E–S* view of the same run: corrected FRET populations at E ≈ 0.30 and
+0.70, S ≈ 0.5; donor-only at S = 1; acceptor-only at S = 0. The black
+polylines through the clusters and along S = 0 are a rendering defect (see
+*Known defects*), not data.
 ```
 
 ## Result
@@ -113,3 +112,10 @@ computed with the real `corrected_es`.
 - The full correction algebra and the general crosstalk-matrix form: [accurate FRET calibration](fret_calibration.md).
 - The E–S map these populations are read from: [multi-parameter E–S](14_multiparameter_es.md).
 - Tool: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`).
+
+## Known defects
+
+- Opening the tool logs `bound control commit failed (Donor/Acceptor):
+  AccurateFretViewModel.apply_dye_selection() takes 1 positional argument but 2
+  were given`: the view spec's `call` passes the new value, the method takes
+  none, so a chosen dye pair is not applied.

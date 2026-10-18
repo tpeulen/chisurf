@@ -16,7 +16,6 @@ It serves two purposes:
   without forcing the user to save a named setup first.
 
 Load/save delegates to ``chisurf.core.data_io.detector_setups`` (Qt-free).
-The legacy ``chisurf.gui`` module is never imported here.
 """
 
 from __future__ import annotations
