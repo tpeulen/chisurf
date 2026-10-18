@@ -68,10 +68,11 @@ def attach_native_state(plugin_id: str, app):
     layouts = dict(getattr(app, "native_layouts", {}))
     # Native apps conventionally own their GUI object. Inspect only that one
     # level, not scientific models, containers or arbitrary object graphs.
-    for name, value in vars(app).items():
-        docks = value if isinstance(value, DockManager) else getattr(value, "docks", None)
-        if isinstance(docks, DockManager):
-            layouts.setdefault(name, docks)
+    if not hasattr(app, "native_layouts"):
+        for name, value in vars(app).items():
+            docks = value if isinstance(value, DockManager) else getattr(value, "docks", None)
+            if isinstance(docks, DockManager):
+                layouts.setdefault(name, docks)
     seen = set()
     for name, docks in layouts.items():
         if id(docks) not in seen:

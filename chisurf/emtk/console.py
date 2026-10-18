@@ -216,6 +216,47 @@ class Transcript:
         return "\n".join(line[0] for line in self.lines)
 
 
+class _TranscriptScreenAdapter:
+    """Duck-typed screen adapter over Transcript for terminal pane compatibility."""
+
+    def __init__(self, transcript: Transcript, control: ConsoleControl) -> None:
+        self._transcript = transcript
+        self._control = control
+
+    @property
+    def total_lines(self) -> int:
+        return len(self._transcript.lines) + 1
+
+    @property
+    def scrollback_lines(self) -> int:
+        return len(self._transcript.lines)
+
+    @property
+    def revision(self) -> int:
+        return self._transcript.revision
+
+    @property
+    def columns(self) -> int:
+        return 80
+
+    @property
+    def rows(self) -> int:
+        return max(1, len(self._transcript.lines))
+
+    @property
+    def cursor(self) -> tuple[int, int]:
+        return (len(self._transcript.lines), len(self._control.input_text))
+
+    def line_text(self, index: int) -> str:
+        if 0 <= index < len(self._transcript.lines):
+            line = self._transcript.lines[index]
+            return line[0] if isinstance(line, list) else str(line)
+        if index == len(self._transcript.lines):
+            prompt = PROMPT.format(n=self._control.console.engine.execution_count)
+            return prompt + self._control.input_text
+        return ""
+
+
 class ConsoleControl:
     """The drawn console: transcript, pager, calltip, completion list and the input box.
 
@@ -310,7 +351,10 @@ class ConsoleControl:
                 if prompt > 0:
                     line.paint(0, prompt + 2, Token.DECLARATION)
         editor.bracketeer.update(editor.config, editor.document)
+        editor.folds.update(editor.config, editor.document)
         editor.document.updated = False
+        if line_h > 0 and h > 0:
+            editor.visible_lines = max(int(h / line_h), 1)
         self._revision = transcript.revision
         self._layout_key = key
         self._follow = self._follow or at_end
@@ -551,6 +595,33 @@ class ConsoleControl:
         elif text and console.calltip_text and editor is self.input and text in ")\n":
             console.calltip_text = ""
         return True
+
+    @property
+    def input_text(self) -> str:
+        """What is currently typed in the input box."""
+        return self.input.text
+
+    def animating(self) -> bool:
+        """Whether the console needs a frame: pending queue, unrendered output or caret focus."""
+        return (
+            self.console.transcript.revision != self._revision
+            or bool(self.console._queue)
+            or self.console._focus_requested
+        )
+
+    def next_frame_in(self) -> float | None:
+        """Frame delay while animating (16 ms), else None."""
+        return 0.016 if self.animating() else None
+
+    def close(self) -> None:
+        """Close this control and its console."""
+        self.console.close()
+
+    @property
+    def screen(self) -> _TranscriptScreenAdapter:
+        """Duck-typed screen view over transcript for callers that expect a screen model."""
+        return _TranscriptScreenAdapter(self.console.transcript, self)
+
 
 
 def _as_bytes(payload: Any) -> bytes:
@@ -820,6 +891,8 @@ class ShellConsole:
             self.set_input(pending[0])
         if self._tour is not None and not hidden:
             self._tour.notify_used(VIEW_KEY)
+        if self.wake is not None and not hidden:
+            self.wake()
         return result
 
     def _echo(self, source: str) -> None:
@@ -1251,20 +1324,27 @@ class ShellConsole:
             )
         return self._help, self._tour
 
-    def draw(self, box) -> None:
+    def draw(
+        self,
+        box,
+        control_id: str = "##chinsole",
+        *,
+        show_toolbar: bool = True,
+    ) -> None:
         """The Console dock: the ``?`` / *Guide* strip, then the console."""
-        from chisurf.plugins.emtk_layout import action_button
+        if show_toolbar:
+            from chisurf.plugins.emtk_layout import action_button
 
-        help_window, tour = self._overlays()
-        if action_button("guide"):
-            tour.start()
-        self.item_rects["guide"] = im.get_item_rect()
-        im.same_line()
-        if action_button("help"):
-            help_window.show()
-        self.item_rects["help"] = im.get_item_rect()
-        im.host_control("##chinsole", self.control)
-        self._image_menu()
+            help_window, tour = self._overlays()
+            if action_button("guide"):
+                tour.start()
+            self.item_rects["guide"] = im.get_item_rect()
+            im.same_line()
+            if action_button("help"):
+                help_window.show()
+            self.item_rects["help"] = im.get_item_rect()
+        im.host_control(control_id, self.control)
+        self._image_menu(f"##console.image.{control_id}")
         if self._focus_requested:
             # The keys come here from the next frame on, as a click on the console would do.
             self._focus_requested = False
@@ -1275,12 +1355,12 @@ class ShellConsole:
             if name in self.control.boxes:
                 self.item_rects[f"console.{name}"] = self.control.boxes[name]
 
-    def _image_menu(self) -> None:
+    def _image_menu(self, popup_id: str = "##console.image") -> None:
         """Right-click on an image: *Copy image*, *Save image as…*."""
         if im.is_item_hovered() and im.is_mouse_clicked(1):
             self._menu_image = self.control.image_at(*im.get_mouse_pos()[:2])
         image = self._menu_image
-        if image is None or not im.begin_popup_context_item("##console.image"):
+        if image is None or not im.begin_popup_context_item(popup_id):
             return
         if im.menu_item(tr("Copy image")):
             self.copy_image(image)

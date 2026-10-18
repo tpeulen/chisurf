@@ -14,7 +14,7 @@ records it as your style so it comes back the next time you start.
 
 ## Editing
 
-The editor highlights QSS syntax. A style sheet is a list of rules:
+The editor highlights QSS/CSS syntax. A style sheet is a list of rules:
 
 ```css
 QPushButton {
@@ -28,6 +28,18 @@ QPushButton:hover { background-color: #4a4a4a; }
 Selectors can name a Qt class (`QPushButton`), a state (`:hover`, `:selected`,
 `:pressed`), a sub-control (`QMenuBar::item`) or a specific widget by object
 name (`#plugin_manager_toolbar`).
+
+While you type:
+
+- **Live preview** — the panel on the right draws sample widgets in the
+  colours of the sheet as it stands in the buffer, before you save or apply.
+  A half-typed rule simply previews the last good parse.
+- **Colour swatches** — every `#rrggbb` literal gets a chip in its own
+  colour, and the literal is re-tinted to stay readable on the chip.
+- **Folding** — the gutter marker (`▾`) next to a line that opens a block
+  collapses it to one row (`▸ …`). Click the marker to fold and unfold. This
+  works for CSS/QSS braces and, in the JSON settings editor, for objects and
+  arrays alike.
 
 **New** starts an empty file. **Save** writes without applying, so you can work
 on a style you are not using.

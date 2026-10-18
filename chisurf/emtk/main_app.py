@@ -546,11 +546,27 @@ class EmtkShellApp(ImApp):
         self._console_channel: Any = None
         self._push_console_namespace()
         self.console.install()
+        from chisurf.plugins.core.terminal.app import make_console_app
+
+        def _console_pane_factory():
+            return ShellConsole(
+                {"gui": self},
+                history_path=console_history,
+                session_file=console_session_file,
+                wake=self.request_frame,
+                record_command=self.project.note_command,
+            )
+
+        self.console_terminal = make_console_app(
+            console_factory=_console_pane_factory,
+            initial_console=self.console,
+        )
         for key in (ANALYSIS_KEY, PLOT_KEY):
             self.docks.dock(key, "left_lower")
         self.docks.focus(ANALYSIS_KEY)
         self.docks.focus("tools")
         self.docks.focus("console")
+        self._focus = "console"
         self.docks.focus("workspace")
         self._watermark_folded = False
         try:
@@ -580,6 +596,8 @@ class EmtkShellApp(ImApp):
         if plugin_id in self.hosted:
             self.docks.show(self.hosted[plugin_id].key)
             self.docks.focus(self.hosted[plugin_id].key)
+            if focus:
+                self._focus = self.hosted[plugin_id].key
             return self.hosted[plugin_id]
         entry = self.by_id.get(plugin_id)
         if entry is None:
@@ -609,6 +627,7 @@ class EmtkShellApp(ImApp):
         )
         if focus:
             self.docks.focus(hosted.key)
+            self._focus = hosted.key
         self.status = tr("Opening {name}…").format(name=tr(entry.label))
         _log.info("open %s", plugin_id)
         return hosted
@@ -923,12 +942,13 @@ class EmtkShellApp(ImApp):
             if help_menu in plugins:
                 order.append((help_menu, []))
             for menu, actions in order:
-                if im.begin_menu(menu):
+                opened = im.begin_menu(menu)
+                self.item_rects["menu." + menu] = im.get_item_rect()
+                if opened:
                     self._menu_open = True
                     self._draw_actions(actions)
                     self._draw_plugin_entries(plugins.get(menu, {}), separate=bool(actions))
                     im.end_menu()
-                self.item_rects["menu." + menu] = im.get_item_rect()
             im.end_menu_bar()
         im.end()
 
@@ -969,6 +989,7 @@ class EmtkShellApp(ImApp):
                 enabled=action.enabled(),
                 icon=icon,
             ):
+                self._menu_open = False
                 action.run()
             self.item_rects[f"menu.{action.key}"] = im.get_item_rect()
             if action.description:
@@ -1375,6 +1396,7 @@ class EmtkShellApp(ImApp):
             console.start_recording()
             self.docks.show("console")
             self.docks.focus("console")
+            self._focus = "console"
             console.focus_input()
             self.status = tr("Recording macro…")
             return
@@ -1783,7 +1805,25 @@ class EmtkShellApp(ImApp):
             im.pop_font_scale()
 
     def _draw_console(self, box) -> None:
-        self.console.draw(box)
+        self.host_child("console", "console", self.console_terminal, box)
+        bx, by = box[:2]
+        for k, rect in list(self.console.item_rects.items()):
+            if len(rect) == 4 and rect[1] < by:
+                rx, ry, rw, rh = rect
+                offset_rect = (rx + bx, ry + by, rw, rh)
+                self.console.item_rects[k] = offset_rect
+                self.item_rects[k] = offset_rect
+        for k, (cx, cy, cw, ch) in list(self.console.control.boxes.items()):
+            if cy < by:
+                self.console.control.boxes[k] = (cx + bx, cy + by, cw, ch)
+        if self.console.control.image_boxes:
+            new_img_boxes = []
+            for ix, iy, iw, ih, img in self.console.control.image_boxes:
+                if iy < by:
+                    new_img_boxes.append((ix + bx, iy + by, iw, ih, img))
+                else:
+                    new_img_boxes.append((ix, iy, iw, ih, img))
+            self.console.control.image_boxes = new_img_boxes
 
     def _draw_log(self, box) -> None:
         self.log.draw(box)
@@ -1916,7 +1956,9 @@ class EmtkShellApp(ImApp):
         return super().scroll(rows)
 
     def key(self, key, text="", modifiers=0):
-        if self.project.modal:
+        from emtk.keys import KEY_ESCAPE
+
+        if self.project.modal or (self._menu_open and key == KEY_ESCAPE):
             return super().key(key, text, modifiers)
         if hasattr(self, "workspace_docks") and self.workspace_docks.handle_key(key, modifiers):
             self.docks.show("workspace")
@@ -1926,7 +1968,8 @@ class EmtkShellApp(ImApp):
         if self.docks.handle_key(key, modifiers):
             self.request_frame()
             return True  # Ctrl+Tab cycles the workspace's windows, whoever has the keys
-        child, _origin = self._child(self._focus)
+        focus_id = self._focus or (self.docks.focused if self.docks.focused in self._drawn else None)
+        child, _origin = self._child(focus_id)
         if self._shortcut(key, modifiers, child):
             return True
         if child is not None:
@@ -1936,14 +1979,16 @@ class EmtkShellApp(ImApp):
     def compose(self, text, cursor=None):
         """The input method's composition goes where the keys go: the focused child, else the shell."""
         if not self.project.modal:
-            child, _origin = self._child(self._focus)
+            focus_id = self._focus or (self.docks.focused if self.docks.focused in self._drawn else None)
+            child, _origin = self._child(focus_id)
             if child is not None and callable(getattr(child, "compose", None)):
                 return child.compose(text, cursor)
         return super().compose(text, cursor)
 
     def ime_caret(self):
         """The caret of the focused text, in the shell's coordinates (a child's is offset by its box)."""
-        child, (ox, oy) = self._child(self._focus)
+        focus_id = self._focus or (self.docks.focused if self.docks.focused in self._drawn else None)
+        child, (ox, oy) = self._child(focus_id)
         caret = getattr(child, "ime_caret", None) if child is not None else None
         caret = caret() if callable(caret) else caret
         if caret is not None:
@@ -1959,7 +2004,11 @@ class EmtkShellApp(ImApp):
         from emtk.events import ALT_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER
 
         mods = int(modifiers) & (CONTROL_MODIFIER | SHIFT_MODIFIER | ALT_MODIFIER)
-        if child is None and self.console.control.has_focus and self.console.claims(key, modifiers):
+        if (
+            (child is None or child is getattr(self, "console_terminal", None))
+            and self.console.control.has_focus
+            and self.console.claims(key, modifiers)
+        ):
             return False  # Ctrl+R searches the console's history there, as in the Qt console
         letter = int(key)
         if 65 <= letter <= 90:
@@ -2111,6 +2160,8 @@ class EmtkShellApp(ImApp):
         for plugin_id in list(self.hosted):
             self.close_plugin(plugin_id)
         self.console.close()
+        if hasattr(self, "console_terminal"):
+            self.console_terminal.close()
         self._close_console_channel()
         self.project.close()
         self.data.close()

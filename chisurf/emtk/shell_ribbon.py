@@ -83,6 +83,7 @@ ACTION_ICONS = {
     "clear_logging_files": "🧹",
     "clear_user_styles": "🧹",
     "clear_user_plugins": "🧹",
+    "styles": "🎨",
 }
 
 
@@ -184,9 +185,16 @@ class ShellRibbon:
 
     # -- the model ---------------------------------------------------------- #
     def _actions(self) -> dict[str, Any]:
-        actions = {
-            action.key: action for _menu, items in self.shell.session_menus() for action in items
-        }
+        actions: dict[str, Any] = {}
+
+        def _collect(items):
+            for action in items:
+                actions[action.key] = action
+                if getattr(action, "children", None):
+                    _collect(action.children)
+
+        for _menu, items in self.shell.session_menus():
+            _collect(items)
         actions.update({action.key: action for action in self.shell.window_actions()})
         return actions
 

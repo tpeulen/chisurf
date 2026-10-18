@@ -40,72 +40,24 @@ def color(value):
     raise ValueError(f"Unsupported color: {value}")
 
 
-# Specific roles are handled by native controls, rather than Qt widget selectors.
-_ROLES = {
-    "*": (im.Col.WINDOW_BG, im.Col.TEXT),
-    "QWidget": (im.Col.WINDOW_BG, im.Col.TEXT),
-    "QWidget:disabled": (None, im.Col.TEXT_DISABLED),
-    "QLineEdit": (im.Col.FRAME_BG, None),
-    "QPlainTextEdit": (im.Col.FRAME_BG, None),
-    "QComboBox": (im.Col.FRAME_BG, None),
-    "QSpinBox": (im.Col.FRAME_BG, None),
-    "QAbstractButton": (im.Col.BUTTON, None),
-    "QPushButton": (im.Col.BUTTON, None),
-    "QPushButton:hover": (im.Col.BUTTON_HOVERED, None),
-    "QPushButton:pressed": (im.Col.BUTTON_ACTIVE, None),
-    "QAbstractItemView": (im.Col.FRAME_BG, None),
-    "QTreeView": (im.Col.FRAME_BG, None),
-    "QHeaderView::section": (im.Col.HEADER, None),
-    "QTabBar::tab": (im.Col.TAB, None),
-    "QTabBar::tab:selected": (im.Col.TAB_SELECTED, None),
-    "QTabBar::tab:hover": (im.Col.HEADER_HOVERED, None),
-    "QMenu": (im.Col.POPUP_BG, None),
-    "QToolTip": (im.Col.POPUP_BG, None),
-    "QMenuBar::item": (im.Col.MENU_BAR_BG, None),
-    "QMenu::item:selected": (im.Col.HEADER_ACTIVE, None),
-    "QWidget:item:selected": (im.Col.HEADER_ACTIVE, None),
-    "QWidget:item:hover": (im.Col.HEADER_HOVERED, None),
-    "QDockWidget::title": (im.Col.TITLE_BG, None),
-    "QScrollBar:vertical": (im.Col.SCROLLBAR_BG, None),
-    "QScrollBar::handle:vertical": (im.Col.SCROLLBAR_GRAB, None),
-    "QCheckBox::indicator:checked": (im.Col.CHECK_MARK, None),
-}
-
-
 def convert_qss(source: str) -> tuple[Style, list[str]]:
-    """Translate supported palette rules; retain/report unsupported QSS verbatim."""
-    style = Style()
+    """Translate stylesheet via EMTK's stylesheet engine."""
+    from emtk.stylesheet import parse_stylesheet
+
     ignored = []
-    source = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
-    for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", source):
-        for selector in selectors.split(","):
-            selector = selector.strip()
-            roles = _ROLES.get(selector)
-            for declaration in body.split(";"):
-                if ":" not in declaration:
-                    continue
-                prop, value = (v.strip() for v in declaration.split(":", 1))
-                role = None
-                if roles:
-                    role = (
-                        roles[0]
-                        if prop in ("background", "background-color")
-                        else roles[1]
-                        if prop == "color"
-                        else None
-                    )
-                    if prop == "selection-background-color":
-                        role = im.Col.HEADER_ACTIVE
-                    elif prop == "border-color":
-                        role = im.Col.BORDER
-                if role is not None:
-                    try:
-                        style.colors[role] = color(value)
-                        continue
-                    except ValueError:
-                        pass
-                ignored.append(f"{selector}: {prop}")
-    return style, ignored
+    clean = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
+    for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", clean):
+        for decl in body.split(";"):
+            if ":" in decl:
+                prop = decl.split(":", 1)[0].strip()
+                if prop in ("image", "qproperty-alignment", "subcontrol-origin", "subcontrol-position", "spacing"):
+                    ignored.append(f"{selectors.strip()}: {prop}")
+
+    try:
+        _, _, style = parse_stylesheet(source)
+        return style, ignored
+    except Exception:
+        return Style(), ignored
 
 
 class StyleManagerModel:
@@ -119,16 +71,49 @@ class StyleManagerModel:
         )
         self.styles_dir.mkdir(parents=True, exist_ok=True)
         self.editor = TextEditor()
-        self.editor.set_language(
-            Language(
-                name="QSS",
-                comment_start="/*",
-                comment_end="*/",
-                has_double_quoted_strings=True,
-                has_single_quoted_strings=True,
-                punctuation=frozenset("{}:;,.#()"),
+        self._configure_default_editor()
+        try:
+            self.editor.set_language(Language.css())
+        except Exception:
+            self.editor.set_language(
+                Language(
+                    name="CSS",
+                    comment_start="/*",
+                    comment_end="*/",
+                    has_double_quoted_strings=True,
+                    has_single_quoted_strings=True,
+                    punctuation=frozenset("{}:;,.#()"),
+                )
             )
-        )
+
+    def _configure_default_editor(self):
+        self.editor.config.show_line_numbers = True
+        self.editor.config.show_spaces = False
+        self.editor.config.show_tabs = False
+        self.editor.config.tab_size = 4
+        self.editor.config.insert_spaces_on_tabs = True
+        self.editor.config.highlight_current_line = True
+        self.editor.config.font_role = "code"
+
+        try:
+            from chisurf.plugins.core.code_editor.gui.editor_preferences import (
+                COLOR_SCHEMES,
+                THEME_SCHEME,
+                concrete_scheme,
+                palette_for,
+                rgba,
+            )
+            scheme_name = concrete_scheme(THEME_SCHEME)
+            scheme = COLOR_SCHEMES.get(scheme_name, COLOR_SCHEMES["Dark"])
+            self.editor.config.background_color = rgba(scheme["paper_color"])
+            self.editor.config.margin_color = rgba(scheme["margins_background_color"])
+            self.editor.config.selection_color = rgba(scheme["marker_background_color"])
+            self.editor.config.current_line_color = rgba(scheme["caret_line_background_color"])
+            self.editor.config.caret_color = rgba(scheme["default_color"])
+            self.editor.config.line_number_color = rgba(scheme["default_color"])
+            self.editor.palette = palette_for(scheme_name, scheme["default_color"])
+        except Exception:
+            pass
         self.current_file = None
         self.saved_text = ""
         self.status = ""
@@ -148,13 +133,29 @@ class StyleManagerModel:
         return self.editor.text != self.saved_text
 
     def refresh(self):
-        self.files = sorted(self.styles_dir.glob("*.qss"))
+        css_files = list(self.styles_dir.glob("*.css"))
+        qss_files = list(self.styles_dir.glob("*.qss"))
+        self.files = sorted({*css_files, *qss_files}, key=lambda p: p.name)
 
     def copy_defaults(self):
-        for source in self.package_dir.glob("*.qss"):
+        sources = [*self.package_dir.glob("*.css"), *self.package_dir.glob("*.qss")]
+        if not sources:
+            try:
+                from emtk import styles as emtk_styles
+
+                for name in emtk_styles.available_stylesheets():
+                    p = emtk_styles.get_stylesheet_path(name)
+                    if p is not None and p.is_file():
+                        sources.append(p)
+            except Exception:
+                pass
+        for source in sources:
             destination = self.styles_dir / source.name
             if not destination.exists():
-                shutil.copyfile(source, destination)
+                try:
+                    shutil.copyfile(source, destination)
+                except (OSError, UnicodeError):
+                    continue
 
     def load(self, path, *, discard=False):
         if self.modified and not discard:
@@ -182,12 +183,16 @@ class StyleManagerModel:
         if not name or pathlib.Path(name).name != name or name in (".", ".."):
             self.status = "Choose a file name without directory components."
             return False
-        if not name.endswith(".qss"):
-            name += ".qss"
+        stem = pathlib.Path(name).stem
+        if any(f.stem == stem for f in self.files):
+            self.status = f"A style named {stem!r} already exists."
+            return False
+        if not (name.endswith(".css") or name.endswith(".qss")):
+            name += ".css"
         destination = self.styles_dir / name
         try:
             with destination.open("x", encoding="utf-8") as stream:
-                stream.write("/* QSS Style Sheet */\n\n")
+                stream.write("/* EMTK Native Style Sheet */\n\n:root {\n    --window-bg: #242424;\n    --frame-bg: #2c2c2c;\n    --text: #f0f0f0;\n}\n\nwindow {\n    background-color: #242424;\n    color: #f0f0f0;\n}\n")
             self.refresh()
             return self.load(destination, discard=True)
         except OSError as error:
@@ -219,53 +224,72 @@ class StyleManagerModel:
         parts = []
         for folder in (self.package_dir / "widgets", self.styles_dir / "widgets"):
             if folder.is_dir():
-                for path in sorted(folder.glob("*.qss")):
-                    try:
-                        parts.append(path.read_text(encoding="utf-8"))
-                    except (OSError, UnicodeError):
-                        continue
+                for pattern in ("*.css", "*.qss"):
+                    for path in sorted(folder.glob(pattern)):
+                        try:
+                            parts.append(path.read_text(encoding="utf-8"))
+                        except (OSError, UnicodeError):
+                            continue
         return "\n\n".join(part for part in (*parts, theme_text) if part)
 
-    def restyle_application(self, qss_text):
-        """Apply *qss_text* to the running Qt application, as the legacy Apply did; ``True`` when one was restyled.
+    def restyle_application(self, text):
+        """Apply *text* to EMTK and any application callback; returns ``True`` when restyled."""
+        from emtk import theme
 
-        Qt is never imported here: a process without a Qt application (the standalone native window) has
-        nothing to restyle and the style takes effect at the next launch.
-        """
+        theme_name = self.current_file.stem if self.current_file else "custom"
+        try:
+            theme.apply_stylesheet(text, name=theme_name)
+        except Exception:
+            pass
+
         if callable(self.application_callback):
-            return bool(self.application_callback(qss_text))
+            return bool(self.application_callback(text))
+
         import sys
 
-        widgets = sys.modules.get("qtpy.QtWidgets")
-        application = widgets.QApplication.instance() if widgets is not None else None
-        if application is None:
-            return False
-        application.setStyleSheet(qss_text)
-        try:
-            import chisurf as cs
-
-            cs.core.settings.style_sheet = (
-                qss_text  # what the startup compares against to skip a re-apply
-            )
-        except Exception:  # noqa: BLE001 - the sheet is applied; only the cache of it is missing
-            pass
+        application = None
+        for mod_name in ("qtpy.QtWidgets", "PyQt5.QtWidgets", "PySide2.QtWidgets", "PyQt6.QtWidgets", "PySide6.QtWidgets"):
+            mod = sys.modules.get(mod_name)
+            if mod is not None and hasattr(mod, "QApplication"):
+                application = mod.QApplication.instance()
+                if application is not None:
+                    break
+        if application is not None:
+            try:
+                application.setStyleSheet(text)
+            except Exception:
+                pass
         return True
 
     def apply(self):
         if not self.save():
             return False
         try:
-            style, ignored = convert_qss(self.editor.text)
-            if self.apply_callback:
-                self.apply_callback(style)
-            restyled = self.restyle_application(self.combined_qss(self.editor.text))
-            self.applied_style = style
-            self.ignored_rules = ignored
+            from emtk import theme
+            from emtk.stylesheet import parse_stylesheet
+
+            theme_name = self.current_file.stem if self.current_file else "custom"
+            full_text = self.combined_qss(self.editor.text)
+            try:
+                theme.apply_stylesheet(full_text, name=theme_name)
+            except Exception:
+                pass
+
+            try:
+                _, _, style = parse_stylesheet(full_text)
+                if self.apply_callback:
+                    self.apply_callback(style)
+                self.applied_style = style
+            except Exception:
+                pass
+
+            restyled = self.restyle_application(full_text)
+
             from chisurf.core.settings.settings_utils import update_settings_section
 
-            persisted = update_settings_section("gui", {"style_sheet": self.current_file.name})
+            persisted = update_settings_section("gui", {"style_sheet": self.current_file.name, "theme": theme_name})
             self.status = (
-                f"Applied {self.current_file.name}; {len(ignored)} Qt-only declarations retained."
+                f"Applied {self.current_file.name} to EMTK."
                 + (
                     " The running application was restyled."
                     if restyled
@@ -281,12 +305,13 @@ class StyleManagerModel:
 
     def reset(self, *, discard=False):
         if not discard:
-            self.status = "Confirm reset: custom QSS files and unsaved changes will be removed."
+            self.status = "Confirm reset: custom style files and unsaved changes will be removed."
             return False
         try:
-            for path in self.styles_dir.glob("*.qss"):
-                if path.is_file() or path.is_symlink():
-                    path.unlink()
+            for pattern in ("*.css", "*.qss"):
+                for path in self.styles_dir.glob(pattern):
+                    if path.is_file() or path.is_symlink():
+                        path.unlink()
             self.copy_defaults()
             self.refresh()
             if self.files:
@@ -302,6 +327,121 @@ class StyleManagerModel:
             return False
 
 
+class StylePreview:
+    """The live preview panel: the buffer's rules drawn as sample widgets.
+
+    The buffer is parsed on change (cached by the editor's revision) and the
+    samples are drawn through ``push_style_color`` -- the ImGui mechanism for
+    "this region is coloured differently" -- so the preview shows the sheet
+    being edited without touching the theme the rest of the process uses.
+    That is the difference between the preview and Apply.
+    """
+
+    def __init__(self, model: StyleManagerModel):
+        self.model = model
+        self.style = None
+        self._revision = None
+        self._text = None
+        self._error = ""
+
+    # -- the parsed sheet ------------------------------------------------ #
+    def _sync(self) -> None:
+        """Parse the buffer when it changed; a broken sheet previews the base."""
+        editor = self.model.editor
+        key = (editor.revision, editor.text)
+        if key == self._revision:
+            return
+        self._revision = key
+        from emtk.stylesheet import parse_stylesheet
+
+        try:
+            _, _, style = parse_stylesheet(editor.text)
+            self.style = style
+            self._error = ""
+        except Exception as error:  # a half-typed sheet is not an error state
+            self.style = None
+            self._error = str(error)
+
+    def _push(self) -> list:
+        """Push the parsed colours; returns the tokens to pop afterwards."""
+        from emtk.im_core import Col
+
+        ctx = im.get_current_context()
+        style = self.style
+        if style is None:
+            return []
+        pushed = []
+        for role in (
+            Col.WINDOW_BG, Col.TEXT, Col.BORDER, Col.FRAME_BG,
+            Col.BUTTON, Col.BUTTON_HOVERED, Col.BUTTON_ACTIVE,
+            Col.HEADER, Col.HEADER_HOVERED, Col.HEADER_ACTIVE,
+            Col.TAB, Col.TAB_SELECTED, Col.TITLE_BG, Col.TITLE_BG_ACTIVE,
+            Col.POPUP_BG, Col.MENU_BAR_BG, Col.SCROLLBAR_BG, Col.SCROLLBAR_GRAB,
+            Col.CHECK_MARK, Col.SLIDER_GRAB, Col.SLIDER_GRAB_ACTIVE,
+            Col.TEXT_DISABLED,
+        ):
+            colour = style.colors.get(role)
+            if colour is not None:
+                ctx.push_style_color(role, colour)
+                pushed.append(role)
+        return pushed
+
+    # -- drawing --------------------------------------------------------- #
+    def draw(self) -> None:
+        """Draw the preview surface and its samples, in the buffer's colours."""
+        from emtk.im_core import Col
+
+        self._sync()
+        style = self.style
+        avail = im.get_content_region_avail()
+        width = max(200.0, min(360.0, avail[0] * 0.4))
+        height = max(120.0, avail[1])
+        ctx = im.get_current_context()
+        pushed = self._push()
+        try:
+            im.begin_child("style_preview", (width, height), scrollable=False)
+        except Exception:
+            for role in reversed(pushed):
+                ctx.pop_style_color()
+            raise
+        try:
+            window_bg = (
+                style.color(Col.WINDOW_BG) if style is not None else ctx.style.color(Col.WINDOW_BG)
+            )
+            box = im.get_cursor_screen_pos()
+            box = (box[0], box[1], width, height)
+            im.get_window_draw_list().add_rect_filled(
+                (box[0], box[1]), (box[0] + width, box[1] + height), window_bg
+            )
+            im.text("Preview")
+            if self._error:
+                im.text_colored((255, 120, 120, 255), self._error[:120])
+            elif style is None:
+                im.text_wrapped("Nothing parsed yet.")
+            else:
+                self._draw_samples()
+            im.end_child()
+        finally:
+            for role in reversed(pushed):
+                ctx.pop_style_color()
+
+    def _draw_samples(self) -> None:
+        """A column of widgets that between them use most palette roles."""
+        if im.button("Button"):
+            pass
+        im.same_line()
+        if im.button("Hover me"):
+            pass
+        changed, checked = im.checkbox("Check", True)
+        changed, value = im.slider_float("Slider##preview", 0.4, 0.0, 1.0)
+        changed, index = im.combo("Combo##preview", 0, ["First", "Second", "Third"])
+        changed, text = im.input_text("##preview_field", "Input field")
+        im.progress_bar(0.55)
+        im.separator()
+        im.text_wrapped("The quick brown fox jumps over the lazy dog.")
+        im.text_disabled("Disabled text")
+
+
 class StyleManagerApp(ImApp):
     def __init__(self, model=None):
         spec = json.loads(
@@ -309,6 +449,7 @@ class StyleManagerApp(ImApp):
         )
         self.window_size = window_size(spec, (1200, 800))
         self.model = model or StyleManagerModel()
+        self.preview = StylePreview(self.model)
         self.file_dialog = None
         self.dialog_operation = ""
         self.pending = None
@@ -382,9 +523,7 @@ class StyleManagerApp(ImApp):
                 ),
                 scrollable=False,
             )
-            im.push_font({"family": "monospace", "size": 10})
             self._draw_main()
-            im.pop_font()
             im.end_child()
         im.end()
         self._draw_dialogs()
@@ -448,7 +587,7 @@ class StyleManagerApp(ImApp):
         im.same_line()
         if im.button(tr("Reset styles")):
             self.pending = ("reset", None)
-        im.set_item_tooltip(tr("Confirm deletion of user QSS files and restore packaged defaults"))
+        im.set_item_tooltip(tr("Confirm deletion of user custom style files and restore packaged defaults"))
         self._remember("reset_styles")
         im.same_line()
         if action_button("guide"):
@@ -459,22 +598,23 @@ class StyleManagerApp(ImApp):
             self.help_window.show()
         self._remember("help")
         im.text_wrapped(str(m.current_file or "No style selected") + (" *" if m.modified else ""))
-        if m.ignored_rules:
-            if im.collapsing_header(f"Qt-only declarations ({len(m.ignored_rules)})"):
-                im.text_wrapped(", ".join(dict.fromkeys(m.ignored_rules)))
-            im.set_item_tooltip(
-                tr(
-                    "Native widgets use palette roles; Qt selectors, images, dimensions and gradients cannot be applied verbatim"
-                )
-            )
         im.text_wrapped(m.status)
+        avail = im.get_content_region_avail()
+        preview_w = max(200.0, min(340.0, avail[0] * 0.38)) if avail[0] >= 560 else 0.0
+        editor_w = avail[0] - preview_w - (8.0 if preview_w else 0.0)
         im.text_editor(
-            "##style_source", m.editor, (0, max(100, im.get_content_region_avail()[1] - 8))
+            "##style_source", m.editor, (max(120.0, editor_w), max(100, avail[1] - 8))
         )
         self._remember("style_source")
         im.set_item_tooltip(
-            tr("Edit QSS source with syntax highlighting, selection, clipboard and undo/redo")
+            tr(
+                "Edit style sheet with syntax highlighting, selection, clipboard and undo/redo; "
+                "hex colours show a swatch and braces fold"
+            )
         )
+        if preview_w:
+            im.same_line()
+            self.preview.draw()
 
     def _draw_dialogs(self):
         if self.pending:
@@ -482,7 +622,7 @@ class StyleManagerApp(ImApp):
             if im.begin("Confirm style change"):
                 operation, path = self.pending
                 im.text_wrapped(
-                    "Remove all user QSS files and restore defaults?"
+                    "Remove all user custom style files and restore defaults?"
                     if operation == "reset"
                     else "Discard unsaved changes?"
                 )
@@ -509,7 +649,7 @@ class StyleManagerApp(ImApp):
                 _, self.new_name = im.input_text("File name", self.new_name)
                 im.set_item_tooltip(
                     tr(
-                        "Enter a file name; .qss is added automatically and directory components are rejected"
+                        "Enter a file name; .css is added automatically and directory components are rejected"
                     )
                 )
                 if im.button(tr("Create style")) and self.model.new(self.new_name):

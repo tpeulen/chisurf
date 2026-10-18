@@ -68,6 +68,13 @@ def load_plugin(
     module, attribute = spec.split(":", 1)
     app = getattr(importlib.import_module(module), attribute)()
     if persist:
+        catalog = manifests(root)
+        statefulness = catalog.get(plugin_id, {}).get("statefulness")
+        if statefulness is False or (
+            isinstance(statefulness, dict) and not statefulness.get("enabled", True)
+        ):
+            persist = False
+    if persist:
         from .state import attach_native_state
 
         attach_native_state(plugin_id, app)

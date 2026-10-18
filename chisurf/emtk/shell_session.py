@@ -279,12 +279,13 @@ class MenuAction:
 
     key: str
     label: str
-    run: Callable[[], Any]
+    run: Callable[[], Any] = lambda: None
     shortcut: str = ""
     group: str = ""
     description: str = ""
     enabled: Callable[[], bool] = field(default=lambda: True)
     checked: Callable[[], bool] | None = None
+    children: list[MenuAction] = field(default_factory=list)
 
 
 class ShellProject:
@@ -1220,7 +1221,7 @@ class ShellProject:
         import chisurf
 
         folder = chisurf.core.settings.get_path("settings") / "styles"
-        files = list(folder.glob("*.qss")) if folder.is_dir() else []
+        files = [*folder.glob("*.css"), *folder.glob("*.qss")] if folder.is_dir() else []
         for path in files:
             try:
                 path.unlink()
