@@ -1,7 +1,20 @@
 # Update Log
 
+## 2026-10-18
+
+- Support external raw files as sidecar in PTO containers: added ptolib streaming read from external payload paths when size == 0, tttrlib TTTR reader and pto_read_events sidecar delegation, chisurf Measurement.create/add_instrument/is_sidecar/external_path/verify/extract sidecar handling, and tttr_to_pto convert as_sidecar mode (43 passed tests).
+
 ## 2026-10-17
 
+- PRD-154 W15 recorded: the release licence change — emtk-only shipped app, MIT for chisurf and
+  ndxplorer (owner directive). Ownership audit: every commit in both histories is the owner, so the
+  flip needs no permissions. Blockers recorded with file inventory: PyQt5/sip (GPL-3-only) until W9
+  S6 lands, and Orange3-derived VizRank/ranking code in ndxplorer (GPL-3.0, Univ. of Ljubljana)
+  plus the unresolved `run_in_background` ConcurrentMixin provenance claim in `chisurf/gui/task.py`.
+  Steps: attribute task.py → owner decides VizRank (clean-room vs drop) → flip both repos → guards
+  (`test_license_strings.py`, license-tracker re-run) → `okf/subsystems/licensing.md`. Part D gains
+  release gate 5. Record: [licensing](subsystems/licensing.md) (to be created by W15 step 7);
+  PRD-154 Part B W15.
 - emtk shell: live CPU/memory tracking with cached psutil processes, integer RGBA sparklines, tracks, and 1s cadence refresh
 - emtk, watermark, gfactor: fold watermark into compact badge, display live rolling FPS and machine specs matching ChiMOL, dismiss tooltips on dock leave and window exit, and eliminate continuous redraw stall during subdock dragging.
 - emtk shell: live FPS and frame render time calculation: measure actual frame CPU draw duration instead of sleep interval, filter out idle gaps (>0.25s), and keep frames rendering continuously when watermark is unfolded so FPS counter does not stall on mouse idle.

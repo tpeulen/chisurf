@@ -38,7 +38,17 @@ directory, so the two layouts are the same thing seen from either side.
 
 Consequences worth not re-deriving:
 
-0. Measure: (done 2026-10-13) **a row read from a container names its run.** `analysis_path.resolve_run(path)` returns the
+0. Measure: (done 2026-10-18) **External raw files as sidecars in PTO containers.** A container
+   may reference an external raw file (PTU, SPC, HT3, etc.) as a sidecar without duplicating raw payload
+   bytes inside the EBML container (`as_sidecar=True` or `raw_data="sidecar"`). The stored object has
+   `size == 0` and is tagged with `_mmfdb_artifact.is_sidecar = "true"`, `_mmfdb_artifact.file_path`,
+   `_mmfdb_artifact.size_bytes`, and `_mmfdb_artifact.checksum_sha256`. Upstream `ptolib` and `tttrlib`
+   resolve payloads from disk via `read_stored`, `read_at`, `read_one`, and `pto_read_events`.
+   In ChiSurf, `Measurement.is_sidecar` and `Measurement.external_path` identify sidecars, `verify()`
+   validates external file checksums and flags missing files, and `extract()` / `disassemble()` safely
+   handle in-place operations (`test/fio/test_pto.py`, `chisurf/plugins/core/tttr_to_pto/test/test_api.py`).
+
+1. Measure: (done 2026-10-13) **a row read from a container names its run.** `analysis_path.resolve_run(path)` returns the
    run a path reads (named, else newest — the same choice `read_tables` makes) and `run_path(container, run)`
    addresses it; the burst reader stamps each row with `Burst Run` so a batch result's parent is the search it
    came from even when several coexist. Any new reader of a container that feeds a writer should do the same —

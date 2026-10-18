@@ -745,3 +745,107 @@ def test_untraceable_names_a_derived_object_with_no_path_to_the_photons(tmp_path
         )
     with Measurement.open(tmp_path / "bare.pto") as m:
         assert m.untraceable() == ["bursts"]
+
+
+# -- sidecar raw files --------------------------------------------------------
+
+
+def test_create_sidecar_raw_file_container(tmp_path: Path):
+    """A sidecar container references external raw files without embedding their bytes."""
+    source = tmp_path / SPC.name
+    source.write_bytes(SPC.read_bytes())
+
+    with Measurement.create(source, as_sidecar=True) as m:
+        pto_path = m.path
+        assert m.is_sidecar()
+        assert m.external_path().resolve() == source.resolve()
+        assert m.instrument_uid > 0
+        assert m.instrument_uids == [m.instrument_uid]
+
+    # Container size is small because the raw payload is not embedded
+    assert pto_path.stat().st_size < source.stat().st_size
+
+    with Measurement.open(pto_path) as m:
+        assert m.is_sidecar()
+        assert m.external_path().resolve() == source.resolve()
+        assert m.verify() == []
+
+        # Reading photons directly via open_tttr and tttrlib.TTTR works
+        import tttrlib
+        from chisurf.core.fio.staging import open_tttr
+
+        tttr_pto = open_tttr(m.source())
+        tttr_raw = open_tttr(str(source))
+        assert tttr_pto.get_n_events() == tttr_raw.get_n_events()
+        assert tttr_pto.get_n_events() > 0
+
+        direct_pto = tttrlib.TTTR(str(pto_path))
+        assert direct_pto.get_n_events() == tttr_raw.get_n_events()
+
+    # Adding derived results traces lineage to the sidecar instrument
+    with Measurement.open(pto_path, writable=True) as w:
+        w.put_table(
+            "bursts",
+            _bursts(10),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"min_photons": 5},
+        )
+    with Measurement.open(pto_path) as r:
+        assert r.untraceable() == []
+
+
+def test_sidecar_tampering_and_missing_detected_by_verify(tmp_path: Path):
+    """verify() catches tampering and missing external sidecar files."""
+    source = tmp_path / SPC.name
+    source.write_bytes(SPC.read_bytes())
+
+    with Measurement.create(source, raw_data="sidecar") as m:
+        pto_path = m.path
+
+    # Initially intact
+    with Measurement.open(pto_path) as m:
+        assert m.verify() == []
+
+    # Tamper with external raw file
+    corrupted = bytearray(source.read_bytes())
+    corrupted[0] ^= 0xFF
+    source.write_bytes(bytes(corrupted))
+
+    with Measurement.open(pto_path) as m:
+        problems = m.verify()
+        assert len(problems) > 0
+        assert "recorded" in problems[0]
+
+    # Move/delete external raw file
+    source.unlink()
+    with Measurement.open(pto_path) as m:
+        problems = m.verify()
+        assert len(problems) > 0
+        assert "missing external sidecar file" in problems[0]
+
+
+def test_sidecar_disassembly_and_extraction(tmp_path: Path):
+    """Extract and disassemble works for sidecar containers."""
+    source = tmp_path / "raw" / SPC.name
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_bytes(SPC.read_bytes())
+
+    pto_dir = tmp_path / "pto"
+    with Measurement.create(source, out_dir=pto_dir, as_sidecar=True) as m:
+        pto_path = m.path
+
+    with Measurement.open(pto_path) as m:
+        # Extract to a new destination
+        dest = tmp_path / "extracted" / SPC.name
+        extracted = m.extract(m.instrument_uid, dest)
+        assert extracted.exists()
+        assert extracted.read_bytes() == SPC.read_bytes()
+
+        # Disassemble
+        disasm_dir = tmp_path / "disasm"
+        recovered = m.disassemble(disasm_dir)
+        names = {p.name for p in recovered}
+        assert SPC.name in names
+        assert (disasm_dir / SPC.name).read_bytes() == SPC.read_bytes()

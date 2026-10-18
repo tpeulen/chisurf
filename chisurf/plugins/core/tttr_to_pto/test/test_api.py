@@ -119,3 +119,25 @@ def test_convert_picks_up_the_spc_set_sidecar_automatically(tmp_path):
 
     recovered = api.extract(target)
     assert any(p.name == sidecar.name for p in recovered)
+
+
+def test_convert_sidecar_mode(tmp_path):
+    """Sidecar mode creates a container referencing external raw files without deleting them."""
+    source = tmp_path / SPC.name
+    source.write_bytes(SPC.read_bytes())
+
+    # Deleting source in sidecar mode is forbidden
+    with pytest.raises(api.PtoMfdbError, match="cannot delete"):
+        api.convert(source, as_sidecar=True, keep_original=False)
+
+    target = api.convert(source, as_sidecar=True, keep_original=True)
+    assert target.exists()
+    assert target.stat().st_size < source.stat().st_size
+
+    with api.Measurement.open(target) as m:
+        assert m.is_sidecar()
+        assert m.verify() == []
+
+    # Extraction recovers original
+    extracted = api.extract(target, out_dir=tmp_path / "recovered")
+    assert any(p.name == source.name for p in extracted)

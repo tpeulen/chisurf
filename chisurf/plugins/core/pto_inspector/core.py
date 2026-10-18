@@ -285,7 +285,8 @@ class PtoInspection:
                     grain=prov["grain"],
                     operation=prov["operation"],
                     rows=int(getattr(obj, "rows", 0) or 0),
-                    size_bytes=int(getattr(obj, "size", 0) or 0),
+                    size_bytes=int(getattr(obj, "size", 0) or 0)
+                    or int(m.tag(obj.uid, "_mmfdb_artifact.size_bytes", 0) or 0),
                     capacity_bytes=int(getattr(obj, "capacity", 0) or 0),
                     settings=prov["settings"],
                     settings_hash=prov["settings_hash"],

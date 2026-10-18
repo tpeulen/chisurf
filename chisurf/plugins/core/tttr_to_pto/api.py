@@ -26,7 +26,12 @@ __all__ = ["convert", "extract"]
 
 
 def convert(
-    path: str | Path | Sequence[str | Path], *, keep_original: bool = True, out_dir=None
+    path: str | Path | Sequence[str | Path],
+    *,
+    keep_original: bool = True,
+    out_dir=None,
+    raw_data: str = "embed",
+    as_sidecar: bool = False,
 ) -> Path:
     """Import one or more vendor files into a single `.pto` container.
 
@@ -34,16 +39,22 @@ def convert(
     ----------
     path : str or pathlib.Path, or a sequence of them
         The vendor photon file (``.ptu``, ``.spc``, ``.ht3``, ...), or several
-        belonging to the same split measurement -- all embedded into the
-        **same** container, in lexical order by file name
+        belonging to the same split measurement -- all embedded (or referenced
+        as sidecars) into the **same** container, in lexical order by file name
         (:meth:`chisurf.core.fio.pto.Measurement.create`).
     keep_original : bool
         When ``False``, every vendor file passed in is deleted -- but only
         once the freshly written container's own checksum verifies clean, so
         a corrupted write never costs a source.
+        Cannot be False when *as_sidecar* is True or *raw_data* is ``"sidecar"``.
     out_dir : str or pathlib.Path, optional
         Directory for the container. Defaults to beside the first
         (lexically) vendor file.
+    raw_data : {"embed", "sidecar"}, optional
+        ``"embed"`` (default) copies each file in verbatim; ``"sidecar"`` keeps
+        the raw bytes in the external file beside the container.
+    as_sidecar : bool, optional
+        Convenience alias for ``raw_data="sidecar"``.
 
     Returns
     -------
@@ -53,11 +64,20 @@ def convert(
     Raises
     ------
     PtoMfdbError
-        If the container fails its own checksum verification. Every source
-        is left untouched in that case, regardless of *keep_original*.
+        If the container fails its own checksum verification, or if
+        *keep_original* is False when sidecar mode is selected.
     """
+    use_sidecar = (raw_data == "sidecar") or bool(as_sidecar)
+    if use_sidecar and not keep_original:
+        raise PtoMfdbError("cannot delete original raw files when raw_data='sidecar'")
+
     raw_paths = [Path(path)] if isinstance(path, (str, Path)) else [Path(p) for p in path]
-    with Measurement.create(raw_paths, out_dir=out_dir) as measurement:
+    with Measurement.create(
+        raw_paths,
+        out_dir=out_dir,
+        raw_data=raw_data,
+        as_sidecar=as_sidecar,
+    ) as measurement:
         target = measurement.path
 
     if not keep_original:

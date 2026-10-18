@@ -95,6 +95,7 @@ _CHECKSUM_ALGORITHM = "_mmfdb_artifact.checksum_algorithm"
 _SIZE_BYTES = "_mmfdb_artifact.size_bytes"
 _MIME_TYPE = "_mmfdb_artifact.mime_type"
 _FILE_PATH = "_mmfdb_artifact.file_path"
+_IS_SIDECAR = "_mmfdb_artifact.is_sidecar"
 
 _OPERATION_TYPE = "_mmfdb_operation.operation_type"
 _ALGORITHM = "_mmfdb_operation.algorithm"
@@ -450,12 +451,16 @@ class Measurement:
         out_dir: str | Path | None = None,
         title: str = "",
         artifact_kind: str = "tttr_photon_stream",
+        raw_data: str = "embed",
+        as_sidecar: bool = False,
     ) -> Measurement:
         """Start a container from one or more instrument files.
 
-        Each instrument file is copied in **verbatim** and is never rewritten
-        afterwards, so its offset is stable for the life of the container and
-        no recomputation can disturb it. The originals on disk are left alone.
+        Each instrument file is copied in **verbatim** (or referenced as a
+        sidecar when *as_sidecar* is True or *raw_data* is ``"sidecar"``) and
+        is never rewritten afterwards, so its offset is stable for the life of
+        the container and no recomputation can disturb it. The originals on disk
+        are left alone.
 
         Parameters
         ----------
@@ -478,12 +483,22 @@ class Measurement:
         title : str, optional
             Human title. Defaults to the first instrument file's stem.
         artifact_kind : str, optional
-            What each source *is*, as an ``_mmfdb_artifact.artifact_kind``
-            term. Defaults to a photon stream, which is what nearly every
+            What each source *is*, as an ``_mmfdb_artifact.artifact_kind`` term.
+            Defaults to a photon stream, which is what nearly every
             measurement here starts as — but not all of them: an ebFRET run
             starts from binned traces, and calling those a photon stream
             would be a statement about the file that is simply false, in the
             one field a reader consults to decide how to open it.
+        raw_data : {"embed", "sidecar"}, optional
+            ``"embed"`` (default) copies each instrument file in verbatim —
+            the container stands alone. ``"sidecar"`` writes an
+            container that references the external raw file(s) beside it:
+            the raw bytes stay in their file beside the container, and what
+            goes in is an AttachedFile of size 0 with the relative link in
+            ``_mmfdb_artifact.file_path`` and ``_mmfdb_artifact.is_sidecar = 'true'``.
+        as_sidecar : bool, optional
+            Convenience alias for ``raw_data="sidecar"``. When True, creates an
+            external raw file sidecar container.
 
         Returns
         -------
@@ -520,9 +535,14 @@ class Measurement:
         self = cls(handle, target)
         self._stamp_versions()
         self._add_readme()
-        self._instrument_uid = self._add_instrument(first, artifact_kind)
+        use_sidecar = (raw_data == "sidecar") or bool(as_sidecar)
+        if use_sidecar:
+            self._record_sidecar_raw(raw_paths, artifact_kind)
+        self._instrument_uid = self._add_instrument(
+            first, artifact_kind, as_sidecar=use_sidecar
+        )
         for raw in raw_paths[1:]:
-            self._add_instrument(raw, artifact_kind)
+            self._add_instrument(raw, artifact_kind, as_sidecar=use_sidecar)
         return self
 
     @classmethod
@@ -665,7 +685,107 @@ class Measurement:
         """
         return f"{self._path}|{member}" if member else str(self._path)
 
+    def is_sidecar(self, ref: int | str = 0) -> bool:
+        """Return whether an object (by default the primary instrument) is an external sidecar.
+
+        Parameters
+        ----------
+        ref : int or str, optional
+            Object UID or name. Defaults to the primary instrument object.
+
+        Returns
+        -------
+        bool
+        """
+        uid = self._resolve(ref) if ref else self._instrument_uid
+        if not uid:
+            return False
+        tag_val = str(self.tag(uid, _IS_SIDECAR, "")).lower()
+        if tag_val in ("true", "1", "yes"):
+            return True
+        try:
+            obj = self._f.object(uid)
+            if obj is not None and getattr(obj, "size", 0) == 0:
+                if self.external_path(uid) is not None:
+                    return True
+        except Exception:
+            pass
+        return False
+
+    def external_path(self, ref: int | str = 0) -> Path | None:
+        """Return the resolved filesystem path for an external sidecar file, or ``None``.
+
+        Parameters
+        ----------
+        ref : int or str, optional
+            Object UID or name. Defaults to the primary instrument object.
+
+        Returns
+        -------
+        Path or None
+        """
+        uid = self._resolve(ref) if ref else self._instrument_uid
+        if not uid:
+            return None
+        tag_val = str(self.tag(uid, _IS_SIDECAR, "")).lower()
+        is_sc = tag_val in ("true", "1", "yes")
+        if not is_sc:
+            try:
+                obj = self._f.object(uid)
+                is_sc = obj is not None and getattr(obj, "size", 0) == 0
+            except Exception:
+                pass
+        if not is_sc:
+            return None
+        try:
+            ext = getattr(self._f, "external_payload_path", None)
+            if callable(ext):
+                p_str = ext(uid)
+                if p_str:
+                    return Path(p_str)
+        except Exception:
+            pass
+        tag_path = self.tag(uid, _FILE_PATH, "")
+        if tag_path:
+            p = Path(tag_path)
+            if not p.is_absolute():
+                p = (self._path.parent / p).resolve()
+            return p
+        return None
+
     # -- writing --------------------------------------------------------------
+
+    def add_instrument(
+        self,
+        raw_path: str | Path,
+        artifact_kind: str = "tttr_photon_stream",
+        *,
+        as_sidecar: bool = False,
+    ) -> int:
+        """Add an instrument file verbatim or as an external sidecar.
+
+        Parameters
+        ----------
+        raw_path : str or Path
+            The instrument file.
+        artifact_kind : str, optional
+            The artifact kind, default "tttr_photon_stream".
+        as_sidecar : bool, optional
+            Whether to record as an external sidecar reference.
+
+        Returns
+        -------
+        int
+            The object UID.
+        """
+        self._require_writable()
+        raw = Path(raw_path)
+        if not raw.exists():
+            raise PtoMfdbError(f"no such instrument file: {raw}")
+        uid = self._add_instrument(raw, artifact_kind, as_sidecar=as_sidecar)
+        if not self._instrument_uid:
+            self._instrument_uid = uid
+        return uid
 
     def put_table(
         self,
@@ -1300,7 +1420,16 @@ class Measurement:
             recorded = self.tag(obj.uid, _CHECKSUM)
             if not recorded:
                 continue
-            actual = hashlib.sha256(bytes(self._f.read(obj.uid))).hexdigest()
+            if self.is_sidecar(obj.uid):
+                ext = self.external_path(obj.uid)
+                if ext is None or not ext.exists():
+                    problems.append(
+                        f"{obj.name or obj.uid}: missing external sidecar file {ext}"
+                    )
+                    continue
+                actual, _ = _sha256_of_path(ext)
+            else:
+                actual = hashlib.sha256(bytes(self._f.read(obj.uid))).hexdigest()
             if actual != recorded:
                 problems.append(
                     f"{obj.name or obj.uid}: recorded {recorded[:16]}…, found {actual[:16]}…"
@@ -1335,6 +1464,20 @@ class Measurement:
             match its recorded checksum.
         """
         uid = self._resolve(ref)
+        if self.is_sidecar(uid):
+            ext = self.external_path(uid)
+            if ext is None or not ext.exists():
+                raise PtoMfdbError(f"missing external sidecar file: {ext}")
+            data = ext.read_bytes()
+            recorded = self.tag(uid, _CHECKSUM)
+            if recorded:
+                actual = hashlib.sha256(data).hexdigest()
+                if actual != recorded:
+                    raise PtoMfdbError(
+                        f"{ext} does not match its recorded checksum "
+                        f"({recorded[:16]}… expected, {actual[:16]}… found)"
+                    )
+            return data
         try:
             return _tttrlib().pto_read_blob(self._f, uid)
         except RuntimeError as exc:
@@ -1363,8 +1506,17 @@ class Measurement:
         uid = self._resolve(ref)
         out = Path(destination)
         out.parent.mkdir(parents=True, exist_ok=True)
-        if not self._f.extract(uid, str(out)):
-            raise PtoMfdbError(f"could not extract {ref}: {self._f.error()}")
+        if self.is_sidecar(uid):
+            ext = self.external_path(uid)
+            if ext is None or not ext.exists():
+                raise PtoMfdbError(f"missing external sidecar file: {ext}")
+            import shutil
+
+            if ext.resolve() != out.resolve():
+                shutil.copyfile(ext, out)
+        else:
+            if not self._f.extract(uid, str(out)):
+                raise PtoMfdbError(f"could not extract {ref}: {self._f.error()}")
 
         recorded = self.tag(uid, _CHECKSUM)
         if recorded:
@@ -1677,13 +1829,25 @@ class Measurement:
         )
         return uid
 
-    def _add_instrument(self, raw: Path, artifact_kind: str = "tttr_photon_stream") -> int:
+    def _add_instrument(
+        self,
+        raw: Path,
+        artifact_kind: str = "tttr_photon_stream",
+        *,
+        as_sidecar: bool = False,
+    ) -> int:
         """Embed the instrument file verbatim as the first object."""
         _check_term(artifact_kind, _ARTIFACT_KIND)
         checksum, size = _sha256_of_path(raw)
         data_format = _FORMAT_BY_SUFFIX.get(raw.suffix.lower(), "unknown")
 
-        uid = self._add_payload_from_path(artifact_kind, data_format, raw.name, raw)
+        tttrlib = _tttrlib()
+        if as_sidecar:
+            uid = self._f.add_sidecar_file(artifact_kind, data_format, raw.name, str(raw))
+            if not uid:
+                raise PtoMfdbError(f"could not record sidecar {raw}: {self._f.error()}")
+        else:
+            uid = self._add_payload_from_path(artifact_kind, data_format, raw.name, raw)
         self._describe(
             uid,
             data_format=data_format,
@@ -1692,18 +1856,27 @@ class Measurement:
             file_path=str(raw),
         )
 
-        tttrlib = _tttrlib()
         for suffix in _SIDECAR_SUFFIXES.get(raw.suffix.lower(), ()):
             companion = raw.with_suffix(suffix)
             if not companion.exists():
                 continue
             side_sum, side_size = _sha256_of_path(companion)
-            side = self._add_payload_from_path(
-                "raw_data",
-                _FORMAT_BY_SUFFIX.get(suffix, "unknown"),
-                companion.name,
-                companion,
-            )
+            if as_sidecar:
+                side = self._f.add_sidecar_file(
+                    "raw_data",
+                    _FORMAT_BY_SUFFIX.get(suffix, "unknown"),
+                    companion.name,
+                    str(companion),
+                )
+                if not side:
+                    raise PtoMfdbError(f"could not record sidecar {companion}: {self._f.error()}")
+            else:
+                side = self._add_payload_from_path(
+                    "raw_data",
+                    _FORMAT_BY_SUFFIX.get(suffix, "unknown"),
+                    companion.name,
+                    companion,
+                )
             tttrlib.pto_mark_sidecar(self._f, side, uid)
             self._describe(
                 side,
@@ -1713,6 +1886,32 @@ class Measurement:
                 file_path=str(companion),
             )
         return uid
+
+    def _record_sidecar_raw(self, raw_paths: Sequence[Path], artifact_kind: str) -> None:
+        """Record the raw files' identity without their bytes.
+
+        The analysis-only container's half of the sidecar contract: the raw
+        file stays where it is, beside the container, and this writes what a
+        reader needs to find and verify it — one numbered tag set per file,
+        so a split acquisition (`m000.spc`, `m001.spc`, ...) keeps its parts
+        addressable instead of collapsing into one blob.
+        """
+        _check_term(artifact_kind, _ARTIFACT_KIND)
+        for index, raw in enumerate(raw_paths):
+            checksum, size = _sha256_of_path(raw)
+            data_format = _FORMAT_BY_SUFFIX.get(raw.suffix.lower(), "unknown")
+            prefix = f"_mmfdb_sidecar.{index}."
+            self._text(0, prefix + "name", raw.name)
+            self._text(0, prefix + "kind", artifact_kind)
+            self._text(0, prefix + "data_format", data_format)
+            self._text(0, prefix + "checksum_algorithm", "sha256")
+            self._text(0, prefix + "checksum", checksum)
+            self._uint(0, prefix + "size_bytes", size)
+            try:
+                rel = raw.resolve().relative_to(self._path.parent.resolve())
+                self._text(0, prefix + "path", str(rel))
+            except ValueError:
+                self._text(0, prefix + "path", str(raw))
 
     def _add_payload_from_path(self, kind: str, data_format: str, name: str, path: Path) -> int:
         """Add a file's bytes as an object.
