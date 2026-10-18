@@ -1,12 +1,10 @@
-"""PyMOL's presets, and the chain colour cycle they are built on.
+"""The presets, and the chain colour cycle they are built on.
 
 A preset is the one-click path from "loaded" to "looks like a figure", and it is
-the busiest entry in PyMOL's object menu. Ours were four hand-rolled lines --
-``hide everything; show cartoon`` -- wearing PyMOL's labels: same words,
-different picture. The recipes are transcribed from ``modules/pymol/preset.py``
-now, so what is worth pinning is that each one *runs*, that the ones chimol can
-do exactly are exact, and that the ones it cannot do fully **say what they
-skipped** rather than quietly doing less.
+the busiest entry in the object menu. The recipes are chimol's own, written to
+their names' contracts, so what is worth pinning is that each one *runs*, that
+the ones chimol can do exactly are exact, and that the ones it cannot do fully
+**say what they skipped** rather than quietly doing less.
 
 The chain colour cycle is here too because ``simple`` and ``technical`` are
 built on it, and because it is the commonest colouring in structural biology: an
@@ -42,8 +40,8 @@ _PDB = (
 # --------------------------------------------------------------------------- #
 # The chain colour cycle
 # --------------------------------------------------------------------------- #
-def test_the_cycle_is_pymols_in_pymols_order():
-    """``util._color_cycle``, transcribed. The order is the meaning."""
+def test_the_cycle_is_the_shared_one_in_the_shared_order():
+    """The order is the meaning: chain A always takes the first colour."""
     assert len(CHAIN_COLOR_CYCLE) == 40
     assert CHAIN_COLOR_CYCLE[:5] == ("carbon", "cyan", "lightmagenta", "yellow", "salmon")
     assert CHAIN_COLOR_CYCLE[-1] == "brown"
