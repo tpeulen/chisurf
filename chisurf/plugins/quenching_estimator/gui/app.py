@@ -5,8 +5,7 @@ form of ``quest.view.json``, the quenching table, the three result plots, a 3D t
 The import is inside the factory so that importing this module pulls in neither IMP nor quest.
 
 This window adds to the card's *3D Structure* tab what the Qt tool's molecule widget had: choose Donor or Acceptor, then
-pick the attachment residue from the residue list of the loaded structure (the list stands in for the 3D click of the
-legacy widget: the implot3d plot offers no ray pick).
+pick the attachment residue from the residue list of the loaded structure or by clicking the residue in 3D in ChiMOL.
 
 The ``?`` and **Guide** buttons are drawn by the card itself: ``CardShell`` builds an ``EmTkHelpWindow`` and an
 ``EmTkGuidedTour`` from this folder's ``help.md`` and ``guide.json`` (the card's resource folder is this one), so the
@@ -97,6 +96,22 @@ def make_app():
             self.status = pick_site(self.session, self.pick_target, chain, residue)
             self.used("pick_site")
             self.sync()
+
+        def _on_atom_selection_changed(self, atom_indices: list[int]) -> None:
+            if not atom_indices:
+                return
+            idx = atom_indices[0]
+            try:
+                viewer = getattr(self.chimol, "viewer", None)
+                atoms = getattr(viewer, "_atoms", None) if viewer is not None else None
+                if atoms is None and self.session.structure is not None:
+                    atoms = self.session.structure.atoms
+                if atoms is not None:
+                    chain = str(atoms["chain"][idx])
+                    residue = int(atoms["res_id"][idx])
+                    self.pick(chain, residue)
+            except Exception:
+                pass
 
         def _draw_structure(self) -> None:
             for target, caption in (("donor", "Donor"), ("acceptor", "Acceptor")):

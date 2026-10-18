@@ -25,6 +25,7 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.card_shell import CardShell, Rows
+from chisurf.emtk.chimol_view import ChimolView
 
 if TYPE_CHECKING:
     from chisurf.plugins.quenching_estimator.gui.form_model import ProjectFormModel
@@ -413,6 +414,10 @@ class QuestCard(CardShell):
         self.form = FormState(on_used=self.used)
         self.table_form = FormState(on_used=self.used)
         self.json_form = FormState(on_used=self.used)
+        self.chimol = ChimolView()
+        self._chimol_path = ""
+        self._chimol_sites = None
+        self._chimol_connected = False
 
     def build_docks(self) -> DockManager:
         docks = DockManager(Split("h", 0.40, Region("inputs"), Region("results")))
@@ -702,6 +707,62 @@ class QuestCard(CardShell):
             self.remember("empty_structure")
             return
         trace, donor, acceptor = data
+        pdb = str(self.session.form.project.get("pdb") or "") if self.session.ready else ""
+
+        viewer = self.chimol.viewer
+        if viewer is not None and pdb:
+            if pdb != self._chimol_path:
+                for obj in viewer.list_objects():
+                    viewer.remove_object(obj["id"])
+                self.chimol.app.load(pdb)
+                self.chimol.sync_panel()
+                self._chimol_path = pdb
+                self._chimol_sites = None
+
+            if not self._chimol_connected:
+                handler = getattr(self, "_on_atom_selection_changed", None)
+                if handler is not None and hasattr(viewer, "atomSelectionChanged"):
+                    try:
+                        viewer.atomSelectionChanged.connect(handler)
+                        self._chimol_connected = True
+                    except Exception:
+                        pass
+
+            sites_key = (
+                tuple(donor) if donor is not None else None,
+                tuple(acceptor) if acceptor is not None else None,
+            )
+            if sites_key != self._chimol_sites:
+                viewer.clear_point_overlays()
+                if donor is not None:
+                    viewer.add_sphere(
+                        donor,
+                        radius=2.5,
+                        color=(0.12, 0.47, 0.71, 0.95),
+                        label="Donor",
+                        key="donor",
+                    )
+                if acceptor is not None:
+                    viewer.add_sphere(
+                        acceptor,
+                        radius=2.5,
+                        color=(0.84, 0.15, 0.16, 0.95),
+                        label="Acceptor",
+                        key="acceptor",
+                    )
+                self._chimol_sites = sites_key
+
+            self.chimol.draw(enabled=not getattr(self, "blocked", False))
+            im.set_item_tooltip(
+                tr(
+                    "The structure with the donor (blue) and acceptor (red) attachment sites rendered in ChiMOL."
+                )
+            )
+            self.remember("structure_plot")
+            return
+
+        if getattr(self.chimol, "error", ""):
+            im.text_disabled(f"ChiMOL unavailable ({self.chimol.error}); showing CA / P trace.")
         if implot3d.begin_plot("##questmol", (-1, -1)):
             implot3d.setup_axes("x [A]", "y [A]", "z [A]")
             implot3d.plot_line("backbone", trace[:, 0], trace[:, 1], trace[:, 2])
@@ -759,6 +820,7 @@ class QuestCard(CardShell):
     def close(self) -> None:
         if self.session.running:
             self.session.cancel()
+        self.chimol.close()
 
 
 def make_app(session: QuestSession | None = None) -> QuestCard:

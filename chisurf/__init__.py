@@ -19,6 +19,12 @@ sys.modules["chisurf.logging"] = logging
 import pathlib
 import typing
 
+# Ensure libcifpp/dssp data directory is configured if present in the environment prefix
+if "LIBCIFPP_DATA_DIR" not in os.environ:
+    _cifpp_dir = pathlib.Path(sys.prefix) / "share" / "libcifpp"
+    if _cifpp_dir.is_dir():
+        os.environ["LIBCIFPP_DATA_DIR"] = str(_cifpp_dir)
+
 # A source checkout keeps first-party companion packages below ``modules/``.
 # Bootstrap them before importing any ChiSurf module that may depend on them --
 # and first drop any *other* environment's site-packages a launcher put on the

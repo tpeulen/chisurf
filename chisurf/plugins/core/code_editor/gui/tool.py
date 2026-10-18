@@ -11,14 +11,13 @@ from __future__ import annotations
 import pathlib
 from typing import Any
 
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.plugins.core.code_editor.gui.chat_app import ChatApp, make_chat_app
 from chisurf.plugins.core.code_editor.gui.editor_app import (
     WINDOW_BG,
     CodeEditorApp,
     make_editor_app,
 )
-
-from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 
 class CodeEditorEmtkTool(ChisurfDockTool):

@@ -71,8 +71,8 @@ PANELS = [
         "style",
         "Styles",
         "core/style_manager",
-        "settings_colors.yaml",
-        "Colors and user style configuration.",
+        "settings_chisurf.yaml",
+        "Colors, themes, and EMTK style sheet configuration.",
     ),
     Panel(
         "plots",

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from emtk import im, implot
+from emtk import im, implot, style
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
@@ -150,7 +150,7 @@ class AnisotropyApp(ImApp):
     def draw_controls(self, box: Any) -> None:
         """The top window: the parameter form, then Help and Guide."""
         im.text_colored(
-            (255, 100, 100, 255),
+            style.TEXT_DANGER,
             tr("[Deprecated] Use the unified VV/VH G-Factor and Anisotropy plugin instead."),
         )
         im.separator()

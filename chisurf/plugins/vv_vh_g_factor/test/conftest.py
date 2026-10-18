@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.fixture(autouse=True)
 def hermetic_env(tmp_path, monkeypatch):
     import chisurf.core.settings as settings

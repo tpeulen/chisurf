@@ -915,14 +915,14 @@ class Main(
         # Get the path to the user styles folder
         user_styles_path = cs.core.settings.get_path("settings") / "styles"
 
-        # Check if the folder exists
         if user_styles_path.exists() and user_styles_path.is_dir():
-            # Delete all QSS files in the folder
-            for file in user_styles_path.glob("*.qss"):
-                try:
-                    file.unlink()
-                except Exception as e:
-                    cs.logging.warning(f"Could not delete style file {file}: {e}")
+            # Delete all CSS and QSS files in the folder
+            for pattern in ("*.css", "*.qss"):
+                for file in user_styles_path.glob(pattern):
+                    try:
+                        file.unlink()
+                    except Exception as e:
+                        cs.logging.warning(f"Could not delete style file {file}: {e}")
 
             # Show a confirmation popup
             dialogs.information(
