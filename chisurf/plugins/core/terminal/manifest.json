@@ -1,0 +1,20 @@
+{
+  "id": "terminal",
+  "version": "1.0.0",
+  "display_name": "Tools:System:Terminal",
+  "icon": "▮",
+  "description": "Terminal panes like tmux: tabs, splits and floating windows of real PTY sessions.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools",
+    "System"
+  ],
+  "statefulness": {
+    "enabled": false
+  },
+  "entrypoints": {
+    "emtk": "chisurf.plugins.core.terminal.app:make_app"
+  }
+}

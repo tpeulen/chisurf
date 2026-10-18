@@ -1,0 +1,20 @@
+{
+  "id": "python_terminal",
+  "version": "1.0.0",
+  "display_name": "Tools:System:Python Terminal",
+  "icon": "🐍",
+  "description": "ChiSurf's built-in Python console as a terminal pane: tmux-style tabs, splits and floating windows around the console engine.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools",
+    "System"
+  ],
+  "statefulness": {
+    "enabled": false
+  },
+  "entrypoints": {
+    "emtk": "chisurf.plugins.core.terminal.app:make_console_app"
+  }
+}

@@ -528,22 +528,33 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
 
         themes = []
         try:
+            from emtk import theme as emtk_theme
+
+            for name in emtk_theme.available_stylesheets():
+                if name not in themes:
+                    themes.append(name)
+        except Exception:
+            pass
+
+        try:
             package_styles_dir = pathlib.Path(cs.__file__).parent / "gui" / "styles"
             if package_styles_dir.is_dir():
-                for p in sorted(package_styles_dir.glob("*.qss")):
-                    name = p.name
-                    if name not in themes:
-                        themes.append(name)
+                for pat in ("*.css", "*.qss"):
+                    for p in sorted(package_styles_dir.glob(pat)):
+                        name = p.name
+                        if name not in themes:
+                            themes.append(name)
         except Exception as e:
             logging.log(1, f"Error while listing package styles: {e}")
 
         try:
             user_styles_dir = cs.core.settings.get_path("settings") / "styles"
             if user_styles_dir.is_dir():
-                for p in sorted(user_styles_dir.glob("*.qss")):
-                    name = p.name
-                    if name not in themes:
-                        themes.append(name)
+                for pat in ("*.css", "*.qss"):
+                    for p in sorted(user_styles_dir.glob(pat)):
+                        name = p.name
+                        if name not in themes:
+                            themes.append(name)
         except Exception as e:
             logging.log(1, f"Error while listing user styles: {e}")
 
