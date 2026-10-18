@@ -217,14 +217,25 @@ def container_for(source: str | Path, out_dir: str | Path | None = None) -> Path
     return (Path(out_dir) if out_dir is not None else src.parent) / (src.stem + ".pto")
 
 
-def open_measurement(source: str | Path, out_dir: str | Path | None = None) -> Any:
+def open_measurement(
+    source: str | Path,
+    out_dir: str | Path | None = None,
+    *,
+    raw_data: str = "embed",
+) -> Any:
     """Open the container for *source*, creating it from the instrument file.
 
     Parameters
     ----------
-    source : str or Path
+    source : str | Path
         Instrument file, or an existing container.
-    out_dir : str or Path, optional
+    out_dir : str | Path, optional
+    raw_data : {"embed", "sidecar"}, optional
+        Passed to :meth:`chisurf.core.fio.pto.Measurement.create` when the
+        container does not exist yet. ``"sidecar"`` creates an analysis-only
+        container that records the raw file's identity (checksum, size,
+        path) instead of embedding its bytes; the raw file stays beside the
+        container. Ignored when the container already exists.
 
     Returns
     -------
@@ -236,7 +247,7 @@ def open_measurement(source: str | Path, out_dir: str | Path | None = None) -> A
     target = container_for(source, out_dir)
     if is_measurement(target):
         return Measurement.open(target, writable=True)
-    return Measurement.create(source, out_dir=out_dir)
+    return Measurement.create(source, out_dir=out_dir, raw_data=raw_data)
 
 
 def analysis_run(
@@ -347,6 +358,7 @@ def write_burst_artifact(
     units: Mapping[str, str] | None = None,
     out_dir: str | Path | None = None,
     deinterleave: bool = True,
+    raw_data: str = "embed",
 ) -> str:
     """Write one analysis result into the measurement's container.
 
@@ -411,7 +423,7 @@ def write_burst_artifact(
     from chisurf.core.fio.fluorescence.burst_tree import TABLE
 
     _container, source_run = split_container_path(source)
-    with open_measurement(source, out_dir) as m:
+    with open_measurement(source, out_dir, raw_data=raw_data) as m:
         parents = []
         for label in wanted:
             uid = m._f.find(label)

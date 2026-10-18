@@ -1,0 +1,35 @@
+{
+  "id": "burstwise_import",
+  "version": "0.1.0",
+  "display_name": "File:Data:Burstwise→PTO",
+  "icon": "📦",
+  "description": "Convert legacy burstwise analysis folders (bi4_bur/bg4/br4/BIDs/Info/.mti) to PTO.MFDB containers.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "File",
+    "Data"
+  ],
+  "entrypoints": {
+    "cli": "chisurf.plugins.burst.burstwise_import.cli.main:cli",
+    "services": "chisurf.plugins.burst.burstwise_import.backend.services:register_services",
+    "emtk": "chisurf.plugins.burst.burstwise_import.gui.app:create_app"
+  },
+  "rpc_methods": [
+    {
+      "name": "burstwise_import.jobs.import_folder",
+      "summary": "Convert a legacy burstwise analysis folder to PTO.MFDB containers.",
+      "long_running": true
+    },
+    {
+      "name": "burstwise_import.contract.describe",
+      "summary": "Return the burstwise_import workflow contract.",
+      "long_running": false
+    }
+  ],
+  "operation_types": [
+  "burst_selection",
+  "burst_lifetime_fitting"
+  ]
+}

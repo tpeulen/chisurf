@@ -1,0 +1,37 @@
+[
+  {
+    "title": "Burstwise → PTO Import",
+    "text": "This tool packages legacy burst analysis folders (bi4_bur, bg4, br4, Info, .mti) into standardized .mmfdb.pto containers."
+  },
+  {
+    "title": "Select analysis folder",
+    "text": "Enter or browse for a legacy burstwise folder. Folders can also be dragged and dropped directly onto the window.",
+    "target": "folder_input"
+  },
+  {
+    "title": "Scan folder contents",
+    "text": "Click Scan to discover measurement stems, companion tables, Info settings, and folder-name parameters.",
+    "target": "scan_button",
+    "await": {
+      "hint": "Press Scan."
+    }
+  },
+  {
+    "title": "Source resolution",
+    "text": "Choose how raw TTTR files are located: by re-mapping original paths from .mti or by checking for files with matching stems beside the folder.",
+    "target": "resolution_mode"
+  },
+  {
+    "title": "Convert to PTO",
+    "text": "Click Run to convert detected measurements into .mmfdb.pto containers.",
+    "target": "convert_button",
+    "await": {
+      "hint": "Press Run."
+    }
+  },
+  {
+    "title": "Review results",
+    "text": "The results pane lists written .mmfdb.pto containers and flags any columns that could not be mapped to the dictionary.",
+    "target": "results_pane"
+  }
+]
