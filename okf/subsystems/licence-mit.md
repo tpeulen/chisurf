@@ -36,10 +36,18 @@ chisurf, chimol, mmfdb, ndxplorer, emtk, tttrlib — every piece is his to relic
   (altloc handling, menu labels, camera constants — uncopyrightable facts/measurements)
   and output-format features (write .pml, open_dx, xyz).
 
-## OPEN — owner decision: chimol presets
-`chimol/plugins/presets/commands.py` (646 lines) self-describes as "transcribed"
-from the reference viewer's GPL `preset.py` (recipes, order, names). Options: (a) rewrite the
-recipes from the observed behaviour spec (clean-room, keeps parity claims),
-(b) keep that one file GPL (file-level dual licence inside the MIT project),
-(c) accept the risk. This is the only file in the audit with literal
-transcription language; everything else is facts/measurements/interop.
+## RESOLVED — owner decisions (2026-10-17)
+
+1. **Presets: clean-room (done).** `chimol/plugins/presets/commands.py` rewritten
+   from the names' contracts; 43-test behavioural suite green; see
+   `okf-mit-cleanroom-audit.md` in the chimol repo (commit `5ad9d9b`) for the
+   full clean-room audit it opened — nine chimol modules still carry GPL C++
+   expressions (Class A there, plan included) and the fact-tables (Class B)
+   need provenance re-pointing.
+2. **ndxplorer: MIT (done).** Sole author; committed `2327ef3` in the ndxplorer
+   repo (LICENSE, pyproject, README). chisurf's gitlink advance belongs to the
+   landing sequence.
+3. **chinet: obsolete.** Zero importers in the merged tree (verified by grep
+   over chisurf/ + modules/); it survives only as a stale dev checkout on the
+   main tree and PYTHONPATH entries in old gate scripts. licensing.md notes it.
+   No relicensing needed; the checkout can be dropped from modules/ at leisure.

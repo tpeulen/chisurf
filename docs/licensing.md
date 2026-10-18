@@ -15,7 +15,7 @@ what you are looking at rather than where it lives in the package:
 | What | Licence | File |
 |---|---|---|
 | **Source code** — everything under `chisurf/`, `build_tools/`, `test/` | MIT | `LICENSE` at the repository root |
-| **Companion packages** — the source checkouts under `modules/` | their own licences (`chimol` and `mmfdb` are MIT; see each package) | each package's `LICENSE` |
+| **Companion packages** — the source checkouts under `modules/` | their own licences (`chimol` and `mmfdb` are MIT; `ndxplorer` is MIT as of 2026-10-17; `chinet` is obsolete — unreachable from ChiSurf and unmaintained) | each package's `LICENSE` |
 | **Documentation** — everything under `docs/` | Creative Commons **Attribution-ShareAlike 4.0 International** | [`docs/LICENSE`](LICENSE) |
 
 The source code's licence is MIT:
