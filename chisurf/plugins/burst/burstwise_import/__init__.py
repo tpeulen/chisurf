@@ -26,10 +26,10 @@ from chisurf.core.plugin import load_manifest
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
     name = _manifest.display_name
-    icon = _manifest.icon or "📦"
+    icon = _manifest.icon or "📥"
 else:
     name = "File:Data:Burstwise→PTO"
-    icon = "📦"
+    icon = "📥"
 
 
 def create_mti_resolver(

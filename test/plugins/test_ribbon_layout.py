@@ -32,6 +32,7 @@ EXPECTED = {
         "Setup": ["Menu Switch", "Settings", "Switch User"],
         "Data": [
             "BID→Analysis",
+            "Burstwise→PTO",
             "MFD Prepare",
             "PTO Inspector",
             "Split/Convert",
@@ -74,7 +75,7 @@ EXPECTED = {
         "Photon data": ["TTTR Tools"],
         "Calculators": ["Calculators", "Light Path Simulator", "Spectra Downloader", "Wizards"],
         "Views": ["Acquisition", "Global View", "ndX"],
-        "System": ["Code Editor", "Games", "MMFDB Admin"],
+        "System": ["Code Editor", "Games", "MMFDB Admin", "Python Terminal", "Terminal"],
     },
 }
 

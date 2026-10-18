@@ -2,7 +2,7 @@
   "id": "burstwise_import",
   "version": "0.1.0",
   "display_name": "File:Data:Burstwise→PTO",
-  "icon": "📦",
+  "icon": "📥",
   "description": "Convert legacy burstwise analysis folders (bi4_bur/bg4/br4/BIDs/Info/.mti) to PTO.MFDB containers.",
   "authors": [
     "Thomas-Otavio Peulen"
