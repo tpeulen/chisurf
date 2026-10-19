@@ -38,7 +38,8 @@ windows show. Type an expression and press Enter; the value comes back under `Ou
 - **Tab** completes against the live objects; **Shift+Tab** or `(` shows the call signature.
 - **Up / Down** walk the history, filtered by what you typed; **Ctrl+R** searches it.
 - Ctrl+K / Ctrl+U cut to the end / start of the line, Ctrl+Y puts it back, **Ctrl+L** clears.
-- **Ctrl+C** without a selection abandons the input; with one it copies.
+- **Ctrl+C** without a selection interrupts the running cell (and drops the cells queued behind
+  it); with no cell running it abandons the input. With a selection it copies.
 - Pasted `>>>` and `In [1]:` prompts are stripped.
 
 ## Magics and help
@@ -60,9 +61,14 @@ Right-click an image for **Copy image** / **Save image as…**.
 **Macro ▸ Record** collects what runs in the main window's console; click again to save a `.cm.py`,
 replayed with **Macro ▸ Run Macro…** or `%run -i`.
 
-A cell runs on the window's frame: a long command holds the window until it returns, and Ctrl+C
-cannot stop it. Run long work in a shell pane (`python script.py`). The transcript keeps the last
-`gui.console.max_blocks` lines.
+A cell runs beside the window, not in it: the window keeps drawing, `print` output appears as it
+is written, and a strip over the input shows **Running…** with the elapsed time, how many cells
+wait behind it and an **Interrupt** button. Enter while a cell runs queues the next one.
+**Ctrl+C** or **Interrupt** stops the cell with `KeyboardInterrupt` at its next Python line; a cell
+inside one long C call (`time.sleep(60)`, a large numpy operation) stops when that call returns.
+`gui.…` calls are made by the window between two frames, so a cell can open tools and focus docks
+safely; `api` talks to the session directly. The transcript keeps the last `gui.console.max_blocks`
+lines.
 
 ## Further reading
 

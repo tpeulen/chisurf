@@ -108,11 +108,36 @@ The `-i` runs the file *in the console's namespace*, so anything the script
 defines is still there afterwards. Without it the script gets a clean namespace
 and leaves nothing behind.
 
-A cell runs on the window's frame: a long command holds the window until it
-returns, and Ctrl+C cannot stop it. Run long work from a shell pane
-(**Terminal**, then `python analysis.py`).
-
 The [Code Editor](../concepts/code_editor.md) is for a script you keep.
+
+## Long commands and Ctrl+C
+
+A cell runs on the console's own worker thread, so the window keeps drawing
+while it runs and its `print` output streams into the transcript line by line.
+A strip over the input shows **Running… 3.2 s**, how many cells are queued
+behind it, and an **Interrupt** button. Typing and pressing Enter while a cell
+runs queues the next cell; it starts when the first is done.
+
+**Ctrl+C** (without a selection) or **Interrupt** stops the running cell:
+
+```text
+In [3]: while True: pass
+
+KeyboardInterrupt
+```
+
+and drops the cells that were queued behind it; the console is ready for the
+next command at once. The interrupt lands at the cell's next Python bytecode,
+so a cell sitting in one long C call — `time.sleep(60)`, a single large numpy
+operation, a blocking file read — stops only when that call returns. Loops of
+such calls stop at the next iteration.
+
+What a cell does to the window is done by the window: `gui` is a proxy whose
+method calls (`gui.docks.focus("fits")`, `gui.request_frame()`) run on the
+window's thread between two frames and hand back their value. `api` needs no
+such care — it talks to the session over the console's own connection, so
+`api.add_fit(...)`, `api.run_fit(...)` from a cell work as they do from a dock.
+A cell cannot call `signal.signal` (that is reserved to the main thread).
 
 ## Plotting
 
@@ -164,8 +189,8 @@ image as…**. Turning `gui.console.images` off shows the text form instead.
 * **Up / Down** walk the history, filtered by what you had typed; **Ctrl+R**
   searches it (while the console has the keys, Ctrl+R is not *Reinitialize*).
 * **Ctrl+K / Ctrl+U** cut to the end / start of the line, **Ctrl+Y** puts it
-  back, **Ctrl+L** clears, **Ctrl+C** abandons the input (with a selection it
-  copies).
+  back, **Ctrl+L** clears, **Ctrl+C** interrupts the running cell, or abandons
+  the input when none runs (with a selection it copies).
 * Pasted `>>>` and `In [1]:` prompts are stripped.
 * `!ls -l` runs a shell command; `files = !ls` captures the output.
 * `%quickref` is the one-page summary; `%lsmagic` lists every `%` command.

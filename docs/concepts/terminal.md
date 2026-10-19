@@ -33,8 +33,9 @@ whose process exits keeps its output and says *process exited*.
 
 A **Python pane** is the console of the main window: an input box under a transcript, `In [n]:` / `Out[n]:`,
 blocks, history, completion against live objects, `obj?` help, `%` magics, inline plots. Its behaviour is
-described in [Driving ChiSurf from its console](../guides/59_console.md). A cell runs on the window's frame, so a long
-command holds the window until it returns; long work belongs in a shell pane or a worker.
+described in [Driving ChiSurf from its console](../guides/59_console.md). A cell runs on the console's worker thread: the
+window keeps drawing, output streams in, a *Running…* strip with an *Interrupt* button shows while it runs, and
+Ctrl+C raises `KeyboardInterrupt` in it. Calls on `gui` are marshalled to the window's thread.
 
 ## Panes, splits, windows
 

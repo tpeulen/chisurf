@@ -9,19 +9,32 @@ timestamp: '2026-08-06T00:00:00Z'
 
 # Where to pick this up
 
-1. **Console help lives with the Terminal app** (2026-10-19). The Console dock hosts the
-   Terminal app; its `?` / *Guide* are `chisurf/plugins/core/terminal/help.md` / `guide.json`,
-   which carry the console reference (scope, keys, magics, plots, macros). The console's own
-   `chisurf/core/console/help.md` / `guide.json` and `ShellConsole`'s strip were deleted as
-   orphaned. Docs: `docs/concepts/terminal.md`, `docs/guides/110_terminal.md`,
-   `docs/guides/59_console.md`; figures from `docs/guides/screenshots/terminal_shot.py`.
-2. **Open: a cell runs on the frame thread** -- a long command freezes the window and Ctrl+C
-   cannot stop it (`ShellConsole.interrupt` only abandons the input). The Qt-era
-   `gui.console.max_output_chars` / `flush_interval_ms` defaults in
-   `chisurf/core/console/settings.py` are read by nothing in the emtk console. Running cells on
-   a worker with an interrupt is the real fix; the docs state the limitation.
-3. **i18n**: the new Terminal guide step and help text are not in the `.ts` catalogues yet
-   (catalogue work is queued separately); the deleted console guide's strings are stale there.
+1. **Measure:** console cells run on a worker (2026-10-19). `test/native_emtk/test_emtk_console_worker.py`
+   drives the shell with keys: frames drawn while `time.sleep(2)` runs (max frame < 0.5 s), `print`
+   ticks arriving one by one, `while True: pass` stopped by Ctrl+C in < 1 s, a queued second cell,
+   the *Interrupt* button, `api.add_fit` and `gui.…` from a cell; the screenshot is
+   `/private/tmp/chisurf-native-gpu/emtk_console_running.png`. Trap: a behaviour test asserting right
+   after Enter needs `console.frame_budget = 60.0` (the console test fixtures set it) or
+   `console.wait()`, because a first-cell import outlasts the 50 ms budget under a full suite. A
+   pure-Python busy cell contends for the GIL: frames slow (the fps readout showed ~8 fps during a
+   busy-loop screenshot) but keep coming.
+2. **Open:** a cell inside one long C call (`time.sleep(60)`, one big numpy operation) is
+   interrupted only when the call returns; the async exception lands at the next bytecode. An
+   interruptible sleep would mean patching the cell's `time.sleep`; not done.
+3. **Open:** `ConsoleSession` (`chisurf/plugins/core/terminal/console_session.py`, a grid-drawn Python
+   engine no pane uses any more, only its own tests) still runs cells synchronously; delete it or
+   route it through `ShellConsole`.
+4. **Open:** `EmtkShellApp._draw_console` rewrites `console.control.boxes` into window coordinates
+   after drawing (so tests can click them) while presses arrive in the control's own frame; in-console
+   clicks (completion rows, pager ✕, *Interrupt*) missed. `ConsoleControl._to_boxes` now maps a press
+   into the boxes' frame; the cleaner fix is to stop rewriting `control.boxes` and let tests click
+   `item_rects` only (the plot tests read `control.boxes` / `image_boxes` in window coordinates).
+5. **Open:** the Qt-era `gui.console.max_output_chars` / `flush_interval_ms` defaults in
+   `chisurf/core/console/settings.py` are read by nothing in the emtk console (its output is
+   coalesced per frame instead).
+6. **Open:** i18n: the Terminal guide step, the help text and the console's new strings (*Running…*,
+   *Interrupt*, *queued cell(s) dropped*) are not in the `.ts` catalogues yet (catalogue work is
+   queued separately); the deleted console guide's strings are stale there.
 
 # Scope
 
@@ -149,6 +162,24 @@ and paints it over them, SVG rasterised by `emtk.svg`, with a right-click
 `test/console/test_inline_figures.py`,
 `test/native_emtk/test_emtk_shell_console_plots.py`; screenshots under
 `/private/tmp/chisurf-console-plots` and `/private/tmp/chisurf-native-gpu`.
+
+**Console help lives with the Terminal app (2026-10-19).** The Console dock hosts the Terminal
+app; its `?` / *Guide* are `chisurf/plugins/core/terminal/help.md` / `guide.json`, which carry the
+console reference (scope, keys, magics, plots, macros). Docs: `docs/concepts/terminal.md`,
+`docs/guides/110_terminal.md`, `docs/guides/59_console.md`; figures from
+`docs/guides/screenshots/terminal_shot.py`.
+
+**Cells run off the frame (2026-10-19).** The emtk console runs a cell on its worker thread, so the
+window keeps drawing; a *Running…* strip (elapsed time, queued count, *Interrupt*) sits over the
+input; Ctrl+C raises `KeyboardInterrupt` in the cell; a second cell queues. Window calls from a
+cell go through `gui`'s `FrameProxy` to the frame thread; `api` is used directly (its ZMQ client
+serialises calls with its own lock). How: one daemon worker per console; output, displays, `%clear` and the echo
+reach the transcript through an outbox the frame drains in `poll()` (consecutive writes coalesce);
+Ctrl+C uses `PyThreadState_SetAsyncExc`, armed only inside user code by the interpreter's
+`run_guard` context manager (`chisurf/core/console/interpreter.py`; a context manager adds no frame
+to user tracebacks, a wrapper did); interrupt drops the queued cells; window objects (types from
+`emtk`, `chisurf.emtk`, `chisurf.gui`) are wrapped in `FrameProxy`; the submitting frame waits
+`frame_budget` (50 ms) so a quick cell shows in the same frame. Open items: "Where to pick this up".
 
 # Scriptability & tests
 

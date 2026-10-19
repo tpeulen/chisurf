@@ -881,7 +881,10 @@ class EmtkShellApp(ImApp):
                 self.post_show.start()
             self.post_show.poll()
         self.project.poll()
-        self.console.poll()
+        # Every Python pane, not only the one in view: a cell running in a pane tabbed under
+        # another may be waiting for the window (ShellConsole.call_on_frame).
+        for console in self._python_consoles():
+            console.poll()
         self._push_console_namespace()
         # Drawn again this frame if the workspace is shown; a rectangle left from a frame it
         # was tabbed under would take presses meant for the tool in front.
@@ -1449,8 +1452,8 @@ class EmtkShellApp(ImApp):
         names = {"cs": chisurf, "np": np, "os": os, "gui": self}
         self._close_console_channel()
         if session is not None:
-            # A connection of the console's own: it calls on the frame thread, and a ZMQ socket
-            # must not cross threads (the docks' calls run on workers).
+            # A connection of the console's own: its cells call from the console's worker thread,
+            # and the docks' connection is theirs (the client serialises its own calls).
             api = getattr(session, "api", None)
             if getattr(session, "server", None) is not None:
                 from chisurf.emtk.shell_session import ProjectChannel

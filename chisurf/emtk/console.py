@@ -21,7 +21,17 @@ what the Qt console does, behaviour for behaviour (the parity test drives both w
   ``obj?`` opens the help in the pager below the transcript (Escape closes it).
 * **Editing**: Ctrl+K / Ctrl+U cut to the end / start of the line, Ctrl+Y puts it back, Ctrl+A /
   Ctrl+E go to the start / end of the line, Ctrl+L clears the transcript, Ctrl+C without a selection
-  abandons the input (with a selection it copies).
+  interrupts the running cell, or abandons the input when none runs (with a selection it copies).
+* **Cells run off the frame**: a cell runs on the console's worker thread, so the window keeps
+  drawing while it runs and its output streams into the transcript as it is written. A strip over
+  the input says *Running…* with the elapsed time, the number of cells waiting behind it and an
+  *Interrupt* button; Enter while a cell runs queues the next one. Ctrl+C (or *Interrupt*) raises
+  ``KeyboardInterrupt`` in the running cell and drops the queued ones; it lands at the next Python
+  bytecode, so a cell inside one long C call (``time.sleep``, a big numpy operation) stops when that
+  call returns. What a cell does to the window is marshalled: ``gui`` is a :class:`FrameProxy`, so
+  ``gui.method(...)`` runs on the frame thread between two frames and returns its value;
+  :meth:`ShellConsole.call_on_frame` does the same for any callable. ``api`` needs no marshalling
+  (its connection is the console's own, and locked).
 * **The macro channel**: while the console is open, ``chisurf.run(code)`` runs *code* here (from any
   thread: a worker's call is queued for the frame) and records it in the operation history as
   ``run command: …``; ``chisurf.log(code)`` records without running. Every command is appended to the
@@ -31,11 +41,12 @@ what the Qt console does, behaviour for behaviour (the parity test drives both w
 What runs here is ordinary Python in the console's namespace: ``cs`` (the package), ``gui`` (the
 shell), ``api`` (the session's :class:`~chisurf.core.api.ChiSurfAPI`, once the session is up), ``np``
 and ``os``. Fits and datasets are reached through ``api``, which goes through the session server
-like every dock does. The cell runs on the frame thread, as the Qt console runs it on the GUI thread.
+like every dock does.
 
 Deliberate differences from the Qt console: the input is its own box under the transcript (Qt types
 at an inline prompt in one document); ``text/html`` is shown as its text; ``input()`` raises
-``EOFError`` (a frame cannot wait for a line).
+``EOFError`` (there is no line to wait for); a cell runs on a worker thread where the Qt console
+ran it on the GUI thread, so ``signal.signal`` (main thread only) raises in a cell.
 
 Images are drawn in the transcript as they are in the Qt console: a matplotlib figure after the cell
 that drew it (or at ``plt.show()``), anything with ``_repr_png_`` / ``_repr_svg_`` (emtk figures,
@@ -46,10 +57,15 @@ with its aspect kept, scrolls with the text, and its right-click menu copies or 
 from __future__ import annotations
 
 import contextlib
+import ctypes
+import functools
 import logging
 import os
 import pathlib
+import queue
+import sys
 import threading
+import time
 from collections import deque
 from typing import Any, Callable
 
@@ -95,11 +111,171 @@ _PALETTE[Token.BRACKET_ERROR] = (176, 36, 36)
 OUTPUT_PALETTE_LIGHT = tuple(_PALETTE)
 
 
+#: How long the frame that submits a cell waits for it (seconds): a quick cell's output is in that
+#: same frame, with no *Running…* strip flashing; a longer one goes on running behind the frames.
+FRAME_BUDGET = 0.05
+#: Module prefixes of the objects a cell reaches through a :class:`FrameProxy` (the window's).
+_FRAME_MODULES = ("emtk", "chisurf.emtk", "chisurf.gui")
+
+
+def _async_raise(thread_id: int, exc: type[BaseException] | None) -> int:
+    """Raise *exc* in the thread *thread_id* at its next bytecode; ``None`` withdraws a pending one.
+
+    ``PyThreadState_SetAsyncExc``, the standard way to interrupt a Python thread from another.
+    Returns the number of threads it was set on.
+    """
+    target = ctypes.py_object(exc) if exc is not None else None
+    return int(ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_ulong(thread_id), target))
+
+
+class Cell:
+    """One submitted cell: what to run and, once it ran, its result.
+
+    Attributes
+    ----------
+    source : str
+    echo, hidden : bool
+        As :meth:`ShellConsole.execute` takes them.
+    result : ExecutionResult or None
+        Set when the cell ran.
+    cancelled : bool
+        Dropped from the queue (Ctrl+C) before it started.
+    done : threading.Event
+        Set when the worker is through with it (ran or skipped).
+    """
+
+    def __init__(self, source: str, echo: bool = True, hidden: bool = False) -> None:
+        self.source = str(source)
+        self.echo = bool(echo)
+        self.hidden = bool(hidden)
+        self.result: Any = None
+        self.cancelled = False
+        self.started_at: float | None = None
+        self.done = threading.Event()
+
+
+class _FrameCall:
+    """A call a worker asked the frame thread to make, and what it returned or raised."""
+
+    def __init__(self, fn: Callable, args: tuple, kwargs: dict) -> None:
+        self.fn, self.args, self.kwargs = fn, args, kwargs
+        self.value: Any = None
+        self.error: BaseException | None = None
+        self.abandoned = False
+        self.done = threading.Event()
+
+    def run(self) -> None:
+        if self.abandoned:
+            self.done.set()
+            return
+        try:
+            self.value = self.fn(*self.args, **self.kwargs)
+        except BaseException as exc:  # noqa: BLE001 - handed back to the cell that called
+            self.error = exc
+        finally:
+            self.done.set()
+
+
+class _InterruptWindow:
+    """Entered around a cell's user code: while it is open, Ctrl+C may raise in the worker.
+
+    An interrupt asked for before the window opened (the cell was still compiling) raises on entry;
+    one that arrives after it closed is withdrawn, so ``KeyboardInterrupt`` never lands in the
+    console's own bookkeeping.
+    """
+
+    def __init__(self, console: ShellConsole) -> None:
+        self.console = console
+        self.active = False
+
+    def __enter__(self) -> _InterruptWindow:
+        console = self.console
+        if threading.get_ident() != console._worker_id:
+            return self
+        with console._lock:
+            if console._interrupt_pending:
+                console._interrupt_pending = False
+                raise KeyboardInterrupt
+            console._interruptible += 1
+        self.active = True
+        return self
+
+    def __exit__(self, *exc_info: Any) -> bool:
+        if self.active:
+            console = self.console
+            with console._lock:
+                console._interruptible -= 1
+                if not console._interruptible:
+                    _async_raise(console._worker_id, None)  # one that came too late: withdrawn
+        return False
+
+
+def unwrap(value: Any) -> Any:
+    """The object behind a :class:`FrameProxy` (anything else as it is)."""
+    if isinstance(value, FrameProxy):
+        return object.__getattribute__(value, "_target")
+    return value
+
+
+class FrameProxy:
+    """A window object as a cell sees it: its method calls and attribute writes run on the frame.
+
+    A cell runs on the console's worker thread and the window is drawn on the frame thread, which
+    owns the window's state. ``gui.open_plugin("x")`` on the proxy queues the call for the frame
+    (:meth:`ShellConsole.call_on_frame`), waits for it and returns its value; an attribute that is
+    itself a window object comes back proxied too, so ``gui.docks.focus("fits")`` is marshalled the
+    whole way. Reading a plain attribute does not wait for a frame.
+
+    Parameters
+    ----------
+    target : object
+    console : ShellConsole
+    """
+
+    __slots__ = ("_target", "_console")
+
+    def __init__(self, target: Any, console: ShellConsole) -> None:
+        object.__setattr__(self, "_target", target)
+        object.__setattr__(self, "_console", console)
+
+    def __getattr__(self, name: str) -> Any:
+        target = object.__getattribute__(self, "_target")
+        console = object.__getattribute__(self, "_console")
+        value = getattr(target, name)
+        if callable(value) and not isinstance(value, type):
+            return console._frame_method(value)
+        return console._marshal_value(value)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        console = object.__getattribute__(self, "_console")
+        console.call_on_frame(
+            setattr, object.__getattribute__(self, "_target"), name, unwrap(value)
+        )
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        target = object.__getattribute__(self, "_target")
+        return object.__getattribute__(self, "_console")._frame_method(target)(*args, **kwargs)
+
+    def __dir__(self) -> list[str]:
+        return dir(object.__getattribute__(self, "_target"))
+
+    def __repr__(self) -> str:
+        return repr(object.__getattribute__(self, "_target"))
+
+    def __eq__(self, other: Any) -> bool:
+        return object.__getattribute__(self, "_target") == unwrap(other)
+
+    def __hash__(self) -> int:
+        return hash(object.__getattribute__(self, "_target"))
+
+
 def output_palette() -> tuple:
     """The transcript's colours for the theme in effect (:mod:`emtk.theme`)."""
     from emtk import theme
 
     return OUTPUT_PALETTE_LIGHT if theme.is_light() else OUTPUT_PALETTE
+
+
 #: Transcript line kind -> colour role.
 _KIND_TOKEN = {
     "stdout": Token.TEXT,
@@ -404,9 +580,13 @@ class ConsoleControl:
         self._line_h = line_h
         rows = max(1, min(INPUT_LINES, len(self.input.document)))
         input_h = rows * line_h + 6.0
-        prompt = PROMPT.format(n=console.engine.execution_count)
+        # While cells run, what is typed now is the cell after them.
+        running = console.running
+        ahead = (1 if running is not None and not running.hidden else 0) + console.queued
+        prompt = PROMPT.format(n=console.engine.execution_count + ahead)
         prompt_w = p.text_width(prompt) + 6.0
-        body_h = max(line_h, h - input_h - 2.0)
+        status_h = line_h + 4.0 if console.busy else 0.0
+        body_h = max(line_h, h - input_h - status_h - 2.0)
         if console.pager_title:
             pager_h = max(3 * line_h, body_h * 0.5)
             out_h = max(line_h, body_h - pager_h - line_h - 2.0)
@@ -438,6 +618,8 @@ class ConsoleControl:
             self.boxes["pager"] = (x, top + line_h, w, pager_h)
             self.pager.draw(p, x, top + line_h, w, pager_h)
         iy = y + h - input_h
+        if status_h:
+            self._draw_status(p, x, iy - status_h, w, status_h)
         self.boxes["prompt"] = (x, iy, prompt_w, input_h)
         self.boxes["input"] = (x + prompt_w, iy, max(1.0, w - prompt_w), input_h)
         from emtk.painter import ALIGN_LEFT, ALIGN_VCENTER
@@ -460,6 +642,40 @@ class ConsoleControl:
         self.input.draw(p, *self.boxes["input"])
         self._draw_calltip(p, x, iy, w)
         self._draw_completions(p, x + prompt_w, iy, w - prompt_w)
+
+    def _draw_status(self, p, x: float, top: float, w: float, h: float) -> None:
+        """The strip over the input while a cell runs: *Running…*, the queue, *Interrupt*."""
+        from emtk.painter import ALIGN_CENTER, ALIGN_LEFT, ALIGN_VCENTER
+        from emtk.style import BORDER, BUTTON, FRAME_BG, TEXT
+
+        console = self.console
+        palette = output_palette()
+        p.fill_rect(x, top, w, h, FRAME_BG)
+        cell = console.running
+        if cell is not None and cell.started_at is not None:
+            elapsed = time.monotonic() - cell.started_at
+            text = tr("Running… {seconds:.1f} s").format(seconds=elapsed)
+        else:
+            text = tr("Running…")
+        if console.queued:
+            text += "  " + tr("({n} queued)").format(n=console.queued)
+        text += "  " + tr("Ctrl+C interrupts")
+        label = tr("Interrupt")
+        bw = p.text_width(label) + 20.0
+        bx = x + w - bw - 4.0
+        p.text(
+            x + 8.0,
+            top,
+            max(1.0, bx - x - 12.0),
+            h,
+            ALIGN_LEFT | ALIGN_VCENTER,
+            text,
+            palette[Token.NUMBER],
+        )
+        self.boxes["interrupt"] = (bx, top + 2.0, bw, h - 4.0)
+        p.fill_rect(bx, top + 2.0, bw, h - 4.0, BUTTON)
+        p.stroke_rect(bx, top + 2.0, bw, h - 4.0, BORDER)
+        p.text(bx, top + 2.0, bw, h - 4.0, ALIGN_CENTER | ALIGN_VCENTER, label, TEXT)
 
     def _draw_calltip(self, p, x: float, iy: float, w: float) -> None:
         tip = self.console.calltip_text
@@ -515,14 +731,35 @@ class ConsoleControl:
     # ── input ─────────────────────────────────────────────────────────────
 
     def _box_at(self, px: float, py: float) -> str | None:
-        for name in ("completions", "pager.close", "input", "pager", "output", "prompt"):
+        for name in (
+            "completions",
+            "pager.close",
+            "interrupt",
+            "input",
+            "pager",
+            "output",
+            "prompt",
+        ):
             box = self.boxes.get(name)
             if box and box[0] <= px < box[0] + box[2] and box[1] <= py < box[1] + box[3]:
                 return name
         return None
 
+    def _to_boxes(self, px: float, py: float, x: float, y: float) -> tuple[float, float]:
+        """A pointer position in the frame :attr:`boxes` are in.
+
+        The host hands the press in the control's own frame (its box at *x*, *y*); the shell's
+        Console dock moves :attr:`boxes` to window coordinates after drawing (so a test can click
+        them). The output box starts at the control's origin either way, which gives the shift.
+        """
+        out = self.boxes.get("output")
+        if out is None:
+            return px, py
+        return px + out[0] - x, py + out[1] - y
+
     def press(self, px, py, x=0.0, y=0.0, w=0.0, h=0.0, modifiers=0, clicks=1):
         self.has_focus = True
+        px, py = self._to_boxes(px, py, x, y)
         where = self._box_at(px, py)
         if where == "completions":
             for row in range(len(self.console.completions)):
@@ -533,6 +770,9 @@ class ConsoleControl:
             return where
         if where == "pager.close":
             self.console.close_pager()
+            return where
+        if where == "interrupt":
+            self.console.interrupt()
             return where
         self.console.dismiss_popups()
         if where in ("input", "prompt"):
@@ -545,6 +785,7 @@ class ConsoleControl:
         return where
 
     def drag(self, px, py, x=0.0, y=0.0, w=0.0, h=0.0):
+        px, py = self._to_boxes(px, py, x, y)
         editor = self._editor()
         box = self.boxes.get(self.target)
         if box is not None:
@@ -602,16 +843,21 @@ class ConsoleControl:
         return self.input.text
 
     def animating(self) -> bool:
-        """Whether the console needs a frame: pending queue, unrendered output or caret focus."""
+        """Whether the console needs a frame: queued commands, a cell's output or calls, focus."""
+        console = self.console
         return (
-            self.console.transcript.revision != self._revision
-            or bool(self.console._queue)
-            or self.console._focus_requested
+            console.transcript.revision != self._revision
+            or bool(console._queue)
+            or bool(console._outbox)
+            or bool(console._frame_calls)
+            or console._focus_requested
         )
 
     def next_frame_in(self) -> float | None:
-        """Frame delay while animating (16 ms), else None."""
-        return 0.016 if self.animating() else None
+        """Frame delay while animating (16 ms), every 0.1 s while a cell runs, else None."""
+        if self.animating():
+            return 0.016
+        return 0.1 if self.console.busy else None
 
     def close(self) -> None:
         """Close this control and its console."""
@@ -621,7 +867,6 @@ class ConsoleControl:
     def screen(self) -> _TranscriptScreenAdapter:
         """Duck-typed screen view over transcript for callers that expect a screen model."""
         return _TranscriptScreenAdapter(self.console.transcript, self)
-
 
 
 def _as_bytes(payload: Any) -> bytes:
@@ -662,7 +907,8 @@ class ShellConsole:
         The session log every command is appended to; ``False`` for none, ``None`` for
         ``chisurf.core.settings.session_file``.
     wake : callable, optional
-        Asks for a frame (a worker queued a command).
+        Asks for a frame from any thread (a cell wrote output, finished or needs the window; a worker
+        queued a command).
     record_command : callable, optional
         ``record_command(code)``: tells the operation history a command ran (the shell's undo).
     init_source : str, optional
@@ -687,15 +933,34 @@ class ShellConsole:
         self.wake = wake
         self.record_command = record_command
         self.transcript = Transcript(int(self.settings["max_blocks"]))
+        self._thread = threading.get_ident()
+        # The worker: cells run there one at a time; what they write and draw comes back to the frame
+        # through the outbox, and what they ask of the window through the call queue.
+        self._lock = threading.Lock()
+        self._jobs: queue.SimpleQueue[Cell | None] = queue.SimpleQueue()
+        self._worker: threading.Thread | None = None
+        self._worker_id: int | None = None
+        self._pending: list[Cell] = []
+        self._current: Cell | None = None
+        self._unfinished = 0
+        self._outbox: deque[tuple[Callable, tuple]] = deque()
+        self._frame_calls: deque[_FrameCall] = deque()
+        self._interruptible = 0
+        self._interrupt_pending = False
+        self._waiting = False
+        #: Seconds the submitting frame waits for a cell (:data:`FRAME_BUDGET`).
+        self.frame_budget = FRAME_BUDGET
         self.engine = Shell(
-            user_ns=dict(namespace or {}),
-            write=self._write,
-            display=self._display,
+            user_ns={},
+            write=self._engine_write,
+            display=self._engine_display,
             read_input=None,
-            clear=self.clear,
-            edit_file=self._edit_file,
+            clear=self._engine_clear,
+            edit_file=self._engine_edit_file,
             history=HistoryManager(history_path, max_entries=int(self.settings["history_length"])),
         )
+        self.engine.user_ns.update(self._marshalled(namespace or {}))
+        self.engine.interpreter.run_guard = lambda: _InterruptWindow(self)
         self.control = ConsoleControl(self)
         self.recording = False
         self._macro = ""
@@ -710,7 +975,6 @@ class ShellConsole:
         self._history_prefix = ""
         self._history_stash = ""
         self._kill_ring: list[str] = []
-        self._thread = threading.get_ident()
         self._queue: deque[tuple[str, str]] = deque()
         self._installed: dict[str, Any] | None = None
         #: Whether a command ran: only then is the history file written back.
@@ -859,8 +1123,257 @@ class ShellConsole:
         editor.set_text(str(text))
         editor.set_cursor(editor.document.bottom())
 
-    def execute(self, source: str, *, echo: bool = True, hidden: bool = False):
+    # ── the worker: cells run off the frame ───────────────────────────────
+
+    def _on_frame(self) -> bool:
+        return threading.get_ident() == self._thread
+
+    def _wake(self) -> None:
+        if self.wake is not None:
+            with contextlib.suppress(Exception):
+                self.wake()
+
+    def _post(self, fn: Callable, *args: Any) -> None:
+        """Run ``fn(*args)`` on the frame: now when on it, else at the next :meth:`poll`, in order."""
+        if self._on_frame():
+            fn(*args)
+            return
+        with self._lock:
+            last = self._outbox[-1] if self._outbox else None
+            if (
+                last is not None
+                and fn == self._write
+                and last[0] == self._write
+                and last[1][0] == args[0]
+            ):
+                # A loop printing line by line: one append per frame, not one per line.
+                self._outbox[-1] = (fn, (args[0], last[1][1] + args[1]))
+            else:
+                self._outbox.append((fn, args))
+        self._wake()
+
+    def _engine_write(self, name: str, text: str) -> None:
+        if self._on_frame():
+            if self._current is not None:
+                # The streams are swapped while a cell runs; the frame's own prints are not its output.
+                stream = sys.__stderr__ if name == "stderr" else sys.__stdout__
+                if stream is not None:
+                    stream.write(text)
+                return
+            self._write(name, text)
+            return
+        self._post(self._write, name, text)
+
+    def _engine_display(self, data: dict, metadata: dict, kind: str, count: int | None) -> None:
+        self._post(self._display, data, metadata, kind, count)
+
+    def _engine_clear(self) -> None:
+        self._post(self.clear)
+
+    def _engine_edit_file(self, path: str, line: int = 0) -> None:
+        self._post(self._edit_file, path, line)
+
+    def call_on_frame(self, fn: Callable, *args: Any, **kwargs: Any) -> Any:
+        """``fn(*args, **kwargs)`` on the frame thread; its value (or its exception) here.
+
+        On the frame thread it is a plain call. From a cell (the worker) it is queued, run between
+        two frames by :meth:`poll`, and waited for -- in short waits, so Ctrl+C still interrupts a
+        cell that waits for the window.
+        """
+        if self._on_frame():
+            return fn(*args, **kwargs)
+        call = _FrameCall(fn, args, kwargs)
+        self._frame_calls.append(call)
+        self._wake()
+        try:
+            while not call.done.wait(0.02):
+                pass
+        except BaseException:
+            call.abandoned = True
+            raise
+        if call.error is not None:
+            raise call.error
+        return call.value
+
+    def _frame_method(self, method: Callable) -> Callable:
+        """*method* as a cell calls it: on the frame, its window objects proxied."""
+
+        @functools.wraps(method)
+        def on_frame(*args: Any, **kwargs: Any) -> Any:
+            args = tuple(unwrap(a) for a in args)
+            kwargs = {k: unwrap(v) for k, v in kwargs.items()}
+            return self._marshal_value(self.call_on_frame(method, *args, **kwargs))
+
+        return on_frame
+
+    def _marshal_value(self, value: Any) -> Any:
+        """*value* for a cell: a window object as a :class:`FrameProxy`, anything else as it is."""
+        if value is None or isinstance(value, (FrameProxy, str, bytes, int, float, complex, tuple)):
+            return value
+        module = getattr(type(value), "__module__", "") or ""
+        if any(module == m or module.startswith(m + ".") for m in _FRAME_MODULES):
+            return FrameProxy(value, self)
+        return value
+
+    def _marshalled(self, names: dict) -> dict:
+        return {name: self._marshal_value(value) for name, value in dict(names).items()}
+
+    @property
+    def busy(self) -> bool:
+        """Whether a cell is running or waiting to run."""
+        return self._unfinished > 0
+
+    @property
+    def running(self) -> Cell | None:
+        """The cell the worker runs now, or ``None``."""
+        return self._current
+
+    @property
+    def queued(self) -> int:
+        """How many cells wait behind the running one."""
+        return len(self._pending)
+
+    def _ensure_worker(self) -> None:
+        if self._worker is not None and self._worker.is_alive():
+            return
+        ready = threading.Event()
+
+        def work() -> None:
+            self._worker_id = threading.get_ident()
+            ready.set()
+            self._work()
+
+        self._worker = threading.Thread(target=work, name="chisurf-console-cell", daemon=True)
+        self._worker.start()
+        ready.wait()
+
+    def _work(self) -> None:
+        """The worker's loop: one cell at a time, in the order they were submitted."""
+        while True:
+            try:
+                cell = self._jobs.get()
+                if cell is None:
+                    return
+                self._run_cell(cell)
+            except BaseException:  # noqa: BLE001 - a stray interrupt must not end the worker
+                _log.debug("the console worker caught", exc_info=True)
+
+    def _run_cell(self, cell: Cell) -> None:
+        with self._lock:
+            if cell in self._pending:
+                self._pending.remove(cell)
+            if not cell.cancelled:
+                self._current = cell
+                cell.started_at = time.monotonic()
+        try:
+            if not cell.cancelled:
+                if cell.echo and not cell.hidden:
+                    self._post(self._echo, cell.source, self.engine.execution_count)
+                cell.result = self.engine.run_cell(
+                    cell.source, store_history=not cell.hidden, silent=cell.hidden
+                )
+        except KeyboardInterrupt:
+            self._post(self._write, "stderr", "\nKeyboardInterrupt\n")
+        finally:
+            with self._lock:
+                self._current = None
+                self._interrupt_pending = False
+                if self._interruptible:  # an interrupt landed inside the window's own exit
+                    self._interruptible = 0
+                    _async_raise(self._worker_id, None)
+            self._post(self._finish, cell)
+            cell.done.set()
+            self._wake()
+
+    def start(self, source: str, *, echo: bool = True, hidden: bool = False) -> Cell:
+        """Queue *source* for the worker and return at once; :meth:`wait` waits for it."""
+        cell = Cell(source, echo, hidden)
+        with self._lock:
+            self._pending.append(cell)
+            self._unfinished += 1
+        self._ensure_worker()
+        self._jobs.put(cell)
+        return cell
+
+    def wait(self, cell: Cell | None = None, timeout: float | None = None) -> bool:
+        """Wait for *cell* (``None``: every cell) to finish; whether it did within *timeout*.
+
+        On the frame thread this keeps serving the cell's calls on the window
+        (:meth:`call_on_frame`) and applies its output, so nothing waits for a frame that is not
+        drawn. On the worker it returns ``False`` at once: a cell cannot wait for itself.
+        """
+        if self._worker is not None and threading.get_ident() == self._worker_id:
+            return False
+
+        def finished() -> bool:
+            return cell.done.is_set() if cell is not None else self._unfinished == 0
+
+        if not self._on_frame():
+            if cell is not None:
+                return cell.done.wait(timeout)
+            end = None if timeout is None else time.monotonic() + timeout
+            while not finished():
+                if end is not None and time.monotonic() >= end:
+                    return False
+                time.sleep(0.005)
+            return True
+        end = None if timeout is None else time.monotonic() + timeout
+        waiting, self._waiting = self._waiting, True
+        try:
+            while True:
+                self._serve()
+                if finished():
+                    self._serve()
+                    return True
+                if end is not None and time.monotonic() >= end:
+                    return False
+                if cell is not None:
+                    cell.done.wait(0.002)
+                else:
+                    time.sleep(0.002)
+        finally:
+            self._waiting = waiting
+
+    def _serve(self) -> None:
+        """Make the calls cells asked of the window, then apply their output (frame thread)."""
+        while self._frame_calls:
+            self._frame_calls.popleft().run()
+        while True:
+            with self._lock:
+                if not self._outbox:
+                    break
+                fn, args = self._outbox.popleft()
+            try:
+                fn(*args)
+            except Exception:  # noqa: BLE001 - a bad display bundle must not stop the frame
+                _log.exception("applying console output failed")
+
+    def _settle(self, cell: Cell) -> Cell:
+        """Give a just-submitted *cell* the frame budget, so a quick one shows in this frame."""
+        if self._on_frame() and not self._waiting and self.frame_budget > 0:
+            self.wait(cell, self.frame_budget)
+        return cell
+
+    def _finish(self, cell: Cell) -> None:
+        """A cell is through (frame thread): log it, take what it asked to type next."""
+        self._unfinished = max(0, self._unfinished - 1)
+        self.transcript.close_line()
+        if cell.cancelled:
+            return
+        self._ran = self._ran or not cell.hidden
+        if not cell.hidden and cell.source.strip():
+            self._log_code(cell.source)
+        self._history_index = None
+        pending = getattr(self.engine, "_next_input", None)
+        if pending:
+            self.engine._next_input = None
+            self.set_input(pending[0])
+        self._wake()
+
+    def execute(self, source: str, *, echo: bool = True, hidden: bool = False, wait: bool = True):
         """Run *source* in the console's namespace; its output goes to the transcript.
+
+        The cell runs on the console's worker thread, after any cell already running or queued.
 
         Parameters
         ----------
@@ -869,31 +1382,25 @@ class ShellConsole:
             Write the source under the prompt first.
         hidden : bool, optional
             Neither record nor show it (the start-up snippet).
+        wait : bool, optional
+            Wait for the cell (serving its calls on the window meanwhile) and return its result;
+            ``False`` returns the :class:`Cell` at once, after the frame budget. Called from a
+            running cell, it never waits (the cell would wait for itself).
 
         Returns
         -------
-        ExecutionResult
+        ExecutionResult or Cell or None
         """
-        source = str(source)
-        if echo and not hidden:
-            self._echo(source)
-        result = self.engine.run_cell(source, store_history=not hidden, silent=hidden)
-        self._ran = self._ran or not hidden
-        self.transcript.close_line()
-        if not hidden and source.strip():
-            self._log_code(source)
-        self._history_index = None
-        pending = getattr(self.engine, "_next_input", None)
-        if pending:
-            self.engine._next_input = None
-            self.set_input(pending[0])
-        if self.wake is not None and not hidden:
-            self.wake()
-        return result
+        cell = self.start(source, echo=echo, hidden=hidden)
+        if not wait:
+            return self._settle(cell)
+        if not self.wait(cell):
+            return None
+        return cell.result
 
-    def _echo(self, source: str) -> None:
+    def _echo(self, source: str, count: int | None = None) -> None:
         self.transcript.close_line()
-        prompt = PROMPT.format(n=self.engine.execution_count)
+        prompt = PROMPT.format(n=self.engine.execution_count if count is None else count)
         lines = source.split("\n")
         self.transcript.append(prompt + lines[0] + "\n", "input")
         for line in lines[1:]:
@@ -916,7 +1423,7 @@ class ShellConsole:
         self.set_input("")
         self.dismiss_popups()
         self.close_pager()
-        self.execute(source)
+        self.execute(source, wait=False)
 
     def _log_code(self, source: str) -> None:
         """Append *source* to the session log and, while recording, to the macro."""
@@ -955,7 +1462,7 @@ class ShellConsole:
         if self.record_command is not None:
             with contextlib.suppress(Exception):
                 self.record_command(summary)
-        return self.execute(code)
+        return self.execute(code, wait=False)
 
     def log_threadsafe(self, code: str | None = None) -> None:
         """``chisurf.log(code)``: record *code* (session log, macro) without running it."""
@@ -974,7 +1481,8 @@ class ShellConsole:
     log_on_gui_thread = log_threadsafe
 
     def poll(self) -> None:
-        """Once per frame: run what workers queued through ``chisurf.run``."""
+        """Once per frame: serve the running cell (its calls, its output), run what workers queued."""
+        self._serve()
         while self._queue:
             kind, code = self._queue.popleft()
             if kind == "run":
@@ -1036,9 +1544,12 @@ class ShellConsole:
             handle.write(self._macro)
         return str(filename)
 
-    def run_file(self, path: str | os.PathLike) -> Any:
-        """Run a Python file in the console's namespace (``%run -i``), as *Run Macro…* does."""
-        return self.execute(f"%run -i {pathlib.Path(path).as_posix()!r}")
+    def run_file(self, path: str | os.PathLike, *, wait: bool = False) -> Any:
+        """Run a Python file in the console's namespace (``%run -i``), as *Run Macro…* does.
+
+        Like a typed cell it runs on the worker; *wait* as :meth:`execute` takes it.
+        """
+        return self.execute(f"%run -i {pathlib.Path(path).as_posix()!r}", wait=wait)
 
     run_macro = run_file
 
@@ -1151,7 +1662,29 @@ class ShellConsole:
         return False
 
     def interrupt(self) -> None:
-        """Ctrl+C without a selection: abandon the input (a cell runs on the frame, so none is running)."""
+        """Ctrl+C without a selection (and *Interrupt*): stop the running cell, else abandon the input.
+
+        The running cell gets ``KeyboardInterrupt`` at its next bytecode and the cells queued behind
+        it are dropped; the input box keeps what was typed. With no cell running, the input is
+        abandoned, as a terminal does.
+        """
+        if self.busy:
+            with self._lock:
+                dropped = [cell for cell in self._pending if not cell.cancelled]
+                for cell in dropped:
+                    cell.cancelled = True
+                if self._current is not None:
+                    if self._interruptible and self._worker_id is not None:
+                        _async_raise(self._worker_id, KeyboardInterrupt)
+                    else:
+                        self._interrupt_pending = True  # between two steps: at its user code
+            if dropped:
+                self.transcript.close_line()
+                self.transcript.append(
+                    tr("{n} queued cell(s) dropped").format(n=len(dropped)) + "\n", "message"
+                )
+            self._wake()
+            return
         if self.input_text.strip():
             self._echo(self.input_text)
             self.transcript.append("KeyboardInterrupt\n", "stderr")
@@ -1285,8 +1818,8 @@ class ShellConsole:
         self.transcript.clear()
 
     def push(self, variables: dict) -> None:
-        """Add *variables* to the console's namespace."""
-        self.engine.push(variables)
+        """Add *variables* to the console's namespace (window objects as :class:`FrameProxy`)."""
+        self.engine.push(self._marshalled(variables))
 
     pushVariables = push  # noqa: N815 - the Qt console's historic spelling
 
@@ -1321,8 +1854,8 @@ class ShellConsole:
             im.set_keyboard_focus_here(-1)
             self.control.has_focus = True
         self.item_rects[VIEW_KEY] = im.get_item_rect()
-        for name in ("input", "output"):
-            if name in self.control.boxes:
+        for name in ("input", "output", "interrupt"):
+            if name in self.control.boxes and (name != "interrupt" or self.busy):
                 self.item_rects[f"console.{name}"] = self.control.boxes[name]
 
     def _image_menu(self, popup_id: str = "##console.image") -> None:
@@ -1362,11 +1895,26 @@ class ShellConsole:
                         self.append_error(tr("could not save the image: {error}").format(error=exc))
 
     def close(self) -> None:
-        """Save the history and give back ``chisurf.run``."""
+        """Stop the worker (interrupting a running cell), save the history, give back ``chisurf.run``."""
+        if self.busy:
+            self.interrupt()
+        if self._worker is not None:
+            self._jobs.put(None)
+            self._worker.join(1.0)
+            self._worker = None
+        self._serve()
         self.uninstall()
         if self._ran:
             with contextlib.suppress(Exception):
                 self.engine.history.save()
 
 
-__all__ = ["ConsoleControl", "InlineImage", "ShellConsole", "Transcript"]
+__all__ = [
+    "Cell",
+    "ConsoleControl",
+    "FrameProxy",
+    "InlineImage",
+    "ShellConsole",
+    "Transcript",
+    "unwrap",
+]

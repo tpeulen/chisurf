@@ -57,6 +57,9 @@ def shell(tmp_path, monkeypatch):
         console_session_file=tmp_path / "session.py",
     )
     app.console.push({"np": np})
+    # These drive behaviours, not timing: the frame that submits a cell waits for it (on the
+    # worker) as long as it takes. test_emtk_console_worker.py covers cells that outlast a frame.
+    app.console.frame_budget = 60.0
     yield app
     app.close()
 

@@ -50,6 +50,15 @@ def _type_line(driver, text: str) -> None:
     driver.type(text)
     driver.frame(1)
     driver.press(KEY_RETURN)
+    # A Python cell runs on its console's worker: wait for it, so the figure shows its output.
+    app = driver.app
+    if hasattr(app, "_python_consoles"):
+        consoles = app._python_consoles()
+    else:
+        panes = getattr(getattr(app, "workspace", None), "panes", {})
+        consoles = [pane.console for pane in panes.values() if pane.kind == "python"]
+    for console in consoles:
+        console.wait(timeout=30.0)
     driver.frame(2)
 
 

@@ -23,6 +23,7 @@ pytest.importorskip("emtk")
 
 from emtk.testing import Driver
 
+from chisurf.emtk.console import unwrap
 from chisurf.plugins.core.terminal.app import make_console_app
 
 # ── helpers ──────────────────────────────────────────────────────────────
@@ -243,7 +244,7 @@ def test_a_second_console_dock_pane_has_the_first_panes_names():
         names = pane.console.engine.user_ns
         for name in ("cs", "np", "os", "gui"):
             assert name in names, name
-        assert names["gui"] is shell
+        assert unwrap(names["gui"]) is shell, "gui is the shell (behind its frame proxy)"
         assert pane.console in shell._python_consoles()
     finally:
         shell.close()

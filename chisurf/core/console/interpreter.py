@@ -11,6 +11,7 @@ interpreter has.
 from __future__ import annotations
 
 import ast
+import contextlib
 import linecache
 import types
 import typing
@@ -50,6 +51,10 @@ class Interpreter:
         #: annotations`` typed at the prompt stays in force for the session --
         #: which is what :class:`codeop.Compile` does for the stock REPL.
         self.compile_flags = 0
+        #: ``run_guard() -> context manager`` entered around the user's code, or ``None``. The
+        #: emtk console uses it to say when an interrupt may land (only inside the user's code); a
+        #: context manager adds no frame to the user's traceback, a wrapper function would.
+        self.run_guard: typing.Callable[[], typing.ContextManager] | None = None
 
     def register_source(self, source: str, filename: str) -> None:
         """Make *source* visible to :mod:`linecache` under *filename*.
@@ -158,11 +163,13 @@ class Interpreter:
         BaseException
             Whatever the user's code raised.
         """
-        for code in codes:
-            if code.co_flags & 0x80:  # CO_COROUTINE
-                self._run_coroutine(code, namespace)
-            else:
-                exec(code, namespace)
+        guard = self.run_guard() if self.run_guard is not None else contextlib.nullcontext()
+        with guard:
+            for code in codes:
+                if code.co_flags & 0x80:  # CO_COROUTINE
+                    self._run_coroutine(code, namespace)
+                else:
+                    exec(code, namespace)
 
     def _run_coroutine(self, code: types.CodeType, namespace: dict) -> None:
         """Drive a cell that used a top-level ``await``.
