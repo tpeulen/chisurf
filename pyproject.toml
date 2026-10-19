@@ -62,7 +62,9 @@ dependencies = [
     # The window backend for chimol's Qt-free default run mode; without it that
     # path falls back to rendercanvas's offscreen canvas.
     "glfw",
-    "labellib",
+    # labellib is deliberately NOT here: the accessible-volume backend is
+    # IMP.bff.labellib -- LabelLib's own interface, carried inside imp-bff --
+    # so the standalone labellib distribution is no longer imported anywhere.
     # The UI toolkit: the ChiSurf window, every plugin, the node editor and
     # chimol draw with it, so it is not optional.
     # emtk is on PyPI (source: github.com/tpeulen/emtk). The bound is

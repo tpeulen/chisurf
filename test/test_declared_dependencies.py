@@ -35,7 +35,6 @@ _IMPORT_NAMES = {
     "latexify-py": "latexify",
     "pyzmq": "zmq",
     "ipython": "IPython",
-    "labellib": "LabelLib",
     "beautifulsoup4": "bs4",
 }
 

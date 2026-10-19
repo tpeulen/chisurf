@@ -45,7 +45,7 @@ pipeline on every platform; only the final wrap differs:
 1. Build (or, with `--no-build`, locate) the `chisurf-*.conda` in `conda-bld/`.
 2. `make_runtime()` — `micromamba create` a self-contained env *from that
    package*, then pip-install the extras the recipe does not bundle:
-   `labellib`, `latexify-py`, `imp-tricks` (from `modules/imp-tricks` if present,
+   `latexify-py`, `imp-tricks` (from `modules/imp-tricks` if present,
    else cloned from GitLab), the local `modules/*` (chinet/ndxplorer/
    quest), and `tttrlib` (conda on mac/linux, pip on Windows).
 3. `strip_bloat()` — slim the env: drop unused Qt5 modules, remove build tools,

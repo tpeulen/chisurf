@@ -16,7 +16,7 @@ build:
   # SCOPE: this package is chisurf itself and nothing else. ChiSurf is pure
   # Python -- setup.py compiles no C++ (the burbulator library it used to build
   # is retired) -- so the whole build is one pip install and the build/host
-  # lists below carry no toolchain. The rest of the runtime (tttrlib, labellib,
+  # lists below carry no toolchain. The rest of the runtime (tttrlib,
   # mmfdb, imp-tricks, the local modules/*) is assembled on top of this package
   # by build_tools/build_installer.py, which is what a user actually installs.
   #
@@ -84,7 +84,7 @@ requirements:
   # `Extension` left in the tree, and `pip install .` links nothing. They were
   # kept alive only by rattler-recipe/build.sh, which had not run since the
   # inline `script:` above replaced it. Whatever still needs a toolchain builds
-  # elsewhere: tttrlib in build_tools/build_tttrlib.py, labellib and the local
+  # elsewhere: tttrlib in build_tools/build_tttrlib.py, the local
   # modules in build_tools/build_installer.py.
   host:
     - python 3.12.*

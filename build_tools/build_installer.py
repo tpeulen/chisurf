@@ -13,7 +13,7 @@ linuxdeploy/build.sh, build-setup.bat and its helpers).
 
 The conda recipe (`pip install .`) produces a package containing only chisurf
 itself, so the installer assembles a full runtime env on top of
-it: chisurf (conda) + runtime libs + tttrlib + labellib + latexify-py +
+it: chisurf (conda) + runtime libs + tttrlib + latexify-py +
 imp-tricks + the local ``modules/*`` (ndxplorer/quest). It then
 slims the env aggressively (strip debug symbols, build tools, test
 suites) before wrapping it.
@@ -185,9 +185,6 @@ def make_runtime(prefix: Path, *, conda_extras: list[str], pip_nodeps: list[str]
     py = prefix / ("python.exe" if IS_WIN else "bin/python")
 
     # Env so the pip installs below find the prefix and its toolchain. The
-    # CMake/Eigen bits are for `labellib`, which pip builds from source here --
-    # they are also the reason `cmake<3.27` is in conda_extras, since LabelLib's
-    # CMakeLists still declares a cmake_minimum_required that 3.27 dropped. The
     # local modules/* no longer need any of it: ndxplorer, quest and chinet are
     # plain setuptools packages now, whatever this comment used to claim.
     env = dict(os.environ)
@@ -397,7 +394,7 @@ def package_macos(version: str, info: dict) -> Path:
     make_runtime(prefix,
                  conda_extras=["tttrlib", "cmake<3.27", "zstd", "libarchive", "libffi",
                                "openblas", "libgfortran5", "llvm-openmp"],
-                 pip_nodeps=["labellib"], pip_withdeps=["latexify-py"])
+                 pip_nodeps=[], pip_withdeps=["latexify-py"])
 
     app = DIST / f"{APP_NAME}.app"
     rmtree(app)
@@ -438,7 +435,7 @@ def package_linux(version: str, info: dict) -> Path:
     prefix = DIST / "linux" / "runtime"
     make_runtime(prefix,
                  conda_extras=["tttrlib", "cmake<3.27", "zstd", "libarchive", "openblas"],
-                 pip_nodeps=["labellib"], pip_withdeps=["latexify-py"])
+                 pip_nodeps=[], pip_withdeps=["latexify-py"])
 
     appdir = Path(tempfile.mkdtemp(prefix="chisurf-appdir-"))
     try:
@@ -476,7 +473,7 @@ def package_windows(version: str, info: dict) -> Path:
     make_runtime(prefix,
                  conda_extras=["cmake<3.27", "ninja", "eigen", "pybind11", "swig", "cython",
                                "pythran", "vs2022_win-64", "hdf5", "zstd", "libarchive", "openblas"],
-                 pip_nodeps=["labellib", "tttrlib"],  # no win-64 bioconda tttrlib
+                 pip_nodeps=["tttrlib"],  # no win-64 bioconda tttrlib
                  pip_withdeps=["latexify-py"])
 
     icon = REPO_ROOT / "chisurf" / str(info["setup_icon"]).lstrip("/")
