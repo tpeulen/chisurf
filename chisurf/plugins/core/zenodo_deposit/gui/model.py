@@ -80,6 +80,25 @@ def _size(n: int) -> str:
     return f"{n} B"
 
 
+#: The running number of a file in a series: the last digit run before the
+#: extension (and an optional ``_<n>`` analysis suffix): ``m_012.spc``,
+#: ``Split_irf-0003_10.dat``.
+_NUMBERED = re.compile(r"\d+(?=(?:_\d+)?\.[^./]+$)")
+
+#: What a file is, by extension -- the Type column of the file list.
+_KINDS = {".ht3": "PicoQuant HT3 photons", ".ptu": "PicoQuant PTU photons",
+          ".spc": "B&H SPC photons", ".set": "B&H settings", ".sdt": "B&H SDT",
+          ".pto": "analysis container (PTO.MFDB)", ".dat": "analysis table (Paris)",
+          ".bur": "burst table (Paris)", ".bg4": "burst table (Paris)", ".txt": "text",
+          ".json": "JSON", ".cif": "mmCIF", ".md": "Markdown", ".csv": "CSV",
+          ".doc": "protocol (Word)", ".docx": "protocol (Word)"}
+
+
+def _file_kind(name: str) -> str:
+    suffix = Path(name).suffix.lower()
+    return _KINDS.get(suffix, suffix.lstrip(".") or "file")
+
+
 class ZenodoDepositModel:
     """The records under a folder, the selected record's items and its gate."""
 
@@ -644,7 +663,7 @@ class ZenodoDepositModel:
     def editor_kind(self) -> str:
         """Which code editor shows the selection: a folder listing is plain text."""
         kind = self.preview_kind
-        return "text" if kind == "listing" else kind
+        return kind
 
     @property
     def preview_text(self) -> str:
@@ -724,6 +743,41 @@ class ZenodoDepositModel:
     @property
     def preview_txt(self) -> str:
         return self.preview_text if self.preview_kind in ("text", "listing") else ""
+
+    @property
+    def item_files(self) -> list[dict]:
+        """The selected folder's files, a numbered series as one foldable row.
+
+        ``Split_..._sm-0000.ht3`` … ``-0075.ht3`` is one acquisition: one row
+        ``Split_..._sm-{0000…0075}.ht3`` with its count and total size, the
+        files under it; a file alone is a row of its own.
+        """
+        if self.preview_kind != "listing":
+            return []
+        from mmfdb.deposit.record import content_files
+
+        folder = self.open_record.folder / self.item.id
+        series: dict[tuple[str, str], list] = {}
+        for f in content_files(folder):
+            rel = f.relative_to(folder).as_posix()
+            m = _NUMBERED.search(rel)
+            key = (rel[:m.start()], rel[m.end():]) if m else (rel, "")
+            series.setdefault(key, []).append((rel, m.group(0) if m else "", f.stat().st_size))
+        rows = []
+        for (head, tail), files in series.items():
+            kind = _file_kind(files[0][0])
+            if len(files) == 1:
+                rel, _, size = files[0]
+                rows.append({"key": rel, "parent": "", "name": rel, "count": "",
+                             "size": _size(size), "kind": kind})
+                continue
+            nums = sorted(n for _, n, _ in files)
+            name = f"{head}{{{nums[0]}…{nums[-1]}}}{tail}"
+            rows.append({"key": name, "parent": "", "name": name, "count": f"{len(files)} files",
+                         "size": _size(sum(sz for *_, sz in files)), "kind": kind})
+            rows += [{"key": rel, "parent": name, "name": rel.rsplit("/", 1)[-1], "count": "",
+                      "size": _size(sz), "kind": kind} for rel, _, sz in sorted(files)]
+        return rows
 
     # ── review ───────────────────────────────────────────────────────────
     def _pick_row(self, row: dict | None) -> None:

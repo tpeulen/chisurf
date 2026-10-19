@@ -179,11 +179,19 @@ def test_open_in_ndx_offers_the_items_container(model):
     assert opened == [meas / "2014-08-12_7.5M-urea.mmfdb.pto"]
 
 
-def test_a_folder_is_listed_file_by_file_in_the_text_editor(model):
+def test_a_folder_lists_a_numbered_series_as_one_row(model):
     model.select_record(model.records[0])
+    meas = model.record.folder / "measurements/2014-08-12_7.5M-urea"
+    for n in (1, 2):
+        (meas / f"Split-000{n}.ht3").write_bytes(b"ph")
+    (meas / "Split-0001_10.dat").write_bytes(b"t")
     model.select_item({"id": "measurements/2014-08-12_7.5M-urea"})
-    assert model.editor_kind == "text"
-    assert "Split-0000.ht3" in model.preview_txt and model.preview_cif == ""
+    assert model.editor_kind == "listing" and model.preview_cif == ""
+    rows = {r["key"]: r for r in model.item_files}
+    top = rows["Split-{0000…0002}.ht3"]
+    assert top["parent"] == "" and top["count"] == "3 files" and top["kind"] == "PicoQuant HT3 photons"
+    assert rows["Split-0001.ht3"]["parent"] == "Split-{0000…0002}.ht3"
+    assert rows["Split-0001_10.dat"]["parent"] == ""  # a series of one is a row of its own
 
 
 def test_create_lists_configs_and_builds_through_the_project_commands(model, tmp_path):

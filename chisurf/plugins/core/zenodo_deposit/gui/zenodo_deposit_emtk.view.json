@@ -694,6 +694,51 @@
             },
             {
               "type": "custom",
+              "key": "data_table",
+              "hidden_when": {
+                "attr": "editor_kind",
+                "not_equals": "listing"
+              },
+              "description": "The selected folder's files. A numbered series (the rollover files of one acquisition) is one row: ▸ shows its files.",
+              "options": {
+                "source": "item_files",
+                "row_key": "key",
+                "tree_key": "parent",
+                "editable": false,
+                "expand": true,
+                "stretch": 1,
+                "min_height": 140,
+                "height": 240,
+                "min_column_width": 50,
+                "fit_columns": true,
+                "columns": [
+                  {
+                    "key": "name",
+                    "title": "File",
+                    "tooltip": "The file, or a numbered series {first…last}."
+                  },
+                  {
+                    "key": "kind",
+                    "title": "Type",
+                    "tooltip": "What the file is, by its extension."
+                  },
+                  {
+                    "key": "count",
+                    "title": "Files",
+                    "align": "right",
+                    "tooltip": "How many files the series holds."
+                  },
+                  {
+                    "key": "size",
+                    "title": "Size",
+                    "align": "right",
+                    "tooltip": "Size of the file, or of the whole series."
+                  }
+                ]
+              }
+            },
+            {
+              "type": "custom",
               "key": "code_editor",
               "target": "preview_txt",
               "hidden_when": {
@@ -707,7 +752,7 @@
                 "stretch": 1,
                 "min_height": 140
               },
-              "description": "A folder: every file it holds with its size. Any other file: its text, read-only."
+              "description": "The selected file's text, read-only."
             }
           ]
         },
