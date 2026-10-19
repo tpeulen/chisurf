@@ -13,5 +13,3 @@
 #
 # One `plugin_id:rpc.method.name` per line.
 
-mmfdb_admin:ndxplorer.load_burst_product
-mmfdb_admin:ndxplorer.record_analysis

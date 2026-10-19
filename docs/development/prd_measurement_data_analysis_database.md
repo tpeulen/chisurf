@@ -80,7 +80,7 @@ phase-grown implementation is defined in
 
 ## 🛠️ Phase 2 Technical Design
 
-### Service: `ndxplorer.load_burst_product`
+### Service: `mmfdb.burst_product.load`
 Loads a registered burst product by its `processed_data_id` from the database. It handles folder, file, and ZIP sources, parses them using the existing `ndxplorer.io.reader`, and returns a dictionary with parameter names and values.
 
 **Request Parameters:**
@@ -100,7 +100,7 @@ Loads a registered burst product by its `processed_data_id` from the database. I
 }
 ```
 
-### Service: `ndxplorer.record_analysis`
+### Service: `mmfdb.analysis.record`
 Persists the results of an ndxplorer operations run (e.g. selection gating, clustering, GMM) back to the database. It creates an `fdb_processing_run` record representing the analysis step, links it to the input processed product(s) via `input_to` provenance edges, and registers the output products (e.g. selection masks, summaries) via `produced` edges.
 
 **Request Parameters:**

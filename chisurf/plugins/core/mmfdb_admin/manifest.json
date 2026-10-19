@@ -1047,11 +1047,11 @@
       "summary": "Add a sample/artifact to a study; a bad member_type returns an error."
     },
     {
-      "name": "ndxplorer.load_burst_product",
+      "name": "mmfdb.burst_product.load",
       "summary": "Load a registered burst product into ndxplorer data structures."
     },
     {
-      "name": "ndxplorer.record_analysis",
+      "name": "mmfdb.analysis.record",
       "summary": "Record an ndxplorer analysis run and its generated products."
     },
     {

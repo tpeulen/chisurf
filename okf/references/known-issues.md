@@ -184,7 +184,7 @@ status: resolved 2026-10-13 — standalone and in the emtk shell; see the entry 
 
 **Since 2026-09-28** ChiSurf opens only the emtk ndX app. The legacy Qt window,
 when the MMFDB admin opened it with `processed_data_id`/`experiment_id`, called
-`ndxplorer.record_analysis` (mmfdb `admin/backend/ndxplorer_services.py`) when
+`mmfdb.analysis.record` (mmfdb `admin/backend/ndxplorer_services.py`) when
 burst IDs were saved; the emtk io feature has no such hook, so the admin now
 opens the path and nothing is recorded. **Blocks:** provenance of gate
 selections made from an MMFDB product. Fix: an app hook after

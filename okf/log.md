@@ -32431,3 +32431,4 @@ front, not this).
   [burst companions](subsystems/burst-companions.md),
   [photon container](subsystems/photon-container.md).
 
+- 2026-10-19: plugin_dependency_allowlist emptied -- mmfdb_admin's ndxplorer.load_burst_product / ndxplorer.record_analysis renamed to mmfdb.burst_product.load / mmfdb.analysis.record (mmfdb services, ndxplorer bridge and manifest updated)

@@ -10,7 +10,7 @@ timestamp: '2026-07-05T00:00:00Z'
 # Where to pick this up
 
 1. Measure: Re-run the dependency/namespace guard and use [the hardening diagnosis](plugin-system-diagnosis.md) for exact reproductions; historical import failures and recorded passing totals are not current full-system acceptance.
-2. Open: Resolve the sibling RPC ownership recorded in `test/plugin_dependency_allowlist.txt`, including `ndxplorer.load_burst_product` and `ndxplorer.record_analysis`, then remove the corresponding allowances.
+2. Done 2026-10-19: the sibling-RPC allow-list is empty; the two former `ndxplorer.*` methods now live under the `mmfdb.*` domain namespace (`mmfdb.burst_product.load`, `mmfdb.analysis.record`).
 3. Measure: Add dependency version bounds only against an actual required sibling version. Before considering consolidation of the other Kahn sorts, measure the recorded import-cost and resolver-contract differences.
 4. Open: Address the recorded settings schema, obsolete-key discovery and whole-tree writer gaps; `update_settings_section` is the existing writer route identified below.
 5. Open: Resolve duplicate password-dialog/backend ownership and the settings-versus-token identity mismatch using the concrete call sites in the recorded follow-up details.
@@ -39,12 +39,7 @@ findings were repaired and parent-tested.
    the current arm64 real-import suite resolves them. If the error returns,
    verify interpreter and checkout import origins before reviving the older
    [known-issue entries](/references/known-issues.md).
-2. **The RPC-namespace allow-list is the worklist.** `mmfdb_admin` declares
-   `ndxplorer.load_burst_product` and `ndxplorer.record_analysis` -- methods that
-   read as `ndxplorer`'s API and would collide the moment `ndxplorer` registers
-   its own. Either move them to `ndxplorer` or rename them into a domain
-   namespace, then strike the lines from
-   `test/plugin_dependency_allowlist.txt`. The end state is an empty file.
+2. **The RPC-namespace allow-list is empty.** Keep it so: a plugin declares methods only under its own id or a domain namespace (`mmfdb.*`, `phasor.*`, `editor.*`).
 3. **Bounds are all `*` today.** Every seeded edge says "must exist"; no real
    PEP 440 bound is in the tree yet. Write one only when a plugin genuinely needs
    a newer sibling -- a bound invented without evidence is maintenance on every

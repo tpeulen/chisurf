@@ -26,7 +26,7 @@ def record_product_selection(
 ) -> str:
     """Record a saved burst selection against the MMFDB processed product it was taken on.
 
-    One ``ndxplorer.record_analysis`` call: an ``ndxplorer_selection``
+    One ``mmfdb.analysis.record`` call: an ``ndxplorer_selection``
     processing run with the gate, and a ``selection_mask`` product, linked to
     *processed_data_id*. What the MMFDB admin's *Open in ndX* arranges for
     Save > Burst IDs (see :func:`record_burst_ids_against_product`).
@@ -49,7 +49,7 @@ def record_product_selection(
         The status line ndX shows.
     """
     reply = client.call(
-        "ndxplorer.record_analysis",
+        "mmfdb.analysis.record",
         {
             "experiment_id": experiment_id or "exp_1",
             "input_processed_data_ids": [str(processed_data_id)],

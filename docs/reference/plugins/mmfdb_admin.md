@@ -465,8 +465,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `mmfdb.studies.get` | no | Return a study with its members and configurable fields. |
 | `mmfdb.studies.list` | no | List studies scoped mine/public/all. |
 | `mmfdb.studies.members.add` | no | Add a sample/artifact to a study; a bad member_type returns an error. |
-| `ndxplorer.load_burst_product` | no | Load a registered burst product into ndxplorer data structures. |
-| `ndxplorer.record_analysis` | no | Record an ndxplorer analysis run and its generated products. |
+| `mmfdb.burst_product.load` | no | Load a registered burst product into ndxplorer data structures. |
+| `mmfdb.analysis.record` | no | Record an ndxplorer analysis run and its generated products. |
 | `processing.run.record` | no | Record a general processing run and its inputs/products. |
 | `provenance.dependencies.downstream` | no | Retrieve downstream dependencies for a node. |
 | `provenance.dependencies.upstream` | no | Retrieve upstream dependencies for a node. |
