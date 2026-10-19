@@ -218,7 +218,7 @@ class ShellRibbon:
             entry.icon,
             tooltip=entry_tooltip(entry),
             large=large,
-            on_press=lambda: self.shell.open_plugin(plugin_id),
+            on_press=lambda: self.shell.open_plugin(plugin_id, new=True),
             accent=accent,
         )
 

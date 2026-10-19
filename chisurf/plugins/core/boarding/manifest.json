@@ -2,6 +2,7 @@
   "id": "boarding",
   "version": "1.0.0",
   "display_name": "Help:Boarding Wizard",
+  "single_instance": true,
   "icon": "🧭",
   "description": "Startup onboarding wizard for first-run ChiSurf configuration.",
   "authors": [

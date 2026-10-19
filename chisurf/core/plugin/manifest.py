@@ -171,6 +171,10 @@ class PluginManifest:
     #: only for manifests that do not set this).
     menu_hidden: bool = False
 
+    #: One window at most: opening the tool again shows the open one (settings, help).
+    #: Every other tool opens again as "<name> #2", "#3", ... in the shell.
+    single_instance: bool = False
+
     #: Declared maturity flag from the plugin spec's "honest metadata" rule. Surfaced
     #: like ``experimental``: the meta-tool shell marks the navigation entry and tops
     #: the panel with a banner carrying ``deprecation_message``.
@@ -288,6 +292,7 @@ class PluginManifest:
             experimental=data.get("experimental", False),
             experimental_message=tr(data.get("experimental_message", "")),
             menu_hidden=data.get("menu_hidden", False),
+            single_instance=data.get("single_instance", False),
             deprecated=data.get("deprecated", False),
             deprecation_message=tr(data.get("deprecation_message", "")),
             demo=data.get("demo", False),
@@ -353,6 +358,7 @@ class PluginManifest:
             "experimental": self.experimental,
             "experimental_message": self.experimental_message,
             "menu_hidden": self.menu_hidden,
+            "single_instance": self.single_instance,
             "deprecated": self.deprecated,
             "deprecation_message": self.deprecation_message,
             "demo": self.demo,
@@ -1006,7 +1012,9 @@ def _validate_field_shapes(data: dict[str, Any]) -> list[str]:
             )
         ):
             errors.append(f"field {key!r} must be an object mapping names to strings")
-    for key in ("library", "experimental", "menu_hidden", "deprecated", "demo"):
+    for key in (
+        "library", "experimental", "menu_hidden", "single_instance", "deprecated", "demo"
+    ):
         value = data.get(key)
         if value is not None and not isinstance(value, bool):
             errors.append(f"field {key!r} must be a boolean")

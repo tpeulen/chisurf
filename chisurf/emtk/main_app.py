@@ -100,6 +100,8 @@ class MenuEntry:
     cli_only: bool = False
     #: A command (an ``entrypoints.action``), run instead of opened as a window.
     action: bool = False
+    #: The manifest's ``single_instance``: opening it again shows the open one (settings, help).
+    single_instance: bool = False
 
     @property
     def label(self) -> str:
@@ -153,6 +155,7 @@ def menu_entries(catalog: dict[str, dict] | None = None) -> list[MenuEntry]:
                 str(data.get("icon") or ""),
                 bool(data.get("cli_only")),
                 is_action,
+                bool(data.get("single_instance")),
             )
         )
     return sorted(entries, key=lambda entry: tuple(part.casefold() for part in entry.path))
@@ -171,11 +174,24 @@ class HostedPlugin:
     #: The content box it was drawn into on the last frame (canvas coordinates), ``None`` when not shown.
     box: tuple[float, float, float, float] | None = None
     extra: dict = field(default_factory=dict)
+    #: Which opening of the tool this is: 1 for the first, 2 for "ndX #2", ...
+    instance: int = 1
+
+    @property
+    def instance_id(self) -> str:
+        """The key of :attr:`EmtkShellApp.hosted`: the plugin id, then ``<id>#2``, ``<id>#3``..."""
+        pid = self.entry.plugin_id
+        return pid if self.instance == 1 else f"{pid}#{self.instance}"
 
     @property
     def key(self) -> str:
         """The dock window key."""
-        return PLUGIN_KEY + self.entry.plugin_id
+        return PLUGIN_KEY + self.instance_id
+
+    def title(self) -> str:
+        """The tab text in the current language: the label, numbered from the second opening on."""
+        label = tr(self.entry.label)
+        return label if self.instance == 1 else f"{label} #{self.instance}"
 
 
 def _ribbon_preference() -> bool:
@@ -583,26 +599,42 @@ class EmtkShellApp(ImApp):
 
     # ── plugins ───────────────────────────────────────────────────────────
 
-    def open_plugin(self, plugin_id: str, focus: bool = True) -> HostedPlugin | None:
+    def open_plugin(
+        self, plugin_id: str, focus: bool = True, new: bool = False
+    ) -> HostedPlugin | None:
         """Open *plugin_id* as a dock window (or bring its window to front); the app is made on a worker thread.
 
         A command plugin (``entrypoints.action``) is run instead and opens nothing (``None``). Without
         *focus* the window takes the place the saved layout gives it (minimized stays minimized).
+        With *new* (the menus, the tool list and the ribbon) a tool that is open already opens again
+        as "<name> #2", "#3", ... unless its manifest says ``single_instance``. *plugin_id* may name
+        one opening (``ndxplorer#2``), as :meth:`export_settings` lists them.
         """
-        entry = self.by_id.get(plugin_id)
+        base, _, number = plugin_id.partition("#")
+        instance = int(number) if number.isdigit() and int(number) > 1 else 1
+        entry = self.by_id.get(base)
         if entry is not None and entry.action:
-            self.run_plugin_action(plugin_id)
+            self.run_plugin_action(base)
             return None
-        if plugin_id in self.hosted:
-            self.docks.show(self.hosted[plugin_id].key)
-            self.docks.focus(self.hosted[plugin_id].key)
+        open_ = self.instances(base)
+        if number:
+            existing = self.hosted.get(plugin_id if instance > 1 else base)
+        elif open_ and (not new or (entry is not None and entry.single_instance)):
+            existing = next((h for h in open_ if h.key == self.docks.focused), open_[0])
+        else:
+            existing = None
+            taken = {h.instance for h in open_}
+            instance = next(n for n in range(1, len(taken) + 2) if n not in taken)
+        if existing is not None:
+            self.docks.show(existing.key)
+            self.docks.focus(existing.key)
             if focus:
-                self._focus = self.hosted[plugin_id].key
-            return self.hosted[plugin_id]
-        entry = self.by_id.get(plugin_id)
+                self._focus = existing.key
+            return existing
         if entry is None:
-            raise KeyError(f"No native plugin {plugin_id!r} in the shell menus")
-        hosted = HostedPlugin(entry)
+            raise KeyError(f"No native plugin {base!r} in the shell menus")
+        hosted = HostedPlugin(entry, instance=instance)
+        plugin_id = hosted.instance_id
         # A tool the user has placed before (docked or floated, this run or a saved layout)
         # goes back there; only a tool never placed gets a first place chosen (_place_wide_tool).
         remembers = getattr(self.docks, "remembers", None)  # emtk >= 0.1.14
@@ -610,14 +642,14 @@ class EmtkShellApp(ImApp):
         hosted.build = BackgroundBuild(wake=self.request_frame)
         loader = self.loader
         hosted.build.start(
-            {plugin_id: lambda: loader(plugin_id)}, name=f"chisurf-shell-{plugin_id}"
+            {plugin_id: lambda: loader(entry.plugin_id)}, name=f"chisurf-shell-{plugin_id}"
         )
         self.hosted[plugin_id] = hosted
         self.docks.add_window(
             hosted.key,
             # The source text, not tr(): the tab translates it each frame, so a language
             # switched while the tool is open retitles it (a stored translation would not).
-            mark(entry.label),
+            mark(entry.label) if instance == 1 else hosted.title(),
             lambda box, pid=plugin_id: self._draw_plugin(pid, box),
             dock=self._tool_region(),
             scrollable=False,
@@ -628,9 +660,16 @@ class EmtkShellApp(ImApp):
         if focus:
             self.docks.focus(hosted.key)
             self._focus = hosted.key
-        self.status = tr("Opening {name}…").format(name=tr(entry.label))
+        self.status = tr("Opening {name}…").format(name=hosted.title())
         _log.info("open %s", plugin_id)
         return hosted
+
+    def instances(self, plugin_id: str) -> list[HostedPlugin]:
+        """Every opening of *plugin_id* in the shell, first opened first."""
+        return sorted(
+            (h for h in self.hosted.values() if h.entry.plugin_id == plugin_id),
+            key=lambda h: h.instance,
+        )
 
     def accepts(self, plugin_id: str, kind: str) -> Any:
         """The ``accepts`` declaration of *kind* when the shell offers *plugin_id*, else ``None``.
@@ -784,14 +823,14 @@ class EmtkShellApp(ImApp):
             if error is not None:
                 hosted.error = f"{type(error).__name__}: {error}"
                 _log.error("opening %s failed: %s", plugin_id, hosted.error)
-                self.status = tr("{name} could not be opened.").format(name=tr(hosted.entry.label))
+                self.status = tr("{name} could not be opened.").format(name=hosted.title())
             else:
                 from chisurf.emtk.child_contract import as_child
 
                 hosted.app = made = as_child(made)
                 if hasattr(made, "set_frame_request_callback"):
                     made.set_frame_request_callback(self.request_frame)
-                self.status = tr("{name} opened.").format(name=tr(hosted.entry.label))
+                self.status = tr("{name} opened.").format(name=hosted.title())
                 self._run_ready(hosted)
 
     def _run_ready(self, hosted: HostedPlugin) -> None:
@@ -827,6 +866,12 @@ class EmtkShellApp(ImApp):
         self._push_console_namespace()
         for hosted in self.hosted.values():
             hosted.box = None
+            if hosted.instance > 1:
+                # "ndX #2" has no catalogue entry: the window carries the translated label with its
+                # number, set again every frame so a language switch retitles it.
+                window = self.docks.window(hosted.key)
+                if window is not None:
+                    window.title = hosted.title()
         self._drawn = {}
         self._canvas = (int(w), int(h))
         frame_start = time.perf_counter()
@@ -1010,10 +1055,10 @@ class EmtkShellApp(ImApp):
             for entry in entries:
                 if im.menu_item(
                     entry_label(entry),
-                    selected=entry.plugin_id in self.hosted,
+                    selected=bool(self.instances(entry.plugin_id)),
                     icon=entry.icon or None,
                 ):
-                    self.open_plugin(entry.plugin_id)
+                    self.open_plugin(entry.plugin_id, new=True)
 
     # ── session menus ─────────────────────────────────────────────────────
 
@@ -1621,10 +1666,10 @@ class EmtkShellApp(ImApp):
                     label = entry_label(entry)
                     if im.selectable(
                         f"{label}##{entry.plugin_id}",
-                        entry.plugin_id in self.hosted,
+                        bool(self.instances(entry.plugin_id)),
                         icon=entry.icon or None,
                     ):
-                        self.open_plugin(entry.plugin_id)
+                        self.open_plugin(entry.plugin_id, new=True)
                     self.item_rects["tools." + entry.plugin_id] = im.get_item_rect()
                     accents.mark_item(accent(self.task_categories.get(entry.plugin_id)))
                     im.set_item_tooltip(entry_tooltip(entry))
@@ -2127,7 +2172,7 @@ class EmtkShellApp(ImApp):
         """Reopen the plugins that were open (each built on its worker thread); put the ribbon back as pinned."""
         self.ribbon.ribbon.restore((state or {}).get("ribbon"))
         for plugin_id in (state or {}).get("open", []):
-            if plugin_id in self.by_id:
+            if str(plugin_id).partition("#")[0] in self.by_id:  # "ndxplorer#2" reopens as #2
                 self.open_plugin(plugin_id, focus=False)
 
     def close(self) -> None:

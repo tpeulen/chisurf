@@ -2,6 +2,7 @@
   "id": "setup",
   "version": "1.0.0",
   "display_name": "Setup:Settings",
+  "single_instance": true,
   "description": "The Settings window: one searchable list of every settings panel (ChiSurf settings, acquisition, styles, plots, models, users, plugins, updates, detector setup, ...).",
   "authors": [
     "Thomas-Otavio Peulen"

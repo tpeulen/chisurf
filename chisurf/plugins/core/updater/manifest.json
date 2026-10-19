@@ -2,6 +2,7 @@
   "id": "updater",
   "version": "1.0.0",
   "display_name": "Setup:Updates & Packages",
+  "single_instance": true,
   "description": "Update checker/installer and conda package manager. Surfaced as panels inside the unified Settings dialog.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Setup"],

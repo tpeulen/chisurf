@@ -24,6 +24,14 @@ settings of the operation that wrote it ([photon container](photon_container.md)
 the database lets you change ([measurement database](measurement_database.md)); the interface changes nothing but the
 window.
 
+## A tool opened twice
+
+Opening a tool from the menus, the tool list or the ribbon while it is open already opens a second window, titled with
+its number (*ndX*, *ndX #2*, *ndX #3*): two data sets side by side, each in an app of its own. A closed number is
+reused, and the saved layout reopens the numbered windows. A hand-off from another tool ("Open in ndX") goes to a window
+that is open. Settings-like tools keep one window; a manifest declares that with `"single_instance": true` (Settings,
+Help, About, Open Project, Updates, Plugins, Switch User, the boarding wizard).
+
 ## Calculators and wizards
 
 A calculator maps parameters to a number or a curve without data: $R_0$ and $E(R)$, a phasor, the PSF volume. A wizard

@@ -2,6 +2,7 @@
   "id": "help",
   "version": "2.0.0",
   "display_name": "Help:Documentation",
+  "single_instance": true,
   "description": "Documentation browser and help resource viewer for ChiSurf.",
   "authors": [
     "Thomas-Otavio Peulen"

@@ -2,6 +2,7 @@
   "id": "about",
   "version": "1.0.0",
   "display_name": "Help:About ChiSurf",
+  "single_instance": true,
   "icon": "ℹ️",
   "description": "ChiSurf's logo, version, developer and contact details.",
   "authors": [

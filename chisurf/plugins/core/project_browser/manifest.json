@@ -2,6 +2,7 @@
   "id": "project_browser",
   "version": "1.0.0",
   "display_name": "Tools:Open Project",
+  "single_instance": true,
   "icon": "📂",
   "description": "Browse, save, restore, export, and import ChiSurf projects using the MMFDB database with version control.",
   "authors": [

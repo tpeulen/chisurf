@@ -2,6 +2,7 @@
   "id": "plugin_manager",
   "version": "1.0.0",
   "display_name": "Setup:Plugins",
+  "single_instance": true,
   "description": "List the installed plugins: switch them off, pin them to the toolbar, rename their menu entry, set their icon and whether their window remembers its state.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Setup"],
