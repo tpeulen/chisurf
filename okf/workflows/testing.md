@@ -662,5 +662,16 @@ A single pytest process runs ~33k tests. Two failure modes have taken the machin
   growers from the CSV and deletes the run's `tmp_path` tree. `0` disables a limit. The
   swap and free-memory limits also trip when *other* processes (other agents' suites) eat
   the memory — that is intended: the run yields rather than tipping the machine.
+- **Where to pick this up (2026-10-19).** Measured: the first 7228 tests (27 %, up to
+  `test/native_emtk/test_emtk_shell_model_sections.py`) — no unbounded growth, peak tree
+  2.2 GB in `test/fluorescence/test_mfd_simulation.py`; record
+  `~/.cache/chisurf/test-resources/run-20261019-183924-12409.csv`. Open: the remaining 73 %
+  (the crash that started this happened at 34–47 %, so the culprit is likely there): run
+  `test/native_emtk` onwards plus `chisurf/` under the guard on a quiet machine — with ~30
+  agents running, swap was already 7 of 8 GB before the run started, and the
+  free-memory floor stops the run for that, as it should. Per-module growers still worth a
+  look: `test/fluorescence/test_mfd_ground_truth.py` (+630 MB),
+  `test/gui/test_emtk_port_parity.py` (+545 MB), `test/fitting/test_description_model.py`
+  (+524 MB).
 - Trap: never pass `--basetemp` into a long-lived scratch folder — pytest only clears it
   at the start of the next run with the same path, so it is never reclaimed.
