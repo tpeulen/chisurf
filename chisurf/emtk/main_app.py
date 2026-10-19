@@ -1953,6 +1953,10 @@ class EmtkShellApp(ImApp):
             self._focus = None
         super().pointer_press(x, y, button, modifiers, clicks)
         child, (ox, oy) = self._child(target)
+        from emtk.native import input_trace
+
+        input_trace.debug("shell press (%.1f, %.1f) -> %s at (%.1f, %.1f)", x, y, target,
+                          x - ox, y - oy)
         if child is not None:
             child.pointer_press(x - ox, y - oy, button, modifiers, clicks)
 
