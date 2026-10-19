@@ -45,14 +45,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Background stop (bin) | `background_stop` | float |  | 0.0 … 1000000.0 (step 1.0) | Last TAC bin of the background region (needs Background correction). |
 | VH shift (bins) | `shift` | float |  | -1000.0 … 1000.0 (step 0.1) | Shift the VH time axis by this many TAC bins, fractional bins included (the Qt tool's 'Shift Perpendicular Decay'). |
 
-### Manual G
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Manual G | `manual_g` | bool |  |  | Use the G-factor typed below instead of the calculated one (the Qt tool does this when its G field is edited). |
-| G used | `g_override` | float |  | 0.001 … 100.0 (step 0.01) | Positive detector sensitivity ratio used for the corrected anisotropy. |
-
-### Slow-reference mixing
+### Polarization mixing
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
@@ -63,14 +56,24 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | tau (ns) | `tau_override` | float |  | 0.0 … 100000.0 (step 0.1) | Lifetime used in place of the estimate. |
 | Manual target rS | `manual_rs` | bool |  |  | Override the Perrin steady-state anisotropy target. |
 | Target rS | `rs_override` | float |  | -0.2 … 0.4 (step 0.01) | Steady-state anisotropy the slow reference should have. |
-| Manual l1 = l2 | `manual_l` | bool |  |  | Override the single linked polarization-mixing parameter. |
-| l1 = l2 | `l_override` | float |  | 0.0 … 0.5 (step 0.01) | Linked mixing parameter applied to l1 and l2. |
 
 ### General
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | VV/VH files | `batch_files` | path_list |  |  | Queue files from disk, a folder or the database; remove or clear inputs without deleting their files. |
+
+### Sample decay
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| r-inf start (bin) | `sample_region_start` | float |  | 0.0 … 1000000.0 (step 1.0) | First bin of the region averaged to r-infinity. |
+| r-inf stop (bin) | `sample_region_stop` | float |  | 0.0 … 1000000.0 (step 1.0) | Last bin of the region averaged to r-infinity. |
+| r(SS) | `sample_r_ss_text` | str |  |  | Steady-state anisotropy r_SS calculated from integrated counts using calibrated G, l1, l2. |
+| r(inf) | `sample_r_infty_text` | str |  |  | Mean anisotropy over the r-infinity region (five decimals). |
+| Applied G | `applied_g_text` | str |  |  | Detector G-factor applied to sample anisotropy. |
+| Applied l1 | `applied_l1_text` | str |  |  | Polarization mixing factor l1 applied to sample anisotropy. |
+| Applied l2 | `applied_l2_text` | str |  |  | Polarization mixing factor l2 applied to sample anisotropy. |
 
 ## JSON-RPC methods
 

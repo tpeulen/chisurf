@@ -220,83 +220,51 @@ plot defaults. Many of these are read via `chisurf.settings.gui`.
 #### 1.8.1 Window behavior
 
 - **`language`**  
-  UI language as a two-letter locale code. `en` (default) is the canonical
-  source language and needs no catalogue; `de`, `es`, `fr`, `pt` and `ru` load
-  `chisurf/gui/i18n/chisurf_<code>.qm` at startup. Picking a language in the
-  Settings dialog or the ribbon flag dropdown writes it here, so the choice
-  **persists across sessions**; tools and dialogs opened after the switch render
-  in the new language immediately, while already-open windows fully retranslate
-  after a restart. A code without a shipped catalogue silently falls back to
-  English.
-
-- **`RubberBandMove`** / **`RubberBandResize`**  
-  Passed to `QMdiSubWindow.setOption` in `FitSubWindow` and other windows to
-  enable live rubber‑band move/resize handles for MDI subwindows.
+  UI language as a two-letter locale code. `en` (default) is the source
+  language and needs no catalogue; `de`, `es`, `fr`, `pt` and `ru` load
+  `chisurf/gui/i18n/chisurf_<code>.ts` ({src}`chisurf/core/support/i18n.py`).
+  Picking a language in Settings or the ribbon flag dropdown writes it here, so
+  the choice persists across sessions. A code without a shipped catalogue falls
+  back to English.
 
 - **`confirm_close_fit`**  
-  If true, closing a fit window prompts the user for confirmation.
+  If true, closing a fit window asks before the fit is discarded.
 
 - **`confirm_close_program`**  
-  If true, closing the main ChiSurf window shows a confirmation dialog.
-
-- **`fit_windows_size`**  
-  Two‑element list `[width, height]` giving the default size (in pixels) of
-  fit subwindows and several TTTR acquisition windows.
-
-- **`fit_window_style`**  
-  Qt stylesheet string applied to fit windows to customize their frame and
-  background appearance.
+  If true, quitting ChiSurf asks "Quit ChiSurf?" first.
 
 - **`style_sheet`**  
-  Name of the `.qss` style file used as the global GUI theme (looked up in the
-  styles directory copied to the user settings folder). Updated by the
-  style‑manager plugin.
+  The active emtk style sheet: a `.css` file shipped with emtk or in the user
+  styles folder; a `.qss` theme kept from the Qt window is translated to emtk's
+  dialect when applied. Written by **Settings ▸ Styles**.
 
-- **`show_console`**  
-  Control whether the embedded console pane is visible on startup.
+- **`modal_blur`**  
+  Blur what lies behind a dialog (default `true`); the wash stays when off.
+  **Settings ▸ Styles ▸ Blur behind dialogs**.
 
 #### 1.8.2 Embedded console
 
-The console is ChiSurf's own (`chisurf.gui.chinsole`); it replaced the
-`qtconsole` dependency in 2026-08. Existing settings keep working unchanged.
+The console is ChiSurf's own ({src}`chisurf/core/console/settings.py`).
 
 - **`console_init`**  
   Multiline string executed in the console on startup. The shipped value uses
-  IPython spellings — `%matplotlib inline`, `%config Completer.use_jedi =
-  False`, `get_ipython().cache_size = 0` — and all of them are implemented, so
-  no settings file needs editing.
-
-- **`console_style`**  
-  Console colour theme. Accepts `chisurf-dark`, `chisurf-light`,
-  `chisurf-mono`, or `auto` to follow `style_sheet`. The historic values
-  `linux`, `lightbg` and `nocolor` still resolve, to dark, light and mono
-  respectively.
-
-- **`console_height`**  
-  Initial height of the console dock, in pixels.
-
-- **`console_width`**  
-  *Retired.* It was never read — the old console assigned it over
-  `QWidget.width`, shadowing the method. Still accepted, still ignored.
+  IPython spellings (`%config Completer.use_jedi = False`,
+  `get_ipython().cache_size = 0`); both are implemented.
 
 #### 1.8.2.1 `gui.console`
 
-Optional block; every key has a default, so an absent block is normal.
+Optional block; every key has a default, so an absent block is normal. The
+keys the console reads ({src}`chisurf/emtk/console.py`):
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `theme` | `auto` | Overrides `console_style`. |
-| `font_family`, `font_size` | follow `gui.editor` | Console font. |
 | `max_blocks` | `5000` | Scrollback cap; `0` for unlimited. |
-| `max_output_chars` | `500000` | Output accepted from one command before the rest is dropped, with a notice. |
-| `flush_interval_ms` | `30` | How often queued output is drawn. |
-| `completion` | `popup` | `popup`, `inline` or `none`. |
-| `calltips` | `true` | Show signatures on `(`. |
-| `paging` | `vsplit` | Where long output such as `obj?` is shown. |
 | `history_length` | `5000` | Entries kept in `chinsole_history.txt`. |
 | `banner` | `true` | Startup banner. |
+| `completion` | `popup` | `none` turns completion off. |
+| `calltips` | `true` | Show signatures on `(`. |
+| `paging` | `vsplit` | `none` prints long output such as `obj?` inline instead of in a pager. |
 | `images` | `true` | Render figures inline. |
-| `autoindent` | `true` | Indent continuation lines. |
 
 #### 1.8.3 Script editor
 
@@ -323,30 +291,7 @@ Fields under `gui.editor` control the integrated text editor:
 - **`fit_models.n_columns`**  
   Number of columns used to arrange fit models in the model‑selection dialog.
 
-#### 1.8.5 Tooltips (`gui.tooltip`)
-
-- **`enabled`**  
-  Install the application‑wide tooltip folding filter
-  ({src}`chisurf/gui/tooltip.py`). With it on, every tooltip in ChiSurf is word‑wrapped
-  instead of rendering as one very wide line.
-
-- **`wrap_width`**  
-  Column at which plain tooltips are folded (default `72` characters).
-  Rich‑text/HTML tooltips are left untouched.
-
-- **`curve_preview.enabled`**  
-  Show a small plot of the curve underneath the file name when hovering a row in
-  a curve list — the dataset list, the IRF / background / linearization
-  selectors, the batch‑analysis dataset list, the dataset combo box, and the fit
-  list (which previews data *and* model). Set to `false` for plain‑text tooltips
-  with the file name only. Previews are painted lazily, on first hover of a row.
-
-- **`curve_preview.width`**, **`curve_preview.height`**  
-  Size of the preview image in pixels (defaults `300` × `140`). Decays spanning
-  more than two decades are drawn on a logarithmic y‑axis (marked `log` in the
-  corner of the thumbnail).
-
-#### 1.8.6 Plotting defaults (`gui.plot`)
+#### 1.8.5 Plotting defaults (`gui.plot`)
 
 How fit plots look. Edited in **Settings ▸ Plots**, which applies a change at
 once and writes only what differs from the shipped values; every plot reads

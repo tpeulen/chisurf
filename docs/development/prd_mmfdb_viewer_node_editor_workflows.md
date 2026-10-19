@@ -46,8 +46,8 @@ points.
       {src}`chisurf/plugins/core/mmfdb_admin/backend/measurement_services.py`.
 - [x] Node editor widget lives in `chisurf/gui/widgets/node_editor/editor.py` (since removed).
 - [x] Node scene serialization lives in `chisurf/gui/widgets/node_editor/scene.py` (since removed).
-- [x] Node type registry lives in {src}`chisurf/gui/widgets/node_editor/registry.py`.
-- [x] Headless node graph model lives in {src}`chisurf/gui/widgets/node_editor/graph.py`.
+- [x] Node type registry lives in {src}`chisurf/emtk/node_editor/registry.py` (moved from `chisurf/gui/widgets/node_editor/`).
+- [x] Headless node graph model lives in {src}`chisurf/core/graph_definition.py` (moved from `chisurf/gui/widgets/node_editor/graph.py`).
 - [x] Existing MMFDB UI bug: `raw_data.list` returns `raw_data`, but the UI
       reads `raw_datasets`.
 - [x] Existing MMFDB UI bug: `processed_data.list` returns `processed_data`,
@@ -174,7 +174,7 @@ Edit `chisurf/gui/widgets/node_editor/scene.py` (since removed) and
 
 ### 4. Add future workflow extension points
 
-Edit {src}`chisurf/gui/widgets/node_editor/registry.py`.
+Edit {src}`chisurf/emtk/node_editor/registry.py`.
 
 - [x] Extend `NodeType` with optional fields:
   - [x] `description: str = ""`
@@ -194,7 +194,7 @@ Edit {src}`chisurf/gui/widgets/node_editor/registry.py`.
 
 ### 5. Add headless graph helpers for workflows
 
-Edit {src}`chisurf/gui/widgets/node_editor/graph.py`.
+Edit {src}`chisurf/core/graph_definition.py`.
 
 - [x] Align `GraphDef.to_dict()` with current scene schema:
   - [x] use `pos: [x, y]`, not separate `x`/`y`
@@ -631,12 +631,12 @@ Review scope:
 - [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py`
 - [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/provenance_graph.py`
 - [x] `chisurf/gui/widgets/node_editor/editor.py` (since removed)
-- [x] {src}`chisurf/gui/widgets/node_editor/graph.py`
+- [x] `chisurf/gui/widgets/node_editor/graph.py` (since moved to {src}`chisurf/core/graph_definition.py`)
 - [x] `chisurf/gui/widgets/node_editor/scene.py` (since removed)
 - [x] `test/plugins/test_sample_database_plugin.py`
 - [x] {src}`test/plugins/test_provenance_graph_adapter.py`
 - [x] `chisurf/gui/widgets/node_editor/tests/test_read_only.py` (since removed)
-- [x] {src}`chisurf/gui/widgets/node_editor/tests/test_graph_headless.py`
+- [x] `chisurf/gui/widgets/node_editor/tests/test_graph_headless.py` (since moved to {src}`test/node_editor/test_graph_headless.py`)
 
 Current review decision:
 
@@ -867,11 +867,9 @@ Core modules:
 - [ ] Create `chisurf/core/nodeviewer/validation.py`.
 - [ ] Create `chisurf/core/nodeviewer/layout.py`.
 - [ ] Create `chisurf/core/nodeviewer/providers.py`.
-- [ ] Move or wrap current headless graph helpers from
-      {src}`chisurf/gui/widgets/node_editor/graph.py` into core without breaking
-      existing imports.
-- [ ] Keep compatibility import shims in {src}`chisurf/gui/widgets/node_editor/graph.py`
-      until all callers are migrated.
+- [x] Move the headless graph helpers from `chisurf/gui/widgets/node_editor/graph.py`
+      into core: {src}`chisurf/core/graph_definition.py`.
+- [x] Callers migrated; the `chisurf/gui/widgets/node_editor/graph.py` shim is removed.
 
 API / transport modules:
 

@@ -48,7 +48,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Filter | `sweep_filter` | str |  |  | Keep only the targets whose label contains this text (case-insensitive). |
-| Vary | `sweep_label` | choice |  | choices: `sweep_labels` | The parameter or mixing fraction to vary: C<i> [model] name, or fraction of a component. |
+| Vary | `sweep_label` | choice |  | choices: `sweep_labels` | The parameter or mixing fraction to vary: C&lt;i> [model] name, or fraction of a component. |
 | All parameters | `show_all_parameters` | bool |  |  | Also list the timing, IRF, background and anisotropy parameters and the donor-only fraction, which do not move a FRET line. |
 | Min | `minimum` | float |  | -1000000000.0 … 1000000000.0 (step 1.0) | First value of the swept quantity. |
 | Max | `maximum` | float |  | -1000000000.0 … 1000000000.0 (step 1.0) | Last value of the swept quantity. |

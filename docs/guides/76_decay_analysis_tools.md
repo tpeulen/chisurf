@@ -287,6 +287,7 @@ Read the scan as a table of fits, not as a verdict: open `optimal_fitting` in
 the JSON, check that $\chi^2_r$ falls monotonically with $n$, and judge the
 drop yourself.
 
+(vv-vh-lifetimes-and-rotations-together)=
 ## VV/VH: lifetimes and rotations together
 
 **Data → VV/VH** fits a polarization-resolved pair instead of one decay. Both

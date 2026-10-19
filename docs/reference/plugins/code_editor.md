@@ -21,7 +21,7 @@ Shared multi-document code/text editor with project navigation, symbols, diagnos
 | Menu path | Tools → System → **Code Editor** |
 | Categories | Tools, System |
 | Version | 2.1.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `code_editor` |
 
 ## Parameters

@@ -875,11 +875,9 @@ Painting is **lazy** — an item renders only when Qt first asks for its tooltip
 and then caches it, so a list of hundreds of curves costs nothing to populate.
 Series spanning ≥ 2 decades are drawn logarithmically; data and model share one
 y scaling. The spectra tooltips of the light-path simulator are built on the same
-renderer. Whether previews are drawn at all, and how large, is configured under
-`gui.tooltip.curve_preview` (default on) and read via
-`chisurf.gui.tooltip.curve_preview_config`; disabled, the tooltip degrades to the
-plain file name. New list/tree/combo widgets that show curves use these items
-rather than an eager `setToolTip`.
+renderer. (Qt-era: `chisurf/gui/tooltip.py` and its `gui.tooltip` settings block went with the
+Qt shell; the dead `gui.tooltip` keys were struck from `settings_chisurf.yaml` on
+2026-10-19.)
 
 ## UI convention: write labels plain, let them be typeset
 

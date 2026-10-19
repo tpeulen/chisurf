@@ -74,8 +74,6 @@ fret:
   rda_resolution: 96
   tau0: 4
 gui:
-  RubberBandMove: true
-  RubberBandResize: true
   confirm_close_fit: true
   confirm_close_program: true
   # UI language (two-letter locale code). "en" is the canonical source language
@@ -107,24 +105,11 @@ gui:
     oversample: 1.0
     antialias: true
     fallbacks: []
-  tooltip:
-    # Fold long tooltips app-wide so they don't render as one very wide line.
-    enabled: true
-    wrap_width: 72
-    curve_preview:
-      # Show a small plot of the curve below the file name in the tooltips of
-      # the dataset/curve lists. Set enabled to false for plain-text tooltips.
-      enabled: true
-      width: 300
-      height: 140
   console_init: "%config Completer.use_jedi = False
 
     get_ipython().cache_size = 0
 
     "
-  console_style: linux
-  console_width: 80
-  console_height: 100
   editor:
     caret_line_background_color: "#afafaf"
     caret_line_visible: false
@@ -146,10 +131,6 @@ gui:
     header_height: 18
   fit_models:
     n_columns: 2
-  fit_window_style: "border: 2px solid rgba(0, 0, 0, 0.10);background-color: gray;"
-  fit_windows_size:
-    - 350
-    - 350
   fit_progress_close_delay_ms: 200
   plot:
     # Edited in Settings > Plots; read when a plot draws (chisurf.core.plotting.appearance).
@@ -204,7 +185,6 @@ gui:
     "Analysis": "#674a3b"
     "Plot settings": "#5c3b67"
     "Logging": "#3b6767"
-  show_console: true
   # Active EMTK style sheet (Settings > Styles). Shipped in EMTK or in user styles.
   style_sheet: dark_blue.css
   memory_widget_update_interval_ms: 5000 # Memory usage widget update interval in milliseconds

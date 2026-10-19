@@ -2,7 +2,7 @@
 type: Development Note
 title: ChiSurf dependency licenses
 description: Every declared dependency's license, its permissiveness class, and the binding constraint on ChiSurf's own license.
-tags: [development, licensing]
+tags: [development, licenses]
 audience: developer
 ---
 

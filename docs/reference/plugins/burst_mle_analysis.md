@@ -52,7 +52,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | IRF model | `irf_model` | choice |  | choices: `irf_model_choices` | Shape of the IRF that Auto IRF/background estimates from the non-burst photons. Gaussian: a Gaussian fitted to the prompt, which cannot follow the slow fluorescent tail (recommended). Skewed: a skew-normal fit for an asymmetric detector response. Experimental: the raw baseline-subtracted histogram. A measured IRF file replaces the estimate. |
 | IRF: one for all | `irf_one_for_all` | bool |  |  | The IRF files serve every detector; each detector reads its own channels from them. Off: files are set for the selected detector only. |
 | Background: one for all | `bg_one_for_all` | bool |  |  | The background files serve every detector; each detector reads its own channels from them. Off: files are set for the selected detector only. |
-| Save VV/VHs | `save_vv_vhs` | bool |  |  | Write the VV and VH histogram of every IRF or background file beside it (<file>_<channels>.dat) when it is read. |
+| Save VV/VHs | `save_vv_vhs` | bool |  |  | Write the VV and VH histogram of every IRF or background file beside it (&lt;file>_&lt;channels>.dat) when it is read. |
 
 ### IRF
 

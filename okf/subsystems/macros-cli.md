@@ -112,8 +112,9 @@ recording and offers to save it. It was a one-shot wired only to
 **What existing installations keep.** ChiSurf merges packaged defaults
 *underneath* a user's settings file and never overwrites it, so
 `console_style: linux` and a `console_init` full of IPython spellings are
-permanent on every install. Both keep working rather than being migrated:
-`linux`/`lightbg`/`nocolor` are theme aliases, and `%matplotlib inline`,
+permanent on every install. `console_style` is no longer read (the emtk console reads
+`gui.console` in `chisurf/emtk/console.py`; the key was struck from the shipped YAML
+2026-10-19), and `console_init` keeps working rather than being migrated: `%matplotlib inline`,
 `%config Completer.use_jedi = False` and `get_ipython().cache_size = 0` are each
 implemented — the last as a real property, because accepting the assignment and
 ignoring it would reinstate the memory growth that line exists to prevent.

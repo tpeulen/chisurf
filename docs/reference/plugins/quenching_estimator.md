@@ -21,7 +21,7 @@ Structure-based simulation of dynamic PET quenching and FRET for dyes tethered t
 | Menu path | Structure → Computation → **QuEst** |
 | Categories | Structure, Computation |
 | Version | 19.8.13 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `quenching_estimator` |
 
 ## Parameters

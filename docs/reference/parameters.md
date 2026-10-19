@@ -17,7 +17,7 @@ Total registered parameters: **179**.
 
 | Parameter | Meaning | Keywords |
 | --- | --- | --- |
-| `alpha` | Anomalous-diffusion exponent (α<1 sub-diffusion, α=1 normal, α>1 super-diffusion). |  |
+| `alpha` | Anomalous-diffusion exponent (α&lt;1 sub-diffusion, α=1 normal, α>1 super-diffusion). |  |
 | `aT` | Triplet/blinking amplitude — fraction of molecules transiently in a dark state. |  |
 | `b` | Correlation baseline offset G(τ→∞): ~1 for normalized ACFs, 0 for background-subtracted curves. |  |
 | `ba` | Bunching (blinking/triplet) amplitude of a relaxation term. |  |

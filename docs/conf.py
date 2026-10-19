@@ -142,3 +142,21 @@ html_theme = 'sphinx_rtd_theme' if importlib.util.find_spec('sphinx_rtd_theme') 
 # relative to this directory. They are copied after the builder finishes
 # and put into the build directory. The builtin copy mechanism is used.
 # html_static_path = ['_static']
+
+
+def _no_signature_for_data(app, what, name, obj, options, signature, return_annotation):
+    """Stop signature handlers from treating a module-level type alias as a call.
+
+    numpydoc's handler sees a callable such as ``dict[str, Any]`` and returns
+    ``dict``'s docstring signature; Sphinx 9 then indexes an empty signature
+    list for a ``data`` object and raises. A non-``None``, non-string result
+    ends the handler chain without a signature.
+    """
+    if what in ('data', 'attribute'):
+        return (None, None)
+    return None
+
+
+def setup(app):
+    """Register the documentation build's local Sphinx hooks."""
+    app.connect('autodoc-process-signature', _no_signature_for_data, priority=100)

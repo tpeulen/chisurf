@@ -125,6 +125,13 @@
     "sha256": "cb458dd1e3cfa37e1f4ccb363ed64e328a02c0e7ea74e262046988d4b63f0ac2",
     "status": "ai-reviewed"
   },
+  "109_zenodo_deposit.md": {
+    "date": "2026-10-19",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "c576003075a55ae6386363be796381d0a571d85997fb4ee1d07862a078a31446",
+    "status": "ai-reviewed"
+  },
   "10_lifetime_anisotropy_fitting.md": {
     "date": "2026-10-14",
     "reviewer": "agent",
@@ -472,7 +479,7 @@
     "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "f0b022b9029350ebee754d53def03d1149b20ca058d81fa7bdc619a8f5c2816f",
+    "sha256": "4282a83ece1db82f493112e91476e81f5d323e061d8e3a52aaede0510df3a9dd",
     "status": "ai-reviewed"
   },
   "60_global_analysis.md": {
@@ -567,10 +574,10 @@
     "status": "ai-reviewed"
   },
   "76_decay_analysis_tools.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "f06aa0757725f0e63a7600a3b9a2d55ed7a2e88df5a36cc7acaa8201416e7cb1",
+    "sha256": "5e7a6b18846be10829c16f3cba57cac025c9e31f5a1ce0b8e63ec74c8c1cde94",
     "status": "ai-reviewed"
   },
   "77_phasor_calculator.md": {
@@ -766,7 +773,7 @@
     "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "4df1ca175acab8f03ea204a2e54da124c5c44cd1a2b8f2409e742209c188b33e",
+    "sha256": "739ac936091c9092810db5f959db65276ac0fe2ebf1a7e9170288f718d1271fd",
     "status": "ai-reviewed"
   },
   "irf_estimation.md": {

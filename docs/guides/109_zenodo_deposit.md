@@ -2,12 +2,12 @@
 type: Guide
 title: Uploading a record to Zenodo
 description: Review a deposition record item by item in the Zenodo deposit tool, then upload it as a draft and publish it.
-tags: [zenodo, deposition, review, guide]
+tags: [guides, zenodo, deposit]
 ---
 
 # Uploading a record to Zenodo
 
-**File › Data › Zenodo deposit** (`zenodo_deposit` plugin). Theory:
+**File › Data › Zenodo deposit** ({src}`chisurf/plugins/core/zenodo_deposit/gui/app.py`). Theory:
 {doc}`../concepts/data_deposition`.
 
 The banner at the top always names the **one next step**; follow it and

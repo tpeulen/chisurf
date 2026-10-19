@@ -2,7 +2,7 @@
 type: Concept
 title: Depositing data — a reviewed path to Zenodo
 description: How a record goes from a folder to a published Zenodo entry, and why every step that leaves the machine needs a person's approval bound to the content it approves.
-tags: [deposition, zenodo, review, provenance, mmfdb]
+tags: [concepts, data, deposition]
 ---
 
 # Depositing data — a reviewed path to Zenodo
@@ -47,8 +47,9 @@ that content. Upload creates a **draft** and compares the file's MD5 on the
 repository with the local one. Publishing is irreversible and needs its own
 approval, bound to the MD5 of the package in the draft.
 
-The same gate serves the GUI ({doc}`../guides/109_zenodo_deposit`) and the
-terminal (`python -m mmfdb.deposit`).
+The same gate serves the GUI ({doc}`../guides/109_zenodo_deposit`,
+{src}`chisurf/plugins/core/zenodo_deposit/gui/app.py`) and the terminal
+(`python -m mmfdb.deposit`).
 
 ## The token
 

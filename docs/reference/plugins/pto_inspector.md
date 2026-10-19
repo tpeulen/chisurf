@@ -31,7 +31,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Container | `filename` | data_source |  |  | The .pto to inspect — one measurement in one file: the instrument data verbatim, and every result computed from it beside it. Dropping a vendor photon file offers to pack it into a container first. |
-| Legacy folder | `export_legacy_folder` | data_source |  |  | Folder that receives the Seidel/Margarita layout: bi4_bur/*.bur beside one <ending>4/ companion directory per analysis. |
+| Legacy folder | `export_legacy_folder` | data_source |  |  | Folder that receives the Seidel/Margarita layout: bi4_bur/*.bur beside one &lt;ending>4/ companion directory per analysis. |
 
 ## Theory and workflow
 

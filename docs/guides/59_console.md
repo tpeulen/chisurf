@@ -220,9 +220,9 @@ package, so a script, the `csc` CLI or the ZMQ server reach the same API through
 
 ## Settings
 
-The console reads `gui.console_init` (run at startup), `gui.console_style` (the
-colour theme) and the optional `gui.console` block — scrollback cap, output
-limit, completion style, paging. All of them are documented in
+The console reads `gui.console_init` (run at startup) and the optional
+`gui.console` block — scrollback cap, history length, banner, completion,
+calltips, paging, inline figures. All of them are documented in
 [Settings](../reference/settings.md).
 
 ## See also

@@ -126,8 +126,14 @@ FALLBACK_DESCRIPTIONS = {
 
 
 def _md(text) -> str:
-    """Escape a value so it is safe inside a Markdown table cell."""
-    return str(text).replace("|", "\\|").replace("\n", " ").strip()
+    """Escape a value so it is safe inside a Markdown table cell.
+
+    A tooltip is plain text: ``<p>`` in one is a word, not markup, so ``<`` is
+    written as an entity rather than passed through as raw HTML.
+    """
+    return (
+        str(text).replace("<", "&lt;").replace("|", "\\|").replace("\n", " ").strip()
+    )
 
 
 def _load_json(path: pathlib.Path):

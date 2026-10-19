@@ -2,7 +2,7 @@
 type: Concept
 title: The flrCIF and MMFDB vocabulary
 description: Generated reference of the categories and items ChiSurf persists, defined in the mmfdb extension dictionaries.
-tags: [concepts, mmfdb, flrcif, vocabulary]
+tags: [concepts, database, mmfdb]
 anchor: concept-flrcif-vocabulary
 ---
 

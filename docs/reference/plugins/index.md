@@ -10,7 +10,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **126 plugins**, **90** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the controls of the others are described in each plugin's guide, and every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **129 plugins**, **91** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the controls of the others are described in each plugin's guide, and every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -19,7 +19,7 @@ Of the **126 plugins**, **90** build their interface from declarative AutoForm s
 *
 ```
 
-**126 plugins** across 29 categories.
+**129 plugins** across 28 categories.
 
 ## Core
 
@@ -32,11 +32,13 @@ Of the **126 plugins**, **90** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [BID→Analysis](bid_to_analysis.md) | Turn burst-ID files (first/last photon index per burst) into burst tables of the matching TTTR measurement: a bursts table in its .pto, or a legacy .bur + .mti, SL5 mask or HDF5 table. Scriptable as convert_bid_file(path). |
+| [Burstwise→PTO](burstwise_import.md) | Convert legacy burstwise analysis folders (bi4_bur/bg4/br4/BIDs/Info/.mti) to PTO.MFDB containers. |
 | [MFD Prepare](mfd_prepare.md) | Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report. |
 | [PTO Inspector](pto_inspector.md) | Inspect a .pto photon container: every object in it, the provenance graph that says how each came to be, the payload as a table or a curve, and the settings that are the recipe. Double-click a step to open the tool that performs it. |
 | [Split/Convert](tttr_splitter.md) | Split a TTTR file into files of a fixed photon count, convert it to another container format, or bin its micro-times; one file or a batch. |
 | [TTTR Header editor](tttr_header_edit.md) | View and edit the header tags of any TTTR file tttrlib reads (PTU, HT3, SPC, Photon-HDF5): change, add or remove tags and save the photons unchanged into a new PTU file, the only container that keeps arbitrary tags. |
 | [TTTR→Time-Window BIDs](tttr_time_windows.md) | Split TTTR files into fixed-duration time-window BID (.bst) files. |
+| [Zenodo deposit](zenodo_deposit.md) | Review a deposition record item by item -- every measurement folder, calibration folder and metadata file, with where it came from and why it is flagged -- then upload it as a Zenodo draft and check the draft against the local package. Nothing is uploaded until every item is approved at its current content; publishing needs its own approval of the exact package. |
 | [⇄ .pto](tttr_to_pto.md) | Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Drop a vendor file to pack it into a .pto beside it; drop a .pto to unpack the vendor file(s) it embeds back out. Whichever direction, the dropped file is kept and the result is verified byte-for-byte before anything is ever deleted. Packing is also offered as a one-time nag wherever a plugin drops a vendor file to load it as the working measurement. |
 
 ## Help
@@ -52,7 +54,7 @@ Of the **126 plugins**, **90** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [Batch-Analysis](batch_analysis.md) *(hidden)* | Apply one pre-optimised template fit to many datasets or files in one pass and export the consolidated results (CSV, DOCX report, per-run ZIP). |
-| [F-Test](f_test.md) *(hidden)* | F-test calculator: compare two nested model fits (confidence <-> chi2 threshold) and compute the chi2-max upper limit of a single fit at a confidence level. Declarative AutoForm view; values load from open fits. |
+| [F-Test](f_test.md) *(hidden)* | F-test calculator: compare two nested model fits (confidence &lt;-> chi2 threshold) and compute the chi2-max upper limit of a single fit at a confidence level. Declarative AutoForm view; values load from open fits. |
 | [FRET-Calculator](fret_calculator.md) *(hidden)* | Combined heteroFRET and homoFRET parameter calculator. |
 | [Phasor-Calculator](phasor_calculator.md) *(hidden)* | Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line. |
 | [RICS-Precision](rics_precision.md) *(hidden)* | Predict how precisely a raster scan (RICS) will measure a diffusion coefficient, and find the dwell time that measures it best — from the intended settings alone, before the microscope time is spent. |
@@ -74,7 +76,7 @@ Of the **126 plugins**, **90** build their interface from declarative AutoForm s
 | [Plots](plot_settings.md) *(hidden)* | How fit plots look: curve colours and width, fit-range band, global fits, axes and grid, with a live preview |
 | [Plugins](plugin_manager.md) *(hidden)* | List the installed plugins: switch them off, pin them to the toolbar, rename their menu entry, set their icon and whether their window remembers its state. |
 | [Settings](setup.md) | The Settings window: one searchable list of every settings panel (ChiSurf settings, acquisition, styles, plots, models, users, plugins, updates, detector setup, ...). |
-| [Styles](style_manager.md) *(hidden)* | Edit ChiSurf's style sheets (.qss files in the settings directory) and apply one to the running application. |
+| [Styles](style_manager.md) *(hidden)* | Edit ChiSurf's style sheets (.css files in the settings directory; a .qss theme kept from the Qt window is translated) and apply one to the running application. |
 | [Switch User](switch_user.md) | Switch the active MMFDB user for this ChiSurf session. |
 | [Updates & Packages](updater.md) *(hidden)* | Update checker/installer and conda package manager. Surfaced as panels inside the unified Settings dialog. |
 | [User Editor](user_editor.md) *(hidden)* | Manage the users registered in the MMFDB: create, edit and remove accounts. |
@@ -264,6 +266,8 @@ Of the **126 plugins**, **90** build their interface from declarative AutoForm s
 | [Code Editor](code_editor.md) | Shared multi-document code/text editor with project navigation, symbols, diagnostics, and optional Python LSP integration. |
 | [Games](games.md) | A collection of built-in games: Number Quest, Minesweeper, Tetris, Pong, and Breakout. |
 | [MMFDB Admin](mmfdb_admin.md) | Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives. |
+| [Python Terminal](python_terminal.md) | ChiSurf's built-in Python console as a terminal pane: tmux-style tabs, splits and floating windows around the console engine. |
+| [Terminal](terminal.md) | Terminal panes like tmux: tabs, splits and floating windows of real PTY sessions. |
 
 ## Tools → TTTR
 
