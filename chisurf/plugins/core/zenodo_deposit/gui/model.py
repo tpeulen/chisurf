@@ -691,7 +691,7 @@ class ZenodoDepositModel:
             else:
                 from chisurf.plugins.ndxplorer.gui.app import open_in_ndx
 
-                open_in_ndx(path)
+                open_in_ndx(path, new=True)  # never over what ndX shows already
             self.message = f"opened {path.name} in ndX"
         except Exception as exc:  # noqa: BLE001 - shown to the reviewer
             self.message = f"could not open {path.name} in ndX: {exc}"

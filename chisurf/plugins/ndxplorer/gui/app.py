@@ -425,8 +425,11 @@ def _ndx_app():
     return apps[-1]
 
 
-def open_in_ndx(path, on_opened=None) -> object:
+def open_in_ndx(path, on_opened=None, new: bool = False) -> object:
     """Open *path* in ndX: the open window when there is one, else a new one.
+
+    With *new* (and the emtk shell open) it always opens in a new ndX window, so what is
+    open in ndX already stays as it is.
 
     A ``.cs.pto`` opens its stored sampling chain (ndX asks which, when the
     project holds several).
@@ -454,8 +457,9 @@ def open_in_ndx(path, on_opened=None) -> object:
     from chisurf.core.plugin import handoff
 
     if handoff.available("ndxplorer", "open_path"):
+        extra = {"new": True} if new else {}
         return handoff.hand_off(
-            "ndxplorer", "open_path", {"path": str(path)}, on_delivered=on_opened
+            "ndxplorer", "open_path", {"path": str(path)}, on_delivered=on_opened, **extra
         )
     app = _ndx_app()
     app.open_path(str(path))

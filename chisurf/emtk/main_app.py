@@ -703,8 +703,11 @@ class EmtkShellApp(ImApp):
         kind: str,
         payload: dict,
         on_delivered: Callable[[Any], Any] | None = None,
+        new: bool = False,
     ) -> HostedPlugin:
         """Open *plugin_id* as a dock and give its app *payload* once the app is built.
+
+        With *new* it is a new dock of the tool ("ndX #2"), as the menus open one.
 
         The payload goes to the receive hook the target declares for *kind*
         (:func:`chisurf.core.plugin.handoff.deliver`), on the draw thread, after the build finishes
@@ -727,7 +730,7 @@ class EmtkShellApp(ImApp):
                 raise HandoffError(f"{plugin_id} is not a tool of this window")
             raise HandoffError(f"{plugin_id} does not accept a {kind} payload")
         check_payload(spec, payload)
-        hosted = self.open_plugin(plugin_id)
+        hosted = self.open_plugin(plugin_id, new=new)
         assert hosted is not None  # accepts() refused command plugins
 
         def receive() -> None:

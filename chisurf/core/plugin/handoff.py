@@ -60,8 +60,12 @@ class HandoffHost(Protocol):
         kind: str,
         payload: dict,
         on_delivered: Callable[[Any], Any] | None = None,
+        new: bool = False,
     ) -> Any:
-        """Open *plugin_id*, deliver *payload* once its app exists, then call ``on_delivered(app)``."""
+        """Open *plugin_id*, deliver *payload* once its app exists, then call ``on_delivered(app)``.
+
+        With *new* the payload goes to a new window of the tool, not the one open already.
+        """
         ...
 
 
@@ -127,8 +131,12 @@ def hand_off(
     payload: dict,
     *,
     on_delivered: Callable[[Any], Any] | None = None,
+    new: bool = False,
 ) -> Any:
     """Ask the host to open *plugin_id* and give it *payload* of the declared *kind*.
+
+    With *new* the host opens a new window of the tool for it ("ndX #2") instead of handing
+    it to the window open already -- unless the tool allows only one.
 
     The target's app is built asynchronously, so what this returns is the host's record of
     the tool, not the app. A requester that has to act on the app itself (attach a hook to
@@ -151,9 +159,12 @@ def hand_off(
     current = host()
     if current is None:
         raise HandoffError("no ChiSurf window is open to hand this to")
-    if on_delivered is None:
-        return current.hand_off(plugin_id, kind, dict(payload))
-    return current.hand_off(plugin_id, kind, dict(payload), on_delivered=on_delivered)
+    extra: dict[str, Any] = {}
+    if on_delivered is not None:
+        extra["on_delivered"] = on_delivered
+    if new:
+        extra["new"] = True
+    return current.hand_off(plugin_id, kind, dict(payload), **extra)
 
 
 def deliver(app: Any, spec: HandoffSpec, payload: dict) -> Any:
