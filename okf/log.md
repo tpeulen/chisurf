@@ -21,6 +21,7 @@
 ## 2026-10-18
 - 2026-10-19: terminal/python_terminal gained a guided tour (terminal/guide.json, awaits New/Split/Close) and help.md, wired in TerminalApp; style-preview sample widgets (setup, style_manager) carry tooltips (e2e W7 findings).
 - 2026-10-19: docs-release green (PRD-154 Part D gate 1, docs half; d05a2f7e9): sphinx-build 11 warnings -> 0 (Sphinx 9.1 + numpydoc signature crash on the ServiceResult alias guarded in docs/conf.py; node_editor {src} links repointed; dead gui.tooltip and 7 other Qt-only gui keys struck from settings_chisurf.yaml and docs/reference/settings.md, guard test/settings/test_gui_settings_shipped.py); generate_plugin_docs escapes '<' so tooltip text no longer vanishes as raw HTML; review-check 0 stale / 0 unreviewed of 428. Open: burstwise_import, terminal, python_terminal pages link no concept/guide (prd-154 pickup item 3).
+- 2026-10-19: docs carry no QSS (154f528cf): settings.md style_sheet says emtk .css only; style_manager plugin page regenerated from the rewritten manifest; grep of docs/ for qss finds nothing outside _build.
 
 - Support external raw files as sidecar in PTO containers: added ptolib streaming read from external payload paths when size == 0, tttrlib TTTR reader and pto_read_events sidecar delegation, chisurf Measurement.create/add_instrument/is_sidecar/external_path/verify/extract sidecar handling, and tttr_to_pto convert as_sidecar mode (43 passed tests).
 
