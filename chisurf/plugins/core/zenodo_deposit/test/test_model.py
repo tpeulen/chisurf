@@ -352,3 +352,26 @@ def test_drawing_the_window_never_reads_the_keychain(model, monkeypatch):
     model.test_token()
     _wait(model)
     assert reads and model.token_source == "keychain"
+
+
+def test_a_running_job_shows_a_modal_progress_window(model):
+    import threading
+
+    from emtk.testing import Driver
+
+    from chisurf.plugins.core.zenodo_deposit.gui.app import ZenodoDepositApp
+
+    model.select_record(model.records[0])
+    release = threading.Event()
+    model._run("uploading the draft", lambda: release.wait(5) and "uploaded")
+    app = ZenodoDepositApp(model)
+    ui = Driver(app, (1200, 800))
+    ui.frame(2)
+    texts = " ".join(t[5] for t in ui.painter.texts)
+    assert "Uploading the draft" in texts and "elapsed" in texts
+    assert "Cancel" not in texts  # an upload runs to its end
+    release.set()
+    _wait(model)
+    ui.frame(2)
+    assert "elapsed" not in " ".join(t[5] for t in ui.painter.texts)
+    assert model.message == "uploaded"

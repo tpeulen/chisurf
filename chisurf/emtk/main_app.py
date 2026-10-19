@@ -1831,6 +1831,7 @@ class EmtkShellApp(ImApp):
                 draw.add_rect_filled((bx, by), (bx + box_w, by + box_h), panel, 3.0)
                 draw.add_text((bx + pad, by + pad), ink, badge_text)
                 self.item_rects["system_info"] = (bx, by, box_w, box_h)
+                self._watermark_pressed((bx, by, box_w, box_h))
                 return
 
             rows: list[tuple[str, int]] = []  # (text, sparkline index or -1)
@@ -1879,8 +1880,29 @@ class EmtkShellApp(ImApp):
                                 points.insert(0, (gx + 1.0, points[0][1]))
                         draw.add_polyline(points, colours[spark], 0, 1.5)
             self.item_rects["system_info"] = (bx, by, box_w, box_h)
+            self._watermark_pressed((bx, by, box_w, box_h))
         finally:
             im.pop_font_scale()
+
+    def _watermark_pressed(self, rect) -> None:
+        """Fold or unfold the watermark when a press lands on it, and on nothing drawn over it.
+
+        The watermark lies under everything in the workspace, so a press is its own only when
+        the workspace window it is drawn into is the window under the pointer: a fit window
+        floating over it, a menu or popup opened over it (the workspace's window list), a dock
+        or a tool in front all come later in the display list and take the press. Hit-tested
+        in :meth:`pointer_press` against its rectangle alone, it once ate every click in its
+        corner -- a tool's filter row, the window list's rows.
+        """
+        if not (im.is_mouse_clicked(0) and im.is_window_hovered()):
+            return
+        if self._plugin_at(*im.get_mouse_pos()) is not None:
+            return  # a hosted tool is drawn over the workspace here
+        wx, wy, ww, wh = rect
+        mx, my = im.get_mouse_pos()
+        if wx <= mx <= wx + ww and wy <= my <= wy + wh:
+            self._watermark_folded = not getattr(self, "_watermark_folded", False)
+            self.request_frame()
 
     def _draw_console(self, box) -> None:
         self.host_child("console", "console", self.console_terminal, box)
@@ -2002,16 +2024,8 @@ class EmtkShellApp(ImApp):
         if self.project.modal and not self.project.contains(x, y):
             return  # a question is open: a press beside it does nothing (it is modal)
         target = self._plugin_at(x, y)
-        # The watermark lies under everything (the workspace's background): it takes a press
-        # only where no tool is drawn over it. Tested first, it ate every click in its corner
-        # of a tool tabbed over the workspace -- the help window's filter row among them.
-        wm_rect = self.item_rects.get("system_info") if target is None else None
-        if wm_rect is not None:
-            wx, wy, ww, wh = wm_rect
-            if wx <= x <= wx + ww and wy <= y <= wy + wh:
-                self._watermark_folded = not getattr(self, "_watermark_folded", False)
-                self.request_frame()
-                return
+        # The watermark (the workspace's background) folds in the frame, not here: only the
+        # frame knows what is drawn over it (_watermark_pressed).
         self._capture = target
         # A press outside a child never reaches it, so it cannot see the press that closes its context menu
         # or list; it is told here. Otherwise the menu stays up and holds the child's input until a click

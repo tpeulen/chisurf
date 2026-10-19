@@ -51,6 +51,10 @@ class ZenodoDepositApp(ImApp):
         self.dialog: FileDialog | None = None
         self.dialog_window = DialogWindow("Add to the record", size=(720.0, 460.0),
                                           key="zenodo-deposit-add")
+        #: Modal while a build, scan, upload or check runs: the record must not change under it.
+        self.progress_window = DialogWindow("Working", size=(520.0, 170.0), close_button=False,
+                                            key="zenodo-deposit-progress", escape_closes=False,
+                                            fit_height=True)
         self.docks = DockManager(Region("deposit"))
         # The tool's only panel: it cannot be closed, or the tool would stay empty.
         self.docks.add_window("deposit", "Zenodo deposit", self.draw_deposit, dock="deposit",
@@ -65,12 +69,30 @@ class ZenodoDepositApp(ImApp):
         if not self.docks.window("deposit").visible:
             # a layout saved while the panel could still be closed
             self.docks.show("deposit")
-        im.begin_disabled(self.dialog is not None)
+        busy = self.model.job.running
+        im.begin_disabled(self.dialog is not None or busy)
         self.docks.draw(box)
         im.end_disabled()
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
         self.draw_dialog(box)
+        self.draw_progress(box)
+
+    def draw_progress(self, box: Any) -> None:
+        """While a job runs: what it is, its current step, the time so far; Cancel for a build."""
+        m = self.model
+        if not m.job.running:
+            self.progress_window.hide()
+            return
+        self.progress_window.title = m.busy_what[:1].upper() + m.busy_what[1:]
+        self.progress_window.show()
+        pressed = self.progress_window.begin(box, ["Cancel"] if m.busy_cancellable else [])
+        im.progress_bar(-im.get_time() * 0.6, (-1.0, 0.0))
+        im.text_wrapped(m.busy_step or "working…")
+        im.text_disabled(f"{m.busy_elapsed} elapsed -- the window is locked until it is done")
+        self.progress_window.end()
+        if pressed == "Cancel":
+            m.cancel_job()
 
     def draw_dialog(self, box: Any) -> None:
         """The chooser of step 2: files (several) or one folder, added as the named item."""

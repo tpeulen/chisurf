@@ -138,6 +138,11 @@ class ZenodoDepositModel:
         self.message = ""
         self.job = BackgroundJob()
         self.busy_what = ""
+        #: The step the running job is on (a build's last output line), for the progress window.
+        self.busy_step = ""
+        self._busy_since = 0.0
+        #: The build's process while it runs: the one job that can be cancelled.
+        self._proc = None
         self._client_factory = client_factory or (lambda base: ZenodoClient(base=base))
         #: ``opener(path)`` -- ndX's ``open_in_ndx`` unless a test supplies one.
         self._ndx_opener = ndx_opener
@@ -481,10 +486,8 @@ class ZenodoDepositModel:
         rec = str(Path(self.data_root) / self.config_name)
         cmds = [c.format(python=shlex.quote(sys.executable), config=shlex.quote(cfg),
                          record=shlex.quote(rec)) for c in (self.build_command, self.scan_command)]
-        run = self._runner or (lambda cmd: subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, env={
-                k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONHOME")}))
-        self.busy_what = f"building {self.config_name}"
+        run = self._runner or self._stream
+        self._busy(f"building {self.config_name}")
         self.build_log = ""
 
         def work():
@@ -506,7 +509,8 @@ class ZenodoDepositModel:
 
         def fail(exc):
             self.build_log = str(exc)
-            self.message = f"building {self.config_name} failed (see the log)"
+            self.message = (f"building {self.config_name} cancelled" if self.job.cancelled.is_set()
+                            else f"building {self.config_name} failed (see the log)")
 
         self.job.start(work, done, fail)
 
@@ -937,7 +941,7 @@ class ZenodoDepositModel:
     def next_step(self) -> str:
         """The single next thing to do, in words -- shown above everything."""
         if self.job.running:
-            return f"**Working:** {self.busy_what}… (the window stays usable)"
+            return f"**Working:** {self.busy_what}…"
         if self.token_source == "":
             return ("**Step 0 -- enter your Zenodo token** in the *Zenodo token* tab. "
                     "Reviewing works without it; uploading does not.")
@@ -1026,7 +1030,7 @@ class ZenodoDepositModel:
         self.message = "stored token removed"
 
     def test_token(self) -> None:
-        self.busy_what = "testing the token"
+        self._busy("testing the token")
         make = self._client()
 
         def work():
@@ -1055,10 +1059,49 @@ class ZenodoDepositModel:
             return f"Upload is locked: {len(b)} thing(s) block it -- see the list above."
         return "Upload is unlocked."
 
+    # ── the progress window ──────────────────────────────────────────────
+    def _busy(self, what: str) -> None:
+        self.busy_what, self.busy_step, self._busy_since = what, "", time.monotonic()
+
+    @property
+    def busy_elapsed(self) -> str:
+        s = int(time.monotonic() - self._busy_since) if self.job.running else 0
+        return f"{s // 60}:{s % 60:02d}"
+
+    @property
+    def busy_cancellable(self) -> bool:
+        """Only the build can be stopped: its process is killed and nothing is left half-built
+        that the next build does not replace. An upload runs to its end (a draft is never
+        left half-filled)."""
+        return self._proc is not None
+
+    def cancel_job(self) -> None:
+        proc = self._proc
+        if proc is not None:
+            self.job.cancelled.set()
+            proc.terminate()
+
+    def _stream(self, cmd: str):
+        """Run *cmd*, its output line by line into :attr:`busy_step`; like ``subprocess.run``."""
+        env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONHOME")}
+        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                text=True, env=env, bufsize=1)
+        self._proc = proc
+        lines = []
+        try:
+            for line in proc.stdout:
+                lines.append(line)
+                if line.strip() and "Removed 1 path" not in line:
+                    self.busy_step = line.strip()[:200]
+            proc.wait()
+        finally:
+            self._proc = None
+        return subprocess.CompletedProcess(cmd, proc.returncode, "".join(lines), "")
+
     # ── worker steps ─────────────────────────────────────────────────────
     def _run(self, what: str, work) -> None:
         rec = self.record
-        self.busy_what = what
+        self._busy(what)
 
         def done(msg):
             rec.save()
