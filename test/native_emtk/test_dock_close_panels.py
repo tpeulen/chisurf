@@ -23,7 +23,9 @@ CATALOG = {
     "filetools": {"display_name": "File:Data:File tools", "entrypoints": {"emtk": "x:y"}},
     "games": {"display_name": "Tools:System:Games", "entrypoints": {"emtk": "x:y"}},
 }
-CORE = {"tools", "start", "log", "console", "data.read", "data.sets", "fit.analysis", "fit.plot"}
+#: The core docks of the shell's outer dock manager. Start is not among them: it lives in the
+#: workspace (``shell.workspace_docks``), which is itself the core ``workspace`` dock.
+CORE = {"tools", "workspace", "log", "console", "data.read", "data.sets", "fit.analysis", "fit.plot"}
 
 
 @pytest.fixture(autouse=True)
@@ -76,6 +78,7 @@ def test_close_all_panels_leaves_only_the_core_docks():
     driver.frame(4)
     assert _shown(shell) == CORE
     assert shell.hosted == {}
+    assert shell.workspace_docks.is_visible("start"), "the workspace keeps its Start page"
 
 
 def test_close_other_panels_keeps_the_clicked_tool_and_the_core_docks():
@@ -92,7 +95,7 @@ def test_restore_default_layout_still_resets_after_close_all():
     _right_click_tab(shell, driver, "plugin.setup")
     driver.click(_row(driver, "Close all panels"))
     driver.frame(4)
-    _right_click_tab(shell, driver, "start")
+    _right_click_tab(shell, driver, "log")
     driver.click(_row(driver, "Restore default layout"))
     driver.frame(3)
     assert CORE <= _shown(shell)

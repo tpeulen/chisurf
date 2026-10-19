@@ -124,13 +124,17 @@ def test_long_permission_error_and_readiness_text_fit_inside_narrow_dock(tmp_pat
             "PTU",
         )
         painter = driver.draw(3)
-        yellow = [
+        from emtk import style as _style
+
+        # The readiness note is drawn in the theme's warning colour (amber on the dark theme).
+        warning = tuple(_style.TEXT_WARNING[:3])
+        warned = [
             (text, meta)
             for text, meta in zip(painter.texts, painter.text_metadata)
-            if text[6][0] == text[6][1] and text[6][0] > text[6][2]
+            if tuple(text[6][:3]) == warning
         ]
-        assert yellow
-        for _, meta in yellow:
+        assert warned
+        for _, meta in warned:
             assert meta["visible_bounds"][2] >= meta["measured_bounds"][2] - 0.5
     finally:
         app.close()

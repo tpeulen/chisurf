@@ -218,6 +218,29 @@ def _open_reference(app, widget, driver, tmp_path):
     return child, before
 
 
+def _fixed_cell(widget, child, key):
+    """The parent-screen box of the *Fixed* cell of parameter *key* in the calculator's table.
+
+    The manual mixing override is that cell of the ``l1`` row (the parameters table replaced
+    the old ``manual_l`` checkbox). The table draws in the child's coordinates; the parent's
+    ``reference.parameter_rows`` rectangle gives the offset.
+    """
+    form = child.forms["parameters"]
+    table = form.tables["parameter_rows"].control
+    lx, ly = form.rects["parameter_rows"][:2]
+    px, py = widget.item_rects["reference.parameter_rows"][:2]
+    dx, dy = px - lx, py - ly
+    position = next(
+        p for p, index in enumerate(table.order()) if table.value(index, "key") == key
+    ) - table.bar.top
+    x, y, _w, _h = table._body_box
+    for column, width in zip(table._shown, table._widths):
+        if column.key == "fixed":
+            return (x + dx, y + dy + position * table._row_h, width, table._row_h)
+        x += width
+    raise AssertionError("the parameters table shows no Fixed column")
+
+
 @pytest.mark.parametrize("case", REPRESENTATIVES, ids=[case[0] for case in REPRESENTATIVES])
 def test_real_direct_controller_and_mixin_reference_child_input_and_parent_close(
     case, tmp_path, monkeypatch
@@ -228,8 +251,7 @@ def test_real_direct_controller_and_mixin_reference_child_input_and_parent_close
         _show_editor(app, case)
         driver = Driver(app, (1500, 1100))
         child, before = _open_reference(app, widget, driver, tmp_path)
-        rect = widget.item_rects["reference.manual_l"]
-        driver.click(rect)
+        driver.click(_fixed_cell(widget, child, "l1"))
         deadline = time.monotonic() + 10
         while child.job.running and time.monotonic() < deadline:
             time.sleep(0.005)
