@@ -92,7 +92,7 @@ def _rows(module_name: str) -> list[tuple]:
     return builders()
 
 
-def _widgets_rows() -> list[tuple[str, Callable]]:
+def _widgets_rows() -> list[tuple]:
     """The nineteen controls that predate the port."""
     from emtk.widgets import basic as w
 

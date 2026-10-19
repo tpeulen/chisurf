@@ -238,7 +238,10 @@ class CentroidFrameMap:
             dtype=np.int64,
         )
         # Side-chain centroids: CB plus every atom the coarse model folds into it.
-        cb_rows, members, weights, groups = [], [], [], []
+        cb_rows: list[int] = []
+        members: list[int] = []
+        weights: list[float] = []
+        groups: list[int] = []
         for row, atom in enumerate(atoms):
             if atom["atom_name"] != "CB":
                 continue
@@ -265,7 +268,8 @@ class CentroidFrameMap:
     def _add_amide_hydrogens(self, centroid: ProteinCentroid) -> None:
         """Append an amide H to every residue that lacks one and can carry it."""
         l_res = centroid.l_res
-        donors, self._h_frames = [], []
+        donors: list[int] = []
+        frames: list[tuple[int, int, int]] = []
         n_res = l_res.shape[0]
         for r in range(1, n_res):
             n_i, ca_i = l_res[r, a2id["N"]], l_res[r, a2id["CA"]]
@@ -277,9 +281,10 @@ class CentroidFrameMap:
             if centroid.atoms[n_i]["chain"] != centroid.atoms[c_prev]["chain"]:
                 continue
             donors.append(n_i)
-            self._h_frames.append((c_prev, n_i, ca_i))
+            frames.append((int(c_prev), int(n_i), int(ca_i)))
         if not donors:
             self._h_rows = np.zeros(0, dtype=np.int64)
+            self._h_frames = np.zeros((0, 3), dtype=np.int64)
             return
         # Fancy indexing copies; a structured scalar `atoms[i]` would be a view
         # and renaming it would rename the N it was taken from.
@@ -301,7 +306,7 @@ class CentroidFrameMap:
             centroid.l_h,
         ) = make_residue_lookup_table(centroid)
         self._h_rows = np.arange(first, atoms.shape[0], dtype=np.int64)
-        self._h_frames = np.array(self._h_frames, dtype=np.int64)
+        self._h_frames = np.array(frames, dtype=np.int64)
         self._place_hydrogens(centroid.xyz)
 
     def _place_hydrogens(self, xyz: np.ndarray) -> None:

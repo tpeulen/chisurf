@@ -101,22 +101,22 @@ def cmd(window):
     messages, errors = [], []
     c.set_message_callback(messages.append)
     c.set_error_callback(errors.append)
-    c._test_messages = messages  # type: ignore[attr-defined]
-    c._test_errors = errors  # type: ignore[attr-defined]
+    c._test_messages = messages
+    c._test_errors = errors
     return c
 
 
 def _run(cmd, line):
-    cmd._test_errors.clear()  # type: ignore[attr-defined]
+    cmd._test_errors.clear()
     cmd.do(line)
-    assert cmd._test_errors == [], cmd._test_errors  # type: ignore[attr-defined]
+    assert cmd._test_errors == [], cmd._test_errors
 
 
 def _count(cmd, expression):
-    cmd._test_messages.clear()  # type: ignore[attr-defined]
+    cmd._test_messages.clear()
     _run(cmd, f"count_atoms {expression}")
-    assert cmd._test_messages, "count_atoms produced no message"  # type: ignore[attr-defined]
-    text = cmd._test_messages[-1]  # type: ignore[attr-defined]
+    assert cmd._test_messages, "count_atoms produced no message"
+    text = cmd._test_messages[-1]
     if ":" in text:
         return int(text.split(":")[1].split("atoms")[0].strip())
     return int(text.strip())

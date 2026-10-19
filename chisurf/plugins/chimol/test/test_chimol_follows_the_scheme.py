@@ -24,6 +24,7 @@ So this file pins the seam from chimol's side:
 from __future__ import annotations
 
 import json
+import inspect
 import pathlib
 
 import pytest
@@ -32,7 +33,7 @@ from chisurf.core.dataspec.schema import validate_guide, validate_view_spec
 
 #: The relocated engine, resolved through the import system (see
 #: test_chisurf_seam.PACKAGE).
-_CHIMOL = pathlib.Path(__import__("chimol").__file__).resolve().parent
+_CHIMOL = pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent
 
 VIEW_SPECS = sorted(p for p in _CHIMOL.rglob("*.view.json") if "build" not in p.parts)
 TOURS = sorted(p for p in (_CHIMOL / "data" / "tours").glob("*.json"))

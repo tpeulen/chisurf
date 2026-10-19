@@ -52,22 +52,22 @@ def cmd(window):
     messages, errors = [], []
     c.set_message_callback(messages.append)
     c.set_error_callback(errors.append)
-    c._test_messages = messages  # type: ignore[attr-defined]
-    c._test_errors = errors  # type: ignore[attr-defined]
+    c._test_messages = messages
+    c._test_errors = errors
     return c
 
 
 def _run(cmd, line):
-    cmd._test_errors.clear()  # type: ignore[attr-defined]
+    cmd._test_errors.clear()
     cmd.do(line)
-    assert cmd._test_errors == [], cmd._test_errors  # type: ignore[attr-defined]
+    assert cmd._test_errors == [], cmd._test_errors
 
 
 def _count(cmd, expression):
-    cmd._test_messages.clear()  # type: ignore[attr-defined]
+    cmd._test_messages.clear()
     _run(cmd, f"count_atoms {expression}")
-    assert cmd._test_messages, "count_atoms produced no message"  # type: ignore[attr-defined]
-    text = cmd._test_messages[-1]  # type: ignore[attr-defined]
+    assert cmd._test_messages, "count_atoms produced no message"
+    text = cmd._test_messages[-1]
     # `count_atoms` returns its count, which the runner emits directly; the
     # "count_atoms: N atoms in (...)" spelling is the fallback for callers that
     # invoke it for its side effects.
@@ -201,8 +201,8 @@ def test_an_unknown_selection_name_is_reported(cmd):
     a correct-but-empty selection gives -- so a misspelt selection name was
     indistinguishable from one that simply matched no atoms.
     """
-    cmd._test_errors.clear()  # type: ignore[attr-defined]
+    cmd._test_errors.clear()
     cmd.do("count_atoms does_not_exist")
-    errors = cmd._test_errors  # type: ignore[attr-defined]
+    errors = cmd._test_errors
     assert errors and "does_not_exist" in errors[-1]
     assert "Invalid selection name" in errors[-1]

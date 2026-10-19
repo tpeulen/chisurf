@@ -24,6 +24,7 @@ sure that one follow-up draw does not rearm itself and free-run forever.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from types import SimpleNamespace
 
 from chimol.viewport.canvas import _IDLE_GAP, CanvasRenderer
@@ -197,7 +198,7 @@ class _FakeTimer:
     def __init__(self) -> None:
         self.single_shot = None
         self.started_ms = None
-        self._callback = None
+        self._callback: Callable[[], None] | None = None
         self.timeout = SimpleNamespace(connect=self._connect)
 
     def _connect(self, fn) -> None:
@@ -211,6 +212,7 @@ class _FakeTimer:
 
     def fire(self) -> None:
         """Simulate the timer elapsing."""
+        assert self._callback is not None
         self._callback()
 
 

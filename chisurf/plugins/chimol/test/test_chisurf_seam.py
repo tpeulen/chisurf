@@ -27,6 +27,7 @@ carry exactly such a comment, so the graph is what is read.
 from __future__ import annotations
 
 import ast
+import inspect
 import pathlib
 
 import pytest
@@ -35,7 +36,7 @@ import pytest
 #: (``~/dev/chimol``) as the top-level ``chimol`` package. Resolved through
 #: the import system rather than a relative path so the test follows whatever
 #: installation the host actually uses.
-PACKAGE = pathlib.Path(__import__("chimol").__file__).resolve().parent
+PACKAGE = pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent
 
 #: Modules still importing ChiSurf. **Shrinking**: never add to this.
 ALLOWLIST_PATH = pathlib.Path(__file__).resolve().parent / "chisurf_import_allowlist.txt"

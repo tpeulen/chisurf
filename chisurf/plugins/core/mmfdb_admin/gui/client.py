@@ -235,7 +235,7 @@ class MMFDBClient:
         try:
             from chisurf.core.settings import cs_settings
         except (ImportError, AttributeError):
-            mmfdb_settings = {}
+            mmfdb_settings: dict[str, Any] = {}
         else:
             mmfdb_settings = cs_settings.get("mmfdb", {}) or {}
         prepare_embedded_mmfdb(mmfdb_settings)
@@ -260,10 +260,10 @@ class MMFDBClient:
     def list_samples(self) -> list[dict[str, Any]]:
         return self._call("mmfdb.samples.list").get("samples", [])
 
-    def get_sample(self, sample_id: str) -> dict[str, Any]:
+    def get_sample(self, sample_id: str) -> dict[str, Any] | None:
         return self._call("mmfdb.samples.get", {"sample_id": sample_id}).get("sample")
 
-    def save_sample(self, sample: dict[str, Any]) -> dict[str, Any]:
+    def save_sample(self, sample: dict[str, Any]) -> dict[str, Any] | None:
         return self._call("mmfdb.samples.save", {"sample": sample}).get("sample")
 
     def delete_sample(self, sample_id: str) -> dict[str, Any]:
@@ -276,7 +276,7 @@ class MMFDBClient:
         self,
         sample_id: str,
         key_values: list[dict[str, Any]],
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         return self._call(
             "mmfdb.samples.key_values.save",
             {"sample_id": sample_id, "key_values": key_values},
@@ -726,13 +726,13 @@ class MMFDBClient:
             },
         ).get("experiments", [])
 
-    def get_experiment(self, experiment_id: str) -> dict[str, Any]:
+    def get_experiment(self, experiment_id: str) -> dict[str, Any] | None:
         return self._call(
             "mmfdb.experiments.get",
             {"experiment_id": experiment_id},
         ).get("experiment")
 
-    def save_experiment(self, experiment: dict[str, Any]) -> dict[str, Any]:
+    def save_experiment(self, experiment: dict[str, Any]) -> dict[str, Any] | None:
         return self._call(
             "mmfdb.experiments.save",
             {"experiment": experiment},
@@ -748,13 +748,13 @@ class MMFDBClient:
         self,
         experiment_id: str,
         key_values: list[dict[str, Any]],
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         return self._call(
             "mmfdb.experiments.key_values.save",
             {"experiment_id": experiment_id, "key_values": key_values},
         ).get("experiment")
 
-    def save_experiment_data(self, data: dict[str, Any]) -> dict[str, Any]:
+    def save_experiment_data(self, data: dict[str, Any]) -> dict[str, Any] | None:
         return self._call(
             "mmfdb.experiments.data.save",
             {"data": data},
@@ -1034,7 +1034,7 @@ class MMFDBClient:
                 "created_by_user_id": created_by_user_id,
                 "description": description,
             },
-        ).get("branch_uuid")
+        )["branch_uuid"]
 
     def fork_branch(
         self,
@@ -1056,9 +1056,9 @@ class MMFDBClient:
                 "created_by_user_id": created_by_user_id,
                 "description": description,
             },
-        ).get("branch_uuid")
+        )["branch_uuid"]
 
-    def get_branch(self, branch_uuid_or_name: str) -> dict[str, Any]:
+    def get_branch(self, branch_uuid_or_name: str) -> dict[str, Any] | None:
         return self._call(
             "mmfdb.v1.branches.get", {"branch_uuid_or_name": branch_uuid_or_name}
         ).get("branch")
@@ -1080,7 +1080,7 @@ class MMFDBClient:
             "mmfdb.v1.users.set_active_branch", {"user_id": user_id, "branch_uuid": branch_uuid}
         )
 
-    def get_user_active_branch(self, user_id: str) -> dict[str, Any]:
+    def get_user_active_branch(self, user_id: str) -> dict[str, Any] | None:
         return self._call("mmfdb.v1.users.get_active_branch", {"user_id": user_id}).get("branch")
 
     def jump_user_to_operation(
@@ -1091,7 +1091,7 @@ class MMFDBClient:
         branch_uuid: str | None = None,
         parent_branch_uuid: str | None = None,
         description: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         """Create and activate a user branch at a historical operation."""
         return self._call(
             "mmfdb.v1.users.jump_to_operation",
@@ -1182,7 +1182,7 @@ class MMFDBClient:
     def groups_list(self) -> list[dict[str, Any]]:
         return self._call("mmfdb.groups.list").get("groups", [])
 
-    def groups_get(self, group_id: str) -> dict[str, Any]:
+    def groups_get(self, group_id: str) -> dict[str, Any] | None:
         return self._call("mmfdb.groups.get", {"group_id": group_id}).get("group")
 
     def groups_create(self, group: dict[str, Any]) -> dict[str, Any]:
@@ -1207,7 +1207,7 @@ class MMFDBClient:
 
     # ---- Permission methods ----
 
-    def permissions_get(self, object_type: str, object_id: str) -> dict[str, Any]:
+    def permissions_get(self, object_type: str, object_id: str) -> dict[str, Any] | None:
         return self._call(
             "mmfdb.permissions.get", {"object_type": object_type, "object_id": object_id}
         ).get("acl")

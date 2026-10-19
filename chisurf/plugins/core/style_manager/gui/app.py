@@ -6,6 +6,7 @@ import json
 import pathlib
 import re
 import shutil
+from typing import Any
 
 from emtk import im
 from emtk.app import ImApp
@@ -340,7 +341,7 @@ class StylePreview:
     def __init__(self, model: StyleManagerModel):
         self.model = model
         self.style = None
-        self._revision = None
+        self._revision: tuple[Any, ...] | None = None
         self._text = None
         self._error = ""
 

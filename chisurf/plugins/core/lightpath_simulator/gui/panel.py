@@ -64,7 +64,7 @@ class ResultTable:
         matrix = self._matrix()
         out = []
         for label, values in zip(matrix.get("rows") or [], matrix.get("values") or []):
-            rec = {"row": str(label)}
+            rec: dict[str, Any] = {"row": str(label)}
             for i, value in enumerate(values):
                 rec[f"c{i}"] = float(value)
             out.append(rec)

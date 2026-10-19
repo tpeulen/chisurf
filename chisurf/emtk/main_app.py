@@ -44,7 +44,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 from emtk import accents, im, overlays
 from emtk.app import ImApp
@@ -574,7 +574,7 @@ class EmtkShellApp(ImApp):
 
             self._usage_at, self._usage = time.monotonic(), process_usage()
             if self._usage is not None:
-                self._usage_history = [self._usage]
+                self._usage_history: list[tuple[float, float]] = [self._usage]
         except Exception:
             pass
         # Last: the session's worker imports while it starts, so nothing of the shell may still be
@@ -952,7 +952,7 @@ class EmtkShellApp(ImApp):
             im.end_menu_bar()
         im.end()
 
-    def _draw_actions(self, actions: list[MenuAction]) -> None:
+    def _draw_actions(self, actions: Sequence[MenuAction]) -> None:
         """The items of a session menu: group captions, shortcut texts, check marks."""
         group = None
         for action in actions:
@@ -1683,6 +1683,7 @@ class EmtkShellApp(ImApp):
 
         from emtk.style import is_dark
 
+        import chisurf
         from chisurf.core import info as _info_mod
         from chisurf.core.system_info import machine_info, process_usage, system_info_lines
 
@@ -1690,7 +1691,7 @@ class EmtkShellApp(ImApp):
             self._system_lines = system_info_lines()
             self._usage_at = 0.0
             self._usage = None
-            self._usage_history: list[tuple[float, float]] = []
+            self._usage_history = []
         now = time.monotonic()
         if now - getattr(self, "_usage_at", 0.0) >= 1.0 or getattr(self, "_usage", None) is None:
             self._usage_at = now
@@ -1702,7 +1703,7 @@ class EmtkShellApp(ImApp):
         fps = getattr(self, "_fps", 0.0)
         frame_ms = getattr(self, "_frame_ms", 0.0)
         try:
-            cs_ver = getattr(_info_mod, "__version__", None) or getattr(cs, "__version__", "?")
+            cs_ver = getattr(_info_mod, "__version__", None) or getattr(chisurf, "__version__", "?")
         except Exception:
             cs_ver = "?"
 

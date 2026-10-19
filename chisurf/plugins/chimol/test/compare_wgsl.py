@@ -76,7 +76,7 @@ def background_for(viewer) -> tuple[float, float, float]:
         except (TypeError, ValueError):
             return (0.0, 0.0, 0.0)
         if len(values) == 3:
-            return tuple(values)
+            return (values[0], values[1], values[2])
     return (0.0, 0.0, 0.0)
 
 

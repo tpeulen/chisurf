@@ -169,9 +169,12 @@ class ChimolHostApp(ImApp):
                         "could not offer the display defaults", exc_info=True
                     )
         commands, self._startup_commands = self._startup_commands, ()
+        app = self._chimol_app
         for line in commands:
             try:
-                self._chimol_app.cmd.do(line)
+                if app is None:
+                    break
+                app.cmd.do(line)
             except Exception:  # noqa: BLE001 - the viewer stays usable; the failure is logged
                 logging.getLogger(__name__).exception("chimol startup command failed: %s", line)
 
@@ -184,8 +187,11 @@ class ChimolHostApp(ImApp):
         # A command that ran is the one honest signal that the picture is now
         # stale: wake the host (emtk.request_frame -> ControlHost.update) so
         # one paint happens, and that paint's animating() check takes over.
+        app = self._chimol_app
+        if app is None:
+            return
         try:
-            self._command_sub = self._chimol_app.viewer.bus.subscribe(
+            self._command_sub = app.viewer.bus.subscribe(
                 "command.executed",
                 self._on_command_executed,
                 owner="chisurf-emtk-host",
@@ -317,7 +323,7 @@ class ChimolHostApp(ImApp):
 
     def start_guide(self) -> None:
         """Start the tour this window is for: its launcher's chimol tour, else the viewer's general one."""
-        if self._guide_command and self._ensure_chimol():
+        if self._guide_command and self._ensure_chimol() and self._chimol_app is not None:
             try:
                 self._chimol_app.cmd.do(self._guide_command)
             except Exception:  # noqa: BLE001 - fall back to the general tour rather than a dead button
@@ -329,7 +335,7 @@ class ChimolHostApp(ImApp):
 
     def load_example(self) -> bool:
         """Load the bundled T4 lysozyme (148l) into the viewer; whether a command ran."""
-        if not self._ensure_chimol():  # joins a start under way: a press is never dropped
+        if not self._ensure_chimol() or self._chimol_app is None:  # joins a start under way: a press is never dropped
             return False
         from chimol.plugins.demos.catalog import DEMO_DIR  # noqa: PLC0415
 

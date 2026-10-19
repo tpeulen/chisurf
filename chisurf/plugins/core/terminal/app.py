@@ -196,7 +196,7 @@ class TerminalApp(ImApp):
         if active != self._last_focus:
             # The focus moved by a tab click: keep active_key in step.
             self._last_focus = active
-            active_pane = self.workspace.panes.get(active)
+            active_pane = self.workspace.panes.get(active) if active is not None else None
             if active_pane and active_pane.kind == "python":
                 active_pane.console.focus_input()
         self.workspace.docks.draw(box)

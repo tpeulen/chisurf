@@ -306,11 +306,11 @@ class BatchModel(Stepper, BatchViewModel):
         """Add files and folders (a folder is expanded, a repeated path ignored). Returns how many were new."""
         before = len(self.files)
         seen: set[str] = set()
-        merged = [
-            p
-            for p in list(self.files) + self.expand([str(p) for p in paths])
-            if not (p in seen or seen.add(p))
-        ]
+        merged: list[str] = []
+        for p in list(self.files) + self.expand([str(p) for p in paths]):
+            if p not in seen:
+                seen.add(p)
+                merged.append(p)
         self.files = merged
         self.update()
         return len(self.files) - before

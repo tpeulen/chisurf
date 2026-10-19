@@ -24,6 +24,7 @@ runs.
 
 from __future__ import annotations
 
+import inspect
 import pathlib
 import socket
 import subprocess
@@ -44,7 +45,7 @@ CHROMIUM_FLAGS = [
     "--ignore-gpu-blocklist",
 ]
 
-_WEB = pathlib.Path(__import__("chimol").__file__).resolve().parent / "hosts" / "web"
+_WEB = pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent / "hosts" / "web"
 
 
 def _free_port() -> int:

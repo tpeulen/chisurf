@@ -349,7 +349,7 @@ def get_lightpath(operation_id: str, db_path: str | None = None) -> dict[str, An
         metadata = json.loads(operation.get("metadata_json") or "{}")
         if metadata.get("analysis_type") != "lightpath_simulation":
             raise ValueError(f"Not a lightpath simulation: {operation_id}")
-        artifacts = {}
+        artifacts: dict[str, Any] = {}
         for role, metadata_key in (
             ("graph", "graph_artifact_id"),
             ("instrument_setting", "instrument_setting_artifact_id"),

@@ -9,13 +9,14 @@ only ever shrinks. Only module-scope imports count.
 
 from __future__ import annotations
 
+import inspect
 import pathlib
 import subprocess
 import sys
 
 import pytest
 
-_TOOLS = pathlib.Path(__import__("chimol").__file__).resolve().parents[1] / "tools"
+_TOOLS = pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parents[1] / "tools"
 
 
 @pytest.mark.skipif(

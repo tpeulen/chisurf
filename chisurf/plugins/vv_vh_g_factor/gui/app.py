@@ -692,7 +692,7 @@ class GFactorApp(TourTarget, ImApp):
 
         res = []
         if self.model.decays:
-            seen_roles = {}
+            seen_roles: dict[str, int] = {}
             for d in self.model.decays:
                 role = d["role"]
                 if (role == "fast" and not self.show_fast) or (role == "slow" and not self.show_slow) or (role == "sample" and not self.show_sample):

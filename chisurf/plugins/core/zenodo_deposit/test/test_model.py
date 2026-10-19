@@ -56,7 +56,12 @@ class FakeZenodo:
 
 
 @pytest.fixture()
-def model(tmp_path: Path, monkeypatch) -> ZenodoDepositModel:
+def fake() -> FakeZenodo:
+    return FakeZenodo()
+
+
+@pytest.fixture()
+def model(tmp_path: Path, monkeypatch, fake: FakeZenodo) -> ZenodoDepositModel:
     root = tmp_path / "records"
     rec = root / "t4l-demo"
     for rel, data in {
@@ -67,9 +72,7 @@ def model(tmp_path: Path, monkeypatch) -> ZenodoDepositModel:
         (rec / rel).parent.mkdir(parents=True, exist_ok=True)
         (rec / rel).write_bytes(data)
     monkeypatch.setenv("MMFDB_DEPOSIT_ROOT", str(root))
-    fake = FakeZenodo()
     m = ZenodoDepositModel(client_factory=lambda base: ZenodoClient(token="t", session=fake))
-    m.fake = fake
     return m
 
 
@@ -93,7 +96,7 @@ def test_an_unscanned_folder_is_listed_and_scanned_on_open(model):
     assert (model.record.folder.parent / "t4l-demo.deposit.json").is_file()
 
 
-def test_review_opens_the_gate_and_upload_reaches_a_verified_draft(model):
+def test_review_opens_the_gate_and_upload_reaches_a_verified_draft(model, fake):
     model.select_record(model.records[0])
     assert not model.enabled("approve_item") and not model.enabled("upload_draft")
     model.build_package()
@@ -106,7 +109,7 @@ def test_review_opens_the_gate_and_upload_reaches_a_verified_draft(model):
     model.upload_draft()
     _wait(model)
     assert "md5 verified" in model.message, model.message
-    assert "t4l-demo.zip" in model.fake.files
+    assert "t4l-demo.zip" in fake.files
     assert "matches the package" in model.remote_text
     assert not model.enabled("publish_record")  # needs its own approval
     model.approve_publish()

@@ -56,7 +56,7 @@ class OpticalPathSimulator:
 
         # Build adjacency for propagation
         nodes_dict = {n.id: n for n in self._graph.nodes}
-        out_adj = {n_id: {} for n_id in nodes_dict}
+        out_adj: dict[str, dict[str, Any]] = {n_id: {} for n_id in nodes_dict}
 
         for edge in self._graph.edges:
             src, tgt = edge.source, edge.target

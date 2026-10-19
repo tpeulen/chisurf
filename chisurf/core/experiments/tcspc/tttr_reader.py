@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os.path
 import pathlib
+from typing import Any
 
 import numpy as np
 
@@ -316,24 +317,25 @@ class TCSPCTTTRReader(TCSPCReader):
             return chisurf.core.data.DataGroup([])
         if t.size == 0:
             return chisurf.core.data.DataGroup([])
+        curves: list[tuple[str | None, np.ndarray, Any, np.ndarray | None]]
         if vh_chs:
             # VV and VH measured: the VH detector's channel offset first.
             vv, vh = ys
             vh = self._apply_shift(vh, int(getattr(self, "vh_shift", 0) or 0))
             g = self._safe_float(getattr(self, "g_factor", 1.0), 1.0)
             if pol == "vv/vh":
-                curves = [("VV", vv, vv_chs), ("VH", vh, vh_chs)]
+                curves = [("VV", vv, vv_chs, None), ("VH", vh, vh_chs, None)]
             elif pol == "vv":
-                curves = [("VV", vv, vv_chs)]
+                curves = [("VV", vv, vv_chs, None)]
             elif pol == "vh":
-                curves = [("VH", vh, vh_chs)]
+                curves = [("VH", vh, vh_chs, None)]
             else:
                 # Magic-angle sum; Poisson variance VV + 4 g^2 VH.
                 vm = vv + 2.0 * g * vh
                 ey = np.sqrt(np.maximum(vv + 4.0 * g * g * vh, 1.0))
                 curves = [("VM", vm, vv_chs + vh_chs, ey)]
         else:
-            curves = [(None, ys[0], vv_chs)]
+            curves = [(None, ys[0], vv_chs, None)]
         # Drop trailing empty bins after the last count in any curve.
         last = max(
             (int(np.nonzero(c[1] > 0)[0][-1]) + 1 for c in curves if np.any(c[1] > 0)), default=0
@@ -353,7 +355,7 @@ class TCSPCTTTRReader(TCSPCReader):
             label, y, chs = curve[0], curve[1][:last], curve[2]
             ey = (
                 curve[3][:last]
-                if len(curve) > 3
+                if curve[3] is not None
                 else chisurf.core.fluorescence.tcspc.counting_noise(y)
             )
             ch_text = ",".join(str(int(c)) for c in chs)
@@ -369,6 +371,7 @@ class TCSPCTTTRReader(TCSPCReader):
             )
             data_set.filename = filename
             data_sets.append(data_set)
+        data_group: chisurf.core.data.DataGroup[chisurf.core.data.DataCurve]
         if len(data_sets) > 1:
             # Stacked VV, VH: the structure the VV/VH CSV reader and the
             # simulator produce, so a fit over it takes vv/vh by position.

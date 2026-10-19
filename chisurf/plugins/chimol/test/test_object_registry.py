@@ -180,9 +180,10 @@ def test_all_three_hosts_consume_the_registry():
     constructed here, and the property that matters is that no host is left
     keeping the list in step by hand.
     """
+    import inspect
     import pathlib
 
-    root = pathlib.Path(__import__("chimol").__file__).resolve().parent
+    root = pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent
     hosts = {
         "toolkit-free": root / "hosts" / "native" / "app.py",
         "Qt": root / "hosts" / "qt" / "window.py",
@@ -247,7 +248,7 @@ def test_a_change_is_a_value():
     """Frozen, so a history cannot be edited by whoever reads it."""
     change = Change(revision=1, kind="add", object_id="a")
     with pytest.raises(Exception):
-        change.kind = "remove"  # type: ignore[misc]
+        change.kind = "remove"
 
 
 # ------------------------------------------------- measurements are objects

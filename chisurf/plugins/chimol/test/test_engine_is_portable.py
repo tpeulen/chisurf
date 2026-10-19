@@ -24,6 +24,7 @@ Neither assertion has an allow-list. If one is ever needed it should be a
 from __future__ import annotations
 
 import os
+import inspect
 import pathlib
 import re
 import subprocess
@@ -35,7 +36,7 @@ import pytest
 #: The shipped package: the relocated engine, installed from ``modules/chimol``
 #: (``~/dev/chimol``) as top-level ``chimol``. Resolved through the import
 #: system so the test follows the installation the host actually uses.
-_CHIMOL = pathlib.Path(__import__("chimol").__file__).resolve().parent
+_CHIMOL = pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent
 
 #: The repository root, for the subprocess' working directory.
 _ROOT = pathlib.Path(__file__).resolve().parents[4]

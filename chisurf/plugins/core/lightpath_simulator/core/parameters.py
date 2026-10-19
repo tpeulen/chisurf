@@ -193,7 +193,7 @@ class LightPathParameters(FittingParameterGroup):
         return True
 
     # ── access ──
-    def parameter(self, kind: str, *labels: str) -> FittingParameter | None:
+    def parameter(self, kind: str, *labels: str | None) -> FittingParameter | None:
         """Return one parameter by its key.
 
         Keys are ``("ex", laser, dye)``, ``("em", dye, detector)``,
@@ -201,7 +201,7 @@ class LightPathParameters(FittingParameterGroup):
         """
         return self._by_key.get((kind, *labels))
 
-    def value(self, kind: str, *labels: str, default: float = 0.0) -> float:
+    def value(self, kind: str, *labels: str | None, default: float = 0.0) -> float:
         """Return one parameter's value, or *default* when it does not exist."""
         parameter = self._by_key.get((kind, *labels))
         return float(parameter.value) if parameter is not None else float(default)

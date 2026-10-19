@@ -27,6 +27,7 @@ the import graph is what matters, so the import graph is what is read.
 from __future__ import annotations
 
 import ast
+import inspect
 import pathlib
 
 import pytest
@@ -34,7 +35,7 @@ import pytest
 #: The package root: the relocated engine (top-level ``chimol``, installed
 #: from ``modules/chimol`` / ``~/dev/chimol``). Resolved through the import
 #: system so the test follows the installation the host actually uses.
-PACKAGE = pathlib.Path(__import__("chimol").__file__).resolve().parent
+PACKAGE = pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent
 
 #: Modules still importing Qt. **Shrinking**: never add to this. Empty since
 #: the Qt host was retired (2026-10-13).

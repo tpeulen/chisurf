@@ -97,15 +97,6 @@ def default_console_factory(
                 except Exception:
                     pass
             user_ns["api"] = api
-    if "api" not in user_ns:
-        try:
-            from chisurf.core.api import ChiSurfAPI
-
-            api = ChiSurfAPI.instance(create=False)
-            if api is not None:
-                user_ns["api"] = api
-        except Exception:
-            pass
     if namespace:
         user_ns.update(namespace)
 
@@ -270,7 +261,7 @@ class TerminalWorkspace:
 
     @property
     def active(self) -> Pane | None:
-        return self.panes.get(self.active_key)
+        return self.panes.get(self.active_key) if self.active_key is not None else None
 
     def focus(self, key: str) -> None:
         """Focus a pane (its tab on top, or its floating window raised)."""

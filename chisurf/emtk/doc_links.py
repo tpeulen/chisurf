@@ -59,7 +59,7 @@ def open_link(url, base: pathlib.Path | None = None) -> bool:
 
     Parameters
     ----------
-    url : QUrl or str
+    url : str
         The clicked link.
     base : pathlib.Path, optional
         Directory the help text lives in, for resolving a relative document.
@@ -70,22 +70,10 @@ def open_link(url, base: pathlib.Path | None = None) -> bool:
         Whether the link was handled. ``False`` means the caller should fall
         back to its own behaviour rather than silently swallowing the click.
     """
-    qt_core = _loaded_qt_core()
-    if qt_core is not None and isinstance(url, qt_core.QUrl):
-        qurl = url
-        scheme = qurl.scheme().lower()
-        text = qurl.toString()
-        fragment = qurl.fragment()
-        is_local = qurl.isLocalFile()
-        local_path = qurl.toLocalFile()
-        path_str = qurl.path() or text
-    else:
-        text = str(url or "").strip()
-        scheme = text.split(":", 1)[0].lower() if ":" in text else ""
-        fragment = text.split("#", 1)[1] if "#" in text else ""
-        is_local = False
-        local_path = ""
-        path_str = text.split("#", 1)[0]
+    text = str(url or "").strip()
+    scheme = text.split(":", 1)[0].lower() if ":" in text else ""
+    fragment = text.split("#", 1)[1] if "#" in text else ""
+    path_str = text.split("#", 1)[0]
 
     # 1. Source code links (e.g. {src}, src:path#symbol, bare .py file)
     if is_source_path(text):
@@ -102,12 +90,7 @@ def open_link(url, base: pathlib.Path | None = None) -> bool:
     if not scheme and text.startswith("10.") and "/" in text:
         return _open_web("https://doi.org/" + text)
 
-    # 3. Local file
-    if is_local and local_path:
-        candidate = pathlib.Path(local_path)
-        return _open_document(candidate, fragment) if candidate.is_file() else False
-
-    # 4. Document cross-reference
+    # 3. Document cross-reference
     document = resolve_document(path_str, base)
     if document is not None:
         return _open_document(document, fragment)

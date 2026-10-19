@@ -114,8 +114,8 @@ def mmfdb_graph_to_node_editor_graph(graph: dict[str, Any]) -> dict[str, Any]:
     raw_nodes = list(graph.get("nodes") or [])
     raw_edges = list(graph.get("edges") or [])
 
-    nodes_dict = {}
-    out_nodes = []
+    nodes_dict: dict[str, dict[str, Any]] = {}
+    out_nodes: list[dict[str, Any]] = []
 
     def add_node(node: dict[str, Any]) -> None:
         nt = node.get("node_type")

@@ -185,6 +185,13 @@ class ZenodoDepositModel:
                       + (" -- content changed since" if it.status != r.status else "")]
         return "\n".join(lines)
 
+    @property
+    def open_record(self) -> DepositRecord:
+        """The record being reviewed; raises when none is open (callers gate on ``has_rec``)."""
+        if self.record is None:
+            raise RuntimeError("no deposit record is open")
+        return self.record
+
     # ── the selected metadata file, for the code editor ──────────────────
     @property
     def preview_kind(self) -> str:
@@ -192,7 +199,7 @@ class ZenodoDepositModel:
         it = self.item
         if it is None:
             return "none"
-        p = self.record.folder / it.id
+        p = self.open_record.folder / it.id
         if p.is_dir():
             return "listing"
         if not p.is_file():
@@ -210,7 +217,7 @@ class ZenodoDepositModel:
         kind = self.preview_kind
         if kind == "none":
             return ""
-        p = self.record.folder / self.item.id
+        p = self.open_record.folder / self.item.id
         if kind == "listing":
             from mmfdb.deposit.record import content_files
 
@@ -228,7 +235,7 @@ class ZenodoDepositModel:
         it = self.item
         if it is None:
             return None
-        p = self.record.folder / it.id
+        p = self.open_record.folder / it.id
         if p.is_file():
             return p if p.name.endswith(".pto") else None
         return next(iter(sorted(p.glob("*.mmfdb.pto"))), None) if p.is_dir() else None
@@ -340,7 +347,7 @@ class ZenodoDepositModel:
         if name in ("rescan", "build_package"):
             return has_rec and idle
         if name == "check_remote":
-            return has_rec and idle and bool(self.record.remote.get("deposition_id"))
+            return has_rec and idle and bool(self.open_record.remote.get("deposition_id"))
         if name == "upload_draft":
             return has_rec and idle and bool(self.token_source) and not blockers(self.record)
         if name in ("save_token",):
@@ -350,12 +357,12 @@ class ZenodoDepositModel:
         if name == "forget_token":
             return idle and self.token_source == "keychain"
         if name == "approve_publish":
-            return has_rec and idle and bool(self.record.remote.get("deposition_id")) \
-                and not compare(self.record) and not self.record.remote.get("doi")
+            return has_rec and idle and bool(self.open_record.remote.get("deposition_id")) \
+                and not compare(self.record) and not self.open_record.remote.get("doi")
         if name == "publish_record":
             return has_rec and idle and bool(self.token_source) \
                 and not blockers(self.record, for_publish=True) \
-                and not self.record.remote.get("doi")
+                and not self.open_record.remote.get("doi")
         return True
 
     # ── the one line that says what to do next ───────────────────────────
@@ -489,7 +496,7 @@ class ZenodoDepositModel:
         return self._client_factory(self._base)
 
     def build_package(self) -> None:
-        rec = self.record
+        rec = self.open_record
         out = rec.folder.parent.parent / ZIPS
 
         def work():
@@ -518,9 +525,9 @@ class ZenodoDepositModel:
         self._run("checking Zenodo", work)
 
     def approve_publish(self) -> None:
-        self.record.approve_publish(self.note.strip())
-        self.record.save()
-        self.message = f"publishing approved for md5 {self.record.package['md5']}"
+        self.open_record.approve_publish(self.note.strip())
+        self.open_record.save()
+        self.message = f"publishing approved for md5 {self.open_record.package['md5']}"
 
     def publish_record(self) -> None:
         rec, client = self.record, self._client()

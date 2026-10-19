@@ -54,8 +54,8 @@ def cmd(window):
     messages, errors = [], []
     c.set_message_callback(messages.append)
     c.set_error_callback(errors.append)
-    c._test_messages = messages  # type: ignore[attr-defined]
-    c._test_errors = errors  # type: ignore[attr-defined]
+    c._test_messages = messages
+    c._test_errors = errors
     yield c
 
     if before is None:
@@ -75,18 +75,18 @@ def _ray(cmd, out: pathlib.Path, size: str = "120, 100", timeout: float = 180.0)
     import time
 
 
-    cmd._test_messages.clear()  # type: ignore[attr-defined]
-    cmd._test_errors.clear()  # type: ignore[attr-defined]
+    cmd._test_messages.clear()
+    cmd._test_errors.clear()
     cmd.do(f"ray {out}, {size}")
 
     deadline = time.time() + timeout
     while time.time() < deadline:
         process_events()
-        if out.exists() or cmd._test_errors:  # type: ignore[attr-defined]
+        if out.exists() or cmd._test_errors:
             break
         if any(  # a refusal, which never starts a thread
             "nothing to trace" in m or "does not draw" in m
-            for m in cmd._test_messages  # type: ignore[attr-defined]
+            for m in cmd._test_messages
         ):
             break
         time.sleep(0.02)
@@ -110,7 +110,7 @@ def test_every_representation_reaches_the_image(cmd, tmp_path, representation):
     cmd.do(f"as {representation}")
     out = tmp_path / f"{representation}.png"
     _ray(cmd, out)
-    assert cmd._test_errors == [], cmd._test_errors  # type: ignore[attr-defined]
+    assert cmd._test_errors == [], cmd._test_errors
     assert out.exists(), f"ray wrote nothing for {representation}"
     assert _drawn_pixels(out) > 200, f"{representation} traced to an empty image"
 
@@ -120,14 +120,14 @@ def test_the_cartoon_no_longer_refuses(cmd, tmp_path):
     cmd.do("as cartoon")
     out = tmp_path / "cartoon.png"
     _ray(cmd, out)
-    assert not any("cannot" in e for e in cmd._test_errors)  # type: ignore[attr-defined]
+    assert not any("cannot" in e for e in cmd._test_errors)
     assert out.exists()
 
 
 def test_the_message_names_what_is_being_traced(cmd, tmp_path):
     cmd.do("as cartoon")
     _ray(cmd, tmp_path / "c.png")
-    said = " ".join(cmd._test_messages)  # type: ignore[attr-defined]
+    said = " ".join(cmd._test_messages)
     assert "mesh" in said, said
 
 
@@ -139,7 +139,7 @@ def test_labels_are_reported_as_missing_from_the_image(cmd, tmp_path):
     cmd.do("as cartoon")
     cmd.do("label name CA and resi 20-30, resi")
     _ray(cmd, tmp_path / "labelled.png")
-    said = " ".join(cmd._test_messages)  # type: ignore[attr-defined]
+    said = " ".join(cmd._test_messages)
     assert "not traced" in said and "text" in said, said
 
 
@@ -152,7 +152,7 @@ def test_nothing_shown_is_reported_and_nothing_is_drawn(cmd, tmp_path):
     cmd.do("hide everything")
     out = tmp_path / "empty.png"
     _ray(cmd, out)
-    said = " ".join(cmd._test_messages)  # type: ignore[attr-defined]
+    said = " ".join(cmd._test_messages)
     assert "nothing" in said.lower(), said
     assert not out.exists(), "ray drew a molecule the viewport was not showing"
 
@@ -240,7 +240,7 @@ def test_a_translucent_molecular_scene_renders(cmd, tmp_path):
     cmd.do("set transparency, 0.6")
     out = tmp_path / "translucent.png"
     _ray(cmd, out, size="200, 150")
-    assert cmd._test_errors == [], cmd._test_errors  # type: ignore[attr-defined]
+    assert cmd._test_errors == [], cmd._test_errors
     assert out.exists()
     assert _drawn_pixels(out) > 200
 
@@ -308,5 +308,5 @@ def test_one_size_preserves_the_current_aspect(cmd, tmp_path, window):
 
     out = tmp_path / "aspect.png"
     _ray(cmd, out, size="240")
-    assert out.exists(), cmd._test_errors  # type: ignore[attr-defined]
+    assert out.exists(), cmd._test_errors
     assert Image.open(out).size == (240, expected)

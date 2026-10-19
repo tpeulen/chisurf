@@ -8,9 +8,11 @@ from the mmCIF dictionary by :mod:`.entity_schema`. Shared by the Qt
 
 from __future__ import annotations
 
+from typing import Any
+
 # Legacy hardcoded schemas — kept for backward compatibility only.
 # New code should use entity_schema.field_specs_for_category() instead.
-SCHEMAS = {
+SCHEMAS: dict[str, list[dict[str, Any]]] = {
     "user": [
         {"name": "user_id", "label": "User ID", "type": "str", "required": True},
         {

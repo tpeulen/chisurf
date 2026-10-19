@@ -9,13 +9,14 @@ applied) the test is a no-op that only checks the table parses.
 
 from __future__ import annotations
 
+import inspect
 import pathlib
 import re
 import subprocess
 
 import pytest
 
-_REPO = pathlib.Path(__import__("chimol").__file__).resolve().parents[1]
+_REPO = pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parents[1]
 _MOVES = _REPO / "tools" / "moves.toml"
 
 

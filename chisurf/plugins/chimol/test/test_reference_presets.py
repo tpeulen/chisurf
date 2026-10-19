@@ -31,6 +31,7 @@ What this pins
 from __future__ import annotations
 
 import json
+import inspect
 import pathlib
 
 import pytest
@@ -40,7 +41,7 @@ PRESETS = load_reference_presets()
 KEYS = sorted(PRESETS)
 
 _FILE = (
-    pathlib.Path(__import__("chimol").__file__).resolve().parent / "ui" / "data" / "presets.json"
+    pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent / "ui" / "data" / "presets.json"
 )
 
 

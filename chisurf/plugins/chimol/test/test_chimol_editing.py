@@ -124,8 +124,8 @@ def test_chimol_cmd_clear_selection(editing_context):
 
 def test_chimol_cmd_delete_all_reinitialize_copy(editing_context):
     viewer, cmd = editing_context
-    messages = []
-    errors = []
+    messages: list[str] = []
+    errors: list[str] = []
     cmd.set_message_callback(messages.append)
     cmd.set_error_callback(errors.append)
 
@@ -164,8 +164,8 @@ def test_chimol_cmd_png_and_ray(editing_context, tmp_path: Path):
     with -- `test_export.py` and the browser suite's screenshots.
     """
     viewer, cmd = editing_context
-    messages = []
-    errors = []
+    messages: list[str] = []
+    errors: list[str] = []
     cmd.set_message_callback(messages.append)
     cmd.set_error_callback(errors.append)
 
@@ -184,8 +184,8 @@ def test_chimol_cmd_png_and_ray(editing_context, tmp_path: Path):
 
 def test_chimol_cmd_get_set_view(editing_context):
     viewer, cmd = editing_context
-    messages = []
-    errors = []
+    messages: list[str] = []
+    errors: list[str] = []
     cmd.set_message_callback(messages.append)
     cmd.set_error_callback(errors.append)
 
@@ -325,8 +325,8 @@ def test_chimol_cmd_color_names(editing_context):
 def test_chimol_cmd_set_color(editing_context):
     """set_color defines a new named color."""
     viewer, cmd = editing_context
-    messages = []
-    errors = []
+    messages: list[str] = []
+    errors: list[str] = []
     cmd.set_message_callback(messages.append)
     cmd.set_error_callback(errors.append)
 
@@ -352,8 +352,8 @@ def test_chimol_cmd_set_color(editing_context):
 def test_chimol_cmd_get_color_index(editing_context):
     """get_color_index returns 0 for known colors, error for unknown."""
     viewer, cmd = editing_context
-    messages = []
-    errors = []
+    messages: list[str] = []
+    errors: list[str] = []
     cmd.set_message_callback(messages.append)
     cmd.set_error_callback(errors.append)
 
@@ -462,8 +462,8 @@ def test_raytracer_shadow():
 def test_chimol_cmd_ray_integration(editing_context, tmp_path: Path):
     """Ray command produces a PNG file."""
     viewer, cmd = editing_context
-    messages = []
-    errors = []
+    messages: list[str] = []
+    errors: list[str] = []
     cmd.set_message_callback(messages.append)
     cmd.set_error_callback(errors.append)
 
@@ -994,8 +994,8 @@ def test_raytracer_pymol_defaults():
 def test_cmd_ray_uses_config_settings(editing_context, tmp_path):
     """The ray command reads settings from the config's ray section."""
     viewer, cmd = editing_context
-    messages = []
-    errors = []
+    messages: list[str] = []
+    errors: list[str] = []
     cmd.set_message_callback(messages.append)
     cmd.set_error_callback(errors.append)
 
@@ -1016,8 +1016,8 @@ def test_chimol_split_chains(editing_context):
     atoms["chain"][:5] = "A"
     atoms["chain"][5:] = "B"
 
-    messages = []
-    errors = []
+    messages: list[str] = []
+    errors: list[str] = []
     cmd.set_message_callback(messages.append)
     cmd.set_error_callback(errors.append)
 

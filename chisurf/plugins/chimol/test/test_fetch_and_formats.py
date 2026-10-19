@@ -136,8 +136,8 @@ def _write_bead_system(path: pathlib.Path, *, binary: bool) -> None:
     )
 
     if binary:
-        with open(path, "wb") as handle:
-            ihm.dumper.write(handle, [system], format="BCIF")
+        with open(path, "wb") as binary_handle:
+            ihm.dumper.write(binary_handle, [system], format="BCIF")
     else:
         with open(path, "w") as handle:
             ihm.dumper.write(handle, [system])

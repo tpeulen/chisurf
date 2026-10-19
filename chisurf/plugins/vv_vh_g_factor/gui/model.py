@@ -6,7 +6,7 @@ import csv
 import json
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Protocol
 
 import numpy as np
 
@@ -54,6 +54,27 @@ BATCH_COLUMNS = (
 )
 
 
+Pair = tuple[np.ndarray, np.ndarray]
+
+
+class GFactorClient(Protocol):
+    """The remote calculator a model may delegate to (the RPC client of the calibration service)."""
+
+    def calculate(self, **params: Any) -> dict[str, Any]:
+        """Return the G-factor result for the given channels and region."""
+        ...
+
+    def perrin_steady_state(self, *, tau_ns: float, rho_ns: float, r0: float) -> float:
+        """Return the Perrin steady-state anisotropy."""
+        ...
+
+    def solve_linked_l(
+        self, *, sp: float, ss: float, g_factor: float, r_target: float
+    ) -> float:
+        """Return the linked l1 = l2 mixing that makes the sample match *r_target*."""
+        ...
+
+
 class GFactorModel:
     """Unified VV/VH G-factor, polarization mixing (l1, l2) and anisotropy calculator."""
 
@@ -61,9 +82,9 @@ class GFactorModel:
         self.fast_file = ""
         self.slow_file = ""
         self.sample_file = ""
-        self.fast = None
-        self.slow = None
-        self.sample = None
+        self.fast: Pair | None = None
+        self.slow: Pair | None = None
+        self.sample: Pair | None = None
         self.region = [0.0, 100.0]
         self.background_region = [0.0, 100.0]
         self.sample_region = [0.0, 100.0]
@@ -72,7 +93,7 @@ class GFactorModel:
         self.flip = False
         self.manual_g = False
         self.g_override = 1.0
-        self.result = {}
+        self.result: dict[str, Any] = {}
         self.fp_dt_ns = 1.0
         self.fp_rho_ns = 16.0
         self.fp_r0 = 0.38
@@ -84,8 +105,8 @@ class GFactorModel:
         self.link_l1_l2 = True
         self.l1_override = 0.0
         self.l2_override = 0.0
-        self.fp_result = {}
-        self.sample_r_t = None
+        self.fp_result: dict[str, Any] = {}
+        self.sample_r_t: np.ndarray | None = None
         self.sample_r_infty = float("nan")
         self.sample_r_ss = float("nan")
         self.batch_files = []
@@ -95,7 +116,7 @@ class GFactorModel:
         self.selected_batch_files = []
         self._selected_batch_records = []
         self.forget_selection = False
-        self.decays = []
+        self.decays: list[dict[str, Any]] = []
         self.selected_decay_idx = 0
         self.selected_reference_idx = 0
         self.message = ""
@@ -1115,7 +1136,7 @@ class GFactorModel:
     def load_file(self, path: str | Path) -> bool:
         """Unified loader for sample VV/VH decay (and fallback fast reference)."""
         self.load(path, sample=True)
-        if self.fast is None:
+        if self.fast is None and self.sample is not None:
             self.fast = self.sample
             self.fast_file = str(path)
             n = len(self.fast[0])
@@ -1157,11 +1178,11 @@ class GFactorModel:
             self.fast = entry["data"]
             self.compute()
 
-    def load_example(self, folder: str | Path | None = None, client: object | None = None) -> None:
+    def load_example(self, folder: str | Path | None = None, client: GFactorClient | None = None) -> None:
         """Load simulated references (known G = 1.2) for demonstrations and testing."""
         from ..demo import DEMO, make_demo
 
-        files = make_demo(folder)
+        files = make_demo(Path(folder) if folder is not None else None)
         self.fp_dt_ns = float(DEMO["dt_ns"])
         self.fp_r0 = float(DEMO["r0"])
         self.fp_rho_ns = float(dict((k, rho) for k, rho, _ in DEMO["decays"])["slow"])
@@ -1200,7 +1221,7 @@ class GFactorModel:
             return None, None
         return pair[::-1] if self.flip else pair
 
-    def compute(self, client: object | None = None) -> None:
+    def compute(self, client: GFactorClient | None = None) -> None:
         """Calculate G-factor from fast reference and polarization mixing from slow reference."""
         if self.fast is None:
             if self.sample is not None:
@@ -1212,6 +1233,8 @@ class GFactorModel:
             else:
                 raise ValueError("Load the fast-rotating reference dye VV/VH decay first.")
         par, perp = self.channels()
+        if par is None or perp is None:
+            raise ValueError("Load the fast-rotating reference dye VV/VH decay first.")
         self.region = sorted(map(float, self.region))
         self.background_region = sorted(map(float, self.background_region))
         params = dict(
@@ -1252,7 +1275,7 @@ class GFactorModel:
     def recompute_sample(self, _value: object = None) -> None:
         self.compute_sample()
 
-    def estimate_mixing(self, client: object | None = None) -> None:
+    def estimate_mixing(self, client: GFactorClient | None = None) -> None:
         """Estimate linked l1=l2 mixing parameter from slow reference(s) and Perrin relation."""
         g = self.g_factor
         self.fp_result = {}
@@ -1490,7 +1513,7 @@ class GFactorModel:
                 self.sample_r_ss = float("nan")
                 return
         par, perp = self.channels(sample=True)
-        if par is None:
+        if par is None or perp is None:
             self.sample_r_t, self.sample_r_infty = None, float("nan")
             self.sample_r_ss = float("nan")
             return
@@ -1520,7 +1543,7 @@ class GFactorModel:
     ) -> dict[str, np.ndarray]:
         """Produce plotted vectors for the decays and time-resolved anisotropy."""
         par, perp = self.channels(slow=slow, sample=sample, entry=entry)
-        if par is None:
+        if par is None or perp is None:
             return {}
         time = np.arange(len(par), dtype=float)
         shifted = time + self.shift
@@ -1555,13 +1578,13 @@ class GFactorModel:
             "r_corrected": np.clip(compute_rt(p, corrected, g_val, l1=l1, l2=l2), -0.5, 1.5),
         }
 
-    def batch_snapshot(self) -> dict[str, object]:
+    def batch_snapshot(self) -> dict[str, Any]:
         g = self.g_factor
         if g is None or not np.isfinite(g) or g <= 0:
             raise ValueError("Determine G before applying batch anisotropy analysis.")
         bp, bs = (0.0, 0.0)
         par, perp = self.channels()
-        if par is not None:
+        if par is not None and perp is not None:
             time = np.arange(len(par), dtype=float)
             bp, bs = compute_background_levels(par, perp, time, time + self.shift, self.background_region)
         region = list(self.sample_region if self.sample is not None else self.region)
@@ -1576,7 +1599,7 @@ class GFactorModel:
             "region": region,
         }
 
-    def compute_batch(self, cancel_cb: object | None = None) -> list[dict]:
+    def compute_batch(self, cancel_cb: Callable[[], bool] | None = None) -> list[dict]:
         params = self.batch_snapshot()
         rows = []
         for filename in self.batch_files:
@@ -1873,6 +1896,8 @@ class GFactorModel:
         self.compute_sample()
         base = Path(base_path).with_suffix("")
         par, perp = self.channels(sample=True)
+        if par is None or perp is None:
+            raise ValueError("Load a VV/VH decay file before saving outputs.")
         time = np.arange(len(par), dtype=float)
         shifted = time + self.shift
         bp, bs = (

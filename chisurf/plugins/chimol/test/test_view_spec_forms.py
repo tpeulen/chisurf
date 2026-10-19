@@ -29,6 +29,7 @@ What is pinned here
 
 from __future__ import annotations
 
+import inspect
 import pathlib
 
 import pytest
@@ -42,7 +43,7 @@ from emtk.widgets.view_spec import (
 
 #: chimol's own spec: the appearance settings, bound through ``SettingsProxy``.
 APPEARANCE = (
-    pathlib.Path(__import__("chimol").__file__).resolve().parent
+    pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent
     / "ui"
     / "data"
     / "appearance.view.json"

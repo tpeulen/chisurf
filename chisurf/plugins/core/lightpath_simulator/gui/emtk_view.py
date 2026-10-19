@@ -287,7 +287,7 @@ class BeampathContent(NodeContentRenderer):
                 selected = options[chosen][1]
                 node.config["probe_ids"] = [] if selected is None else [selected]
                 if selected is not None:
-                    probe = next(
+                    probe: dict = next(
                         (value for value in self.probes if value.get("probe_id") == selected), {}
                     )
                     node.config.setdefault("dye_properties", {})[str(selected)] = {

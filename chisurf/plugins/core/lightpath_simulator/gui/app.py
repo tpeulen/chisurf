@@ -88,6 +88,10 @@ class OpticalGraphControl(GraphControl):
 
     #: Set while a context popup is open: ('node', node_id) or ('canvas', grid_pos).
     context: tuple | None = None
+    #: The window this editor lives in, and its controller; ``LightPathApp`` sets both
+    #: right after building the control.
+    host_app: "LightPathApp"
+    controller: LightPathController
 
     def press(self, px: float, py: float, *box, modifiers: int = 0, clicks: int = 1) -> None:
         modifiers, clicks = self._trailing(box, modifiers, clicks)

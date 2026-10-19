@@ -19,13 +19,6 @@ KEY = "theme"
 DEFAULT = "dark"
 
 
-def available_styles() -> tuple[str, ...]:
-    """The theme names the Settings menu can offer (emtk's palette sets)."""
-    from emtk.theme import THEMES
-
-    return tuple(THEMES)
-
-
 def stored() -> str:
     """The stored theme name (``gui.theme``), or :data:`DEFAULT` when unset or unknown."""
     try:
@@ -115,8 +108,8 @@ def available_styles() -> list[str]:
             seen_stems.add(stem)
             styles.append(f"{stem}.css")
 
-    for p in preferred:
-        _add(p)
+    for preferred_name in preferred:
+        _add(preferred_name)
 
     try:
         for s in emtk_theme.available_stylesheets():
@@ -127,16 +120,16 @@ def available_styles() -> list[str]:
     try:
         pkg_dir = pathlib.Path(chisurf.__file__).parent / "gui" / "styles"
         if pkg_dir.is_dir():
-            for p in sorted(pkg_dir.glob("*.css")):
-                _add(p.name)
+            for sheet in sorted(pkg_dir.glob("*.css")):
+                _add(sheet.name)
     except Exception:
         pass
 
     try:
         user_dir = get_path("settings") / "styles"
         if user_dir.is_dir():
-            for p in sorted(user_dir.glob("*.css")):
-                _add(p.name)
+            for sheet in sorted(user_dir.glob("*.css")):
+                _add(sheet.name)
     except Exception:
         pass
 

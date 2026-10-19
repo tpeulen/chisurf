@@ -22,6 +22,7 @@ renders a frame, finds the molecule's *pixels*, and clicks those.
 
 from __future__ import annotations
 
+import inspect
 import pathlib
 
 _PDB = (
@@ -182,7 +183,7 @@ def _run_in_page_configuration(tmp_path):
     import subprocess
     import sys
 
-    pkg = pathlib.Path(__import__("chimol").__file__).resolve().parent
+    pkg = pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent
     script = tmp_path / "page_config.py"
     script.write_text(
         "import sys, importlib\n"

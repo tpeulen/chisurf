@@ -17,11 +17,12 @@ shrinks and never grows. A file you touch is a file you port.
 from __future__ import annotations
 
 import ast
+import inspect
 import pathlib
 
 import pytest
 
-CHIMOL = pathlib.Path(__import__("chimol").__file__).resolve().parent
+CHIMOL = pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent
 
 #: Empty, and it stays that way. The ray tracer was the last holdout: its
 #: traversal and its shading are `wgsl/bvh.wgsl` and `wgsl/raytrace.wgsl` now,

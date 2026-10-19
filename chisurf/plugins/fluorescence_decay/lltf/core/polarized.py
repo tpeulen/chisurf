@@ -168,7 +168,7 @@ def read_irf(path, vh_path=None, channel_width=None) -> tuple[np.ndarray, np.nda
 
 def calibration(data: PolarizedData, settings: dict, overrides: dict | None = None) -> dict:
     """g, l1, l2 to use: an explicit override, else the data's, else the settings'; with sources."""
-    out = {}
+    out: dict[str, typing.Any] = {}
     for key in ("g_factor", "l1", "l2"):
         if overrides and overrides.get(key) is not None:
             out[key], out[f"{key}_source"] = float(overrides[key]), "given"
@@ -278,6 +278,8 @@ class PolarizedDecay:
         self.start, self.stop = vm.start, vm.stop
         window = int(settings["estimate_background_parameter"]["average_window"])
         self.backgrounds = [float(np.mean(d[-window:])) for d in self.data]
+        if vm.decay is None:
+            raise ValueError("the magic-angle decay has no counts")
         vm.decay_background = float(np.mean(vm.decay[-window:]))
         shift = settings["estimate_irf_shift_parameters"]
         if shift["enabled"] and shift["apply_shift"]:
@@ -558,10 +560,10 @@ class PolarizedDecay:
         rot = np.column_stack([rot[0::2][order_r], rot[1::2][order_r]]).ravel()
         r_infinity = float(rotation[-2]) if r_inf else 0.0
         t = self.time[sl]
-        net_data = [d[sl] - bg for d, bg in zip(self.data, bgs)]
-        net_model = [mo[sl] - bg for mo, bg in zip(models, bgs)]
-        _, _, r_data = rt_curves(t, *net_data, self.g_factor, self.l1, self.l2)
-        _, _, r_model = rt_curves(t, *net_model, self.g_factor, self.l1, self.l2)
+        net_vv, net_vh = (d[sl] - bg for d, bg in zip(self.data, bgs))
+        model_vv, model_vh = (mo[sl] - bg for mo, bg in zip(models, bgs))
+        _, _, r_data = rt_curves(t, net_vv, net_vh, self.g_factor, self.l1, self.l2)
+        _, _, r_model = rt_curves(t, model_vv, model_vh, self.g_factor, self.l1, self.l2)
         x = lifetime[0::2]
         tau = lifetime[1::2]
         result = {

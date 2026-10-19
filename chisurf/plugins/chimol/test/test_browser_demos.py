@@ -163,7 +163,7 @@ def page(server):
         if "drawn" not in status:
             browser.close()
             pytest.fail(f"the page did not draw: {status}")
-        pg.errors = errors  # type: ignore[attr-defined]
+        pg.errors = errors
         yield pg
         browser.close()
 
@@ -322,4 +322,4 @@ def test_ray_traces_a_picture_from_the_prompt(page):
 
 
 def test_no_page_errors(page):
-    assert not page.errors, page.errors  # type: ignore[attr-defined]
+    assert not page.errors, page.errors

@@ -350,7 +350,7 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
             merged = dict(constants_map)
             merged.update(saved)
             ndx.constants = merged
-        if callable(apply_values):
+        if editor is not None and callable(apply_values):
             try:
                 ndx._prev_constants = dict(editor.dict)
             except Exception:
@@ -444,7 +444,7 @@ def _push_constants(
         constants = dict(constants or {})
         constants.update(mapping)
         ndx.constants = constants
-    if callable(apply_values):
+    if editor is not None and callable(apply_values):
         try:
             ndx._prev_constants = dict(editor.dict)
         except Exception:
@@ -519,7 +519,7 @@ def optimize_calibration_from_ndx(
 
     data_source = getattr(ndx, "data_source", None)
     table = ndx_columns(data_source)
-    if not table:
+    if data_source is None or not table:
         return {"ok": False, "error": "the ndX window holds no burst columns"}
     constants = dict(getattr(ndx, "constants", {}) or {})
     start, priors, notes = dict(constants), None, []

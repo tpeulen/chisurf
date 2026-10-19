@@ -95,14 +95,6 @@ class ConsoleSession:
         import os
 
         user_ns["os"] = os
-        try:
-            from chisurf.core.api import ChiSurfAPI
-
-            api = ChiSurfAPI.instance(create=False)
-            if api is not None:
-                user_ns["api"] = api
-        except Exception:  # noqa: BLE001
-            pass
         if namespace:
             user_ns.update(namespace)
 

@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import inspect
 import pathlib
 import socket
 import subprocess
@@ -75,7 +76,7 @@ _PLUGIN_DIR = pathlib.Path(__file__).resolve().parents[1]
 def _demo_pdb() -> str:
     """The structure both halves open, so they compare the same molecule."""
     return str(
-        pathlib.Path(__import__("chimol").__file__).resolve().parent / "data" / "demos" / "148l.pdb"
+        pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent / "data" / "demos" / "148l.pdb"
     )
 
 

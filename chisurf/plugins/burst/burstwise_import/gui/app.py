@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
+from typing import Any
 
 from emtk import im
 from emtk.app import ImApp
@@ -36,7 +37,7 @@ class BurstwiseImportApp(ImApp, TourTarget):
         self.running: bool = False
         self.status: str = tr("Select a legacy burstwise folder to import.")
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="burstwise-importer")
-        self.future = None
+        self.future: Future[Any] | None = None
         self.cancel = Event()
         self.dialog = None
         self.dialog_mode = "folder"

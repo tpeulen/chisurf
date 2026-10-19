@@ -1555,7 +1555,8 @@ class DataDocks:
         docks = self.shell.workspace_docks
         bx, by, bw, bh = docks.floating_bounds()
         if bw <= 1.0 or bh <= 1.0:  # not laid out yet: the window's last-known box
-            bx, by, bw, bh = (0.0, 0.0, *self.shell.window_size)
+            window_w, window_h = self.shell.window_size
+            bx, by, bw, bh = 0.0, 0.0, float(window_w), float(window_h)
         step = docks._title_h + 8.0
         w, h = max(bw * 0.6, 240.0), max(bh * 0.6, 160.0)
         span = max(int(min(bw - w, bh - h) // step), 0) + 1

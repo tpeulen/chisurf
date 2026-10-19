@@ -416,7 +416,7 @@ class QuestCard(CardShell):
         self.json_form = FormState(on_used=self.used)
         self.chimol = ChimolView()
         self._chimol_path = ""
-        self._chimol_sites = None
+        self._chimol_sites: tuple[Any, Any] | None = None
         self._chimol_connected = False
 
     def build_docks(self) -> DockManager:
