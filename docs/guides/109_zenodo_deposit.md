@@ -86,6 +86,9 @@ sandbox.zenodo.org.
 In the *Zenodo token* tab, paste a personal access token (scopes
 `deposit:write`, `deposit:actions`) and press *Save to keychain*; *Test token*
 asks Zenodo whether it works.
+The tool does not read the keychain just to open: until a press needs the
+token (*Test token*, upload, *Check Zenodo*, *Publish*) the tab says it has not
+been looked up yet, so opening the window never triggers a keychain prompt.
 
 ## 4. Publish
 

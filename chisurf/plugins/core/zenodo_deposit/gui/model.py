@@ -922,7 +922,7 @@ class ZenodoDepositModel:
         if name == "test_token":
             return idle and bool(self.token_source)
         if name == "forget_token":
-            return idle and self.token_source == "keychain"
+            return idle and self.token_source in ("keychain", credentials.UNCHECKED)
         if name == "approve_publish":
             return has_rec and idle and bool(self.open_record.remote.get("deposition_id")) \
                 and not compare(self.record) and not self.open_record.remote.get("doi")
@@ -938,7 +938,7 @@ class ZenodoDepositModel:
         """The single next thing to do, in words -- shown above everything."""
         if self.job.running:
             return f"**Working:** {self.busy_what}… (the window stays usable)"
-        if not self.token_source:
+        if self.token_source == "":
             return ("**Step 0 -- enter your Zenodo token** in the *Zenodo token* tab. "
                     "Reviewing works without it; uploading does not.")
         if self.record is None:
@@ -987,7 +987,12 @@ class ZenodoDepositModel:
 
     @property
     def token_source(self) -> str:
-        return credentials.load_token(self._base)[1]
+        """Where the token comes from, without reading the keychain (this is drawn every frame).
+
+        ``"unchecked"`` until something needs the token: the keychain is read only when a
+        client is built (Test, Upload, Check, Publish), never just to draw the window.
+        """
+        return credentials.known_token(self._base)[1]
 
     @property
     def token_text(self) -> str:
@@ -995,6 +1000,8 @@ class ZenodoDepositModel:
         src = self.token_source
         state = {"keychain": "stored in the system keychain",
                  "environment": "taken from the ZENODO_TOKEN environment variable",
+                 credentials.UNCHECKED: "not looked up yet -- the system keychain is read "
+                                        "when you press *Test token* or upload",
                  "": "**not set** -- uploading is impossible until you enter one"}[src]
         check = f"\n\nLast test: {self.token_check}" if self.token_check else ""
         return (f"Token for **{where}**: {state}.\n\nCreate one on Zenodo under *Account → "
@@ -1019,22 +1026,20 @@ class ZenodoDepositModel:
         self.message = "stored token removed"
 
     def test_token(self) -> None:
-        try:
-            client = self._client()
-        except RuntimeError as exc:
-            self.token_check = str(exc)
-            return
         self.busy_what = "testing the token"
+        make = self._client()
 
         def work():
-            return client.check_token()
+            # building the client reads the keychain: off the UI thread, on the user's press
+            return make().check_token()
 
         def done(problem):
             self.token_check = problem or "accepted: the token can create depositions"
             self.message = self.token_check
 
         def fail(exc):
-            self.token_check = f"could not reach Zenodo: {exc}"
+            self.token_check = (str(exc) if isinstance(exc, RuntimeError)
+                                else f"could not reach Zenodo: {exc}")
 
         self.job.start(work, done, fail)
 
@@ -1043,7 +1048,7 @@ class ZenodoDepositModel:
     def upload_hint(self) -> str:
         if self.record is None:
             return ""
-        if not self.token_source:
+        if self.token_source == "":
             return "Upload needs a token (Zenodo token tab)."
         b = blockers(self.record)
         if b:
@@ -1068,7 +1073,13 @@ class ZenodoDepositModel:
         self.job.start(work, done, fail)
 
     def _client(self):
-        return self._client_factory(self._base)
+        """A builder for this host's client, bound now; call it in the worker.
+
+        Building reads the keychain, so it runs off the UI thread, and binding the host first
+        keeps a sandbox toggle during the job from switching repositories under it.
+        """
+        base = self._base
+        return lambda: self._client_factory(base)
 
     def build_package(self) -> None:
         rec = self.open_record
@@ -1081,20 +1092,20 @@ class ZenodoDepositModel:
         self._run("building the package", work)
 
     def upload_draft(self) -> None:
-        rec, client = self.record, self._client()
+        rec, make = self.record, self._client()
 
         def work():
-            remote = upload(rec, client)
+            remote = upload(rec, make())
             return f"uploaded to draft {remote['deposition_id']}: " + (
                 "; ".join(compare(rec)) or "md5 verified")
 
         self._run("uploading to a Zenodo draft", work)
 
     def check_remote(self) -> None:
-        rec, client = self.record, self._client()
+        rec, make = self.record, self._client()
 
         def work():
-            refresh_remote(rec, client)
+            refresh_remote(rec, make())
             return "; ".join(compare(rec)) or "remote matches the package"
 
         self._run("checking Zenodo", work)
@@ -1105,10 +1116,10 @@ class ZenodoDepositModel:
         self.message = f"publishing approved for md5 {self.open_record.package['md5']}"
 
     def publish_record(self) -> None:
-        rec, client = self.record, self._client()
+        rec, make = self.record, self._client()
 
         def work():
-            remote = publish(rec, client)
+            remote = publish(rec, make())
             return f"published: DOI {remote.get('doi')}"
 
         self._run("publishing", work)

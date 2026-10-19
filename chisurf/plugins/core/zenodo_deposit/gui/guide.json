@@ -2,8 +2,18 @@
   "_comment": "Guided tour of the Zenodo deposit tool. 'name' is the emtk control (a spec action, or a table).",
   "steps": [
     {
-      "title": "Make a record",
-      "text": "In <b>0 · Create</b>, type a name and a title and press <b>Create record</b>. (A record a project script builds is under <i>Advanced</i>.)",
+      "title": "Name the record",
+      "text": "In <b>0 · Create</b>, type the record's name: lower case, no spaces. It becomes the folder and the archive name. (Already have one? Pick it in the list at the top instead.)",
+      "target": {
+        "name": "new_name"
+      },
+      "await": {
+        "hint": "Type a name for the record."
+      }
+    },
+    {
+      "title": "Make the record",
+      "text": "Give it a title, then press <b>Create record</b>; it stays grey until the name is valid. (A record a project script builds is under <i>Advanced</i>.)",
       "target": {
         "name": "create_record"
       },

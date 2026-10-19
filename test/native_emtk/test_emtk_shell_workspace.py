@@ -193,10 +193,7 @@ def test_fits_stay_in_the_workspace_and_reachable_after_clicking_the_window():
     for key in FITS:
         frame = docks.window(key).frame
         assert frame is not None and docks.is_shown(key), key
-        # emtk keeps a floating window's *title bar* inside (emtk 4f154f8): one asked for past
-        # the bottom edge may hang below it, as a desktop window does, and is still grabbed.
-        title = (frame[0], frame[1], frame[2], docks._title_h)
-        assert _inside(title, bounds), f"{key} left the workspace: {frame} / {bounds}"
+        assert _inside(frame, bounds), f"{key} left the workspace: {frame} / {bounds}"
     for key in FITS:
         # The title's right end: the floats overlap, each one's right end is the part in view.
         x, y, w, _h = docks.window(key).frame

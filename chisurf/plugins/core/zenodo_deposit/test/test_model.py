@@ -329,3 +329,26 @@ def test_an_approval_takes_the_warning_off_its_row(model):
     row = next(r for r in model.items if r["id"] == "README.md")
     assert row["flags"] == "" and "✓ checked: role inferred" in row["detail"]
     assert "⚠" not in model.item_text and "✓ checked: role inferred" in model.item_text
+
+
+def test_drawing_the_window_never_reads_the_keychain(model, monkeypatch):
+    """Every frame asks where the token comes from; only a press may launch the keychain."""
+    from mmfdb.deposit import credentials
+
+    reads = []
+    monkeypatch.setattr(credentials, "_KNOWN", {})
+    monkeypatch.setattr(credentials._store, "load_session_token",
+                        lambda h, p, u: reads.append(h) or "kept")
+    monkeypatch.delenv("ZENODO_TOKEN", raising=False)
+    model.select_record(model.records[0])
+    for _ in range(20):
+        model.next_step, model.token_text, model.upload_hint  # noqa: B018 -- drawn values
+        [model.enabled(n) for n in ("test_token", "forget_token", "upload_draft")]
+    assert reads == []
+    assert model.token_source == credentials.UNCHECKED
+    assert "not looked up yet" in model.token_text
+    # the user's press reads it -- in the worker -- and the window then knows
+    model._client_factory = lambda base: ZenodoClient(base=base, session=FakeZenodo())
+    model.test_token()
+    _wait(model)
+    assert reads and model.token_source == "keychain"
