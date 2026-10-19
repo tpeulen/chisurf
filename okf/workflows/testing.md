@@ -645,13 +645,22 @@ A single pytest process runs ~33k tests. Two failure modes have taken the machin
 - `pyproject.toml` sets `tmp_path_retention_policy = "failed"` and
   `tmp_path_retention_count = 1`: a passing test's directory is removed at teardown, and
   only the last run's failures are kept.
-- `test/resource_guard.py`, loaded by the root `conftest.py`, records RSS, threads, child
-  processes and disk use after every test (`CHISURF_TEST_RESOURCE_LOG=<file.csv>` for the
-  full record; a "resources" section in the terminal summary). Its watchdog stops the run
-  with exit code 3 when RSS > `CHISURF_TEST_MAX_RSS_MB` (4096), system memory available
-  < `CHISURF_TEST_MIN_FREE_MB` (1024) or free disk on the tmp volume <
-  `CHISURF_TEST_MIN_DISK_MB` (4096); it prints the running test and the biggest growers,
-  deletes the run's `tmp_path` tree (its `os._exit` skips pytest's own cleanup) and kills
-  child processes. Set a variable to 0 to disable that check.
+- `test/resource_guard.py`, loaded by the root `conftest.py`, appends one CSV row per
+  test (RSS of the process and of its whole process tree, threads, child processes, disk
+  drop, `tmp_path` size) as the test finishes, to `CHISURF_TEST_RESOURCE_LOG` or else
+  `~/.cache/chisurf/test-resources/run-<time>-<pid>.csv` (newest 10 kept), and prints a
+  "resources" summary. The record is written incrementally and outside `$TMPDIR` on
+  purpose: the 2026-10-19 crash rebooted the machine, which wiped `/private/tmp` and with
+  it a record that was only written at the end.
+- The limits are enforced by `test/resource_watchdog.py`, a **separate process** polling
+  every 0.25 s. A watchdog thread inside pytest failed to save the machine: a C extension
+  that allocates while holding the GIL starves it, and it cannot see child processes. It
+  stops the run (SIGKILL of the whole tree, exit 137) when the tree RSS >
+  `CHISURF_TEST_MAX_RSS_MB` (4096), system memory available < `CHISURF_TEST_MIN_FREE_MB`
+  (1024), swap grew by > `CHISURF_TEST_MAX_SWAP_GROWTH_MB` (2048) or free disk on the tmp
+  volume < `CHISURF_TEST_MIN_DISK_MB` (4096); it prints the running test and the biggest
+  growers from the CSV and deletes the run's `tmp_path` tree. `0` disables a limit. The
+  swap and free-memory limits also trip when *other* processes (other agents' suites) eat
+  the memory — that is intended: the run yields rather than tipping the machine.
 - Trap: never pass `--basetemp` into a long-lived scratch folder — pytest only clears it
   at the start of the next run with the same path, so it is never reclaimed.

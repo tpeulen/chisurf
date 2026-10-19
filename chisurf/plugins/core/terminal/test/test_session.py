@@ -56,6 +56,36 @@ def test_close_terminates_the_child():
     assert not session.alive
 
 
+# "hangs_up": the child closes its side of the terminal and lingers before it exits, as a
+# login shell does after SIGHUP while it waits on its own jobs. The reader sees EOF first.
+_LINGER = "import os, time; print('done', flush=True); [os.close(fd) for fd in (0, 1, 2)]; time.sleep(0.3)"
+
+
+@pytest.mark.parametrize(
+    "code",
+    ["import time; time.sleep(60)", "print('done')", _LINGER],
+    ids=["running", "exited", "hangs_up"],
+)
+def test_close_reaps_the_child(code):
+    """No zombie: ``alive`` turns False on pty EOF before anyone waited on the child.
+
+    An exited-but-unwaited shell stays in the process table for the life of the app (one per
+    closed pane, and one per test that opened a terminal), which ``alive`` does not show.
+    """
+    import os
+
+    session = spawn([sys.executable, "-c", code])
+    if "done" in code:
+        drain(session, "done")
+        end = time.monotonic() + 5.0
+        while session.alive and time.monotonic() < end:
+            time.sleep(0.02)
+    session.close()
+    assert session.exit_status is not None
+    with pytest.raises(ChildProcessError):
+        os.waitpid(session.pid, os.WNOHANG)
+
+
 def test_resize_updates_the_screen_geometry():
     session = spawn([sys.executable, "-c", "print('r')"], columns=40, rows=10)
     try:

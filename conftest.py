@@ -182,3 +182,20 @@ def _stop_servers_started_by_the_module():
             server.stop()
         except Exception:  # noqa: BLE001 - a half-built server must not fail the module
             pass
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _release_imaging_worker_and_caches():
+    """Stop the imaging worker process and drop the TTTR/CLSM caches after each module.
+
+    ``pixel_maps`` keeps one spawned worker (reads hold the GIL, so they run out of process)
+    and in-process LRU caches for the app's lifetime; in a test run that lifetime is every
+    later module, so each photon file read stayed resident — in the worker and here — for
+    the rest of the run (2026-10-19 resource record: +1.2 GB from one module, a child
+    process that never ended).
+    """
+    yield
+    pixel_maps = sys.modules.get("chisurf.core.fluorescence.imaging.pixel_maps")
+    if pixel_maps is not None:
+        pixel_maps.shutdown_proc_pool()
+        pixel_maps.clear_imaging_cache()

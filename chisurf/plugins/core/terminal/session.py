@@ -207,17 +207,19 @@ class PtySession:
         if self._closing:
             return
         self._closing = True
-        if self.alive:
+        # Decide on the exit status, not on ``alive``: the reader marks the child dead as
+        # soon as the pty reports EOF, before anyone waited on it, and skipping the wait
+        # then left a zombie for every closed pane.
+        if self.poll_status() is None:
             with contextlib.suppress(OSError):
                 os.kill(self.pid, signal.SIGHUP)
             end = time.monotonic() + 0.5
-            while self.alive and time.monotonic() < end:
-                self.poll_status()
+            while self.poll_status() is None and time.monotonic() < end:
                 time.sleep(0.01)
-            if self.alive:
+            if self.poll_status() is None:
                 with contextlib.suppress(OSError):
                     os.kill(self.pid, signal.SIGKILL)
-                self.poll_status()
+                self.wait(timeout=2.0)
         self._reader.join(timeout=3.0)
         if self._reader.is_alive():
             with contextlib.suppress(OSError):
