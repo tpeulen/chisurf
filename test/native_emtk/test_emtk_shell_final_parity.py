@@ -196,7 +196,11 @@ def test_watermark_folding_toggle_on_click():
         driver.frame(2)
         assert "system_info" in shell.item_rects
         assert shell._watermark_folded is False
-        assert shell.animating() is True  # Active telemetry requests frames continuously
+        # Telemetry refreshes once a second (next_frame_in), never as a continuous redraw:
+        # an idle window must not draw frames it does not need.
+        driver.frame(2)
+        assert shell.animating() is False
+        assert 0.0 < shell.next_frame_in() <= 1.0
         assert 0.0 < shell._frame_ms < 100.0  # Real frame CPU render time, not sleep interval
         bx, by, bw, bh = shell.item_rects["system_info"]
         unfolded_h = bh
@@ -207,7 +211,6 @@ def test_watermark_folding_toggle_on_click():
         driver.frame(1)
 
         assert shell._watermark_folded is True
-        assert shell.animating() is False  # Folded badge stops continuous animation
         fbx, fby, fbw, fbh = shell.item_rects["system_info"]
         assert fbh < 35.0  # Folded single-line badge is compact
         folded_strings = [str(s) for s in driver.painter.strings]
@@ -218,7 +221,7 @@ def test_watermark_folding_toggle_on_click():
         driver.frame(1)
 
         assert shell._watermark_folded is False
-        assert shell.animating() is True  # Resumes continuous telemetry
+        assert 0.0 < shell.next_frame_in() <= 1.0  # the unfolded panel refreshes again
         assert shell.item_rects["system_info"][3] > 100.0
     finally:
         shell.close()

@@ -2198,8 +2198,9 @@ class EmtkShellApp(ImApp):
         busy = busy or self.status_strip.animating()
         busy = busy or self.project.busy
         children = any(app.animating() for _key, app, _box in self._drawn.values())
-        watermark_active = not getattr(self, "_watermark_folded", False)
-        return super().animating() or busy or children or watermark_active
+        # The watermark's sparklines refresh once a second through next_frame_in; asking for
+        # every frame instead kept an idle window drawing ~60 frames a second for good.
+        return super().animating() or busy or children
 
     def next_frame_in(self):
         delays = [super().next_frame_in(), self.project.next_frame_in()]
