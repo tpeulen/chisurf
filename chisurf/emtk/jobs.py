@@ -100,6 +100,12 @@ class SnapshotJob:
             else:
                 _, snapshot, error, events = item
                 self.busy = False
+                # A model whose copy locks it against edits (``__copy__`` arms a guard) is told
+                # the job ended -- done, failed, or stopped while held before it computed --
+                # since only the first of those merges a snapshot that could reset the guard.
+                release = getattr(self.model, "release_snapshot", None)
+                if callable(release):
+                    release()
                 self.progress = ""
                 self.error = error or ""
                 if snapshot is not None:

@@ -173,6 +173,14 @@ class MleViewModel(RunPickerMixin):
         if self._snapshot_running.is_set():
             raise RuntimeError(tr("Wait for the running Burst MLE job before changing its inputs."))
 
+    def release_snapshot(self) -> None:
+        """:class:`~chisurf.emtk.jobs.SnapshotJob`: the job of this model's copy ended; allow edits.
+
+        Called for every outcome, including a job stopped while held, whose method never ran
+        and so never reached :meth:`_release_snapshot`.
+        """
+        self._snapshot_running.clear()
+
     def _release_snapshot(self) -> None:
         """Release the original model's edit guard after worker success or failure."""
         self._snapshot_running.clear()
