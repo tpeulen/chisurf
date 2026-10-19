@@ -9,11 +9,11 @@
 - PRD-154 W15 recorded: the release licence change — emtk-only shipped app, MIT for chisurf and
   ndxplorer (owner directive). Ownership audit: every commit in both histories is the owner, so the
   flip needs no permissions. Blockers recorded with file inventory: PyQt5/sip (GPL-3-only) until W9
-  S6 lands, and Orange3-derived VizRank/ranking code in ndxplorer (GPL-3.0, Univ. of Ljubljana)
+  S6 lands, and GPL-toolkit-derived VizRank/ranking code in ndxplorer (GPL-3.0, Univ. of Ljubljana)
   plus the unresolved `run_in_background` ConcurrentMixin provenance claim in `chisurf/gui/task.py`.
   Steps: attribute task.py → owner decides VizRank (clean-room vs drop) → flip both repos → guards
-  (`test_license_strings.py`, license-tracker re-run) → `okf/subsystems/licensing.md`. Part D gains
-  release gate 5. Record: [licensing](subsystems/licensing.md) (to be created by W15 step 7);
+  (`test_license_strings.py`, license-tracker re-run) → `okf/subsystems/licence-mit.md`. Part D gains
+  release gate 5. Record: [licence-mit](subsystems/licence-mit.md);
   PRD-154 Part B W15.
 - emtk shell: live CPU/memory tracking with cached psutil processes, integer RGBA sparklines, tracks, and 1s cadence refresh
 
