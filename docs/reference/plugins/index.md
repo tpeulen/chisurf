@@ -76,7 +76,7 @@ Of the **129 plugins**, **91** build their interface from declarative AutoForm s
 | [Plots](plot_settings.md) *(hidden)* | How fit plots look: curve colours and width, fit-range band, global fits, axes and grid, with a live preview |
 | [Plugins](plugin_manager.md) *(hidden)* | List the installed plugins: switch them off, pin them to the toolbar, rename their menu entry, set their icon and whether their window remembers its state. |
 | [Settings](setup.md) | The Settings window: one searchable list of every settings panel (ChiSurf settings, acquisition, styles, plots, models, users, plugins, updates, detector setup, ...). |
-| [Styles](style_manager.md) *(hidden)* | Edit ChiSurf's style sheets (.css files in the settings directory; a .qss theme kept from the Qt window is translated) and apply one to the running application. |
+| [Styles](style_manager.md) *(hidden)* | Edit ChiSurf's emtk style sheets (.css files in the settings directory) and apply one to the running window. |
 | [Switch User](switch_user.md) | Switch the active MMFDB user for this ChiSurf session. |
 | [Updates & Packages](updater.md) *(hidden)* | Update checker/installer and conda package manager. Surfaced as panels inside the unified Settings dialog. |
 | [User Editor](user_editor.md) *(hidden)* | Manage the users registered in the MMFDB: create, edit and remove accounts. |

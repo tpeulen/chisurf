@@ -234,9 +234,9 @@ plot defaults. Many of these are read via `chisurf.settings.gui`.
   If true, quitting ChiSurf asks "Quit ChiSurf?" first.
 
 - **`style_sheet`**  
-  The active emtk style sheet: a `.css` file shipped with emtk or in the user
-  styles folder; a `.qss` theme kept from the Qt window is translated to emtk's
-  dialect when applied. Written by **Settings ▸ Styles**.
+  The active emtk style sheet: a `.css` file shipped with emtk, or one of the
+  emtk `.css` style sheets in the user styles folder. Written by
+  **Settings ▸ Styles**.
 
 - **`modal_blur`**  
   Blur what lies behind a dialog (default `true`); the wash stays when off.

@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: Styles
-description: Edit ChiSurf's style sheets (.css files in the settings directory; a .qss theme kept from the Qt window is translated) and apply one to the running application.
+description: Edit ChiSurf's emtk style sheets (.css files in the settings directory) and apply one to the running window.
 resource: chisurf/plugins/core/style_manager/
 tags: [reference, plugins, style-manager, setup]
 anchor: plugin-style_manager
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-style_manager)=
 # Styles
 
-Edit ChiSurf's style sheets (.css files in the settings directory; a .qss theme kept from the Qt window is translated) and apply one to the running application.
+Edit ChiSurf's emtk style sheets (.css files in the settings directory) and apply one to the running window.
 
 ## Identity
 
