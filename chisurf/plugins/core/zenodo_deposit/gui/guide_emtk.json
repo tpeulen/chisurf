@@ -1,0 +1,32 @@
+{
+  "_comment": "Guided tour of the Zenodo deposit tool. 'name' is the emtk control (a spec action, or a table).",
+  "steps": [
+    {
+      "title": "Pick a record",
+      "text": "Each row is one future Zenodo entry. Its review lives beside the folder, never inside the upload. Click the record you want to check.",
+      "target": {"name": "records_table"},
+      "await": {"hint": "Click a record."}
+    },
+    {
+      "title": "Flagged items first",
+      "text": "Every measurement folder, calibration folder and metadata file is one row. A <b>⚠</b> means the builder could not decide alone: data was added, or a role was inferred. Hover a row for the reason, click it for the details.",
+      "target": {"name": "items_table"},
+      "await": {"hint": "Click an item."}
+    },
+    {
+      "title": "Decide",
+      "text": "<b>Approve</b> binds your decision to the item's content: if it changes later, it is pending again. <b>Reject</b> blocks the record until it is fixed.",
+      "target": {"name": "approve_item"}
+    },
+    {
+      "title": "Upload a draft",
+      "text": "<b>Upload draft</b> stays grey until every item is approved and the package matches what you approved. It uploads into a Zenodo <i>draft</i> and checks the md5 there; nothing is published.",
+      "target": {"name": "upload_draft"}
+    },
+    {
+      "title": "Publishing is separate",
+      "text": "<b>Approve publish</b> approves exactly this package; <b>Publish</b> is grey until the draft matches it. Publishing is irreversible.",
+      "target": {"name": "publish_record"}
+    }
+  ]
+}

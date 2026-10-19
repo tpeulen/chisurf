@@ -1,0 +1,27 @@
+{
+  "id": "zenodo_deposit",
+  "version": "1.0.0",
+  "display_name": "File:Data:Zenodo deposit",
+  "description": "Review a deposition record item by item -- every measurement folder, calibration folder and metadata file, with where it came from and why it is flagged -- then upload it as a Zenodo draft and check the draft against the local package. Nothing is uploaded until every item is approved at its current content; publishing needs its own approval of the exact package.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "File",
+    "Data"
+  ],
+  "icon": "🗄",
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": "zenodo_deposit_window"
+    }
+  },
+  "entrypoints": {
+    "emtk": "chisurf.plugins.core.zenodo_deposit.gui.app:create_app"
+  },
+  "requires": {
+    "tttr_splitter": "*"
+  }
+}

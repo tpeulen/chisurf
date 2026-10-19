@@ -125,6 +125,7 @@ file_tools
 tttr_stream_tools
 detector_setup
 measurement_database
+data_deposition
 microtime_shift
 live_streaming_analysis
 ```

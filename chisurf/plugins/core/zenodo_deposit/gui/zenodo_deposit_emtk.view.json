@@ -1,0 +1,152 @@
+{
+  "window": {"width": 1280, "height": 900},
+  "_comment": "Zenodo deposit: pick a record, review it item by item, then upload it as a draft. Drawn by emtk.view_form over ZenodoDepositModel (gui/model.py); the gate is mmfdb.deposit.blockers, the same one the CLI uses. The banner on top always names the one next step. Help and Guide are drawn by gui/app.py.",
+  "title": "Zenodo deposit",
+  "sections": [
+    {"type": "info", "key": "next_step", "source": "next_step", "is_markdown": true,
+     "description": "The one thing to do next. Follow it from top to bottom and nothing can be skipped: upload unlocks only after every item is approved."},
+    {
+      "type": "custom", "key": "data_table", "title": "",
+      "description": "One row per record (one future Zenodo entry). Click a record to review it; a folder that was never scanned is scanned when you open it.",
+      "options": {
+        "source": "records", "row_key": "name", "selected_call": "select_record",
+        "editable": false, "height": 72, "min_column_width": 80,
+        "columns": [
+          {"key": "name", "title": "Record", "width": 320, "tooltip": "The record folder: one Zenodo entry, uploaded as one archive."},
+          {"key": "review", "title": "Review", "width": 170, "tooltip": "How many items are approved."},
+          {"key": "state", "title": "Gate", "width": 160, "tooltip": "Cleared for upload, or how many things still block it."},
+          {"key": "remote", "title": "Zenodo", "width": 160, "tooltip": "The draft this record was uploaded to, if any."}
+        ]
+      }
+    },
+    {
+      "type": "tabs",
+      "description": "Review first, then upload. The token is needed only for uploading.",
+      "sections": [
+        {
+          "type": "panel", "title": "1 · Review",
+          "description": "Check every item of the record and decide on it.",
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "custom", "key": "data_table", "title": "",
+              "description": "Every measurement folder, calibration folder and metadata file of the record. ⚠ = the builder could not decide alone (data added, a role inferred): check those first. Hover a row for the reason.",
+              "options": {
+                "source": "items", "row_key": "id", "selected_call": "select_item",
+                "editable": false, "height": 250, "tooltip_key": "detail", "min_column_width": 50,
+                "columns": [
+                  {"key": "status", "title": "Review", "width": 140, "tooltip": "Pending, Approved or Rejected; (changed) when the content changed after approval."},
+                  {"key": "flags", "title": "Check", "width": 56, "tooltip": "How many reasons this item needs a closer look; hover the row to read them."},
+                  {"key": "id", "title": "Item", "width": 430, "tooltip": "The folder or file in the record."},
+                  {"key": "role", "title": "Role", "width": 100, "tooltip": "Measurement, calibration or metadata."},
+                  {"key": "files", "title": "Files", "width": 60, "tooltip": "Number of files the item holds."},
+                  {"key": "size", "title": "Size", "width": 90, "tooltip": "Total size of the item."}
+                ]
+              }
+            },
+            {"type": "info", "key": "item_text", "source": "item_text", "is_markdown": true,
+             "description": "The selected item: why it is flagged, what it holds, where it came from, and the review so far."},
+            {"type": "custom", "key": "code_editor", "target": "preview_json",
+             "hidden_when": {"attr": "preview_kind", "not_equals": "json"},
+             "options": {"language": "json", "read_only": true, "height": 220},
+             "description": "The selected JSON file, read-only."},
+            {"type": "custom", "key": "code_editor", "target": "preview_cif",
+             "hidden_when": {"attr": "preview_kind", "not_equals": "mmcif"},
+             "options": {"language": "mmcif", "read_only": true, "height": 220},
+             "description": "The selected flrCIF/mmCIF file, read-only, highlighted: tags, loops and text fields."},
+            {"type": "custom", "key": "code_editor", "target": "preview_md",
+             "hidden_when": {"attr": "preview_kind", "not_equals": "markdown"},
+             "options": {"language": "markdown", "read_only": true, "height": 220},
+             "description": "The selected README, read-only, as it will appear on Zenodo."},
+            {"type": "custom", "key": "code_editor", "target": "preview_txt",
+             "hidden_when": {"attr": "preview_kind", "not_equals": "text"},
+             "options": {"language": "none", "read_only": true, "height": 220},
+             "description": "The selected file, read-only."},
+            {
+              "type": "value", "attr": "note", "kind": "str", "label": "Note",
+              "placeholder": "optional: what you checked, or why you reject",
+              "description": "Stored with your decision, e.g. which file you looked at or why you rejected the item."
+            },
+            {
+              "type": "button_row",
+              "description": "Your decision on the selected item, bound to its current content.",
+              "buttons": [
+                {"action": "approve_item", "label": "Approve", "role": "primary",
+                 "description": "Approve the selected item as it is now. Grey until an item is selected."},
+                {"action": "reject_item", "label": "Reject", "role": "danger",
+                 "description": "Reject the selected item: the record cannot be uploaded until it is fixed and approved."},
+                {"action": "reset_item", "label": "Undo decision",
+                 "description": "Withdraw your decision; the item is pending again."}
+              ]
+            }
+          ]
+        },
+        {
+          "type": "panel", "title": "2 · Upload",
+          "description": "Build the archive and upload it into a Zenodo draft. Locked until every item is approved.",
+          "n_col": 1,
+          "sections": [
+            {"type": "info", "key": "gate_text", "source": "gate_text", "is_markdown": true,
+             "description": "The package (size, md5) and what still blocks the upload."},
+            {
+              "type": "button_row",
+              "description": "In this order: build the archive from the approved content, then upload it into a draft.",
+              "buttons": [
+                {"action": "build_package", "label": "Build package",
+                 "description": "Write the upload archive from the record as it is now (stored ZIP, every member CRC-checked)."},
+                {"action": "upload_draft", "label": "Upload draft", "role": "primary",
+                 "description": "Upload the package into a Zenodo DRAFT and check its md5 there. Nothing is published. Grey until every item is approved, the package matches, and a token is set."},
+                {"action": "rescan", "label": "Rescan folder",
+                 "description": "Re-read the record folder after you changed something in it. Reviews are kept; a changed item is pending again."}
+              ]
+            },
+            {"type": "info", "key": "upload_hint", "source": "upload_hint",
+             "description": "Why Upload draft is grey, if it is."},
+            {"type": "toggle", "attr": "sandbox", "label": "Trial run on the Zenodo sandbox",
+             "description": "Upload to sandbox.zenodo.org instead of zenodo.org. The sandbox needs its own token (Zenodo token tab)."},
+            {"type": "info", "key": "remote_text", "source": "remote_text",
+             "description": "The Zenodo draft and whether its file matches the local package."},
+            {
+              "type": "button_row",
+              "description": "After the upload: compare the draft, approve publishing this exact package, publish.",
+              "buttons": [
+                {"action": "check_remote", "label": "Check Zenodo",
+                 "description": "Read the draft back from Zenodo and compare it with the local package."},
+                {"action": "approve_publish", "label": "Approve publish",
+                 "description": "Approve publishing exactly this package (its md5). A rebuilt package needs a new approval."},
+                {"action": "publish_record", "label": "Publish (irreversible)", "role": "danger",
+                 "description": "Publish the draft: it gets a DOI and can no longer be changed. Grey until the draft matches the package and publishing is approved."}
+              ]
+            }
+          ]
+        },
+        {
+          "type": "panel", "title": "Zenodo token",
+          "description": "The personal access token used to upload. Kept in the system keychain only.",
+          "n_col": 1,
+          "sections": [
+            {"type": "info", "key": "token_text", "source": "token_text", "is_markdown": true,
+             "description": "Whether a token is set for the selected Zenodo (production or sandbox), and how to create one."},
+            {"type": "value", "attr": "token_entry", "kind": "password", "label": "Token",
+             "placeholder": "paste the token here",
+             "description": "Paste the token and press Save. The field is cleared once it is stored; the token goes to the system keychain, never into a file or ChiSurf's settings."},
+            {
+              "type": "button_row",
+              "description": "Store, test or remove the token.",
+              "buttons": [
+                {"action": "save_token", "label": "Save to keychain", "role": "primary",
+                 "description": "Store the pasted token in the system keychain. Grey while the field is empty."},
+                {"action": "test_token", "label": "Test token",
+                 "description": "Ask Zenodo whether the token may create depositions."},
+                {"action": "forget_token", "label": "Remove token", "role": "danger",
+                 "description": "Delete the stored token from the keychain."}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {"type": "info", "key": "status_text", "source": "status_text",
+     "description": "What was just done, or what is running."}
+  ]
+}
