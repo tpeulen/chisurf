@@ -122,6 +122,9 @@
     "menu_hidden": {
       "type": "boolean"
     },
+    "single_instance": {
+      "type": "boolean"
+    },
     "deprecated": {
       "type": "boolean"
     },

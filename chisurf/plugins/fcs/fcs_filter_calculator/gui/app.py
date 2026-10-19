@@ -61,6 +61,10 @@ class FilterApp(TourTarget, ImApp):
         self.window_size = window_size(SPEC, (1100, 720))
         self.model = FilterModel()
         self.workflow_context = workflow_context
+        #: Files the FCS correlator handed over (:func:`receive_correlator_files`), read once the worker is idle.
+        self.correlator_pending = False
+        #: Whether the mixed decay shown came from the correlator (a new hand-over may then replace it).
+        self.mixed_from_correlator = False
         self.parameter_linker = parameter_linker
         self.registry_owner = f"fcs_filter_calc_emtk_{id(self)}"
         self.job = BackgroundJob()
@@ -233,6 +237,8 @@ class FilterApp(TourTarget, ImApp):
         return changed, value
 
     def load_total(self, paths):
+        self.mixed_from_correlator = False
+
         def operation(model):
             model.set_total_paths(paths)
             model.compute()
@@ -661,6 +667,9 @@ class FilterApp(TourTarget, ImApp):
         if self.pending_restoration_compute and not self.job.running:
             self.pending_restoration_compute = False
             self.submit(lambda model: model.compute())
+        if self.correlator_pending and not self.job.running:
+            self.correlator_pending = False
+            self._take_correlator_files()
         vp = im.get_main_viewport()
         frame = (0.0, 0.0, *vp.size)
         width = float(vp.size[0])
@@ -726,6 +735,35 @@ class FilterApp(TourTarget, ImApp):
         from chisurf.core.registry.parameter_groups import unregister_parameter_group
 
         unregister_parameter_group(self.registry_owner)
+
+    def _take_correlator_files(self) -> None:
+        """Read the handed-over correlator files as the mixed decay -- unless the user loaded one of their own."""
+        if getattr(self.model, "_total_paths", None) and not self.mixed_from_correlator:
+            self.model.message = tr(
+                "Kept the mixed decay loaded here; the FCS correlator's files were not read over it."
+            )
+            return
+        self.mixed_from_correlator = True
+        self.from_correlator()
+
+
+def receive_correlator_files(app, payload: dict) -> None:
+    """The ``fcs_correlator_files`` hand-off: the FCS workflow's files become the mixed decay.
+
+    The correlator's **Filter Calc...** button sends its checked files (a folder expanded) and its micro-time
+    binning, so the filters are computed on the same micro-time axis as the correlation. The files are read once
+    the calculator's worker is idle (its own first computation runs when it opens).
+    """
+    from types import SimpleNamespace
+
+    app.workflow_context = SimpleNamespace(
+        expanded_files=[str(p) for p in payload["files"]],
+        microtime_binning=max(1, int(payload.get("microtime_binning", 1) or 1)),
+    )
+    app.correlator_pending = True
+    request = getattr(app, "request_frame", None)
+    if callable(request):
+        request()
 
 
 def create_app(workflow_context=None, parameter_linker=None):

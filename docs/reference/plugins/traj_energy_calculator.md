@@ -18,7 +18,7 @@ Calculate potential energy components for structures and trajectories.
 | Field | Value |
 | --- | --- |
 | Plugin id | `traj_energy_calculator` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Structure → Trajectory → **Energy Calculator** |
+| Menu path | Structure → Trajectory → **Energy Calculator** |
 | Categories | Structure, Trajectory |
 | Version | 1.0.0 |
 | Surfaces | emtk |

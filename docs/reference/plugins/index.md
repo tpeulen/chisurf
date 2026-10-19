@@ -10,7 +10,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **129 plugins**, **91** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the controls of the others are described in each plugin's guide, and every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **127 plugins**, **91** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the controls of the others are described in each plugin's guide, and every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -19,7 +19,7 @@ Of the **129 plugins**, **91** build their interface from declarative AutoForm s
 *
 ```
 
-**129 plugins** across 28 categories.
+**127 plugins** across 28 categories.
 
 ## Core
 
@@ -85,16 +85,15 @@ Of the **129 plugins**, **91** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [2D-FLCS](flc-2d.md) *(hidden)* | Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 2D fluorescence-decay correlation maps from TTTR photon streams and resolve lifetime species and exchange dynamics. |
-| [Burst-wise FCS](burst_fcs_correlator.md) *(hidden)* | Compute fluorescence correlation functions on a per-burst basis from Burst-ID (.bst) / BUR files. |
-| [Correlator](fcs_correlator.md) *(hidden)* | Multi-tau correlation of TTTR photon streams: detectors and PIE windows, files, optional photon/burst filters, correlation and merging of the curves. Opened as the first section of the FCS tool, not as a menu entry of its own. |
-| [Diffusion/Volume Calculator](fcs_calculator.md) *(hidden)* | FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration). |
-| [FCS](fcs_toolbox.md) | The FCS workflow in one window: the correlator (detector → files → filter → correlate → merge) and the FCS tools — 2D-FLCS, Lifetime-FCS Sim, burst-wise FCS, the diffusion/volume and fFCS filter calculators and the channel presets — behind one navigation rail. |
+| [2D-FLCS](flc-2d.md) | Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 2D fluorescence-decay correlation maps from TTTR photon streams and resolve lifetime species and exchange dynamics. |
+| [Burst-wise FCS](burst_fcs_correlator.md) | Compute fluorescence correlation functions on a per-burst basis from Burst-ID (.bst) / BUR files. |
+| [Diffusion/Volume Calculator](fcs_calculator.md) | FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration). |
+| [FCS](fcs_correlator.md) | The FCS workflow: multi-tau correlation of TTTR photon streams in five steps -- channel definitions (detectors and PIE windows), files, optional photon/burst filter, correlation, and screening and merging of the curves. Filter Calc... hands the files to the fFCS Filter Calculator. |
 | [FCS Converter](fcs_convert.md) *(hidden)* | Convert correlation-curve files between the supported FCS formats from the command line (csc). |
-| [FCS Filter Calculator](fcs_filter_calculator.md) *(hidden)* | Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns. |
+| [FCS Filter Calculator](fcs_filter_calculator.md) | Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns. |
 | [FCS Saturation](fcs_saturation.md) *(hidden)* | FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5). |
 | [FCS-Merger](fcs_merger.md) *(hidden)* | Merge / average multiple FCS correlation curves to improve signal-to-noise. |
-| [Lifetime-FCS Simulator](fcs-lfcs-sim.md) *(hidden)* | Simulate diffusing species with distinct fluorescence lifetimes and optional interconversion, then recover them by lifetime-filtered (FLCS) correlation. |
+| [Lifetime-FCS Simulator](fcs-lfcs-sim.md) | Simulate diffusing species with distinct fluorescence lifetimes and optional interconversion, then recover them by lifetime-filtered (FLCS) correlation. |
 | [PCH](pch.md) | Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. Compute PCH histograms from TTTR files and fit multi-species models to extract molecular brightness and occupancy. |
 
 ## Spectroscopy → Decay
@@ -207,15 +206,14 @@ Of the **129 plugins**, **91** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [Align](traj_align.md) *(hidden)* | Align molecular dynamics trajectories to a reference frame or structure. |
-| [Convert](traj_convert.md) *(hidden)* | Convert molecular dynamics trajectory files between supported formats. |
-| [Energy Calculator](traj_energy_calculator.md) *(hidden)* | Calculate potential energy components for structures and trajectories. |
-| [FRET](traj_fret.md) *(hidden)* | Calculate FRET observables from molecular dynamics trajectories. |
-| [Join](traj_join.md) *(hidden)* | Join or stack molecular dynamics trajectories. |
-| [Remove Clashed](traj_remove_clashes.md) *(hidden)* | Remove frames containing steric clashes from trajectories. |
-| [Rotate/Translate](traj_rotate_translate.md) *(hidden)* | Apply rigid-body rotation and translation to trajectories. |
-| [Save Topol](traj_save_topology.md) *(hidden)* | Save topology or first-frame structure files from trajectories. |
-| [Traj Tools](traj_tools.md) | Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools. |
+| [Align](traj_align.md) | Align molecular dynamics trajectories to a reference frame or structure. |
+| [Convert](traj_convert.md) | Convert molecular dynamics trajectory files between supported formats. |
+| [Energy Calculator](traj_energy_calculator.md) | Calculate potential energy components for structures and trajectories. |
+| [FRET](traj_fret.md) | Calculate FRET observables from molecular dynamics trajectories. |
+| [Join](traj_join.md) | Join or stack molecular dynamics trajectories. |
+| [Remove Clashed](traj_remove_clashes.md) | Remove frames containing steric clashes from trajectories. |
+| [Rotate/Translate](traj_rotate_translate.md) | Apply rigid-body rotation and translation to trajectories. |
+| [Save Topol](traj_save_topology.md) | Save topology or first-frame structure files from trajectories. |
 
 ## Tools
 

@@ -19,7 +19,4 @@ if _manifest is not None:
 else:
     name = "Spectroscopy:Fluorescence Correlation Spectroscopy:Burst-wise FCS"
 
-# Hidden from the menu: surfaced inside the FCS Toolbox meta tool.
-menu_hidden = True
-
-__all__ = ["menu_hidden", "name"]
+__all__ = ["name"]

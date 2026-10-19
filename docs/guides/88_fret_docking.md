@@ -49,5 +49,4 @@ with the RMSD after each, the plot shows its decay, **Export** writes the table.
 ## Related
 
 - [QuEst](80_quenching_estimator.md) (*Structure → Computation → QuEst*), [HydroPro](79_hydropro.md)
-  (*Structure → Computation → HydroPro*), [trajectory tools](81_trajectory_tools.md) (*Structure → Trajectory →
-  Traj Tools*).
+  (*Structure → Computation → HydroPro*), [trajectory tools](81_trajectory_tools.md) (*Structure → Trajectory*: Align, Convert, FRET, ...).

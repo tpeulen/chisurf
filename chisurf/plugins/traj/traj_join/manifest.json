@@ -2,7 +2,7 @@
   "id": "traj_join",
   "version": "1.0.0",
   "display_name": "Structure:Trajectory:Join",
-  "icon": "🔗",
+  "icon": "🧷",
   "description": "Join or stack molecular dynamics trajectories.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Structure", "Trajectory"],
@@ -16,6 +16,5 @@
   },
   "entrypoints": {
     "emtk": "chisurf.plugins.traj.traj_join.app:make_app"
-  },
-  "menu_hidden": true
+  }
 }

@@ -1173,8 +1173,8 @@ def _grab_decay_gap_filter():
 
 
 def _grab_fcs_correlator_step():
-    """The FCS hub's Correlator step on its simulated example: 3 splits, laurence."""
-    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app
+    """The FCS workflow's Correlator step on its simulated example: 3 splits, laurence."""
+    from chisurf.plugins.fcs.fcs_correlator.gui.app import make_app
 
     hub = make_app()
     hub.select("files").load_example()
@@ -1278,7 +1278,7 @@ def _grab_file_tools():
 
 
 def _grab_fcs_toolbox():
-    """Grab the unified FCS tool (Spectroscopy:FCS): every correlator step, as the native hub draws it.
+    """Grab the FCS workflow (Spectroscopy:Correlation:FCS): every correlator step, as the native rail draws it.
 
     Loads the BH SPC-132 test stream, turns on the photon filter, correlates the green channels against the
     red ones in ten chunks and hands them to the merger: the state a user reaches after one pass through the
@@ -1287,7 +1287,7 @@ def _grab_fcs_toolbox():
     from emtk.testing import PixelPainter, png_encode
 
     from chisurf.plugins.fcs.fcs_correlator.test.test_emtk_workflow import Hub
-    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app
+    from chisurf.plugins.fcs.fcs_correlator.gui.app import make_app
 
     size = (1280, 800)
     hub = Hub(make_app(), size)
@@ -1546,7 +1546,10 @@ def _ibh_fit(decay, n):
 
 
 def _grab_traj_tools():
-    """Traj Tools hub on the T4L NMSim trajectory: Align, FRET, Energy Calc, Remove Clashed (guide 81)."""
+    """The trajectory tools on the T4L NMSim trajectory: Align, FRET, Energy Calculator, Remove Clashed (guide 81).
+
+    Each is its own Structure › Trajectory tool; each is built and drawn on its own.
+    """
     from screenshots.emtk_shot import app_from, render
 
     from chisurf.core.structure import trajectory_data as md
@@ -1560,22 +1563,22 @@ def _grab_traj_tools():
     def idx(res, name):
         return int(ref.top.select(f"resSeq {res} and name {name}")[0])
 
-    tool = app_from("traj_tools")
     size = (900, 640)
+    opened = []
 
-    def tools_of(name):
-        tool.select(name)
-        return tool.children[name]
+    def tools_of(plugin_id):
+        app = app_from(plugin_id)
+        opened.append(app)
+        return app
 
-    align = tools_of("Align")
+    align = tools_of("traj_align")
     align.model.set_topology(top)
     align.model.set_trajectory(dcd)
     align.model.atom_selection = ", ".join(str(i) for i in ca)
     align.model.save_aligned(str(out / "t4l_aligned.dcd"))
-    tool.select("Align")
-    render(tool, "traj_tools_align.png", size)
+    render(align, "traj_tools_align.png", size)
 
-    fret = tools_of("FRET")
+    fret = tools_of("traj_fret")
     fret.model.set_topology(top)
     fret.model.set_trajectory(dcd)
     fret.model.donor = (idx(36, "CA"), idx(36, "CB"))
@@ -1584,38 +1587,35 @@ def _grab_traj_tools():
     fret.model.tau0 = 4.0
     fret.model.t_step = 1.0
     fret.model.calc(str(out / "t4l_36_132.csv"))
-    tool.select("FRET")
-    render(tool, "traj_tools_fret.png", size)
+    render(fret, "traj_tools_fret.png", size)
 
-    energy = tools_of("Energy Calc")
+    energy = tools_of("traj_energy_calculator")
     energy.model.set_topology(top)
     energy.model.set_trajectory(dcd)
     energy.model.stride = 10
     for name in ("Radius of Gyration", "Clash potential"):
         energy.model.add_potential(make_potential(name, {}), 1.0, name=name)
     energy.model.process(str(out / "t4l_energy.txt"))
-    tool.select("Energy Calc")
-    render(tool, "traj_tools_energy.png", size)
+    render(energy, "traj_tools_energy.png", size)
 
-    clash = tools_of("Remove Clashed")
+    clash = tools_of("traj_remove_clashes")
     clash.model.set_topology(top)
     clash.model.set_trajectory(dcd)
     clash.model.atom_selection = "name CA"
     clash.model.min_distance = 3.5
     clash.model.save_clash_free(str(out / "t4l_clash_free.dcd"))
-    tool.select("Remove Clashed")
-    render(tool, "traj_tools_clashes.png", size)
+    render(clash, "traj_tools_clashes.png", size)
 
-    conv = tools_of("Convert")
+    conv = tools_of("traj_convert")
     conv.model.set_topology(top)
     conv.model.set_trajectory(dcd)
     conv.model.set_target_directory(str(out))
     conv.model.filename = "t4l_every10"
     conv.model.stride = 10
     conv.model.convert()
-    tool.select("Convert")
-    render(tool, "traj_tools_convert.png", size)
-    tool.close()
+    render(conv, "traj_tools_convert.png", size)
+    for app in opened:
+        app.close()
 
 
 def _grab_fret_line_tool():

@@ -33,6 +33,11 @@ about getting the patterns right.
 
 ## Where the patterns come from
 
+**From the FCS workflow.** *Filter Calc...* in the FCS Correlator step opens this tool
+with the workflow's checked files as the mixed decay, on the correlator's micro-time
+binning, so the filters fit the correlation's micro-time axis. A mixed decay you
+loaded here yourself is kept.
+
 **Auto-fit** decomposes the measured mixed decay into *N* lifetime components and
 offers them as species. It is a starting set, not an answer: a two-component fit
 to a three-component sample gives two patterns that are each a blend.

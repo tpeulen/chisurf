@@ -16,6 +16,5 @@
   },
   "entrypoints": {
     "emtk": "chisurf.plugins.traj.fret_trajectory.app:make_app"
-  },
-  "menu_hidden": true
+  }
 }

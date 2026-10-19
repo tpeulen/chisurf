@@ -32,6 +32,14 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "fcs_correlator_files",
+      "summary": "Read the FCS correlator's checked files as the mixed decay, on its micro-time binning.",
+      "receive": "chisurf.plugins.fcs.fcs_filter_calculator.gui.app:receive_correlator_files",
+      "required": ["files"]
+    }
+  ],
   "entrypoints": {
     "cli": "chisurf.plugins.fcs.fcs_filter_calculator.cli.main:main",
     "services": "chisurf.plugins.fcs.fcs_filter_calculator.backend.services:register_services",
@@ -75,7 +83,6 @@
   "dependencies": {},
   "experimental": true,
   "experimental_message": "FCS Filter Calculator is experimental and not yet validated",
-  "menu_hidden": true,
   "deprecated": false,
   "requires": {
     "tttr_splitter": "*"

@@ -1,29 +1,19 @@
 """
-FCS Correlator
+FCS (the correlator workflow)
 
-This plugin provides a two-pane navigation-based correlator tool for computing
-and merging fluorescence correlation spectroscopy (FCS) data. Features include:
+The FCS entry of the Spectroscopy › Correlation ribbon group: a five-step workflow rail for computing and merging
+fluorescence correlation spectroscopy (FCS) curves.
 
-- Detector and PIE window definition
+- Detector and PIE window definition (the channel-preset step)
 - TTTR file selection with drag-and-drop
 - Optional photon/burst filtering
 - Multi-tau correlation with configurable parameters (bins, cascades, fine grid)
 - FCS curve merging and export
 
-The native emtk app is a workflow rail with declarative controls for channel definitions, files,
-filtering, correlation and merging.
-
-The correlator workflow is no longer a standalone menu entry: it is hosted as
-the first section of the unified **FCS** tool (``fcs_toolbox``), which merges the
-correlator workflow with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim,
-Burst-wise FCS, calculators). This module remains the reusable building block
-(the correlator workflow app + the filter/correlator models) and is
-therefore hidden from the plugin menu.
+The other FCS tools (2D-FLCS, Lifetime-FCS Simulator, Burst-wise FCS, the diffusion/volume and fFCS filter
+calculators) are ribbon entries of their own; **Filter Calc...** in the Correlator step hands the workflow's files to
+the filter calculator (the ``fcs_correlator_files`` hand-off).
 """
 
-name = "Spectroscopy:Fluorescence Correlation Spectroscopy:Correlator"
-icon = "⚛️"
-
-# Hidden from the ribbon menu: the correlator is surfaced through the merged
-# "FCS" tool (fcs_toolbox), not as its own entry.
-menu_hidden = True
+name = "Spectroscopy:Correlation:FCS"
+icon = "〰️"

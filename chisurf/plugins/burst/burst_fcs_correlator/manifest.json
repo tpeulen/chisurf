@@ -95,7 +95,6 @@
   ],
   "events": [],
   "dependencies": {},
-  "menu_hidden": true,
   "deprecated": false,
   "requires": {
     "pto_inspector": "*"

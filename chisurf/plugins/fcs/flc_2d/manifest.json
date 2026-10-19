@@ -9,7 +9,7 @@
     "Fluorescence Correlation Spectroscopy",
     "Correlation"
   ],
-  "icon": "🌈",
+  "icon": "🟦",
   "state_namespace": "flc_2d",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -87,6 +87,5 @@
   "dependencies": {},
   "experimental": true,
   "experimental_message": "2D-FLCS is experimental; validate settings and results on known controls before using it for production analysis.",
-  "menu_hidden": true,
   "deprecated": false
 }

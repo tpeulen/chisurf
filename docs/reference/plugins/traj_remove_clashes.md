@@ -18,7 +18,7 @@ Remove frames containing steric clashes from trajectories.
 | Field | Value |
 | --- | --- |
 | Plugin id | `traj_remove_clashes` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Structure → Trajectory → **Remove Clashed** |
+| Menu path | Structure → Trajectory → **Remove Clashed** |
 | Categories | Structure, Trajectory |
 | Version | 1.0.0 |
 | Surfaces | emtk |

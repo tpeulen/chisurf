@@ -21,6 +21,5 @@
   },
   "experimental": true,
   "experimental_message": "Lifetime-FCS simulator: a synthetic-data teaching/validation tool. The recovered curves depend on the simulated statistics.",
-  "menu_hidden": true,
   "deprecated": false
 }

@@ -18,28 +18,24 @@ timestamp: '2026-07-05T00:00:00Z'
    χ² across fits: `[(f["name"], f["chi2r_current"]) for f in api.list_fits(statistics=True)]` (a row's `chi2r` is
    the last run's, `None` before a run). Filter calculator residual axis: `Residual / σ` under the dock title.
 3. Measure: method of the pass and every defect: known issue "QA walk of the FCS, lifetime, …" (found 2026-10-11).
-4. Open (time regions, 2026-10-19): step 3 still shows only the *first* file (`FilterSettingsModel._tttr`), so with
-   several files the filter plots do not show the regions of the others although they are applied (photon count via
-   `FcsWorkflow.filtered_tttr`). Next: a file picker in step 3 sharing `FilesStepApp.trace_file`. Measure: two
-   `test/streams.py::diffusion_spc` files, region on the second only → step 3 info text unchanged (the trap), correlator
-   photon count = in-region(b) + all(a). Regions are not yet written to the `.pto` provenance of the curves.
 
 ## Overview
 
 The `fcs/` group processes raw photon data into correlation curves and the quantities derived from them — diffusion coefficients, concentrations, lifetime-filtered species and exchange dynamics. Fluorescence Correlation Spectroscopy (FCS) studies molecular dynamics, diffusion and interactions from intensity fluctuations in a confocal volume.
 
-The group presents a **single menu entry — `FCS`** (`fcs_toolbox`). It merges the
-correlator workflow with the optional FCS tools behind one left-navigation rail:
-the correlator steps come first (under a `Correlator` group header), then a
-`Tools` group header separates the optional, independent tools (2D-FLCS,
-Lifetime-FCS Sim, Burst-wise FCS, diffusion/volume calculator, fFCS filter
-calculator, correlation-channel presets). Every constituent below is
-`menu_hidden` and surfaced only through this window.
+The group's ribbon entries are **Spectroscopy › Correlation**: **FCS** (`fcs_correlator`, the five-step
+correlator workflow behind a left rail), 2D-FLCS, Lifetime-FCS Simulator, Burst-wise FCS, the Diffusion/Volume
+Calculator and the FCS Filter Calculator, each its own button and dock (the former `fcs_toolbox` hub, whose rail
+also listed the tools, was removed 2026-10-19: in emtk every tool is its own dock). Only the workflow's own steps
+(`fcs_channel_preset`, `fcs_merger`) are `menu_hidden`. **Filter Calc...** in the Correlator step opens the
+filter calculator through the `fcs_correlator_files` hand-off (`fcs_correlator/gui/handoffs.py`; the
+calculator's manifest `accepts` it, receive hook `receive_correlator_files`): checked files, folders expanded,
+and the micro-time binning; a mixed decay the user loaded in the calculator is kept. Without a host window the button
+is greyed.
 
 | Plugin dir | Role | What it does |
 |---|---|---|
-| `fcs_toolbox` | **FCS** (the single menu entry) | Unified FCS window on the shared `NavigationPanelTool` shell. Subclasses `FcsCorrelatorTool` to keep the correlator step wiring and appends the optional tools below a `Tools` separator. |
-| `fcs_correlator` | Correlator workflow (hidden building block) | Two-pane navigation workflow whose steps are **1. Channel Definitions → 2. Files & Steps → 3. Photon/Burst Filter → 4. Correlator → 5. FCS Merger** (opens on the file-drop step). There is no separate detector-setup step: step 1 is the FCS channel-definition editor (`FCSChannelWidget`), which selects a detector setup and supplies the correlation channel pairs / logical channel map to the correlator (container type is auto-detected per file). `menu_hidden` — hosted as the first section of `FCS`. |
+| `fcs_correlator` | **FCS** (the workflow entry) | Two-pane navigation workflow whose steps are **1. Channel Definitions → 2. Files & Steps → 3. Photon/Burst Filter → 4. Correlator → 5. FCS Merger** (opens on the file-drop step). There is no separate detector-setup step: step 1 is the FCS channel-definition editor (`FCSChannelWidget`), which selects a detector setup and supplies the correlation channel pairs / logical channel map to the correlator (container type is auto-detected per file). Its rail holds only these five steps. |
 | `fcs_filter_calculator` | FCS Filter Calculator (tool) | Computes filtered-FCS (fFCS) lifetime filters from microtime decay patterns. |
 | `flc_2d` | 2D-FLCS (tool) | Two-dimensional fluorescence lifetime correlation spectroscopy — builds 2D decay-correlation maps to resolve lifetime species and exchange dynamics (see [flc-2d memory](fluorescence-decay.md)). |
 | `fcs_lfcs_sim` | Lifetime-FCS Simulator (tool) | AutoForm panel that simulates diffusing species with distinct lifetimes and optional interconversion (via the photon simulator), builds lifetime filters, and shows the species-filtered auto-/cross-correlations. Interactive companion to the Qt-free `core/fluorescence/fcs/simulate.py`. |
@@ -48,7 +44,7 @@ calculator, correlation-channel presets). Every constituent below is
 | `fcs_channel_preset` | FCS Definitions (tool + `Setup`) | Defines FCS detector/correlation channels per setup. |
 | `fcs_convert` | (CLI) | Click CLI converting FCS correlation files between formats (ALV, ConfoCor3, Kristine, PyCorrFit, `.sin`, CSV, YAML, …). |
 
-Plugins are discovered via `manifest.json` (`id`, `display_name`, `categories: [Spectroscopy, Fluorescence Correlation Spectroscopy]`) by `chisurf/core/plugin/`; `fcs_toolbox`, `fcs_correlator` and `fcs_convert` are code/CLI helpers without their own manifest (discovered from the `__init__.py` `name`/`menu_hidden` metadata). They read datasets and write fits through `PluginContext` / `ChiSurfAPI`, and their GUIs are AutoForm view schemes. Conversion I/O is shared with `chisurf.core.fio.fluorescence.fcs`.
+Plugins are discovered via `manifest.json` (`id`, `display_name`, `categories: [Spectroscopy, Fluorescence Correlation Spectroscopy]`) by `chisurf/core/plugin/`; `fcs_convert` is CLI-only (`menu_hidden`). They read datasets and write fits through `PluginContext` / `ChiSurfAPI`, and their GUIs are AutoForm view schemes. Conversion I/O is shared with `chisurf.core.fio.fluorescence.fcs`.
 
 The Filter Calculator follows the fluorescence-domain objective of a
 [single intensity/decay computation path](/subsystems/fluorescence-domain.md#design-objective-one-intensitydecay-computation-path): measured patterns and spectra imported from existing fits are valid inputs, but detector-resolved decay generation (including IRF, polarization, detector response, and crosstalk) should route through the shared ChiSurf model infrastructure rather than plugin-local formulas.
@@ -296,16 +292,3 @@ See also: [plugin system](/architecture/plugin-system.md), [Plugins target](/spe
 The FCS Correlator/toolbox, Merger and Burst FCS callers host their existing native apps; obsolete central FCS/TTTR wizard Python/generated/UI chains are retired. Public publication/background/PTO/td4 lineage, skipped-row sentinels and bounded cancel/rollback behavior are preserved. No scientific algorithm changed. The original 8de6 before-facts used header seconds as milliseconds and are retained explicitly as invalid historical unit evidence. Final SPC13213.5ns is1.35e-5ms through readers/fitting; the real MaxEnt0.001..20 grid and core None sentinel are preserved.
 
 Parent validations:56 host, earlier84 burst,54 diagnostic and15 new unit cases; final burst repeat and help/guide pointer review are recorded in the frozen acceptance receipt. All actual final images are inspected by the parent before execution. Next W1: GF row11, then rows12–14 and shared decorator retirement. Main gui.ui remains W9; W7 matrix acceptance remains open. Evidence: [FCS retirement](../validation/release-readiness-w1/fcs-retirement/acceptance.json).
-
-### Time regions on the count-rate trace (Files & Steps) — 2026-10-19
-
-Step 2 draws the count-rate trace of one file (picked from every file the correlator gets, folders expanded) and,
-with **✏ Draw** on, takes regions dragged across it (edges draggable, right-click removes, **To all files** copies).
-The record is Qt-free: `fcs_correlator/regions.py::TimeRegions` (per resolved path, merged `(start, stop)` seconds from
-macro time 0 = the origin of `get_intensity_trace`; no regions = whole file), owned by `FcsWorkflow.regions` and cut
-into both photon paths — `load_raw_combined` (unfiltered) and `FilterSettingsModel.compute_selection(tttr, path)`,
-where it is ANDed **last** so neither `invert` nor gap filling reaches outside a region. Traps met building it: an
-implot view captured on the plot's first frame is the pre-fit `0..1` (so a new file sets its full-trace limits
-explicitly); locked (drawing) axes never auto-fit; `get_item_rect()` after `end_plot` is a legend text, not the plot.
-Same change fixed folder expansion: it matched suffixes against tttrlib container *names* (`SPC-130`), dropping every
-`.spc`/`.h5` file in a folder (guard `test_time_regions.py::test_a_folder_stands_for_its_spc_files`).

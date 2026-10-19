@@ -62,7 +62,7 @@ def grab_correlator_steps() -> None:
 
     from emtk.pil_painter import PilPainter
 
-    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app
+    from chisurf.plugins.fcs.fcs_correlator.gui.app import make_app
 
     hub = make_app()
     files = hub.select("files")

@@ -16,6 +16,5 @@
   },
   "entrypoints": {
     "emtk": "chisurf.plugins.traj.traj_rotate_translate.app:make_app"
-  },
-  "menu_hidden": true
+  }
 }

@@ -70,7 +70,6 @@ __all__ = [
     "UnmixResult",
     "DetectionMode",
     "FilterCalcClient",
-    "menu_hidden",
     "name",
 ]
 
@@ -81,9 +80,6 @@ name = (
     if _manifest is not None
     else "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS Filter Calculator"
 )
-
-# Hidden from the menu: surfaced inside the FCS Toolbox meta tool.
-menu_hidden = True
 
 
 if __name__ == "__main__":

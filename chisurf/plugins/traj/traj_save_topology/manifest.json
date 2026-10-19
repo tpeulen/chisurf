@@ -16,6 +16,5 @@
   },
   "entrypoints": {
     "emtk": "chisurf.plugins.traj.traj_save_topology.app:make_app"
-  },
-  "menu_hidden": true
+  }
 }

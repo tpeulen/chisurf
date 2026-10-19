@@ -131,9 +131,9 @@ def test_pressing_a_ribbon_button_opens_its_plugin(shell):
     driver = Driver(shell, size=(1440, 900))
     driver.frame(2)
     assert shell.ribbon.ribbon.current == "Spectroscopy"
-    driver.click("ribbon.button.plugin.fcs_toolbox")
+    driver.click("ribbon.button.plugin.fcs_correlator")
     driver.frame(2)
-    assert "fcs_toolbox" in shell.hosted
+    assert "fcs_correlator" in shell.hosted
     driver.click("ribbon.tab.Structure")
     driver.click("ribbon.button.plugin.chimol")
     driver.frame(2)
@@ -159,8 +159,10 @@ def test_narrow_widths_keep_every_plugin_reachable(shell):
     driver = Driver(shell, size=(560, 800))
     driver.frame(2)
     modes = shell.ribbon.ribbon.group_modes
-    assert modes["Correlation"] == "full" and modes["Imaging"] != "full", modes
-    collapsed = next(group for group, mode in modes.items() if mode == "collapsed")
+    # Every Spectroscopy group still has its button (collapsed into a menu where it is too wide), none overflows yet.
+    assert set(modes.values()) <= {"full", "collapsed"} and modes["Imaging"] != "full", modes
+    assert modes["Correlation"] == "collapsed", "seven FCS tools fit no 560 px ribbon in full"
+    collapsed = "Correlation"
     driver.click(f"ribbon.group.Spectroscopy.{collapsed}")
     driver.frame()
     tab = next(t for t in shell.ribbon.tabs() if t.title == "Spectroscopy")
@@ -203,7 +205,7 @@ def test_the_tools_tree_follows_the_ribbon_and_filters(shell):
     shell.filter = "burst"
     driver.frame(2)
     ids = driver.ids()
-    assert "tools.burst_analysis" in ids and "tools.fcs_toolbox" not in ids
+    assert "tools.burst_analysis" in ids and "tools.fcs_correlator" not in ids
     driver.click("tools.burst_analysis")
     driver.frame()
     assert "burst_analysis" in shell.hosted

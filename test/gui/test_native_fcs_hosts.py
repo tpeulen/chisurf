@@ -5,25 +5,16 @@ import pytest
 from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 
 
-@pytest.mark.parametrize("full", [False, True])
-def test_fcs_hub_is_one_native_surface_and_closes_once(monkeypatch, full):
-    """Both hubs keep the actual app and its scientific context, and close their children once."""
-    from emtk.testing import RecordingPainter
-
+def test_fcs_workflow_is_one_native_surface_and_closes_once(monkeypatch):
+    """The FCS entry keeps the actual app and its scientific context, and closes its children once."""
     from chisurf.plugins.fcs.fcs_correlator.gui.app import FcsHubApp
     from chisurf.plugins.fcs.fcs_correlator.gui.app import make_app as correlator
-    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app as toolbox
 
-    app = toolbox() if full else correlator()
+    app = correlator()
     assert isinstance(app, FcsHubApp)
     assert app.workflow.context is not None
-    roles = {panel["role"] for panel in app.tools}
-    assert {"channel_def", "files", "filter", "correlator", "merger"} <= roles
-    if full:
-        assert {"flc_2d", "lfcs_sim", "burst_fcs", "diffusion_calc", "filter_calc"} <= roles
-        app.select("filter_calc")
-        app.draw(RecordingPainter(), 0, 0, 1200, 800)
-        assert app.selected == "filter_calc"
+    roles = [panel["role"] for panel in app.tools]
+    assert roles == ["channel_def", "files", "filter", "correlator", "merger"]
     try:
         app.select("unknown")
     except ValueError:
@@ -77,7 +68,7 @@ def test_native_correlator_host_matches_frozen_real_measurement(tmp_path):
     import numpy as np
     from emtk.testing import RecordingPainter
 
-    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app
+    from chisurf.plugins.fcs.fcs_correlator.gui.app import make_app
 
     root = Path(__file__).resolve().parents[2]
     source = tmp_path / "BH_SPC132.spc"
@@ -135,19 +126,17 @@ def test_burst_resize_keeps_actual_radio_and_distribution_inside_canvas(width):
         app.close()
 
 
-@pytest.mark.parametrize("full", [False, True], ids=["correlator", "toolbox"])
-def test_actual_native_fcs_factory_help_and_guide_buttons_are_bound(tmp_path, monkeypatch, full):
+def test_actual_native_fcs_factory_help_and_guide_buttons_are_bound(tmp_path, monkeypatch):
     """Visible native hub actions open real help and advance a tour through its real Example target."""
     from emtk.testing import Driver
 
     from chisurf.plugins.fcs.fcs_correlator.gui.app import make_app as correlator
-    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app as toolbox
 
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
     monkeypatch.setenv("MMFDB_SETTINGS_DIR", str(tmp_path / "mmfdb"))
     monkeypatch.setenv("MMFDB_DATABASE_PATH", str(tmp_path / "mmfdb.sqlite"))
     monkeypatch.setenv("MMFDB_OBJECT_STORE_ROOT", str(tmp_path / "objects"))
-    app = (toolbox if full else correlator)()
+    app = correlator()
     driver = Driver(app, size=(1200, 800))
     try:
         driver.draw(3)

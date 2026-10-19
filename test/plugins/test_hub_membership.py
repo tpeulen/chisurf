@@ -32,7 +32,6 @@ SHARED = {
     "setup_channel_definition": "Settings edits detector setups; Image Tools' Setup step is the "
     "pipeline context every imaging step reads.",
     "fcs_channel_preset": "Settings edits FCS definitions; the FCS correlator workflow picks one.",
-    "burst_fcs_correlator": "Burst-wise FCS is both a burst-analysis step and an FCS method.",
 }
 #: The ALEX Suite is the burst workflow in the old ALEX-Suite program's order: these steps are Burst Analysis's own
 #: native apps, opened from the same plugin entry (one implementation, two rails), not copies.
@@ -53,6 +52,8 @@ SHARED.update(
 #: Hosted plugins that keep their own ribbon button, with the reason.
 VISIBLE_CHILDREN = {
     "ndxplorer": "a standalone application; the ALEX suite embeds it as its E-S histogram.",
+    "burst_fcs_correlator": "Burst-wise FCS is a burst-analysis step and its own Spectroscopy › "
+    "Correlation tool (an FCS method).",
 }
 
 #: Hidden plugins with a GUI that no hub hosts, with the reason.
@@ -109,7 +110,6 @@ def _declared_children() -> dict[str, list[str]]:
     from chisurf.plugins.core.wizards.core.registry import default_wizards
     from chisurf.plugins.microscopy.imaging_tools.gui.app import PANELS as IMAGING
     from chisurf.plugins.misc.games.gui.registry import GAME_PANELS
-    from chisurf.plugins.traj.traj_tools.registry import TOOL_PANELS
 
     return {
         "imaging_tools": [row[1] for row in IMAGING],
@@ -117,11 +117,9 @@ def _declared_children() -> dict[str, list[str]]:
         "wizards": [e.emtk for e in default_wizards()],
         "games": [p["emtk"] for p in GAME_PANELS],
         "setup": [ref for p in SETUP for ref in (p.plugin, p.entry) if ref],
-        "traj_tools": [p["emtk"] for p in TOOL_PANELS],
         "burst_analysis": [p["plugin"] for p in BURST if p.get("plugin")],
         "alex_suite": [p["plugin"] for p in ALEX if p.get("plugin")],
         # Hubs whose panel factories name the hosted tools in their app module.
-        "fcs_toolbox": _module_refs(ROOT / "fcs/fcs_toolbox/gui/app.py"),
         "fcs_correlator": _module_refs(ROOT / "fcs/fcs_correlator/gui/app.py"),
     }
 

@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
-title: Correlator
-description: 'Multi-tau correlation of TTTR photon streams: detectors and PIE windows, files, optional photon/burst filters, correlation and merging of the curves. Opened as the first section of the FCS tool, not as a menu entry of its own.'
+title: FCS
+description: 'The FCS workflow: multi-tau correlation of TTTR photon streams in five steps -- channel definitions (detectors and PIE windows), files, optional photon/burst filter, correlation, and screening and merging of the curves. Filter Calc... hands the files to the fFCS Filter Calculator.'
 resource: chisurf/plugins/fcs/fcs_correlator/
 tags: [reference, plugins, fcs-correlator, spectroscopy, fluorescence-correlation-spectroscopy, correlation]
 anchor: plugin-fcs_correlator
@@ -9,16 +9,16 @@ generator: build_tools/docs/generate_plugin_docs.py
 ---
 
 (plugin-fcs_correlator)=
-# Correlator
+# FCS
 
-Multi-tau correlation of TTTR photon streams: detectors and PIE windows, files, optional photon/burst filters, correlation and merging of the curves. Opened as the first section of the FCS tool, not as a menu entry of its own.
+The FCS workflow: multi-tau correlation of TTTR photon streams in five steps -- channel definitions (detectors and PIE windows), files, optional photon/burst filter, correlation, and screening and merging of the curves. Filter Calc... hands the files to the fFCS Filter Calculator.
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
 | Plugin id | `fcs_correlator` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Correlation → **Correlator** |
+| Menu path | Spectroscopy → Correlation → **FCS** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy, Correlation |
 | Version | 1.0.0 |
 | Surfaces | emtk |

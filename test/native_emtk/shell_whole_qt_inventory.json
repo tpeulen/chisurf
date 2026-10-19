@@ -178,8 +178,28 @@
    ],
    "Correlation": [
     {
+     "text": "2D-FLCS",
+     "tooltip": "Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 2D fluorescence-decay correlation maps from TTTR photon streams and resolve lifetime species and exchange dynamics."
+    },
+    {
+     "text": "Burst-wise FCS",
+     "tooltip": "Compute fluorescence correlation functions on a per-burst basis from Burst-ID (.bst) / BUR files."
+    },
+    {
+     "text": "Diffusion/Volume Calculator",
+     "tooltip": "FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration)."
+    },
+    {
      "text": "FCS",
-     "tooltip": "Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.\n\nMerges the FCS *Correlator* workflow (detector → files → filter → correlate →\nmerge) with the optional FCS tools (2D-FLCS,"
+     "tooltip": "The FCS workflow: multi-tau correlation of TTTR photon streams in five steps -- channel definitions (detectors and PIE windows), files, optional photon/burst filter, correlation, and screening and mer"
+    },
+    {
+     "text": "FCS Filter Calculator",
+     "tooltip": "Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns."
+    },
+    {
+     "text": "Lifetime-FCS Simulator",
+     "tooltip": "Simulate diffusing species with distinct fluorescence lifetimes and optional interconversion, then recover them by lifetime-filtered (FLCS) correlation."
     },
     {
      "text": "PCH",
@@ -250,8 +270,36 @@
    ],
    "Trajectory": [
     {
-     "text": "Traj Tools",
-     "tooltip": "Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools."
+     "text": "Align",
+     "tooltip": "Align molecular dynamics trajectories to a reference frame or structure."
+    },
+    {
+     "text": "Convert",
+     "tooltip": "Convert molecular dynamics trajectory files between supported formats."
+    },
+    {
+     "text": "Energy Calculator",
+     "tooltip": "Calculate potential energy components for structures and trajectories."
+    },
+    {
+     "text": "FRET",
+     "tooltip": "Calculate FRET observables from molecular dynamics trajectories."
+    },
+    {
+     "text": "Join",
+     "tooltip": "Join or stack molecular dynamics trajectories."
+    },
+    {
+     "text": "Remove Clashed",
+     "tooltip": "Remove frames containing steric clashes from trajectories."
+    },
+    {
+     "text": "Rotate/Translate",
+     "tooltip": "Apply rigid-body rotation and translation to trajectories."
+    },
+    {
+     "text": "Save Topol",
+     "tooltip": "Save topology or first-frame structure files from trajectories."
     }
    ]
   },
@@ -729,7 +777,37 @@
       "visible": true,
       "menu": [
        {
+        "text": "2D-FLCS",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Burst-wise FCS",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Diffusion/Volume Calculator",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
         "text": "FCS",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "FCS Filter Calculator",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Lifetime-FCS Simulator",
         "shortcut": "",
         "checkable": false,
         "visible": true
@@ -927,7 +1005,49 @@
       "visible": true,
       "menu": [
        {
-        "text": "Traj Tools",
+        "text": "Align",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Convert",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Energy Calculator",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "FRET",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Join",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Remove Clashed",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Rotate/Translate",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Save Topol",
         "shortcut": "",
         "checkable": false,
         "visible": true

@@ -1,9 +1,9 @@
 {
   "id": "fcs_correlator",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Correlation:Correlator",
-  "icon": "⚛️",
-  "description": "Multi-tau correlation of TTTR photon streams: detectors and PIE windows, files, optional photon/burst filters, correlation and merging of the curves. Opened as the first section of the FCS tool, not as a menu entry of its own.",
+  "display_name": "Spectroscopy:Correlation:FCS",
+  "icon": "〰️",
+  "description": "The FCS workflow: multi-tau correlation of TTTR photon streams in five steps -- channel definitions (detectors and PIE windows), files, optional photon/burst filter, correlation, and screening and merging of the curves. Filter Calc... hands the files to the fFCS Filter Calculator.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
@@ -19,6 +19,5 @@
     "fcs_channel_preset": "*",
     "fcs_filter_calculator": "*",
     "fcs_merger": "*"
-  },
-  "menu_hidden": true
+  }
 }

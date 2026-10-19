@@ -1541,7 +1541,7 @@ manual/figures/fcs_correlator_step.png:
   caption: Step 4 Correlator of the FCS hub after correlating the simulated example into six subsets.
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_correlator_steps
-  recipe: 'FCS hub (Tools -> FCS, fcs_toolbox make_app) drawn with PilPainter 1200x800 on its simulated two-channel
+  recipe: 'FCS workflow (Spectroscopy -> Correlation -> FCS, fcs_correlator make_app) drawn with PilPainter 1200x800 on its simulated two-channel
     example (Files & Steps -> example, FCS merger on); correlator Ch A 0, Ch B 1, 6 splits, laurence. Rerun: CHISURF_SETTINGS_DIR=$(mktemp
     -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
     python docs/guides/screenshots/manual_fcs.py grab_correlator_steps'
@@ -1551,7 +1551,7 @@ manual/figures/fcs_merger_step.png:
   caption: 'Step 5 FCS Merger: the six subsets with CR A, CR B, Duration and Use, their curves and the merge.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_correlator_steps
-  recipe: 'FCS hub (Tools -> FCS, fcs_toolbox make_app) drawn with PilPainter 1200x800 on its simulated two-channel
+  recipe: 'FCS workflow (Spectroscopy -> Correlation -> FCS, fcs_correlator make_app) drawn with PilPainter 1200x800 on its simulated two-channel
     example (Files & Steps -> example, FCS merger on); correlator Ch A 0, Ch B 1, 6 splits, laurence. Rerun: CHISURF_SETTINGS_DIR=$(mktemp
     -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
     python docs/guides/screenshots/manual_fcs.py grab_correlator_steps'
@@ -1882,7 +1882,7 @@ manual/figures/fcs_hub_files.png:
   kind: screenshot
   origin: docs/guides/screenshots/manual_general.py::fcs_hub
   recipe: python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py
-    /tmp/case0 [shot ...]. chisurf.plugins.fcs.fcs_toolbox.gui.app.make_app(); select('files').add_example(); use_filter=True;
+    /tmp/case0 [shot ...]. chisurf.plugins.fcs.fcs_correlator.gui.app.make_app(); select('files').add_example(); use_filter=True;
     PilPainter 1200x800.
   pages:
   - docs/manual/overview_2.md
@@ -2979,8 +2979,8 @@ guides/figures/fcs_toolbox_channels.png:
   origin: docs/guides/screenshots/fcs_toolbox_channels.py::main
   recipe: >-
     From the repository root run CHISURF_SETTINGS_DIR=$(mktemp -d) python
-    docs/guides/screenshots/fcs_toolbox_channels.py. It builds the emtk FCS hub
-    (fcs_toolbox), gives step 1 a temporary detector setup "MFD green/red"
+    docs/guides/screenshots/fcs_toolbox_channels.py. It builds the emtk FCS workflow
+    (fcs_correlator), gives step 1 a temporary detector setup "MFD green/red"
     (Green = channels 0, 8; Red = 1, 9), adds the Green and Red autocorrelations
     and the Green x Red cross-correlation, and grabs the step at 1280 x 800.
   pages:
@@ -3614,8 +3614,8 @@ guides/figures/traj_tools_align.png:
   recipe: >-
     From the repository root, run QT_QPA_PLATFORM=offscreen CHISURF_SETTINGS_DIR=<scratch>
     PYTHONPATH=docs/guides:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
-    python -c 'import make_screenshots as s; s._grab_traj_tools()'. The emtk Traj Tools
-    hub (900x640) on the T4L NMSim ensemble (olga_t4l, 894 frames); Align tab after
+    python -c 'import make_screenshots as s; s._grab_traj_tools()'. Each trajectory tool
+    is built on its own (900x640) on the T4L NMSim ensemble (olga_t4l, 894 frames); Align after
     saving the trajectory aligned on the 162 C-alpha atoms.
   pages:
   - docs/guides/81_trajectory_tools.md
@@ -3624,7 +3624,7 @@ guides/figures/traj_tools_clashes.png:
   kind: screenshot
   origin: docs/guides/make_screenshots.py::_grab_traj_tools
   recipe: >-
-    Same run as traj_tools_align.png (_grab_traj_tools). Remove Clashed tab after saving
+    Same run as traj_tools_align.png (_grab_traj_tools). Remove Clashed after saving
     the clash-free trajectory with atom selection "name CA" and min distance 3.5 A
     (762 of 894 frames kept).
   pages:
@@ -3634,7 +3634,7 @@ guides/figures/traj_tools_convert.png:
   kind: screenshot
   origin: docs/guides/make_screenshots.py::_grab_traj_tools
   recipe: >-
-    Same run as traj_tools_align.png (_grab_traj_tools). Convert tab after writing every
+    Same run as traj_tools_align.png (_grab_traj_tools). Convert after writing every
     tenth frame to t4l_every10.dcd (90 frames of 1293 atoms).
   pages:
   - docs/guides/81_trajectory_tools.md
@@ -3643,7 +3643,7 @@ guides/figures/traj_tools_energy.png:
   kind: screenshot
   origin: docs/guides/make_screenshots.py::_grab_traj_tools
   recipe: >-
-    Same run as traj_tools_align.png (_grab_traj_tools). Energy Calc tab with Radius of
+    Same run as traj_tools_align.png (_grab_traj_tools). Energy Calc with Radius of
     Gyration and Clash potential added (weight 1), stride 10, after Process (90 frames).
   pages:
   - docs/guides/81_trajectory_tools.md
@@ -3652,7 +3652,7 @@ guides/figures/traj_tools_fret.png:
   kind: screenshot
   origin: docs/guides/make_screenshots.py::_grab_traj_tools
   recipe: >-
-    Same run as traj_tools_align.png (_grab_traj_tools). FRET tab with donor dipole
+    Same run as traj_tools_align.png (_grab_traj_tools). FRET with donor dipole
     CA/CB of residue 36, acceptor CA/CB of residue 132, R0 52 A, tau0 4 ns, t-step 1 ns,
     after Process trajectory (894 frames).
   pages:

@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour of the native FCS correlator workflow (also the FCS hub). Rail targets are matched by part of the step name; control targets are the step apps' item_rects. Every awaited step waits for the user to press the control.",
+  "_comment": "Guided tour of the native FCS workflow (the ribbon's FCS entry). Rail targets are matched by part of the step name; control targets are the step apps' item_rects. Every awaited step waits for the user to press the control.",
   "steps": [
     {
       "title": "Five steps, in order",
@@ -19,13 +19,6 @@
       "target": {"name": "files"}
     },
     {
-      "title": "Draw which stretches are correlated",
-      "page": "files",
-      "text": "Below the steps is the count-rate trace of one file; the list beside <b>Regions</b> holds every file the correlator gets (a folder's files one by one). With <b>✏ Draw</b> on, drag across the trace to add a region, drag a region's edge to move it and right-click it to remove it. Only photons inside a file's regions are filtered and correlated: cut away an aggregate spike, a bubble or the bleaching start. A file without regions is used whole; <b>To all files</b> gives the others the same regions.",
-      "target": {"name": "draw_regions"},
-      "await": {"hint": "Switch on <b>✏ Draw</b>."}
-    },
-    {
       "title": "Which photons go into channel A and B",
       "text": "Open the <b>Correlator</b>. An empty channel list means all detectors. For a cross-correlation that has no afterpulsing, put one detector in A and the other in B (the example routes to 0 and 1).",
       "target": {"panel": "Correlator"},
@@ -36,6 +29,12 @@
       "text": "Splits cut the stream into pieces that are correlated separately: their spread is your error bar, and a piece that looks different flags a problem in the measurement (a bubble, bleaching). The work runs in the background; Stop keeps the pieces already done.",
       "target": {"name": "correlate"},
       "await": {"hint": "Press <b>Correlate</b>."}
+    },
+    {
+      "title": "Lifetime filters come from the Filter Calculator",
+      "page": "correlator",
+      "text": "<b>Filter Calc...</b> opens the fFCS Filter Calculator in a window of its own and hands it these files, on the same micro-time binning, as its mixed decay. The filters it saves are what <b>Load filters...</b> reads for species-resolved correlation. The other FCS tools (2D-FLCS, the lifetime-FCS simulator, burst-wise FCS and the diffusion / volume calculator) are buttons of their own in the ribbon's <b>Spectroscopy › Correlation</b> group.",
+      "target": {"name": "filter_calc"}
     },
     {
       "title": "Screen and merge",

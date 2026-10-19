@@ -24,7 +24,7 @@ name = (
     else "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS-Merger"
 )
 
-# Hidden from the menu: surfaced inside the FCS Toolbox meta tool.
+# Hidden from the menu: step 5 of the FCS workflow (fcs_correlator).
 menu_hidden = True
 
 __all__ = [

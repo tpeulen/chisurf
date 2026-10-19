@@ -142,7 +142,6 @@ FEEDS: dict[str, list[str]] = {
             "traj_remove_clashes",
             "traj_rotate_translate",
             "traj_save_topology",
-            "traj_tools",
             "traj_fret",
             "traj_energy_calculator",
         )
@@ -155,7 +154,7 @@ SLOW = {
     "burst_mle_analysis": 2.0,
     "img_flow": 2.0,
     "mmfdb_admin": 2.5,
-    "fcs_toolbox": 2.0,
+    "fcs_correlator": 2.0,
     "chimol": 1.5,
     "lightpath_simulator": 2.0,
 }
@@ -193,7 +192,6 @@ RECIPES: dict[str, list] = {
             "traj_remove_clashes",
             "traj_rotate_translate",
             "traj_save_topology",
-            "traj_tools",
             "traj_fret",
             "traj_energy_calculator",
         )

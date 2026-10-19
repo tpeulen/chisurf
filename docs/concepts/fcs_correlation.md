@@ -346,9 +346,6 @@ least for $G(0)$ and most for $\tau_D$ {cite}`qian1991`. Watch for:
   events dominate and the curve needs impractically long acquisition to converge.
 - **A slowly drifting baseline** (aggregates, focus drift, evaporation) adds
   correlation at long lag that is easily mistaken for a large slow component.
-  When it is confined to stretches of the measurement, leave those out rather
-  than fitting them: the correlator's time regions
-  ({ref}`fig-fcs-toolbox-regions`) keep only the photons of the clean stretches.
 - **Triplet and diffusion must be separated in time.** The triplet term is only
   reliably resolved when $\tau_\text{trip} \ll \tau_D$; if they overlap, the two
   factors trade against one another.
@@ -430,10 +427,11 @@ it was.
 
 ## From measured correlations to burst results
 
-The [FCS hub](../guides/75_fcs_toolbox.md) uses the same native workflow in the
+The [FCS workflow](../guides/75_fcs_toolbox.md) is the same native app in the
 shell and the standalone emtk launcher: detector/channel definitions,
-files, optional photon filtering, correlation and repeat merging. Five optional
-tools share that hub, including [Burst-wise FCS](../guides/16_fret_fcs.md).
+files, optional photon filtering, correlation and repeat merging. Five more
+FCS tools are buttons of their own in Spectroscopy › Correlation, including
+[Burst-wise FCS](../guides/16_fret_fcs.md).
 Measured BH132 examples in those guides demonstrate chunked correlations,
 five-of-six repeat merging, full-stream photon filtering and a three-range
 Simple burst run. The observed MaxEnt controls and grid do not establish
@@ -485,7 +483,7 @@ skipping a burst cannot shift later diffusion times onto the wrong bursts.
 
 ## Synthetic workflow check
 
-The [FCS toolbox](../guides/75_fcs_toolbox.md) and
+The [FCS workflow](../guides/75_fcs_toolbox.md) and
 [burst-wise FCS workflow](../guides/16_fret_fcs.md) provide seeded examples
 through `make_demo()`. The former returns the photon SPC; the latter returns
 the burst BST with its SPC alongside it. Parameters are recorded in JSON under
@@ -511,13 +509,14 @@ screening choices. Reload and screen those curves explicitly, as described in
 {doc}`/guides/75_fcs_toolbox`; changing the window size leaves the mean,
 uncertainty and duration-weighted count rate unchanged.
 
-## The FCS toolbox
+## The FCS workflow
 
-The `chisurf/plugins/fcs/fcs_toolbox/` window hosts the correlator workflow behind a left rail: channel definitions,
+The FCS window (`chisurf/plugins/fcs/fcs_correlator/`) is the correlator workflow behind a left rail: channel definitions,
 files and steps, photon/burst filter, correlator (multi-tau settings and **Splits**, the number of chunks correlated
 separately), and the merger. Splits give the merger repeats to average and reject; the mean and its standard error are
-saved as a `.cor` file. 2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, the diffusion/volume calculator and the fFCS filter
-calculator sit in the same window. Settings, the `.cor` format and the headless equivalent:
+saved as a `.cor` file. 2D-FLCS, the Lifetime-FCS Simulator, Burst-wise FCS, the diffusion/volume calculator and the
+fFCS filter calculator are tools of their own in the same ribbon group; **Filter Calc...** hands the workflow's files to
+the filter calculator. Settings, the `.cor` format and the headless equivalent:
 [FCS toolbox](../guides/75_fcs_toolbox.md).
 
 Tools: FCS Definitions (`chisurf/plugins/fcs/fcs_channel_preset/`), FCS Converter (`chisurf/plugins/fcs/fcs_convert/`).

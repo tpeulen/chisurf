@@ -55,7 +55,15 @@ EXPECTED = {
             "VV/VH Anisotropy Decay",
             "VV/VH G-Factor Calculator",
         ],
-        "Correlation": ["FCS", "PCH"],
+        "Correlation": [
+            "2D-FLCS",
+            "Burst-wise FCS",
+            "Diffusion/Volume Calculator",
+            "FCS",
+            "FCS Filter Calculator",
+            "Lifetime-FCS Simulator",
+            "PCH",
+        ],
         "Single-Molecule": [
             "ALEX Suite",
             "Burst Analysis",
@@ -70,7 +78,16 @@ EXPECTED = {
         "Modelling": ["ChiMOL"],
         "FRET": ["Docking & Screening", "FPS JSON Editor"],
         "Computation": ["HydroPro", "QuEst"],
-        "Trajectory": ["Traj Tools"],
+        "Trajectory": [
+            "Align",
+            "Convert",
+            "Energy Calculator",
+            "FRET",
+            "Join",
+            "Remove Clashed",
+            "Rotate/Translate",
+            "Save Topol",
+        ],
     },
     "Tools": {
         "Photon data": [

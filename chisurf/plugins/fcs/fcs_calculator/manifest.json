@@ -9,7 +9,7 @@
     "Fluorescence Correlation Spectroscopy",
     "Correlation"
   ],
-  "icon": "🧮",
+  "icon": "💨",
   "state_namespace": "fcs_calculator",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -32,6 +32,5 @@
   ],
   "events": [],
   "dependencies": {},
-  "menu_hidden": true,
   "deprecated": false
 }

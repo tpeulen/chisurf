@@ -284,8 +284,43 @@
    ],
    "Correlation": [
     {
+     "text": "2D-FLCS",
+     "tooltip": "Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 2D fluorescence-decay correlation maps from TTTR photon streams and resolve lifetime species and exchange dynamics.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Burst-wise FCS",
+     "tooltip": "Compute fluorescence correlation functions on a per-burst basis from Burst-ID (.bst) / BUR files.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Diffusion/Volume Calculator",
+     "tooltip": "FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration).",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
      "text": "FCS",
-     "tooltip": "Unified **FCS** plugin \u2014 a meta tool hosting the FCS workflow behind a rail.\n\nMerges the FCS *Correlator* workflow (detector \u2192 files \u2192 filter \u2192 correlate \u2192\nmerge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS,\ndiffusion/volume calculator, fFCS filter calculator, correlation-channel\npresets) into a single left-navigation tool. Built on the reusable\n``NavigationPanelTool`` shell. The ribbon execs this file with\n``__name__ == \"plugin\"``.",
+     "tooltip": "The FCS workflow: multi-tau correlation of TTTR photon streams in five steps -- channel definitions (detectors and PIE windows), files, optional photon/burst filter, correlation, and screening and merging of the curves. Filter Calc... hands the files to the fFCS Filter Calculator.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "FCS Filter Calculator",
+     "tooltip": "Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Lifetime-FCS Simulator",
+     "tooltip": "Simulate diffusing species with distinct fluorescence lifetimes and optional interconversion, then recover them by lifetime-filtered (FLCS) correlation.",
      "icon": true,
      "enabled": true,
      "size": "small"
@@ -398,8 +433,57 @@
    ],
    "Trajectory": [
     {
-     "text": "Traj Tools",
-     "tooltip": "Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools.",
+     "text": "Align",
+     "tooltip": "Align molecular dynamics trajectories to a reference frame or structure.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Convert",
+     "tooltip": "Convert molecular dynamics trajectory files between supported formats.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Energy Calculator",
+     "tooltip": "Calculate potential energy components for structures and trajectories.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "FRET",
+     "tooltip": "Calculate FRET observables from molecular dynamics trajectories.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Join",
+     "tooltip": "Join or stack molecular dynamics trajectories.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Remove Clashed",
+     "tooltip": "Remove frames containing steric clashes from trajectories.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Rotate/Translate",
+     "tooltip": "Apply rigid-body rotation and translation to trajectories.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Save Topol",
+     "tooltip": "Save topology or first-frame structure files from trajectories.",
      "icon": true,
      "enabled": true,
      "size": "small"

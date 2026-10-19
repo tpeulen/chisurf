@@ -97,10 +97,10 @@ Analysis are teal (fitting), Log / Console indigo.
 | orange | Wizards | *Tools → Calculators → Wizards* |
 | green | Imaging | *Spectroscopy → Imaging* (Image Tools) |
 | red | Decay | *Spectroscopy → Decay* (IRF, MaxEnt, lifetime fits, G-factor) |
-| violet | Correlation | *Spectroscopy → Correlation* (FCS, PCH) |
+| violet | Correlation | *Spectroscopy → Correlation* (FCS, PCH, 2D-FLCS, fFCS filters, diffusion calculator) |
 | magenta | Single-molecule | *Spectroscopy → Single-Molecule* (ALEX, bursts, traces) |
 | olive | Kinetics | *Spectroscopy → Kinetics* (Hidden Markov model) |
-| brown | Structure | *Structure* (ChiMOL, FRET docking, QuEst, HydroPro, Traj Tools) |
+| brown | Structure | *Structure* (ChiMOL, FRET docking, QuEst, HydroPro, trajectory tools) |
 | teal | Fitting | Read data, Datasets, Analysis, Plot settings, fit windows |
 | steel blue | Tools | *Tools* (photon data, calculators, views, system) |
 | warm grey | File and setup | *File* (Settings, File tools, projects) |

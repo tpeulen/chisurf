@@ -1,4 +1,4 @@
-"""The native FCS correlator workflow (and the FCS hub) driven by real input.
+"""The native FCS workflow (the ribbon's FCS entry) driven by real input.
 
 Pointer presses at the drawn controls (the hub's rail and Back / Next, the step apps' buttons, fields and tick boxes),
 typed text and the file dialog; the data are the correlator's own demo (:mod:`..demo`, molecules crossing the focus in
@@ -22,7 +22,6 @@ from chisurf.plugins.fcs.fcs_correlator.demo import make_demo
 from chisurf.plugins.fcs.fcs_correlator.filter_model import FilterSettingsModel
 from chisurf.plugins.fcs.fcs_correlator.gui.app import make_app as make_correlator
 from chisurf.plugins.fcs.fcs_correlator.workflow import FcsWorkflow, filter_step_allowed
-from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app as make_hub
 
 CTRL_A = 0x04000000
 SIZES = [(1200, 800), (800, 600)]
@@ -111,8 +110,50 @@ class Hub:
         return self.draw(2)
 
 
-def _hub(size=(1200, 800), correlator_only=False):
-    return Hub(make_correlator() if correlator_only else make_hub(), size)
+def _hub(size=(1200, 800)):
+    return Hub(make_correlator(), size)
+
+
+class RecordingHost:
+    """A window that opens the Filter Calculator for a hand-off, as the emtk shell does (:mod:`chisurf.core.plugin.handoff`)."""
+
+    def __init__(self):
+        self.handed: list[tuple[str, str, dict]] = []
+        self.apps: dict[str, object] = {}
+
+    def accepts(self, plugin_id, kind):
+        from chisurf.core.plugin.handoff import accepted
+
+        manifest = Path(__file__).resolve().parents[2] / "fcs_filter_calculator/manifest.json"
+        if plugin_id != "fcs_filter_calculator":
+            return None
+        return accepted(plugin_id, kind, json.loads(manifest.read_text(encoding="utf-8")))
+
+    def hand_off(self, plugin_id, kind, payload, on_delivered=None, new=False):
+        from chisurf.core.plugin.handoff import HandoffError, check_payload, deliver
+        from chisurf.plugins.fcs.fcs_filter_calculator.gui.app import create_app
+
+        spec = self.accepts(plugin_id, kind)
+        if spec is None:
+            raise HandoffError(f"{plugin_id} does not accept {kind}")
+        check_payload(spec, payload)
+        app = self.apps.get(plugin_id) or create_app()
+        self.apps[plugin_id] = app
+        deliver(app, spec, payload)
+        self.handed.append((plugin_id, kind, payload))
+        return app
+
+
+@pytest.fixture
+def host():
+    from chisurf.core.plugin import handoff
+
+    window = RecordingHost()
+    handoff.install_host(window)
+    yield window
+    handoff.uninstall_host(window)
+    for app in window.apps.values():
+        app.close()
 
 
 # ---- the Qt-free workflow -------------------------------------------------------------------------------------------
@@ -193,7 +234,7 @@ def test_steps_switch_the_filter_and_merger_on_and_off():
     hub.click("use_merger")
     assert not hub.app.panel_enabled("merger")
     hub.nav("correlator")
-    hub.click("next")  # the merger is off: Next goes past it, to the tools
+    hub.click("next")  # the merger is off: Next does not open it
     assert hub.app.selected != "merger"
     hub.nav("merger")
     assert hub.app.selected != "merger"  # a switched-off step does not open
@@ -250,7 +291,7 @@ def test_bst_files_switch_the_filter_off(tmp_path):
     hub.app.close()
 
 
-def test_lifetime_filters_presets_and_filter_calc(tmp_path):
+def test_lifetime_filters_presets_and_filter_calc(tmp_path, host):
     nbins = 32
     payload = {
         "mode": "single",
@@ -288,7 +329,17 @@ def test_lifetime_filters_presets_and_filter_calc(tmp_path):
     hub.press_text("Green ACF")
     assert corr.model.channel_a == "0,8" and corr.model.microtime_range_a == "0-2000"
     hub.click("filter_calc")
-    assert hub.app.selected == "filter_calc"
+    assert [h[:2] for h in host.handed] == [("fcs_filter_calculator", "fcs_correlator_files")]
+    assert hub.app.selected == "correlator", "the calculator opens in a window of its own"
+    hub.app.close()
+
+
+def test_filter_calc_is_greyed_without_a_window_to_open_it_in():
+    hub = _hub()
+    hub.nav("correlator")
+    hub.click("filter_calc")  # no host: the button is disabled and nothing happens
+    assert hub.app.selected == "correlator"
+    assert not hub.child.tool_available("fcs_filter_calculator")
     hub.app.close()
 
 
@@ -319,7 +370,7 @@ def test_spc_correlates_like_the_qt_tool():
 
 
 @pytest.mark.parametrize("size", SIZES, ids=lambda s: f"{s[0]}x{s[1]}")
-def test_every_step_and_tool_opens_and_its_controls_are_inside(size):
+def test_every_step_opens_and_its_controls_are_inside(size):
     hub = _hub(size)
     hub.click("load_example")
     hub.click("use_filter")
@@ -384,14 +435,17 @@ def test_help_guide_and_the_tour_waits_for_the_user():
     hub.click("correlate")
     hub.wait_correlated()
     assert not tour.awaiting
+    hub.press_text("Next ►")  # the Filter Calc card: it points at the button and opens nothing
+    assert not tour.awaiting and hub.app.selected == "correlator"
     hub.press_text("Next ►")
+    assert tour.awaiting  # "select 5. FCS Merger"
     hub.nav("merger")
     assert not tour.awaiting
     hub.app.close()
 
 
-def test_the_correlator_entry_is_the_workflow_without_the_tools():
-    hub = _hub(correlator_only=True)
+def test_the_fcs_entry_is_the_five_step_workflow_and_nothing_else():
+    hub = _hub()
     assert [p["role"] for p in hub.app.tools] == [
         "channel_def",
         "files",
@@ -399,18 +453,24 @@ def test_the_correlator_entry_is_the_workflow_without_the_tools():
         "correlator",
         "merger",
     ]
-    assert hub.app.title == "FCS Correlator"
+    assert hub.app.title == "FCS"
     hub.app.close()
 
 
-def test_filter_calc_reads_the_correlator_files_and_tools_carry_their_maturity_flag():
+def test_filter_calc_reads_the_correlator_files_on_its_own_window(host):
+    from chisurf.plugins.fcs.fcs_correlator.gui.app import FILES_HANDOFF
+
     hub = _hub()
     hub.click("load_example")
-    hub.nav("filter_calc")
-    calc = hub.child
-    assert hub.app.selected == "filter_calc"
-    for _ in range(200):  # the mixed decay is read on the calculator's worker
-        hub.draw(1)
+    hub.nav("correlator")
+    hub.click("filter_calc")
+    assert host.handed and host.handed[-1][1] == FILES_HANDOFF
+    payload = host.handed[-1][2]
+    assert [Path(p).name for p in payload["files"]] == ["fcs_demo.spc"]
+    assert payload["microtime_binning"] >= 1
+    calc = host.apps["fcs_filter_calculator"]
+    for _ in range(300):  # the mixed decay is read on the calculator's worker once it is idle
+        calc.draw(RecordingPainter(), 0, 0, 1100, 720)
         if getattr(calc.model, "_total_paths", None):
             break
         time.sleep(0.02)
@@ -418,9 +478,35 @@ def test_filter_calc_reads_the_correlator_files_and_tools_carry_their_maturity_f
         calc.model.message,
         calc.job.running,
     )
-    assert hub.shown("2D-FLCS ⚠") and hub.shown("Filter Calc ⚠")
-    assert hub.shown("experimental")  # the banner of the open (experimental) tool
+    assert calc.mixed_from_correlator
     hub.app.close()
+
+
+def test_filter_calc_keeps_a_mixed_decay_of_its_own(host, tmp_path):
+    from chisurf.plugins.fcs.fcs_filter_calculator.gui.app import (
+        create_app,
+        receive_correlator_files,
+    )
+
+    calc = create_app()
+    try:
+        for _ in range(300):  # its own first computation runs when it opens
+            calc.draw(RecordingPainter(), 0, 0, 1100, 720)
+            if not calc.job.running:
+                break
+            time.sleep(0.02)
+        calc.model._total_paths = [tmp_path / "own.spc"]
+        receive_correlator_files(calc, {"files": [str(tmp_path / "other.spc")]})
+        calc.draw(RecordingPainter(), 0, 0, 1100, 720)
+        for _ in range(300):
+            if not calc.correlator_pending:
+                break
+            calc.draw(RecordingPainter(), 0, 0, 1100, 720)
+            time.sleep(0.02)
+        assert [p.name for p in calc.model._total_paths] == ["own.spc"]
+        assert "Kept the mixed decay" in calc.model.message
+    finally:
+        calc.close()
 
 
 def test_next_runs_the_step_and_fast_forward_walks_the_workflow():

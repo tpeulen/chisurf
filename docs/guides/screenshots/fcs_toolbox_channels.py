@@ -1,4 +1,4 @@
-"""Render ``fcs_toolbox_channels.png``: the FCS hub on *1. Channel Definitions* with a two-detector setup.
+"""Render ``fcs_toolbox_channels.png``: the FCS workflow on *1. Channel Definitions* with a two-detector setup.
 
 The setup (Green = routing channels 0, 8; Red = 1, 9) and the preset file live in a temporary folder, so the
 user's detector setups and presets are neither read nor written. Run from the repository root::
@@ -32,7 +32,7 @@ def main() -> None:
         },
     }
     detectors.write_text(json.dumps({"setups": {"MFD green/red": setup}}))
-    hub = app_from("fcs_toolbox")
+    hub = app_from("fcs_correlator")
     preset = hub.ensure_child("channel_def")
     preset.model = FCSChannelViewModel(
         detector_file=detectors, preset_file=tmp / "fcs_channel_setups.json"

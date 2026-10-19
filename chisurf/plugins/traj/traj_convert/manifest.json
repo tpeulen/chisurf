@@ -2,7 +2,7 @@
   "id": "traj_convert",
   "version": "1.0.0",
   "display_name": "Structure:Trajectory:Convert",
-  "icon": "🔄",
+  "icon": "♻️",
   "description": "Convert molecular dynamics trajectory files between supported formats.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Structure", "Trajectory"],
@@ -16,6 +16,5 @@
   },
   "entrypoints": {
     "emtk": "chisurf.plugins.traj.traj_convert.app:make_app"
-  },
-  "menu_hidden": true
+  }
 }

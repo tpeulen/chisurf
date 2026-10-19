@@ -15,6 +15,3 @@ code by T. Kondo (Schlau-Cohen Lab): ``TK_Create2DFDC_04``,
 """
 
 name = "Spectroscopy:Fluorescence Correlation Spectroscopy:2D-FLCS"
-
-# Hidden from the menu: surfaced inside the FCS Toolbox meta tool.
-menu_hidden = True

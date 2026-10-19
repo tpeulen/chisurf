@@ -23,6 +23,17 @@ Most programs expect the starting structure next to a trajectory. Since the
 topology is needed to read the DCD at all, the PDB written here is in
 practice the first frame of the run in that topology's atom order.
 
+## Example data and the other trajectory tools
+
+No trajectory of your own? Use the T4 lysozyme ensemble in
+`chisurf/plugins/modelling/fret/examples/olga_t4l/`: `3GUN_NMSim_cl-rep_894.dcd`
+(894 frames) with the topology `3GUN_NMSim_cl-rep-001.pdb`.
+
+This is one of the eight trajectory tools of **Structure › Trajectory**, each its
+own window. A trajectory is usually prepared in the order **Align** (superpose on
+frame 0), **Remove Clashed** (drop frames that cannot exist, on Cα below 3.8 Å),
+then **FRET** (R_DA, κ² and k_FRET per frame).
+
 ## Further reading
 
 - [Trajectory tools guide](docs/guides/81_trajectory_tools.md)

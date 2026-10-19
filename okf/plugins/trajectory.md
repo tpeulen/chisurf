@@ -14,7 +14,6 @@ the [modelling plugins](/plugins/modelling.md) plus the
 
 | Plugin dir | Display name | What it does |
 | --- | --- | --- |
-| `traj_tools` | Structure:Structure:Traj Tools | Combined dockable workspace that hosts the individual trajectory utilities. |
 | `traj_align` | Structure:Trajectory:Align | Aligns trajectories to a reference frame or structure. |
 | `traj_convert` | Structure:Trajectory:Convert | Converts trajectory files between supported formats. |
 | `traj_join` | Structure:Trajectory:Join | Joins or stacks trajectories. |
@@ -24,8 +23,8 @@ the [modelling plugins](/plugins/modelling.md) plus the
 | `potential_energy` | Structure:Trajectory:Energy Calculator | Computes potential-energy components for structures and trajectories. |
 | `fret_trajectory` | Structure:Trajectory:FRET | Calculates FRET observables from molecular-dynamics trajectories. |
 
-Most entries are thin Qt widgets with manifests; `traj_tools` is the
-aggregation shell. Keep reusable structure/trajectory math outside widgets when
+Each entry is its own **Structure › Trajectory** ribbon button and dock (no hub: the Traj Tools workspace was
+removed 2026-10-19, owner: in emtk every tool is its own dock). Keep reusable structure/trajectory math outside widgets when
 expanding this group so it can be called from scripts, services, and tests.
 
 All eight single-tool `traj_*` widgets — `traj_save_topology`, `traj_align`,
@@ -55,12 +54,21 @@ files are retired. The migration also fixed several latent bugs (see
 non-existent HDF5 node, `traj_rotate_translate`'s save dialog was never wired,
 `traj_join` carried a dead `stride` property, and `fret_trajectory` both accessed
 an un-imported `kappa2` submodule and reset its atom selection mid-compute on a
-form refresh. `traj_tools` (the aggregation shell) is the remaining multi-tool
-workspace.
+form refresh.
 
 See also [modelling plugins](/plugins/modelling.md), [compiled modules](/subsystems/compiled-modules.md),
 and [plugin system](/architecture/plugin-system.md).
 
+
+## Traj Tools hub removed — 2026-10-19
+
+`chisurf/plugins/traj/traj_tools/` (manifest, `CalculatorHubApp` subclass, registry, strings, tests, renders) is
+gone with no shim; the eight tools lost `menu_hidden`. What the hub carried besides the list moved into each tool's
+`help.md` ("Example data and the other trajectory tools": the `olga_t4l` T4L ensemble and the Align → Remove
+Clashed → FRET order); drop routing and settings persistence were already each tool's own. Icons made distinct for the
+shared ribbon group: Convert ♻️, Energy Calculator 🔋, Join 🧷. The guide-81 figures are drawn per tool
+(`make_screenshots.py::_grab_traj_tools`). Open: the ribbon labels follow the old display names (`Save Topol`,
+`Remove Clashed`); renaming them is a manifest edit plus `test_ribbon_layout.py::EXPECTED`.
 
 ## Native FRET host retirement — 2026-10-07
 

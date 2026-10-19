@@ -184,14 +184,12 @@ def test_elided_demo_input_keeps_full_filename_and_folder_accessible():
         app.close()
 
 
-@pytest.mark.parametrize("toolbox", (False, True), ids=("correlator", "toolbox"))
-def test_example_guide_reveals_files_from_correlator_without_pressing_it(toolbox):
+def test_example_guide_reveals_files_from_correlator_without_pressing_it():
     """Opening Guide on another page reveals the demo control and still awaits its release."""
     from chisurf.plugins.fcs.fcs_correlator.gui.app import make_app as make_correlator
     from chisurf.plugins.fcs.fcs_correlator.test.test_emtk_workflow import Hub
-    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app as make_toolbox
 
-    app = make_toolbox() if toolbox else make_correlator()
+    app = make_correlator()
     driver = Hub(app)
     try:
         app.select("correlator")

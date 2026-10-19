@@ -72,8 +72,8 @@ a saved correlation result.
 
 
 **Spectroscopy ▸ Correlation ▸ Burst-wise FCS** (also
-the *Burst FCS* tool of **Spectroscopy ▸ Single-Molecule ▸ Burst Analysis**, and *Burst-wise FCS*
-in the [FCS hub](75_fcs_toolbox.md)) correlates each burst
+the *Burst FCS* tool of **Spectroscopy ▸ Single-Molecule ▸ Burst Analysis**; the
+[FCS workflow](75_fcs_toolbox.md) correlates whole streams) correlates each burst
 separately, using only the photons of that burst ± **Padding**. The window has
 **Run FCS**, **Stop**, **Example**, **Guide** and **Help** on top, three tabs on
 the left and the plots on the right. All three entry points host the same native

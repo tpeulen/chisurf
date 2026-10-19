@@ -14,7 +14,7 @@ multiple segments or for combining related simulations into a single dataset.
 """
 
 # Plugin brand icon (unified emoji set)
-icon = "🔗"
+icon = "🧷"
 
 # Define the plugin name - this will appear in the Plugins menu
 name = "Structure:Trajectory:Join"

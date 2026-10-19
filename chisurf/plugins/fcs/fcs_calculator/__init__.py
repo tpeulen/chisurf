@@ -35,7 +35,4 @@ name = (
     else "Spectroscopy:Fluorescence Correlation Spectroscopy:Diffusion/Volume Calculator"
 )
 
-# Hidden from the menu: surfaced inside the FCS Toolbox meta tool.
-menu_hidden = True
-
-__all__ = ["ConfocalCalcClient", "compute_confocal", "menu_hidden", "name"]
+__all__ = ["ConfocalCalcClient", "compute_confocal", "name"]

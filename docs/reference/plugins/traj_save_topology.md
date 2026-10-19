@@ -18,7 +18,7 @@ Save topology or first-frame structure files from trajectories.
 | Field | Value |
 | --- | --- |
 | Plugin id | `traj_save_topology` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Structure → Trajectory → **Save Topol** |
+| Menu path | Structure → Trajectory → **Save Topol** |
 | Categories | Structure, Trajectory |
 | Version | 1.0.0 |
 | Surfaces | emtk |

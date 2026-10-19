@@ -400,12 +400,12 @@ def test_selection_fills_the_detail_pane_and_dependency_table(trio):
     edge = model.dependency_rows()[0]
     assert (edge["plugin"], edge["installed"], edge["status"]) == ("ghost", "—", "missing")
     # a built-in hub with a hard and many optional edges, and one that stands alone
-    click_row(app, "traj_tools")
+    click_row(app, "imaging_tools")
     draw(app)
     assert len(model.dependency_rows()) >= 8
     assert {"requires", "optional"} <= {e["relation"] for e in model.dependency_rows()}
     blocks = dict(model.details_blocks()[:1])
-    assert blocks["title"] == "Traj Tools"
+    assert blocks["title"] == "Image Tools"
     click_row(app, "about")
     painter = draw(app)
     assert model.dependency_rows() == []
@@ -416,12 +416,12 @@ def test_the_dependency_table_has_its_own_filter_and_count(trio):
     model = make_model()
     app = make_app(model)
     draw(app)
-    click_row(app, "traj_tools")
+    click_row(app, "imaging_tools")
     draw(app)
     deps = table(app, DEPS)
     total = len(deps.order())
     assert total >= 9 and f"{total} rows" in deps.status_text()
-    deps.filter.set_text("convert")
+    deps.filter.set_text("drift")
     draw(app)
     assert len(deps.order()) == 1 and f"1 of {total} rows" in deps.status_text()
     deps.filter.set_text("zzz")

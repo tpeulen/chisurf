@@ -30,6 +30,17 @@ visual inspection. FRET distances and κ² are internal coordinates and do not
 need it. Fit on the domain you consider the reference, so the motion of the
 rest shows relative to it.
 
+## Example data and the other trajectory tools
+
+No trajectory of your own? Use the T4 lysozyme ensemble in
+`chisurf/plugins/modelling/fret/examples/olga_t4l/`: `3GUN_NMSim_cl-rep_894.dcd`
+(894 frames) with the topology `3GUN_NMSim_cl-rep-001.pdb`.
+
+This is one of the eight trajectory tools of **Structure › Trajectory**, each its
+own window. A trajectory is usually prepared in the order **Align** (superpose on
+frame 0), **Remove Clashed** (drop frames that cannot exist, on Cα below 3.8 Å),
+then **FRET** (R_DA, κ² and k_FRET per frame).
+
 ## Further reading
 
 - [Trajectory tools guide](docs/guides/81_trajectory_tools.md)

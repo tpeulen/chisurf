@@ -315,8 +315,8 @@ def _native(app, name: str, frames: int = 6, size=(1200, 800)) -> None:
 
 
 def fcs_hub() -> None:
-    """The FCS hub: the workflow rail on the example stream, then its photon filter."""
-    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app
+    """The FCS workflow: the rail on the example stream, then its photon filter."""
+    from chisurf.plugins.fcs.fcs_correlator.gui.app import make_app
 
     hub = make_app()
     files = hub.select("files")

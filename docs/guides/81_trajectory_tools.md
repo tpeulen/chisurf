@@ -1,14 +1,14 @@
 ---
 type: Guide
 title: 'Trajectory tools: align, convert, filter, score and FRET a structure ensemble'
-description: The eight panels of Traj Tools — superposing a trajectory, converting and slicing it, joining two, removing clashed frames, rigid-body transforms, extracting a topology, per-frame energies, and per-frame FRET distances, orientation factors and rates — worked on the T4 lysozyme ensemble that ships with ChiSurf.
+description: The eight trajectory tools of Structure › Trajectory — superposing a trajectory, converting and slicing it, joining two, removing clashed frames, rigid-body transforms, extracting a topology, per-frame energies, and per-frame FRET distances, orientation factors and rates — worked on the T4 lysozyme ensemble that ships with ChiSurf.
 tags: [guides, fret, structure, orientation]
 ---
 
 # Trajectory tools: align, convert, filter, score and FRET a structure ensemble
 
 A molecular-dynamics run, a normal-mode ensemble or a docking screen produces a
-trajectory: many frames of one molecule. **Traj Tools** is a set of small tools
+trajectory: many frames of one molecule. The eight tools of **Structure → Trajectory** are small tools
 for preparing such a trajectory for FRET work. They superpose it, cut it, remove
 frames that cannot exist, score frames, and write the donor–acceptor geometry of
 every frame to a table.
@@ -20,10 +20,11 @@ the averaging regime), see {ref}`concept-structure-trajectories`.
 
 ## Open the tools
 
-**Structure → Trajectory → Traj Tools** (🎬). The workspace has one dock tab per tool: *Align*, *Convert*,
-*Energy Calc*, *FRET*, *Join*, *Remove Clashed*, *Rot Translate*, *Save Topol*.
-A file dropped on the window goes to the tab in front if that tab has a single
-trajectory field. Each tool also runs as its own window from the command line
+**Structure → Trajectory** has one ribbon button per tool, each opening its own dock: *Align* (📐), *Convert* (♻️),
+*Energy Calculator* (🔋), *FRET* (🎞️), *Join* (🧷), *Remove Clashed* (💢), *Rotate/Translate* (🔃), *Save Topol* (💾).
+Each has its own **?** help (with the example data below) and **Guide**; a file dropped on a tool's window goes to its
+trajectory or topology field. A trajectory is usually prepared in the order *Align* → *Remove Clashed* → *FRET*. Each
+tool also runs as its own window from the command line
 (`csg_traj_align`, `csg_traj_convert`, `csg_traj_fret_analysis`, `csg_traj_join`,
 `csg_traj_energy_calculator`, `csg_traj_remove_clashed_frames`,
 `csg_traj_rotate_translate`, `csg_traj_save_topology`).
@@ -196,7 +197,7 @@ the radius of gyration is 15.9 Å (15.3–16.4 Å over the frames). `FrameNbr` i
 
 Writes, for every frame, the donor–acceptor distance, the orientation factor
 and the FRET rate. The dye transition dipoles are taken from two atoms each.
-The hub's FRET tab hosts the same native panel as the standalone FRET window.
+The FRET tool is the same native panel in the shell dock and the standalone window.
 Its **Reference**, **Dipole atoms**, **Parameters** and **Process** sections
 retain file browse and drops, settings, output selection and the live log.
 
@@ -204,7 +205,7 @@ retain file browse and drops, settings, output selection and the live log.
 :name: fig-traj-tools-fret
 :width: 100%
 
-The FRET panel inside Trajectory Tools after **Process trajectory** on the olga_t4l example (894 frames, stride 1):
+The FRET tool after **Process trajectory** on the olga_t4l example (894 frames, stride 1):
 donor dipole atoms CA and CB of A36, acceptor dipole atoms CA and CB of A132, R0 = 52 Å, τ0 = 4 ns.
 ```
 
@@ -235,9 +236,8 @@ csg_traj_fret_analysis --size 1200x800
 python -m chisurf.emtk --plugin traj_fret --size 1200x800
 ```
 
-Closing the parent Trajectory Tools hub closes its owned FRET panel once and
-cancels queued FRET work. The seven other tool tabs retain their existing
-ownership. Headless calculation uses `FretTrajectoryViewModel`, as shown
+Closing the FRET window closes its panel once and cancels queued FRET work.
+Headless calculation uses `FretTrajectoryViewModel`, as shown
 [below](#headless).
 
 The output columns are `Frame`, `time[ns]`, `RDA[Ang]`, `kappa`, `kappa2` and
@@ -361,8 +361,9 @@ Measured on the example data. File references are to the current tree.
 - Concept: {ref}`concept-structure-trajectories`. Dye clouds:
   {ref}`concept-accessible-volume`, {doc}`23_accessible_volume`. Orientation
   factor: {ref}`concept-kappa2-orientation`.
-- Tool: **Traj Tools** (`chisurf/plugins/traj/traj_tools/`), on the ribbon at
-  **Structure → Trajectory**.
+- Tools: the eight plugins under `chisurf/plugins/traj/` (`traj_align`, `traj_convert`, `potential_energy`,
+  `fret_trajectory`, `traj_join`, `traj_remove_clashes`, `traj_rotate_translate`, `traj_save_topology`), each a
+  button of **Structure → Trajectory**.
 
 
 ## Retained protein-quenching settings

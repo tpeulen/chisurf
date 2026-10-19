@@ -19,9 +19,10 @@ For what the curve means and how its error bars are estimated, see
 
 ## Open the tool
 
-**Spectroscopy → Correlation → FCS**. The window is a left rail with two groups:
+**Spectroscopy → Correlation → FCS**. The window is a left rail holding the
+five-step workflow this guide walks through:
 
-* **Correlator** — the five-step workflow this guide walks through:
+* **Correlator** —
   *Channel Definitions → Files & Steps → Photon / Burst Filter → Correlator →
   FCS Merger*. It opens on *Files & Steps* (**Example** there adds a simulated
   measurement whose curve falls near 0.5 ms). Its photon file and JSON
@@ -33,25 +34,26 @@ For what the curve means and how its error bars are estimated, see
   and **>>** runs the remaining steps in order (press it again to stop). A step
   switched off in *Files & Steps* is grey and skipped. **Help** and **Guide** at
   the top of the rail open a short help (linking back here) and a guided tour.
-* **Tools** — independent FCS tools hosted in the same window, each with its own
-  **Tool help**: *2D-FLCS* and *Filter Calc* ({doc}`17_filtered_fcs`), *Lifetime-FCS
-  Sim*, *Burst-wise FCS*, and *Diffusion Calc* (the $\tau_D \leftrightarrow D$,
-  volume and concentration calculator, {ref}`concept-fcs-correlation`). A ⚠
-  marks a tool flagged experimental.
+
+The other FCS tools are buttons of their own in the same ribbon group, each in its
+own dock with its own **?** help and **Guide**: *2D-FLCS* and *FCS Filter
+Calculator* ({doc}`17_filtered_fcs`), *Lifetime-FCS Simulator*, *Burst-wise FCS*
+({doc}`16_fret_fcs`) and the *Diffusion/Volume Calculator* (the
+$\tau_D \leftrightarrow D$, volume and concentration calculator,
+{ref}`concept-fcs-correlation`). A ⚠ marks a tool flagged experimental.
 
 The controls are native emtk/AutoForm surfaces: the shell docks the same `FcsHubApp`
-the standalone launcher opens. Closing the hub closes its opened child
-tools; a running Burst-wise FCS child receives cancellation and releases its
-worker executor when closed.
+the standalone launcher opens. Closing the window closes its step apps once.
 
-For a desktop with a working GPU/display, launch the complete hub directly:
+For a desktop with a working GPU/display, launch the workflow directly:
 
 ```bash
-pixi run -e test python -m chisurf.emtk --plugin fcs_toolbox --size 1200x800
+pixi run -e test python -m chisurf.emtk --plugin fcs_correlator --size 1200x800
 ```
 
-The same launcher accepts `fcs_correlator` for the five workflow steps,
-`fcs_merger` for the merger alone, and `burst_fcs_correlator` for burst-wise FCS.
+The same launcher accepts `fcs_merger` for the merger alone,
+`fcs_filter_calculator`, `flc-2d`, `fcs-lfcs-sim`, `fcs_calculator` and
+`burst_fcs_correlator` for the other FCS tools.
 These are manifest IDs, not separate `csg_fcs_*` commands. Native desktop
 launch needs a display; offscreen drawing (`emtk.testing.Driver`) is for captures,
 not a substitute for the desktop renderer. The Python calculations
@@ -108,35 +110,6 @@ One photon stream loaded, both optional steps switched on.
 
 A disabled step is greyed out in the rail.
 
-### Time regions
-
-```{figure} figures/fcs_toolbox_regions.png
-:name: fig-fcs-toolbox-regions
-:width: 100%
-
-The example measurement with two drawn regions: 3.5 s of its 5 s are correlated.
-```
-
-Below the step switches is the count-rate trace of one file. Which photons
-enter the correlator is drawn on it, per file:
-
-* **Regions** — the file whose trace is shown. The list holds every file the
-  correlator gets, a folder's files one by one; a file with regions carries
-  `[n region(s)]` here and in the file list.
-* **✏ Draw** — drag across the trace to add a region, drag a region's edge to
-  move it, right-click a region to remove it. Off, the trace pans and zooms as
-  any plot; drawing keeps the view you left it at.
-* **Clear regions** — the file is used whole again. **To all files** gives
-  every other file the regions of this one (repeats of one measurement series).
-
-A photon is kept when its macro time lies inside one of its file's regions
-(start inclusive, stop exclusive, seconds from macro time 0). A file without
-regions is used whole, so drawing nothing changes nothing. The regions cut the
-stream *before* the photon filter of step 3 and after it alike: neither
-**invert** nor gap filling there reaches outside them. Use them to drop what the
-burst filter cannot judge: an aggregate crossing, a bubble, the first seconds
-of photobleaching, a stretch where the focus drifted.
-
 ## 3. Photon / Burst Filter
 
 Selects which photons reach the correlator. Every change recomputes the
@@ -184,7 +157,7 @@ With the filter on, step 4 correlates only the kept photons of every file.
 :name: fig-fcs-toolbox-correlator
 :width: 100%
 
-The native FCS hub displays two measured BH132 chunk curves, with channels
+The native FCS workflow displays two measured BH132 chunk curves, with channels
 0, 1 × 8, 9, nine bins and twenty cascades, Laurence normalization. The current
 workflow selection contains 96 774 of the fixture's 183 657 photons; the plot
 retains the earlier computed curves until **Correlate** is pressed again.
@@ -211,8 +184,10 @@ The lag axis is in ms; these are measured photons, not the **Example** simulatio
   correlation: load a Filter-Calculator `.json` (or a `.npy`/`.npz`
   `(n_species, n_bins)` matrix) and **A**/**B** pick *species* instead of
   channels. Equal species give that species' autocorrelation, different ones
-  the species cross-correlation ({doc}`17_filtered_fcs`). *Filter Calc…* jumps
-  to the calculator in the rail.
+  the species cross-correlation ({doc}`17_filtered_fcs`). *Filter Calc…* opens
+  the FCS Filter Calculator in its own dock with the checked files as its mixed
+  decay, on the correlator's micro-time binning (a mixed decay loaded there by
+  hand is kept). It is greyed when no ChiSurf window is open to host it.
 
 Press **Correlate**. Each chunk is normalized per lag by the count rates in the
 overlapping stretches of the two streams rather than by the global mean
@@ -233,7 +208,7 @@ The chunks arrive here directly; **Browse… / Open** instead loads a folder of
 
 Six repeats produced from the measured BH132 fixture, with the third excluded;
 the native merger averages the remaining five. Both standalone merger plots
-and the hub's Correlator view label lag time in ms.
+and the workflow's Correlator view label lag time in ms.
 ```
 
 * The table lists each curve with the count rate of both streams and its

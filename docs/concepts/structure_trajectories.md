@@ -260,6 +260,4 @@ choices of each row cascade. The worked example is in the
 - {cite}`kalinin2012` — AV modelling, distance measures and averaging regimes (FPS).
 
 
-Tool: Traj Tools (`chisurf/plugins/traj/traj_tools/`).
-
 Tools: Align (`chisurf/plugins/traj/traj_align/`), Convert (`chisurf/plugins/traj/traj_convert/`), Join (`chisurf/plugins/traj/traj_join/`), Remove Clashed (`chisurf/plugins/traj/traj_remove_clashes/`), Rotate/Translate (`chisurf/plugins/traj/traj_rotate_translate/`), Save Topol (`chisurf/plugins/traj/traj_save_topology/`), Energy Calculator (`chisurf/plugins/traj/potential_energy/`), FRET (`chisurf/plugins/traj/fret_trajectory/`).
