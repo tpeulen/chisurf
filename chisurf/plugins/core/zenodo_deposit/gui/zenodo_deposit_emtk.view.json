@@ -281,8 +281,9 @@
                       "attr": "meta_license",
                       "label": "License",
                       "options_source": "LICENSES",
+                      "editable": true,
                       "weight": 1,
-                      "description": "Needed for open and embargoed access; data is usually cc-by-4.0."
+                      "description": "Needed for open and embargoed access; data is usually cc-by-4.0. Pick one or type any Zenodo licence id (e.g. odbl-1.0)."
                     },
                     {
                       "type": "value",
