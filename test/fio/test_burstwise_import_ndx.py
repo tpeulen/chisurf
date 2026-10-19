@@ -119,6 +119,46 @@ def test_sidecar_mode_writes_analysis_only_container(tmp_path: pathlib.Path):
     assert read_container(pto).size > 0
 
 
+def test_sidecar_container_beside_its_raws_records_no_local_path(tmp_path: pathlib.Path):
+    """A container written beside its raws links them by relative name only.
+
+    The record travels as a folder, so a sidecar link must resolve wherever
+    the folder lands -- and must not leak the writer's absolute path into a
+    public deposition. The raw's own `file_path` tag once overwrote the
+    relative link with the absolute path.
+    """
+    import tttrlib
+
+    from chisurf.plugins.burst.burstwise_import.api import ImportSettings, import_folder
+
+    stem = "Split_44_132_75murea_sm-0000"
+    day = tmp_path / "exp"
+    work = day / "burstwise_All 0.1066#60"
+    for sub in ("bi4_bur", "bg4", "br4", "BIDs"):
+        (work / sub).mkdir(parents=True)
+        src = next(iter(sorted((SAMPLE / sub).glob("*-0000*"))))
+        shutil.copy(src, work / sub / src.name)
+    shutil.copytree(SAMPLE / "Info", work / "Info")
+    raw = day / f"{stem}.ht3"
+    shutil.copy(TTTR, raw)
+
+    report = import_folder(
+        work, ImportSettings(source_mode="beside", raw_data="sidecar", out_dir=day)
+    )
+    pto = pathlib.Path(report.containers[0])
+    assert pto.parent == day
+
+    assert str(tmp_path).encode() not in pto.read_bytes()
+    f = tttrlib.PtoFile()
+    f.open(str(pto))
+    try:
+        assert tttrlib.pto_tag(f, 0, "_mmfdb_sidecar.0.path") == raw.name
+        links = [tttrlib.pto_tag(f, o.uid, "_mmfdb_artifact.file_path") for o in f.objects()]
+    finally:
+        f.close()
+    assert raw.name in links
+
+
 def test_burst_table_is_found_as_a_burst_search(container: pathlib.Path):
     tables = list_tables(container)
     assert len(tables) == 1

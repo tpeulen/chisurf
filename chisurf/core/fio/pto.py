@@ -528,7 +528,13 @@ class Measurement:
 
         tttrlib = _tttrlib()
         handle = tttrlib.PtoFile()
-        if not handle.create(str(target), title or first.stem):
+        # The index is reserved once, at create, and never grows. Every raw
+        # file becomes an object (plus its settings sidecar) and analysis
+        # tables follow, so a long rolled-over acquisition with hundreds of
+        # files needs room for all of them up front: an index that fills
+        # fails the commit. ptolib sizes the reserve from the object count.
+        max_objects = 4 * len(raw_paths) + 64
+        if not handle.create(str(target), title or first.stem, max_objects):
             raise PtoMfdbError(f"could not create {target}: {handle.error()}")
         handle.set_writing_app(_writing_app())
 
@@ -1853,7 +1859,9 @@ class Measurement:
             data_format=data_format,
             checksum=checksum,
             size_bytes=size,
-            file_path=str(raw),
+            # A sidecar's file_path IS its link (the reader resolves it), so it
+            # must not be overwritten with the writer's absolute path.
+            file_path=self._sidecar_link(raw) if as_sidecar else str(raw),
         )
 
         for suffix in _SIDECAR_SUFFIXES.get(raw.suffix.lower(), ()):
@@ -1883,7 +1891,7 @@ class Measurement:
                 data_format=_FORMAT_BY_SUFFIX.get(suffix, "unknown"),
                 checksum=side_sum,
                 size_bytes=side_size,
-                file_path=str(companion),
+                file_path=self._sidecar_link(companion) if as_sidecar else str(companion),
             )
         return uid
 
@@ -1907,11 +1915,31 @@ class Measurement:
             self._text(0, prefix + "checksum_algorithm", "sha256")
             self._text(0, prefix + "checksum", checksum)
             self._uint(0, prefix + "size_bytes", size)
-            try:
-                rel = raw.resolve().relative_to(self._path.parent.resolve())
-                self._text(0, prefix + "path", str(rel))
-            except ValueError:
-                self._text(0, prefix + "path", str(raw))
+            self._text(0, prefix + "path", self._sidecar_link(raw))
+
+    def _sidecar_link(self, raw: Path) -> str:
+        """Where a sidecar raw file is, as the container should record it.
+
+        Relative to the container's folder whenever the raw is under it: the
+        container and its raws travel together (a deposited record, a copied
+        folder), and an absolute path would point into the machine that
+        wrote it -- unresolvable anywhere else and a leak of a local path.
+        Absolute only when the raw is genuinely elsewhere.
+
+        Parameters
+        ----------
+        raw : Path
+            The raw file.
+
+        Returns
+        -------
+        str
+            The link to store in the container.
+        """
+        try:
+            return str(raw.resolve().relative_to(self._path.parent.resolve()))
+        except ValueError:
+            return str(raw)
 
     def _add_payload_from_path(self, kind: str, data_format: str, name: str, path: Path) -> int:
         """Add a file's bytes as an object.

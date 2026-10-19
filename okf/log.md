@@ -3,6 +3,7 @@
 ## 2026-10-19
 
 - docs review gate: the 26 pages edited after their AI review re-read against the code and re-signed (dead figures, menu paths, csc names, user-model merge rules, ndX CLI auth, Qt leftovers); figures/tables registers regenerated.
+- **PTO.MFDB sidecar links stay relative; index sized by object count.** `Measurement._add_instrument` overwrote a sidecar raw's relative `_mmfdb_artifact.file_path` (set by tttrlib's `add_sidecar_file`) with the writer's absolute path, so a container moved with its raws (a Zenodo record) pointed into the writer's disk and leaked a local path; one `_sidecar_link` now serves the tag, the companion and the `_mmfdb_sidecar.*.path` tags (test `test_sidecar_container_beside_its_raws_records_no_local_path`). `Measurement.create` passes `max_objects = 4·raws + 64` to tttrlib's `PtoFile::create` (ptolib upstream sizes the index from it) instead of a byte reserve. Found by the T4L deposition benchmark.
 
 ## 2026-10-18
 
