@@ -874,12 +874,18 @@
               "description": "Whether a token is set for the selected Zenodo (production or sandbox), and how to create one."
             },
             {
-              "type": "value",
-              "attr": "token_entry",
-              "kind": "password",
-              "label": "Token",
-              "placeholder": "paste the token here",
-              "description": "Paste the token and press Save. The field is cleared once it is stored; the token goes to the system keychain, never into a file or ChiSurf's settings."
+              "type": "row",
+              "n_col": 1,
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "token_entry",
+                  "kind": "password",
+                  "label": "Token",
+                  "placeholder": "paste the token here",
+                  "description": "Paste the token and press Save. The field is cleared once it is stored; the token goes to the system keychain, never into a file or ChiSurf's settings."
+                }
+              ]
             },
             {
               "type": "button_row",

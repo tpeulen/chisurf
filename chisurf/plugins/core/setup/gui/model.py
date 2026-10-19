@@ -104,6 +104,15 @@ PANELS = [
         icon="🤖",
     ),
     Panel(
+        "zenodo",
+        "Zenodo",
+        "core/zenodo_deposit",
+        "settings_chisurf.yaml",
+        "The Zenodo upload token (zenodo.org and the sandbox), kept in the system keychain.",
+        entry="chisurf.plugins.core.zenodo_deposit.gui.token_app:make_app",
+        icon="🔑",
+    ),
+    Panel(
         "plugins",
         "Plugins",
         "core/plugin_manager",

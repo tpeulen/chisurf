@@ -32,8 +32,8 @@ def test_document_preserves_types_and_invalid_input(tmp_path):
 
 
 def test_all_original_destinations_exist():
-    assert len(PANELS) == 16
-    assert len({p.key for p in PANELS}) == 16
+    assert len(PANELS) == 17
+    assert len({p.key for p in PANELS}) == 17
     assert {p.label for p in PANELS} >= {
         "Packages",
         "Updates",

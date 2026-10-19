@@ -35,7 +35,7 @@ QT_PANEL_NAMES = [
     "Plugin Check",
 ]
 #: Destinations the emtk hub has and the retired Qt hub had not (the Qt shell has no font settings).
-EMTK_ONLY = ["Fonts"]
+EMTK_ONLY = ["Fonts", "Zenodo"]
 #: The dedicated panel (class name) each destination must host: never the generic file editor.
 EXPECTED = {
     "boarding": "BoardingApp",
@@ -54,6 +54,7 @@ EXPECTED = {
     "lut": "LutToolsApp",
     "check": "PluginCheckApp",
     "fonts": "FontSettingsApp",
+    "zenodo": "ZenodoTokenApp",
 }
 
 
@@ -106,7 +107,7 @@ def test_the_hub_opens_on_getting_started_and_lists_the_fifteen_qt_destinations(
     assert hub.app.selected == "boarding"
     assert type(hub.app.child).__name__ == "BoardingApp"
     assert in_sidebar(hub) == LABELS
-    assert len(LABELS) == 16
+    assert len(LABELS) == 17
 
 
 def test_the_destinations_equal_the_qt_hub_in_name_and_order():
@@ -270,9 +271,9 @@ def test_fast_forward_visits_every_remaining_destination_and_says_so(hub):
             break
     assert hub.app.selected == "check"
     assert hub.app.status == "Fast-forward finished - the pipeline is done"
-    assert any(s.startswith("Fast-forward 1/16: Getting Started") for s in statuses)
-    assert any(s == "Fast-forward 16/16: Plugin Check" for s in statuses)
-    assert len(hub.app.children) == 16  # every destination was built on the way
+    assert any(s.startswith("Fast-forward 1/17: Getting Started") for s in statuses)
+    assert any(s == "Fast-forward 17/17: Plugin Check" for s in statuses)
+    assert len(hub.app.children) == 17  # every destination was built on the way
     assert not hub.app.fast_forward
 
 

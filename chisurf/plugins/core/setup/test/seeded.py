@@ -64,6 +64,10 @@ def prepare(root, monkeypatch=None):
         from chisurf.plugins.core.user_editor.gui import view_model as user_view_model
 
         Fakes().install(monkeypatch)
+        # The Zenodo page reads the system keychain on open: never the developer's real token.
+        from mmfdb.deposit import credentials
+
+        monkeypatch.setattr(credentials, "stored_token", lambda base_url: None)
         # The user editor talks to the in-process MMFDB over the temporary database, as its own tests do.
         for module in (user_model, user_view_model):
             monkeypatch.setattr(module, "active_user_id", lambda: "admin")

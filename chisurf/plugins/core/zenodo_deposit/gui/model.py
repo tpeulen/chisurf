@@ -1013,6 +1013,13 @@ class ZenodoDepositModel:
                 "**deposit:actions**. It is kept in the system keychain only -- never in a file "
                 "or in ChiSurf's settings." + check)
 
+    def lookup_token(self) -> None:
+        """Read the keychain once, in the background, so :attr:`token_source` is known."""
+        base = self._base
+        self._busy("looking up the token")
+        self.job.start(lambda: credentials.stored_token(base), lambda _tok: None,
+                       lambda exc: setattr(self, "message", f"keychain: {exc}"))
+
     def save_token(self) -> None:
         tok = self.token_entry.strip()
         self.token_entry = ""

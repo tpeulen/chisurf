@@ -32,6 +32,7 @@
     "style_manager": "*",
     "tttr_lut_tools": "*",
     "updater": "*",
-    "user_editor": "*"
+    "user_editor": "*",
+    "zenodo_deposit": "*"
   }
 }
