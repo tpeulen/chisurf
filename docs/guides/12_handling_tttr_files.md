@@ -134,9 +134,9 @@ member it holds, so nothing above changes when the path does.
 
 TTTR utility plugins (`chisurf/plugins/tttr/`) provide GUI tools for conversion,
 splitting, header editing, time-window gating and micro-time linearisation;
-**Tools → Photon data → TTTR Tools** gathers the photon-level tools (ALEX Creator,
-Micro-time Shifter, Photon Table, Count Rate Analysis, Audifier) in one window, and
-**File → Data** the file-level ones (Split / Convert, header editor,
+**Tools → Photon data** holds the photon-level tools (ALEX Creator, Audifier,
+Count Rate Analysis, Microtime Shifter, Photon Table; see
+[the photon-data tools](101_photon_data_tools.md)), and **File → Data** the file-level ones (Split / Convert, header editor,
 .pto packing, time windows).
 
 For a stream you want to slice and select on, `Photons` wraps a `tttrlib.TTTR`
@@ -175,6 +175,6 @@ Micro-time histograms from a TTTR file.
 - [The photon container](../concepts/photon_container.md) — what a `.pto`
   holds, how a result says what one of its rows is, and how to take one apart.
 - `chisurf/core/fio/fluorescence/` and the `tttrlib.TTTR` reader; plugins in `chisurf/plugins/tttr/`.
-- Tools: **TTTR Tools** (`chisurf/plugins/tttr/tttr_toolbox/`) shifts, inspects and counts photons; **Split/Convert** (`chisurf/plugins/tttr/tttr_splitter/`) converts and splits and **TTTR Header editor** (`chisurf/plugins/tttr/tttr_header_edit/`) edits headers, both in **File → Data**; **TTTR ⇄ .pto** (`chisurf/plugins/core/tttr_to_pto/`) packs a vendor file into a `.pto` or unpacks one back out, with no prompt; **Microtime Shifter** (`chisurf/plugins/tttr/tttr_microtime_shifter/`) moves a detector's TAC axis; **ALEX Creator** (`chisurf/plugins/tttr/ptu_alex_creator/`) writes an alternating-excitation file; **Count Rate Analysis** (`chisurf/plugins/tttr/tttr_count_rate_analysis/`) compares detectors across many files; **Histogram-Microtime** (`chisurf/plugins/tttr/microtime_histogram/`) builds the decay; and **TTTR→Time-Window BIDs** (`chisurf/plugins/tttr/tttr_time_windows/`) turns fixed windows into burst ids.
+- Tools: **Photon Table** (`chisurf/plugins/tttr/photon_table/`) lists the records; **Split/Convert** (`chisurf/plugins/tttr/tttr_splitter/`) converts and splits and **TTTR Header editor** (`chisurf/plugins/tttr/tttr_header_edit/`) edits headers, both in **File → Data**; **TTTR ⇄ .pto** (`chisurf/plugins/core/tttr_to_pto/`) packs a vendor file into a `.pto` or unpacks one back out, with no prompt; **Microtime Shifter** (`chisurf/plugins/tttr/tttr_microtime_shifter/`) moves a detector's TAC axis; **ALEX Creator** (`chisurf/plugins/tttr/ptu_alex_creator/`) writes an alternating-excitation file; **Count Rate Analysis** (`chisurf/plugins/tttr/tttr_count_rate_analysis/`) compares detectors across many files; **Histogram-Microtime** (`chisurf/plugins/tttr/microtime_histogram/`) builds the decay; and **TTTR→Time-Window BIDs** (`chisurf/plugins/tttr/tttr_time_windows/`) turns fixed windows into burst ids.
 
 Tool: Photon Table (`chisurf/plugins/tttr/photon_table/`).

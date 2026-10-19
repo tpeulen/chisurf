@@ -73,7 +73,13 @@ EXPECTED = {
         "Trajectory": ["Traj Tools"],
     },
     "Tools": {
-        "Photon data": ["TTTR Tools"],
+        "Photon data": [
+            "ALEX Creator",
+            "Audifier",
+            "Count Rate Analysis",
+            "Microtime Shifter",
+            "Photon Table",
+        ],
         "Calculators": ["Calculators", "Light Path Simulator", "Spectra Downloader", "Wizards"],
         "Views": ["Acquisition", "Global View", "ndX"],
         "System": ["Code Editor", "Games", "MMFDB Admin", "Python Terminal", "Terminal"],

@@ -1,13 +1,13 @@
 ---
 type: Guide
 title: Reading the photons of a TTTR file
-description: 'Tool: Tools → TTTR → Photon Table (photon_table). One row per record (photons and the scanner''s pixel, line and frame markers, each marker kind coloured) with routing channel, micro time and macro time, paged and filterable by channel and kind, to check what a file holds before any analysis.'
+description: 'Tool: Tools → Photon data → Photon Table (photon_table). One row per record (photons and the scanner''s pixel, line and frame markers, each marker kind coloured) with routing channel, micro time and macro time, paged and filterable by channel and kind, to check what a file holds before any analysis.'
 tags: [guides, photons, tttr, file-formats]
 ---
 
 # Reading the photons of a TTTR file
 
-**Tool:** *Tools → TTTR → Photon Table* (`photon_table`). **What you get:** the raw records of a TTTR file, one row
+**Tool:** *Tools → Photon data → Photon Table* (`photon_table`). **What you get:** the raw records of a TTTR file, one row
 per record: its kind (a photon, or a pixel, line-start, line-stop, frame or other marker), the routing channel
 (detector or marker channel), the micro time (channel within the excitation period) and the macro time (when the
 record arrived, in ms). Use it to check that a file has the channels you expect, that the macro times

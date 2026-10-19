@@ -3,7 +3,7 @@ type: Plugin Reference
 title: ALEX Creator
 description: Convert ALEX macro-time modulation into micro-time (single, batch or merged), for PIE-style analysis of .sm and other TTTR files.
 resource: chisurf/plugins/tttr/ptu_alex_creator/
-tags: [reference, plugins, ptu-alex-creator, tools, converter, tttr]
+tags: [reference, plugins, ptu-alex-creator, tools, photon-data, tttr]
 anchor: plugin-ptu_alex_creator
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,8 +18,8 @@ Convert ALEX macro-time modulation into micro-time (single, batch or merged), fo
 | Field | Value |
 | --- | --- |
 | Plugin id | `ptu_alex_creator` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Tools → Converter → **ALEX Creator** |
-| Categories | Tools, Converter, TTTR |
+| Menu path | Tools → Photon data → **ALEX Creator** |
+| Categories | Tools, Photon data, TTTR |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, services |
 
@@ -73,7 +73,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [µs-ALEX — alternating excitation, and the titration it enables](/concepts/us_alex.md)
-- **Workflow** — [Turning ALEX alternation into micro-time (ALEX Creator)](/guides/100_alex_creator.md), [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+- **Workflow** — [Turning ALEX alternation into micro-time (ALEX Creator)](/guides/100_alex_creator.md), [The photon-data tools and count rates (Tools › Photon data)](/guides/101_photon_data_tools.md), [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
 
 ## Source
 

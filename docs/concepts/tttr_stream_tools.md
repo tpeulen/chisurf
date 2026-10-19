@@ -1,17 +1,17 @@
 ---
 type: Concept
-title: 'TTTR Tools: the two clocks of a photon record'
-description: The macro time and micro time of a TTTR record, what each is used for, and which TTTR Tools operation changes which clock; ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier.
+title: 'The two clocks of a photon record'
+description: The macro time and micro time of a TTTR record, what each is used for, and which photon-data tool (Tools › Photon data) changes which clock; ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier.
 tags: [concepts, tttr, photons]
 anchor: concept-tttr-stream-tools
 ---
 
 (concept-tttr-stream-tools)=
-# TTTR Tools: the two clocks of a photon record
+# The two clocks of a photon record
 
 A TTTR file holds one record per detected photon: the detector (routing channel), the **macro time** $t$ and the
-**micro time** $\tau$. The TTTR Tools window (`chisurf/plugins/tttr/tttr_toolbox/`) hosts the operations that act on
-this stream before any analysis interprets it.
+**micro time** $\tau$. The tools of the **Tools › Photon data** ribbon group act on this stream before any analysis
+interprets it; each is a tool of its own.
 
 | clock | scale | wraps | builds |
 |---|---|---|---|
@@ -34,8 +34,8 @@ easy to misread.
   dead detector, bleaching or a closed shutter.
 - **Audifier** plays the stream; blinking, bursts and afterpulsing sound different.
 
-**0. Setup** holds the one detector setup (routing, PIE windows, reading calibration, LUTs) that Count Rate Analysis and
-Audifier share. File-level operations (split, convert, header) live in [File tools](file_tools.md) (File › Data).
+Count Rate Analysis and Audifier each carry the detector editor (routing, PIE windows, reading calibration, LUTs); a
+setup saved there by name is in the setup library every tool reads. File-level operations (split, convert, header) live in [File tools](file_tools.md) (File › Data).
 
 ## Rules of thumb
 
@@ -45,7 +45,7 @@ Audifier share. File-level operations (split, convert, header) live in [File too
 
 ## Workflows
 
-[TTTR Tools window](../guides/101_tttr_toolbox.md), [ALEX Creator](../guides/100_alex_creator.md),
+[The photon-data tools](../guides/101_photon_data_tools.md), [ALEX Creator](../guides/100_alex_creator.md),
 [Micro-time shifter](../guides/88_microtime_shifter.md), [Audifier](../guides/94_tttr_audifier.md).
 
 Tool: Audifier (`chisurf/plugins/tttr/audifier/`).

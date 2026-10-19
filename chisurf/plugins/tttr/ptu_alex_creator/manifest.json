@@ -1,18 +1,13 @@
 {
   "id": "ptu_alex_creator",
   "version": "2.0.0",
-  "display_name": "Tools:Converter:ALEX Creator",
+  "display_name": "Tools:Photon data:ALEX Creator",
   "description": "Convert ALEX macro-time modulation into micro-time (single, batch or merged), for PIE-style analysis of .sm and other TTTR files.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": [
-    "Tools",
-    "Converter",
-    "TTTR"
-  ],
-  "icon": "\ud83d\udea6",
-  "menu_hidden": true,
+  "categories": ["Tools", "Photon data", "TTTR"],
+  "icon": "\ud83d\udd02",
   "statefulness": {
     "enabled": true,
     "window": {

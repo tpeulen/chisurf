@@ -258,8 +258,24 @@
   "Tools": {
    "Photon data": [
     {
-     "text": "TTTR Tools",
-     "tooltip": "Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File › Data."
+     "text": "ALEX Creator",
+     "tooltip": "Convert ALEX macro-time modulation into micro-time (single, batch or merged), for PIE-style analysis of .sm and other TTTR files."
+    },
+    {
+     "text": "Audifier",
+     "tooltip": "Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfall preview."
+    },
+    {
+     "text": "Count Rate Analysis",
+     "tooltip": "Count rates per detector channel across many TTTR files, with mean/std and a per-file plot."
+    },
+    {
+     "text": "Microtime Shifter",
+     "tooltip": "Apply global and per-channel micro-time shifts to TTTR files."
+    },
+    {
+     "text": "Photon Table",
+     "tooltip": "Inspect the photons of a TTTR file in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter."
     }
    ],
    "Calculators": [
@@ -965,7 +981,31 @@
       "visible": true,
       "menu": [
        {
-        "text": "TTTR Tools",
+        "text": "ALEX Creator",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Audifier",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Count Rate Analysis",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Microtime Shifter",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Photon Table",
         "shortcut": "",
         "checkable": false,
         "visible": true

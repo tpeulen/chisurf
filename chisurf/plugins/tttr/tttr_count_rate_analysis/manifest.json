@@ -1,18 +1,13 @@
 {
   "id": "tttr_count_rate_analysis",
   "version": "2.0.0",
-  "display_name": "Tools:TTTR:Count Rate Analysis",
+  "display_name": "Tools:Photon data:Count Rate Analysis",
   "description": "Count rates per detector channel across many TTTR files, with mean/std and a per-file plot.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": [
-    "Tools",
-    "TTTR",
-    "Analysis"
-  ],
+  "categories": ["Tools", "Photon data", "TTTR", "Analysis"],
   "icon": "\ud83d\udcdf",
-  "menu_hidden": true,
   "statefulness": {
     "enabled": true,
     "window": {

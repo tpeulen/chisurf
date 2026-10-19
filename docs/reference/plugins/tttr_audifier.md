@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Audifier
 description: Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfall preview.
 resource: chisurf/plugins/tttr/audifier/
-tags: [reference, plugins, tttr-audifier, tools, tttr, analysis]
+tags: [reference, plugins, tttr-audifier, tools, photon-data, tttr, analysis]
 anchor: plugin-tttr_audifier
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,8 +18,8 @@ Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfal
 | Field | Value |
 | --- | --- |
 | Plugin id | `tttr_audifier` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Tools → TTTR → **Audifier** |
-| Categories | Tools, TTTR, Analysis |
+| Menu path | Tools → Photon data → **Audifier** |
+| Categories | Tools, Photon data, TTTR, Analysis |
 | Version | 2.0.0 |
 | Surfaces | emtk |
 
@@ -66,8 +66,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Theory** — [TTTR Tools: the two clocks of a photon record](/concepts/tttr_stream_tools.md)
-- **Workflow** — [Audifier: photon streams as sound and as a waterfall](/guides/94_tttr_audifier.md)
+- **Theory** — [The two clocks of a photon record](/concepts/tttr_stream_tools.md)
+- **Workflow** — [The photon-data tools and count rates (Tools › Photon data)](/guides/101_photon_data_tools.md), [Audifier: photon streams as sound and as a waterfall](/guides/94_tttr_audifier.md)
 
 ## Source
 

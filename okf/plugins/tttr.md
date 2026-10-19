@@ -14,19 +14,31 @@ or compute quick diagnostics before downstream [burst](/plugins/burst.md),
 [FCS](/plugins/fcs.md), [fluorescence-decay](/plugins/fluorescence-decay.md),
 or [imaging](/plugins/imaging.md) analysis.
 
+**No TTTR hub (2026-10-19).** The former `tttr_toolbox` meta plugin ("TTTR Tools")
+was removed: in the emtk shell every tool is its own dock, so a window listing
+five tools added nothing. ALEX Creator, Audifier, Count Rate Analysis,
+Microtime Shifter and Photon Table are plain buttons of **Tools › Photon data**
+(alphabetical, like every other group). The one thing the hub owned was a
+shared **0. Setup** step for Count Rate Analysis and Audifier; both always
+embedded their own `ChannelDefinitionWidget` when not hosted, and a setup saved
+there by name lands in the setup library every tool reads, so nothing was lost.
+The hub's help text (the two clocks, "keep the originals", "re-check the IRF")
+lives in the concept `docs/concepts/tttr_stream_tools.md` and guide
+`docs/guides/101_photon_data_tools.md`; each tool keeps its own `?` and Guide.
+
 | Plugin dir | Display name | What it does |
 | --- | --- | --- |
-| `tttr_toolbox` | Tools:Photon data:TTTR Tools | Photon-level toolbox (`gui/panels.json`): ALEX Creator, Micro-time Shifter, **Photon Table**, Count Rate Analysis, Audifier. File-level tools (Split/Convert, header editor, ⇄ .pto, PTO Inspector, Time Windows, BID → Analysis, MFD Prepare) are ordinary tools in **File › Data** (the former File tools hub was dissolved); see [Ribbon and hubs](../subsystems/ribbon.md). The children are `menu_hidden`; the toolbox is their menu entry. Each list row draws the child's icon in its own slot (see [hub icons](#hub-icons)). |
-| `ptu_alex_creator` | Tools:Converter:ALEX Creator | Converts macro-time ALEX modulation into micro-time / PIE-style files; supports single, batch, and merged output plus histogram inspection. |
-| `tttr_microtime_shifter` | Tools:TTTR:Microtime Shifter | Applies global and per-channel micro-time shifts to TTTR files with replayable transform metadata. |
+| `ptu_alex_creator` | Tools:Photon data:ALEX Creator | Converts macro-time ALEX modulation into micro-time / PIE-style files; supports single, batch, and merged output plus histogram inspection. |
+| `tttr_microtime_shifter` | Tools:Photon data:Microtime Shifter | Applies global and per-channel micro-time shifts to TTTR files with replayable transform metadata. |
 | `tttr_header_edit` | File:Data:TTTR Header editor | Views/edits header tags of any tttrlib-readable container (PTU/HT3/SPC/HDF5, auto-detected) through a declarative view; saves the edited header as PTU (the only container that persists arbitrary tags losslessly), copying the source photon events. |
 | `tttr_time_windows` | File:Data:TTTR→Time-Window BIDs | Splits TTTR files into fixed-duration Burst-ID windows. Own window in File › Data; keeps its options between sessions. |
 | `trace_browser` | Spectroscopy:Single-Molecule:Trace Browser | Browses folders of PTU/TTTR intensity traces, stores ratings/annotations, previews traces, and exports selections. |
 | `tttr_image_browser` | Imaging:Tools:Image Browser | Browses TTTR files in a folder and previews the per-detector-window intensity mosaic. GUI is the shared `image_browser` AutoForm section over a Qt-free view-model (file list with star ratings + size, mosaic canvas with per-tile labels, editable annotations, rating filter, drag-drop) on the existing Qt-free core + RPC; exports TIFF/DOCX. |
-| `tttr_count_rate_analysis` | Tools:TTTR:Count Rate Analysis | Computes per-channel count rates across many TTTR files. |
+| `tttr_count_rate_analysis` | Tools:Photon data:Count Rate Analysis | Computes per-channel count rates across many TTTR files; carries its own detector editor. |
 | `tttr_lut_tools` | Tools:TTTR:LUT Tools | Builds micro-time lookup tables and channel-LUT settings. |
 | `microtime_histogram` | Spectroscopy:Fluorescence decay:Histogram-Microtime | Creates and inspects TTTR micro-time histograms. |
-| `audifier` | Tools:TTTR:Audifier | Converts photon streams to audio with a live micro-time/lifetime waterfall preview. |
+| `audifier` | Tools:Photon data:Audifier | Converts photon streams to audio with a live micro-time/lifetime waterfall preview; carries its own detector editor. |
+| `photon_table` | Tools:Photon data:Photon Table | Lists the records of a TTTR file (routing channel, micro time, macro time) with a channel filter. |
 
 Several tools expose CLI and service entrypoints in `manifest.json`, especially
 the file-transforming workflows (`alex.*`, `microtime_shift.*`,
@@ -38,8 +50,8 @@ and [plugin system](/architecture/plugin-system.md).
 
 ## Hub icons
 
-Every emtk hub (TTTR Tools, Image Tools, Calculators, Wizards,
-Games, Setup, Structure Tools, Trajectory Tools, Lifetime Analysis) draws each
+Every emtk hub (Image Tools, Calculators, Wizards, Games, Setup,
+Trajectory Tools) draws each
 sub-tool's pictogram in front of its name with emtk's
 `im.selectable(label, selected, icon=...)`, which gives the icon a square slot
 one frame high so every label starts in one column. The icon comes from
@@ -59,13 +71,11 @@ Packages 📚) distinct.
 
 ### Where to pick this up
 
-1. Open: **Legacy Qt hubs** (`NavigationPanelTool`, e.g. `tttr_toolbox/gui/tool.py`)
-   already show the emoji in their Qt list; nothing to port, they retire with Qt.
-2. Open: **New hub**: pass `icon=entry_icon(entry, <child entrypoint or plugin path>)`
+1. Open: **New hub**: pass `icon=entry_icon(entry, <child entrypoint or plugin path>)`
    to `im.selectable`; a test that pins "no emoji in the list" is now wrong —
    the calculator-hub tests show the replacement assertion (emoji
    only as row icons).
-3. Open: **Re-check duplicates** when adding a child: list a hub's icons with
+2. Open: **Re-check duplicates** when adding a child: list a hub's icons with
    `entry_icon` over its registry (one line of Python) before committing.
 
 ## Where to pick this up — cancellable native trace fitting (2026-10-07)

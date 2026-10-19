@@ -19,7 +19,7 @@ channels is {doc}`87_channel_definition`.
 
 ## 1. Open the tool
 
-**Tools → Photon data → TTTR Tools**, then **Micro-time Shifter**. The window has three docks: **Files**
+**Tools → Photon data → Microtime Shifter**. The window has three docks: **Files**
 (the queue, top left), **Micro-time shift** (the controls, below it; a
 **Status** tab beside them) and the **Micro-time histograms** (right), which
 gets the room. Buttons use a pictogram and a caption; every control has a

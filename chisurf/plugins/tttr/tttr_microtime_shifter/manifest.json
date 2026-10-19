@@ -1,18 +1,13 @@
 {
   "id": "microtime_shifter",
   "version": "2.0.0",
-  "display_name": "Tools:TTTR:Microtime Shifter",
+  "display_name": "Tools:Photon data:Microtime Shifter",
   "description": "Apply global and per-channel micro-time shifts to TTTR files.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": [
-    "Tools",
-    "TTTR",
-    "Editor"
-  ],
+  "categories": ["Tools", "Photon data", "TTTR", "Editor"],
   "icon": "\u2194\ufe0f",
-  "menu_hidden": true,
   "state_namespace": "microtime_shifter",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",

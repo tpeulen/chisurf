@@ -74,7 +74,6 @@ def test_python_reader_rejects_integral_float_without_coercion():
     "factory, expected",
     [
         ("chisurf.plugins.calculator.fret_calculator.gui.app:make_app", (640, 480)),
-        ("chisurf.plugins.tttr.tttr_toolbox.gui.app:make_app", (1100, 720)),
         ("chisurf.plugins.calculator.hub.gui.app:make_app", (1100, 720)),
         ("chisurf.plugins.tttr.tttr_image_browser.gui.app:make_app", (1200, 800)),
     ],

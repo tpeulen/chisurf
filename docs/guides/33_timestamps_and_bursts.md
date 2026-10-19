@@ -103,4 +103,4 @@ table — set **Min photons** to 19 and **▶ Run** again to list them (161 burs
 - `tttrlib.TTTR`, `TTTR.burst_search`; [handling TTTR files](12_handling_tttr_files.md), [burst identification](13_burst_identification.md).
 - Binning the same stream: [binned photon traces](22_binned_photon_traces.md).
 - Getting the slices back out: [exporting burst data](34_exporting_burst_data.md).
-- Tool: the **TTTR Toolbox** (`chisurf/plugins/tttr/tttr_toolbox/`) and **Burst Analysis** (`chisurf/plugins/burst/burst_analysis/`).
+- Tool: the [photon-data tools](101_photon_data_tools.md) (Tools → Photon data) and **Burst Analysis** (`chisurf/plugins/burst/burst_analysis/`).

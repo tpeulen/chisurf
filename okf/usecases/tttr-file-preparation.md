@@ -1,12 +1,12 @@
 ---
 type: Reference
-title: Use case — TTTR Tools (prepare raw photon files before any analysis)
-description: The unified TTTR toolbox — inspect and edit a file header, split a long measurement into chunks, convert the container, check the count rate per detector over a whole folder, shift micro-times and create ALEX micro-times.
+title: Use case — TTTR file preparation (prepare raw photon files before any analysis)
+description: The file-level (File › Data) and photon-level (Tools › Photon data) TTTR tools — inspect and edit a file header, split a long measurement into chunks, convert the container, check the count rate per detector over a whole folder, shift micro-times and create ALEX micro-times.
 tags: [usecase, tttr, toolbox, header, splitter, count-rate, alex, quality-control, gui]
 timestamp: '2026-07-28T00:00:00Z'
 ---
 
-# Use case: TTTR file preparation (the TTTR Tools toolbox)
+# Use case: TTTR file preparation
 
 **Goal:** everything a user does to a raw photon file **before** an analysis
 window is ever opened. A measurement comes off the instrument as one long TTTR
@@ -18,10 +18,14 @@ detector across all of today's files to spot a dead detector, a bleached sample
 or a mis-set laser power, and (d) apply the stream-level corrections —
 micro-time shift, ALEX→micro-time — the downstream tools assume are already done.
 
-All of that lives in **one window**: *Tools → TTTR Tools*, a
-`NavigationPanelTool` whose left-hand list lazily embeds six existing tools
-(declared in `chisurf/plugins/tttr/tttr_toolbox/gui/panels.json` — adding a tool
-is one JSON entry).
+Since 2026-10-19 there is no hub window for this: the file-level tools (header
+editor, Split / Convert) are buttons of **File › Data**, the photon-level ones
+(Count Rate Analysis, ALEX Creator, Micro-time Shifter, Photon Table, Audifier)
+buttons of **Tools › Photon data**, each its own dock in the emtk shell. The
+former `tttr_toolbox` hub ("TTTR Tools") and its shared **0. Setup** step were
+removed; Count Rate Analysis and Audifier carry their own detector editor and
+read named setups from the setup library. The "Observed" section below was
+measured through the old hub and is kept as history.
 
 This is the "Correlation / TTTR tools" coverage entry for **file preparation and
 per-file quality control**; it sits *before*
@@ -41,16 +45,15 @@ per-file quality control**; it sits *before*
 - `test/data/tttr/BH/630_256/BH_SPC630_256.spc` — Becker & Hickl SPC-600/256,
   294 884 photons (used to test the reading-routine selector).
 
-**Tool:** `chisurf.plugins.tttr.tttr_toolbox` → `TttrToolboxTool`, display name
-*Tools:TTTR Tools*. Panels (each also a stand-alone, `menu_hidden` plugin):
-ALEX Creator · Micro-time Shifter · TTTR Header Editor — Split / Convert —
-Count Rate Analysis · Audifier.
+**Tools:** *File › Data*: TTTR Header editor (`tttr_header_edit`), Split/Convert
+(`tttr_splitter`). *Tools › Photon data*: Count Rate Analysis
+(`tttr_count_rate_analysis`), ALEX Creator (`ptu_alex_creator`), Microtime Shifter
+(`microtime_shifter`), Photon Table (`photon_table`), Audifier (`tttr_audifier`).
 
 ## Steps
 
-1. Open **Tools → TTTR Tools**. The window shows the navigation list on the left
-   with a search box; the first panel is instantiated eagerly, the rest on first
-   click. The panel selected last session is restored.
+1. Each step below opens its tool from the ribbon (File › Data or Tools › Photon
+   data); every tool restores its own settings from last session.
 2. **TTTR Header Editor** — press **📂 Open** (or drop the file on the table) and
    pick `PQ_Olympus_MFIS.ht3`. The status line above the table reports the file,
    the detected container, the tag count and the fixed output format; the table

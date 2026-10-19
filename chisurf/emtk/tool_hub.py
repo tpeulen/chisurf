@@ -1,6 +1,6 @@
 """A native tool hub: a searchable rail of tools on the left, the selected tool's own emtk app on the right.
 
-The emtk counterpart of the Qt ``NavigationPanelTool`` shell (FCS, TTTR Tools, ...). Each panel names a child app by
+The emtk counterpart of the Qt ``NavigationPanelTool`` shell (FCS, Image Tools, ...). Each panel names a child app by
 a factory: ``"factory"`` (a callable) or ``"plugin"`` (a plugin folder under ``chisurf/plugins``, whose manifest's
 ``entrypoints.emtk`` is the factory). Children are made on first selection and kept, so a tool keeps its state while
 the user looks at another one. ``{"separator": true, "name": "Tools"}`` groups the rail under a caption.

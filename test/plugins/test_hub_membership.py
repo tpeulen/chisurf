@@ -1,6 +1,6 @@
 """Every tool has one home: a ribbon button, or a panel in exactly one hub.
 
-A hub (TTTR Tools, Image Tools, Calculators, ...) is one ribbon button standing
+A hub (Image Tools, Calculators, ...) is one ribbon button standing
 for the tools it hosts. The ribbon knows nothing about hubs: a hosted tool
 disappears from it only because its own manifest says ``menu_hidden``. So three
 things drift apart silently, and each is checked here:
@@ -100,11 +100,6 @@ def _module_refs(*paths: pathlib.Path) -> list[str]:
     return refs
 
 
-def _panels_json(rel: str) -> list[str]:
-    spec = json.loads((ROOT / rel).read_text(encoding="utf-8"))
-    return [p.get("plugin") or p["entrypoint"] for p in spec["panels"] if not p.get("separator")]
-
-
 def _declared_children() -> dict[str, list[str]]:
     """``{hub id: [child refs]}``, read from each hub's declaration."""
     from chisurf.plugins.burst.alex_suite.gui.native import STEPS as ALEX
@@ -117,7 +112,6 @@ def _declared_children() -> dict[str, list[str]]:
     from chisurf.plugins.traj.traj_tools.registry import TOOL_PANELS
 
     return {
-        "tttr_toolbox": _panels_json("tttr/tttr_toolbox/gui/panels.json"),
         "imaging_tools": [row[1] for row in IMAGING],
         "calculators": [e.widget for e in default_calculators()],
         "wizards": [e.emtk for e in default_wizards()],

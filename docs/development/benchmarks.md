@@ -820,7 +820,7 @@ done lazily on the first draw, never drawing itself. What moved, and where:
 
 * **Hubs build the tool they show on a worker thread** (`chisurf/emtk/background_build.py`):
   the first frame draws the rail and an "Opening <tool>…" placeholder, a later frame adopts
-  the tool. Used by `ToolHubApp` (tttr_toolbox, fcs_correlator/fcs_toolbox, burst_analysis,
+  the tool. Used by `ToolHubApp` (fcs_correlator/fcs_toolbox, burst_analysis,
   alex_suite), `CalculatorHubApp` (calculators, wizards, traj_tools,
   imaging_tools), the settings hub (`setup`) and `structure_tools`. A click or a restore
   still builds synchronously and joins a build under way.

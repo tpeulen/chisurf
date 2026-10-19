@@ -1,6 +1,6 @@
 """The icon a hub draws in front of a sub-tool's row: the sub-tool's own manifest icon.
 
-A hub (TTTR Tools, Image Tools, the calculators, ...) lists other plugins. Each
+A hub (Image Tools, the calculators, ...) lists other plugins. Each
 of those already declares its pictogram once, in its ``manifest.json``; reading
 it from there keeps a hub's list and the main menu showing the same picture,
 and means a hub's registry only names an ``icon`` where it wants a different one.

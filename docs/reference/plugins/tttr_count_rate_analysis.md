@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Count Rate Analysis
 description: Count rates per detector channel across many TTTR files, with mean/std and a per-file plot.
 resource: chisurf/plugins/tttr/tttr_count_rate_analysis/
-tags: [reference, plugins, tttr-count-rate-analysis, tools, tttr, analysis]
+tags: [reference, plugins, tttr-count-rate-analysis, tools, photon-data, tttr, analysis]
 anchor: plugin-tttr_count_rate_analysis
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,8 +18,8 @@ Count rates per detector channel across many TTTR files, with mean/std and a per
 | Field | Value |
 | --- | --- |
 | Plugin id | `tttr_count_rate_analysis` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Tools → TTTR → **Count Rate Analysis** |
-| Categories | Tools, TTTR, Analysis |
+| Menu path | Tools → Photon data → **Count Rate Analysis** |
+| Categories | Tools, Photon data, TTTR, Analysis |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk |
 
@@ -34,7 +34,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Intensity traces: counting photons in time bins](/concepts/intensity_traces.md)
-- **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+- **Workflow** — [The photon-data tools and count rates (Tools › Photon data)](/guides/101_photon_data_tools.md), [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
 
 ## Source
 

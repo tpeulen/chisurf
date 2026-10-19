@@ -35,8 +35,7 @@ saved as a PTU file; the photon events of the source are copied unchanged.
 
 ## Usage
 
-1. Launch from the ChiSurf menu: **TTTR > TTTR Header editor** (or inside the
-   **TTTR Tools** toolbox).
+1. Launch from the ChiSurf ribbon: **File › Data › TTTR Header editor**.
 2. Open a file: click **📂 Open** (or drag-and-drop a file onto the table) and pick
    a PTU/HT3/SPC/HDF5 file. The status line shows the detected format and tag count.
 3. View and edit tags: double-click a **Value** cell to edit it; pick the tag type

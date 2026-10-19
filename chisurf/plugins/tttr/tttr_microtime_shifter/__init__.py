@@ -13,7 +13,5 @@ from chisurf.core.plugin import load_manifest
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
     name = _manifest.display_name
-
-# Aggregated into the TTTR Tools toolbox (tttr_toolbox); hidden as a top-level
-# menu entry (also set in manifest.json) but still standalone-launchable.
-menu_hidden = True
+else:
+    name = "Tools:Photon data:Microtime Shifter"

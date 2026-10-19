@@ -2,7 +2,7 @@
 
 A plugin's manifest ``display_name`` is its address, ``"Tab:Group:Name"``. The
 first segment is the ribbon tab, the last is the button, and everything between
-is the group. Hubs (TTTR Tools, Image Tools, ...) are ordinary plugins with an
+is the group. Hubs (Image Tools, Calculators, ...) are ordinary plugins with an
 address; the tools a hub hosts are ``menu_hidden`` and reach the user through it.
 
 The ribbon builds its plugin tabs from :func:`plugin_layout`, and the layout test

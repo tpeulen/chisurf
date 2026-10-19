@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Photon Table
 description: 'Inspect the photons of a TTTR file in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter.'
 resource: chisurf/plugins/tttr/photon_table/
-tags: [reference, plugins, photon-table, tools, tttr]
+tags: [reference, plugins, photon-table, tools, photon-data, tttr]
 anchor: plugin-photon_table
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,8 +18,8 @@ Inspect the photons of a TTTR file in a table: routing channel, micro-time and m
 | Field | Value |
 | --- | --- |
 | Plugin id | `photon_table` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Tools → TTTR → **Photon Table** |
-| Categories | Tools, TTTR |
+| Menu path | Tools → Photon data → **Photon Table** |
+| Categories | Tools, Photon data, TTTR |
 | Version | 1.0.0 |
 | Surfaces | emtk |
 | State namespace | `photon_table` |
@@ -38,7 +38,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [The photon container: one measurement, one file](/concepts/photon_container.md)
-- **Workflow** — [Reading the photons of a TTTR file](/guides/108_photon_table.md), [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+- **Workflow** — [The photon-data tools and count rates (Tools › Photon data)](/guides/101_photon_data_tools.md), [Reading the photons of a TTTR file](/guides/108_photon_table.md), [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
 
 ## Source
 

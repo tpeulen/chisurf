@@ -7,9 +7,8 @@ all files. Ported to the new-style AutoForm + JSON view (``gui/``): a Qt-free
 definition page, the file list, the count-rate plot and the results table laid
 out from ``count_rate.view.json``.
 
-Aggregated into the TTTR Tools toolbox (``tttr_toolbox``); ``menu_hidden`` keeps
-it out of the ribbon but it stays importable and standalone-launchable, and the
-``count-rate`` CLI is unchanged.
+Ribbon: Tools › Photon data › Count Rate Analysis; the ``count-rate`` CLI is the
+headless path.
 
 CLI Usage::
 
@@ -25,11 +24,7 @@ from pathlib import Path
 from chisurf.core.plugin import load_manifest
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
-name = _manifest.display_name if _manifest is not None else "TTTR:Analysis:Count Rate Analysis"
-
-# Hidden from the ribbon (aggregated into the TTTR Tools toolbox); still
-# importable, standalone-launchable and CLI-exposed.
-menu_hidden = True
+name = _manifest.display_name if _manifest is not None else "Tools:Photon data:Count Rate Analysis"
 
 # Expose the plugin CLI through chisurf.core.cli.
 cli_entrypoint = "count-rate=chisurf.plugins.tttr.tttr_count_rate_analysis.cli:cli"

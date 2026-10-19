@@ -50,7 +50,7 @@ saving_projects
 94_tttr_audifier
 108_photon_table
 100_alex_creator
-101_tttr_toolbox
+101_photon_data_tools
 102_mmfdb_admin
 109_zenodo_deposit
 ```
@@ -290,10 +290,10 @@ irf_estimation
 | [The G-factor of a polarised setup](91_vv_vh_g_factor.md) | `vv_vh_g_factor` (Spectroscopy → Fluorescence decay), `csc`/`vv-vh-g-factor`, `GFactorModel` |
 | [The Settings window: one list, every settings panel](97_settings_hub.md) | `setup` (Setup → Settings), the hub that hosts every settings panel |
 | [Updating ChiSurf](90_updater.md) | `updater` (Setup → Settings → Updates), version check, changelog, Update Now |
-| [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → TTTR), `csc microtime-shift`, `core.fio.tttr_shift` |
+| [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → Photon data), `csc microtime-shift`, `core.fio.tttr_shift` |
 | [The FRET calculator](107_fret_calculator.md) | `fret_calculator` (Tools → FRET-Calculator), `fret_calculator.*` RPC, `core.algorithms` |
 | [Sampling a protein under FRET distance restraints](106_protein_monte_carlo.md) | `proteinmc` (Structure → Computation), `csc proteinmc`, `ProteinMCRunner` |
-| [Reading the photons of a TTTR file](108_photon_table.md) | `photon_table` (Tools → TTTR), `PhotonTableModel` |
+| [Reading the photons of a TTTR file](108_photon_table.md) | `photon_table` (Tools → Photon data), `PhotonTableModel` |
 
 ## Regenerating the figures
 

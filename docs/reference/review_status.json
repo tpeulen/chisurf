@@ -609,10 +609,10 @@
     "status": "ai-reviewed"
   },
   "plugins/microtime_shifter.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "ffb543cf1f34712468321c719b28019a7dc2dab95fa1e44b625df059db552faa",
+    "sha256": "73cc876736609bf651ecfa6dca7bf3e3d76eb00f7bf33eb8f6c206964c839dcd",
     "status": "ai-reviewed"
   },
   "plugins/minesweeper.md": {
@@ -672,10 +672,10 @@
     "status": "ai-reviewed"
   },
   "plugins/photon_table.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "b50019ef66bc897f94d29cf5ab7c68b0aae4eeac0f7b24031d39a0c682abe343",
+    "sha256": "460b3580d8da935de08dd3583f01cb1a0d100df3fe44126906ebcebc698f52f6",
     "status": "ai-reviewed"
   },
   "plugins/plot_settings.md": {
@@ -742,10 +742,10 @@
     "status": "ai-reviewed"
   },
   "plugins/ptu_alex_creator.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "b7ea5618b77e9010b77810a16861707935af2a099a896e7bd56d2191c58dcb32",
+    "sha256": "f30dd0b85af899b0422208bd81618ca9cce438a98b3ff960e9e7a2c0ec7b3013",
     "status": "ai-reviewed"
   },
   "plugins/quenching_estimator.md": {
@@ -903,17 +903,17 @@
     "status": "ai-reviewed"
   },
   "plugins/tttr_audifier.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "693998114a51869b2c1d96ecf6436be2a230ae7a6c4eac18373f85ed95572e58",
+    "sha256": "cd3174a0fb3c214713bbcdb6ee76006262d978d0d1a8fae25193bf3dca01ae2f",
     "status": "ai-reviewed"
   },
   "plugins/tttr_count_rate_analysis.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "31bb2284d38befb8931d5c1342496c806796b6a58292bf93a989dd6b054af806",
+    "sha256": "a67e3beac628d4960b480d4faf5841a96cd320ceeb6f4fa38f16b30c689d4c99",
     "status": "ai-reviewed"
   },
   "plugins/tttr_header_edit.md": {
@@ -956,13 +956,6 @@
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "ef98c030869656841898e1b5af179057ad58da59d1e22aa83fcd819f4daec774",
-    "status": "ai-reviewed"
-  },
-  "plugins/tttr_toolbox.md": {
-    "date": "2026-10-14",
-    "reviewer": "agent",
-    "reviewer_kind": "ai",
-    "sha256": "e29df95b269e1ce0ff15db10964e3efc9b3c6170f8be45c28fee7f9b915c24b2",
     "status": "ai-reviewed"
   },
   "plugins/updater.md": {

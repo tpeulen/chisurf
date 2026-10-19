@@ -95,7 +95,6 @@ FEEDS: dict[str, list[str]] = {
             "tttr_count_rate_analysis",
             "tttr_audifier",
             "ptu_alex_creator",
-            "tttr_toolbox",
             "fcs_channel_preset",
         )
     },

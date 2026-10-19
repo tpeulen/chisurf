@@ -7,7 +7,7 @@ tags: [guides, tttr, photons, tcspc, lifetime]
 
 # Audifier: photon streams as sound and as a waterfall
 
-**Tool:** *Tools → Photon data → TTTR Tools*, then **Audifier** (`tttr_audifier`). It turns a photon stream into sound (louder = more photons) and
+**Tool:** *Tools → Photon data → Audifier* (`tttr_audifier`). It turns a photon stream into sound (louder = more photons) and
 shows the same stream as a **waterfall**: macro-time horizontally, micro-time (or lifetime) vertically, each detector in its
 own colour. Hearing a burst, a blink or a drift is often faster than finding it in a trace.
 

@@ -167,7 +167,7 @@ $f \in \{0, 0.25, 0.5, 0.75, 1\}$.
   {src}`chisurf/plugins/core/hmm/core/analysis.py#dwell_times`.
 - Tools in ChiSurf: **Spectroscopy › Single-Molecule › Intensity trace**
   (`chisurf/plugins/tttr/intensity_trace/`) bins a TTTR file per detector,
-  histograms the counts and fits an HMM; **Tools › TTTR › Count Rate Analysis**
+  histograms the counts and fits an HMM; **Tools › Photon data › Count Rate Analysis**
   (`chisurf/plugins/tttr/tttr_count_rate_analysis/`).
 
 ## References

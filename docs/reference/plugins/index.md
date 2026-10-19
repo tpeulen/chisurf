@@ -231,12 +231,6 @@ Of the **126 plugins**, **90** build their interface from declarative AutoForm s
 | [Spectra Downloader](spectra_downloader.md) | Download, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources) |
 | [Wizards](wizards.md) | Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view. |
 
-## Tools → Converter
-
-| Plugin | Summary |
-| --- | --- |
-| [ALEX Creator](ptu_alex_creator.md) *(hidden)* | Convert ALEX macro-time modulation into micro-time (single, batch or merged), for PIE-style analysis of .sm and other TTTR files. |
-
 ## Tools → Miscellaneous
 
 | Plugin | Summary |
@@ -257,7 +251,11 @@ Of the **126 plugins**, **90** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [TTTR Tools](tttr_toolbox.md) | Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File › Data. |
+| [ALEX Creator](ptu_alex_creator.md) | Convert ALEX macro-time modulation into micro-time (single, batch or merged), for PIE-style analysis of .sm and other TTTR files. |
+| [Audifier](tttr_audifier.md) | Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfall preview. |
+| [Count Rate Analysis](tttr_count_rate_analysis.md) | Count rates per detector channel across many TTTR files, with mean/std and a per-file plot. |
+| [Microtime Shifter](microtime_shifter.md) | Apply global and per-channel micro-time shifts to TTTR files. |
+| [Photon Table](photon_table.md) | Inspect the photons of a TTTR file in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter. |
 
 ## Tools → System
 
@@ -271,11 +269,7 @@ Of the **126 plugins**, **90** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [Audifier](tttr_audifier.md) *(hidden)* | Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfall preview. |
-| [Count Rate Analysis](tttr_count_rate_analysis.md) *(hidden)* | Count rates per detector channel across many TTTR files, with mean/std and a per-file plot. |
 | [LUT Tools](tttr_lut_tools.md) *(hidden)* | Compute TTTR microtime LUTs and create channel LUT settings in one dockable workspace. |
-| [Microtime Shifter](microtime_shifter.md) *(hidden)* | Apply global and per-channel micro-time shifts to TTTR files. |
-| [Photon Table](photon_table.md) *(hidden)* | Inspect the photons of a TTTR file in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter. |
 
 ## Tools → Views
 

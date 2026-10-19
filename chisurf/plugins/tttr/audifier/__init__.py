@@ -7,8 +7,7 @@ per-detector/channel mixer, declarative audio + waterfall parameter panels, and
 the reusable general ``waterfall`` section, laid out from
 ``audifier.view.json``.
 
-Aggregated into the TTTR Tools toolbox (``tttr_toolbox``); ``menu_hidden`` keeps
-it out of the ribbon but it stays importable and standalone-launchable.
+Ribbon: Tools › Photon data › Audifier.
 """
 
 from __future__ import annotations
@@ -27,15 +26,13 @@ from chisurf.plugins.tttr.audifier.lifetime_analysis import (
 )
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
-name = _manifest.display_name if _manifest is not None else "TTTR:Analysis:Audifier"
-menu_hidden = True
+name = _manifest.display_name if _manifest is not None else "Tools:Photon data:Audifier"
 
 icon = "🎵"
 
 
 __all__ = [
     "name",
-    "menu_hidden",
     "icon",
     "lifetime_spectrum_ilt",
     "compute_lifetime_waterfall",

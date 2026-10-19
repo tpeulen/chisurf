@@ -3658,40 +3658,28 @@ guides/figures/traj_tools_fret.png:
   pages:
   - docs/guides/81_trajectory_tools.md
 
-guides/figures/tttr_toolbox.png:
-  caption: TTTR Tools with Count Rate Analysis computed on three SPC-132 dsDNA files through the shared setup.
+guides/figures/photon_data_ribbon.png:
+  caption: The Tools ribbon tab of the emtk shell; the Photon data group holds the five photon-level TTTR tools.
   kind: screenshot
-  origin: docs/guides/screenshots/tttr_toolbox_shot.py::main
+  origin: docs/guides/screenshots/photon_data_tools_shot.py::ribbon
   recipe: >-
     From the repository root run IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d)
-    MMFDB_SETTINGS_DIR=$(mktemp -d) python docs/guides/screenshots/tttr_toolbox_shot.py.
-    It loads detector green (routing 0,1, SPC-130) at 0. Setup, queues m000-m002.spc of
-    the bundled bh_spc132_sm_dna data in Count Rate Analysis, presses Calculate and grabs
-    the hub at 1280x860.
+    MMFDB_SETTINGS_DIR=$(mktemp -d) python docs/guides/screenshots/photon_data_tools_shot.py.
+    It builds the emtk shell at 1440x900 with the real painter, clicks the Tools ribbon tab
+    and grabs the window.
   pages:
-  - docs/guides/101_tttr_toolbox.md
+  - docs/guides/101_photon_data_tools.md
 
-guides/figures/tttr_toolbox_shared_audifier.png:
+guides/figures/photon_data_count_rate.png:
+  caption: Count Rate Analysis on its own after Calculate on three SPC-132 dsDNA files, with its own detector editor.
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/photon_data_tools_shot.py::count_rate
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/101_tttr_toolbox.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/tttr_toolbox_shared_audifier.png.
+    Same command as photon_data_ribbon.png. It loads detector green (routing 0,1, SPC-130)
+    into the tool's own detector editor, queues m000-m002.spc of the bundled
+    bh_spc132_sm_dna data, presses Calculate and grabs the window at 1280x860.
   pages:
-  - docs/guides/101_tttr_toolbox.md
-
-guides/figures/tttr_toolbox_shared_setup.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/101_tttr_toolbox.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/tttr_toolbox_shared_setup.png.
-  pages:
-  - docs/guides/101_tttr_toolbox.md
+  - docs/guides/101_photon_data_tools.md
 
 guides/figures/updater_checked.png:
   kind: screenshot

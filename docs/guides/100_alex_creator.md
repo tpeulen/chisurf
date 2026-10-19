@@ -21,7 +21,7 @@ plateaus; choosing $T$ and $s$ well means the border between them contains no ph
 
 ## 1. Load a file
 
-Open **Tools → Photon data → TTTR Tools**, then select **ALEX Creator**. Press **Open…** and choose a TTTR file (`.sm`, `.ptu`, `.ht3`, ...), or
+Open **Tools → Photon data → ALEX Creator**. Press **Open…** and choose a TTTR file (`.sm`, `.ptu`, `.ht3`, ...), or
 type or paste its path into **File** and press Enter, or drop the file on the window. The photon count appears under
 the modulation fields and the folded histogram on the right; excitation regions are inferred at once (section 5).
 

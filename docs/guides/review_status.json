@@ -63,17 +63,17 @@
     "status": "ai-reviewed"
   },
   "100_alex_creator.md": {
-    "date": "2026-10-14",
-    "reviewer": "agent",
-    "reviewer_kind": "ai",
-    "sha256": "1c43cfb8f53bdee028aed11ce1c8e8022293f44dd35431d8897ebbe983ec4c44",
-    "status": "ai-reviewed"
-  },
-  "101_tttr_toolbox.md": {
     "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "138cc2f2b86d3a4a50ff2b948c3f1abaeb4b558b9bfda0ec6d3f58be5edb9766",
+    "sha256": "916cccc9663603f8625c9f31cc1b782d0c4ae21bf6398dedf9b134daf8cb62a0",
+    "status": "ai-reviewed"
+  },
+  "101_photon_data_tools.md": {
+    "date": "2026-10-19",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "6646f0274cd1994f2c211799363e0f65527500f7906908292b8ba7949ccd8ab2",
     "status": "ai-reviewed"
   },
   "102_mmfdb_admin.md": {
@@ -119,10 +119,10 @@
     "status": "ai-reviewed"
   },
   "108_photon_table.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "2a5e3b3d0162c6d3544b13316763073ffd338aecfe189ee0a29731e761a300e9",
+    "sha256": "cb458dd1e3cfa37e1f4ccb363ed64e328a02c0e7ea74e262046988d4b63f0ac2",
     "status": "ai-reviewed"
   },
   "10_lifetime_anisotropy_fitting.md": {
@@ -140,10 +140,10 @@
     "status": "ai-reviewed"
   },
   "12_handling_tttr_files.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "4137c7eaab916f27112c998d4b898c38589435bce27cc85521f05cc3ca4c1005",
+    "sha256": "6b83a9a05ee20072f4cf5492e1bd196a18ac39da86643f45db614fc87110ca34",
     "status": "ai-reviewed"
   },
   "13_burst_identification.md": {
@@ -287,10 +287,10 @@
     "status": "ai-reviewed"
   },
   "33_timestamps_and_bursts.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "c816eabb68b99065da7d3304f6fb97d0161a3fd4145ba5c05358bcf6175911f3",
+    "sha256": "8a76b7f8a2dfdf8d062844c9137abc03061c72e4147e917d0906bc6d7c0d764d",
     "status": "ai-reviewed"
   },
   "34_exporting_burst_data.md": {
@@ -658,10 +658,10 @@
     "status": "ai-reviewed"
   },
   "88_microtime_shifter.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "28cc3ab9f1aa5b0b741cbdeeae2ebe7dfb6b2245687e99e3addc5d32f58f9c18",
+    "sha256": "dbcf8834f6fc314f78d6aac8d14944bce9844068ae9643dfdb0c59e5c4570625",
     "status": "ai-reviewed"
   },
   "89_microtime_histogram.md": {
@@ -700,10 +700,10 @@
     "status": "ai-reviewed"
   },
   "94_tttr_audifier.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "20f6178968941478b0b06de3953e6946bf1a458d8bf454ac61c3d8c9357736b0",
+    "sha256": "ad5e9f7a3651d2c20d7782f054116a591385d54256e0e9e71f8a0fdb29ca2ecc",
     "status": "ai-reviewed"
   },
   "95_games.md": {

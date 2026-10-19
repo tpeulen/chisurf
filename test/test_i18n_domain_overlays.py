@@ -27,7 +27,6 @@ LOCALES = ("de", "fr", "es", "pt", "ru")
 OVERLAYS = {
     "chisurf.emtk.shared_i18n": "_ROWS",
     "chisurf.plugins.tttr.ptu_alex_creator.gui.translations": "ROWS",
-    "chisurf.plugins.tttr.tttr_toolbox.gui.translations": "ROWS",
 }
 
 _BASELINE = r"""

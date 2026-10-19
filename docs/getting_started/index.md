@@ -102,7 +102,7 @@ Analysis are teal (fitting), Log / Console indigo.
 | olive | Kinetics | *Spectroscopy → Kinetics* (Hidden Markov model) |
 | brown | Structure | *Structure* (ChiMOL, FRET docking, QuEst, HydroPro, Traj Tools) |
 | teal | Fitting | Read data, Datasets, Analysis, Plot settings, fit windows |
-| steel blue | Tools | *Tools* (TTTR Tools, calculators, views, system) |
+| steel blue | Tools | *Tools* (photon data, calculators, views, system) |
 | warm grey | File and setup | *File* (Settings, File tools, projects) |
 | indigo | Log and console | Log, Console |
 

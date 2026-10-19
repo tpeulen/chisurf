@@ -266,10 +266,10 @@
     "status": "ai-reviewed"
   },
   "intensity_traces.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "2091c2d3dbf4440f1f658c78a457caf4965ed95db47ab9230d27b42398879e87",
+    "sha256": "d90813a872c97d0d49510101fddba8c7a3fa74a8fdeeefeab6d9f8e017fdb640",
     "status": "ai-reviewed"
   },
   "kappa2_orientation.md": {
@@ -476,10 +476,10 @@
     "status": "ai-reviewed"
   },
   "tttr_stream_tools.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "e50a62432b042977a2db9a4ef996a7f1b66ae8d3cb209a3ea038fb271269a554",
+    "sha256": "182a966c1d3c6618c52c94d04513c47fb2d448373ca89173fc060ed1f0f0e913",
     "status": "ai-reviewed"
   },
   "us_alex.md": {

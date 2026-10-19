@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Microtime Shifter
 description: Apply global and per-channel micro-time shifts to TTTR files.
 resource: chisurf/plugins/tttr/tttr_microtime_shifter/
-tags: [reference, plugins, microtime-shifter, tools, tttr, editor]
+tags: [reference, plugins, microtime-shifter, tools, photon-data, tttr, editor]
 anchor: plugin-microtime_shifter
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,8 +18,8 @@ Apply global and per-channel micro-time shifts to TTTR files.
 | Field | Value |
 | --- | --- |
 | Plugin id | `microtime_shifter` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Tools → TTTR → **Microtime Shifter** |
-| Categories | Tools, TTTR, Editor |
+| Menu path | Tools → Photon data → **Microtime Shifter** |
+| Categories | Tools, Photon data, TTTR, Editor |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, services |
 | State namespace | `microtime_shifter` |
@@ -95,7 +95,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Micro-time shift: putting detectors on one time axis](/concepts/microtime_shift.md)
-- **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+- **Workflow** — [The photon-data tools and count rates (Tools › Photon data)](/guides/101_photon_data_tools.md), [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
 
 ## Source
 
