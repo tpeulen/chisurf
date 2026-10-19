@@ -1,5 +1,5 @@
 {
-  "_comment": "Declarative AutoForm layout for the MD-Converter (trajectory converter) tool. An Input panel with the file rows (topology, trajectory, target folder — custom `traj_convert_io` section, browse respects the folder toggle), the folder toggle and the frame range/stride; an Output panel with the base name, extension combo, split toggle and the `▶ Convert` action; a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former convert_structures.ui.",
+  "_comment": "Declarative AutoForm layout for the MD-Converter (trajectory converter) tool. An Input panel with the file rows (topology, trajectory, target folder — custom `traj_convert_io` section, browse respects the folder toggle), the folder toggle and the frame range/stride; an Output panel with the base name, extension combo, split toggle and the `▶ Convert` action; a live log rendered by the built-in `info` section bound to the view-model's `log_html`.",
   "window": {"width": 1100, "height": 720},
   "sections": [
     {

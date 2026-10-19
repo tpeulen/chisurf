@@ -7238,9 +7238,10 @@ These are the patterns; each caused more than one bug.
 - **Plugin menu-callback contract.** The menu system `exec`s a plugin file with
   `__name__ == "plugin"`; without an explicit `if __name__ == "plugin": load()`
   guard the plugin silently does nothing.
-- **Plugin `.ui` paths must be plugin-relative and existence-checked** (cached
-  resolver) before `uic.loadUi`; stale relative paths break silently after folder
-  moves. Contract tests cover this — keep them.
+- **Plugin resource paths must be plugin-relative and existence-checked**; stale
+  relative paths break silently after folder moves. (The `.ui` path contract
+  tests went with the `.ui` forms, 2026-10-19; `test/test_no_ui_files.py`
+  keeps any Designer file or loader from coming back.)
 - **Batch/action dispatch must not swallow per-item exceptions.** A batch
   `fit.add` that swallowed callback errors reported success while creating no
   fits. Route default actions to `cs.current_fit`, not fit index 0.

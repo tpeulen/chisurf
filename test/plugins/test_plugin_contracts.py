@@ -1,172 +1,20 @@
 # Consolidated test file: test_plugin_contracts.py
 
 
-# --- FROM test_plugin_ui_paths_contract.py ---
-import ast
 import json
 import pathlib
-import re
 
 import chisurf.plugins
 from chisurf.core.plugin.manifest import validate_manifest
 
 
-def _extract_string_constant(node):
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return node.value
-    if isinstance(node, ast.Str):
-        return node.s
-    return None
-
-
-def _resolve_decorator_base(py_file: pathlib.Path, path_expr: str, plugins_root: pathlib.Path):
-    if not path_expr:
-        return py_file.parent
-    if (
-        "chisurf.core.settings.plugin_path" in path_expr
-        or "cs.core.settings.plugin_path" in path_expr
-    ):
-        parts = [a or b for a, b in re.findall(r'"([^"]+)"|\'([^\']+)\'', path_expr)]
-        base = plugins_root
-        for part in parts:
-            base = base / part
-        return base
-    return None
-
-
-def test_all_plugin_init_with_ui_paths_exist():
-    repo_root = pathlib.Path(__file__).resolve().parents[2]
-    plugins_root = repo_root / "chisurf" / "plugins"
-    missing = []
-    unresolved = []
-
-    for py_file in plugins_root.rglob("*.py"):
-        try:
-            source = py_file.read_text(encoding="utf-8")
-            tree = ast.parse(source, filename=str(py_file))
-        except Exception:
-            continue
-
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
-                continue
-            fn = node.func
-            fn_name = (
-                fn.attr
-                if isinstance(fn, ast.Attribute)
-                else (fn.id if isinstance(fn, ast.Name) else "")
-            )
-            if fn_name != "init_with_ui":
-                continue
-
-            ui_filename = _extract_string_constant(node.args[0]) if node.args else None
-            path_expr = ""
-            for kw in node.keywords:
-                if kw.arg == "ui_filename":
-                    ui_filename = _extract_string_constant(kw.value) or ui_filename
-                elif kw.arg == "path":
-                    path_expr = ast.get_source_segment(source, kw.value) or ""
-
-            if not ui_filename or not ui_filename.endswith(".ui"):
-                continue
-
-            base = _resolve_decorator_base(py_file, path_expr, plugins_root)
-            if base is None:
-                unresolved.append((str(py_file), ui_filename, path_expr))
-                continue
-
-            ui_path = base / ui_filename
-            if not ui_path.exists():
-                missing.append((str(py_file), str(ui_path), path_expr))
-
-    assert not unresolved, f"Unresolved init_with_ui path expressions: {unresolved}"
-    assert not missing, f"Missing plugin .ui files: {missing}"
-
-
-def _resolve_loadui_base(py_file: pathlib.Path, arg_source: str) -> pathlib.Path:
-    """Return the directory a direct ``loadUi`` argument resolves its name against.
-
-    ``Path(__file__).parents[n]`` indexes exactly like ``py_file.parents[n]``
-    (``parents[0]`` is the module's own directory), so a call spelled
-    ``loadUi(Path(__file__).parents[1] / "wizard.ui")`` looks one level above the
-    module. Without such an expression the name is taken next to the module.
-
-    Parameters
-    ----------
-    py_file : pathlib.Path
-        The module containing the ``loadUi`` call.
-    arg_source : str
-        Source text of the call's first argument.
-
-    Returns
-    -------
-    pathlib.Path
-        Directory the ``.ui`` file name is joined onto.
-    """
-    match = re.search(r"parents\[(\d+)\]", arg_source)
-    if match:
-        index = int(match.group(1))
-        if index < len(py_file.parents):
-            return py_file.parents[index]
-    return py_file.parent
-
-
-def test_plugin_direct_loadui_string_targets_exist():
-    repo_root = pathlib.Path(__file__).resolve().parents[2]
-    plugins_root = repo_root / "chisurf" / "plugins"
-    missing = []
-
-    for py_file in plugins_root.rglob("*.py"):
-        try:
-            source = py_file.read_text(encoding="utf-8")
-            tree = ast.parse(source, filename=str(py_file))
-        except Exception:
-            continue
-
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
-                continue
-            fn = node.func
-            fn_name = (
-                fn.attr
-                if isinstance(fn, ast.Attribute)
-                else (fn.id if isinstance(fn, ast.Name) else "")
-            )
-            if fn_name != "loadUi" or not node.args:
-                continue
-
-            arg_source = ast.get_source_segment(source, node.args[0]) or ""
-            candidates = [
-                a or b for a, b in re.findall(r'"([^"]+\.ui)"|\'([^\']+\.ui)\'', arg_source)
-            ]
-            base = _resolve_loadui_base(py_file, arg_source)
-            for ui_name in candidates:
-                ui_path = base / ui_name
-                if not ui_path.exists():
-                    missing.append((str(py_file), ui_name, str(ui_path)))
-
-    assert not missing, f"Missing plugin .ui files in direct loadUi calls: {missing}"
-
-
-def test_loadui_base_follows_the_parents_index():
-    """``parents[n]`` in the call expression moves the search directory up n levels."""
-    py_file = pathlib.Path("/repo/chisurf/plugins/demo/gui/tool.py")
-
-    assert _resolve_loadui_base(py_file, '"tool.ui"') == py_file.parent
-    assert _resolve_loadui_base(py_file, 'Path(__file__).parent / "tool.ui"') == py_file.parent
-    assert _resolve_loadui_base(py_file, 'Path(__file__).parents[0] / "tool.ui"') == py_file.parent
-    assert (
-        _resolve_loadui_base(py_file, 'Path(__file__).parents[1] / "wizard.ui"')
-        == py_file.parent.parent
-    )
-
-
 def test_trajectory_manifests_drive_plugin_discovery():
-    """Verify trajectory manifests are discovered, each its own Structure › Trajectory entry."""
+    """Verify trajectory manifests are discovered and hidden as intended."""
     repo_root = pathlib.Path(__file__).resolve().parents[2]
     traj_root = repo_root / "chisurf" / "plugins" / "traj"
 
     expected = {
+        "traj_tools": "Structure:Trajectory:Traj Tools",
         "traj_align": "Structure:Trajectory:Align",
         "traj_convert": "Structure:Trajectory:Convert",
         "traj_energy_calculator": "Structure:Trajectory:Energy Calculator",
@@ -186,8 +34,9 @@ def test_trajectory_manifests_drive_plugin_discovery():
     for manifest_id, display_name in expected.items():
         info = infos[manifest_id]
         assert info["plugin_name"] == display_name
-        # No hub: every trajectory tool is its own ribbon button (Structure › Trajectory).
-        assert not info["menu_hidden"]
+        # ``traj_tools`` is the family's ribbon button (Structure › Trajectory);
+        # the tools it hosts are menu-hidden and reached through it.
+        assert info["menu_hidden"] == (manifest_id != "traj_tools")
         assert not info["cli_only"]
         assert info["module_path"].startswith("chisurf.plugins.traj.")
 

@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour for the FCS curve merger. The page is a .ui-loaded QWizardPage, so steps target widgets by objectName -- lineEdit (the folder), tableWidget (the per-curve Use column), toolButton_3 (save the merged curve). There is no view spec. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "_comment": "Guided tour for the FCS curve merger. Steps keep the historical target names lineEdit (the folder), tableWidget (the per-curve Use column) and toolButton_3 (save the merged curve); gui/app.py TOUR_KEYS maps them onto the fields of gui/fcs_merger_emtk.view.json. Read by chisurf.gui.widgets.tools.guided_tour.",
   "steps": [
     {
       "title": "The averaging is arithmetic — the choosing is the work",

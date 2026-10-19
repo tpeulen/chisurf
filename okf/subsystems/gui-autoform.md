@@ -303,9 +303,8 @@ controls with no extra vertical space), `help` (a `?` modal button),
 `embed` takes either `widget` (a dotted import path — a *fresh* instance is
 constructed) or **`attr`** (the name of a model attribute or zero-argument method
 holding a widget that already exists, which is adopted as it is). The second is
-what a panel loaded from a `.ui` file needs: its controls are built by `uic`,
-wired by `objectName` and referenced from a dozen places, so constructing a
-second copy yields a panel-shaped decoy with nothing connected to it. That is how
+what a hand-built panel needs: its controls already exist, are wired by name
+and referenced from a dozen places, so constructing a second copy yields a panel-shaped decoy with nothing connected to it. That is how
 ndX's Histogram block became foldable without rebuilding thirty controls its
 mixins reach by name. Pair it with `"expanding": false` for a compact block of
 controls, which should stay at the height it needs rather than absorb the dock's
@@ -488,14 +487,6 @@ the model), and `target` (a model attribute holding a fraction 0–1 or percent,
 polled on refresh) for progress a model owns rather than a GUI loop drives; a
 live task always wins over a stale model value.
 
-Tools whose layout comes from a `.ui` file cannot declare that widget without a
-Designer promotion, so they call `adopt_progress_bar(self)` after `loadUi`: the
-child named `progressBar` is swapped in place, keeping its position (grid cells
-and spans included) and its attribute name. The replacement answers the plain
-`QProgressBar` calls (`setValue`, `setRange`, …), so the tool's existing code is
-untouched — that façade is what makes adopting the shared bar a one-line change
-rather than a rewrite, and it turns the tool into a progress host at the same
-time.
 
 A `panel`'s (or `parameter_group_table`'s / `dynamic_group`'s)
 `collapsed_when: {target?, attr, equals|not_equals}` folds it based on a bound
@@ -654,8 +645,7 @@ name, so a collision costs at most the constant, never the data.
 **It is reached declaratively**: a `value` section of `kind: "expression"` renders
 an `ExpressionInput`, so *any* view spec gets a validated, previewed formula field
 with parameter discovery — not only the parse models. That is what retired
-`gui/widgets/models/parse/widget.py::ParseFormulaWidget` and the last `.ui` under
-`models/`; the badge and the LaTeX preview were the only reason that file
+`gui/widgets/models/parse/widget.py::ParseFormulaWidget`; the badge and the LaTeX preview were the only reason that file
 survived its model becoming data-described. **Do not re-implement the check at a
 call site** — a second answer to "is this formula safe" is worse than none.
 The field takes a whole form row (`_autoform_full_row`): packed two-up beside
@@ -805,32 +795,16 @@ Three things follow from this and are easy to undo by accident:
 The migration record, including what each model needed and what its port found,
 is [PRD-38](/prds/prd-38.md).
 
-## Runtime `.ui` forms are prototyping-only (migration target: removal)
+## No `.ui` forms
 
-The **28** Qt Designer `.ui` files still loaded at runtime via `uic.loadUi`
-(`chisurf/gui/decorators.py:_compiled_ui_class`) — down from 43, with all six
-under `models/` gone — are a **prototyping-era carry-over,
-not a supported UI layer** — AutoForm + `*.view.json` is the one intended UI
-mechanism. Each `.ui` form should be ported to a `view.json` (+ a view-model where
-it carries logic) and the `.ui` deleted; the target end-state is **zero runtime
-`.ui` files**. Reasons this is debt, not just style:
-
-- **No live retranslation.** `uic.loadUi` binds every string at build time, so an
-  open `.ui` form cannot follow a UI-language switch without the
-  reparse-and-reapply shim `chisurf/gui/retranslate.py` — whereas AutoForm reads
-  its text through the [i18n seam](/subsystems/i18n.md) on every build and
-  retranslates for free. (This is what motivated flagging the forms: see
-  [PRD-63](/prds/prd-63.md).)
-- **Two divergent UI paths** — data-driven specs vs. hand-drawn XML — double the
-  surface for glossary/terminology drift ([I18N-01](/specs/assessment.md#i18n-01)),
-  tooltip/label conventions, and theming.
-- **Opaque to tooling** — `.ui` XML is invisible to the model/UI dataspec, the
-  parameter registry, and the AutoForm section library (tables, `path_list`,
-  `image`, `waterfall`, …) that already replace most hand-built widgets.
-
-Tracked as [INC-13](/specs/assessment.md#inc-13). Until a form is migrated, keep
-it on the [`retranslate_from_ui`](/subsystems/i18n.md) path so language switching
-still works.
+There are no Qt Designer `.ui` files and no loader for them: every form is an
+AutoForm `*.view.json` drawn by emtk, so text goes through the
+[i18n seam](/subsystems/i18n.md) on every build and one UI path carries the
+glossary, tooltip and theming conventions. [INC-13](/specs/assessment.md#inc-13)
+(43 runtime forms at its peak) is closed. `test/test_no_ui_files.py` fails on any
+`*.ui` file in the tree, any `loadUi`-style loader name or `uic` import, any
+`".ui"` suffix literal in Python, and any `*.ui` packaging glob; it has no
+allow-list.
 
 ## UI convention: space-efficient labels + tooltips (general rule)
 

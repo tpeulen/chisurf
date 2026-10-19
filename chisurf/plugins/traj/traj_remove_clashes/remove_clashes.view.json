@@ -1,5 +1,5 @@
 {
-  "_comment": "Declarative AutoForm layout for the Remove-Clashed-Frames tool. A single panel with the trajectory picker + save-clash-free button (custom section, H5 browse/drag-drop), the mdtraj atom-selection expression, the read stride and the minimum clash distance, above a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former remove_clashes.ui.",
+  "_comment": "Declarative AutoForm layout for the Remove-Clashed-Frames tool. A single panel with the trajectory picker + save-clash-free button (custom section, H5 browse/drag-drop), the mdtraj atom-selection expression, the read stride and the minimum clash distance, above a live log rendered by the built-in `info` section bound to the view-model's `log_html`.",
   "window": {"width": 1100, "height": 720},
   "sections": [
     {

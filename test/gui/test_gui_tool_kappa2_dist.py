@@ -2,10 +2,7 @@
 
 The tool is an emtk app over a plain model object: the inputs are named
 fields, ``compute`` runs the selected model, and the outputs are fields again.
-This used to poke ``doubleSpinBox_10`` and friends — the names Designer gave
-the widgets of a ``.ui`` file that no longer exists — so every test errored
-with ``'Kappa2Dist' object has no attribute 'doubleSpinBox_2'``. The numbers
-asserted here are the ones that file asserted.
+The numbers asserted here are the ones the retired Qt widget's tests asserted.
 """
 
 import os

@@ -1,9 +1,8 @@
 """App-wide translation seam (Qt-free).
 
-ChiSurf's user-facing text lives in three places: the data-driven ``*.view.json``
+ChiSurf's user-facing text lives in two places: the data-driven ``*.view.json``
 (AutoForm) and ``manifest.json`` plugin specs parsed under :mod:`chisurf.core`,
-the runtime-loaded ``.ui`` files, and imperative ``setText``/``QMessageBox`` call
-sites in the GUI. This module is the single indirection every *data-driven*
+and imperative ``i18n.tr(...)`` call sites in the GUI code. This module is the single indirection every *data-driven*
 string flows through so the whole modern UI can be translated from one place.
 
 The core layer must stay import-clean of Qt (the headless/server path in

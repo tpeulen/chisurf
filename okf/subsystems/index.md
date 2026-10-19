@@ -29,7 +29,7 @@
 * [emtk UI action vocabulary](ui-vocabulary.md) - One icon, label, tooltip and widget kind for Help, Guide, Sound, Restart, Run, Save, Open, Browse, Export, Copy, Reset, Cancel, Close and Load example in every emtk app, drawn by one helper and guarded.
 * [Help buttons and guided tours](gui-help-and-guides.md) - The `?` and **Guide** pair every modern plugin carries, the one mixin that attaches them to any tool, and the shrinking allow-list that enforces it.
 * [The documentation browser](documentation-browser.md) - The in-application help window: a tree read from the documentation's own toctrees, ranked full-text search, and a renderer that typesets the formulas and resolves the cross-references instead of showing their markup.
-* [Internationalisation](i18n.md) - The Qt-free translation seam, QTranslator bootstrap, string-extraction kit, and view.json/manifest/.ui localization.
+* [Internationalisation](i18n.md) - The Qt-free translation seam, emtk catalogue bootstrap, string-extraction kit, and view.json/manifest localization.
 * [Retiring numba](numba-retirement.md) - Why numba is leaving the shipped package, the five routes a kernel can take out of it, the profile that shows it is already off the fitting hot path, and the shrinking allow-list that tracks the work.
 * [Retiring matplotlib](matplotlib-retirement.md) - What matplotlib was doing in the tree (colours, static figures, two plots, LaTeX images), where each use goes -- emtk.colormaps, emtk.figure, chiplot, an emtk math typesetter -- and the shrinking allow-list that tracks it.
 * [Operation history](history.md) - Append-only action history, headless replay, and MMFDB event-log projection.

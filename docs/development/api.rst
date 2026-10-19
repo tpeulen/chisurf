@@ -100,8 +100,7 @@ Source resolution and shell data
 --------------------------------
 
 Widget source resolvers use the Python class and its inspectable source line.
-Obsolete Designer-path fallback metadata is no longer produced or read. The
-existing local-file drag injector retains its supplied target list, sorted
-opt-out and once-only callback after mutation. The deferred main shell XML is
-installed explicitly as ``chisurf.gui/gui.ui``; broad ``*.ui`` inclusion is
-removed. New surfaces remain native AutoForm specs.
+The existing local-file drag injector retains its supplied target list, sorted
+opt-out and once-only callback after mutation. Every surface is a native
+AutoForm spec drawn by emtk; nothing is loaded from a Designer file and none is
+packaged.

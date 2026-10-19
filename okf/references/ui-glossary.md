@@ -72,7 +72,7 @@ Deliberately **not** changed (and why):
 
 Deferred to the [cleanup backlog](/specs/assessment.md):
 
-- Hand-built `.ui` files still use "Micro time" (two words), "TAC", "Channel
+- Hand-built form text used "Micro time" (two words), "TAC", "Channel
   Select", and several file-open spellings/typos ("resoltion", "distirbution").
-  These converge to the canonical terms when each `.ui` is migrated to AutoForm
-  or edited.
+  The `.ui` forms are gone (all AutoForm now); any of these that survive in a
+  `view.json` or an `i18n.tr` call converge to the canonical terms when edited.

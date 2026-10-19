@@ -1,5 +1,5 @@
 {
-  "_comment": "Declarative AutoForm layout for the Join-Trajectories tool. A single panel with the two trajectory pickers + save-joined button (custom section, H5 browse/drag-drop), the join-mode radio pair, the per-trajectory time-reversal toggles and the write block size, above a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former join_traj.ui.",
+  "_comment": "Declarative AutoForm layout for the Join-Trajectories tool. A single panel with the two trajectory pickers + save-joined button (custom section, H5 browse/drag-drop), the join-mode radio pair, the per-trajectory time-reversal toggles and the write block size, above a live log rendered by the built-in `info` section bound to the view-model's `log_html`.",
   "window": {"width": 1100, "height": 720},
   "sections": [
     {

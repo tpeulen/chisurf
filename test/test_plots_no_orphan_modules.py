@@ -6,8 +6,7 @@ in a model widget's ``plot_classes`` (or imported by
 so a module nobody imports is dead — and dead plot modules are not harmless.
 They keep obsolete dependencies alive: ``av_plot.py`` was the last
 ``pyqtgraph.opengl`` entry on the PRD-64 migration tracker, and
-``surfaceplot/`` carried a runtime ``.ui`` form plus the guiqwt compatibility
-shim, both of which the repo is removing.
+``surfaceplot/`` carried the guiqwt compatibility shim, which the repo removed.
 
 This test fails when a module under ``chisurf/emtk/fit_pages/pages`` has no importer
 anywhere in ``chisurf/`` outside its own subtree. Fix it by wiring the plot up

@@ -1,5 +1,5 @@
 {
-  "_comment": "Declarative AutoForm layout for the Align-Trajectory tool. A single panel with the trajectory picker + save-aligned button (custom section, H5 browse/drag-drop), the atom-selection text field and read stride, above a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former align_trajectory.ui.",
+  "_comment": "Declarative AutoForm layout for the Align-Trajectory tool. A single panel with the trajectory picker + save-aligned button (custom section, H5 browse/drag-drop), the atom-selection text field and read stride, above a live log rendered by the built-in `info` section bound to the view-model's `log_html`.",
   "window": {"width": 1100, "height": 720},
   "sections": [
     {

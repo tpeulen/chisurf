@@ -210,7 +210,7 @@ own startup stages (item 5): S5 is done.
    the S3 and S4 before-halves (`shell_s3_qt_inventory.json`, `shell_s4_qt_inventory.json`; PNGs in
    `renders/w9_s3/`, `renders/w9_s4/`). Run S4 with the env's python directly, not `conda run` (which exited 1
    with no trace once). Trap: the ribbon replaces the Qt menu bar widget, so `QMainWindow.menuBar()` segfaults.
-   The scripts read the `.ui`'s own `menuBar` attribute instead.
+   The scripts read the Qt main window's own `menuBar` attribute instead.
 8. Measure: a file dropped from the OS arrives with no pointer moves (macOS sends none during a drag), so the shell
    routes it by the drop position that emtk now delivers first (`CanvasEvents.files_dropped`, emtk `ee4c76a`), to
    the dock under the pointer, not the one with the keys. `RealisticDriver.drop_files` reproduces it; the imaging
@@ -220,8 +220,8 @@ own startup stages (item 5): S5 is done.
    only data (an import-free `__init__.py`, `i18n/*.ts`, `resources/icons/`); `python -m chisurf` opens the emtk
    shell and `--help` prints the usage without opening a window; `--qt` is gone. Re-derive: `grep -rlE
    '^\s*(from|import)\s+(qtpy|PyQt|PySide|pytestqt)' chisurf | wc -l` (0; guard `test/test_no_qt_imports.py`,
-   lazy imports and `emtk.qt_host` included, no allow-list); `grep -v '^#' test/ui_file_allowlist.txt | grep -c .`
-   (0). The Qt shell's last control inventory is frozen in
+   lazy imports and `emtk.qt_host` included, no allow-list); `test/test_no_ui_files.py`
+   (no `.ui` file, loader, `uic` import or packaging glob; no allow-list, 2026-10-19). The Qt shell's last control inventory is frozen in
    `okf/plugins/emtk-ports/shell/retire_qt_before.json` (recorded at 0108fa146; no control drift against
    2026-10-11) and `test_emtk_shell_whole_parity.py` passes against it with `KNOWN_GAPS` empty. Before merging:
    (a) `pixi install` (or `pixi lock`) to regenerate `pixi.lock` without qtpy / pyqt / pytest-qt / latexify-py;

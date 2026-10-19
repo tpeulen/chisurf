@@ -7,7 +7,7 @@ docs are generated from it and the web UI reads it. This module makes the
 form read it too, by exposing a project dict as a flat set of attributes that
 ChiSurf's AutoForm can bind to.
 
-That removes the thing the `.ui` files existed to do — and it removes a whole
+That removes the need for a hand-built form layout — and it removes a whole
 class of bug with them. The old widget kept its state in ~40 Qt controls and
 converted to a project dict on the way out (`to_project_dict`) and back on the
 way in (`load_project_dict`); the two directions were written by hand, and the

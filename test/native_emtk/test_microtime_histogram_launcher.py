@@ -114,5 +114,4 @@ def test_manifest_and_public_package_retire_the_legacy_wizard():
     assert "gui" not in entrypoints
     assert entrypoints["emtk"] == "chisurf.plugins.tttr.microtime_histogram.gui.app:create_app"
     assert not (folder / "wizard.py").exists()
-    assert not (folder / "wizard.ui").exists()
     assert not hasattr(plugin, "MicrotimeHistogram")

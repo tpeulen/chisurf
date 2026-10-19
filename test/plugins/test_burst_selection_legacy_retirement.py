@@ -14,7 +14,6 @@ PLUGIN = ROOT / "chisurf/plugins/burst/burst_selection"
     "relative",
     [
         "gui/legacy/burst_selector.py",
-        "gui/assets/gui.ui",
         "gui/assets/icon.png",
         "gui/assets/channel_settings.json",
     ],

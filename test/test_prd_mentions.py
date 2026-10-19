@@ -38,7 +38,7 @@ _PKG = _ROOT / "chisurf"
 _ALLOWLIST = _ROOT / "test" / "prd_mention_allowlist.txt"
 
 #: Extensions that count as shipped source.
-_SUFFIXES = {".py", ".json", ".md", ".ui", ".yaml", ".yml", ".rst"}
+_SUFFIXES = {".py", ".json", ".md", ".yaml", ".yml", ".rst"}
 
 #: "PRD-82", "PRD 82", "PRD_82", "PRDs 5", "prd82" — every spelling seen in the
 #: tree. A bare "PRD" with no number is prose about the process and is allowed.

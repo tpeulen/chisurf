@@ -70,8 +70,7 @@ all is left in it**: a custom section may pair its action with a status label,
 and hiding the container took the status line with it.
 
 **Still to promote** (their buttons carry no `action` tag yet, so each needs one
-line where the button is built): `fcs_merger`'s *save* (a `.ui` `toolButton_3` —
-tracked instead as an AutoForm port, [INC-13](/specs/assessment.md#inc-13)),
+line where the button is built): `fcs_merger`'s *save* (`request_save` in its emtk view spec),
 `fcs_calculator`'s JSON import/export — its *Apply Dref* / *Apply shape* are
 section-scoped and should stay. `tr_anisotropy`'s *create the fit* belongs to the
 wizard's Finish **step**, not the window, and is deliberately left alone.
@@ -264,7 +263,7 @@ which right-aligns the `?` and adds **Guide** beside it when a tour exists.
 
 **A free function.** `attach_help_and_guide(window, toolbar_or_layout, …)` does
 the same for a window that cannot take the mixin — an already-built `QDialog`, a
-`.ui`-loaded tree, a plain `QWidget` tool such as the FCS Filter Calculator.
+plain `QWidget` tool such as the FCS Filter Calculator.
 
 Resources resolve relative to (1) the model's view spec, (2) the model's module
 directory, (3) **the tool class's own MRO module directories**. That third anchor

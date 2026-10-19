@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the kinetic reaction-scheme model (ReactionModel). Its predecessor ReactionWidget was abstract — no update_model — so it could never be opened and there is no before-image to compare against; functional compatibility with what its .ui offered is the bar. Deliberate difference: the fit range is NOT duplicated here. The old widget embedded a whole FittingControllerWidget in the model panel, which is the fit window's own control; only the autoscale toggle that reads that range is a model setting.",
+  "_comment": "Editor layout for the kinetic reaction-scheme model (ReactionModel). Its predecessor ReactionWidget was abstract — no update_model — so it could never be opened and there is no before-image to compare against; functional compatibility with the controls it declared is the bar. Deliberate difference: the fit range is NOT duplicated here. The old widget embedded a whole FittingControllerWidget in the model panel, which is the fit window's own control; only the autoscale toggle that reads that range is a model setting.",
   "sections": [
     {
       "type": "panel",

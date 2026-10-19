@@ -170,7 +170,7 @@ bespoke test suites. Three ideas:
   "combo box is wired to nothing" defect generically.
 
 **ChiSurf today** tests plugins statically: `test/plugins/test_plugin_contracts.py`
-verifies that manifests parse and that `.ui` paths resolve. Nothing feeds a
+verifies that manifests parse and are discovered. Nothing feeds a
 plugin a one-burst file or an all-NaN decay.
 
 **Do:** add a `PluginToolTestMixin` in `test/plugins/` parameterised over all

@@ -140,7 +140,7 @@ def test_physically_absent_package_and_assets(tmp_path):
             if name == "__pycache__"
             or (
                 Path(directory, name).is_file()
-                and Path(name).suffix not in {".py", ".json", ".yaml", ".ui", ".css"}
+                and Path(name).suffix not in {".py", ".json", ".yaml", ".css"}
             )
         ]
 

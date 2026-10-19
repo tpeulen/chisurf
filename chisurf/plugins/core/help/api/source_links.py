@@ -52,7 +52,6 @@ SOURCE_SUFFIXES = (
     ".toml",
     ".cfg",
     ".ini",
-    ".ui",
     ".sh",
     ".js",
     ".ts",

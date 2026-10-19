@@ -1,5 +1,5 @@
 {
-  "_comment": "Declarative AutoForm layout for the Potential-Energy calculator. A single panel with the trajectory picker + potential-type combo + dynamic parameter editor + weight + Add button (custom `potential_energy_setup` section), the read stride, a table of the added potentials (double-click a row to remove it), the Process button + progress bar (custom `potential_energy_run` section) and a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former calculate_potential.ui.",
+  "_comment": "Declarative AutoForm layout for the Potential-Energy calculator. A single panel with the trajectory picker + potential-type combo + dynamic parameter editor + weight + Add button (custom `potential_energy_setup` section), the read stride, a table of the added potentials (double-click a row to remove it), the Process button + progress bar (custom `potential_energy_run` section) and a live log rendered by the built-in `info` section bound to the view-model's `log_html`.",
   "window": {"width": 1100, "height": 720},
   "sections": [
     {

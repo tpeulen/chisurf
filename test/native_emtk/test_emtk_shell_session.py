@@ -46,7 +46,7 @@ RENAMED = {
 }
 #: Qt shortcuts the emtk shell does not bind, and why.
 SHORTCUT_GAPS = {
-    "Load result in current fit": "Ctrl+L: a .ui action with no handler and in no menu; removed from gui.ui",
+    "Load result in current fit": "Ctrl+L: a Qt-shell action with no handler and in no menu; not carried over",
     "Close": "Ctrl+F4: Qt's MDI sub-window system menu; a fit window's × asks and removes the fit",
 }
 

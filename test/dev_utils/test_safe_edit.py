@@ -14,7 +14,7 @@ LOG = "# Update Log\n\n## 2026-10-13\n\n- a\n- b\n\n## 2026-10-12\n\n- c\n"
 TS = (
     '<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE TS>\n<TS version="2.1">\n'
     "    <context>\n        <name>A</name>\n"
-    '        <message>\n            <location filename="x.ui" line="3" />\n'
+    '        <message>\n            <location filename="x.py" line="3" />\n'
     "            <source>Yes &amp; no</source>\n"
     '            <translation type="unfinished"></translation>\n        </message>\n'
     "        <message>\n            <source>Keep</source>\n"
@@ -131,7 +131,7 @@ def test_ts_roundtrip_leaves_untouched_entries(tmp_path):
     assert after[("B", "Other")] == before[("B", "Other")]
     assert ET.fromstring(after[("A", "Yes & no")]).findtext("translation") == "Ja & nein"
     assert 'type="unfinished"' not in after[("A", "Yes & no")]
-    assert "x.ui" in after[("A", "Yes & no")]  # location kept
+    assert "x.py" in after[("A", "Yes & no")]  # location kept
     assert ET.fromstring(after[("B", "New")]).findtext("translation") == "Neu"
     assert ET.fromstring(after[("C", "<b>")]).findtext("translation") == "fett"
     assert se.add_ts_entries("de", [], directory=tmp_path) is False

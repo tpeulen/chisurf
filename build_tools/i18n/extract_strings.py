@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Extract ChiSurf's translatable UI strings into Qt ``.ts`` catalogues.
 
-ChiSurf's user-facing text lives in three surfaces (see
+ChiSurf's user-facing text lives in two surfaces (see
 ``okf/references/ui-glossary.md`` and the ``chisurf.core.support.i18n`` module docstring):
 
 * **data-driven** — ``*.view.json`` (AutoForm), ``*guide*.json`` and ``manifest.json``

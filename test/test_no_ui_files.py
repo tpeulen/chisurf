@@ -1,53 +1,98 @@
-"""No Qt Designer files and no ``.ui`` loader calls are left (the allow-list is empty)."""
+"""No Qt Designer ``.ui`` files, no ``.ui`` loaders and no ``.ui`` packaging globs.
+
+The Qt shell is retired and every form is an AutoForm ``view.json`` drawn by emtk,
+so there is nothing for a ``.ui`` file to be loaded by. There is no allow-list: a
+new Designer file, a ``loadUi``-style call or a ``*.ui`` package-data glob fails.
+"""
 
 from __future__ import annotations
 
 import ast
+import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ALLOWLIST = ROOT / "test/ui_file_allowlist.txt"
-LOADER_ALLOWLIST: set[str] = set()
-LOADER_NAMES = {"loadUi", "loadUiType", "init_with_ui", "qtpy_loadUi"}
+LOADER_NAMES = {
+    "loadUi",
+    "loadUiType",
+    "qtpy_loadUi",
+    "init_with_ui",
+    "resolve_ui_path",
+    "_compiled_ui_class",
+    "compileUi",
+}
+PACKAGING_FILES = ("pyproject.toml", "setup.py", "MANIFEST.in", "pixi.toml")
+_UI_GLOB = re.compile(r"""\*\.ui\b|["']\.ui["']""")
 
 
-def _allowed_files() -> set[str]:
-    """Read the shrinking allow-list without comments or empty rows."""
-    return {
-        row.strip()
-        for row in ALLOWLIST.read_text().splitlines()
-        if row.strip() and not row.lstrip().startswith("#")
-    }
+def _tracked_files() -> list[str]:
+    """Return every path git tracks or would add (untracked, not ignored)."""
+    out = subprocess.run(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    return [row for row in out.splitlines() if row]
 
 
-def test_no_ui_files_outside_allowlist():
-    """Every remaining Designer file has an explicit deferred owner."""
-    actual = {str(path.relative_to(ROOT)) for path in (ROOT / "chisurf").rglob("*.ui")}
-    assert not actual - _allowed_files(), sorted(actual - _allowed_files())
+def test_no_ui_files():
+    """No Designer file exists anywhere in the tree git sees."""
+    found = [p for p in _tracked_files() if p.endswith(".ui") and (ROOT / p).is_file()]
+    assert not found, sorted(found)
 
 
 def test_no_ui_loader_tokens():
-    """Retired loader calls and decorators are rejected outside the shell."""
+    """No Python file names a ``.ui`` loader, imports ``uic`` or lists the ``.ui`` suffix."""
     violations = []
-    for path in sorted((ROOT / "chisurf").rglob("*.py")):
-        relative = str(path.relative_to(ROOT))
-        if relative in LOADER_ALLOWLIST or "cookiecutter-chisurf-plugin" in path.parts:
-            continue
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=relative)
-        for node in ast.walk(tree):
-            name = (
-                node.id
-                if isinstance(node, ast.Name)
-                else node.attr
-                if isinstance(node, ast.Attribute)
-                else None
-            )
-            if name in LOADER_NAMES:
-                violations.append(f"{relative}:{node.lineno}: {name}")
+    for top in ("chisurf", "test", "build_tools"):
+        for path in sorted((ROOT / top).rglob("*.py")):
+            relative = str(path.relative_to(ROOT))
+            if relative == "test/test_no_ui_files.py":
+                continue
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8"), filename=relative)
+            except (SyntaxError, UnicodeDecodeError):
+                continue
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Name):
+                    name = node.id
+                elif isinstance(node, ast.Attribute):
+                    name = node.attr
+                elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    name = node.name
+                elif isinstance(node, ast.alias):
+                    name = node.name.rsplit(".", 1)[-1]
+                elif isinstance(node, ast.Constant) and node.value in {".ui", "*.ui"}:
+                    name = repr(node.value)
+                else:
+                    continue
+                if (
+                    name in LOADER_NAMES
+                    or (isinstance(node, ast.alias) and name == "uic")
+                    or isinstance(node, ast.Constant)
+                ):
+                    violations.append(f"{relative}:{getattr(node, 'lineno', '?')}: {name}")
     assert not violations, "\n".join(violations)
 
 
-def test_allowlist_entries_exist():
-    """Removing the final shell file also requires removing its allow-list row."""
-    missing = [path for path in sorted(_allowed_files()) if not (ROOT / path).is_file()]
-    assert not missing, missing
+def test_no_ui_packaging_globs():
+    """No package-data glob or suffix list still ships ``.ui`` files."""
+    candidates = [ROOT / name for name in PACKAGING_FILES]
+    recipe = ROOT / "rattler-recipe"
+    if recipe.is_dir():
+        candidates += sorted(recipe.rglob("*"))
+    hits = []
+    for path in candidates:
+        if not path.is_file() or "__pycache__" in path.parts:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for lineno, line in enumerate(text.splitlines(), 1):
+            if _UI_GLOB.search(line):
+                hits.append(f"{path.relative_to(ROOT)}:{lineno}: {line.strip()}")
+    assert not hits, "\n".join(hits)
