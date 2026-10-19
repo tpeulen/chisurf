@@ -534,7 +534,9 @@ class ZenodoDepositModel:
                 "group": i.group, "files": i.files, "size": _size(i.bytes),
                 "holds": (f"{i.files} file{'s' if i.files != 1 else ''} · " if i.files
                           else "JSON · ") + _size(i.bytes),
-                "flags": ("✖ " if i.errors else "") + (f"⚠ {len(i.flags)}" if i.flags else ""),
+                # an approval answers the flags: the ⚠ goes, the reasons stay in the tooltip
+                "flags": ("✖ " if i.errors else "")
+                + (f"⚠ {len(i.flags)}" if i.flags and i.status != "approved" else ""),
                 "act": "" if i.status == "approved" or self.job.running else "Approve",
                 "detail": self._item_tooltip(i)}
 
@@ -571,7 +573,8 @@ class ZenodoDepositModel:
     @staticmethod
     def _item_tooltip(it) -> str:
         """The row's tooltip: what the item is and where it came from, its flags first."""
-        lines = [f"✖ {e}" for e in it.errors[:6]] + [f"⚠ {f}" for f in it.flags]
+        mark = "✓ checked:" if it.status == "approved" else "⚠"
+        lines = [f"✖ {e}" for e in it.errors[:6]] + [f"{mark} {f}" for f in it.flags]
         if it.description:
             lines.append(it.description)
         if it.origin:
@@ -604,7 +607,7 @@ class ZenodoDepositModel:
         if it is None:
             return "Select a row; approve it with its button or right-click it for more."
         lines = [f"✖ blocks the upload: {_md(e)}" for e in it.errors[:12]] \
-            + [f"⚠ {_md(f)}" for f in it.flags]
+            + [f"{'✓ checked:' if it.status == 'approved' else '⚠'} {_md(f)}" for f in it.flags]
         about = [_md(it.id), f"{it.files} file{'s' if it.files != 1 else ''}, {_size(it.bytes)}"]
         if it.description:
             about.append(_md(it.description))

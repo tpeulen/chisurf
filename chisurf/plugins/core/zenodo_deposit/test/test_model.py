@@ -310,3 +310,14 @@ def test_calibrations_are_nested_under_the_measurements_that_use_them(model):
     assert meas in model.expanded
     model.approve_item(child)  # a decision on the nested row is on the one item
     assert rec.item(irf).status == "approved"
+
+
+def test_an_approval_takes_the_warning_off_its_row(model):
+    model.select_record(model.records[0])
+    model.record.item("README.md").flags = ["role inferred"]
+    row = next(r for r in model.items if r["id"] == "README.md")
+    assert row["flags"] == "⚠ 1"
+    model.approve_item(row)
+    row = next(r for r in model.items if r["id"] == "README.md")
+    assert row["flags"] == "" and "✓ checked: role inferred" in row["detail"]
+    assert "⚠" not in model.item_text and "✓ checked: role inferred" in model.item_text
