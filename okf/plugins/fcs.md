@@ -18,6 +18,11 @@ timestamp: '2026-07-05T00:00:00Z'
    χ² across fits: `[(f["name"], f["chi2r_current"]) for f in api.list_fits(statistics=True)]` (a row's `chi2r` is
    the last run's, `None` before a run). Filter calculator residual axis: `Residual / σ` under the dock title.
 3. Measure: method of the pass and every defect: known issue "QA walk of the FCS, lifetime, …" (found 2026-10-11).
+4. Open (time regions, 2026-10-19): step 3 still shows only the *first* file (`FilterSettingsModel._tttr`), so with
+   several files the filter plots do not show the regions of the others although they are applied (photon count via
+   `FcsWorkflow.filtered_tttr`). Next: a file picker in step 3 sharing `FilesStepApp.trace_file`. Measure: two
+   `test/streams.py::diffusion_spc` files, region on the second only → step 3 info text unchanged (the trap), correlator
+   photon count = in-region(b) + all(a). Regions are not yet written to the `.pto` provenance of the curves.
 
 ## Overview
 
@@ -292,3 +297,16 @@ See also: [plugin system](/architecture/plugin-system.md), [Plugins target](/spe
 The FCS Correlator/toolbox, Merger and Burst FCS callers host their existing native apps; obsolete central FCS/TTTR wizard Python/generated/UI chains are retired. Public publication/background/PTO/td4 lineage, skipped-row sentinels and bounded cancel/rollback behavior are preserved. No scientific algorithm changed. The original 8de6 before-facts used header seconds as milliseconds and are retained explicitly as invalid historical unit evidence. Final SPC13213.5ns is1.35e-5ms through readers/fitting; the real MaxEnt0.001..20 grid and core None sentinel are preserved.
 
 Parent validations:56 host, earlier84 burst,54 diagnostic and15 new unit cases; final burst repeat and help/guide pointer review are recorded in the frozen acceptance receipt. All actual final images are inspected by the parent before execution. Next W1: GF row11, then rows12–14 and shared decorator retirement. Main gui.ui remains W9; W7 matrix acceptance remains open. Evidence: [FCS retirement](../validation/release-readiness-w1/fcs-retirement/acceptance.json).
+
+### Time regions on the count-rate trace (Files & Steps) — 2026-10-19
+
+Step 2 draws the count-rate trace of one file (picked from every file the correlator gets, folders expanded) and,
+with **✏ Draw** on, takes regions dragged across it (edges draggable, right-click removes, **To all files** copies).
+The record is Qt-free: `fcs_correlator/regions.py::TimeRegions` (per resolved path, merged `(start, stop)` seconds from
+macro time 0 = the origin of `get_intensity_trace`; no regions = whole file), owned by `FcsWorkflow.regions` and cut
+into both photon paths — `load_raw_combined` (unfiltered) and `FilterSettingsModel.compute_selection(tttr, path)`,
+where it is ANDed **last** so neither `invert` nor gap filling reaches outside a region. Traps met building it: an
+implot view captured on the plot's first frame is the pre-fit `0..1` (so a new file sets its full-trace limits
+explicitly); locked (drawing) axes never auto-fit; `get_item_rect()` after `end_plot` is a legend text, not the plot.
+Same change fixed folder expansion: it matched suffixes against tttrlib container *names* (`SPC-130`), dropping every
+`.spc`/`.h5` file in a folder (guard `test_time_regions.py::test_a_folder_stands_for_its_spc_files`).

@@ -96,7 +96,12 @@ class FcsHubApp(ToolHubApp):
 
     # step factories (the steps the workflow owns the models of)
     def _make_files(self):
-        return FilesStepApp(on_change=self._files_changed, on_used=self.tour.notify_used)
+        return FilesStepApp(
+            on_change=self._files_changed,
+            on_used=self.tour.notify_used,
+            regions=self.workflow.regions,
+            reader=self.workflow.read_for_trace,
+        )
 
     def _make_filter(self):
         return FilterStepApp(self.filter_model, on_used=self.tour.notify_used)

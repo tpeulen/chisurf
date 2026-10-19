@@ -19,6 +19,13 @@
       "target": {"name": "files"}
     },
     {
+      "title": "Draw which stretches are correlated",
+      "page": "files",
+      "text": "Below the steps is the count-rate trace of one file; the list beside <b>Regions</b> holds every file the correlator gets (a folder's files one by one). With <b>✏ Draw</b> on, drag across the trace to add a region, drag a region's edge to move it and right-click it to remove it. Only photons inside a file's regions are filtered and correlated: cut away an aggregate spike, a bubble or the bleaching start. A file without regions is used whole; <b>To all files</b> gives the others the same regions.",
+      "target": {"name": "draw_regions"},
+      "await": {"hint": "Switch on <b>✏ Draw</b>."}
+    },
+    {
       "title": "Which photons go into channel A and B",
       "text": "Open the <b>Correlator</b>. An empty channel list means all detectors. For a cross-correlation that has no afterpulsing, put one detector in A and the other in B (the example routes to 0 and 1).",
       "target": {"panel": "Correlator"},

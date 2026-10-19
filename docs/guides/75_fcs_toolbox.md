@@ -110,6 +110,35 @@ One photon stream loaded, both optional steps switched on.
 
 A disabled step is greyed out in the rail.
 
+### Time regions
+
+```{figure} figures/fcs_toolbox_regions.png
+:name: fig-fcs-toolbox-regions
+:width: 100%
+
+The example measurement with two drawn regions: 3.5 s of its 5 s are correlated.
+```
+
+Below the step switches is the count-rate trace of one file. Which photons
+enter the correlator is drawn on it, per file:
+
+* **Regions** — the file whose trace is shown. The list holds every file the
+  correlator gets, a folder's files one by one; a file with regions carries
+  `[n region(s)]` here and in the file list.
+* **✏ Draw** — drag across the trace to add a region, drag a region's edge to
+  move it, right-click a region to remove it. Off, the trace pans and zooms as
+  any plot; drawing keeps the view you left it at.
+* **Clear regions** — the file is used whole again. **To all files** gives
+  every other file the regions of this one (repeats of one measurement series).
+
+A photon is kept when its macro time lies inside one of its file's regions
+(start inclusive, stop exclusive, seconds from macro time 0). A file without
+regions is used whole, so drawing nothing changes nothing. The regions cut the
+stream *before* the photon filter of step 3 and after it alike: neither
+**invert** nor gap filling there reaches outside them. Use them to drop what the
+burst filter cannot judge: an aggregate crossing, a bubble, the first seconds
+of photobleaching, a stretch where the focus drifted.
+
 ## 3. Photon / Burst Filter
 
 Selects which photons reach the correlator. Every change recomputes the
