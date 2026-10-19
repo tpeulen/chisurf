@@ -883,6 +883,7 @@ class EmtkShellApp(ImApp):
         # Drawn again this frame if the workspace is shown; a rectangle left from a frame it
         # was tabbed under would take presses meant for the tool in front.
         self._watermark_last = self.item_rects.pop("system_info", None)
+        self._poll_hidden_tools()
         for hosted in self.hosted.values():
             hosted.box = None
             if hosted.instance > 1:
@@ -1966,6 +1967,30 @@ class EmtkShellApp(ImApp):
             return None
         return None
 
+    def _hidden_busy(self, hosted: HostedPlugin) -> bool:
+        if hosted.app is None or hosted.key in self._drawn or not callable(getattr(hosted.app, "poll", None)):
+            return False
+        try:
+            return bool(hosted.app.animating())
+        except Exception:  # noqa: BLE001 - a tool that cannot say is not kept awake
+            return False
+
+    def _poll_hidden_tools(self) -> None:
+        """Let every tool not drawn last frame collect its finished background work.
+
+        The shell draws only the tools in front; a tool's code otherwise runs only while
+        it is drawn, so a file opened in a tool tabbed behind another did not finish
+        loading until that tab was shown. A tool declaring ``poll()`` gets it instead.
+        """
+        drawn = getattr(self, "_drawn", {})
+        for hosted in list(self.hosted.values()):
+            poll = getattr(hosted.app, "poll", None) if hosted.app is not None else None
+            if callable(poll) and hosted.key not in drawn:
+                try:
+                    poll()
+                except Exception:  # noqa: BLE001 - one tool failing must not stop the frame
+                    _log.exception("polling %s failed", hosted.instance_id)
+
     def _child(self, child_id: str | None):
         drawn = self._drawn.get(child_id) if child_id else None
         if drawn is None:
@@ -2198,6 +2223,9 @@ class EmtkShellApp(ImApp):
         busy = busy or self.status_strip.animating()
         busy = busy or self.project.busy
         children = any(app.animating() for _key, app, _box in self._drawn.values())
+        # A tool behind another tab still finishing work (a file loading) keeps the shell
+        # waking, so _poll_hidden_tools can land it.
+        children = children or any(self._hidden_busy(hosted) for hosted in self.hosted.values())
         # The watermark's sparklines refresh once a second through next_frame_in; asking for
         # every frame instead kept an idle window drawing ~60 frames a second for good.
         return super().animating() or busy or children

@@ -15,6 +15,7 @@
 - 2026-10-19: emtk shell opens a tool again as a numbered window (ndX, ndX #2, ...): EmtkShellApp.hosted is keyed per opening (plugin id, then <id>#n), menus/tool list/ribbon open with new=True, programmatic opens (hand-offs, host_in_shell, restore) reach the open one; manifest single_instance keeps settings-like tools single. docs/concepts/application_shell.md; test/native_emtk/test_emtk_shell_tool_instances.py.
 - 2026-10-19: modal windows blur what is behind them (emtk cfb713d: emtk.backdrop + Painter.backdrop, GPU split-render Gaussian, every DialogWindow and modal menu; ndX message box b2bf045). ChiSurf: Settings > Styles > Blur behind dialogs (gui.modal_blur, default on), settings_utils.set_gui_setting generalises the per-key gui setters. test/native_emtk/test_emtk_shell_modal_blur.py.
 - 2026-10-19: emtk shell no longer redraws continuously while idle: the unfolded system-info watermark had made animating() always true (~60 frames/s for good, e363ca159); its CPU/memory/FPS readouts refresh once a second through next_frame_in. test_emtk_shell_final_parity watermark tests assert idle = no continuous frames.
+- 2026-10-19: a tool tabbed behind another finishes its background work: EmtkShellApp polls every hosted tool it did not draw (tool contract poll()) and stays awake while a hidden tool is busy; ndX implements poll (ndxplorer 3b584a1), so a file opened in ndX #1 loads while ndX #2 is in front. test/native_emtk/test_emtk_shell_hidden_tools_poll.py.
 
 ## 2026-10-18
 
