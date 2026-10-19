@@ -382,6 +382,11 @@ class LLTFModel:
         if len(observed) != len(fit):
             raise ValueError("LLTF result fit range does not match the measured decay.")
         maximum = max(float(np.max(irf[:, 1])), 1e-30)
+        from ..core.fitter import weighted_residuals
+
+        # The residuals the fit minimised (Poisson deviance by default), so their sum of squares
+        # is the reported chi-square -- not Neyman residuals of a Poisson fit.
+        noise = self.result.get("noise_model", "neyman")
         return {
             "time": decay[:, 0],
             "decay": decay[:, 1],
@@ -389,7 +394,7 @@ class LLTFModel:
             "irf": irf[:, 1] * float(np.max(observed)) / maximum,
             "model_time": time,
             "fit": fit,
-            "residuals": (observed - fit) / np.sqrt(np.maximum(observed, 1.0)),
+            "residuals": weighted_residuals(observed, fit, noise),
             "range": (decay[first, 0], decay[last - 1, 0]),
         }
 

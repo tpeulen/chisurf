@@ -330,7 +330,11 @@ def test_every_spec_field_is_drawn_with_its_description(monkeypatch):
         drawn |= set(app.form.rects)
         fields = [f for f in _fields(SPEC["sections"])]
         assert {f["attr"] for f in fields} <= drawn
-        assert all(f["description"] in tips for f in fields)
+        for f in fields:
+            # A radio choice with per-option ``descriptions`` tooltips each option with its own
+            # (emtk view_form); the field's ``description`` is its docs cell.
+            wanted = f.get("descriptions") or [f["description"]]
+            assert all(text in tips for text in wanted), f["attr"]
     finally:
         app.close()
 
