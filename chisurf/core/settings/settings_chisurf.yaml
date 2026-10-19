@@ -226,6 +226,7 @@ gui:
     max_rows: 3 # Maximum number of rows for ribbon panels (reduces ribbon height)
     ribbon_height: 110
   use_ribbon_interface: true # Enable ribbon interface by default
+  modal_blur: true # Blur what lies behind a dialog (Settings > Styles)
   dev_mode:
     show_code_badge: true
     badge_locations:

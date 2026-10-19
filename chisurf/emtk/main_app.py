@@ -203,6 +203,18 @@ def _ribbon_preference() -> bool:
     return bool((cs_settings.get("gui") or {}).get("use_ribbon_interface", True))
 
 
+def _apply_modal_blur_preference() -> None:
+    """The user's ``gui.modal_blur`` (on unless switched off) onto emtk's backdrop."""
+    from emtk.backdrop import set_modal_blur
+
+    try:
+        from chisurf.core.settings import cs_settings
+    except Exception:  # noqa: BLE001 - unreadable settings: the shipped default
+        set_modal_blur(True)
+        return
+    set_modal_blur(bool((cs_settings.get("gui") or {}).get("modal_blur", True)))
+
+
 def _is_focused(docks: DockManager, key: str) -> bool:
     """Whether *key* is the focused dock window (a *Window* menu entry's check mark)."""
     return bool(docks.focused == key)
@@ -440,6 +452,7 @@ class EmtkShellApp(ImApp):
         self.task_categories = plugin_categories(self.entries)
         self.ribbon = ShellRibbon(self)
         self._ribbon_enabled = _ribbon_preference()
+        _apply_modal_blur_preference()
         #: The canvas size of the last frame (what *Screenshot* copies).
         self._canvas = (1400, 900)
         self._screenshot_pending = False
@@ -1101,6 +1114,31 @@ class EmtkShellApp(ImApp):
                 return True
             return False
 
+        def toggle_blur() -> None:
+            from emtk.backdrop import modal_blur, set_modal_blur
+
+            from chisurf.core.settings.settings_utils import set_modal_blur as save_blur
+
+            set_modal_blur(not modal_blur())
+            if not save_blur(modal_blur()):
+                _log.warning("the blur preference could not be saved")
+            self.request_frame()
+
+        def blur_on() -> bool:
+            from emtk.backdrop import modal_blur
+
+            return modal_blur()
+
+        blur = MenuAction(
+            "style_modal_blur",
+            tr("Blur behind dialogs"),
+            toggle_blur,
+            "",
+            "",
+            tr("While a dialog is open, everything behind it is blurred, so the dialog is "
+               "the only thing in focus. Kept for the next start."),
+            checked=blur_on,
+        )
         # The shell's session menus are flat: one checked entry per theme
         # (emtk's palette sets — "dark", "light"), no submenu layer.
         return [
@@ -1114,7 +1152,7 @@ class EmtkShellApp(ImApp):
                 checked=partial(is_checked, name),
             )
             for name in stored_theme.available_styles()
-        ]
+        ] + [blur]
 
     def session_menus(self) -> list[tuple[str, list[MenuAction]]]:
         """*File*, *View* and *Settings* as ``(title, [MenuAction])``; the shortcut table is read from them."""

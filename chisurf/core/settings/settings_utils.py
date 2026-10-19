@@ -650,14 +650,11 @@ def set_data_loading_settings(data_loading_settings: dict) -> bool:
         return False
 
 
-def set_use_ribbon_interface(use_ribbon: bool) -> bool:
-    """Persist the ribbon interface state in the user's settings YAML.
+def set_gui_setting(key: str, value) -> bool:
+    """Persist ``gui.<key>`` in the user's settings YAML and in the running settings.
 
-    Args:
-        use_ribbon: If True, the ribbon interface will be enabled on startup.
-                   If False, the traditional menu bar will be used.
-    Returns:
-        True if the setting was saved successfully, False otherwise.
+    The user's file holds only what they changed, over the packaged defaults, so it is
+    created empty when missing. Returns True when the value was saved.
     """
     try:
         settings_file = get_path("settings") / "settings_chisurf.yaml"
@@ -686,19 +683,36 @@ def set_use_ribbon_interface(use_ribbon: bool) -> bool:
             gui_cfg = {}
         data["gui"] = gui_cfg
 
-        gui_cfg["use_ribbon_interface"] = bool(use_ribbon)
+        gui_cfg[key] = value
         with open(settings_file, "w", encoding="utf-8") as fh:
             yaml.safe_dump(data, fh, default_flow_style=False)
         # The in-memory settings follow, so a window made later in this process starts alike.
         try:
             from chisurf.core.settings import cs_settings
 
-            cs_settings.setdefault("gui", {})["use_ribbon_interface"] = bool(use_ribbon)
+            cs_settings.setdefault("gui", {})[key] = value
         except Exception:
             pass
         return True
     except Exception:
         return False
+
+
+def set_use_ribbon_interface(use_ribbon: bool) -> bool:
+    """Persist the ribbon interface state in the user's settings YAML.
+
+    Args:
+        use_ribbon: If True, the ribbon interface will be enabled on startup.
+                   If False, the traditional menu bar will be used.
+    Returns:
+        True if the setting was saved successfully, False otherwise.
+    """
+    return set_gui_setting("use_ribbon_interface", bool(use_ribbon))
+
+
+def set_modal_blur(enabled: bool) -> bool:
+    """Persist whether a modal window blurs what is behind it (``gui.modal_blur``)."""
+    return set_gui_setting("modal_blur", bool(enabled))
 
 
 def set_language(code: str) -> bool:

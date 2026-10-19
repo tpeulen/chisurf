@@ -24,6 +24,12 @@ settings of the operation that wrote it ([photon container](photon_container.md)
 the database lets you change ([measurement database](measurement_database.md)); the interface changes nothing but the
 window.
 
+## Dialogs in front
+
+A dialog (a question, a help window, a file or form dialog) washes and blurs what lies behind it, so it is the one
+thing in focus. *Settings ▸ Styles ▸ Blur behind dialogs* switches the blur off (the wash stays) and is kept for the
+next start (`gui.modal_blur` in `settings_chisurf.yaml`).
+
 ## A tool opened twice
 
 Opening a tool from the menus, the tool list or the ribbon while it is open already opens a second window, titled with
