@@ -11,7 +11,8 @@ This plugin, loaded by the root ``conftest.py``:
 * records resident memory, thread count and child processes after every test, and
   prints the tests that grew memory or left threads/processes behind (terminal summary);
 * appends one CSV row per test, as the test finishes, to ``CHISURF_TEST_RESOURCE_LOG``
-  or else ``~/.cache/chisurf/test-resources/run-<time>-<pid>.csv`` (newest 10 kept) and
+  or else ``~/.cache/chisurf/test-resources/run-<time>-<pid>.csv`` (newest 50 kept,
+  none under a day old pruned) and
   names the running test in a state file before it starts: a run that takes the machine
   down still leaves the record of what it did, outside the tmp directory a reboot wipes;
 * starts ``test/resource_watchdog.py`` as a separate process that ends the run *before*
@@ -32,8 +33,8 @@ from __future__ import annotations
 import csv
 import os
 import shutil
-import sys
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -53,7 +54,7 @@ _FIELDS = (
     "nodeid", "rss_mb", "tree_mb", "delta_mb", "threads", "thread_delta",
     "children", "child_delta", "disk_mb", "tmp_mb",
 )
-_KEEP_LOGS = 10
+_KEEP_LOGS = 50
 
 
 def _env_mb(name: str, default: int) -> int:
@@ -127,8 +128,15 @@ def _log_path() -> Path:
         return Path(named)
     folder = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "chisurf" / "test-resources"
     folder.mkdir(parents=True, exist_ok=True)
+    # Many short runs (an agent's single test file) must not push a long run's record out
+    # while it is still being read: keep the newest _KEEP_LOGS and anything under a day old.
+    young = time.time() - 24 * 3600
     for old in sorted(folder.glob("run-*.csv"))[: -(_KEEP_LOGS - 1)]:
-        old.unlink(missing_ok=True)
+        try:
+            if old.stat().st_mtime < young:
+                old.unlink()
+        except OSError:
+            pass
     return folder / time.strftime(f"run-%Y%m%d-%H%M%S-{os.getpid()}.csv")
 
 

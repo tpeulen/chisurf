@@ -661,6 +661,13 @@ A single pytest process runs ~33k tests. Two failure modes have taken the machin
   growers from the CSV and deletes the run's `tmp_path` tree. `0` disables a limit. The
   swap and free-memory limits also trip when *other* processes (other agents' suites) eat
   the memory — that is intended: the run yields rather than tipping the machine.
+- **The gate runs in chunks.** `python -m build_tools.dev_utils.run_tests_chunked [--resume]`
+  runs every top-level `test/` directory, the loose `test/test_*.py` files and every plugin
+  family as a pytest process of its own (52 chunks), waits for 3 GB available before each,
+  and records `~/.cache/chisurf/test-resources/gate/<chunk>.log` + `summary.json`. A guard
+  stop costs one chunk, not the run; `--resume` continues. Two single-process gate runs on
+  2026-10-19 were stopped at 27 % and 25 % by the swap rule -- correctly, other agents' suites
+  and the owner's own fits had swap at 5 of 6 GB.
 - **Where to pick this up (2026-10-19).** Measured: the first 7228 tests (27 %, up to
   `test/native_emtk/test_emtk_shell_model_sections.py`) — no unbounded growth, peak tree
   2.2 GB in `test/fluorescence/test_mfd_simulation.py`; record
