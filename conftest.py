@@ -13,9 +13,26 @@ so the plugin directories get them too; ``test/conftest.py`` keeps what only ``t
 
 from __future__ import annotations
 
+import importlib.util
+import pathlib
 import sys
 
 import pytest
+
+
+def pytest_configure(config):
+    """Load ``test/resource_guard.py``: per-test memory/thread record and a hard memory cap.
+
+    Loaded by path, not as ``test.resource_guard``: the standard library has a ``test``
+    package of its own, and which one wins depends on ``sys.path`` order.
+    """
+    path = pathlib.Path(__file__).parent / "test" / "resource_guard.py"
+    if not path.is_file():  # a copy of this file in a pytester sandbox
+        return
+    spec = importlib.util.spec_from_file_location("chisurf_test_resource_guard", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    config.pluginmanager.register(module, "chisurf_test_resource_guard")
 
 
 @pytest.fixture(autouse=True)

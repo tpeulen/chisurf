@@ -212,6 +212,11 @@ version = {attr = "chisurf.core.info.__version__"}
 # Coverage is opt-in (use `pixi run test-cov`); keeping it off by default avoids
 # dumping .coverage*/htmlcov into the repo root on every test run.
 addopts = ""
+# One full run writes ~8 GB of tmp_path data (photon files, .pto containers). Keep a
+# test's directory only when it failed, and only the latest run, or a few runs fill
+# the disk (2026-10-19: 36 GB under pytest-of-<user>, disk full mid-run).
+tmp_path_retention_policy = "failed"
+tmp_path_retention_count = 1
 norecursedirs = ["build_tools", "modules", "conda-bld", ".pixi", "dist", "rattler-recipe", "repro", "manual", "benchmarks", "renders", "cookiecutter-chisurf-plugin"]
 # Every test lives under one of these two roots, wherever its directory is called
 # (``test/``, ``tests/``, or a flat ``test_*.py`` beside the code). Suites are then

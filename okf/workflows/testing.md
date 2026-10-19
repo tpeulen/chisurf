@@ -634,3 +634,24 @@ the allocated remaining-line rectangle. Keep independent clipping assertions
 active; a wide unused rectangle is harmless, a real glyph collision/overflow
 is a failure. Mixed Qt/native captures must exit normally before they provide
 acceptance: assertions printed before a shutdown crash are only diagnostics.
+
+## Resource guard: memory, disk and leaked threads
+
+A single pytest process runs ~33k tests. Two failure modes have taken the machine down
+(2026-10-19): resident memory carried from test to test until swap, and `tmp_path` data
+(~8 GB per full run, photon files and `.pto` containers) piling up under
+`$TMPDIR/pytest-of-<user>/` until the disk was full mid-run.
+
+- `pyproject.toml` sets `tmp_path_retention_policy = "failed"` and
+  `tmp_path_retention_count = 1`: a passing test's directory is removed at teardown, and
+  only the last run's failures are kept.
+- `test/resource_guard.py`, loaded by the root `conftest.py`, records RSS, threads, child
+  processes and disk use after every test (`CHISURF_TEST_RESOURCE_LOG=<file.csv>` for the
+  full record; a "resources" section in the terminal summary). Its watchdog stops the run
+  with exit code 3 when RSS > `CHISURF_TEST_MAX_RSS_MB` (4096), system memory available
+  < `CHISURF_TEST_MIN_FREE_MB` (1024) or free disk on the tmp volume <
+  `CHISURF_TEST_MIN_DISK_MB` (4096); it prints the running test and the biggest growers,
+  deletes the run's `tmp_path` tree (its `os._exit` skips pytest's own cleanup) and kills
+  child processes. Set a variable to 0 to disable that check.
+- Trap: never pass `--basetemp` into a long-lived scratch folder — pytest only clears it
+  at the start of the next run with the same path, so it is never reclaimed.
