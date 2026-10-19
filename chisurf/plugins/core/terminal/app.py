@@ -19,6 +19,7 @@ Windows (no ``pty`` module) gets a message instead of a session.
 from __future__ import annotations
 
 import os
+import pathlib
 import shlex
 import sys
 from typing import Any, Callable
@@ -28,6 +29,9 @@ from emtk.app import ImApp
 from emtk.events import CONTROL_MODIFIER, SHIFT_MODIFIER
 from emtk.i18n import tr
 from emtk.keys import KEY_TAB, KEY_T, KEY_W, letter_of
+
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import action_button
 
 from .workspace import TerminalWorkspace
 
@@ -87,6 +91,19 @@ class TerminalApp(ImApp):
         #: Named rectangles of the last frame's toolbar items (tests, tours).
         self.item_rects: dict[str, tuple] = {}
         self.native_layouts: dict = {}
+        gui_dir = pathlib.Path(__file__).parent
+        self.tour = EmTkGuidedTour(
+            gui_dir / "guide.json",
+            get_target_rect=self.item_rects.get,
+            owner=self,
+            wait_for_controls=True,
+        )
+        self.help_window = EmTkHelpWindow(
+            title="Terminal - Help",
+            resource=gui_dir / "help.md",
+            owner=self,
+            on_start_guide=self.tour.start,
+        )
         super().__init__(gui=self._render, continuous=False)
         if first_kind == "python" or (self.available and first_kind == "shell"):
             self.workspace.new_pane(first_kind)
@@ -177,6 +194,12 @@ class TerminalApp(ImApp):
     # ── drawing ───────────────────────────────────────────────────────────
 
     def _render(self) -> None:
+        self._draw_body()
+        vp = im.get_main_viewport()
+        self.help_window.draw((0.0, 0.0, vp.size[0], vp.size[1]))
+        self.tour.draw(*vp.size)
+
+    def _draw_body(self) -> None:
         viewport = im.get_main_viewport()
         width, height = viewport.size
         self._toolbar(width)
@@ -213,6 +236,7 @@ class TerminalApp(ImApp):
         )
         if im.small_button(tr("New") + "##term_new"):
             self.new_pane()
+            self.tour.notify_used("new")
         self.item_rects["new"] = im.get_item_rect()
         im.set_item_tooltip(tr("Open a new pane") + " (Ctrl+T)")
         im.same_line()
@@ -234,33 +258,29 @@ class TerminalApp(ImApp):
         im.same_line()
         if im.small_button(tr("Split ⇥") + "##term_split_h"):
             self.split_pane("right")
+            self.tour.notify_used("split_right")
         self.item_rects["split_right"] = im.get_item_rect()
         im.set_item_tooltip(tr("Split the active pane side by side"))
         im.same_line()
         if im.small_button(tr("Split ⇣") + "##term_split_v"):
             self.split_pane("down")
+            self.tour.notify_used("split_down")
         self.item_rects["split_down"] = im.get_item_rect()
         im.set_item_tooltip(tr("Split the active pane stacked"))
         im.same_line()
         if im.small_button(tr("Close") + "##term_close"):
             self.close_pane()
+            self.tour.notify_used("close")
         self.item_rects["close"] = im.get_item_rect()
         im.set_item_tooltip(tr("Close the active pane") + " (Ctrl+W)")
-        active_pane = self.workspace.active
-        if active_pane and active_pane.kind == "python" and hasattr(active_pane.console, "_overlays"):
-            from chisurf.plugins.emtk_layout import action_button
-
-            help_window, tour = active_pane.console._overlays()
-            im.same_line()
-            if action_button("guide"):
-                tour.start()
-            self.item_rects["guide"] = im.get_item_rect()
-            active_pane.console.item_rects["guide"] = self.item_rects["guide"]
-            im.same_line()
-            if action_button("help"):
-                help_window.show()
-            self.item_rects["help"] = im.get_item_rect()
-            active_pane.console.item_rects["help"] = self.item_rects["help"]
+        im.same_line()
+        if action_button("guide"):
+            self.tour.start()
+        self.item_rects["guide"] = im.get_item_rect()
+        im.same_line()
+        if action_button("help"):
+            self.help_window.show()
+        self.item_rects["help"] = im.get_item_rect()
         if self.status:
             im.same_line()
             im.text(tr(self.status))

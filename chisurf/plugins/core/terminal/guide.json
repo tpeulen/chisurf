@@ -1,0 +1,33 @@
+{
+  "_comment": "Guided tour of the Terminal and Python Terminal plugins (shared app). Targets are the toolbar item_rects of TerminalApp; awaited steps wait for the user to press the real button.",
+  "steps": [
+    {
+      "title": "Panes, like tmux",
+      "text": "This tool shows sessions as <b>panes</b>: tabs, side-by-side splits and floating windows. Each pane is either a real shell or ChiSurf's Python console. The toolbar above controls them.",
+      "target": {}
+    },
+    {
+      "title": "Open a pane",
+      "text": "<b>New</b> opens another pane of the same kind as the one you are in. Ctrl+T does the same.",
+      "target": {"name": "new"},
+      "await": {"hint": "Press <b>New</b>."}
+    },
+    {
+      "title": "Choose the kind of pane",
+      "text": "<b>Python</b> opens the built-in Python console, which already knows the open datasets and fits. The shell pane runs your own shell on a pseudo-terminal.",
+      "target": {"name": "python"}
+    },
+    {
+      "title": "Split the active pane",
+      "text": "<b>Split</b> divides the active pane so two sessions are visible side by side. The stacked variant sits next to it.",
+      "target": {"name": "split_right"},
+      "await": {"hint": "Press the side-by-side <b>Split</b> button."}
+    },
+    {
+      "title": "Close a pane",
+      "text": "<b>Close</b> ends the active pane's session and removes the pane. Ctrl+W does the same. A pane whose process already exited stays visible until you close it.",
+      "target": {"name": "close"},
+      "await": {"hint": "Press <b>Close</b>."}
+    }
+  ]
+}

@@ -428,15 +428,22 @@ class StylePreview:
 
     def _draw_samples(self) -> None:
         """A column of widgets that between them use most palette roles."""
+        note = tr("Preview sample: shows how this control looks in the theme; it does nothing")
         if im.button("Button"):
             pass
+        im.set_item_tooltip(note)
         im.same_line()
         if im.button("Hover me"):
             pass
+        im.set_item_tooltip(note)
         changed, checked = im.checkbox("Check", True)
+        im.set_item_tooltip(note)
         changed, value = im.slider_float("Slider##preview", 0.4, 0.0, 1.0)
+        im.set_item_tooltip(note)
         changed, index = im.combo("Combo##preview", 0, ["First", "Second", "Third"])
+        im.set_item_tooltip(note)
         changed, text = im.input_text("##preview_field", "Input field")
+        im.set_item_tooltip(note)
         im.progress_bar(0.55)
         im.separator()
         im.text_wrapped("The quick brown fox jumps over the lazy dog.")
