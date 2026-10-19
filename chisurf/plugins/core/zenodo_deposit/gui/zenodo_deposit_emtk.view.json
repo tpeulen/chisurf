@@ -146,7 +146,11 @@
                     "Calibration"
                   ],
                   "style": "radio",
-                  "description": "A measurement (sample data) or a calibration (IRF/scatter, buffer, dyes, DNA references)."
+                  "description": "A measurement (sample data) or a calibration (IRF/scatter, buffer, dyes, DNA references).",
+                  "descriptions": [
+                    "Sample data: the files land under measurements/<item>.",
+                    "A reference the measurements need (IRF/scatter, buffer, dyes, DNA): the files land under calibrations/<group>/<item>."
+                  ]
                 },
                 {
                   "type": "row",
@@ -356,7 +360,8 @@
                       },
                       "description": "Exactly the deposition metadata the upload sends."
                     }
-                  ]
+                  ],
+                  "description": "The deposition metadata exactly as the upload sends it to Zenodo, read-only."
                 }
               ],
               "hidden_when": {
@@ -662,7 +667,11 @@
                 "attr": "md_view",
                 "equals": ""
               },
-              "description": "Preview: the Markdown rendered, roughly as Zenodo shows it. Source: the text as it is in the file."
+              "description": "Preview: the Markdown rendered, roughly as Zenodo shows it. Source: the text as it is in the file.",
+              "descriptions": [
+                "The Markdown rendered, roughly as Zenodo shows it.",
+                "The text exactly as it is in the file."
+              ]
             },
             {
               "type": "info",
