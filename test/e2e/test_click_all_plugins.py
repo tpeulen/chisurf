@@ -539,6 +539,11 @@ def dialog_open(app):
             getattr(owner, name, None) not in (None, False) for name in ("dialog", "file_dialog")
         ):
             return True
+    # A stack of open modals (burst_ebfret's ``gui.dialogs``): open while it is not empty.
+    for owner in (app, getattr(app, "model", None), getattr(app, "gui", None)):
+        stack = getattr(owner, "dialogs", None)
+        if isinstance(stack, (list, tuple)) and stack:
+            return True
     return bool(getattr(getattr(app, "picker", None), "is_open", False))
 
 
@@ -2290,6 +2295,15 @@ def _native(plugin_id, result, png_path):
                 else:
                     advance_tour(driver, tour, result, recorder, getattr(app, "spec", {}))
                 tour.stop()
+                # The awaited press may rightly open a modal (Load example over loaded data asks
+                # keep/replace); answer it the plain way before the plots are judged, or every
+                # input after the tour lands on the modal instead.
+                for _ in range(3):
+                    if not dialog_open(app):
+                        break
+                    driver.escape()
+                    driver.frame(2)
+                    result["dialogs_closed"] += 1
             result["phase"] = "auto_range_after_tour"
             checkpoint(result)
             if phase_on("auto_range"):
