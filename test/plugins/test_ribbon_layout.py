@@ -38,6 +38,7 @@ EXPECTED = {
             "Split/Convert",
             "TTTR Header editor",
             "TTTR→Time-Window BIDs",
+            "Zenodo deposit",
             "⇄ .pto",
         ],
     },

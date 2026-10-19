@@ -20,6 +20,13 @@ from chisurf.emtk.node_editor.style_settings import (
 )
 
 
+def _ink() -> tuple[int, int, int]:
+    """The grid's ink: the theme's text colour (light on the dark theme, dark on the light)."""
+    from emtk import style as _style
+
+    return tuple(_style.TEXT[:3])
+
+
 @pytest.fixture
 def plot_store(monkeypatch):
     """A clean ``gui.plot`` the reader can be pointed at, and returned."""
@@ -64,9 +71,9 @@ def test_apply_writes_the_whole_grid_onto_a_style(plot_store):
     assert style.grid_spacing == 40.0
     minor = style.colors[emtk_nodes.Col.GRID_LINE]
     primary = style.colors[emtk_nodes.Col.GRID_LINE_PRIMARY]
-    assert minor == (255, 255, 255, 128)
+    assert minor == (*_ink(), 128)
     # The primary lines read stronger, never above full opacity.
-    assert primary == (255, 255, 255, 217)
+    assert primary == (*_ink(), 217)
     assert style.flags & emtk_nodes.StyleFlags.GRID_LINES
 
     plot_store["node_graph"]["show_grid"] = False
@@ -80,7 +87,7 @@ def test_every_graph_starts_from_the_settings(plot_store):
     control = GraphControl(document=GraphDocument())
     style = control.editor.style
     assert style.grid_line_width == 1.25
-    assert style.colors[emtk_nodes.Col.GRID_LINE] == (255, 255, 255, 128)
+    assert style.colors[emtk_nodes.Col.GRID_LINE] == (*_ink(), 128)
 
 
 def test_globalview_keeps_the_settings_grid_it_inherits(plot_store):
@@ -97,7 +104,10 @@ def test_globalview_keeps_the_settings_grid_it_inherits(plot_store):
     apply_network_style(control.editor)
     style = control.editor.style
     assert style.grid_line_width == 1.25
-    assert style.colors[emtk_nodes.Col.GRID_LINE] == (255, 255, 255, 128)
-    assert style.colors[emtk_nodes.Col.GRID_BACKGROUND] == (24, 26, 31, 255)
+    assert style.colors[emtk_nodes.Col.GRID_LINE] == (*_ink(), 128)
+    from emtk import style as _style
+
+    # Its own background: the theme's plot area, not emtk's node-graph default.
+    assert style.colors[emtk_nodes.Col.GRID_BACKGROUND] == tuple(_style.PLOT_BG)
     assert style.link_routing == emtk_nodes.LinkRouting.ARC
     assert not style.flags & emtk_nodes.StyleFlags.NODE_OUTLINE

@@ -1,9 +1,9 @@
 """The emtk shell's post-show startup stages (W9 S5): the update check.
 
-The Qt window runs ``services.d/30_gui_post_show.json`` after it is shown. Its window-building
-stages have shell equivalents of their own (history, autosave, plugin menus); the one that is not
-about the window -- ``check_updates`` -- is the shell's ``surface="emtk"``, ``phase="post_show"``
-set (``35_emtk_post_show.json``). ``warmup_imports`` has no twin: the session's own stages have
+The deleted Qt window ran ``services.d/30_gui_post_show.json`` after it was shown. Its
+window-building stages have shell equivalents of their own (history, autosave, plugin menus); the
+one that is not about the window -- ``check_updates`` -- is the shell's ``surface="emtk"``,
+``phase="post_show"`` set (``35_emtk_post_show.json``). ``warmup_imports`` has no twin: the session's own stages have
 imported what a first fit needs before the window opens, and an import on a worker thread racing
 the frame loop is how the shell deadlocked (``test/startup/test_startup_import_race.py``). Checked here: the set
 is declared and resolvable, the stages honour the shared updater preferences and never import Qt,
@@ -31,8 +31,9 @@ from chisurf.emtk.main_app import EmtkShellApp
 REPO = Path(__file__).resolve().parents[2]
 SERVICES = REPO / "chisurf" / "startup" / "services.d"
 SHOTS = Path(os.environ.get("CHISURF_NATIVE_SCREENSHOTS", "/private/tmp/chisurf-native-gpu"))
-#: The Qt post-show stages the emtk set mirrors (the rest build Qt window state).
-QT_STAGES_MIRRORED = {"check_updates": "emtk_check_updates"}
+#: The post-show stages and the words they show on the status strip. The labels are the ones
+#: the deleted Qt window's ``30_gui_post_show.json`` used, pinned here now that it is gone.
+STAGE_LABELS = {"emtk_check_updates": "Checking for updates"}
 
 
 def _specs(name: str) -> dict[str, dict]:
@@ -43,10 +44,9 @@ def _specs(name: str) -> dict[str, dict]:
 def test_the_post_show_set_is_declared_for_the_emtk_surface():
     from chisurf.startup.services import AppStartupServiceManager
 
-    qt = _specs("30_gui_post_show.json")
     emtk = _specs("35_emtk_post_show.json")
-    for qt_id, emtk_id in QT_STAGES_MIRRORED.items():
-        assert emtk[emtk_id]["label"] == qt[qt_id]["label"], "the same words on both windows"
+    for emtk_id, label in STAGE_LABELS.items():
+        assert emtk[emtk_id]["label"] == label
         assert emtk[emtk_id]["surface"] == "emtk" and emtk[emtk_id]["phase"] == "post_show"
     ordered = AppStartupServiceManager().ordered_specs(surface="emtk", phase="post_show")
     assert [spec.id for spec in ordered] == ["emtk_check_updates"]
