@@ -215,6 +215,18 @@ _FORMAT_BY_SUFFIX = {
 _SETUP_ENCODING = "bh"
 
 
+def _format_term(raw: Path) -> str:
+    """The ``_mmfdb_artifact.data_format`` term of an instrument file.
+
+    The reader name of :func:`_encoding_for` in the dictionary's spelling
+    (lower-case snake case: ``spc-600_256`` is the term ``spc_600_256``), so the
+    metadata says as exactly as the encoding which record format the bytes are.
+    """
+    if raw.suffix.lower() == ".set":
+        return _FORMAT_BY_SUFFIX[".set"]
+    return _encoding_for(raw).replace("-", "_")
+
+
 def _spc_container(raw: Path) -> str:
     """The record format of a Becker & Hickl ``.spc``, from the acquisition's ``.set``.
 
@@ -222,8 +234,8 @@ def _spc_container(raw: Path) -> str:
     records, so the setup file decides: an SPC-6xx/7xx module with an 8-bit ADC
     writes ``spc-600_256``, with a 12-bit ADC ``spc-600_4096``; SPC-1xx/8xx
     modules write ``spc-130``. ``"spc"`` when there is no ``.set`` or it says
-    neither. Each is a ``_mmfdb_artifact.data_format`` term and, compared without
-    case, the tttrlib reader of that name.
+    neither. Each is, compared without case, the tttrlib reader of that name;
+    :func:`_format_term` spells it as the dictionary term.
     """
     setup = raw.with_suffix(".set")
     if not setup.is_file():
@@ -248,9 +260,9 @@ def _spc_container(raw: Path) -> str:
 def _encoding_for(raw: Path) -> str:
     """The encoding to store an instrument file under.
 
-    A ``_mmfdb_artifact.data_format`` term that tttrlib also reads as the name
-    of its reader (case-insensitively): it picks the decoder from the encoding,
-    so the encoding must say exactly which record format the bytes are.
+    The name of the tttrlib reader (case-insensitively): it picks the decoder
+    from the encoding, so the encoding must say exactly which record format the
+    bytes are.
     """
     suffix = raw.suffix.lower()
     if suffix == ".spc":
@@ -1896,7 +1908,7 @@ class Measurement:
         """Embed the instrument file verbatim as the first object."""
         _check_term(artifact_kind, _ARTIFACT_KIND)
         checksum, size = _sha256_of_path(raw)
-        data_format = _FORMAT_BY_SUFFIX.get(raw.suffix.lower(), "unknown")
+        data_format = _format_term(raw)
 
         tttrlib = _tttrlib()
         if as_sidecar:
@@ -1939,7 +1951,7 @@ class Measurement:
             tttrlib.pto_mark_sidecar(self._f, side, uid)
             self._describe(
                 side,
-                data_format=_FORMAT_BY_SUFFIX.get(suffix, "unknown"),
+                data_format=_format_term(companion),
                 checksum=side_sum,
                 size_bytes=side_size,
                 file_path=self._sidecar_link(companion) if as_sidecar else str(companion),
@@ -1958,7 +1970,7 @@ class Measurement:
         _check_term(artifact_kind, _ARTIFACT_KIND)
         for index, raw in enumerate(raw_paths):
             checksum, size = _sha256_of_path(raw)
-            data_format = _FORMAT_BY_SUFFIX.get(raw.suffix.lower(), "unknown")
+            data_format = _format_term(raw)
             prefix = f"_mmfdb_sidecar.{index}."
             self._text(0, prefix + "name", raw.name)
             self._text(0, prefix + "kind", artifact_kind)

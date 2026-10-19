@@ -191,7 +191,7 @@ def test_instrument_files_are_stored_under_the_reader_that_reads_them(tmp_path: 
     which picks its reader from the encoding, handed it to the PTU reader. A B&H
     .spc is decided from the module and ADC its .set names.
     """
-    from chisurf.core.fio.pto import _FORMAT_BY_SUFFIX, _encoding_for
+    from chisurf.core.fio.pto import _FORMAT_BY_SUFFIX, _encoding_for, _format_term
 
     ht3 = tmp_path / "a.ht3"
     ht3.write_bytes(b"x")
@@ -205,6 +205,7 @@ def test_instrument_files_are_stored_under_the_reader_that_reads_them(tmp_path: 
             f"*IDENTIFICATION\n  Revision  : {adc}\n  Contents  : Setup file made by system "
             f"at the end of FIFO measurement\n with module {module} (Ser.No. 3A0132)\n")
         assert _encoding_for(spc) == want, (module, adc)
+        assert _format_term(spc) == want.replace("-", "_")  # the dictionary's spelling
     # one .set per acquisition: the rollover files without their own take it
     run = tmp_path / "run"
     run.mkdir()
