@@ -36,10 +36,10 @@ class ZenodoDepositApp(ImApp):
         self.form = FormState()
         self.item_rects: dict[str, tuple] = {}
         self.help_window = EmTkHelpWindow(
-            title="Zenodo deposit — Help", resource=HERE / "help_emtk.md", owner=self
+            title="Zenodo deposit — Help", resource=HERE / "help.md", owner=self
         )
         self.tour = EmTkGuidedTour(
-            steps=HERE / "guide_emtk.json",
+            steps=HERE / "guide.json",
             owner=self,
             wait_for_controls=True,
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),

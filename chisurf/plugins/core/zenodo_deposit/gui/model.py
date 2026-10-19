@@ -16,6 +16,8 @@ live while a gigabyte moves.
 from __future__ import annotations
 
 import os
+import re
+import time
 from pathlib import Path
 
 from mmfdb.deposit import (
@@ -37,6 +39,10 @@ from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 #: Where records live unless the user points elsewhere (an external disk:
 #: the data passes through this machine for review).
 DEFAULT_ROOT = "/Volumes/SD1TB/T4L_Unfolded/records"
+#: Record build configs and the commands that build and scan one (T4L defaults).
+DEFAULT_CONFIGS = "/Users/tpeulen/projects/T4L_Unfolded/scripts/records"
+DEFAULT_BUILD = ("{python} /Users/tpeulen/projects/T4L_Unfolded/scripts/build_record.py {config}")
+DEFAULT_SCAN = ("{python} /Users/tpeulen/projects/T4L_Unfolded/scripts/review_record.py {record}")
 #: Where packages are written: beside the records folder.
 ZIPS = "zips"
 
@@ -65,8 +71,17 @@ def _size(n: int) -> str:
 class ZenodoDepositModel:
     """The records under a folder, the selected record's items and its gate."""
 
-    def __init__(self, client_factory=None, ndx_opener=None) -> None:
+    def __init__(self, client_factory=None, ndx_opener=None, runner=None) -> None:
         self.data_root = os.environ.get("MMFDB_DEPOSIT_ROOT", DEFAULT_ROOT)
+        #: Where record build configs live (one JSON per record) and the commands
+        #: that turn one into a record and then scan it. ``{config}`` and
+        #: ``{record}`` are filled in; a project sets its own in the settings.
+        self.configs_dir = os.environ.get("MMFDB_DEPOSIT_CONFIGS", DEFAULT_CONFIGS)
+        self.build_command = DEFAULT_BUILD
+        self.scan_command = DEFAULT_SCAN
+        self.config_name = ""
+        self.build_log = ""
+        self._runner = runner
         self.note = ""
         self.sandbox = False
         #: What is typed in the token field; cleared once it is stored.
@@ -134,6 +149,100 @@ class ZenodoDepositModel:
         self.item_id = ""
         self.message = f"opened {self.record.name}"
 
+    # ── creating a record from its build config ──────────────────────────
+    @property
+    def configs(self) -> list[dict]:
+        """One row per build config: has its record been built, scanned, uploaded?"""
+        d = Path(self.configs_dir)
+        rows = []
+        for p in sorted(d.glob("*.json")) if d.is_dir() else []:
+            name = p.stem
+            folder = Path(self.data_root) / name
+            review = Path(self.data_root) / f"{name}.deposit.json"
+            state = ("not built" if not folder.is_dir() else
+                     "built, not scanned" if not review.is_file() else "built and scanned")
+            built = (time.strftime("%Y-%m-%d %H:%M", time.localtime(folder.stat().st_mtime))
+                     if folder.is_dir() else "")
+            rows.append({"name": name, "state": state, "built": built, "config": str(p)})
+        return rows
+
+    def select_config(self, row: dict | None) -> None:
+        self.config_name = row["name"] if row else ""
+
+    @property
+    def config_text(self) -> str:
+        p = Path(self.configs_dir) / f"{self.config_name}.json"
+        return p.read_text(encoding="utf-8") if self.config_name and p.is_file() else ""
+
+    def build_record(self) -> None:
+        """Build the selected config into a record, then scan it -- on the worker.
+
+        Rebuilding replaces the record folder: approvals of items whose content
+        changed are void (they are bound to the content), the others stand.
+        """
+        if not self.config_name:
+            return
+        import shlex
+        import subprocess
+        import sys
+
+        cfg = str(Path(self.configs_dir) / f"{self.config_name}.json")
+        rec = str(Path(self.data_root) / self.config_name)
+        cmds = [c.format(python=shlex.quote(sys.executable), config=shlex.quote(cfg),
+                         record=shlex.quote(rec)) for c in (self.build_command, self.scan_command)]
+        run = self._runner or (lambda cmd: subprocess.run(
+            cmd, shell=True, capture_output=True, text=True, env={
+                k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONHOME")}))
+        self.busy_what = f"building {self.config_name}"
+        self.build_log = ""
+
+        def work():
+            log = []
+            for cmd in cmds:
+                r = run(cmd)
+                out = (r.stdout or "") + (r.stderr or "")
+                log.append(f"$ {cmd}\n" + "\n".join(
+                    ln for ln in out.splitlines() if "Removed 1 path" not in ln)[-6000:])
+                if r.returncode != 0:
+                    raise RuntimeError("\n\n".join(log))
+            return "\n\n".join(log)
+
+        def done(log):
+            self.build_log = log
+            self.message = f"built {self.config_name}" + (
+                " -- VERIFY_OK" if "VERIFY_OK" in log else " -- check the log")
+            self.refresh_records()
+
+        def fail(exc):
+            self.build_log = str(exc)
+            self.message = f"building {self.config_name} failed (see the log)"
+
+        self.job.start(work, done, fail)
+
+    # ── what is submitted to Zenodo ───────────────────────────────────────
+    @property
+    def zenodo_text(self) -> str:
+        """The deposition metadata of the selected record, for review before upload."""
+        if self.record is None:
+            return ""
+        m = self.record.metadata or {}
+        if not m:
+            return "**No Zenodo metadata** -- the record's build config has no \"zenodo\" block."
+        lines = [f"**Title:** {_md(m.get('title', ''))}", "", "**Creators:**", ""] + [
+            f"- {c.get('name')} -- {c.get('affiliation', '')}" for c in m.get("creators", [])
+        ] + ["", f"**License:** {m.get('license', '')} · **Type:** {m.get('upload_type', '')} · "
+                 f"**Access:** {m.get('access_right', '')}", "",
+                 "**Keywords:** " + ", ".join(m.get("keywords", []))]
+        if m.get("notes"):
+            lines += ["", f"**Notes:** {_md(m['notes'])}"]
+        return "\n".join(lines)
+
+    @property
+    def zenodo_description(self) -> str:
+        """The description, one sentence per line (it is a single HTML paragraph)."""
+        text = (self.record.metadata or {}).get("description", "") if self.record else ""
+        return re.sub(r"(?<=[.;]) (?=[A-Z<])", "\n", text)
+
     # ── items of the selected record ─────────────────────────────────────
     @property
     def items(self) -> list[dict]:
@@ -144,7 +253,7 @@ class ZenodoDepositModel:
                     else ""),
                  "role": i.role, "group": i.group, "files": i.files,
                  "size": _size(i.bytes),
-                 "flags": f"⚠ {len(i.flags)}" if i.flags else "",
+                 "flags": ("✖ " if i.errors else "") + (f"⚠ {len(i.flags)}" if i.flags else ""),
                  "detail": "\n".join(i.flags) or i.description}
                 for i in self.record.items]
 
@@ -168,6 +277,9 @@ class ZenodoDepositModel:
         if it is None:
             return "Select an item to see where it came from, what it holds and why it is flagged."
         lines = [f"### {it.id}", ""]
+        if it.errors:
+            lines += [f"**Fails the machine check ({len(it.errors)}) -- blocks the upload:**", ""] \
+                + [f"- {_md(e)}" for e in it.errors[:12]] + [""]
         if it.flags:
             lines += ["**Needs your check:**", ""] + [f"- {_md(f)}" for f in it.flags] + [""]
         if it.description:
@@ -342,6 +454,8 @@ class ZenodoDepositModel:
         idle = not self.job.running
         if name in ("approve_item", "reject_item", "reset_item"):
             return has_item and idle
+        if name == "build_record":
+            return idle and bool(self.config_name)
         if name == "open_in_ndx":
             return self.ndx_container is not None
         if name in ("rescan", "build_package"):
@@ -375,7 +489,8 @@ class ZenodoDepositModel:
             return ("**Step 0 -- enter your Zenodo token** in the *Zenodo token* tab. "
                     "Reviewing works without it; uploading does not.")
         if self.record is None:
-            return "**Step 1 -- pick a record** in the list above."
+            return ("**Step 1 -- pick a record** in the list above (or build one first in "
+                    "*0 · Create*).")
         rec = self.record
         if rec.remote.get("doi"):
             return f"**Done:** {rec.name} is published, DOI {rec.remote['doi']}."
@@ -543,10 +658,15 @@ class ZenodoDepositModel:
 
     # ── persistence ──────────────────────────────────────────────────────
     def export_settings(self) -> dict:
-        return {"data_root": self.data_root, "sandbox": self.sandbox}
+        return {"data_root": self.data_root, "sandbox": self.sandbox,
+                "configs_dir": self.configs_dir, "build_command": self.build_command,
+                "scan_command": self.scan_command}
 
     def restore_settings(self, state: dict) -> None:
         self.data_root = str(state.get("data_root") or self.data_root)
+        self.configs_dir = str(state.get("configs_dir") or self.configs_dir)
+        self.build_command = str(state.get("build_command") or self.build_command)
+        self.scan_command = str(state.get("scan_command") or self.scan_command)
         self.sandbox = bool(state.get("sandbox", False))
         self.refresh_records()
 

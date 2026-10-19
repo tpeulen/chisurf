@@ -13,6 +13,22 @@ tags: [zenodo, deposition, review, guide]
 The banner at the top always names the **one next step**; follow it and
 nothing can be skipped.
 
+## 0. Build the record
+
+```{figure} figures/109_zenodo_deposit_create.png
+:width: 100%
+
+The Create tab: one build config per record; Build record links the raw data,
+writes the containers, generates and validates `metadata.cif`, verifies, and
+scans the record for review. The log shows what the build checked.
+```
+
+A record is described by its build config (one JSON per record: measurements,
+calibrations per setup and date, sources, construct and probes, setups, Zenodo
+metadata). Rebuilding keeps every approval whose item did not change. A
+`metadata.cif` that does not conform to the mmCIF, IHM, IHM-FLR and mmfdb
+dictionaries fails the build -- and, should one slip through, blocks the upload.
+
 ## 1. Pick a record and review it
 
 ```{figure} figures/109_zenodo_deposit_review.png
@@ -35,8 +51,9 @@ folder after approving it puts it back to *Pending (changed)* — press
 ```{figure} figures/109_zenodo_deposit_upload.png
 :width: 100%
 
-The Upload tab lists what still blocks the upload; *Upload draft* stays grey
-until the list is empty.
+The Upload tab: the Zenodo metadata that is submitted (title, creators,
+license, keywords, description), then what still blocks the upload; *Upload
+draft* stays grey until the list is empty.
 ```
 
 *Build package* writes the archive (stored ZIP, every member CRC-checked).

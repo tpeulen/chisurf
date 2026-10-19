@@ -2,6 +2,9 @@
 
 Every record that goes to Zenodo is checked here first, item by item. Nothing leaves the machine until you have approved everything it holds, and nothing is published until you approve that too.
 
+## Create
+A record is built from its build config (one JSON per record: measurements, calibrations per setup and date, sources, construct, setups, Zenodo metadata). *0 · Create* lists the configs; *Build record* links the raw data from the sources, writes one burst-analysis container per analysed folder, generates `metadata.cif` (validated against the mmCIF, IHM, IHM-FLR and mmfdb dictionaries -- a record whose metadata does not conform cannot be uploaded), verifies every container and then scans the record for review. Rebuilding keeps every approval whose item did not change.
+
 ## Records
 A record is a folder that becomes one Zenodo entry, uploaded as one archive. Its review state lives beside it as `<record>.deposit.json`, so the review is never shipped with the data. The data root is usually an external disk: all data passes through this machine for review.
 
@@ -15,6 +18,8 @@ The code editor below the buttons fills the rest of the window: a folder lists e
 Approve, Reject or Reset the selected item, with an optional note. An approval records the item's content digest: when anything in the item changes later, it shows as **Pending (changed)** and must be approved again. Rescan re-reads the folder after a change.
 
 ## Upload
+The Zenodo metadata at the top of *2 · Upload* (title, creators and affiliations, license, keywords, description) is what is submitted with the draft; check it like any item.
+
 Build package writes the archive from the record as it is now. Upload draft is grey until every item is approved and the package was built from exactly that content; it uploads into a Zenodo **draft** and checks the file's md5 there. Check Zenodo reads the draft back and compares it with the local package at any later time. The sandbox switch sends everything to sandbox.zenodo.org for a trial run.
 
 ## Publish

@@ -158,3 +158,41 @@ def test_a_folder_is_listed_file_by_file_in_the_text_editor(model):
     model.select_item({"id": "measurements/2014-08-12_7.5M-urea"})
     assert model.editor_kind == "text"
     assert "Split-0000.ht3" in model.preview_txt and model.preview_cif == ""
+
+
+def test_create_lists_configs_and_builds_through_the_project_commands(model, tmp_path):
+    cfgs = tmp_path / "configs"
+    cfgs.mkdir()
+    (cfgs / "t4l-demo.json").write_text('{"record": "t4l-demo"}')
+    (cfgs / "t4l-new.json").write_text('{"record": "t4l-new"}')
+    model.configs_dir = str(cfgs)
+    states = {r["name"]: r["state"] for r in model.configs}
+    assert states == {"t4l-demo": "built, not scanned", "t4l-new": "not built"}
+    ran = []
+
+    class R:
+        returncode, stdout, stderr = 0, "VERIFY_OK\n", ""
+
+    model._runner = lambda cmd: ran.append(cmd) or R()
+    model.select_config({"name": "t4l-new"})
+    assert model.enabled("build_record") and '"t4l-new"' in model.config_text
+    model.build_record()
+    _wait(model)
+    assert len(ran) == 2 and "t4l-new.json" in ran[0] and ran[1].endswith("t4l-new")
+    assert "VERIFY_OK" in model.message
+
+
+def test_a_failed_build_shows_its_output(model, tmp_path):
+    cfgs = tmp_path / "configs"
+    cfgs.mkdir()
+    (cfgs / "x.json").write_text("{}")
+    model.configs_dir = str(cfgs)
+
+    class R:
+        returncode, stdout, stderr = 1, "", "metadata.cif does not conform: ..."
+
+    model._runner = lambda cmd: R()
+    model.select_config({"name": "x"})
+    model.build_record()
+    _wait(model)
+    assert "failed" in model.message and "does not conform" in model.build_log

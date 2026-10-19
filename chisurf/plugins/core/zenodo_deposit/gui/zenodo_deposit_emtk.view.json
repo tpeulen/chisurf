@@ -60,6 +60,94 @@
       "sections": [
         {
           "type": "panel",
+          "title": "0 · Create",
+          "description": "Build a record from its build config: the raw data are linked from the sources, containers written, metadata generated and validated, then the record is scanned for review.",
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "configs_dir",
+              "kind": "str",
+              "label": "Configs",
+              "elide": "start",
+              "description": "The folder of record build configs (one JSON per record: its measurements, calibrations, sources, construct, setups and Zenodo metadata)."
+            },
+            {
+              "type": "custom",
+              "key": "data_table",
+              "title": "",
+              "description": "One row per build config. Click one to see it; Build record creates (or rebuilds) the record folder under the data root.",
+              "options": {
+                "source": "configs",
+                "row_key": "name",
+                "selected_call": "select_config",
+                "editable": false,
+                "fit_rows": true,
+                "height": 160,
+                "min_column_width": 80,
+                "tooltip_key": "config",
+                "columns": [
+                  {
+                    "key": "name",
+                    "title": "Record",
+                    "width": 360,
+                    "tooltip": "The record the config builds."
+                  },
+                  {
+                    "key": "state",
+                    "title": "State",
+                    "width": 160,
+                    "tooltip": "Not built, built but not scanned, or built and scanned (ready for review)."
+                  },
+                  {
+                    "key": "built",
+                    "title": "Built",
+                    "width": 150,
+                    "tooltip": "When the record folder was last written."
+                  }
+                ]
+              }
+            },
+            {
+              "type": "button_row",
+              "description": "Build the selected record; rebuilding keeps every approval whose item did not change.",
+              "buttons": [
+                {
+                  "action": "build_record",
+                  "label": "Build record",
+                  "role": "primary",
+                  "description": "Run the build (link raws, write containers, generate and validate metadata.cif, verify) and then the review scan, on a worker. Grey until a config is selected."
+                }
+              ]
+            },
+            {
+              "type": "custom",
+              "key": "code_editor",
+              "target": "config_text",
+              "options": {
+                "language": "json",
+                "read_only": true,
+                "stretch": 1,
+                "min_height": 120,
+                "height": 200
+              },
+              "description": "The selected build config, read-only. Edit it in the project, then Build record."
+            },
+            {
+              "type": "custom",
+              "key": "code_editor",
+              "target": "build_log",
+              "options": {
+                "language": "none",
+                "read_only": true,
+                "height": 160
+              },
+              "description": "What the last build printed: per container the burst tables, sidecars, encodings and checks, and VERIFY_OK or what failed."
+            }
+          ]
+        },
+        {
+          "type": "panel",
           "title": "1 · Review",
           "description": "Check every item of the record and decide on it.",
           "n_col": 1,
@@ -237,6 +325,24 @@
           "description": "Build the archive and upload it into a Zenodo draft. Locked until every item is approved.",
           "n_col": 1,
           "sections": [
+            {
+              "type": "info",
+              "key": "zenodo_text",
+              "source": "zenodo_text",
+              "is_markdown": true,
+              "description": "The deposition metadata that is submitted with the draft: title, creators with affiliations, license, keywords. It comes from the record's build config."
+            },
+            {
+              "type": "custom",
+              "key": "code_editor",
+              "target": "zenodo_description",
+              "options": {
+                "language": "none",
+                "read_only": true,
+                "height": 90
+              },
+              "description": "The record description as it will appear on Zenodo (HTML)."
+            },
             {
               "type": "info",
               "key": "gate_text",
