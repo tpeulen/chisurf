@@ -182,3 +182,38 @@ def test_companions_are_joined_and_source_named(container: pathlib.Path):
     assert ops == {"burst_selection", "burst_lifetime_fitting"}
     sources = [s["name"] for s in provenance.get("sources", [])]
     assert any("Split_44_132_75murea_sm-0000" in s for s in sources)
+
+
+def test_instrument_files_are_stored_under_the_reader_that_reads_them(tmp_path: pathlib.Path):
+    """The object's encoding is the tttrlib container; data_format the dictionary term.
+
+    An .ht3 used to be stored as "ptu" -- and tttrlib,
+    which picks its reader from the encoding, handed it to the PTU reader. A B&H
+    .spc is decided from the module and ADC its .set names.
+    """
+    from chisurf.core.fio.pto import _FORMAT_BY_SUFFIX, _encoding_for
+
+    ht3 = tmp_path / "a.ht3"
+    ht3.write_bytes(b"x")
+    assert _encoding_for(ht3) == "ht3" and _FORMAT_BY_SUFFIX[".ht3"] == "ht3"
+    for module, adc, want in (("SPC-630", "8 bits ADC", "spc-600_256"),
+                              ("SPC-630", "12 bits ADC", "spc-600_4096"),
+                              ("SPC-830", "12 bits ADC", "spc-130")):
+        spc = tmp_path / f"{module}_{adc[:2].strip()}.spc"
+        spc.write_bytes(b"x")
+        spc.with_suffix(".set").write_text(
+            f"*IDENTIFICATION\n  Revision  : {adc}\n  Contents  : Setup file made by system "
+            f"at the end of FIFO measurement\n with module {module} (Ser.No. 3A0132)\n")
+        assert _encoding_for(spc) == want, (module, adc)
+    # one .set per acquisition: the rollover files without their own take it
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "m_000.spc").write_bytes(b"x")
+    (run / "m_001.spc").write_bytes(b"x")
+    (run / "m_001.set").write_text("Revision  : 8 bits ADC\n with module SPC-630 (Ser.No. 1)\n")
+    assert _encoding_for(run / "m_000.spc") == "spc-600_256"
+    alone = tmp_path / "alone"
+    alone.mkdir()
+    (alone / "x.spc").write_bytes(b"x")
+    assert _encoding_for(alone / "x.spc") == "spc"
+    assert _encoding_for(tmp_path / "m.set") == "bh"

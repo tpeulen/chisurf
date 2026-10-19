@@ -39,6 +39,7 @@ never have to be encoded in a file name.
 from __future__ import annotations
 
 import hashlib
+import re
 import json
 import logging
 import uuid
@@ -174,7 +175,8 @@ WHAT THE OBJECTS ARE
   Encoding "dstore" is a columnar table: magic "TTTRSTOR", a 48-byte header
   (version, flags, directory offset+size, file size, FNV-1a of the directory),
   then blobs, then the directory. Columns are contiguous little-endian arrays.
-  Encoding "ptu"/"spc"/"ht3"/... is the vendor file unchanged -- write FileData
+  An instrument file's encoding names the reader for its bytes (ptu, ht3,
+  spc-600_256, ...); the bytes are the vendor file unchanged -- write FileData
   to a file and any reader of that format opens it.
 
 RECOVERING THE ORIGINAL DATA
@@ -196,8 +198,8 @@ Full specification: doc/formats/pto.rst (container) and the PTO.MFDB profile
 #: the bytes round-trip either way, and a wrong term is worse than no term.
 _FORMAT_BY_SUFFIX = {
     ".ptu": "ptu",
-    ".ht3": "ptu",
-    ".pt3": "ptu",
+    ".ht3": "ht3",
+    ".pt3": "pt3",
     ".spc": "spc",
     ".set": "spc",
     ".sm": "tttr",
@@ -208,6 +210,55 @@ _FORMAT_BY_SUFFIX = {
     ".tif": "tiff",
     ".tiff": "tiff",
 }
+
+#: B&H setup files are companions, never photons: their encoding names no reader.
+_SETUP_ENCODING = "bh"
+
+
+def _spc_container(raw: Path) -> str:
+    """The record format of a Becker & Hickl ``.spc``, from the acquisition's ``.set``.
+
+    Four formats share the ``.spc`` suffix and cannot be told apart from the
+    records, so the setup file decides: an SPC-6xx/7xx module with an 8-bit ADC
+    writes ``spc-600_256``, with a 12-bit ADC ``spc-600_4096``; SPC-1xx/8xx
+    modules write ``spc-130``. ``"spc"`` when there is no ``.set`` or it says
+    neither. Each is a ``_mmfdb_artifact.data_format`` term and, compared without
+    case, the tttrlib reader of that name.
+    """
+    setup = raw.with_suffix(".set")
+    if not setup.is_file():
+        # B&H writes one .set per acquisition (beside its last file, m_250.set),
+        # not one per rollover file: the folder's setup file speaks for all of them.
+        others = sorted(raw.parent.glob("*.set"))
+        if not others:
+            return "spc"
+        setup = others[-1]
+    head = setup.read_bytes()[:4096].decode("latin-1", "replace")
+    module = re.search(r"module SPC-(\d+)", head)
+    if module is None:
+        return "spc"
+    family = module.group(1)[0]
+    if family in "67":
+        return "spc-600_256" if re.search(r"\b8 bits ADC", head) else "spc-600_4096"
+    if family in "18":
+        return "spc-130"
+    return "spc"
+
+
+def _encoding_for(raw: Path) -> str:
+    """The encoding to store an instrument file under.
+
+    A ``_mmfdb_artifact.data_format`` term that tttrlib also reads as the name
+    of its reader (case-insensitively): it picks the decoder from the encoding,
+    so the encoding must say exactly which record format the bytes are.
+    """
+    suffix = raw.suffix.lower()
+    if suffix == ".spc":
+        return _spc_container(raw)
+    if suffix == ".set":
+        return _SETUP_ENCODING
+    return _FORMAT_BY_SUFFIX.get(suffix, "unknown")
+
 
 #: Suffixes a reader must be handed together with their primary, because the
 #: primary is not decodable alone. A Becker & Hickl ``.spc`` keeps half its
@@ -1849,11 +1900,11 @@ class Measurement:
 
         tttrlib = _tttrlib()
         if as_sidecar:
-            uid = self._f.add_sidecar_file(artifact_kind, data_format, raw.name, str(raw))
+            uid = self._f.add_sidecar_file(artifact_kind, _encoding_for(raw), raw.name, str(raw))
             if not uid:
                 raise PtoMfdbError(f"could not record sidecar {raw}: {self._f.error()}")
         else:
-            uid = self._add_payload_from_path(artifact_kind, data_format, raw.name, raw)
+            uid = self._add_payload_from_path(artifact_kind, _encoding_for(raw), raw.name, raw)
         self._describe(
             uid,
             data_format=data_format,
@@ -1872,7 +1923,7 @@ class Measurement:
             if as_sidecar:
                 side = self._f.add_sidecar_file(
                     "raw_data",
-                    _FORMAT_BY_SUFFIX.get(suffix, "unknown"),
+                    _encoding_for(companion),
                     companion.name,
                     str(companion),
                 )
@@ -1881,7 +1932,7 @@ class Measurement:
             else:
                 side = self._add_payload_from_path(
                     "raw_data",
-                    _FORMAT_BY_SUFFIX.get(suffix, "unknown"),
+                    _encoding_for(companion),
                     companion.name,
                     companion,
                 )
