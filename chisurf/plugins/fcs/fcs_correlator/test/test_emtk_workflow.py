@@ -428,6 +428,10 @@ def test_help_guide_and_the_tour_waits_for_the_user():
     assert not tour.awaiting
     hub.press_text("Next ►")
     hub.press_text("Next ►")
+    assert tour.awaiting  # "switch on Draw": waits
+    hub.click("draw_regions")
+    assert not tour.awaiting and hub.child.draw_mode
+    hub.press_text("Next ►")
     assert tour.awaiting  # "select 4. Correlator"
     hub.nav("correlator")
     assert not tour.awaiting
