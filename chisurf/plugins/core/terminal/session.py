@@ -41,7 +41,7 @@ def spawn(
     cwd: str | None = None,
     env: dict | None = None,
     max_scrollback: int = 2000,
-) -> "PtySession":
+) -> PtySession:
     """Run *argv* on a new pseudo-terminal and return its live session.
 
     Parameters

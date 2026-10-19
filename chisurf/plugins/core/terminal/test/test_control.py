@@ -226,3 +226,40 @@ def test_ime_caret_is_at_the_cursor():
     x, y, height = box
     assert abs(x - (control._pad_x + 2 * control._glyph_w)) < 0.01
     assert abs(height - control._line_h) < 0.01
+
+
+# ── the clipboard ────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def clip(monkeypatch):
+    """The system clipboard, faked: a test must never overwrite the user's."""
+    from emtk import clipboard
+
+    held = {"text": ""}
+    monkeypatch.setattr(clipboard, "copy", lambda text: held.update(text=text) or True)
+    monkeypatch.setattr(clipboard, "paste", lambda: held["text"])
+    return held
+
+
+def test_ctrl_c_with_a_selection_copies_instead_of_interrupting(clip):
+    session, control, driver = make()
+    driver.draw(2)
+    session.screen.feed("alpha beta")
+    driver.draw(1)
+    top = session.screen.scrollback_lines
+    control.select((top, 0), (top, 4))
+    driver.press(ord("c"), mods=CONTROL_MODIFIER)
+    assert clip["text"] == "alpha"
+    assert b"\x03" not in typed(session)
+    assert control.selection is None
+    driver.press(ord("c"), mods=CONTROL_MODIFIER)  # no selection now: ^C again
+    assert typed(session).endswith(b"\x03")
+
+
+def test_ctrl_v_pastes_the_clipboard_into_the_session(clip):
+    session, control, driver = make()
+    driver.click((10, 10))
+    clip["text"] = "echo hi\nls"
+    driver.press(ord("v"), mods=CONTROL_MODIFIER)
+    assert typed(session).endswith(b"echo hi\rls")

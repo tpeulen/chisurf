@@ -7,9 +7,11 @@ tags: [reference, settings, fitting, global-analysis]
 
 # ChiSurf Global Settings
 
-This document describes the main user-configurable settings used by ChiSurf.
+This document describes the user-configurable settings ChiSurf reads.
 Values are loaded from YAML files in `chisurf/core/settings` into `chisurf.settings`
 (e.g. `chisurf.settings.cs_settings`, `chisurf.settings.gui`, `chisurf.settings.fret`).
+The copy in your settings folder (`~/.chisurf`) is merged over the packaged one,
+so a key missing from it takes the shipped value.
 
 Settings are grouped and ordered as in the YAML files:
 
@@ -17,8 +19,7 @@ Settings are grouped and ordered as in the YAML files:
 - `experiment_configs.yaml` – experiment type registry and readers/models
 - `settings_colors.yaml` – predefined color palette used by plotting code
 
-Only fields that are actually read or clearly intended for use are documented
-here.
+Only keys some code reads are documented, and only those ship.
 
 ---
 
@@ -29,22 +30,23 @@ here.
 Used by:
 - `chisurf.plugins.fcs.fcs_correlator.correlator_model.CorrelatorSettingsModel` (the FCS correlator)
 - `chisurf.plugins.fcs.fcs_channel_preset` (the FCS channel presets)
+- `chisurf.core.fluorescence.fcs.channel_setups` (a channel setup without its own `n_bins` / `n_casc` / `fine`)
 
 Keys:
 
-- **`B`**  
+- **`B`** (shipped `9`)  
   Number of correlation lag bins *per cascade level* in the multi-tau
   algorithm used by `tttrlib.Correlator` (`n_bins` in the C++ code).
   For each coarsening level, `B` correlation points are computed before the
   time axis is coarsened again.
 
-- **`number_of_cascades`**  
+- **`number_of_cascades`** (shipped `20`)  
   Number of coarsening steps / cascade levels in the multi-tau correlator
   (`n_casc` in the C++ code). Each additional cascade halves the effective
   time resolution and adds another block of `B` correlation points at longer
   lag times, extending the accessible correlation window.
 
-- **`split`**  
+- **`split`** (shipped `6`)  
   Number of chunks the photon stream is split into for separate correlations.
   Used to compute multiple partial correlations that are then averaged.
 
@@ -53,18 +55,12 @@ Keys:
   normalization, no long-lag upturn when the intensity drifts), `wahl`
   (multiple-tau on the time tags) or `felekyan`. An unknown name is refused.
 
-- **`fine`**  
-  Boolean flag to enable "fine" correlation (micro-time–resolved / higher
-  resolution). If true, additional micro-time information is passed to
-  `tttrlib.Correlator`.
+- **`fine`** (shipped `0`)  
+  Enable "fine" correlation (micro-time–resolved / higher resolution). If
+  true, additional micro-time information is passed to `tttrlib.Correlator`.
 
 - **`microtime_binning`**  
   Micro-time binning factor the FCS correlator starts with (1 = no binning).
-
-- **`weighting`**  
-  Default index for the correlation weighting mode. Mapped to entries in
-  `chisurf.core.fluorescence.fcs.weightCalculations` and controls how statistical
-  weights are computed (e.g. Suren, uniform).
 
 ---
 
@@ -93,40 +89,27 @@ Used by: `chisurf.core.base.Data` for embedding raw files into YAML/JSON save fi
 ### 1.3 Top‑level flags
 
 - **`enable_experimental`**  
-  Global switch that enables experimental / hidden plugins and features.
-  Read in several plugin discovery paths (e.g. help browser, GUI plugin menus)
-  as `chisurf.settings.cs_settings.get('enable_experimental', False)`.
-
-- **`exceptions_on_gui`**  
-  When true, installs a custom Qt exception hook (`chisurf.gui.exception_hook`)
-  so that uncaught exceptions are shown in the GUI rather than silently
-  printing to stderr.
-
-- **`warn_missing_detector_setups`**  
-  Controls whether a warning dialog is shown when the central
-  `detector_setups.json` is missing (used by the detector wizard in
-  `gui.widgets.wizard.tttr_channel_definition`). Updated via
-  `set_warn_missing_detector_setups()`.
-
-- **`fitting_message`**  
-  Master flag indicating whether information dialogs should be shown around
-  long‑running fits. Used by several wizards and controllers to decide if they
-  display additional explanatory text.
+  Experimental mode: the ribbon and menus also list experimental, CLI-only and
+  disabled plugins (`chisurf/emtk/shell_ribbon.py`), and
+  `chisurf.settings.is_dev_mode()` turns on the developer code badges.
 
 - **`verbose`**  
   Global verbosity flag. Used in multiple modules (e.g. `chisurf.__init__`,
-  `TCSPCReader.autofitrange`, photon I/O) to control the amount of diagnostic
+  `TCSPCReader`, structure and photon I/O) to control the amount of diagnostic
   logging and console output.
 
 - **`log_level`**  
-  Default Python logging level for ChiSurf (10=DEBUG, 20=INFO, 30=WARNING,
-  40=ERROR, 50=CRITICAL).
-  Used when initializing the global logger and the GUI log dock.
+  Python logging level of the root logger (10=DEBUG, 20=INFO, 30=WARNING,
+  40=ERROR, 50=CRITICAL; shipped `30`), set once at startup
+  (`chisurf.__init__._apply_logging_settings`). The Log dock has its own level
+  control.
 
-- **`hidden_execute`**  
-  Indicates whether certain internal operations (e.g. macro execution) are run
-  without echoing the commands in the console UI. Serves as a global toggle
-  for hiding implementation details from the interactive user.
+- **`env`**, **`env_override_existing`**  
+  Environment variables set at startup (`name: value`), applied by
+  `chisurf/core/settings/env_bootstrap.py`. With `env_override_existing: true`
+  (shipped) they replace variables already set in the OS; `false` only fills
+  missing ones. An `env` object in `~/.chisurf/settings.json` is merged over the
+  YAML one.
 
 > **Removed:** `n_threads` governed the `numexpr` thread pool and went with
 > `numexpr`; thread counts come from the {ref}`threads <settings-threads>`
@@ -134,56 +117,25 @@ Used by: `chisurf.core.base.Data` for embedding raw files into YAML/JSON save fi
 
 ---
 
-### 1.4 `fcs` (correlation curve weighting)
+### 1.4 `fret` (global FRET distance grid and defaults)
 
-Used by: FCS utilities in `chisurf.core.fluorescence.fcs` and various FCS tools.
-
-- **`weight_type`**  
-  Default noise model used by `chisurf.core.fluorescence.fcs.noise` when computing
-  statistical errors and weights for correlation curves. Common values are
-  `"suren"`, `"starchev"`, or `"uniform"`.
-
----
-
-### 1.5 `fortune` (message‑box extras)
-
-Used by: `chisurf.gui.dialogs.ChiSurfMessageBox` and
-`chisurf.gui.widgets.fortune`.
-
-- **`enabled`**  
-  Master flag; if true, message boxes append a random “fortune cookie”
-  from the bundled fortune databases.
-
-- **`attempts`**  
-  Maximum number of attempts to pick a fortune of acceptable length.
-
-- **`min_length`** / **`max_length`**  
-  Minimum and maximum allowed length of a fortune (characters). The selection
-  loop keeps drawing until a fortune within this range is found or
-  `attempts` is exceeded.
-
----
-
-### 1.6 `fps` (structure accessible‑volume / flexible protein simulations)
-
-The keys left in this block (`distance_samples`, `dynamic.exponential`,
-`vdw_max`) are not read by ChiSurf any more: the accessible-volume calculation
-moved to IMP.bff (wrapped by `chisurf.core.structure.av`), which takes its
-parameters per labelling site.
-
----
-
-### 1.7 `fret` (global FRET distance grid)
-
-Used by `chisurf.core.fluorescence.rda_axis` (the photon-distribution models and helper functions).
+Used by `chisurf.core.fluorescence.rda_axis` (the photon-distribution models and
+helper functions), the labelled-structure and FRET-parameter defaults
+(`chisurf.core.structure.labeled_structure`, `chisurf.core.models.fret_parameters`)
+and the light path simulator (`kappa2`, `n`).
 
 - **`rda_min`**, **`rda_max`**  
   Minimum and maximum donor–acceptor distances (in Å) defining the global
-  logarithmic `R_DA` axis used in FRET models.
+  `R_DA` axis used in FRET models.
 
 - **`rda_resolution`**  
-  Number of points on the logarithmic distance axis. Used to reshape
-  distributions and distance grids.
+  Number of points on the distance axis. Used to reshape distributions and
+  distance grids.
+
+- **`rda_scale`**  
+  `log` (default when absent) or `lin` spacing of the axis. Not shipped;
+  written together with the three keys above when the axis is changed in the
+  application.
 
 - **`forster_radius`**  
   Förster radius $R_0$ (in Å) used as the default in FRET decay and efficiency
@@ -196,28 +148,18 @@ Used by `chisurf.core.fluorescence.rda_axis` (the photon-distribution models and
 - **`kappa2`**  
   Mean orientation factor ⟨κ²⟩ assumed in FRET efficiency calculations.
 
-- **`orientation_mode`**  
-  String describing the assumed rotational dynamics model for the dipoles
-  (e.g. `slow_isotropic`). Used by FRET and anisotropy models.
-
-- **`bin_lifetime`**  
-  If true, lifetime information is binned when computing FRET histograms.
-
-- **`discriminate`**, **`discriminate_amplitude`**  
-  Control optional discrimination thresholds in PDA/FRET analyses
-  (e.g. remove extremely small components below `discriminate_amplitude`).
-
-- **`lifetime_bins`**  
-  Number of bins for lifetime‑resolved FRET histograms.
+- **`n`**  
+  Refractive index of the medium (shipped `1.33`); read and written by the
+  light path simulator.
 
 ---
 
-### 1.8 `gui` (graphical interface and plotting)
+### 1.5 `gui` (graphical interface and plotting)
 
 Sub‑sections control editor appearance, console behavior, fit windows, and
 plot defaults. Many of these are read via `chisurf.settings.gui`.
 
-#### 1.8.1 Window behavior
+#### 1.5.1 Window behavior
 
 - **`language`**  
   UI language as a two-letter locale code. `en` (default) is the source
@@ -242,7 +184,7 @@ plot defaults. Many of these are read via `chisurf.settings.gui`.
   Blur what lies behind a dialog (default `true`); the wash stays when off.
   **Settings ▸ Styles ▸ Blur behind dialogs**.
 
-#### 1.8.2 Embedded console
+#### 1.5.2 Embedded console
 
 The console is ChiSurf's own ({src}`chisurf/core/console/settings.py`).
 
@@ -251,7 +193,7 @@ The console is ChiSurf's own ({src}`chisurf/core/console/settings.py`).
   IPython spellings (`%config Completer.use_jedi = False`,
   `get_ipython().cache_size = 0`); both are implemented.
 
-#### 1.8.2.1 `gui.console`
+#### 1.5.2.1 `gui.console`
 
 Optional block; every key has a default, so an absent block is normal. The
 keys the console reads ({src}`chisurf/emtk/console.py`):
@@ -266,7 +208,7 @@ keys the console reads ({src}`chisurf/emtk/console.py`):
 | `paging` | `vsplit` | `none` prints long output such as `obj?` inline instead of in a pager. |
 | `images` | `true` | Render figures inline. |
 
-#### 1.8.3 Script editor
+#### 1.5.3 Script editor
 
 Fields under `gui.editor` control the integrated text editor:
 
@@ -286,12 +228,12 @@ Fields under `gui.editor` control the integrated text editor:
   Default language mode (e.g. `Python`) used by the editor for syntax
   highlighting.
 
-#### 1.8.4 Fit‑models browser
+#### 1.5.4 Fit‑models browser
 
 - **`fit_models.n_columns`**  
   Number of columns used to arrange fit models in the model‑selection dialog.
 
-#### 1.8.5 Plotting defaults (`gui.plot`)
+#### 1.5.5 Plotting defaults (`gui.plot`)
 
 How fit plots look. Edited in **Settings ▸ Plots**, which applies a change at
 once and writes only what differs from the shipped values; every plot reads
@@ -338,7 +280,7 @@ are removed from a user's settings file when it is loaded.
 ---
 
 (settings-threads)=
-### 1.9 `threads` (numeric backend threading)
+### 1.6 `threads` (numeric backend threading)
 
 Applied very early at startup by `env_bootstrap._apply_thread_env_from_settings`
 (`chisurf/core/settings/env_bootstrap.py`). The values become environment
@@ -364,69 +306,51 @@ OpenMP kernels of tttrlib and IMP.bff. A `threads` object in
 
 ---
 
-### 1.10 `mc_settings` (protein Monte‑Carlo / AV simulations)
+### 1.7 `mc_settings` (protein Monte‑Carlo)
 
-Used by: `chisurf.plugins.modelling.proteinmc.model` (`normalize_settings` /
-`ProteinMCRunner`) and `chisurf.core.models.structure.proteinmc`.
-
-- **`append_new_structures`**  
-  If true, newly generated structures are appended to existing trajectories
-  instead of starting from scratch.
-
-- **`av_filename`**  
-  Default output filename for averaged structures (e.g. `out.xyz`).
-
-- **`av_number_protein_mc`**  
-  Number of protein MC samples used when computing an average structure.
-
-- **`cluster_structures`**  
-  If true, post‑process generated structures using clustering before
-  summarizing.
-
-- **`do_av_steepest_descent`**  
-  Whether to run a steepest‑descent minimization on averaged structures.
-
-- **`kt`**, **`ktAv`**  
-  Effective thermal energy (kT) parameters controlling MC acceptance and
-  averaging behavior.
+Used by: `chisurf.plugins.modelling.proteinmc.model` and
+`chisurf.core.models.structure.proteinmc` (`normalize_settings` /
+`ProteinMCRunner`). The section is the base a run's own settings are merged
+over; a run without its own `potentials` uses only the labelling potential.
 
 - **`mc_mode`**  
-  Name of the Monte‑Carlo mode / algorithm (e.g. `simple`).
+  Monte‑Carlo algorithm; only `simple` is supported, anything else is refused.
+
+- **`kt`**  
+  Effective thermal energy (kT) of the Metropolis acceptance.
+
+- **`scale`**  
+  Width of a torsion move: a move adds a uniform draw from [−`scale`/2, `scale`/2].
 
 - **`move_map`**  
-  Optional move map description for which residues/atoms are allowed to move.
+  Per-residue move probabilities. `null` derives them from the FlexFit set of
+  the labeling file when a dye potential names one, and otherwise moves every
+  residue with equal probability.
 
 - **`n_iter`**  
-  Total number of Monte‑Carlo iterations.
+  Maximum number of Monte‑Carlo iterations.
 
 - **`n_out`**  
-  Interval (in iterations) at which structures are written out.
+  A frame is written every `n_out` accepted moves.
 
-- **`number_of_moving_aa`**  
-  Number of amino acids allowed to move simultaneously in each MC step.
+- **`pdbOut`**  
+  Number of frames after which the run stops.
 
 - **`pChi`, `pOmega`, `pPhi`, `pPsi`**  
   Probabilities for proposing moves in different torsion angles (χ, Ω, φ, ψ).
 
-- **`pdbOut`**  
-  Interval (in iterations) at which PDB snapshots are written.
-
-- **`potentials`**  
-  List of potential energy terms with a `name` and `weight` used in the
-  scoring function (e.g. `H-Potential`, `Iso-UNRES`).
-
-- **`scale`**  
-  Global scaling factor for potential energies.
-
-- **`update_rmsd`**  
-  If true, RMSD values are updated continuously during MC sampling.
-
 ---
 
-### 1.11 `optimization` (global & local fitting)
+### 1.8 `optimization` (global & local fitting)
 
-Used by: `chisurf.core.fitting.fit.Fit` / `FitGroup`, global‑fit machinery, MEM
-regularization, and sampling routines.
+Used by: `chisurf.core.fitting.fit.Fit` / `FitGroup`, the global-fit model and
+the sampling routines.
+
+- **`noise_model`**  
+  Estimator of a fit whose data are not photon counts: `default` (weighted
+  least squares on the error column, shipped) or `poisson` (2I* deviance).
+  TCSPC decays use `tcspc.noise_model`. See
+  [Fitting objectives](../concepts/fitting_objectives.md).
 
 - **`global_optimize_local_first`**  
   In `FitGroup.global_optimize`, controls whether individual fits are
@@ -436,88 +360,54 @@ regularization, and sampling routines.
   If true, `GlobalFitModel.update_model` updates individual models in
   parallel threads before computing the global objective.
 
+- **`global_structure_aware_update`**  
+  Recompute only the local models a parameter change reaches, using the fit's
+  factor graph (shipped `true`); `false` always recomputes all of them.
+
 Sub‑sections:
 
 - **`leastsq`** (used in local and global least‑squares)  
   Passed into the bounded least-squares fitter (`chisurf.core.fitting.minimizer`,
   IMP.bff's MINPACK `lmdif` port):
   - **`ftol`**, **`xtol`**, **`gtol`** – standard convergence tolerances
+    (an `xtol` at MINPACK's old 1.49e-8 or above is replaced by 1e-10)
   - **`maxfev`** – max. number of function evaluations (0 = auto)
   - **`factor`**, **`epsfcn`** – step‑size and finite‑difference parameters
-  - **`full_output`** – whether to keep full optimizer diagnostics
+    (`epsfcn: 0` is replaced by 1e-6)
 
 - **`sampling`** (MCMC / error‑estimation sampling)  
-  Used by `FittingControllerWidget.onErrorEstimate` and
+  Used by the fit controls' error estimate and
   `chisurf.core.fitting.fit.sample_fit`:
-  - **`method`** – sampling backend. The list is not maintained here: the samplers advertise themselves in `chisurf.core.fitting.sample.SAMPLERS`, and the settings dialog is populated from it (`emcee` is accepted as the old name of `ensemble`)
+  - **`method`** – sampling backend (shipped `blocked`). The list is not maintained here: the samplers advertise themselves in `chisurf.core.fitting.sample.SAMPLERS`, and the settings dialog is populated from it (`emcee` is accepted as the old name of `ensemble`)
   - **`chain_format`** – how the chains are stored: `er4` (tab-separated text) or `hdf5` (compressed table, ~4x smaller). Both open in nDXplorer. Editable from the fit controls (⚙), which writes it back here
   - **`steps`** – number of steps per walker / chain
+  - **`substeps`** – sampler steps between two recorded steps
   - **`n_runs`** – number of independent chains or restarts
   - **`thin`** – thinning factor for recorded samples
   - **`chi2max`** – maximum χ² value allowed when accepting samples.
 
----
-
-### 1.12 `parameter` (per‑parameter GUI defaults)
-
-Used by: the parameter widgets (`chisurf.gui.widgets.fitting.parameter_widgets`) and
-`chisurf.core.fitting.parameter.FittingParameter`.
-
-- **`bounds_on`**  
-  Global default for whether parameter bounds are active.
-
-- **`decimals`**  
-  Default number of decimal digits shown in parameter editors.
-
-- **`error_color_small`**, **`error_color_large`**  
-  Colors used to highlight small vs. large parameter errors in the fitting
-  GUI.
-
-- **`error_threshold_small`**, **`error_threshold_large`**  
-  Thresholds that separate “small” vs. “large” relative errors.
-
-- **`fixable`** / **`fixed`**  
-  Default flags controlling whether parameters can be fixed and whether
-  they start fixed.
-
-- **`hide_bounds`**, **`hide_error`**, **`hide_fix_checkbox`**, **`hide_label`**,
-  **`hide_link`**  
-  Control which parameter‑editing widgets are visible by default (bounds
-  editors, error display, fix checkbox, label, link controls).
+- **`mcts`** (the fit window's model search, `chisurf/server/services/fits.py`)  
+  - **`n_simulations`**, **`c_puct`**, **`reward_scale`**, **`dirichlet_alpha`**,
+    **`seed`** – tree-search budget and parameters (shipped 400, 1.4, 1.0, 0.3, 7)
+  - **`search_fit_settings`** – also search how each candidate is fitted
+    (tolerances, start values, step bound); written by the fit window.
 
 ---
 
-### 1.13 `photons` (TTTR HDF5 compression)
+### 1.9 `plugins` (plugin discovery and visibility)
 
-Used in photon‑file conversion code (HDF5 via PyTables).
-
-- **`complevel`**  
-  Compression level (0–9) passed to HDF5/PyTables when writing photon
-  datasets.
-
-- **`complib`**  
-  Compression library used for photon tables (e.g. `blosc`).
-
-- **`title`**  
-  Default HDF5 group name / title used when creating temporary photon
-  datasets (e.g. `"spc"`).
-
----
-
-### 1.14 `plugins` (plugin discovery and visibility)
-
-Used by: plugin manager, help browser, GUI menu construction, updater plugin.
+Used by: plugin manager, ribbon and menu construction, model list, updater plugin.
 
 - **`disabled_models`**  
-  List of model widget names that should not appear in model selection dialogs
-  (e.g. experimental models).
+  List of model names that do not appear in the model selection
+  (`chisurf/emtk/fit_docks.py`, the model manager).
 
 - **`disabled_plugins`**  
-  List of plugin display names that should not be loaded/shown in menus.
+  List of plugin addresses that are not listed in the ribbon and menus.
 
 - **`hide_disabled_plugins`**  
-  If true, disabled plugins are hidden completely from menus and lists; if
-  false, they are shown but disabled.
+  If true, disabled plugins stay hidden even in experimental mode; if false,
+  experimental mode lists them.
 
 - **`show_demo_plugins`**  
   If true, plugins that declare themselves demos appear in the generated
@@ -528,16 +418,14 @@ Used by: plugin manager, help browser, GUI menu construction, updater plugin.
   (`plugin_default` lets each manifest decide) and `per_plugin`, a mapping of
   plugin id to its own choice. Edited in **Settings ▸ Plugins**.
 
-- **`icons_enabled`**  
-  Master switch for showing plugin icons in menus and toolbars where available.
-
 - **`plugin_order`**  
   Optional mapping used to order plugins in menus. Keys are plugin names or
   categories; values are integer sort keys.
 
 - **`toolbar_plugins`**  
-  List of plugin names that should be exposed in the main toolbar for
-  one‑click access (e.g. `Tools:Histogram-Microtime`, `FCS:Correlator`).
+  Full plugin addresses pinned to the toolbar (e.g.
+  `Spectroscopy:Correlation:Correlator`). Edited in the plugin manager's
+  *Toolbar* column; the emtk shell builds no toolbar from it yet.
 
 - **`updater.ignore_updates_on_startup`**  
   If true, suppresses automatic update checks at application startup.
@@ -548,17 +436,23 @@ Used by: plugin manager, help browser, GUI menu construction, updater plugin.
 
 ---
 
-### 1.15 `tcspc` (global TCSPC reader and model defaults)
+### 1.10 `tcspc` (TCSPC reader and fit defaults)
 
-Used by: `chisurf.core.experiments.tcspc.TCSPCReader` and various TCSPC models.
+Used by: `chisurf.core.experiments.tcspc.TCSPCReader` (a reader constructed
+without the value) and `chisurf.core.fitting.default_noise_model`.
+
+- **`noise_model`**  
+  Estimator of a photon-counting decay fit: `default` (weighted least squares,
+  i.e. Neyman χ², shipped) or `poisson` (2I* deviance). The reasons for the
+  shipped choice are in the YAML comment and in
+  [Fitting objectives](../concepts/fitting_objectives.md).
 
 - **`dt`**  
   Default time resolution (ns per bin) for TCSPC decays when not explicitly
   provided to `TCSPCReader`.
 
 - **`rep_rate`**  
-  Default excitation repetition rate (MHz) used in decay simulations and
-  some model conversions.
+  Default excitation repetition rate (MHz) of a `TCSPCReader`.
 
 - **`fit_area`**  
   Fraction of the decay used for automatic fit‑range selection
@@ -572,67 +466,20 @@ Used by: `chisurf.core.experiments.tcspc.TCSPCReader` and various TCSPC models.
   Fraction of the decay at which fitting typically starts (relative to the
   peak region).
 
-- **`autoscale`**  
-  If true, some TCSPC models (e.g. nuisance/background) treat the total
-  photon number parameter `n0` as fixed and automatically scaled.
-
-- **`n0`**  
-  Default total photon count parameter used by TCSPC nuisance/background
-  models when `autoscale` is enabled.
-
 - **`g_factor`**  
-  Global G‑factor used for anisotropy corrections in TCSPC experiments when a
-  per‑dataset value is not specified.
+  G‑factor of a reader when neither the reader nor `anisotropy_corrections.json`
+  gives one.
 
-- **`is_vv_vh`**  
-  Flag for interpreting certain ASCII decays as VV/VH‑style data.
-
-- **`polarization`** / **`polarization_options`**  
-  Default polarization mode for anisotropy decays (e.g. `vm` for vertical
-  excitation / magic‑angle detection) and the list of supported codes shown in
-  GUIs.
-
-- **`rebin`**  
-  Default rebinning factors `(x, y)` applied when reading TCSPC histograms
-  from text/CSV.
-
-- **`default_convolution_mode`**  
-  Default convolution mode (e.g. `per` for periodic) used in TCSPC models with
-  IRF convolution.
-
-- **`convolution_on_by_default`**  
-  If true, TCSPC models start with IRF convolution enabled. Switched off (here or
-  with the checkbox of the **Convolution** panel) the model is the ideal
-  multi-exponential decay — in the `per` mode still carrying the inter-pulse tail
-  — and the IRF only enters through the scatter term.
-
-- **`shift_bg_with_irf`**  
-  Whether background components are shifted together with the IRF in certain
-  TCSPC models (e.g. when moving the IRF peak).
-
-- **`ts`**  
-  Additional time‑shift parameter (ps or ns depending on context) used by some
-  TCSPC reading or modelling routines.
+- **`threshold`**  
+  Amplitude below which the FRET-structure model drops distance components
+  (default `0.001`; not shipped).
 
 ---
 
-### 1.16 `tcspc_csv` (ASCII/CSV TCSPC reader defaults)
+### 1.11 `mmfdb` (Measurement File Database settings)
 
-Used by: `chisurf.core.experiments.tcspc.TCSPCReader` and its GUI controller via
-`experiment_configs.yaml` `settings_key: tcspc_csv`.
-
-- **`skiprows`**  
-  Number of header rows to skip when reading ASCII/CSV decays.
-
-- **`use_header`**  
-  If true, header information is parsed and used to infer time axes and
-  metadata where supported.
-
----
-
-### 1.17 `mmfdb` (Measurement File Database settings)
-
-Used by: Measurement File Database APIs and repository code.
+Used by: Measurement File Database APIs, the switch-user and user-editor
+plugins and the fitting client.
 
 - **`default_user_id`**  
   The `user_id` that database operations and entities are attributed to when no
@@ -646,11 +493,29 @@ Used by: Measurement File Database APIs and repository code.
   admin rights or passwordless login it is somebody's account and the bootstrap
   refuses it, so a configured secret can never take over an existing identity.
 
+- **`config_file`**, **`client`**  
+  Path to a standalone server's `mmfdb.yaml`, and the client block (`mode`,
+  `username`, `host`, `cmd_port`, `pub_port`, `base_url`, `timeout_ms`) whose
+  explicit values override it. Passwords never belong here.
+
+- **`fitting_timeout_ms`**  
+  How long (ms) the client waits for a `fit.run` reply (shipped `5000`).
+
+- **`save_login`**, **`autologin`**  
+  The login dialog's *remember* (shipped on) and *sign in automatically*
+  (shipped off) choices. Autologin is switched off again when no token could be
+  saved.
+
+- **`last_server`**, **`server_history`**  
+  The server last signed in to and the list offered; written by the login dialog.
+
+- **`object_store.root`**  
+  Object-store folder, relative to the settings folder (shipped `objects`).
+
 **Workspace login.** The embedded desktop database is created with two local
 accounts: `user` / `user` for everyday work, and `admin` / `admin` for
-administering the database. Both are offered in the login dialog and both can
-sign in without a prompt — autologin is on, so the dialog normally stays out of
-the way.
+administering the database. Both are offered in the login dialog and both allow
+passwordless sign-in, so the dialog normally stays out of the way.
 
 The curated source database that **MMFDB Admin → Reset** restores contains no
 accounts at all, so the reset re-creates both after copying: a reset workspace is
@@ -673,7 +538,7 @@ once the window passes — nothing has to be reset.
 
 ---
 
-### 1.18 `project` (autosave)
+### 1.12 `project` (autosave)
 
 - **`autosave.enabled`**, **`autosave.interval_s`**  
   Write a silent `<name>.autosave.cs.pto` copy of a project holding data every
@@ -682,7 +547,7 @@ once the window passes — nothing has to be reset.
 
 ---
 
-### 1.19 `data_loading` (staging of slow files, plot budget)
+### 1.13 `data_loading` (staging of slow files, plot budget)
 
 Read by `chisurf.core.fio.staging`; edited in **Settings ▸ Data loading…**.
 
@@ -715,8 +580,9 @@ Read by `chisurf.core.fio.staging`; edited in **Settings ▸ Data loading…**.
 ## 2. `experiment_configs.yaml` (experiment registry)
 
 This file defines how high‑level "experiment types" are mapped to
-reader/controller classes and model widgets. It is read through
-`chisurf.core.experiments.load_experiment_types()` and by various GUI wizards.
+reader classes and models. It is read through
+`chisurf.core.experiments.load_experiment_types()` and
+`chisurf.core.experiments.bootstrap`.
 
 ### 2.1 `experiment_types`
 
@@ -729,7 +595,7 @@ Top‑level mapping from experiment keys to display names and visibility:
   If true, the experiment type is not shown in generic experiment selectors
   but can still be constructed programmatically.
 
-### 2.2 Per‑experiment sections (`tcspc`, `fcs`, `pcf`, `ics`, `pch`, `pda`, `deer`, `stopped_flow`, `structure`, `global`)
+### 2.2 Per‑experiment sections (`tcspc`, `stopped_flow`, `pda`, `deer`, `fcs`, `pcf`, `ics`, `mfd`, `pch`, `structure`, `global`)
 
 Each experiment key has:
 
@@ -739,19 +605,14 @@ Each experiment key has:
   - **`reader_params`**  
     Keyword arguments passed when constructing the reader
     (e.g. `name`, `experiment_reader`, file‑type specific hints).
-  - **`controller_class`**  
-    Optional Qt widget class used as GUI controller for that reader.
-  - **`controller_params`**  
-    Additional keyword arguments for the controller.
-  - **`settings_key`**  
-    Name of a sub‑section in `settings_chisurf.yaml` (e.g. `tcspc_csv`)
-    providing GUI defaults for this reader.
 
-- **`models`** – list of model widget class paths that can be used with this
+- **`models`** – list of model class paths that can be used with this
   experiment type (e.g. TCSPC lifetime models, FCS models, PDA models).
 
 These mappings allow new experiment types, readers, or models to be added or
 reordered without changing Python code, by editing the YAML instead.
+`controller_class`, `controller_params` and `settings_key` named the widgets of
+the retired Qt window; nothing reads them.
 
 One experiment may cover data of more than one shape — `pda` reads two-colour
 S1S2 histograms and three-colour burst tables with the same reader — so a model
@@ -785,105 +646,26 @@ Each entry has the form:
 Fields:
 
 - **`hex`**  
-  Hexadecimal RGB color code used by plotting routines (e.g. line colors in
-  FCS/PDA plots, AV plots, protein MC plots).
+  Hexadecimal RGB color code cycled by the fit plots (line, weighted-residual,
+  distribution, protein MC and parameter-scan pages) and the FCS merger.
 
-- **`name`**  
-  Human‑readable color name (primarily informational; occasionally used for
-  legends or debugging).
-
-- **`rgb`**  
-  String form of the `(R, G, B)` triplet corresponding to `hex`.
+- **`name`**, **`rgb`**  
+  Colour name and the `(R, G, B)` string of `hex`; informational, no code
+  reads them.
 
 The palette provides a consistent set of visually distinct colors that can be
 cycled for multiple data sets or used as theme colors by different plot types.
 
+
 ---
 
-## 4. `setup_defaults.json` (experiment setup persistence)
+## 4. Resetting local settings
 
-`setup_defaults.json` is stored in the user settings folder (`~/.chisurf`) and
-contains persisted experiment setup parameters of the legacy Qt window
-(`python -m chisurf --qt`; `chisurf/gui/widgets/experiments/setup_persistence.py`). This allows users to retain their
-preferred settings between sessions without re-entering them on every startup.
-
-### 4.1 File location
-
-- **Path**: `~/.chisurf/setup_defaults.json`
-- **Format**: JSON with schema version and experiment-specific defaults
-
-### 4.2 Schema
-
-```json
-{
-  "schema_version": 1,
-  "last_selection": {
-    "experiment_index": 0,
-    "setup_index": 0
-  },
-  "experiments": {
-    "TCSPC": {
-      "TTTR-file": {
-        "module": "chisurf.core.experiments.tcspc",
-        "class": "TCSPCTTTRReader",
-        "state": {
-          "reading_routine": "PTU",
-          "channel_numbers": [0],
-          "micro_time_coarsening": 1,
-          "g_factor": 1.0
-        }
-      }
-    },
-    "Image correlation": {
-      "Image correlation (RICS/STICS/TICS/iMSD)": {
-        "module": "chisurf.core.experiments.ics",
-        "class": "ICSReader",
-        "state": {
-          "reading_routine": "PTU",
-          "x_range": [0, 256],
-          "y_range": [0, 256]
-        }
-      }
-    }
-  }
-}
-```
-
-### 4.3 Behavior
-
-- **On startup**: After creating experiment readers and controllers, ChiSurf loads
-  `setup_defaults.json` (if present) and applies saved parameters to matching
-  readers. The last-selected experiment and setup indices are also restored.
-  Then `controller.updateUI()` is called with signals blocked to ensure the UI
-  reflects the restored internal state.
-
-- **On close**: Before the application exits, ChiSurf collects the current state
-  of all readers and writes it to `setup_defaults.json`. This captures any
-  parameter changes made during the session.
-
-### 4.4 Resetting
-
-To reset all persisted setup defaults, use **Settings ▸ Reset local settings**
-(**Clear local settings** in the Qt window). This deletes `setup_defaults.json` along with other local
-settings.
+**Settings ▸ Reset local settings** deletes the settings files of the settings
+folder (`~/.chisurf`), so the shipped values apply at the next start.
 
 Resetting affects settings only. The settings folder also holds user data —
 the metadata database (`~/.chisurf/flr/`), the object store
 (`~/.chisurf/objects/`), the installed user plugins (`~/.chisurf/plugins/`) and
 the fetched-structure cache (`~/.chisurf/structures/`) — and those are left
 untouched. Clear the plugins with the separate **Clear user plugins** action.
-
-### 4.5 Implementation notes
-
-Each experiment controller must implement two methods for proper persistence:
-
-- **`updateUI()`**: Reads from the reader (`chisurf.cs.current_setup`) and
-  updates widgets to reflect internal state.
-
-- **`onParametersChanged()`**: Reads from widgets and updates the reader
-  attributes to persist changes.
-
-This bidirectional sync ensures that:
-1. The reader is the single source of truth for all parameters
-2. UI state always matches internal state after `updateUI()`
-3. Parameter changes are captured correctly for persistence

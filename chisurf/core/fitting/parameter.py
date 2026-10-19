@@ -8,8 +8,6 @@ import chisurf.core.support.decorators
 from chisurf import typing
 from chisurf.core import base, parameter
 
-# parameter_settings = chisurf.core.settings.parameter
-
 
 class FittingParameter(chisurf.core.parameter.Parameter):
     """Fit parameter with bounds, fixed flag and optional scan results.

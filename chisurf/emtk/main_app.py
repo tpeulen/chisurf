@@ -573,13 +573,16 @@ class EmtkShellApp(ImApp):
         )
         self._console_session: Any = None
         self._console_channel: Any = None
+        self._console_names: dict[str, Any] = {"gui": self}
         self._push_console_namespace()
         self.console.install()
         from chisurf.plugins.core.terminal.app import make_console_app
 
         def _console_pane_factory():
+            # Another Python pane of the Console dock: the names the first one has (cs, np, os,
+            # gui, api), kept in step by _push_console_namespace.
             return ShellConsole(
-                {"gui": self},
+                dict(self._console_names),
                 history_path=console_history,
                 session_file=console_session_file,
                 wake=self.request_frame,
@@ -1458,8 +1461,20 @@ class EmtkShellApp(ImApp):
                 except Exception:  # noqa: BLE001 - the console still runs Python without ``api``
                     _log.exception("connecting the console to the session failed")
             names["api"] = api
-        self.console.push(names)
+        self._console_names = names
+        for console in self._python_consoles():
+            console.push(names)
         self._console_session = session
+
+    def _python_consoles(self) -> list:
+        """The window's console and every other Python pane the Console dock has open."""
+        consoles = [self.console]
+        terminal = getattr(self, "console_terminal", None)
+        if terminal is not None:
+            for pane in terminal.workspace.panes.values():
+                if pane.kind == "python" and pane.console is not self.console:
+                    consoles.append(pane.console)
+        return consoles
 
     def _close_console_channel(self) -> None:
         channel, self._console_channel = getattr(self, "_console_channel", None), None

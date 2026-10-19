@@ -28,6 +28,11 @@
       "text": "<b>Close</b> ends the active pane's session and removes the pane. Ctrl+W does the same. A pane whose process already exited stays visible until you close it.",
       "target": {"name": "close"},
       "await": {"hint": "Press <b>Close</b>."}
+    },
+    {
+      "title": "What a Python pane knows",
+      "text": "A Python pane is the main window's console: <code>cs</code> is the package, <code>api</code> the session (fits, datasets, parameters), <code>gui</code> the window. Tab completes against the live objects and <code>obj?</code> explains anything. The <b>?</b> lists the keys and the <code>%</code> commands.",
+      "target": {"name": "help"}
     }
   ]
 }

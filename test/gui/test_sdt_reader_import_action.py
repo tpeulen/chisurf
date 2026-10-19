@@ -24,7 +24,7 @@ def _configured_reader():
         if reader.get("reader_params", {}).get("name") == "Becker-SDT"
     )
     module, class_name = entry["reader_class"].rsplit(".", 1)
-    assert entry["controller_class"] is None
+    assert entry.get("controller_class") is None
     cls = getattr(import_module(module), class_name)
     assert cls is SDTReader
     return cls(experiment=Experiment(name="SDT"), record_provenance=False, **entry["reader_params"])

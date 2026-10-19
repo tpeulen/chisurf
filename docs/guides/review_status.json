@@ -139,6 +139,13 @@
     "sha256": "2b3f2c1a5ab0b1805979f87dc0c992d874e8322402ed7e8b26935b2740baa840",
     "status": "ai-reviewed"
   },
+  "110_terminal.md": {
+    "date": "2026-10-19",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "68f1785e98dd2fd43a64ce0b6d864c3923eb63d691132c0446a611ab80b31f0d",
+    "status": "ai-reviewed"
+  },
   "11_pda2c.md": {
     "date": "2026-10-14",
     "reviewer": "agent",
@@ -479,7 +486,7 @@
     "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "4282a83ece1db82f493112e91476e81f5d323e061d8e3a52aaede0510df3a9dd",
+    "sha256": "7bfcddcfc91736bf24b8281fe67e3682dd2f7dfe433292725c4f498e4dc73124",
     "status": "ai-reviewed"
   },
   "60_global_analysis.md": {
@@ -773,7 +780,7 @@
     "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "739ac936091c9092810db5f959db65276ac0fe2ebf1a7e9170288f718d1271fd",
+    "sha256": "a61da99d5fc1522fd64874a961156a85017dcaef5fc381d70515c8aeb66f1b3f",
     "status": "ai-reviewed"
   },
   "irf_estimation.md": {

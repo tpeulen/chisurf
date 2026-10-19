@@ -9,15 +9,28 @@ tags: [guides, fitting, console]
 
 **What you get:** the ability to ask the running application questions that no
 dialog answers — *what is the chi-square of every fit I have open?*, *what does
-this parameter look like across the series?* — and to turn a sequence of clicks
+this parameter look like across the series?* — and to turn a sequence of commands
 into a script you can run again.
 
-**What you need:** nothing. The console is the dock at the bottom of the main
-window, and every example below works on an empty session.
+**What you need:** nothing. The console is the **Console** dock beside **Log**,
+and every example below works on an empty session.
 
-The console is a Python prompt *inside* the application, not a separate
-interpreter talking to it over a wire. There is no synchronisation step and no
-export: the objects at the prompt **are** the objects the GUI is showing.
+The Console dock hosts the Terminal tool (`chisurf/plugins/core/terminal/`): a
+strip of pane actions (**New**, **Terminal**, **Python**, **Split ⇥**,
+**Split ⇣**, **Close**, *Guide*, `?`) over the window's own Python pane. More
+Python panes or shell panes open beside it; panes, splits and keys are in
+{doc}`110_terminal`, the theory in {doc}`../concepts/terminal`.
+
+```{figure} figures/console_dock.png
+:name: fig-console-dock
+:width: 100%
+
+The main window with the Console dock in front: the Terminal strip, then
+Python pane 1 after `2 + 40`.
+```
+
+The Python pane is a prompt *inside* the application, not a separate interpreter
+talking to it over a wire: no synchronisation step, no export.
 
 ## The first thing to know
 
@@ -37,68 +50,53 @@ result, `__` the one before, and `Out[3]` any earlier one by number.
 
 | Name | What it is |
 | --- | --- |
-| `cs` | the whole `chisurf` package |
+| `api` | the session's `ChiSurfAPI`: fits, datasets, parameters |
+| `cs` | the `chisurf` package |
 | `gui` | the main window |
-| `np`, `os`, `p` | numpy, os, pylab |
+| `np`, `os` | numpy, os |
 | `In`, `Out` | everything typed, and every result |
 
-The two that matter in practice:
-
-```python
-cs.imported_datasets      # everything loaded
-cs.fits                   # every fit open
-```
+`api` talks to the session on a connection of the console's own, like every
+dock; it appears once the session is up.
 
 ## Reading a fit
 
 Load some data and add a fit as usual, then:
 
 ```python
-fit = cs.fits[0]
-fit.chi2r
-```
-```
-Out[2]: 1.0312...
+fits = api.list_fits(statistics=True)
+[(f["name"], round(f["chi2r_current"], 3)) for f in fits]
+api.get_parameter("N", fit_uid=fits[0]["uid"])["value"]
 ```
 
-Press `Tab` after `fit.` to see what else is there — the list comes from asking
-that object, so it is accurate for *this* fit rather than for a class in
-general. `fit?` opens the type, signature and docstring in a pane below the
-console.
-
-Parameters come back as a dictionary:
+A row's `chi2r` is what the fit's last run reached (`None` for a fit not run
+yet); `statistics=True` adds `chi2r_current`, the χ²ᵣ of the parameters as they
+are now — the number the fit window shows. Setting a value:
 
 ```python
-fit.model.parameters_all_dict
+api.set_parameter_value("N", 2.0, fit_uid=fits[0]["uid"])
 ```
 
-which makes a question across several fits a one-liner:
-
-```python
-[(f.name, round(f.chi2r, 3)) for f in cs.fits]
-```
+A command that changes the science is one **Undo** step, named after the
+command.
 
 ```{figure} figures/console.png
 :name: fig-console
 :width: 100%
 
-The console answering exactly that, on a session with two fits open. `cs.fits`
-is the live list — the objects the GUI is showing, not a copy — so `fit.chi2r`
-reads the number the fit window is displaying, and the comprehension asks the
-same question of every fit at once without touching a dialog. Note `Out[3]` and
-the entry for *Donor-only* in `Out[4]` agree: there is only one object.
+The console asking `api` about the FCS demo after **Fit**: the comprehension
+reads χ²ᵣ of every open fit at once, and `get_parameter` reads back `N`.
 ```
 
-That is the kind of thing the console is for. There is no dialog that compares
-chi-square across every open fit, and there does not need to be.
+Press `Tab` after `api.` to see what else is there — the list comes from asking
+that object. `api.list_fits?` opens the signature and docstring in a pane below
+the transcript.
 
 ## Turning what you did into a script
 
-Two ways round, and they meet in the middle.
-
-**Record what you click.** *Macro ▸ Record* starts collecting; click it again to
-stop and it offers to save a `.py` file. Everything the GUI does goes through
-the same action layer the console does, so a recording is real, runnable Python.
+**Record.** *Macro ▸ Record* starts collecting what runs in the console; click
+it again to stop and it offers to save a `.cm.py` file. *Macro ▸ Run Macro…*
+replays one.
 
 **Run a script into this session:**
 
@@ -106,13 +104,15 @@ the same action layer the console does, so a recording is real, runnable Python.
 %run -i analysis.py
 ```
 
-The `-i` is not optional in spirit: it runs the file *in the console's
-namespace*, so anything the script defines is still there afterwards for you to
-poke at. Without it the script gets a clean namespace and leaves nothing behind.
+The `-i` runs the file *in the console's namespace*, so anything the script
+defines is still there afterwards. Without it the script gets a clean namespace
+and leaves nothing behind.
 
-The [script editor](../reference/settings.md) has a **Run** button that does the
-same thing — its *In ChiSurf* endpoint runs in this process, with `cs` in scope,
-and streams output to its panel as it goes.
+A cell runs on the window's frame: a long command holds the window until it
+returns, and Ctrl+C cannot stop it. Run long work from a shell pane
+(**Terminal**, then `python analysis.py`).
+
+The [Code Editor](../concepts/code_editor.md) is for a script you keep.
 
 ## Plotting
 
@@ -141,10 +141,8 @@ What ends up in the transcript as a picture:
   `fig.show()` shows one. Each is closed once shown, so the next cell starts a
   new figure; evaluate `fig` to show a figure you kept a handle on again.
   `%config InlineBackend.figure_format = 'svg'` (or `'retina'`) changes the
-  format, `%matplotlib inline` is accepted (older settings files start with
-  it), and `%matplotlib qt` switches to figures in their own windows, which is
-  what you want once you need to zoom. matplotlib is not a ChiSurf dependency:
-  install it into the environment to plot this way.
+  format. matplotlib is not a ChiSurf dependency: install it into the
+  environment to plot this way.
 * **Anything that draws itself** — an object with `_repr_png_` or `_repr_svg_`
   (an emtk or chiplot figure, a PIL image) shows as its picture. HTML-only
   objects show as their text.
@@ -152,71 +150,35 @@ What ends up in the transcript as a picture:
   maximum) and an `(h, w, 3)` / `(h, w, 4)` array as RGB(A). A trailing `arr`
   stays text.
 
-Right-click an image for **Copy image** (a PNG on the clipboard, to paste into a
-slide) and **Save image as…**. Turning `gui.console.images` off shows the text
-form instead.
+Right-click an image for **Copy image** (a PNG on the clipboard) and **Save
+image as…**. Turning `gui.console.images` off shows the text form instead.
 
-## Things worth knowing
+## Keys
 
-* **Blocks.** `for i in range(3):` then Enter gives an indented continuation
-  line; a **blank line** ends the block and runs it.
-* **Pasting works.** A snippet copied from a tutorial keeps its `>>>` prompts —
-  they are stripped on paste. Copying out of the console gives runnable code
-  with the `In [n]:` labels removed.
-* **Shell commands.** `!ls -l` runs one; `files = !ls` captures the output.
-* **Interrupting.** `Ctrl+C` stops a long command. A runaway `print` loop cannot
-  lock the window: output is drawn in batches and capped, with a note saying how
-  much was dropped.
-* **`%quickref`** is the one-page summary; `%lsmagic` lists every `%` command.
+* **Enter** runs a complete statement or opens an indented continuation line
+  (`for i in range(3):`); a **blank line** ends the block. **Shift+Enter**
+  always adds a line.
+* **Tab** completes against the live objects; `(` or **Shift+Tab** shows the
+  call signature; `obj?` opens the help pane (`obj??` with source), **Esc**
+  closes it.
+* **Up / Down** walk the history, filtered by what you had typed; **Ctrl+R**
+  searches it (while the console has the keys, Ctrl+R is not *Reinitialize*).
+* **Ctrl+K / Ctrl+U** cut to the end / start of the line, **Ctrl+Y** puts it
+  back, **Ctrl+L** clears, **Ctrl+C** abandons the input (with a selection it
+  copies).
+* Pasted `>>>` and `In [1]:` prompts are stripped.
+* `!ls -l` runs a shell command; `files = !ls` captures the output.
+* `%quickref` is the one-page summary; `%lsmagic` lists every `%` command.
 
-## In the native window
-
-The ChiSurf window has the same console as a **Console** dock beside **Log**, with
-the same keys: Enter runs or continues a block, Shift+Enter adds a line, Up and
-Down walk the history (filtered by what you had typed), `Ctrl+R` searches it,
-Tab completes and `(` or Shift+Tab shows the call signature, `obj?` opens the
-help pane under the transcript, `Ctrl+K` / `Ctrl+U` / `Ctrl+Y` cut and paste
-the line, `Ctrl+L` clears. While the console has the keys, `Ctrl+R` is the
-history search, not **Reinitialize**.
-
-Two differences:
-
-* The input is its own box under the transcript instead of an inline prompt.
-* The session's fits and datasets are reached through **`api`** — the session's
-  `ChiSurfAPI`, on a connection of the console's own — rather than `cs.fits`:
-
-  ```python
-  api.list_fits()
-  api.set_parameter_value("N", 2.0, fit_uid=api.list_fits()[0]["uid"])
-  ```
-
-  The question across every fit is again one line. A row's `chi2r` is what the
-  fit's last run reached (`None` for a fit not run yet); `statistics=True` adds
-  `chi2r_current`, the χ²ᵣ of the parameters as they are now — the number the
-  fit window shows:
-
-  ```python
-  [(f["name"], round(f["chi2r_current"], 3)) for f in api.list_fits(statistics=True)]
-  ```
-
-  A command that changes the science is one **Undo** step, named after the
-  command.
-* HTML displays as its text form, and `input()` raises `EOFError`.
-
-Plots and images appear in the transcript (see *Plotting* above),
-with the same right-click **Copy image** / **Save image as…**.
-
-**Macro ▸ Record** and **Macro ▸ Run Macro…** record and replay as above; the
-macro is saved through the native file dialog. Dead keys, accented letters and
-an input method (Japanese, Chinese, Korean) type as in any other field: the
-text being composed is shown underlined at the cursor until it is committed.
+The input is its own box under the transcript; `input()` raises `EOFError`.
+Dead keys, accented letters and an input method (Japanese, Chinese, Korean) type
+as in any other field.
 
 ## Headless
 
-Everything above works without a GUI. The interpreter is a separate, Qt-free
-package, so a script, the `csc` CLI or the ZMQ server reach the same API through
-`chisurf.core.api.ChiSurfAPI`. See
-[Macros, CLI & scripting](../reference/settings.md) for the settings that apply.
+Everything above works without a window. The interpreter is the Qt-free
+`chisurf.core.console`, and a script, the `csc` CLI or the ZMQ server reach the
+same API through `chisurf.core.api.ChiSurfAPI`.
 
 ## Settings
 
@@ -227,4 +189,6 @@ calltips, paging, inline figures. All of them are documented in
 
 ## See also
 
+- Guide: {doc}`110_terminal` — panes, splits, shell panes.
+- Concept: {doc}`../concepts/terminal` — what runs where, and the security note.
 - Tool: the **Code Editor** (`chisurf/plugins/core/code_editor/`).

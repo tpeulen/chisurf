@@ -295,6 +295,24 @@ class TerminalControl:
         data = text.replace("\r\n", "\r").replace("\n", "\r")
         self.session.write(data.encode("utf-8"))
 
+    def copy_to_clipboard(self) -> str | None:
+        """Ctrl+C with a selection: the selected text onto the system clipboard, the selection cleared."""
+        from emtk import clipboard
+
+        text = self.copy_selection()
+        if text:
+            clipboard.copy(text)
+        self.clear_selection()
+        return text
+
+    def paste_from_clipboard(self) -> None:
+        """Ctrl+V (Cmd+V): the system clipboard's text written to the session."""
+        from emtk import clipboard
+
+        text = clipboard.paste()
+        if text:
+            self.paste_text(text)
+
     # ── input: keys ───────────────────────────────────────────────────────
 
     _NAV = {
@@ -319,6 +337,14 @@ class TerminalControl:
                 self.session.write(b"\x1b")
             return True
         if ctrl:
+            chord = letter_of(key, text)
+            if chord == "c" and self.copy_selection():
+                # With a selection Ctrl+C copies (as the console does); without, it is ^C.
+                self.copy_to_clipboard()
+                return True
+            if chord == "v":
+                self.paste_from_clipboard()
+                return True
             if key in self._NAV_CTRL:
                 self.session.write(self._NAV_CTRL[key])
                 return True

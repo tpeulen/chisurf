@@ -269,7 +269,7 @@
     "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "a4cca47d0528f3cc61e283c3bc93b260417b05582739021d7d5ecaae3bc36407",
+    "sha256": "6ac4fc03ccbed60aae19ec7ec69b064244edeae96463f91d9a9c7e73f4ff7177",
     "status": "ai-reviewed"
   },
   "intensity_traces.md": {
@@ -480,6 +480,13 @@
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "d2e32bff5d9bf507c073b15de37300c779b73c7487c5c9462b20d15b1fdc43f8",
+    "status": "ai-reviewed"
+  },
+  "terminal.md": {
+    "date": "2026-10-19",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a7979265b5bbfd232654e6abcb69ce54ace6c892cb7a464279857f16d5c3453d",
     "status": "ai-reviewed"
   },
   "tttr_stream_tools.md": {

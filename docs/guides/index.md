@@ -189,6 +189,7 @@ irf_estimation
 40_ai_assistant
 70_ask_the_documentation
 59_console
+110_terminal
 64_notebooks
 ```
 
@@ -263,7 +264,8 @@ irf_estimation
 | [Fusing bursts the same molecule produced](58_burst_fusion.md) | `burst_fusion` plugin, `core.fluorescence.burst.fusion`, `csc burst-fusion` |
 | [Global analysis: linking parameters across fits](60_global_analysis.md) | `fitting.fit.link_parameter`, `core.models.global_model`, `globalview` plugin |
 | [Maximum-entropy decay analysis](62_maxent_decay.md) | `maxent_decay` plugin, `tcspc_maxent_*` descriptions, `math.regularization` |
-| [Driving ChiSurf from its console](59_console.md) | `chisurf.gui.chinsole`, `chisurf.core.console`, `cs.fits`, `%run -i` |
+| [Driving ChiSurf from its console](59_console.md) | Console dock (Terminal app), `chisurf.core.console`, `api`, `%run -i` |
+| [Terminal panes: shells and Python side by side](110_terminal.md) | `terminal` / `python_terminal` plugins, `python -m chisurf.emtk --plugin terminal` |
 | [Notebooks that run inside ChiSurf](64_notebooks.md) | Code Editor `.ipynb` tabs, `code_editor.gui.notebook_app`, `core.console.shell` |
 | [Accurate FRET: calibration](fret_calibration.md) | `accurate_fret` plugin, `fret.calibration` |
 | [IRF estimation](irf_estimation.md) | `irf_estimation`, TCSPC nuisances |

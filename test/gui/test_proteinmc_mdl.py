@@ -447,3 +447,18 @@ def test_the_runner_without_an_output_file_writes_nothing(tmp_path, monkeypatch)
     assert result.output_file == ""
     assert frames and result.n_frames == len(frames)
     assert not list(tmp_path.iterdir())
+
+
+def test_a_null_move_map_lets_the_labeling_file_derive_one(monkeypatch):
+    """The shipped ``mc_settings.move_map: null`` is "none given": the FlexFit-derived map applies."""
+    import numpy as np
+
+    import chisurf.core.models.structure.proteinmc as proteinmc
+
+    pdb = Path(__file__).resolve().parents[1] / "data/atomic_coordinates/pdb_files/148l.pdb"
+    derived = np.zeros(164)
+    derived[:10] = 1.0
+    monkeypatch.setattr(proteinmc.ProteinMCRunner, "_find_fps_file", lambda self: "labels.fps.json")
+    monkeypatch.setattr(proteinmc, "build_move_map_from_flexfit", lambda *a, **k: derived)
+    runner = proteinmc.ProteinMCRunner(str(pdb), settings={"move_map": None, "n_iter": 1})
+    assert runner.settings["move_map"] is derived

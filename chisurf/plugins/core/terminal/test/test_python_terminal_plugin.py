@@ -25,7 +25,6 @@ from emtk.testing import Driver
 
 from chisurf.plugins.core.terminal.app import make_console_app
 
-
 # ── helpers ──────────────────────────────────────────────────────────────
 
 
@@ -184,6 +183,7 @@ def test_split_python_pane_preserves_python_kind():
 def test_python_pane_output_drawn_on_screen():
     """Commands executed in python pane update folds and actually render on screen."""
     from emtk.testing import RecordingPainter
+
     from chisurf.plugins.core.terminal.app import make_console_app
 
     app = make_console_app()
@@ -228,3 +228,22 @@ def test_chisurf_console_dock_is_cmux_python_terminal():
     finally:
         shell.close()
 
+
+
+def test_a_second_console_dock_pane_has_the_first_panes_names():
+    """A Python pane opened in the Console dock gets cs, np, os and gui, as pane 1 has them."""
+    from chisurf.emtk.main_app import EmtkShellApp
+
+    shell = EmtkShellApp(console_history=False, console_session_file=False)
+    try:
+        driver = Driver(shell, size=(1400, 900))
+        driver.frame(3)
+        pane = shell.console_terminal.new_pane("python")
+        assert pane.console is not shell.console
+        names = pane.console.engine.user_ns
+        for name in ("cs", "np", "os", "gui"):
+            assert name in names, name
+        assert names["gui"] is shell
+        assert pane.console in shell._python_consoles()
+    finally:
+        shell.close()

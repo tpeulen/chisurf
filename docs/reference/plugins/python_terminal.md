@@ -27,6 +27,11 @@ ChiSurf's built-in Python console as a terminal pane: tmux-style tabs, splits an
 
 This plugin's window is an EMTK app without declarative parameter sections: its controls are described in the plugin's guide. Any fit/model parameter it edits is defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Theory** — [Terminal and Python console: shells and Python inside the session](/concepts/terminal.md)
+- **Workflow** — [Terminal panes: shells and Python side by side](/guides/110_terminal.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/python_terminal/`

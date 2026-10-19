@@ -107,7 +107,7 @@ def _shipped_simulator():
         for row in config["tcspc"]["readers"]
         if row["reader_class"].endswith("TCSPCSimulatorSetup")
     )
-    assert row["controller_class"] is None
+    assert row.get("controller_class") is None
     module, name = row["reader_class"].rsplit(".", 1)
     return getattr(importlib.import_module(module), name)(
         **row["reader_params"], record_provenance=False

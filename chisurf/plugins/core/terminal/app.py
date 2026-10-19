@@ -28,7 +28,7 @@ from emtk import im
 from emtk.app import ImApp
 from emtk.events import CONTROL_MODIFIER, SHIFT_MODIFIER
 from emtk.i18n import tr
-from emtk.keys import KEY_TAB, KEY_T, KEY_W, letter_of
+from emtk.keys import KEY_T, KEY_TAB, KEY_W, letter_of
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button

@@ -3,14 +3,14 @@
     "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "e0cf96f49a65bb680ae10bb726f8c5578159753cce58d5deb13f6bc911a1a7cb",
+    "sha256": "ee7298dabb6f9ce61da7bdcbc2aed0304de98beeab5897f2df41b07f6da851b3",
     "status": "ai-reviewed"
   },
   "figures.md": {
     "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "cbbc9f5d6dbad08f67293609b33b27eb1bcca5555ef45b139a5434f254ecc7e1",
+    "sha256": "170cac7e4752b7be68603bfc35ea119968887b585f9dce7834356fdfed9ef1af",
     "status": "ai-reviewed"
   },
   "file_formats/becker_hickl_files.md": {
@@ -759,7 +759,7 @@
     "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "1410d01721588b2f049bc1d0db1a5a9d124745d653ec04a590a3f6ae9f514e08",
+    "sha256": "edd23840952f1516db59e412fe8e29a15a89d3037a7e69421055bedffb5d818d",
     "status": "ai-reviewed"
   },
   "plugins/quenching_estimator.md": {
@@ -836,7 +836,7 @@
     "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "71dc5f42cdc6fa4b3108c14e57b98c30012df61e6b8a1f277794a3ad20fed4ff",
+    "sha256": "26f65e9433e6d4a4cca64caf6ed1d5a1ef917f306e0b8ca857670c09314d26f0",
     "status": "ai-reviewed"
   },
   "plugins/tetris.md": {
@@ -1025,14 +1025,14 @@
     "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "71b7e0161c81ee199119b969ad0db8eed00aee60438f03361bf763411e17174e",
+    "sha256": "994b518650c3fe937fdde93f0acf0518056d1d1a9bfa17af906a537a57000782",
     "status": "ai-reviewed"
   },
   "tables.md": {
     "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "381e01303c227ad67cdfb5df2a381694aec973e7108d325c2eb39353d5c5fa79",
+    "sha256": "3a973e9e01342675118367529a643d47d007b8092137d7ba5d0f7769b53a8477",
     "status": "ai-reviewed"
   },
   "user_models.md": {

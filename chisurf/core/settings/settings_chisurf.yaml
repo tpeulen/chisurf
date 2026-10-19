@@ -6,7 +6,6 @@ correlator:
   microtime_binning: 1
   number_of_cascades: 20
   split: 6
-  weighting: 0
 # How much of a large photon file ChiSurf touches: whether it is staged to a
 # local cache before reading, and how many points a raw per-photon plot draws.
 # The defaults also live in chisurf/core/fio/staging.py (DEFAULTS), which is
@@ -45,30 +44,10 @@ database:
   embed_data_limit: 3145728
   read_file_size_limit: 104857600
 enable_experimental: false
-exceptions_on_gui: true
-warn_missing_detector_setups: true
-fcs:
-  weight_type: suren
-fitting_message: true
-fortune:
-  attempts: 1000
-  enabled: true
-  max_length: 300
-  min_length: 0
-fps:
-  distance_samples: 100000
-  dynamic:
-    exponential: false
-  vdw_max: 2
 fret:
-  bin_lifetime: false
-  discriminate: false
-  discriminate_amplitude: 1.0e-10
   forster_radius: 52
   kappa2: 0.667
-  lifetime_bins: 101
   n: 1.33
-  orientation_mode: fast
   rda_max: 130
   rda_min: 1
   rda_resolution: 96
@@ -215,7 +194,6 @@ gui:
       parameter_groups: true
       experiment_panels: true
     default_editor_line: true
-hidden_execute: true
 # Log level: 10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL
 # WARNING by default: INFO logs every plot update and file operation (ndX in
 # particular), which is noise during normal use. Set 20 here to get INFO back.
@@ -259,30 +237,17 @@ threads:
   # If true, the settings above override same-named environment variables at startup
   override_existing_env: false
 mc_settings:
-  append_new_structures: false
-  av_filename: out.xyz
-  av_number_protein_mc: 100
-  cluster_structures: false
-  do_av_steepest_descent: false
   kt: 1.5
-  ktAv: 1
   mc_mode: simple
   move_map: null
   n_iter: 10000
   n_out: 500
-  number_of_moving_aa: 1
   pChi: 0.01
   pOmega: 0
   pPhi: 0.7
   pPsi: 0.3
   pdbOut: 500
-  potentials:
-    - name: H-Potential
-      weight: 2
-    - name: Iso-UNRES
-      weight: 1
   scale: 0.0025
-  update_rmsd: false
 mmfdb:
   fitting_timeout_ms: 5000  # max ms to wait for a fit.run RPC response; raise for slow models
   # Optional path to the same validated mmfdb.yaml used by a standalone server.
@@ -364,7 +329,6 @@ optimization:
     epsfcn: 1.0e-06
     factor: 100
     ftol: 1.49012e-08
-    full_output: true
     gtol: 0
     maxfev: 0
     # Step-bound tolerance. MINPACK's 1.49e-8 stalled a global anisotropy fit at its
@@ -402,34 +366,12 @@ optimization:
     # values, step bound), scored like the structures. More fits; use it when
     # a structure does not converge from its declared start.
     search_fit_settings: false
-parameter:
-  bounds_on: false
-  decimals: 3
-  error_color_small: green
-  error_color_large: magenta
-  error_threshold_small: 20
-  error_threshold_large: 100
-  fixable: true
-  fixed: false
-  hide_bounds: false
-  hide_error: false
-  hide_fix_checkbox: false
-  hide_label: false
-  hide_link: false
-  role_color_input: ""
-  role_color_linked: ""
-  role_color_output: ""
-photons:
-  complevel: 9
-  complib: blosc
-  title: spc
 plugins:
   disabled_models:
     - Et-Model free
     - Dye-diffusion
   disabled_plugins: []
   hide_disabled_plugins: true
-  icons_enabled: true
   plugin_order: {}
   # Offer plugins whose manifest says "demo": true (the built-in games) in the
   # menus. They ship with the application but are not what it is for, so plugin
@@ -493,28 +435,10 @@ tcspc:
   # the support-plane threshold differs between a likelihood and a least-squares
   # objective.
   noise_model: default
-  autoscale: true
-  convolution_on_by_default: true
-  default_convolution_mode: per
   dt: 1
   fit_area: 0.9
   fit_count_threshold: 8
   fit_start_fraction: 0.5
   g_factor: 1
-  is_vv_vh: false
-  n0: 2000000
-  polarization: vm
-  polarization_options:
-    - vm
-    - vv
-    - vh
-  rebin:
-    - 1
-    - 1
   rep_rate: 10
-  shift_bg_with_irf: true
-  ts: 0
-tcspc_csv:
-  skiprows: 11
-  use_header: true
 verbose: false

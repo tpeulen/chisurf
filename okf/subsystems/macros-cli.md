@@ -7,6 +7,22 @@ tags: [scripting, core, cli, console, chinsole]
 timestamp: '2026-08-06T00:00:00Z'
 ---
 
+# Where to pick this up
+
+1. **Console help lives with the Terminal app** (2026-10-19). The Console dock hosts the
+   Terminal app; its `?` / *Guide* are `chisurf/plugins/core/terminal/help.md` / `guide.json`,
+   which carry the console reference (scope, keys, magics, plots, macros). The console's own
+   `chisurf/core/console/help.md` / `guide.json` and `ShellConsole`'s strip were deleted as
+   orphaned. Docs: `docs/concepts/terminal.md`, `docs/guides/110_terminal.md`,
+   `docs/guides/59_console.md`; figures from `docs/guides/screenshots/terminal_shot.py`.
+2. **Open: a cell runs on the frame thread** -- a long command freezes the window and Ctrl+C
+   cannot stop it (`ShellConsole.interrupt` only abandons the input). The Qt-era
+   `gui.console.max_output_chars` / `flush_interval_ms` defaults in
+   `chisurf/core/console/settings.py` are read by nothing in the emtk console. Running cells on
+   a worker with an interrupt is the real fix; the docs state the limitation.
+3. **i18n**: the new Terminal guide step and help text are not in the `.ts` catalogues yet
+   (catalogue work is queued separately); the deleted console guide's strings are stale there.
+
 # Scope
 
 Three overlapping ways to drive ChiSurf without clicking the GUI:
@@ -15,7 +31,7 @@ Three overlapping ways to drive ChiSurf without clicking the GUI:
 | --- | --- | --- |
 | Macros | `import chisurf.macros` | `chisurf/macros/` |
 | CLI | `csc <sub> …` | `chisurf/core/cli.py` |
-| Console | in-GUI dock | `chisurf/gui/chinsole/` + `chisurf/core/console/` |
+| Console | Console dock = Terminal app (`chisurf/plugins/core/terminal/`) | `chisurf/emtk/console.py` + `chisurf/core/console/` |
 
 All three ultimately go through the [API facade](/architecture/api-facade.md)
 (`chisurf.core.api`, the stable surface for "GUI, macros, plugins, and the

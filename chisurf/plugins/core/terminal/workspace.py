@@ -224,7 +224,7 @@ class TerminalWorkspace:
             if pane is None:
                 return
             if pane.kind == "python":
-                pane.console.draw(box, control_id=f"##{key}", show_toolbar=False)
+                pane.console.draw(box, control_id=f"##{key}")
             else:
                 im.host_control(f"##{key}", pane.control, size=None)
 

@@ -434,7 +434,7 @@ class ProteinMCRunner:
         self._configure_potentials()
         self._last_energies = [0.0] * len(self.universe.potentials)
         fps_file = self._find_fps_file()
-        if "move_map" not in self.settings and fps_file:
+        if self.settings.get("move_map") is None and fps_file:
             derived = build_move_map_from_flexfit(self.structure, fps_file, flexfit_set)
             if derived is not None:
                 self.settings["move_map"] = derived

@@ -1,4 +1,8 @@
-"""The emtk shell's Console dock: ChiSurf's Python console on emtk's TextEditor.
+"""ChiSurf's Python console on emtk's TextEditor: the Python pane of the Terminal app.
+
+The emtk shell's Console dock hosts the Terminal app
+(:mod:`chisurf.plugins.core.terminal`); its Python panes are this console, and the app's strip
+carries the dock's ``?`` and *Guide*.
 
 The console is the Qt-free engine :mod:`chisurf.core.console` (the interpreter, magics, completion,
 history and output capture that chinsole draws in the Qt shell) under an emtk view. What it does is
@@ -71,12 +75,8 @@ _log = logging.getLogger("chisurf.emtk.console")
 #: The Qt console's prompts (``ConsoleConfig.prompt`` / ``continuation``).
 PROMPT = "In [{n}]: "
 CONTINUATION = "   ...: "
-#: The guided tour's target name for the console, shared with the Qt console's tour.
+#: The ``item_rects`` key of the console's drawn rectangle.
 VIEW_KEY = "chinsole_view"
-#: Help page and guided tour, shared with the Qt console (read as files: no Qt import).
-_CHINSOLE = pathlib.Path(__file__).resolve().parents[1] / "core" / "console"
-HELP_FILE = _CHINSOLE / "help.md"
-GUIDE_FILE = _CHINSOLE / "guide.json"
 #: The file filter of a saved macro.
 MACRO_FILTER = (("Python macro", ("*.cm.py", "*.py")),)
 #: Most input lines the input box grows to before it scrolls.
@@ -717,8 +717,6 @@ class ShellConsole:
         self._ran = False
         self._focus_requested = False
         self.item_rects: dict[str, tuple] = {}
-        self._help = None
-        self._tour = None
         #: The image the context menu was opened on, and the *Save image as…* dialog.
         self._menu_image: InlineImage | None = None
         self.file_dialog: Any = None
@@ -889,8 +887,6 @@ class ShellConsole:
         if pending:
             self.engine._next_input = None
             self.set_input(pending[0])
-        if self._tour is not None and not hidden:
-            self._tour.notify_used(VIEW_KEY)
         if self.wake is not None and not hidden:
             self.wake()
         return result
@@ -1309,40 +1305,14 @@ class ShellConsole:
     printText = append_output  # noqa: N815 - historic spelling
     clearTerminal = clear  # noqa: N815 - historic spelling
 
-    # ── the dock ──────────────────────────────────────────────────────────
-
-    def _overlays(self):
-        if self._help is None:
-            from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-
-            self._help = EmTkHelpWindow(title=tr("ChiSurf console"), resource=HELP_FILE, owner=self)
-            self._tour = EmTkGuidedTour(
-                steps=GUIDE_FILE,
-                owner=self,
-                wait_for_controls=True,
-                get_target_rect=lambda key: self.item_rects.get(key),
-            )
-        return self._help, self._tour
+    # ── drawing ───────────────────────────────────────────────────────────
 
     def draw(
         self,
         box,
         control_id: str = "##chinsole",
-        *,
-        show_toolbar: bool = True,
     ) -> None:
-        """The Console dock: the ``?`` / *Guide* strip, then the console."""
-        if show_toolbar:
-            from chisurf.plugins.emtk_layout import action_button
-
-            help_window, tour = self._overlays()
-            if action_button("guide"):
-                tour.start()
-            self.item_rects["guide"] = im.get_item_rect()
-            im.same_line()
-            if action_button("help"):
-                help_window.show()
-            self.item_rects["help"] = im.get_item_rect()
+        """Draw the console into *box* (a pane of the Terminal app)."""
         im.host_control(control_id, self.control)
         self._image_menu(f"##console.image.{control_id}")
         if self._focus_requested:
@@ -1390,10 +1360,6 @@ class ShellConsole:
                         self.save_image(image, paths[0])
                     except OSError as exc:
                         self.append_error(tr("could not save the image: {error}").format(error=exc))
-        if self._help is None:
-            return
-        self._help.draw(box)
-        self._tour.draw(float(box[2]), float(box[3]))
 
     def close(self) -> None:
         """Save the history and give back ``chisurf.run``."""

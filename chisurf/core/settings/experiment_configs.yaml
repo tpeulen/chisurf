@@ -39,24 +39,18 @@ tcspc:
     - reader_class: chisurf.core.experiments.tcspc.TCSPCReader
       reader_params:
         name: TXT/CSV
-      controller_class: null
-      settings_key: tcspc_csv
     - reader_class: chisurf.core.experiments.tcspc.TCSPCTTTRReader
       reader_params:
         name: TTTR-file
-      controller_class: null
-      settings_key: tcspc_csv
     - reader_class: chisurf.core.experiments.tcspc.sdt_reader.SDTReader
       reader_params:
         name: Becker-SDT
-      controller_class: null
     - reader_class: chisurf.core.experiments.tcspc.TCSPCSimulatorSetup
       reader_params:
         name: Simulator
         sample_name: Dummy-sample
         lifetime_spectrum: [0.4, 1.1, 0.6, 4.1]
         rotation_spectrum: [0.2, 1.0]
-      controller_class: null
   models:
     # Owned by BFF and described in data (IMP.bff data/model_search/); ChiSurf
     # shows a view on it.
@@ -90,13 +84,9 @@ stopped_flow:
     - reader_class: chisurf.core.experiments.tcspc.TCSPCReader
       reader_params:
         name: TXT/CSV
-      controller_class: null
-      settings_key: tcspc_csv
     - reader_class: chisurf.core.experiments.tcspc.TCSPCTTTRReader
       reader_params:
         name: TTTR-file
-      controller_class: null
-      settings_key: tcspc_csv
   models:
     - chisurf.core.models.stopped_flow.parse.ParseStoppedFlowModel
     - chisurf.core.models.stopped_flow.reaction.ReactionModel
@@ -118,20 +108,15 @@ pda:
         channels:
           - [0, 3]
           - [1, 2]
-      controller_class: null
-      controller_params:
-        name: PTU/HT3/SPC
     # A three-colour burst table someone else produced.
     - reader_class: chisurf.core.experiments.pda3c.Pda3cBurstTableReader
       reader_params:
         name: Burst table (CSV/NPZ)
-      controller_class: null
     # Three-colour data is scarce; the simulator makes the model openable and
     # lets a fit be checked against a truth the reader itself set.
     - reader_class: chisurf.core.experiments.pda3c.Pda3cSimulatorReader
       reader_params:
         name: Simulator (3-colour)
-      controller_class: null
   models:
     # AutoForm-rendered pure models; the build_model_editor seam wraps these via
     # view_spec() -> *.view.json. See okf/subsystems/gui-autoform.md.
@@ -148,9 +133,6 @@ deer:
     - reader_class: chisurf.core.experiments.deer.DeerReader
       reader_params:
         name: DEER (BES3T/CSV)
-      controller_class: null
-      controller_params:
-        name: DEER (BES3T/CSV)
   models:
     # Native DEER models (self-contained, NumPy only); AutoForm-rendered.
     - chisurf.core.models.deer.deer.DeerGaussianModel
@@ -164,58 +146,34 @@ fcs:
       reader_params:
         name: Seidel Kristine
         experiment_reader: kristine
-      controller_class: null
-      controller_params:
-        file_type: Kristine files (*.cor)
     - reader_class: chisurf.core.experiments.fcs.FCS
       reader_params:
         name: FCS-CSV
         experiment_reader: csv
-      controller_class: null
-      controller_params:
-        file_type: All files (*.*)
     - reader_class: chisurf.core.experiments.fcs.FCS
       reader_params:
         name: Zeiss Confocor3
         experiment_reader: confocor3
-      controller_class: null
-      controller_params:
-        file_type: Confocor3 files (*.fcs)
     - reader_class: chisurf.core.experiments.fcs.FCS
       reader_params:
         name: China FCS
         experiment_reader: china-mat
-      controller_class: null
-      controller_params:
-        file_type: China FCS .mat files (*.mat)
     - reader_class: chisurf.core.experiments.fcs.FCS
       reader_params:
         name: Ries SFCS
         experiment_reader: ries-mat
-      controller_class: null
-      controller_params:
-        file_type: Ries SFCS .mat files (*.mat)
     - reader_class: chisurf.core.experiments.fcs.FCS
       reader_params:
         name: PyCorrFit
         experiment_reader: pycorrfit
-      controller_class: null
-      controller_params:
-        file_type: PyCorrFit csv files (*.csv)
     - reader_class: chisurf.core.experiments.fcs.FCS
       reader_params:
         name: ALV-Correlator
         experiment_reader: alv
-      controller_class: null
-      controller_params:
-        file_type: ALV-Correlator files (*.asc)
     - reader_class: chisurf.core.experiments.fcs.FCS
       reader_params:
         name: Correlator.com SIN
         experiment_reader: sin
-      controller_class: null
-      controller_params:
-        file_type: Correlator.com SIN files (*.sin)
   models:
     - chisurf.core.models.fcs.parse.ParseFCSModel
     - chisurf.core.models.fcs.dye_shape.DyeShapeFCSModel
@@ -234,9 +192,6 @@ pcf:
       reader_params:
         name: PCF-CSV
         experiment_reader: csv
-      controller_class: null
-      controller_params:
-        file_type: PCF curves (*.csv *.txt *.dat)
   models:
     - chisurf.core.models.pcf.parse.ParsePCFModel
 
@@ -247,8 +202,6 @@ ics:
         name: Image correlation (RICS/STICS/TICS/iMSD)
         reading_routine: PTU
         channel: 0
-      controller_class: null
-      controller_params: {}
   models:
     # One model over the spatiotemporal carpet G(xi, psi, Delta); RICS, STICS,
     # TICS and iMSD are readings of it rather than separate models. The 3D and
@@ -271,8 +224,6 @@ mfd:
         min_green_photons: 20
         n_signal_bins: 24
         n_span_bins: 6
-      controller_class: null
-      controller_params: {}
   models:
     - chisurf.core.models.mfd.Mfd2DModel
 
@@ -285,8 +236,6 @@ pch:
         channel: 0
         bin_time_us: 100.0
         micro_time_range: [0, 65535]
-      controller_class: null
-      controller_params: {}
   models:
     - chisurf.core.models.pch.pch_model.PchMultiComponentModel
     - chisurf.core.models.pch.fida_model.FidaModel
@@ -295,7 +244,6 @@ structure:
   readers:
     - reader_class: chisurf.core.experiments.modelling.StructureReader
       reader_params: {}
-      controller_class: null
   models:
     - chisurf.core.models.structure.proteinmc_model.ProteinMCModel
 

@@ -18,7 +18,7 @@ def _configured_reader(require_native=True):
         "structure"
     ]["readers"][0]
     if require_native:
-        assert entry["controller_class"] is None
+        assert entry.get("controller_class") is None
     module, class_name = entry["reader_class"].rsplit(".", 1)
     cls = getattr(import_module(module), class_name)
     assert cls is StructureReader

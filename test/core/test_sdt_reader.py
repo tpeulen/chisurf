@@ -205,7 +205,7 @@ def test_shipped_sdt_configuration_names_the_headless_reader():
         if reader.get("reader_params", {}).get("name") == "Becker-SDT"
     )
     assert entry["reader_class"] == "chisurf.core.experiments.tcspc.sdt_reader.SDTReader"
-    assert entry["controller_class"] is None
+    assert entry.get("controller_class") is None
 
 
 def test_historical_sdt_reader_descriptor_restores_without_the_retired_module(

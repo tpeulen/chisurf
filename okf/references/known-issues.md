@@ -4,6 +4,15 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## `plugins.toolbar_plugins` pins nothing in the emtk shell (found 2026-10-19, branch `mcts-native-baseline`)
+
+status: open
+
+The setting is still read (the plugin manager's *Toolbar* column edits it), but no emtk toolbar
+or ribbon is built from it, so a plugin pinned there appears nowhere. Measure: add a plugin
+address to `plugins.toolbar_plugins`, start the shell, look for it. Either the ribbon gains a
+pinned group read from it, or the key and the column go. `docs/reference/settings.md` says so.
+
 ## PTO explanation marker sits past 64 KiB (found 2026-10-18, branch `mcts-native-baseline`)
 
 status: open

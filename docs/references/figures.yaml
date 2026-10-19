@@ -4119,3 +4119,37 @@ guides/figures/chimol_native_host.png:
     (see chisurf/plugins/chimol/capture_native.py for the same steps at 900x620) and save the frame.
   pages:
   - docs/guides/44_molecular_viewer.md
+
+guides/figures/110_terminal_panes.png:
+  caption: The Terminal tool split side by side -- a shell pane that listed the plugin's package and a Python pane.
+  kind: screenshot
+  origin: docs/guides/screenshots/terminal_shot.py::terminal_panes
+  pages:
+  - docs/guides/110_terminal.md
+  recipe: >-
+    From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d)
+    MMFDB_SETTINGS_DIR=$(mktemp -d) python docs/guides/screenshots/terminal_shot.py. Opens the
+    Terminal app alone at 1200x560 (RealisticDriver, real painter) with
+    CHISURF_TERMINAL_SHELL="/bin/bash --norc --noprofile -i" and PS1="$ ", types
+    ls chisurf/plugins/core/terminal, splits right with a Python pane and evaluates cs.__name__ and
+    np.arange(5) ** 2.
+
+guides/figures/110_python_terminal.png:
+  caption: The Python Terminal tool after Split stacked -- two Python panes with their own In [n] counts.
+  kind: screenshot
+  origin: docs/guides/screenshots/terminal_shot.py::python_terminal
+  pages:
+  - docs/guides/110_terminal.md
+  recipe: >-
+    Same script as 110_terminal_panes.png. Opens the Python Terminal app alone at 1000x620, runs
+    x = np.linspace(0, 1, 5) and x.mean(), splits down and runs len(cs.fits) in the new pane.
+
+guides/figures/console_dock.png:
+  caption: The main window with its Console dock in front -- the Terminal strip over the window's own Python pane.
+  kind: screenshot
+  origin: docs/guides/screenshots/terminal_shot.py::console_dock
+  pages:
+  - docs/guides/59_console.md
+  recipe: >-
+    Same script as 110_terminal_panes.png. Builds the emtk shell (no session, no plugins loaded) at
+    1440x900, focuses the Console dock and runs 2 + 40 in its Python pane.

@@ -171,4 +171,4 @@ def test_structure_configuration_declares_a_native_null_controller():
         "structure"
     ]["readers"][0]
     assert entry["reader_class"] == "chisurf.core.experiments.modelling.StructureReader"
-    assert entry["controller_class"] is None
+    assert entry.get("controller_class") is None

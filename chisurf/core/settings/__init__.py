@@ -82,11 +82,9 @@ anisotropy.update(anisotropy_data)
 verbose = False
 # Sections of settings_chisurf.yaml, rebound to the loaded values just below.
 gui: dict = dict()
-parameter: dict = dict()
 optimization: dict = dict()
 fret: dict = dict()
 tcspc: dict = dict()
-fps: dict = dict()
 database: dict = dict()
 locals().update(cs_settings)
 

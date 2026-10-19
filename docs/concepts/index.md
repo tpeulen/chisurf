@@ -169,5 +169,6 @@ games
 application_identity
 application_shell
 code_editor
+terminal
 flrcif_vocabulary
 ```
