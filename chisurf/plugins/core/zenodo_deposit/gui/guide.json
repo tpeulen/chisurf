@@ -2,10 +2,27 @@
   "_comment": "Guided tour of the Zenodo deposit tool. 'name' is the emtk control (a spec action, or a table).",
   "steps": [
     {
-      "title": "Build the record first",
-      "text": "In <b>0 · Create</b>, pick the record's build config and press <b>Build record</b>: the raw data are linked, containers written, <code>metadata.cif</code> generated and validated, and the record scanned for review.",
+      "title": "Make a record",
+      "text": "In <b>0 · Create</b>, type a name and a title and press <b>Create record</b>. (A record a project script builds is under <i>Advanced</i>.)",
       "target": {
-        "name": "build_record"
+        "name": "create_record"
+      },
+      "await": {
+        "hint": "Create a record, or pick one in the list."
+      }
+    },
+    {
+      "title": "Put its data in",
+      "text": "Choose <b>Measurement</b> or <b>Calibration</b>, name the item, then <b>Add files…</b> or <b>Add folder…</b>. Files are hard-linked, never overwritten.",
+      "target": {
+        "name": "add_files"
+      }
+    },
+    {
+      "title": "What Zenodo shows",
+      "text": "Fill in step 3: title, creators as <code>Family, Given</code>, description, keywords. What is missing is listed under the form. Then <b>Scan for review</b>.",
+      "target": {
+        "name": "scan_for_review"
       }
     },
     {

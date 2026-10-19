@@ -26,6 +26,19 @@ An approval is **bound to the item's content digest**. If anything in the
 item changes afterwards, the approval no longer applies and the item is
 pending again: an approval of other bytes is not an approval of these.
 
+## A record is made by hand or by a script
+
+A record can be **composed by hand** -- an empty record, data put into it item
+by item (hard-linked, never overwritten, the source remembered in the review
+file), the Zenodo metadata typed in -- or **generated** by a project's build
+script from a config. Both end in the same folder layout and the same review.
+
+The repository's own metadata (title, creators, description, license) is what
+the world reads first about the data, so it is an item too: machine-checked for
+a complete deposition (`mmfdb.deposit.compose.zenodo_problems`), approved like
+a folder, its approval void after any edit. The upload sends only the approved
+metadata.
+
 ## The gate
 
 `mmfdb.deposit.blockers` lists everything between a record and an upload:

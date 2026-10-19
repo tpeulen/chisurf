@@ -61,88 +61,421 @@
         {
           "type": "panel",
           "title": "0 · Create",
-          "description": "Build a record from its build config: the raw data are linked from the sources, containers written, metadata generated and validated, then the record is scanned for review.",
+          "description": "Make a record by hand in four steps -- name it, put its data in, fill in what Zenodo shows, scan it -- then review it in 1 · Review. A record built by a project script is under Advanced.",
           "n_col": 1,
           "sections": [
             {
-              "type": "value",
-              "attr": "configs_dir",
-              "kind": "str",
-              "label": "Configs",
-              "elide": "start",
-              "description": "The folder of record build configs (one JSON per record: its measurements, calibrations, sources, construct, setups and Zenodo metadata)."
-            },
-            {
-              "type": "custom",
-              "key": "data_table",
-              "title": "",
-              "description": "One row per build config. Click one to see it; Build record creates (or rebuilds) the record folder under the data root.",
-              "options": {
-                "source": "configs",
-                "row_key": "name",
-                "selected_call": "select_config",
-                "editable": false,
-                "fit_rows": true,
-                "height": 160,
-                "min_column_width": 80,
-                "tooltip_key": "config",
-                "columns": [
-                  {
-                    "key": "name",
-                    "title": "Record",
-                    "width": 360,
-                    "tooltip": "The record the config builds."
-                  },
-                  {
-                    "key": "state",
-                    "title": "State",
-                    "width": 160,
-                    "tooltip": "Not built, built but not scanned, or built and scanned (ready for review)."
-                  },
-                  {
-                    "key": "built",
-                    "title": "Built",
-                    "width": 150,
-                    "tooltip": "When the record folder was last written."
-                  }
-                ]
-              }
-            },
-            {
-              "type": "button_row",
-              "description": "Build the selected record; rebuilding keeps every approval whose item did not change.",
-              "buttons": [
+              "type": "panel",
+              "title": "Step 1 · New record",
+              "n_col": 1,
+              "collapsible": true,
+              "description": "An empty record folder under the data root. Skip this step to work on a record picked in the list above.",
+              "sections": [
                 {
-                  "action": "build_record",
-                  "label": "Build record",
-                  "role": "primary",
-                  "description": "Run the build (link raws, write containers, generate and validate metadata.cif, verify) and then the review scan, on a worker. Grey until a config is selected."
+                  "type": "row",
+                  "sections": [
+                    {
+                      "type": "value",
+                      "attr": "new_name",
+                      "kind": "str",
+                      "label": "Name",
+                      "weight": 1,
+                      "live": true,
+                      "description": "Folder and archive name: lower case, digits, '.', '_' or '-', e.g. t4l-unfolding-smfret-k60-n132c."
+                    },
+                    {
+                      "type": "value",
+                      "attr": "new_title",
+                      "kind": "str",
+                      "label": "Title",
+                      "weight": 2,
+                      "description": "The Zenodo title (you can change it in step 3)."
+                    },
+                    {
+                      "type": "button_row",
+                      "weight": 0,
+                      "buttons": [
+                        {
+                          "action": "create_record",
+                          "label": "Create record",
+                          "role": "primary",
+                          "description": "Make the empty record and open it. Grey until the name is valid and not taken."
+                        }
+                      ]
+                    }
+                  ],
+                  "n_col": 3
+                },
+                {
+                  "type": "info",
+                  "key": "new_name_problem",
+                  "source": "new_name_problem",
+                  "is_markdown": true,
+                  "description": "Whether the name can be used, and what will be created."
                 }
               ]
             },
             {
-              "type": "custom",
-              "key": "code_editor",
-              "target": "config_text",
-              "options": {
-                "language": "json",
-                "read_only": true,
-                "stretch": 1,
-                "min_height": 120,
-                "height": 200
+              "type": "info",
+              "key": "no_record_hint",
+              "source": "no_record_hint",
+              "is_markdown": true,
+              "hidden_when": {
+                "attr": "has_record",
+                "equals": "yes"
               },
-              "description": "The selected build config, read-only. Edit it in the project, then Build record."
+              "description": "Steps 2-4 work on the open record."
             },
             {
-              "type": "custom",
-              "key": "code_editor",
-              "target": "build_log",
-              "options": {
-                "language": "none",
-                "read_only": true,
-                "height": 160
-              },
-              "description": "What the last build printed: per container the burst tables, sidecars, encodings and checks, and VERIFY_OK or what failed."
+              "type": "panel",
+              "title": "Step 2 · Add data",
+              "n_col": 1,
+              "collapsible": true,
+              "description": "Put files or folders into the open record. Each addition is one item a reviewer judges: a measurement, or a calibration of a setup-and-day group.",
+              "sections": [
+                {
+                  "type": "choice",
+                  "attr": "add_role",
+                  "label": "Add as",
+                  "options": [
+                    "measurement",
+                    "calibration"
+                  ],
+                  "labels": [
+                    "Measurement",
+                    "Calibration"
+                  ],
+                  "style": "radio",
+                  "description": "A measurement (sample data) or a calibration (IRF/scatter, buffer, dyes, DNA references)."
+                },
+                {
+                  "type": "row",
+                  "sections": [
+                    {
+                      "type": "value",
+                      "attr": "add_name",
+                      "kind": "str",
+                      "label": "Item",
+                      "weight": 1,
+                      "live": true,
+                      "description": "The item's folder name, e.g. 2014-08-12_0M-urea or h2o-scatter."
+                    },
+                    {
+                      "type": "value",
+                      "attr": "add_group",
+                      "kind": "str",
+                      "label": "Group",
+                      "weight": 1,
+                      "live": true,
+                      "hidden_when": {
+                        "attr": "add_role",
+                        "equals": "measurement"
+                      },
+                      "description": "The calibration group: the setup and day it calibrates, e.g. 2014-08-12_pq-hydraharp."
+                    }
+                  ],
+                  "n_col": 2
+                },
+                {
+                  "type": "info",
+                  "key": "add_target",
+                  "source": "add_target",
+                  "is_markdown": true,
+                  "description": "Where the chosen files will land."
+                },
+                {
+                  "type": "button_row",
+                  "buttons": [
+                    {
+                      "action": "add_files",
+                      "label": "Add files…",
+                      "role": "primary",
+                      "description": "Choose one or more files to add as this item."
+                    },
+                    {
+                      "action": "add_folder",
+                      "label": "Add folder…",
+                      "description": "Choose a folder; it is added with its inner layout."
+                    },
+                    {
+                      "action": "show_folder",
+                      "label": "Show in Finder",
+                      "description": "Open the record folder. Files you put there yourself are picked up by Scan for review."
+                    }
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "key": "code_editor",
+                  "target": "record_tree",
+                  "options": {
+                    "language": "none",
+                    "read_only": true,
+                    "height": 110
+                  },
+                  "description": "What the record holds now: every item with its file count and size."
+                }
+              ],
+              "hidden_when": {
+                "attr": "has_record",
+                "equals": "no"
+              }
+            },
+            {
+              "type": "panel",
+              "title": "Step 3 · Zenodo metadata",
+              "n_col": 1,
+              "collapsible": true,
+              "description": "What Zenodo shows about the record. Checked as you type; it is reviewed and approved like any item.",
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "meta_title",
+                  "kind": "str",
+                  "label": "Title",
+                  "description": "The record title."
+                },
+                {
+                  "type": "row",
+                  "sections": [
+                    {
+                      "type": "choice",
+                      "attr": "meta_upload_type",
+                      "label": "Type",
+                      "options_source": "UPLOAD_TYPES",
+                      "weight": 1,
+                      "description": "Zenodo upload type; measurement data is a dataset."
+                    },
+                    {
+                      "type": "value",
+                      "attr": "meta_publication_date",
+                      "kind": "str",
+                      "label": "Date",
+                      "weight": 1,
+                      "description": "Publication date, YYYY-MM-DD."
+                    },
+                    {
+                      "type": "value",
+                      "attr": "meta_version",
+                      "kind": "str",
+                      "label": "Version",
+                      "weight": 1,
+                      "description": "Optional version, e.g. 1.0."
+                    }
+                  ],
+                  "n_col": 3
+                },
+                {
+                  "type": "row",
+                  "sections": [
+                    {
+                      "type": "choice",
+                      "attr": "meta_access_right",
+                      "label": "Access",
+                      "options_source": "ACCESS_RIGHTS",
+                      "weight": 1,
+                      "description": "open, embargoed (with a date), restricted or closed."
+                    },
+                    {
+                      "type": "choice",
+                      "attr": "meta_license",
+                      "label": "License",
+                      "options_source": "LICENSES",
+                      "weight": 1,
+                      "description": "Needed for open and embargoed access; data is usually cc-by-4.0."
+                    },
+                    {
+                      "type": "value",
+                      "attr": "meta_embargo_date",
+                      "kind": "str",
+                      "label": "Embargo until",
+                      "weight": 1,
+                      "hidden_when": {
+                        "attr": "meta_access_is_embargoed",
+                        "equals": "no"
+                      },
+                      "description": "When an embargoed record opens, YYYY-MM-DD."
+                    }
+                  ],
+                  "n_col": 3
+                },
+                {
+                  "type": "value",
+                  "attr": "meta_creators",
+                  "kind": "text",
+                  "lines": 4,
+                  "label": "Creators",
+                  "description": "One per line: Family, Given; Affiliation; ORCID (affiliation and ORCID optional)."
+                },
+                {
+                  "type": "value",
+                  "attr": "meta_description",
+                  "kind": "text",
+                  "lines": 5,
+                  "label": "Description",
+                  "description": "What the data are and how they were measured (HTML allowed: <p>, <ul>, <a>)."
+                },
+                {
+                  "type": "value",
+                  "attr": "meta_keywords",
+                  "kind": "str",
+                  "label": "Keywords",
+                  "description": "Comma separated, e.g. smFRET, T4 lysozyme, urea unfolding."
+                },
+                {
+                  "type": "value",
+                  "attr": "meta_related",
+                  "kind": "text",
+                  "lines": 2,
+                  "label": "Related",
+                  "description": "One per line: relation and identifier, e.g. isSupplementTo 10.1101/2026.01.01.123456 (the paper)."
+                },
+                {
+                  "type": "info",
+                  "key": "metadata_status",
+                  "source": "metadata_status",
+                  "is_markdown": true,
+                  "description": "What is still missing, or that the metadata is complete."
+                },
+                {
+                  "type": "panel",
+                  "title": "Sent to Zenodo (JSON)",
+                  "collapsible": true,
+                  "collapsed": true,
+                  "n_col": 1,
+                  "sections": [
+                    {
+                      "type": "custom",
+                      "key": "code_editor",
+                      "target": "metadata_json",
+                      "options": {
+                        "language": "json",
+                        "read_only": true,
+                        "height": 180
+                      },
+                      "description": "Exactly the deposition metadata the upload sends."
+                    }
+                  ]
+                }
+              ],
+              "hidden_when": {
+                "attr": "has_record",
+                "equals": "no"
+              }
+            },
+            {
+              "type": "panel",
+              "title": "Step 4 · Scan for review",
+              "n_col": 1,
+              "collapsible": true,
+              "description": "Read the record folder into the items you review in 1 · Review.",
+              "sections": [
+                {
+                  "type": "button_row",
+                  "buttons": [
+                    {
+                      "action": "scan_for_review",
+                      "label": "Scan for review",
+                      "role": "primary",
+                      "description": "List every measurement, calibration and metadata item with its digest; approvals of unchanged items are kept."
+                    }
+                  ]
+                }
+              ],
+              "hidden_when": {
+                "attr": "has_record",
+                "equals": "no"
+              }
+            },
+            {
+              "type": "panel",
+              "title": "Advanced · Build from a project script",
+              "n_col": 1,
+              "collapsible": true,
+              "collapsed": true,
+              "description": "For a project whose records are generated by a build script from a config (e.g. T4L): pick the config, Build record.",
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "configs_dir",
+                  "kind": "str",
+                  "label": "Configs",
+                  "elide": "start",
+                  "description": "The folder of record build configs (one JSON per record: its measurements, calibrations, sources, construct, setups and Zenodo metadata)."
+                },
+                {
+                  "type": "custom",
+                  "key": "data_table",
+                  "title": "",
+                  "description": "One row per build config. Click one to see it; Build record creates (or rebuilds) the record folder under the data root.",
+                  "options": {
+                    "source": "configs",
+                    "row_key": "name",
+                    "selected_call": "select_config",
+                    "editable": false,
+                    "fit_rows": true,
+                    "height": 160,
+                    "min_column_width": 80,
+                    "tooltip_key": "config",
+                    "columns": [
+                      {
+                        "key": "name",
+                        "title": "Record",
+                        "width": 360,
+                        "tooltip": "The record the config builds."
+                      },
+                      {
+                        "key": "state",
+                        "title": "State",
+                        "width": 160,
+                        "tooltip": "Not built, built but not scanned, or built and scanned (ready for review)."
+                      },
+                      {
+                        "key": "built",
+                        "title": "Built",
+                        "width": 150,
+                        "tooltip": "When the record folder was last written."
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "button_row",
+                  "description": "Build the selected record; rebuilding keeps every approval whose item did not change.",
+                  "buttons": [
+                    {
+                      "action": "build_record",
+                      "label": "Build record",
+                      "role": "primary",
+                      "description": "Run the build (link raws, write containers, generate and validate metadata.cif, verify) and then the review scan, on a worker. Grey until a config is selected."
+                    }
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "key": "code_editor",
+                  "target": "config_text",
+                  "options": {
+                    "language": "json",
+                    "read_only": true,
+                    "stretch": 1,
+                    "min_height": 120,
+                    "height": 200
+                  },
+                  "description": "The selected build config, read-only. Edit it in the project, then Build record."
+                },
+                {
+                  "type": "custom",
+                  "key": "code_editor",
+                  "target": "build_log",
+                  "options": {
+                    "language": "none",
+                    "read_only": true,
+                    "height": 160
+                  },
+                  "description": "What the last build printed: per container the burst tables, sidecars, encodings and checks, and VERIFY_OK or what failed."
+                }
+              ]
             }
           ]
         },

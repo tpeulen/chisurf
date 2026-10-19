@@ -13,21 +13,40 @@ tags: [zenodo, deposition, review, guide]
 The banner at the top always names the **one next step**; follow it and
 nothing can be skipped.
 
-## 0. Build the record
+## 0. Make the record
 
 ```{figure} figures/109_zenodo_deposit_create.png
 :width: 100%
 
-The Create tab: one build config per record; Build record links the raw data,
-writes the containers, generates and validates `metadata.cif`, verifies, and
-scans the record for review. The log shows what the build checked.
+The Create tab, four steps: a new record, its data (here one measurement and one
+calibration, hard-linked), the Zenodo metadata -- checked as it is typed, the
+missing fields listed under the form -- and the scan for review.
 ```
 
-A record is described by its build config (one JSON per record: measurements,
-calibrations per setup and date, sources, construct and probes, setups, Zenodo
-metadata). Rebuilding keeps every approval whose item did not change. A
-`metadata.cif` that does not conform to the mmCIF, IHM, IHM-FLR and mmfdb
-dictionaries fails the build -- and, should one slip through, blocks the upload.
+1. **New record.** A name (lower case, no spaces; it becomes the folder and the
+   archive name) and a title; *Create record* makes the empty record under the
+   data root and opens it.
+2. **Add data.** *Measurement* or *Calibration*, the item's folder name (a
+   calibration also its group: setup and day, e.g. `2014-08-12_pq-hydraharp`),
+   then *Add files…* or *Add folder…*. Files are hard-linked on the same disk,
+   copied otherwise, never overwritten; where they came from is kept in the
+   review file and shown as the item's origin.
+3. **Zenodo metadata.** Title, type, date, access, license, creators (one per
+   line: `Family, Given; Affiliation; ORCID`), description, keywords, related
+   identifiers (`isSupplementTo 10.xxxx/...` for the paper). *Sent to Zenodo
+   (JSON)* shows exactly what is sent.
+4. **Scan for review.**
+
+The metadata is the item *Zenodo metadata* in the review: it must be complete
+(an incomplete one blocks the upload whatever the review says) and approved,
+and any later edit voids the approval -- only approved metadata is sent.
+
+**Advanced · Build from a project script.** A project whose records are
+generated from a build config (one JSON per record) picks the config and
+presses *Build record*: raw data linked, containers written, `metadata.cif`
+generated and validated against the mmCIF, IHM, IHM-FLR and mmfdb dictionaries
+(a non-conforming one fails the build and blocks the upload), record scanned.
+Such a record takes its Zenodo metadata from the config.
 
 ## 1. Pick a record and review it
 
@@ -76,6 +95,11 @@ this package's MD5) and *Publish (irreversible)*.
 ## Terminal
 
 ```bash
+python -m mmfdb.deposit new      /path/to/records <record> --title "..."
+python -m mmfdb.deposit add      /path/to/records/<record> raw/run1 --as measurement --name 2014-08-12_0M-urea
+python -m mmfdb.deposit add      /path/to/records/<record> raw/irf.ht3 --as calibration --name irf --group 2014-08-12_hydraharp
+python -m mmfdb.deposit metadata /path/to/records/<record> --set zenodo.json   # prints what is missing
+python -m mmfdb.deposit scan     /path/to/records/<record>
 python -m mmfdb.deposit status   /path/to/records/<record>
 python -m mmfdb.deposit review   /path/to/records/<record> <item-id> --note "checked"
 python -m mmfdb.deposit package  /path/to/records/<record> /path/to/zips
@@ -86,8 +110,13 @@ python -m mmfdb.deposit upload   /path/to/records/<record>
 
 ```python
 from mmfdb.deposit import scan, blockers, build_package, upload, ZenodoClient
+from mmfdb.deposit.compose import new_record, add_data, zenodo_problems
 
-rec = scan("records/my-record")      # or DepositRecord.load(...)
+rec = new_record("records", "my-record", title="...")
+add_data(rec, ["raw/run1"], "measurement", "2014-08-12_7.5M-urea")
+rec.metadata.update(creators=[{"name": "Family, Given"}], description="...")
+print(zenodo_problems(rec.metadata))  # [] when complete
+rec = scan(rec.folder, metadata=rec.metadata)
 rec.approve("measurements/2014-08-12_7.5M-urea", note="checked")
 build_package(rec, "zips")
 print(blockers(rec))                  # [] when cleared

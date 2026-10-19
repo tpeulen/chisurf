@@ -14,7 +14,9 @@ from typing import Any
 
 from emtk import im
 from emtk.app import ImApp
+from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region
+from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -45,6 +47,10 @@ class ZenodoDepositApp(ImApp):
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
         )
         self.form.on_used = self.tour.notify_used
+        #: The file dialog of step 2 (Add files / Add folder), open while the model asks.
+        self.dialog: FileDialog | None = None
+        self.dialog_window = DialogWindow("Add to the record", size=(720.0, 460.0),
+                                          key="zenodo-deposit-add")
         self.docks = DockManager(Region("deposit"))
         self.docks.add_window("deposit", "Zenodo deposit", self.draw_deposit, dock="deposit")
         super().__init__(self.render, continuous=True)
@@ -54,9 +60,41 @@ class ZenodoDepositApp(ImApp):
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)
         self.form.rects.clear()
+        im.begin_disabled(self.dialog is not None)
         self.docks.draw(box)
+        im.end_disabled()
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
+        self.draw_dialog(box)
+
+    def draw_dialog(self, box: Any) -> None:
+        """The chooser of step 2: files (several) or one folder, added as the named item."""
+        if self.model.pick and self.dialog is None:
+            folder = self.model.pick == "folder"
+            self.dialog = FileDialog(
+                "Add a folder to the record" if folder else "Add files to the record",
+                mode="folder" if folder else "open", multiselect=not folder,
+                directory=self.model.pick_directory, action="Add")
+            self.dialog_window.title = self.dialog.title
+            self.dialog_window.show()
+        if self.dialog is None:
+            return
+        pressed = self.dialog_window.begin(box)
+        result = self.dialog.draw()
+        self.dialog_window.end()
+        if result:
+            self.model.pick_directory = self.dialog.directory
+            self.dialog = None
+            self.model.add_paths(result)
+        elif result is False or pressed == "close":
+            self.dialog = None
+            self.model.pick = ""
+
+    def on_files_dropped(self, paths) -> bool:
+        """Files dropped on the window are added as the item named in step 2."""
+        if self.dialog is None and self.model.enabled("add_files"):
+            self.model.add_paths([str(p) for p in paths])
+        return True
 
     def draw_deposit(self, box: Any) -> None:
         """Help / Guide, then the records, the items, the selected item and the upload."""

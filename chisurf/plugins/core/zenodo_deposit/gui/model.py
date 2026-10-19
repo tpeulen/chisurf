@@ -29,10 +29,22 @@ from mmfdb.deposit import (
     compare,
     credentials,
     publish,
+    refresh_metadata_item,
     refresh_remote,
     scan,
     upload,
 )
+from mmfdb.deposit.compose import (
+    ACCESS_RIGHTS,
+    LICENSES,
+    UPLOAD_TYPES,
+    add_data,
+    new_record,
+    template,
+    valid_name,
+    zenodo_problems,
+)
+from mmfdb.deposit.record import METADATA_ITEM
 
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
@@ -81,6 +93,17 @@ class ZenodoDepositModel:
         self.scan_command = DEFAULT_SCAN
         self.config_name = ""
         self.build_log = ""
+        #: Step 1 -- a new record by hand.
+        self.new_name = ""
+        self.new_title = ""
+        #: Step 2 -- what the next files are added as.
+        self.add_role = "measurement"
+        self.add_name = ""
+        self.add_group = ""
+        #: ``"files"`` or ``"folder"`` while the host should show its file dialog.
+        self.pick = ""
+        #: Where the file dialog opens: the last folder something was added from.
+        self.pick_directory = os.path.expanduser("~")
         self._runner = runner
         self.note = ""
         self.sandbox = False
@@ -140,6 +163,12 @@ class ZenodoDepositModel:
         try:
             self.record = (DepositRecord.load(folder) if row["state"] != "not scanned"
                            else scan(folder))
+            if not self.record.metadata:
+                # The form shows what is stored: an empty record gets the template
+                # (dataset, open, cc-by-4.0, today), not choices that only look set.
+                self.record.metadata = template(self.record.title)
+                refresh_metadata_item(self.record)
+                row = {**row, "state": "not scanned"}
             if row["state"] == "not scanned":
                 self.record.save()
                 self.refresh_records()
@@ -148,6 +177,242 @@ class ZenodoDepositModel:
             return
         self.item_id = ""
         self.message = f"opened {self.record.name}"
+
+    # ── step 1: a new record by hand ─────────────────────────────────────
+    @property
+    def has_record(self) -> str:
+        """``"yes"`` while a record is open: steps 2-4 are shown only then."""
+        return "yes" if self.record is not None else "no"
+
+    no_record_hint = ("**Steps 2-4** (add data, Zenodo metadata, scan) appear once a record is "
+                      "open: create one above, or click one in the list at the top.")
+
+    @property
+    def new_name_problem(self) -> str:
+        name = self.new_name.strip()
+        if not name:
+            return ("Type a name: lower case, no spaces, e.g. `t4l-unfolding-smfret-k60-n132c`. "
+                    "It becomes the folder and the archive name.")
+        if (Path(self.data_root) / name).exists():
+            return f"**{name}** exists already -- pick it in the list above instead."
+        problem = valid_name(name)
+        return f"**Not a valid name:** {problem}." if problem else (
+            f"Creates `{Path(self.data_root) / name}` with empty measurements/ and calibrations/.")
+
+    def create_record(self) -> None:
+        """Make the empty record, open it, and fill the metadata template with the title."""
+        try:
+            rec = new_record(self.data_root, self.new_name.strip(), self.new_title.strip())
+        except (ValueError, FileExistsError, OSError) as exc:
+            self.message = f"could not create the record: {exc}"
+            return
+        self.record = scan(rec.folder)
+        self.record.save()
+        self.item_id = ""
+        self.new_name = self.new_title = ""
+        self.refresh_records()
+        self.message = (f"created {rec.name} -- now add its data (step 2) and fill in the "
+                        "Zenodo metadata (step 3)")
+
+    # ── step 2: data into the record ─────────────────────────────────────
+    ADD_ROLES = ("measurement", "calibration")
+
+    @property
+    def add_target(self) -> str:
+        """Where the next files land, in words, or why they cannot be added yet."""
+        if self.record is None:
+            return "Create or pick a record first."
+        name = self.add_name.strip()
+        if not name:
+            return ("Name the item first: one folder, e.g. `2014-08-12_0M-urea` for a "
+                    "measurement or `h2o-scatter` for a calibration.")
+        if self.add_role == "calibration":
+            if not self.add_group.strip():
+                return ("A calibration belongs to a group: the setup and day it calibrates, "
+                        "e.g. `2014-08-12_pq-hydraharp`.")
+            rel = f"calibrations/{self.add_group.strip()}/{name}"
+        else:
+            rel = f"measurements/{name}"
+        return (f"Files and folders you choose go to `{rel}/` -- hard-linked when on the same "
+                "disk, copied otherwise. Nothing is overwritten.")
+
+    def _can_add(self) -> bool:
+        return (self.record is not None and bool(self.add_name.strip())
+                and (self.add_role != "calibration" or bool(self.add_group.strip())))
+
+    def add_files(self) -> None:
+        self.pick = "files"
+
+    def add_folder(self) -> None:
+        self.pick = "folder"
+
+    def add_paths(self, paths) -> None:
+        """The file dialog's answer: put *paths* into the record as the named item."""
+        self.pick = ""
+        if not paths or self.record is None:
+            return
+        try:
+            r = add_data(self.record, paths, self.add_role, self.add_name.strip(),
+                         self.add_group.strip())
+        except (ValueError, FileExistsError, FileNotFoundError, OSError) as exc:
+            self.message = f"nothing added: {exc}"
+            return
+        self.record = scan(self.record.folder)
+        self.record.save()
+        self.refresh_records()
+        self.message = (f"{r['item']}: {r['linked']} linked, {r['copied']} copied"
+                        + (f", {r['present']} already there" if r["present"] else ""))
+
+    def show_folder(self) -> None:
+        """Open the record folder in the file manager (files dropped there count on Rescan)."""
+        if self.record is None:
+            return
+        import subprocess
+        import sys
+
+        opener = {"darwin": "open", "win32": "explorer"}.get(sys.platform, "xdg-open")
+        subprocess.Popen([opener, str(self.record.folder)])
+
+    @property
+    def record_tree(self) -> str:
+        """The record's layout: every item folder with its file count and size."""
+        if self.record is None:
+            return ""
+        lines = []
+        for i in self.record.items:
+            if i.id == METADATA_ITEM:
+                continue
+            lines.append(f"{i.id:<60} {i.files:>5} files {_size(i.bytes):>10}")
+        return "\n".join(lines) or "(empty -- add a measurement and its calibrations)"
+
+    # ── step 3: the Zenodo metadata ──────────────────────────────────────
+    UPLOAD_TYPES = UPLOAD_TYPES
+    LICENSES = LICENSES
+    ACCESS_RIGHTS = ACCESS_RIGHTS
+
+    def _meta(self) -> dict:
+        return self.record.metadata if self.record is not None else {}
+
+    def _set_meta(self, key: str, value) -> None:
+        """Write one field, re-check it, and void its approval if it changed -- no rescan."""
+        if self.record is None:
+            return
+        m = self.record.metadata
+        empty = value in ("", [], None)
+        if (m.get(key) == value) or (empty and key not in m):
+            return
+        if empty:
+            m.pop(key, None)
+        else:
+            m[key] = value
+        refresh_metadata_item(self.record)
+        self.record.save()
+        self.refresh_records()
+
+    def _text_field(key):  # noqa: N805 - a property factory used in the class body
+        return property(lambda self: str(self._meta().get(key, "")),
+                        lambda self, v: self._set_meta(key, str(v).strip()))
+
+    meta_title = _text_field("title")
+    meta_upload_type = _text_field("upload_type")
+    meta_publication_date = _text_field("publication_date")
+    meta_license = _text_field("license")
+    meta_access_right = _text_field("access_right")
+    meta_version = _text_field("version")
+    meta_embargo_date = _text_field("embargo_date")
+    del _text_field
+
+    @property
+    def meta_description(self) -> str:
+        return str(self._meta().get("description", ""))
+
+    @meta_description.setter
+    def meta_description(self, v: str) -> None:
+        self._set_meta("description", str(v).strip())
+
+    @property
+    def meta_creators(self) -> str:
+        """One creator per line: ``Family, Given; Affiliation; ORCID``."""
+        lines = []
+        for c in self._meta().get("creators", []):
+            parts = [c.get("name", ""), c.get("affiliation", ""), c.get("orcid", "")]
+            while parts and not parts[-1]:
+                parts.pop()
+            lines.append("; ".join(parts))
+        return "\n".join(lines)
+
+    @meta_creators.setter
+    def meta_creators(self, text: str) -> None:
+        creators = []
+        for line in str(text).splitlines():
+            parts = [p.strip() for p in line.split(";")]
+            if not parts or not parts[0]:
+                continue
+            c = {"name": parts[0]}
+            if len(parts) > 1 and parts[1]:
+                c["affiliation"] = parts[1]
+            if len(parts) > 2 and parts[2]:
+                c["orcid"] = parts[2]
+            creators.append(c)
+        self._set_meta("creators", creators)
+
+    @property
+    def meta_keywords(self) -> str:
+        return ", ".join(self._meta().get("keywords", []))
+
+    @meta_keywords.setter
+    def meta_keywords(self, text: str) -> None:
+        self._set_meta("keywords", [k.strip() for k in str(text).split(",") if k.strip()])
+
+    @property
+    def meta_related(self) -> str:
+        """One related identifier per line: ``relation identifier`` (e.g. a paper DOI)."""
+        return "\n".join(f"{r.get('relation', '')} {r.get('identifier', '')}"
+                         for r in self._meta().get("related_identifiers", []))
+
+    @meta_related.setter
+    def meta_related(self, text: str) -> None:
+        rel = []
+        for line in str(text).splitlines():
+            parts = line.split(None, 1)
+            if len(parts) == 2:
+                rel.append({"relation": parts[0], "identifier": parts[1].strip()})
+            elif parts:
+                rel.append({"relation": "", "identifier": parts[0]})
+        self._set_meta("related_identifiers", rel)
+
+    @property
+    def meta_access_is_embargoed(self) -> str:
+        return "yes" if self._meta().get("access_right") == "embargoed" else "no"
+
+    @property
+    def metadata_status(self) -> str:
+        """Whether the metadata is a complete deposition, and where it comes from."""
+        if self.record is None:
+            return "Create or pick a record first."
+        problems = zenodo_problems(self.record.metadata)
+        built = (Path(self.configs_dir) / f"{self.record.name}.json").is_file()
+        head = ("**This record is built from a config:** edits here are replaced the next time "
+                "it is built -- change the config's \"zenodo\" block instead.\n\n" if built else "")
+        if problems:
+            return head + f"**{len(problems)} to fix before upload:**\n" + "\n".join(
+                f"- {_md(p)}" for p in problems)
+        return head + ("**Complete.** It is reviewed like any item: approve *Zenodo metadata* in "
+                       "*1 · Review*. Any later edit voids that approval.")
+
+    @property
+    def metadata_json(self) -> str:
+        """Exactly what is sent to Zenodo as the deposition metadata."""
+        import json
+
+        return json.dumps(self._meta(), indent=2, ensure_ascii=False) if self.record else ""
+
+    # ── step 4 ───────────────────────────────────────────────────────────
+    def scan_for_review(self) -> None:
+        """Re-read the record after adding data: the items a reviewer then judges."""
+        self.rescan()
+        if self.record is not None:
+            self.message = (f"{len(self.record.items)} items to review -- open *1 · Review*")
 
     # ── creating a record from its build config ──────────────────────────
     @property
@@ -227,7 +492,7 @@ class ZenodoDepositModel:
             return ""
         m = self.record.metadata or {}
         if not m:
-            return "**No Zenodo metadata** -- the record's build config has no \"zenodo\" block."
+            return "**No Zenodo metadata** -- fill it in *0 · Create*, step 3."
         lines = [f"**Title:** {_md(m.get('title', ''))}", "", "**Creators:**", ""] + [
             f"- {c.get('name')} -- {c.get('affiliation', '')}" for c in m.get("creators", [])
         ] + ["", f"**License:** {m.get('license', '')} · **Type:** {m.get('upload_type', '')} · "
@@ -311,6 +576,8 @@ class ZenodoDepositModel:
         it = self.item
         if it is None:
             return "none"
+        if it.id == METADATA_ITEM:
+            return "json"
         p = self.open_record.folder / it.id
         if p.is_dir():
             return "listing"
@@ -329,6 +596,8 @@ class ZenodoDepositModel:
         kind = self.preview_kind
         if kind == "none":
             return ""
+        if self.item.id == METADATA_ITEM:
+            return self.metadata_json
         p = self.open_record.folder / self.item.id
         if kind == "listing":
             from mmfdb.deposit.record import content_files
@@ -345,7 +614,7 @@ class ZenodoDepositModel:
     def ndx_container(self) -> Path | None:
         """The burst-analysis container of the selected item, if it has one."""
         it = self.item
-        if it is None:
+        if it is None or it.id == METADATA_ITEM:
             return None
         p = self.open_record.folder / it.id
         if p.is_file():
@@ -456,6 +725,14 @@ class ZenodoDepositModel:
             return has_item and idle
         if name == "build_record":
             return idle and bool(self.config_name)
+        if name == "create_record":
+            return idle and not self.new_name_problem.startswith(("Type", "**"))
+        if name in ("add_files", "add_folder"):
+            return idle and self._can_add()
+        if name in ("show_folder", "scan_for_review"):
+            return has_rec and idle
+        if name.startswith("meta_"):
+            return has_rec and idle
         if name == "open_in_ndx":
             return self.ndx_container is not None
         if name in ("rescan", "build_package"):
@@ -489,11 +766,18 @@ class ZenodoDepositModel:
             return ("**Step 0 -- enter your Zenodo token** in the *Zenodo token* tab. "
                     "Reviewing works without it; uploading does not.")
         if self.record is None:
-            return ("**Step 1 -- pick a record** in the list above (or build one first in "
-                    "*0 · Create*).")
+            return ("**Step 1 -- pick a record** in the list above, or make a new one in "
+                    "*0 · Create*.")
         rec = self.record
         if rec.remote.get("doi"):
             return f"**Done:** {rec.name} is published, DOI {rec.remote['doi']}."
+        if not any(i.role in ("measurement", "calibration") for i in rec.items):
+            return ("**Step 2 -- add data** (*0 · Create*): name an item, then *Add files…* or "
+                    "*Add folder…*.")
+        if zenodo_problems(rec.metadata):
+            return ("**Step 3 -- complete the Zenodo metadata** (*0 · Create*): "
+                    f"{len(zenodo_problems(rec.metadata))} field(s) missing or wrong, listed "
+                    "under the form.")
         c = rec.counts()
         open_items = [i for i in rec.items if i.status != "approved"]
         if c["rejected"]:
@@ -501,16 +785,16 @@ class ZenodoDepositModel:
                     "*Rescan* (Upload tab) and review them again.")
         if open_items:
             flagged = sum(1 for i in open_items if i.flags)
-            return (f"**Step 2 -- review:** {len(open_items)} of {len(rec.items)} items still "
+            return (f"**Step 4 -- review** (*1 · Review*): {len(open_items)} of {len(rec.items)} items still "
                     "to check" + (f", {flagged} of them flagged (Check column) -- start with those" if flagged
                        else "")
                     + ". Click a row, read it, then Approve or Reject.")
         b = blockers(rec)
         if b:
-            return ("**Step 3 -- build the package** (Upload tab): everything is approved, the "
+            return ("**Step 5 -- build the package** (Upload tab): everything is approved, the "
                     "archive must be built from exactly this content.")
         if not rec.remote.get("deposition_id"):
-            return ("**Step 4 -- upload the draft** (Upload tab). Nothing is published; you can "
+            return ("**Step 6 -- upload the draft** (Upload tab). Nothing is published; you can "
                     "still look at the draft on Zenodo afterwards.")
         diff = compare(rec)
         if diff:

@@ -96,9 +96,18 @@ def test_an_unscanned_folder_is_listed_and_scanned_on_open(model):
     assert (model.record.folder.parent / "t4l-demo.deposit.json").is_file()
 
 
+def _fill_metadata(m: ZenodoDepositModel) -> None:
+    """Step 3 of Create, as a person types it."""
+    m.meta_title = "T4L demo"
+    m.meta_description = "Demo record."
+    m.meta_creators = "Peulen, Thomas-Otavio; Stanford University"
+    m.meta_keywords = "smFRET, demo"
+
+
 def test_review_opens_the_gate_and_upload_reaches_a_verified_draft(model, fake):
     model.select_record(model.records[0])
     assert not model.enabled("approve_item") and not model.enabled("upload_draft")
+    _fill_metadata(model)
     model.build_package()
     _wait(model)
     for row in model.items:
@@ -196,3 +205,33 @@ def test_a_failed_build_shows_its_output(model, tmp_path):
     model.build_record()
     _wait(model)
     assert "failed" in model.message and "does not conform" in model.build_log
+
+
+def test_a_record_is_made_by_hand_in_four_steps(model, tmp_path):
+    """New record -> add data -> Zenodo metadata -> scan, with no build script."""
+    src = tmp_path / "raw"
+    (src / "run").mkdir(parents=True)
+    (src / "run" / "a-0000.ht3").write_bytes(b"photons")
+    model.new_name = "Bad Name"
+    assert not model.enabled("create_record")
+    model.new_name, model.new_title = "k60-n132c", "T4L K60/N132C"
+    assert model.enabled("create_record")
+    model.create_record()
+    assert model.record.name == "k60-n132c"
+    assert "add data" in model.next_step
+    assert not model.enabled("add_files")  # no item named yet
+    model.add_name = "2014-08-12_0M-urea"
+    model.add_files()
+    assert model.pick == "files"  # the host shows its file dialog now
+    model.add_paths([str(src / "run")])
+    assert model.pick == "" and "1 linked" in model.message
+    assert "Zenodo metadata" in model.next_step
+    model.meta_creators = "Thomas Peulen"
+    assert "Family, Given" in model.metadata_status
+    _fill_metadata(model)
+    assert model.metadata_status.startswith("**Complete.**")
+    model.select_item({"id": "Zenodo metadata"})
+    assert model.preview_kind == "json" and '"T4L demo"' in model.preview_json
+    model.approve_item()
+    model.meta_keywords = "smFRET, demo, edited"  # an edit voids the approval
+    assert model.record.item("Zenodo metadata").status == "pending"
