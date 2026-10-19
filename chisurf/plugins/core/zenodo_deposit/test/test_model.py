@@ -252,3 +252,18 @@ def test_a_record_is_made_by_hand_in_four_steps(model, tmp_path):
     model.approve_item()
     model.meta_keywords = "smFRET, demo, edited"  # an edit voids the approval
     assert model.record.item("Zenodo metadata").status == "pending"
+
+
+def test_a_layout_saved_with_the_panel_closed_still_shows_it(model):
+    """The window was empty once its only panel had been closed and that layout saved."""
+    from emtk.testing import Driver
+
+    from chisurf.plugins.core.zenodo_deposit.gui.app import ZenodoDepositApp
+
+    app = ZenodoDepositApp(model)
+    app.docks.hide("deposit")
+    assert not app.docks.window("deposit").visible
+    ui = Driver(app, (1200, 800))
+    ui.frame(3)
+    texts = [t[5] for t in ui.painter.texts]
+    assert "0 · Create" in texts and "×" not in texts

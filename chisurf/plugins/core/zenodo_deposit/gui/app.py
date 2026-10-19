@@ -52,7 +52,9 @@ class ZenodoDepositApp(ImApp):
         self.dialog_window = DialogWindow("Add to the record", size=(720.0, 460.0),
                                           key="zenodo-deposit-add")
         self.docks = DockManager(Region("deposit"))
-        self.docks.add_window("deposit", "Zenodo deposit", self.draw_deposit, dock="deposit")
+        # The tool's only panel: it cannot be closed, or the tool would stay empty.
+        self.docks.add_window("deposit", "Zenodo deposit", self.draw_deposit, dock="deposit",
+                              closable=False)
         super().__init__(self.render, continuous=True)
 
     def render(self) -> None:
@@ -60,6 +62,9 @@ class ZenodoDepositApp(ImApp):
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)
         self.form.rects.clear()
+        if not self.docks.window("deposit").visible:
+            # a layout saved while the panel could still be closed
+            self.docks.show("deposit")
         im.begin_disabled(self.dialog is not None)
         self.docks.draw(box)
         im.end_disabled()
