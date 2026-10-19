@@ -41,21 +41,86 @@ def color(value):
     raise ValueError(f"Unsupported color: {value}")
 
 
+#: A Qt widget class and the emtk stylesheet selector that styles the same control. The
+#: Qt shell is gone; a ``.qss`` theme a user kept is translated once, here -- emtk's own
+#: stylesheet dialect knows no Qt names, and a Qt selector it does not know styles
+#: nothing, silently.
+_QSS_SELECTORS = {
+    # QWidget is every widget's base: in emtk that is the root rule (text, window colour).
+    "QWidget": "*", "QFrame": "widget",
+    "QMainWindow": "window", "QDialog": "window",
+    "QPushButton": "button", "QToolButton": "button",
+    "QTabBar::tab": "tab", "QTabWidget::tab": "tab",
+    "QLineEdit": "input", "QTextEdit": "input", "QPlainTextEdit": "input",
+    "QSpinBox": "input", "QDoubleSpinBox": "input", "QComboBox": "input",
+    "QMenu": "menu", "QMenu::item": "menu::item", "QMenuBar": "menubar",
+    "QHeaderView::section": "header",
+    "QTableView": "table", "QTableWidget": "table", "QTreeView": "table",
+    "QTreeWidget": "table", "QListView": "table", "QListWidget": "table",
+    "QScrollBar": "scrollbar", "QScrollBar::handle": "scrollbar::handle",
+    "QCheckBox": "checkbox", "QRadioButton": "checkbox",
+    "QSlider": "slider", "QSlider::handle": "slider::handle",
+    "QDockWidget": "dock", "QDockWidget::title": "dock:title",
+}
+_QSS_IGNORED_PROPERTIES = (
+    "image", "qproperty-alignment", "subcontrol-origin", "subcontrol-position", "spacing",
+)
+
+
+def _translate_selector(selector: str) -> str | None:
+    """emtk's selector for one Qt selector (``QPushButton:hover`` -> ``button:hover``)."""
+    selector = selector.strip()
+    if not selector.startswith("Q"):
+        return selector  # already emtk's dialect
+    base, state = selector, ""
+    for name in sorted(_QSS_SELECTORS, key=len, reverse=True):
+        if selector == name or selector.startswith(name + ":") and not selector.startswith(name + "::"):
+            base, state = name, selector[len(name):]
+            break
+    else:
+        return None
+    state = {":pressed": ":active", ":checked": ":selected"}.get(state, state)
+    return _QSS_SELECTORS[base] + state
+
+
+def qss_to_css(source: str) -> tuple[str, list[str]]:
+    """Translate a Qt style sheet into emtk's stylesheet dialect; also say what was dropped.
+
+    Returns the translated text and one line per rule or property with no emtk
+    counterpart (a Qt-only widget, an ``image:`` or ``subcontrol-*`` property).
+    """
+    ignored: list[str] = []
+    clean = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
+    rules = []
+    for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", clean):
+        kept = []
+        for selector in selectors.split(","):
+            translated = _translate_selector(selector)
+            if translated is None:
+                ignored.append(f"{selector.strip()}: no emtk control")
+            else:
+                kept.append(translated)
+        declarations = []
+        for decl in body.split(";"):
+            if ":" not in decl:
+                continue
+            prop = decl.split(":", 1)[0].strip()
+            if prop in _QSS_IGNORED_PROPERTIES:
+                ignored.append(f"{selectors.strip()}: {prop}")
+            else:
+                declarations.append(decl.strip())
+        if kept and declarations:
+            rules.append(f"{', '.join(kept)} {{ {'; '.join(declarations)}; }}")
+    return "\n".join(rules), ignored
+
+
 def convert_qss(source: str) -> tuple[Style, list[str]]:
-    """Translate stylesheet via EMTK's stylesheet engine."""
+    """The emtk Style a Qt style sheet describes, and what had to be dropped (:func:`qss_to_css`)."""
     from emtk.stylesheet import parse_stylesheet
 
-    ignored = []
-    clean = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
-    for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", clean):
-        for decl in body.split(";"):
-            if ":" in decl:
-                prop = decl.split(":", 1)[0].strip()
-                if prop in ("image", "qproperty-alignment", "subcontrol-origin", "subcontrol-position", "spacing"):
-                    ignored.append(f"{selectors.strip()}: {prop}")
-
+    css, ignored = qss_to_css(source)
     try:
-        _, _, style = parse_stylesheet(source)
+        _, _, style = parse_stylesheet(css)
         return style, ignored
     except Exception:
         return Style(), ignored
@@ -228,9 +293,10 @@ class StyleManagerModel:
                 for pattern in ("*.css", "*.qss"):
                     for path in sorted(folder.glob(pattern)):
                         try:
-                            parts.append(path.read_text(encoding="utf-8"))
+                            text = path.read_text(encoding="utf-8")
                         except (OSError, UnicodeError):
                             continue
+                        parts.append(qss_to_css(text)[0] if path.suffix == ".qss" else text)
         return "\n\n".join(part for part in (*parts, theme_text) if part)
 
     def restyle_application(self, text):
@@ -270,7 +336,12 @@ class StyleManagerModel:
             from emtk.stylesheet import parse_stylesheet
 
             theme_name = self.current_file.stem if self.current_file else "custom"
-            full_text = self.combined_qss(self.editor.text)
+            # A .qss theme a user kept from the Qt window is translated into emtk's dialect
+            # (combined_qss does the same for .qss widget fragments); .css passes unchanged.
+            theme_text = self.editor.text
+            if self.current_file is not None and self.current_file.suffix == ".qss":
+                theme_text = qss_to_css(theme_text)[0]
+            full_text = self.combined_qss(theme_text)
             try:
                 theme.apply_stylesheet(full_text, name=theme_name)
             except Exception:
@@ -492,10 +563,10 @@ class StyleManagerApp(ImApp):
             "Open style" if operation == "open" else "Save style as",
             mode="open" if operation == "open" else "save",
             directory=str(self.model.styles_dir),
-            filters="Style sheets (*.qss)",
+            filters="Style sheets (*.css *.qss)",
             filename=self.model.current_file.name
             if operation != "open" and self.model.current_file
-            else "custom.qss",
+            else "custom.css",
         )
 
     def accept_dialog(self, result):

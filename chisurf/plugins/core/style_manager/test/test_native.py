@@ -56,7 +56,7 @@ def test_new_never_overwrites_and_conversion_reports_unsupported(tmp_path):
     assert not m.new("dark")
     assert m.current_file.read_text() == original
     assert m.new("custom")
-    assert m.current_file.name == "custom.qss"
+    assert m.current_file.name == "custom.css"  # emtk's own dialect is the default now
     style, ignored = convert_qss("QWidget { color: rgb(10,20,30); } QPushButton { image: url(x); }")
     from emtk import im
 
@@ -136,7 +136,26 @@ def test_apply_restyles_the_running_application_with_the_shared_widget_fragments
     seen = []
     m.application_callback = lambda text: seen.append(text) or True
     assert m.apply()
-    assert seen and seen[-1].startswith("/* shared */") and seen[-1].endswith("#abcdef; }")
+    # The .qss fragment and theme reach the application translated into emtk's dialect.
+    assert seen and seen[-1].startswith("button { padding: 3px; }")
+    assert seen[-1].endswith("* { background-color: #abcdef; }")
     assert m.status.endswith("The running application was restyled.")
     m.application_callback = lambda text: False
     assert m.apply() and m.status.endswith("at the next launch.")
+
+
+def test_a_qss_theme_kept_from_the_qt_window_is_translated():
+    """Qt selectors style nothing in emtk's dialect: a .qss theme applied silently did nothing."""
+    from emtk import im
+    from emtk.stylesheet import parse_stylesheet
+
+    from chisurf.plugins.core.style_manager.gui.app import qss_to_css
+
+    css, dropped = qss_to_css(
+        "QPushButton:pressed, QToolButton { background-color: #abcdef; image: url(x); }\n"
+        "QCalendarWidget { color: red; }\nbutton { color: #010203; }"
+    )
+    assert "button:active, button" in css and "image" not in css
+    assert "QCalendarWidget: no emtk control" in dropped and any("image" in d for d in dropped)
+    _, _, style = parse_stylesheet(css)
+    assert style.color(im.Col.BUTTON) == (171, 205, 239, 255)
