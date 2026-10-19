@@ -100,6 +100,8 @@ class ZenodoDepositModel:
         self.add_role = "measurement"
         self.add_name = ""
         self.add_group = ""
+        #: How a selected Markdown file is shown: ``Preview`` (rendered) or ``Source``.
+        self.md_mode = "Preview"
         #: ``"files"`` or ``"folder"`` while the host should show its file dialog.
         self.pick = ""
         #: Where the file dialog opens: the last folder something was added from.
@@ -661,6 +663,17 @@ class ZenodoDepositModel:
         return self.preview_text if self.preview_kind == "mmcif" else ""
 
     @property
+    def md_view(self) -> str:
+        """``preview`` or ``source`` for a selected Markdown file, else ``""``."""
+        if self.preview_kind != "markdown":
+            return ""
+        return "source" if self.md_mode == "Source" else "preview"
+
+    @property
+    def preview_md_rendered(self) -> str:
+        return self.preview_md if self.md_view == "preview" else ""
+
+    @property
     def preview_md(self) -> str:
         return self.preview_text if self.preview_kind == "markdown" else ""
 
@@ -676,6 +689,9 @@ class ZenodoDepositModel:
 
     def can_approve(self, row: dict | None = None) -> bool:
         return bool(row and row.get("act")) if row is not None else self.enabled("approve_item")
+
+    def can_approve_all(self, row: dict | None = None) -> bool:
+        return self.enabled("approve_all")
 
     def can_decide(self, row: dict | None = None) -> bool:
         return not self.job.running and self.record is not None
@@ -697,6 +713,36 @@ class ZenodoDepositModel:
 
     def approve_item(self, row: dict | None = None) -> None:
         self._review("approved", row)
+
+    def _approvable(self) -> list:
+        """What *Approve all* approves: every item not decided yet that passes the machine check.
+
+        A rejection stands (it was a decision); an item failing the check is left
+        to be fixed -- approving it would not clear the gate.
+        """
+        if self.record is None:
+            return []
+        return [i for i in self.record.items
+                if i.status != "approved" and i.review.status != "rejected" and not i.errors]
+
+    def approve_all_label(self) -> str:
+        n = len(self._approvable())
+        return f"Approve all ({n})" if n else "Approve all"
+
+    def approve_all(self, row: dict | None = None) -> None:
+        """Approve every open item at its current content, each with the note "approve all"."""
+        todo = self._approvable()
+        if not todo or self.job.running:
+            return
+        note = self.note.strip()
+        for it in todo:
+            self.record.set_review(it.id, "approved", "approve all" + (f": {note}" if note else ""))
+        self.record.save()
+        flagged = sum(1 for it in todo if it.flags)
+        self.message = (f"approved {len(todo)} item(s)"
+                        + (f", {flagged} of them flagged" if flagged else ""))
+        self.note = ""
+        self.refresh_records()
 
     def reject_item(self, row: dict | None = None) -> None:
         self._review("rejected", row)
@@ -753,6 +799,8 @@ class ZenodoDepositModel:
         idle = not self.job.running
         if name in ("approve_item", "reject_item", "reset_item"):
             return has_item and idle
+        if name == "approve_all":
+            return has_rec and idle and bool(self._approvable())
         if name == "build_record":
             return idle and bool(self.config_name)
         if name == "create_record":

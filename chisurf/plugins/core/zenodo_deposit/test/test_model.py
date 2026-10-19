@@ -267,3 +267,28 @@ def test_a_layout_saved_with_the_panel_closed_still_shows_it(model):
     ui.frame(3)
     texts = [t[5] for t in ui.painter.texts]
     assert "0 · Create" in texts and "×" not in texts
+
+
+def test_approve_all_leaves_rejections_and_failed_checks(model):
+    model.select_record(model.records[0])
+    rec = model.record
+    rec.set_review("README.md", "rejected", "wrong title")
+    failing = rec.items[0]
+    failing.errors = ["checksum mismatch"]
+    open_ = [i.id for i in rec.items if i.id != "README.md" and not i.errors
+             and i.status != "approved"]
+    assert model.approve_all_label() == f"Approve all ({len(open_)})"
+    model.approve_all()
+    assert all(rec.item(i).status == "approved" for i in open_)
+    assert rec.item("README.md").review.status == "rejected"
+    assert rec.item(open_[0]).review.note == "approve all"
+
+
+def test_a_markdown_file_is_previewed_rendered_or_as_source(model):
+    model.select_record(model.records[0])
+    model.select_item({"id": "README.md"})
+    assert model.md_view == "preview" and model.preview_md_rendered
+    model.md_mode = "Source"
+    assert model.md_view == "source" and not model.preview_md_rendered and model.preview_md
+    model.select_item({"id": "metadata.cif"})
+    assert model.md_view == ""

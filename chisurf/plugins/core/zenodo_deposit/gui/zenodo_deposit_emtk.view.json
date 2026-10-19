@@ -487,6 +487,18 @@
           "n_col": 1,
           "sections": [
             {
+              "type": "button_row",
+              "buttons": [
+                {
+                  "action": "approve_all",
+                  "label": "Approve all",
+                  "label_source": "approve_all_label",
+                  "role": "primary",
+                  "description": "Approve every item not decided yet, ⚠ flagged ones included, at its current content. Rejected items and items failing the machine check are left as they are. The Note, if any, is stored with each approval."
+                }
+              ]
+            },
+            {
               "type": "custom",
               "key": "data_table",
               "title": "",
@@ -549,6 +561,12 @@
                     "call": "approve_item",
                     "enabled_when": "can_approve",
                     "description": "Approve the item as it is now: if it changes later, it is pending again."
+                  },
+                  {
+                    "label": "Approve all",
+                    "call": "approve_all",
+                    "enabled_when": "can_approve_all",
+                    "description": "Approve every item not decided yet (not rejected ones, not ones failing the check)."
                   },
                   {
                     "label": "Reject",
@@ -630,12 +648,38 @@
               "description": "The selected flrCIF/mmCIF file, read-only, highlighted: tags, loops and text fields."
             },
             {
+              "type": "choice",
+              "attr": "md_mode",
+              "label": "Show",
+              "style": "radio",
+              "options": [
+                "Preview",
+                "Source"
+              ],
+              "hidden_when": {
+                "attr": "md_view",
+                "equals": ""
+              },
+              "description": "Preview: the Markdown rendered, roughly as Zenodo shows it. Source: the text as it is in the file."
+            },
+            {
+              "type": "info",
+              "key": "md_rendered",
+              "source": "preview_md_rendered",
+              "is_markdown": true,
+              "hidden_when": {
+                "attr": "md_view",
+                "not_equals": "preview"
+              },
+              "description": "The selected Markdown file, rendered."
+            },
+            {
               "type": "custom",
               "key": "code_editor",
               "target": "preview_md",
               "hidden_when": {
-                "attr": "editor_kind",
-                "not_equals": "markdown"
+                "attr": "md_view",
+                "not_equals": "source"
               },
               "options": {
                 "language": "markdown",
@@ -644,7 +688,7 @@
                 "stretch": 1,
                 "min_height": 140
               },
-              "description": "The selected README, read-only, as it will appear on Zenodo."
+              "description": "The selected Markdown file's source, read-only."
             },
             {
               "type": "custom",
