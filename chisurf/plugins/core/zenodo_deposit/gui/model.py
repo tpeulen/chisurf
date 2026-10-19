@@ -518,9 +518,25 @@ class ZenodoDepositModel:
                     else ""),
                  "role": i.role, "group": i.group, "files": i.files,
                  "size": _size(i.bytes),
+                 "holds": (f"{i.files} file{'s' if i.files != 1 else ''} · " if i.files
+                           else "JSON · ") + _size(i.bytes),
                  "flags": ("✖ " if i.errors else "") + (f"⚠ {len(i.flags)}" if i.flags else ""),
-                 "detail": "\n".join(i.flags) or i.description}
+                 "act": "" if i.status == "approved" or self.job.running else "Approve",
+                 "detail": self._item_tooltip(i)}
                 for i in self.record.items]
+
+    @staticmethod
+    def _item_tooltip(it) -> str:
+        """The row's tooltip: what the item is and where it came from, its flags first."""
+        lines = [f"✖ {e}" for e in it.errors[:6]] + [f"⚠ {f}" for f in it.flags]
+        if it.description:
+            lines.append(it.description)
+        if it.origin:
+            lines.append(f"from {it.origin}")
+        r = it.review
+        if r.status != "pending" or r.by:
+            lines.append(f"{r.status} by {r.by} at {r.at}" + (f": {r.note}" if r.note else ""))
+        return "\n".join(lines)
 
     def select_item(self, row: dict | None) -> None:
         self.item_id = row["id"] if row else ""
@@ -537,30 +553,23 @@ class ZenodoDepositModel:
 
     @property
     def item_text(self) -> str:
-        """What the reviewer needs to judge the selected item."""
+        """The selected item in a few lines: what to check first, then what it is.
+
+        Where it came from and the review so far are in the row's tooltip.
+        """
         it = self.item
         if it is None:
-            return "Select an item to see where it came from, what it holds and why it is flagged."
-        lines = [f"### {it.id}", ""]
-        if it.errors:
-            lines += [f"**Fails the machine check ({len(it.errors)}) -- blocks the upload:**", ""] \
-                + [f"- {_md(e)}" for e in it.errors[:12]] + [""]
-        if it.flags:
-            lines += ["**Needs your check:**", ""] + [f"- {_md(f)}" for f in it.flags] + [""]
+            return "Select a row; approve it with its button or right-click it for more."
+        lines = [f"✖ blocks the upload: {_md(e)}" for e in it.errors[:12]] \
+            + [f"⚠ {_md(f)}" for f in it.flags]
+        about = [_md(it.id), f"{it.files} file{'s' if it.files != 1 else ''}, {_size(it.bytes)}"]
         if it.description:
-            lines += [f"**Content:** {_md(it.description)}", ""]
-        if it.origin:
-            lines += [f"**Original location:** {_md(it.origin)}", ""]
-        holds = f"{it.files} file{'s' if it.files != 1 else ''}, {_size(it.bytes)}"
-        if self.ndx_container:
-            holds += f" -- burst analysis: {self.ndx_container.name} (Open in ndX)"
-        lines += [f"**Holds:** {holds}", ""]
+            about.append(_md(it.description))
         r = it.review
-        if r.status != "pending" or r.by:
-            lines += [f"**Review:** {r.status} by {_md(r.by)} at {r.at}"
-                      + (f" -- {_md(r.note)}" if r.note else "")
-                      + (" -- content changed since" if it.status != r.status else "")]
-        return "\n".join(lines)
+        if r.status != "pending":
+            about.append(r.status + (" (content changed since)" if it.status != r.status else ""))
+        lines.append(" · ".join(about))
+        return "\n\n".join(lines)
 
     @property
     def open_record(self) -> DepositRecord:
@@ -614,15 +623,19 @@ class ZenodoDepositModel:
     def ndx_container(self) -> Path | None:
         """The burst-analysis container of the selected item, if it has one."""
         it = self.item
-        if it is None or it.id == METADATA_ITEM:
+        return None if it is None else self._container_of(it.id)
+
+    def _container_of(self, item_id: str) -> Path | None:
+        if self.record is None or not item_id or item_id == METADATA_ITEM:
             return None
-        p = self.open_record.folder / it.id
+        p = self.record.folder / item_id
         if p.is_file():
             return p if p.name.endswith(".pto") else None
         return next(iter(sorted(p.glob("*.mmfdb.pto"))), None) if p.is_dir() else None
 
-    def open_in_ndx(self) -> None:
-        """Open the selected item's container in ndX, to look at the bursts before approving."""
+    def open_in_ndx(self, row: dict | None = None) -> None:
+        """Open the item's container in ndX, to look at the bursts before approving."""
+        self._pick_row(row)
         path = self.ndx_container
         if path is None:
             return
@@ -656,7 +669,24 @@ class ZenodoDepositModel:
         return self.preview_text if self.preview_kind in ("text", "listing") else ""
 
     # ── review ───────────────────────────────────────────────────────────
-    def _review(self, status: str) -> None:
+    def _pick_row(self, row: dict | None) -> None:
+        """Act on *row* (a table button or menu); the note typed stays with its own item."""
+        if row and row.get("id") != self.item_id:
+            self.select_item(row)
+
+    def can_approve(self, row: dict | None = None) -> bool:
+        return bool(row and row.get("act")) if row is not None else self.enabled("approve_item")
+
+    def can_decide(self, row: dict | None = None) -> bool:
+        return not self.job.running and self.record is not None
+
+    def has_ndx(self, row: dict | None = None) -> bool:
+        if row is None:
+            return self.ndx_container is not None
+        return self._container_of(row.get("id", "")) is not None
+
+    def _review(self, status: str, row: dict | None = None) -> None:
+        self._pick_row(row)
         if self.record is None or self.item is None:
             return
         self.record.set_review(self.item_id, status, self.note.strip())
@@ -665,14 +695,14 @@ class ZenodoDepositModel:
         self.note = ""
         self.refresh_records()
 
-    def approve_item(self) -> None:
-        self._review("approved")
+    def approve_item(self, row: dict | None = None) -> None:
+        self._review("approved", row)
 
-    def reject_item(self) -> None:
-        self._review("rejected")
+    def reject_item(self, row: dict | None = None) -> None:
+        self._review("rejected", row)
 
-    def reset_item(self) -> None:
-        self._review("pending")
+    def reset_item(self, row: dict | None = None) -> None:
+        self._review("pending", row)
 
     def rescan(self) -> None:
         """Re-read the record folder: new digests, kept reviews, changed items pending."""
@@ -788,7 +818,7 @@ class ZenodoDepositModel:
             return (f"**Step 4 -- review** (*1 · Review*): {len(open_items)} of {len(rec.items)} items still "
                     "to check" + (f", {flagged} of them flagged (Check column) -- start with those" if flagged
                        else "")
-                    + ". Click a row, read it, then Approve or Reject.")
+                    + ". Approve a row with its button; right-click it to reject.")
         b = blockers(rec)
         if b:
             return ("**Step 5 -- build the package** (Upload tab): everything is approved, the "

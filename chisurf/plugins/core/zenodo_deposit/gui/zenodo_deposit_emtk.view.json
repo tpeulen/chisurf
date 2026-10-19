@@ -490,13 +490,13 @@
               "type": "custom",
               "key": "data_table",
               "title": "",
-              "description": "Every measurement folder, calibration folder and metadata file of the record. ⚠ = the builder could not decide alone (data added, a role inferred): check those first. Hover a row for the reason.",
+              "description": "Every item of the record. Approve a row with its button; right-click for Reject, Undo decision or Open in ndX (also a double click). ⚠ = check first; hover a row for why, its content and origin.",
               "options": {
                 "source": "items",
                 "row_key": "id",
                 "selected_call": "select_item",
                 "editable": false,
-                "height": 330,
+                "height": 380,
                 "tooltip_key": "detail",
                 "min_column_width": 50,
                 "columns": [
@@ -525,19 +525,53 @@
                     "tooltip": "Measurement, calibration or metadata."
                   },
                   {
-                    "key": "files",
-                    "title": "Files",
-                    "width": 60,
-                    "tooltip": "Number of files the item holds."
+                    "key": "holds",
+                    "title": "Holds",
+                    "width": 150,
+                    "align": "right",
+                    "tooltip": "Number of files and total size of the item."
                   },
                   {
-                    "key": "size",
-                    "title": "Size",
-                    "width": 90,
-                    "tooltip": "Total size of the item."
+                    "key": "act",
+                    "title": "Decide",
+                    "width": 84,
+                    "display": "button",
+                    "call": "approve_item",
+                    "tooltip": "Approve the item as it is now; bound to its content."
                   }
                 ],
-                "fit_rows": true
+                "fit_rows": true,
+                "selection_note": false,
+                "activated_call": "open_in_ndx",
+                "context_menu": [
+                  {
+                    "label": "Approve",
+                    "call": "approve_item",
+                    "enabled_when": "can_approve",
+                    "description": "Approve the item as it is now: if it changes later, it is pending again."
+                  },
+                  {
+                    "label": "Reject",
+                    "call": "reject_item",
+                    "enabled_when": "can_decide",
+                    "description": "Block the record until the item is fixed and approved; the Note says why."
+                  },
+                  {
+                    "label": "Undo decision",
+                    "call": "reset_item",
+                    "enabled_when": "can_decide",
+                    "description": "The item is pending again."
+                  },
+                  {
+                    "separator": true
+                  },
+                  {
+                    "label": "Open in ndX",
+                    "call": "open_in_ndx",
+                    "enabled_when": "has_ndx",
+                    "description": "Look at the bursts of the item's .mmfdb.pto before approving."
+                  }
+                ]
               }
             },
             {
@@ -545,41 +579,19 @@
               "key": "item_text",
               "source": "item_text",
               "is_markdown": true,
-              "description": "The selected item: why it is flagged, what it holds, where it came from, and the review so far."
+              "description": "The selected item: what to check first. Hover its row for where it came from."
             },
             {
-              "type": "value",
-              "attr": "note",
-              "kind": "str",
-              "label": "Note",
-              "placeholder": "optional: what you checked, or why you reject",
-              "description": "Stored with your decision, e.g. which file you looked at or why you rejected the item."
-            },
-            {
-              "type": "button_row",
-              "description": "Your decision on the selected item, bound to its current content.",
-              "buttons": [
+              "type": "row",
+              "n_col": 1,
+              "sections": [
                 {
-                  "action": "approve_item",
-                  "label": "Approve",
-                  "role": "primary",
-                  "description": "Approve the selected item as it is now. Grey until an item is selected."
-                },
-                {
-                  "action": "reject_item",
-                  "label": "Reject",
-                  "role": "danger",
-                  "description": "Reject the selected item: the record cannot be uploaded until it is fixed and approved."
-                },
-                {
-                  "action": "reset_item",
-                  "label": "Undo decision",
-                  "description": "Withdraw your decision; the item is pending again."
-                },
-                {
-                  "action": "open_in_ndx",
-                  "label": "Open in ndX",
-                  "description": "Open the selected item's burst-analysis container (.mmfdb.pto) in ndX to look at the bursts before approving. Grey when the item has no container."
+                  "type": "value",
+                  "attr": "note",
+                  "kind": "str",
+                  "label": "Note",
+                  "placeholder": "optional, stored with your next decision",
+                  "description": "Stored with your decision, e.g. which file you looked at or why you rejected the item."
                 }
               ]
             },

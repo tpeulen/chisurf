@@ -24,7 +24,7 @@ One row per unit of review: each `measurements/<date>_<condition>` folder, each 
 The code editor below the buttons fills the rest of the window: a folder lists every file it holds with its size; `metadata.cif` (mmCIF), `origins.json` (JSON) and the README are shown read-only with highlighting. **Open in ndX** opens the selected item's burst-analysis container (`.mmfdb.pto`) in ndX, to look at the bursts themselves.
 
 ## Your decision is bound to the content
-Approve, Reject or Reset the selected item, with an optional note. An approval records the item's content digest: when anything in the item changes later, it shows as **Pending (changed)** and must be approved again. Rescan re-reads the folder after a change.
+Approve an item with the button on its row; right-click a row to Reject it, Undo the decision or open it in ndX (a double click opens it too). The Note under the item is stored with your next decision. Hover a row for its content, where it came from and the review so far. An approval records the item's content digest: when anything in the item changes later, it shows as **Pending (changed)** and must be approved again. Rescan re-reads the folder after a change.
 
 ## Upload
 The Zenodo metadata at the top of *2 · Upload* is what is submitted with the draft -- the version you approved in *1 · Review*.

@@ -47,9 +47,9 @@
     },
     {
       "title": "Decide",
-      "text": "<b>Approve</b> binds your decision to the item's content: if it changes later, it is pending again. <b>Reject</b> blocks the record until it is fixed.",
+      "text": "A row's <b>Approve</b> button binds your decision to the item's content: if it changes later, it is pending again. Right-click a row to <b>Reject</b> it (the record is blocked until it is fixed), undo a decision, or open it in ndX.",
       "target": {
-        "name": "approve_item"
+        "name": "items_table"
       }
     },
     {

@@ -144,8 +144,25 @@ def test_the_item_text_puts_flags_first(model):
     model.record.item("README.md").flags = ["role inferred from Info_file *_10.dat"]
     model.select_item({"id": "README.md"})
     text = model.item_text
-    assert text.index("Needs your check") < text.index("Holds")
+    assert text.index("⚠ role inferred") < text.index("README.md")  # what to check comes first
     assert "`*_10.dat`" in text  # globs are shown as code, not read as emphasis
+    row = next(r for r in model.items if r["id"] == "README.md")
+    assert row["detail"].startswith("⚠ role inferred")  # the tooltip leads with the flag
+
+
+def test_a_row_is_approved_from_its_button_and_undone_from_its_menu(model):
+    model.select_record(model.records[0])
+    model.select_item({"id": "README.md"})
+    model.note = "typed for README"
+    row = next(r for r in model.items if r["id"] == "measurements/2014-08-12_7.5M-urea")
+    assert row["act"] == "Approve" and model.can_approve(row)
+    model.approve_item(row)
+    assert model.record.item("measurements/2014-08-12_7.5M-urea").status == "approved"
+    assert model.item_id == "measurements/2014-08-12_7.5M-urea"  # the row acted on is the one shown
+    row = next(r for r in model.items if r["id"] == "measurements/2014-08-12_7.5M-urea")
+    assert row["act"] == "" and not model.can_approve(row) and model.can_decide(row)
+    model.reset_item(row)
+    assert model.record.item("measurements/2014-08-12_7.5M-urea").status == "pending"
 
 
 def test_open_in_ndx_offers_the_items_container(model):
