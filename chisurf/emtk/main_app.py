@@ -880,6 +880,9 @@ class EmtkShellApp(ImApp):
         self.project.poll()
         self.console.poll()
         self._push_console_namespace()
+        # Drawn again this frame if the workspace is shown; a rectangle left from a frame it
+        # was tabbed under would take presses meant for the tool in front.
+        self._watermark_last = self.item_rects.pop("system_info", None)
         for hosted in self.hosted.values():
             hosted.box = None
             if hosted.instance > 1:
@@ -1726,7 +1729,7 @@ class EmtkShellApp(ImApp):
     def _draw_start(self, box) -> None:
         # The watermark sits in the workspace's top-right corner (_draw_workspace_background):
         # the Start text keeps clear of it.
-        watermark = self.item_rects.get("system_info")
+        watermark = self.item_rects.get("system_info") or getattr(self, "_watermark_last", None)
         reserve = float(watermark[2]) + 24.0 if watermark else 0.0
         width = max(200.0, float(box[2]) - reserve)
         im.begin_child("##start text", (width, max(1.0, float(box[3]))), scrollable=False)
@@ -1973,14 +1976,17 @@ class EmtkShellApp(ImApp):
     def pointer_press(self, x, y, button, modifiers=0, clicks=1):
         if self.project.modal and not self.project.contains(x, y):
             return  # a question is open: a press beside it does nothing (it is modal)
-        wm_rect = self.item_rects.get("system_info")
+        target = self._plugin_at(x, y)
+        # The watermark lies under everything (the workspace's background): it takes a press
+        # only where no tool is drawn over it. Tested first, it ate every click in its corner
+        # of a tool tabbed over the workspace -- the help window's filter row among them.
+        wm_rect = self.item_rects.get("system_info") if target is None else None
         if wm_rect is not None:
             wx, wy, ww, wh = wm_rect
             if wx <= x <= wx + ww and wy <= y <= wy + wh:
                 self._watermark_folded = not getattr(self, "_watermark_folded", False)
                 self.request_frame()
                 return
-        target = self._plugin_at(x, y)
         self._capture = target
         # A press outside a child never reaches it, so it cannot see the press that closes its context menu
         # or list; it is told here. Otherwise the menu stays up and holds the child's input until a click
