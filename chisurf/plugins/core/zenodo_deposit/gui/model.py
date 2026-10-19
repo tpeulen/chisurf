@@ -29,6 +29,8 @@ from mmfdb.deposit import (
     compare,
     credentials,
     publish,
+    upload_history,
+    upload_kind,
     refresh_metadata_item,
     refresh_remote,
     scan,
@@ -119,6 +121,8 @@ class ZenodoDepositModel:
         self.add_role = "measurement"
         self.add_name = ""
         self.add_group = ""
+        #: Which of the three publish questions is up (0: none).
+        self.publish_stage = 0
         #: The measurements whose calibrations the review table shows (row keys).
         self.expanded: set[str] = set()
         #: How a selected Markdown file is shown: ``Preview`` (rendered) or ``Source``.
@@ -889,6 +893,75 @@ class ZenodoDepositModel:
                 + ("matches the package." if not diff else "; ".join(diff))
                 + (f" DOI {r['doi']}" if r.get("doi") else ""))
 
+    def upload_label(self) -> str:
+        """The upload button says what it will do."""
+        if self.record is None:
+            return "Upload draft"
+        return {"new": "Upload draft", "update": "Update draft",
+                "new version": "Upload new version", "current": "Draft is up to date"
+                }[upload_kind(self.record)]
+
+    @property
+    def uploads_text(self) -> str:
+        """Every upload of this record and every published version, newest first."""
+        if self.record is None:
+            return ""
+        r = self.record.remote
+        ups, pubs = upload_history(self.record), list(r.get("published", []))
+        if r.get("doi"):
+            pubs.append({"deposition_id": r["deposition_id"], "doi": r["doi"],
+                         "published_at": r.get("published_at", "")})
+        if not ups and not pubs:
+            return "*Nothing uploaded yet.*"
+        lines = ["| When | What | Deposition | Package | md5 | Verified |", "|---|---|---|---|---|---|"]
+        for u in reversed(ups):
+            lines.append(f"| {u['at'][:16].replace('T', ' ')} | {u['kind']} | {u['deposition_id']} | "
+                         f"{_md(u['name']) + ', ' + _size(u['bytes']) if u['name'] else '(before tracking)'} | "
+                         f"`{u['md5'][:12]}…` | "
+                         f"{'yes' if u.get('verified') else '**no**'} |")
+        for v in reversed(pubs):
+            lines.append(f"| {str(v.get('published_at', ''))[:16].replace('T', ' ')} | **published** | "
+                         f"{v['deposition_id']} | DOI {v['doi']} | | |")
+        return "\n".join(lines)
+
+    # ── publishing: asked three times ───────────────────────────────────
+    #: The three questions before publishing, each with its button; Cancel is the default.
+    PUBLISH_QUESTIONS = (
+        ("Publish {name} on {host}?",
+         "Publishing is **irreversible**: the record gets a DOI and can never be deleted.",
+         "Yes, publish (1/3)"),
+        ("Are you sure?",
+         "The published files ({size}, md5 `{md5}`) can never be changed or removed -- a "
+         "correction is only possible as a new version beside them.",
+         "Yes, I am sure (2/3)"),
+        ("Last question: publish now?",
+         "This cannot be undone.",
+         "Publish now (3/3)"),
+    )
+
+    def publish_question(self) -> tuple[str, str, str]:
+        """``(title, text, button)`` of the question being asked; ``("", "", "")`` when none."""
+        if not self.publish_stage or self.record is None:
+            return "", "", ""
+        title, text, button = self.PUBLISH_QUESTIONS[self.publish_stage - 1]
+        pkg = self.record.package
+        fill = {"name": self.record.name, "host": "sandbox.zenodo.org" if self.sandbox else
+                "zenodo.org", "size": _size(int(pkg.get("bytes", 0) or 0)),
+                "md5": pkg.get("md5", "")}
+        return title.format(**fill), text.format(**fill), button
+
+    def confirm_publish(self) -> None:
+        """One more yes; the third publishes."""
+        if self.publish_stage < len(self.PUBLISH_QUESTIONS):
+            self.publish_stage += 1
+            return
+        self.publish_stage = 0
+        self._publish()
+
+    def cancel_publish(self) -> None:
+        self.publish_stage = 0
+        self.message = "publishing cancelled"
+
     @property
     def status_text(self) -> str:
         if self.job.running:
@@ -920,7 +993,8 @@ class ZenodoDepositModel:
         if name == "check_remote":
             return has_rec and idle and bool(self.open_record.remote.get("deposition_id"))
         if name == "upload_draft":
-            return has_rec and idle and bool(self.token_source) and not blockers(self.record)
+            return (has_rec and idle and bool(self.token_source) and not blockers(self.record)
+                    and upload_kind(self.record) != "current")
         if name in ("save_token",):
             return idle and bool(self.token_entry.strip())
         if name == "test_token":
@@ -1143,13 +1217,17 @@ class ZenodoDepositModel:
 
     def upload_draft(self) -> None:
         rec, make = self.record, self._client()
+        kind = upload_kind(rec)
+        what = {"new": "uploading to a new Zenodo draft",
+                "update": "updating the Zenodo draft",
+                "new version": "uploading a new version to Zenodo"}.get(kind, "uploading")
 
         def work():
             remote = upload(rec, make())
-            return f"uploaded to draft {remote['deposition_id']}: " + (
+            return f"{kind}: draft {remote['deposition_id']}, " + (
                 "; ".join(compare(rec)) or "md5 verified")
 
-        self._run("uploading to a Zenodo draft", work)
+        self._run(what, work)
 
     def check_remote(self) -> None:
         rec, make = self.record, self._client()
@@ -1166,6 +1244,11 @@ class ZenodoDepositModel:
         self.message = f"publishing approved for md5 {self.open_record.package['md5']}"
 
     def publish_record(self) -> None:
+        """Ask before publishing -- three times (:meth:`confirm_publish`); never at once."""
+        if self.enabled("publish_record"):
+            self.publish_stage = 1
+
+    def _publish(self) -> None:
         rec, make = self.record, self._client()
 
         def work():

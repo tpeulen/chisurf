@@ -808,8 +808,9 @@
                 {
                   "action": "upload_draft",
                   "label": "Upload draft",
+                  "label_source": "upload_label",
                   "role": "primary",
-                  "description": "Upload the package into a Zenodo DRAFT and check its md5 there. Nothing is published. Grey until every item is approved, the package matches, and a token is set."
+                  "description": "Upload the package into a Zenodo DRAFT and check its md5 there: a new draft, an update of the draft (its package replaced), or -- once published -- a new version. Nothing is published. Grey until every item is approved, the package matches, a token is set, and the draft does not already hold this package."
                 },
                 {
                   "action": "rescan",
@@ -837,6 +838,13 @@
               "description": "The Zenodo draft and whether its file matches the local package."
             },
             {
+              "type": "info",
+              "key": "uploads_text",
+              "source": "uploads_text",
+              "is_markdown": true,
+              "description": "Every upload of this record (new draft, update, new version) and every published version, newest first -- kept in the record's review state."
+            },
+            {
               "type": "button_row",
               "description": "After the upload: compare the draft, approve publishing this exact package, publish.",
               "buttons": [
@@ -854,7 +862,7 @@
                   "action": "publish_record",
                   "label": "Publish (irreversible)",
                   "role": "danger",
-                  "description": "Publish the draft: it gets a DOI and can no longer be changed. Grey until the draft matches the package and publishing is approved."
+                  "description": "Publish the draft: it gets a DOI and can no longer be changed. You are asked three times. Grey until the draft matches the package and publishing is approved."
                 }
               ]
             }

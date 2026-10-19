@@ -31,12 +31,16 @@ class FakeZenodo:
             return self._b
 
     def __init__(self):
-        self.files = {}
+        self.files, self.published = {}, False
 
     def _dep(self):
-        return {"id": 9, "state": "unsubmitted", "links": {"bucket": "https://z/bucket/9"}}
+        return {"id": 9, "state": "done" if self.published else "unsubmitted",
+                "doi": "10.5281/zenodo.9" if self.published else "",
+                "links": {"bucket": "https://z/bucket/9"}}
 
     def post(self, url, json=None, headers=None):
+        if url.endswith("/actions/publish"):
+            self.published = True
         return self.R(201, self._dep())
 
     def put(self, url, data=None, json=None, headers=None):
@@ -123,6 +127,27 @@ def test_review_opens_the_gate_and_upload_reaches_a_verified_draft(model, fake):
     assert not model.enabled("publish_record")  # needs its own approval
     model.approve_publish()
     assert model.enabled("publish_record")
+    assert model.upload_label() == "Draft is up to date" and not model.enabled("upload_draft")
+    assert "| new | 9 |" in model.uploads_text
+
+
+def test_publishing_asks_three_times(model, fake):
+    test_review_opens_the_gate_and_upload_reaches_a_verified_draft(model, fake)
+    model.publish_record()
+    assert model.publish_question()[2] == "Yes, publish (1/3)"
+    model.cancel_publish()
+    assert model.publish_stage == 0 and not fake.published
+    model.publish_record()
+    model.confirm_publish()
+    assert model.publish_question()[2] == "Yes, I am sure (2/3)"
+    model.confirm_publish()
+    assert model.publish_question()[2] == "Publish now (3/3)"
+    assert not fake.published and not model.job.running
+    model.confirm_publish()
+    _wait(model)
+    assert fake.published and "DOI 10.5281/zenodo.9" in model.message
+    assert model.publish_question() == ("", "", "")
+    assert model.upload_label() == "Upload new version"
 
 
 def test_a_change_after_approval_closes_the_gate_again(model):

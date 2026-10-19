@@ -55,6 +55,8 @@ class ZenodoDepositApp(ImApp):
         self.progress_window = DialogWindow("Working", size=(520.0, 170.0), close_button=False,
                                             key="zenodo-deposit-progress", escape_closes=False,
                                             fit_height=True)
+        self.publish_window = DialogWindow("Publish", size=(560.0, 190.0),
+                                           key="zenodo-deposit-publish", fit_height=True)
         self.docks = DockManager(Region("deposit"))
         # The tool's only panel: it cannot be closed, or the tool would stay empty.
         self.docks.add_window("deposit", "Zenodo deposit", self.draw_deposit, dock="deposit",
@@ -69,7 +71,7 @@ class ZenodoDepositApp(ImApp):
         if not self.docks.window("deposit").visible:
             # a layout saved while the panel could still be closed
             self.docks.show("deposit")
-        busy = self.model.job.running
+        busy = self.model.job.running or bool(self.model.publish_stage)
         im.begin_disabled(self.dialog is not None or busy)
         self.docks.draw(box)
         im.end_disabled()
@@ -77,6 +79,29 @@ class ZenodoDepositApp(ImApp):
         self.tour.draw(*vp.size)
         self.draw_dialog(box)
         self.draw_progress(box)
+        self.draw_publish_question(box)
+
+    def draw_publish_question(self, box: Any) -> None:
+        """Publishing is irreversible: three questions, each must be answered yes; Cancel stops."""
+        title, text, button = self.model.publish_question()
+        if not title:
+            self.publish_window.hide()
+            return
+        self.publish_window.title = title
+        self.publish_window.show()
+        pressed = self.publish_window.begin(box)
+        from emtk.widgets.markdown import render_markdown
+
+        render_markdown(text)
+        im.spacing()
+        yes = im.button(f"{button}##publish-yes")
+        im.same_line()
+        no = im.button("Cancel##publish-no")
+        self.publish_window.end()
+        if yes:
+            self.model.confirm_publish()
+        elif no or pressed == "close":
+            self.model.cancel_publish()
 
     def draw_progress(self, box: Any) -> None:
         """While a job runs: what it is, its current step, the time so far; Cancel for a build."""
