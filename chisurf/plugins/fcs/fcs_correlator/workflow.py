@@ -12,8 +12,12 @@ from typing import Any
 
 import numpy as np
 
+from .regions import TimeRegions
+
 #: Files the Files step accepts (the Qt list's extensions).
 FILE_EXTENSIONS = (".spc", ".ht3", ".ptu", ".hdf", ".h5", ".bst", ".bur")
+#: The photon files a folder in the Files step stands for (burst lists are added one by one).
+FOLDER_EXTENSIONS = (".spc", ".ht3", ".ptu", ".hdf", ".h5", ".pto")
 
 
 @dataclass
@@ -49,6 +53,24 @@ def setup_context(setup_name: str, setups: dict) -> tuple[dict, dict]:
     }, channels
 
 
+def expand_paths(paths) -> list[str]:
+    """*paths* with each folder replaced by the TTTR files in it (sorted), all resolved.
+
+    A folder's photon files are recognised by extension; tttrlib's container *names* (``SPC-130``, ``PHOTON-HDF5``)
+    are not extensions, and matching against them silently dropped every ``.spc`` and ``.h5`` file in a folder.
+    """
+    expanded: list[str] = []
+    for p_str in paths:
+        p = pathlib.Path(p_str).resolve()
+        if p.is_dir():
+            for child in sorted(p.iterdir()):
+                if child.is_file() and child.suffix.lower() in FOLDER_EXTENSIONS:
+                    expanded.append(str(child.resolve()))
+        else:
+            expanded.append(str(p))
+    return expanded
+
+
 def filter_step_allowed(files) -> bool:
     """The photon filter step needs photons: a checked Burst-ID (``.bst``) file turns it off (Qt rule)."""
     return not any(pathlib.Path(str(f)).suffix.lower() == ".bst" for f in files)
@@ -59,6 +81,8 @@ class FcsWorkflow:
 
     def __init__(self) -> None:
         self.context = FcsWorkflowContext()
+        #: The time regions drawn per file in Files & Steps; only photons inside them are filtered and correlated.
+        self.regions = TimeRegions()
 
     # ── inputs ────────────────────────────────────────────────────────────
 
@@ -76,22 +100,7 @@ class FcsWorkflow:
 
     def expanded_files(self) -> list[str]:
         """The checked files, a folder replaced by the TTTR files in it."""
-        import tttrlib
-
-        allowed = {
-            f".{ext.lower()}" if not ext.startswith(".") else ext.lower()
-            for ext in tttrlib.TTTR.get_supported_container_names()
-        }
-        expanded: list[str] = []
-        for p_str in self.context.file_paths:
-            p = pathlib.Path(p_str).resolve()
-            if p.is_dir():
-                for child in sorted(p.iterdir()):
-                    if child.is_file() and child.suffix.lower() in allowed:
-                        expanded.append(str(child.resolve()))
-            else:
-                expanded.append(str(p))
-        return expanded
+        return expand_paths(self.context.file_paths)
 
     @property
     def file_type(self) -> str:
@@ -133,8 +142,12 @@ class FcsWorkflow:
                 return tt if (tt is not None and len(tt)) else None
         return tt
 
+    def read_for_trace(self, path: str):
+        """*path* read as the correlator reads it (setup container type and LUTs), for drawing its regions."""
+        return self.read_tttr(pathlib.Path(path).as_posix(), self.file_type, self.lut_open_kwargs())
+
     def load_raw_combined(self, expanded: list[str]):
-        """Read and concatenate the raw TTTR files (unfiltered path)."""
+        """Read and concatenate the raw TTTR files (unfiltered path), each cut to its time regions."""
         lut_kwargs = self.lut_open_kwargs()
         combined = None
         for fn in expanded:
@@ -143,6 +156,11 @@ class FcsWorkflow:
             tt = self.read_tttr(pathlib.Path(fn).as_posix(), self.file_type, lut_kwargs)
             if tt is None:
                 continue
+            if self.regions.get(fn):
+                idx = np.where(self.regions.mask(fn, tt))[0]
+                if idx.size == 0:
+                    continue
+                tt = tt[idx]
             if combined is None:
                 combined = tt
             else:
@@ -153,6 +171,7 @@ class FcsWorkflow:
 
     def load_files_into_filter(self, model) -> None:
         """The checked files into the filter model; unchanged files are not re-read (the user's tweaks stay)."""
+        model.set_time_regions(self.regions)
         expanded = self.expanded_files()
         if not expanded or (model._files == expanded and model._tttr is not None):
             return
@@ -178,7 +197,7 @@ class FcsWorkflow:
             if tt is None:
                 continue
             try:
-                mask = np.asarray(filter_model.compute_selection(tt), dtype=bool)
+                mask = np.asarray(filter_model.compute_selection(tt, path), dtype=bool)
             except Exception:  # noqa: BLE001 - a file the filter cannot judge is skipped
                 continue
             if mask.size != len(tt):

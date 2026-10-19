@@ -26,7 +26,8 @@ from chisurf.plugins.emtk_layout import action_caption
 
 from ..correlator_model import CorrelatorSettingsModel, apply_channel_key, preset_names
 from ..filter_model import FilterSettingsModel
-from ..workflow import FILE_EXTENSIONS, filter_step_allowed
+from ..regions import TimeRegions, count_rate_trace
+from ..workflow import FILE_EXTENSIONS, expand_paths, filter_step_allowed
 
 if TYPE_CHECKING:
     from chisurf.emtk.dataset_picker import DatasetPicker
@@ -46,6 +47,10 @@ CURVES = [
     (247, 129, 191, 255),
 ]
 SELECTED, REMOVED = (0, 220, 220, 255), (230, 200, 0, 255)
+#: Time regions on the Files step's count-rate trace: fill, edge and the region being drawn.
+REGION_FILL, REGION_EDGE, REGION_DRAFT = (0, 220, 220, 48), (0, 220, 220, 255), (255, 255, 255, 40)
+#: Height of the Files step's regions panel (its toolbar and trace).
+REGIONS_HEIGHT = 290.0
 
 
 def _body(name: str, pad: float = 6.0) -> None:
@@ -98,14 +103,22 @@ class _Dialogs:
 # ── 2. Files & Steps ─────────────────────────────────────────────────────────
 
 
+def _regions_suffix(n: int) -> str:
+    """What a file's label carries when it has regions."""
+    return "  " + tr("[{n} region(s)]").format(n=n) if n else ""
+
+
 class FilesStepApp(ImApp):
-    """The checked file list (Files..., Folder..., Database, All, None, Remove, Clear) and the optional steps."""
+    """The checked file list (Files..., Folder..., Database, All, None, Remove, Clear), the optional steps, and the
+    count-rate trace of each file to draw its time regions on (only photons inside them are correlated)."""
 
     def __init__(
         self,
         on_change: Callable[[], Any] | None = None,
         client: Any = None,
         on_used: Callable[[str], Any] | None = None,
+        regions: TimeRegions | None = None,
+        reader: Callable[[str], Any] | None = None,
     ) -> None:
         self.on_used = on_used or (lambda _name: None)
         self.paths: list[str] = []
@@ -118,6 +131,16 @@ class FilesStepApp(ImApp):
         self.dialogs = _Dialogs()
         self.picker: DatasetPicker | None = None
         self.item_rects: dict[str, tuple] = {}
+        #: Time regions per file (the workflow's), and how a file is read for its trace.
+        self.regions = regions if regions is not None else TimeRegions()
+        self.reader = reader
+        self.trace_file: str | None = None
+        self.draw_mode = False
+        self._traces: dict[str, tuple | None] = {}
+        self._reading: set[str] = set()
+        self._expanded: tuple[tuple[str, ...], list[str]] = ((), [])
+        self._drag_start: float | None = None
+        self._view: tuple[float, float, float, float] | None = None
         super().__init__(gui=self.render, continuous=False)
 
     # what the workflow reads
@@ -150,6 +173,63 @@ class FilesStepApp(ImApp):
         if added:
             self.changed()
         return added
+
+    # time regions
+    def region_files(self) -> list[str]:
+        """The files whose photons the correlator gets: the ticked ones, folders expanded."""
+        checked = tuple(self.checked_files)
+        if self._expanded[0] != checked:
+            try:
+                self._expanded = (checked, expand_paths(checked))
+            except Exception:  # noqa: BLE001 - no tttrlib: list the ticked paths themselves
+                self._expanded = (checked, list(checked))
+        return self._expanded[1]
+
+    def trace(self, path: str):
+        """``(x_s, rate_kHz, duration_s)`` of *path*, ``None`` while it is read (on a worker) or when unreadable."""
+        if path in self._traces:
+            return self._traces[path]
+        if path not in self._reading:
+            self._reading.add(path)
+
+            def run() -> None:
+                result = None
+                try:
+                    from ..workflow import FcsWorkflow
+
+                    read = self.reader or (lambda f: FcsWorkflow.read_tttr(f, ""))
+                    tttr = read(path)
+                    if tttr is not None and len(tttr):
+                        result = count_rate_trace(tttr)
+                except Exception:  # noqa: BLE001 - an unreadable file has no trace to draw on
+                    result = None
+                self._traces[path] = result
+                self._reading.discard(path)
+                self.request_frame()
+
+            threading.Thread(target=run, daemon=True).start()
+        return None
+
+    def select_trace_file(self, path: str) -> None:
+        if path != self.trace_file:
+            self.trace_file, self._view, self._drag_start = path, None, None
+            self.request_frame()
+
+    def add_region(self, start: float, stop: float, path: str | None = None) -> None:
+        path = path or self.trace_file
+        if path is not None:
+            self.regions.add(path, max(0.0, start), max(0.0, stop))
+            self.changed()
+
+    def clear_regions(self) -> None:
+        if self.trace_file is not None:
+            self.regions.clear(self.trace_file)
+            self.changed()
+
+    def copy_regions_to_all(self) -> None:
+        if self.trace_file is not None:
+            self.regions.copy_to(self.trace_file, self.region_files())
+            self.changed()
 
     def remove_current(self) -> None:
         if 0 <= self.current < len(self.paths):
@@ -190,6 +270,7 @@ class FilesStepApp(ImApp):
             "checked": self.checked_files,
             "use_filter": self.use_filter,
             "use_merger": self.use_merger,
+            "regions": self.regions.export_settings(),
         }
 
     def restore_settings(self, state: dict) -> None:
@@ -197,6 +278,7 @@ class FilesStepApp(ImApp):
         self.checked = {p for p in state.get("checked", []) if p in self.paths}
         self.use_filter = bool(state.get("use_filter", False))
         self.use_merger = bool(state.get("use_merger", True))
+        self.regions.restore_settings(state.get("regions", {}))
         self.changed()
 
     def _button(self, label: str, key: str, tip: str, enabled: bool = True) -> bool:
@@ -223,7 +305,8 @@ class FilesStepApp(ImApp):
                 tr("TTTR files (or folders of them) to correlate; only the ticked ones are used.")
             )
             x, y = im.get_cursor_screen_pos()
-            list_h = max(80.0, im.get_content_region_avail()[1] - 90.0)
+            regions_h = REGIONS_HEIGHT if self.paths else 0.0
+            list_h = max(80.0, im.get_content_region_avail()[1] - 90.0 - regions_h)
             im.begin_child("files_list", (im.get_content_region_avail()[0], list_h))
             if not self.paths:
                 im.text_disabled(tr("No file. Add files or a folder, or drop them here."))
@@ -236,8 +319,11 @@ class FilesStepApp(ImApp):
                 im.set_item_tooltip(tr("Use this file."))
                 self.item_rects[f"check.{i}"] = im.get_item_rect()
                 im.same_line()
-                if im.selectable(f"{path}##row{i}", i == self.current):
+                label = path + _regions_suffix(len(self.regions.get(path)))
+                if im.selectable(f"{label}##row{i}", i == self.current):
                     self.current = i
+                    if not Path(path).is_dir():
+                        self.select_trace_file(str(Path(path).resolve()))
                 im.set_item_tooltip(path)
                 self.item_rects[f"row.{i}"] = im.get_item_rect()
             im.end_child()
@@ -328,12 +414,170 @@ class FilesStepApp(ImApp):
                 tr("Screen and merge the correlation curves after correlating (step 5).")
             )
             self.item_rects["use_merger"] = im.get_item_rect()
+            if self.paths:
+                self._draw_regions()
             im.end_disabled()
             im.end_child()
         im.end()
         self.dialogs.draw(frame)
         if self.picker is not None:
             self.picker.render(frame)
+
+    def _draw_regions(self) -> None:
+        """The file to draw on, Draw / Clear / To all, and its count-rate trace with the regions shaded."""
+        im.separator()
+        files = self.region_files()
+        im.text(tr("Regions:"))
+        im.set_item_tooltip(
+            tr(
+                "Which stretches of each measurement are correlated. Pick a file, switch on Draw and drag on its "
+                "count-rate trace; a file without regions is used whole."
+            )
+        )
+        if not files:
+            im.same_line()
+            im.text_disabled(tr("Tick a file to draw its regions."))
+            return
+        if self.trace_file not in files:
+            self.trace_file, self._view = files[0], None
+        path = self.trace_file
+        labels = []
+        for f in files:
+            labels.append(Path(f).name + _regions_suffix(len(self.regions.get(f))))
+        im.same_line()
+        im.set_next_item_width(min(360.0, max(120.0, im.get_content_region_avail()[0] * 0.4)))
+        changed, index = im.combo("##region_file", files.index(path), labels)
+        if changed:
+            self.select_trace_file(files[index])
+            self.on_used("region_file")
+        im.set_item_tooltip(
+            tr("The file whose regions are drawn: every file passed to the correlator.")
+        )
+        self.item_rects["region_file"] = im.get_item_rect()
+        im.same_line()
+        changed, value = im.checkbox(tr("✏ Draw"), self.draw_mode)
+        if changed:
+            self.draw_mode, self._drag_start = value, None
+            self.on_used("draw_regions")
+        im.set_item_tooltip(
+            tr(
+                "Drawing mode: drag on the trace to add a region, drag a region's edge to move it, right-click a "
+                "region to remove it. Off: drag and scroll to pan and zoom."
+            )
+        )
+        self.item_rects["draw_regions"] = im.get_item_rect()
+        regions = self.regions.get(path)
+        im.same_line()
+        if self._button(
+            tr("Clear regions"),
+            "clear_regions",
+            tr("Remove this file's regions (it is used whole)."),
+            bool(regions),
+        ):
+            self.clear_regions()
+        im.same_line()
+        if self._button(
+            tr("To all files"),
+            "copy_regions",
+            tr("Give every file passed to the correlator this file's regions."),
+            len(files) > 1,
+        ):
+            self.copy_regions_to_all()
+        trace = self.trace(path)
+        if trace is None:
+            im.same_line()
+            im.text_disabled(
+                tr("Reading…") if path in self._reading else tr("No photons to draw on.")
+            )
+            self.item_rects["region_plot"] = im.get_item_rect()
+            return
+        x, y, duration = trace
+        if regions:
+            summary = tr("{n} region(s), {t:.2f} s of {d:.2f} s").format(
+                n=len(regions), t=self.regions.total(path), d=duration
+            )
+        else:
+            summary = tr("whole file, {d:.2f} s").format(d=duration)
+        # On this line when it fits, else below the buttons (a narrow window clips it otherwise).
+        im.same_line()
+        if im.get_content_region_avail()[0] < im.calc_text_size(summary)[0]:
+            im.new_line()
+        (im.text if regions else im.text_disabled)(summary)
+        self.item_rects["region_summary"] = im.get_item_rect()
+        self._draw_trace(path, x, y, duration, regions)
+
+    def _draw_trace(self, path: str, x, y, duration: float, regions: list) -> None:
+        drawing = self.draw_mode
+        lock = implot.AXIS_FLAGS_LOCK if drawing else 0
+        height = max(120.0, im.get_content_region_avail()[1] - 4.0)
+        box = (*im.get_cursor_screen_pos(), im.get_content_region_avail()[0], height)
+        if implot.begin_plot(
+            "Count rate##fcsregions", (-1, height), implot.FLAGS_NO_BOX_SELECT if drawing else 0
+        ):
+            implot.setup_axes(tr("Time (s)"), tr("Intensity (kHz)"), lock, lock)
+            # A new file opens on its whole trace, set here: an auto-fit lands a frame late, and its first-frame
+            # limits (0..1) are what a view captured then would hold. Locked (drawing) axes hold the last panned view.
+            if self._view is None:
+                top_rate = float(np.max(y)) if len(y) else 1.0
+                self._view = (0.0, max(duration, 1e-6), 0.0, 1.05 * max(top_rate, 1e-6))
+                implot.setup_axes_limits(*self._view, implot.COND_ALWAYS)
+            elif drawing:
+                implot.setup_axes_limits(*self._view, implot.COND_ALWAYS)
+            implot.set_next_line_style(REMOVED, 1.0)
+            implot.plot_line("count rate", np.asarray(x, float), np.asarray(y, float))
+            pos, size = implot.get_plot_pos(), implot.get_plot_size()
+            top, bottom = pos[1], pos[1] + size[1]
+            self.item_rects["region_plot_area"] = (*pos, *size)
+            draw = implot.get_plot_draw_list()
+            for a, b in regions:
+                draw.add_rect_filled(
+                    (implot.plot_to_pixels(a, 0.0)[0], top),
+                    (implot.plot_to_pixels(b, 0.0)[0], bottom),
+                    REGION_FILL,
+                )
+            on_edge = False
+            if drawing:
+                moved, edges = False, []
+                for i, (a, b) in enumerate(regions):
+                    ra = implot.drag_line_x(2 * i + 1, a, REGION_EDGE, 1.0)
+                    rb = implot.drag_line_x(2 * i + 2, b, REGION_EDGE, 1.0)
+                    on_edge = on_edge or ra.hovered or rb.hovered or ra.held or rb.held
+                    moved = moved or ra.modified or rb.modified
+                    clamp = lambda v: min(max(float(v), 0.0), duration)  # noqa: E731
+                    edges.append((clamp(ra.value), clamp(rb.value)))
+                if moved:
+                    self.regions.set(path, edges)
+                    self.changed()
+                if implot.is_plot_hovered() and not on_edge:
+                    at = implot.get_plot_mouse_pos().x
+                    if im.is_mouse_clicked(0):
+                        self._drag_start = min(max(at, 0.0), duration)
+                    elif im.is_mouse_clicked(1) and self.regions.remove_at(path, at):
+                        self.on_used("remove_region")
+                        self.changed()
+            if self._drag_start is not None:
+                at = min(max(implot.get_plot_mouse_pos().x, 0.0), duration)
+                draw.add_rect_filled(
+                    (implot.plot_to_pixels(min(self._drag_start, at), 0.0)[0], top),
+                    (implot.plot_to_pixels(max(self._drag_start, at), 0.0)[0], bottom),
+                    REGION_DRAFT,
+                )
+                if not im.is_mouse_down(0):
+                    start, self._drag_start = self._drag_start, None
+                    span = implot.plot_to_pixels(at, 0.0)[0] - implot.plot_to_pixels(start, 0.0)[0]
+                    if abs(span) > 3.0:  # a click is not a region
+                        self.add_region(start, at, path)
+                        self.on_used("draw_region")
+            if not drawing:
+                lim = implot.get_plot_limits()
+                self._view = (lim.x_min, lim.x_max, lim.y_min, lim.y_max)
+            implot.end_plot()
+        im.set_item_tooltip(
+            tr("Drag to add a region; right-click a region to remove it.")
+            if drawing
+            else tr("Switch on Draw to add regions; only the photons inside them are correlated.")
+        )
+        self.item_rects["region_plot"] = box
 
 
 # ── 3. Photon / Burst Filter ─────────────────────────────────────────────────

@@ -96,8 +96,11 @@ class FilterSettingsModel:
         self.range_hi = 0  # 0 => full length
 
         self._tttr = None
+        self._tttr_path: str | None = None
         self._tttr_objects: dict = {}
         self._files: list[str] = []
+        #: Per-file time regions (:class:`.regions.TimeRegions`); photons outside a file's regions are never kept.
+        self._regions = None
         self._sel_cache_id = None
         self._sel_cache = None
         self._last_mode = self.filter_mode
@@ -185,14 +188,20 @@ class FilterSettingsModel:
         self._tttr_objects = objs or {}
         self._files = list(files or [])
         self._tttr = None
+        self._tttr_path = None
         for f in self._files:
             tt = self._tttr_objects.get(str(pathlib.Path(f).resolve()))
             if tt is not None:
-                self._tttr = tt
+                self._tttr, self._tttr_path = tt, str(pathlib.Path(f).resolve())
                 break
         self._sel_cache_id = None
         if self.range_hi <= 0 and self._tttr is not None:
             self.range_hi = len(self._tttr)
+
+    def set_time_regions(self, regions) -> None:
+        """Use *regions* (:class:`.regions.TimeRegions`) to cut every file before filtering."""
+        self._regions = regions
+        self._sel_cache_id = None
 
     # -- selection -----------------------------------------------------------
 
@@ -202,8 +211,8 @@ class FilterSettingsModel:
         d = np.diff(mt, prepend=mt[0]).astype(float)
         return d * tttr.header.macro_time_resolution * 1000.0
 
-    def compute_selection(self, tttr) -> np.ndarray:
-        """Boolean keep-mask for *tttr* under the current parameters."""
+    def compute_selection(self, tttr, path=None) -> np.ndarray:
+        """Boolean keep-mask for *tttr* (read from *path*) under the current parameters and the file's time regions."""
         import tttrlib
 
         from chisurf.core.fluorescence import burst as burstmod
@@ -277,6 +286,9 @@ class FilterSettingsModel:
             from chisurf.core.math.signal import fill_small_gaps_in_array
 
             s = fill_small_gaps_in_array(s, max_gap=int(self.max_gap))
+        # Last, so that neither ``invert`` nor gap filling reaches outside the regions.
+        if self._regions is not None and path is not None:
+            s &= self._regions.mask(path, tttr)
         return s
 
     def _changepoint_selection(self, tttr, mode: str) -> np.ndarray:
@@ -364,7 +376,7 @@ class FilterSettingsModel:
             return None
         key = id(self._tttr)
         if self._sel_cache_id != key:
-            self._sel_cache = self.compute_selection(self._tttr)
+            self._sel_cache = self.compute_selection(self._tttr, self._tttr_path)
             self._sel_cache_id = key
         return self._sel_cache
 

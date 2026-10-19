@@ -10,6 +10,10 @@ molecules in the focus; the lag where the curve falls is the time a molecule nee
 2. **Files & Steps**: the TTTR files (ticked ones are correlated; a folder adds the TTTR files in it), and whether the
    photon filter (3) and the merger (5) run. **Example** adds a simulated measurement whose curve falls near 0.5 ms.
    A Burst-ID (`.bst`) file switches the filter off.
+   **Regions** shows the count-rate trace of the file picked beside it (every file passed to the correlator, a
+   folder's files one by one). With **✏ Draw** on, drag on the trace to add a time region, drag an edge to move it,
+   right-click a region to remove it; only the photons inside a file's regions are filtered and correlated (a file
+   without regions is used whole). **To all files** copies the regions to the other files.
 3. **Photon / Burst Filter**: keep only the photons in bursts or under a count-rate cut, so that aggregates and
    background do not dominate the curve. The plots show what is kept; drag the blue lines to set min / max dMT.
 4. **Correlator**: routing channels and micro-time windows of A and B (empty = all detectors), multi-tau **Bins** and
