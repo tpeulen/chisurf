@@ -18,7 +18,7 @@ timestamp: '2026-07-05T00:00:00Z'
    χ² across fits: `[(f["name"], f["chi2r_current"]) for f in api.list_fits(statistics=True)]` (a row's `chi2r` is
    the last run's, `None` before a run). Filter calculator residual axis: `Residual / σ` under the dock title.
 3. Measure: method of the pass and every defect: known issue "QA walk of the FCS, lifetime, …" (found 2026-10-11).
-4. Open (time regions, 2026-10-19): step 3 still shows only the *first* file (`FilterSettingsModel._tttr`), so with
+4. Open: (time regions, 2026-10-19) step 3 still shows only the *first* file (`FilterSettingsModel._tttr`), so with
    several files the filter plots do not show the regions of the others although they are applied (photon count via
    `FcsWorkflow.filtered_tttr`). Next: a file picker in step 3 sharing `FilesStepApp.trace_file`. Measure: two
    `test/streams.py::diffusion_spc` files, region on the second only → step 3 info text unchanged (the trap), correlator

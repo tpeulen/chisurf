@@ -1,7 +1,7 @@
 # Update Log
 
 ## 2026-10-19
-- FCS correlator: per-file time regions drawn on the count-rate trace in Files & Steps (`fcs_correlator/regions.py`, cut into raw and filtered photon paths after invert/gap fill); folder expansion no longer drops .spc/.h5 files (matched tttrlib container names, not extensions); docs guide 75 + concept, guide card, [FCS](okf/plugins/fcs.md).
+- FCS correlator: per-file time regions drawn on the count-rate trace in Files & Steps (`fcs_correlator/regions.py`, cut into raw and filtered photon paths after invert/gap fill); folder expansion no longer drops .spc/.h5 files (matched tttrlib container names, not extensions); docs guide 75 + concept, guide card, [FCS](plugins/fcs.md).
 
 - **mypy ratchet driven to 1.** `test/mypy_baseline.json` went from 112 (a stale number: the tree stood at 172 after the Qt retirement, new `vv_vh_g_factor`, `terminal`, `zenodo_deposit` code) to 1. Real causes fixed rather than ignored: dead `ChiSurfAPI.instance()` fallbacks in the terminal, a shadowed `available_styles`, a Qt branch left in `emtk/doc_links.py` calling a removed helper, `cs` undefined in the shell watermark, Optional attributes narrowed or typed in `vv_vh_g_factor`/`lightpath_simulator`/`mmfdb_admin`/`chimol`. Remaining: `burstwise_import.py:475` (file under active edit). Test `test_mypy_baseline.py` needs mypy+pytest in one env; run `--update` from the `dev` env.
 - docs review gate: the 26 pages edited after their AI review re-read against the code and re-signed (dead figures, menu paths, csc names, user-model merge rules, ndX CLI auth, Qt leftovers); figures/tables registers regenerated.

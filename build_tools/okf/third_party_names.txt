@@ -6,6 +6,6 @@ Orange3
 MATLAB
 LabVIEW
 SymPhoTime
-Origin
-Igor
+=Origin
+=Igor
 Margarita

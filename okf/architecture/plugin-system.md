@@ -10,7 +10,7 @@ timestamp: '2026-07-05T00:00:00Z'
 # Where to pick this up
 
 1. Measure: Re-run the dependency/namespace guard and use [the hardening diagnosis](plugin-system-diagnosis.md) for exact reproductions; historical import failures and recorded passing totals are not current full-system acceptance.
-2. Done 2026-10-19: the sibling-RPC allow-list is empty; the two former `ndxplorer.*` methods now live under the `mmfdb.*` domain namespace (`mmfdb.burst_product.load`, `mmfdb.analysis.record`).
+2. Measure: (2026-10-19) the sibling-RPC allow-list is empty; the two former `ndxplorer.*` methods now live under the `mmfdb.*` domain namespace (`mmfdb.burst_product.load`, `mmfdb.analysis.record`).
 3. Measure: Add dependency version bounds only against an actual required sibling version. Before considering consolidation of the other Kahn sorts, measure the recorded import-cost and resolver-contract differences.
 4. Open: Address the recorded settings schema, obsolete-key discovery and whole-tree writer gaps; `update_settings_section` is the existing writer route identified below.
 5. Open: Resolve duplicate password-dialog/backend ownership and the settings-versus-token identity mismatch using the concrete call sites in the recorded follow-up details.

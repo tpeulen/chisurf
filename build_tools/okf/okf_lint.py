@@ -813,22 +813,29 @@ def log(bundle: Bundle, fix: bool) -> list[Finding]:
 
 def names(bundle: Bundle, fix: bool) -> list[Finding]:
     """Flag external product names outside explicitly exempt reference pages."""
-    words = [
+    entries = [
         s.strip()
         for s in Path(__file__).with_name("third_party_names.txt").read_text().splitlines()
         if s.strip() and not s.startswith("#")
     ]
-    pattern = re.compile(r"(?<!\w)(?:" + "|".join(map(re.escape, words)) + r")(?!\w)", re.I)
+    # A name that is also an ordinary word ("Origin", the plotting product, versus "the
+    # origin of a sample") is listed as "=Name" and matches with its capitals only.
+    loose = [e for e in entries if not e.startswith("=")]
+    exact = [e[1:] for e in entries if e.startswith("=")]
+    patterns = [re.compile(r"(?<!\w)(?:" + "|".join(map(re.escape, words)) + r")(?!\w)", flags)
+                for words, flags in ((loose, re.I), (exact, 0)) if words]
     findings: list[Finding] = []
     for path, text in bundle.pages.items():
         if read_front_matter(text).get("convention-exempt") is True or path.name.endswith(
             ("-retirement.md", "-parity.md", "-mining.md", "-lessons.md")
         ):
             continue
-        findings.extend(
-            bundle.finding("NAMES", path, m.start(), "use a software role instead of: " + m[0])
-            for m in pattern.finditer(_link_destinations_masked(_prose(text)))
-        )
+        prose = _link_destinations_masked(_prose(text))
+        for pattern in patterns:
+            findings.extend(
+                bundle.finding("NAMES", path, m.start(), "use a software role instead of: " + m[0])
+                for m in pattern.finditer(prose)
+            )
     return findings
 
 
