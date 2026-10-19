@@ -18,6 +18,7 @@
 - 2026-10-19: a tool tabbed behind another finishes its background work: EmtkShellApp polls every hosted tool it did not draw (tool contract poll()) and stays awake while a hidden tool is busy; ndX implements poll (ndxplorer 3b584a1), so a file opened in ndX #1 loads while ndX #2 is in front. test/native_emtk/test_emtk_shell_hidden_tools_poll.py.
 
 ## 2026-10-18
+- 2026-10-19: terminal/python_terminal gained a guided tour (terminal/guide.json, awaits New/Split/Close) and help.md, wired in TerminalApp; style-preview sample widgets (setup, style_manager) carry tooltips (e2e W7 findings).
 
 - Support external raw files as sidecar in PTO containers: added ptolib streaming read from external payload paths when size == 0, tttrlib TTTR reader and pto_read_events sidecar delegation, chisurf Measurement.create/add_instrument/is_sidecar/external_path/verify/extract sidecar handling, and tttr_to_pto convert as_sidecar mode (43 passed tests).
 
