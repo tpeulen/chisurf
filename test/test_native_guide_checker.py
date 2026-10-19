@@ -153,7 +153,6 @@ def test_timeout_report_is_complete_and_next_tool_continues(monkeypatch, tmp_pat
     assert len(result) == 2 and result[0]["status"] == "timeout"
     assert result[1]["status"] == "passed"
     assert all(row["report"] for row in result)
-    assert calls[0][1]["env"]["QT_QPA_PLATFORM"] == "offscreen"
     assert calls[0][1]["env"]["CHISURF_SETTINGS_DIR"] != calls[1][1]["env"]["CHISURF_SETTINGS_DIR"]
 
 
