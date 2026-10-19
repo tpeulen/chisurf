@@ -48,7 +48,8 @@ SIZE = (1440, 900)
 KNOWN_GAPS: dict[str, str] = {}
 
 #: Qt controls the emtk shell has under another caption, by inventory key: the emtk control's
-#: drawn rectangle (``item_rects`` key, of the shell or of the console) must be there, and why
+#: drawn rectangle (``item_rects`` key, of the shell, the console or the Terminal app the Console
+#: dock hosts) must be there, and why
 #: the caption differs. Unlike :data:`RENAMED`, presence is checked, not assumed.
 ALIASES: dict[str, tuple[str, str]] = {
     "ribbon_corner:?": ("ribbon.help", "the shared Help action, drawn ❓ Help in every window"),
@@ -57,7 +58,10 @@ ALIASES: dict[str, tuple[str, str]] = {
         "🌍 EN; the full 'Language: English' is its tooltip",
     ),
     "ribbon_corner:P": ("ribbon.pin", "a drawn push-pin; its tooltip says pin / unpin (auto-fold)"),
-    "dock_control:Console/?": ("console.help", "the shared Help action, drawn ❓ Help"),
+    "dock_control:Console/?": (
+        "console_terminal.help",
+        "the shared Help action, drawn ❓ Help on the strip of the Terminal app the dock hosts",
+    ),
 }
 
 #: Qt captions present in the emtk shell under another spelling, or not controls at all.
@@ -182,7 +186,11 @@ def reached():
         shell.close()
         session.close()
     texts.discard("")
-    rects = set(shell.item_rects) | {"console." + key for key in shell.console.item_rects}
+    rects = (
+        set(shell.item_rects)
+        | {"console." + key for key in shell.console.item_rects}
+        | {"console_terminal." + key for key in shell.console_terminal.item_rects}
+    )
     return {"texts": texts, "tabs": tabs, "raw": raw, "rects": rects}
 
 

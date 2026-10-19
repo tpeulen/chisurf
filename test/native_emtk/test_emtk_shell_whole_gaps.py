@@ -396,9 +396,13 @@ def test_the_console_help_button_opens_its_help():
     try:
         shell.docks.focus("console")
         driver.frame(2)
-        driver.click(_form_point(shell.console.item_rects, "help"))
+        # The Console dock hosts the Terminal app (a Python pane first); the ? is on its strip.
+        _window, terminal, (bx, by, _w, _h) = shell._drawn["console"]
+        assert terminal is shell.console_terminal
+        x, y = _form_point(terminal.item_rects, "help")
+        driver.click((bx + x, by + y))
         driver.frame(3)
-        assert shell.console._help.open
+        assert terminal.help_window.open
         _shot(driver, "console_help")
     finally:
         shell.close()
