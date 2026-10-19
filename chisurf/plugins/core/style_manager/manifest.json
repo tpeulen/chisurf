@@ -2,7 +2,7 @@
   "id": "style_manager",
   "version": "1.0.0",
   "display_name": "Setup:Styles",
-  "description": "Edit ChiSurf's style sheets (.css files in the settings directory; a .qss theme kept from the Qt window is translated) and apply one to the running application.",
+  "description": "Edit ChiSurf's emtk style sheets (.css files in the settings directory) and apply one to the running window.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Setup"],
   "icon": "🎨",

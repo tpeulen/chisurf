@@ -44,13 +44,13 @@ def test_style_new_save_apply_reset_flow(style_app):
     app.model.reset(discard=True)  # discard uncommitted edits
 
 
-def test_style_new_creates_the_qss_file_like_qt(style_app):
-    """Qt's on_new_file writes <name>.css into the styles directory; so must new()."""
+def test_style_new_creates_the_css_file(style_app):
+    """new() writes <name>.css into the styles directory."""
     app, styles_dir = style_app
     ok = app.model.new("session", discard=True)
     assert ok is not False
     assert (styles_dir / "session.css").exists(), (
         "new() must create the .css file"
     )
-    # Recreating over an existing file is guarded, exactly like Qt's existence check.
+    # Recreating over an existing file is refused.
     assert app.model.new("session", discard=False) is False

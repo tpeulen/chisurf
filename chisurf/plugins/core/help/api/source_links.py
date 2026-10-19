@@ -53,7 +53,6 @@ SOURCE_SUFFIXES = (
     ".cfg",
     ".ini",
     ".ui",
-    ".qss",
     ".sh",
     ".js",
     ".ts",

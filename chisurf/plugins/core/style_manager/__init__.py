@@ -1,6 +1,6 @@
-"""Style Manager: edit, save and apply the Qt style sheets (``.qss``) of ChiSurf.
+"""Style Manager: edit, save and apply ChiSurf's emtk style sheets (``.css``).
 
-The window is the native emtk app in :mod:`.gui.app`; importing this package needs no Qt binding.
+The window is the emtk app in :mod:`.gui.app`.
 """
 
 from __future__ import annotations

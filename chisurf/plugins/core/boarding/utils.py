@@ -394,7 +394,7 @@ def copy_defaults(overwrite: bool) -> tuple[bool, str]:
         pkg_dir = pathlib.Path(cs.core.settings.__file__).resolve().parent
 
         if overwrite:
-            allowed = {".yaml", ".yml", ".json", ".qss", ".css"}
+            allowed = {".yaml", ".yml", ".json", ".css"}
             for file in pkg_dir.iterdir():
                 if not file.is_file():
                     continue

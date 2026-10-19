@@ -1985,7 +1985,7 @@ def _native(plugin_id, result, png_path):
             original_editor = im.text_editor
 
             def observe_editor(*args, **kwargs):
-                """Record a text editor's rectangle: what it shows is the user's document (a QSS file's
+                """Record a text editor's rectangle: what it shows is the user's document (a style sheet's
                 ``border: none;`` is not the caption "none")."""
                 result = original_editor(*args, **kwargs)
                 rect = im.get_item_rect()

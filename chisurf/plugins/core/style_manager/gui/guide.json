@@ -3,25 +3,40 @@
   "steps": [
     {
       "title": "Styles are files you own",
-      "text": "The drop-down lists the <code>.qss</code> files in your ChiSurf settings directory. The shipped styles are copied there on first run, so editing one never touches the installation.",
-      "target": {"name": "style_file"}
+      "text": "The drop-down lists the <code>.css</code> style sheets in your ChiSurf settings directory. The shipped styles are copied there on first run, so editing one never touches the installation.",
+      "target": {
+        "name": "style_file"
+      }
     },
     {
       "title": "What a style sheet says",
-      "text": "A Qt style sheet is CSS-like. A rule names a widget class (<code>QPushButton</code>), a state (<code>:hover</code>), a sub-control (<code>QMenuBar::item</code>) or one widget by object name, and sets colours, padding and borders.",
-      "target": {"name": "style_source"}
+      "text": "An emtk style sheet is a small CSS dialect. A rule names a control (<code>button</code>), a state (<code>:hover</code>) or a part (<code>menu::item</code>) and sets its colours; <code>padding</code> and <code>border-radius</code> set the spacing of every control.",
+      "target": {
+        "name": "style_source"
+      }
     },
     {
       "title": "Apply, and it stays applied",
       "text": "<b>Apply</b> saves the file, restyles the running application at once, and records it as your style so it comes back next time you start.",
-      "target": {"name": "apply"},
-      "await": {"hint": "Press <b>Apply</b> to see the style take effect."}
+      "target": {
+        "name": "apply"
+      },
+      "await": {
+        "hint": "Press <b>Apply</b> to see the style take effect."
+      }
     },
     {
       "title": "If you make a mess",
-      "text": "<b>Reset styles</b> restores the shipped files. And if a style leaves the window unreadable, delete that <code>.qss</code> from your settings directory and restart — ChiSurf falls back to the default appearance.",
-      "target": {"name": "reset_styles"},
-      "links": [{"text": "Settings reference", "doc": "docs/reference/settings.md"}]
+      "text": "<b>Reset styles</b> restores the shipped files. And if a style leaves the window unreadable, delete that <code>.css</code> from your settings directory and restart — ChiSurf falls back to the default appearance.",
+      "target": {
+        "name": "reset_styles"
+      },
+      "links": [
+        {
+          "text": "Settings reference",
+          "doc": "docs/reference/settings.md"
+        }
+      ]
     }
   ]
 }

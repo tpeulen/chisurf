@@ -273,14 +273,6 @@ def copy_styles_to_user_folder():
             else:
                 shutil.copyfile(file, destination_file)
 
-    # Clean up obsolete shipped .qss files from user folder if .css exists
-    for old_qss in user_settings_path.glob("*.qss"):
-        if (user_settings_path / f"{old_qss.stem}.css").exists() or old_qss.name == "dark_blue_flat.qss":
-            try:
-                old_qss.unlink()
-            except OSError:
-                pass
-
 
 def update_settings_section(section: str, values: dict) -> bool:
     """Merge *values* into one top-level section of the user's settings file.

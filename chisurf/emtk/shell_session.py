@@ -1223,7 +1223,7 @@ class ShellProject:
         import chisurf
 
         folder = chisurf.core.settings.get_path("settings") / "styles"
-        files = list(folder.glob("*.qss")) if folder.is_dir() else []
+        files = list(folder.glob("*.css")) if folder.is_dir() else []
         for path in files:
             try:
                 path.unlink()

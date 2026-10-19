@@ -1,10 +1,9 @@
-"""Qt-free style-file editor and QSS palette migration."""
+"""The style editor: emtk style sheets (``.css``), edited, saved and applied to the running window."""
 
 from __future__ import annotations
 
 import json
 import pathlib
-import re
 import shutil
 from typing import Any
 
@@ -12,118 +11,10 @@ from emtk import im
 from emtk.app import ImApp
 from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
-from emtk.im_core import Style
 from emtk.widgets.text_editor import Language, TextEditor
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button, window_size
-
-
-def color(value):
-    value = value.strip()
-    if value.startswith("#"):
-        digits = value[1:]
-        if len(digits) == 3:
-            digits = "".join(c * 2 for c in digits)
-        if len(digits) == 6:
-            return tuple(int(digits[i : i + 2], 16) for i in (0, 2, 4)) + (255,)
-    match = re.fullmatch(r"rgba?\(([^)]+)\)", value)
-    if match:
-        parts = [float(v.strip()) for v in match[1].split(",")]
-        if len(parts) in (3, 4):
-            alpha = parts[3] if len(parts) == 4 else 255
-            if len(parts) == 4 and alpha <= 1:
-                alpha *= 255
-            return tuple(max(0, min(255, round(v))) for v in parts[:3] + [alpha])
-    named = {"white": (255, 255, 255, 255), "black": (0, 0, 0, 255), "transparent": (0, 0, 0, 0)}
-    if value in named:
-        return named[value]
-    raise ValueError(f"Unsupported color: {value}")
-
-
-#: A Qt widget class and the emtk stylesheet selector that styles the same control. The
-#: Qt shell is gone; a ``.qss`` theme a user kept is translated once, here -- emtk's own
-#: stylesheet dialect knows no Qt names, and a Qt selector it does not know styles
-#: nothing, silently.
-_QSS_SELECTORS = {
-    # QWidget is every widget's base: in emtk that is the root rule (text, window colour).
-    "QWidget": "*", "QFrame": "widget",
-    "QMainWindow": "window", "QDialog": "window",
-    "QPushButton": "button", "QToolButton": "button",
-    "QTabBar::tab": "tab", "QTabWidget::tab": "tab",
-    "QLineEdit": "input", "QTextEdit": "input", "QPlainTextEdit": "input",
-    "QSpinBox": "input", "QDoubleSpinBox": "input", "QComboBox": "input",
-    "QMenu": "menu", "QMenu::item": "menu::item", "QMenuBar": "menubar",
-    "QHeaderView::section": "header",
-    "QTableView": "table", "QTableWidget": "table", "QTreeView": "table",
-    "QTreeWidget": "table", "QListView": "table", "QListWidget": "table",
-    "QScrollBar": "scrollbar", "QScrollBar::handle": "scrollbar::handle",
-    "QCheckBox": "checkbox", "QRadioButton": "checkbox",
-    "QSlider": "slider", "QSlider::handle": "slider::handle",
-    "QDockWidget": "dock", "QDockWidget::title": "dock:title",
-}
-_QSS_IGNORED_PROPERTIES = (
-    "image", "qproperty-alignment", "subcontrol-origin", "subcontrol-position", "spacing",
-)
-
-
-def _translate_selector(selector: str) -> str | None:
-    """emtk's selector for one Qt selector (``QPushButton:hover`` -> ``button:hover``)."""
-    selector = selector.strip()
-    if not selector.startswith("Q"):
-        return selector  # already emtk's dialect
-    base, state = selector, ""
-    for name in sorted(_QSS_SELECTORS, key=len, reverse=True):
-        if selector == name or selector.startswith(name + ":") and not selector.startswith(name + "::"):
-            base, state = name, selector[len(name):]
-            break
-    else:
-        return None
-    state = {":pressed": ":active", ":checked": ":selected"}.get(state, state)
-    return _QSS_SELECTORS[base] + state
-
-
-def qss_to_css(source: str) -> tuple[str, list[str]]:
-    """Translate a Qt style sheet into emtk's stylesheet dialect; also say what was dropped.
-
-    Returns the translated text and one line per rule or property with no emtk
-    counterpart (a Qt-only widget, an ``image:`` or ``subcontrol-*`` property).
-    """
-    ignored: list[str] = []
-    clean = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
-    rules = []
-    for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", clean):
-        kept = []
-        for selector in selectors.split(","):
-            translated = _translate_selector(selector)
-            if translated is None:
-                ignored.append(f"{selector.strip()}: no emtk control")
-            else:
-                kept.append(translated)
-        declarations = []
-        for decl in body.split(";"):
-            if ":" not in decl:
-                continue
-            prop = decl.split(":", 1)[0].strip()
-            if prop in _QSS_IGNORED_PROPERTIES:
-                ignored.append(f"{selectors.strip()}: {prop}")
-            else:
-                declarations.append(decl.strip())
-        if kept and declarations:
-            rules.append(f"{', '.join(kept)} {{ {'; '.join(declarations)}; }}")
-    return "\n".join(rules), ignored
-
-
-def convert_qss(source: str) -> tuple[Style, list[str]]:
-    """The emtk Style a Qt style sheet describes, and what had to be dropped (:func:`qss_to_css`)."""
-    from emtk.stylesheet import parse_stylesheet
-
-    css, ignored = qss_to_css(source)
-    try:
-        _, _, style = parse_stylesheet(css)
-        return style, ignored
-    except Exception:
-        return Style(), ignored
 
 
 class StyleManagerModel:
@@ -184,7 +75,7 @@ class StyleManagerModel:
         self.saved_text = ""
         self.status = ""
         self.apply_callback = None
-        #: ``application_callback(qss_text)`` restyles the running application; ``None`` uses
+        #: ``application_callback(css_text)`` restyles the running application; ``None`` uses
         #: :meth:`restyle_application` (the Qt application when one is already loaded in this process).
         self.application_callback = None
         self.applied_style = None
@@ -200,11 +91,10 @@ class StyleManagerModel:
 
     def refresh(self):
         css_files = list(self.styles_dir.glob("*.css"))
-        qss_files = list(self.styles_dir.glob("*.qss"))
-        self.files = sorted({*css_files, *qss_files}, key=lambda p: p.name)
+        self.files = sorted(css_files, key=lambda p: p.name)
 
     def copy_defaults(self):
-        sources = [*self.package_dir.glob("*.css"), *self.package_dir.glob("*.qss")]
+        sources = list(self.package_dir.glob("*.css"))
         if not sources:
             try:
                 from emtk import styles as emtk_styles
@@ -253,7 +143,7 @@ class StyleManagerModel:
         if any(f.stem == stem for f in self.files):
             self.status = f"A style named {stem!r} already exists."
             return False
-        if not (name.endswith(".css") or name.endswith(".qss")):
+        if not name.endswith(".css"):
             name += ".css"
         destination = self.styles_dir / name
         try:
@@ -285,18 +175,16 @@ class StyleManagerModel:
             self.status = f"Error saving style: {error}"
             return False
 
-    def combined_qss(self, theme_text):
+    def combined_css(self, theme_text):
         """The application's sheet as the startup builds it: the shared widget fragments, then the theme."""
         parts = []
         for folder in (self.package_dir / "widgets", self.styles_dir / "widgets"):
             if folder.is_dir():
-                for pattern in ("*.css", "*.qss"):
-                    for path in sorted(folder.glob(pattern)):
-                        try:
-                            text = path.read_text(encoding="utf-8")
-                        except (OSError, UnicodeError):
-                            continue
-                        parts.append(qss_to_css(text)[0] if path.suffix == ".qss" else text)
+                for path in sorted(folder.glob("*.css")):
+                    try:
+                        parts.append(path.read_text(encoding="utf-8"))
+                    except (OSError, UnicodeError):
+                        continue
         return "\n\n".join(part for part in (*parts, theme_text) if part)
 
     def restyle_application(self, text):
@@ -312,20 +200,6 @@ class StyleManagerModel:
         if callable(self.application_callback):
             return bool(self.application_callback(text))
 
-        import sys
-
-        application = None
-        for mod_name in ("qtpy.QtWidgets", "PyQt5.QtWidgets", "PySide2.QtWidgets", "PyQt6.QtWidgets", "PySide6.QtWidgets"):
-            mod = sys.modules.get(mod_name)
-            if mod is not None and hasattr(mod, "QApplication"):
-                application = mod.QApplication.instance()
-                if application is not None:
-                    break
-        if application is not None:
-            try:
-                application.setStyleSheet(text)
-            except Exception:
-                pass
         return True
 
     def apply(self):
@@ -336,12 +210,7 @@ class StyleManagerModel:
             from emtk.stylesheet import parse_stylesheet
 
             theme_name = self.current_file.stem if self.current_file else "custom"
-            # A .qss theme a user kept from the Qt window is translated into emtk's dialect
-            # (combined_qss does the same for .qss widget fragments); .css passes unchanged.
-            theme_text = self.editor.text
-            if self.current_file is not None and self.current_file.suffix == ".qss":
-                theme_text = qss_to_css(theme_text)[0]
-            full_text = self.combined_qss(theme_text)
+            full_text = self.combined_css(self.editor.text)
             try:
                 theme.apply_stylesheet(full_text, name=theme_name)
             except Exception:
@@ -380,10 +249,9 @@ class StyleManagerModel:
             self.status = "Confirm reset: custom style files and unsaved changes will be removed."
             return False
         try:
-            for pattern in ("*.css", "*.qss"):
-                for path in self.styles_dir.glob(pattern):
-                    if path.is_file() or path.is_symlink():
-                        path.unlink()
+            for path in self.styles_dir.glob("*.css"):
+                if path.is_file() or path.is_symlink():
+                    path.unlink()
             self.copy_defaults()
             self.refresh()
             if self.files:
@@ -563,7 +431,7 @@ class StyleManagerApp(ImApp):
             "Open style" if operation == "open" else "Save style as",
             mode="open" if operation == "open" else "save",
             directory=str(self.model.styles_dir),
-            filters="Style sheets (*.css *.qss)",
+            filters="Style sheets (*.css)",
             filename=self.model.current_file.name
             if operation != "open" and self.model.current_file
             else "custom.css",
@@ -621,7 +489,7 @@ class StyleManagerApp(ImApp):
         selected = m.files.index(m.current_file) if m.current_file in m.files else -1
         im.set_next_item_width(max(160, min(320, im.get_content_region_avail()[0] - 120)))
         changed, index = im.combo("Style File", selected, choices)
-        im.set_item_tooltip(tr("Browse editable QSS files copied to your user settings directory"))
+        im.set_item_tooltip(tr("Browse the editable style sheets copied to your user settings directory"))
         self._remember("style_file")
         if changed:
             self.request_load(m.files[index])
@@ -631,7 +499,7 @@ class StyleManagerApp(ImApp):
                 self.pending = ("new", None)
             else:
                 self.new_visible = True
-        im.set_item_tooltip(tr("Create a new QSS file without replacing an existing style"))
+        im.set_item_tooltip(tr("Create a new style sheet without replacing an existing one"))
         im.same_line()
         if action_button(
             "open",
