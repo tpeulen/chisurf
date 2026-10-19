@@ -1980,6 +1980,114 @@ class Measurement:
             self._uint(0, prefix + "size_bytes", size)
             self._text(0, prefix + "path", self._sidecar_link(raw))
 
+    def link_calibration(self, folder: str | Path, root: str | Path, *, name: str = "",
+                         content: str = "") -> int:
+        """Record that the calibration in *folder* belongs to this measurement.
+
+        A calibration (a scatter, a buffer, a dye or DNA standard) is measured
+        once per set-up and day and serves every measurement of that day: two
+        urea series share one IRF. Copying it beside each measurement would
+        store it twice; here it stays where it is and the container records
+        which calibration it uses and the identity of each of its files -- one
+        dataset, used by several containers, stored once.
+
+        Links are relative to this container (``../../calibrations/...``), so
+        the record can move as a whole; a calibration outside *root* (the
+        record) is refused, because the link would not travel with it.
+
+        Parameters
+        ----------
+        folder : str or Path
+            The calibration's folder. Its files are hashed; its own
+            ``.mmfdb.pto``, if it has one, is named as its container.
+        root : str or Path
+            The record both live in.
+        name : str, optional
+            How the calibration is called; the folder's name by default.
+        content : str, optional
+            What it is (``clean H2O: scatter and instrument response``).
+
+        Returns
+        -------
+        int
+            The calibration's index in this container's ``_mmfdb_calibration``.
+        """
+        import os
+
+        self._require_writable()
+        folder, root = Path(folder).resolve(), Path(root).resolve()
+        try:
+            folder.relative_to(root)
+        except ValueError:
+            raise PtoMfdbError(f"{folder} is not in the record {root}") from None
+        here = self._path.parent.resolve()
+
+        def link(path: Path) -> str:
+            return Path(os.path.relpath(path, here)).as_posix()
+
+        index = len(self.calibrations())
+        prefix = f"_mmfdb_calibration.{index}."
+        files = sorted(f for f in folder.rglob("*") if f.is_file()
+                       and not f.name.startswith(".") and not f.name.endswith(".mmfdb.pto"))
+        if not files:
+            raise PtoMfdbError(f"{folder} holds no calibration files")
+        own = sorted(folder.glob("*.mmfdb.pto"))
+        self._text(0, prefix + "name", name or folder.name)
+        self._text(0, prefix + "content", content)
+        self._text(0, prefix + "path", link(folder))
+        if own:
+            self._text(0, prefix + "container", link(own[0]))
+        self._uint(0, prefix + "files", len(files))
+        start = sum(c["files"] for c in self.calibrations()[:index]) if index else 0
+        for j, raw in enumerate(files, start):
+            checksum, size = _sha256_of_path(raw)
+            fp = f"_mmfdb_calibration_file.{j}."
+            self._uint(0, fp + "calibration", index)
+            self._text(0, fp + "name", raw.relative_to(folder).as_posix())
+            self._text(0, fp + "path", link(raw))
+            self._text(0, fp + "data_format", _format_term(raw))
+            self._text(0, fp + "checksum_algorithm", "sha256")
+            self._text(0, fp + "checksum", checksum)
+            self._uint(0, fp + "size_bytes", size)
+        return index
+
+    def calibrations(self) -> list[dict]:
+        """The calibrations this measurement uses (:meth:`link_calibration`), in order.
+
+        Each is ``{"name", "content", "path", "container", "files", "file_list"}``;
+        ``path``, ``container`` and every file's ``path`` are relative to this
+        container, ``resolved`` beside each gives the absolute path here.
+        """
+        out = []
+        here = self._path.parent
+        while True:
+            prefix = f"_mmfdb_calibration.{len(out)}."
+            name = self.tag(0, prefix + "name")
+            if not name:
+                break
+            path = str(self.tag(0, prefix + "path"))
+            container = str(self.tag(0, prefix + "container") or "")
+            out.append({"name": str(name), "content": str(self.tag(0, prefix + "content") or ""),
+                        "path": path, "resolved": (here / path).resolve(),
+                        "container": container,
+                        "files": int(self.tag(0, prefix + "files", 0) or 0), "file_list": []})
+        j = 0
+        while True:
+            fp = f"_mmfdb_calibration_file.{j}."
+            name = self.tag(0, fp + "name")
+            if not name:
+                break
+            k = int(self.tag(0, fp + "calibration", 0) or 0)
+            if 0 <= k < len(out):
+                path = str(self.tag(0, fp + "path"))
+                out[k]["file_list"].append({
+                    "name": str(name), "path": path, "resolved": (here / path).resolve(),
+                    "data_format": str(self.tag(0, fp + "data_format") or ""),
+                    "checksum": str(self.tag(0, fp + "checksum") or ""),
+                    "size_bytes": int(self.tag(0, fp + "size_bytes", 0) or 0)})
+            j += 1
+        return out
+
     def _sidecar_link(self, raw: Path) -> str:
         """Where a sidecar raw file is, as the container should record it.
 

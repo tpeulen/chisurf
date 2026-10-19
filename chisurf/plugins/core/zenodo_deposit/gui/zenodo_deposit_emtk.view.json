@@ -502,16 +502,22 @@
               "type": "custom",
               "key": "data_table",
               "title": "",
-              "description": "Every item of the record. Approve a row with its button; right-click for Reject, Undo decision or Open in ndX (also a double click). ⚠ = check first; hover a row for why, its content and origin.",
+              "description": "Every item of the record; each measurement with the calibrations it uses nested under it (one calibration, stored once, can serve several). Approve a row with its button; right-click for Reject, Undo decision or Open in ndX (also a double click). ⚠ = check first; hover a row for why, its content and origin.",
               "options": {
                 "source": "items",
-                "row_key": "id",
+                "row_key": "key",
                 "selected_call": "select_item",
                 "editable": false,
-                "height": 380,
+                "height": 470,
                 "tooltip_key": "detail",
                 "min_column_width": 50,
                 "columns": [
+                  {
+                    "key": "item",
+                    "title": "Item",
+                    "width": 430,
+                    "tooltip": "The folder or file in the record; a measurement's calibrations are nested under it (▸ folds them)."
+                  },
                   {
                     "key": "status",
                     "title": "Review",
@@ -525,16 +531,10 @@
                     "tooltip": "How many reasons this item needs a closer look; hover the row to read them."
                   },
                   {
-                    "key": "id",
-                    "title": "Item",
-                    "width": 430,
-                    "tooltip": "The folder or file in the record."
-                  },
-                  {
                     "key": "role",
                     "title": "Role",
-                    "width": 100,
-                    "tooltip": "Measurement, calibration or metadata."
+                    "width": 160,
+                    "tooltip": "Measurement, calibration or metadata; shared ×n: a calibration used by n measurements, stored once."
                   },
                   {
                     "key": "holds",
@@ -589,7 +589,9 @@
                     "enabled_when": "has_ndx",
                     "description": "Look at the bursts of the item's .mmfdb.pto before approving."
                   }
-                ]
+                ],
+                "tree_key": "parent",
+                "expanded_attr": "expanded"
               }
             },
             {

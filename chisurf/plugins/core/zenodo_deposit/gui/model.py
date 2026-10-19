@@ -100,6 +100,8 @@ class ZenodoDepositModel:
         self.add_role = "measurement"
         self.add_name = ""
         self.add_group = ""
+        #: The measurements whose calibrations the review table shows (row keys).
+        self.expanded: set[str] = set()
         #: How a selected Markdown file is shown: ``Preview`` (rendered) or ``Source``.
         self.md_mode = "Preview"
         #: ``"files"`` or ``"folder"`` while the host should show its file dialog.
@@ -178,6 +180,9 @@ class ZenodoDepositModel:
             self.record, self.message = None, f"could not open {row['name']}: {exc}"
             return
         self.item_id = ""
+        # every measurement opens with its calibrations shown (the set is the table's own)
+        self.expanded.clear()
+        self.expanded.update(i.id for i in self.record.items if i.role == "measurement")
         self.message = f"opened {self.record.name}"
 
     # ── step 1: a new record by hand ─────────────────────────────────────
@@ -511,21 +516,57 @@ class ZenodoDepositModel:
         return re.sub(r"(?<=[.;]) (?=[A-Z<])", "\n", text)
 
     # ── items of the selected record ─────────────────────────────────────
+    def uses(self, it) -> list[str]:
+        """The calibrations a measurement uses: its container's links, else its group's."""
+        if it.uses:
+            return list(it.uses)
+        if it.role == "measurement" and it.group and self.record is not None:
+            return [c.id for c in self.record.items
+                    if c.role == "calibration" and c.group == it.group]
+        return []
+
+    def _row(self, i, key: str, parent: str = "", shown: str = "", shared: int = 0) -> dict:
+        return {"key": key, "parent": parent, "id": i.id, "item": shown or i.id,
+                "status": STATUS_LABELS.get(i.status, i.status)
+                + (" (changed)" if i.review.status == "approved" and i.status != "approved"
+                   else ""),
+                "role": i.role + (f" · shared ×{shared}" if shared > 1 else ""),
+                "group": i.group, "files": i.files, "size": _size(i.bytes),
+                "holds": (f"{i.files} file{'s' if i.files != 1 else ''} · " if i.files
+                          else "JSON · ") + _size(i.bytes),
+                "flags": ("✖ " if i.errors else "") + (f"⚠ {len(i.flags)}" if i.flags else ""),
+                "act": "" if i.status == "approved" or self.job.running else "Approve",
+                "detail": self._item_tooltip(i)}
+
     @property
     def items(self) -> list[dict]:
+        """The review table: each measurement with its calibrations nested under it.
+
+        A calibration serves every measurement of its set-up and day, so it is
+        listed under each one (``shared ×2``) -- it is one item, stored once,
+        and one decision covers every place it is shown. A calibration no
+        measurement uses is listed on its own, before the metadata files.
+        """
         if self.record is None:
             return []
-        return [{"id": i.id, "status": STATUS_LABELS.get(i.status, i.status)
-                 + (" (changed)" if i.review.status == "approved" and i.status != "approved"
-                    else ""),
-                 "role": i.role, "group": i.group, "files": i.files,
-                 "size": _size(i.bytes),
-                 "holds": (f"{i.files} file{'s' if i.files != 1 else ''} · " if i.files
-                           else "JSON · ") + _size(i.bytes),
-                 "flags": ("✖ " if i.errors else "") + (f"⚠ {len(i.flags)}" if i.flags else ""),
-                 "act": "" if i.status == "approved" or self.job.running else "Approve",
-                 "detail": self._item_tooltip(i)}
-                for i in self.record.items]
+        items = self.record.items
+        by_id = {i.id: i for i in items}
+        measurements = [i for i in items if i.role == "measurement"]
+        uses = {m.id: [c for c in self.uses(m) if c in by_id] for m in measurements}
+        count: dict[str, int] = {}
+        for cs in uses.values():
+            for c in cs:
+                count[c] = count.get(c, 0) + 1
+        rows = []
+        for m in measurements:
+            rows.append(self._row(m, m.id))
+            for c in uses[m.id]:
+                rows.append(self._row(by_id[c], f"{m.id}>{c}", m.id,
+                                      c.removeprefix("calibrations/"), count[c]))
+        rows += [self._row(i, i.id) for i in items
+                 if i.role == "calibration" and i.id not in count]
+        rows += [self._row(i, i.id) for i in items if i.role not in ("measurement", "calibration")]
+        return rows
 
     @staticmethod
     def _item_tooltip(it) -> str:

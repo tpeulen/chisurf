@@ -292,3 +292,21 @@ def test_a_markdown_file_is_previewed_rendered_or_as_source(model):
     assert model.md_view == "source" and not model.preview_md_rendered and model.preview_md
     model.select_item({"id": "metadata.cif"})
     assert model.md_view == ""
+
+
+def test_calibrations_are_nested_under_the_measurements_that_use_them(model):
+    model.select_record(model.records[0])
+    rec = model.record
+    irf = "calibrations/2014-08-12_pq-hydraharp/h2o-scatter-irf"
+    meas = "measurements/2014-08-12_7.5M-urea"
+    rec.item(meas).uses = [irf]
+    rows = model.items
+    keys = [r["key"] for r in rows]
+    assert keys.index(meas) + 1 == keys.index(f"{meas}>{irf}")
+    child = rows[keys.index(f"{meas}>{irf}")]
+    assert child["parent"] == meas and child["id"] == irf
+    assert child["item"] == "2014-08-12_pq-hydraharp/h2o-scatter-irf"
+    assert irf not in keys  # listed under its measurement, not again on its own
+    assert meas in model.expanded
+    model.approve_item(child)  # a decision on the nested row is on the one item
+    assert rec.item(irf).status == "approved"
