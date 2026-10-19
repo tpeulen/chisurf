@@ -7,10 +7,10 @@
     "status": "ai-reviewed"
   },
   "analysis_dock.md": {
-    "date": "2026-10-13",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "22779aca7a4d441c353b85e137ee07d60c1c486f07e503119fe571e32a57d4e1",
+    "sha256": "eb7c7542f8b3d26cd050e4f66f2cba74bc60155539dec83f067b74e41b90c203",
     "status": "ai-reviewed"
   },
   "analysis_of_live_cell_experiments.md": {

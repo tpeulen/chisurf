@@ -13,7 +13,7 @@ matching {doc}`concept </concepts/index>` page for the underlying theory. Figure
 are real output — matplotlib plots produced by [`make_figures.py`](make_figures.py)
 from synthetic data using the very functions the guide describes, and GUI
 screenshots grabbed from the real widgets by
-[`make_screenshots.py`](make_screenshots.py) under an offscreen Qt platform.
+[`make_screenshots.py`](make_screenshots.py) with the emtk apps drawn offscreen.
 
 The guides are grouped by what you are trying to measure. If you are starting
 from a raw photon file, begin with *Photon data and the burst pipeline*; if you
@@ -259,7 +259,7 @@ irf_estimation
 | [Pair correlation and flow maps: where molecules go](55_pair_correlation.md) | `experiments.ics.pair_correlation`, `experiments.ics.flow_map` |
 | [FCS saturation and focal-volume expansion](56_fcs_saturation.md) | `fcs_saturation` calculator, `FCS (kinetics)` model, `chisurf.core.fluorescence.fcs.saturation` |
 | [Fitting an MFD burst histogram](57_mfd_fitting.md) | `MFD` experiment, `MFD 2D` model, `chisurf.core.fluorescence.mfd` |
-| [Fusing bursts the same molecule produced](58_burst_fusion.md) | `burst_fusion` plugin, `core.fluorescence.burst.fusion`, `csc fusion` |
+| [Fusing bursts the same molecule produced](58_burst_fusion.md) | `burst_fusion` plugin, `core.fluorescence.burst.fusion`, `csc burst-fusion` |
 | [Global analysis: linking parameters across fits](60_global_analysis.md) | `fitting.fit.link_parameter`, `core.models.global_model`, `globalview` plugin |
 | [Maximum-entropy decay analysis](62_maxent_decay.md) | `maxent_decay` plugin, `tcspc_maxent_*` descriptions, `math.regularization` |
 | [Driving ChiSurf from its console](59_console.md) | `chisurf.gui.chinsole`, `chisurf.core.console`, `cs.fits`, `%run -i` |
@@ -275,7 +275,7 @@ irf_estimation
 | [The phasor calculator](77_phasor_calculator.md) | `phasor_calculator` (Calculators hub), `img_pixel_phasor.analysis` |
 | [Model comparison and batch fits](78_model_comparison_and_batch.md) | `f_test`, `batch_analysis`, `core.math.statistics` |
 | [HydroPro: diffusion coefficients from a structure](79_hydropro.md) | `hydropro` plugin, HYDROPRO / HYDRO++ |
-| [QuEst: predicting dye quenching at a labelling site](80_quenching_estimator.md) | `quenching_estimator`, `modules/quest` |
+| [QuEst: predicting dye quenching at a labelling site](80_quenching_estimator.md) | `quenching_estimator` |
 | [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](81_trajectory_tools.md) | `traj_tools` (Structure → Trajectory → Traj Tools), `core.structure.trajectory_data` |
 | [FRET lines: static, dynamic and model lines for the E–lifetime plot](82_fret_lines.md) | `fret_line` (Calculators hub), `core.fluorescence.fret.lines` |
 | [Spectra, overlap integrals and R₀](83_spectra_and_r0.md) | `spectra_downloader` (Spectroscopy menu), Förster calculator (TCSPC FRET κ² row → calc R0) |
@@ -309,7 +309,7 @@ PYTHONPATH=. python docs/guides/make_screenshots.py
 
 The calculators and generators that are native emtk apps (PSF, RICS precision, phasor, FCS
 saturation, lifetime-FCS simulator, IRF estimator, synthetic decay, H2MM) are rendered headlessly
-by `emtk.testing.Driver` (`docs/guides/screenshots/emtk_shot.py`, no Qt); the PSF figure comes
+by `emtk.testing.Driver` (`docs/guides/screenshots/emtk_shot.py`); the PSF figure comes
 from `docs/guides/make_screenshot_psf.py`.
 
 The per-guide screenshots of guides 02–67 and 83–85 live in

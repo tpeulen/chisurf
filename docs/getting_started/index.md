@@ -118,15 +118,15 @@ under an existing ribbon group takes that group's colour.
 Every plot — fit windows, plugin plots, image views — answers the mouse the
 same way: drag to pan, turn the wheel to zoom about the pointer. While the view
 is panned or zoomed, a small boxed **A** sits in the plot's lower-left corner;
-click it and the view fits all the data again (as in pyqtgraph). It goes away
+click it and the view fits all the data again. It goes away
 once the plot follows its data, and new data then refits the view on its own —
 a zoomed plot keeps your zoom until you press **A**.
 
-## Settings and fonts
+## Settings, theme and fonts
 
 **Settings** (*File → Setup* in the **Tools** tree) holds every preference; its **Fonts**
 destination sets the interface, editor and documentation fonts and the magnification of the
-whole window, applied at once. See [Settings and fonts](settings.md).
+whole window, applied at once. See [Settings, theme and fonts](settings.md).
 
 ## Your first analysis
 

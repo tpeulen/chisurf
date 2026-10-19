@@ -908,7 +908,7 @@ settings_panel off      # put it away
 There is no separate configuration dialog any more. `Cfg`, **Setting → Edit
 All...** and a typed `config` all open this panel: the settings change the
 picture, so they belong in front of it rather than in a window that covers it —
-and a Qt dialog is invisible to the browser build.
+and a separate dialog is invisible to the browser build.
 
 ### How big the chrome draws
 
@@ -1905,7 +1905,7 @@ does not draw, and reports rather than dropping in silence:
 
 ## Headless and scripted use
 
-The viewer is a Qt widget, but the parts that compute do not need a window. The
+The viewer is a window, but the parts that compute do not need a window. The
 surface-area calculation is a plain function:
 
 ```python
@@ -1967,7 +1967,7 @@ OpenGL viewport does need a display, so `png` will not work headlessly while
 | --- | --- |
 | Selection grammar | PyMOL's keyword table, 85 keywords with abbreviations |
 | Selection scope | Every loaded object, as PyMOL's; groups are ordinary names |
-| Presets | All 15 of PyMOL's, transcribed; skipped steps are reported |
+| Presets | All 15 of PyMOL's, under PyMOL's names; skipped steps are reported |
 | Camera, `get_view`/`set_view` | Matches PyMOL's 18-float tuple exactly |
 | Object menus (A/S/H/L/C) | 1:1 with PyMOL's |
 | `get_area` | Follows `dot_solvent` / `dot_density` / `solvent_radius` |

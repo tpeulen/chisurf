@@ -39,7 +39,6 @@ normal-mode ensemble in
 `chisurf/plugins/modelling/fret/examples/olga_t4l/`:
 `3GUN_NMSim_cl-rep_894.dcd` (894 frames) with the topology
 `3GUN_NMSim_cl-rep-001.pdb` (1293 heavy atoms, 162 Cα).
-The native FRET figure also shows the hgbp example described in that section.
 
 ## Align
 
@@ -201,13 +200,12 @@ The hub's FRET tab hosts the same native panel as the standalone FRET window.
 Its **Reference**, **Dipole atoms**, **Parameters** and **Process** sections
 retain file browse and drops, settings, output selection and the live log.
 
-```{figure} figures/traj_tools_fret_native_hgbp.png
+```{figure} figures/traj_tools_fret.png
 :name: fig-traj-tools-fret
 :width: 100%
 
-The native FRET panel inside Trajectory Tools after processing the hgbp
-trajectory at stride 4, R0 = 52 Å and τ0 = 4 ns. The donor atom indices are
-(1, 20), the acceptor indices (3000, 3010); the log confirms 116 output frames.
+The FRET panel inside Trajectory Tools after **Process trajectory** on the olga_t4l example (894 frames, stride 1):
+donor dipole atoms CA and CB of A36, acceptor dipole atoms CA and CB of A132, R0 = 52 Å, τ0 = 4 ns.
 ```
 
 * **Trajectory**, **Topology** (the PDB naming the atoms; either may be chosen first), **Stride**.
@@ -224,12 +222,11 @@ trajectory at stride 4, R0 = 52 Å and τ0 = 4 ns. The donor atom indices are
 * **▶ Process trajectory** writes the table. With several trajectories each
   one gets `<name>.<i>.csv`.
 
-The inherited defaults are stride 1, R0 = 52 Å, τ0 = 2.6 ns, t-step = 1 ns and
-dipoles enabled. The worked scenes deliberately use a 4 ns donor lifetime.
-For the hosted figure, choose `hgbp1_transition.dcd` with `topol.pdb` from
-`test/data/atomic_coordinates/trajectory/hgbp1/` and the atom indices above.
-At stride 4 and τ0 = 4 ns this produces the accepted 116×6 table byte-for-byte;
-the distance, orientation and rate are also checked directly from coordinates.
+The defaults are stride 1, R0 = 52 Å, τ0 = 2.6 ns, t-step = 1 ns and
+dipoles enabled; the figure uses τ0 = 4 ns. A second example is
+`hgbp1_transition.dcd` with `topol.pdb` in
+`test/data/atomic_coordinates/trajectory/hgbp1/`. The distance, orientation and
+rate are checked directly from coordinates.
 
 Open the same panel as a standalone native window:
 
@@ -383,7 +380,7 @@ Explicit per-residue atom lists keep their original meaning.
 The shared native trajectory shell reads initial width/height from the tool's
 view spec before arranging its sections; an older spec defaults to 1100×720.
 Rotate/translate explicitly declares that size. Resizing is remembered by the
-native launcher, and Qt limits startup dimensions to the display. Geometry
+native launcher, and startup dimensions are limited to the display. Geometry
 does not change matrices, translation, stride or exported coordinates.
 
 The FRET, energy, align, convert, join, clash-filter and topology tools now

@@ -17,7 +17,7 @@ see {ref}`concept-scan-precision`.
 ## Open the tool
 
 It lives in **Tools → Calculators**, as the **📐 RICS precision** entry
-in the calculator list (or standalone as *Tools → Calculators → RICS precision*). It
+in the calculator list (standalone: `csc rics-precision` or `csg_calculators`). It
 sits with the calculators rather than in the imaging pipeline because it is one:
 it consumes no dataset, opens no file and produces no analysis — it turns the
 settings you type in into a predicted error, exactly like the FRET and FCS

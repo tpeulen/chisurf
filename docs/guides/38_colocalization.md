@@ -246,4 +246,4 @@ scatter shows the computed histogram with increasing channel intensities on
 its axes; flipped texture coordinates now render correctly
 without changing coefficients or histogram counts.
 
-![Computed colocalization intensity histogram](figures/w6g_coloc_scatter.png)
+![Computed colocalization intensity histogram](figures/coloc_scatter.png)

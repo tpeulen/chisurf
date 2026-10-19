@@ -97,33 +97,31 @@ Edit `~/.chisurf/experiment_configs.yaml` and add the dotted path under the
 ```yaml
 tcspc:
   models:
-    - chisurf.core.models.description.tcspc_lifetime
     - my_package.my_models.MyScaledModel        # <- your model
 ```
 
-:::{warning}
-**Lists replace, they do not merge.** The user file is deep-merged onto the
-packaged default, but the merge recurses only into *dictionaries* — any list you
-specify **replaces** the packaged list wholesale. If you write a `models:` block
-containing only your model, you will lose every built-in model for that
-experiment. Copy the packaged list and append to it.
+:::{note}
+**`models:` lists add, other lists replace.** The user file is deep-merged onto the
+packaged default. For a `models:` list the shipped models always stay and the
+entries you add are appended, so a user file that names only your model keeps
+every built-in model, and a model added or renamed in a later release still
+appears. Any other list (`readers:`) **replaces** the packaged one wholesale.
 
 The packaged default lives at
-{src}`chisurf/core/settings/experiment_configs.yaml` inside the installation; use it
-as the reference for what to copy.
+{src}`chisurf/core/settings/experiment_configs.yaml` inside the installation.
 :::
 
 Your user copy is created on first run by `copy_settings_to_user_folder`, which
 copies each packaged settings file **only if it does not already exist**. An
 existing `~/.chisurf/experiment_configs.yaml` is therefore never refreshed
-automatically, so a file written by an older ChiSurf will not gain experiments or
-models added since. The boarding plugin can re-sync it from the packaged default
-when entries appear to be missing.
+automatically, so a file written by an older ChiSurf keeps its other entries
+(`readers:`, `experiment_types:`) as they were. The boarding plugin can re-sync it
+from the packaged default when entries appear to be missing.
 
 ### 1.4 Restart
 
-Experiments are constructed once at startup (`init_setups` →
-`_setup_experiment`). Restart ChiSurf; the model then appears in
+Experiments are registered once at startup
+(`chisurf.core.experiments.bootstrap.ensure_experiments_registered`). Restart ChiSurf; the model then appears in
 `Experiment.model_names` and in the **Model** combobox for that experiment.
 
 ---
@@ -163,19 +161,19 @@ def my_callback():
 
 ## 4. Error handling and logging
 
-Model setup is defensive at every step, which means **failures are silent in the
-GUI and only visible in the log**:
+Model registration is defensive at every step, which means **a broken entry is
+skipped without a dialog**:
 
 - if the dotted path cannot be imported or the attribute is missing,
-  `_resolve_class` logs `Failed to resolve class …` and returns `None`;
-- if the class cannot be added, `_setup_experiment` logs
-  `Failed to setup model … in <experiment>`;
+  `resolve_class` returns `None` and the entry is skipped (it logs only at debug
+  level: `cannot import … ` / `… has no attribute …`);
 - a broken user model never prevents the other models or experiments from
   loading.
 
-If your model does not appear in the dropdown, check the ChiSurf log — a typo in
-the dotted path and a module that is not importable both fail this way, and
-neither raises a dialog.
+If your model does not appear in the dropdown, check the dotted path and that the
+module imports in the same environment
+(`python -c "import my_package.my_models"`); turn on debug logging to see the
+reason.
 
 ---
 
@@ -250,8 +248,8 @@ file in that folder is ignored.
 - [ ] Set a short, descriptive `name` — it is the dropdown label.
 - [ ] Make the module importable (installed package or `PYTHONPATH`).
 - [ ] Add its dotted path to the `models:` list of the right experiment section
-      in `~/.chisurf/experiment_configs.yaml`, **keeping the existing entries**.
-- [ ] Restart ChiSurf and check the log if it does not appear.
+      in `~/.chisurf/experiment_configs.yaml`.
+- [ ] Restart ChiSurf; if it does not appear, check the dotted path and the import.
 
 **Changing a built-in model**
 

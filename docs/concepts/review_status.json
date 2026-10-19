@@ -147,10 +147,10 @@
     "status": "ai-reviewed"
   },
   "fcs_correlation.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "51bea5c8c38f2f6fdc3e8833622b8e46d692979a8e86801cc3f0ca3520407228",
+    "sha256": "a8be0f5676f5a6fe904f3eb8e87ccf330460d26a782663a1bda7d48455d5a90a",
     "status": "ai-reviewed"
   },
   "fcs_saturation.md": {
@@ -182,10 +182,10 @@
     "status": "ai-reviewed"
   },
   "flrcif_vocabulary.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-19",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "24024cc1c87c1647fab47a3ffdb20c884f5e138080c1148c193c066a105ccc75",
+    "sha256": "e9e01865ebfc4f3dbc0dc280e567ba75c35be8986ca789e2085a839d18d9b1b1",
     "status": "ai-reviewed"
   },
   "frap.md": {

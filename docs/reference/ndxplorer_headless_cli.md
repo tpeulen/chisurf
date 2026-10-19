@@ -51,14 +51,15 @@ csc burst-selection analyze m000.spc m001.spc \
 
 # 2) Burst Selection -> ndX filter
 csc ndxplorer filter --from-mmfdb <output_folder_artifact_id> --db mmfdb.sqlite \
+    --token "$MMFDB_TOKEN" \
     --select "Number of Photons:50-" \
     --to-mmfdb --sample-id <sample_id>
 #   => writes a FILTERED burst folder beside the same TTTR and registers it as a
 #      new burst selection (operation_type="burst_filtering", parent=source).
 ```
 
-`--from-mmfdb`/`--db` resolve against the configured database by default; pass the
-**same** DB to both CLIs for a real round trip. With `--to-mmfdb` omitted, the
+The `csc ndxplorer` commands need `--db` and a session token (`--token`, or the
+`MMFDB_TOKEN` environment variable); pass the **same** DB to both CLIs for a real round trip. With `--to-mmfdb` omitted, the
 command only writes the filtered folder and prints its path.
 
 ## 2. ndX headless imaging
@@ -90,6 +91,7 @@ the pixel grid if needed.
 
 ```bash
 csc ndxplorer image --from-mmfdb <tttr_or_image_artifact_id> --db mmfdb.sqlite \
+    --token "$MMFDB_TOKEN" \
     --map lifetime --roi roi_mask.tiff \
     --out lifetime_map.tiff \
     --to-mmfdb --sample-id <sample_id>

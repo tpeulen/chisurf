@@ -72,7 +72,7 @@ a saved correlation result.
 
 
 **Spectroscopy ▸ Correlation ▸ Burst-wise FCS** (also
-the *Burst FCS* tool of **Spectroscopy ▸ Burst Analysis**, and *Burst-wise FCS*
+the *Burst FCS* tool of **Spectroscopy ▸ Single-Molecule ▸ Burst Analysis**, and *Burst-wise FCS*
 in the [FCS hub](75_fcs_toolbox.md)) correlates each burst
 separately, using only the photons of that burst ± **Padding**. The window has
 **Run FCS**, **Stop**, **Example**, **Guide** and **Help** on top, three tabs on
@@ -148,24 +148,12 @@ Outputs are prepared before publication; cancellation or failure preserves
 previous outputs. **Stop**, or closing the native app, requests
 worker cancellation; closing also shuts down its owned executor.
 
-```{figure} figures/fcs_native_bh132_burst_simple.png
-:name: fig-16-burst-fcs
-:width: 100%
-
-Measured BH132 fixture, with three explicitly indexed BST ranges and one
-`green_ACF` pair (channels 0, 1 on both sides), zero padding, three bins and
-twelve cascades, with full 0–4095 micro-time gates. The Simple run produced
-three curves and TD4/PTO outputs;
-the selected curve's diffusion-time estimate is the yellow marker. This
-single-pair capture does not demonstrate a FRET exchange fit.
-```
-
-```{figure} figures/fcs_native_bh132_burst_settings.png
+```{figure} figures/burst_fcs_settings.png
 :name: fig-16-burst-fcs-settings
 :width: 100%
 
-The same measured run's Settings tab: the 0.002 ms lower fit bound and
-0.001 / 20 ms MaxEnt grid presets are visible. The Simple result above does
+The Settings tab after **Load example**: Simple mode, three FCS bins, 20 cascades, and the 0.002 ms lower fit bound
+(**t_min**) and 0.001 / 20 ms MaxEnt grid presets. The Simple result does
 not establish numerical parity of a MaxEnt distribution.
 ```
 

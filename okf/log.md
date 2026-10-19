@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-19
+
+- 2026-10-19: docs review gate: the 26 pages edited after their AI review re-read against the code and re-signed (dead figures, menu paths, csc names, user-model merge rules, ndX CLI auth, Qt leftovers); figures/tables registers regenerated.
+
 ## 2026-10-18
 
 - Support external raw files as sidecar in PTO containers: added ptolib streaming read from external payload paths when size == 0, tttrlib TTTR reader and pto_read_events sidecar delegation, chisurf Measurement.create/add_instrument/is_sidecar/external_path/verify/extract sidecar handling, and tttr_to_pto convert as_sidecar mode (43 passed tests).

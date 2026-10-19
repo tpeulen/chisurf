@@ -32,7 +32,7 @@ and micro-time shift. **Assign LUT…** assigns a LUT file to the selected row;
 **Configure LUTs…** opens the LUT tools window of the editor (compute from the
 read calibration decay with a linear region or automatically, assign, export, remove
 for one channel); **Adjust shifts…** aligns the channels on the decay. The standalone
-**TTTR LUT Tools** window (*File → Setup → Settings*, entry **TTTR LUT Tools**) does the same on its own: its
+**TTTR LUT Tools** window (*Tools → TTTR → LUT Tools*) does the same on its own: its
 **Compute LUT** mode is the tool you use; **settings.tttr.json (optional)** is
 file interchange only.
 
