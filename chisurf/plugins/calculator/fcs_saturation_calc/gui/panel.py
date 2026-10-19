@@ -81,6 +81,8 @@ class SaturationPanel:
 
         The dye list is a repository query (the first one opens the MMFDB: ~250 ms), so it is read on a worker
         thread and at most once a second; until the first read lands the combo offers the current dye only.
+        The worker wakes the host once when the list lands (:meth:`_read_dyes`): the window does not
+        animate while it waits, so an idle tool lets the host sleep however slow the database is.
         """
         now = time.monotonic()
         cached = getattr(self, "_dye_options", None)

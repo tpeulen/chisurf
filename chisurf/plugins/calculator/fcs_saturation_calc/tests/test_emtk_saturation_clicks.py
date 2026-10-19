@@ -806,3 +806,22 @@ def test_the_flow_works_in_the_small_window_too(drv):
     assert drv.app.status == "Computed."
     for name in TABS:
         tab(drv, name)
+
+
+def test_reading_the_dye_list_does_not_animate_and_wakes_the_host_once(drv, monkeypatch):
+    """A slow MMFDB must not keep an idle window drawing: the worker asks for one frame instead."""
+    import threading
+
+    gate, woken = threading.Event(), []
+    monkeypatch.setattr(drv.app.model, "dye_names", lambda: gate.wait(10) and ["Alexa488"])
+    monkeypatch.setattr(drv.app, "request_frame", lambda: woken.append(1))
+    panel = drv.app.panel
+    panel.wait()
+    panel._dye_options = None
+    panel.dye_options()
+    assert panel._dye_loading
+    assert not drv.app.animating()
+    gate.set()
+    panel.wait()
+    assert woken == [1]
+    assert ("Alexa488", "Alexa488") in panel.dye_options()
