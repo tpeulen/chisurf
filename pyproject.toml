@@ -47,13 +47,10 @@ dependencies = [
     # IMP.bff unguarded. Bare `imp` (the full IMP suite) is no longer needed --
     # see pixi.toml and okf/references/imp-ecosystem.md.
     "imp-bff",
-    # Imported at module scope in shipped code and previously left out of this
-    # list: PyOpenGL by the molecular view.
     # pandas, scikit-learn and scikit-image are deliberately NOT here:
     # chisurf.core.datastore (tttrlib.DataStore) is the storage model everywhere
     # in the tree, every estimator the tree uses is in chisurf.core.ml, and the
     # region measurements and segmentation primitives are in chisurf.core.roi.
-    "PyOpenGL",
     # WebGPU, which emtk draws with. wgpu is the graphics API; rendercanvas is the
     # per-platform surface and the offscreen backend the headless render tests
     # depend on.
@@ -72,7 +69,6 @@ dependencies = [
     "emtk>=0.1.20",
     "PyYAML",
     "packaging",
-    "typing-extensions",
     "python-docx",
     "ihm",
     "markdown",
@@ -82,8 +78,6 @@ dependencies = [
     # report everything valid.
     "jsonschema",
     "pyzmq>=25.0",
-    "ruff>=0.4",
-    "sqlalchemy>=2.0",
     # Data images are TIFF, through tttrlib's bundled libtiff behind
     # chisurf.core.fio.image. Pillow is here for pictures, not measurements:
     # ChiMOL's render export and the docs figure tooling.

@@ -109,7 +109,6 @@ requirements:
     # nothing in this tree imports IMP/IMP.atom/IMP.em/IMP.rmf, only IMP.bff.
     # PyPI name is imp-bff. See okf/references/imp-ecosystem.md, PRD-137.
     - imp-bff
-    - typing-extensions >=4.14
     - pyyaml
     # msgpack-python provides `import msgpack` (the plain `msgpack` conda pkg is
     # the C lib); it backs the MMFDB payload codec / JSON-RPC service.
@@ -156,7 +155,6 @@ requirements:
     # `run:` installed a compiler dependency into every user's environment.
     # ipython and nbformat removed: the console is chinsole, and .ipynb files
     # are read and written by code_editor/ipynb.py.
-    - pyopengl
     # guidata/guiqwt removed: guiqwt's users (global_tcspc, surfaceplot) were
     # ported to chiplot, and guidata's DataFrameEditor was replaced by the
     # in-tree chitable widget family. No third-party GUI toolkit remains.
@@ -170,10 +168,11 @@ requirements:
     - pygments
     # Imported by the application but previously left to arrive transitively --
     # true only by luck, and a packaged install is where that luck runs out.
-    # Solved cost of declaring them: +2 packages (sqlalchemy and its greenlet);
+    # sqlalchemy removed: mmfdb's sql_backend imports it inside its postgres
+    # functions only and raises "install mmfdb[postgres]" without it; chisurf's
+    # sqlite path never reaches it. PyOpenGL removed with the Qt molecular view.
     # the rest were already in the closure.
     - pyzmq >=25.0          # the ZMQ/JSON-RPC client and server
-    - sqlalchemy >=2.0      # the MMFDB ORM backend
     - packaging             # version comparisons in the startup shim
     - pillow                # PNG/JPEG/RGB-TIFF reader; TIFF stacks go through
                             # tttrlib's bundled libtiff instead

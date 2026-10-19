@@ -25,7 +25,6 @@ python = "3.12.*"
 # must be present here and not only in the `build` feature.
 pip = ">=26.0.1,<27"
 numpy = "*"
-typing-extensions = ">=4.14"
 pyyaml = "*"
 markdown = "*"
 # HDF5 is a BUILD dependency of tttrlib on every platform — `find_package(HDF5)`
@@ -76,7 +75,10 @@ pillow = "*"
 # nothing shipped imports IPython. nbformat was dropped: the notebook editor
 # reads and writes .ipynb through chisurf/plugins/core/code_editor/ipynb.py,
 # byte-identical to nbformat's output (nbformat stays the test oracle).
-pyopengl = "*"
+# pyopengl was dropped: only the deleted Qt molecular view imported it.
+# sqlalchemy was dropped: mmfdb imports it inside its postgres functions only and
+# raises "install mmfdb[postgres]" without it; the sqlite path never reaches it.
+# typing-extensions was dropped: nothing in the tree imports it.
 # WebGPU: the graphics API emtk draws the ChiSurf window, the plugins and chimol
 # with, and the platform surface plumbing (native windows, offscreen rendering).
 # The conda-forge package is `wgpu-py` (PyPI's is `wgpu`, imported as `wgpu`
@@ -104,7 +106,6 @@ ihm = "*"
 # now lives in chisurf.core.ml; HDBSCAN is the photon library's own
 # (tttrlib.hdbscan). See okf/subsystems/machine-learning.md.
 pygments = "*"
-sqlalchemy = ">=2.0"
 # Imported directly, so declared directly rather than left to arrive with
 # something else: the ZMQ transport, the AV quenching kernel, and the version
 # comparison in the startup shim.
