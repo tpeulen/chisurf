@@ -26,7 +26,7 @@ highlighting for `metadata.cif`, JSON for `origins.json`).
 Click a record (a folder never scanned is scanned when opened), then click
 each item. Start with the flagged ones: hover a row or read the panel below
 the table for why it is flagged, where it came from on the server, and which
-files it holds. **Approve** or **Reject**, optionally with a note. Changing a
+files it holds. The code editor under the buttons lists a folder's files with sizes, or shows a metadata file; **Open in ndX** opens the item's `.mmfdb.pto` to look at the bursts. Then **Approve** or **Reject**, optionally with a note. Changing a
 folder after approving it puts it back to *Pending (changed)* — press
 *Rescan folder* after any change.
 

@@ -23,5 +23,8 @@
   },
   "requires": {
     "tttr_splitter": "*"
+  },
+  "optional_requires": {
+    "ndxplorer": "*"
   }
 }

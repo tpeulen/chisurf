@@ -48,12 +48,11 @@ PRODUCTION = "https://zenodo.org/api"
 def _md(text: str) -> str:
     """Text shown verbatim inside markdown.
 
-    File globs and names carry ``*`` and ``_``, which markdown would read as
-    emphasis, and emtk's renderer has no backslash escapes -- so any word
-    holding one is shown as code instead.
+    File globs carry ``*``, which markdown would read as emphasis, and emtk's
+    renderer has no backslash escapes -- so a word holding one is shown as
+    code instead. (Underscores inside words are kept as they are.)
     """
-    return " ".join(f"`{w}`" if any(c in w for c in "*_") and "`" not in w else w
-                    for w in str(text).split(" "))
+    return " ".join(f"`{w}`" if "*" in w and "`" not in w else w for w in str(text).split(" "))
 
 
 def _size(n: int) -> str:
@@ -66,7 +65,7 @@ def _size(n: int) -> str:
 class ZenodoDepositModel:
     """The records under a folder, the selected record's items and its gate."""
 
-    def __init__(self, client_factory=None) -> None:
+    def __init__(self, client_factory=None, ndx_opener=None) -> None:
         self.data_root = os.environ.get("MMFDB_DEPOSIT_ROOT", DEFAULT_ROOT)
         self.note = ""
         self.sandbox = False
@@ -79,6 +78,8 @@ class ZenodoDepositModel:
         self.job = BackgroundJob()
         self.busy_what = ""
         self._client_factory = client_factory or (lambda base: ZenodoClient(base=base))
+        #: ``opener(path)`` -- ndX's ``open_in_ndx`` unless a test supplies one.
+        self._ndx_opener = ndx_opener
         self.refresh_records()
 
     # ── records under the root ───────────────────────────────────────────
@@ -172,15 +173,11 @@ class ZenodoDepositModel:
         if it.description:
             lines += [f"**Content:** {_md(it.description)}", ""]
         if it.origin:
-            lines += [f"**Original location:** `{it.origin}`", ""]
-        lines += [f"**Holds:** {it.files} file{'s' if it.files != 1 else ''}, {_size(it.bytes)}", ""]
-        folder = self.record.folder / it.id
-        if folder.is_dir():
-            names = sorted(p.relative_to(folder).as_posix() for p in folder.rglob("*")
-                           if p.is_file())
-            shown = names[:12]
-            lines += ["**Files:** " + ", ".join(f"`{n}`" for n in shown)
-                      + (f" … and {len(names) - len(shown)} more" if len(names) > 12 else ""), ""]
+            lines += [f"**Original location:** {_md(it.origin)}", ""]
+        holds = f"{it.files} file{'s' if it.files != 1 else ''}, {_size(it.bytes)}"
+        if self.ndx_container:
+            holds += f" -- burst analysis: {self.ndx_container.name} (Open in ndX)"
+        lines += [f"**Holds:** {holds}", ""]
         r = it.review
         if r.status != "pending" or r.by:
             lines += [f"**Review:** {r.status} by {_md(r.by)} at {r.at}"
@@ -191,20 +188,66 @@ class ZenodoDepositModel:
     # ── the selected metadata file, for the code editor ──────────────────
     @property
     def preview_kind(self) -> str:
-        """``json``, ``mmcif``, ``markdown``, ``text`` or ``none`` (a folder)."""
+        """``json``, ``mmcif``, ``markdown``, ``text``, ``listing`` (a folder) or ``none``."""
         it = self.item
-        if it is None or not (self.record.folder / it.id).is_file():
+        if it is None:
             return "none"
-        return {".json": "json", ".cif": "mmcif", ".md": "markdown"}.get(
-            Path(it.id).suffix.lower(), "text")
+        p = self.record.folder / it.id
+        if p.is_dir():
+            return "listing"
+        if not p.is_file():
+            return "none"
+        return {".json": "json", ".cif": "mmcif", ".md": "markdown"}.get(p.suffix.lower(), "text")
+
+    @property
+    def editor_kind(self) -> str:
+        """Which code editor shows the selection: a folder listing is plain text."""
+        kind = self.preview_kind
+        return "text" if kind == "listing" else kind
 
     @property
     def preview_text(self) -> str:
-        if self.preview_kind == "none":
+        kind = self.preview_kind
+        if kind == "none":
             return ""
         p = self.record.folder / self.item.id
+        if kind == "listing":
+            from mmfdb.deposit.record import content_files
+
+            files = content_files(p)
+            width = max((len(f.relative_to(p).as_posix()) for f in files), default=0)
+            return "\n".join(f"{f.relative_to(p).as_posix():<{width}}  {_size(f.stat().st_size):>10}"
+                             for f in files)
         text = p.read_text(errors="replace")
         return text if len(text) < 2_000_000 else text[:2_000_000] + "\n… (truncated)"
+
+    # ── ndX ──────────────────────────────────────────────────────────────
+    @property
+    def ndx_container(self) -> Path | None:
+        """The burst-analysis container of the selected item, if it has one."""
+        it = self.item
+        if it is None:
+            return None
+        p = self.record.folder / it.id
+        if p.is_file():
+            return p if p.name.endswith(".pto") else None
+        return next(iter(sorted(p.glob("*.mmfdb.pto"))), None) if p.is_dir() else None
+
+    def open_in_ndx(self) -> None:
+        """Open the selected item's container in ndX, to look at the bursts before approving."""
+        path = self.ndx_container
+        if path is None:
+            return
+        try:
+            if self._ndx_opener is not None:
+                self._ndx_opener(path)
+            else:
+                from chisurf.plugins.ndxplorer.gui.app import open_in_ndx
+
+                open_in_ndx(path)
+            self.message = f"opened {path.name} in ndX"
+        except Exception as exc:  # noqa: BLE001 - shown to the reviewer
+            self.message = f"could not open {path.name} in ndX: {exc}"
 
     # One attribute per editor: an emtk code editor is keyed by its target and
     # keeps the language it was created with.
@@ -222,7 +265,7 @@ class ZenodoDepositModel:
 
     @property
     def preview_txt(self) -> str:
-        return self.preview_text if self.preview_kind == "text" else ""
+        return self.preview_text if self.preview_kind in ("text", "listing") else ""
 
     # ── review ───────────────────────────────────────────────────────────
     def _review(self, status: str) -> None:
@@ -292,6 +335,8 @@ class ZenodoDepositModel:
         idle = not self.job.running
         if name in ("approve_item", "reject_item", "reset_item"):
             return has_item and idle
+        if name == "open_in_ndx":
+            return self.ndx_container is not None
         if name in ("rescan", "build_package"):
             return has_rec and idle
         if name == "check_remote":

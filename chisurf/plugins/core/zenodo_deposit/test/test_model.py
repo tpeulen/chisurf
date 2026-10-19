@@ -134,3 +134,24 @@ def test_the_item_text_puts_flags_first(model):
     text = model.item_text
     assert text.index("Needs your check") < text.index("Holds")
     assert "`*_10.dat`" in text  # globs are shown as code, not read as emphasis
+
+
+def test_open_in_ndx_offers_the_items_container(model):
+    opened = []
+    model._ndx_opener = opened.append
+    model.select_record(model.records[0])
+    meas = model.record.folder / "measurements/2014-08-12_7.5M-urea"
+    (meas / "2014-08-12_7.5M-urea.mmfdb.pto").write_bytes(b"pto")
+    model.select_item({"id": "README.md"})
+    assert not model.enabled("open_in_ndx")
+    model.select_item({"id": "measurements/2014-08-12_7.5M-urea"})
+    assert model.enabled("open_in_ndx")
+    model.open_in_ndx()
+    assert opened == [meas / "2014-08-12_7.5M-urea.mmfdb.pto"]
+
+
+def test_a_folder_is_listed_file_by_file_in_the_text_editor(model):
+    model.select_record(model.records[0])
+    model.select_item({"id": "measurements/2014-08-12_7.5M-urea"})
+    assert model.editor_kind == "text"
+    assert "Split-0000.ht3" in model.preview_txt and model.preview_cif == ""

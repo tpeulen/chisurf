@@ -8,6 +8,9 @@ A record is a folder that becomes one Zenodo entry, uploaded as one archive. Its
 ## Items
 One row per unit of review: each `measurements/<date>_<condition>` folder, each `calibrations/<date>_<setup>/<sample>` folder, and each metadata file (README, flrCIF `metadata.cif`, `origins.json`, the checksum manifest). A ⚠ marks an item the builder could not decide on its own -- data added beyond the obvious, or a role inferred rather than recorded (for example a folder taken as the clean-water scatter because the burst analysis used it as such). Look at those first; hover a row to read why.
 
+## Look before you approve
+The code editor below the buttons fills the rest of the window: a folder lists every file it holds with its size; `metadata.cif` (mmCIF), `origins.json` (JSON) and the README are shown read-only with highlighting. **Open in ndX** opens the selected item's burst-analysis container (`.mmfdb.pto`) in ndX, to look at the bursts themselves.
+
 ## Your decision is bound to the content
 Approve, Reject or Reset the selected item, with an optional note. An approval records the item's content digest: when anything in the item changes later, it shows as **Pending (changed)** and must be approved again. Rescan re-reads the folder after a change.
 
