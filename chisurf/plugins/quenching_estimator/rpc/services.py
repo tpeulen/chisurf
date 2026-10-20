@@ -36,6 +36,7 @@ __all__ = [
     "METHODS",
     "result_payload",
     "simulation_payload",
+    "analysis_payload",
 ]
 
 #: Method names in registration order, with a one-line summary each. This is
@@ -56,6 +57,10 @@ METHODS: dict[str, str] = {
     "quest.jobs.list": "Return the running and recent operations.",
     "quest.jobs.get": "Return one operation's status and progress.",
     "quest.jobs.cancel": "Ask a running operation to stop at its next checkpoint.",
+    "quest.analysis.template": "Return the declared analysis stages, fit presets and fit settings.",
+    "quest.analysis.run": "Run stages of the quenching analysis (inverse fit), blocking or as a background job.",
+    "quest.analysis.result": "Return the result of an analysis job or of a stored analysis run.",
+    "quest.analysis.site_table": "Build or read one site table and return its summary.",
     "quest.contract.describe": "Return the contract: methods, schemas, error codes and where serialization happens.",
 }
 
@@ -107,6 +112,36 @@ register_payload_converter("DecaySimulationResult", simulation_payload)
 
 #: Retained under its old name for callers that import it directly.
 result_payload = simulation_payload
+
+
+def _finite(value: Any) -> Any:
+    """*value* with non-finite floats as None (JSON has no NaN)."""
+    import math
+
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {key: _finite(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_finite(item) for item in value]
+    return value
+
+
+def analysis_payload(result: Any) -> dict[str, Any]:
+    """Convert an :class:`~..core.inference.stages.AnalysisResult` to plain data.
+
+    ``AnalysisResult.to_dict()`` (per stage ``title``, ``numbers``, ``text`` and the declared
+    ``tables`` as row lists; per graph its size) plus each stage's ``plots`` (the plot data a
+    GUI draws). Called by a transport, like :func:`simulation_payload`.
+    """
+
+    out = result.to_dict()
+    for name, stage in result.stages.items():
+        out["stages"][name]["plots"] = to_payload(stage.plots)
+    return _finite(to_payload(out))
+
+
+register_payload_converter("AnalysisResult", analysis_payload)
 
 
 def template_handler(with_fret: bool = True) -> dict[str, Any]:
@@ -359,6 +394,245 @@ def contract_describe_handler() -> dict[str, Any]:
     return ok(contract_descriptor())
 
 
+# -- the quenching analysis ---------------------------------------------------------------
+
+
+def _analysis_problem(stages: Any, preset: Optional[str], fit_overrides: Any,
+                      data: Optional[str]) -> Optional[str]:
+    """Why these analysis inputs cannot run, or None. Checked before any work starts."""
+    from chisurf.plugins.quenching_estimator.core.inference import graph_fit
+    from chisurf.plugins.quenching_estimator.core.inference import stages as st
+
+    names = st.stage_names()
+    asked = names if stages in (None, "all") else ([stages] if isinstance(stages, str) else list(stages))
+    unknown = [name for name in asked if name not in names]
+    if unknown:
+        return f"Unknown stage(s) {unknown}; declared: {names}."
+    if preset is not None and preset not in graph_fit.preset_names():
+        return f"Unknown fit preset {preset!r}; declared: {graph_fit.preset_names()}."
+    if fit_overrides is not None and not isinstance(fit_overrides, Mapping):
+        return "fit_overrides must be an object of declared fit settings."
+    declared = graph_fit.settings()
+    undeclared = sorted(set(fit_overrides or {}) - set(declared))
+    if undeclared:
+        return f"Undeclared fit setting(s) {undeclared}."
+    if data is not None and not Path(data).is_dir():
+        return f"Measurement folder not found: {data}"
+    return None
+
+
+def analysis_template_handler() -> dict[str, Any]:
+    """What a caller can ask ``quest.analysis.run`` for, all from the declarations."""
+    from chisurf.plugins.quenching_estimator.core.inference import (
+        columns,
+        graph_fit,
+        measurements,
+    )
+    from chisurf.plugins.quenching_estimator.core.inference import (
+        stages as st,
+    )
+
+    declaration = st.stage_settings()
+    full = graph_fit.settings()
+    presets = {name: {k: v for k, v in graph_fit.settings(name).items() if full.get(k) != v}
+               for name in graph_fit.preset_names()}
+    return ok(
+        {
+            "stages": [
+                {"name": name, "title": declaration["stages"][name]["title"],
+                 "kind": declaration["stages"][name]["kind"],
+                 "graph": declaration["stages"][name].get("graph")}
+                for name in declaration["order"]
+            ],
+            "order": list(declaration["order"]),
+            "graphs": {name: {"description": g.get("description", ""),
+                              "blocks": [b["label"] for b in g["blocks"]]}
+                       for name, g in declaration["graphs"].items()},
+            "presets": presets,
+            "fit_settings": full,
+            "data": str(measurements.EXAMPLE_FOLDER),
+            "result_tables": sorted(
+                name for name, spec in columns.declaration(graph_fit.RESULT_COLUMNS).items()
+                if isinstance(spec, dict) and "columns" in spec),
+            "defaults": {"stages": "all", "preset": None, "profile": True, "workers": None,
+                         "save_outputs": True, "background": False},
+        }
+    )
+
+
+def _job_entry(manager, job_id: Optional[str]):
+    """The finished-job record (``runs.analyse``'s return) of *job_id*, or None."""
+    job = manager.get(job_id) if job_id else None
+    if job is None or job.status.value != "completed" or not isinstance(job.result, dict):
+        return None
+    return job.result
+
+
+def analysis_run_handler(
+    stages: Any = "all",
+    data: Optional[str] = None,
+    structures: Optional[Mapping[str, str]] = None,
+    tables: Optional[Mapping[str, str]] = None,
+    cache_dir: Optional[str] = None,
+    preset: Optional[str] = None,
+    fit_overrides: Optional[Mapping[str, Any]] = None,
+    workers: Optional[int] = None,
+    profile: bool = True,
+    output: Optional[str] = None,
+    project_dir: Optional[str] = None,
+    save_outputs: bool = True,
+    background: bool = False,
+    continue_from: Optional[str] = None,
+) -> dict[str, Any]:
+    """Run analysis stages as a job (``runs.analyse``).
+
+    Blocking by default: the job is listed (``quest.jobs.list``), reports progress and can be
+    cancelled from another caller while this call waits, and the reply carries the result.
+    With ``background`` the call returns the ``job_id`` at once; poll ``quest.jobs.get``,
+    stop with ``quest.jobs.cancel``, fetch with ``quest.analysis.result``.
+    ``continue_from`` reuses the solved graphs of a finished job of this server.
+    """
+    from chisurf.plugins.quenching_estimator.core import runs as _runs
+    from chisurf.plugins.quenching_estimator.core.tasks import CancelledError, default_manager
+    from chisurf.plugins.quenching_estimator.rpc.contract import error_code_for
+
+    problem = _analysis_problem(stages, preset, fit_overrides, data)
+    if problem:
+        return service_error(problem, "invalid_analysis")
+    manager = default_manager()
+    previous = None
+    if continue_from:
+        entry = _job_entry(manager, continue_from)
+        if entry is None:
+            return service_error(f"No finished analysis job {continue_from} on this server.",
+                                 "invalid_analysis")
+        previous = entry["analysis"]
+
+    job = manager.create("quest.analysis.run", {"stages": stages, "preset": preset})
+
+    def work(progress, cancel):
+        return _runs.analyse(
+            stages, data=data, structures=dict(structures) if structures else None,
+            tables=dict(tables) if tables else None, cache_dir=cache_dir, preset=preset,
+            fit_overrides=dict(fit_overrides) if fit_overrides else None, workers=workers,
+            profile=bool(profile), output=output, project_dir=project_dir,
+            save_outputs=bool(save_outputs), run_id=job.job_id, progress=progress,
+            cancel=cancel, analysis=previous,
+        )
+
+    if background:
+        manager.submit("quest.analysis.run", work, error_code=error_code_for, job=job)
+        return ok({"job_id": job.job_id, "status": job.status.value, "background": True})
+
+    manager.start(job.job_id)
+    try:
+        entry = work(manager.reporter(job.job_id), manager.canceller(job.job_id))
+    except CancelledError:
+        manager.finish(job.job_id)
+        return service_error("The analysis was cancelled.", "operation_cancelled",
+                             "CancelledError", {"job_id": job.job_id})
+    except Exception as exc:
+        manager.fail(job.job_id, str(exc), error_code_for(exc))
+        return service_error(f"Analysis failed: {exc}", error_code_for(exc), type(exc).__name__,
+                             {"job_id": job.job_id})
+    manager.finish(job.job_id, entry)
+    return ok(_analysis_reply(job.job_id, "completed", entry))
+
+
+def _analysis_reply(job_id: str, status: str, entry: Mapping[str, Any]) -> dict[str, Any]:
+    """The reply of a finished analysis: native result, plain metadata."""
+    return {
+        "job_id": job_id,
+        "status": status,
+        "run_id": entry["run_id"],
+        "directory": entry["directory"],
+        "files": list(entry["files"]),
+        "result": entry["result"],
+    }
+
+
+def analysis_result_handler(job_id: str, project_dir: Optional[str] = None) -> dict[str, Any]:
+    """The result of an analysis job (from memory) or of a stored analysis run (from disk).
+
+    A job this server ran returns the native result (with plot data); a stored run returns
+    its ``summary.json`` (tables, numbers, text; no plot data) and its run record.
+    """
+    from chisurf.plugins.quenching_estimator.core import runs as _runs
+    from chisurf.plugins.quenching_estimator.core.tasks import default_manager
+
+    job = default_manager().get(job_id)
+    if job is not None and job.action == "quest.analysis.run":
+        status = job.status.value
+        if status == "completed":
+            return ok(_analysis_reply(job_id, status, job.result))
+        if status == "cancelled":
+            return service_error(f"Analysis job {job_id} was cancelled.", "operation_cancelled",
+                                 details={"job_id": job_id})
+        if status == "failed":
+            return service_error(job.error or "failed", job.error_code or "operation_failed",
+                                 details={"job_id": job_id})
+        return service_error(f"Analysis job {job_id} is {status} ({job.progress} %).",
+                             "job_not_finished", details=job.to_dict())
+    try:
+        stored = _runs.read_analysis_run(job_id, project_dir)
+    except (ValueError, FileNotFoundError) as exc:
+        return service_error(str(exc), "operation_failed", type(exc).__name__)
+    return ok({"job_id": job_id, "status": "completed", "run_id": job_id,
+               "directory": stored.pop("directory"), "files": stored["run"].get("files", []),
+               "result": stored})
+
+
+def analysis_site_table_handler(
+    state: str,
+    site: int,
+    dye: Optional[str] = None,
+    linker_length: Optional[float] = None,
+    structure: Optional[str] = None,
+    chain: Optional[str] = None,
+    cache_dir: Optional[str] = None,
+) -> dict[str, Any]:
+    """Build (or read from the cache) one site table and summarise it."""
+    import numpy as np
+
+    from chisurf.plugins.quenching_estimator.core.inference import site_table as _st
+    from chisurf.plugins.quenching_estimator.rpc.contract import error_code_for
+
+    settings_ = _st.settings()
+    if linker_length is None:
+        lengths = settings_["linker_lengths"]
+        if dye not in lengths:
+            return service_error(f"Give linker_length or a dye of {sorted(lengths)}.",
+                                 "invalid_analysis")
+        linker_length = lengths[dye]
+    if structure is None:
+        if state not in settings_["structures"]:
+            return service_error(f"Give structure or a state of {sorted(settings_['structures'])}.",
+                                 "invalid_analysis")
+        structure = str(_st.male_structure(state, settings_))
+    try:
+        table = _st.site_table(structure, int(site), float(linker_length), chain=chain,
+                               settings_=settings_, cache_dir=cache_dir)
+    except Exception as exc:
+        return service_error(f"Site table failed: {exc}", error_code_for(exc), type(exc).__name__)
+    exposure = np.asarray(table.exposure, dtype=float)
+    return ok(
+        {
+            "state": state,
+            "site": int(site),
+            "linker_length": float(linker_length),
+            "structure": str(structure),
+            "path": None if table.path is None else str(table.path),
+            "n_voxels": table.n_voxels,
+            "residue_types": list(_st.residue_types(settings_)),
+            "neighbour_totals": table.neighbours.sum(axis=0).astype(int).tolist(),
+            "exposure": {"mean": float(exposure.mean()) if exposure.size else None,
+                         "min": float(exposure.min()) if exposure.size else None,
+                         "max": float(exposure.max()) if exposure.size else None},
+            "meta": to_payload(table.meta),
+        }
+    )
+
+
 def register_services(dispatcher: Any) -> None:
     """Register QuEst's methods with *dispatcher*.
 
@@ -391,6 +665,12 @@ def register_services(dispatcher: Any) -> None:
     dispatcher.register("quest.jobs.get", lambda p: jobs_get_handler(**(p or {})))
     dispatcher.register("quest.jobs.cancel", lambda p: jobs_cancel_handler(**(p or {})))
     dispatcher.register("quest.contract.describe", lambda p: contract_describe_handler())
+    dispatcher.register("quest.analysis.template", lambda p: analysis_template_handler())
+    dispatcher.register("quest.analysis.run", lambda p: analysis_run_handler(**(p or {})))
+    dispatcher.register("quest.analysis.result", lambda p: analysis_result_handler(**(p or {})))
+    dispatcher.register(
+        "quest.analysis.site_table", lambda p: analysis_site_table_handler(**(p or {}))
+    )
 
 
 def local_client() -> InProcessClient:

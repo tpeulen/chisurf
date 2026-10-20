@@ -523,6 +523,381 @@
       },
       "long_running": false,
       "cancelable": false
+    },
+    {
+      "name": "quest.analysis.template",
+      "summary": "Return the declared analysis stages, fit presets and fit settings.",
+      "description": "Everything quest.analysis.run accepts, read from settings/analysis/{stages,fit_parameters}.yaml: the stages in run order with their titles and graphs, the presets as differences to the full settings, every declared fit setting, the shipped data folder and the declared result tables.",
+      "params_schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "array"
+          },
+          "order": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "graphs": {
+            "type": "object"
+          },
+          "presets": {
+            "type": "object"
+          },
+          "fit_settings": {
+            "type": "object"
+          },
+          "data": {
+            "type": "string"
+          },
+          "result_tables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "defaults": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "stages",
+          "order",
+          "presets",
+          "fit_settings"
+        ]
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.analysis.run",
+      "summary": "Run stages of the quenching analysis (inverse fit), blocking or as a background job.",
+      "description": "The Bayesian graph fit of measured site lifetimes against the site model (stages A, B, naive_h2o, C, summary). Always a job: listed by quest.jobs.list, with progress and a cooperative cancel (quest.jobs.cancel) that stops at the next search, joint-fit evaluation or profile point. The declared tables, summary.json and report.md are written to the output folder or the run directory.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": [
+              "string",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Stages",
+            "description": "\"all\" (the declared order A, B, naive_h2o, C, summary), one stage name, or a list. A stage also runs what it needs (C solves the joint graph).",
+            "default": "all"
+          },
+          "data": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "title": "Measurements",
+            "description": "Folder with the three measurement CSV files (site lifetimes, titration points, titration summary). Omitted: the shipped MalE data (examples/male)."
+          },
+          "structures": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "title": "Structures",
+            "description": "{state: structure path} the site tables are built on. Omitted: the shipped MalE structures (APO 1OMP, HOLO 1ANF)."
+          },
+          "tables": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "title": "Stored site tables",
+            "description": "{\"STATE:site:linker_length\": npz path}: use stored site tables (for example the MalE prototype cache) instead of building them."
+          },
+          "cache_dir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "title": "Site-table cache",
+            "description": "Folder the built site tables are cached in. Omitted: <settings>/cache/quenching_estimator/site_tables."
+          },
+          "preset": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              null,
+              "full",
+              "quick"
+            ],
+            "title": "Fit preset",
+            "description": "\"full\" (64 searches, the published run) or \"quick\" (8 short searches; a test run, less reliable). Omitted: the declared settings (as full)."
+          },
+          "fit_overrides": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "title": "Fit settings",
+            "description": "Declared fit settings to replace after the preset, e.g. {\"n_starts\": 4}. quest.analysis.template lists them."
+          },
+          "workers": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "title": "Workers",
+            "description": "Worker processes for the searches (1 = in process; the numbers do not depend on it). Omitted: the CPU count."
+          },
+          "profile": {
+            "type": "boolean",
+            "title": "Profile likelihood",
+            "description": "Compute the declared quench-scale profile likelihoods (about one joint fit of the block per point).",
+            "default": true
+          },
+          "output": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "title": "Output folder",
+            "description": "Write the declared tables (<stage>.<table>.csv), summary.json, report.md and run.json here. Omitted: the run directory <runs>/<job_id>."
+          },
+          "project_dir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Base directory of the jobs/<uuid> run directories (default: the per-user artefact root)."
+          },
+          "save_outputs": {
+            "type": "boolean",
+            "title": "Save",
+            "description": "Write the results to disk (the output folder or the run directory). False keeps them only in the reply and in this server's memory.",
+            "default": true
+          },
+          "background": {
+            "type": "boolean",
+            "title": "Background",
+            "description": "Return the job_id at once instead of waiting; poll quest.jobs.get, stop with quest.jobs.cancel, fetch with quest.analysis.result.",
+            "default": false
+          },
+          "continue_from": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "title": "Continue from job",
+            "description": "job_id of a finished analysis job on this server whose solved graphs are reused (stage C after stage A costs nothing). Its inputs and fit settings win."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "background": {
+            "type": "boolean"
+          },
+          "run_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "directory": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "result": {
+            "type": "object",
+            "description": "Per stage (title, numbers, text, tables as row lists in the declared result_columns.yaml columns, plots) and per graph (blocks, size). A stored run read from disk has no plots."
+          }
+        },
+        "required": [
+          "job_id",
+          "status"
+        ]
+      },
+      "long_running": true,
+      "cancelable": true
+    },
+    {
+      "name": "quest.analysis.result",
+      "summary": "Return the result of an analysis job or of a stored analysis run.",
+      "description": "A job this server ran (by job_id) returns the full result with plot data; a stored run (by its directory name under jobs/) returns its summary.json and run record. A job still running fails with job_not_finished, a cancelled one with operation_cancelled.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job",
+            "description": "The analysis job's id (also its run directory name)."
+          },
+          "project_dir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Base directory of the run directories (default: the per-user artefact root)."
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "directory": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "files": {
+            "type": "array"
+          },
+          "result": {
+            "type": "object",
+            "description": "Per stage (title, numbers, text, tables as row lists in the declared result_columns.yaml columns, plots) and per graph (blocks, size). A stored run read from disk has no plots."
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "result"
+        ]
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.analysis.site_table",
+      "summary": "Build or read one site table and return its summary.",
+      "description": "The per-voxel features of one labelled site (neighbour counts per residue group, quencher contacts, water exposure) that the site model evaluates, from the cache or built on IMP.bff. Building one takes seconds to a minute.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "title": "State",
+            "description": "Structure state (APO or HOLO for the shipped MalE structures)."
+          },
+          "site": {
+            "type": "integer",
+            "title": "Site",
+            "description": "Labelled residue number."
+          },
+          "dye": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "title": "Dye",
+            "description": "Take the declared linker length of this dye (AF488, Cy3B, Atto655)."
+          },
+          "linker_length": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "title": "Linker length",
+            "description": "Stretched linker length in Angstrom; overrides the dye's."
+          },
+          "structure": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "title": "Structure",
+            "description": "Structure file; the shipped MalE structure of the state by default."
+          },
+          "chain": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "title": "Chain",
+            "description": "Labelled chain; the declared chain by default."
+          },
+          "cache_dir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Site-table cache folder."
+          }
+        },
+        "required": [
+          "state",
+          "site"
+        ]
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "n_voxels": {
+            "type": "integer"
+          },
+          "residue_types": {
+            "type": "array"
+          },
+          "neighbour_totals": {
+            "type": "array"
+          },
+          "exposure": {
+            "type": "object"
+          },
+          "meta": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "n_voxels"
+        ]
+      },
+      "long_running": true,
+      "cancelable": false
     }
   ],
   "events": [],

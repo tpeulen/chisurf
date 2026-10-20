@@ -495,6 +495,245 @@ def runs_clean(project_dir: Path | None, older_than_days: float | None, confirme
         click.echo("Nothing was deleted. Pass --yes to do it.")
 
 
+# -- the quenching analysis ---------------------------------------------------------------
+
+_ANALYSIS_FORMATS = ("table", "json", "csv")
+
+
+def _fit_overrides(preset: str | None, assignments: Sequence[str]) -> dict[str, Any]:
+    """``KEY=VALUE`` fit settings as overrides; a dotted key edits a nested setting.
+
+    ``profile_likelihood.points=3`` replaces only ``points`` of the preset's
+    ``profile_likelihood`` (the engine replaces whole top-level keys).
+    """
+    from copy import deepcopy
+
+    from chisurf.plugins.quenching_estimator.core.inference import graph_fit
+
+    base = graph_fit.settings(preset)
+    overrides: dict[str, Any] = {}
+    for item in assignments:
+        if "=" not in item:
+            raise click.BadParameter(f"{item!r}: expected KEY=VALUE", param_hint="--set")
+        key, raw = item.split("=", 1)
+        top, _, rest = key.strip().partition(".")
+        if top not in base:
+            raise click.BadParameter(
+                f"{top!r} is not a declared fit setting ({', '.join(sorted(base))})",
+                param_hint="--set")
+        if rest:
+            value = overrides.get(top, deepcopy(base[top]))
+            if not isinstance(value, dict):
+                raise click.BadParameter(f"{top!r} has no nested settings", param_hint="--set")
+            _set_path(value, rest, _parse_value(raw))
+            overrides[top] = value
+        else:
+            overrides[top] = _parse_value(raw)
+    return overrides
+
+
+def _format_rows(table: Any) -> str:
+    """A record array as aligned text columns (for reading, not for parsing)."""
+
+    names = list(table.dtype.names)
+
+    def cell(value: Any) -> str:
+        if isinstance(value, float):
+            return f"{value:.4g}"
+        return str(value)
+
+    rows = [[cell(v) for v in record.tolist()] for record in table]
+    widths = [max([len(n)] + [len(r[i]) for r in rows]) for i, n in enumerate(names)]
+    lines = ["  ".join(n.ljust(w) for n, w in zip(names, widths))]
+    lines += ["  ".join(v.ljust(w) for v, w in zip(r, widths)) for r in rows]
+    return "\n".join(lines)
+
+
+@cli.command("analyse")
+@click.option(
+    "--data",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=None,
+    help="Measurement folder (site lifetimes, titration points, titration summary CSVs). Default: the shipped MalE data.",
+)
+@click.option(
+    "--stage",
+    "stage_names",
+    multiple=True,
+    help="Stage to run (repeatable): A, B, naive_h2o, C, summary, or all (default). A stage also runs what it needs.",
+)
+@click.option(
+    "--preset",
+    type=str,
+    default=None,
+    help="Fit preset: full (64 searches) or quick (8 short searches, a test run).",
+)
+@click.option("--quick", is_flag=True, default=False, help="Shorthand for --preset quick.")
+@click.option(
+    "--set",
+    "assignments",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help="Replace a declared fit setting (repeatable), e.g. --set n_starts=4 --set profile_likelihood.points=3.",
+)
+@click.option("--workers", type=int, default=None, help="Worker processes (1 = in process). Default: the CPU count.")
+@click.option("--no-profile", is_flag=True, default=False, help="Skip the profile likelihoods.")
+@click.option(
+    "--structure",
+    "structure_items",
+    multiple=True,
+    metavar="STATE=PATH",
+    help="Structure of a state for the site tables (repeatable). Default: the shipped MalE structures.",
+)
+@click.option(
+    "--tables",
+    "tables_file",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help='JSON file {"STATE:site:linker_length": npz path} of stored site tables to use instead of building them.',
+)
+@click.option(
+    "--cache-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="Site-table cache folder.",
+)
+@click.option(
+    "--output",
+    "-o",
+    "output_dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="Write the declared tables (<stage>.<table>.csv), summary.json, report.md and run.json here. Default: a run directory under the per-user artefact root.",
+)
+@click.option(
+    "--project-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="Put the run directory under this project's jobs/ instead.",
+)
+@click.option("--no-save", is_flag=True, default=False, help="Write nothing; only print.")
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(_ANALYSIS_FORMATS),
+    default="table",
+    show_default=True,
+    help="table: titles, texts and estimates; json: the full summary; csv: one declared table (--table).",
+)
+@click.option(
+    "--table",
+    "table_name",
+    default=None,
+    help="Table printed by --format csv, as <stage>.<table> (default: the last stage's estimates).",
+)
+@click.option("--quiet", "-q", is_flag=True, default=False, help="No progress on stderr.")
+def analyse(
+    data: Path | None,
+    stage_names: Sequence[str],
+    preset: str | None,
+    quick: bool,
+    assignments: Sequence[str],
+    workers: int | None,
+    no_profile: bool,
+    structure_items: Sequence[str],
+    tables_file: Path | None,
+    cache_dir: Path | None,
+    output_dir: Path | None,
+    project_dir: Path | None,
+    no_save: bool,
+    output_format: str,
+    table_name: str | None,
+    quiet: bool,
+) -> None:
+    """Run the quenching analysis (the inverse fit of measured site lifetimes).
+
+    Examples: `csc quest analyse --quick --stage B -o out/` runs heavy-water Atto655 only;
+    `csc quest analyse --stage all --format json` prints the full summary.
+    """
+
+    import sys
+    import tempfile
+
+    from chisurf.plugins.quenching_estimator.core import runs as _runs
+    from chisurf.plugins.quenching_estimator.core.inference import graph_fit
+    from chisurf.plugins.quenching_estimator.core.inference import stages as _stages
+
+    if quick:
+        if preset not in (None, "quick"):
+            raise click.BadParameter("--quick contradicts --preset", param_hint="--quick")
+        preset = "quick"
+    if preset is not None and preset not in graph_fit.preset_names():
+        raise click.BadParameter(
+            f"{preset!r}; declared: {', '.join(graph_fit.preset_names())}", param_hint="--preset")
+    declared = _stages.stage_names()
+    names = [n for n in stage_names if n != "all"]
+    if not names or "all" in stage_names:
+        stages: Any = "all"
+    else:
+        unknown = [n for n in names if n not in declared]
+        if unknown:
+            raise click.BadParameter(
+                f"{unknown}; declared: {', '.join(declared)}", param_hint="--stage")
+        stages = names
+    overrides = _fit_overrides(preset, assignments)
+    structures = {}
+    for item in structure_items:
+        state, sep, path = item.partition("=")
+        if not sep:
+            raise click.BadParameter(f"{item!r}: expected STATE=PATH", param_hint="--structure")
+        structures[state] = path
+    tables = None
+    if tables_file is not None:
+        tables = json.loads(tables_file.read_text(encoding="utf8"))
+
+    def progress(percent: int, message: str) -> None:
+        if not quiet:
+            click.echo(f"[{percent:3d}%] {message}", err=True)
+
+    try:
+        entry = _runs.analyse(
+            stages, data=data, structures=structures or None, tables=tables,
+            cache_dir=cache_dir, preset=preset, fit_overrides=overrides or None,
+            workers=workers, profile=not no_profile, output=output_dir,
+            project_dir=project_dir, save_outputs=not no_save, progress=progress,
+        )
+    except (KeyError, ValueError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc))
+    result = entry["result"]
+
+    if output_format == "json":
+        from chisurf.plugins.quenching_estimator.rpc.services import analysis_payload
+
+        payload = analysis_payload(result)
+        payload["run"] = {k: entry[k] for k in ("run_id", "directory", "files")}
+        click.echo(json.dumps(payload, indent=1))
+    elif output_format == "csv":
+        tables_out = result.tables()
+        name = table_name or f"{list(result.stages)[-1]}.estimates"
+        if name not in tables_out:
+            raise click.ClickException(
+                f"No table {name!r}; this run has {', '.join(sorted(tables_out))}")
+        # The declared writer, so stdout carries exactly the file format.
+        if entry["directory"]:
+            path = Path(entry["directory"]) / f"{name}.csv"
+            sys.stdout.write(path.read_text(encoding="utf-8"))
+        else:
+            with tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / f"{name}.csv"
+                _stages.write_csv(tables_out[name], path)
+                sys.stdout.write(path.read_text(encoding="utf-8"))
+    else:
+        for stage in result.stages.values():
+            click.echo(f"## {stage.title}\n")
+            if stage.text:
+                click.echo(stage.text + "\n")
+            if "estimates" in stage.tables and len(stage.tables["estimates"]):
+                click.echo(_format_rows(stage.tables["estimates"]) + "\n")
+    if entry["directory"] and not quiet:
+        click.echo(f"Wrote {len(entry['files'])} files to {entry['directory']}", err=True)
+
+
 @cli.command()
 def gui() -> None:
     """Launch the QuEst window (the native emtk app)."""

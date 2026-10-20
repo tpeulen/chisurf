@@ -53,7 +53,7 @@ PLUGIN_ID = "quenching_estimator"
 #: Version of *this contract*, not of QuEst. Bump it when a method's params,
 #: result shape or error codes change in a way a host must notice; QuEst's own
 #: version moves for reasons a caller does not care about.
-CONTRACT_VERSION = "1.0.0"
+CONTRACT_VERSION = "1.1.0"
 
 _MANIFEST_PATH = Path(__file__).resolve().parents[1] / "manifest.json"
 
@@ -75,12 +75,16 @@ ERROR_CODES: dict[str, str] = {
     "backend_unavailable": "No accessible-volume backend is usable in this interpreter.",
     "unknown_method": "No such RPC method.",
     "invalid_request": "The request envelope itself is malformed — unparsable payload, or no method named. The caller is at fault, not the operation.",
+    "invalid_analysis": "The analysis inputs are malformed: an undeclared stage, fit preset or fit setting, a missing measurement folder, or an unknown job to continue from.",
+    "operation_cancelled": "The operation stopped at a checkpoint because it was asked to (quest.jobs.cancel).",
+    "job_not_finished": "The job is still queued or running; poll quest.jobs.get and ask again.",
     "operation_failed": "Anything else. A host can only report this one.",
 }
 
 #: Exception → code. Ordered most specific first; the first match wins.
 _EXCEPTION_CODES: tuple[tuple[str, str], ...] = (
     ("ProjectValidationError", "invalid_project"),
+    ("CancelledError", "operation_cancelled"),
     ("FileNotFoundError", "structure_unreadable"),
     ("NotADirectoryError", "structure_unreadable"),
 )

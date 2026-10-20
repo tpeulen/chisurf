@@ -9,7 +9,7 @@ timestamp: '2026-10-20T00:00:00Z'
 
 # Where to pick this up
 
-The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP7-theory and WP9 have landed; WP4 is in progress.
+The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP7-theory and WP9 have landed; WP4 is in progress (its interface is stable; WP5 is built on it).
 
 1. **Done: WP0 (data + golden).** `examples/male/` (3 CSVs, `provenance.json`, `1OMP.cif`,
    `1ANF.cif`), `core/inference/measurements.py`, `test/data/male_site_1omp72_L20.12.npz`,
@@ -177,6 +177,40 @@ The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP7-theory and WP9 h
      `describe_graph(graph, titrated)` (IMP.bff `InferenceFactorGraph`). `report.explain/dye_line/summary_text/...` write
      the texts from the numbers.
    **Open:** acceptance (a) on the 54 prototype tables and the refit (b) on today's geometry, `test_male_reproduction.py`.
+1f. **Done: WP5 (headless surfaces, 2026-10-20), on the WP4 interface only.** One domain call,
+   `core/runs.py: analyse(stages, data=, structures=, tables=, cache_dir=, preset=, fit_overrides=, workers=, profile=,
+   output=, project_dir=, save_outputs=True, run_id=, progress=, cancel=, analysis=)` -> `{run_id, directory, files, result,
+   analysis}`; the API, the RPC job and the CLI all call it. It writes `AnalysisResult.write` (the declared tables
+   `<stage>.<table>.csv`, `summary.json`, `report.md`) plus `run.json` (`kind: analysis`, inputs, table names) into
+   `--output` or the run directory `<runs>/<job_id>` (so `quest.runs.list/get` list and read analysis runs too; a
+   simulation summary keeps its old keys). `core/tasks.py: JobManager.submit(action, work(progress, cancel), job=)` +
+   `wait(job_id, timeout)` run a job on a daemon thread (CancelledError -> `cancelled`).
+   - **RPC** (manifest, contract 1.1.0, error codes `invalid_analysis`, `operation_cancelled`, `job_not_finished`):
+     `quest.analysis.template` (stages/order/graphs/presets as differences/fit settings/result tables, all from the YAML),
+     `quest.analysis.run` (long_running, cancelable; blocking by default and still listed/cancelable; `background: true`
+     returns `{job_id}` at once; `continue_from: <job_id>` reuses that job's solved graphs), `quest.analysis.result(job_id)`
+     (from memory with plot data, else the stored run's `summary.json` without plots), `quest.analysis.site_table(state,
+     site, dye|linker_length, structure, chain, cache_dir)` (a summary, not the arrays). Progress/cancel through the
+     existing `quest.jobs.get` / `quest.jobs.cancel`. In process the result is the native `AnalysisResult`; the wire form is
+     `rpc.services.analysis_payload` (= `to_dict()` + per-stage `plots`, NaN -> null), registered with `to_payload`.
+   - **API** (`api/local.py`): `analysis_template()`, `analyse(...)`, `analysis_result(job_id)`, `site_table(...)`,
+     `job(job_id)`, `cancel_job(job_id)`. WP6 calls these.
+   - **Measure:** `pytest chisurf/plugins/quenching_estimator/test/test_inference_{api,cli}.py` (20 fast tests ~8 s on
+     the stand-in site model + 1 subprocess run of `csc quest analyse` on the shipped MalE data, ~45 s CPU, 2 min under
+     load). **Trap / cost:** that run's time is *loading* the 18 Atto655 sites, not the fit: `Site.__init__`'s
+     `np.unique(features, axis=0)` (site_model.py, WP3's) is 80 % of it (~5 s per site under load, ~1.5 s idle). A void-view
+     or hash de-duplication would make every analysis start ~10x faster; owner of `site_model.py` should take it.
+   - **For the WP7 guide author (CLI / Python API section; exact commands. The tests run each option on the stand-in model and `--stage B` on the real data; the full run below is not yet run through the CLI):**
+     `csc quest analyse --quick --stage B -o out/` (heavy-water Atto655 only; tables + `report.md` in `out/`);
+     `csc quest analyse --stage all -o out/` (the full 64-start run; the prototype took 23.6 min on 44 cores);
+     `csc quest analyse --quick --stage A --stage C --format json --no-save` (summary JSON on stdout);
+     `csc quest analyse --quick --stage B --format csv --table B.estimates` (one declared table on stdout, byte-equal to the
+     file); `--set n_starts=4 --set profile_likelihood.points=5` (declared fit settings, dotted = nested), `--no-profile`,
+     `--workers 1`, `--data <folder with the three CSVs>`, `--structure APO=<file>`, `--tables tables.json`
+     (`{"APO:72:20.12": "site.npz"}`), `--cache-dir`. Python: `from chisurf.plugins.quenching_estimator.api import local as
+     api; r = api.analyse("B", preset="quick"); r["result"].stages["B"].tables["estimates"]`; background:
+     `j = api.analyse("all", background=True)["job_id"]; api.job(j)["progress"]; api.cancel_job(j); api.analysis_result(j)`.
+     The `docs/reference/plugins/quenching_estimator.md` RPC table needs `pixi run -e docs docs-plugins` after this lands.
 2. **Done: WP2 (IMP.bff kernels, imp.bff `0b178903a`).** It unblocked WP3; the kernels and the voxel-frame fix are in
    imp.bff `okf/quest-site-kernels.md`.
 3. **Open: owner questions to settle before WP4 is accepted** (findings from reading the notebook):

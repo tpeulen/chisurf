@@ -47,6 +47,9 @@ __all__ = [
     "default_manager",
 ]
 
+#: How long :meth:`JobManager.wait` waits by default (seconds); None = no limit.
+DEFAULT_WAIT_TIMEOUT: Optional[float] = None
+
 
 class CancelledError(RuntimeError):
     """Raised inside a worker when it observes a cancellation request."""
@@ -81,6 +84,9 @@ class Job:
         self.progress: int = 0
         self.message: str = ""
         self._cancel_event = threading.Event()
+        #: Set when a :meth:`JobManager.submit` worker has returned.
+        self._done_event = threading.Event()
+        self._thread: Optional[threading.Thread] = None
 
     @property
     def cancel_requested(self) -> bool:
@@ -216,6 +222,87 @@ class JobManager:
             self.set_progress(job_id, percent, message)
 
         return report
+
+    # -- running work in the background -------------------------------------
+
+    def submit(
+        self,
+        action: str,
+        work: Callable[[Callable[[int, str], None], Callable[[], bool]], Any],
+        params: Optional[dict[str, Any]] = None,
+        error_code: Callable[[BaseException], str] | None = None,
+        job: Optional[Job] = None,
+    ) -> Job:
+        """Run *work* on a daemon thread as a job, and return the job at once.
+
+        Parameters
+        ----------
+        action : str
+            The method name the job is listed under.
+        work : callable
+            ``work(progress, cancel) -> result``; *progress* is :meth:`reporter`, *cancel*
+            :meth:`canceller`. A :class:`CancelledError` it raises ends the job as
+            ``cancelled``; any other exception as ``failed``.
+        params : dict, optional
+            Shown in the listing.
+        error_code : callable, optional
+            Exception -> stable error code of a failed job (``operation_failed`` by default).
+        job : Job, optional
+            A queued job of this manager to run (when the caller needs its id before the work
+            starts, e.g. to name its output); a new one by default.
+
+        Returns
+        -------
+        Job
+            Queued or already running; poll :meth:`get`, stop with :meth:`cancel`, block with
+            :meth:`wait`.
+        """
+        if job is None:
+            job = self.create(action, params)
+        elif self.get(job.job_id) is not job or job.status is not JobStatus.QUEUED:
+            raise ValueError(f"job {job.job_id} is not a queued job of this manager")
+
+        def run() -> None:
+            if not self.start(job.job_id):  # cancelled while queued
+                job._done_event.set()
+                return
+            try:
+                result = work(self.reporter(job.job_id), self.canceller(job.job_id))
+            except CancelledError:
+                self.finish(job.job_id)
+            except Exception as exc:  # the job reports it; the thread must not die silently
+                code = error_code(exc) if error_code is not None else "operation_failed"
+                self.fail(job.job_id, f"{type(exc).__name__}: {exc}", code)
+            else:
+                self.finish(job.job_id, result)
+            finally:
+                job._done_event.set()
+
+        job._thread = threading.Thread(target=run, name=f"quest-job-{job.job_id[:8]}",
+                                       daemon=True)
+        job._thread.start()
+        return job
+
+    def wait(self, job_id: str, timeout: Optional[float] = DEFAULT_WAIT_TIMEOUT) -> Optional[Job]:
+        """Block until a submitted job is terminal (or *timeout* seconds pass).
+
+        Parameters
+        ----------
+        job_id : str
+        timeout : float, optional
+
+        Returns
+        -------
+        Job or None
+            The job (check ``status``: it may still run after a timeout); None if unknown.
+        """
+        job = self.get(job_id)
+        if job is None:
+            return None
+        if job._thread is None:  # not submitted: nothing to wait for
+            return job
+        job._done_event.wait(timeout)
+        return job
 
     # -- history ----------------------------------------------------------
 

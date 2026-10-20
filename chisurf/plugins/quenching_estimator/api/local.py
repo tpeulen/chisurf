@@ -187,6 +187,141 @@ def structure_metadata(pdb_path: Path | str) -> dict:
     return client().result("quest.structure.metadata", {"pdb_path": str(pdb_path)})
 
 
+def analysis_template() -> dict:
+    """The declared analysis stages, fit presets and fit settings (``quest.analysis.template``)."""
+
+    return client().result("quest.analysis.template")
+
+
+def analyse(
+    stages: Any = "all",
+    *,
+    data: Optional[Path | str] = None,
+    structures: Optional[Mapping[str, Path | str]] = None,
+    tables: Optional[Mapping[str, Path | str]] = None,
+    cache_dir: Optional[Path | str] = None,
+    preset: Optional[str] = None,
+    fit_overrides: Optional[Mapping[str, Any]] = None,
+    workers: Optional[int] = None,
+    profile: bool = True,
+    output: Optional[Path | str] = None,
+    project_dir: Optional[Path | str] = None,
+    save_outputs: bool = True,
+    background: bool = False,
+    continue_from: Optional[str] = None,
+) -> dict:
+    """Run stages of the quenching analysis (``quest.analysis.run``).
+
+    Parameters
+    ----------
+    stages : str or list of str, optional
+        ``"all"``, one stage (``"A"``, ``"B"``, ``"naive_h2o"``, ``"C"``, ``"summary"``) or a
+        list; a stage also runs what it needs.
+    data : str or pathlib.Path, optional
+        Measurement folder; the shipped MalE data by default.
+    structures : dict, optional
+        ``{state: structure path}`` for the site tables.
+    tables : dict, optional
+        Stored site tables ``{"STATE:site:linker_length": npz path}``.
+    cache_dir : str or pathlib.Path, optional
+        Site-table cache folder.
+    preset : str, optional
+        ``"full"`` or ``"quick"``.
+    fit_overrides : dict, optional
+        Declared fit settings to replace (``{"n_starts": 4}``).
+    workers : int, optional
+        Worker processes (1 = in process).
+    profile : bool, optional
+        Compute the profile likelihoods.
+    output : str or pathlib.Path, optional
+        Results folder; the run directory ``<runs>/<job_id>`` by default.
+    project_dir : str or pathlib.Path, optional
+        Base of the run directories.
+    save_outputs : bool, optional
+        False writes nothing.
+    background : bool, optional
+        Return ``{"job_id", "status"}`` at once; follow it with :func:`job`,
+        :func:`cancel_job` and :func:`analysis_result`.
+    continue_from : str, optional
+        A finished job whose solved graphs are reused.
+
+    Returns
+    -------
+    dict
+        ``job_id``, ``status``, ``run_id``, ``directory``, ``files`` and ``result``: the
+        **native** :class:`~..core.inference.stages.AnalysisResult` in process (tables as
+        record arrays), its JSON payload over a transport.
+    """
+
+    def _path(value):
+        return None if value is None else str(value)
+
+    params = {
+        "stages": stages if isinstance(stages, str) else list(stages),
+        "data": _path(data),
+        "structures": None if not structures else {str(k): str(v) for k, v in structures.items()},
+        "tables": None if not tables else {str(k): str(v) for k, v in tables.items()},
+        "cache_dir": _path(cache_dir),
+        "preset": preset,
+        "fit_overrides": None if fit_overrides is None else dict(fit_overrides),
+        "workers": workers,
+        "profile": bool(profile),
+        "output": _path(output),
+        "project_dir": _path(project_dir),
+        "save_outputs": bool(save_outputs),
+        "background": bool(background),
+        "continue_from": continue_from,
+    }
+    return client().result("quest.analysis.run", params)
+
+
+def analysis_result(job_id: str, *, project_dir: Optional[Path | str] = None) -> dict:
+    """The result of an analysis job, or of a stored analysis run (``quest.analysis.result``)."""
+
+    return client().result(
+        "quest.analysis.result",
+        {"job_id": str(job_id), "project_dir": None if project_dir is None else str(project_dir)},
+    )
+
+
+def site_table(
+    state: str,
+    site: int,
+    *,
+    dye: Optional[str] = None,
+    linker_length: Optional[float] = None,
+    structure: Optional[Path | str] = None,
+    chain: Optional[str] = None,
+    cache_dir: Optional[Path | str] = None,
+) -> dict:
+    """Build or read one site table and return its summary (``quest.analysis.site_table``)."""
+
+    return client().result(
+        "quest.analysis.site_table",
+        {
+            "state": state,
+            "site": int(site),
+            "dye": dye,
+            "linker_length": None if linker_length is None else float(linker_length),
+            "structure": None if structure is None else str(structure),
+            "chain": chain,
+            "cache_dir": None if cache_dir is None else str(cache_dir),
+        },
+    )
+
+
+def job(job_id: str) -> dict:
+    """One operation's status and progress (``quest.jobs.get``)."""
+
+    return client().result("quest.jobs.get", {"job_id": str(job_id)})
+
+
+def cancel_job(job_id: str) -> bool:
+    """Ask an operation to stop at its next checkpoint; whether the request was accepted."""
+
+    return bool(client().result("quest.jobs.cancel", {"job_id": str(job_id)})["cancel_requested"])
+
+
 __all__ = [
     # -- the verbs ------------------------------------------------------
     "client",
@@ -199,6 +334,12 @@ __all__ = [
     "parameter_catalog",
     "dyes",
     "structure_metadata",
+    "analysis_template",
+    "analyse",
+    "analysis_result",
+    "site_table",
+    "job",
+    "cancel_job",
     # -- the domain, still importable -----------------------------------
     "DecaySimulationResult",
     "load_project",
