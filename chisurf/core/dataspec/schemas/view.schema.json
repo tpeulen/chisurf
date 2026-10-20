@@ -234,6 +234,7 @@
             "selected_attr": {},
             "selected_call": {},
             "selection_attr": {},
+            "selection_note": {},
             "sort": {},
             "source": {},
             "status": {},
@@ -657,6 +658,7 @@
               "name": {},
               "page": {},
               "panels": {},
+              "placeholder": {},
               "tab": {},
               "window": {},
               "data": {
@@ -1058,6 +1060,7 @@
               "selected_attr": {},
               "selected_call": {},
               "selection_attr": {},
+              "selection_note": {},
               "sort": {},
               "status": {},
               "tooltip_key": {},
@@ -2390,6 +2393,7 @@
               "selected_attr": {},
               "selected_call": {},
               "selection_attr": {},
+              "selection_note": {},
               "sort": {},
               "source": {
                 "type": [
@@ -2939,6 +2943,7 @@
               "panels": {},
               "row_key": {},
               "selection_attr": {},
+              "selection_note": {},
               "sort": {},
               "status": {},
               "stretch": {},
@@ -3482,17 +3487,21 @@
               "scale": {
                 "type": "string"
               },
+              "date_format": {},
               "dock": {},
               "enter_call": {},
+              "first_weekday": {},
               "key": {},
               "lines": {},
               "live": {},
               "name": {},
               "page": {},
               "panels": {},
+              "seconds": {},
               "special_text": {},
               "spin": {},
               "tab": {},
+              "week_numbers": {},
               "window": {},
               "data": {
                 "type": "boolean"
@@ -3974,6 +3983,9 @@
               },
               "choices": {},
               "descriptions": {},
+              "placeholder": {
+                "type": "string"
+              },
               "select_action": {
                 "type": "string"
               },
@@ -4044,6 +4056,7 @@
                 "type": "string"
               },
               "selection_attr": {},
+              "selection_note": {},
               "sort": {},
               "status": {},
               "tooltip_key": {},
@@ -4203,17 +4216,18 @@
               "suffix": {
                 "type": "string"
               },
-              "placeholder": {
-                "type": "string"
-              },
               "scale": {
                 "type": "string"
               },
+              "date_format": {},
               "enter_call": {},
+              "first_weekday": {},
               "lines": {},
               "live": {},
+              "seconds": {},
               "special_text": {},
               "spin": {},
+              "week_numbers": {},
               "steps": {
                 "type": "array",
                 "items": {
