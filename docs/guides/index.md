@@ -163,6 +163,7 @@ irf_estimation
 44_molecular_viewer
 79_hydropro
 80_quenching_estimator
+111_quenching_analysis
 81_trajectory_tools
 88_fret_docking
 106_protein_monte_carlo
@@ -275,6 +276,7 @@ irf_estimation
 | [Model comparison and batch fits](78_model_comparison_and_batch.md) | `f_test`, `batch_analysis`, `core.math.statistics` |
 | [HydroPro: diffusion coefficients from a structure](79_hydropro.md) | `hydropro` plugin, HYDROPRO / HYDRO++ |
 | [QuEst: predicting dye quenching at a labelling site](80_quenching_estimator.md) | `quenching_estimator` |
+| [QuEst Analysis: quench scale and stickiness from measured site lifetimes](111_quenching_analysis.md) | `quenching_estimator` (Analysis page), `csc quest analyse`, `quest.analysis.*` RPC |
 | [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](81_trajectory_tools.md) | `traj_align`, `traj_convert`, `traj_fret`, ... (Structure → Trajectory, one button each), `core.structure.trajectory_data` |
 | [FRET lines: static, dynamic and model lines for the E–lifetime plot](82_fret_lines.md) | `fret_line` (Tools › Calculators), `core.fluorescence.fret.lines` |
 | [Spectra, overlap integrals and R₀](83_spectra_and_r0.md) | `spectra_downloader` (Tools → Calculators), Förster calculator (TCSPC FRET κ² row → calc R0) |

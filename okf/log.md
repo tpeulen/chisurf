@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-10-20
+- 2026-10-20: QuEst WP7-guide: docs/guides/111_quenching_analysis.md (Analysis page step by step, csc quest analyse, Python API blocking + background, RPC), six figures from WP6's real quick run with a one-call recipe (screenshots/quest.py::_grab_quest_analysis, figures.yaml), linked from guide 80, the concept, both help pages and the regenerated plugin page; guide 80's front matter quoted (it did not parse; test_docs_okf was red).
 - 2026-10-20 — Games in the emtk shell stop after key release: the shell and tool hub now forward key_release (and focus_lost) to the child that took the press, and emtk's native host releases a char-typed printable key with its text (Pong W/S never released). Guard test/native_emtk/test_emtk_shell_game_keys.py; concept subsystems/gui-autoform.md.
 - FCS correlator: 'Correlate files separately' (Files & Steps) correlates each file on its own and the merger averages the pieces (<file>-<n>); off stacks the photons first; recorded as `combine` in the .cor.json. Fixed: stacking appended in place onto the first file's stream. [FCS](okf/plugins/fcs.md).
 - Gate rerun chisurf/plugins/core: project_browser adopting client now sets _closed (61 tests, guard test_client_adopt.py); plugin_manager deps filter re-pinned after fb08bbdd4; help: leak check skips math alt text, refresh-rule test follows 855e54604, quenching_inference links its guide, 75_fcs_toolbox drops the removed fcs_toolbox path, registers regenerated, 3 manual pages AI-reviewed; Workspace manual page left open in known-issues

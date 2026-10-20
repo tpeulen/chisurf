@@ -363,6 +363,8 @@ models in IMP.bff (C1R/C2R maleimides) are assumed to match the reagents.
 
 ## See also
 
+- Guide: {doc}`/guides/111_quenching_analysis` (this analysis on the QuEst Analysis page,
+  `csc quest analyse`, the Python API).
 - Guide: {doc}`/guides/80_quenching_estimator` (the QuEst tool and its examples).
 - {ref}`concept-dye-quenching`: PET at contact and the forward simulation.
 - {ref}`concept-accessible-volume`, {ref}`concept-molecular-surfaces`.

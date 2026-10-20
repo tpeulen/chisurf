@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: 'QuEst: predicting dye quenching at a labelling site'
-description: Simulating the PET-quenched donor decay of a dye tethered to a protein with QuEst (accessible volume, three ensembles: Brownian walk, equilibrium, diffusion PDE; photon Monte-Carlo), choosing its settings, reading the quantum yield and decay, the built-in T4 lysozyme demo, the headless CLI and the Python API.
+description: 'Simulating the PET-quenched donor decay of a dye tethered to a protein with QuEst (accessible volume, three ensembles: Brownian walk, equilibrium, diffusion PDE; photon Monte-Carlo), choosing its settings, reading the quantum yield and decay, the built-in T4 lysozyme demo, the headless CLI and the Python API.'
 tags: [guides, fret, tcspc, decay, dynamics, photons, settings, headless]
 ---
 
@@ -17,6 +17,9 @@ is comparative: which of several candidate sites is least quenched.
 
 For the physics (PET at contact, why the dye's motion matters, the rate table),
 see {ref}`concept-dye-quenching`.
+
+The inverse, fitting the quench scale and stickiness from lifetimes measured at
+many sites, is the window's **Analysis** page: {doc}`111_quenching_analysis`.
 
 QuEst is part of ChiSurf: the engine is the `quenching_estimator` plugin
 (`chisurf/plugins/quenching_estimator/core/`), built on IMP.bff's accessible
@@ -243,4 +246,5 @@ excitation lower the brightness without changing the simulated decay.
   {ref}`fundamentals-quenching-mechanisms`.
 - Tool: **QuEst** (`chisurf/plugins/quenching_estimator/`), on the ribbon at
   **Structure → Computation**.
+- The Analysis page (fitting measured site lifetimes): {doc}`111_quenching_analysis`.
 - Method: {cite}`peulen2017`.

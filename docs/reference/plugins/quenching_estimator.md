@@ -28,6 +28,25 @@ Structure-based simulation of dynamic PET quenching and FRET for dyes tethered t
 
 Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
 
+### Analysis
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Data | `data_folder` | str |  |  | The measurement folder being analysed. Its three CSV tables are read when the folder is chosen; the titrations, lifetimes and kQ per dye are shown at once, before any fit. |
+| Preset | `preset` | choice |  | choices: quick, full | How thoroughly the inverse fit searches. Changing it discards the solved graphs. |
+| Stages | `stage_selection` | choice |  | choices: `stage_options` | Which stages to run: all of them in the declared order, or one stage and whatever it needs (stage A solves the joint graph, so C after A costs nothing more). |
+| Workers | `workers` | int |  | 0 … 256 | Worker processes for the searches and Jacobians; 0 uses every CPU, 1 runs in this process. The numbers do not depend on it. |
+| Profile likelihood | `profile` | bool |  |  | Also compute the profile likelihood of the quench scale (the data set's sub-graph refitted at fixed scale values). It costs about one joint fit per point. |
+
+### Results
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Dye | `data_dye` | choice |  | choices: `dye_options` | The dye whose titrations and water quenching are plotted. |
+| Stage | `view_stage` | choice |  | choices: `fit_stage_options` | The stage whose result is shown (A: AF488 and Cy3B in H2O; B: Atto655 in D2O; the naive H2O transfer test; C: Atto655 in D2O and H2O). |
+| Data set | `view_block` | choice |  | choices: `block_options` | The data set of the stage (one dye in its solvents). |
+| State | `status` | str |  |  | Outcome of the last simulation. |
+
 ### Structure
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
@@ -96,12 +115,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Trajectory skip frames | `skip_frame` | int |  | 1 … 1000000 | Subsampling factor for writing trajectory frames to coordinates files. |
 | Random seed | `random_seed` | int |  | 0 … 2147483647 | Seed for the Monte-Carlo simulation. When set, both the diffusion trajectory and the photon trace are seeded, so repeated runs of the same project reproduce the same decay and quantum yield exactly. Leave unset for an independent random run; the photon trace then uses a faster multi-threaded kernel. |
 
-### Results
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| State | `status` | str |  |  | Outcome of the last simulation. |
-
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |
@@ -122,14 +135,19 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `quest.jobs.list` | no | Return the running and recent operations. |
 | `quest.jobs.get` | no | Return one operation's status and progress. |
 | `quest.jobs.cancel` | no | Ask a running operation to stop at its next checkpoint. |
+| `quest.analysis.template` | no | Everything quest.analysis.run accepts, read from settings/analysis/{stages,fit_parameters}.yaml: the stages in run order with their titles and graphs, the presets as differences to the full settings, every declared fit setting, the shipped data folder and the declared result tables. |
+| `quest.analysis.run` | yes | The Bayesian graph fit of measured site lifetimes against the site model (stages A, B, naive_h2o, C, summary). Always a job: listed by quest.jobs.list, with progress and a cooperative cancel (quest.jobs.cancel) that stops at the next search, joint-fit evaluation or profile point. The declared tables, summary.json and report.md are written to the output folder or the run directory. |
+| `quest.analysis.result` | no | A job this server ran (by job_id) returns the full result with plot data; a stored run (by its directory name under jobs/) returns its summary.json and run record. A job still running fails with job_not_finished, a cancelled one with operation_cancelled. |
+| `quest.analysis.site_table` | yes | The per-voxel features of one labelled site (neighbour counts per residue group, quencher contacts, water exposure) that the site model evaluates, from the cache or built on IMP.bff. Building one takes seconds to a minute. |
 
 ## Theory and workflow
 
 - **Theory** — [Dye quenching by amino acids: photoinduced electron transfer at contact](/concepts/dye_quenching.md), [Molecular surfaces and solvent accessibility](/concepts/molecular_surfaces.md), [Quenching inference: stickiness and quench strength from measured lifetimes](/concepts/quenching_inference.md)
-- **Workflow** — [QuEst: predicting dye quenching at a labelling site](/guides/80_quenching_estimator.md)
+- **Workflow** — [QuEst Analysis: quench scale and stickiness from measured site lifetimes](/guides/111_quenching_analysis.md), [QuEst: predicting dye quenching at a labelling site](/guides/80_quenching_estimator.md)
 
 ## Source
 
 - Plugin package: `chisurf/plugins/quenching_estimator/`
 - Manifest: {src}`chisurf/plugins/quenching_estimator/manifest.json`
+- UI spec: {src}`chisurf/plugins/quenching_estimator/gui/analysis.view.json`
 - UI spec: {src}`chisurf/plugins/quenching_estimator/gui/quest.view.json`

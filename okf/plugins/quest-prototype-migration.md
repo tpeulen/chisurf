@@ -9,7 +9,7 @@ timestamp: '2026-10-20T00:00:00Z'
 
 # Where to pick this up
 
-The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP6, WP7-theory and WP9 have landed; WP4 is in progress (its interface is stable; WP5 is built on it).
+The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP6, WP7 (theory + guide) and WP9 have landed; WP4 is in progress (its interface is stable; WP5 is built on it).
 
 1. **Done: WP0 (data + golden).** `examples/male/` (3 CSVs, `provenance.json`, `1OMP.cif`,
    `1ANF.cif`), `core/inference/measurements.py`, `test/data/male_site_1omp72_L20.12.npz`,
@@ -236,8 +236,20 @@ The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP6, WP7-theory
    acceptance on today's geometry, not the GUI. **Open:** (1) Run calls `core.inference.stages` in process, not WP5's
    `api.analyse(background=True)`: the API takes no site library (the tests' stand-in) and returns JSON over a transport,
    while the card reads `StageResult` objects; route through the facade once it does, and the run then appears in the
-   job list. (2) Docs: WP7-guide (`docs/guides/111_*`) uses this page's screenshots. (3) The Data tab is long (scrolls);
+   job list. (2) Docs: done, item 1g. (3) The Data tab is long (scrolls);
    no colour bar on the hyper-posterior heatmap.
+1g. **Done: WP7-guide (2026-10-20).** `docs/guides/111_quenching_analysis.md` (registered in `docs/guides/index.md`,
+   linked from guide 80, `concepts/quenching_inference.md`, `gui/help.md` and `gui/analysis_help.md`): open → load → settings/stages
+   → run → read the Fit/Water/Summary tabs → `csc quest analyse` + Python API (blocking and background) + RPC.
+   Six figures `docs/guides/figures/111_quest_analysis_{data,running,sites,fit,water,summary}.png` are WP6's real quick-run shots;
+   recipe `python docs/guides/screenshots/quest.py _grab_quest_analysis` (one call, all six; ~10 s per site table from
+   scratch + ~20 min quick run), registered in `docs/references/figures.yaml`. **Open after WP4 lands:** (1) retake the six
+   figures with that recipe (the fit/water/summary shots show today's quick run, scale at its bounds); (2) the guide quotes
+   no fit numbers on purpose: it points at the concept's "MalE results" table, so update that table, not the guide.
+   **Measure:** `pytest test/test_docs_okf.py test/test_docs_links.py`; the CLI/API snippets were run with
+   `--set n_starts=2 --no-profile --workers 2` on cached tables (~3 min under load for stage B).
+   **Trap:** `api.analyse` with workers > 1 from a *script* without an `if __name__ == "__main__":` guard fails
+   (spawn re-imports the script: "Analysis failed: An attempt has been made to start a new process..."); the guide says so.
 2. **Done: WP2 (IMP.bff kernels, imp.bff `0b178903a`).** It unblocked WP3; the kernels and the voxel-frame fix are in
    imp.bff `okf/quest-site-kernels.md`.
 3. **Open: owner questions to settle before WP4 is accepted** (findings from reading the notebook):

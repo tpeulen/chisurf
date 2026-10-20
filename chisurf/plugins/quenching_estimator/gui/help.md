@@ -34,4 +34,5 @@ The **Analysis** page (the switch at the top of the window) works in the other d
 ## Further reading
 
 - [QuEst — the workflow](docs/guides/80_quenching_estimator.md) — every setting, the outputs, the command line and the Python API.
+- [QuEst Analysis — the workflow](docs/guides/111_quenching_analysis.md) — the Analysis page: fitting quench scale and stickiness from measured site lifetimes.
 - [Dye quenching by amino acids](docs/concepts/dye_quenching.md) — the contact model, the rate table and what quenching does to lifetimes, FCS and FRET.

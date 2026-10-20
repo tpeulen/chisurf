@@ -49,5 +49,6 @@ A note such as *not determined* or *at the edge of its range* means that the dat
 
 - [Quenching inference](docs/concepts/quenching_inference.md): the titration posterior, the site model, the graph, the stages, and the stored MalE numbers.
 - [Dye quenching by amino acids](docs/concepts/dye_quenching.md): the contact model behind the forward simulator.
+- [QuEst Analysis: the workflow](docs/guides/111_quenching_analysis.md): this page step by step, `csc quest analyse` and the Python API.
 - [QuEst: the workflow](docs/guides/80_quenching_estimator.md): the forward model, the command line and the Python API.
 - Peulen, Opanasyuk and Seidel 2017, [10.1021/acs.jpcb.7b03441](https://doi.org/10.1021/acs.jpcb.7b03441).

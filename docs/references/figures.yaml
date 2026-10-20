@@ -3493,6 +3493,102 @@ guides/figures/quest_demo_result.png:
   pages:
   - docs/guides/80_quenching_estimator.md
 
+guides/figures/111_quest_analysis_data.png:
+  caption: 'The QuEst Analysis page after Load example: AF488 Stern-Volmer lines, the day-error hyper-posterior and the K_SV/kq table.'
+  kind: screenshot
+  origin: docs/guides/screenshots/quest.py::_grab_quest_analysis
+  recipe: >-
+    From the repository root, QT_QPA_PLATFORM=offscreen <arm64 env>/bin/python
+    docs/guides/screenshots/quest.py _grab_quest_analysis (settings and site tables in a scratch
+    folder). Builds the QuEst emtk app (make_app) at 1280x820, presses the Analysis page,
+    Load example (the shipped MalE demo, examples/male, quick preset, workers = every CPU),
+    then the kQ per dye tab and Run; the 46 site tables are built from scratch (about 10 s each)
+    and every stage runs (about 20 min on a desktop). One call writes all six 111_quest_analysis_*
+    figures. The numbers shown are that quick run's output and change with the fit code.
+    State: after Load example, Data tab, before Run.
+  pages:
+  - docs/guides/111_quenching_analysis.md
+
+guides/figures/111_quest_analysis_running.png:
+  caption: 'A first Analysis run building site table 41 of 46, the kQ per dye tab open.'
+  kind: screenshot
+  origin: docs/guides/screenshots/quest.py::_grab_quest_analysis
+  recipe: >-
+    From the repository root, QT_QPA_PLATFORM=offscreen <arm64 env>/bin/python
+    docs/guides/screenshots/quest.py _grab_quest_analysis (settings and site tables in a scratch
+    folder). Builds the QuEst emtk app (make_app) at 1280x820, presses the Analysis page,
+    Load example (the shipped MalE demo, examples/male, quick preset, workers = every CPU),
+    then the kQ per dye tab and Run; the 46 site tables are built from scratch (about 10 s each)
+    and every stage runs (about 20 min on a desktop). One call writes all six 111_quest_analysis_*
+    figures. The numbers shown are that quick run's output and change with the fit code.
+    State: 20 s after Run, while the site tables are built; kQ per dye tab.
+  pages:
+  - docs/guides/111_quenching_analysis.md
+
+guides/figures/111_quest_analysis_sites.png:
+  caption: 'The Site tables tab after the build: 46 rows, APO 233 (AF488) selected with its exposure histogram.'
+  kind: screenshot
+  origin: docs/guides/screenshots/quest.py::_grab_quest_analysis
+  recipe: >-
+    From the repository root, QT_QPA_PLATFORM=offscreen <arm64 env>/bin/python
+    docs/guides/screenshots/quest.py _grab_quest_analysis (settings and site tables in a scratch
+    folder). Builds the QuEst emtk app (make_app) at 1280x820, presses the Analysis page,
+    Load example (the shipped MalE demo, examples/male, quick preset, workers = every CPU),
+    then the kQ per dye tab and Run; the 46 site tables are built from scratch (about 10 s each)
+    and every stage runs (about 20 min on a desktop). One call writes all six 111_quest_analysis_*
+    figures. The numbers shown are that quick run's output and change with the fit code.
+    State: after the run; Site tables tab, the seventh row (APO 233, AF488) selected.
+  pages:
+  - docs/guides/111_quenching_analysis.md
+
+guides/figures/111_quest_analysis_fit.png:
+  caption: 'The Fit tab, stage B, Atto655 in D2O, from the quick run: report text, parity plot with outliers ringed, forest of estimates.'
+  kind: screenshot
+  origin: docs/guides/screenshots/quest.py::_grab_quest_analysis
+  recipe: >-
+    From the repository root, QT_QPA_PLATFORM=offscreen <arm64 env>/bin/python
+    docs/guides/screenshots/quest.py _grab_quest_analysis (settings and site tables in a scratch
+    folder). Builds the QuEst emtk app (make_app) at 1280x820, presses the Analysis page,
+    Load example (the shipped MalE demo, examples/male, quick preset, workers = every CPU),
+    then the kQ per dye tab and Run; the 46 site tables are built from scratch (about 10 s each)
+    and every stage runs (about 20 min on a desktop). One call writes all six 111_quest_analysis_*
+    figures. The numbers shown are that quick run's output and change with the fit code.
+    State: after the run; Fit tab, Stage B, Data set Atto655 in D2O.
+  pages:
+  - docs/guides/111_quenching_analysis.md
+
+guides/figures/111_quest_analysis_water.png:
+  caption: 'The Water tab from the quick run: model against measured water access, its table, and the visible dye''s exposure at sites 72 and 186.'
+  kind: screenshot
+  origin: docs/guides/screenshots/quest.py::_grab_quest_analysis
+  recipe: >-
+    From the repository root, QT_QPA_PLATFORM=offscreen <arm64 env>/bin/python
+    docs/guides/screenshots/quest.py _grab_quest_analysis (settings and site tables in a scratch
+    folder). Builds the QuEst emtk app (make_app) at 1280x820, presses the Analysis page,
+    Load example (the shipped MalE demo, examples/male, quick preset, workers = every CPU),
+    then the kQ per dye tab and Run; the 46 site tables are built from scratch (about 10 s each)
+    and every stage runs (about 20 min on a desktop). One call writes all six 111_quest_analysis_*
+    figures. The numbers shown are that quick run's output and change with the fit code.
+    State: after the run; Water tab.
+  pages:
+  - docs/guides/111_quenching_analysis.md
+
+guides/figures/111_quest_analysis_summary.png:
+  caption: 'The Summary tab from the quick run: quench scale and stickiness per dye on log axes, one table row per dye.'
+  kind: screenshot
+  origin: docs/guides/screenshots/quest.py::_grab_quest_analysis
+  recipe: >-
+    From the repository root, QT_QPA_PLATFORM=offscreen <arm64 env>/bin/python
+    docs/guides/screenshots/quest.py _grab_quest_analysis (settings and site tables in a scratch
+    folder). Builds the QuEst emtk app (make_app) at 1280x820, presses the Analysis page,
+    Load example (the shipped MalE demo, examples/male, quick preset, workers = every CPU),
+    then the kQ per dye tab and Run; the 46 site tables are built from scratch (about 10 s each)
+    and every stage runs (about 20 min on a desktop). One call writes all six 111_quest_analysis_*
+    figures. The numbers shown are that quick run's output and change with the fit code.
+    State: after the run; Summary tab.
+  pages:
+  - docs/guides/111_quenching_analysis.md
+
 guides/figures/ribbon_spectroscopy_imaging.png:
   caption: The shell ribbon on its Spectroscopy tab, the Imaging group's menu open (Image Tools and four standalone imaging tools).
   kind: screenshot
