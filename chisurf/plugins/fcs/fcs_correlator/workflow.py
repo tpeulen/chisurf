@@ -28,6 +28,9 @@ class FcsWorkflowContext:
     expanded_files: list[str] = field(default_factory=list)
     use_photon_filter: bool = False
     use_fcs_merger: bool = True
+    #: Several files: correlate each on its own (the merger then averages their curves) instead of stacking their
+    #: photons into one stream first.
+    per_file: bool = False
     #: Optional micro-time coarsening factor shared with downstream tools (Filter
     #: Calculator) so lifetime filters use the same micro-time axis as the
     #: correlation. The micro-time *resolution* itself comes from the loaded data.
@@ -91,10 +94,11 @@ class FcsWorkflow:
             setup_name, setups
         )
 
-    def set_files(self, checked: list, use_filter: bool, use_merger: bool) -> None:
+    def set_files(self, checked: list, use_filter: bool, use_merger: bool, per_file: bool = False) -> None:
         self.context.file_paths = [pathlib.Path(p) for p in checked]
         self.context.use_photon_filter = bool(use_filter) and filter_step_allowed(checked)
         self.context.use_fcs_merger = bool(use_merger)
+        self.context.per_file = bool(per_file)
 
     # ── files and photons ─────────────────────────────────────────────────
 
@@ -146,10 +150,29 @@ class FcsWorkflow:
         """*path* read as the correlator reads it (setup container type and LUTs), for drawing its regions."""
         return self.read_tttr(pathlib.Path(path).as_posix(), self.file_type, self.lut_open_kwargs())
 
+    @staticmethod
+    def stack(pieces):
+        """The photons of ``(path, tttr)`` *pieces* concatenated into a new stream; ``None`` without any.
+
+        ``TTTR.append`` extends the stream it is called on, so the first piece is copied: appending to it in place
+        made the first file's own stream hold every file (its per-file pieces lasted as long as all files together).
+        """
+        combined = None
+        for _path, tt in pieces:
+            if combined is None:
+                combined = tt[0 : len(tt)]
+            else:
+                combined.append(tt)
+        return combined
+
     def load_raw_combined(self, expanded: list[str]):
         """Read and concatenate the raw TTTR files (unfiltered path), each cut to its time regions."""
+        return self.stack(self.raw_pieces(expanded))
+
+    def raw_pieces(self, expanded: list[str]) -> list:
+        """``(path, tttr)`` of each raw TTTR file, cut to its time regions; unreadable or empty files left out."""
         lut_kwargs = self.lut_open_kwargs()
-        combined = None
+        pieces = []
         for fn in expanded:
             if not pathlib.Path(fn).exists():
                 continue
@@ -161,11 +184,8 @@ class FcsWorkflow:
                 if idx.size == 0:
                     continue
                 tt = tt[idx]
-            if combined is None:
-                combined = tt
-            else:
-                combined.append(tt)
-        return combined
+            pieces.append((fn, tt))
+        return pieces
 
     # ── hand-over to the steps ────────────────────────────────────────────
 
@@ -186,12 +206,17 @@ class FcsWorkflow:
                 objs[str(p.resolve())] = tt
         model.set_tttr_objects(objs, expanded)
 
-    @staticmethod
-    def filtered_tttr(filter_model):
+    @classmethod
+    def filtered_tttr(cls, filter_model):
         """The photons kept by the filter step, all files concatenated; ``None`` when it has no usable selection."""
+        return cls.stack(cls.filtered_pieces(filter_model))
+
+    @staticmethod
+    def filtered_pieces(filter_model) -> list:
+        """``(path, tttr)`` of the photons the filter step keeps in each file; files it keeps nothing of left out."""
         if filter_model is None or not filter_model._tttr_objects:
-            return None
-        combined = None
+            return []
+        pieces = []
         for path in filter_model._files:
             tt = filter_model._tttr_objects.get(str(pathlib.Path(path).resolve()))
             if tt is None:
@@ -205,12 +230,8 @@ class FcsWorkflow:
             idx = np.where(mask)[0]
             if idx.size == 0:
                 continue
-            sub = tt[idx]
-            if combined is None:
-                combined = sub
-            else:
-                combined.append(sub)
-        return combined
+            pieces.append((path, tt[idx]))
+        return pieces
 
     def apply_to_correlator(self, model, filter_model=None) -> None:
         """The setup's channels and presets, the analysis folder and the photons (filtered or raw) into the correlator."""
@@ -231,14 +252,18 @@ class FcsWorkflow:
         if self.context.use_photon_filter:
             # Correlate the photons the filter kept; fall back to the raw files when the filter step has no
             # selection yet, so the correlator is never left empty.
-            filtered = self.filtered_tttr(filter_model)
-            model._tttr = filtered if filtered is not None else self.load_raw_combined(expanded)
-            files = list(filter_model._files) if filtered is not None else expanded
-            used_filter = filter_model if filtered is not None else None
-            model._photon_record = photon_record(self, files, used_filter)
+            pieces = self.filtered_pieces(filter_model)
+            used_filter = filter_model if pieces else None
+            files = list(filter_model._files) if pieces else expanded
+            pieces = pieces or self.raw_pieces(expanded)
         elif expanded:
-            model._tttr = self.load_raw_combined(expanded)
-            model._photon_record = photon_record(self, expanded)
+            pieces, used_filter, files = self.raw_pieces(expanded), None, expanded
+        else:
+            return
+        model._tttr = self.stack(pieces)
+        #: With per_file the correlator correlates each file on its own; ``None`` correlates the stacked stream.
+        model._tttr_files = pieces if self.context.per_file and len(pieces) > 1 else None
+        model._photon_record = photon_record(self, files, used_filter)
 
     @staticmethod
     def merger_input(correlator_model) -> tuple[list, pathlib.Path | None]:
@@ -249,6 +274,19 @@ class FcsWorkflow:
         if folder is not None and sub:
             folder = pathlib.Path(folder) / sub
         return correlations, folder
+
+    @staticmethod
+    def merger_labels(correlations: list) -> list[str] | None:
+        """Names of the pieces in the merger: ``<file>-<n>`` when each file was correlated on its own."""
+        if not any("file" in c for c in correlations):
+            return None
+        seen: dict[str, int] = {}
+        labels = []
+        for c in correlations:
+            stem = pathlib.Path(c.get("file", "stacked")).stem
+            labels.append(f"{stem}-{seen.get(stem, 0):02}")
+            seen[stem] = seen.get(stem, 0) + 1
+        return labels
 
     @staticmethod
     def merger_provenance(correlator_model) -> dict | None:

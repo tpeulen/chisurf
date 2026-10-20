@@ -104,13 +104,21 @@ off and the FCS merger on, the defaults for a solution measurement.
 
 * **Files** — drop photon streams (`.ptu`, `.ht3`, `.spc`, `.hdf`/`.h5`), a
   folder, or pick from the database; untick a file to leave it out. Several
-  checked files are **concatenated** into one stream before correlating, so they
+  checked files are **concatenated** into one stream before correlating (unless
+  **Correlate files separately** is on, below), so they
   must come from the same instrument settings. The container type is detected
   per file.
 * **Count rate/burst filter** — enables step 3. Off by default: diffusion FCS of
   a homogeneous solution wants every photon. It is disabled when a burst-ID
   (`.bst`) file is selected, because the bursts are already chosen.
 * **FCS merger** — enables step 5. On by default.
+* **Correlate files separately** — with two or more ticked files: each file is
+  correlated on its own (**Splits** cut each file), its pieces reach the merger
+  as `<file>-00`, `<file>-01`, … and the merged curve averages them, so a file
+  that differs (another sample, a drifted focus) shows as its own curve and can
+  be unticked. Off (default), the files' photons are stacked into one stream
+  that is then split and correlated. The choice is recorded in the settings
+  file (`combine`: `per_file` or `stacked`).
 
 A disabled step is greyed out in the rail.
 
@@ -272,6 +280,7 @@ curve again from the raw photon streams.
 | `reading` | container type, detector setup and channel definitions |
 | `photon_filter` | the step-3 settings, `null` when the raw photons were correlated |
 | `correlator` | bins, cascades, splits, method, channels, micro-time ranges, lifetime filters (path and checksum) |
+| `combine` | `stacked` (one stream) or `per_file` (each file correlated on its own) |
 | `merge` | which correlated pieces (`chunks`) the mean averaged |
 | `output` | the `.cor` file name and its SHA-256 |
 

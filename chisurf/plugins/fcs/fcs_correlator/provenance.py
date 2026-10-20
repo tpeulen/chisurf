@@ -58,6 +58,7 @@ def photon_record(workflow, files: list[str], filter_model=None) -> dict[str, An
             "channel_defs": context.channel_defs,
         },
         photon_filter=settings_of(filter_model) if filter_model is not None else None,
+        combine="per_file" if context.per_file else "stacked",
     )
 
 
@@ -112,7 +113,12 @@ def reproduce(settings, verify: bool = True) -> tuple[dict, list[dict]]:
     workflow.context.detector_settings = dict(reading.get("detector_settings") or {})
     workflow.context.channel_defs = dict(reading.get("channel_defs") or {})
     photon_filter = record.get("photon_filter")
-    workflow.set_files(files, use_filter=photon_filter is not None, use_merger=True)
+    workflow.set_files(
+        files,
+        use_filter=photon_filter is not None,
+        use_merger=True,
+        per_file=record.get("combine") == "per_file",
+    )
     for entry in inputs:
         workflow.regions.set(entry["path"], [tuple(r) for r in entry.get("regions", [])])
     filter_model = FilterSettingsModel()

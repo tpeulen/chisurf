@@ -141,7 +141,9 @@ class FcsHubApp(ToolHubApp):
     def _files_changed(self) -> None:
         files = self.children.get("files")
         if files is not None:
-            self.workflow.set_files(files.checked_files, files.use_filter, files.use_merger)
+            self.workflow.set_files(
+                files.checked_files, files.use_filter, files.use_merger, per_file=files.per_file
+            )
         self.wants_frame = True
 
     def refresh_setup(self) -> None:
@@ -186,7 +188,10 @@ class FcsHubApp(ToolHubApp):
             correlations, folder = self.workflow.merger_input(self.correlator_model)
             if correlations:
                 child.set_correlations(
-                    correlations, folder, provenance=self.workflow.merger_provenance(self.correlator_model)
+                    correlations,
+                    folder,
+                    labels=self.workflow.merger_labels(correlations),
+                    provenance=self.workflow.merger_provenance(self.correlator_model),
                 )
             elif folder is not None and Path(folder).is_dir():
                 child.model.folder = str(folder)

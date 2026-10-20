@@ -15,7 +15,7 @@
     },
     {
       "title": "Only the ticked files are correlated",
-      "text": "Each file has a tick box. A folder adds every TTTR file in it. The two step switches below decide whether the photon filter and the merger are part of the run; a switched-off step is grey in the rail and Back / Next skip it.",
+      "text": "Each file has a tick box. A folder adds every TTTR file in it. With several files, <b>Correlate files separately</b> correlates each on its own and the merger averages them; off, their photons are stacked into one stream first. The two step switches below decide whether the photon filter and the merger are part of the run; a switched-off step is grey in the rail and Back / Next skip it.",
       "target": {"name": "files"}
     },
     {

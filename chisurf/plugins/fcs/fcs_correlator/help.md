@@ -9,7 +9,9 @@ molecules in the focus; the lag where the curve falls is the time a molecule nee
 1. **Channel Definitions**: the detector setup, and which detectors are the logical channels of A and B.
 2. **Files & Steps**: the TTTR files (ticked ones are correlated; a folder adds the TTTR files in it), and whether the
    photon filter (3) and the merger (5) run. **Load example** adds a simulated measurement whose curve falls near 0.5 ms.
-   A Burst-ID (`.bst`) file switches the filter off.
+   A Burst-ID (`.bst`) file switches the filter off. With several files, **Correlate files separately** correlates
+   each file on its own (Splits within each file) and the merger averages the files' pieces (`<file>-<n>`); off, the
+   files' photons are stacked into one stream first.
    The file table lists every file (a folder's files under it); its **Regions** column counts each file's time
    regions. Select one file to draw its count-rate trace below. With **✏ Draw** on, drag on the trace to add a time
    region, drag an edge to move it, right-click a region to remove it; only the photons inside a file's regions are

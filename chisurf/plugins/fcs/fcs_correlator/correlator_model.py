@@ -90,6 +90,9 @@ class CorrelatorSettingsModel:
         self.microtime_range_b = ""
 
         self._tttr: tttrlib.TTTR | None = None
+        #: ``(path, tttr)`` per file when each file is correlated on its own (the workflow's per_file); ``None``:
+        #: the stacked ``_tttr`` is correlated.
+        self._tttr_files: list | None = None
         self._correlations: list[dict] = []
         self._channel_defs: dict = {}
         self._analysis_folder = pathlib.Path()
@@ -242,8 +245,13 @@ class CorrelatorSettingsModel:
             from .provenance import correlator_record
 
             self._provenance = {**self._photon_record, "correlator": correlator_record(self)}
+        # Each file on its own (per file), else the stacked stream; a piece's ``chunk`` counts across files and
+        # ``file`` names the file it came from.
+        streams = self._tttr_files or [(None, self._tttr)]
+        self._correlations.clear()
         if self._lifetime_filters is not None:
-            self._correlate_lifetime_filtered()
+            for path, tttr in streams:
+                self._correlate_lifetime_filtered(tttr, path)
             return f"{len(self._correlations)} species correlation(s)."
 
         n_chunks = self.n_splits
@@ -257,23 +265,34 @@ class CorrelatorSettingsModel:
                 ch2 = used
 
         settings = self.get_correlation_settings()
-        self._correlations.clear()
-        for i, chunk in enumerate(self._split_array(self._tttr, n_chunks)):
-            if chunk is None or len(chunk.macro_times) == 0:
+        total, done, index = n_chunks * len(streams), 0, 0
+        for path, tttr in streams:
+            for chunk in self._split_array(tttr, n_chunks):
+                done += 1
+                if chunk is not None and len(chunk.macro_times) > 0:
+                    result = self._correlate_one(chunk, ch1, ch2, settings, index)
+                    if result is not None:
+                        if path is not None:
+                            result["file"] = str(path)
+                        self._correlations.append(result)
+                        index += 1
+                if progress is not None and progress(done, total) is False:
+                    break
+            else:
                 continue
-            result = self._correlate_one(chunk, ch1, ch2, settings, i)
-            if result is not None:
-                self._correlations.append(result)
-            if progress is not None and progress(i + 1, n_chunks) is False:
-                break
+            break
         n = len(self._correlations)
-        return f"{n} chunk(s) correlated." if n else "Correlation empty."
+        if not n:
+            return "Correlation empty."
+        if self._tttr_files:
+            return f"{n} chunk(s) correlated from {len(streams)} files, each on its own."
+        return f"{n} chunk(s) correlated."
 
     def _split_array(self, tttr, n):
         chunk_size = max(1, len(tttr) // n)
         return [tttr[i * chunk_size : (i + 1) * chunk_size] for i in range(n)]
 
-    def _correlate_lifetime_filtered(self) -> None:
+    def _correlate_lifetime_filtered(self, tttr=None, path=None) -> None:
         """Compute the selected species auto-/cross-correlation from the filters.
 
         In filter mode the A/B selectors pick species (filter rows): equal
@@ -283,7 +302,7 @@ class CorrelatorSettingsModel:
         """
         from chisurf.plugins.fcs.fcs_correlator.core import filtered_correlation_from_tttr
 
-        self._correlations.clear()
+        tttr = self._tttr if tttr is None else tttr
         labels = self._filter_labels or []
         i, j = int(self._species_a), int(self._species_b)
         if i == j:
@@ -295,7 +314,7 @@ class CorrelatorSettingsModel:
         sub_filters = self._subset_species(self._lifetime_filters, indices)
         sub_labels = [labels[k] for k in indices] if len(labels) > max(indices) else None
         datasets = filtered_correlation_from_tttr(
-            self._tttr,
+            tttr,
             sub_filters,
             self.get_correlation_settings(),
             labels=sub_labels,
@@ -309,11 +328,12 @@ class CorrelatorSettingsModel:
                     "x": d["x"],
                     "y": d["y"],
                     "correlation_settings": self.get_correlation_settings(),
-                    "chunk": 0,
+                    "chunk": len(self._correlations),
                     "duration": 0.0,
                     "name": d["name"],
                     "channel_a": {"species": i},
                     "channel_b": {"species": j},
+                    **({"file": str(path)} if path is not None else {}),
                 }
             )
 

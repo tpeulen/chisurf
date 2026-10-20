@@ -223,3 +223,19 @@ def test_clicking_a_row_draws_that_files_trace_one_file_at_a_time(two_files, tmp
     assert rows["a.spc"] == 2 and rows["b.spc"] == 0 and rows[tmp_path.name + "/"] == 2
     hub.draw(2)
     assert hub.shown("2"), "the Regions column shows the count"
+
+
+def test_the_separately_box_reaches_the_correlator(two_files):
+    a, b = two_files
+    hub = _hub()
+    files = _files_with_trace(hub, [a])
+    assert not files.per_file
+    hub.click("per_file")
+    assert not files.per_file, "one file: nothing to correlate separately"
+    files.add_paths([b])
+    hub.draw(2)
+    hub.click("per_file")
+    assert files.per_file and hub.app.workflow.context.per_file
+    hub.nav("correlator")
+    assert len(hub.app.correlator_model._tttr_files) == 2
+    hub.app.close()

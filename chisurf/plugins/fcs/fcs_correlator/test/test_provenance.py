@@ -7,6 +7,7 @@ uses two), save the merge, then compute it again from nothing but ``<name>.cor.j
 from __future__ import annotations
 
 import json
+import pathlib
 
 import numpy as np
 import pytest
@@ -127,3 +128,44 @@ def test_the_workflow_hands_its_record_to_the_merger_and_the_cor_gets_it(tmp_pat
     merged, _curves = reproduce(record)
     np.testing.assert_array_equal(merged["y"], hub.child.model.mean_correlation["y"])
     hub.app.close()
+
+
+def test_files_correlated_separately_are_averaged_and_reproduced(tmp_path):
+    """per_file: each file is correlated on its own (Splits within each), the merge averages the pieces."""
+    a = diffusion_spc(tmp_path, "a.spc", rate_hz=20.0, duration_s=2.0, seed=1)
+    b = diffusion_spc(tmp_path, "b.spc", rate_hz=40.0, duration_s=2.0, seed=2)
+
+    def correlate(files, per_file, regions=()):
+        wf = FcsWorkflow()
+        wf.set_files([str(f) for f in files], use_filter=False, use_merger=True, per_file=per_file)
+        for f, r in regions:
+            wf.regions.set(f, r)
+        cm = CorrelatorSettingsModel()
+        wf.apply_to_correlator(cm)
+        cm.n_splits, cm.channel_a, cm.channel_b = 2, "0", "1"
+        message = cm.correlate_data()
+        return wf, cm, message
+
+    wf, cm, message = correlate([a, b], True, [(a, [(0.0, 1.5)])])
+    assert "from 2 files, each on its own" in message
+    assert [pathlib.Path(c["file"]).name for c in cm._correlations] == ["a.spc"] * 2 + ["b.spc"] * 2
+    assert [c["chunk"] for c in cm._correlations] == [0, 1, 2, 3]
+    assert wf.merger_labels(cm._correlations) == ["a-00", "a-01", "b-00", "b-01"]
+    # Each file's pieces are that file correlated by itself (guard: stacking once grew the first file's stream).
+    _wf, alone_a, _m = correlate([a], False, [(a, [(0.0, 1.5)])])
+    _wf, alone_b, _m = correlate([b], False)
+    for mine, ref in zip(cm._correlations, alone_a._correlations + alone_b._correlations):
+        np.testing.assert_array_equal(mine["y"], ref["y"])
+        assert mine["duration"] == ref["duration"]
+    _wf, stacked, message = correlate([a, b], False)
+    assert message == "2 chunk(s) correlated." and "file" not in stacked._correlations[0]
+
+    merger = MergerModel()
+    curves, folder = wf.merger_input(cm)
+    merger.set_correlations(curves, folder, wf.merger_labels(curves), wf.merger_provenance(cm))
+    target = merger.save(tmp_path / "per_file.cor")
+    record = read_settings(target)
+    assert record["combine"] == "per_file" and record["merge"]["chunks"] == [0, 1, 2, 3]
+    merged, again = reproduce(record)
+    assert len(again) == 4
+    np.testing.assert_array_equal(merged["y"], merger.mean_correlation["y"])

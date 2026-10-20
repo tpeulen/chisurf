@@ -332,3 +332,13 @@ parents, `selection: "single"` — added to emtk 4876c64 for this). The selected
 (`selected_attr: selected_file`); `FilesStepApp.current` is derived from it, because a click on an already selected
 row does not call `selected_call` (a stored copy went stale and greyed Remove).
 
+### Stacked or per file — 2026-10-20
+
+**Correlate files separately** (Files & Steps, `FilesStepApp.per_file` → `FcsWorkflowContext.per_file`) hands the
+correlator `_tttr_files` = `(path, tttr)` per file; `correlate_data` splits and correlates each on its own (`chunk`
+counts across files, `file` names the source), the merger labels the pieces `<stem>-<n>`
+(`FcsWorkflow.merger_labels`) and averages them. Off, the pieces are stacked (`FcsWorkflow.stack`). Recorded as
+`combine` in the `.cor.json`; `reproduce` honours it. Trap fixed with it: `TTTR.append` extends the stream it is
+called on, so stacking in place made the first file's stream hold every file — `stack` copies the first piece
+(guard: per-file pieces equal each file correlated alone, durations included).
+

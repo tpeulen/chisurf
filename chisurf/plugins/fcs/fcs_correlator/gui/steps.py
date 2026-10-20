@@ -122,6 +122,8 @@ class FilesStepApp(ImApp):
         self.current = -1
         self.use_filter = False
         self.use_merger = True
+        #: Several files: correlate each on its own and average the curves (else stack the photons, then correlate).
+        self.per_file = False
         self.on_change = on_change
         self.client = client
         self.dialogs = _Dialogs()
@@ -380,6 +382,7 @@ class FilesStepApp(ImApp):
             "checked": self.checked_files,
             "use_filter": self.use_filter,
             "use_merger": self.use_merger,
+            "per_file": self.per_file,
             "regions": self.regions.export_settings(),
         }
 
@@ -388,6 +391,7 @@ class FilesStepApp(ImApp):
         self.checked = {p for p in state.get("checked", []) if p in self.paths}
         self.use_filter = bool(state.get("use_filter", False))
         self.use_merger = bool(state.get("use_merger", True))
+        self.per_file = bool(state.get("per_file", False))
         self.regions.restore_settings(state.get("regions", {}))
         self.changed()
 
@@ -513,6 +517,25 @@ class FilesStepApp(ImApp):
                 tr("Screen and merge the correlation curves after correlating (step 5).")
             )
             self.item_rects["use_merger"] = im.get_item_rect()
+            im.same_line()
+            several = len(self.region_files()) > 1
+            im.begin_disabled(not several)
+            changed, value = im.checkbox(tr("Correlate files separately"), self.per_file)
+            im.end_disabled()
+            if changed and several:
+                self.per_file = value
+                self.on_used("per_file")
+                self.changed()
+            im.set_item_tooltip(
+                tr(
+                    "On: each file is correlated on its own (Splits within each file) and the merger averages the "
+                    "files' curves; a file that differs shows as its own curve. Off: the files' photons are stacked "
+                    "into one stream, then correlated."
+                )
+                if several
+                else tr("Needs two or more ticked files.")
+            )
+            self.item_rects["per_file"] = im.get_item_rect()
             if self.paths:
                 self._draw_regions()
             im.end_disabled()
