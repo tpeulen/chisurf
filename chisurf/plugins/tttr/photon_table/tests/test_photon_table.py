@@ -196,9 +196,12 @@ def test_scan_kinds_equal_tttrlib_counts(name):
 def test_sp5_marker_channels_follow_the_header():
     """Leica SP5 PTU: the kinds are the marker channels the header declares, counted with numpy.
 
-    The header names frame marker 4, line start 1 and line stop 2; the scanner's
-    second frame channel (6) is not in the header, so those 210 records are
-    *other* markers -- the table shows what the file says, not a routine guess.
+    The header names frame marker 4, line start 1 and line stop 2. PicoQuant
+    markers are bit fields: 210 of the SP5's frame markers share a record with
+    the last line's stop (channel 6 = 4|2), and since tttrlib 5d126dec3
+    ``CLSMImageInfo.from_header`` declares PTU frame markers as {4, 6}. So all
+    231 are frames and none is *other* -- the table follows tttrlib's reading of
+    the header, not a routine guess of its own.
     """
     import tttrlib
 
@@ -214,10 +217,13 @@ def test_sp5_marker_channels_follow_the_header():
     marker = et == 1
     frames = list(info.marker_frame_start)
     counts = m.kind_counts()
-    assert counts["frame"] == int(np.count_nonzero(marker & np.isin(rc, frames))) == 21
+    assert sorted(frames) == [4, 6]
+    assert int(np.count_nonzero(marker & (rc == 4))) == 21
+    assert int(np.count_nonzero(marker & (rc == 6))) == 210
+    assert counts["frame"] == int(np.count_nonzero(marker & np.isin(rc, frames))) == 231
     assert counts["line_start"] == int(np.count_nonzero(marker & (rc == info.marker_line_start)))
     assert counts["line_stop"] == int(np.count_nonzero(marker & (rc == info.marker_line_stop)))
-    assert counts["other"] == int(np.count_nonzero(marker & (rc == 6))) == 210
+    assert counts["other"] == 0
     assert counts["pixel"] == 0
     rows = m.page(0, 5, kind="frame")
     assert {r["kind"] for r in rows} == {"frame"} and {r["channel"] for r in rows} == set(frames)

@@ -35,17 +35,22 @@ QT_SP8 = dict(
     max=212,
     sha1="c12bdf5fb28317ad7abfe2aef4b8836eb7756997",
 )
+# The SP5 numbers are not the Qt window's any more: it read the file through a tttrlib that
+# took only frame marker 4 from the header and reconstructed one salvaged 1 x 7921 x 256
+# frame, mostly fly-backs. tttrlib 5d126dec3 reads the frame markers that share a record
+# with the last line stop (channel 6 = 4|2), so the file is 230 x 256 x 256 -- a cell, the
+# red channel empty as before. Re-pinned from that reconstruction (mosaic inspected).
 QT_SP5 = dict(
-    shape=[512, 34],
+    shape=[256, 512],
     cols=2,
     rows=1,
-    sum=13610,
-    max=69,
-    sha1="f0c5aab7335256fc31c33806321be8b77e1e753a",
+    sum=2180091,
+    max=255,
+    sha1="5258d6537c943e9aceda951d46f4b9d397e056d2",
 )
 QT_TIFF = {
-    "Leica_SP5_green.tiff": ([7921, 256], 443139),
-    "Leica_SP5_red.tiff": ([7921, 256], 0),
+    "Leica_SP5_green.tiff": ([230, 256, 256], 3037446),  # re-pinned, see QT_SP5
+    "Leica_SP5_red.tiff": ([230, 256, 256], 0),
     "Leica_SP8_green.tiff": ([93, 512, 512], 2710575),
     "Leica_SP8_red.tiff": ([93, 512, 512], 0),
 }

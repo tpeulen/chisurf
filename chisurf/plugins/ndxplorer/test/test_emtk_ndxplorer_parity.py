@@ -115,13 +115,18 @@ def test_same_controls_as_the_qt_window_on_the_same_table():
 
         # Every control of the Qt-hosted app is drawn by the factory's app too -- in full,
         # or clipped: the factory gives Plot controls a wider column (split 0.44), so the
-        # path field's hint shows as "Drop folder her…".
+        # path field's hint shows as "Drop folder her…". A combo clips its current text
+        # with no ellipsis at all, and where depends on the font metrics of the run: the
+        # Qt reference recorded the gist_earth colormap combo as "gist_ea", the factory's
+        # app draws "gist_e" under pytest and "gist_ear" standalone. Either side may be
+        # the clipped one, so a shared prefix of at least six characters is the same control.
+        def clipped_match(a, b):
+            a, b = a.rstrip("…"), b.rstrip("…")
+            short, long_ = sorted((a, b), key=len)
+            return len(short) >= 6 and long_.startswith(short)
+
         def present(text):
-            return text in ours["controls"] or any(
-                c.rstrip("…") and text.startswith(c.rstrip("…"))
-                for c in ours["controls"]
-                if len(c) > 6
-            )
+            return text in ours["controls"] or any(clipped_match(text, c) for c in ours["controls"])
 
         assert [c for c in qt["controls"] if not present(c)] == []
     finally:
