@@ -37,7 +37,8 @@ two tools open on arrival, which wants its own screenshot pass.
 
 ## emtk text-editor folding fix rides on uncommitted emtk work (found 2026-10-20, branch `mcts-native-baseline`)
 
-status: open
+status: resolved 2026-10-20 — emtk 1a28e83 commits `Folds` with the stale-fold guard and
+`tests/test_text_editor_folding_colors.py`; chisurf pins emtk 0.1.26 (7e25f01). Original finding follows.
 
 The `Folds` class in `~/dev/emtk/emtk/widgets/text_editor.py` exists only in emtk's
 uncommitted working tree (with the untracked `tests/test_text_editor_folding_colors.py`).

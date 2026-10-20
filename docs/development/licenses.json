@@ -71,7 +71,7 @@
     {
       "name": "emtk",
       "group": "runtime",
-      "requirement": "emtk>=0.1.25",
+      "requirement": "emtk>=0.1.26",
       "license": "MIT",
       "url": "https://github.com/tpeulen/emtk",
       "source": "metadata",
