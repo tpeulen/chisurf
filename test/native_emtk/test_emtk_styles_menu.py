@@ -13,7 +13,7 @@ def shell(tmp_path, monkeypatch):
 
     monkeypatch.setattr(recent, "recent_projects_file", lambda: tmp_path / "recent_projects.json")
     monkeypatch.setattr(chisurf, "working_path", tmp_path, raising=False)
-    app = EmtkShellApp(session_factory=lambda: None)
+    app = EmtkShellApp(session_factory=lambda **_options: None)
     yield app
     app.close()
 
@@ -22,33 +22,27 @@ def test_styles_submenu_in_settings_menu(shell):
     driver = Driver(shell, size=(1200, 800))
     driver.frame(2)
 
-    # 1. Open Settings menu
+    # 1. Open Settings menu: the styles are flat, checked entries in it (d09a926fd),
+    #    followed by the "Blur behind dialogs" toggle (owner request); no submenu.
     driver.click("menu.Settings")
     driver.frame(2)
     strings = set(driver.painter.strings)
-    assert "Styles" in strings
+    assert "Styles" not in strings
     assert "Dark theme" not in strings
     assert "Light theme" not in strings
-
-    # 2. Click Styles to open the submenu
-    driver.click("menu.styles")
-    driver.frame(2)
-    strings = set(driver.painter.strings)
-    assert "Dark Blue" in strings
-    assert "Dark" in strings
-    assert "Light" in strings
-    assert "Dark Green" in strings
-    assert "Dark Orange" in strings
-    assert "Dark Violet" in strings
+    for label in ("Dark Blue", "Dark", "Light", "Dark Green", "Dark Orange", "Dark Violet"):
+        assert label in strings, label
     assert "Dark Blue Flat" not in strings
+    assert "Blur behind dialogs" in strings
 
-    styles_action = shell._theme_actions()[0]
-    child_labels = [c.label for c in styles_action.children]
-    child_keys = [c.key for c in styles_action.children]
+    actions = shell._theme_actions()
+    assert actions[-1].key == "style_modal_blur"
+    child_labels = [a.label for a in actions]
+    child_keys = [a.key for a in actions]
     assert len(child_labels) == len(set(child_labels)), f"Duplicate labels found: {child_labels}"
     assert len(child_keys) == len(set(child_keys)), f"Duplicate keys found: {child_keys}"
 
-    # 3. Choose a style from the submenu
+    # 2. Choose a style from the menu
     driver.click("menu.style_dark_green")
     driver.frame(2)
 
@@ -58,7 +52,7 @@ def test_styles_submenu_in_settings_menu(shell):
     assert theme.current_theme() == "dark_green"
     assert stored_theme.stored_style() in ("dark_green.css", "dark_green")
 
-    # 4. Verify that re-opening the menu immediately reflects dark_green colors live without restart
+    # 3. Verify that re-opening the menu immediately reflects dark_green colors live without restart
     from emtk import style as emtk_style
 
     assert emtk_style.POPUP_BG == (36, 44, 38, 255)
@@ -73,9 +67,7 @@ def test_styles_submenu_in_settings_menu(shell):
     # Last stroke_rect for popup background must use dark_green POPUP_BG
     assert menu_strokes[-1][6] == (36, 44, 38, 255)
 
-    # 5. Switch to Light style live
-    driver.click("menu.styles")
-    driver.frame(2)
+    # 4. Switch to Light style live
     driver.click("menu.style_light")
     driver.frame(2)
 

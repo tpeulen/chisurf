@@ -185,14 +185,19 @@ def test_table_clicks_toggle_original_burst_identity_and_selected_histogram(tmp_
     try:
         driver = Driver(app, size=(1200, 800))
         driver.draw(3)
-        x, y, width, height = app.item_rects["table"]
         row = int(app.model.masked_row_indices()[0])
         app.model.use_selection = True
         app.model.selected_indices.clear()
-        driver.click((x + 12, y + 34))
+        # The first body row's centre, from the table's own last-draw geometry (row heights
+        # follow emtk's density, so a fixed pixel offset lands on another row).
+        table = app.browser_gui._burst_table.control
+        bx, by, _bw, _bh = table._body_box
+        first = (bx + 12, by + table._row_h / 2)
+        assert table.records[table.order()[table.row_at(*first)]]["_burst_index"] == row
+        driver.click(first)
         assert app.model.selected_indices == [row]
         assert sum(app.model.histogram()["counts"]) == 1
-        driver.click((x + 12, y + 34))
+        driver.click(first)
         assert app.model.selected_indices == []
     finally:
         app.close()
