@@ -7,9 +7,9 @@
     },
     {
       "title": "Start with data whose answer you know",
-      "text": "This tool correlates the photons inside each single-molecule burst separately, so the curves are not diluted by the empty time between bursts.<br/><br/>The tour works on a small data set the tool writes itself: eight bursts on two detectors, drawn from a seeded generator (nothing here is a measurement). Press <b>Example</b> to add it.",
+      "text": "This tool correlates the photons inside each single-molecule burst separately, so the curves are not diluted by the empty time between bursts.<br/><br/>The tour works on a small data set the tool writes itself: eight bursts on two detectors, drawn from a seeded generator (nothing here is a measurement). Press <b>Load example</b> to add it.",
       "target": {"name": "load_example"},
-      "await": {"hint": "Press Example to add the simulated burst files."},
+      "await": {"hint": "Press Load example to add the simulated burst files."},
       "tab": "Inputs"
     },
     {

@@ -5,7 +5,7 @@ channel, with each trace's count histogram beside it, and their sum.
 
 ## Steps
 
-1. **Load TTTR** (or drop a file; **Example** loads a simulated molecule switching between two FRET states).
+1. **Load TTTR** (or drop a file; **Load example** loads a simulated molecule switching between two FRET states).
    **Setup** chooses which routing channels and micro-time ranges make each detector; *Routing channels* bins every
    routing channel on its own. **Detector Selection** ticks the traces to bin.
 2. **Time Window**: the bin width. Short bins resolve fast switching but carry few photons (shot noise); long bins

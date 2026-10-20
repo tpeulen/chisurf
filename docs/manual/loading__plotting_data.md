@@ -19,6 +19,6 @@ The photon file type is part of the detector setup of **1. Channel Definitions**
 (left empty, it is detected from each file). Files are added in **2. Files &
 Steps**: **Files…** or **Folder…** opens a file browser,
 **Database** picks recorded measurements, and files dropped on the window are added
-too. **Example** adds the tool's simulated photon stream. Ticked files are
+too. **Load example** adds the tool's simulated photon stream. Ticked files are
 processed; **Remove** and **Clear** drop the selected or all files. The filter step
 is reached only while *Count rate/burst filter* is ticked under **Steps**.

@@ -71,13 +71,13 @@ only the photons of bursts went into the decays.
 :name: fig-fcs-correlator-step
 :width: 100%
 
-The FCS **Correlator** step on the bundled simulated measurement (**Example**
+The FCS **Correlator** step on the bundled simulated measurement (**Load example**
 in *2. Files & Steps*; molecules cross the focus in about 0.25 ms):
 detectors 0 × 1, three splits, `laurence`. The three split curves agree and
 fall to $G = 1$ after the crossing time.
 ```
 
-In **2. Files & Steps** add the files (or **Example**) and choose the optional
+In **2. Files & Steps** add the files (or **Load example**) and choose the optional
 steps; in **4. Correlator**:
 
 1. **Ch A**, **Ch B** — the detectors of the two streams (`0,1` merges two

@@ -23,7 +23,7 @@
         "name": "folder"
       },
       "await": {
-        "hint": "Press the <b>folder</b> button and choose the burst-analysis folder."
+        "hint": "Press the <b>Folder</b> button and choose the burst-analysis folder."
       }
     },
     {

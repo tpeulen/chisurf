@@ -8,12 +8,12 @@
     },
     {
       "title": "Start with data whose answer you know",
-      "text": "<b>Example</b> loads a simulated molecule that switches between two FRET states (visits of 20 and 80 ms) on two detectors. Two levels must be visible, anti-correlated between the detectors.",
+      "text": "<b>Load example</b> loads a simulated molecule that switches between two FRET states (visits of 20 and 80 ms) on two detectors. Two levels must be visible, anti-correlated between the detectors.",
       "target": {
         "name": "load_example"
       },
       "await": {
-        "hint": "Press <b>Example</b>."
+        "hint": "Press <b>Load example</b>."
       }
     },
     {

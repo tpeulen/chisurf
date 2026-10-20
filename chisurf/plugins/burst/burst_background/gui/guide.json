@@ -27,7 +27,7 @@
         "key": "bg_run"
       },
       "await": {
-        "hint": "Press the <b>Estimate</b> button."
+        "hint": "Press the <b>Estimate Background</b> button."
       }
     },
     {
