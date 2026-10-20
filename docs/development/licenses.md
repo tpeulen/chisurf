@@ -2,19 +2,21 @@
 type: Development Note
 title: ChiSurf dependency licenses
 description: Every declared dependency's license, its permissiveness class, and the binding constraint on ChiSurf's own license.
-tags: [development, licenses]
+tags: [development, licensing]
 audience: developer
 ---
 
 # ChiSurf dependency licenses
 
-*Generated 2026-10-19 by `build_tools/license_tracker.py`. Regenerate after adding a dependency; do not edit by hand.*
+*Generated 2026-10-20 by `build_tools/license_tracker.py`. Regenerate after adding a dependency; do not edit by hand.*
 
 ## Compatibility
 
 - **Current license:** MIT
-- **Most permissive license possible:** Weak copyleft, file-level (MPL)
+- **Most permissive license possible:** Weak copyleft, library-level (LGPL)
 - **Binding constraint:** imp-bff
+
+Weak copyleft binds only the library it covers: ChiSurf stays MIT because every weak-copyleft dependency is a separate, unmodified, dynamically loaded package the user can replace, and no ChiSurf file copies its code. How the installer meets the LGPL is on the Licensing page ([licensing](../licensing.md)).
 
 ## Python dependencies
 
@@ -31,10 +33,10 @@ audience: developer
 | Pygments | full | 2.20.0 | BSD-2-Clause | Permissive (MIT/BSD/Apache/PSF/...) | https://pygments.org |
 | psycopg | postgres | not installed | LGPL-3.0-or-later | Weak copyleft, library-level (LGPL) | https://github.com/psycopg/psycopg/blob/master/LICENSE.txt |
 | click | runtime | 8.4.2 | BSD-3-Clause | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/pallets/click/ |
-| emtk | runtime | 0.1.24 | MIT | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/tpeulen/emtk |
+| emtk | runtime | 0.1.27 | MIT | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/tpeulen/emtk |
 | glfw | runtime | 2.10.2 | MIT | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/FlorianRhiem/pyGLFW/blob/master/LICENSE.txt |
 | ihm | runtime | 2.11 | MIT | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/ihmwg/python-ihm |
-| imp-bff | runtime | not installed | MPL-2.0 | Weak copyleft, file-level (MPL) | https://github.com/tpeulen/imp.bff |
+| imp-bff | runtime | not installed | LGPL-2.1-or-later | Weak copyleft, library-level (LGPL) | https://github.com/tpeulen/imp.bff |
 | jsonschema | runtime | 4.26.0 | MIT | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/python-jsonschema/jsonschema |
 | markdown | runtime | 3.10.3 | BSD-3-Clause | Permissive (MIT/BSD/Apache/PSF/...) | https://Python-Markdown.github.io/ |
 | mmfdb | runtime | 0.1.0 | MIT | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/tpeulen/mmfdb |
@@ -42,14 +44,10 @@ audience: developer
 | numpy | runtime | 2.4.6 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | Permissive (MIT/BSD/Apache/PSF/...) | https://numpy.org |
 | packaging | runtime | 26.3 | Apache-2.0 OR BSD-2-Clause | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/pypa/packaging |
 | Pillow | runtime | 12.3.0 | MIT-CMU | Permissive (MIT/BSD/Apache/PSF/...) | https://python-pillow.github.io |
-| PyOpenGL | runtime | 3.1.10 | BSD License | Permissive (MIT/BSD/Apache/PSF/...) | https://mcfletch.github.io/pyopengl/ |
 | python-docx | runtime | 1.2.0 | MIT | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/python-openxml/python-docx/blob/master/LICENSE |
 | PyYAML | runtime | 6.0.3 | MIT License | Permissive (MIT/BSD/Apache/PSF/...) | https://pyyaml.org/ |
 | pyzmq | runtime | 27.1.0 | BSD License | Permissive (MIT/BSD/Apache/PSF/...) | https://pyzmq.readthedocs.org |
 | rendercanvas | runtime | 2.7.2 | BSD-2-Clause | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/pygfx/rendercanvas/blob/main/LICENSE |
-| ruff | runtime | 0.16.5 | MIT | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/astral-sh/ruff/blob/main/LICENSE |
-| sqlalchemy | runtime | 2.0.51 | MIT | Permissive (MIT/BSD/Apache/PSF/...) | https://www.sqlalchemy.org |
-| typing-extensions | runtime | 4.16.0 | PSF-2.0 | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/python/typing_extensions |
 | wgpu | runtime | 0.32.0 | BSD 2-Clause License | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/pygfx/wgpu-py |
 | beautifulsoup4 | scrape | 4.15.0 | MIT License | Permissive (MIT/BSD/Apache/PSF/...) | https://www.crummy.com/software/BeautifulSoup/bs4/ |
 | openpyxl | scrape | 3.1.5 | MIT License | Permissive (MIT/BSD/Apache/PSF/...) | https://foss.heptapod.net/openpyxl/openpyxl |

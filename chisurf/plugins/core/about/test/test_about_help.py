@@ -96,7 +96,8 @@ def test_copy_details_has_only_displayed_identity_and_reports_success(copied):
     assert "Thomas-Otavio Peulen" in copied[0]
     assert "thomas.peulen@tu-dortmund.de" in copied[0]
     assert "github.com/fluorescence-tools/chisurf" in copied[0]
-    assert len(copied[0].splitlines()) == 6
+    assert "Licence: MIT" in copied[0]
+    assert len(copied[0].splitlines()) == 8
     assert tr("Application details copied.") in driver.draw(1).strings
 
 

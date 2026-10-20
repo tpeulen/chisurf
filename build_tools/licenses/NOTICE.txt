@@ -1,0 +1,46 @@
+ChiSurf {chisurf_version} -- licences of this installation
+===========================================================
+
+This folder holds the licence texts of everything this installer ships that
+the ChiSurf licence does not cover. It is copied in by
+build_tools/build_installer.py; the reasoning is in the documentation page
+"Licensing" (docs/licensing.md).
+
+  ChiSurf (the program)          MIT                LICENSE-ChiSurf.txt
+  ChiSurf documentation          CC BY-SA 4.0       LICENSE-docs.txt
+  emtk, chimol, mmfdb, ndXplorer,
+  QuEst, imp-tricks              MIT                (each package's own
+                                                     dist-info/licenses)
+  tttrlib                        BSD-3-Clause       tttrlib-BSD-3-Clause.txt
+  IMP.bff (package imp-bff)      LGPL-2.1-or-later  LGPL-2.1.txt
+
+Other Python packages in this runtime keep their licence files in their
+*.dist-info folders under the site-packages directory.
+
+
+IMP.bff and the GNU Lesser General Public License
+-------------------------------------------------
+
+IMP.bff (imp-bff {imp_bff_version}) is free software under the GNU Lesser
+General Public License, version 2.1 or (at your option) any later version; the
+full text is LGPL-2.1.txt in this folder. ChiSurf uses it as a library, under
+these terms:
+
+* It is a separate package, installed unmodified in the site-packages folder
+  of this runtime as the Python package IMP.bff (its compiled module
+  _IMP_bff and shared library libimp_bff), not merged into ChiSurf.
+* ChiSurf loads it dynamically at run time, through Python's import system.
+  You may replace it with any build of IMP.bff you like, including one you
+  modified, by installing that build over it (for example with
+  "python -m pip install <your imp-bff wheel>" using this runtime's Python);
+  ChiSurf picks up whatever IMP.bff is installed.
+* No ChiSurf source file copies IMP.bff code; ChiSurf calls IMP.bff's public
+  interface.
+* The complete corresponding source code of IMP.bff is available at
+      https://github.com/tpeulen/IMP.bff
+  The version shipped here is {imp_bff_version}; a "+g<hash>" suffix names
+  the exact source commit, and the release tag of the same version names it
+  otherwise.
+
+ChiSurf's own MIT licence does not restrict what you may do with IMP.bff, and
+the LGPL does not extend to ChiSurf.

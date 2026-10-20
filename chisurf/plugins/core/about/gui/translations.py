@@ -56,6 +56,20 @@ STRINGS = {
         "Repositório: github.com/fluorescence-tools/chisurf",
         "Репозиторий: github.com/fluorescence-tools/chisurf",
     ),
+    "Licence: {licence} (documentation: CC BY-SA 4.0)": (
+        "Lizenz: {licence} (Dokumentation: CC BY-SA 4.0)",
+        "Licence : {licence} (documentation : CC BY-SA 4.0)",
+        "Licencia: {licence} (documentación: CC BY-SA 4.0)",
+        "Licença: {licence} (documentação: CC BY-SA 4.0)",
+        "Лицензия: {licence} (документация: CC BY-SA 4.0)",
+    ),
+    "Companion libraries keep their own licences: tttrlib BSD-3-Clause, IMP.bff LGPL-2.1-or-later.": (
+        "Begleitbibliotheken behalten ihre eigenen Lizenzen: tttrlib BSD-3-Clause, IMP.bff LGPL-2.1-or-later.",
+        "Les bibliothèques associées gardent leurs propres licences : tttrlib BSD-3-Clause, IMP.bff LGPL-2.1-or-later.",
+        "Las bibliotecas complementarias conservan sus propias licencias: tttrlib BSD-3-Clause, IMP.bff LGPL-2.1-or-later.",
+        "As bibliotecas complementares mantêm as suas próprias licenças: tttrlib BSD-3-Clause, IMP.bff LGPL-2.1-or-later.",
+        "Сопутствующие библиотеки сохраняют свои лицензии: tttrlib BSD-3-Clause, IMP.bff LGPL-2.1-or-later.",
+    ),
     "Help": ("Hilfe", "Aide", "Ayuda", "Ajuda", "Помощь"),
     "Copy details": (
         "Infos kopieren",

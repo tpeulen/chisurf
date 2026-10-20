@@ -42,6 +42,8 @@ RECIPE_DIR = REPO_ROOT / "rattler-recipe"
 WIN_DIR = REPO_ROOT / "build_tools" / "win"
 LINUX_DIR = REPO_ROOT / "build_tools" / "linuxdeploy"
 MODULES_DIR = REPO_ROOT / "modules"
+#: Licence texts the installer ships beside the runtime (see install_licence_texts).
+LICENCES_DIR = REPO_ROOT / "build_tools" / "licenses"
 CONDA_BLD = REPO_ROOT / "conda-bld"
 DIST = REPO_ROOT / "dist"
 PYVER = "3.12"
@@ -211,7 +213,46 @@ def make_runtime(prefix: Path, *, conda_extras: list[str], pip_nodeps: list[str]
     rc = subprocess.call([sys.executable, str(Path(__file__).resolve()), "--strip-only", str(prefix)])
     if rc != 0:
         print(f"WARNING: slimming step exited {rc}; shipping un-slimmed env", file=sys.stderr, flush=True)
+    install_licence_texts(prefix, py)
     return py
+
+
+def _installed_version(py: Path, dist: str) -> str:
+    """The version of distribution *dist* in the runtime whose interpreter is *py*."""
+    try:
+        out = subprocess.run(
+            [str(py), "-c", f"import importlib.metadata as m; print(m.version({dist!r}))"],
+            capture_output=True, text=True, timeout=120, check=True)
+        return out.stdout.strip() or "unknown"
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+
+
+def install_licence_texts(prefix: Path, py: Path) -> Path:
+    """Write ``<prefix>/licenses``: every licence text the installer must carry.
+
+    Slimming deletes ``conda-meta`` and ``share/doc``, and a conda package keeps its
+    licence file in the package archive's ``info/`` rather than in the prefix, so
+    nothing in the runtime would otherwise carry the LGPL text IMP.bff is
+    distributed under. The folder holds ChiSurf's MIT licence, the documentation's
+    CC BY-SA 4.0, tttrlib's BSD-3-Clause, the LGPL 2.1 and ``NOTICE.txt``, which
+    states how IMP.bff is shipped (separate, unmodified, dynamically loaded,
+    replaceable) and where its source is, with the shipped imp-bff version filled in.
+    """
+    out = prefix / "licenses"
+    rmtree(out)
+    out.mkdir(parents=True)
+    shutil.copy2(REPO_ROOT / "LICENSE", out / "LICENSE-ChiSurf.txt")
+    shutil.copy2(REPO_ROOT / "docs" / "LICENSE", out / "LICENSE-docs.txt")
+    for name in ("LGPL-2.1.txt", "tttrlib-BSD-3-Clause.txt"):
+        shutil.copy2(LICENCES_DIR / name, out / name)
+    notice = (LICENCES_DIR / "NOTICE.txt").read_text(encoding="utf-8")
+    (out / "NOTICE.txt").write_text(
+        notice.format(chisurf_version=get_version(),
+                      imp_bff_version=_installed_version(py, "imp-bff")),
+        encoding="utf-8")
+    print(f"[licences] wrote {out}", flush=True)
+    return out
 
 
 def _install_imp_tricks(py: Path, env: dict) -> None:
@@ -408,6 +449,9 @@ def package_macos(version: str, info: dict) -> Path:
         shutil.copy2(dylib, contents / "lib" / dylib.name, follow_symlinks=False)
     for f in (contents / "lib").glob("libc++*.dylib"):  # OS-provided; bundling => SIGBUS
         f.unlink()
+
+    # The runtime's lib/ and bin/ are copied piecemeal, so the licence folder is copied on its own.
+    shutil.copytree(prefix / "licenses", contents / "Resources" / "licenses")
 
     icon = REPO_ROOT / "chisurf" / "gui" / "resources" / "icons" / "cs_logo.icns"
     if icon.exists():

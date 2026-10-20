@@ -22,11 +22,11 @@ def test_every_runtime_dependency_is_classified():
 
 
 def test_the_binding_constraint_is_stated():
-    """Weak copyleft (MPL, imp-bff and LabelLib) today. If this fails, the dependency graph's
-    licensing changed — regenerate docs/development/licenses.md and read the diff before
-    adjusting the assertion.
+    """Weak copyleft, library-level (LGPL: imp-bff) today. If this fails, the dependency
+    graph's licensing changed — regenerate docs/development/licenses.md and read the diff
+    before adjusting the assertion.
     """
     data = collect()
     assert data["binding_class"] in CLASSES
-    assert data["binding_class"] == 2
+    assert data["binding_class"] == 3
     assert "imp-bff" in data["blockers"]

@@ -18,6 +18,9 @@ def test_about_preserves_identity_content_and_close_action(monkeypatch):
     assert "Thomas-Otavio Peulen" in text
     assert "thomas.peulen@tu-dortmund.de" in text
     assert "github.com/fluorescence-tools/chisurf" in text
+    assert "Licence: MIT" in text
+    assert "IMP.bff LGPL-2.1-or-later" in text
+    assert "tttrlib BSD-3-Clause" in text
     assert app.logo is not None
     from emtk.testing import Driver
 

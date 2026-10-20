@@ -1,8 +1,8 @@
 {
-  "generated": "2026-10-19",
+  "generated": "2026-10-20",
   "project_license": "MIT",
-  "binding_class": 2,
-  "binding_class_name": "Weak copyleft, file-level (MPL)",
+  "binding_class": 3,
+  "binding_class_name": "Weak copyleft, library-level (LGPL)",
   "blockers": [
     "imp-bff"
   ],
@@ -22,21 +22,11 @@
       "name": "imp-bff",
       "group": "runtime",
       "requirement": "imp-bff",
-      "license": "MPL-2.0",
+      "license": "LGPL-2.1-or-later",
       "url": "https://github.com/tpeulen/imp.bff",
       "source": "override",
       "version": "not installed",
-      "class": 2
-    },
-    {
-      "name": "PyOpenGL",
-      "group": "runtime",
-      "requirement": "PyOpenGL",
-      "license": "BSD License",
-      "url": "https://mcfletch.github.io/pyopengl/",
-      "source": "metadata",
-      "version": "3.1.10",
-      "class": 1
+      "class": 3
     },
     {
       "name": "wgpu",
@@ -75,7 +65,7 @@
       "license": "MIT",
       "url": "https://github.com/tpeulen/emtk",
       "source": "metadata",
-      "version": "0.1.24",
+      "version": "0.1.27",
       "class": 1
     },
     {
@@ -96,16 +86,6 @@
       "url": "https://github.com/pypa/packaging",
       "source": "metadata",
       "version": "26.3",
-      "class": 1
-    },
-    {
-      "name": "typing-extensions",
-      "group": "runtime",
-      "requirement": "typing-extensions",
-      "license": "PSF-2.0",
-      "url": "https://github.com/python/typing_extensions",
-      "source": "metadata",
-      "version": "4.16.0",
       "class": 1
     },
     {
@@ -176,26 +156,6 @@
       "url": "https://pyzmq.readthedocs.org",
       "source": "metadata",
       "version": "27.1.0",
-      "class": 1
-    },
-    {
-      "name": "ruff",
-      "group": "runtime",
-      "requirement": "ruff>=0.4",
-      "license": "MIT",
-      "url": "https://github.com/astral-sh/ruff/blob/main/LICENSE",
-      "source": "override",
-      "version": "0.16.5",
-      "class": 1
-    },
-    {
-      "name": "sqlalchemy",
-      "group": "runtime",
-      "requirement": "sqlalchemy>=2.0",
-      "license": "MIT",
-      "url": "https://www.sqlalchemy.org",
-      "source": "metadata",
-      "version": "2.0.51",
       "class": 1
     },
     {

@@ -1,12 +1,63 @@
 ---
 type: Subsystem
-title: 'Licence: GPL → MIT (2026-10-17)'
-description: 'Plan: ChiSurf distributed under MIT. Author is the sole copyright holder of chisurf, chimol, mmfdb, ndxplorer, emtk, tttrlib — every piece is his to relicense.'
+title: 'Licence: GPL → MIT, and the stack table (2026-10-17, audited 2026-10-20)'
+description: 'ChiSurf and its family are MIT, tttrlib BSD-3-Clause, IMP.bff LGPL-2.1-or-later; docs/licensing.md holds the table, test/test_stack_licences.py holds every repository to it, the installer ships the LGPL text.'
 tags: [subsystems]
-timestamp: 2026-10-17T21:56:23+02:00
+timestamp: 2026-10-20T18:00:00+02:00
 ---
 
 # Licence: GPL → MIT (2026-10-17)
+
+## Where to pick this up
+
+1. **IMP.swarm provenance (blocks imp-tricks being wholly MIT).** Its docs say CeCILL v2 and it calls
+   itself a reimplementation of iDynoMiCS-2 (CeCILL). Establish per module whether it was translated
+   from that source; clean-room what was, as chimol did (`~/dev/chimol/okf-mit-cleanroom-audit.md`).
+   Details in [known issues](../references/known-issues.md).
+2. **LGPL source offer.** The installer ships the LGPL text and NOTICE with the imp-bff version and
+   repository; strict §4/§6 compliance additionally wants the sdist in or beside the installer, or a
+   written offer. Owner decision; known issues has the options.
+3. **tttrlib `PhotonscoreD7.h`** is a port of Apache-2.0 code without the Apache notice/text.
+4. Re-measure: `pytest test/test_stack_licences.py` (skips repos not checked out — on CI only chisurf
+   itself is checked, so a sibling repo can drift unseen there; run it on the dev machine) and the
+   grep in known issues. `docs/references/review_status.json` will show `licensing.md` stale until the
+   docs review pass re-signs it.
+
+## Owner decision 2026-10-20 — the stack table
+
+chisurf, emtk, chimol, mmfdb, ndxplorer, quest, imp-tricks, labelizer: **MIT**. tttrlib:
+**BSD-3-Clause**. IMP.bff: **LGPL-2.1-or-later** (an IMP module; IMP's LGPL modules link the 2.1
+text and grant "or any later version"). Documentation: CC BY-SA 4.0. chinet: obsolete, not in the
+stack. The table is in [docs/licensing.md](../../docs/licensing.md) between
+`<!-- stack-licences:start/end -->`; `test/test_stack_licences.py` parses it and checks each
+repository's pyproject (`project.license`, PEP 639 string or legacy table) and recipes, the
+tracker's overrides, `__license__`, the About window, the splash art and the installer texts.
+
+What the 2026-10-20 audit found and fixed (commits per repo):
+
+- **chisurf** — the splash art (`splashscreen.svg`, rasterised to `chisurf/emtk/splash.png` and
+  `icons/splashscreen.png`) still printed the GPL-2-or-later notice: replaced with an MIT notice
+  naming tttrlib/IMP.bff. About window gained a licence line and a companion-licences line (5
+  locales). Tracker: imp-bff MPL-2.0 → LGPL-2.1-or-later, binding class 2 → 3, with a note that weak
+  copyleft binds only the library. Installer: `install_licence_texts` writes `<runtime>/licenses/`
+  (MIT, CC BY-SA, BSD-3, LGPL-2.1, NOTICE with the shipped imp-bff version) because slimming deletes
+  `conda-meta`/`share/doc` and conda keeps licence files in `info/`, so nothing carried the LGPL
+  before; macOS copies it to `Contents/Resources/licenses`.
+- **imp.bff** `5bb2bf267` — pyproject and both recipes said MPL-2.0, doc/about.rst LGPL-3, README
+  "version 2 or later": all LGPL-2.1-or-later now, test/test_licence.py. The whole-IMP bundle recipe
+  (`conda-recipe/imp`) stays GPL-3.0-or-later because it contains IMP's GPL modules. The BSD-3 headers
+  in `include/internal`, `src/fret`, `src/probe` are tttrlib-derived (owner's) and the vendored
+  nlohmann/pcg/ptolib/lz4/xsf/webgpu headers are MIT/BSD/Apache: all permissive inside an LGPL library.
+  `IMP.bff.labellib` reimplements LabelLib's (MPL-2.0) API; MPL-2.0 is LGPL-compatible.
+- **imp-tricks** `358e70a` — recipe said BSD-3-Clause; pyproject had no licence; stale
+  `IMP.bff.cgdye` package-data would have shipped FRETpredict (GPL-3.0) files. Fixed + test.
+- **quest** `0da1a5b` — README "MIT" followed by LGPL boilerplate; vendored `ngl.js` lacked NGL's MIT
+  notice (added `ngl.LICENSE.txt`); PEP 639 string + test.
+- **chimol** `ae70b32`, **mmfdb** `1663e31`, **labelizer** `741536c` (had no LICENSE at all) — PEP 639
+  strings, README sections, tests. **tttrlib** `d56cc6f89` — a docstring called it GPL-2.0.
+- **emtk**, **ndxplorer** — already consistent (ndxplorer's `tests/test_license.py` and the recipe's
+  string read were done earlier); vendored colour tables/L2DFileDialog keep their CC0/CC-BY/Apache
+  notices in `licenses/`.
 
 Plan: ChiSurf distributed under MIT. Author is the sole copyright holder of
 chisurf, chimol, mmfdb, ndxplorer, emtk, tttrlib — every piece is his to relicense.
@@ -19,8 +70,9 @@ chisurf, chimol, mmfdb, ndxplorer, emtk, tttrlib — every piece is his to relic
 - `docs/licensing.md` rewritten: the GPL/CC one-way-compatibility prose replaced
   with the MIT/CC-BY-SA split, modules/ listed as separately-licensed companions.
 - `docs/development/licenses.md` regenerated by `build_tools/license_tracker.py`:
-  Current license MIT; most permissive possible = MPL (binding: imp-bff, labellib —
-  both MPL-2.0, weak file-level copyleft, fine as external dependencies).
+  Current license MIT; binding constraint (2026-10-17) was given as MPL for imp-bff
+  and labellib — superseded 2026-10-20: imp-bff is LGPL-2.1-or-later and labellib is
+  no longer a dependency.
 - the reference viewer provenance re-pointed to primary sources: elements.py (IUPAC 2021 weights;
   Bondi 1964 / Mantina 2009 radii — the numbers are facts; the reference viewer parity kept as the
   *check*, not the source), common.py, test_elements.py, guide 44 presets wording.

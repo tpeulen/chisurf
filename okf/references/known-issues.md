@@ -4,6 +4,39 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Licence audit leftovers: IMP.swarm provenance, Photonscore attribution, LGPL source offer (found 2026-10-20, branch `mcts-native-baseline`)
+
+status: open
+
+- **Measure.** `pytest test/test_stack_licences.py` holds every stack repository's pyproject and recipe
+  to the table in `docs/licensing.md` (green 2026-10-20); the items below are what the audit found and
+  did not settle because each needs an owner decision, not an edit. Re-sweep a repository with
+  `git ls-files | xargs grep -IlE 'GPL|General Public|MPL-2|Mozilla Public|CeCILL'` (skip `junk/`,
+  lock files, `.ipynb`).
+- **Blocker for imp-tricks being MIT: IMP.swarm.** `src/IMP/swarm/docs/index.md` says "All documentation
+  is licensed under CeCILL v2", and the package calls itself a reimplementation of iDynoMiCS-2 (Java,
+  CeCILL) with parity verification against it (`docs/developer/legacy_notes.md`, `README.md` "biofimp —
+  Complete Python reimplementation of iDynoMiCS-2"). If the 52 files were translated from iDynoMiCS-2
+  source they are CeCILL-derived and cannot be MIT; if written from its papers/behaviour they can. Needs
+  the chimol treatment (`~/dev/chimol/okf-mit-cleanroom-audit.md`): establish provenance per module,
+  clean-room what was transcribed, then drop the CeCILL line. Left untouched on purpose.
+- **tttrlib: Apache-2.0 attribution.** `modules/io/ps/include/PhotonscoreD7.h` is "a std-only port of the
+  public, Apache-2.0 reference decoder" (photonscore/d7, photonsfile). Apache-2.0 code may be ported into
+  BSD-3-Clause tttrlib, but §4 then wants the upstream copyright notice kept, a statement that the file
+  was changed, and the Apache licence text shipped. The header names the source but carries none of the
+  three. Either add them (and an Apache-2.0 text under tttrlib's licences) or record that only the format
+  was taken.
+- **LGPL source offer for the installer.** The installer now ships the LGPL 2.1 text and a NOTICE naming
+  the imp-bff version and its repository (`build_tools/licenses/NOTICE.txt`). LGPL 2.1 §4/§6 is strictly
+  met by object code accompanied by source, by source offered from the same place as the download, or by
+  a written offer valid three years. Pointing at GitHub satisfies the second only if the installer is
+  also downloaded from GitHub. Decide: ship the imp-bff sdist inside the installer, publish it beside
+  each installer release, or add a written offer to NOTICE.txt. Not added on the owner's behalf.
+- **Rebuild artefacts carrying the old licence.** labelizer's `site/wheels/imp_bff-0.15.0a2…whl` (built
+  2026-09-24) says `License: MPL-2.0` in METADATA; imp.bff `5bb2bf267` fixed the declaration, so the next
+  wheel build is right. QuEst's web frontend pulls `sharp` with `@img/sharp-libvips-*` (LGPL-3.0-or-later)
+  through Next.js; if the Next standalone build is ever distributed, it needs libvips' LGPL text beside it.
+
 ## Docs release gate: seven pages still block review-check (found 2026-10-20, branch `mcts-native-baseline`)
 
 status: open

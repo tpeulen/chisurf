@@ -1,7 +1,7 @@
 ---
 type: Documentation
 title: Licensing
-description: The documentation is CC BY-SA 4.0 and the source code is MIT; what that split allows, and how to attribute material reused here or from here.
+description: The source code is MIT and the documentation CC BY-SA 4.0; the licence of every package in the stack, how IMP.bff's LGPL is met, and how to attribute material reused here or from here.
 tags: [licensing]
 anchor: licensing
 ---
@@ -15,7 +15,6 @@ what you are looking at rather than where it lives in the package:
 | What | Licence | File |
 |---|---|---|
 | **Source code** — everything under `chisurf/`, `build_tools/`, `test/` | MIT | `LICENSE` at the repository root |
-| **Companion packages** — the source checkouts under `modules/` | their own licences (`chimol` and `mmfdb` are MIT; `ndxplorer` is MIT as of 2026-10-17; `chinet` is obsolete — unreachable from ChiSurf and unmaintained) | each package's `LICENSE` |
 | **Documentation** — everything under `docs/` | Creative Commons **Attribution-ShareAlike 4.0 International** | [`docs/LICENSE`](LICENSE) |
 
 The source code's licence is MIT:
@@ -101,6 +100,68 @@ people's paragraphs reads like one. Licence compatibility makes importing
 *allowed*; it does not make it the better option, and the usual right answer is
 still to read the source, follow its citations to the primary literature, and
 write the page here.
+
+## The stack
+
+ChiSurf is assembled from separately distributed packages. Each carries its own
+licence file and declares the same licence in its package metadata (`pyproject.toml`
+and conda recipe). The table below is checked against those declarations by
+`test/test_stack_licences.py` wherever the repositories are checked out.
+
+<!-- stack-licences:start -->
+| Package | Licence (SPDX) | Role |
+|---|---|---|
+| chisurf | MIT | the application |
+| emtk | MIT | the GUI toolkit |
+| chimol | MIT | the molecular viewer |
+| mmfdb | MIT | the metadata and provenance store |
+| ndxplorer | MIT | the n-dimensional histogram explorer |
+| quest | MIT | the quenching estimator |
+| imp-tricks | MIT | coarse-grained molecules and related IMP extensions |
+| labelizer | MIT | the labelling-site finder (a chimol plugin) |
+| tttrlib | BSD-3-Clause | photon-stream I/O and analysis |
+| imp-bff | LGPL-2.1-or-later | structures, accessible volumes and fluorescence models (`IMP.bff`) |
+<!-- stack-licences:end -->
+
+MIT and BSD-3-Clause are permissive and combine freely. IMP.bff is an IMP
+module and keeps IMP's licence for its LGPL modules, the GNU Lesser General
+Public License, version 2.1 or later; it is the only copyleft package ChiSurf
+needs at run time. `chinet` is obsolete — unreachable from ChiSurf and
+unmaintained — and is not part of the stack. Every other dependency, with its
+licence, is listed in {doc}`/development/licenses`.
+
+(licensing-lgpl)=
+### IMP.bff and the LGPL
+
+The LGPL governs the library, not the program that uses it, provided the
+user can still replace the library. ChiSurf stays MIT because it uses IMP.bff
+in exactly that way:
+
+- **Separate package.** IMP.bff is its own distribution (`imp-bff`, imported
+  as `IMP.bff`), built from its own repository and installed beside ChiSurf in
+  `site-packages`, unmodified. It is never merged into the `chisurf` package.
+- **Dynamically loaded.** ChiSurf reaches it through Python's import system at
+  run time; its compiled parts are a Python extension module and a shared
+  library loaded by the interpreter.
+- **User-replaceable.** Installing another build of IMP.bff — including a
+  modified one — over the shipped one (`python -m pip install <wheel>` with the
+  runtime's interpreter) is all it takes; ChiSurf uses whatever IMP.bff is
+  installed.
+- **No copied code.** No ChiSurf file copies IMP.bff code. Where computation
+  moved into IMP.bff, ChiSurf calls its public interface (the numpy adapters
+  in `chisurf/core/math/special.py` and `chisurf/core/fluorescence/crosstalk.py`
+  forward to it; they do not reimplement it).
+- **Text and source with the installer.** The installer
+  (`build_tools/build_installer.py`) writes a `licenses/` folder into the
+  runtime (`Contents/Resources/licenses` in the macOS app): ChiSurf's MIT
+  licence, this documentation's CC BY-SA 4.0, tttrlib's BSD-3-Clause, the
+  **LGPL 2.1** text, and `NOTICE.txt`, which repeats these terms, records the
+  shipped imp-bff version (its `+g<hash>` suffix names the source commit) and
+  where the complete source is: <https://github.com/tpeulen/IMP.bff>. The
+  texts live in `build_tools/licenses/`.
+
+The splash screen and the About window state the same: ChiSurf MIT, the
+documentation CC BY-SA 4.0, tttrlib BSD-3-Clause, IMP.bff LGPL-2.1-or-later.
 
 ## Contributing
 

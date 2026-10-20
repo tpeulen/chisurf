@@ -10,13 +10,19 @@ from emtk.texture import Texture
 from emtk.view_form import FormState, draw_sections
 
 import chisurf
-from chisurf.core.info import __version__
+from chisurf.core.info import __license__, __version__
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import window_size
 
 from .translations import install_translations, tr
 
 HERE = Path(__file__).parent
+#: ChiSurf's own licence line; ``{licence}`` is :data:`chisurf.core.info.__license__`.
+LICENCE = "Licence: {licence} (documentation: CC BY-SA 4.0)"
+#: The two companion libraries that do not share ChiSurf's MIT licence (see docs/licensing.md).
+COMPANIONS = (
+    "Companion libraries keep their own licences: tttrlib BSD-3-Clause, IMP.bff LGPL-2.1-or-later."
+)
 
 
 class AboutApp(ImApp):
@@ -93,6 +99,8 @@ class AboutApp(ImApp):
                 tr("Development: Thomas-Otavio Peulen"),
                 "thomas.peulen@tu-dortmund.de",
                 tr("Repository: github.com/fluorescence-tools/chisurf"),
+                tr(LICENCE).format(licence=__license__),
+                tr(COMPANIONS),
             )
         )
 
@@ -154,6 +162,8 @@ class AboutApp(ImApp):
         im.text(tr("Development: Thomas-Otavio Peulen"))
         im.text(tr("thomas.peulen@tu-dortmund.de"))
         im.text_wrapped(tr("Repository: github.com/fluorescence-tools/chisurf"))
+        im.text_wrapped(tr(LICENCE).format(licence=__license__))
+        im.text_wrapped(tr(COMPANIONS))
         im.separator()
         section = self.spec["sections"][0]
         buttons = [

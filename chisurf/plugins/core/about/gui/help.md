@@ -8,9 +8,13 @@ The version shown is read from this running installation. Include it when asking
 
 The developer and email address are displayed as contact information. The repository text names the project location. This window does not send email, open the repository automatically or upload a diagnostic report.
 
+## Licence
+
+ChiSurf is MIT-licensed; its documentation is CC BY-SA 4.0. Two companion libraries keep their own licences: tttrlib is BSD-3-Clause, and IMP.bff is LGPL-2.1-or-later. IMP.bff is installed as a separate package that ChiSurf loads at run time, so you may replace it with your own build. The installer carries both licence texts. See [Licensing](docs/licensing.md).
+
 ## Copy details
 
-Press **Copy details** to copy the displayed application name, subtitle, version, developer, email and repository text. The payload contains these application details only: it does not include measurements, filenames, fit results, credentials or user settings. Paste the text into a support request yourself, adding the steps needed to reproduce your issue.
+Press **Copy details** to copy the displayed application name, subtitle, version, developer, email, repository and licence text. The payload contains these application details only: it does not include measurements, filenames, fit results, credentials or user settings. Paste the text into a support request yourself, adding the steps needed to reproduce your issue.
 
 Copy uses the clipboard supplied by the native or browser host. A successful copy shows a confirmation. If the host cannot write the clipboard, the window reports that it is unavailable and leaves the guide waiting so that you can retry. No clipboard permission is requested merely by opening this window.
 

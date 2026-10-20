@@ -70,7 +70,8 @@ OVERRIDES = {
     "labellib": ("MPL-2.0", "https://github.com/Fluorescence-Tools/LabelLib"),
     # Sibling projects in this ecosystem; license from their pyproject.toml.
     "mmfdb": ("MIT", "https://github.com/tpeulen/mmfdb"),
-    "imp-bff": ("MPL-2.0", "https://github.com/tpeulen/imp.bff"),
+    # imp-bff is an IMP module: LGPL-2.1-or-later (its COPYING.LGPL, pyproject and recipes).
+    "imp-bff": ("LGPL-2.1-or-later", "https://github.com/tpeulen/imp.bff"),
     # Known licenses for packages the generating environment may not have
     # installed (dev/cli/postgres extras).
     "python-docx": ("MIT", "https://github.com/python-openxml/python-docx/blob/master/LICENSE"),
@@ -218,6 +219,15 @@ def render_markdown(data: dict) -> str:
         lines += [
             "The binding dependencies are GPL, so the project as a whole "
             "cannot be more permissive than GPL.",
+            "",
+        ]
+    elif data["binding_class"] in (2, 3):
+        lines += [
+            "Weak copyleft binds only the library it covers: ChiSurf stays MIT because "
+            "every weak-copyleft dependency is a separate, unmodified, dynamically loaded "
+            "package the user can replace, and no ChiSurf file copies its code. How the "
+            "installer meets the LGPL is on the Licensing page "
+            "([licensing](../licensing.md)).",
             "",
         ]
     if data["unknown"]:
