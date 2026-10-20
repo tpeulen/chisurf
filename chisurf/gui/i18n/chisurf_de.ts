@@ -20463,7 +20463,7 @@ Das Speichern einer LUT-Datei oder einer settings.tttr.json (Reiter ②) ist opt
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9700" />
             <source>Time (s)</source>
-            <translation type="obsolete">Zeit (s)</translation>
+            <translation type="unfinished">Zeit (s)</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2181" />

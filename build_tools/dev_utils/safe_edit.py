@@ -252,8 +252,9 @@ def _put_ts_entry(text: str, context: str, source: str, translation: str) -> str
     """Set one message in raw ``.ts`` text, touching only that message.
 
     An empty *translation* records the source only: a missing message is added
-    ``unfinished`` (the runtime then shows the source text), and an existing
-    message, finished or not, is left exactly as it is.
+    ``unfinished`` (the runtime then shows the source text), an ``obsolete``
+    one is revived as ``unfinished`` with its old text kept for review, and any
+    other existing message is left exactly as it is.
     """
     ctx_re = re.compile(
         r"(<context>\s*<name>" + re.escape(escape(context)) + r"</name>)(.*?)(\n[ \t]*</context>)",
@@ -286,7 +287,10 @@ def _put_ts_entry(text: str, context: str, source: str, translation: str) -> str
             raise ValueError(f"{source!r} is a plural message; not supported")
         hits += 1
         if not translation:
-            return msg
+            # Revive a retired message, keeping its old text for review, as the
+            # extractor's merge does; anything else is left exactly as it is.
+            return re.sub(r'(<translation\b[^>]*?)type="(?:obsolete|vanished)"',
+                          r'\1type="unfinished"', msg, count=1)
         return re.sub(r"<translation\b[^>]*?(?:/>|>.*?</translation>)", lambda _m: new_tr, msg, flags=re.DOTALL)
 
     body = re.sub(r"<message\b.*?</message>", fix, body, flags=re.DOTALL)

@@ -20426,7 +20426,7 @@ Enregistrer un fichier LUT ou un settings.tttr.json (onglet â‘¡) est optionnel â
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9700" />
             <source>Time (s)</source>
-            <translation type="obsolete">Temps (s)</translation>
+            <translation type="unfinished">Temps (s)</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2181" />
