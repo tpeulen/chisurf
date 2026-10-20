@@ -4,17 +4,17 @@ title: Qt retirement (shell)
 description: Parity ledger for moving the ChiSurf main window from Qt to one emtk surface — every Qt capability the shell uses, its emtk equivalent or gap, the allow-list by area, and the ordered slices that keep the app shippable.
 resource: chisurf/emtk/main_app.py, chisurf/emtk/post_show.py, chisurf/startup/services.d/35_emtk_post_show.json, chisurf/emtk/shell_ribbon.py, chisurf/emtk/shell_session.py, chisurf/emtk/shell_log.py, chisurf/emtk/fit_report.py, chisurf/core/fitting/fit_export.py, chisurf/emtk/console.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/status_strip.py, chisurf/emtk/fit_pages/plots.py, chisurf/emtk/fit_pages/surface.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/model_sections.py, chisurf/emtk/pda_sections.py, chisurf/emtk/sample_picker.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/server/services/model_sections.py, chisurf/core/server_events.py, chisurf/__main__.py, chisurf/gui/__init__.py, test/test_no_qt_imports.py
 tags: [gui, emtk, qt-retirement, shell, parity, ledger]
-timestamp: '2026-10-14T12:00:00Z'
+timestamp: '2026-10-20T12:00:00Z'
 ---
 
 # Where to pick this up
 
-**S6 is done on branch `s6-retire-qt-shell` (2026-10-14), waiting for the owner to merge it.** The Qt
+**S6 is merged** (`s6-retire-qt-shell` into `mcts-native-baseline` as 855e54604, 2026-10-17). The Qt
 shell and every Qt module are deleted, `--qt` is gone, qtpy / pyqt / pytest-qt are struck from `pixi.toml`,
-`pyproject.toml` and the recipe (the lock regenerates when the branch is merged; nothing ran `pixi install`), and
-`test/test_no_qt_imports.py` rejects any Qt import under `chisurf/` with no allow-list. Until the merge, the main
-line still carries the Qt shell behind `--qt` and everything below describes it; after the merge read item 9 and
-the S6 paragraph in "History" first. What the merge needs: item 9.
+`pyproject.toml` and the recipe, and `test/test_no_qt_imports.py` rejects any Qt import under `chisurf/` with
+no allow-list. The slice paragraphs and items below that speak of the Qt shell or `--qt` describe the parity
+work that led up to it; item 9 is the current S6 measurement and "Merge into mcts-native-baseline" (end of
+"History") lists the ports the merge left open.
 
 **Migration evidence removed (owner, 2026-10-20: the migration is finished).** `okf/validation/`
 (~700 MB of release-readiness receipts, zips, PNGs) and `okf/plugins/emtk-ports/` (~260 MB: per-port
@@ -190,8 +190,9 @@ own startup stages (item 5): S5 is done.
    so an ast scan of the installed `emtk` package (function-body imports of `emtk.*`, `fontTools.*` and `PIL.*`)
    yields `FRAME_MODULES`. A test would compare the tuple with the scan, so an emtk pin bump that adds a lazy
    import fails it instead of reappearing as a gate wait in `plugin_frame_times`.
-6. Done 2026-10-13: opening a fit window imports no Qt (`test/native_emtk/test_fit_window_is_qt_free.py`);
-   the record is under "History".
+Item 6 is done (2026-10-13): opening a fit window imports no Qt
+(`test/native_emtk/test_fit_window_is_qt_free.py`); the record is under "History".
+
 7. Measure: whole-window parity, `test/native_emtk/test_emtk_shell_whole_parity.py` against
    `shell_whole_qt_inventory.json`: `KNOWN_GAPS` empty since 2026-10-11 (was 23). The fixture clicks every ribbon
    tab and the Log dock's tabs, as a user does; renamed captions (`?` → ❓ Help, `Language: English` → 🌍 EN, `P` →
@@ -213,18 +214,17 @@ own startup stages (item 5): S5 is done.
    the dock under the pointer, not the one with the keys. `RealisticDriver.drop_files` reproduces it; the imaging
    repro is `test_a_file_dropped_on_a_plugin_dock_goes_to_the_dock_under_the_pointer`. Plugins with only an
    `action` entrypoint run from the shell (`run_plugin_action`; `menu_entries()` now 29 of 29 visible manifests).
-9. Measure: (done 2026-10-17, branch `s6-retire-qt-shell`) S6 is merged onto `s6-merge` and validated; it lands on the baseline after the companion lane's working tree settles. `chisurf/gui/` holds
+9. Measure: S6 is merged into `mcts-native-baseline` (855e54604, 2026-10-17). `chisurf/gui/` holds
    only data (an import-free `__init__.py`, `i18n/*.ts`, `resources/icons/`); `python -m chisurf` opens the emtk
    shell and `--help` prints the usage without opening a window; `--qt` is gone. Re-derive: `grep -rlE
    '^\s*(from|import)\s+(qtpy|PyQt|PySide|pytestqt)' chisurf | wc -l` (0; guard `test/test_no_qt_imports.py`,
    lazy imports and `emtk.qt_host` included, no allow-list); `test/test_no_ui_files.py`
    (no `.ui` file, loader, `uic` import or packaging glob; no allow-list, 2026-10-19). The Qt shell's last control inventory was frozen
-   (recorded at 0108fa146; no control drift against 2026-10-11) and `test_emtk_shell_whole_parity.py` passes against it with `KNOWN_GAPS` empty. Before merging:
-   (a) `pixi install` (or `pixi lock`) to regenerate `pixi.lock` without qtpy / pyqt / pytest-qt / latexify-py;
+   (recorded at 0108fa146; no control drift against 2026-10-11) and `test_emtk_shell_whole_parity.py` passes against it with `KNOWN_GAPS` empty. After the merge:
+   (a) `pixi.lock` names no qtpy / pyqt / pytest-qt (`grep -c 'pyqt\|qtpy\|pytest-qt' pixi.lock` is 0, 2026-10-20);
    (b) the arm64 env still has PyQt5 and pytest-qt installed, and pytest-qt's plugin then imports Qt at startup
    (`qt_api` is no longer configured) -- run pytest with `-p no:pytest-qt` or uninstall it there; (c) run the
-   W7 click-all on the native host (Part D gate 2 of PRD-154 names it), which this branch did not run (machine
-   load ~110). Follow-ups recorded in known issues ("Qt-shell leftovers after S6"): the duck-typed main-window
+   W7 click-all on the native host (Part D gate 2 of PRD-154 names it), not re-run since the merge. Follow-ups recorded in known issues ("Qt-shell leftovers after S6"): the duck-typed main-window
    paths that read `chisurf.cs` (never assigned now) in `macros/core_fit.py`, `macros/core_data.py`,
    `core/actions/project_actions.py`, `core/project/{transition,ui_state}.py`, `server/services/projects.py`;
    `skip_qt_widgets` in the serialisation API; the manifest `gui` entrypoint field; the dead
