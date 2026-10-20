@@ -2920,14 +2920,13 @@ guides/figures/fcs_merger_primary_window.png:
   pages:
   - docs/guides/75_fcs_toolbox.md
 
-guides/figures/fcs_native_bh132_correlator.png:
+guides/figures/fcs_toolbox_correlator.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/make_screenshots.py::_grab_fcs_toolbox
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/75_fcs_toolbox.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/fcs_native_bh132_correlator.png.
+    Run the script named in origin (see the function that saves fcs_toolbox_correlator.png)
+    from the repository root; it loads the BH SPC-132 test file, correlates 0, 8 x 1, 9 in
+    ten chunks and writes the PNG here.
   pages:
   - docs/guides/75_fcs_toolbox.md
 

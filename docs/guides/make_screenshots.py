@@ -1310,9 +1310,8 @@ def _grab_fcs_toolbox():
         (FIG / name).write_bytes(png_encode(painter.width, painter.height, painter.px))
         print("wrote", name)
 
-    # 1. Channel definitions: a detector setup and its correlation pairs.
-    hub.nav("channel_def")
-    shot("fcs_toolbox_channels.png")
+    # 1. Channel definitions: fcs_toolbox_channels.png is drawn by screenshots/fcs_toolbox_channels.py,
+    # which first writes the two-detector setup the figure shows (this hub has none).
 
     # 2. Files & steps: one photon stream, photon filter on, merger on.
     hub.nav("files")
@@ -1344,10 +1343,8 @@ def _grab_fcs_toolbox():
     hub.draw(3)
     shot("fcs_toolbox_merger.png")
 
-    # Visit every optional tool once so a broken panel shows up here.
-    for role in ("flc_2d", "lfcs_sim", "burst_fcs", "diffusion_calc", "filter_calc"):
-        hub.nav(role)
-        print(role, "loaded:", role in app.children)
+    # The rail holds only the five steps; 2D-FLCS, the simulators and the calculators are tools of
+    # their own since the FCS hub was dissolved.
     app.close()
 
 

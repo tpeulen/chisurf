@@ -196,14 +196,12 @@ With the filter on, step 4 correlates only the kept photons of every file.
 
 ## 4. Correlator
 
-```{figure} figures/fcs_native_bh132_correlator.png
+```{figure} figures/fcs_toolbox_correlator.png
 :name: fig-fcs-toolbox-correlator
 :width: 100%
 
-The native FCS workflow displays two measured BH132 chunk curves, with channels
-0, 1 × 8, 9, nine bins and twenty cascades, Laurence normalization. The current
-workflow selection contains 96 774 of the fixture's 183 657 photons; the plot
-retains the earlier computed curves until **Correlate** is pressed again.
+The BH SPC-132 test file correlated green × red (**Ch A** `0, 8`, **Ch B** `1, 9`),
+4 bins, 26 cascades, 10 splits, Laurence normalization: one curve per chunk.
 The lag axis is in ms; these are measured photons, not the **Load example** simulation.
 ```
 
