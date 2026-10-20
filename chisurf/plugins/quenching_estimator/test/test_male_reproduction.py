@@ -38,6 +38,7 @@ import numpy as np
 import pytest
 
 from chisurf.plugins.quenching_estimator.core.inference import graph_fit as gf
+from chisurf.plugins.quenching_estimator.core.inference import site_table as site_table
 from chisurf.plugins.quenching_estimator.core.inference import stages as st
 
 HERE = Path(__file__).resolve().parent
@@ -165,13 +166,31 @@ def _prototype_library(golden):
             pytest.skip(f"prototype cache file {path.name} missing or changed")
         state, site, linker = key.split()
         files[(state, int(site), float(linker))] = path
-    return st.TableFiles(files)
+    # the prototype read the contacts between offsets linearly
+    return st.TableFiles(files, {**site_table.settings(), "delta_interpolation": "linear"})
+
+
+def prototype_fit_overrides(golden):
+    """The declared parameters with the stored run's bounds (``about.bounds`` of the golden).
+
+    Interval ends, notes and the Laplace clip are relative to a parameter's range, so the
+    stored optimum is compared within the stored run's ranges, not today's wider ones.
+    """
+    bounds = golden["about"]["bounds"]
+    params = []
+    for p in gf.settings()["parameters"]:
+        log = p["scale"] == "log"
+        name = f"ln_{p['name']}" if log else p["name"]
+        lo, hi = bounds["lower"][name], bounds["upper"][name]
+        params.append({**p, "lower": float(np.exp(lo) if log else lo),
+                       "upper": float(np.exp(hi) if log else hi)})
+    return {"parameters": params}
 
 
 @pytest.mark.slow
 def test_the_stored_optimum_on_its_own_tables(golden):
     data = st.load_analysis_data(library=_prototype_library(golden))
-    a = st.Analysis(data, profile=False)
+    a = st.Analysis(data, profile=False, fit_overrides=prototype_fit_overrides(golden))
     slopes = {(r["dye"], r["amino_acid"]): r["K_graph"] for r in golden["printed"]["k_graph"]}
     for name in ("joint", "heavy_water"):
         values = {}

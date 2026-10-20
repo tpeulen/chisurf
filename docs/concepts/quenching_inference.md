@@ -182,9 +182,18 @@ k(x) = \kappa\sum_q k_Q(q)\,c_q(x;\delta,\lambda) + w\,k_{q,w,\text{free}}\,e(x)
 $$
 
 - $c_q(x;\delta,\lambda) = (1-\lambda)\,c_q^\text{crystal} + \lambda\,c_q^\text{rotamer}$
-  counts quencher centres (redox-active atoms) within $R_q + \delta$, linearly
-  interpolated over $\delta \in \{-4,\dots,+5\}$ Å. Rotamer centres are weighted
-  by probability.
+  counts quencher centres (redox-active atoms) within $R_q + \delta$. The site
+  table holds these counts at $\delta \in \{-4,\dots,+5\}$ Å; between them
+  ChiSurf reads them with the uniform cubic B-spline that has the tabulated
+  counts as control points:
+  $c(\delta) = \sum_k C_k\,B_3(\delta - \delta_k)$. The curve is twice
+  differentiable, never negative, and grows with $\delta$. At a tabulated
+  offset it is the 1–4–1 mean of three neighbours, a smoothing of about one
+  grid step. The MalE prototype interpolated linearly. That puts a kink at
+  every offset, and the fit stopped on them (δ = −1.0 exactly). A monotone
+  cubic (PCHIP) was tried and dropped: it needs zero slope at an offset next to
+  a flat stretch, so τ(δ) became a staircase with nearly flat steps at every
+  offset. Rotamer centres are weighted by probability.
 - $w$ = 1 on the Atto655 H₂O rows of Stage C, else 0 (AF488 and Cy3B neglect
   water quenching, D₂O has none). The water term
   has **no free parameter**: a position half covered by protein ($e$ = 0.5) is
@@ -233,7 +242,10 @@ backbone + Cβ.
 
 Parameters per dye: $\ln s_\text{common}$, $\ln s_g$ (five groups),
 $\ln\kappa$, $\delta$, $\lambda$, $\ln\gamma$, $\delta_s$, $\Delta\tau_\text{shield}$,
-inside physical bounds ($s$ 0.001–1, κ 0.01–10, δ −3…+2 Å, γ 0.001–10, δ_s −3…0 Å).
+inside physical bounds ($s$ 0.001–1, κ 0.01–100, δ −4…+5 Å (the tabulated
+offsets), γ 0.001–100, δ_s −4…0 Å). The stored run used κ ≤ 10, δ −3…+2 Å,
+γ ≤ 10 and δ_s ≥ −3 Å. Those bounds bind on the corrected grid frame (see the
+refit below), so ChiSurf widened them to what the tables support.
 Parameters these data cannot determine are fixed: λ = 1 for Cy3B and Atto655,
 no static channel for AF488 and Cy3B.
 
@@ -277,6 +289,12 @@ $\mathcal N(K_\text{mean}, K_\text{sd})$.
 3. **Joint fit.** All blocks and all $K$ together, Gaussian likelihood,
    outliers left out, as a bounded least-squares problem in scaled
    coordinates $u \in [0,1]$ (0 = lower, 1 = upper bound of each parameter).
+   The full preset runs MINPACK first, then a projected Levenberg–Marquardt
+   polish in the box. The quick preset runs the polish alone. The polish
+   evaluates its Jacobian in worker processes that stay alive for the whole
+   fit, and quick also polishes the profile-likelihood points. That takes the
+   shipped MalE quick run from 1277 s to 685 s on 6 workers. The 9 searches per
+   block are now most of the time.
 4. **Laplace.** The covariance in $u$ is the Gauss–Newton inverse of
    $J^\top J$ with eigenvalues clipped: a direction whose variance would
    exceed 0.25 (half the range as one sd) gets 0.25. Intervals are
@@ -371,28 +389,47 @@ frame that was off by up to 0.5 Å. On today's tables (current IMP.bff
 accessible volume, corrected frame), the stored parameters fit worse. For
 example, AF488's median |dev| rises from 0.047 to 0.165 ns. ChiSurf therefore
 refits. On the prototype's own tables, it reproduces the stored optimum
-(`test_male_reproduction.py`). The refit on today's tables gives these numbers
-(quench scale κ, 68 % Laplace interval):
+(`test_male_reproduction.py`).
 
-| data set | stored run (old tables) | refit, `full` preset | refit, `quick` preset |
+**The frame correction is right.** On today's tables every feature (quencher
+contacts, residue counts, water exposure) sits on the voxels of the accessible
+volume itself. A brute-force count equals the stamped maps voxel for voxel. The
+change from the stored tables is mostly the frame: at the stored parameters,
+Atto655 D₂O's median |dev| goes from 0.061 ns (old frame) to 0.203 ns (corrected
+frame, same volume) and to 0.242 ns (today's volume). The stored Atto655 fit
+sat at δ = −2.8 Å. There a contact is a handful of voxels, so a 0.3 Å
+registration shift decides it.
+
+The first refit on these tables put κ and δ on the stored run's bounds. With
+the bounds widened and δ read through a B-spline, the quick preset gives (κ, 68 %
+Laplace interval):
+
+| data set | stored run (old tables) | refit, `quick` preset | δ (Å) |
 |---|---|---|---|
-| AF488 H₂O | 6.2 (4.6–8.2), s 0.050, outliers 92 219 233 | 10.0 (7.2–10), s 0.277, none | 6.4 (3.0–10), s 0.131, 92 219 233 |
-| Cy3B H₂O | 1.1 (0.19–6.7), s 0.050, none | 0.058 (0.019–0.18), s 0.050, none | 0.070 (0.021–0.24), s 0.050, 95 |
-| Atto655 D₂O (B) | 0.111 (0.080–0.154), s 0.065, 211 219 322 | 10.0 (8.8–10), s 0.077, 72 95 211 219 233 | 6.4 (4.9–8.5), s 0.050, 211 233 322 |
-| Atto655 D₂O + H₂O (C) | 0.112 (0.080–0.157), s 0.108, 322 | 10.0 (8.8–10), s 0.181, 92 | 10.0 (6.0–10), s 0.165, 92 211 233 |
+| AF488 H₂O | 6.2 (4.6–8.2), s 0.050, outliers 92 219 233 | 42 (36–49), s 0.154, 211 219 | −1.9 |
+| Cy3B H₂O | 1.1 (0.19–6.7), s 0.050, none | 0.070 (0.028–0.18), s 0.050, none | 1.3 (0.9–1.7) |
+| Atto655 D₂O (B) | 0.111 (0.080–0.154), s 0.065, 211 219 322 | 9.5 (0.24–100), s 0.128, 322 | −3.1 |
+| Atto655 D₂O + H₂O (C) | 0.112 (0.080–0.157), s 0.108, 322 | 38 (7–100), s 0.237, 322 | 4.2 (3.5–4.9) |
 
-**These refits are not a result yet:**
+**There is no clean interior optimum yet:**
 
-- κ sits on its upper bound (10) for AF488 and Atto655.
-- δ sits on its upper bound or exactly on a tested offset (Atto655 δ = 2.0;
-  AF488 δ = −1.0, the linear interpolation in δ has kinks there).
-- The static strength of Atto655 runs to its bound too.
+- Only Cy3B has one: its profiles in κ and δ have their minimum inside the
+  range.
+- AF488's κ profile has its minimum at 32–46 and rises at 100. A second search
+  within 2 log-posterior units sits at κ = 0.012, δ = +5: a few strong contacts
+  explain the data as well as many weak ones.
+- Atto655 in D₂O does not determine κ: the profile deviance stays below 1.5
+  from 0.3 to 100. Above about 10, a contact makes the dye dark, and κ only
+  rescales the fractional rotamer contacts.
+- Stage C's δ profile has its minimum at the +5 Å end of the tables.
+- Strong stickiness (s ≈ 0.001) collapses an ensemble onto one voxel. Atto655
+  HOLO 72, 92 and 95 all put 99.999 % of the weight on one voxel next to two
+  aromatic residues, so which voxels are reachable decides the optimum.
 
-The declared bounds were set for the old frame, where δ absorbed the
-registration error, and they bind on the corrected geometry. The full and quick
-presets also land in different optima, so the posterior is strongly multimodal
-on these tables. Widening the κ and δ ranges, and smoothing the δ
-interpolation, are open decisions.
+A reparametrisation is proposed in the migration plan but not implemented: fit
+κ times the mean contact count at δ, use a distance-continuous rate kernel, and
+put a floor on s. The full-preset refit with the widened settings replaces the
+one quoted before (κ 10.0 on its old bound for AF488 and Atto655).
 
 The naive H₂O test is unchanged (median |dev| 0.48 ns, 16 of 18 sites above
 τ₀(H₂O)). Stage C still does not narrow the scale. Water-access r is 0.49 with

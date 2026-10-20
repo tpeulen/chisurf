@@ -181,6 +181,40 @@ def test_worker_processes_give_the_same_searches(data, fit_settings):
     assert np.array_equal(one.best_x, two.best_x)
 
 
+def test_one_pool_for_many_jacobians_and_the_polished_profile(data, fit_settings):
+    """The quick preset's path: Jacobians on running workers, profile points by the polish."""
+    assert fit_settings["joint_minpack"] is False
+    assert fit_settings["profile_likelihood"]["method"] == "polish"
+    assert gf.settings()["joint_minpack"] is True
+    block = gf.search(_block(data, fit_settings), 7, fit_settings, workers=1)
+    graph = gf.Graph([block], fit_settings)
+    gf.joint_fit(graph, workers=1)
+    one = graph.jacobian(graph.u, workers=1)[0]
+    with gf.WorkerPool(dict(graph=graph.lean()), 2) as pool:
+        first = graph.jacobian(graph.u, pool=pool)[0]
+        executor = pool.executor()
+        second = graph.jacobian(graph.u, pool=pool)[0]
+        assert pool.executor() is executor          # the same processes
+    assert pool._pool is None
+    assert np.array_equal(one, first) and np.array_equal(first, second)
+    # a held coordinate stays where it is
+    j = gf._layout_index(gf.block_views(graph)[0], "ln_scale")
+    u = graph.u.copy()
+    u[j] = 0.3
+    held = gf.polish(graph, u, 5, 1e-12, workers=1, hold=[j])
+    assert held["u"][j] == 0.3 and held["cost"] <= 0.5 * float(graph.evaluate(u)[0] @
+                                                              graph.evaluate(u)[0])
+    # the polished profile agrees with MINPACK's on this near-Gaussian posterior
+    (view,) = gf.block_views(graph, "synthetic")
+    polished = gf.profile_likelihood(view, workers=2)
+    graph.settings = dict(fit_settings, profile_likelihood=dict(
+        fit_settings["profile_likelihood"], method="minpack"))
+    minpack = gf.profile_likelihood(view, max_nfev=50)
+    assert 0.0 <= polished["deviance"].min() < 0.05
+    for key in ("low", "high"):
+        assert abs(np.log(polished[key] / minpack[key])) < 0.1, (key, polished, minpack)
+
+
 def test_factor_graph_of_the_male_layout(data):
     a = st.Analysis(data, preset="quick", workers=1)
     blocks = a.blocks("joint")

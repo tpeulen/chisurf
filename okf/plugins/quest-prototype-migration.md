@@ -9,7 +9,43 @@ timestamp: '2026-10-20T00:00:00Z'
 
 # Where to pick this up
 
-The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP6, WP7 (theory + guide), WP9 and WP8 have landed; WP4 is in progress (its interface is stable; WP5 is built on it).
+Every work package has landed (record below); WP4's science is the open front.
+
+- Open: **WP4 refit has no clean interior optimum on the corrected geometry.** After widening (κ ≤ 100, δ −4…+5,
+  γ ≤ 100, δ_s −4…0) and the B-spline δ interpolation, quick gives AF488 κ 42 (36–49) δ −1.9, Cy3B κ 0.070
+  (0.028–0.18) δ 1.3 (interior, the only clean one), Atto655 D₂O κ 9.5 (0.24–100, not determined; profile flat from
+  0.3 to 100), Stage C κ 38 (7–100) with δ 4.2 and its δ profile minimum on the +5 table end. The second-best AF488
+  search (within 2 log-posterior) is κ 0.012 at δ +5: κ and δ trade off (few strong contacts vs many weak ones).
+  The full-preset refit with these settings was running when this was written; its numbers go into `REFIT`
+  (`test/test_male_reproduction.py`, still the pre-widening pins) and the concept's "MalE refit" table.
+  Owner decision needed on a reparametrisation (record item 1e, "Proposal").
+- Measure: refit + profiles: scratch runner pattern `Analysis(preset).run("all")`, then
+  `graph_fit.profile_likelihood(view, "delta", values=np.linspace(-4, 5, 19), workers=…)` with
+  `profile_likelihood.method: polish`. **Trap:** a polish profile in this landscape is jagged (AF488 deviance 105 at
+  κ 17.8, 6.6 at 31.6): warm starts jump basins, so read the minimum and the ends, not the curve.
+- Measure: quick runtime 685 s on 6 workers (was 1277 s): the 9 searches per block are now ~80 % of it (AF488
+  113 s, Atto655 joint 200 s, Atto655 D₂O 190 s). Full: the serial MINPACK joint fit alone took 5500 s on the
+  41-parameter graph; `joint_minpack: false` for full too would cut ~1.5 h (owner decision: MINPACK is the stored
+  run's path).
+- Open: owner questions 3(a) (the "key figure" does not narrow κ) and 3(c)/(d) (record item 3) are still open.
+- Open: WP6 (record item 1f): route the Analysis page through `api.analyse(background=True)`; colour bar on the
+  hyper-posterior heatmap. WP7-guide: retake the six figures (`python docs/guides/screenshots/quest.py
+  _grab_quest_analysis`) once WP4 settles.
+- Open: WP9 (record item 7): IMP.bff's walk takes no start weight; PDE with FRET is not wired.
+- Open: `~/dev/quest/prototype/MIGRATED.md`'s Open list mirrors items 1e, 4, 7; the MCMC check (cell 40,
+  `sampler_check`) is declared but not run. Tracked in [PRD-154](/prds/prd-154.md) as W16.
+- Blocked: German/French catalogues of the new view.json wait for the i18n batch (owner rule).
+- Tried and reverted: PCHIP for the δ interpolation (2026-10-20). A monotone C1 cubic has zero slope at an offset next
+  to a flat stretch, so τ(δ) became a staircase (slope at δ −1: −0.0015 ns/Å vs −0.07/−6.7 linear left/right). The
+  B-spline (1–4–1 smoothing at the offsets) is used instead.
+- Tried and reverted: in the prototype, do not re-port: the Brownian-walk *objective* (it01–it06), a single stickiness or
+  `exp(-α n)` shielding (it11), the Cauchy loss (it05), the AF4_C2R linker (record item 5).
+- Measure: fast suites `pytest chisurf/plugins/quenching_estimator/test/test_inference_{site_table,site_model,graph_fit,api}.py`
+  (~3 min); `-m slow test_male_reproduction.py` (stored optimum ~4 min, refit hours).
+
+# Work package record
+
+The history of each package, with its measurements and traps.
 
 1. **Done: WP0 (data + golden).** `examples/male/` (3 CSVs, `provenance.json`, `1OMP.cif`,
    `1ANF.cif`), `core/inference/measurements.py`, `test/data/male_site_1omp72_L20.12.npz`,
@@ -207,6 +243,29 @@ The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP6, WP7 (theor
    (WP3 file), or reparametrise. WP6's "quick hits the bounds" is this, not the preset. Quick is still slow (1277 s): the
    serial MINPACK stage dominates; next step is `joint_minpack: false` for quick (polish only, parallel Jacobians) and
    the profile refits on the polish too. Stage C still does not narrow κ (Laplace factor 1.13 vs 1.13).
+   **WP4b (2026-10-20, owner decision "diagnose, then widen").** *Geometry: no double shift, no bug.* On today's APO 72
+   AV the voxel centres `grid_origin + ijk·dg` all lie within L 20.12 of CB (max 20.114 Å; the old attachment frame
+   reaches 20.265) and violate the 3.5 Å clearance for 0.07 % of voxels (old frame 1.6 %). A brute-force count
+   (quencher/slow centre snapped to the nearest voxel, `|d| < floor(R/dg)·dg`) equals the TRP/TYR contact maps and every
+   neighbour column voxel for voxel at shift 0 and not at ±0.25 voxel; exposure uses the same centres
+   (`test_every_feature_sits_in_the_volume_s_own_frame`). The old-minus-new shift at APO 72 is (0.333, 0.237, 0.160) Å
+   (not the (0.33, 0.01, 0.25) quoted in imp.bff's concept). *Three-way tables* (A notebook-era volume — Bondi radii,
+   stencil 74, no allowed sphere — in the old frame; B the same volume in the grid frame; C today's AV, grid frame) at
+   the printed stage parameters, rms / median |dev| ns: Atto655 D₂O P 0.633/0.061, A 0.633/0.061, B 0.768/0.203, C
+   0.853/0.242; AF488 0.616/0.047, 0.619/0.057, 0.649/0.180, 0.649/0.165; Cy3B 0.023/0.010, 0.037/0.023, 0.172/0.118,
+   0.255/0.205. So A reproduces the prototype (P), and the frame (A→B) is most of the change. The uniform-average contacts
+   move per site by −26…+36 % at δ 0 (median ratio 1.01, no common direction) but by 0…×1.7 at δ −3, where a contact is
+   a handful of voxels decided by a sub-voxel registration (the voxel snapping itself is up to 0.43 Å): the stored
+   Atto655 optimum (δ −2.8) lived exactly there. The AV (B→C) collapses Atto655 HOLO 72/92/95 onto one voxel with two
+   aromatic neighbours (p = 0.99999, τ 2.680 ns at all three): with s_aromatic 0.001 one voxel weighs 10⁶ more, so the
+   ensemble is decided by single-voxel reachability — the source of the multimodality. *Widened* (fit_parameters.yaml)
+   κ 0.01–100, δ −4…+5, γ 0.001–100, δ_s −4…0; *smoothed* (site_model.yaml `delta_interpolation: bspline`); *quick*:
+   `joint_minpack: false`, polish 15, profiles polished (`profile_likelihood.method: polish`), Jacobians on one
+   `graph_fit.WorkerPool` per fit (a fresh spawn pool per Jacobian before). *Proposal (not implemented):* (1) fit
+   κ·C̄(δ) (κ times the count-weighted mean contacts at δ) instead of κ, which removes most of the κ–δ trade-off;
+   (2) a distance-continuous rate kernel k(r) = κ k_Q e^{−(r−R_q)/β} on stored per-voxel quencher distances (a table
+   change) instead of a step at R_q + δ, so the contact strength has no dark plateau; (3) a lower bound or prior on
+   s (e.g. s ≥ 0.01) so the ensemble cannot collapse onto one voxel.
 1f. **Done: WP5 (headless surfaces, 2026-10-20), on the WP4 interface only.** One domain call,
    `core/runs.py: analyse(stages, data=, structures=, tables=, cache_dir=, preset=, fit_overrides=, workers=, profile=,
    output=, project_dir=, save_outputs=True, run_id=, progress=, cancel=, analysis=)` -> `{run_id, directory, files, result,

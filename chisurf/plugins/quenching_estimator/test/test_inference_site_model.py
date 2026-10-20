@@ -5,8 +5,11 @@ each stage's printed parameter set, computed on the prototype's cached tables. T
 table (1OMP/72/L 20.12) covers the Atto655 rows of site 72 apo; the full set needs the
 prototype cache (``~/dev/quest/prototype/cache``), checked by sha256, and is slow.
 
-On today's geometry (re-pinned site tables, see ``test_inference_site_table.py``) the same
-parameter sets give the ``REPIN`` numbers. They do not fit as well: the prototype's contact
+The prototype read the contacts between two tested contact offsets linearly; the analysis
+declares the cubic B-spline (``delta_interpolation: bspline``, smooth at the offsets), so the
+reproduction tests declare ``linear`` (``PROTOTYPE``). On today's geometry (re-pinned site
+tables, see ``test_inference_site_table.py``) with the declared settings the same parameter
+sets give the ``REPIN`` numbers. They do not fit as well: the prototype's contact
 offset delta absorbed the old frame's registration error, so WP4 refits on the corrected
 geometry.
 """
@@ -28,24 +31,34 @@ GOLDEN = HERE / "baselines" / "male_prototype.json"
 SHIPPED = HERE / "data" / "male_site_1omp72_L20.12.npz"
 PROTOTYPE_CACHE = Path.home() / "dev" / "quest" / "prototype" / "cache"
 
-#: Today's geometry, the printed stage parameters: Site.lifetime of the APO 72 / L 20.12 rows.
+#: The prototype's site model: the declared settings with its linear delta interpolation.
+PROTOTYPE = {**st.settings(), "delta_interpolation": "linear"}
+
+#: Today's geometry, the printed stage parameters, the declared bspline delta interpolation:
+#: Site.lifetime of the APO 72 / L 20.12 rows (linear, before 2026-10-20 evening: 3.46629,
+#: 3.59844, 2.20740).
 REPIN_APO72 = {
-    ("Atto655 in D2O", "D2O"): (3.4662850703046475, 0.0031269960272761743, 0.6167809867565738),
-    ("Atto655 in D2O and H2O", "D2O"): (3.5984393482767447, 0.0008451658268918694,
-                                        0.6507923773506309),
-    ("Atto655 in D2O and H2O", "H2O"): (2.2074019448508952, 0.0008492901567700439,
-                                        0.6507922461273774),
+    ("Atto655 in D2O", "D2O"): (3.384481773743211, 0.0031199602638887214, 0.61680883579832),
+    ("Atto655 in D2O and H2O", "D2O"): (3.589296153828212, 0.0013942334897742992,
+                                        0.6508147752891014),
+    ("Atto655 in D2O and H2O", "H2O"): (2.2035139334554157, 0.0013984184220964258,
+                                        0.6508146451392677),
 }
-#: Per stage (rms, median |dev|, mean dark fraction) on today's geometry (prototype in comments).
+#: Per stage (rms, median |dev|, mean dark fraction) on today's geometry; the prototype's (old
+#: tables) and today's with linear delta in comments. The printed parameters are not today's
+#: optimum (the refit's are): these pin the arithmetic, not a fit quality.
 REPIN_STAGES = {
-    "AF488 in H2O": (0.6488894007297438, 0.1652777261820506, 0.13885874367591164),  # 0.616 0.047 0.129
-    "Cy3B in H2O": (0.2554589983335347, 0.20507447501502352, 0.004889275396244485),  # 0.023 0.010 0.004
-    "Atto655 in D2O": (0.8529156147295666, 0.2424830892708194, 0.00438323359882204),  # 0.633 0.061 0.003
-    "Atto655 in D2O and H2O": (0.7914413213348841, 0.22474130621324662,
-                               0.003965678432727453),  # 0.523 0.094 0.002
+    "AF488 in H2O": (0.7827923008896187, 0.44064703454729415, 0.1361911012219956),
+    # prototype 0.616 0.047 0.129; linear 0.649 0.165 0.139
+    "Cy3B in H2O": (0.703919732137106, 0.3331729968044752, 0.004480574608173316),
+    # prototype 0.023 0.010 0.004; linear 0.255 0.205 0.005
+    "Atto655 in D2O": (0.9284980191106449, 0.24774321809363142, 0.003969583008921313),
+    # prototype 0.633 0.061 0.003; linear 0.853 0.242 0.004
+    "Atto655 in D2O and H2O": (0.8044352427766295, 0.22248587428158317, 0.003704652289038114),
+    # prototype 0.523 0.094 0.002; linear 0.791 0.225 0.004
 }
 #: Stage C, site 72 apo, Atto655 D2O: exposure over the visible time / reachable positions.
-REPIN_EXPOSURE_72 = (0.650792377350631, 0.9643838733269777, 0.0008451658268918694)
+REPIN_EXPOSURE_72 = (0.6508147752891011, 0.9643838733269777, 0.0013942334897742992)
 
 
 @pytest.fixture(scope="module")
@@ -55,7 +68,7 @@ def golden():
 
 @pytest.fixture(scope="module")
 def shipped():
-    return sm.Site(SHIPPED)
+    return sm.Site(SHIPPED, PROTOTYPE)
 
 
 def _rows(golden, state="APO", site=72, linker=20.12):
@@ -164,7 +177,7 @@ def test_every_golden_row_on_the_prototype_tables(golden):
         for row in v["rows"]:
             key = f"{row['state']} {row['site']} {row['linker_length']}"
             if key not in sites:
-                sites[key] = sm.Site(paths[key])
+                sites[key] = sm.Site(paths[key], PROTOTYPE)
             out = sites[key].lifetime(v["theta"], row["tau0"], row["water"])
             assert out == (row["lifetime"], row["dark_fraction"], row["visible_exposure"]), (
                 stage, key)
@@ -200,3 +213,35 @@ def test_unique_rows_equals_numpy_unique(shipped):
     _, first, count = np.unique(x, axis=0, return_index=True, return_counts=True)
     got = sm.unique_rows(x)
     assert np.array_equal(got[0], first) and np.array_equal(got[1], count)
+
+
+def test_the_declared_delta_interpolation_is_smooth(golden, shipped):
+    """bspline: no kink at the offsets (linear has them), contacts >= 0 and growing with delta."""
+    smooth = sm.Site(SHIPPED)
+    assert smooth.delta_interpolation == "bspline" and shipped.delta_interpolation == "linear"
+    theta = golden["site_lifetimes"]["Atto655 in D2O"]["theta"]
+    tau0 = golden["TAU0"]["Atto655 D2O"]
+    h = 2e-3
+
+    def slopes(site, delta):
+        """Second-order one-sided slopes left and right of *delta*."""
+        f = {d: site.lifetime({**theta, "delta": delta + d * h}, tau0)[0]
+             for d in (-2, -1, 0, 1, 2)}
+        return ((3 * f[0] - 4 * f[-1] + f[-2]) / (2 * h),
+                (-3 * f[0] + 4 * f[1] - f[2]) / (2 * h))
+
+    for node in (-3.0, -2.0, -1.0, 0.0, 1.0, 2.0):
+        left, right = slopes(smooth, node)
+        assert abs(left - right) < 1e-2 * max(abs(left), abs(right), 1e-3), (node, left, right)
+    left, right = slopes(shipped, -1.0)
+    assert abs(right) > 10 * abs(left), (left, right)  # the prototype's kink
+    # midway between offsets the two agree closely; at an offset the spline is the 1-4-1 mean
+    kq = np.ones(5)
+    c = [smooth._contacts(d, 1.0, kq) for d in (-1.0, 0.0, 1.0)]
+    lin = [shipped._contacts(d, 1.0, kq) for d in (-1.0, 0.0, 1.0)]
+    assert np.allclose(c[1], (lin[0] + 4 * lin[1] + lin[2]) / 6, rtol=1e-5, atol=1e-6)
+    grid = np.linspace(-4.0, 5.0, 91)
+    total = np.array([smooth._contacts(d, 1.0, kq).astype(float).sum() for d in grid])
+    assert np.all(np.diff(total) >= -1e-4 * total.max()) and total.min() >= 0.0
+    with pytest.raises(ValueError):
+        sm.Site(SHIPPED, {**st.settings(), "delta_interpolation": "spline"})

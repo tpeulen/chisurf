@@ -20,15 +20,19 @@ settings:
     - {name: s_basic, scale: log, lower: 0.001, upper: 1.0}
     - {name: s_acidic, scale: log, lower: 0.001, upper: 1.0}
     - {name: s_polar, scale: log, lower: 0.001, upper: 1.0}
-    # Contact quenching on the protein relative to the free amino acids.
-    - {name: scale, scale: log, lower: 0.01, upper: 10.0}
-    # Change of the contact distance (A).
-    - {name: delta, scale: linear, lower: -3.0, upper: 2.0}
+    # Contact quenching on the protein relative to the free amino acids. Above ~10 a contact
+    # is dark (rate > 1/tau_min) and the scale is only bounded by the fractional (rotamer-
+    # weighted) contacts; the range reaches that plateau so the fit can show it.
+    - {name: scale, scale: log, lower: 0.01, upper: 100.0}
+    # Change of the contact distance (A): the site tables' tested offsets
+    # (settings/analysis/site_model.yaml radius_offsets).
+    - {name: delta, scale: linear, lower: -4.0, upper: 5.0}
     # Rotamer weight: 0 crystal side chains, 1 moving side chains.
     - {name: lam, scale: linear, lower: 0.0, upper: 1.0}
-    # Static (dark-complex) channel: strength and its own contact-distance change (A).
-    - {name: static, scale: log, lower: 0.001, upper: 10.0}
-    - {name: delta_static, scale: linear, lower: -3.0, upper: 0.0}
+    # Static (dark-complex) channel: strength and its own contact-distance change (A; a
+    # static complex needs at most the dynamic contact distance, down to the tables' -4).
+    - {name: static, scale: log, lower: 0.001, upper: 100.0}
+    - {name: delta_static, scale: linear, lower: -4.0, upper: 0.0}
     # Free-dye lifetime (ns). Never free: tau0 is the free dye's measured lifetime.
     - {name: tau0, scale: log, lower: 2.0, upper: 3.5, free: false}
     # Extra lifetime (ns) of a fully shielded dye position; only for `shielding_dyes`.
@@ -75,9 +79,11 @@ settings:
   k_range_sd: 8.0
   joint_diff_step: 1.0e-3
   joint_max_nfev: 400
-  # MINPACK tolerances of the joint fit's first stage; then at most joint_polish_iterations
-  # projected Levenberg-Marquardt steps in the unit box (central-difference Jacobians), until a
-  # step lowers the cost by less than joint_polish_rtol (relative).
+  # The joint fit's first stage is MINPACK (joint_minpack; forward-difference Jacobians in one
+  # process) with these tolerances; then at most joint_polish_iterations projected
+  # Levenberg-Marquardt steps in the unit box (central-difference Jacobians in the worker
+  # processes), until a step lowers the cost by less than joint_polish_rtol (relative).
+  joint_minpack: true
   joint_tolerance: 1.0e-10
   joint_polish_iterations: 40
   joint_polish_rtol: 1.0e-10
@@ -95,10 +101,13 @@ settings:
   note_other_regions_logp: 2.0
 
   # Quench-scale profile: Laplace samples (seed, count) and the profile likelihood (points on
-  # the log scale within +- span_sd Laplace sds, at least the parameter's range ends).
+  # the log scale within +- span_sd Laplace sds, clipped to the range). Each point refits the
+  # block's sub-graph: `minpack` (max_nfev, one process) or `polish` (polish_iterations
+  # projected Levenberg-Marquardt steps, Jacobians in the worker processes).
   profile_samples: 4000
   profile_seed: 1
-  profile_likelihood: {points: 13, span_sd: 3.0, max_nfev: 60}
+  profile_likelihood: {points: 13, span_sd: 3.0, method: minpack, max_nfev: 60,
+                       polish_iterations: 20}
 
   # Optional MCMC check of the Laplace error bars (IMP.bff stretch-move sampler).
   sampler_check: {steps: 1500, runs: 8, walkers: 40, start_spread: 0.002, first_seed: 100}
@@ -106,10 +115,12 @@ settings:
 # Presets override `settings` keys. `quick` is a fast test run (results less reliable).
 presets:
   full: {}
+  # quick: no MINPACK stage (the polish alone, its Jacobians in parallel), polished profiles.
   quick:
     n_starts: 8
     search_maxiter: 60
-    joint_max_nfev: 60
-    joint_polish_iterations: 5
-    profile_likelihood: {points: 7, span_sd: 3.0, max_nfev: 20}
+    joint_minpack: false
+    joint_polish_iterations: 15
+    profile_likelihood: {points: 7, span_sd: 3.0, method: polish, max_nfev: 20,
+                         polish_iterations: 8}
     sampler_check: {steps: 200, runs: 8, walkers: 40, start_spread: 0.002, first_seed: 100}

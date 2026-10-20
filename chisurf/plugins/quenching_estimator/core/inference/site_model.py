@@ -15,8 +15,10 @@ At each position the quenching rate is
 
 .. math:: k(x) = e^{\\ln \\text{scale}}\\, c(x; \\delta, \\lambda) \\cdot k_Q + w\\, e(x),
 
-``c`` the quencher contacts interpolated linearly in the contact-distance change
-:math:`\\delta` and mixed between crystal and rotamer side chains by :math:`\\lambda`,
+``c`` the quencher contacts interpolated in the contact-distance change :math:`\\delta`
+over the table's tested offsets (declared ``delta_interpolation``: ``bspline``, the uniform
+cubic B-spline with the tested values as control points, or ``linear``, the MalE prototype's)
+and mixed between crystal and rotamer side chains by :math:`\\lambda`,
 :math:`k_Q` the dye's contact rates, :math:`w` the water quenching rate of a fully exposed dye
 and :math:`e` the water exposure. The lifetime there is
 :math:`\\tau(x) = 1/(1/(\\tau_0 + \\Delta\\tau_{shield}(1 - e)) + k)`. A position is visible
@@ -82,7 +84,8 @@ class Site:
     table : SiteTable or str or pathlib.Path
         The site table, or the path of a stored one (also a MalE prototype cache file).
     settings_ : dict, optional
-        Declared settings (``groups``, ``radius_offsets``, ``tau_min``, ``visibility_power``);
+        Declared settings (``groups``, ``radius_offsets``, ``delta_interpolation``, ``tau_min``,
+        ``visibility_power``);
         ``settings/analysis/site_model.yaml`` by default.
 
     Attributes
@@ -122,6 +125,13 @@ class Site:
         first, count = unique_rows(features)
         self.n_group, self.exposure, self.count = n_group[first], exposure[first], count.astype(float)
         self.C = contacts[first]
+        self.delta_interpolation = str(s["delta_interpolation"])
+        if self.delta_interpolation not in ("linear", "bspline"):
+            raise ValueError(f"delta_interpolation must be linear or bspline, not "
+                             f"{self.delta_interpolation!r}")
+        steps = np.diff(self.radius_offsets)
+        if self.delta_interpolation == "bspline" and not np.allclose(steps, steps[0]):
+            raise ValueError("the bspline delta interpolation needs evenly spaced radius_offsets")
 
     @property
     def n_positions(self):
@@ -134,7 +144,8 @@ class Site:
         Parameters
         ----------
         delta : float
-            Contact-distance change (A), interpolated between the tested offsets.
+            Contact-distance change (A), read over the tested offsets (linear or cubic
+            B-spline, see ``delta_interpolation``); clamped to the tested range.
         lam : float
             0 crystal side chains, 1 rotamers.
         kq : sequence of float
@@ -148,7 +159,18 @@ class Site:
         x = float(np.interp(delta, offsets, np.arange(len(offsets))))
         i = min(int(np.floor(x)), len(offsets) - 2)
         w = x - i
-        c = (1 - w) * self.C[:, :, i, :] + w * self.C[:, :, i + 1, :]
+        if self.delta_interpolation == "linear":
+            c = (1 - w) * self.C[:, :, i, :] + w * self.C[:, :, i + 1, :]
+        else:
+            # uniform cubic B-spline, the tested values as control points (the end values
+            # repeated beyond the range): twice continuously differentiable, a weighted mean
+            # of four neighbouring offsets, so contacts stay >= 0 and grow with delta
+            t = np.float32(w)
+            weights = ((1 - t) ** 3 / 6, (3 * t**3 - 6 * t**2 + 4) / 6,
+                       (-3 * t**3 + 3 * t**2 + 3 * t + 1) / 6, t**3 / 6)
+            last = len(offsets) - 1
+            c = sum(wk * self.C[:, :, min(max(i - 1 + k, 0), last), :]
+                    for k, wk in enumerate(weights))
         c = (1 - lam) * c[:, :, 0] + lam * c[:, :, 1]
         return c @ np.asarray(kq, np.float32)
 

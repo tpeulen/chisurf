@@ -726,8 +726,57 @@ def _main_hidden():
             setattr(main, k, v)
 
 
+class WorkerPool:
+    """Worker processes that keep one payload over many maps.
+
+    A joint fit evaluates its Jacobian dozens of times on the same graph; starting the worker
+    processes (spawn: a fresh interpreter, the imports, the site models unpickled) costs more
+    than one Jacobian, so the fit starts them once and maps every Jacobian onto them. The
+    processes start on the first map that needs them and stop on :meth:`close` (or at the end
+    of a ``with`` block).
+
+    Parameters
+    ----------
+    payload : dict
+        Handed to every worker once (:func:`_worker_init`).
+    workers : int, optional
+        Worker processes; the CPU count by default. 1 runs every map in process.
+    """
+
+    def __init__(self, payload, workers=None):
+        self.payload = payload
+        self.workers = default_workers() if workers is None else max(1, int(workers))
+        self._pool = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+    def executor(self):
+        """The process pool (started on first use).
+
+        Returns
+        -------
+        concurrent.futures.ProcessPoolExecutor
+        """
+        if self._pool is None:
+            self._pool = _futures.ProcessPoolExecutor(
+                max_workers=self.workers, mp_context=_mp.get_context("spawn"),
+                initializer=_worker_init, initargs=(self.payload,),
+            )
+        return self._pool
+
+    def close(self):
+        """Stop the worker processes."""
+        if self._pool is not None:
+            self._pool.shutdown(wait=True, cancel_futures=True)
+            self._pool = None
+
+
 def _map(function, worker_function, payload, items, workers, progress=None, cancel=None,
-         label=""):
+         label="", pool=None):
     """``[function(item) for item in items]``, in worker processes when ``workers > 1``.
 
     Parameters
@@ -745,6 +794,8 @@ def _map(function, worker_function, payload, items, workers, progress=None, canc
     cancel : callable, optional
         ``cancel() -> bool``; checked between items.
     label : str
+    pool : WorkerPool, optional
+        Running workers that already hold *payload*; they are kept running afterwards.
 
     Returns
     -------
@@ -753,7 +804,9 @@ def _map(function, worker_function, payload, items, workers, progress=None, canc
     """
     items = list(items)
     out = [None] * len(items)
-    if workers is None:
+    if pool is not None:
+        workers = pool.workers
+    elif workers is None:
         workers = default_workers()
     if workers <= 1 or len(items) <= 1:
         for i, item in enumerate(items):
@@ -762,14 +815,13 @@ def _map(function, worker_function, payload, items, workers, progress=None, canc
             if progress:
                 progress(i + 1, len(items), label)
         return out
-    context = _mp.get_context("spawn")
-    pool = _futures.ProcessPoolExecutor(
-        max_workers=min(workers, len(items)), mp_context=context,
-        initializer=_worker_init, initargs=(payload,),
-    )
+    own = pool is None
+    if own:
+        pool = WorkerPool(payload, min(workers, len(items)))
+    executor = pool.executor()
     try:
         with _main_hidden():
-            index = {pool.submit(worker_function, item): i for i, item in enumerate(items)}
+            index = {executor.submit(worker_function, item): i for i, item in enumerate(items)}
         done = 0
         pending = set(index)
         while pending:
@@ -785,7 +837,8 @@ def _map(function, worker_function, payload, items, workers, progress=None, canc
                     fut.cancel()
                 raise CancelledError("quenching analysis cancelled")
     finally:
-        pool.shutdown(wait=True, cancel_futures=True)
+        if own:
+            pool.close()
     return out
 
 
@@ -1022,7 +1075,7 @@ class Graph:
         residuals.append(np.array([(K[k] - K_mean[k]) / K_sd[k] for k in self.k_keys]))
         return np.concatenate(residuals), np.concatenate(predictions)
 
-    def jacobian(self, u, step=None, workers=1, cancel=None):
+    def jacobian(self, u, step=None, workers=1, cancel=None, pool=None):
         """Central differences of residuals and predictions with respect to u.
 
         Parameters
@@ -1032,6 +1085,8 @@ class Graph:
             The declared ``jacobian_step`` by default.
         workers : int, optional
         cancel : callable, optional
+        pool : WorkerPool, optional
+            Running workers holding ``dict(graph=self.lean())`` (a joint fit's).
 
         Returns
         -------
@@ -1045,8 +1100,9 @@ class Graph:
                 v = u.copy()
                 v[i] += sign * step
                 shifted.append(v)
-        out = _map(self.evaluate, _worker_evaluate, dict(graph=self.lean()), shifted,
-                   workers, cancel=cancel, label="jacobian")
+        payload = None if pool is not None else dict(graph=self.lean())
+        out = _map(self.evaluate, _worker_evaluate, payload, shifted, workers, cancel=cancel,
+                   label="jacobian", pool=pool)
         Jr = np.array([(out[2 * i][0] - out[2 * i + 1][0]) / (2 * step)
                        for i in range(len(u))]).T
         Jp = np.array([(out[2 * i][1] - out[2 * i + 1][1]) / (2 * step)
@@ -1122,7 +1178,7 @@ class OptimizeSummary:
     minpack_cost: float
 
 
-def polish(graph, u, iterations, rtol, workers=None, cancel=None):
+def polish(graph, u, iterations, rtol, workers=None, cancel=None, hold=None, pool=None):
     """Projected Levenberg-Marquardt in the unit box.
 
     Each step solves ``(J^T J + mu diag(J^T J)) d = -J^T r`` on the parameters that are not
@@ -1140,6 +1196,10 @@ def polish(graph, u, iterations, rtol, workers=None, cancel=None):
         Stop when an accepted step lowers the cost by less than this (relative).
     workers : int, optional
     cancel : callable, optional
+    hold : sequence of int, optional
+        Coordinates kept where they are (a profile's fixed parameter).
+    pool : WorkerPool, optional
+        Running workers holding this graph (see :meth:`Graph.jacobian`).
 
     Returns
     -------
@@ -1147,14 +1207,17 @@ def polish(graph, u, iterations, rtol, workers=None, cancel=None):
         ``u``, ``cost``, ``steps`` (accepted), ``costs`` (after each accepted step).
     """
     lo, hi = graph.u_clip, 1 - graph.u_clip
+    held = np.zeros(len(u), bool)
+    if hold is not None:
+        held[list(hold)] = True
     r = graph.evaluate(u)[0]
     cost = 0.5 * float(r @ r)
     costs, mu, steps = [cost], 1e-3, 0
     while steps < iterations:
         _check(cancel)
-        J, _ = graph.jacobian(u, workers=workers, cancel=cancel)
+        J, _ = graph.jacobian(u, workers=workers, cancel=cancel, pool=pool)
         g = J.T @ r
-        free = ~(((u <= lo * 1.0001) & (g > 0)) | ((u >= hi - lo * 1e-4) & (g < 0)))
+        free = ~(((u <= lo * 1.0001) & (g > 0)) | ((u >= hi - lo * 1e-4) & (g < 0)) | held)
         if not free.any():
             break
         A = J[:, free].T @ J[:, free]
@@ -1181,7 +1244,7 @@ def polish(graph, u, iterations, rtol, workers=None, cancel=None):
     return dict(u=u, cost=cost, steps=steps, costs=costs)
 
 
-def joint_fit(graph, workers=None, cancel=None, max_nfev=None, start=None, minpack=True):
+def joint_fit(graph, workers=None, cancel=None, max_nfev=None, start=None, minpack=None):
     """The joint least-squares fit of a graph and its Laplace approximation (in place).
 
     Parameters
@@ -1196,8 +1259,9 @@ def joint_fit(graph, workers=None, cancel=None, max_nfev=None, start=None, minpa
     start : numpy.ndarray, optional
         Start in u; the blocks' search bests and the slope means by default.
     minpack : bool, optional
-        Run MINPACK's Levenberg-Marquardt first (default); False only polishes from *start*
-        (to replay a known optimum).
+        Run MINPACK's Levenberg-Marquardt first; False only polishes from *start* (to replay
+        a known optimum, or for speed: MINPACK's forward-difference Jacobian runs in one
+        process, the polish's in the workers). The declared ``joint_minpack`` by default.
 
     Returns
     -------
@@ -1218,6 +1282,8 @@ def joint_fit(graph, workers=None, cancel=None, max_nfev=None, start=None, minpa
     # finishes the fit.
     u = graph.start() if start is None else np.asarray(start, float)
     status, nfev, first = 0, 0, float("nan")
+    if minpack is None:
+        minpack = bool(fs["joint_minpack"])
     if minpack:
         tol = float(fs["joint_tolerance"])
         sol = _numerics.least_squares(residuals, u, bounds=(0.0, 1.0), ftol=tol, xtol=tol,
@@ -1226,14 +1292,15 @@ def joint_fit(graph, workers=None, cancel=None, max_nfev=None, start=None, minpa
         u, status, nfev, first = np.asarray(sol.x, float), int(sol.status), int(sol.nfev), \
             float(sol.cost)
     u = np.clip(u, graph.u_clip, 1 - graph.u_clip)
-    graph.polish = polish(graph, u, int(fs["joint_polish_iterations"]),
-                          float(fs["joint_polish_rtol"]), workers=workers, cancel=cancel)
-    sol = OptimizeSummary(x=graph.polish["u"], cost=graph.polish["cost"], status=status,
-                          nfev=nfev, minpack_cost=first)
-    graph.fit = sol
-    graph.u = np.asarray(sol.x, float)
-    graph.residual, graph.prediction = graph.evaluate(graph.u)
-    graph.Jr, graph.Jp = graph.jacobian(graph.u, workers=workers, cancel=cancel)
+    with WorkerPool(dict(graph=graph.lean()), workers) as pool:
+        graph.polish = polish(graph, u, int(fs["joint_polish_iterations"]),
+                              float(fs["joint_polish_rtol"]), cancel=cancel, pool=pool)
+        sol = OptimizeSummary(x=graph.polish["u"], cost=graph.polish["cost"], status=status,
+                              nfev=nfev, minpack_cost=first)
+        graph.fit = sol
+        graph.u = np.asarray(sol.x, float)
+        graph.residual, graph.prediction = graph.evaluate(graph.u)
+        graph.Jr, graph.Jp = graph.jacobian(graph.u, cancel=cancel, pool=pool)
     graph.cov = clipped_inverse(graph.Jr.T @ graph.Jr, float(fs["max_variance"]))
     return graph
 
@@ -1755,7 +1822,7 @@ def sample_summary(values):
 
 
 def profile_likelihood(view, name="ln_scale", values=None, max_nfev=None, cancel=None,
-                       progress=None):
+                       progress=None, workers=None):
     """A real profile likelihood of one block parameter.
 
     At each fixed value the block's sub-graph (the block and the titration slopes it reads,
@@ -1772,10 +1839,15 @@ def profile_likelihood(view, name="ln_scale", values=None, max_nfev=None, cancel
         Internal values to profile at; by default the declared number of points within
         ``+- span_sd`` Laplace sds of the best fit, clipped to the range.
     max_nfev : int, optional
-        Evaluation budget of each refit (scipy units).
+        Evaluation budget of each refit (scipy units) when the declared
+        ``profile_likelihood.method`` is ``minpack`` (one process); ``polish`` refits with
+        the projected Levenberg-Marquardt polish instead (``polish_iterations`` steps,
+        Jacobians in *workers* processes).
     cancel : callable, optional
     progress : callable, optional
         ``progress(done, total, label)``.
+    workers : int, optional
+        Worker processes of the ``polish`` refits.
 
     Returns
     -------
@@ -1809,7 +1881,22 @@ def profile_likelihood(view, name="ln_scale", values=None, max_nfev=None, cancel
     free = np.array([k != j for k in range(len(v0))])
     lo, hi = sub.lo[free], sub.hi[free]
 
+    method = str(opts.get("method", "minpack"))
+    if method not in ("minpack", "polish"):
+        raise ValueError(f"profile_likelihood.method must be minpack or polish, not {method!r}")
+    pool = WorkerPool(dict(graph=sub.lean()), workers if method == "polish" else 1)
+
     def cost_at(value, start_free):
+        if method == "polish":
+            # the free coordinates are the sub-graph's own unit box
+            u = np.empty(len(v0))
+            u[free] = start_free
+            u[j] = (value - sub.lo[j]) / (sub.hi[j] - sub.lo[j])
+            u = np.clip(u, sub.u_clip, 1 - sub.u_clip)
+            out = polish(sub, u, int(opts["polish_iterations"]), float(fs["joint_polish_rtol"]),
+                         cancel=cancel, hold=[j], pool=pool)
+            return float(out["cost"]), np.asarray(out["u"], float)[free]
+
         def residuals(w):
             _check(cancel)
             v = v0.copy()
@@ -1822,18 +1909,63 @@ def profile_likelihood(view, name="ln_scale", values=None, max_nfev=None, cancel
         return float(sol.cost), np.asarray(sol.x, float)
 
     w0 = np.clip((v0[free] - lo) / (hi - lo), sub.u_clip, 1 - sub.u_clip)
-    best_cost, w_best = cost_at(v0[j], w0)
-    # walk out from the best fit in both directions, warm-starting each point
-    order = np.argsort(np.abs(values - v0[j]))
+    with pool:
+        best_cost, w_best = cost_at(v0[j], w0)
+        costs, starts = _walk_profile(values, v0[j], w_best, cost_at, progress, view.label)
+    return _profile_summary(fs, name, values, costs, best_cost)
+
+
+def _walk_profile(values, centre, w_best, cost_at, progress, label):
+    """Profile costs, walking out from the best fit in both directions with warm starts.
+
+    Parameters
+    ----------
+    values : numpy.ndarray
+        Fixed values (internal units).
+    centre : float
+        The best fit's value.
+    w_best : numpy.ndarray
+        Free coordinates at the best fit.
+    cost_at : callable
+        ``cost_at(value, start) -> (cost, free coordinates)``.
+    progress : callable or None
+    label : str
+
+    Returns
+    -------
+    tuple
+        ``(costs, starts)``.
+    """
+    order = np.argsort(np.abs(values - centre))
     costs = np.full(len(values), np.nan)
     starts = {}
     for count, k in enumerate(order):
-        neighbour = [m for m in starts if (values[m] - v0[j]) * (values[k] - v0[j]) >= 0]
+        neighbour = [m for m in starts if (values[m] - centre) * (values[k] - centre) >= 0]
         start = starts[min(neighbour, key=lambda m: abs(values[m] - values[k]))] if neighbour \
             else w_best
         costs[k], starts[k] = cost_at(values[k], start)
         if progress:
-            progress(count + 1, len(values), f"{view.label}: profile")
+            progress(count + 1, len(values), f"{label}: profile")
+    return costs, starts
+
+
+def _profile_summary(fs, name, values, costs, best_cost):
+    """Deviance and 68 % crossings of a profile.
+
+    Parameters
+    ----------
+    fs : dict
+        Fit settings.
+    name : str
+        Internal name.
+    values, costs : numpy.ndarray
+    best_cost : float
+
+    Returns
+    -------
+    dict
+        See :func:`profile_likelihood`.
+    """
     best_cost = min(best_cost, float(np.nanmin(costs)))
     deviance = 2.0 * (costs - best_cost)
     spec = _spec_map(fs)[name]

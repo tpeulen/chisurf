@@ -41,6 +41,12 @@ settings:
   slow_radius: 8.5
   # Tested changes of the contact distance (A).
   radius_offsets: [-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+  # How the contacts are read between the tested offsets: `bspline` (the uniform cubic
+  # B-spline with the tested values as control points: smooth in delta, so the fit has no kinks
+  # at the offsets to stop on; it smooths each value with its neighbours, 1/6-4/6-1/6) or
+  # `linear` (the MalE prototype's; its reproduction tests declare it). The fit's delta range
+  # is the offsets' range.
+  delta_interpolation: bspline
   # A side-chain rotamer closer than this (A) to another heavy atom is impossible.
   clash: 2.8
   # Water exposure (Shrake-Rupley): water radius, test points on the shell, and the atom

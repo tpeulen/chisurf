@@ -673,7 +673,7 @@ class Analysis:
         if key not in self._profiles:
             view = self.graph(graph_name).view(label)
             self._profiles[key] = _gf.profile_likelihood(view, "ln_scale", cancel=cancel,
-                                                         progress=progress)
+                                                         progress=progress, workers=self.workers)
         return self._profiles[key]
 
     # ---- running

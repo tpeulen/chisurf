@@ -106,6 +106,55 @@ def test_todays_geometry_is_pinned_and_cached(apo72_atoms, tmp_path, monkeypatch
     assert key != st.site_key(st.male_structure("APO"), 72, 20.12, settings_={**s, "clash": 3.0})
 
 
+def test_every_feature_sits_in_the_volume_s_own_frame(apo72_atoms):
+    """No double shift: contacts, neighbours and the volume share one frame.
+
+    The volume's voxels are ``grid_origin + ijk dg``: only there do they all lie within the
+    linker of the attachment atom (the attachment frame reaches 20.27 A at L 20.12). A
+    quencher or slow centre is snapped to the nearest of those voxels and stamped with
+    ``|d| < floor(R / dg) dg``; a brute-force count in that frame equals the kernels' tables
+    voxel for voxel, and the same count a quarter voxel off does not.
+    """
+    import IMP.bff as bff
+
+    s = st.settings()
+    av = st.accessible_volume(apo72_atoms, 72, 20.12)
+    centres = np.asarray(av.get_voxel_centres())
+    indices = np.asarray(av.get_voxel_indices())
+    origin, dg = np.asarray(av.get_grid_origin(), float), float(av.grid_step)
+    ng = int(av.ng)
+    attachment = np.asarray(av.get_attachment_point(), float)
+    old = attachment + (np.stack(np.unravel_index(indices, (ng,) * 3), 1) - (ng - 1) // 2
+                        + 0.5) * dg
+    assert np.linalg.norm(centres - attachment, axis=1).max() <= 20.12
+    assert np.linalg.norm(old - attachment, axis=1).max() > 20.12
+
+    def count(points, centres_q, radius, shift=0.0):
+        snapped = origin + shift + np.round((centres_q - origin - shift) / dg) * dg
+        d = np.linalg.norm(points[:, None, :] + shift - snapped[None], axis=2)
+        return (d < int(radius / dg) * dg - 1e-9).sum(1)
+
+    quenchers = st.quencher_ensembles(apo72_atoms, 72)
+    trp = np.array([q["crystal"] for q in quenchers if q["name"] == "TRP"])
+    radius = bff.amino_acid_quenching_defaults(1.0, 1.0, float(s["dye_radius"]))["TRP"].quench_radius
+    stamped = st.contact_map(av, quenchers, "TRP", 0.0, "crystal")[indices]
+    assert np.array_equal(count(centres, trp, radius), stamped)
+    assert not np.array_equal(count(centres, trp, radius, shift=0.25 * dg), stamped)
+
+    types = st.residue_types(s)
+    counts = np.asarray(bff.residue_type_neighbour_counts(av, st.obstacles(apo72_atoms), types,
+                                                          float(s["slow_radius"])))
+    slow = {}
+    for a in apo72_atoms:
+        key = (str(a["chain"]), int(a["res_id"]), str(a["res_name"]).strip())
+        name = str(a["atom_name"]).strip()
+        if name == "CB" or (name == "CA" and key not in slow):
+            slow[key] = np.asarray(a["coord"], float)
+    lys = np.array([x for (_, _, r), x in slow.items() if r == "LYS"])
+    assert np.array_equal(count(centres, lys, float(s["slow_radius"])),
+                          counts[:, types.index("LYS")])
+
+
 def test_direct_method_and_walk_agree_on_the_corrected_frame():
     """Notebook cell 23 at APO 233, slow 0.3, L 21.5, tau0 4.108.
 
