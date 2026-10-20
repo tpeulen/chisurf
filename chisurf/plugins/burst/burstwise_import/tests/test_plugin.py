@@ -18,14 +18,12 @@ from chisurf.plugins.burst.burstwise_import import (
 from chisurf.plugins.burst.burstwise_import.gui.app import create_app
 from chisurf.plugins.burst.burstwise_import.gui.view_model import BurstwiseImportViewModel
 
+#: Synthetic stand-in for a legacy burstwise analysis tree (3 stems, the real
+#: layout and file contract); regenerate with ``data/make_burstwise_sample.py``.
 SAMPLE = (
-    pathlib.Path.home()
-    / ".hermes"
-    / "cache"
-    / "scratch"
-    / "burstwise_samples"
-    / "burstwise_All 0.1066#60"
+    pathlib.Path(__file__).resolve().parent / "data" / "burstwise" / "burstwise_All 0.1066#60"
 )
+N_STEMS = 3
 
 
 def test_manifest_loads():
@@ -117,25 +115,24 @@ def test_headless_draw_recording_painter(tmp_path):
         app.close()
 
 
-@pytest.mark.skipif(not SAMPLE.is_dir(), reason="burstwise sample not present")
 def test_integration_sample_scan_and_dry_run(tmp_path):
-    """Integration test against the real legacy burstwise sample."""
+    """Integration test against the committed synthetic legacy burstwise sample."""
     inv = scan_folder(SAMPLE)
-    assert len(inv["tables"]) == 87
+    assert len(inv["tables"]) == N_STEMS
     assert inv["parameters"]["min_photons"] == 60
     assert inv["parameters"]["threshold"] == pytest.approx(0.1066)
 
     app = create_app()
     try:
         app.scan(SAMPLE)
-        assert len(app.model.inventory["tables"]) == 87
+        assert len(app.model.inventory["tables"]) == N_STEMS
         assert app.model.mti_entries
 
         # Dry run conversion with beside resolver
         app.model.resolver_mode = "beside"
         app.model.dry_run = True
         rep = app.model.convert(out_dir=tmp_path)
-        assert len(rep.stems) == 87
+        assert len(rep.stems) == N_STEMS
         # parameters are per analysis tree now (a measurement has several)
         params = next(iter(rep.parameters.values()))
         assert params["min_photons"] == 60

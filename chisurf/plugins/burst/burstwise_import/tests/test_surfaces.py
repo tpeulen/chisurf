@@ -3,7 +3,7 @@
 The API is the single implementation; the CLI and the RPC services are thin
 layers over it and the GUI wraps the same core module. What these tests pin
 is the wiring — that each entrypoint loads, dispatches, and returns — plus
-one end-to-end CLI conversion against the real legacy sample.
+one end-to-end CLI conversion against a committed synthetic legacy sample.
 """
 
 from __future__ import annotations
@@ -17,19 +17,12 @@ from chisurf.core.plugin import load_manifest
 
 PLUGIN_DIR = pathlib.Path(__file__).resolve().parents[1]
 MANIFEST = PLUGIN_DIR / "manifest.json"
+#: Synthetic stand-in for a legacy burstwise analysis tree (3 stems, the real
+#: layout and file contract); regenerate with ``data/make_burstwise_sample.py``.
 SAMPLE = (
-    pathlib.Path.home()
-    / ".hermes"
-    / "cache"
-    / "scratch"
-    / "burstwise_samples"
-    / "burstwise_All 0.1066#60"
+    pathlib.Path(__file__).resolve().parent / "data" / "burstwise" / "burstwise_All 0.1066#60"
 )
-#: The sample is a pulled copy in a scratch cache that is pruned: every test reading it skips
-#: without it (a missing folder is not a failure of the plugin).
-needs_sample = pytest.mark.skipif(
-    not SAMPLE.is_dir(), reason="pulled burstwise sample not present"
-)
+N_STEMS = 3
 
 
 # -- manifest carries all three entrypoints --------------------------------------
@@ -91,12 +84,11 @@ def test_api_resolver_mti_prefix_mode(tmp_path: pathlib.Path):
     assert r("stemA", mti) == real
 
 
-@needs_sample
 def test_api_import_folder_reports_stems():
     from chisurf.plugins.burst.burstwise_import.api import import_folder
 
     report = import_folder(SAMPLE, {"source_mode": "none"})
-    assert len(report.stems) == 87
+    assert len(report.stems) == N_STEMS
     assert not report.containers  # nothing resolved -> nothing written
 
 
@@ -110,7 +102,6 @@ def test_cli_group_loads_and_has_commands():
     assert {"convert", "scan"} <= names
 
 
-@needs_sample
 def test_cli_scan_runs_on_sample(capsys):
     pytest.importorskip("click")
     from click.testing import CliRunner
@@ -120,10 +111,9 @@ def test_cli_scan_runs_on_sample(capsys):
     runner = CliRunner()
     res = runner.invoke(cli, ["scan", str(SAMPLE)])
     assert res.exit_code == 0, res.output
-    assert "stems: 87" in res.output
+    assert f"stems: {N_STEMS}" in res.output
 
 
-@needs_sample
 def test_cli_convert_end_to_end(tmp_path: pathlib.Path):
     """One-stem mini-copy of the sample, a stand-in TTTR beside it, convert."""
     import shutil
@@ -149,7 +139,18 @@ def test_cli_convert_end_to_end(tmp_path: pathlib.Path):
     res = runner.invoke(cli, ["convert", str(work), "--source-mode", "beside", "-o", str(out_dir)])
     assert res.exit_code == 0, res.output
     # one container per MEASUREMENT folder ("exp" here), named after it
-    assert (out_dir / "exp.mmfdb.pto").is_file(), res.output
+    container = out_dir / "exp.mmfdb.pto"
+    assert container.is_file(), res.output
+
+    # the burst table and both MLE companions landed, de-interleaved: the stem
+    # holds 6 bursts, each preceded by a zero filler row in the legacy files
+    from chisurf.core.fio.pto import Measurement
+
+    with Measurement.open(container) as m:
+        tables = {o.name: o.uid for o in m.artifacts(artifact_kind="burst_table")}
+        assert {"bursts", "mle_green", "mle_red"} <= set(tables), tables
+        for name in ("bursts", "mle_green", "mle_red"):
+            assert m.get_store(tables[name]).n_rows() == 6, name
 
 
 # -- RPC services -----------------------------------------------------------------

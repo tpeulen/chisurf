@@ -1,0 +1,6 @@
+Burst search	Threshold:	0.1066
+Burst search	Minimum photons:	60
+Burst search	Selection:	All
+Channels	Green:	0,8
+Channels	Red:	1,9
+TAC	TAC range (ns):	50
