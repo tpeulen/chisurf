@@ -9,7 +9,13 @@ its accessible volume. Per voxel it holds
   dye at every tested contact-distance change, for the crystal side chains (``[..., 0]``) and
   their rotamer ensembles weighted by probability (``[..., 1]``);
 * ``exposure`` ``(n,)`` float32 -- the uncovered fraction of the dye's water shell
-  (Shrake-Rupley).
+  (Shrake-Rupley);
+* ``distances`` -- the quencher distances the distance-continuous rate kernel reads: per voxel,
+  quencher type and side-chain source (crystal, rotamers weighted by probability), a histogram
+  of ``u = r - R_q`` (``r`` voxel centre to quencher centre, ``R_q`` the reference contact
+  radius) on the declared ``distance_histogram`` bins, bin 0 collecting everything closer than
+  the lowest edge. It is sparse, so it is stored as row, column and weight arrays
+  (:class:`DistanceHistogram`).
 
 The geometry is IMP.bff's: the accessible volume (``get_av`` with IMP radii), the voxel frame
 (``ProbeAccessibleVolume.get_voxel_centres``), ``residue_type_neighbour_counts``,
@@ -38,7 +44,7 @@ from . import columns as _columns
 SITE_MODEL = _columns.ANALYSIS_SETTINGS_DIR / "site_model.yaml"
 
 #: Bumped whenever the table's construction changes in this module.
-SCHEMA = "site-table-v1"
+SCHEMA = "site-table-v2"
 
 #: The IMP.bff names a site table needs.
 _KERNELS = (
@@ -420,6 +426,127 @@ def contact_map(av, quenchers, name, delta, source, settings_=None):
     return np.asarray(m.get_quenching_rate_map(), dtype=float).ravel()
 
 
+@dataclass(frozen=True)
+class DistanceHistogram:
+    """Sparse per-voxel histogram of quencher distances (see the module docstring).
+
+    Entry ``e`` adds ``weights[e]`` to voxel ``rows[e]``, quencher ``q``, source ``m`` and bin
+    ``b`` with ``columns[e] = (q * 2 + m) * n_bins + b``.
+
+    Attributes
+    ----------
+    rows : numpy.ndarray
+        ``(nnz,)`` int32, ascending.
+    columns : numpy.ndarray
+        ``(nnz,)`` int16.
+    weights : numpy.ndarray
+        ``(nnz,)`` float32: quencher centres (crystal 1, rotamers their probability).
+    lower, step : float
+        Lowest bin edge and bin width of u (A); bin 0 is everything below *lower*.
+    n_bins : int
+        Bins per (quencher, source), the underflow bin included.
+    """
+
+    rows: np.ndarray
+    columns: np.ndarray
+    weights: np.ndarray
+    lower: float
+    step: float
+    n_bins: int
+
+    def edges(self):
+        """Lower and upper edge of every bin (bin 0 from -inf).
+
+        Returns
+        -------
+        tuple of numpy.ndarray
+        """
+        k = np.arange(self.n_bins)
+        lo = self.lower + (k - 1) * self.step
+        lo[0] = -np.inf
+        return lo, lo + self.step
+
+
+def distance_bins(settings_=None):
+    """The declared histogram bins: ``(lower, step, n_bins)`` (underflow bin included).
+
+    Parameters
+    ----------
+    settings_ : dict, optional
+
+    Returns
+    -------
+    tuple
+    """
+    s = settings_ or settings()
+    d = s["distance_histogram"]
+    lower, upper, step = float(d["lower"]), float(d["upper"]), float(d["step"])
+    return lower, step, int(round((upper - lower) / step)) + 1
+
+
+def distance_histogram(centres, quenchers, settings_=None, chunk=20000):
+    """The quencher-distance histogram of every voxel.
+
+    Parameters
+    ----------
+    centres : numpy.ndarray
+        ``(n, 3)`` voxel centres (the volume's grid frame).
+    quenchers : list of dict
+        :func:`quencher_ensembles`.
+    settings_ : dict, optional
+    chunk : int, optional
+        Voxels per block (memory).
+
+    Returns
+    -------
+    DistanceHistogram
+    """
+    s = settings_ or settings()
+    bff = _bff()
+    lower, step, n_bins = distance_bins(s)
+    defaults = bff.amino_acid_quenching_defaults(1.0, 1.0, float(s["dye_radius"]))
+    centres = np.asarray(centres, float)
+    rows, cols, weights = [], [], []
+    for q, name in enumerate(s["quenchers"]):
+        radius = float(defaults[name].quench_radius)
+        for m, source in enumerate(("crystal", "rotamer")):
+            points, w = [], []
+            for x in quenchers:
+                if x["name"] != name:
+                    continue
+                if source == "crystal":
+                    points.append(x["crystal"])
+                    w.append(1.0)
+                else:
+                    points.extend(x["centres"])
+                    w.extend(x["probabilities"])
+            if not points:
+                continue
+            points, w = np.asarray(points, float), np.asarray(w, float)
+            base = (q * 2 + m) * n_bins
+            for start in range(0, len(centres), chunk):
+                block = centres[start:start + chunk]
+                u = np.sqrt(((block[:, None, :] - points[None]) ** 2).sum(-1)) - radius
+                b = np.floor((u - lower) / step).astype(np.int64) + 1
+                b[u < lower] = 0
+                keep = b < n_bins
+                r_local, c_local = np.nonzero(keep)
+                flat = r_local * n_bins + b[keep]
+                hist = np.bincount(flat, weights=w[c_local], minlength=len(block) * n_bins)
+                nz = np.flatnonzero(hist)
+                rows.append(start + nz // n_bins)
+                cols.append(base + nz % n_bins)
+                weights.append(hist[nz])
+    if rows:
+        rows, cols, weights = (np.concatenate(v) for v in (rows, cols, weights))
+    else:
+        rows, cols, weights = np.zeros(0, int), np.zeros(0, int), np.zeros(0)
+    order = np.lexsort((cols, rows))
+    return DistanceHistogram(rows=rows[order].astype(np.int32), columns=cols[order].astype(np.int16),
+                             weights=weights[order].astype(np.float32), lower=lower, step=step,
+                             n_bins=n_bins)
+
+
 def water_radii(atoms, settings_=None):
     """Radius of each atom a water molecule may not overlap (declared per element).
 
@@ -456,6 +583,8 @@ class SiteTable:
         ``(n,)`` float32 water exposure.
     voxel_indices : numpy.ndarray or None
         ``(n,)`` flat C-order voxel index into the volume's ``ng**3`` grid.
+    distances : DistanceHistogram or None
+        Quencher distances (``None`` for a prototype table or a schema-v1 file).
     meta : dict
         Volume geometry (``ng``, ``dg``, ``grid_origin``, ``attachment``) and the inputs.
     path : pathlib.Path or None
@@ -466,6 +595,7 @@ class SiteTable:
     contacts: np.ndarray
     exposure: np.ndarray
     voxel_indices: np.ndarray | None = None
+    distances: DistanceHistogram | None = None
     meta: dict = field(default_factory=dict)
     path: Path | None = None
 
@@ -507,6 +637,11 @@ class SiteTable:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         extra = {} if self.voxel_indices is None else {"voxel_indices": self.voxel_indices}
+        if self.distances is not None:
+            d = self.distances
+            extra.update(distance_rows=d.rows, distance_columns=d.columns,
+                         distance_weights=d.weights,
+                         distance_bins=np.array([d.lower, d.step, d.n_bins], float))
         tmp = path.with_name(path.name + ".part.npz")
         np.savez_compressed(
             tmp,
@@ -534,7 +669,14 @@ def load_site_table(path):
     path = Path(path)
     with np.load(path, allow_pickle=False) as f:
         meta = json.loads(str(f["meta"])) if "meta" in f else {}
+        distances = None
+        if "distance_rows" in f:
+            lower, step, n_bins = (float(v) for v in f["distance_bins"])
+            distances = DistanceHistogram(rows=f["distance_rows"], columns=f["distance_columns"],
+                                          weights=f["distance_weights"], lower=lower, step=step,
+                                          n_bins=int(n_bins))
         return SiteTable(
+            distances=distances,
             neighbours=f["neighbours"],
             contacts=f["contacts"],
             exposure=f["exposure"],
@@ -591,6 +733,7 @@ def table_from_volume(av, atoms, site, chain=None, settings_=None, library=None)
                     contacts[:, k, j, m] = grid[points]
 
     centres = np.asarray(av.get_voxel_centres(), dtype=float)
+    distances = distance_histogram(centres, quenchers, s)
     xyz = np.asarray(atoms["coord"], dtype=float)
     exposure = np.asarray(
         bff.probe_solvent_exposure(
@@ -612,6 +755,7 @@ def table_from_volume(av, atoms, site, chain=None, settings_=None, library=None)
         contacts=contacts.astype(np.float16),
         exposure=exposure.astype(np.float32),
         voxel_indices=points.astype(np.int32),
+        distances=distances,
         meta=meta,
     )
 
@@ -658,7 +802,7 @@ def site_key(structure_path, site, linker_length, chain=None, settings_=None):
             "chain", "attachment_atom", "site_atoms", "dropped_elements", "linker_width",
             "dye_radius", "grid", "av", "quenchers", "groups", "slow_radius", "radius_offsets",
             "clash", "water_radius", "exposure_points", "water_vdw_radii", "water_vdw_default",
-            "grid_options",
+            "grid_options", "distance_histogram",
         )
     }
     blob = json.dumps(

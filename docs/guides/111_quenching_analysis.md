@@ -12,8 +12,9 @@ window (`chisurf/plugins/quenching_estimator/gui/analysis_card.py`). The *Forwar
 ({doc}`80_quenching_estimator`) predicts the lifetime of a dye at one site from the structure; this
 page runs the other way. From lifetimes measured at many sites and the free dye titrated against
 amino acids, it fits the dye's quench scale $\kappa$ (contact quenching relative to the
-titrations), its stickiness $s$ per residue group, the contact offset $\delta$ and the shielding
-term $\Delta\tau_\text{shield}$. Theory: {ref}`concept-quenching-inference`.
+titrations), its stickiness $s$ per residue group, the decay length $\ell$ of quenching beyond
+contact (the default distance-continuous rate model; the prototype's contact-shell model fits a
+contact offset $\delta$ instead) and the shielding term $\Delta\tau_\text{shield}$. Theory: {ref}`concept-quenching-inference`.
 
 **What you need:** nothing for the demo. For your own data, a folder with three CSV tables (step 1)
 and a structure per state.

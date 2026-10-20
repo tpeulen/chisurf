@@ -172,28 +172,48 @@ error).
 
 ## The site model
 
-Per voxel, with quench scale $\kappa$, contact offset $\delta$, rotamer weight
-$\lambda$, static strength $\gamma$ and its offset $\delta_s$:
+Per voxel, with quench scale $\kappa$, rotamer weight $\lambda$, static
+strength $\gamma$ and its offset $\delta_s$:
 
 $$
-k(x) = \kappa\sum_q k_Q(q)\,c_q(x;\delta,\lambda) + w\,k_{q,w,\text{free}}\,e(x),
+k(x) = \kappa\sum_q k_Q(q)\,c_q(x) + w\,k_{q,w,\text{free}}\,e(x),
 \qquad
 \tau(x) = \Big[\frac{1}{\tau_0 + \Delta\tau_\text{shield}(1-e(x))} + k(x)\Big]^{-1}.
 $$
 
-- $c_q(x;\delta,\lambda) = (1-\lambda)\,c_q^\text{crystal} + \lambda\,c_q^\text{rotamer}$
-  counts quencher centres (redox-active atoms) within $R_q + \delta$. The site
-  table holds these counts at $\delta \in \{-4,\dots,+5\}$ Å; between them
-  ChiSurf reads them with the uniform cubic B-spline that has the tabulated
-  counts as control points:
-  $c(\delta) = \sum_k C_k\,B_3(\delta - \delta_k)$. The curve is twice
-  differentiable, never negative, and grows with $\delta$. At a tabulated
-  offset it is the 1–4–1 mean of three neighbours, a smoothing of about one
-  grid step. The MalE prototype interpolated linearly. That puts a kink at
-  every offset, and the fit stopped on them (δ = −1.0 exactly). A monotone
-  cubic (PCHIP) was tried and dropped: it needs zero slope at an offset next to
-  a flat stretch, so τ(δ) became a staircase with nearly flat steps at every
-  offset. Rotamer centres are weighted by probability.
+Here $c_q = (1-\lambda)\,c_q^\text{crystal} + \lambda\,c_q^\text{rotamer}$
+counts the quencher centres (redox-active atoms) of type $q$ seen from $x$.
+Rotamer centres are weighted by probability. How a centre at distance $r$
+counts is the **rate model** (`site_model.yaml: rate_model`):
+
+- **`kernel` (the default): distance-continuous.** With
+  $u = r - R_q$, the distance beyond the reference contact radius,
+  $$
+  f(u) = \begin{cases} 1, & u \le 0,\\ e^{-u/\ell}, & u > 0, \end{cases}
+  \qquad c_q(x) = \sum_\text{centres} w\, f(u).
+  $$
+  The decay length $\ell$ replaces the contact offset. A free offset ρ would be
+  degenerate with κ in the tail, because
+  $\kappa e^{-(u-\rho)/\ell} = e^{-(u-\rho-\ell\ln\kappa)/\ell}$. So κ is the rate
+  at contact and $\ell$ is how far it reaches. The site table stores the
+  rotamer-weighted histogram of $u$ per voxel, quencher type and side-chain
+  source: 0.5 Å bins from −4 to +10 Å, plus an underflow bin. Distances are
+  exact, measured from voxel centre to quencher centre in the volume's frame.
+  $f$ is averaged over each bin, exactly for centres spread evenly in it, so the
+  prediction is smooth in $\ell$. The static channel uses the same kernel
+  shifted to $u \le \delta_s$. The tail beyond $u$ = 10 Å is cut, which loses
+  $e^{-5}$ = 0.7 % at $\ell$ = 2 Å, the upper bound. The histogram is sparse
+  (about 6.5 entries per voxel), about 1 MB per table.
+- **`contact_shell` (the MalE prototype's).** A step at $R_q + \delta$, read
+  from the contact counts the table holds at $\delta \in \{-4,\dots,+5\}$ Å.
+  Between them ChiSurf uses the uniform cubic B-spline with the tabulated
+  counts as control points, $c(\delta) = \sum_k C_k\,B_3(\delta - \delta_k)$.
+  It is twice differentiable, never negative, and grows with $\delta$. At a
+  tabulated offset it is the 1–4–1 mean of three neighbours. The prototype
+  interpolated linearly, which puts a kink at every offset. A monotone cubic
+  (PCHIP) was tried and dropped: τ(δ) became a staircase. Here the static
+  channel is the step at $R_q + \delta_s$.
+
 - $w$ = 1 on the Atto655 H₂O rows of Stage C, else 0 (AF488 and Cy3B neglect
   water quenching, D₂O has none). The water term
   has **no free parameter**: a position half covered by protein ($e$ = 0.5) is
@@ -207,11 +227,12 @@ Visibility and the observable:
 
 $$
 v(x) = \frac{1}{1 + (\tau_\text{min}/\tau(x))^4}\;
-e^{-\gamma\sum_q k_Q(q)\,c_q(x;\delta_s,\lambda)}, \qquad
+e^{-\gamma\sum_q k_Q(q)\,c_q^{(s)}(x)}, \qquad
 \tau_X = \frac{\sum_x p\,v\,\tau}{\sum_x p\,v},
 $$
 
-with $\tau_\text{min}$ = 0.10 ns. A position decaying faster than the instrument
+with $\tau_\text{min}$ = 0.10 ns and $c_q^{(s)}$ the static channel's count (offset
+$\delta_s$, see the rate models above). A position decaying faster than the instrument
 resolves, or held in a dark complex (the static channel), emits no light the
 lifetime can see. It lowers the brightness instead: dark fraction
 $1 - \sum p\,v$. The visible water exposure is $\sum p\,v\,e / \sum p\,v$.
@@ -242,8 +263,10 @@ backbone + Cβ.
 
 Parameters per dye: $\ln s_\text{common}$, $\ln s_g$ (five groups),
 $\ln\kappa$, $\delta$, $\lambda$, $\ln\gamma$, $\delta_s$, $\Delta\tau_\text{shield}$,
-inside physical bounds ($s$ 0.001–1, κ 0.01–100, δ −4…+5 Å (the tabulated
-offsets), γ 0.001–100, δ_s −4…0 Å). The stored run used κ ≤ 10, δ −3…+2 Å,
+inside physical bounds ($s$ 0.001–1, κ 0.01–100, $\ell$ 0.1–2 Å (kernel) or
+δ −4…+5 Å (contact shell, the tabulated offsets), γ 0.001–100, δ_s −4…0 Å).
+Each parameter is declared in `fit_parameters.yaml` with the mmfdb term it is
+reported as, for example $\ell$ as `_flr_fit_parameter.quench_decay_length`. The stored run used κ ≤ 10, δ −3…+2 Å,
 γ ≤ 10 and δ_s ≥ −3 Å. Those bounds bind on the corrected grid frame (see the
 refit below), so ChiSurf widened them to what the tables support.
 Parameters these data cannot determine are fixed: λ = 1 for Cy3B and Atto655,

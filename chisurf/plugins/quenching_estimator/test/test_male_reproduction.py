@@ -167,8 +167,9 @@ def _prototype_library(golden):
             pytest.skip(f"prototype cache file {path.name} missing or changed")
         state, site, linker = key.split()
         files[(state, int(site), float(linker))] = path
-    # the prototype read the contacts between offsets linearly
-    return st.TableFiles(files, {**site_table.settings(), "delta_interpolation": "linear"})
+    # the prototype's contact-shell rate model, its contacts read linearly between offsets
+    return st.TableFiles(files, {**site_table.settings(), "delta_interpolation": "linear",
+                                 "rate_model": "contact_shell"})
 
 
 def prototype_fit_overrides(golden):
@@ -182,6 +183,9 @@ def prototype_fit_overrides(golden):
     for p in gf.settings()["parameters"]:
         log = p["scale"] == "log"
         name = f"ln_{p['name']}" if log else p["name"]
+        if name not in bounds["lower"]:      # not a parameter of the prototype (decay_length)
+            params.append(p)
+            continue
         lo, hi = bounds["lower"][name], bounds["upper"][name]
         params.append({**p, "lower": float(np.exp(lo) if log else lo),
                        "upper": float(np.exp(hi) if log else hi)})

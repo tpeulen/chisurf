@@ -112,6 +112,11 @@ def explain(view, groups):
             f"* **Contact distance:** shifted by **{delta:+.1f} Å** ({rng('delta')} Å): "
             + ("the dye must come *closer* than the textbook distance to be quenched."
                if delta < 0 else "quenching reaches a bit *further* than the textbook distance."))
+    if _determined(view, "decay_length"):
+        e = view.estimate("decay_length")
+        text.append(
+            f"* **Quenching range:** beyond the contact distance the rate falls e-fold every "
+            f"**{e['value']:.2f} Å** ({rng('decay_length')} Å).")
     dark = float(np.mean(t["dark_fraction"]))
     if dark > 0.02:
         text.append(f"* **Invisible dye:** on average {100 * dark:.0f} % of the dye is dark "

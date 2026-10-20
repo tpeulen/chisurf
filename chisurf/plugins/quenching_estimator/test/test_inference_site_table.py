@@ -155,6 +155,43 @@ def test_every_feature_sits_in_the_volume_s_own_frame(apo72_atoms):
                           counts[:, types.index("LYS")])
 
 
+def test_the_distance_histogram_is_every_quencher_centre_binned(apo72_atoms, tmp_path):
+    """Sparse histogram = the rotamer-weighted distances of a voxel binned by hand; a few MB."""
+    import IMP.bff as bff
+
+    s = st.settings()
+    table = st.site_table(st.male_structure("APO"), 72, 20.12, cache_dir=tmp_path)
+    d = table.distances
+    assert st.SCHEMA == "site-table-v2" and d is not None
+    assert (d.lower, d.step, d.n_bins) == (-4.0, 0.5, 29)
+    assert table.path.stat().st_size < 3e6
+    assert 5 < len(d.rows) / table.n_voxels < 12          # sparse: ~6.5 entries per voxel
+    centres = table.voxel_centres()
+    quenchers = st.quencher_ensembles(apo72_atoms, 72)
+    defaults = bff.amino_acid_quenching_defaults(1.0, 1.0, float(s["dye_radius"]))
+    rng = np.random.default_rng(3)
+    for row in rng.choice(table.n_voxels, 40, replace=False):
+        expected = {}
+        for qi, name in enumerate(s["quenchers"]):
+            radius = float(defaults[name].quench_radius)
+            for x in quenchers:
+                if x["name"] != name:
+                    continue
+                for m, (pts, w) in enumerate(((x["crystal"][None], [1.0]),
+                                              (x["centres"], x["probabilities"]))):
+                    for c, wi in zip(pts, w):
+                        u = np.linalg.norm(centres[row] - c) - radius
+                        b = 0 if u < d.lower else int(np.floor((u - d.lower) / d.step)) + 1
+                        if b < d.n_bins:
+                            key = (qi * 2 + m) * d.n_bins + b
+                            expected[key] = expected.get(key, 0.0) + wi
+        here = d.rows == row
+        got = dict(zip(d.columns[here].tolist(), d.weights[here].tolist()))
+        expected = {k: v for k, v in expected.items() if v != 0.0}
+        assert got.keys() == expected.keys(), row
+        assert all(abs(got[k] - v) < 1e-5 for k, v in expected.items()), row
+
+
 def test_direct_method_and_walk_agree_on_the_corrected_frame():
     """Notebook cell 23 at APO 233, slow 0.3, L 21.5, tau0 4.108.
 

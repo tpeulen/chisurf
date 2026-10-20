@@ -1,6 +1,6 @@
 # QuEst Analysis: quenching chemistry from measured lifetimes
 
-The *Forward model* page predicts the lifetime of a dye at one site from the structure. This page runs the other way. It takes the lifetimes measured on many labelled sites, together with the free-dye titrations against amino acids, and fits what the dye's quenching chemistry must be: how strongly contact with each residue quenches it (the *quench scale*, relative to the titrations), how long it lingers near each group of residues (*stickiness* per group), the contact distance, and the extra lifetime of a dye position shielded by protein.
+The *Forward model* page predicts the lifetime of a dye at one site from the structure. This page runs the other way. It takes the lifetimes measured on many labelled sites, together with the free-dye titrations against amino acids, and fits what the dye's quenching chemistry must be: how strongly contact with each residue quenches it (the *quench scale*, relative to the titrations), how long it lingers near each group of residues (*stickiness* per group), how far quenching reaches beyond contact (the *decay length*), and the extra lifetime of a dye position shielded by protein.
 
 If you have not used it before, press **Guide**. **Load example** loads the shipped MalE data set: nine sites, the dyes AF488, Cy3B and Atto655, apo and holo, in normal and heavy water.
 

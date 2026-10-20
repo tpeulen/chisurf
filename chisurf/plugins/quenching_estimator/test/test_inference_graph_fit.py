@@ -107,14 +107,41 @@ def test_parameters_follow_the_declaration():
         "ln_s_common", "ln_s_aromatic", "ln_s_hydrophobic", "ln_s_basic", "ln_s_acidic",
         "ln_s_polar", "ln_scale"]
     assert gf.fixed_values("AF488", fs) == {"ln_static": np.log(1e-3), "delta_static": 0.0}
-    counts = {d: len(gf.free_names(d, gf.fixed_values(d, fs), fs))
-              for d in ("AF488", "Cy3B", "Atto655")}
+    counts = {d: len(gf.free_names(
+        d, {**gf.fixed_values(d, fs), **gf.inactive_values("kernel", fs)}, fs))
+        for d in ("AF488", "Cy3B", "Atto655")}
     assert counts == {"AF488": 10, "Cy3B": 10, "Atto655": 12}
     assert "dtau_shield" not in gf.free_names("AF488", (), fs)
     quick = gf.settings("quick")
     assert (quick["n_starts"], quick["search_maxiter"]) == (8, 60) and fs["n_starts"] == 64
     with pytest.raises(KeyError):
         gf.settings(overrides={"no_such_setting": 1})
+
+
+def test_every_parameter_has_a_term_and_one_rate_model_s_set():
+    fs = gf.settings()
+    specs = gf.parameter_specs(fs)
+    assert all(p.term for p in specs)
+    mmfdb = pytest.importorskip("mmfdb.schema.pdbx_metadata")
+    dictionary = mmfdb.MmcifDictionary.load_bundled()
+    for p in specs:
+        assert dictionary.get_item(p.term) is not None, p.term
+    assert gf.inactive_values("kernel", fs) == {"delta": 0.0}
+    assert gf.inactive_values("contact_shell", fs) == {"ln_decay_length": 0.0}
+
+    class KernelSite(FakeSite):
+        rate_model = "kernel"
+
+    for model, site in (("kernel", KernelSite(1)), ("contact_shell", FakeSite(1))):
+        block = gf.Block("x", "Atto655", np.zeros(1, ROW), [(site, 0.0)], 3.69,
+                         st.load_analysis_data(library=FakeLibrary()).context, fs, GROUPS)
+        assert block.rate_model == model
+        used, unused = (("ln_decay_length", "delta") if model == "kernel"
+                        else ("delta", "ln_decay_length"))
+        assert used in block.free and unused not in block.free
+        assert unused in block.theta(np.zeros(len(block.free))) and unused not in block.fixed
+    with pytest.raises(ValueError):
+        gf.rate_model_of([(KernelSite(1), 0.0), (FakeSite(2), 0.0)])
 
 
 def test_model_error_criterion_and_floor():
@@ -164,7 +191,7 @@ def test_search_joint_fit_and_laplace_recover_the_truth(data, fit_settings):
     assert abs(lap["median"] - view.estimate("scale")["value"]) < 0.01
     # the profile likelihood: minimum at the best fit, deviance 1 brackets an interval of the
     # same size as Laplace's (this posterior is close to Gaussian in ln scale)
-    prof = gf.profile_likelihood(view, max_nfev=50)
+    prof = gf.profile_likelihood(view, max_nfev=50, workers=1)
     e = view.estimate("scale")
     assert 0.0 <= prof["deviance"].min() < 0.05
     assert prof["deviance"][0] > 1 and prof["deviance"][-1] > 1

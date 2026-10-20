@@ -47,6 +47,14 @@ settings:
   # `linear` (the MalE prototype's; its reproduction tests declare it). The fit's delta range
   # is the offsets' range.
   delta_interpolation: bspline
+  # The rate model of the site model: `kernel` (distance-continuous: a quencher at u = r - R_q
+  # quenches at kQ for u <= 0 and kQ exp(-u / decay_length) beyond, read from the table's distance
+  # histogram) or `contact_shell` (the MalE prototype's: a step at R_q + delta, read from the
+  # contact counts; its reproduction tests declare it).
+  rate_model: kernel
+  # Bins of the quencher-distance histogram, u = r - R_q (A): bin 0 collects u < lower; beyond
+  # upper nothing is stored (exp(-10 / 2) = 0.7 % at the longest declared decay length).
+  distance_histogram: {lower: -4.0, upper: 10.0, step: 0.5}
   # A side-chain rotamer closer than this (A) to another heavy atom is impossible.
   clash: 2.8
   # Water exposure (Shrake-Rupley): water radius, test points on the shell, and the atom

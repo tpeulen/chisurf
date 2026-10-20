@@ -12,33 +12,41 @@
 
 settings:
   parameters:
+    # `term` is the mmfdb/flrCIF item a parameter is reported as. A parameter only one site-model
+    # rate model uses (settings/analysis/site_model.yaml `rate_model`) lists it in `rate_models`
+    # and is held at `inactive` (natural units) under the other one, and not reported.
     # Stickiness (slow factor) of the dye: a common centre and one per residue group (the
     # groups are the site model's, settings/analysis/site_model.yaml). 1 = not sticky.
-    - {name: s_common, scale: log, lower: 0.001, upper: 1.0}
-    - {name: s_aromatic, scale: log, lower: 0.001, upper: 1.0}
-    - {name: s_hydrophobic, scale: log, lower: 0.001, upper: 1.0}
-    - {name: s_basic, scale: log, lower: 0.001, upper: 1.0}
-    - {name: s_acidic, scale: log, lower: 0.001, upper: 1.0}
-    - {name: s_polar, scale: log, lower: 0.001, upper: 1.0}
-    # Contact quenching on the protein relative to the free amino acids. Above ~10 a contact
-    # is dark (rate > 1/tau_min) and the scale is only bounded by the fractional (rotamer-
-    # weighted) contacts; the range reaches that plateau so the fit can show it.
-    - {name: scale, scale: log, lower: 0.01, upper: 100.0}
-    # Change of the contact distance (A): the site tables' tested offsets
+    - {name: s_common, scale: log, lower: 0.001, upper: 1.0, term: _flr_fit_parameter.slow_factor_common}
+    - {name: s_aromatic, scale: log, lower: 0.001, upper: 1.0, term: _flr_fit_parameter.slow_factor_aromatic}
+    - {name: s_hydrophobic, scale: log, lower: 0.001, upper: 1.0, term: _flr_fit_parameter.slow_factor_hydrophobic}
+    - {name: s_basic, scale: log, lower: 0.001, upper: 1.0, term: _flr_fit_parameter.slow_factor_basic}
+    - {name: s_acidic, scale: log, lower: 0.001, upper: 1.0, term: _flr_fit_parameter.slow_factor_acidic}
+    - {name: s_polar, scale: log, lower: 0.001, upper: 1.0, term: _flr_fit_parameter.slow_factor_polar}
+    # Contact quenching on the protein relative to the free amino acids (the rate at contact).
+    # Under contact_shell above ~10 a contact is dark (rate > 1/tau_min) and the scale is only
+    # bounded by the fractional (rotamer-weighted) contacts.
+    - {name: scale, scale: log, lower: 0.01, upper: 100.0, term: _flr_fit_parameter.quench_scale}
+    # contact_shell: change of the contact distance (A), the site tables' tested offsets
     # (settings/analysis/site_model.yaml radius_offsets).
-    - {name: delta, scale: linear, lower: -4.0, upper: 5.0}
+    - {name: delta, scale: linear, lower: -4.0, upper: 5.0, rate_models: [contact_shell],
+       inactive: 0.0, term: _flr_fit_parameter.quench_contact_offset}
+    # kernel: decay length (A) of the rate beyond the contact distance, exp(-u / decay_length);
+    # the distance histogram ends at u = 10 A (site_model.yaml distance_histogram).
+    - {name: decay_length, scale: log, lower: 0.1, upper: 2.0, rate_models: [kernel],
+       inactive: 1.0, term: _flr_fit_parameter.quench_decay_length}
     # Rotamer weight: 0 crystal side chains, 1 moving side chains.
-    - {name: lam, scale: linear, lower: 0.0, upper: 1.0}
+    - {name: lam, scale: linear, lower: 0.0, upper: 1.0, term: _flr_fit_parameter.rotamer_weight}
     # Static (dark-complex) channel: strength and its own contact-distance change (A; a
     # static complex needs at most the dynamic contact distance, down to the tables' -4).
-    - {name: static, scale: log, lower: 0.001, upper: 100.0}
-    - {name: delta_static, scale: linear, lower: -4.0, upper: 0.0}
+    - {name: static, scale: log, lower: 0.001, upper: 100.0, term: _flr_fit_parameter.static_quench_strength}
+    - {name: delta_static, scale: linear, lower: -4.0, upper: 0.0, term: _flr_fit_parameter.static_quench_offset}
     # Free-dye lifetime (ns). Never free: tau0 is the free dye's measured lifetime.
-    - {name: tau0, scale: log, lower: 2.0, upper: 3.5, free: false}
+    - {name: tau0, scale: log, lower: 2.0, upper: 3.5, free: false, term: _flr_fit_parameter.tau0}
     # Extra lifetime (ns) of a fully shielded dye position; only for `shielding_dyes`.
-    - {name: dtau_shield, scale: linear, lower: 0.0, upper: 2.0}
+    - {name: dtau_shield, scale: linear, lower: 0.0, upper: 2.0, term: _flr_fit_parameter.shield_lifetime_increment}
     # The model's own error (ns); free while searching, then fixed from the residuals.
-    - {name: model_error, scale: log, lower: 0.02, upper: 1.0}
+    - {name: model_error, scale: log, lower: 0.02, upper: 1.0, term: _flr_analysis_feature.model_error}
 
   # Dyes that live longer on the protein than free in solution get dtau_shield.
   shielding_dyes: [Cy3B, Atto655]

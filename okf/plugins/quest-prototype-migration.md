@@ -11,13 +11,14 @@ timestamp: '2026-10-20T00:00:00Z'
 
 Every work package has landed (record below); WP4's science is the open front.
 
-- Open: **WP4 refit has no clean interior optimum on the corrected geometry** (owner decision on a reparametrisation,
-  record item 1e "Proposal"). Widened (κ ≤ 100, δ −4…+5, γ ≤ 100, δ_s −4…0) with the B-spline δ, full / quick κ (68 %):
-  AF488 0.015 (0.010–0.024) δ 4.5 / 42 (36–49) δ −1.9 — two basins, κ–δ trade off (many weak vs few strong contacts),
-  12 of 65 full searches within 2 log-posterior span δ 0.6–5; Cy3B 0.086 (0.034–0.21) δ 1.2 / 0.070 (0.028–0.18) δ 1.3
-  — the one interior optimum; Atto655 D₂O 75 (0.93–100) γ 58 / 9.5 (0.24–100); Stage C 27 (0.32–100) δ −1.1 / 38
-  (7–100) δ 4.2 — the dark-contact plateau (C's κ profile deviance < 0.2 from 10 to 100). Pinned in `REFIT`
-  (`test/test_male_reproduction.py -k refit`, 3.3 h on 7 workers).
+- Open: **WP4c distance-continuous kernel (default `rate_model: kernel`) still has no single interior optimum.**
+  Quick (κ, ℓ, 68 % Laplace): AF488 κ 6.7 (3.9–11.5), ℓ 0.20 (0.10–0.39) Å, but its ℓ profile finds a lower cost at
+  ℓ 2.0 / κ 0.03 (deviance 3.9 better): κ and ℓ trade off (strong and short vs weak and long reach), the same family
+  as κ–δ before; Cy3B ℓ 0.21 (0.10–0.51) interior in Laplace and profile, κ not determined (profile < 1.7 over
+  0.01–100); Atto655 D₂O ℓ on its 0.1 bound, static and δ_s on bounds, profile again prefers ℓ 2; Stage C κ 0.01 and ℓ 0.1
+  on bounds, ℓ profile 0.20 (0.18–0.23). Full refit with the kernel running when this was written; `REFIT` still pins
+  the contact-shell full run (a86b8b45a). Next decision (owner): a prior tying κ and ℓ (e.g. the free-amino-acid contact
+  volume ∫κ f 4πr²dr fixed by the titrations) is what removes this trade-off; the kernel alone does not.
 - Measure: refit + profiles: scratch runner pattern `Analysis(preset).run("all")`, then
   `graph_fit.profile_likelihood(view, "delta", values=np.linspace(-4, 5, 19), workers=…)` with
   `profile_likelihood.method: polish`. **Trap:** a polish profile in this landscape is jagged (AF488 deviance 105 at
@@ -266,6 +267,29 @@ The history of each package, with its measurements and traps.
    (2) a distance-continuous rate kernel k(r) = κ k_Q e^{−(r−R_q)/β} on stored per-voxel quencher distances (a table
    change) instead of a step at R_q + δ, so the contact strength has no dark plateau; (3) a lower bound or prior on
    s (e.g. s ≥ 0.01) so the ensemble cannot collapse onto one voxel.
+   **WP4c plan (owner decision 2026-10-20: option 2, the distance-continuous rate kernel).**
+   (1) *Table* (`site_table.py`, `SCHEMA` v2): beside the contact counts, every voxel stores the rotamer-weighted
+   distribution of its quencher distances, per quencher type and side-chain source, as a histogram of u = r − R_q
+   (R_q the reference contact radius, r voxel centre to quencher centre in the grid frame, exact, no snapping) on
+   declared bins (`site_model.yaml: distance_histogram`, u −4…+10 Å in 0.5 Å, one underflow bin). It is sparse (~9
+   non-zeros per voxel at APO 72), stored as row/column/weight arrays: measured ~0.6–1.3 MB compressed per table.
+   numpy builds it (no IMP.bff kernel needed: ~5 s per table). (2) *Rate model* (`site_model.yaml: rate_model:
+   kernel | contact_shell`): k(x) = κ Σ_q k_Q(q) Σ w f(u), f = 1 for u ≤ 0, e^(−u/ℓ) beyond, averaged exactly over each
+   bin (smooth in ℓ). κ stays the strength at contact; the decay length ℓ replaces δ (a free offset would be degenerate
+   with κ in the tail: κ e^(−(u−ρ)/ℓ) = e^(−(u−ρ−ℓ ln κ)/ℓ)). The static channel uses the same kernel offset by δ_s.
+   `contact_shell` (the prototype's) stays selectable; the reproduction tests declare it. (3) *Fit*
+   (`fit_parameters.yaml`): new `decay_length` (log, 0.1–2 Å; e^(−10/2) = 0.7 % is cut at u = 10), every parameter
+   gets its mmfdb `term`, parameters used by one rate model only declare `rate_models` and an `inactive` value (δ for
+   kernel, ℓ for contact_shell). New term `_flr_fit_parameter.quench_decay_length` (mmfdb dictionary + schema binding).
+   (4) Refit quick + full, κ and ℓ profiles per stage, pin, docs. (5) `joint_minpack: false` for full only if the
+   polish reaches MINPACK's optimum on the prototype tables (`minpack_vs_polish` check).
+   **WP4c done (code):** schema v2 tables (APO 72: 0.98 MB, 691 566 entries, 6.5 per voxel, build ~1.2–2.5 s);
+   `Site` kernel path `kernel_weights` / `_kernel_contacts` (rows merged by `unique_sparse_rows`, a double 64-bit
+   hash: 47 323 of 106 992 rows; the shell has 11 735) — 5.5 ms per lifetime vs 2.4 ms for the shell, a cache of the
+   last four rate sets halves Stage C; voxel-by-voxel equality test to 1e-10; mmfdb 53d94e6 (dictionary 1.14,
+   `quench_decay_length`). Quick on the kernel 1136 s (7 workers; shell 685 s). **joint_minpack for full: kept.** On
+   the prototype tables, from the printed best fits, polish only reaches cost 26.614 (joint) / 14.216 (heavy water)
+   vs MINPACK 26.609 / 14.212 (stored 26.601): close (κ within 0.7 %) but not the same optimum, so full keeps MINPACK.
 1f. **Done: WP5 (headless surfaces, 2026-10-20), on the WP4 interface only.** One domain call,
    `core/runs.py: analyse(stages, data=, structures=, tables=, cache_dir=, preset=, fit_overrides=, workers=, profile=,
    output=, project_dir=, save_outputs=True, run_id=, progress=, cancel=, analysis=)` -> `{run_id, directory, files, result,

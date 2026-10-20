@@ -32,7 +32,9 @@ SHIPPED = HERE / "data" / "male_site_1omp72_L20.12.npz"
 PROTOTYPE_CACHE = Path.home() / "dev" / "quest" / "prototype" / "cache"
 
 #: The prototype's site model: the declared settings with its linear delta interpolation.
-PROTOTYPE = {**st.settings(), "delta_interpolation": "linear"}
+PROTOTYPE = {**st.settings(), "delta_interpolation": "linear", "rate_model": "contact_shell"}
+#: Today's contact-shell model (the B-spline delta): the stored parameter sets need delta.
+SHELL = {**st.settings(), "rate_model": "contact_shell"}
 
 #: Today's geometry, the printed stage parameters, the declared bspline delta interpolation:
 #: Site.lifetime of the APO 72 / L 20.12 rows (linear, before 2026-10-20 evening: 3.46629,
@@ -120,7 +122,7 @@ def test_model_limits(shipped):
 
 
 def test_todays_geometry_is_pinned(golden, tmp_path):
-    lib = sm.SiteLibrary(cache_dir=tmp_path)
+    lib = sm.SiteLibrary(cache_dir=tmp_path, settings_=SHELL)
     site = lib.site("APO", 72, 20.12)
     assert lib.site("APO", 72, 20.12) is site
     for stage, theta, row in _rows(golden):
@@ -185,7 +187,7 @@ def test_every_golden_row_on_the_prototype_tables(golden):
 
 @pytest.mark.slow
 def test_every_stage_on_todays_geometry(golden, tmp_path):
-    lib = sm.SiteLibrary(cache_dir=tmp_path)
+    lib = sm.SiteLibrary(cache_dir=tmp_path, settings_=SHELL)
     for stage, v in golden["site_lifetimes"].items():
         if stage == "note":
             continue
@@ -217,7 +219,7 @@ def test_unique_rows_equals_numpy_unique(shipped):
 
 def test_the_declared_delta_interpolation_is_smooth(golden, shipped):
     """bspline: no kink at the offsets (linear has them), contacts >= 0 and growing with delta."""
-    smooth = sm.Site(SHIPPED)
+    smooth = sm.Site(SHIPPED, SHELL)
     assert smooth.delta_interpolation == "bspline" and shipped.delta_interpolation == "linear"
     theta = golden["site_lifetimes"]["Atto655 in D2O"]["theta"]
     tau0 = golden["TAU0"]["Atto655 D2O"]
@@ -244,4 +246,84 @@ def test_the_declared_delta_interpolation_is_smooth(golden, shipped):
     total = np.array([smooth._contacts(d, 1.0, kq).astype(float).sum() for d in grid])
     assert np.all(np.diff(total) >= -1e-4 * total.max()) and total.min() >= 0.0
     with pytest.raises(ValueError):
-        sm.Site(SHIPPED, {**st.settings(), "delta_interpolation": "spline"})
+        sm.Site(SHIPPED, {**SHELL, "delta_interpolation": "spline"})
+
+
+@pytest.fixture(scope="module")
+def apo72_v2(tmp_path_factory):
+    """Today's APO 72 / L 20.12 table with its quencher distances."""
+    return st.site_table(st.male_structure("APO"), 72, 20.12,
+                         cache_dir=tmp_path_factory.mktemp("site_tables"))
+
+
+def _direct_kernel(table, theta, settings_):
+    """Rates and the lifetime straight from the sparse histogram, voxel by voxel (no merging)."""
+    d = table.distances
+    lo, hi = d.edges()
+    length, h = float(np.exp(theta["ln_decay_length"])), d.step
+
+    def f(offset):
+        a = np.where(np.isfinite(lo), lo, -1e9)
+        out = np.empty(len(lo))
+        for j in range(len(lo)):
+            if j == 0 or hi[j] <= offset:
+                out[j] = 1.0
+            elif a[j] >= offset:
+                out[j] = length * (np.exp(-(a[j] - offset) / length)
+                                   - np.exp(-(hi[j] - offset) / length)) / h
+            else:
+                out[j] = ((offset - a[j]) + length * (1 - np.exp(-(hi[j] - offset) / length))) / h
+        return out
+
+    q, src, b = d.columns // (2 * d.n_bins), (d.columns // d.n_bins) % 2, d.columns % d.n_bins
+    kq = np.asarray(theta["kq"], float)
+    mix = np.where(src == 0, 1 - theta["lam"], theta["lam"])
+    n = table.n_voxels
+    k = np.bincount(d.rows, d.weights * kq[q] * mix * f(0.0)[b], minlength=n)
+    ks = np.bincount(d.rows, d.weights * kq[q] * mix * f(theta["delta_static"])[b], minlength=n)
+    residues = st.residue_types(settings_)
+    idx = {r: i for i, r in enumerate(residues)}
+    nb = np.asarray(table.neighbours, float)
+    n_group = np.stack([nb[:, [idx[r] for r in rs]].sum(1) for rs in settings_["groups"].values()], 1)
+    log_p = -n_group @ np.array([theta[f"ln_s_{g}"] for g in settings_["groups"]])
+    p = np.exp(log_p - log_p.max())
+    p /= p.sum()
+    e = np.clip(np.asarray(table.exposure, float), 0, 1)
+    tau0 = 3.69 + theta.get("dtau_shield", 0.0) * (1 - e)
+    tau = 1 / (1 / tau0 + np.exp(theta["ln_scale"]) * k)
+    seen = 1 / (1 + (settings_["tau_min"] / tau) ** settings_["visibility_power"])
+    seen *= np.exp(-np.exp(theta["ln_static"]) * ks)
+    return float((p * seen * tau).sum() / (p * seen).sum())
+
+
+def test_the_kernel_equals_a_voxel_by_voxel_sum(golden, apo72_v2):
+    """Merged rows, the inner/tail split and the one-pass bincounts change nothing."""
+    s = st.settings()
+    assert s["rate_model"] == "kernel"
+    site = sm.Site(apo72_v2)
+    assert site.rate_model == "kernel" and site.n_positions == apo72_v2.n_voxels
+    assert len(site.count) < apo72_v2.n_voxels / 2
+    theta = dict(golden["site_lifetimes"]["Atto655 in D2O"]["theta"])
+    for length, scale, static, delta_s in ((0.3, 1.0, 0.001, 0.0), (1.0, 3.0, 2.0, -1.3),
+                                           (1.7, 0.2, 20.0, -3.6), (0.8, 1.0, 5.0, 0.4)):
+        th = {**theta, "ln_decay_length": np.log(length), "ln_scale": np.log(scale),
+              "ln_static": np.log(static), "delta_static": delta_s}
+        assert abs(site.lifetime(th, 3.69)[0] - _direct_kernel(apo72_v2, th, s)) < 1e-10
+
+
+def test_the_kernel_is_smooth_and_the_prototype_tables_refuse_it(golden, apo72_v2):
+    site = sm.Site(apo72_v2)
+    theta = {**golden["site_lifetimes"]["Atto655 in D2O"]["theta"], "ln_scale": 0.0}
+    lengths = np.linspace(0.1, 2.0, 77)
+    tau = np.array([site.lifetime({**theta, "ln_decay_length": np.log(v)}, 3.69)[0]
+                    for v in lengths])
+    assert np.all(np.diff(tau) < 0)                 # a longer range quenches more
+    # no kinks: the curvature itself changes smoothly from one step to the next
+    second = np.abs(np.diff(tau, 2))
+    assert np.abs(np.diff(tau, 3)).max() < 0.3 * second.max()
+    # a short decay is the contact shell at delta 0 up to the voxel snapping of the stamps
+    shell = sm.Site(apo72_v2, SHELL)
+    short = site.lifetime({**theta, "ln_decay_length": np.log(0.1)}, 3.69)[0]
+    assert abs(short - shell.lifetime({**theta, "delta": 0.0}, 3.69)[0]) < 0.05
+    with pytest.raises(ValueError, match="contact_shell"):
+        sm.Site(SHIPPED)

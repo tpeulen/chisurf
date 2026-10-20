@@ -15,23 +15,31 @@ At each position the quenching rate is
 
 .. math:: k(x) = e^{\\ln \\text{scale}}\\, c(x; \\delta, \\lambda) \\cdot k_Q + w\\, e(x),
 
-``c`` the quencher contacts interpolated in the contact-distance change :math:`\\delta`
-over the table's tested offsets (declared ``delta_interpolation``: ``bspline``, the uniform
-cubic B-spline with the tested values as control points, or ``linear``, the MalE prototype's)
-and mixed between crystal and rotamer side chains by :math:`\\lambda`,
-:math:`k_Q` the dye's contact rates, :math:`w` the water quenching rate of a fully exposed dye
-and :math:`e` the water exposure. The lifetime there is
+``c`` the quencher contacts weighted by the declared ``rate_model``, mixed between crystal
+and rotamer side chains by :math:`\\lambda`. ``kernel`` (distance-continuous): a quencher at
+:math:`u = r - R_q` beyond its reference contact distance counts
+:math:`f(u) = 1` for :math:`u \\le 0` and :math:`e^{-u/\\ell}` beyond, averaged over the
+table's distance-histogram bins (:meth:`Site.kernel_weights`). ``contact_shell`` (the MalE
+prototype's): the contact counts at :math:`R_q + \\delta`, read over the tested offsets
+(declared ``delta_interpolation``: ``bspline``, the uniform cubic B-spline with the tested
+values as control points, or ``linear``, the prototype's). :math:`k_Q` is the dye's contact
+rates, :math:`w` the water quenching rate of a fully exposed dye and :math:`e` the water
+exposure. The lifetime there is
 :math:`\\tau(x) = 1/(1/(\\tau_0 + \\Delta\\tau_{shield}(1 - e)) + k)`. A position is visible
 with :math:`1/(1 + (\\tau_{min}/\\tau)^4)` times the static channel
-:math:`\\exp(-e^{\\ln \\text{static}}\\, c(x; \\delta_{static}, \\lambda) \\cdot k_Q)`; the
+:math:`\\exp(-e^{\\ln \\text{static}}\\, c(x; \\delta_{static}, \\lambda) \\cdot k_Q)` (``kernel``: the
+kernel offset by :math:`\\delta_{static} \\le 0`); the
 predicted lifetime is the visible-weighted mean of :math:`\\tau`.
 
 Positions identical in every feature are kept once with their count (about 15 times fewer
-rows, the same sums). The arithmetic, including the float32 contact products, is the MalE
-prototype's, so a prototype site table gives its numbers bit for bit.
+rows, the same sums; with the kernel the rows are matched by a double 64-bit hash of their
+features and sparse distances, :func:`unique_sparse_rows`). Under ``contact_shell`` the
+arithmetic, including the float32 contact products, is the MalE prototype's, so a prototype
+site table gives its numbers bit for bit.
 
 Parameter names (``theta`` keys): ``ln_s_<group>`` per declared group (``ln_s_common`` is
-the stickiness prior's centre and does not enter here), ``ln_scale``, ``delta``, ``lam``,
+the stickiness prior's centre and does not enter here), ``ln_scale``, ``delta``
+(contact_shell) or ``ln_decay_length`` (kernel), ``lam``,
 ``ln_static``, ``delta_static``, optional ``dtau_shield``, and ``kq`` (contact rates, 1/ns, in
 the declared ``quenchers`` order). Theory: ``docs/concepts/quenching_inference.md``.
 """
@@ -74,6 +82,62 @@ def unique_rows(features):
     new[1:] = np.any(ranked[1:] != ranked[:-1], axis=1)
     starts = np.flatnonzero(new)
     return order[starts], np.diff(np.append(starts, len(ranked)))
+
+
+_HASH_MASK = np.uint64(0xFFFFFFFFFFFFFFFF)
+
+
+def _mix(x, seed):
+    """SplitMix64 of uint64 values (vectorised, wrapping)."""
+    with np.errstate(over="ignore"):
+        z = (np.asarray(x, np.uint64) + np.uint64(seed) * np.uint64(0x9E3779B97F4A7C15))
+        z = (z ^ (z >> np.uint64(30))) * np.uint64(0xBF58476D1CE4E5B9)
+        z = (z ^ (z >> np.uint64(27))) * np.uint64(0x94D049BB133111EB)
+        return z ^ (z >> np.uint64(31))
+
+
+def unique_sparse_rows(dense, rows, columns, weights):
+    """Distinct rows of a dense feature block joined with a sparse one.
+
+    Each row is hashed twice (two independent 64-bit SplitMix sums over its dense values and
+    its sparse ``(column, weight)`` entries, order free), and rows with equal hash pairs are one
+    row; a collision of both 64-bit hashes is not a practical concern.
+
+    Parameters
+    ----------
+    dense : numpy.ndarray
+        ``(n, k)`` floats.
+    rows, columns, weights : numpy.ndarray
+        Sparse entries (rows ascending).
+
+    Returns
+    -------
+    tuple
+        ``(first, count, keep, new_row)``: the first row of each distinct row, its
+        multiplicity, a mask of the sparse entries that belong to a first row, and their new
+        row index.
+    """
+    dense = np.ascontiguousarray(dense, np.float64)
+    n = len(dense)
+    bits = dense.view(np.uint64)
+    entry = (np.asarray(columns, np.uint64) << np.uint64(32)) | np.asarray(
+        np.asarray(weights, np.float32).view(np.uint32), np.uint64)
+    hashes = []
+    for seed in (1, 2):
+        h = np.zeros(n, np.uint64)
+        with np.errstate(over="ignore"):
+            for j in range(bits.shape[1]):
+                h = h + _mix(bits[:, j] ^ np.uint64(j + 1), seed)
+            e = _mix(entry, seed + 10)
+            np.add.at(h, np.asarray(rows, np.int64), e)
+        hashes.append(h)
+    pair = np.stack(hashes, 1).copy().view([("a", np.uint64), ("b", np.uint64)]).ravel()
+    _, first, count = np.unique(pair, return_index=True, return_counts=True)
+    new_of_row = np.full(n, -1, np.int64)
+    new_of_row[first] = np.arange(len(first))
+    mapped = new_of_row[np.asarray(rows, np.int64)]
+    keep = mapped >= 0
+    return first, count, keep, mapped[keep]
 
 
 class Site:
@@ -119,12 +183,48 @@ class Site:
         n_group = np.stack(
             [n[:, [index[r] for r in rs]].sum(1) for rs in s["groups"].values()], 1
         )
-        contacts = np.asarray(table.contacts).astype(np.float32)
         exposure = np.clip(np.asarray(table.exposure).astype(float), 0, 1)
-        features = np.concatenate([n_group, contacts.reshape(len(n), -1), exposure[:, None]], 1)
-        first, count = unique_rows(features)
+        self.rate_model = str(s["rate_model"])
+        if self.rate_model == "contact_shell":
+            contacts = np.asarray(table.contacts).astype(np.float32)
+            features = np.concatenate([n_group, contacts.reshape(len(n), -1), exposure[:, None]],
+                                      1)
+            first, count = unique_rows(features)
+            self.C = contacts[first]
+        elif self.rate_model == "kernel":
+            d = table.distances
+            if d is None:
+                raise ValueError("the kernel rate model needs a site table with quencher distances "
+                                 f"(schema {_site_table.SCHEMA}); {getattr(table, 'path', None)} "
+                                 "has none (a prototype table: declare rate_model contact_shell)")
+            first, count, keep, new_row = unique_sparse_rows(
+                np.concatenate([n_group, exposure[:, None]], 1), d.rows, d.columns, d.weights)
+            n_sources = 2
+            n_qs = len(s["quenchers"]) * n_sources
+            qs = d.columns[keep].astype(np.int64) // d.n_bins          # quencher * 2 + source
+            bins = (d.columns[keep] % d.n_bins).astype(np.int64)
+            weight = d.weights[keep].astype(np.float64)
+            lo, hi = d.edges()
+            # Bins at or below u = 0 (a bin edge) are inside the dynamic kernel's contact
+            # distance (weight 1); only the static channel, offset by delta_static <= 0, reads
+            # them otherwise. The tail (u > 0) is the same exp(-u / l) for both channels, up to
+            # the static channel's factor exp(delta_static / l). Each entry is indexed by its
+            # row and by (bin, quencher, source), so one gather of a (bin x quencher-source)
+            # table and one bincount over the rows give a channel.
+            inner = hi[bins] <= 0.0
+            self._inner_sum = np.bincount(new_row[inner] * n_qs + qs[inner], weights=weight[inner],
+                                          minlength=len(first) * n_qs).reshape(len(first), n_qs)
+            self._inner = (new_row[inner], bins[inner] * n_qs + qs[inner], weight[inner])
+            self._tail = (new_row[~inner], bins[~inner] * n_qs + qs[~inner], weight[~inner])
+            if np.any(bins[~inner] == 0):
+                raise ValueError("the distance histogram's underflow bin lies above u = 0")
+            self._edges = d.edges()
+            self._step = float(d.step)
+            self._n_quenchers = len(s["quenchers"])
+            self.C = None
+        else:
+            raise ValueError(f"rate_model must be kernel or contact_shell, not {self.rate_model!r}")
         self.n_group, self.exposure, self.count = n_group[first], exposure[first], count.astype(float)
-        self.C = contacts[first]
         self.delta_interpolation = str(s["delta_interpolation"])
         if self.delta_interpolation not in ("linear", "bspline"):
             raise ValueError(f"delta_interpolation must be linear or bspline, not "
@@ -137,6 +237,112 @@ class Site:
     def n_positions(self):
         """Voxels of the site (the sum of the row counts)."""
         return int(self.count.sum())
+
+    def _rates(self, theta, static=False):
+        """Quenching rate per row before the quench scale or static strength (1/ns).
+
+        Parameters
+        ----------
+        theta : dict
+            Parameter set: ``delta`` / ``delta_static`` (contact_shell) or ``ln_decay_length``
+            and ``delta_static`` (kernel), ``lam``, ``kq``.
+        static : bool, optional
+            The static channel's (offset ``delta_static``) instead of the dynamic one's.
+
+        Returns
+        -------
+        numpy.ndarray
+        """
+        kq = np.asarray(theta["kq"], float)
+        if self.rate_model == "contact_shell":
+            key = ("shell", float(theta["delta_static"] if static else theta["delta"]),
+                   float(theta["lam"]), kq.tobytes())
+        else:
+            key = ("kernel", float(theta["delta_static"]), float(theta["ln_decay_length"]),
+                   float(theta["lam"]), kq.tobytes())
+        cache = self.__dict__.setdefault("_rate_cache", {})
+        if key not in cache:
+            if self.rate_model == "contact_shell":
+                cache[key] = self._contacts(key[1], theta["lam"], theta["kq"])
+            else:
+                cache[key] = self._kernel_contacts(float(theta["delta_static"]),
+                                                   float(np.exp(theta["ln_decay_length"])),
+                                                   theta["lam"], kq)
+            while len(cache) > 4:
+                cache.pop(next(iter(cache)))
+        out = cache[key]
+        return out if self.rate_model == "contact_shell" else out[:, 1 if static else 0]
+
+    def kernel_weights(self, offset, decay_length):
+        """The kernel averaged over every histogram bin.
+
+        ``f(u) = 1`` for ``u <= offset`` and ``exp(-(u - offset) / decay_length)`` beyond,
+        averaged over each bin of u (exactly, for quenchers spread evenly in the bin); the
+        underflow bin counts in full.
+
+        Parameters
+        ----------
+        offset : float
+            A.
+        decay_length : float
+            A.
+
+        Returns
+        -------
+        numpy.ndarray
+            One weight per bin.
+        """
+        lo, hi = self._edges
+        h, length = self._step, float(decay_length)
+        a = np.where(np.isfinite(lo), lo, hi - h)
+        out = np.ones(len(lo))
+        beyond = a >= offset
+        out[beyond] = length * (np.exp(-(a[beyond] - offset) / length)
+                                - np.exp(-(hi[beyond] - offset) / length)) / h
+        mixed = (a < offset) & (hi > offset)
+        out[mixed] = ((offset - a[mixed])
+                      + length * (1.0 - np.exp(-(hi[mixed] - offset) / length))) / h
+        out[0] = 1.0
+        return out
+
+    def _kernel_contacts(self, static_offset, decay_length, lam, kq):
+        """Kernel-weighted quencher count times the contact rates, per row (1/ns).
+
+        Parameters
+        ----------
+        static_offset : float
+            The static channel's kernel offset (A, declared at most 0); the dynamic channel's
+            is 0.
+        decay_length : float
+            A (:meth:`kernel_weights`).
+        lam : float
+            0 crystal side chains, 1 rotamers.
+        kq : sequence of float
+            Contact rate per quencher (1/ns).
+
+        Returns
+        -------
+        numpy.ndarray
+            ``(rows, 2)``: dynamic, static.
+        """
+        kq = np.asarray(kq, float)
+        coef = np.stack([(1 - lam) * kq, lam * kq], 1).ravel()          # per quencher, source
+        n = len(self.count)
+        row, index, weight = self._tail
+        table = np.outer(self.kernel_weights(0.0, decay_length), coef).ravel()
+        tail = np.bincount(row, weights=weight * table[index], minlength=n)
+        dynamic = self._inner_sum @ coef + tail
+        table_s = np.outer(self.kernel_weights(static_offset, decay_length), coef).ravel()
+        if static_offset > 0.0:
+            # beyond the declared range (a finite-difference step past delta_static's upper
+            # bound): inside bins count in full, the tail is read with its own weights
+            static = self._inner_sum @ coef + np.bincount(row, weights=weight * table_s[index],
+                                                         minlength=n)
+        else:
+            row_s, index_s, weight_s = self._inner
+            static = np.bincount(row_s, weights=weight_s * table_s[index_s], minlength=n)
+            static += np.exp(static_offset / decay_length) * tail
+        return np.stack([dynamic, static], 1)
 
     def _contacts(self, delta, lam, kq):
         """Quenching rate per row before the quench scale (1/ns), float32.
@@ -210,13 +416,13 @@ class Site:
         seen : numpy.ndarray
             1 visible, 0 dark.
         """
-        k = np.exp(theta["ln_scale"]) * self._contacts(theta["delta"], theta["lam"], theta["kq"])
+        k = np.exp(theta["ln_scale"]) * self._rates(theta)
         k = k + water * self.exposure
         tau0 = tau0 + theta.get("dtau_shield", 0.0) * (1.0 - self.exposure)
         tau = 1.0 / (1.0 / tau0 + k)
         seen = 1.0 / (1.0 + (self.tau_min / tau) ** self.visibility_power)
         seen = seen * np.exp(
-            -np.exp(theta["ln_static"]) * self._contacts(theta["delta_static"], theta["lam"], theta["kq"])
+            -np.exp(theta["ln_static"]) * self._rates(theta, static=True)
         )
         return tau, seen
 

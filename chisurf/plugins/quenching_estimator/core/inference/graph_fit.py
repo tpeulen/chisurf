@@ -144,6 +144,12 @@ class ParameterSpec:
         Bounds of the internal value.
     free : bool
         False when the parameter is never fitted (tau0).
+    term : str
+        The mmfdb/flrCIF item the parameter is reported as.
+    rate_models : tuple of str or None
+        The site-model rate models that use it (``None``: every one).
+    inactive : float or None
+        Internal value it is held at under another rate model.
     """
 
     name: str
@@ -152,6 +158,9 @@ class ParameterSpec:
     lower: float
     upper: float
     free: bool = True
+    term: str = ""
+    rate_models: tuple | None = None
+    inactive: float | None = None
 
     def to_natural(self, value):
         """Map an internal value to natural units.
@@ -184,6 +193,10 @@ def parameter_specs(fit_settings=None):
     for entry in fs["parameters"]:
         log = entry.get("scale", "linear") == "log"
         lower, upper = float(entry["lower"]), float(entry["upper"])
+        models = entry.get("rate_models")
+        inactive = entry.get("inactive")
+        if inactive is not None:
+            inactive = float(np.log(inactive)) if log else float(inactive)
         out.append(
             ParameterSpec(
                 name=("ln_" if log else "") + entry["name"],
@@ -192,9 +205,59 @@ def parameter_specs(fit_settings=None):
                 lower=float(np.log(lower)) if log else lower,
                 upper=float(np.log(upper)) if log else upper,
                 free=bool(entry.get("free", True)),
+                term=str(entry.get("term", "")),
+                rate_models=None if models is None else tuple(models),
+                inactive=inactive,
             )
         )
     return out
+
+
+def inactive_values(rate_model, fit_settings=None):
+    """Parameters another rate model uses, held at their declared ``inactive`` values.
+
+    Parameters
+    ----------
+    rate_model : str
+        The site model's ``rate_model`` (``kernel``, ``contact_shell``).
+    fit_settings : dict, optional
+
+    Returns
+    -------
+    dict
+        ``{internal name: value}``.
+    """
+    out = {}
+    for p in parameter_specs(fit_settings):
+        if p.rate_models is not None and rate_model not in p.rate_models:
+            if p.inactive is None:
+                raise ValueError(f"fit parameter {p.label!r} declares rate_models but no inactive "
+                                 "value")
+            out[p.name] = p.inactive
+    return out
+
+
+def rate_model_of(points):
+    """The rate model of a block's site models (one per block).
+
+    Parameters
+    ----------
+    points : sequence of (site, water)
+
+    Returns
+    -------
+    str
+        ``contact_shell`` for a site model that names none (an analytic stand-in).
+
+    Raises
+    ------
+    ValueError
+        When the sites disagree.
+    """
+    models = {str(getattr(site, "rate_model", "contact_shell")) for site, _ in points}
+    if len(models) > 1:
+        raise ValueError(f"one block mixes rate models {sorted(models)}")
+    return models.pop() if models else "contact_shell"
 
 
 def _spec_map(fit_settings):
@@ -448,7 +511,11 @@ class Block:
     Attributes
     ----------
     fixed : dict
-        Fixed internal values.
+        Fixed internal values (reported as fixed).
+    rate_model : str
+        The site models' rate model (:func:`rate_model_of`).
+    inactive : dict
+        Parameters of the other rate model, held at their ``inactive`` values (not reported).
     free : list of str
         Free internal names (fit-vector order).
     lo, hi : numpy.ndarray
@@ -472,8 +539,11 @@ class Block:
         self.groups = list(groups)
         self.ridge_sd = float(np.log(fit_settings["ridge_factor"]))
         self.nu = float(fit_settings["student_t_nu"])
-        self.fixed = fixed_values(dye, fit_settings)
-        self.free = free_names(dye, self.fixed, fit_settings)
+        self.rate_model = rate_model_of(points)
+        self.inactive = inactive_values(self.rate_model, fit_settings)
+        self.fixed = {k: v for k, v in fixed_values(dye, fit_settings).items()
+                      if k not in self.inactive}
+        self.free = free_names(dye, {**self.fixed, **self.inactive}, fit_settings)
         specs = _spec_map(fit_settings)
         self.lo = np.array([specs[n].lower for n in self.free])
         self.hi = np.array([specs[n].upper for n in self.free])
@@ -531,7 +601,8 @@ class Block:
         dict
             Site-model keys plus ``kq`` and ``ln_tau0``.
         """
-        th = dict(self.fixed)
+        th = dict(self.inactive)
+        th.update(self.fixed)
         th.update(zip(self.free, x))
         th.setdefault("ln_tau0", np.log(self.tau0))
         th["kq"] = self.context.kq(self.dye, K)
