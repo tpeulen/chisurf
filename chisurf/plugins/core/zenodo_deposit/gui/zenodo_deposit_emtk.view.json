@@ -839,6 +839,13 @@
             },
             {
               "type": "info",
+              "key": "reserved_doi_text",
+              "source": "reserved_doi_text",
+              "is_markdown": true,
+              "description": "The record's DOI: reserved before publishing, or the published one."
+            },
+            {
+              "type": "info",
               "key": "uploads_text",
               "source": "uploads_text",
               "is_markdown": true,
@@ -848,6 +855,11 @@
               "type": "button_row",
               "description": "After the upload: compare the draft, approve publishing this exact package, publish.",
               "buttons": [
+                {
+                  "action": "reserve_doi_action",
+                  "label": "Reserve DOI",
+                  "description": "Get the record's final DOI now, before publishing -- to write into a manuscript. It sends the approved Zenodo metadata into a draft (made if there is none, no files needed). The DOI resolves once the record is published. Grey until the Zenodo metadata is approved, or when a DOI is reserved already."
+                },
                 {
                   "action": "check_remote",
                   "label": "Check Zenodo",

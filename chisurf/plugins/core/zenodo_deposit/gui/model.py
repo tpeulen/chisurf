@@ -29,6 +29,7 @@ from mmfdb.deposit import (
     compare,
     credentials,
     publish,
+    reserve_doi,
     upload_history,
     upload_kind,
     refresh_metadata_item,
@@ -891,7 +892,9 @@ class ZenodoDepositModel:
         return (f"Zenodo draft {r['deposition_id']} ({r.get('state', '?')}), checked "
                 f"{r.get('checked_at', 'never')}: "
                 + ("matches the package." if not diff else "; ".join(diff))
-                + (f" DOI {r['doi']}" if r.get("doi") else ""))
+                + (f" DOI {r['doi']}" if r.get("doi") else "")
+                + (f" Reserved DOI {r['reserved_doi']} (registered when published)."
+                   if r.get("reserved_doi") and not r.get("doi") else ""))
 
     def upload_label(self) -> str:
         """The upload button says what it will do."""
@@ -992,6 +995,12 @@ class ZenodoDepositModel:
             return has_rec and idle
         if name == "check_remote":
             return has_rec and idle and bool(self.open_record.remote.get("deposition_id"))
+        if name == "reserve_doi_action":
+            if not (has_rec and idle and bool(self.token_source)):
+                return False
+            r, meta = self.open_record.remote, self.open_record.item(METADATA_ITEM)
+            return (not r.get("reserved_doi") and not r.get("doi")
+                    and meta.status == "approved" and not meta.errors)
         if name == "upload_draft":
             return (has_rec and idle and bool(self.token_source) and not blockers(self.record)
                     and upload_kind(self.record) != "current")
@@ -1228,6 +1237,29 @@ class ZenodoDepositModel:
                 "; ".join(compare(rec)) or "md5 verified")
 
         self._run(what, work)
+
+    def reserve_doi_action(self) -> None:
+        """Reserve the DOI now (a draft is made from the reviewed metadata if there is none)."""
+        rec, make = self.record, self._client()
+
+        def work():
+            doi = reserve_doi(rec, make())
+            return f"DOI reserved: {doi} -- registered when the record is published"
+
+        self._run("reserving a DOI on Zenodo", work)
+
+    @property
+    def reserved_doi_text(self) -> str:
+        if self.record is None:
+            return ""
+        r = self.record.remote
+        if r.get("doi"):
+            return f"**DOI:** {r['doi']} (published)"
+        if r.get("reserved_doi"):
+            return (f"**Reserved DOI:** `{r['reserved_doi']}` -- final, usable in a manuscript now; "
+                    "it resolves once the record is published.")
+        return ("No DOI reserved. *Reserve DOI* gets the record's final DOI before publishing "
+                "(it sends the approved Zenodo metadata into a draft; no files needed).")
 
     def check_remote(self) -> None:
         rec, make = self.record, self._client()

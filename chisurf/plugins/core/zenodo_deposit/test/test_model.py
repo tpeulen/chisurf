@@ -31,14 +31,16 @@ class FakeZenodo:
             return self._b
 
     def __init__(self):
-        self.files, self.published = {}, False
+        self.files, self.published, self.reserved = {}, False, False
 
     def _dep(self):
-        return {"id": 9, "state": "done" if self.published else "unsubmitted",
+        meta = {"prereserve_doi": {"doi": "10.5281/zenodo.9", "recid": 9}} if self.reserved else {}
+        return {"id": 9, "state": "done" if self.published else "unsubmitted", "metadata": meta,
                 "doi": "10.5281/zenodo.9" if self.published else "",
                 "links": {"bucket": "https://z/bucket/9"}}
 
     def post(self, url, json=None, headers=None):
+        self.reserved |= bool(((json or {}).get("metadata") or {}).get("prereserve_doi"))
         if url.endswith("/actions/publish"):
             self.published = True
         return self.R(201, self._dep())
@@ -400,3 +402,16 @@ def test_a_running_job_shows_a_modal_progress_window(model):
     ui.frame(2)
     assert "elapsed" not in " ".join(t[5] for t in ui.painter.texts)
     assert model.message == "uploaded"
+
+
+def test_a_doi_is_reserved_from_the_upload_tab(model, fake):
+    model.select_record(model.records[0])
+    _fill_metadata(model)
+    assert not model.enabled("reserve_doi_action")  # the metadata is not approved yet
+    model.approve_item({"id": "Zenodo metadata", "act": "Approve"})
+    assert model.enabled("reserve_doi_action")
+    model.reserve_doi_action()
+    _wait(model)
+    assert "10.5281/zenodo.9" in model.message
+    assert "Reserved DOI:** `10.5281/zenodo.9`" in model.reserved_doi_text
+    assert not model.enabled("reserve_doi_action")
