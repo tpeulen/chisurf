@@ -344,8 +344,14 @@ def convert(data_folder):
 # ----------------------------------------------------------------------------- the notebook
 
 
+#: First line of the markdown notes added when the prototype was marked as migrated (quest
+#: ``prototype/MIGRATED.md``). They are dropped on reading, so every index in this file keeps
+#: meaning the cell of the stored run.
+MIGRATION_NOTE = re.compile(r"^> \*\*(This notebook has been m|M)igrated to ChiSurf")
+
+
 def notebook_cells(path):
-    """Code cell sources and stored outputs of the notebook.
+    """Code cell sources and stored outputs of the notebook, without the migration notes.
 
     Parameters
     ----------
@@ -355,9 +361,14 @@ def notebook_cells(path):
     Returns
     -------
     list of dict
-        The notebook's cells as stored.
+        The notebook's cells as stored, minus the markdown cells that mark it as migrated.
     """
-    return json.loads(Path(path).read_text())["cells"]
+    cells = json.loads(Path(path).read_text())["cells"]
+    return [
+        c
+        for c in cells
+        if not (c["cell_type"] == "markdown" and MIGRATION_NOTE.match("".join(c["source"])))
+    ]
 
 
 def source(cells, index):

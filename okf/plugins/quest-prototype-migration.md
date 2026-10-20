@@ -9,7 +9,7 @@ timestamp: '2026-10-20T00:00:00Z'
 
 # Where to pick this up
 
-The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP6, WP7 (theory + guide) and WP9 have landed; WP4 is in progress (its interface is stable; WP5 is built on it).
+The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP6, WP7 (theory + guide), WP9 and WP8 have landed; WP4 is in progress (its interface is stable; WP5 is built on it).
 
 1. **Done: WP0 (data + golden).** `examples/male/` (3 CSVs, `provenance.json`, `1OMP.cif`,
    `1ANF.cif`), `core/inference/measurements.py`, `test/data/male_site_1omp72_L20.12.npz`,
@@ -306,7 +306,17 @@ The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP6, WP7 (theor
    `exp(-α n)` (it11) was replaced by per-group stickiness (it08) and Shrake–Rupley exposure
    (it12). The Cauchy loss of it05 was replaced by the Student-t (ν = 3) search plus a Gaussian
    joint fit. The AF4_C2R linker (16.46 Å) was the wrong reagent; AF488 is A48_C1R, 20.4 Å (it10).
-6. **Open: WP8** marks the prototype as migrated, last, once every WP has a commit hash.
+6. **Done: WP8 (prototype marked as migrated, 2026-10-20; quest `c798cb2` on `dev`, not pushed).**
+   `~/dev/quest/prototype/MIGRATED.md` (commit table, one row per gap-matrix line + scripts, the rest of the quest repo,
+   not-migrated list, Open list); a `# CHISURF-MIGRATED/TAKEN/SKIPPED/RECORD` block above the docstring of every `it*.py`
+   and helper; 12 markdown cells in the notebook (index 0 + one per chapter, now at 10, 14, 21, 26, 29, 34, 39, 42, 53,
+   60, 68). **Measure:** git diff of `c798cb2` is 342 insertions, 0 deletions; the before/after check gave 28 code cells
+   identical in every field and all 60 original cells unchanged and in order. **Trap (fixed here):** the golden
+   regenerator `test/baselines/make_male_prototype.py` addresses notebook cells by index, so the inserted notes would
+   have stopped it ("the notebook changed"); `notebook_cells` now drops cells matching `MIGRATION_NOTE`, and its view
+   equals the original 60 cells. The golden's recorded notebook sha256 changes on the next regeneration (no test reads it).
+   **Open:** MIGRATED.md's "Open" list mirrors items 1e, 4 and 7 here; when one closes, update that list too. The MCMC
+   check (cell 40) is declared (`fit_parameters.yaml: sampler_check`) but no code runs it (gap row 26).
 7. **Done: WP9 (forward simulator, three ensembles, 2026-10-20).** `ensemble: "walk" | "equilibrium" | "pde"`
    (`core/ensembles.py`, project key + catalog entry + form combo; default `walk`, FRET only with it). **Walk:** walkers
    start from p ∝ 1/m (`core/av.py: simulate_walkers`, numpy, IMP.bff's walk rule; ~1000 walkers of 20–50 τ₀ per run,
