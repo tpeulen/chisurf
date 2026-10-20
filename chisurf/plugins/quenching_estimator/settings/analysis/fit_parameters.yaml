@@ -1,0 +1,106 @@
+# Parameters, priors and solver settings of the Bayesian graph fit of a quenching analysis
+# (core/inference/graph_fit.py).
+#
+# These are the measured-analysis selections of the MalE data set (notebook chapter 6). The
+# code reads every number from here: a different bound, a different fixed set or a different
+# number of searches is a settings change, not a code change.
+#
+# Parameters are listed in the order the fit vector uses them (the random starts are drawn in
+# this order, so reordering changes which local optimum a search finds). `scale: log` means the
+# fit works on the natural log of the value; `lower`/`upper` are then given in natural units and
+# the code takes their log. Theory: docs/concepts/quenching_inference.md.
+
+settings:
+  parameters:
+    # Stickiness (slow factor) of the dye: a common centre and one per residue group (the
+    # groups are the site model's, settings/analysis/site_model.yaml). 1 = not sticky.
+    - {name: s_common, scale: log, lower: 0.001, upper: 1.0}
+    - {name: s_aromatic, scale: log, lower: 0.001, upper: 1.0}
+    - {name: s_hydrophobic, scale: log, lower: 0.001, upper: 1.0}
+    - {name: s_basic, scale: log, lower: 0.001, upper: 1.0}
+    - {name: s_acidic, scale: log, lower: 0.001, upper: 1.0}
+    - {name: s_polar, scale: log, lower: 0.001, upper: 1.0}
+    # Contact quenching on the protein relative to the free amino acids.
+    - {name: scale, scale: log, lower: 0.01, upper: 10.0}
+    # Change of the contact distance (A).
+    - {name: delta, scale: linear, lower: -3.0, upper: 2.0}
+    # Rotamer weight: 0 crystal side chains, 1 moving side chains.
+    - {name: lam, scale: linear, lower: 0.0, upper: 1.0}
+    # Static (dark-complex) channel: strength and its own contact-distance change (A).
+    - {name: static, scale: log, lower: 0.001, upper: 10.0}
+    - {name: delta_static, scale: linear, lower: -3.0, upper: 0.0}
+    # Free-dye lifetime (ns). Never free: tau0 is the free dye's measured lifetime.
+    - {name: tau0, scale: log, lower: 2.0, upper: 3.5, free: false}
+    # Extra lifetime (ns) of a fully shielded dye position; only for `shielding_dyes`.
+    - {name: dtau_shield, scale: linear, lower: 0.0, upper: 2.0}
+    # The model's own error (ns); free while searching, then fixed from the residuals.
+    - {name: model_error, scale: log, lower: 0.02, upper: 1.0}
+
+  # Dyes that live longer on the protein than free in solution get dtau_shield.
+  shielding_dyes: [Cy3B, Atto655]
+
+  # Parameters these data cannot determine, fixed to physical values (owner, 2026-10-01), in
+  # natural units: side chains move (lam 1) for Cy3B and Atto655; AF488 and Cy3B get no static
+  # quenching. AF488's lifetimes determine the rotamer weight, so it stays free there.
+  fixed:
+    AF488: {static: 0.001, delta_static: 0.0}
+    Cy3B: {lam: 1.0, static: 0.001, delta_static: 0.0}
+    Atto655: {lam: 1.0}
+
+  # Stickiness prior: a group's ln s is normal around ln s_common with this factor as one sd.
+  ridge_factor: 10.0
+
+  # Robust search: Student-t likelihood with nu degrees of freedom, n_starts L-BFGS-B searches
+  # from uniform random starts (seed + 1000 * block index + start), search_maxiter each.
+  student_t_nu: 3
+  n_starts: 64
+  search_maxiter: 200
+  seed: 2026
+  block_seed_stride: 1000
+
+  # Model error s: the root of median(r^2 / (sigma^2 + s^2)) = median of chi-square(1), searched
+  # in model_error_bracket (ns), never below model_error_floor.
+  model_error_median_chi2: 0.455
+  model_error_bracket: [0.0, 10.0]
+  model_error_floor: 0.05
+  # A lifetime more than this many error bars off the best fit is an outlier.
+  outlier_limit: 3.0
+
+  # Joint fit of the graph (Gaussian likelihood, outliers out): unit-box parameters u in
+  # [u_clip, 1 - u_clip], titration slopes K in K_mean +- k_range_sd * K_sd, relative
+  # finite-difference step, evaluation budget (scipy units).
+  u_clip: 1.0e-6
+  k_range_sd: 8.0
+  joint_diff_step: 1.0e-3
+  joint_max_nfev: 400
+
+  # Laplace approximation: central-difference step in u, and no direction may get more than
+  # this variance (half its range as an error bar).
+  jacobian_step: 1.0e-4
+  max_variance: 0.25
+
+  # Notes on an estimate: "not determined" when the 68 % interval spans more than this share of
+  # the range; "at the edge" within this share of a bound; "other regions possible" when another
+  # search within this log-posterior distance of the best lies outside the interval.
+  note_not_determined_width: 0.6
+  note_edge: 0.02
+  note_other_regions_logp: 2.0
+
+  # Quench-scale profile: Laplace samples (seed, count) and the profile likelihood (points on
+  # the log scale within +- span_sd Laplace sds, at least the parameter's range ends).
+  profile_samples: 4000
+  profile_seed: 1
+  profile_likelihood: {points: 13, span_sd: 3.0, max_nfev: 60}
+
+  # Optional MCMC check of the Laplace error bars (IMP.bff stretch-move sampler).
+  sampler_check: {steps: 1500, runs: 8, walkers: 40, start_spread: 0.002, first_seed: 100}
+
+# Presets override `settings` keys. `quick` is a fast test run (results less reliable).
+presets:
+  full: {}
+  quick:
+    n_starts: 8
+    search_maxiter: 60
+    joint_max_nfev: 60
+    profile_likelihood: {points: 7, span_sd: 3.0, max_nfev: 20}
+    sampler_check: {steps: 200, runs: 8, walkers: 40, start_spread: 0.002, first_seed: 100}

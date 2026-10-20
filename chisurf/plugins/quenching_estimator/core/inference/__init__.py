@@ -21,6 +21,12 @@ module                        owns
                               contacts, water exposure) from IMP.bff kernels, cached
 :mod:`.site_model`            the equilibrium site model: tau_X, dark fraction and
                               visible exposure for a parameter set
+:mod:`.graph_fit`             the Bayesian graph: robust multistart search, model
+                              error, joint fit, Laplace, leave-one-out, propagation,
+                              quench-scale profile, factor-graph description
+:mod:`.stages`                the declared stages (A, B, naive H2O test, C,
+                              summary) and the headless entry (``Analysis``)
+:mod:`.report`                the plain-language texts, written from the numbers
 ============================  ====================================================
 
 Everything here is numpy only: no pandas, no scipy. The record of what is ported from the

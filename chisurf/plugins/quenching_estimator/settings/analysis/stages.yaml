@@ -1,0 +1,69 @@
+# The stages of a quenching analysis (core/inference/stages.py): which data sets are fitted
+# together, and what each stage reports. The MalE analysis (notebook cells 33-58).
+#
+# A *graph* is one joint solve (graph_fit.fit_graph). Its blocks are data sets: the lifetimes
+# of one dye in the listed solvents, starting from the free dye's tau0 in `tau0` (the solvent
+# whose free-dye lifetime the prediction starts from), with the water term of each solvent
+# (`free_dye` = the free reference dye's water quenching rate kq_w,free times the exposure;
+# no entry = 0). Blocks of one graph share the titration slopes they read, so a stage that
+# reports one block of a graph still needs the whole graph solved.
+#
+# A *stage* reports blocks of a solved graph, or a test on another stage's result. `order` is
+# the order `run("all")` uses.
+
+settings:
+  graphs:
+    joint:
+      description: AF488 and Cy3B in H2O, Atto655 in D2O and H2O; one graph through the slopes.
+      blocks:
+        - {label: AF488 in H2O, dye: AF488, solvents: [H2O], tau0: H2O}
+        - {label: Cy3B in H2O, dye: Cy3B, solvents: [H2O], tau0: H2O}
+        - {label: Atto655 in D2O and H2O, dye: Atto655, solvents: [D2O, H2O], tau0: D2O,
+           water: {H2O: free_dye}}
+    heavy_water:
+      description: Atto655 in D2O alone, with the slopes it reads.
+      blocks:
+        - {label: Atto655 in D2O, dye: Atto655, solvents: [D2O], tau0: D2O}
+
+  stages:
+    A:
+      title: Stage A - AF488 and Cy3B in normal water
+      kind: blocks
+      graph: joint
+      blocks: [AF488 in H2O, Cy3B in H2O]
+      profile: [AF488 in H2O]
+    B:
+      title: Stage B - Atto655 in heavy water
+      kind: blocks
+      graph: heavy_water
+      blocks: [Atto655 in D2O]
+      profile: [Atto655 in D2O]
+    naive_h2o:
+      title: Test - Atto655 in normal water predicted from the heavy-water result (expected to fail)
+      kind: transfer
+      source: {stage: B, block: Atto655 in D2O}
+      dye: Atto655
+      solvent: H2O
+      tau0: H2O
+    C:
+      title: Stage C - Atto655 in heavy and normal water at once (global analysis)
+      kind: blocks
+      graph: joint
+      blocks: [Atto655 in D2O and H2O]
+      profile: [Atto655 in D2O and H2O]
+      water_access: {block: Atto655 in D2O and H2O, also_without: [322]}
+      exposure: {block: Atto655 in D2O and H2O, state: APO, solvent: D2O, sites: [72, 186]}
+      # does adding normal water narrow the quench scale of heavy water alone?
+      compare_scale: {block: Atto655 in D2O and H2O, with: {graph: heavy_water, block: Atto655 in D2O}}
+    summary:
+      title: Summary - what each dye tells
+      kind: summary
+      # the final data set of each dye
+      final: {AF488: AF488 in H2O, Cy3B: Cy3B in H2O, Atto655: Atto655 in D2O and H2O}
+      # every block whose estimates go into the summary table, with its stage
+      estimates: [A, B, C]
+
+  order: [A, B, naive_h2o, C, summary]
+
+  # Relative cost of the steps, for the progress bar.
+  progress_weights: {joint: 6.0, heavy_water: 2.0, profile: 1.0, other: 0.05}

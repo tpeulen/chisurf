@@ -132,6 +132,51 @@ The plan below is the open front. WP0, WP1, WP2, WP3, WP7b and WP7-theory have l
    stamp), so a kernel rebuild without a reconfigure does **not** invalidate the cache: bump `site_table.SCHEMA` or clear the
    folder when a kernel changes. The labelled-residue cut keys on (chain, res_id) only, not the Bio.PDB hetero flag (no
    effect on MalE). The walk check is not `slow` (2 s), contrary to the plan's guess.
+1e. **In progress: WP4 (graph fit + stages + report). The interface for WP5/WP6 has landed (stable).**
+   Files: `core/inference/{graph_fit,stages,report}.py`, `settings/analysis/{fit_parameters,stages,result_columns}.yaml`,
+   `test/test_inference_graph_fit.py` (8 fast tests ~6 s, an analytic stand-in site model: truth recovery, outlier + LOO,
+   propagation, profile, factor graph 48/20/3/18/2, stage plumbing, cancel, 2 worker processes = 1). mmfdb `c190449`
+   (dictionary 1.13: 16 `_flr_analysis_feature` result terms). **Measure:** `pytest
+   chisurf/plugins/quenching_estimator/test/test_inference_graph_fit.py`.
+   **Headless entry (WP5 wraps these; nothing else is needed):**
+   - `stages.load_analysis_data(folder=None, library=None, structures=None, cache_dir=None) -> AnalysisData`
+     (measurements, `per_day`, `posterior`, `errors` = `LifetimeErrors`, `context` = `graph_fit.TitrationContext`,
+     `library` = anything with `.site(state, site, linker) -> Site`: `SiteLibrary` by default, `stages.TableFiles({(state,
+     site, linker): npz})` for stored tables such as the prototype cache).
+   - `stages.Analysis(data=None, preset=None | "full" | "quick", fit_overrides=None, workers=None, profile=True)`;
+     `.run(stages="all" | "A" | ["A", "C"], progress=None, cancel=None) -> AnalysisResult`. Solved graphs are kept on the
+     object, so a later `run("C")` after `run("A")` costs nothing (A and C are views of one graph). `stages.run_stage(stage,
+     data=None, preset=None, fit_overrides=None, workers=None, progress=None, cancel=None, profile=True, analysis=None)` and
+     `run_analysis(...)` are the one-call forms. `stages.stage_names()` = `["A", "B", "naive_h2o", "C", "summary"]`
+     (declared order); `graph_fit.preset_names()` = `["full", "quick"]`.
+   - **Progress/cancel** use `JobManager.reporter(job_id)` / `.canceller(job_id)` shapes: `progress(percent: int, message:
+     str)` (monotone, ends at 100), `cancel() -> bool`; a cancel raises `core.tasks.CancelledError` at the next checkpoint
+     (between searches, at every joint-fit residual evaluation, between profile points; a search already running in a
+     worker finishes first, ≤ ~1 min).
+   - `workers`: worker *processes* (spawn context, safe on macOS; 1 = in process, default the CPU count). Same numbers as 1.
+   - `AnalysisResult`: `.stages {name: StageResult}`, `.graphs {name: GraphResult}`, `.tables() -> {"<stage>.<table>":
+     record array}`, `.view(label) -> BlockResult`, `.to_dict()` (JSON-able: per stage `title`, `numbers`, `text`, `tables`
+     as row lists; per graph blocks/size/factor-graph summary), `.write(folder)` (one CSV per table + `summary.json` +
+     `report.md`). `StageResult`: `name`, `title`, `views` (BlockResult list), `tables`, `plots`, `numbers`, `text`.
+   - **Tables** (declared in `result_columns.yaml`, `site_exposure` in `site_model.yaml`): a blocks stage has
+     `predictions` (`fit_predictions`), `estimates` (`fit_estimates`: graph, block, dye, parameter, value, low_68, high_68,
+     note), `leave_one_out`, `site_ranking`, `searches`, `titration_slopes` (`graph_titration_slopes`), `intervals`
+     (`interval_summary`: laplace and profile 68 % of the scale), `scale_profile`; C adds `water_access`
+     (`water_access_model`) and `exposure` (`site_exposure`); `naive_h2o` has `predictions`; `summary` has `dyes`
+     (`dye_summary`), `estimates`, `titration_slopes`.
+   - **Plot data** (`StageResult.plots`, plain lists, for WP6's implot): `parity:<block>` (measured, predicted,
+     sigma_total = x error, pred_sd, state, site, solvent, outlier, tau0 per solvent), `estimates:<block>` (rows),
+     `loo:<block>` (site, max_abs_z, limit 3), `profile:<block>` (`laplace` samples + summary, `profile` values/deviance/
+     best/low/high), `k_graph` (slope rows); C also `water_access` (rows, r_all, r_without) and `exposure` (per site:
+     exposure, weight = visible-time histogram, visible, reachable, dark_fraction) and `profiles` (B vs C scale summaries);
+     `summary`: `scale` and `stickiness` per dye (value/low/high/note).
+   - Lower level (`graph_fit`): `settings(preset, overrides)`, `parameter_specs`, `free_names`, `fixed_values`,
+     `model_error`, `ridge`, `clipped_inverse`, `Block`, `search`, `Graph`, `joint_fit`, `block_views`, `fit_graph(blocks,
+     ...) -> GraphResult`, `propagate(view, f)`, `laplace_samples(view)` (what the prototype called the profile),
+     `profile_likelihood(view)` (a real profile: the block's sub-graph refitted at fixed scale values),
+     `describe_graph(graph, titrated)` (IMP.bff `InferenceFactorGraph`). `report.explain/dye_line/summary_text/...` write
+     the texts from the numbers.
+   **Open:** acceptance (a) on the 54 prototype tables and the refit (b) on today's geometry, `test_male_reproduction.py`.
 2. **Done: WP2 (IMP.bff kernels, imp.bff `0b178903a`).** It unblocked WP3; the kernels and the voxel-frame fix are in
    imp.bff `okf/quest-site-kernels.md`.
 3. **Open: owner questions to settle before WP4 is accepted** (findings from reading the notebook):

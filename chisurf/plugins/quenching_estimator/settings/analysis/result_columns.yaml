@@ -1,0 +1,197 @@
+# Result tables of the Bayesian graph fit and the stages of a quenching analysis
+# (core/inference/{graph_fit,stages}.py).
+#
+# Every table is a numpy record array whose fields are exactly these columns, in this order,
+# built through core/inference/columns.py. `term` anchors each column in the mmfdb/flrCIF
+# dictionaries (a missing term is created in mmfdb's mmfdb_flr_ext.dic, never invented here;
+# enforced by test/core/test_analysis_feature_terms.py). Parameter estimates use the generic
+# _mmfdb_parameter items. `graph` and `block` name the declared graph and data set
+# (settings/analysis/stages.yaml).
+
+fit_predictions:
+  description: Measured and predicted lifetime of every row of a data set at the best fit.
+  columns:
+    - {column: graph, dtype: str, units: "", term: _flr_analysis_feature.analysis_graph,
+       description: "Declared graph the data set was fitted in."}
+    - {column: block, dtype: str, units: "", term: _flr_analysis_feature.analysis_block,
+       description: "Data set (dye and solvents)."}
+    - {column: dye, dtype: str, units: "", term: _flr_probe_list.chromophore_name,
+       description: "The dye."}
+    - {column: solvent, dtype: str, units: "", term: _flr_analysis_feature.solvent_isotope,
+       description: "H2O or D2O."}
+    - {column: state, dtype: str, units: "", term: _flr_analysis_feature.ligand_state,
+       description: "APO or HOLO."}
+    - {column: site, dtype: int, units: "", term: _flr_poly_probe_position.seq_id,
+       description: "Labelled residue."}
+    - {column: tau_x, dtype: float, units: ns, term: _flr_analysis_feature.measured_lifetime,
+       description: "Measured lifetime of the site, read from its heavy-water line."}
+    - {column: sigma_meas, dtype: float, units: ns, term: _flr_analysis_feature.measured_lifetime_sd,
+       description: "Measurement error of that lifetime."}
+    - {column: sigma_total, dtype: float, units: ns, term: _flr_analysis_feature.lifetime_error_total,
+       description: "Measurement and model error together: how far a point may lie from the parity line."}
+    - {column: tau_pred, dtype: float, units: ns, term: _flr_analysis_feature.predicted_lifetime,
+       description: "Lifetime the site model predicts at the best fit."}
+    - {column: pred_sd, dtype: float, units: ns, term: _flr_analysis_feature.predicted_lifetime_sd,
+       description: "Error of the prediction from the error bars of every parameter, the titrations included."}
+    - {column: pred_low, dtype: float, units: ns, term: _flr_analysis_feature.predicted_lifetime_low,
+       description: "Prediction minus its error."}
+    - {column: pred_high, dtype: float, units: ns, term: _flr_analysis_feature.predicted_lifetime_high,
+       description: "Prediction plus its error."}
+    - {column: dark_fraction, dtype: float, units: fraction, term: _flr_analysis_feature.dark_fraction,
+       description: "Share of the dye too fast to measure or statically quenched."}
+    - {column: loo_z, dtype: float, units: sd, term: _flr_analysis_feature.leave_one_out_z,
+       description: "Prediction of the row with its site left out, minus the measurement, in error bars."}
+    - {column: outlier, dtype: bool, units: "", term: _flr_analysis_feature.outlier_flag,
+       description: "The left-out prediction is more than the outlier limit (3) error bars off."}
+    - {column: used, dtype: bool, units: "", term: _flr_analysis_feature.inlier_flag,
+       description: "The row entered the joint fit (it was not an outlier of the robust search)."}
+
+fit_estimates:
+  description: Best fit and 68 % interval (Laplace) of every parameter of a data set.
+  columns:
+    - {column: graph, dtype: str, units: "", term: _flr_analysis_feature.analysis_graph,
+       description: "Declared graph."}
+    - {column: block, dtype: str, units: "", term: _flr_analysis_feature.analysis_block,
+       description: "Data set."}
+    - {column: dye, dtype: str, units: "", term: _flr_probe_list.chromophore_name,
+       description: "The dye."}
+    - {column: parameter, dtype: str, units: "", term: _mmfdb_parameter.name,
+       description: "Parameter in natural units (s_<group>, scale, delta, lam, static, delta_static, dtau_shield, model_error)."}
+    - {column: value, dtype: float, units: "", term: _mmfdb_parameter.value,
+       description: "Best fit of the joint fit."}
+    - {column: low_68, dtype: float, units: "", term: _mmfdb_parameter.confidence_interval_low,
+       description: "Lower end of the 68 % interval (best fit minus one Laplace sd, mapped back)."}
+    - {column: high_68, dtype: float, units: "", term: _mmfdb_parameter.confidence_interval_high,
+       description: "Upper end of the 68 % interval."}
+    - {column: note, dtype: str, units: "", term: _flr_analysis_feature.estimate_note,
+       description: "not determined / at the edge of its range / other regions possible / fixed / from the residuals."}
+
+leave_one_out:
+  description: Leave-one-site-out test (one Newton step on the curvature), one row per measured lifetime.
+  columns:
+    - {column: graph, dtype: str, units: "", term: _flr_analysis_feature.analysis_graph,
+       description: "Declared graph."}
+    - {column: block, dtype: str, units: "", term: _flr_analysis_feature.analysis_block,
+       description: "Data set."}
+    - {column: site, dtype: int, units: "", term: _flr_poly_probe_position.seq_id,
+       description: "Labelled residue (left out with all its rows)."}
+    - {column: state, dtype: str, units: "", term: _flr_analysis_feature.ligand_state,
+       description: "APO or HOLO."}
+    - {column: solvent, dtype: str, units: "", term: _flr_analysis_feature.solvent_isotope,
+       description: "H2O or D2O (empty when the data set has one solvent)."}
+    - {column: z, dtype: float, units: sd, term: _flr_analysis_feature.leave_one_out_z,
+       description: "Left-out prediction minus measurement, in error bars."}
+
+site_ranking:
+  description: Sites ranked by how badly they are predicted when left out.
+  columns:
+    - {column: graph, dtype: str, units: "", term: _flr_analysis_feature.analysis_graph,
+       description: "Declared graph."}
+    - {column: block, dtype: str, units: "", term: _flr_analysis_feature.analysis_block,
+       description: "Data set."}
+    - {column: site, dtype: int, units: "", term: _flr_poly_probe_position.seq_id,
+       description: "Labelled residue."}
+    - {column: max_abs_z, dtype: float, units: sd, term: _flr_analysis_feature.leave_one_out_z,
+       description: "Largest |z| of the site's rows."}
+
+graph_titration_slopes:
+  description: Titration slopes K_SV from the titrations alone and from the whole graph.
+  columns:
+    - {column: graph, dtype: str, units: "", term: _flr_analysis_feature.analysis_graph,
+       description: "Declared graph."}
+    - {column: dye, dtype: str, units: "", term: _flr_probe_list.chromophore_name,
+       description: "The dye."}
+    - {column: amino_acid, dtype: str, units: "", term: _chem_comp.id,
+       description: "The titrated amino acid."}
+    - {column: ksv_titration, dtype: float, units: 1/M, term: _flr_analysis_feature.stern_volmer_constant,
+       description: "Posterior mean of the titrations alone."}
+    - {column: ksv_titration_sd, dtype: float, units: 1/M, term: _flr_analysis_feature.stern_volmer_constant_sd,
+       description: "Its sd (the slope prior of the graph)."}
+    - {column: ksv_graph, dtype: float, units: 1/M, term: _mmfdb_parameter.value,
+       description: "Best fit of the whole graph (titrations and lifetimes)."}
+    - {column: low_68, dtype: float, units: 1/M, term: _mmfdb_parameter.confidence_interval_low,
+       description: "Lower end of the 68 % interval."}
+    - {column: high_68, dtype: float, units: 1/M, term: _mmfdb_parameter.confidence_interval_high,
+       description: "Upper end of the 68 % interval."}
+
+searches:
+  description: Every robust search of a data set, best first.
+  columns:
+    - {column: graph, dtype: str, units: "", term: _flr_analysis_feature.analysis_graph,
+       description: "Declared graph."}
+    - {column: block, dtype: str, units: "", term: _flr_analysis_feature.analysis_block,
+       description: "Data set."}
+    - {column: rank, dtype: int, units: "", term: _flr_analysis_feature.search_rank,
+       description: "1 = the best search."}
+    - {column: log_posterior, dtype: float, units: "", term: _flr_analysis_feature.log_posterior,
+       description: "Robust (Student-t) log posterior the search reached."}
+    - {column: scale, dtype: float, units: "", term: _flr_fit_parameter.quench_scale,
+       description: "Quench scale of that search (other regions of the posterior show here)."}
+
+scale_profile:
+  description: Profile likelihood of a parameter (the data set's sub-graph refitted at each value).
+  columns:
+    - {column: graph, dtype: str, units: "", term: _flr_analysis_feature.analysis_graph,
+       description: "Declared graph."}
+    - {column: block, dtype: str, units: "", term: _flr_analysis_feature.analysis_block,
+       description: "Data set."}
+    - {column: parameter, dtype: str, units: "", term: _mmfdb_parameter.name,
+       description: "The profiled parameter."}
+    - {column: value, dtype: float, units: "", term: _mmfdb_parameter.value,
+       description: "Value it is held at."}
+    - {column: deviance, dtype: float, units: "", term: _flr_analysis_feature.profile_deviance,
+       description: "2 x (least-squares cost - its minimum): 1 marks the 68 % interval."}
+
+interval_summary:
+  description: The 68 % interval of a parameter by each method (Laplace samples, profile likelihood).
+  columns:
+    - {column: graph, dtype: str, units: "", term: _flr_analysis_feature.analysis_graph,
+       description: "Declared graph."}
+    - {column: block, dtype: str, units: "", term: _flr_analysis_feature.analysis_block,
+       description: "Data set."}
+    - {column: parameter, dtype: str, units: "", term: _mmfdb_parameter.name,
+       description: "The parameter."}
+    - {column: method, dtype: str, units: "", term: _flr_analysis_feature.interval_method,
+       description: "laplace (median and 16/84 % of the Laplace Gaussian) or profile (deviance 1)."}
+    - {column: value, dtype: float, units: "", term: _mmfdb_parameter.value,
+       description: "Median (laplace) or minimum (profile)."}
+    - {column: low_68, dtype: float, units: "", term: _mmfdb_parameter.confidence_interval_low,
+       description: "Lower end."}
+    - {column: high_68, dtype: float, units: "", term: _mmfdb_parameter.confidence_interval_high,
+       description: "Upper end."}
+
+water_access_model:
+  description: Water access per site, measured and from the model's predicted H2O and D2O lifetimes.
+  columns:
+    - {column: site, dtype: int, units: "", term: _flr_poly_probe_position.seq_id,
+       description: "Labelled residue."}
+    - {column: state, dtype: str, units: "", term: _flr_analysis_feature.ligand_state,
+       description: "APO or HOLO."}
+    - {column: measured, dtype: float, units: fraction, term: _flr_analysis_feature.water_access,
+       description: "(1/tau_H2O - 1/tau_D2O) / kq_w,free from the measurements."}
+    - {column: measured_err, dtype: float, units: fraction, term: _flr_analysis_feature.water_access_sd,
+       description: "Its error (the heavy-water line's slope error)."}
+    - {column: model, dtype: float, units: fraction, term: _flr_analysis_feature.water_access_model,
+       description: "The same quantity from the predicted lifetimes at the best fit."}
+    - {column: model_err, dtype: float, units: fraction, term: _flr_analysis_feature.water_access_model_sd,
+       description: "Its error, propagated through the graph covariance."}
+
+dye_summary:
+  description: One line per dye from its final data set.
+  columns:
+    - {column: dye, dtype: str, units: "", term: _flr_probe_list.chromophore_name,
+       description: "The dye."}
+    - {column: block, dtype: str, units: "", term: _flr_analysis_feature.analysis_block,
+       description: "The data set the line is read from."}
+    - {column: scale, dtype: float, units: "", term: _flr_fit_parameter.quench_scale,
+       description: "Quench scale (contact quenching on the protein / free amino acid)."}
+    - {column: scale_low, dtype: float, units: "", term: _mmfdb_parameter.confidence_interval_low,
+       description: "Lower end of its 68 % interval."}
+    - {column: scale_high, dtype: float, units: "", term: _mmfdb_parameter.confidence_interval_high,
+       description: "Upper end."}
+    - {column: scale_note, dtype: str, units: "", term: _flr_analysis_feature.estimate_note,
+       description: "The estimate's note."}
+    - {column: stickiest_group, dtype: str, units: "", term: _flr_analysis_feature.stickiest_residue_group,
+       description: "Residue group with the smallest determined slow factor."}
+    - {column: outlier_sites, dtype: str, units: "", term: _flr_analysis_feature.outlier_sites,
+       description: "Sites whose left-out prediction is more than 3 error bars off (space separated)."}
