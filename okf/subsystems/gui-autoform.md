@@ -853,6 +853,24 @@ renderer. (Qt-era: `chisurf/gui/tooltip.py` and its `gui.tooltip` settings block
 Qt shell; the dead `gui.tooltip` keys were struck from `settings_chisurf.yaml` on
 2026-10-19.)
 
+## UI convention: a filter stays above its list
+
+A filter or search field drawn as the first row *inside* a list's scrolling region scrolls away
+with the first rows (the shell's *Filter tools* field did, 2026-10-20). The field is laid out in
+the parent and the list scrolls in the height left: `im.begin_filtered_list(id, text, hint)` /
+`im.end_filtered_list()` (emtk >= 0.1.25), with `height=` or `stretch=True` (measured room for a
+button row after the list) and `tooltip=`. Escape clears, Down moves into the list, Up/Down walk it
+(the focused entry scrolled into view), Enter activates. Where something sits between the field and
+the list (a Refresh button, a status line) use `im.filter_field` and keep the list a child of its
+own. A data table needs nothing: `DataTable` keeps its filter and header above its rows and pins them
+to the top of a scrolled parent (a `fit_rows` table in a long form), so a view spec's `"filter":
+true` is sticky declaratively; `ViewSpecPanel`'s group/filter toolbar is fixed the same way. Do not
+hand-roll the field + `begin_child` pair.
+
+On the pattern: the shell Tools panel, tool hubs (`ToolHubApp`), Settings (destinations and *Find a
+setting*), the help browser's search, the MMFDB admin rail, Image Tools; `filter_field` in the
+dataset picker, the wiki pages list, the code editor's file filter and Data Selection.
+
 ## UI convention: write labels plain, let them be typeset
 
 A quantity has two names — the one code and translators use (`tau_D(0)`,

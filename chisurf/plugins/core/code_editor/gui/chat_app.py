@@ -719,8 +719,13 @@ class WikiWindow:
         closed = self.window.begin(frame) == "close"
         box = self.window.content_box
         im.set_next_item_width(max(120.0, box[2] - 230.0))
-        _, self.search = im.input_text("##wiki_search", self.search, hint=tr("Search wiki..."))
-        im.set_item_tooltip(tr("Show only the pages whose section or title contains this text"))
+        # Outside the page list's scrolling region, so it stays in sight (emtk >= 0.1.25).
+        _, self.search = im.filter_field(
+            "##wiki_search",
+            self.search,
+            tr("Search wiki..."),
+            tooltip=tr("Show only the pages whose section or title contains this text"),
+        )
         im.same_line()
         if im.small_button(tr("🔄 Refresh") + "##wiki_refresh"):
             self.refresh()

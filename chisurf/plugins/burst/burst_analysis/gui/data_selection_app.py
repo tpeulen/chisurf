@@ -560,10 +560,12 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         im.text(tr("Filter"))
         im.same_line()
         im.set_next_item_width(min(260.0, max(120.0, im.get_content_region_avail()[0] - 10.0)))
-        _changed, self.filter_text = im.input_text(
-            "##data_filter", self.filter_text, hint=tr("file name contains")
+        _changed, self.filter_text = im.filter_field(
+            "##data_filter",
+            self.filter_text,
+            tr("file name contains"),
+            tooltip=tr("Show only files whose name contains this text."),
         )
-        im.set_item_tooltip(tr("Show only files whose name contains this text."))
         self.remember("filter")
         if self.message:
             im.text_wrapped(self.message)

@@ -19,6 +19,12 @@ the *Read data*, *Analysis* or *Console* docks it can be dragged to another pane
 floated over the main window or closed; it is never one of the Workspace's windows, and the Workspace's
 commands leave it where it is.
 
+The **Tools** panel lists every tool under its menu. Typing into *Filter tools* at its top narrows the
+list; the field stays there while the list scrolls under it. Down moves from the field into the list, Up
+and Down walk it, Enter opens the tool and Escape clears the filter. Every other list with a filter or
+search field (the settings, the help browser, the MMFDB panels, the tables) keeps its field in sight the
+same way.
+
 ```{image} figures/main_mdi_tiled.png
 :align: center
 ```

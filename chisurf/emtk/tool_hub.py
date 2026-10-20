@@ -524,13 +524,16 @@ class ToolHubApp(ImApp):
             if action_button("guide"):
                 self.tour.start()
             self.item_rects["guide"] = im.get_item_rect()
-            _, self.filter = im.input_text(f"##Find {self.title}", self.filter, hint=tr("Search…"))
-            im.set_item_tooltip(tr("Find tools by name or description."))
+            # The rail scrolls under the search field: more tools than the window is tall (a small
+            # window, the interface magnified) stay reachable, and the field stays in sight.
+            _, self.filter = im.begin_filtered_list(
+                "rail",
+                self.filter,
+                tr("Search…"),
+                tooltip=tr("Find tools by name or description."),
+            )
             self.item_rects["search"] = im.get_item_rect()
             matching = {p["role"] for p in self.matching_panels()}
-            # The rail scrolls in its own region: more tools than the window is tall (a small window,
-            # the interface magnified) stay reachable instead of running off the bottom.
-            im.begin_child("##rail")
             for panel in self.panels:
                 if panel.get("separator"):
                     if not self.filter:
@@ -561,7 +564,7 @@ class ToolHubApp(ImApp):
                 self.item_rects["nav." + panel["role"]] = im.get_item_rect()
             if not matching:
                 im.text_wrapped(tr("No matching tools."))
-            im.end_child()
+            im.end_filtered_list()
         im.end()
         im.set_next_window_pos((left, 0), im.Cond.ALWAYS)
         im.set_next_window_size((width - left, HEADER), im.Cond.ALWAYS)

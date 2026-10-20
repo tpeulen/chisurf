@@ -209,14 +209,10 @@ class ConfigurationApp(ImApp):
                     )
                 )
             else:
-                self.draw_search()
-                # A window does not scroll in emtk, a child does: the fields scroll with the wheel and a scrollbar.
-                avail_w, avail_h = im.get_content_region_avail()
-                im.begin_child(
-                    "##settings_body", (float(avail_w), max(60.0, float(avail_h) - status_h))
-                )
+                # The search stays put; the fields scroll under it, above the status line.
+                self.draw_search(status_h)
                 self.structured_fields()
-                self.item_rects["settings_body"] = im.end_child()
+                self.item_rects["settings_body"] = im.end_filtered_list()
             im.text_wrapped(self.error or self.status)
         im.end()
         self.help.draw((0, 0, *vp.size))
@@ -239,14 +235,22 @@ class ConfigurationApp(ImApp):
                 self.dialog_window = None
             window.end()
 
-    def draw_search(self):
+    def draw_search(self, reserve: float = 0.0):
+        """The "Find a setting" field, and the scrolling region of the fields under it.
+
+        Close the region with :func:`emtk.im.end_filtered_list`; *reserve* is the height left
+        below it.
+        """
         im.align_text_to_frame_padding()
         im.text_unformatted("Find a setting")
         im.same_line()
-        im.set_next_item_width(-1)
-        _, self.setting_filter = im.input_text("##Setting search", self.setting_filter)
-        im.set_item_tooltip(
-            tr("Search full setting names; matching entries retain their parent section names.")
+        _, self.setting_filter = im.begin_filtered_list(
+            "settings_body",
+            self.setting_filter,
+            tooltip=tr(
+                "Search full setting names; matching entries retain their parent section names."
+            ),
+            height=-float(reserve),
         )
         self.item_rects["setting_search"] = im.get_item_rect()
 
@@ -660,18 +664,17 @@ class UnifiedSettingsApp(ImApp):
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((left, body), im.Cond.ALWAYS)
         if im.begin("Settings destinations", flags=flags):
-            im.set_next_item_width(-1)
-            changed, self.filter = im.input_text_with_hint(
-                "##Find settings", self.filter, "Search..."
+            # The list scrolls under the search field, which stays in sight.
+            changed, self.filter = im.begin_filtered_list(
+                "destination_list",
+                self.filter,
+                tr("Search..."),
+                tooltip=tr("Filter the destinations by name."),
             )
-            im.set_item_tooltip(tr("Filter the destinations by name."))
             self.item_rects["search"] = im.get_item_rect()
             if changed and self.filter:
                 self.tour.notify_used("search")
             shown = visible_panels(self.panels, self.filter)
-            avail_w, avail_h = im.get_content_region_avail()
-            # A window does not scroll in emtk, a child does: the list scrolls with the wheel when it does not fit.
-            im.begin_child("##destination_list", (float(avail_w), max(float(avail_h), 30.0)))
             for panel in shown:
                 if im.selectable(
                     panel.label,
@@ -685,7 +688,7 @@ class UnifiedSettingsApp(ImApp):
                 self.item_rects["dest_" + panel.key] = im.get_item_rect()
             if not shown:
                 im.text_disabled(tr("No matching settings."))
-            im.end_child()
+            im.end_filtered_list()
         im.end()
 
         im.set_next_window_pos((left, 0), im.Cond.ALWAYS)

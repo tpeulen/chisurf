@@ -497,8 +497,15 @@ class EmtkShellApp(ImApp):
         self.workspace_docks.workspace_background = self._draw_workspace_background
         # ``core``: the shell's own docks, which "Close all panels" / "Close other panels" leave
         # open -- only the hosted tools (and what the user opened) go.
+        # Not scrollable itself: the tool list scrolls under its filter (_draw_tools).
         self.docks.add_window(
-            "tools", mark("Tools"), self._draw_tools, dock="left", closable=False, core=True
+            "tools",
+            mark("Tools"),
+            self._draw_tools,
+            dock="left",
+            closable=False,
+            core=True,
+            scrollable=False,
         )
         self.docks.add_window(
             "workspace",
@@ -1685,7 +1692,19 @@ class EmtkShellApp(ImApp):
 
         Each tool carries a bar of its task colour and each caption is written in it; a menu whose tools
         are all one kind (Help, Structure) has its header tinted with that colour, the others neutral.
+        The filter stays at the top while the tree scrolls under it.
         """
+        changed, value = im.begin_filtered_list("tools", self.filter, tr("Filter tools"))
+        try:
+            if changed:
+                self.filter = value
+            self.item_rects["tools.filter"] = im.get_item_rect()
+            self._draw_tool_list()
+        finally:
+            self.item_rects["tools.list"] = im.end_filtered_list()
+
+    def _draw_tool_list(self) -> None:
+        """The rows of the Tools panel that match its filter (inside its scrolling list)."""
         from chisurf.emtk.shell_ribbon import entry_label, entry_tooltip
         from chisurf.emtk.task_colors import accent, neutral
 
@@ -1693,10 +1712,6 @@ class EmtkShellApp(ImApp):
             kinds = {self.task_categories.get(e.plugin_id) for e in entries}
             return accent(kinds.pop()) if len(kinds) == 1 else None
 
-        changed, value = im.input_text_with_hint("##tool filter", self.filter, tr("Filter tools"))
-        if changed:
-            self.filter = value
-        self.item_rects["tools.filter"] = im.get_item_rect()
         words = self.filter.casefold().split()
 
         def matches(entry: MenuEntry) -> bool:

@@ -273,8 +273,13 @@ class DatasetPicker:
             im.set_item_tooltip(f"Browse {label.lower()} datasets; current scope is {self.scope}.")
             im.same_line()
         im.new_line()
-        changed, self.query = im.input_text("Search##dataset_search", self.query)
-        im.set_item_tooltip(tr("Search dataset names and metadata; press Refresh to apply."))
+        # Above the list's own scrolling region, so it stays in sight (emtk >= 0.1.25).
+        changed, self.query = im.filter_field(
+            "##dataset_search",
+            self.query,
+            tr("Search…"),
+            tooltip=tr("Search dataset names and metadata; press Refresh to apply."),
+        )
         if changed:
             self.page = 0
         if im.button(tr("Refresh") + "##dataset_refresh"):

@@ -2242,11 +2242,14 @@ class CodeEditorGui:
                 self.set_project_root(self.model.project_root.parent)
             im.set_item_tooltip(tr("Show the parent folder as the project"))
 
+        # Above the file table, which scrolls its rows under it (emtk >= 0.1.25: Escape clears).
         im.set_next_item_width(box[2])
-        _, self.file_filter = im.input_text(
-            "##file_filter", self.file_filter, hint=tr("🔍 Filter files...")
+        _, self.file_filter = im.filter_field(
+            "##file_filter",
+            self.file_filter,
+            tr("🔍 Filter files..."),
+            tooltip=tr("Filter project files by name"),
         )
-        im.set_item_tooltip(tr("Filter project files by name"))
         draw_sections(self.view_spec["project"], self, self.form, titles=False)
 
     def _project_entries(self, directory: pathlib.Path) -> list[pathlib.Path]:

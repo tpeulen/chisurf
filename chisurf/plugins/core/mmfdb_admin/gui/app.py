@@ -309,12 +309,15 @@ class MMFDBAdminApp(ImApp):
         model = self.model
         x, y, w, h = box
         im.begin("##mmfdb_rail", box)
-        im.set_next_item_width(w - 16.0)
-        _, model.search = im.input_text("##mmfdb_search", model.search, hint=tr("Search..."))
-        im.set_item_tooltip(tr("Find a panel by name or description."))
+        # The panel list scrolls under the search field, which stays in sight.
+        _, model.search = im.begin_filtered_list(
+            "mmfdb_rail",
+            model.search,
+            tr("Search..."),
+            tooltip=tr("Find a panel by name or description."),
+            height=-4.0,
+        )
         self.remember_item("search")
-        cx, cy = im.get_cursor_screen_pos()
-        im.begin_child("##mmfdb_rail_list", (cx, cy, w - 8.0, max(20.0, y + h - cy - 4.0)))
         rows = model.rail()
         for kind, value in rows:
             if kind == "group":
@@ -333,7 +336,7 @@ class MMFDBAdminApp(ImApp):
             self.remember_item("nav." + value)
         if not any(kind == "panel" for kind, _ in rows):
             im.text_wrapped(tr("No matching panels."))
-        im.end_child()
+        im.end_filtered_list()
         im.end()
 
     # ── status bar ─────────────────────────────────────────────────────

@@ -1642,20 +1642,15 @@ class HelpGui:
             get_current_context().state(("focus",)).pop("id", None)
             im.set_keyboard_focus_here()
             self._search_focus = False
-        changed, new_q = im.input_text(
-            "##doc_search", self.model.search_query, hint=tr("Search documentation...")
-        )
-        im.set_item_tooltip(
-            _with_shortcut(tr("Search documentation titles and text"), "Ctrl/Cmd+F")
+        # The tree (or the results) scrolls under the search field, which stays in sight.
+        changed, new_q = im.begin_filtered_list(
+            "toc_tree_view",
+            self.model.search_query,
+            tr("Search documentation..."),
+            tooltip=_with_shortcut(tr("Search documentation titles and text"), "Ctrl/Cmd+F"),
         )
         if changed:
             self.model.update_search(new_q)
-
-        im.separator()
-
-        curr_y = im.get_cursor_screen_pos()[1]
-        rem_h = max(20.0, box[1] + box[3] - curr_y)
-        im.begin_child((*im.get_cursor_screen_pos(), avail_w, rem_h), child_id="toc_tree_view")
 
         # Show Search Results if query active
         if self.model.search_query.strip():
@@ -1692,7 +1687,7 @@ class HelpGui:
             else:
                 im.text_disabled(tr("Documentation TOC is unavailable."))
 
-        im.end_child()
+        im.end_filtered_list()
         self._reveal_keys = set()
 
     def _matches_review_filter(self, node) -> bool:
