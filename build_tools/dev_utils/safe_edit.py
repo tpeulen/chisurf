@@ -18,6 +18,9 @@ Command line::
     python -m build_tools.dev_utils.safe_edit log --dedupe
     python -m build_tools.dev_utils.safe_edit ts de --json entries.json
 
+A ``"translation": ""`` entry adds the source as ``unfinished`` (catalogue
+sources for new UI text, translated later) and never clears a translation.
+
 Rule and rationale: ``okf/workflows/change-tracking.md`` ("Editing the shared files").
 """
 
@@ -246,13 +249,22 @@ def _normalise_entries(
 
 
 def _put_ts_entry(text: str, context: str, source: str, translation: str) -> str:
-    """Set one message in raw ``.ts`` text, touching only that message."""
+    """Set one message in raw ``.ts`` text, touching only that message.
+
+    An empty *translation* records the source only: a missing message is added
+    ``unfinished`` (the runtime then shows the source text), and an existing
+    message, finished or not, is left exactly as it is.
+    """
     ctx_re = re.compile(
         r"(<context>\s*<name>" + re.escape(escape(context)) + r"</name>)(.*?)(\n[ \t]*</context>)",
         re.DOTALL,
     )
     src = f"<source>{escape(source)}</source>"
-    new_tr = f"<translation>{escape(translation)}</translation>"
+    new_tr = (
+        f"<translation>{escape(translation)}</translation>"
+        if translation
+        else '<translation type="unfinished"/>'
+    )
     ctx = ctx_re.search(text)
     if ctx is None:
         block = (
@@ -273,6 +285,8 @@ def _put_ts_entry(text: str, context: str, source: str, translation: str) -> str
         if 'numerus="yes"' in msg.split(">", 1)[0]:
             raise ValueError(f"{source!r} is a plural message; not supported")
         hits += 1
+        if not translation:
+            return msg
         return re.sub(r"<translation\b[^>]*?(?:/>|>.*?</translation>)", lambda _m: new_tr, msg, flags=re.DOTALL)
 
     body = re.sub(r"<message\b.*?</message>", fix, body, flags=re.DOTALL)
@@ -291,7 +305,7 @@ def add_ts_entries(
     """Add or update messages in ``chisurf_<lang>.ts``.
 
     Existing messages (matched by context and source) get a finished
-    translation; missing ones are appended to their context (a missing context
+    translation (an empty one leaves them untouched); missing ones are appended to their context (a missing context
     is appended at the end). Every untouched byte of the file stays as it was,
     and the result must still parse as XML before it replaces the file.
 

@@ -138,6 +138,18 @@ def test_ts_roundtrip_leaves_untouched_entries(tmp_path):
     assert f.read_text(encoding="utf-8") == out
 
 
+def test_ts_empty_translation_adds_an_unfinished_source_and_never_clears(tmp_path):
+    f = tmp_path / "chisurf_de.ts"
+    f.write_text(TS, encoding="utf-8")
+    before = _messages(TS)
+    se.add_ts_entries("de", [("A", "Keep", ""), ("A", "Fresh  ", "")], directory=tmp_path)
+    after = _messages(f.read_text(encoding="utf-8"))
+    assert after[("A", "Keep")] == before[("A", "Keep")]
+    fresh = ET.fromstring(after[("A", "Fresh  ")])
+    assert fresh.findtext("source") == "Fresh  "
+    assert fresh.find("translation").get("type") == "unfinished"
+
+
 def test_ts_missing_file_is_not_created(tmp_path):
     with pytest.raises(FileNotFoundError):
         se.add_ts_entries("xx", [("A", "s", "t")], directory=tmp_path)
