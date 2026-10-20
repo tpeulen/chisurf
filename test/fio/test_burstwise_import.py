@@ -100,15 +100,16 @@ def test_dictionary_loads_the_45_terms():
 def test_nonconformant_old_names_are_renamed():
     cols = [
         "Mean Macrotime (green) (ms)",  # old spelling
-        "Tau  (red)",  # double space; base term not in dict -> flagged, not coined
+        "Tau  (red)",  # double space -> the dictionary spelling
         "First Photon",  # already conformant
-        "Something New",  # unknown
+        "Something New",  # unknown -> flagged, not coined
     ]
     renames, unmapped = rename_columns(cols)
     assert renames == {
         "Mean Macrotime (green) (ms)": "Mean Macro Time (green) (ms)",
+        "Tau  (red)": "Tau (red)",
     }
-    assert unmapped == ["Tau  (red)", "Something New"]
+    assert unmapped == ["Something New"]
 
 
 # -- conversion -----------------------------------------------------------------

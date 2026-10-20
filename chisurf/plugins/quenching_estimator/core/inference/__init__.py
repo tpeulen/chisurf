@@ -10,6 +10,13 @@ module                        owns
 ============================  ====================================================
 :mod:`.measurements`          the measurement tables (CSV -> numpy record arrays),
                               site numbers corrected from the data file names
+:mod:`.columns`               the declared table layouts (``settings/analysis/*.yaml``)
+:mod:`.titration`             Stern-Volmer lines per day, the hierarchical K_SV
+                              posterior with its day-to-day error, kq
+:mod:`.lifetime_errors`       water quenching per site, lifetime scatter and site
+                              errors, leave-one-out coverage, free-dye tau0,
+                              measured water access
+:mod:`.kq_scaling`            contact kQ per dye from the titration ratios
 ============================  ====================================================
 
 Everything here is numpy only: no pandas, no scipy. The record of what is ported from the

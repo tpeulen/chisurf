@@ -1,0 +1,167 @@
+# Measurement statistics of a quenching analysis: titrations, water quenching, lifetime
+# errors and kQ per dye (core/inference/{titration,lifetime_errors,kq_scaling}.py).
+#
+# Every table below is a numpy record array whose fields are exactly these columns, in this
+# order; the code builds them through core/inference/columns.py, so a column cannot be written
+# without being declared here. `term` anchors each column in the mmfdb/flrCIF dictionaries
+# (a missing term is created in mmfdb's mmfdb_flr_ext.dic, never invented here); enforced by
+# test/core/test_analysis_feature_terms.py. `dtype` is float, int or str.
+#
+# `settings` holds the selections the algorithms make. They are measured analysis settings
+# of the MalE data set and its reference chemistry, not code constants.
+
+settings:
+  dyes: [AF488, Cy3B, Atto655]
+  # kQ of every dye is scaled relative to this dye's titrations.
+  reference_dye: AF488
+  # Day-to-day error grid of K_SV (log, flat per decade): absolute part 1/M, relative fraction.
+  day_abs_grid: {low: 0.005, high: 3.0, n: 60}
+  day_rel_grid: {low: 0.001, high: 1.0, n: 60}
+  # 1/(se^2 + floor) weights the mean slope that sets the size of the relative part (1/M^2).
+  slope_weight_floor: 0.01
+  # A titration day needs this many distinct concentrations for a line.
+  min_concentrations: 2
+  # A site's own scatter is mixed with the dye's typical scatter worth this many points.
+  prior_points: 2
+  # A heavy-water series needs this many points for its own scatter.
+  min_series_points: 3
+  # MAD -> sigma for a normal distribution.
+  robust_scale: 1.4826
+  labelled_conditions: [APO, HOLO]
+  free_dye_condition: dye
+  # Dyes whose lifetime is also extrapolated to 100 % D2O (water-quenched).
+  d2o_dyes: [Atto655]
+  # kq_w,free and the water access are taken for this dye.
+  water_reference_dye: Atto655
+  # Quenching residues of the site model, and the titrated amino acid each one takes its
+  # ratio from (Pro was not titrated: Trp ratio).
+  quenchers: [TRP, TYR, MET, HIS, PRO]
+  titrated: {TRP: Trp, TYR: Tyr, MET: Met, HIS: His, PRO: Trp}
+  # The titration slopes that enter the kQ vectors (and the inverse fit as parameters).
+  model_titrations: [Trp, Tyr, Met, His]
+  # Dye radius (A) handed to the reference chemistry when the textbook kQ is read.
+  textbook_dye_radius: 3.5
+
+titration_days:
+  description: One Stern-Volmer line per dye, amino acid and titration day.
+  columns:
+    - {column: dye, dtype: str, units: "", term: _flr_probe_list.chromophore_name,
+       description: "The dye."}
+    - {column: amino_acid, dtype: str, units: "", term: _chem_comp.id,
+       description: "The titrated free amino acid (Trp, Tyr, NC-Tyr, Met, His, Phe)."}
+    - {column: day, dtype: int, units: yyyymmdd, term: _flr_analysis_feature.measurement_date,
+       description: "Titration day."}
+    - {column: ksv, dtype: float, units: 1/M, term: _flr_analysis_feature.stern_volmer_constant,
+       description: "Slope of tau0/tau - 1 against the concentration."}
+    - {column: ksv_sd, dtype: float, units: 1/M, term: _flr_analysis_feature.stern_volmer_constant_sd,
+       description: "Regression error of that day's slope."}
+    - {column: tau0, dtype: float, units: ns, term: _flr_fit_parameter.tau0,
+       description: "Mean unquenched lifetime of the day."}
+
+k_posterior:
+  description: Hierarchical posterior of K_SV per titration (all days, shared day-to-day error).
+  columns:
+    - {column: dye, dtype: str, units: "", term: _flr_probe_list.chromophore_name,
+       description: "The dye."}
+    - {column: amino_acid, dtype: str, units: "", term: _chem_comp.id,
+       description: "The titrated free amino acid."}
+    - {column: days, dtype: int, units: "", term: _flr_analysis_feature.titration_day_count,
+       description: "Number of titration days with a line."}
+    - {column: tau0, dtype: float, units: ns, term: _flr_fit_parameter.tau0,
+       description: "Mean unquenched lifetime of the titration's days."}
+    - {column: ksv, dtype: float, units: 1/M, term: _flr_analysis_feature.stern_volmer_constant,
+       description: "Posterior mean K_SV (mixture over the day-to-day error grid)."}
+    - {column: ksv_sd, dtype: float, units: 1/M, term: _flr_analysis_feature.stern_volmer_constant_sd,
+       description: "Posterior standard deviation of K_SV."}
+    - {column: kq, dtype: float, units: 1e9/(M s), term: _flr_analysis_feature.bimolecular_quenching_constant,
+       description: "Bimolecular quenching constant K_SV / tau0; negative slopes are kept as measured."}
+    - {column: kq_sd, dtype: float, units: 1e9/(M s), term: _flr_analysis_feature.bimolecular_quenching_constant_sd,
+       description: "Standard deviation of kq."}
+
+water_quenching:
+  description: Water quenching rate per dye, apo/holo state and site (slope of 1/tau vs the H2O fraction).
+  columns:
+    - {column: dye, dtype: str, units: "", term: _flr_probe_list.chromophore_name,
+       description: "The dye."}
+    - {column: state, dtype: str, units: "", term: _flr_analysis_feature.ligand_state,
+       description: "APO or HOLO."}
+    - {column: site, dtype: int, units: "", term: _flr_poly_probe_position.seq_id,
+       description: "Labelled residue."}
+    - {column: kq_w, dtype: float, units: 1/ns, term: _flr_analysis_feature.water_quenching_rate,
+       description: "Water quenching rate kq_w."}
+
+measurement_scatter:
+  description: Scatter of a single lifetime measurement around its heavy-water line, per dye.
+  columns:
+    - {column: dye, dtype: str, units: "", term: _flr_probe_list.chromophore_name,
+       description: "The dye."}
+    - {column: series, dtype: int, units: "", term: _flr_analysis_feature.lifetime_series_count,
+       description: "Number of heavy-water series."}
+    - {column: points, dtype: int, units: "", term: _flr_analysis_feature.lifetime_point_count,
+       description: "Number of lifetime points in those series."}
+    - {column: regression, dtype: float, units: fraction, term: _flr_analysis_feature.relative_scatter_pooled,
+       description: "Pooled residual scatter, relative to the lifetime."}
+    - {column: leave_one_out, dtype: float, units: fraction, term: _flr_analysis_feature.relative_scatter_leave_one_out,
+       description: "Root-mean-square leave-one-out residual, same scale."}
+    - {column: typical, dtype: float, units: fraction, term: _flr_analysis_feature.relative_scatter_robust,
+       description: "1.4826 x median |leave-one-out residual|."}
+    - {column: coverage, dtype: float, units: fraction, term: _flr_analysis_feature.leave_one_out_coverage,
+       description: "Fraction of left-out points inside their 1-sigma error bar (about 0.68 when honest)."}
+
+site_lifetimes:
+  description: Lifetime of every site read from its heavy-water line, with its measurement error.
+  columns:
+    - {column: dye, dtype: str, units: "", term: _flr_probe_list.chromophore_name,
+       description: "The dye."}
+    - {column: solvent, dtype: str, units: "", term: _flr_analysis_feature.solvent_isotope,
+       description: "H2O (line at 0 % D2O) or D2O (line at 100 % D2O)."}
+    - {column: state, dtype: str, units: "", term: _flr_analysis_feature.ligand_state,
+       description: "APO or HOLO."}
+    - {column: site, dtype: int, units: "", term: _flr_poly_probe_position.seq_id,
+       description: "Labelled residue."}
+    - {column: n, dtype: int, units: "", term: _flr_analysis_feature.lifetime_point_count,
+       description: "Points of the series."}
+    - {column: tau_x, dtype: float, units: ns, term: _flr_analysis_feature.measured_lifetime,
+       description: "Lifetime from the line at the solvent."}
+    - {column: sigma_meas, dtype: float, units: ns, term: _flr_analysis_feature.measured_lifetime_sd,
+       description: "Measurement error of that lifetime."}
+    - {column: point_error_pct, dtype: float, units: percent, term: _flr_analysis_feature.measurement_relative_scatter,
+       description: "Relative error of one point of the series (own scatter mixed with the dye's typical one)."}
+    - {column: water_slope, dtype: float, units: 1/ns, term: _flr_analysis_feature.water_quenching_rate,
+       description: "Slope of the line, the site's water quenching rate."}
+    - {column: water_slope_err, dtype: float, units: 1/ns, term: _flr_analysis_feature.water_quenching_rate_sd,
+       description: "Regression error of the slope."}
+
+free_dye_lifetimes:
+  description: Free-dye lifetimes tau0 in normal and heavy water.
+  columns:
+    - {column: dye, dtype: str, units: "", term: _flr_probe_list.chromophore_name,
+       description: "The dye."}
+    - {column: solvent, dtype: str, units: "", term: _flr_analysis_feature.solvent_isotope,
+       description: "H2O or D2O."}
+    - {column: tau0, dtype: float, units: ns, term: _flr_fit_parameter.tau0,
+       description: "Free-dye lifetime."}
+
+kq_contact:
+  description: Contact quenching rate kQ per dye and quenching residue, with its titration uncertainty.
+  columns:
+    - {column: dye, dtype: str, units: "", term: _flr_probe_list.chromophore_name,
+       description: "The dye."}
+    - {column: quencher, dtype: str, units: "", term: _chem_comp.id,
+       description: "Quenching residue type (TRP, TYR, MET, HIS, PRO)."}
+    - {column: kq, dtype: float, units: 1/ns, term: _flr_fit_parameter.kQ,
+       description: "kQ at contact, reference kQ times the dye's titration ratio to the reference dye."}
+    - {column: kq_sd, dtype: float, units: 1/ns, term: _flr_fit_parameter.kQ_sd,
+       description: "Uncertainty of kQ propagated from the K_SV posterior."}
+
+water_access:
+  description: Measured water access per site, (1/tau_H2O - 1/tau_D2O) / kq_w,free.
+  columns:
+    - {column: site, dtype: int, units: "", term: _flr_poly_probe_position.seq_id,
+       description: "Labelled residue."}
+    - {column: state, dtype: str, units: "", term: _flr_analysis_feature.ligand_state,
+       description: "APO or HOLO."}
+    - {column: measured, dtype: float, units: fraction, term: _flr_analysis_feature.water_access,
+       description: "Water access from the measured lifetimes alone (1 = as exposed as the free dye)."}
+    - {column: measured_err, dtype: float, units: fraction, term: _flr_analysis_feature.water_access_sd,
+       description: "Error from the H2O line slope's regression error."}

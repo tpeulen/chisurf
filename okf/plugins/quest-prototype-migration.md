@@ -57,6 +57,40 @@ The plan below is the open front. WP0, WP7b and WP7-theory have landed; WP1 and 
    (reflecting walls; the notebook's ends were absorbing); it is example 05. `scan`'s `dominant_quencher` names a residue
    for a trace rate at QY 1.000 (E:55 "TYR 100 %"): the example filters on QY < 0.99; the record itself is unchanged (WP9's file).
    The theory page states the overclaims of 3(a), 3(b), 3(d) as they are. **Open:** guide-80 example sections (WP7-guide).
+1c. **Done: WP1 (measurement statistics, 2026-10-20).** `core/inference/{columns,titration,lifetime_errors,kq_scaling}.py`,
+   `settings/analysis/measurement_columns.yaml` (8 declared tables plus a `settings` block holding every selection the
+   notebook hardcoded: grids, prior points, reference dye, `titrated` map, D₂O dyes), 3 presets in `settings/dye_repository.json`,
+   `test/test_inference_{titration,lifetime_errors,kq_scaling}.py`. **Measure:** `pytest
+   chisurf/plugins/quenching_estimator/test/test_inference_{titration,lifetime_errors,kq_scaling}.py` (19 tests, under 1 s). Every chapter 1–3a number of
+   `male_prototype.json` (per_day, K_POSTERIOR, hyper marginals/quantiles/edge, water, scatter, the 64 `data` rows, coverage,
+   TAU0, KQW_FREE, KQ_TABLE ± SD, measured water access) comes out **bit for bit**. The tests use rtol 1e-12 only so that
+   another LAPACK under `np.polyfit` passes. **Trap:** τ₀(H₂O) is a pandas *grouped* mean in the notebook, which uses a
+   compensated sum, so a plain `np.mean` can be one ulp off. `lifetime_errors._compensated_mean` keeps it exact.
+   **mmfdb `16da3c3`** (dictionary 1.12) holds every term the migration needs, so WP3/WP4 do not edit the dictionary:
+   `_flr_analysis_feature.{measurement_date, ligand_state, solvent_isotope, stern_volmer_constant[_sd], titration_day_count,
+   bimolecular_quenching_constant[_sd], day_to_day_error_abs/rel, water_quenching_rate[_sd], lifetime_series_count,
+   lifetime_point_count, measured_lifetime[_sd], measurement_relative_scatter, relative_scatter_{pooled,leave_one_out,robust},
+   leave_one_out_coverage, water_access[_sd], solvent_exposure, dark_fraction, predicted_lifetime[_sd], leave_one_out_z,
+   model_error}` and `_flr_fit_parameter.{kQ_sd, slow_factor_{common,aromatic,hydrophobic,basic,acidic,polar}, quench_scale,
+   quench_contact_offset, rotamer_weight, static_quench_strength, static_quench_offset, shield_lifetime_increment}`. Reuse
+   `_flr_fit_parameter.{kQ,tau0}`, `_flr_probe_list.chromophore_name` (dye), `_chem_comp.id` (residue),
+   `_flr_poly_probe_position.seq_id` (site), and for WP4's estimate tables `_mmfdb_parameter.{name,value,
+   confidence_interval_low,confidence_interval_high}`. The red MLE burst columns (`Tau/2I*/gamma/r0/rho (red)`) are in
+   `mmfdb_workflow_ext.dic`, because that is the file the burstwise importer reads, not `mmfdb_flr_ext.dic`.
+   The same commit fixes an mmfdb parser gap. A looped `_item.name` (the DDL2 parent form) was dropped, so about 60 PDBx key
+   items (`_chem_comp.id`, `_entity.id`, …) did not resolve. Descriptions written before `_item.name` were lost too
+   (5319 → 259 items without one). **Interfaces for WP3/WP4:** `titration.analyse_titrations(points) -> (per_day,
+   TitrationPosterior)` with `.table`, `.weight`, `.k_mean()`, `.k_sd()`, `.tau0()`, `.quantile()`, `.edge_mass`;
+   `lifetime_errors.analyse_lifetimes(lifetimes, titration_summary) -> LifetimeErrors` (`.data` = the notebook's `data`
+   with `tau_x` for `tauX`, `.tau0[(dye, solvent)]`, `.kqw_free`, `.access`, `.scatter`, `.coverage`, `.water`);
+   `kq_scaling.kq_vector(dye, K, tau0, textbook)` (WP4 calls it with the graph's K), `kq_scaling.model_keys()` (the 12
+   K_KEYS), `kq_table(posterior)`, and `columns.make_table(name, rows, path)` for WP4's own `result_columns.yaml`.
+   **Presets, open:** `av_parameter.linker_width` stays IMP.bff's 4.5, because `test_av_defaults` pins every preset to it and
+   owner question 3(e) is open. The notebook's W 0.5 / grid 0.5 are in each preset's `measured_analysis`. The per-group
+   slow factors and `quench_scale`/`contact_offset`/`rotamer_weight`/`shield_lifetime_increment` are the stored run's
+   *printed* stage estimates. kQ is the unscaled table, so the presets do not reproduce the notebook's τX until WP4/WP9
+   decide whether the quench scale is folded into kQ. Cys takes the Trp ratio, as Pro does (MalE has no Cys, so this is
+   an extrapolation).
 2. **Open: WP2 (IMP.bff kernels) blocks WP3.** Without per-voxel exposure, rotamer quencher
    ensembles and voxel-centre/neighbour accessors in IMP.bff, the site tables would have to
    be written in Python here. That breaks the rule that geometry kernels belong in IMP.bff, and it
@@ -243,6 +277,7 @@ Paths are relative to `chisurf/plugins/quenching_estimator/` unless absolute.
 
 ## WP1: measurement statistics (titrations, water, lifetime errors, kQ per dye)
 
+- **Status: done 2026-10-20** (chisurf commit in resume item 1c; mmfdb `16da3c3`).
 - **Goal:** chapters 1–3a as Qt-free numpy code with declared outputs.
 - **Create:** `core/inference/titration.py`, `core/inference/lifetime_errors.py`,
   `core/inference/kq_scaling.py`, `settings/analysis/measurement_columns.yaml` (columns of the

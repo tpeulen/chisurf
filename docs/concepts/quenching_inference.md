@@ -354,6 +354,10 @@ models in IMP.bff (C1R/C2R maleimides) are assumed to match the reagents.
   {ref}`concept-fitting-objectives`.
 - Fundamentals: {ref}`fundamentals-quenching-mechanisms` (Stern–Volmer,
   free-partner quenching).
+- Code for the titrations, water quenching, lifetime errors and kQ per dye:
+  `chisurf/plugins/quenching_estimator/core/inference/` (`titration.py`,
+  `lifetime_errors.py`, `kq_scaling.py`); their output tables and the selections
+  they make are declared in `settings/analysis/measurement_columns.yaml`.
 - Examples: `chisurf/plugins/quenching_estimator/examples/` (01 donor
   quenching, 02 FRET pair, 03 site scan, 04 E(t) → p(R), 05 Haas–Steinberg).
 
