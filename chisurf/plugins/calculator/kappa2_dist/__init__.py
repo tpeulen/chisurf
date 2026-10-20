@@ -15,4 +15,4 @@ _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
     name = _manifest.display_name
 else:
-    name = "Structure:FRET:Kappa2 Distribution"
+    name = "Tools:Calculators:Kappa2 Distribution"

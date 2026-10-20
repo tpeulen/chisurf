@@ -14,7 +14,7 @@ convention-exempt: true
 * [Correlation (FCS)](fcs.md) - correlator wizard, fFCS filters, 2D-FLCS, curve merging, diffusion/volume calculator and format conversion.
 * [Fluorescence decay](fluorescence-decay.md) - TCSPC lifetime analysis, IRF estimation, MaxEnt MEM, lazy lifetime analysis and time-resolved anisotropy.
 * [Modelling](modelling.md) - structural/FRET modelling (FPS, IMP.bff docking, HydroPro, model editors).
-* [Calculators](calculator.md) - the calculator hub and small physical-quantity estimators.
+* [Calculators](calculator.md) - small physical-quantity estimators, each its own Tools › Calculators button.
 * [Imaging](imaging.md) - CLSM/FLIM per-pixel analysis and image-based tools.
 * [TTTR tools](tttr.md) - photon-stream conversion, browsing, count-rate, micro-time and image-browser tools.
 * [Trajectory tools](trajectory.md) - molecular-dynamics trajectory conversion, alignment, energy, FRET, and clash/topology utilities.

@@ -15,6 +15,7 @@ from __future__ import annotations
 import importlib
 import pathlib
 
+import pytest
 from emtk.keys import KEY_LEFT, KEY_RIGHT, KEY_UP
 from emtk.testing import Driver
 
@@ -90,32 +91,16 @@ def test_focus_loss_releases_held_keys():
     assert not app.keys.held
 
 
-def test_keys_reach_the_game_selected_in_the_launcher():
-    drv = _open("")
-    hub = drv.app
-    for name in ("Number Quest", "Tetris"):
-        assert hub.select(name) is not None, name  # every game opens (Tetris was 'pending')
-    child = hub.select("Number Quest")
-    drv.frame()
-    start = child.estimate
-    for _ in range(2):
-        drv.press(KEY_RIGHT)
-    assert child.estimate == start + 2 and not child.held
-    _press(drv, KEY_RIGHT)
-    hub.focus_lost()
-    assert not child.held  # focus loss reaches the game
-
-
-def test_the_game_shown_when_the_hub_opens_takes_keys_without_a_click():
-    """The hub opens on its first game; that game must exist and receive keys before any click."""
-    drv = _open("")
-    hub = drv.app
-    assert hub.child is not None, "the first game was only built after clicking its list entry"
+@pytest.mark.parametrize("game", ["number_quest", "minesweeper", "tetris", "pong", "breakout"])
+def test_a_game_takes_keys_the_moment_it_opens(game):
+    """Each game is its own dock now (no launcher in front of it): the first key after opening reaches it."""
+    drv = _open(game)
+    app = drv.app
     seen = []
-    original = hub.child.key
-    hub.child.key = lambda key, text="", modifiers=0: (
-        seen.append(key),
-        original(key, text, modifiers),
-    )[1]
+    original = app.key
+    app.key = lambda key, text="", modifiers=0: (seen.append(key), original(key, text, modifiers))[1]
     _press(drv, KEY_LEFT)
+    _release(drv, KEY_LEFT)
     assert seen == [KEY_LEFT]
+    app.focus_lost()  # the host's call when the window loses focus: nothing stays held
+    app.close()

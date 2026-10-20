@@ -270,19 +270,19 @@ irf_estimation
 | [Accurate FRET: calibration](fret_calibration.md) | `accurate_fret` plugin, `fret.calibration` |
 | [IRF estimation](irf_estimation.md) | `irf_estimation`, TCSPC nuisances |
 | [Photon-by-photon HMM (H2MM)](h2mm.md) | `burst_h2mm` plugin |
-| [The PSF calculator: the focus your objective actually makes](72_psf_calculator.md) | `psf_calculator` calculator (Calculators hub), `PSFModel`, `tttrlib.CLSMSuperRes.psf_volume` |
+| [The PSF calculator: the focus your objective actually makes](72_psf_calculator.md) | `psf_calculator` (Tools › Calculators), `PSFModel`, `tttrlib.CLSMSuperRes.psf_volume` |
 | [Decays and correlation curves straight from a photon file](73_tttr_decay_and_correlation.md) | `microtime_histogram` (inter-photon filter) + `fcs_correlator` (method, splits), `tttrlib.Correlator` |
 | [Intensity traces and file tools](74_intensity_traces_and_file_tools.md) | `intensity_trace` plugin, File › Data tools (`tttr_splitter`, `tttr_to_pto`, `pto_inspector`, `tttr_header_edit`, `tttr_time_windows`, `bid_to_analysis`), `csc tttr-time-windows` |
 | [FCS toolbox: correlate, merge, convert](75_fcs_toolbox.md) | `fcs_correlator` (Spectroscopy → Correlation → FCS: channel definitions, filter, correlator, merger), `fcs_convert`, `fcs.merge` |
 | [The decay tools, Lazy Lifetime Analysis and synthetic decays](76_decay_analysis_tools.md) | `lltf`, `synthetic_decay` plugins, `csc lltf`, `csc synth-decay` |
-| [The phasor calculator](77_phasor_calculator.md) | `phasor_calculator` (Calculators hub), `img_pixel_phasor.analysis` |
+| [The phasor calculator](77_phasor_calculator.md) | `phasor_calculator` (Tools › Calculators), `img_pixel_phasor.analysis` |
 | [Model comparison and batch fits](78_model_comparison_and_batch.md) | `f_test`, `batch_analysis`, `core.math.statistics` |
 | [HydroPro: diffusion coefficients from a structure](79_hydropro.md) | `hydropro` plugin, HYDROPRO / HYDRO++ |
 | [QuEst: predicting dye quenching at a labelling site](80_quenching_estimator.md) | `quenching_estimator` |
 | [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](81_trajectory_tools.md) | `traj_align`, `traj_convert`, `traj_fret`, ... (Structure → Trajectory, one button each), `core.structure.trajectory_data` |
-| [FRET lines: static, dynamic and model lines for the E–lifetime plot](82_fret_lines.md) | `fret_line` (Calculators hub), `core.fluorescence.fret.lines` |
+| [FRET lines: static, dynamic and model lines for the E–lifetime plot](82_fret_lines.md) | `fret_line` (Tools › Calculators), `core.fluorescence.fret.lines` |
 | [Spectra, overlap integrals and R₀](83_spectra_and_r0.md) | `spectra_downloader` (Spectroscopy menu), Förster calculator (TCSPC FRET κ² row → calc R0) |
-| [Finding spots and objects in an image](84_spot_finder.md) | `spot_finder` (Image Tools hub), `csc spot-finder`, `spot_finder.core.spots` |
+| [Finding spots and objects in an image](84_spot_finder.md) | `spot_finder` (a step of Image Tools), `csc spot-finder`, `spot_finder.core.spots` |
 | [Checking a burst folder before an MFD fit](85_mfd_prepare.md) | `mfd_prepare` (no menu; CLI/RPC), `core.fluorescence.mfd.prepare` |
 | [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Spectroscopy → Imaging → Image Tools → Browser), `csc tttr-image-browser`, `core.image` |
 | [Detector setup: channels, PIE windows, timing and LUTs](87_channel_definition.md) | `setup_channel_definition` (Setup → Channel Definition), the shared detector setup editor |

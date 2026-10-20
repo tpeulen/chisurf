@@ -17,10 +17,11 @@ For why the method works and which threshold to quote, see
 ## Open the tool
 
 It lives in **Spectroscopy → Imaging → Image Tools**, as the **Resolution** step after
-*Drift*. That order is deliberate: drift blurs the summed image, and the FRC
-faithfully reports the blur, so an uncorrected stack measures the stage rather
-than the microscope. Image Tools is its only menu entry; you can drop a file
-onto the window.
+*Browser*: it opens on the Browser's source and fills photon streams by the Setup's
+named detector windows. Align first ({doc}`Drift Correction <43_drift_correction>`,
+a tool of its own): drift blurs the summed image, and the FRC faithfully reports
+the blur, so an uncorrected stack measures the stage rather than the microscope.
+Image Tools is its only menu entry; you can drop a file onto the window.
 
 It accepts
 

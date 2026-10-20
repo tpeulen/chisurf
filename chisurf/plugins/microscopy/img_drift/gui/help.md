@@ -3,9 +3,11 @@
 Stage drift moves the sample between frames. This tool measures that movement
 and removes it, for both camera stacks and photon-stream (confocal) images.
 
-It sits in the **Image Tools** toolbox between *Browser* and *1. Intensity*,
-because every per-pixel map in the numbered pipeline is built from frames that
-must already be aligned. Correct here first, then continue with **Next ▶**.
+It is its own tool (**Spectroscopy › Imaging › Drift Correction**), not a step
+of the Image Tools pipeline: it reads its own stack and takes neither the shared
+detector setup nor the pipeline's source. Use it *before* the per-pixel maps,
+because every map is built from frames that must already be aligned: correct the
+stack here, export it, and open the corrected stack where the analysis continues.
 
 ## Why it matters more than it looks
 

@@ -42,8 +42,9 @@ Help, About, Open Project, Updates, Plugins, Switch User, the boarding wizard).
 
 A calculator maps parameters to a number or a curve without data: $R_0$ and $E(R)$, a phasor, the PSF volume. A wizard
 chains several tools with a fixed order of decisions. A tool is an entry in its menu group, not a page inside a
-launcher; Calculators (`chisurf/plugins/calculator/hub/`) and Wizards (`chisurf/plugins/core/wizards/`) still list
-their members in one window, and every member is also reachable from its own menu entry.
+launcher: every calculator is a button of **Tools › Calculators** and every wizard (Anisotropy Wizard, Batch Analysis)
+a button of **Tools › Wizards**, each opening in a dock of its own. A window that lists several steps is kept only
+where the steps share state, as Image Tools' imaging pipeline does.
 
 ## Help
 

@@ -74,12 +74,12 @@ groups:
   "Spectroscopy:Single-Molecule": single_molecule
   "Spectroscopy:Kinetics": kinetics
   "Spectroscopy:Imaging": imaging
+  "Tools:Wizards": wizards
   "Structure:*": structure
   "Tools:*": tools
   "File:*": file
 
-plugins:
-  wizards: wizards
+plugins: {}
 
 docks:
   "data.": fitting

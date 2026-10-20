@@ -381,8 +381,36 @@
    ],
    "Imaging": [
     {
+     "text": "CLSM Generator",
+     "tooltip": "Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s).",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Drift Correction",
+     "tooltip": "Measure and remove inter-frame sample drift in TIFF stacks and photon-stream images. Photon streams are corrected photon by photon, so lifetimes and correlations stay valid.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
      "text": "Image Tools",
      "tooltip": "Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow Maps, Particle Tracking, Colocalization, the per-pixel maps, CLSM Draw, Region MLE, PSF Determination, CLSM Generator.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "PSF Determination",
+     "tooltip": "3D Gaussian PSF fitting and bead detection for confocal microscopy.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Particle Tracking",
+     "tooltip": "Single-particle tracking: detect diffraction-limited particles in every frame, link them into trajectories by exact assignment with gap closing, and fit the diffusion coefficient and anomalous exponent from the mean squared displacement.",
      "icon": true,
      "enabled": true,
      "size": "small"
@@ -530,8 +558,36 @@
    ],
    "Calculators": [
     {
-     "text": "Calculators",
-     "tooltip": "Hub that groups ChiSurf's FRET-line, FRET/homoFRET, FCS and phasor-plot calculators and embeds the selected one in a two-panel view.",
+     "text": "F-Test",
+     "tooltip": "F-test calculator: compare two nested model fits (confidence <-> chi2 threshold) and compute the chi2-max upper limit of a single fit at a confidence level. Declarative AutoForm view; values load from open fits.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "FCS Saturation",
+     "tooltip": "FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5).",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "FRET Calculator",
+     "tooltip": "Combined heteroFRET and homoFRET parameter calculator.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "FRET Line Generator",
+     "tooltip": "Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Results are suitable for overlaying on smFRET 2D histograms in ndX.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Kappa2 Distribution",
+     "tooltip": "Calculate and visualise the k\u00b2 orientation-factor distribution for FRET using WIC, DWT, or isotropic models.",
      "icon": true,
      "enabled": true,
      "size": "small"
@@ -544,15 +600,45 @@
      "size": "small"
     },
     {
-     "text": "Spectra Downloader \u26a0\ufe0f",
-     "tooltip": "\u26a0\ufe0f  Spectra Downloader is EXPERIMENTAL and UNTESTED \u2014 results are not validated\nDownload, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources)",
+     "text": "PSF Calculator",
+     "tooltip": "Compute and view a 3-D point-spread function: scalar, Airy or vectorial Richards-Wolf, with the input polarization at the objective pupil.",
      "icon": true,
      "enabled": true,
      "size": "small"
     },
     {
-     "text": "Wizards",
-     "tooltip": "Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view.",
+     "text": "Phasor Calculator",
+     "tooltip": "Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "RICS Precision",
+     "tooltip": "Predict how precisely a raster scan (RICS) will measure a diffusion coefficient, and find the dwell time that measures it best \u2014 from the intended settings alone, before the microscope time is spent.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Spectra Downloader \u26a0\ufe0f",
+     "tooltip": "\u26a0\ufe0f  Spectra Downloader is EXPERIMENTAL and UNTESTED \u2014 results are not validated\nDownload, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources)",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Wizards": [
+    {
+     "text": "Anisotropy Wizard",
+     "tooltip": "Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Batch Analysis",
+     "tooltip": "Apply one pre-optimised template fit to many datasets or files in one pass and export the consolidated results (CSV, DOCX report, per-run ZIP).",
      "icon": true,
      "enabled": true,
      "size": "small"
@@ -590,15 +676,45 @@
      "size": "small"
     },
     {
-     "text": "Games",
-     "tooltip": "A collection of built-in games: Number Quest, Minesweeper, Tetris, Pong, and Breakout.",
+     "text": "MMFDB Admin",
+     "tooltip": "Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Games": [
+    {
+     "text": "Breakout",
+     "tooltip": "Classic Breakout game with progressive difficulty, multiple brick types, mouse/keyboard control, and particle effects.",
      "icon": true,
      "enabled": true,
      "size": "small"
     },
     {
-     "text": "MMFDB Admin",
-     "tooltip": "Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives.",
+     "text": "Minesweeper",
+     "tooltip": "A Minesweeper game with selectable playfield size and mine count.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Number Quest",
+     "tooltip": "A small number-guessing game.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Pong",
+     "tooltip": "Classic Pong game with CPU opponent, score tracking, and particle effects.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Tetris",
+     "tooltip": "Spectral Tetris with line clearing, score tracking, pause and restart.",
      "icon": true,
      "enabled": true,
      "size": "small"

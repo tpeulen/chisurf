@@ -60,7 +60,7 @@ moved into the plugins that own them, the shared window shell into `chisurf/emtk
 | `modelling/hydropro` | Structure:Computation:HydroPro | Graphical front-end to an external hydrodynamics tool, computing properties such as the translational diffusion coefficient from atomic or bead-model structures. |
 | `modelling/proteinmc` | (no manifest) | Protein Monte-Carlo helpers; a first-class module still lacking a `manifest.json` (see steering note). |
 | `fret_line` | Spectroscopy:FRET:FRET Line Generator | Compute static, dynamic, WLC and mixture FRET lines for overlay on smFRET 2D histograms in ndxplorer. |
-| `calculator/kappa2_dist` | Structure:FRET:Kappa2 Distribution | Compute and visualise the κ² orientation-factor distribution (WIC, DWT, isotropic models); lives under the calculators group and is embedded in the calculators hub. |
+| `calculator/kappa2_dist` | Tools:Calculators:Kappa2 Distribution | Compute and visualise the κ² orientation-factor distribution (WIC, DWT, isotropic models); lives under the calculators group and is embedded in the calculators hub. |
 
 Integration follows the standard plugin contract ([plugin system](/architecture/plugin-system.md),
 [Plugins target](/specs/plugins.md)): each plugin is discovered by its `manifest.json`,

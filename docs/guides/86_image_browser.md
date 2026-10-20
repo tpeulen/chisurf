@@ -25,8 +25,8 @@ browser is {doc}`24_scan_images`.
 ## 1. Open the tool
 
 It is the **Browser** step of **Spectroscopy → Imaging → Image Tools**, and **Next → Intensity** hands the picked
-image to the Intensity step. **Spectroscopy → Imaging → Tools → Image Browser**
-opens it as a window of its own. The window has two tabs: **Image browser** (the page it
+image to the Intensity step; Image Tools is its only ribbon entry (standalone:
+`python -m chisurf.emtk --plugin tttr_image_browser`). The window has two tabs: **Image browser** (the page it
 opens on) and **Detector setup**.
 
 ```{figure} figures/image_browser_mosaic.png

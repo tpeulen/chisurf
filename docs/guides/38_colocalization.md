@@ -17,7 +17,7 @@ registration check are explained in the concept page {ref}`concept-colocalizatio
 ## What it does
 
 The **Colocalization** tool (`img_coloc`, **Spectroscopy → Imaging → Image Tools →
-Colocalization**, after *Drift* — a channel registration error reads as
+Colocalization**; align first — a channel registration error reads as
 anti-correlation) takes one image with at least
 two channels and reports the standard colocalization coefficient set for a chosen
 channel pair — Pearson, Manders (overlap and split), Li's ICQ, Spearman — with
@@ -33,7 +33,7 @@ The **Setup** choice at the top lists the detector setups saved in *Setup: Chann
 Definition*. Picking one makes its named windows — `green`, `red`, `yellow`, … —
 the channels you choose from, so a micro-time-gated or PIE window is a "colour"
 like any other. The names appear immediately, before a file is loaded. Inside
-Image Tools the hub's **Setup** hands its windows over and the choice reads
+Image Tools the pipeline's **Setup** hands its windows over and the choice reads
 *— Image Tools setup —*.
 
 Keep *— raw detector channels —* to work with the routing channels stored in the

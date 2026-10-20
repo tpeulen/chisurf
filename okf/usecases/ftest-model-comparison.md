@@ -8,6 +8,8 @@ timestamp: '2026-07-27T00:00:00Z'
 
 # Use case: F-test — is the second lifetime justified?
 
+> Since 2026-10-20 there is no Calculators hub: open **Tools › Calculators › F-Test** directly. The walk below predates that.
+
 **Goal:** the question every lifetime fit raises. A one-exponential fit leaves
 structure in the residuals; a two-exponential fit always fits better, because
 more parameters always fit better. The user needs a number that says whether the

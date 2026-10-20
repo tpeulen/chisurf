@@ -189,21 +189,22 @@ def shot_donor_reference(s: ManualShell) -> None:
 
 
 def shot_calculators(s: ManualShell) -> None:
-    """Fig.25: the Calculators hub on F-test / chi2-max (a) and FRET / homoFRET (b)."""
+    """Fig.25: Tools › Calculators › F-Test (a) and FRET Calculator (b), each in its own window."""
     from emtk.testing import Driver
 
-    from chisurf.plugins.calculator.hub.gui.app import make_app
+    from chisurf.plugins.calculator.fret_calculator.gui.app import make_app as fret_app
+    from chisurf.plugins.core.f_test.gui.app import make_app as f_test_app
 
     paths = []
-    for entry in ("f_test", "fret_calculator"):
-        hub = make_app()
-        hub.select(entry)
-        driver = Driver(hub, (1000, 640))
+    for entry, make in (("f_test", f_test_app), ("fret_calculator", fret_app)):
+        app = make()
+        driver = Driver(app, (1000, 640))
         driver.settle()
         driver.frame(6)
         path = M.OUT / f"_calc_{entry}.png"
         driver.screenshot(path)
         paths.append(path)
+        getattr(app, "close", lambda: None)()
     s.stack("manual_calculators.png", paths, ["a", "b"], vertical=False)
     for path in paths:
         path.unlink()

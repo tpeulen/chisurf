@@ -1,8 +1,8 @@
 """The native drift-correction tool against the Qt tool it replaces: numbers, every action and every error path.
 
 Hermetic: settings in a temporary folder, files in ``tmp_path``, no network (the database picker gets a stub client). References:
-(a) what the Qt window showed on its drifting TIFF and on the real photon stream (``okf/plugins/emtk-ports/img_drift/qt_values.json``,
-captured by ``scripts/capture_qt_populated.py`` before the port), (b) the Qt tool itself, constructed offscreen and run on the same files,
+(a) what the Qt window showed on its drifting TIFF and on the real photon stream (``data/qt_values.json``,
+captured before the port), (b) the Qt tool itself, constructed offscreen and run on the same files,
 and (c) the drift written into the test stack, which is known exactly.
 """
 
@@ -31,18 +31,18 @@ from chisurf.plugins.microscopy.img_drift.gui.app import ImgDriftApp, make_app
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-EVIDENCE = REPO / "okf/plugins/emtk-ports/img_drift"
-QT_VALUES = json.loads((EVIDENCE / "qt_values.json").read_text(encoding="utf-8"))
-QT_SHIFTS_CSV = (EVIDENCE / "qt_shifts.csv").read_text(encoding="utf-8")
+DATA = HERE / "data"
+QT_VALUES = json.loads((DATA / "qt_values.json").read_text(encoding="utf-8"))
+QT_SHIFTS_CSV = (DATA / "qt_shifts.csv").read_text(encoding="utf-8")
 QT_SPEC = json.loads((PLUGIN / "gui" / "drift.view.json").read_text(encoding="utf-8"))
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "drift_emtk.view.json").read_text(encoding="utf-8"))
 HT3 = REPO / "test/data/clsm/PQ_Olympus_MFIS.ht3"
 BIG = (1200, 800)
 
 _make = importlib.util.spec_from_file_location(
-    "drift_make_data", EVIDENCE / "scripts" / "make_data.py"
+    "drift_make_data", DATA / "make_data.py"
 )
-assert _make is not None and _make.loader is not None, "evidence make_data.py missing"
+assert _make is not None and _make.loader is not None, "data/make_data.py missing"
 _data = importlib.util.module_from_spec(_make)
 _make.loader.exec_module(_data)
 
@@ -851,11 +851,14 @@ def test_settings_round_trip_and_invalid_values_are_ignored(app, drv):
     assert "filename" not in saved and "channel" not in saved
 
 
-def test_the_imaging_hub_contract(app):
-    app.apply_setup_settings({"detectors": {"a": {}}})
-    app.apply_pipeline_context({"source": "/x/y.tif"})
-    assert app.model.filename == ""  # the Qt drift tool adopted neither
-    app.model.pipeline_sink = lambda *a, **k: None
+def test_a_standalone_tool_takes_no_imaging_pipeline_context(app):
+    """Drift Correction is its own ribbon entry, not an Image Tools step: it reads its own stack.
+
+    The Qt drift tool adopted neither the shared detector setup nor the pipeline's source,
+    so the hub's adapters were no-ops; with the tool out of the pipeline they are gone.
+    """
+    for hook in ("apply_setup_settings", "apply_pipeline_context", "apply_calibration"):
+        assert not hasattr(app.model, hook), hook
     app.set_frame_request_callback(lambda: None)
     app.close()
 

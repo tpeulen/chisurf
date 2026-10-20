@@ -1,17 +1,16 @@
 {
   "id": "tetris",
   "version": "2.0.0",
-  "display_name": "Tools:Miscellaneous:Games:Tetris",
-  "description": "Spectral Tetris with line clearing, score tracking, pause and restart; contained in the Games hub.",
+  "display_name": "Tools:Games:Tetris",
+  "description": "Spectral Tetris with line clearing, score tracking, pause and restart.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
   "categories": [
     "Tools",
-    "Miscellaneous",
     "Games"
   ],
-  "icon": "\ud83e\udde9",
+  "icon": "🧩",
   "state_namespace": "tetris_game",
   "statefulness": {
     "enabled": true,
@@ -33,10 +32,5 @@
   "rpc_methods": [],
   "events": [],
   "dependencies": {},
-  "menu_hidden": true,
-  "deprecated": false,
-  "demo": true,
-  "requires": {
-    "games": "*"
-  }
+  "deprecated": false
 }

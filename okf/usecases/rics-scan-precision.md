@@ -8,6 +8,8 @@ timestamp: '2026-07-28T00:00:00Z'
 
 # Use case: planning a raster scan — which dwell time measures D best?
 
+> Since 2026-10-20 there is no Calculators hub: open **Tools › Calculators › RICS Precision** directly. The walk below predates that.
+
 **Goal:** the one workflow that happens *before* the microscope time is spent.
 A raster-image-correlation (RICS) measurement has a scan speed, and the choice
 is not free: scan too fast and the molecule has barely moved between

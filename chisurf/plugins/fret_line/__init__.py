@@ -19,4 +19,4 @@ _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
     name = _manifest.display_name
 else:
-    name = "FRET:FRET Line Generator"
+    name = "Tools:Calculators:FRET Line Generator"

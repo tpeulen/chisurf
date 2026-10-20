@@ -15,12 +15,13 @@ one — see {ref}`concept-drift-correction`.
 
 ## Open the tool
 
-It lives in **Spectroscopy → Imaging → Image Tools**, as the **Drift** step between
-*Browser* and *1. Intensity* — deliberately, because every per-pixel map in the
-numbered pipeline below it is built from frames that must already be aligned.
-Correct the drift first, then walk the pipeline with **Next ▶**.
+**Spectroscopy → Imaging → Drift Correction**: a window of its own, not a step of
+the Image Tools pipeline — it reads its own stack and takes none of the pipeline's
+shared setup or source. Use it before the per-pixel maps, because every map is
+built from frames that must already be aligned: correct the stack, **Export stack**,
+and continue on the corrected file.
 
-Image Tools is its only menu entry. You can drop a file onto the window. It accepts
+You can drop a file onto the window. It accepts
 
 * **TIFF stacks** (and anything else the image reader handles), and
 * **photon streams** — PTU, HT3, SPC — reconstructed into a confocal-scan image.

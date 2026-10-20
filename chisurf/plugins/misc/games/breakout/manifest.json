@@ -1,17 +1,16 @@
 {
   "id": "breakout",
   "version": "2.0.0",
-  "display_name": "Tools:Miscellaneous:Games:Breakout",
-  "description": "Classic Breakout game with progressive difficulty, multiple brick types, mouse/keyboard control, and particle effects; contained in the Games hub.",
+  "display_name": "Tools:Games:Breakout",
+  "description": "Classic Breakout game with progressive difficulty, multiple brick types, mouse/keyboard control, and particle effects.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
   "categories": [
     "Tools",
-    "Miscellaneous",
     "Games"
   ],
-  "icon": "\ud83e\uddf1",
+  "icon": "🧱",
   "state_namespace": "breakout_game",
   "statefulness": {
     "enabled": true,
@@ -33,10 +32,5 @@
   "rpc_methods": [],
   "events": [],
   "dependencies": {},
-  "menu_hidden": true,
-  "deprecated": false,
-  "demo": true,
-  "requires": {
-    "games": "*"
-  }
+  "deprecated": false
 }

@@ -366,9 +366,9 @@ fit the pixels that matter.
 
 ## Finding the imaging tools
 
-The imaging tools sit under **Spectroscopy → Imaging** (lifetime fitting under
-*Imaging → Lifetime*); the **Image Tools** hub gathers them in one window
-({doc}`/guides/98_imaging_tools`). Building the image, painting masks and the
+The imaging tools sit under **Spectroscopy → Imaging**: **Image Tools** gathers the pipeline steps that share one
+detector setup, source, imaging HDF5 and calibration in one window ({doc}`/guides/98_imaging_tools`); Drift Correction,
+Particle Tracking, PSF Determination and CLSM Generator are buttons of their own. Building the image, painting masks and the
 per-pixel analyses are in the [scan-image workflow](../guides/24_scan_images.md).
 
 Tools: CLSM-Draw (`chisurf/plugins/microscopy/clsm/`), Intensity (`chisurf/plugins/microscopy/img_pixel_intensity/`), Image Browser (`chisurf/plugins/tttr/tttr_image_browser/`), the shared per-pixel tool shell (Imaging Common) (`chisurf/plugins/microscopy/imaging_common/`).

@@ -116,6 +116,17 @@ class Child(ImApp):
 
 ROLES = [row[0] for row in PANELS]
 
+#: Qt-list tools that left the pipeline window on purpose (2026-10-20): each reads its own input and takes none
+#: of the shared context, so in the emtk shell it is a Spectroscopy › Imaging ribbon entry and a dock of its own.
+SPLIT_OUT = {
+    "drift": ("microscopy/img_drift", "Spectroscopy:Imaging:Drift Correction"),
+    "tracking": ("microscopy/img_tracking", "Spectroscopy:Imaging:Particle Tracking"),
+    "psf": ("microscopy/psf_determination", "Spectroscopy:Imaging:PSF Determination"),
+    "clsm_generator": ("microscopy/clsm_generator", "Spectroscopy:Imaging:CLSM Generator"),
+}
+#: Pipeline tools whose description named a tool that left (where it "sits after Drift"): reworded on purpose.
+REWORDED = {"frc", "flow", "coloc"}
+
 
 def fake_hub(**kw):
     return ImagingToolsApp(client=Client(), factories={r: Child for r in ROLES}, **kw)
@@ -152,12 +163,29 @@ def qt_module():
 
 
 def test_the_tool_list_equals_the_qt_lists_names_order_roles_and_descriptions(qt_module):
-    qt = [p for p in qt_module.IMAGING_PANELS if not p.get("separator")]
+    qt = [
+        p for p in qt_module.IMAGING_PANELS if not p.get("separator") and p["role"] not in SPLIT_OUT
+    ]
     assert [p["role"] for p in qt] == ROLES
     assert [p["name"] for p in qt] == [row[2] for row in PANELS]
-    assert [p["description"] for p in qt] == [
-        row[3] for row in PANELS
+    kept = [row for row in PANELS if row[0] not in REWORDED]
+    assert [p["description"] for p in qt if p["role"] not in REWORDED] == [
+        row[3] for row in kept
     ]  # the tooltip and header texts, word for word
+
+
+@pytest.mark.parametrize("role", sorted(SPLIT_OUT))
+def test_a_tool_that_left_the_list_is_its_own_ribbon_entry(qt_module, role):
+    """Nothing is lost: every Qt-list tool not in the pipeline window has a ribbon button of its own."""
+    import json
+
+    folder, address = SPLIT_OUT[role]
+    assert role in {p["role"] for p in qt_module.IMAGING_PANELS}
+    assert role not in ROLES
+    manifest = json.loads((HERE.parents[2] / folder / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["display_name"] == address
+    assert not manifest.get("menu_hidden")
+    assert manifest["entrypoints"]["emtk"]
 
 
 def test_the_separator_sits_where_the_qt_list_has_it(qt_module):
@@ -169,7 +197,8 @@ def test_the_separator_sits_where_the_qt_list_has_it(qt_module):
 
 
 def test_the_pipeline_order_and_the_analysis_roles_equal_the_qt_tools(qt_module):
-    assert ImagingToolsApp.PIPELINE_ORDER == qt_module.ImagingToolsTool.PIPELINE_ORDER
+    qt_order = tuple(r for r in qt_module.ImagingToolsTool.PIPELINE_ORDER if r not in SPLIT_OUT)
+    assert ImagingToolsApp.PIPELINE_ORDER == qt_order
     assert ImagingToolsApp.ANALYSIS_ROLES == qt_module.ImagingToolsTool.ANALYSIS_ROLES
 
 
@@ -212,7 +241,11 @@ def test_lazy_context_navigation_snapshot_and_state():
 def test_the_stepper_walks_the_list_order_like_the_qt_shell(qt_module):
     app = fake_hub()
     roles = app.list_roles()
-    qt_roles = [p["role"] for p in qt_module.IMAGING_PANELS if not p.get("separator")]
+    qt_roles = [
+        p["role"]
+        for p in qt_module.IMAGING_PANELS
+        if not p.get("separator") and p["role"] not in SPLIT_OUT
+    ]
     assert roles == qt_roles
     app.goto_role("setup")
     visited = ["setup"]
@@ -256,10 +289,10 @@ def test_a_child_that_fails_to_build_reports_the_error_and_the_next_one_still_op
     def broken(**kwargs):
         raise RuntimeError("boom in the factory")
 
-    app = ImagingToolsApp(client=Client(), factories={"browser": broken, "drift": Child})
+    app = ImagingToolsApp(client=Client(), factories={"browser": broken, "frc": Child})
     assert not app.goto_role("browser") and "boom in the factory" in app.error
     assert "boom in the factory" in " ".join(draw(app).strings)
-    assert app.goto_role("drift") and app.error == ""
+    assert app.goto_role("frc") and app.error == ""
     app.close()
 
 

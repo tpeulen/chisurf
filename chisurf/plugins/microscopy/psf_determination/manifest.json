@@ -8,7 +8,8 @@
   ],
   "categories": [
     "Spectroscopy",
-    "Imaging"
+    "Imaging",
+    "Optics"
   ],
   "icon": "💠",
   "state_namespace": "psf_determination",
@@ -81,6 +82,5 @@
       "topic": "psf_determination.state.*",
       "description": "State patch events"
     }
-  ],
-  "menu_hidden": true
+  ]
 }

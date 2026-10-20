@@ -1,8 +1,8 @@
 """The native particle-tracking tool against the Qt tool it replaces: numbers, every action and every error path.
 
 Hermetic: settings in a temporary folder, files in ``tmp_path``, no network. The reference is (a) the numbers the
-Qt window showed on its own simulated movie (``okf/plugins/emtk-ports/img_tracking/qt_values.json``, captured by
-``scripts/capture_qt_populated.py`` before the port), (b) the Qt tool itself, constructed offscreen and run on the
+Qt window showed on its own simulated movie (``data/qt_values.json``, captured
+before the port), (b) the Qt tool itself, constructed offscreen and run on the
 same data, and (c) a written-out run of the core functions that does not go through the shared view model.
 """
 
@@ -24,10 +24,9 @@ from chisurf.plugins.microscopy.img_tracking.gui.app import ImgTrackingApp, make
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
-REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-EVIDENCE = REPO / "okf/plugins/emtk-ports/img_tracking"
-QT_VALUES = json.loads((EVIDENCE / "qt_values.json").read_text(encoding="utf-8"))
-QT_CSV = (EVIDENCE / "qt_exported.csv").read_text(encoding="utf-8")
+DATA = HERE / "data"
+QT_VALUES = json.loads((DATA / "qt_values.json").read_text(encoding="utf-8"))
+QT_CSV = (DATA / "qt_exported.csv").read_text(encoding="utf-8")
 QT_SPEC = json.loads((PLUGIN / "gui" / "tracking.view.json").read_text(encoding="utf-8"))
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "tracking_emtk.view.json").read_text(encoding="utf-8"))
 
@@ -941,12 +940,14 @@ def test_settings_round_trip_and_invalid_values_are_ignored(app, drv):
     assert "filename" not in saved  # the data is never persisted
 
 
-def test_the_imaging_hub_contract(app, drv):
-    app.apply_setup_settings({"detectors": {"a": {}}})
-    app.apply_pipeline_context({"source": "/x/y.tif"})
-    assert app.model.filename == ""  # the Qt tool adopted neither
-    sink = []
-    app.model.pipeline_sink = sink.append  # the hub assigns this attribute
+def test_a_standalone_tool_takes_no_imaging_pipeline_context(app, drv):
+    """Particle Tracking is its own ribbon entry, not an Image Tools step: it reads its own stack.
+
+    The Qt tracking tool adopted neither the shared detector setup nor the pipeline's source,
+    so the hub's adapters were no-ops; with the tool out of the pipeline they are gone.
+    """
+    for hook in ("apply_setup_settings", "apply_pipeline_context", "apply_calibration"):
+        assert not hasattr(app.model, hook), hook
     app.set_frame_request_callback(lambda: None)
     app.close()
 

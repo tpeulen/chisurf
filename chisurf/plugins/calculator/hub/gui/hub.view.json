@@ -1,8 +1,0 @@
-{
-  "_comment": "Initial host dimensions; child forms and responsive hub regions are declared separately.",
-  "window": {
-    "width": 1100,
-    "height": 720
-  },
-  "sections": []
-}

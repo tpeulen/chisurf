@@ -43,11 +43,15 @@ def test_results_html_lists_reference_points():
     assert "MHz" in html and "<table>" in html
 
 
-def test_registered_in_hub():
-    from chisurf.plugins.calculator.hub.core.registry import default_calculators
+def test_is_a_button_of_tools_calculators():
+    import json
+    from pathlib import Path
 
-    ids = {e.id for e in default_calculators()}
-    assert "phasor" in ids
+    from chisurf.plugins.calculator import phasor_calculator
+
+    manifest = json.loads((Path(phasor_calculator.__file__).parent / "manifest.json").read_text())
+    assert manifest["display_name"] == "Tools:Calculators:Phasor Calculator"
+    assert not manifest.get("menu_hidden")
 
 
 def test_view_spec_loads():

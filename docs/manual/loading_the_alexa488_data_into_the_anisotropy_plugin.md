@@ -1,28 +1,22 @@
 ---
 type: Manual Page
 title: Loading the Alexa488 data into the anisotropy plugin
-description: The anisotropy wizard is opened from the ribbon (Tools → Calculators → Wizards, then Anisotropy) and walks from the VV/VH files to the fit windows.
+description: The anisotropy wizard is opened from the ribbon (Tools → Wizards → Anisotropy Wizard) and walks from the VV/VH files to the fit windows.
 tags: [manual, anisotropy, plugins, fitting]
 ---
 
 # Loading the Alexa488 data into the anisotropy plugin
 
-The anisotropy wizard is opened from the ribbon: **Tools → Calculators → Wizards**, then the
-**Anisotropy** entry of the hub. (The wizard reads the files with its own reader settings, set in its
-*Data* step.)
+The anisotropy wizard is opened from the ribbon: **Tools → Wizards → Anisotropy Wizard**; it opens
+in a window of its own, on its *Welcome* step. (The wizard reads the files with its own reader
+settings, set in its *Data* step.)
 
 ```{image} figures/anisotropy_ribbon_tools.png
 :align: center
 ```
 
-The *Tools* tab of the ribbon; **Wizards** is in the *Calculators* group.
-
-```{image} figures/anisotropy_wizards_hub.png
-:align: center
-```
-
-The wizards hub with **Anisotropy** selected: the wizard's steps on the left, the current step on the
-right, **Back** / **Next** at the bottom.
+The *Tools* tab of the ribbon; **Anisotropy Wizard** is in the *Wizards* group. The wizard's steps
+are listed on the left, the current step on the right, **Back** / **Next** at the bottom.
 
 Load the data in the *Data* step: type the paths, use **Browse**, or drop the files on the window. For
 a file that holds both polarisations (VV followed by VH), tick *Two stacked VV/VH files* -- one IRF file

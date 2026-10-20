@@ -1,14 +1,15 @@
 """A demo plugin ships with the application but does not compete for menu space.
 
-The built-in games (`chisurf/plugins/misc/games`) sat in the generated menus
-beside the analysis tools with nothing distinguishing them, which is the open
-half of INC-07 ("gate demo plugins behind a flag"). A plugin now declares
+INC-07 asked to "gate demo plugins behind a flag": a plugin declares
 ``"demo": true`` in its manifest, and plugin discovery — the one place every
 menu host reads — turns that into ``menu_hidden`` unless the user opts in with
 ``plugins.show_demo_plugins``.
 
 These tests pin both halves: the flag is declared where a host can read it, and
 the gate is applied at discovery rather than in each of the four menu builders.
+The built-in games were the gate's first users while the Games hub listed them;
+since the hub went (every game its own Tools › Games button), they are not
+demo-gated — a gated game with no hub is a game nobody can find.
 """
 
 from __future__ import annotations
@@ -26,12 +27,7 @@ GAMES_ROOT = PLUGIN_ROOT / "misc" / "games"
 
 
 def _game_manifests() -> list[pathlib.Path]:
-    """Return every game's manifest.
-
-    Not the hub's: the Games hub stays in the menus so the games can be found,
-    and each game inside it is the demo (the games plugin's own
-    test_manifest.py pins the hub side).
-    """
+    """Return every game's manifest (the games package itself has none)."""
     return sorted(p for p in GAMES_ROOT.rglob("manifest.json") if p.parent != GAMES_ROOT)
 
 
@@ -49,16 +45,16 @@ def test_demo_round_trips_through_the_manifest():
     assert PluginManifest.from_dict({"id": "x", "version": "1"}).demo is False
 
 
-def test_every_game_declares_itself_a_demo():
-    """The games are the demos; a game that forgets the flag is back in the menus."""
+def test_no_shipped_game_is_demo_gated():
+    """With no hub in front of them, a demo-gated game is unreachable by default (BUGS 2026-08-08)."""
     manifests = _game_manifests()
-    assert manifests, "no games found — did the demo plugins move?"
-    undeclared = [
+    assert manifests, "no games found — did the games move?"
+    gated = [
         str(path.relative_to(REPO_ROOT))
         for path in manifests
-        if not (load_manifest(path) or PluginManifest(id="", version="")).demo
+        if (load_manifest(path) or PluginManifest(id="", version="")).demo
     ]
-    assert not undeclared, f"these demo plugins do not declare 'demo': {undeclared}"
+    assert not gated, f"these games would vanish from the default ribbon: {gated}"
 
 
 def test_game_manifests_stay_valid_json_and_schema():
@@ -85,22 +81,8 @@ def _records(monkeypatch: pytest.MonkeyPatch, *, show_demos: bool) -> dict[str, 
     return {str(record["package_dir"]): record for record in plugins._iter_plugins_uncached()}
 
 
-def test_a_demo_is_hidden_from_every_menu_by_default(monkeypatch: pytest.MonkeyPatch):
-    """Discovery, not the four menu builders, is what keeps a demo out."""
-    records = _records(monkeypatch, show_demos=False)
-    demos = [record for record in records.values() if record["demo"]]
-    assert demos, "plugin discovery reported no demo plugins at all"
-    visible = [record["plugin_name"] for record in demos if not record["menu_hidden"]]
-    assert not visible, f"demo plugins reachable from the menus by default: {visible}"
-
-
-def test_opting_in_brings_a_demo_back(monkeypatch: pytest.MonkeyPatch, tmp_path):
-    """The setting must actually change the answer, not only exist.
-
-    Every shipped game is also ``menu_hidden`` in its own right (the hub is
-    how they are reached), so the opt-in cannot unhide one; a demo plugin
-    that is not hidden otherwise is made here.
-    """
+def _probe(tmp_path, monkeypatch: pytest.MonkeyPatch) -> str:
+    """A demo plugin that is not hidden otherwise, on the plugin path; its record key."""
     import chisurf.plugins as plugins
 
     package = tmp_path / "gating_probe_demo"
@@ -111,8 +93,22 @@ def test_opting_in_brings_a_demo_back(monkeypatch: pytest.MonkeyPatch, tmp_path)
         encoding="utf-8",
     )
     monkeypatch.setattr(plugins, "__path__", [*plugins.__path__, str(tmp_path)])
+    return str(package.resolve())
 
-    key = str(package.resolve())
+
+def test_a_demo_is_hidden_from_every_menu_by_default(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """Discovery, not the four menu builders, is what keeps a demo out."""
+    key = _probe(tmp_path, monkeypatch)
+    records = _records(monkeypatch, show_demos=False)
+    demos = [record for record in records.values() if record["demo"]]
+    assert [str(record["package_dir"]) for record in demos] == [key]
+    visible = [record["plugin_name"] for record in demos if not record["menu_hidden"]]
+    assert not visible, f"demo plugins reachable from the menus by default: {visible}"
+
+
+def test_opting_in_brings_a_demo_back(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """The setting must actually change the answer, not only exist."""
+    key = _probe(tmp_path, monkeypatch)
     assert _records(monkeypatch, show_demos=False)[key]["menu_hidden"] is True
     shown = _records(monkeypatch, show_demos=True)[key]
     assert shown["demo"] is True

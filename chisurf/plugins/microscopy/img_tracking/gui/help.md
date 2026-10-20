@@ -117,4 +117,4 @@ Set them and `D` comes out in µm²/s and `σ` in µm. Nothing else changes.
 * **Gap closing asserts that nothing else could have been there.** Keep
   `Max gap` small and check what changing it does to `D`.
 * A **drifting sample** looks like directed motion. Correct drift first
-  (Image Tools → Drift) — this tool cannot tell the two apart.
+  (Spectroscopy › Imaging › Drift Correction) — this tool cannot tell the two apart.

@@ -16,7 +16,7 @@ from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RETURN, KEY
 from chisurf.plugins.emtk_layout import sound_toggle, window_size
 from chisurf.plugins.misc.games._audio import AUTO, resolve_audio
 from chisurf.plugins.misc.games._base import GameApp
-from chisurf.plugins.misc.games.gui.keys import blocked
+from chisurf.plugins.misc.games._keys import blocked
 
 from ..core.game import DIFFICULTIES, GameStatus, MinesweeperGame
 from .translations import install_translations

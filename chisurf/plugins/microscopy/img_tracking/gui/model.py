@@ -143,9 +143,3 @@ class TrackingModel(EmtkModelMixin, ImgTrackingViewModel):
             for r in self.result.tracks_table()[:500]
         ]
 
-    # -- the imaging hub's adapters ------------------------------------------- #
-    def apply_setup_settings(self, payload: dict) -> None:
-        """Tracking has no detector setup: accepted and ignored, as the Qt tool did."""
-
-    def apply_pipeline_context(self, payload: dict) -> None:
-        """The hub's current source: the Qt tracking tool did not adopt it either."""

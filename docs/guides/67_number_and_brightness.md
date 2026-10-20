@@ -15,7 +15,7 @@ The moments, the $-1$, analog detectors, cross N&B and what bleaching does are i
 
 ## What it is
 
-**Spectroscopy → Imaging → Number & Brightness** computes, for every
+**2. Number & Brightness**, a step of **Spectroscopy → Imaging → Image Tools**, computes, for every
 detector window of the imaging setup, the per-pixel apparent brightness $B$ and
 number $N$, the molecular brightness $\varepsilon$ and the molecule number $n$
 of a confocal photon stream with many frames. The maps go to the imaging HDF5

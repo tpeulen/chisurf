@@ -12,7 +12,7 @@ photon files, the micro-time windows the analysis uses, the background counts to
 IRF to the data. **Phasor-FLIM** (step 5) and **Pixel-wise MLE** (step 6) use this calibration; without it they use the
 raw data. The step is optional: skip it in the imaging workflow to calibrate nothing.
 
-The calibration is a step of the [Imaging Tools hub](98_imaging_tools.md) (**4. IRF & BG**), and the window also opens
+The calibration is a step of the [Image Tools pipeline](98_imaging_tools.md) (**4. IRF & BG**), and the window also opens
 on its own (**Spectroscopy → Imaging → IRF & BG**).
 
 ## 1. Choose the photons and the detector
@@ -26,7 +26,7 @@ parallel and channel 8 perpendicular). Left: the toolbar, the source, the **Cali
 the decay and the IRF on a log axis with the draggable windows tagged **Fit**, **IRF** and **BG**.
 ```
 
-1. **Open TTTR…** chooses the source photon file whose decay is shown. In the hub the source is the one chosen in
+1. **Open TTTR…** chooses the source photon file whose decay is shown. In Image Tools the source is the one chosen in
    **Browser**, and the detectors are the ones defined in **Setup**; the window says *Configure detector windows in
    Imaging Tools* until a detector exists.
 2. **Detector** picks the detector to calibrate; every setting below is kept per detector.
@@ -56,7 +56,7 @@ sum; the plot scales each normalised IRF to the peak of the decay so the two can
 
 **Apply →** publishes every detector's IRF files, windows, shifts and backgrounds to Phasor-FLIM and Pixel-wise MLE as a
 snapshot: edits you make afterwards do not reach a calibration that was already applied until you apply again. An empty
-window or a negative background is refused, and the reason appears in the window. In the hub, **Next ▶** applies and goes
+window or a negative background is refused, and the reason appears in the window. In Image Tools, **Next ▶** applies and goes
 on to the next step.
 
 ## 5. Help and the guided tour

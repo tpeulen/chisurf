@@ -102,8 +102,8 @@ def module_owners(root: pathlib.Path | None = None) -> dict[str, str]:
     """Map each plugin's dotted module path to its canonical manifest id.
 
     The map is keyed by module path rather than directory because that is what
-    both imports and entrypoint strings carry. Nine plugins have a directory
-    name that differs from their id (``calculator/hub`` is ``calculators``,
+    both imports and entrypoint strings carry. Eight plugins have a directory
+    name that differs from their id (``calculator/fcs_saturation_calc`` is ``fcs_saturation``,
     ``modelling/fret`` is ``fret_docking``, ``fcs/flc_2d`` is ``flc-2d``), so
     inferring the id from the path would mislabel them.
 
@@ -139,8 +139,8 @@ def owner_of_module(dotted: str, owners: dict[str, str]) -> str | None:
     """The id of the plugin owning *dotted*, by longest-prefix match.
 
     Longest-prefix rather than first match, because plugins nest: a module under
-    ``chisurf.plugins.misc.games.breakout`` belongs to ``breakout``, not to the
-    ``games`` hub that contains it.
+    ``chisurf.plugins.burst.burst_analysis.steps`` belongs to the innermost
+    plugin whose folder holds it, not to a plugin folder that contains that one.
     """
     best: str | None = None
     best_len = -1

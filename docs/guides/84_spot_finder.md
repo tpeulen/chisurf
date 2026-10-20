@@ -22,14 +22,15 @@ a centroid's precision are in {ref}`concept-particle-tracking`
 
 **Spectroscopy → Imaging → Image Tools**, then **Spot Finder** in the left list, between
 *CLSM Draw* and *Region MLE*. The Spot Finder has no menu entry of its own
-(its manifest is `menu_hidden`); the Image Tools hub is the only way in from
+(its manifest is `menu_hidden`): it is a step of the Image Tools pipeline,
+which hands it the Setup's detectors, and Image Tools is the only way in from
 the menu bar.
 
 ```{figure} figures/spot_finder_hub.png
 :name: fig-spot-finder-hub
 :width: 100%
 
-The Spot Finder in the Image Tools hub with its built-in known-field demo
+The Spot Finder in the Image Tools window with its built-in known-field demo
 detected (**Load example**, then **Detect**): **Detection and analysis
 regions** holds the files, workflow, detector settings and the action buttons;
 **Regions** shows what was found (the selected region's measurements and the
@@ -165,7 +166,7 @@ the size of the Thompson estimate. **Add picks** adds them only where nothing wa
 
 **Detect** writes an `image_data` label raster and a `region_table` joined
 by `label` into each measurement's container, one row per region.
-**Region MLE**, the next entry in the hub, fits a lifetime per region from its
+**Region MLE**, the next entry in the Image Tools list, fits a lifetime per region from its
 pixels' photons. The table can also be exported, or read by any tool that reads
 the region contract.
 

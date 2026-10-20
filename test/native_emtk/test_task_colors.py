@@ -60,7 +60,7 @@ def test_every_shipped_plugin_resolves_to_a_task_colour():
         f"plugins without a task colour (add their group to task_colors.yaml): {missing}"
     )
     assert known["help"] == "documentation"
-    assert known["wizards"] == "wizards"
+    assert known["batch_analysis"] == known["tr_anisotropy"] == "wizards"  # the Tools › Wizards group
     assert known["imaging_tools"] == "imaging"
     assert known["hmm"] == "kinetics" and known["lltf"] == "decay"
 
@@ -72,7 +72,7 @@ def test_the_shells_own_docks_have_their_category():
     assert tc.dock_category("console", {}) == "console"
     assert tc.dock_category("log", {}) == "console"
     assert tc.dock_category("tools", {}) is None
-    assert tc.dock_category("plugin.wizards", {"wizards": "wizards"}) == "wizards"
+    assert tc.dock_category("plugin.batch_analysis", {"batch_analysis": "wizards"}) == "wizards"
 
 
 @pytest.mark.parametrize("dark", [True, False], ids=["dark", "light"])
@@ -112,7 +112,7 @@ def test_a_hosted_dock_tab_is_drawn_in_its_category_colour():
     )
     driver = Driver(shell, (1200, 800))
     driver.frame(2)
-    for plugin_id in ("help", "wizards"):
+    for plugin_id in ("help", "batch_analysis"):
         hosted = shell.open_plugin(plugin_id)
         end = time.monotonic() + 30
         while hosted.build is not None:
@@ -122,12 +122,13 @@ def test_a_hosted_dock_tab_is_drawn_in_its_category_colour():
     driver.frame(2)
     painter = driver.frame()
     wizards, docs = tc.accent("wizards").dark, tc.accent("documentation").dark
-    # Wizards opened last: its tab is on top in its fill and text, Documentation's muted with a line of blue.
-    assert shell.docks.window("plugin.wizards").accent == tc.accent("wizards")
-    tab = shell.docks.tab_rect("plugin.wizards")
+    # Batch Analysis (a wizard) opened last: its tab is on top in its fill and text, Documentation's muted with a
+    # line of blue.
+    assert shell.docks.window("plugin.batch_analysis").accent == tc.accent("wizards")
+    tab = shell.docks.tab_rect("plugin.batch_analysis")
     fills = [tuple(c)[:3] for x, y, w, h, c in painter.fills if (x, w) == (tab[0], tab[2])]
     assert wizards.fill[:3] in fills
-    title = [c for *_b, s, c, _bold in painter.texts if s == "Wizards"]
+    title = [c for *_b, s, c, _bold in painter.texts if s == "Batch Analysis"]
     assert any(tuple(c)[:3] == wizards.text[:3] for c in title)
     assert docs.fill[:3] in {tuple(c)[:3] for *_b, c in painter.fills}
     # The ribbon's Help group (Documentation) writes its caption in the blue ink.

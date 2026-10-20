@@ -36,10 +36,11 @@ from emtk_shot import render  # noqa: E402
 
 
 def ribbon_spectroscopy_imaging():
-    """The shell ribbon on its Spectroscopy tab, where Imaging holds Image Tools."""
-    from emtk.testing import Driver
-
+    """The shell ribbon on its Spectroscopy tab, with the Imaging group's menu open: Image Tools and the imaging tools
+    that are buttons of their own."""
     import time
+
+    from emtk.testing import Driver
 
     from chisurf.emtk.main_app import EmtkShellApp
     from chisurf.emtk.session import start_session
@@ -57,6 +58,9 @@ def ribbon_spectroscopy_imaging():
     driver.frame(3)
     app.ribbon.ribbon.current = "Spectroscopy"
     driver.frame(4)
+    if app.ribbon.ribbon.group_modes.get("Imaging") != "full":
+        driver.click("ribbon.group.Spectroscopy.Imaging")  # a collapsed group lists its buttons in a menu
+        driver.frame(3)
     render(app, "ribbon_spectroscopy_imaging.png", driver=driver)
     return app
 
@@ -80,7 +84,6 @@ def h2mm_state_decays():
     import tempfile
 
     from emtk.testing import Driver
-
     from emtk_shot import app_from, show_tabs, wait
 
     work = pathlib.Path(tempfile.mkdtemp(prefix="h2mm_sm_dna_"))

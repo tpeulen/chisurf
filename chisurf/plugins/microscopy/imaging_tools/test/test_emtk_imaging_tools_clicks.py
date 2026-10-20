@@ -3,8 +3,7 @@
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` at the rectangles the controls were drawn in (or at the
 text a list entry or a button drew) and host file drops reach the window; the assertions read the visible outcome (the
 selection, the header, the embedded tool's event log, the status line). The embedded tools are recording fakes (the real
-native children are drawn in the parity tests). The control -> test list is in
-``okf/plugins/emtk-ports/imaging_tools/REPORT.md``.
+native children are drawn in the parity tests).
 """
 
 from __future__ import annotations
@@ -99,8 +98,7 @@ def test_back_and_next_buttons_walk_the_list_and_are_greyed_at_its_ends(drv):
     roles = [r for r in ROLES]
     assert app.selected == "browser"
     drv.click("next")
-    assert app.selected == "drift"
-    drv.click("next")
+    assert app.selected == "frc"
     drv.click("next")
     assert app.selected == "flow"  # the list order, the Qt shell's (the pipeline order skips Flow)
     drv.click("previous")
@@ -108,9 +106,9 @@ def test_back_and_next_buttons_walk_the_list_and_are_greyed_at_its_ends(drv):
     click_entry(drv, "setup")
     drv.click("previous")
     assert app.selected == "setup"  # greyed at the top
-    click_entry(drv, "clsm_generator")
+    click_entry(drv, "molecule_mle")
     drv.click("next")
-    assert app.selected == "clsm_generator"  # greyed at the bottom
+    assert app.selected == "molecule_mle"  # greyed at the bottom
     click_entry(drv, "pixel_mle")
     drv.click("next")
     assert app.selected == "clsm_draw" and roles.index("clsm_draw") == roles.index("pixel_mle") + 1
@@ -155,7 +153,7 @@ def test_fast_forward_waits_for_a_running_step_and_a_second_press_stops_it(drv):
 
 def test_fast_forward_is_greyed_outside_the_numbered_pipeline_and_on_its_last_step(drv):
     app = drv.app
-    for role in ("clsm_draw", "spot_finder", "psf", "pixel_mle"):
+    for role in ("clsm_draw", "spot_finder", "molecule_mle", "pixel_mle"):
         click_entry(drv, role)
         drv.click("fast_forward")
         assert app._ff_queue == [], role
@@ -303,16 +301,16 @@ def test_every_guide_target_is_a_drawn_control_and_the_card_does_not_cover_it(dr
 def test_the_arrow_keys_step_the_list_selection_like_the_qt_list_unless_the_tool_takes_them(drv):
     app = drv.app
     drv.key(keys.KEY_DOWN)
-    assert app.selected == "drift"
+    assert app.selected == "frc"
     drv.key(keys.KEY_UP)
     assert app.selected == "browser"
     drv.key(keys.KEY_UP)
     assert app.selected == "setup"
     drv.key(keys.KEY_UP)
     assert app.selected == "setup"  # the top of the list
-    click_entry(drv, "clsm_generator")
+    click_entry(drv, "molecule_mle")
     drv.key(keys.KEY_DOWN)
-    assert app.selected == "clsm_generator"  # the bottom of the list
+    assert app.selected == "molecule_mle"  # the bottom of the list
 
     class Takes(Child):
         def key(self, key, text="", modifiers=0):

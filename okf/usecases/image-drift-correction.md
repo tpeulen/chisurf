@@ -8,6 +8,8 @@ timestamp: '2026-07-28T00:00:00Z'
 
 # Use case: inter-frame drift correction
 
+> Since 2026-10-20 Drift Correction is not an Image Tools step but its own **Spectroscopy › Imaging › Drift Correction** button (it takes none of the pipeline's shared context; RF-559 is resolved by that decision rather than by wiring). The walk below predates that.
+
 **Goal:** find out whether the sample moved during the acquisition, by how much,
 and remove it. For a plain intensity image drift is a cosmetic blur; for anything
 that correlates *frames* — RICS/ICS, number & brightness, a frame-lag FCS carpet

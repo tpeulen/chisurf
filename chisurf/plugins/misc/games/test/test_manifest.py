@@ -1,39 +1,41 @@
-"""Manifest validation for the Games hub."""
+"""The games are five plugins of their own, each a button of Tools › Games."""
 
+import importlib
 from pathlib import Path
+
+import pytest
 
 from chisurf.core.plugin import load_manifest
 
+GAMES = Path(__file__).parents[1]
+NAMES = {
+    "number_quest": "Number Quest",
+    "minesweeper": "Minesweeper",
+    "tetris": "Tetris",
+    "pong": "Pong",
+    "breakout": "Breakout",
+}
 
-def test_manifest_loads():
-    manifest = load_manifest(Path(__file__).parents[1] / "manifest.json")
 
-    assert manifest is not None
-    assert manifest.id == "games"
-    assert manifest.entrypoints.emtk == "chisurf.plugins.misc.games.gui.app:make_app"
-    assert not manifest.entrypoints.gui  # the Qt hub is retired; the Qt window hosts the emtk app
-    assert manifest.menu_hidden is False
+def test_the_package_is_not_a_plugin():
+    """There is no Games hub any more: the package only holds what the games share."""
+    assert not (GAMES / "manifest.json").exists()
+    assert not (GAMES / "gui").exists()
 
 
-def test_the_gamespace_survives_the_demo_flag():
+@pytest.mark.parametrize("game", sorted(NAMES))
+def test_every_game_is_its_own_ribbon_button(game):
     """The games must never silently vanish again (BUGS 2026-08-08).
 
-    The contract: the HUB stays in the menus regardless of
-    ``plugins.show_demo_plugins`` (a user who opens the Games hub has chosen
-    to play), every game is reachable inside it, and the individual games
-    stay OUT of the production menus (``demo`` and/or ``menu_hidden``). A
-    manifest edit that gates the hub as demo reads as "the games are gone"
-    to anyone who does not know the flag exists.
+    With the hub gone, a game that is ``menu_hidden`` or demo-gated is unreachable
+    from the GUI, which reads as "the games are gone" to anyone who does not know
+    the flag exists.
     """
-    from chisurf.plugins.misc.games.gui.registry import GAME_PANELS
-
-    hub = load_manifest(Path(__file__).parents[1] / "manifest.json")
-    assert hub.demo is False, "the hub must not be demo-gated"
-    assert hub.menu_hidden is False, "the hub must stay in the menus"
-
-    names = [p["name"] for p in GAME_PANELS]
-    assert names == ["Number Quest", "Minesweeper", "Tetris", "Pong", "Breakout"]
-
-    for game_dir in ("number_quest", "minesweeper", "tetris", "pong", "breakout"):
-        m = load_manifest(Path(__file__).parents[1] / game_dir / "manifest.json")
-        assert m.demo or m.menu_hidden, f"{game_dir} would appear in the production menus"
+    manifest = load_manifest(GAMES / game / "manifest.json")
+    assert manifest is not None
+    assert manifest.display_name == "Tools:Games:" + NAMES[game]
+    assert manifest.menu_hidden is False
+    assert manifest.demo is False
+    assert "games" not in (manifest.requires or {})
+    module, factory = manifest.entrypoints.emtk.split(":")
+    assert callable(getattr(importlib.import_module(module), factory))

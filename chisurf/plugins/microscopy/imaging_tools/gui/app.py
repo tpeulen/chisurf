@@ -1,4 +1,13 @@
-"""Native imaging coordinator; child factories are resolved from their manifests."""
+"""Native imaging pipeline: the steps that share one imaging context, in one window.
+
+The list holds the tools that consume the shared state -- the detector setup, the photon source the
+Browser picks, the imaging HDF5 the Intensity step creates and the IRF & BG calibration -- in pipeline
+order; the chosen step is built on first use (with that context applied) and drawn on the right. Child
+factories are resolved from their manifests.
+
+Tools that read their own input and take none of that context (Drift Correction, Particle Tracking, PSF
+Determination, CLSM Generator) are not listed here: each is its own Spectroscopy › Imaging ribbon entry.
+"""
 
 from __future__ import annotations
 
@@ -8,17 +17,19 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
-from emtk import im
+from emtk import im, keys
+from emtk.app import ImApp
 from emtk.i18n import tr
 
+from chisurf.emtk.background_build import BackgroundBuild, draw_opening
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.plugin_icons import entry_icon
-from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
 from chisurf.plugins.core.setup_channel_definition.gui.model import default_settings
+from chisurf.plugins.emtk_layout import window_size
 
 from .client import DetectorSetupClient
 
-# Every Qt route stays in the list; a tool without a native app is marked and says so when opened.
+#: The pipeline: every tool that consumes the shared setup, source, HDF5 or calibration, in order.
 PANELS = (
     (
         "setup",
@@ -33,34 +44,22 @@ PANELS = (
         "Browse TTTR image files and explore intensity maps.",
     ),
     (
-        "drift",
-        "microscopy/img_drift",
-        "Drift",
-        "Optional pre-processing: measure and remove inter-frame sample drift. Belongs before the numbered steps — every per-pixel map below is built from frames that must already be aligned. Photon streams are corrected photon by photon, so the steps below still see real photons.",
-    ),
-    (
         "frc",
         "microscopy/img_frc",
         "Resolution",
-        "How fine a detail this acquisition actually resolves, by Fourier ring correlation between two independent halves of it. Sits after Drift because drift blurs the image and so lowers the measured resolution — measure it on frames that are already aligned.",
+        "How fine a detail this acquisition actually resolves, by Fourier ring correlation between two independent halves of it, on the Browser's source and the Setup's detector windows. Drift blurs the image and so lowers the measured resolution: measure it on frames that are already aligned (Drift Correction).",
     ),
     (
         "flow",
         "microscopy/img_flow",
         "Flow",
-        "Map the velocity field: one arrow per tile, over the image. Sits beside Tracking because both measure motion rather than building a per-pixel map -- and after Drift for the same reason Tracking is, since a drifting stage is indistinguishable from a sample flowing the other way. Tracking follows individual particles; this reads a velocity from the correlations of everything at once, so it works where the labels are too dense to resolve as spots.",
-    ),
-    (
-        "tracking",
-        "microscopy/img_tracking",
-        "Tracking",
-        "Follow individual particles through the frames and fit their diffusion coefficient. Sits after Drift because a drifting sample looks exactly like directed motion, and outside the numbered steps because it measures motion rather than building a per-pixel map.",
+        "Map the velocity field of the Browser's source: one arrow per tile, over the image. It measures motion rather than building a per-pixel map, and a drifting stage is indistinguishable from a sample flowing the other way, so correct drift first (Drift Correction). Particle Tracking follows individual particles; this reads a velocity from the correlations of everything at once, so it works where the labels are too dense to resolve as spots.",
     ),
     (
         "coloc",
         "microscopy/img_coloc",
         "Colocalization",
-        "Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) with an interactive intensity scatter gate. Sits after Drift because a channel registration error reads as anti-correlation, and outside the numbered steps because it compares two channels rather than building a per-pixel map.",
+        "Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) of the Setup's detector windows, with an interactive intensity scatter gate. Outside the numbered steps because it compares two channels rather than building a per-pixel map; a channel registration error reads as anti-correlation, so align first.",
     ),
     (
         "pixel_intensity",
@@ -116,18 +115,6 @@ PANELS = (
         "Region MLE",
         "Lifetime MLE per region, on the regions the Spot Finder found.",
     ),
-    (
-        "psf",
-        "microscopy/psf_determination",
-        "PSF Determination",
-        "3D Gaussian PSF fitting and bead detection.",
-    ),
-    (
-        "clsm_generator",
-        "microscopy/clsm_generator",
-        "CLSM Generator",
-        "Generate a synthetic CLSM photon image from an intensity image and per-detector lifetime maps: a known answer to check the imaging pipeline against.",
-    ),
 )
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).parent
@@ -140,15 +127,13 @@ def label(text):
     return tr(text, context="ImagingToolsTool")
 
 
-class ImagingToolsApp(CalculatorHubApp):
-    """The imaging workflow list on the left, the chosen tool (built on first use) on the right, one shared context."""
+class ImagingToolsApp(ImApp):
+    """The imaging pipeline list on the left, the chosen step (built on first use) on the right, one shared context."""
 
-    #: The steps Next / Previous walk, in pipeline order (the Qt tool's order).
+    #: The steps a tool's own Next / Previous walk, in pipeline order (the Qt tool's order, less the tools that left).
     PIPELINE_ORDER = (
         "browser",
-        "drift",
         "frc",
-        "tracking",
         "pixel_intensity",
         "pixel_nb",
         "pixel_micro_time",
@@ -159,12 +144,19 @@ class ImagingToolsApp(CalculatorHubApp):
     ANALYSIS_ROLES = ("pixel_intensity", "pixel_nb", "pixel_micro_time", "pixel_phasor")
 
     def __init__(self, client=None, factories=None, mmfdb_db=None, mmfdb_session=None):
-        entries = [
+        self.window_size = window_size(
+            json.loads((HERE / "app.view.json").read_text(encoding="utf-8")), (1100, 720)
+        )
+        self.entries = [
             SimpleNamespace(id=r, label=name, icon=entry_icon({}, p), description=tip, alias=r)
             for r, p, name, tip in PANELS
         ]
-        super().__init__(entries=entries)
-        self.continuous = False
+        self.children = {}
+        self.error = ""
+        self.child_box = (220.0, 80.0, 700.0, 550.0)
+        self.item_rects: dict[str, tuple] = {}
+        self._painter = None
+        self._builder = BackgroundBuild(wake=self.request_frame)
         self.client = client or DetectorSetupClient()
         self.factories = factories
         self.selected = "browser"
@@ -197,6 +189,50 @@ class ImagingToolsApp(CalculatorHubApp):
             wait_for_controls=True,
             get_target_rect=lambda key: self.item_rects.get(key),
         )
+        super().__init__(self.render, continuous=False)
+
+    # -- the hosted step ------------------------------------------------------------------------- #
+    @property
+    def child(self):
+        """The app of the selected step (``None`` before it is built)."""
+        return self.children.get(self.selected)
+
+    @property
+    def building(self):
+        """Whether the shown step's app is being made in the background."""
+        return self._builder.busy
+
+    @property
+    def native_layouts(self):
+        """The dock layouts of the built steps, keyed ``role`` / ``role/name``, for the shell to persist."""
+        layouts = {}
+        for role, child in self.children.items():
+            for name, manager in getattr(child, "native_layouts", {}).items():
+                layouts[role + "/" + name] = manager
+            if hasattr(child, "docks"):
+                layouts[role] = child.docks
+        return layouts
+
+    def start_guide(self):
+        """Start the guided tour of the pipeline window."""
+        self.tour.start()
+
+    def show_help(self):
+        """Open the pipeline window's help."""
+        self.help_window.show()
+
+    def draw_opening(self):
+        """The "Opening" placeholder in the tool area, while the shown step is made."""
+        if self.building and self.child is None:
+            entry = next((e for e in self.entries if e.id == self.selected), None)
+            draw_opening(entry.label if entry else str(self.selected), self.child_box, "Hub opening")
+
+    def next_frame_in(self):
+        """The sooner of this window's and the shown step's next due frame."""
+        own = super().next_frame_in()
+        child = self.child.next_frame_in() if self.child is not None else None
+        due = [t for t in (own, child) if t is not None]
+        return min(due) if due else None
 
     # -- the tools ------------------------------------------------------------------------------- #
     def factory(self, role):
@@ -416,7 +452,13 @@ class ImagingToolsApp(CalculatorHubApp):
                 model.busy = job.busy
 
     def animating(self):
-        return bool(super().animating() or self._precompute_queue or self._precomputing)
+        return bool(
+            super().animating()
+            or self.building
+            or (self.child is not None and self.child.animating())
+            or self._precompute_queue
+            or self._precomputing
+        )
 
     def _precompute_tick(self):
         """Start the next queued step when no tool is computing."""
@@ -606,7 +648,7 @@ class ImagingToolsApp(CalculatorHubApp):
                 self.selected = selected
                 self.error = ""
             self.goto_role(self.selected)
-        super(CalculatorHubApp, self).draw(painter, x, y, w, h)
+        super().draw(painter, x, y, w, h)
         self._painter = None
 
     def visible_entries(self):
@@ -621,9 +663,14 @@ class ImagingToolsApp(CalculatorHubApp):
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((left, height), im.Cond.ALWAYS)
         if im.begin(label("Imaging Tools"), flags=im.WindowFlags.NO_RESIZE):
-            im.set_next_item_width(-1)
-            _, self.search = im.input_text("##search_tools", self.search, hint=label("Search..."))
-            im.set_item_tooltip(label("Filter imaging tools by name or description."))
+            # The steps scroll under the search field; Back/Next below keep their measured room.
+            _, self.search = im.begin_filtered_list(
+                "imaging_steps",
+                self.search,
+                label("Search..."),
+                stretch=True,
+                tooltip=label("Filter imaging tools by name or description."),
+            )
             self.item_rects["search"] = im.get_item_rect()
             first = last = None
             shown = self.visible_entries()
@@ -650,6 +697,7 @@ class ImagingToolsApp(CalculatorHubApp):
                 )
             if not shown:
                 im.text_wrapped(label("No tool matches the search."))
+            im.end_filtered_list()
             im.separator()
             roles = self.list_roles()
             at = roles.index(self.selected) if self.selected in roles else 0
@@ -745,6 +793,56 @@ class ImagingToolsApp(CalculatorHubApp):
         self.tour.draw(width, height)
         self._fast_forward_tick()
         self._precompute_tick()
+
+
+    # -- events: the shown step gets the pointer inside its box, every key, the wheel and file drops ------------- #
+    def _inside(self, x, y):
+        bx, by, bw, bh = self.child_box
+        return bx <= x < bx + bw and by <= y < by + bh
+
+    def pointer_press(self, x, y, button, modifiers=0, clicks=1):
+        super().pointer_press(x, y, button, modifiers, clicks)
+        if self.child and self._inside(x, y):
+            self.child.pointer_press(
+                x - self.child_box[0], y - self.child_box[1], button, modifiers, clicks
+            )
+
+    def pointer_release(self, x, y, button, modifiers=0):
+        super().pointer_release(x, y, button, modifiers)
+        if self.child:
+            self.child.pointer_release(x - self.child_box[0], y - self.child_box[1], button, modifiers)
+
+    def pointer_move(self, x, y, buttons=0, modifiers=0):
+        super().pointer_move(x, y, buttons, modifiers)
+        if self.child:
+            self.child.pointer_move(x - self.child_box[0], y - self.child_box[1], buttons, modifiers)
+
+    def wheel(self, x, y, steps, modifiers=0):
+        super().wheel(x, y, steps, modifiers)
+        if self.child and self._inside(x, y):
+            self.child.wheel(x - self.child_box[0], y - self.child_box[1], steps, modifiers)
+
+    def key(self, key, text="", modifiers=0):
+        own = super().key(key, text, modifiers)  # the window's own help and tour read Escape from its io
+        taken = self.child.key(key, text, modifiers) if self.child else own
+        if not taken and key in (keys.KEY_UP, keys.KEY_DOWN):
+            # Up and Down step the list while no field of the shown step wants them
+            if self.step_list(-1 if key == keys.KEY_UP else 1):
+                self.request_frame()
+                return True
+        return taken
+
+    def files_dropped(self, paths):
+        """Hand a dropped file to the shown step."""
+        for name in ("files_dropped", "on_files_dropped", "on_paths_dropped"):
+            handler = getattr(self.child, name, None) if self.child is not None else None
+            if callable(handler):
+                result = handler(list(paths))
+                return True if result is None else bool(result)
+        return False
+
+    on_files_dropped = files_dropped
+    on_paths_dropped = files_dropped
 
 
 def make_app(**kwargs):

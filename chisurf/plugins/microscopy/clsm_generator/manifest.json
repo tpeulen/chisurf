@@ -1,7 +1,7 @@
 {
   "id": "clsm_generator",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Imaging:Simulate:CLSM Generator",
+  "display_name": "Spectroscopy:Imaging:CLSM Generator",
   "description": "Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s).",
   "authors": [
     "Thomas-Otavio Peulen"
@@ -9,7 +9,7 @@
   "categories": [
     "Spectroscopy",
     "Imaging",
-    "Simulate"
+    "Simulation"
   ],
   "icon": "🧪",
   "state_namespace": "clsm_generator",
@@ -23,6 +23,7 @@
   "entrypoints": {
     "emtk": "chisurf.plugins.microscopy.clsm_generator.gui.app:make_app"
   },
-  "operation_types": ["measurement_import"],
-  "menu_hidden": true
+  "operation_types": [
+    "measurement_import"
+  ]
 }

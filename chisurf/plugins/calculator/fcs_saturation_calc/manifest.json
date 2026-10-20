@@ -1,15 +1,17 @@
 {
   "id": "fcs_saturation",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Correlation:FCS Saturation",
+  "display_name": "Tools:Calculators:FCS Saturation",
   "description": "FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5).",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": [
-    "Spectroscopy",
-    "Fluorescence Correlation Spectroscopy",
-    "Correlation"
+  "authors": [
+    "Thomas-Otavio Peulen"
   ],
-  "icon": "⚡",
+  "categories": [
+    "Tools",
+    "Calculators",
+    "Fluorescence Correlation Spectroscopy"
+  ],
+  "icon": "☀️",
   "entrypoints": {
     "emtk": "chisurf.plugins.calculator.fcs_saturation_calc.gui.app:make_app",
     "cli": "chisurf.plugins.calculator.fcs_saturation_calc.cli.main:cli",
@@ -26,6 +28,5 @@
     }
   ],
   "dependencies": {},
-  "deprecated": false,
-  "menu_hidden": true
+  "deprecated": false
 }

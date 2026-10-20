@@ -17,10 +17,11 @@ For the theory, and for what tracking genuinely cannot tell you, see
 
 ## Open the tool
 
-**Spectroscopy → Imaging → Image Tools → Tracking**: the **Tracking** panel of
-{doc}`Image Tools <24_scan_images>`, where it sits after *Drift* — a drifting
-sample looks exactly like directed motion, and no amount of tracking separates
-the two afterwards.
+**Spectroscopy → Imaging → Particle Tracking**: a window of its own (it reads its
+own movie, not the {doc}`Image Tools <98_imaging_tools>` pipeline's source). Correct
+drift first ({doc}`Drift Correction <43_drift_correction>`) — a drifting sample
+looks exactly like directed motion, and no amount of tracking separates the two
+afterwards.
 
 ```{figure} figures/tracking_workspace.png
 :name: fig-tracking-workspace

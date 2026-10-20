@@ -2,8 +2,9 @@
 
 A plugin's manifest ``display_name`` is its address, ``"Tab:Group:Name"``. The
 first segment is the ribbon tab, the last is the button, and everything between
-is the group. Hubs (Image Tools, Calculators, ...) are ordinary plugins with an
-address; the tools a hub hosts are ``menu_hidden`` and reach the user through it.
+is the group. A workflow that hosts steps (Image Tools, Burst Analysis, ...) is an
+ordinary plugin with an address; the steps it hosts are ``menu_hidden`` and reach
+the user through it.
 
 The ribbon builds its plugin tabs from :func:`plugin_layout`, and the layout test
 reads the same function, so the rules exist once.
@@ -47,7 +48,7 @@ GROUP_ORDER = {
         "Imaging › Simulate",
     ),
     "Structure": ("Modelling", "FRET", "Computation", "Trajectory"),
-    "Tools": ("Photon data", "Calculators", "Views", "System"),
+    "Tools": ("Photon data", "Calculators", "Wizards", "Views", "System", "Games"),
 }
 
 #: Tabs the ribbon builds itself; their ``Setup:`` and ``Help:`` plugins land in groups

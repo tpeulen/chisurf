@@ -52,7 +52,7 @@ Games already provide their own playable state, so these tours need no external
 input or separate demo data layer.
 
 The native host can preserve a saved round and window dimensions. Switching
-between games in the Games window retains the existing game instances; losing
+between game windows retains the existing game instances; losing
 focus releases held controls. These saved rounds are application preferences,
 not scientific provenance or analysis datasets.
 
@@ -65,8 +65,10 @@ for the per-game actions.
 
 ## Where it lives
 
-The hub is **Tools › System › Games** (`chisurf/plugins/misc/games/`; Number Quest, Minesweeper, Tetris, Pong, Breakout). Each game keeps its state
-while another is shown and mutes its sound whenever the window is not in front; the list, the keys and the Help, Restart
-and Guide controls are in the [Games workflow](../guides/95_games.md).
+Each game is a button of **Tools › Games** (`chisurf/plugins/misc/games/<game>/`; Number Quest, Minesweeper, Tetris,
+Pong, Breakout) and opens in a window of its own; the package `chisurf/plugins/misc/games/` only holds what they share
+(header row, audio, shortcut filter). A game keeps its state while another window is in front and mutes its sound
+whenever its window is not in front; the keys and the Help, Restart and Guide controls are in the
+[Games workflow](../guides/95_games.md).
 
 Tools: Number Quest (`chisurf/plugins/misc/games/number_quest/`), Minesweeper (`chisurf/plugins/misc/games/minesweeper/`), Tetris (`chisurf/plugins/misc/games/tetris/`), Pong (`chisurf/plugins/misc/games/pong/`), Breakout (`chisurf/plugins/misc/games/breakout/`).

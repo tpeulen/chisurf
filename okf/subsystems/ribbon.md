@@ -4,7 +4,7 @@ title: Ribbon and hubs
 description: How a plugin's manifest address becomes a ribbon tab, group and button, how hubs (meta tools) host other plugins, and the guards that keep every tool in exactly one place.
 resource: chisurf/gui/widgets/ribbon/, chisurf/core/plugin/ribbon_layout.py, chisurf/emtk/shell_ribbon.py
 tags: [gui, ribbon, plugins, hubs, navigation]
-timestamp: '2026-10-12T00:00:00Z'
+timestamp: '2026-10-20T00:00:00Z'
 ---
 
 # What it is
@@ -28,10 +28,11 @@ Tools dock read the same tree (`menu_tree`), so all three agree. The maturity ma
 against this ribbon is [Qt retirement (shell)](qt-retirement.md), resume item 5.
 
 A **hub** (meta tool) is an ordinary plugin with an address whose window hosts
-other plugins as panels: Image Tools, Calculators,
-Wizards, Games, Settings, FRET (docking + pair selection),
-Burst Analysis, ALEX Suite, FCS (the five-step correlator workflow; its rail holds
-only the workflow's own steps). The ribbon knows nothing about hubs. A hosted tool leaves the ribbon
+other plugins as panels: Image Tools (the imaging pipeline only), Settings, FRET (docking +
+pair selection), Burst Analysis, ALEX Suite, FCS (the five-step correlator workflow; its rail
+holds only the workflow's own steps). A hub that only *listed* tools is not kept: in the emtk
+shell every tool is its own dock (owner, 2026-10-19/20), so Calculators, Wizards and Games were
+dissolved like File tools, TTTR Tools, Traj Tools and the FCS toolbox before them. The ribbon knows nothing about hubs. A hosted tool leaves the ribbon
 only because its own manifest says `menu_hidden`. Hub list rows show each child's
 icon through `chisurf.emtk.plugin_icons.entry_icon`.
 
@@ -43,18 +44,26 @@ Domain tabs, left to right (`TAB_ORDER`):
 |---|---|
 | File | Recent · Project · Fits · Application (built in) · **Setup**: Settings, Switch User, Menu Switch · **Data**: BID→Analysis · MFD Prepare · PTO Inspector · Split/Convert · TTTR Header editor · TTTR→Time-Window BIDs · ⇄ .pto (the former File tools hub, dissolved: seven ordinary tools) |
 | Main | **Window**: the toolbar's window actions, minus those File shows (`ribbon_file.FILE_ACTIONS`) · **Help** |
-| Spectroscopy | **Correlation**: 2D-FLCS, Burst-wise FCS, Diffusion/Volume Calculator, FCS, FCS Filter Calculator, Lifetime-FCS Simulator, PCH (the FCS toolbox's tool rail dissolved 2026-10-19; FCS is the `fcs_correlator` workflow) · **Decay**: Histogram-Microtime, IRF Estimation, Lazy Lifetime Analysis, MaxEnt MEM, Synthetic Decay Generator, VV/VH Anisotropy Decay, VV/VH G-Factor Calculator (the former Decay Analysis hub, dissolved: seven ordinary tools) · **Kinetics**: Hidden Markov model · **Single-Molecule**: ALEX Suite, Burst Analysis, Intensity trace, Trace Browser, ebFRET · **Imaging**: Image Tools |
+| Spectroscopy (2026-10-20) | **Correlation**: 2D-FLCS, Burst-wise FCS, Diffusion/Volume Calculator, FCS, FCS Filter Calculator, Lifetime-FCS Simulator, PCH (the FCS toolbox's tool rail dissolved 2026-10-19; FCS is the `fcs_correlator` workflow) · **Decay**: Histogram-Microtime, IRF Estimation, Lazy Lifetime Analysis, MaxEnt MEM, Synthetic Decay Generator, VV/VH Anisotropy Decay, VV/VH G-Factor Calculator (the former Decay Analysis hub, dissolved: seven ordinary tools) · **Kinetics**: Hidden Markov model · **Single-Molecule**: ALEX Suite, Burst Analysis, Intensity trace, Trace Browser, ebFRET · **Imaging**: CLSM Generator, Drift Correction, Image Tools, PSF Determination, Particle Tracking (the four standalone tools left Image Tools 2026-10-20) |
 | Structure | **Modelling**: ChiMOL · **FRET**: Docking & Screening, FPS JSON Editor · **Computation**: HydroPro, QuEst · **Trajectory**: Align, Convert, Energy Calculator, FRET, Join, Remove Clashed, Rotate/Translate, Save Topol (the Traj Tools hub, removed 2026-10-19) |
-| Tools | **Calculators**: Calculators, Light Path Simulator, Spectra Downloader, Wizards · **Photon data**: ALEX Creator, Audifier, Count Rate Analysis, Microtime Shifter, Photon Table (the former TTTR Tools hub, removed 2026-10-19: five ordinary tools) · **System**: Code Editor, Games, MMFDB Admin · **Views**: Acquisition, Global View, ndX |
+| Tools (2026-10-20) | **Photon data**: ALEX Creator, Audifier, Count Rate Analysis, Microtime Shifter, Photon Table (the former TTTR Tools hub, removed 2026-10-19) · **Calculators**: F-Test, FCS Saturation, FRET Calculator, FRET Line Generator, Kappa2 Distribution, Light Path Simulator, PSF Calculator, Phasor Calculator, RICS Precision, Spectra Downloader (the Calculators hub, removed 2026-10-20) · **Wizards**: Anisotropy Wizard, Batch Analysis (the Wizards hub, removed 2026-10-20; orange by its `groups` line) · **Views**: Acquisition, Global View, ndX · **System**: Code Editor, MMFDB Admin, Python Terminal, Terminal · **Games**: Breakout, Minesweeper, Number Quest, Pong, Tetris (the Games hub, removed 2026-10-20; not demo-gated) |
 
 Hub scopes that decide where a new tool goes:
 
 - **Tools › Photon data**: photon-level work on a stream; every tool is its own
   button (no hub). Count Rate Analysis and Audifier carry their own detector editor.
-- **Image Tools**: every imaging tool, including CLSM Generator.
+- **Image Tools** is the imaging *pipeline*: a tool belongs in it only when it consumes the
+  shared context (detector setup, the Browser's source, the imaging HDF5, the IRF & BG
+  calibration): Setup, Browser, Resolution, Flow, Colocalization, steps 1-6, CLSM Draw, Spot
+  Finder, Region MLE. A tool that reads its own input is its own Spectroscopy › Imaging button
+  (Drift Correction, Particle Tracking, PSF Determination, CLSM Generator).
 - **Spectroscopy › Decay**: every decay tool is an ordinary tool of its own (no hub).
-- **Calculators**: stand-alone calculators, κ² included. The FCS diffusion
-  calculator is its own Spectroscopy › Correlation tool.
+- **Tools › Calculators**: every stand-alone calculator is its own button (no hub), κ², the
+  F-test, FCS saturation and the PSF calculator included. The FCS diffusion and filter
+  calculators are Spectroscopy › Correlation tools.
+- **Tools › Wizards**: guided workflows that build fits (Anisotropy Wizard, Batch Analysis).
+- **Tools › Games**: one button per game; the shared lifecycle/audio/header live in the
+  `chisurf/plugins/misc/games` package, which has no manifest.
 - **Spectroscopy › Correlation**: every FCS tool is its own button; the FCS workflow reaches the
   filter calculator by the `fcs_correlator_files` hand-off (**Filter Calc...**), not by hosting it.
 - **Structure tab has no hub** (owner, 2026-10-12): the former Structure Tools
@@ -67,7 +76,8 @@ Hub scopes that decide where a new tool goes:
 
 Every kind of task has one colour, declared once in `chisurf/emtk/task_colors.yaml`
 (category → dark/light `fill`, `text`, `ink`; `groups` maps `"Tab:Group"` / `"Tab:*"`,
-`plugins` overrides one tool — Wizards sits in *Calculators* but is orange —, `docks`
+`plugins` overrides one tool (none since the Wizards hub went: Tools › Wizards is a group of
+its own, orange), `docks`
 names the shell's own panels by key or prefix; `neutral` is core chrome).
 `chisurf/emtk/task_colors.py` only reads it and assigns: `plugin_categories` (by where the
 shipped `plugin_layout` puts each plugin), `dock_category`, `accent` → an
@@ -97,7 +107,17 @@ later). Colour key for users: [getting started](../../docs/getting_started/index
 
 ## Where to pick this up
 
-8. Open: hub dissolution is an open class. File tools was dissolved (as Structure Tools was, and TTTR Tools on 2026-10-19 — owner: "no need for meta plugin in emtk"): its seven tools are plain File › Data plugins and the hub, its tests and its Qt-inventory row are gone; Split/Convert and Time Windows now own their saved options. Traj Tools and the FCS toolbox's tool rail followed on 2026-10-19 (the FCS entry is now the `fcs_correlator` workflow; its Filter Calc button is a hand-off). Remaining hubs, to dissolve or keep by decision: Image Tools, Burst Analysis, ALEX Suite, Setup, Calculators and Wizards (`CalculatorHubApp`), Games. `test/plugins/test_hub_membership.py` (`_declared_children`) is the live list. Measure: dissolving one means deleting its `menu_hidden` flags, re-pinning `EXPECTED` in `test_ribbon_layout.py`, and striking the hub's row from the two `shell_*_qt_inventory.json` files. Trap: `test_plugin_help_guide_seam.py` reads manifests from HEAD, so it stays red for a deleted hub until the commit lands; a dissolved tool also needs a distinct manifest icon (`test_plugin_icon_manifest.py`) because it now shares the ribbon with its neighbours.
+9. Open (2026-10-20, after the Calculators/Wizards/Games split): the Tools tab is now wide —
+   at 1440 px **System and Games are collapsed** into drop-down buttons (Calculators holds ten
+   buttons, four columns), at 1100 px everything but Photon data collapses. Still reachable
+   (collapsed menus, `test_narrow_widths_keep_every_plugin_reachable` covers Spectroscopy).
+   Measure: `EmtkShellApp` + `Driver(shell, (w, 800))`, click `ribbon.tab.Tools`, read
+   `shell.ribbon.ribbon.group_modes`. If the owner wants System full at 1440, the lever is the
+   Calculators group (e.g. move Light Path Simulator / Spectra Downloader to Views), not
+   abbreviated labels. Also: a collapsed group's button shows its *first* button's icon, so the
+   collapsed Spectroscopy › Imaging shows CLSM Generator's 🧪, not Image Tools' 🔬.
+
+8. Open: hub dissolution is an open class. File tools was dissolved (as Structure Tools was, and TTTR Tools on 2026-10-19 — owner: "no need for meta plugin in emtk"): its seven tools are plain File › Data plugins and the hub, its tests and its Qt-inventory row are gone; Split/Convert and Time Windows now own their saved options. Traj Tools and the FCS toolbox's tool rail followed on 2026-10-19 (the FCS entry is now the `fcs_correlator` workflow; its Filter Calc button is a hand-off). Calculators, Wizards and Games followed on 2026-10-20 (owner: "split calcs, wizards, games, image tools (partly, keep pipeline)"), and Image Tools lost its four standalone members (Drift Correction, Particle Tracking, PSF Determination, CLSM Generator — none consumed the shared setup/source/HDF5/calibration; drift and tracking had accept-and-ignore adapters, now deleted). `CalculatorHubApp` is gone; `ImagingToolsApp` is a plain `ImApp`. Remaining hubs, kept by decision (each hosts steps sharing state): Image Tools (pipeline), Burst Analysis, ALEX Suite, Setup, FRET docking, FCS workflow. `test/plugins/test_hub_membership.py` (`_declared_children`) is the live list. Measure: dissolving one means deleting its `menu_hidden` flags, re-pinning `EXPECTED` in `test_ribbon_layout.py`, and striking the hub's row from the two `shell_*_qt_inventory.json` files. Trap: `test_plugin_help_guide_seam.py` reads manifests from HEAD, so it stays red for a deleted hub until the commit lands; a dissolved tool also needs a distinct manifest icon (`test_plugin_icon_manifest.py`) because it now shares the ribbon with its neighbours.
 
 7. Measure: task colours with `test/native_emtk/test_task_colors.py` (palette loads, every
    manifest plugin has a category, contrast ≥ 4.5 in dark and light, a hosted tab drawn in
@@ -109,7 +129,7 @@ later). Colour key for users: [getting started](../../docs/getting_started/index
    role) stay the theme blue inside tinted docks; (c) 12 categories cannot all be
    colour-blind distinct — lightness varies (fill luminance 0.05–0.17) but olive/brown/orange
    and blue/indigo/violet pairs rely on the label. Screenshot recipe: `HostedDriver(shell,
-   (1440, 900), scale=1|2)` with Decay Analysis, HMM, Image Tools, Wizards, Documentation
+   (1440, 900), scale=1|2)` with a decay tool, HMM, Image Tools, Batch Analysis (a wizard), Documentation
    opened; light = invert every upper-case tuple of `emtk.style` with `use_palette` before
    the shell is made.
 

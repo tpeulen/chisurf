@@ -9,6 +9,7 @@ into a scratch folder first.
 
     IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_anisotropy.py wizard
     IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_anisotropy.py main
+    IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_anisotropy.py ribbon
 
 ``main`` drives the emtk shell (the default ChiSurf window) with ``emtk.testing.Driver``.
 
@@ -147,17 +148,6 @@ def wizard() -> None:
     m.rotation_spectrum = [[0.38, 10.0]]
     ui.click_name("Components")
     _shot(ui, "anisotropy_wizard_components_reuse.png")
-
-    # the Wizards hub (Tools -> Calculators -> Wizards) with the anisotropy wizard selected
-    from chisurf.plugins.core.wizards.gui.app import make_app as make_hub
-
-    hub = Driver(make_hub(), size=(1200, 760))
-    hub.draw()
-    try:
-        hub.click_text("Anisotropy")
-    except Exception as exc:
-        print("hub:", exc, flush=True)
-    _shot(hub, "anisotropy_wizards_hub.png")
     os._exit(0)
 
 
@@ -178,16 +168,15 @@ def _recorded_at(path, rate_mhz):
 
 
 def _wizard_in_shell(driver, wait, irf, decay, bin_width=BIN, rate=80.0):
-    """Open the wizards hub in the shell, select *Anisotropy*, load the stacked files, create the fits.
+    """Open the Anisotropy Wizard in the shell (Tools › Wizards), load the stacked files, create the fits.
 
     Returns the three fit uids ``(vv, vh, global)`` in creation order.
     """
     app = driver.app
     known = {r["uid"] for r in app.data.datasets.fits}
-    hosted = app.open_plugin("wizards")
+    hosted = app.open_plugin("tr_anisotropy")
     wait(lambda: hosted.app is not None or bool(hosted.error))
-    child = hosted.app.select("anisotropy")
-    m = child.model
+    m = hosted.app.model
     m.stacked_files = True
     m.first_column_is_time = False
     m.use_header = False
@@ -198,7 +187,7 @@ def _wizard_in_shell(driver, wait, irf, decay, bin_width=BIN, rate=80.0):
     assert m.create_fits(), m.status
     wait(lambda: len({r["uid"] for r in app.data.datasets.fits} - known) >= 3 and sd.idle(app))
     new = [r for r in app.data.datasets.fits if r["uid"] not in known]
-    app.close_plugin("wizards")
+    app.close_plugin("tr_anisotropy")
     driver.frame(3)
     by_name = {r["name"]: r["uid"] for r in new}
     return (
@@ -224,6 +213,26 @@ def _free_corrections(driver, wait, uid: str) -> None:
         wait(lambda: sd.idle(app))
 
 
+def _ribbon_shot(driver) -> None:
+    """Where the wizard is: the ribbon's Tools tab, Wizards group."""
+    app = driver.app
+    app.ribbon.ribbon.current = "Tools"
+    sd.shot_shell(driver, "anisotropy_ribbon_tools.png")
+    app.ribbon.ribbon.current = "Spectroscopy"
+
+
+def ribbon() -> None:
+    """Only ``anisotropy_ribbon_tools.png`` (the first shot of :func:`main_window`)."""
+    scratch = _hermetic()
+    import chisurf.core.settings as settings
+
+    settings.chisurf_settings_path = scratch / "settings"
+    OUT.mkdir(parents=True, exist_ok=True)
+    driver, _wait = sd.shell()
+    _ribbon_shot(driver)
+    os._exit(0)
+
+
 def main_window() -> None:
     """The shell with the fits the wizard builds, and the global fit across two samples."""
     scratch = _hermetic()
@@ -234,10 +243,7 @@ def main_window() -> None:
     driver, wait = sd.shell()
     app = driver.app
 
-    # where the wizard is: Tools -> Calculators -> Wizards
-    app.ribbon.ribbon.current = "Tools"
-    sd.shot_shell(driver, "anisotropy_ribbon_tools.png")
-    app.ribbon.ribbon.current = "Spectroscopy"
+    _ribbon_shot(driver)
 
     # first sample: the wizard's fits, with the corrections the manual starts from
     vv, vh, glob = _wizard_in_shell(driver, wait, IRF, DECAY)
@@ -281,4 +287,4 @@ def main_window() -> None:
 
 
 if __name__ == "__main__":
-    {"wizard": wizard, "main": main_window}[sys.argv[1]]()
+    {"wizard": wizard, "main": main_window, "ribbon": ribbon}[sys.argv[1]]()

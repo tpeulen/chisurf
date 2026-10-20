@@ -1,1 +1,1 @@
-"""Tests for the Games hub plugin."""
+"""Tests shared by the built-in games."""

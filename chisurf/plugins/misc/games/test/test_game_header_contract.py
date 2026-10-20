@@ -145,26 +145,6 @@ def test_mines_header_does_not_cover_any_difficulty(difficulty, monkeypatch):
         close_game(app)
 
 
-def test_embedded_hub_child_header_owns_local_help_input():
-    """The Games hub forwards header actions in the child's local coordinates."""
-    from chisurf.plugins.misc.games.gui.app import make_app
-
-    hub = make_app()
-    driver = Driver(hub, (760, 560))
-    try:
-        driver.draw(2)
-        child = hub.child
-        before = copy.deepcopy(child.export_settings())
-        hx, hy, _, _ = hub.child_box
-        x, y, width, height = child.header_form.rects["open_help"]
-        driver.click((hx + x + width / 2, hy + y + height / 2))
-        assert child.help_window.open
-        driver.press(KEY_RETURN)
-        assert child.export_settings() == before
-    finally:
-        hub.close()
-
-
 def test_header_translation_preserves_single_row(monkeypatch):
     """Translated captions are measured before the row is fitted to its space."""
     from chisurf.plugins.misc.games import _base

@@ -20,7 +20,7 @@ from pathlib import Path as _Path
 
 from .api import gaussian_3d  # noqa: F401  (re-exported for back-compat)
 
-name = "Imaging:PSF Determination"
+name = "Spectroscopy:Imaging:PSF Determination"
 
 _manifest_path = _Path(__file__).parent / "manifest.json"
 if _manifest_path.exists():

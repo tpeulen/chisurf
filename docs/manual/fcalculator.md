@@ -11,7 +11,7 @@ tags: [manual, fret, fcalculator]
 :align: center
 ```
 
-**Fig.25 The calculators hub** (**Tools → Calculators → Calculators**). (**a**)
+**Fig.25 Two calculators** of **Tools → Calculators**, each a window of its own. (**a**)
 *F-test / χ²-max*: compare two nested fits (χ²(1), n₁ against χ²(2), n₂ gives
 the confidence that the second is better) and compute the χ²-max upper limit of
 a single fit at a confidence level, used to put a confidence level on a
@@ -19,8 +19,8 @@ a single fit at a confidence level, used to put a confidence level on a
 between the quantities of a FRET measurement, with the distance and rate-constant
 distributions they imply.
 
-The FRET calculator is the **FRET / homoFRET** entry of the calculators hub
-(**Tools → Calculators → Calculators**). It is a small
+The FRET calculator is **Tools → Calculators → FRET Calculator** (HeteroFRET and HomoFRET
+tabs). It is a small
 set of coupled fields: change any one of them and the rest follow, which makes
 it the fastest way to answer "what distance does that efficiency correspond to"
 without setting up a fit.

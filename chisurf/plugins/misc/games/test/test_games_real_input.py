@@ -6,8 +6,7 @@ real wall clock, and each test asserts that the paddle / piece / cursor / dial a
 press and release, held keys, ``focus_lost``, pointer press / drag / release. How the Qt host turns
 ``QKeyEvent`` / ``QMouseEvent`` / focus changes into these same calls is emtk's own
 ``tests/test_qt_host.py``. Breakout is covered here because its registry entry was ``emtk: None``
-(the audit measured its draw as "not finishing": see okf/plugins/emtk-ports/games/REPORT.md for the
-diagnosis).
+(an audit measured its draw as "not finishing").
 """
 
 from __future__ import annotations
@@ -124,11 +123,13 @@ def drag(host, start, end, steps=6):
 # --------------------------------------------------------------------------- Breakout
 
 
-def test_breakout_is_enabled_in_the_registry_and_manifest():
-    from chisurf.plugins.misc.games.gui.registry import GAME_PANELS
+def test_breakout_is_enabled_in_its_manifest():
+    import json
+    from pathlib import Path
 
-    entry = next(item for item in GAME_PANELS if item["name"] == "Breakout")
-    assert entry["emtk"] == "chisurf.plugins.misc.games.breakout.app:make_app"
+    manifest = json.loads((Path(__file__).parents[1] / "breakout" / "manifest.json").read_text())
+    assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.misc.games.breakout.app:make_app"
+    assert not manifest.get("menu_hidden")
 
 
 def test_breakout_frame_terminates_and_stays_cheap_in_the_live_loop():
@@ -234,21 +235,6 @@ def test_breakout_pointer_drag_moves_the_paddle_and_the_stuck_ball():
     drag(host, (ox + 400 * scale, y), (ox + 650 * scale, y))
     assert app.game.paddle_x == pytest.approx(650, abs=25)
     assert app.game.ball_x == pytest.approx(app.game.paddle_x)
-
-
-def test_breakout_in_the_hub_takes_keys_and_pointer():
-    host = _host("")
-    hub = host.control
-    child = hub.select("Breakout")
-    assert child is not None and hub.error == ""
-    pump(host, 0.2)
-    x0 = child.game.paddle_x
-    press(host, K.Key_Right)
-    pump(host, 0.4)
-    release(host, K.Key_Right)
-    assert child.game.paddle_x > x0 + 20 and not child.keys.held
-    tap(host, K.Key_Space, " ")
-    assert not child.game.stuck
 
 
 # --------------------------------------------------------------------------- Pong
@@ -461,23 +447,16 @@ def test_number_quest_click_the_plot_dials_and_the_caption_submits(monkeypatch):
     assert left
 
 
-# --------------------------------------------------------------------------- hub
+# --------------------------------------------------------------------------- every game
 
 
-def test_every_game_in_the_hub_receives_a_real_key():
-    host = _host("")
-    hub = host.control
-    seen = {}
-    for name in ("Number Quest", "Minesweeper", "Tetris", "Pong", "Breakout"):
-        child = hub.select(name)
-        assert child is not None, name
-        got = []
-        original = child.key
-        child.key = lambda key, text="", modifiers=0, g=got, o=original: (
-            g.append(key),
-            o(key, text, modifiers),
-        )[1]
-        pump(host, 0.1)
-        tap(host, K.Key_Left, hold=0.02)
-        seen[name] = got
-    assert all(got == [K.Key_Left] for got in seen.values()), seen
+@pytest.mark.parametrize("game", ["number_quest", "minesweeper", "tetris", "pong", "breakout"])
+def test_every_game_opened_from_its_manifest_receives_a_real_key(game):
+    host = _host(game)
+    app = host.control
+    got = []
+    original = app.key
+    app.key = lambda key, text="", modifiers=0: (got.append(key), original(key, text, modifiers))[1]
+    pump(host, 0.1)
+    tap(host, K.Key_Left, hold=0.02)
+    assert got == [K.Key_Left]

@@ -2,7 +2,7 @@
   "id": "imaging_tools",
   "version": "1.0.0",
   "display_name": "Spectroscopy:Imaging:Image Tools",
-  "description": "Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow Maps, Particle Tracking, Colocalization, the per-pixel maps, CLSM Draw, Region MLE, PSF Determination, CLSM Generator.",
+  "description": "The imaging pipeline: the steps that share one detector setup, photon source, imaging HDF5 and IRF & BG calibration -- Setup, Image Browser, FRC Resolution, Flow Maps, Colocalization, the numbered per-pixel maps (Intensity, Number & Brightness, Mean Micro-Time, IRF & BG, Phasor-FLIM, Pixel-wise MLE), CLSM Draw, Spot Finder and Region MLE.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
@@ -10,7 +10,7 @@
     "Spectroscopy",
     "Imaging"
   ],
-  "icon": "\ud83d\udd2c",
+  "icon": "🔬",
   "statefulness": {
     "enabled": true,
     "window": {
@@ -23,10 +23,8 @@
   },
   "optional_requires": {
     "clsm": "*",
-    "clsm_generator": "*",
     "img_calibration": "*",
     "img_coloc": "*",
-    "img_drift": "*",
     "img_flow": "*",
     "img_frc": "*",
     "img_pixel_intensity": "*",
@@ -34,14 +32,11 @@
     "img_pixel_mle": "*",
     "img_pixel_nb": "*",
     "img_pixel_phasor": "*",
-    "img_tracking": "*",
-    "psf_determination": "*",
     "region_mle": "*",
     "spot_finder": "*",
     "tttr_image_browser": "*"
   },
   "requires": {
-    "setup_channel_definition": "*",
-    "calculators": "*"
+    "setup_channel_definition": "*"
   }
 }

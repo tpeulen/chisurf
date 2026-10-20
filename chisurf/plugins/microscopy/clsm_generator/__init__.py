@@ -13,7 +13,7 @@ from __future__ import annotations
 import json as _json
 from pathlib import Path as _Path
 
-name = "Imaging:Simulate:CLSM Generator"
+name = "Spectroscopy:Imaging:CLSM Generator"
 
 _manifest_path = _Path(__file__).parent / "manifest.json"
 if _manifest_path.exists():

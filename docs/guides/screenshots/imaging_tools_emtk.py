@@ -1,4 +1,4 @@
-"""The Image Tools hub figure of docs/guides/98_imaging_tools.md, rendered headlessly by emtk.
+"""The Image Tools (imaging pipeline) figure of docs/guides/98_imaging_tools.md, rendered headlessly by emtk.
 
 Run from the repository root::
 

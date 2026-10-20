@@ -11,7 +11,7 @@ The Anisotropy Wizard in ChiSurf is a guided tool designed to facilitate the set
 
 This wizard helps in setting up analysis by linking relevant anisotropy parameters, correcting for sensitivity differences, and ensuring proper handling of mixing effects. The g-factor (g) is an essential correction parameter that accounts for differences in sensitivity between the VV and VH detection channels. Another crucial aspect is the mixing of anisotropy when using a high numerical aperture (NA) objective, which can introduce distortions in the measurement. Proper calibration and correction are necessary to ensure accurate anisotropy calculations. A detailed tutorial on how mixing factors and g-factors can be determined by reference measurements can be found in the Tutorial section of this manual.
 
-The wizard is the **Anisotropy** entry of the wizards hub, **Tools → Calculators → Wizards**. Its
+The wizard is **Tools → Wizards → Anisotropy Wizard** in the ribbon, a window of its own. Its
 six steps are listed on the left with a check mark once complete; **Back** and **Next** walk them,
 **Guide** starts a guided tour and **Help** opens the background text.
 

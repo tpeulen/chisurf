@@ -1,12 +1,14 @@
 ---
 type: Reference
-title: Use case — time-resolved anisotropy (Wizards hub → linked VV/VH global fit)
-description: Open the Wizards hub, walk the Anisotropy wizard — polarised IRF/decay files, IRF background region, g-factor and l1/l2, lifetime and rotation spectra — and let it build the VV, VH and global fits with every shared parameter linked.
+title: Use case — time-resolved anisotropy (Anisotropy Wizard → linked VV/VH global fit)
+description: Open Tools › Wizards › Anisotropy Wizard, walk it — polarised IRF/decay files, IRF background region, g-factor and l1/l2, lifetime and rotation spectra — and let it build the VV, VH and global fits with every shared parameter linked.
 tags: [usecase, wizard, anisotropy, tcspc, vv-vh, global-fit, gui]
 timestamp: '2026-07-26T00:00:00Z'
 ---
 
 # Use case: anisotropy wizard → linked VV/VH global fit
+
+> Since 2026-10-20 there is no Wizards hub: the wizard is its own ribbon button, **Tools › Wizards › Anisotropy Wizard** (Batch Analysis beside it). The walk below predates that; the wizard's steps are unchanged.
 
 **Goal:** measure how fast a fluorophore tumbles. The user has a
 polarisation-resolved TCSPC measurement (VV and VH decays plus the matching

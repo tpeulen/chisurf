@@ -1,12 +1,14 @@
 ---
 type: Reference
 title: Use case — FRET calculators (distance from efficiency, kappa2 error, FRET line)
-description: Open the Calculators hub, convert a measured FRET efficiency into a donor-acceptor distance, bound the kappa2 orientation error, and generate a static FRET line to overlay on an smFRET histogram.
+description: Open the Tools › Calculators buttons, convert a measured FRET efficiency into a donor-acceptor distance, bound the kappa2 orientation error, and generate a static FRET line to overlay on an smFRET histogram.
 tags: [usecase, calculator, fret, kappa2, fret-line, phasor, gui]
 timestamp: '2026-07-25T00:00:00Z'
 ---
 
 # Use case: FRET calculators
+
+> Since 2026-10-20 there is no Calculators hub: every calculator is its own **Tools › Calculators** button (FRET Calculator, FRET Line Generator, Kappa2 Distribution, ...), each in a dock of its own. The walk below predates that; the hub-list findings no longer apply.
 
 **Goal:** the everyday "back of the envelope" FRET task, before or after any
 fitting. The user has a measured transfer efficiency `E` (or a donor lifetime

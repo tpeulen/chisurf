@@ -1,13 +1,23 @@
 ---
 type: Plugin Group
 title: Calculator plugins
-description: Small physical-quantity estimators — FRET, phasor and acquisition-planning calculators — gathered under a single calculators hub, plus the κ² orientation-factor calculator.
+description: Small physical-quantity estimators — FRET, phasor, PSF, FCS-saturation and acquisition-planning calculators and the κ² orientation-factor calculator — each its own Tools › Calculators ribbon button.
 resource: chisurf/plugins/calculator/
 tags: [plugins, calculators]
-timestamp: '2026-07-05T00:00:00Z'
+timestamp: '2026-10-20T00:00:00Z'
 ---
 
 ## Where to pick this up
+
+2. Done 2026-10-20 — **no Calculators hub.** Every calculator is its own Tools › Calculators
+   button and opens in a dock of its own (the emtk shell gives each tool one); `calculator/hub`
+   (registry, `CalculatorHubApp`, `csg_calculators`) is deleted with no shim. What the hub held
+   and where it went: the selection + per-child settings → each calculator's own plugin state;
+   the lazy background build → the shell's own; the description header → the ribbon tooltip
+   (manifest `description`). Measure: `test/plugins/test_ribbon_layout.py` (`EXPECTED["Tools"]
+   ["Calculators"]`), `test_plugin_icon_manifest.py::test_listed_plugins_have_distinct_icons`
+   (RICS Precision 🧭, Kappa2 🎯, FCS Saturation ☀️, PSF Calculator 🧿 were re-picked for that).
+   Open: the Tools tab is wide now; see [ribbon](../subsystems/ribbon.md) item 9.
 
 1. Measure: **Static κ² from a computed distribution (landed 2026-10-13, imp.bff + chisurf, not pinned).** *compute κ²*'s
    result reaches the TCSPC FRET models' static average through the families' `kappa2_distribution` port; the rule
@@ -23,20 +33,20 @@ timestamp: '2026-07-05T00:00:00Z'
 
 Calculators are lightweight, mostly-stateless tools that turn a handful of inputs into
 a derived fluorescence quantity — no dataset or fit required. They live under
-`chisurf/plugins/calculator/`, and a hub plugin groups them (together with the FCS and
-FRET-line calculators from other groups) into one two-panel launcher.
+`chisurf/plugins/calculator/` (the F-test and the FRET-line generator in their own groups),
+and every one is its own **Tools › Calculators** ribbon button — no hub lists them.
 
 | Plugin dir | Display name | What it does |
 | --- | --- | --- |
-| `calculator/hub` | Main:Tools:Calculators | Hub that groups the FRET-line, FRET/homoFRET, FCS, RICS-precision, phasor-plot and κ²-distribution calculators and embeds the selected one in a two-panel view. |
-| `calculator/fret_calculator` | Main:Tools:FRET-Calculator | Combined heteroFRET and homoFRET parameter calculator (R₀, E, distances, anisotropy). |
-| `calculator/phasor_calculator` | Main:Tools:Phasor-Calculator | Interactive phasor plot: universal semicircle with reference-lifetime grid, a FRET trajectory and a two-component mixing line; declarative AutoForm view. |
-| `calculator/kappa2_dist` | Structure:FRET:Kappa2 Distribution | Compute/visualise the κ² orientation-factor distribution (WIC, DWT, isotropic); AutoForm view, also embedded in the hub; shared with the modelling group. |
-| `calculator/rics_precision` | Main:Tools:RICS-Precision | **Planning tool: takes no data at all.** Predicts, from the intended acquisition settings plus an expected `D`, the relative error a raster-scan correlation measurement would achieve, and sweeps the pixel dwell time to show where the optimum sits. The curve is U-shaped for a physical reason: scan too fast and the molecule has not moved between neighbouring pixels, so the fitted lags sit on the flat top of the decay and the derivative w.r.t. `D` vanishes; scan too slowly and they sit in the floor. Compute is Qt-free in `core.py` (`sweep_dwell`, `line_time_for`, `default_dwell_range`) over `core/experiments/ics/precision.py` (analytic estimator covariance + Monte-Carlo propagation, the MIA `RICSPE` port). AutoForm GUI (`gui/precision.view.json` + `PrecisionViewModel`, `RicsPrecisionTool`) with a **log-log** error-vs-dwell plot — a badly-matched dwell is wrong by orders of magnitude and on a linear axis flattens the usable 2-10 % range into a line — the user's own setting marked as a diamond, a numbers table carrying the implied line/frame time, and CSV export; headless `rics-precision` CLI (`--json` for scripting, which is the practical way to sweep `D` rather than the dwell). Honest limits are surfaced rather than hidden: each point is itself Monte-Carlo (~10 % at the default repeat count) so the minimum is an order of magnitude, not a setting to dial in; and precision is quoted **per frame count, not per unit time**, so a slower scan in the comparison is also a longer acquisition. Documented in theory ({doc}`concepts/scan_precision`) and application (guide 45). |
-| `core/f_test` | Main:Tools:F-Test | F-test comparing two nested model fits (confidence ↔ χ² threshold) plus the χ²-max upper limit of a single fit; declarative AutoForm view with a *From fit* loader, also embedded in the hub. |
+| `calculator/fret_calculator` | Tools:Calculators:FRET Calculator | Combined heteroFRET and homoFRET parameter calculator (R₀, E, distances, anisotropy). |
+| `calculator/phasor_calculator` | Tools:Calculators:Phasor Calculator | Interactive phasor plot: universal semicircle with reference-lifetime grid, a FRET trajectory and a two-component mixing line; declarative AutoForm view. |
+| `calculator/kappa2_dist` | Tools:Calculators:Kappa2 Distribution | Compute/visualise the κ² orientation-factor distribution (WIC, DWT, isotropic); AutoForm view; the TCSPC FRET models' *compute κ²* reuses it; shared with the modelling group. |
+| `calculator/fcs_saturation_calc` | Tools:Calculators:FCS Saturation | Excitation saturation and effective-volume expansion in FCS for arbitrary multi-state kinetic schemes. |
+| `calculator/psf_calculator` | Tools:Calculators:PSF Calculator | 3-D point-spread function (vectorial Richards-Wolf, scalar Airy, Gaussian) viewed as a volume. |
+| `fret_line` | Tools:Calculators:FRET Line Generator | Static, dynamic, WLC and mixture FRET lines for the smFRET 2D histograms. |
+| `calculator/rics_precision` | Tools:Calculators:RICS Precision | **Planning tool: takes no data at all.** Predicts, from the intended acquisition settings plus an expected `D`, the relative error a raster-scan correlation measurement would achieve, and sweeps the pixel dwell time to show where the optimum sits. The curve is U-shaped for a physical reason: scan too fast and the molecule has not moved between neighbouring pixels, so the fitted lags sit on the flat top of the decay and the derivative w.r.t. `D` vanishes; scan too slowly and they sit in the floor. Compute is Qt-free in `core.py` (`sweep_dwell`, `line_time_for`, `default_dwell_range`) over `core/experiments/ics/precision.py` (analytic estimator covariance + Monte-Carlo propagation, the MIA `RICSPE` port). AutoForm GUI (`gui/precision.view.json` + `PrecisionViewModel`, `RicsPrecisionTool`) with a **log-log** error-vs-dwell plot — a badly-matched dwell is wrong by orders of magnitude and on a linear axis flattens the usable 2-10 % range into a line — the user's own setting marked as a diamond, a numbers table carrying the implied line/frame time, and CSV export; headless `rics-precision` CLI (`--json` for scripting, which is the practical way to sweep `D` rather than the dwell). Honest limits are surfaced rather than hidden: each point is itself Monte-Carlo (~10 % at the default repeat count) so the minimum is an order of magnitude, not a setting to dial in; and precision is quoted **per frame count, not per unit time**, so a slower scan in the comparison is also a longer acquisition. Documented in theory ({doc}`concepts/scan_precision`) and application (guide 45). |
+| `core/f_test` | Tools:Calculators:F-Test | F-test comparing two nested model fits (confidence ↔ χ² threshold) plus the χ²-max upper limit of a single fit; declarative AutoForm view with a *From fit* loader. |
 
-The hub demonstrates the plugin composition pattern: it discovers sibling calculators
-via their `manifest.json` and embeds each one's panel rather than reimplementing them.
 The phasor calculator is a fully declarative tool — its whole UI is a `view.json`
 rendered by [GUI & AutoForm](/subsystems/gui-autoform.md), a good reference for the
 "declarative UI where possible" principle in [Plugins target](/specs/plugins.md).

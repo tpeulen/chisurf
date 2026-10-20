@@ -1,17 +1,16 @@
 {
   "id": "pong",
   "version": "2.0.0",
-  "display_name": "Tools:Miscellaneous:Games:Pong",
-  "description": "Classic Pong game with CPU opponent, score tracking, and particle effects; contained in the Games hub.",
+  "display_name": "Tools:Games:Pong",
+  "description": "Classic Pong game with CPU opponent, score tracking, and particle effects.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
   "categories": [
     "Tools",
-    "Miscellaneous",
     "Games"
   ],
-  "icon": "\ud83c\udfd3",
+  "icon": "🏓",
   "state_namespace": "pong_game",
   "statefulness": {
     "enabled": true,
@@ -33,10 +32,5 @@
   "rpc_methods": [],
   "events": [],
   "dependencies": {},
-  "menu_hidden": true,
-  "deprecated": false,
-  "demo": true,
-  "requires": {
-    "games": "*"
-  }
+  "deprecated": false
 }

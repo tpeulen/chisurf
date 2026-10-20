@@ -1,10 +1,12 @@
 # Imaging Tools
 
-The imaging workflow in one window: a list of tools on the left, the chosen tool on the right, and the context they share.
+The imaging pipeline in one window: the steps that share one context, a list on the left, the chosen step on the right.
 
 ## The list
 
-Browser, Drift, Resolution, Flow and Tracking come first. The numbered steps, 1. Intensity to 6. Pixel-wise MLE, build per-pixel maps in one shared imaging HDF5. CLSM Draw, Spot Finder, Region MLE and PSF Determination follow below the rule. Search keeps the tools whose name or description contains the text. A tool marked pending has no native version yet.
+Setup and Browser come first, then Resolution, Flow and Colocalization, which read the Browser's source with the Setup's detector windows. The numbered steps, 1. Intensity to 6. Pixel-wise MLE, build per-pixel maps in one shared imaging HDF5. CLSM Draw, Spot Finder and Region MLE follow below the rule; they take the Setup's detectors and, Region MLE, the source and the IRF & BG calibration. Search keeps the tools whose name or description contains the text. A tool marked pending has no native version yet.
+
+Tools that read their own input and take none of this context are ribbon entries of their own, in **Spectroscopy › Imaging**: Drift Correction (align a stack before the maps are built), Particle Tracking, PSF Determination and CLSM Generator.
 
 ## What is shared
 
@@ -12,7 +14,7 @@ Begin in Browser to select a photon image: it becomes the Source of every step. 
 
 ## Moving between tools
 
-Click a tool, or use Previous and Next. Next walks Browser, Drift, Resolution, Tracking, then the numbered steps; when a source is known the per-pixel steps compute on arrival. Each opened tool keeps its settings, drawn regions and results while you move between them. Jobs, progress, cancellation and errors are shown within each tool. A file dropped on the window goes to the open tool.
+Click a tool, or use Previous and Next. Next walks Browser, Resolution, then the numbered steps; when a source is known the per-pixel steps compute on arrival. Each opened tool keeps its settings, drawn regions and results while you move between them. Jobs, progress, cancellation and errors are shown within each tool. A file dropped on the window goes to the open tool.
 
 ## Further reading
 

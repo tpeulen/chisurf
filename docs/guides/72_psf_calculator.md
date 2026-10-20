@@ -175,7 +175,7 @@ by tens of per cent.
 - Concept: {ref}`concept-point-spread-function`. Resolution of a real image:
   {doc}`51_frc_resolution`.
 - Tool: **PSF calculator** (`chisurf/plugins/calculator/psf_calculator/`),
-  reached through the Calculators hub. Press **Guide** on its toolbar for
+  **Tools → Calculators → PSF Calculator**. Press **Guide** on its toolbar for
   a walk-through.
 
 The window opens at 640×480 and keeps a size you set. In a small window the

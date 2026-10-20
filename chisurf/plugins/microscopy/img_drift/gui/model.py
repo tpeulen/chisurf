@@ -164,8 +164,3 @@ class DriftModel(EmtkModelMixin, DriftViewModel):
             for i in range(len(shifts))
         ]
 
-    def apply_setup_settings(self, payload: dict) -> None:
-        """Drift has no detector setup: accepted and ignored, as the Qt tool did."""
-
-    def apply_pipeline_context(self, payload: dict) -> None:
-        """The hub's current source: the Qt drift tool did not adopt it either."""

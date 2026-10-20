@@ -63,7 +63,7 @@ The workflows a first pass should cover — expand as the tester discovers more:
   correlate in chunks, inspect and merge the chunks, save the `.cor` and push it
   into ChiSurf. *(last driven 2026-07-26; RF-107..RF-112)*
 - [Anisotropy wizard](/usecases/anisotropy-wizard-global-fit.md) — the guided
-  wizards: open the Wizards hub, walk the Anisotropy wizard (polarised IRF/decay
+  wizards: open Tools › Wizards › Anisotropy Wizard, walk the Anisotropy wizard (polarised IRF/decay
   files, IRF background region, g-factor and l1/l2, lifetime and rotation
   spectra) and let it build the VV, VH and global fits with all shared
   parameters linked. *(last driven 2026-07-26; RF-126..RF-130)*
@@ -96,7 +96,7 @@ The workflows a first pass should cover — expand as the tester discovers more:
   rebuild the S1S2 photon-count histograms per time window, and fit a
   shot-noise-exact donor–acceptor distance instead of a histogram width.
   *(last driven 2026-07-26; RF-263..RF-268)*
-- [FRET calculators](/usecases/fret-calculators.md) — open the Calculators hub,
+- [FRET calculators](/usecases/fret-calculators.md) — open Tools › Calculators,
   convert a measured efficiency into a donor–acceptor distance, bound the κ²
   orientation error, and generate a static FRET line to overlay on an smFRET
   histogram. The one core workflow that needs no data file.

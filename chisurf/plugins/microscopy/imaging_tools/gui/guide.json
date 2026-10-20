@@ -1,9 +1,9 @@
 {
-  "_comment": "Guided tour of the Imaging Tools hub. Steps point at real controls of the hub (the search field, the list entries, Previous/Next, the source banner); the ones that need the user's hands wait for them. The embedded tool has its own Guide.",
+  "_comment": "Guided tour of the Image Tools pipeline window. Steps point at real controls of the hub (the search field, the list entries, Previous/Next, the source banner); the ones that need the user's hands wait for them. The embedded tool has its own Guide.",
   "steps": [
     {
       "title": "One list, one shared context",
-      "text": "Imaging Tools lists the imaging workflow: detector setup, the image browser, motion and resolution tools, the numbered per-pixel steps, then CLSM Draw, Spot Finder, Region MLE and PSF Determination. Each is its own tool; this window keeps what they share: the detector setup, the photon source, the imaging HDF5 and the IRF and background calibration.",
+      "text": "Image Tools lists the imaging pipeline: detector setup, the image browser, resolution, flow and colocalization, the numbered per-pixel steps, then CLSM Draw, Spot Finder and Region MLE. Each is its own tool; this window keeps what they share: the detector setup, the photon source, the imaging HDF5 and the IRF and background calibration. Drift Correction, Particle Tracking, PSF Determination and CLSM Generator read their own input and are buttons of Spectroscopy › Imaging.",
       "target": {
         "name": "navigation"
       }

@@ -1,34 +1,38 @@
 ---
 type: Guide
 title: 'Games: a break between fits'
-description: 'Tool: Tools → System → Games (games), a hub that hosts the five games number_quest, minesweeper, tetris, pong and breakout.'
+description: 'Tools: Tools → Games, five buttons -- number_quest, minesweeper, tetris, pong and breakout -- each a window of its own.'
 tags: [guides, games]
 ---
 
 # Games: a break between fits
 
-**Tool:** *Tools → System → Games* (`games`), a hub that hosts the five games `number_quest`, `minesweeper`,
-`tetris`, `pong` and `breakout`. Each game is built from the physics and statistics of fluorescence (a lifetime
+**Tools:** the *Games* group of the *Tools* ribbon tab: five buttons, `number_quest`, `minesweeper`,
+`tetris`, `pong` and `breakout`, each opening its game in a window of its own. Each game is built from the physics and statistics of fluorescence (a lifetime
 dial, a hot-pixel field, a spectral wall of bricks), but nothing here analyses data. See [Games and generated round data](../concepts/games.md)
 for the interpretation of the lifetime curve and the limits of these displays.
 
 ## 1. The window
 
-```{figure} figures/games_breakout.png
-:name: fig-games-breakout
+```{figure} figures/games_ribbon.png
+:name: fig-games-ribbon
 :width: 100%
 
-The hub with Breakout in play: the game list on the left, the header with the keys of the selected game, the game
-filling the rest.
+The Tools tab with the Games group opened: one button per game (collapsed into a menu where the ribbon is too narrow).
 ```
 
-The list on the left selects the game (its description is the tooltip). The header repeats the description and the
-keys. Every game is built the first time it is selected and kept alive while you visit another, so a round survives
-a look at the list. Click into the game area before typing: the keys go to the game that is shown, press and release.
+```{figure} figures/games_breakout.png
+:name: fig-games-breakout
+:width: 70%
 
-Standalone defaults remain Breakout 820×690, Pong 820×640, Tetris 520×620,
-Minesweeper 560×620 and Number Quest 560×420; the launcher starts at 1200×800.
-Resizing a standalone window keeps that size when it reopens. A first launch
+Breakout in play, in its own window: the shared header row, the field, the keys in the footer.
+```
+
+Press a game's button: it opens as a dock of its own, beside the others, and keeps its round while you look at
+another window. Click into the game before typing: the keys go to the window in front, press and release.
+
+Window defaults are Breakout 820×690, Pong 820×640, Tetris 520×620, Minesweeper 560×620 and Number Quest 560×420.
+Resizing a window keeps that size when it reopens. A first launch
 starts with the game defaults; an existing saved round is restored when available.
 
 ### Help, Restart and Guide
@@ -91,8 +95,7 @@ sound preference, and closing releases it once.
 
 The games are tested with real key and pointer events through the window that hosts them
 (`chisurf/plugins/misc/games/test/test_games_real_input.py`): the paddle, piece, cursor and dial must actually move.
-See also the generated reference pages for [Games](../reference/plugins/games.md) and
-[Breakout](../reference/plugins/breakout.md).
+See also the generated reference pages, e.g. [Breakout](../reference/plugins/breakout.md).
 
 ## 4. Native Python entrypoint
 

@@ -10,15 +10,12 @@ from chisurf.plugins.fret_line.gui.app import FRETLineApp
 from chisurf.plugins.fret_line.gui.model import FretLineModel
 
 
-def test_fret_line_is_reached_through_the_calculator_hub():
-    """The native tool lives in the Calculator hub, so the FRET menu does not list it a second time."""
+def test_fret_line_is_a_button_of_the_calculators():
+    """The native tool is its own ribbon entry, Tools › Calculators, and no other menu lists it."""
     path = Path(__file__).resolve().parents[2] / "chisurf/plugins/fret_line/manifest.json"
     manifest = json.loads(path.read_text())
-    assert manifest["menu_hidden"] is True
-    assert manifest["display_name"] == "Spectroscopy:FRET:FRET Line Generator"
-    from chisurf.plugins.calculator.hub.core.registry import default_calculators
-
-    assert any(entry.id == "fret_line" for entry in default_calculators())
+    assert not manifest.get("menu_hidden")
+    assert manifest["display_name"] == "Tools:Calculators:FRET Line Generator"
 
 
 def test_your_dyes_is_the_first_default_view(tmp_path, monkeypatch):

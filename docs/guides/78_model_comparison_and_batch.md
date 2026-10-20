@@ -103,8 +103,8 @@ background) before asking again.
 
 ### Open the tool
 
-**Tools → Calculators → Wizards**, entry **📋 Batch analysis**. The manifest name
-`Main:Tools:Batch-Analysis` is hidden from the menu. Before opening it, load a
+**Tools → Wizards → 📚 Batch Analysis** (manifest address `Tools:Wizards:Batch Analysis`).
+Before opening it, load a
 representative dataset, create the fit you intend to use, and **optimise it by
 hand**: its parameter values — and which parameters are fixed — seed every run.
 
@@ -307,7 +307,7 @@ FCS curves; nothing stops you from ticking both (see *Known defects*).
   [parameter uncertainty](../concepts/parameter_uncertainty.md).
 - Guides: {doc}`10_lifetime_anisotropy_fitting` for building a lifetime template
   fit; {doc}`77_phasor_calculator` for a fit-free look at the same decays.
-- Tools: `chisurf/plugins/core/f_test/` (Calculators hub),
-  `chisurf/plugins/core/batch_analysis/` (Wizards hub);
+- Tools: `chisurf/plugins/core/f_test/` (Tools › Calculators › F-Test),
+  `chisurf/plugins/core/batch_analysis/` (Tools › Wizards › Batch Analysis);
   `chisurf/core/math/statistics.py` for `f_test_confidence`, `f_test_chi2r` and
   `chi2_max`.

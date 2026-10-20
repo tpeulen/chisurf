@@ -1,6 +1,6 @@
 """Make a hub's embedded tools on a worker thread, so the hub's first frame does not pay for them.
 
-A hub (tool rail, calculator list, settings destinations) shows one embedded tool when it opens. Importing and
+A hub (tool rail, imaging pipeline list, settings destinations) shows one embedded tool when it opens. Importing and
 constructing that tool costs a few hundred ms (its module tree, a database, a dictionary) -- on the UI thread that is
 a frozen first frame. :class:`BackgroundBuild` runs the factories on a daemon thread; the hub draws an "Opening"
 placeholder (:func:`draw_opening`) while :attr:`BackgroundBuild.busy`, and adopts what was made in a later frame with

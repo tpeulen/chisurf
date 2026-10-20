@@ -44,9 +44,9 @@ A top-level `window: {"width": 640, "height": 480}` in the loaded view spec
 declares logical pixel dimensions. Both fields are required integer values
 from 120 to 8192; unknown fields are rejected. Native applications read it with
 `chisurf.plugins.emtk_layout.window_size(spec, family_default)` before hosting.
-Shared tool/calculator hubs use 1100×720, the FRET calculator 640×480, and the
-TTTR image browser 1200×800. Setup step uses the same parser. The hub's empty
-section list declares only its geometry; child forms remain separate specs.
+The imaging pipeline window (Image Tools, `imaging_tools/gui/app.view.json`) uses 1100×720, the FRET calculator
+640×480, and the TTTR image browser 1200×800. Setup step uses the same parser. The pipeline window's empty section
+list declares only its geometry; each step's form remains a separate spec.
 
 `attach_native_state` restores saved user dimensions after this default. Both
 emtk Qt and native hosts read `window_size`, including callable declarations;

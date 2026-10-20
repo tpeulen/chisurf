@@ -1,17 +1,25 @@
 {
   "id": "kappa2_dist",
   "version": "1.1.0",
-  "display_name": "Structure:FRET:Kappa2 Distribution",
+  "display_name": "Tools:Calculators:Kappa2 Distribution",
   "description": "Calculate and visualise the k² orientation-factor distribution for FRET using WIC, DWT, or isotropic models.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Structure", "FRET"],
-  "icon": "📐",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools",
+    "Calculators",
+    "FRET"
+  ],
+  "icon": "🎯",
   "state_namespace": "kappa2_dist",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-      "last_settings": {"type": "object"}
+      "last_settings": {
+        "type": "object"
+      }
     }
   },
   "statefulness": {
@@ -27,10 +35,12 @@
     "services": "chisurf.plugins.calculator.kappa2_dist.backend.services:register_services"
   },
   "rpc_methods": [
-    {"name": "kappa2_dist.compute", "description": "Compute the κ² distribution and the apparent-distance statistics for the given model and anisotropies."}
+    {
+      "name": "kappa2_dist.compute",
+      "description": "Compute the κ² distribution and the apparent-distance statistics for the given model and anisotropies."
+    }
   ],
   "events": [],
   "dependencies": {},
-  "menu_hidden": true,
   "deprecated": false
 }

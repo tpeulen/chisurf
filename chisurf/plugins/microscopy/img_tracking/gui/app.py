@@ -34,5 +34,5 @@ class ImgTrackingApp(ImagingToolApp):
 
 
 def make_app(coordinator=None) -> ImgTrackingApp:
-    """Factory named by the manifest's ``entrypoints.emtk``; *coordinator* is the imaging hub, which wires itself in afterwards."""
+    """Factory named by the manifest's ``entrypoints.emtk``; *coordinator* is accepted and unused (a standalone tool)."""
     return ImgTrackingApp()

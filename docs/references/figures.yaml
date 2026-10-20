@@ -1627,24 +1627,13 @@ manual/figures/anisotropy_wizard_components_reuse.png:
     2048 channels x 8 ps per polarisation). State: spectra set to the manual''s re-use values; corrections 1.01/0.0437/0.349.'
   pages:
   - docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.md
-manual/figures/anisotropy_wizards_hub.png:
-  caption: The Wizards hub (Tools -> Calculators -> Wizards) with Anisotropy selected.
-  kind: screenshot
-  origin: docs/guides/screenshots/manual_anisotropy.py::wizard
-  recipe: 'python docs/guides/screenshots/manual_anisotropy.py wizard (offscreen, from the repo root). Data: bundled
-    stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay;
-    2048 channels x 8 ps per polarisation). State: wizards hub emtk app 1200x760, Anisotropy entry clicked, wizard
-    on its Welcome step.'
-  pages:
-  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
 manual/figures/anisotropy_ribbon_tools.png:
-  caption: The ribbon's Tools tab; Wizards is in the Calculators group.
+  caption: The ribbon's Tools tab; Anisotropy Wizard is in the Wizards group.
   kind: screenshot
   origin: docs/guides/screenshots/manual_anisotropy.py::main_window
-  recipe: 'python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled
-    stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay;
-    2048 channels x 8 ps per polarisation). State: emtk shell (make_app, 1900x1100, private session driven with
-    emtk.testing.Driver; run with pixi run -e test python), ribbon Tools tab current.'
+  recipe: 'python docs/guides/screenshots/manual_anisotropy.py ribbon (or main; offscreen, from the repo root).
+    State: emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run with pixi run -e
+    test python), ribbon Tools tab current.'
   pages:
   - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
 manual/figures/anisotropy_fit_windows.png:
@@ -1653,7 +1642,7 @@ manual/figures/anisotropy_fit_windows.png:
   origin: docs/guides/screenshots/manual_anisotropy.py::main_window
   recipe: 'python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled
     stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay;
-    2048 channels x 8 ps per polarisation). State: emtk shell; the Anisotropy wizard opened from the Wizards hub
+    2048 channels x 8 ps per polarisation). State: emtk shell; the Anisotropy wizard opened from Tools -> Wizards
     with stacked files, corrections 1.16/0.12/0.44, rep rate 1000/(2048*bin) MHz, Create fits (the shell opens
     a dock window per fit); Start page closed, Tile Windows (VV in the centre); not fitted.'
   pages:
@@ -1990,14 +1979,14 @@ manual/figures/manual_donor_reference.png:
     dt 0.0141); FRET: Gaussian distances fit of Decay_577D+577A+GTPgS fitted; Fit page raw (a), Plot settings dock (b), Reference
     = Donor reference with logY off and IRF hidden (c).'
 manual/figures/manual_calculators.png:
-  caption: The calculators hub on F-test / chi2-max (a) and FRET / homoFRET (b).
+  caption: Tools -> Calculators -> F-Test (a) and FRET Calculator (b), each its own window.
   kind: screenshot
   origin: docs/guides/screenshots/manual_fitting.py::shot_calculators
   pages:
   - docs/manual/fcalculator.md
   recipe: pixi run -e test python docs/guides/screenshots/manual_fitting.py calculators. emtk shell (private in-process session,
     scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV, dt 0.0141);
-    Calculators hub (emtk app, 1000x640) on F-test / chi2-max (a) and FRET / homoFRET (b).
+    F-Test (a) and FRET Calculator (b) emtk apps, each standalone at 1000x640.
 manual/figures/manual_parameter_link.png:
   caption: 'Two IBH lifetime fits with the second''s t0 linked to the first''s: (a) the Lifetimes table, (b) the detail popup
     (t0 -> t0, Unlink enabled).'
@@ -3063,9 +3052,19 @@ guides/figures/games_breakout.png:
   kind: screenshot
   origin: docs/guides/screenshots/games_emtk.py::main
   recipe: >-
-    Run `python docs/guides/screenshots/games_emtk.py` from the repository root. It opens the
-    Games hub, selects Breakout, launches the ball, lets it fly about a second of real time and
-    grabs the hub at 1200x800.
+    Run `python docs/guides/screenshots/games_emtk.py` from the repository root. It opens
+    Breakout (Tools -> Games -> Breakout) on its own, launches the ball, lets it fly about a
+    second of real time and grabs the game at its declared 820x690.
+  pages:
+  - docs/guides/95_games.md
+
+guides/figures/games_ribbon.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/games_emtk.py::ribbon
+  recipe: >-
+    Run `python docs/guides/screenshots/games_emtk.py` from the repository root. The emtk shell
+    (RealisticDriver, real painter, 1440x900) on its Tools tab with the Games group's menu open:
+    Breakout, Minesweeper, Number Quest, Pong, Tetris.
   pages:
   - docs/guides/95_games.md
 
@@ -3144,8 +3143,8 @@ guides/figures/imaging_tools.png:
   recipe: >-
     Run `IMP_BFF_GPU=off python docs/guides/screenshots/imaging_tools_emtk.py` from the
     repository root. It sets a one-detector setup on routing channel 1, hands a copy of
-    test/data/clsm/Leica_SP8.ptu to the hub as source, waits for the background precompute and
-    grabs the hub on 1. Intensity at 1200x800.
+    test/data/clsm/Leica_SP8.ptu to Image Tools as source, waits for the background precompute and
+    grabs the pipeline window on 1. Intensity at 1200x800.
   pages:
   - docs/guides/98_imaging_tools.md
 
@@ -3496,7 +3495,7 @@ guides/figures/quest_demo_result.png:
   - docs/guides/80_quenching_estimator.md
 
 guides/figures/ribbon_spectroscopy_imaging.png:
-  caption: The shell ribbon on its Spectroscopy tab, with Imaging holding Image Tools.
+  caption: The shell ribbon on its Spectroscopy tab, the Imaging group's menu open (Image Tools and four standalone imaging tools).
   kind: screenshot
   origin: docs/guides/screenshots/handmade_replacements.py::ribbon_spectroscopy_imaging
   recipe: 'python docs/guides/screenshots/handmade_replacements.py ribbon_spectroscopy_imaging (repository
@@ -3824,10 +3823,10 @@ images/native_window_task_colors.png:
   kind: screenshot
   origin: hand-driven headless capture of the tool the guide describes (no generating script)
   recipe: >-
-    No script draws this image. Open several native tool windows of different task
-    groups in the emtk shell as docs/getting_started/index.md describes, render
-    headlessly so the task colours of their title bars show, and save the grab as
-    images/native_window_task_colors.png.
+    No script draws this image. In the emtk shell (1440x900, RealisticDriver with the
+    real painter) open lltf, hmm, imaging_tools, help and batch_analysis in that order
+    with shell.open_plugin, wait for each build, and save the grab as
+    images/native_window_task_colors.png: Batch Analysis (Tools > Wizards, orange) in front.
   pages:
   - docs/getting_started/index.md
 

@@ -19,9 +19,8 @@ phasor of a real image is {doc}`24_scan_images`.
 
 ## Open the tool
 
-**Tools → Calculators**, entry **◐ Phasor plot**. The manifest name
-`Main:Tools:Phasor-Calculator` is hidden from the menu; the Calculators hub is
-the only way in. The window has three docks: **Controls**, **Reference
+**Tools → Calculators → ◐ Phasor Calculator** (manifest address
+`Tools:Calculators:Phasor Calculator`). The window has three docks: **Controls**, **Reference
 lifetimes** and **Phasor plot**. The plot follows every edit at once. **Guide**
 walks through the tool step by step; **Help** opens a short explanation of the
 plot.
@@ -200,8 +199,8 @@ become the fractions used here via $f_i = a_i\tau_i / \sum_j a_j\tau_j$.
 
 - Concept: {ref}`concept-imaging-flim-phasor`.
 - Guide: {doc}`24_scan_images` for phasor maps of real CLSM data.
-- Tool: `chisurf/plugins/calculator/phasor_calculator/`, reached through the
-  Calculators hub; the geometry lives in
+- Tool: `chisurf/plugins/calculator/phasor_calculator/` (Tools › Calculators);
+  the geometry lives in
   `chisurf/plugins/microscopy/img_pixel_phasor/analysis.py`.
 
 The window opens at 640×480 and keeps a size you set; in a small window the

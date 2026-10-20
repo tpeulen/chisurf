@@ -243,6 +243,6 @@ assumption.
   {doc}`the scan-image guide </guides/24_scan_images>`.
 - Restricting a drift estimate to a structured patch:
   {ref}`concept-drift-correction`.
-- Tools in ChiSurf: **Region MLE** (`chisurf/plugins/microscopy/region_mle/`) fits each segmented region, and **Image Tools** (`chisurf/plugins/microscopy/imaging_tools/`) draws and stores the regions.
+- Tools in ChiSurf: **Region MLE** (`chisurf/plugins/microscopy/region_mle/`) fits each segmented region, and the **Image Tools** pipeline (`chisurf/plugins/microscopy/imaging_tools/`; its CLSM Draw and Spot Finder steps) draws and stores the regions.
 
 Tool: the shared maximum-likelihood base of the spot, region and pixel MLE tools (MLE Common) (`chisurf/plugins/microscopy/mle_common/`).

@@ -19,7 +19,7 @@ circularity, the inertia-tensor axes, why a perimeter is not a pixel count — s
 
 ## Where regions appear
 
-The imaging tools are steps of **Spectroscopy → Imaging → Image Tools**.
+The imaging tools are steps of **Spectroscopy → Imaging → Image Tools**; Drift Correction is a button of its own there.
 
 | Tool | What a region does there |
 |---|---|
@@ -28,7 +28,7 @@ The imaging tools are steps of **Spectroscopy → Imaging → Image Tools**.
 | **CLSM Draw** | the full editor: paint, draw, name, combine, measure; the decay follows the combined region |
 | **Colocalization** | every gate on the intensity scatter in one list — a typed box, a painted cloud, a drawn shape — combined rather than overriding |
 | **5. Phasor-FLIM** | cursors on the $(g,s)$ plane; the *Selected* tab shows the pixels they pick out |
-| **Drift** (headless `--roi`) | a structured patch gives a sharper correlation peak than a mostly-dark frame |
+| **Drift Correction** (headless `--roi`) | a structured patch gives a sharper correlation peak than a mostly-dark frame |
 | **ndX** | a gate on any two parameters selects the bursts inside it |
 
 They are the same object in all of them. A rectangle drawn on a confocal image and a

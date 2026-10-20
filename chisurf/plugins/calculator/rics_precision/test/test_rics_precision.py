@@ -384,23 +384,27 @@ def test_cli_json_reports_a_total_failure_instead_of_a_curve_of_nulls():
     assert CliRunner().invoke(cli, args).exit_code == 1
 
 
-# --- hub integration -------------------------------------------------------
-def test_precision_is_registered_with_the_calculators():
-    """The predictor is a calculator, and is reachable as one.
+# --- ribbon entry ----------------------------------------------------------
+def test_precision_is_a_button_of_the_calculators():
+    """The predictor is a calculator, and is reachable as one: Tools › Calculators › RICS Precision.
 
     It belongs beside the FRET and FCS calculators because it shares their
     defining property: it consumes no dataset, and turns typed-in settings into
-    a derived quantity. The entry must point at a widget that actually exists —
-    the hub resolves it lazily, so a wrong path fails only when a user clicks.
+    a derived quantity. The entry point must name a factory that actually exists —
+    the shell resolves it only when a user presses the button.
     """
     import importlib
+    import json
+    from pathlib import Path
 
-    from chisurf.plugins.calculator.hub.core.registry import default_calculators
+    from chisurf.plugins.calculator import rics_precision
 
-    entry = next(e for e in default_calculators() if e.id == "rics_precision")
-    module_name, attr = entry.widget.split(":", 1)
+    manifest = json.loads((Path(rics_precision.__file__).parent / "manifest.json").read_text())
+    assert manifest["display_name"] == "Tools:Calculators:RICS Precision"
+    assert not manifest.get("menu_hidden")
+    module_name, attr = manifest["entrypoints"]["emtk"].split(":", 1)
     assert hasattr(importlib.import_module(module_name), attr)
-    assert entry.description.strip()
+    assert manifest["description"].strip()
 
 
 def test_precision_is_not_a_panel_of_the_imaging_pipeline():

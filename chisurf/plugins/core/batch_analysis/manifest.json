@@ -1,10 +1,16 @@
 {
   "id": "batch_analysis",
   "version": "1.0.0",
-  "display_name": "Main:Tools:Batch-Analysis",
+  "display_name": "Tools:Wizards:Batch Analysis",
   "description": "Apply one pre-optimised template fit to many datasets or files in one pass and export the consolidated results (CSV, DOCX report, per-run ZIP).",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Main", "Tools", "Analysis"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools",
+    "Wizards",
+    "Analysis"
+  ],
   "icon": "📚",
   "state_namespace": "batch_analysis",
   "statefulness": {
@@ -19,6 +25,5 @@
     "cli": "batch-analysis=chisurf.plugins.core.batch_analysis.cli:cli"
   },
   "rpc_methods": [],
-  "dependencies": {},
-  "menu_hidden": true
+  "dependencies": {}
 }

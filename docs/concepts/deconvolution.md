@@ -229,4 +229,4 @@ cost of $w^2/12$ in variance.
 
 - [Determining the PSF](../guides/93_psf_determination.md): measure the PSF from beads.
 - [The PSF calculator](../guides/72_psf_calculator.md): compute a PSF and export it for deconvolution.
-- [Imaging Tools](../guides/98_imaging_tools.md): the imaging workflow hub that hosts the PSF step.
+- [Image Tools](../guides/98_imaging_tools.md): the imaging pipeline; PSF Determination is a Spectroscopy › Imaging tool of its own beside it.

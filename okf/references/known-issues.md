@@ -4,6 +4,21 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## CLSM Draw and Spot Finder never adopt the Image Tools source (found 2026-10-20, branch `mcts-native-baseline`)
+
+status: open
+
+The Image Tools coordinator hands every step `{"source": <photon file>, "hdf5": <imaging HDF5>}`
+(`ImagingToolsApp._apply_context`), but `clsm/gui/app.py::apply_pipeline_context`,
+`spot_finder/gui/view_model.py::apply_pipeline_context` and the Image Browser's model read
+`files` / `file`, which the coordinator never sends — so CLSM Draw and Spot Finder open empty
+even when the Browser has picked a source (they still take the Setup's detectors). Found while
+deciding which members are pipeline steps for the 2026-10-20 split; not caused by it. Measure:
+`ImagingToolsApp`, `set_pipeline(source=<ptu>)`, `goto_role("clsm_draw")`, the child's file list
+stays empty. Fix: read `source` (and keep `files` for the hand-off callers that send it) with a
+test in `imaging_tools/test/test_emtk_imaging_tools_parity.py`; left because it changes what the
+two tools open on arrival, which wants its own screenshot pass.
+
 ## emtk text-editor folding fix rides on uncommitted emtk work (found 2026-10-20, branch `mcts-native-baseline`)
 
 status: open

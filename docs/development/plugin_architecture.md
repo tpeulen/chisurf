@@ -387,7 +387,9 @@ Hosts that need the presentation without a panel use
 ### 3.1.2 Demo plugins
 
 `"demo": true` marks a plugin as a demonstration rather than something the
-application is for — the built-in games are the only ones in the tree. Unlike a
+application is for. No shipped plugin declares it: the built-in games did while
+a Games hub listed them, and lost it when each became its own Tools › Games
+button — a gated game with no hub in front of it cannot be found. Unlike a
 maturity flag it carries no banner: plugin discovery
 (`chisurf.plugins.iter_plugins()`) turns it into `menu_hidden` unless the
 `plugins.show_demo_plugins` setting is on, so the demo is absent from the

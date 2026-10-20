@@ -55,7 +55,7 @@ GUI layers:
 ## Usage
 
 1. **Launch the plugin**
-   - From ChiSurf: the **Image Tools** toolbox → *PSF Determination* panel.
+   - From ChiSurf: **Spectroscopy › Imaging › PSF Determination** in the ribbon.
    - Headless batch: `psf-determination fit-stack STACK.tif --csv out.csv`
 
 2. **Load a bead scan**

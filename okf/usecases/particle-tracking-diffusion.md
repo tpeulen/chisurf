@@ -8,6 +8,8 @@ timestamp: '2026-07-27T00:00:00Z'
 
 # Use case: particle tracking — from spots to a diffusion coefficient
 
+> Since 2026-10-20 Particle Tracking is not an Image Tools step but its own **Spectroscopy › Imaging › Particle Tracking** button. The walk below predates that.
+
 **Goal:** follow individual particles through a movie and turn their
 trajectories into a **diffusion coefficient**. Three stages, each exposed
 separately because each fails in its own way: *detect* the spots in every frame,

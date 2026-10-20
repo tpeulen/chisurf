@@ -10,7 +10,6 @@ import pytest
 from emtk import i18n, im
 from emtk.testing import Driver
 
-from chisurf.plugins.misc.games.gui.registry import GAME_PANELS
 from chisurf.plugins.misc.games.number_quest.gui import app as owner
 from chisurf.plugins.misc.games.number_quest.gui import drawing
 
@@ -21,7 +20,6 @@ def test_canonical_factory_and_resources_use_the_rich_contract():
     manifest = json.loads((plugin / "manifest.json").read_text())
     factory = "chisurf.plugins.misc.games.number_quest.gui.app:make_app"
     assert manifest["entrypoints"]["emtk"] == factory
-    assert next(row for row in GAME_PANELS if row["name"] == "Number Quest")["emtk"] == factory
     assert "target" not in inspect.signature(owner.NumberQuestApp).parameters
     assert drawing.GLYPHS == json.loads((plugin / "glyphs.json").read_text())
     app = owner.make_app()

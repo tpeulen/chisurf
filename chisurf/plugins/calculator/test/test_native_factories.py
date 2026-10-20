@@ -17,7 +17,6 @@ import pytest
         "rics_precision",
         "psf_calculator",
         "fcs_saturation_calc",
-        "hub",
     ],
 )
 def test_factory_without_qt(plugin):
@@ -182,21 +181,6 @@ def test_psf_full_volume_export_and_native_render(tmp_path):
     path = tmp_path / "psf.npy"
     app.model.save(path)
     assert np.load(path) == pytest.approx(app.model.volume)
-
-
-def test_hub_lazy_build_and_child_state():
-    from emtk.testing import RecordingPainter
-
-    from chisurf.plugins.calculator.hub.gui.app import make_app
-
-    app = make_app()
-    assert not app.children
-    child = app.select("fret_calculator")
-    child.hetero.model.R = 61
-    app.select("phasor")
-    assert app.select("fret_calculator") is child
-    assert child.hetero.model.R == 61
-    app.draw(RecordingPainter(), 0, 0, 1200, 800)
 
 
 def test_fret_live_parameter_bounds_fixed_and_donor_reference():

@@ -1,14 +1,15 @@
 ---
 type: Guide
-title: 'Working in the shell: interface, account and the two hubs'
-description: Switch between menu bar and ribbon, sign in as another MMFDB user, and use the Calculators and Wizards hubs.
+title: 'Working in the shell: interface, account, calculators and wizards'
+description: Switch between menu bar and ribbon, sign in as another MMFDB user, and find the calculators and wizards in the Tools tab.
 tags: [guides, database, mmfdb]
 ---
 
-# Working in the shell: interface, account and the two hubs
+# Working in the shell: interface, account, calculators and wizards
 
 **Tools:** Menu Switch (`chisurf/plugins/core/menu_switch/`), Switch User (`chisurf/plugins/core/switch_user/`),
-Calculators (`chisurf/plugins/calculator/hub/`), Wizards (`chisurf/plugins/core/wizards/`). Theory:
+the calculators (`chisurf/plugins/calculator/`, `chisurf/plugins/fret_line/`, `chisurf/plugins/core/f_test/`) and wizards
+(`chisurf/plugins/fluorescence_decay/tr_anisotropy/`, `chisurf/plugins/core/batch_analysis/`). Theory:
 [the application shell](../concepts/application_shell.md).
 
 ## 1. Menu bar or ribbon
@@ -29,13 +30,16 @@ What the account may change is decided by the database ([MMFDB Admin](102_mmfdb_
 
 ## 3. Calculators and Wizards
 
-*Tools → Calculators* has two entries.
+Each calculator and each wizard is a button of the *Tools* tab and opens in a dock of its own.
 
-- **Calculators**: pick FRET / homoFRET, FRET line, RICS precision, Phasor plot, κ² distribution, F-test / χ²-max, FCS
-  Saturation or PSF calculator on the left; it appears on the right. See [FRET lines](82_fret_lines.md) and
-  [the phasor calculator](77_phasor_calculator.md).
-- **Wizards**: Anisotropy builds a linked VV/VH global fit ([lifetime and anisotropy](10_lifetime_anisotropy_fitting.md));
-  Batch analysis applies one template fit to many files.
+- *Tools → Calculators*: F-Test, FCS Saturation, FRET Calculator (hetero- and homoFRET), FRET Line Generator, Kappa2
+  Distribution, Light Path Simulator, PSF Calculator, Phasor Calculator, RICS Precision, Spectra Downloader. See
+  [FRET lines](82_fret_lines.md) and [the phasor calculator](77_phasor_calculator.md).
+- *Tools → Wizards*: **Anisotropy Wizard** builds a linked VV/VH global fit
+  ([lifetime and anisotropy](10_lifetime_anisotropy_fitting.md)); **Batch Analysis** applies one template fit to many
+  files.
+
+Where the ribbon is too narrow a group collapses into one button whose menu lists its tools.
 
 Settings are in [the Settings window](97_settings_hub.md); version details in
 [application details](103_application_identity.md).

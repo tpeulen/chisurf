@@ -210,7 +210,7 @@ reports does not snap to the pixel grid.
 - Implementation: the model and the reported widths,
   {src}`chisurf/plugins/calculator/psf_calculator/core.py#PSFModel`; the optics
   are the TTTR library's `CLSMSuperRes.psf_volume`.
-- Tools in ChiSurf: **PSF calculator** (Calculators hub,
+- Tools in ChiSurf: **PSF calculator** (Tools › Calculators › PSF Calculator,
   `chisurf/plugins/calculator/psf_calculator/`).
 
 ## References

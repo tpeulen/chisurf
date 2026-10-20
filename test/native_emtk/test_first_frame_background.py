@@ -97,13 +97,20 @@ def test_tool_hub_ensure_child_joins_a_build_under_way():
     hub.close()
 
 
-def test_calculator_hub_builds_the_shown_calculator_in_the_background(monkeypatch):
+def test_the_imaging_pipeline_builds_the_shown_step_in_the_background():
     from chisurf.emtk.background_build import join_all
-    from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
+    from chisurf.plugins.microscopy.imaging_tools.gui.app import ImagingToolsApp
+
+    class Client:
+        def get_current(self):
+            return {"detectors": {"green": {"chs": [0]}}}
+
+        def set_current(self, setup):
+            pass
 
     gate, made = threading.Event(), []
-    hub = CalculatorHubApp()
-    monkeypatch.setattr(hub, "make_child", lambda id: gated(gate, made)())
+    factory = gated(gate, made)
+    hub = ImagingToolsApp(client=Client(), factories={"browser": lambda **_kw: factory()})
     try:
         shown = strings(hub)
         assert hub.building and hub.child is None
@@ -111,7 +118,7 @@ def test_calculator_hub_builds_the_shown_calculator_in_the_background(monkeypatc
         gate.set()
         join_all()
         strings(hub)
-        assert isinstance(hub.child, Tool) and not hub.error
+        assert isinstance(hub.child, Tool) and not hub.error and len(made) == 1
     finally:
         gate.set()
         hub.close()

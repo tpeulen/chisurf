@@ -147,7 +147,7 @@ def test_restore_reopens_the_plugins_that_were_open():
 
 
 def test_real_plugins_render_inside_the_shell():
-    """The shipped About and Calculators apps, hosted as docks; the PNG is for review."""
+    """The shipped About and FRET Calculator apps, hosted as docks; the PNG is for review."""
     shell = EmtkShellApp()
     driver = Driver(shell, size=(1400, 900))
     driver.frame(2)
@@ -155,13 +155,13 @@ def test_real_plugins_render_inside_the_shell():
     shell.filter = "about"
     driver.frame(2)
     driver.click("tools.about")
-    shell.open_plugin("calculators")
+    shell.open_plugin("fret_calculator")
     _settle(driver, shell, timeout=120.0)
-    for plugin_id in ("about", "calculators"):
+    for plugin_id in ("about", "fret_calculator"):
         hosted = shell.hosted[plugin_id]
         assert hosted.app is not None, hosted.error
-    # The calculators hub is the active tab: its own controls are drawn into its dock.
-    assert "FRET line" in driver.painter.strings
+    # The FRET Calculator is the active tab: its own controls are drawn into its dock.
+    assert "HeteroFRET" in driver.painter.strings
     output = Path(os.environ.get("CHISURF_NATIVE_SCREENSHOTS", "/private/tmp/chisurf-native-gpu"))
     output.mkdir(parents=True, exist_ok=True)
     driver.screenshot(output / "emtk_shell.png")

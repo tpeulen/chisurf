@@ -178,12 +178,12 @@ def test_narrow_widths_keep_every_plugin_reachable(shell):
 def test_the_ribbon_search_finds_tools_of_every_tab(shell):
     driver = Driver(shell, size=(1440, 900))
     driver.frame(2)
-    shell.ribbon.ribbon.query = "games"
+    shell.ribbon.ribbon.query = "pong"
     painter = driver.frame(2)
-    assert "Games" in painter.strings
-    driver.click("ribbon.button.plugin.games")
+    assert "Pong" in painter.strings
+    driver.click("ribbon.button.plugin.pong")
     driver.frame()
-    assert "games" in shell.hosted
+    assert "pong" in shell.hosted
 
 
 def test_the_tools_tree_follows_the_ribbon_and_filters(shell):

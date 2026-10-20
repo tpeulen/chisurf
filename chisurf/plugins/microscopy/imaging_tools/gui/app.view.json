@@ -1,0 +1,8 @@
+{
+  "_comment": "Initial host dimensions of the imaging pipeline window; each step's own form is declared by that step.",
+  "window": {
+    "width": 1100,
+    "height": 720
+  },
+  "sections": []
+}

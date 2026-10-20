@@ -1,9 +1,12 @@
-"""Imaging Tools — the unified imaging toolbox.
+"""Image Tools — the imaging pipeline.
 
-One window listing the imaging tools in pipeline order (setup, browser, drift,
-FRC, flow, tracking, colocalization, the per-pixel maps, MLE, CLSM, PSF). The
-window is the native emtk app in :mod:`.gui.app`; importing this package needs
-no Qt binding.
+One window listing the imaging steps that share one context (detector setup,
+photon source, imaging HDF5, IRF & BG calibration) in pipeline order: setup,
+browser, FRC, flow, colocalization, the numbered per-pixel maps, CLSM Draw,
+Spot Finder and Region MLE. Tools that read their own input (Drift Correction,
+Particle Tracking, PSF Determination, CLSM Generator) are ribbon entries of
+their own. The window is the native emtk app in :mod:`.gui.app`; importing
+this package needs no Qt binding.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """Every tool has one home: a ribbon button, or a panel in exactly one hub.
 
-A hub (Image Tools, Calculators, ...) is one ribbon button standing
+A hub (Image Tools, Burst Analysis, Settings, ...) is one ribbon button standing
 for the tools it hosts. The ribbon knows nothing about hubs: a hosted tool
 disappears from it only because its own manifest says ``menu_hidden``. So three
 things drift apart silently, and each is checked here:
@@ -106,17 +106,11 @@ def _declared_children() -> dict[str, list[str]]:
     """``{hub id: [child refs]}``, read from each hub's declaration."""
     from chisurf.plugins.burst.alex_suite.gui.native import STEPS as ALEX
     from chisurf.plugins.burst.burst_analysis.gui.native import STEPS as BURST
-    from chisurf.plugins.calculator.hub.core.registry import default_calculators
     from chisurf.plugins.core.setup.gui.model import PANELS as SETUP
-    from chisurf.plugins.core.wizards.core.registry import default_wizards
     from chisurf.plugins.microscopy.imaging_tools.gui.app import PANELS as IMAGING
-    from chisurf.plugins.misc.games.gui.registry import GAME_PANELS
 
     return {
         "imaging_tools": [row[1] for row in IMAGING],
-        "calculators": [e.widget for e in default_calculators()],
-        "wizards": [e.emtk for e in default_wizards()],
-        "games": [p["emtk"] for p in GAME_PANELS],
         "setup": [ref for p in SETUP for ref in (p.plugin, p.entry) if ref],
         "burst_analysis": [p["plugin"] for p in BURST if p.get("plugin")],
         "alex_suite": [p["plugin"] for p in ALEX if p.get("plugin")],
@@ -185,8 +179,7 @@ def test_every_hidden_tool_is_reachable_from_a_hub():
     for pid, (_d, manifest) in manifests().items():
         entry = manifest.get("entrypoints", {})
         has_gui = bool(entry.get("gui") or entry.get("emtk"))
-        demo = "Games" in manifest.get("display_name", "").split(":")[:-1]
-        if manifest.get("menu_hidden") and has_gui and pid not in hosted and not demo:
+        if manifest.get("menu_hidden") and has_gui and pid not in hosted:
             if pid not in UNHOSTED:
                 lost.append(f"{pid} ({manifest.get('display_name')})")
     assert not lost, f"hidden, and no hub hosts them — unreachable from the GUI: {sorted(lost)}"
