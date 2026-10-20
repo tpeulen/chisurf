@@ -295,9 +295,12 @@ interior.
 What the model does and — just as importantly — what it leaves out is in
 {ref}`concept-biofilm-growth`.
 
-The demo that produces this has no file to fetch: the simulator that ships beside
-ChiSurf is run on first use — a few seconds — and the result is cached in the
-settings directory, so what you watch is what the model produced on your machine.
+The demo that produces this has no file to fetch: the simulator, `IMP.swarm`, is
+run on first use — a few seconds — and the result is cached in the settings
+directory, so what you watch is what the model produced on your machine.
+`IMP.swarm` is the optional **imp-swarm** package (CeCILL-2.0, see
+{doc}`/licensing`), which the installer does not bundle; without it the demo
+says the package is missing and plays a recorded run instead.
 Change the configuration (`IMP/swarm/examples/biofilm_growth.yaml`: colony
 geometry, growth rates, the depth thresholds that set the colours) and delete the
 cached `.rmf` to see the difference.

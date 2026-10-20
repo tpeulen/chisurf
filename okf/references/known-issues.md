@@ -13,13 +13,12 @@ status: open
   did not settle because each needs an owner decision, not an edit. Re-sweep a repository with
   `git ls-files | xargs grep -IlE 'GPL|General Public|MPL-2|Mozilla Public|CeCILL'` (skip `junk/`,
   lock files, `.ipynb`).
-- **Blocker for imp-tricks being MIT: IMP.swarm.** `src/IMP/swarm/docs/index.md` says "All documentation
-  is licensed under CeCILL v2", and the package calls itself a reimplementation of iDynoMiCS-2 (Java,
-  CeCILL) with parity verification against it (`docs/developer/legacy_notes.md`, `README.md` "biofimp —
-  Complete Python reimplementation of iDynoMiCS-2"). If the 52 files were translated from iDynoMiCS-2
-  source they are CeCILL-derived and cannot be MIT; if written from its papers/behaviour they can. Needs
-  the chimol treatment (`~/dev/chimol/okf-mit-cleanroom-audit.md`): establish provenance per module,
-  clean-room what was transcribed, then drop the CeCILL line. Left untouched on purpose.
+- **IMP.swarm in imp-tricks — resolved 2026-10-20 by separation (owner decision).** IMP.swarm (CeCILL
+  v2 docs, an iDynoMiCS-2 reimplementation) left the MIT imp-tricks (`9631f9e`) for its own package
+  imp-swarm (`~/dev/imp-swarm`, CECILL-2.0, history kept). Optional for ChiMOL's biofilm demo (chimol
+  `92b106a`), not bundled by the installer; guards: imp-tricks `tests/test_licence.py`, chisurf
+  `test/test_stack_licences.py::test_the_installer_does_not_bundle_imp_swarm`. Still open: whether the
+  installer should ever ship it ([licence concept](../subsystems/licence-mit.md) item 1).
 - **tttrlib: Apache-2.0 attribution.** `modules/io/ps/include/PhotonscoreD7.h` is "a std-only port of the
   public, Apache-2.0 reference decoder" (photonscore/d7, photonsfile). Apache-2.0 code may be ported into
   BSD-3-Clause tttrlib, but §4 then wants the upstream copyright notice kept, a statement that the file

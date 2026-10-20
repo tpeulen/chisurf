@@ -10,10 +10,17 @@ timestamp: 2026-10-20T18:00:00+02:00
 
 ## Where to pick this up
 
-1. **IMP.swarm provenance (blocks imp-tricks being wholly MIT).** Its docs say CeCILL v2 and it calls
-   itself a reimplementation of iDynoMiCS-2 (CeCILL). Establish per module whether it was translated
-   from that source; clean-room what was, as chimol did (`~/dev/chimol/okf-mit-cleanroom-audit.md`).
-   Details in [known issues](../references/known-issues.md).
+1. **IMP.swarm — split out, 2026-10-20 (owner: "imp-tricks is not imp.bff — separate out").** It is
+   now its own package, **imp-swarm** (`~/dev/imp-swarm`, local repo, no remote yet; `CECILL-2.0`, the
+   official CeCILL v2.0 en+fr texts; history of its 58 files kept via filter-repo). Commits: imp-swarm
+   `5986873`, imp-tricks `9631f9e` (removal + `test_no_cecill_code_ships_here`), chimol `92b106a`
+   (demo names the missing package; frozen fallback logs why). The import name `IMP.swarm` survives
+   through a `.pth`-installed finder (`src/_imp_swarm_path.py`). ChiSurf imports it nowhere; the
+   installer bundles imp-tricks only, held by `test_stack_licences.py::test_the_installer_does_not_bundle_imp_swarm`.
+   **Open (owner decision):** should the installer ever ship imp-swarm? CeCILL is a GPL-compatible
+   copyleft, so shipping it means its text and source beside the installer, like IMP.bff. Until
+   decided, the installed app's biofilm demo shows the frozen run. Also open: a remote for imp-swarm,
+   and whether its provenance (translated vs. written from the papers) should be settled anyway.
 2. **LGPL source offer.** The installer ships the LGPL text and NOTICE with the imp-bff version and
    repository; strict §4/§6 compliance additionally wants the sdist in or beside the installer, or a
    written offer. Owner decision; known issues has the options.

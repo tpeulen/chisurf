@@ -104,9 +104,9 @@ expressed.
 
 - Guide: {doc}`/guides/44_molecular_viewer` — the **Biofilm growth** demo, and
   how a per-frame radius and colour are read.
-- Simulation configuration: `IMP/swarm/examples/biofilm_growth.yaml` in the
-  modelling framework beside ChiSurf; the runner is
-  `IMP.swarm.core.visual_runner`.
+- Simulation configuration: `IMP/swarm/examples/biofilm_growth.yaml` in
+  **imp-swarm**, an optional package installed separately (CeCILL-2.0, see
+  {doc}`/licensing`); the runner is `IMP.swarm.core.visual_runner`.
 - Key literature: {cite}`debeer1994` measures the oxygen profiles through a
   biofilm; {cite}`stewart2008` on why a biofilm is not one population;
   {cite}`lardon2011` the individual-based simulator this demonstration follows;

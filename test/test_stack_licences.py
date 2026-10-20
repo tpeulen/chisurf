@@ -2,7 +2,9 @@
 
 Owner decision 2026-10-20: chisurf and its family (emtk, chimol, mmfdb, ndxplorer,
 quest, imp-tricks, labelizer) are MIT, tttrlib is BSD-3-Clause, and IMP.bff is
-LGPL-2.1-or-later as an IMP module. The audit that recorded this found the
+LGPL-2.1-or-later as an IMP module. IMP.swarm left imp-tricks the same day for
+its own package, imp-swarm, under CECILL-2.0 (it reimplements iDynoMiCS-2); it is
+optional and the installer does not bundle it. The audit that recorded this found the
 declarations had drifted apart: imp.bff's pyproject said MPL-2.0 beside a
 COPYING.LGPL, imp-tricks' recipe said BSD-3-Clause beside an MIT LICENSE, the
 splash art still carried the GPL notice. The table in docs/licensing.md is the
@@ -41,6 +43,7 @@ REPOSITORY = {
     "labelizer": "labelizer",
     "tttrlib": "tttrlib",
     "imp-bff": "imp.bff",
+    "imp-swarm": "imp-swarm",
 }
 
 #: Recipes that package something other than the repository's own library.
@@ -89,7 +92,29 @@ def test_the_owner_decision_is_what_the_table_says():
     table = stack_table()
     assert table["tttrlib"] == "BSD-3-Clause"
     assert table["imp-bff"] == "LGPL-2.1-or-later"
-    assert {table[p] for p in REPOSITORY if p not in ("tttrlib", "imp-bff")} == {"MIT"}
+    assert table["imp-swarm"] == "CECILL-2.0"
+    assert {table[p] for p in REPOSITORY if p not in ("tttrlib", "imp-bff", "imp-swarm")} == {"MIT"}
+
+
+def test_the_installer_does_not_bundle_imp_swarm():
+    """imp-swarm is CeCILL and optional: no installer, pixi task or recipe ships it.
+
+    Whether the installer should ever carry it is an open owner decision
+    (okf/subsystems/licence-mit.md); until then it ships nowhere, and imp-tricks,
+    which the installer does bundle, must not carry it inside either.
+    """
+    for rel in ("build_tools/build_installer.py", "pixi.toml", "pyproject.toml",
+                "rattler-recipe/recipe.yaml"):
+        text = (ROOT / rel).read_text(encoding="utf-8").lower()
+        for name in ("imp-swarm", "imp_swarm", "imp.swarm"):
+            assert name not in text, f"{rel} names {name}"
+    tricks = repository("imp-tricks")
+    if tricks is not None:
+        assert not (tricks / "src" / "IMP" / "swarm").exists(), "IMP.swarm is back in imp-tricks"
+    swarm = repository("imp-swarm")
+    if swarm is not None:
+        assert (swarm / "LICENSE").read_text(encoding="utf-8").lstrip().startswith(
+            "CeCILL FREE SOFTWARE LICENSE AGREEMENT")
 
 
 @pytest.mark.parametrize("package", sorted(REPOSITORY))

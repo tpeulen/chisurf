@@ -121,12 +121,25 @@ and conda recipe). The table below is checked against those declarations by
 | labelizer | MIT | the labelling-site finder (a chimol plugin) |
 | tttrlib | BSD-3-Clause | photon-stream I/O and analysis |
 | imp-bff | LGPL-2.1-or-later | structures, accessible volumes and fluorescence models (`IMP.bff`) |
+| imp-swarm | CECILL-2.0 | agent-based simulation (`IMP.swarm`); optional, **not** in the installer |
 <!-- stack-licences:end -->
 
 MIT and BSD-3-Clause are permissive and combine freely. IMP.bff is an IMP
 module and keeps IMP's licence for its LGPL modules, the GNU Lesser General
 Public License, version 2.1 or later; it is the only copyleft package ChiSurf
-needs at run time. `chinet` is obsolete — unreachable from ChiSurf and
+needs at run time.
+
+**imp-swarm** (`IMP.swarm`, the agent-based simulator behind ChiMOL's
+*Biofilm growth* demo) is a reimplementation of iDynoMiCS-2 and carries
+that program's licence, the CeCILL Free Software License Agreement v2.0 — a
+copyleft licence compatible with the GNU GPL. It was split out of
+imp-tricks so that imp-tricks is MIT throughout, and it is an **optional**
+dependency: nothing in ChiSurf imports it, the installer does not bundle it,
+and without it the demo says so and shows a recorded run instead. Install it
+beside IMP yourself (`python -m pip install --no-deps <imp-swarm checkout>`)
+to grow the colony live.
+
+`chinet` is obsolete — unreachable from ChiSurf and
 unmaintained — and is not part of the stack. Every other dependency, with its
 licence, is listed in {doc}`/development/licenses`.
 
