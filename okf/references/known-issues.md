@@ -8592,3 +8592,11 @@ re-inspecting; that is its own change, with its own before/after images.
 
 ---
 
+
+## ndX ranking panel: "Islands" header has no catalogue entry (found 2026-10-20)
+
+status: open — owner: the queued i18n catalogue job. The clean-room view ranking (ndxplorer a78db6d) marks the
+population table's "Islands" header for translation, as the spec's clarification 10 requires. The de/fr
+catalogues (`modules/ndxplorer/ndxplorer/locale/ndxplorer_{de,fr}.ts`) lack it, so
+`ndxplorer/tests/test_i18n.py::test_every_string_is_translated[de|fr]` names exactly that one string until the
+entries land: **de "Inseln", fr "Îlots"**. Until then the header falls back to English. No other string is missing.
