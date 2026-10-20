@@ -172,6 +172,43 @@ in-flight work, so it is **banned**:
 - If a git command *would* discard work that is not yours, stop and report to the
   user instead of running it.
 
+### Committing in the shared tree: `safe_edit commit`
+
+Hand-rolled commit recipes (temporary `GIT_INDEX_FILE` + `read-tree` +
+`commit-tree` + `update-ref`) repeatedly landed commits that silently reverted
+other agents' work: an index read from a HEAD that moved before the ref update
+(reverting an FCS commit), a blob taken from a working-tree file that lacked a
+just-committed `okf/log.md` bullet, an index carrying 23 unrelated test-data
+deletions, and a zsh word-split path list that committed only the log line. All
+four are refusals in
+[`build_tools/dev_utils/safe_commit.py`](../../build_tools/dev_utils/safe_commit.py),
+so commit through it:
+
+```bash
+python -m build_tools.dev_utils.safe_edit commit -m "Subject" -m "Body paragraph." \
+    --file chisurf/foo.py --file "docs/a b.md" --file okf/log.md \
+    [--remove old/file.py] [--allow-drop chisurf/foo.py] [--base <HEAD you started from>] [--dry-run]
+```
+
+- Each path is its own argument (repeat `--file`), so there is no word splitting.
+- The temporary index is built from HEAD **at commit time** and HEAD moves with
+  `git update-ref HEAD new old` (compare-and-swap); if another commit lands in
+  between, it rebuilds on the new HEAD and re-checks (up to `--retries`, default 5).
+- A file that **loses lines HEAD has** (a line that only moved does not count) is refused and the lines are
+  printed. If someone else committed them, your copy is stale: merge them back.
+  If you removed them on purpose, pass `--allow-drop PATH`, or pass `--base REV`
+  (the HEAD you started from) so only removing lines committed *after* it is
+  refused. A replaced binary file needs `--allow-drop`.
+- A deletion must be named with `--remove`; a missing `--file` is refused. An
+  empty commit, or a change to any path not named, is refused.
+- The message is exactly the `-m` paragraphs — no trailers. On success it
+  prints the hash and `git show --stat`, and points the real index entries of
+  those paths at the committed blobs. It commits whole working-tree files, so a
+  file with another agent's uncommitted lines sweeps them in (the content lands;
+  do not use it to commit someone else's half-finished file).
+
+Guard: `test/dev_utils/test_safe_commit.py`.
+
 ## Traceability runs one way — source points at concepts, never at PRDs
 
 Tracking a change in OKF does **not** mean stamping the PRD number into the code

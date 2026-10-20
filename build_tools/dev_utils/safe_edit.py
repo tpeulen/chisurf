@@ -17,6 +17,9 @@ Command line::
     python -m build_tools.dev_utils.safe_edit log "bullet text" [--date YYYY-MM-DD]
     python -m build_tools.dev_utils.safe_edit log --dedupe
     python -m build_tools.dev_utils.safe_edit ts de --json entries.json
+    python -m build_tools.dev_utils.safe_edit commit -m "subject" --file PATH [--file PATH ...]
+
+The ``commit`` sub-command lives in :mod:`build_tools.dev_utils.safe_commit`.
 
 A ``"translation": ""`` entry adds the source as ``unfinished`` (catalogue
 sources for new UI text, translated later) and never clears a translation.
@@ -342,7 +345,7 @@ def add_ts_entries(
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Command-line entry point (``log`` and ``ts`` sub-commands)."""
+    """Command-line entry point (``log``, ``ts`` and ``commit`` sub-commands)."""
     ap = argparse.ArgumentParser(prog="safe_edit", description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     lg = sub.add_parser("log", help="append a bullet to okf/log.md under its date heading")
@@ -352,7 +355,12 @@ def main(argv: list[str] | None = None) -> int:
     ts = sub.add_parser("ts", help="add/update messages in a .ts catalogue")
     ts.add_argument("lang")
     ts.add_argument("--json", required=True, help="file with [{context, source, translation}]")
+    from build_tools.dev_utils import safe_commit
+
+    safe_commit.add_commit_parser(sub)
     args = ap.parse_args(argv)
+    if args.cmd == "commit":
+        return safe_commit.run_commit_args(args)
     if args.cmd == "log":
         if not args.text and not args.dedupe:
             ap.error("give bullet text or --dedupe")
