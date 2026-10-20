@@ -354,11 +354,11 @@ class StylePreview:
             im.get_window_draw_list().add_rect_filled(
                 (box[0], box[1]), (box[0] + width, box[1] + height), window_bg
             )
-            im.text("Preview")
+            im.text(tr("Preview"))
             if self._error:
                 im.text_colored(_style.TEXT_DANGER, self._error[:120])
             elif style is None:
-                im.text_wrapped("Nothing parsed yet.")
+                im.text_wrapped(tr("Nothing parsed yet."))
             else:
                 self._draw_samples()
             im.end_child()
@@ -369,25 +369,25 @@ class StylePreview:
     def _draw_samples(self) -> None:
         """A column of widgets that between them use most palette roles."""
         note = tr("Preview sample: shows how this control looks in the theme; it does nothing")
-        if im.button("Button"):
+        if im.button(tr("Button") + "##preview_button"):
             pass
         im.set_item_tooltip(note)
         im.same_line()
-        if im.button("Hover me"):
+        if im.button(tr("Hover me") + "##preview_hover"):
             pass
         im.set_item_tooltip(note)
-        changed, checked = im.checkbox("Check", True)
+        changed, checked = im.checkbox(tr("Check") + "##preview_check", True)
         im.set_item_tooltip(note)
-        changed, value = im.slider_float("Slider##preview", 0.4, 0.0, 1.0)
+        changed, value = im.slider_float(tr("Slider") + "##preview", 0.4, 0.0, 1.0)
         im.set_item_tooltip(note)
-        changed, index = im.combo("Combo##preview", 0, ["First", "Second", "Third"])
+        changed, index = im.combo(tr("Combo") + "##preview", 0, [tr("First"), tr("Second"), tr("Third")])
         im.set_item_tooltip(note)
-        changed, text = im.input_text("##preview_field", "Input field")
+        changed, text = im.input_text("##preview_field", tr("Input field"))
         im.set_item_tooltip(note)
         im.progress_bar(0.55)
         im.separator()
-        im.text_wrapped("The quick brown fox jumps over the lazy dog.")
-        im.text_disabled("Disabled text")
+        im.text_wrapped(tr("The quick brown fox jumps over the lazy dog."))
+        im.text_disabled(tr("Disabled text"))
 
 
 class StyleManagerApp(ImApp):
