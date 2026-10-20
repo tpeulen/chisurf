@@ -25,6 +25,7 @@
     "tttr_splitter": "*"
   },
   "optional_requires": {
-    "ndxplorer": "*"
+    "ndxplorer": "*",
+    "user_editor": "*"
   }
 }

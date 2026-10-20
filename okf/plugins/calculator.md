@@ -9,7 +9,7 @@ timestamp: '2026-10-20T00:00:00Z'
 
 ## Where to pick this up
 
-2. Done 2026-10-20 — **no Calculators hub.** Every calculator is its own Tools › Calculators
+2. Measure: **no Calculators hub (done 2026-10-20).** Every calculator is its own Tools › Calculators
    button and opens in a dock of its own (the emtk shell gives each tool one); `calculator/hub`
    (registry, `CalculatorHubApp`, `csg_calculators`) is deleted with no shim. What the hub held
    and where it went: the selection + per-child settings → each calculator's own plugin state;

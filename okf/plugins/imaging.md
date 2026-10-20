@@ -9,12 +9,12 @@ timestamp: '2026-10-20T00:00:00Z'
 
 ## Where to pick this up
 
-0. Done 2026-10-20 — **Image Tools is the pipeline only** (owner: "image tools (partly, keep
+0. Measure: **Image Tools is the pipeline only (done 2026-10-20)** (owner: "image tools (partly, keep
    pipeline)"). Rule, read from the code: a tool stays in the window iff it consumes the shared
    context — `apply_setup_settings` / `apply_pipeline_context` / `apply_calibration` that
    *do* something, or a coordinator hand-off (Next, `pipeline_sink`, `publish`). Stays: Setup,
-   Browser, Resolution (FRC: setup windows + source), Flow (source), Colocalization (setup windows
-   + source), 1-6 (HDF5 chain, calibration), CLSM Draw (setup detectors), Spot Finder (setup
+   Browser, Resolution (FRC: setup windows + source), Flow (source), Colocalization (setup
+   windows, source), 1-6 (HDF5 chain, calibration), CLSM Draw (setup detectors), Spot Finder (setup
    detectors), Region MLE (setup, source, calibration). Left, each its own Spectroscopy › Imaging
    button: Drift Correction and Particle Tracking (their adapters were accept-and-ignore no-ops,
    now deleted; drift exports a corrected TIFF, not a photon file the Browser would pick up),

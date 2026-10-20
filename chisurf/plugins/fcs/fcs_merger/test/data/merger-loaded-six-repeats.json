@@ -127,7 +127,7 @@
     "visible": true,
     "enabled": true,
     "tooltip": "",
-    "text": "/private/tmp/prd154-w1-fcs-row10-renders/merger/BH_SPC132"
+    "text": "/private/tmp/qt-fcs-row10-renders/merger/BH_SPC132"
   },
   {
     "object": "toolButton_2",
@@ -151,7 +151,7 @@
     "visible": true,
     "enabled": true,
     "tooltip": "",
-    "text": "/private/tmp/prd154-w1-fcs-row10-renders/merger/BH_SPC132.cor"
+    "text": "/private/tmp/qt-fcs-row10-renders/merger/BH_SPC132.cor"
   },
   {
     "object": "qt_toolbar_ext_button",

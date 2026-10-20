@@ -107,7 +107,7 @@ later). Colour key for users: [getting started](../../docs/getting_started/index
 
 ## Where to pick this up
 
-9. Open (2026-10-20, after the Calculators/Wizards/Games split): the Tools tab is now wide —
+9. Open: (2026-10-20, after the Calculators/Wizards/Games split) the Tools tab is now wide —
    at 1440 px **System and Games are collapsed** into drop-down buttons (Calculators holds ten
    buttons, four columns), at 1100 px everything but Photon data collapses. Still reachable
    (collapsed menus, `test_narrow_widths_keep_every_plugin_reachable` covers Spectroscopy).

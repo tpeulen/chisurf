@@ -18,12 +18,12 @@ timestamp: '2026-07-05T00:00:00Z'
    χ² across fits: `[(f["name"], f["chi2r_current"]) for f in api.list_fits(statistics=True)]` (a row's `chi2r` is
    the last run's, `None` before a run). Filter calculator residual axis: `Residual / σ` under the dock title.
 3. Measure: method of the pass and every defect: known issue "QA walk of the FCS, lifetime, …" (found 2026-10-11).
-4. Open (time regions, 2026-10-20): step 3 still shows only the *first* file (`FilterSettingsModel._tttr`); with
+4. Open: (time regions, 2026-10-20) step 3 still shows only the *first* file (`FilterSettingsModel._tttr`); with
    several files its plots do not show the others' regions although they are applied. Next: drive step 3's file from
    `FilesStepApp.selected_file`. Measure: two `test/streams.py::diffusion_spc` files, region on the second only →
    step 3 info unchanged (the trap), correlator photons = in-region(b) + all(a). Burst-wise FCS and the lifetime-FCS
    simulator write correlation output without the `.cor.json` settings record (only the merger path has it).
-5. Measure (reproducibility): `test_provenance.py` correlates with regions + filter + 3 splits, merges 2, then
+5. Measure: (reproducibility) `test_provenance.py` correlates with regions + filter + 3 splits, merges 2, then
    `reproduce()` from the `.cor.json` alone gives the identical curve (`assert_array_equal`). Trap: a record built at
    merger time would carry settings changed after Correlate — it is snapshotted in `correlate_data`.
 

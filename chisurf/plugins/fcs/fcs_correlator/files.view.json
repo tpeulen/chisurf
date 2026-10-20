@@ -5,6 +5,7 @@
     {
       "type": "custom",
       "key": "data_table",
+      "description": "The added files and folders: select one to draw its count-rate trace, tick Use to correlate it.",
       "options": {
         "source": "file_rows",
         "row_key": "key",

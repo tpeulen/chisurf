@@ -70917,6 +70917,86 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
             <source>Who recorded the experiment.</source>
             <translation type="unfinished"/>
         </message>
+        <message>
+            <source>A Minesweeper game with selectable playfield size and mine count.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A small number-guessing game.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Add a file to draw its regions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Anisotropy Wizard</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Classic Breakout game with progressive difficulty, multiple brick types, mouse/keyboard control, and particle effects.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Classic Pong game with CPU opponent, score tracking, and particle effects.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>FRET Calculator</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Image Tools lists the imaging pipeline: detector setup, the image browser, resolution, flow and colocalization, the numbered per-pixel steps, then CLSM Draw, Spot Finder and Region MLE. Each is its own tool; this window keeps what they share: the detector setup, the photon source, the imaging HDF5 and the IRF and background calibration. Drift Correction, Particle Tracking, PSF Determination and CLSM Generator read their own input and are buttons of Spectroscopy › Imaging.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Phasor Calculator</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>RICS Precision</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select a file to draw its time regions on the count-rate trace below; a folder stands for the TTTR files in it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select one file in the table to draw its count-rate trace below the steps; the &lt;b&gt;Regions&lt;/b&gt; column counts each file's regions. With &lt;b&gt;✏ Draw&lt;/b&gt; on, drag across the trace to add a region, drag a region's edge to move it and right-click it to remove it. Only photons inside a file's regions are filtered and correlated: cut away an aggregate spike, a bubble or the bleaching start. A file without regions is used whole; &lt;b&gt;To all files&lt;/b&gt; gives the others the same regions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Spectral Tetris with line clearing, score tracking, pause and restart.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The &lt;b&gt;FCS Merger&lt;/b&gt; receives the pieces. Untick the ones that do not belong, look at the merged curve, then save it or add it to ChiSurf for fitting. Beside the &lt;i&gt;.cor&lt;/i&gt; goes &lt;i&gt;.cor.json&lt;/i&gt;: the raw files, their regions and every setting, enough to compute the curve again from the photons.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The added files and folders: select one to draw its count-rate trace, tick Use to correlate it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The file selected in the table above: {path}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The imaging pipeline: the steps that share one detector setup, photon source, imaging HDF5 and IRF &amp; BG calibration -- Setup, Image Browser, FRC Resolution, Flow Maps, Colocalization, the numbered per-pixel maps (Intensity, Number &amp; Brightness, Mean Micro-Time, IRF &amp; BG, Phasor-FLIM, Pixel-wise MLE), CLSM Draw, Spot Finder and Region MLE.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Time regions drawn on the file's trace (a folder: on its files). 0: the whole file is used.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Use this file or folder: only ticked rows are correlated.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Which stretches of each measurement are correlated. Select a file in the table, switch on Draw and drag on its count-rate trace; a file without regions is used whole.</source>
+            <translation type="unfinished"/>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

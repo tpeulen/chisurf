@@ -7,9 +7,9 @@
     "BH132 capture"
   ],
   "td4_files": {
-    "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/td4/BH_SPC132.td4": "td_mean__green_ACF\ttd_peak__green_ACF\t\n0.000000\t0.000000\n0.000212\t0.000212\n0.000000\t0.000000\n0.000212\t0.000212\n0.000000\t0.000000\n0.000389\t0.000389\n0.000000\t0.000000\n"
+    "/private/tmp/qt-fcs-row10-renders/burst/photons/td4/BH_SPC132.td4": "td_mean__green_ACF\ttd_peak__green_ACF\t\n0.000000\t0.000000\n0.000212\t0.000212\n0.000000\t0.000000\n0.000212\t0.000212\n0.000000\t0.000000\n0.000389\t0.000389\n0.000000\t0.000000\n"
   },
-  "index": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
+  "index": "/private/tmp/qt-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
   "pairs": [
     {
       "preset_index": 0,
@@ -33,9 +33,9 @@
   ],
   "curves": [
     {
-      "First File": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/BH_SPC132.spc",
-      "Burst Folder": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons",
-      "Index File": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
+      "First File": "/private/tmp/qt-fcs-row10-renders/burst/photons/BH_SPC132.spc",
+      "Burst Folder": "/private/tmp/qt-fcs-row10-renders/burst/photons",
+      "Index File": "/private/tmp/qt-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
       "Burst Index": 0,
       "pair_name": "green_ACF",
       "pair_channel_a": "green",
@@ -117,9 +117,9 @@
       ]
     },
     {
-      "First File": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/BH_SPC132.spc",
-      "Burst Folder": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons",
-      "Index File": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
+      "First File": "/private/tmp/qt-fcs-row10-renders/burst/photons/BH_SPC132.spc",
+      "Burst Folder": "/private/tmp/qt-fcs-row10-renders/burst/photons",
+      "Index File": "/private/tmp/qt-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
       "Burst Index": 1,
       "pair_name": "green_ACF",
       "pair_channel_a": "green",
@@ -201,9 +201,9 @@
       ]
     },
     {
-      "First File": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/BH_SPC132.spc",
-      "Burst Folder": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons",
-      "Index File": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
+      "First File": "/private/tmp/qt-fcs-row10-renders/burst/photons/BH_SPC132.spc",
+      "Burst Folder": "/private/tmp/qt-fcs-row10-renders/burst/photons",
+      "Index File": "/private/tmp/qt-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
       "Burst Index": 2,
       "pair_name": "green_ACF",
       "pair_channel_a": "green",
@@ -288,9 +288,9 @@
   "result": [
     [
       {
-        "First File": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/BH_SPC132.spc",
-        "BST File": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
-        "Burst Folder": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons",
+        "First File": "/private/tmp/qt-fcs-row10-renders/burst/photons/BH_SPC132.spc",
+        "BST File": "/private/tmp/qt-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
+        "Burst Folder": "/private/tmp/qt-fcs-row10-renders/burst/photons",
         "Burst Index": 0,
         "Burst Start": 0,
         "Burst End": 5000,
@@ -305,9 +305,9 @@
         "First Stem": "BH_SPC132"
       },
       {
-        "First File": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/BH_SPC132.spc",
-        "BST File": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
-        "Burst Folder": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons",
+        "First File": "/private/tmp/qt-fcs-row10-renders/burst/photons/BH_SPC132.spc",
+        "BST File": "/private/tmp/qt-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
+        "Burst Folder": "/private/tmp/qt-fcs-row10-renders/burst/photons",
         "Burst Index": 1,
         "Burst Start": 6000,
         "Burst End": 11000,
@@ -322,9 +322,9 @@
         "First Stem": "BH_SPC132"
       },
       {
-        "First File": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/BH_SPC132.spc",
-        "BST File": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
-        "Burst Folder": "/private/tmp/prd154-w1-fcs-row10-renders/burst/photons",
+        "First File": "/private/tmp/qt-fcs-row10-renders/burst/photons/BH_SPC132.spc",
+        "BST File": "/private/tmp/qt-fcs-row10-renders/burst/photons/BH_SPC132.spc.bst",
+        "Burst Folder": "/private/tmp/qt-fcs-row10-renders/burst/photons",
         "Burst Index": 2,
         "Burst Start": 12000,
         "Burst End": 17000,
@@ -340,7 +340,7 @@
       }
     ],
     {
-      "('/private/tmp/prd154-w1-fcs-row10-renders/burst/photons', 'BH_SPC132')": 3
+      "('/private/tmp/qt-fcs-row10-renders/burst/photons', 'BH_SPC132')": 3
     }
   ]
 }
