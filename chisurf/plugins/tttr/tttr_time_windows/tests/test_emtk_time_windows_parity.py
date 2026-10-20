@@ -1,7 +1,6 @@
 """The native time-window app at parity with the Qt TTTRTimeWindowTool.
 
-Reference: the Qt tool as committed (HEAD ``gui/tool.py``,
-``okf/plugins/emtk-ports/tttr_time_windows/scripts/capture_populated.py``) processed
+Reference: the Qt tool as committed (HEAD ``gui/tool.py``) processed
 ``test/data/clsm/Leica_SP5.ptu`` with a 10 000 ms window into 16 windows and wrote
 ``Leica_SP5.bst``, 246 bytes, sha256 prefix ``4e4d0add2e46ce4f``.
 """

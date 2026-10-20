@@ -4,7 +4,6 @@ Hermetic: ``HOME``, ``CHISURF_SETTINGS_DIR`` and the MMFDB settings / database p
 ``~/.chisurf`` is snapshotted and must be unchanged at the end (its ``logs`` folder aside). Nothing reaches the app but what a
 host delivers (pointer press / release / move, the wheel, typed keys, dropped files); the numbers are compared with the Qt
 tool's own view model (the Qt widget is built offscreen for the settings and the help button) on a real photon file.
-The control -> test list is in ``okf/plugins/emtk-ports/ptu_alex_creator/REPORT.md``.
 """
 
 from __future__ import annotations

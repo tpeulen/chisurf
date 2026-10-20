@@ -1,8 +1,6 @@
 """Real input on the emtk TTTR image browser: pointer presses at the rectangles the controls were drawn in, typed text,
 Enter, the mouse wheel over the image, drags, host file drops. Nothing here calls a model method to "click"; each test
 reads the visible outcome (the model's answer to the input, the strings drawn, the files written).
-
-Control -> test list: REPORT.md section 6a.
 """
 
 import json

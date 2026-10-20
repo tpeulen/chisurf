@@ -78,7 +78,6 @@ def qt_facts():
     ``qt_reference.json`` beside this file: menus, toolbar, object list, panel
     rows and sequence rows of ``chimol.hosts.qt.MolViewPluginWindow`` at chimol
     ``b2a3f2b``, the last commit with that window as ChiSurf's ``gui`` entry.
-    The before/after pair (148L, 1RTD) is ``okf/plugins/emtk-ports/chimol/retire_*``.
     """
     return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 

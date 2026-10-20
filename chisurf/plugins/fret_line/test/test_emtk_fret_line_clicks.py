@@ -2,8 +2,7 @@
 
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` at the rectangles the controls were drawn in (or at
 the text a tab, a row or a button drew) and host file drops reach the window; the assertions read the visible outcome (the
-model, the tables, the plots' legends, the notice, the written file). The control -> test list is in
-``okf/plugins/emtk-ports/fret_line/REPORT.md``.
+model, the tables, the plots' legends, the notice, the written file).
 """
 
 from __future__ import annotations

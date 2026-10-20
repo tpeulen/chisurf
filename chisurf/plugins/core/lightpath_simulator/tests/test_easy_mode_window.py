@@ -3,8 +3,7 @@
 The Qt ``LightPathEasyWidget`` (and its ``LightPathEasyDialog``) are retired; these are its behaviours driven through
 the window's Easy Mode dock: a template picked from the list replaces the optical path (its topology too), the
 component pickers show the configuration's spectra, the last simulated configuration is kept for the PDA models and
-reopened with the window, κ² and n are the user's FRET settings, and a simulation needs a dye. Before/after evidence:
-okf/plugins/emtk-ports/lightpath_simulator/retire_*.
+reopened with the window, κ² and n are the user's FRET settings, and a simulation needs a dye.
 """
 
 from __future__ import annotations

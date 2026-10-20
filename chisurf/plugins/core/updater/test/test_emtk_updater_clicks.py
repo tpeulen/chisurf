@@ -4,8 +4,6 @@ Nothing here calls a model method to "click": each test presses and releases the
 the text it drew) and reads the visible outcome (strings of the frame, model fields the window edits, the settings file,
 the command line that reached the fake runner). Everything runs on the fakes of ``fakes.py``: no update, install,
 removal, environment change or network.
-
-Control -> test list: REPORT.md section "Real-input coverage".
 """
 
 from __future__ import annotations
@@ -221,7 +219,7 @@ def test_the_picked_version_is_the_one_update_now_installs(checked, fakes):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="emtk gap: the wheel over a choice does not step it (a Qt combo box does); repro in REPORT.md",
+    reason="emtk gap: the wheel over a choice does not step it (a Qt combo box does)",
 )
 def test_the_wheel_over_the_version_list_steps_it(checked):
     ui = checked

@@ -56,7 +56,7 @@ wizard read and write it, so a setup published by one step is listed by the
 picker beside it; `save_detector_setups` returns `False` (and the RPC an error)
 when the store refuses a write. The wizard's `load_detector_setups` only adds
 the interactive "no setups file" prompt on top. `PluginRegistry.register_gui()` creates menu actions lazily:
-the current explicit Qt/emtk mode and preview gate are applied when an action is
+the current explicit Qt/emtk mode is applied when an action is
 triggered, without importing an unavailable alternative during menu construction.
 The registry retains the injected loader and each opened window until Qt destroys
 it, handles refused closes, and contains factory/show failures. This changes the

@@ -21,29 +21,16 @@ factory declaration is acceptance. Workstream order and ownership now come
 from [the release programme](../prds/prd-154.md), and acceptance from
 [the documentation standard](documentation-standard.md).
 
-The old four-item preview snapshot is superseded: the live
-[preview file](../../chisurf/core/plugin/emtk_preview.json) contains only
-`code_editor`. The previously described missing-port queue has moved: the
-current manifests declare native factories for `burst_h2mm`,
+Closed 2026-10-20: the migration is finished. Every plugin opens its emtk
+window; the preview gate (`emtk_preview.json`, `emtk_readiness`) and the
+per-port evidence tree (`REPORT.md`, captures, inventories) were removed. The
+queue below is history. At the 2026-10-07 fold the manifests declared native
+factories for `burst_h2mm`,
 `burst_mle_analysis`, `hydropro`, `mfd_prepare`, `burst_ebfret`, `alex_suite`,
 `fret_docking`, `fps_json_editor`, `burst_analysis`, `burst_selection`, `acq`,
-`mmfdb_admin`, `batch_analysis`, `wizards` and `traj_tools`. Reports exist under
-`emtk-ports/<id>/REPORT.md` for these except `burst_selection`; declaration,
-report existence and removal from the preview list are three different facts.
-
-1. Re-audit `code_editor` against its current [report](emtk-ports/code_editor/REPORT.md)
-   and real controls before changing its gate entry. The old rejection recorded
-   29 missing Qt controls and editor input gaps; that is historical evidence to
-   compare against, not a current measurement or permission to ungate it.
-2. `quenching_estimator` remains Qt-only in its
-   [manifest](../../chisurf/plugins/quenching_estimator/manifest.json), despite
-   [an existing report](emtk-ports/quenching_estimator/REPORT.md). Its factory can
-   construct while its layout and external-viewer imports remain broken; see
-   [the current programme evidence](../validation/release-readiness-w7.md).
-3. For already declared factories, fill any missing populated screenshots,
-   click coverage, control inventory or tour evidence before assuming a port is
-   accepted. Re-derive the queue from manifests plus the preview file and reports;
-   do not reuse the old 123/109 totals or the dead-session priority list.
+`mmfdb_admin`, `batch_analysis`, `wizards` and `traj_tools`; `code_editor`
+(29 missing Qt controls at its first review) and `quenching_estimator` were
+the last two ports accepted.
 
 The `fret_docking` owner is
 [the modelling/fret plugin](../../chisurf/plugins/modelling/fret/manifest.json),

@@ -1,15 +1,14 @@
 """The native FCS curve merger at parity with the Qt WizardFcsMerger page.
 
 Real repeats: BH_SPC132.spc cut into six 10 s chunks and cross-correlated with tttrlib
-(``okf/plugins/emtk-ports/fcs_merger/scripts/make_chunks.py``). The committed populated Qt oracle loads the folder, leaves chunk 3 out and
-saves. The native app does the same through its controls -- a pointer press on the Use
+(``make_chunks.py`` beside this file). The frozen Qt oracle (``data/merger-*.json``) loaded the folder, left chunk 3 out and
+saved. The native app does the same through its controls -- a pointer press on the Use
 check box, a double click on a row -- and must show the same rows, target and merge,
 and write the same file.
 """
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import sys
 import time
@@ -21,16 +20,10 @@ from emtk.testing import RecordingPainter
 
 from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.fcs.fcs_merger.gui.app import MergerApp
+from chisurf.plugins.fcs.fcs_merger.test.make_chunks import build
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-_MAKE_CHUNKS = REPO / "okf" / "plugins" / "emtk-ports" / "fcs_merger" / "scripts" / "make_chunks.py"
-_spec = importlib.util.spec_from_file_location("fcs_merger_make_chunks", _MAKE_CHUNKS)
-assert _spec is not None and _spec.loader is not None, _MAKE_CHUNKS
-_make_chunks = importlib.util.module_from_spec(_spec)
-sys.path.insert(0, str(_MAKE_CHUNKS.parent))  # the script imports its siblings
-_spec.loader.exec_module(_make_chunks)
-build = _make_chunks.build
 
 SPEC = json.loads((HERE.parent / "gui" / "fcs_merger_emtk.view.json").read_text(encoding="utf-8"))
 
@@ -44,7 +37,7 @@ def chunks(tmp_path_factory):
 @pytest.fixture(scope="module")
 def qt(chunks):
     """Read the committed populated legacy oracle without constructing retired Qt code."""
-    path = REPO / "okf/validation/release-readiness-w1/fcs-before/merger-facts.json"
+    path = HERE / "data" / "merger-facts.json"
     facts = json.loads(path.read_text())
     inventory = json.loads(path.with_name("merger-loaded-six-repeats.json").read_text())
     table = next(row for row in inventory if row["class"] == "QTableWidget")

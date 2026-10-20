@@ -1,0 +1,943 @@
+{
+ "rows": [
+  [
+   "Help:About ChiSurf",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:FRET:Accurate FRET",
+   "\u23f3",
+   "built-in",
+   "(+2 optional)",
+   ""
+  ],
+  [
+   "Main:Tools:Acquisition",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:AI Settings",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Main:Tools:Batch-Analysis",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:Converter:BID\u2192Analysis",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Help:Boarding Wizard",
+   "\u23f3",
+   "built-in",
+   "(+2 optional)",
+   ""
+  ],
+  [
+   "Tools:Miscellaneous:Games:Breakout",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Burst Analysis",
+   "\u23f3",
+   "built-in",
+   "(+13 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:Burst Background Estimation",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:Burst Browser",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:BVA",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:ebFRET",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence Correlation Spectroscopy:Burst-wise FCS",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:Burst Fusion",
+   "\u23f3",
+   "built-in",
+   "(+1 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:Photon-by-photon kinetics",
+   "\u23f3",
+   "built-in",
+   "(+1 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:H2MM",
+   "\u23f3",
+   "built-in",
+   "(+1 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:Burst MLE",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:Burst Selection",
+   "\u23f3",
+   "built-in",
+   "(+1 optional)",
+   ""
+  ],
+  [
+   "Main:Tools:Calculators",
+   "\u23f3",
+   "built-in",
+   "(+9 optional)",
+   ""
+  ],
+  [
+   "Structure:Structure:ChiMOL",
+   "\u23f3",
+   "built-in",
+   "(+1 optional)",
+   ""
+  ],
+  [
+   "Imaging:CLSM-Draw",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Imaging:Simulate:CLSM Generator",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:Miscellaneous:Code Editor",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Core:Database Connector",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Main:Tools:F-Test",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence Correlation Spectroscopy:Lifetime-FCS Simulator",
+   "\u23f3",
+   "built-in",
+   "(+1 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence Correlation Spectroscopy:Diffusion/Volume Calculator",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Setup:FCS Definitions",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS Converter",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence Correlation Spectroscopy:Correlator",
+   "\u23f3",
+   "built-in",
+   "(+2 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS Filter Calculator",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS-Merger",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS Saturation",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:File tools",
+   "\u23f3",
+   "built-in",
+   "(+6 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence Correlation Spectroscopy:2D-FLCS",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Main:Tools:FRET-Calculator",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:FRET:Docking & Screening",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:FRET:FRET Line Generator",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:Miscellaneous:Games",
+   "\u23f3",
+   "built-in",
+   "(+5 optional)",
+   ""
+  ],
+  [
+   "Main:Tools:Global View",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Help:Documentation",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Analysis:Kinetics:Hidden Markov model",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:Computation:HydroPro",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Imaging Common",
+   "\u23f3",
+   "built-in",
+   "(+1 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Image Tools",
+   "\u23f3",
+   "built-in",
+   "(+16 optional)",
+   ""
+  ],
+  [
+   "Imaging:IRF & BG",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Imaging:Colocalization",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Imaging:Drift Correction",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Imaging:Flow Maps",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Imaging:FRC Resolution",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Imaging:Particle Tracking",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:Intensity trace",
+   "\u23f3",
+   "built-in",
+   "(+1 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence decay:IRF Estimation",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:FRET:Kappa2 Distribution",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Decay Analysis",
+   "\u23f3",
+   "built-in",
+   "(+5 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Light Path Simulator",
+   "\u23f3",
+   "built-in",
+   "(+1 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence decay:Lazy Lifetime Analysis",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence decay:MaxEnt MEM",
+   "\u23f3",
+   "built-in",
+   "(+1 optional)",
+   ""
+  ],
+  [
+   "Setup:Menu Switch",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:Burst:MFD Prepare",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence decay:Histogram-Microtime",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:TTTR:Microtime Shifter",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:Miscellaneous:Games:Minesweeper",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Mle Common",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:MMFDB Admin",
+   "\u23f3",
+   "built-in",
+   "(+2 optional)",
+   ""
+  ],
+  [
+   "Setup:Models",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Main:Tools:ndX",
+   "\u23f3",
+   "built-in",
+   "(+4 optional)",
+   ""
+  ],
+  [
+   "Tools:Miscellaneous:Games:Number Quest",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:PCH",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Main:Tools:Phasor-Calculator",
+   "\u23f3",
+   "built-in",
+   "(+1 optional)",
+   ""
+  ],
+  [
+   "Tools:Inspector:Photon Table",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Setup:Plots",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:Miscellaneous:Plugin-Check",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Setup:Plugins",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:Miscellaneous:Games:Pong",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:Computation:Protein Monte Carlo",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Microscopy:PSF Calculator",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Imaging:PSF Determination",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "TTTR:PTO Inspector",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:Converter:ALEX Creator",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:Computation:QuEst",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Main:Tools:RICS-Precision",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Main:Tools:Screenshot",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Setup:Settings",
+   "\u23f3",
+   "built-in",
+   "(+13 optional)",
+   ""
+  ],
+  [
+   "Setup:Channel Definition",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:Structure:Structure Tools",
+   "\u23f3",
+   "built-in",
+   "(+6 optional)",
+   ""
+  ],
+  [
+   "Setup:Styles",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Setup:Switch User",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence decay:Synthetic Decay Generator",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:Miscellaneous:Games:Tetris",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence decay:Anisotropy-Wizard",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:Trajectory:Align",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:Trajectory:Convert",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:Trajectory:Energy Calculator",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:Trajectory:FRET",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:Trajectory:Join",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:Trajectory:Remove Clashed",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:Trajectory:Rotate/Translate",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Structure:Trajectory:Save Topol",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:TTTR:Audifier",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "TTTR:Correlate",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:TTTR:Count Rate Analysis",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "TTTR:Editor:TTTR Header editor",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "TTTR:Generate Decay",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Imaging:Tools:Image Browser",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:TTTR:LUT Tools",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "TTTR:Editor:Split/Convert",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:Converter:TTTR\u2192Time-Window BIDs",
+   "\u23f3",
+   "built-in",
+   "(+1 optional)",
+   ""
+  ],
+  [
+   "TTTR:\u21c4 .pto",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Tools:TTTR Tools",
+   "\u23f3",
+   "built-in",
+   "(+6 optional)",
+   ""
+  ],
+  [
+   "Setup:Updates & Packages",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Setup:User Editor",
+   "\u23f3",
+   "built-in",
+   "(+1 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence decay:VV/VH Anisotropy Decay",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Fluorescence decay:VV/VH G-Factor Calculator",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Main:Tools:Wizards",
+   "\u23f3",
+   "built-in",
+   "(+2 optional)",
+   ""
+  ],
+  [
+   "{{ cookiecutter.plugin_category }}:{{ cookiecutter.plugin_display_name }}",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:ALEX Suite",
+   "\u23f3",
+   "built-in",
+   "burst_analysis (+3 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:2CDE",
+   "\u23f3",
+   "built-in",
+   "burst_bva (+1 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:Burst IRF & Background",
+   "\u23f3",
+   "built-in",
+   "burst_background",
+   ""
+  ],
+  [
+   "Spectroscopy:FCS",
+   "\u23f3",
+   "built-in",
+   "fcs_correlator (+5 optional)",
+   ""
+  ],
+  [
+   "Structure:FRET:FPS JSON Editor",
+   "\u23f3",
+   "built-in",
+   "code_editor, fret_docking",
+   ""
+  ],
+  [
+   "Imaging:Intensity",
+   "\u23f3",
+   "built-in",
+   "imaging_common",
+   ""
+  ],
+  [
+   "Imaging:Mean Micro-Time",
+   "\u23f3",
+   "built-in",
+   "imaging_common",
+   ""
+  ],
+  [
+   "Imaging:Lifetime:Pixel-wise MLE",
+   "\u23f3",
+   "built-in",
+   "mle_common",
+   ""
+  ],
+  [
+   "Imaging:Number & Brightness",
+   "\u23f3",
+   "built-in",
+   "imaging_common",
+   ""
+  ],
+  [
+   "Imaging:Phasor-FLIM",
+   "\u23f3",
+   "built-in",
+   "imaging_common",
+   ""
+  ],
+  [
+   "Tools:Open Project",
+   "\u23f3",
+   "built-in",
+   "mmfdb_admin",
+   ""
+  ],
+  [
+   "Imaging:Lifetime:Region MLE",
+   "\u23f3",
+   "built-in",
+   "mle_common (+1 optional)",
+   ""
+  ],
+  [
+   "Spectroscopy:Spectra Downloader",
+   "\u23f3",
+   "built-in",
+   "mmfdb_admin",
+   ""
+  ],
+  [
+   "Imaging:Spot Finder",
+   "\u23f3",
+   "built-in",
+   "mle_common",
+   ""
+  ],
+  [
+   "Spectroscopy:Single-Molecule:Trace Browser",
+   "\u23f3",
+   "built-in",
+   "intensity_trace (+2 optional)",
+   ""
+  ],
+  [
+   "Structure:Trajectory:Trajectory Energy",
+   "\u23f3",
+   "built-in",
+   "traj_energy_calculator",
+   ""
+  ],
+  [
+   "Structure:Structure:Traj Tools",
+   "\u23f3",
+   "built-in",
+   "traj_align, traj_convert, traj_energy_calculator, traj_fret, traj_join, traj_remove_clashes, traj_rotate_translate, traj_save_topology",
+   ""
+  ]
+ ],
+ "status": "Ready \u2728 134 plugin(s) found"
+}

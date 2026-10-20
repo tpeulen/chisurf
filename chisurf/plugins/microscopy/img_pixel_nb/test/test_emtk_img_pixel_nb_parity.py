@@ -2,7 +2,7 @@
 
 Hermetic: settings, MMFDB and its database in a temporary folder, a temporary HOME, the photon streams written into a temporary folder from a
 seed, no network (the database picker gets a stub client). References: (a) the Qt tool's own view model run on the same file, (b) the photon
-counts written into the stream, (c) an independent tttrlib CLSM image, (d) what the Qt window showed (``okf/plugins/emtk-ports/img_pixel_nb/qt_values.json``).
+counts written into the stream, (c) an independent tttrlib CLSM image, (d) what the Qt window showed (``data/qt_values.json``).
 """
 
 from __future__ import annotations
@@ -32,9 +32,8 @@ from test.gui.emtk_layout_checks import (
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
-REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-EVIDENCE = REPO / "okf/plugins/emtk-ports/img_pixel_nb"
-QT_VALUES = json.loads((EVIDENCE / "qt_values.json").read_text(encoding="utf-8"))
+DATA = HERE / "data"
+QT_VALUES = json.loads((DATA / "qt_values.json").read_text(encoding="utf-8"))
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "nb_emtk.view.json").read_text(encoding="utf-8"))
 QT_SPEC = json.loads((PLUGIN / "gui" / "nb.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)

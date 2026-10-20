@@ -9,17 +9,16 @@ timestamp: '2026-10-07T00:00:00Z'
 
 # Where to pick this up
 
-1. Open: Finish repeated successful-action `Main.onAddFit` before/after pairs using
-   the [validation record](../validation/tcspc-first-fit.md). An isolated fit
-   window's timings do not measure the Add-button action. Earlier Main pairs
-   whose history checkpoint failed remain rejected, even if the window and
-   4096 channels looked correct.
-2. Open: Re-materialize the paired probes and immutable original sources from
-   [the evidence JSON](../validation/tcspc-first-fit.json); private cache paths
-   in the original session are not reproducible artifacts. Keep domain/history
-   hashes fixed across pairs and assert the completed action/checkpoint,
-   errors/status, native model and scientific output before collecting timing.
-3. Open: Preserve scientific history, all samples and the complete metadata/code-view
+1. Measure: if first-fit latency is measured again, measure the emtk shell's
+   add-fit action on the same IBH `Decay_577D.txt`/`Prompt.txt` pair and assert
+   the completed action/checkpoint, errors/status, native model and scientific
+   output before collecting timing; earlier Main pairs whose history checkpoint
+   failed stay rejected. The Qt main window (`Main.onAddFit`) and the Qt fit
+   subwindow this plan measured are retired (2026-10-20), so the open Main
+   before/after pairing no longer applies; the validation record and its
+   evidence JSON were removed with the migration evidence, and the accepted
+   medians are quoted below.
+2. Open: Preserve scientific history, all samples and the complete metadata/code-view
    surface. Optional further coverage is vertical/diagonal/fractional/transformed
    Qt stroke thickness; joins are not claimed pixel-identical. Use the current
    [targeted testing workflow](../workflows/testing.md), without repeating old
@@ -30,13 +29,13 @@ timestamp: '2026-10-07T00:00:00Z'
 Folded from `.hermes/plans/2026-10-04-tcspc-first-fit.md`. The implementation
 below is a dated design/landing record, not a queue to replay. Its accepted
 cold/warm medians apply only to the isolated native fit-window pipeline;
-current end-to-end acceptance remains in the linked validation concept.
+the end-to-end Main pairing was never completed (see above).
 
 # TCSPC first-fit responsiveness implementation plan
 
 ## Landing status (2026-10-04)
 
-Scoped implementation, tests and independent reviews are complete. Local landing includes durable evidence and user/OKF documentation. Accepted isolated-native medians: cold 1756.73 → 929.61 ms; warm 561.29 → 271.55 ms. Latest guarded Main smoke passed, but repeated successful-action Main pairing remains open; earlier failed Main datasets stay rejected. The authoritative resume point is [the authoritative validation/resume](../validation/tcspc-first-fit.md). No history/scientific validation was bypassed, and unrelated work remains outside these commits.
+Scoped implementation, tests and independent reviews are complete. Local landing includes durable evidence and user/OKF documentation. Accepted isolated-native medians: cold 1756.73 → 929.61 ms; warm 561.29 → 271.55 ms. Latest guarded Main smoke passed, but repeated successful-action Main pairing remains open; earlier failed Main datasets stay rejected. No history/scientific validation was bypassed, and unrelated work remains outside these commits.
 
 **Goal:** Remove measured avoidable first-use imports and redraw overhead from creating a TCSPC fit, while keeping every scientific sample, model result, editor control and code-view capability.
 
@@ -46,7 +45,6 @@ Scoped implementation, tests and independent reviews are complete. Local landing
 
 ## Measured baseline and hypotheses
 
-The original profiling harness and baseline sources are retained verbatim in [the durable evidence JSON](../validation/tcspc-first-fit.json); re-materialize them before re-running paired measurements.
 Data: actual IBH `Decay_577D.txt`/`Prompt.txt` (4096 rows), not synthetic benchmark arrays. Profiled first creation 2533 ms; unprofiled initial observation 1697 ms, warm 537 ms. Components: cold editor import/build 697 ms, hidden-code/plot window build 326 ms, initial plot/paint 497 ms; warm paint 391 ms. CPU model initialization 28–50 ms. Timings are provisional until repeated source-aligned pairs.
 
 Ranked hypotheses, with predictions:

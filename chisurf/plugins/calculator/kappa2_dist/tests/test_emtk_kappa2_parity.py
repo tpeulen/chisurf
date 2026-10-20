@@ -1,8 +1,7 @@
 """The native κ² calculator at parity with the Qt Kappa2Dist.
 
 The model is the committed Qt tool's ``_Kappa2DistModel`` moved to ``gui/model.py``
-unchanged (method diff: ``okf/plugins/emtk-ports/kappa2_dist/model_diff_vs_head.txt``);
-the form is the Qt tool's spec (``k2dist.view.json``). The results are Monte-Carlo
+unchanged; the form is the Qt tool's spec (``k2dist.view.json``). The results are Monte-Carlo
 (seeded from numpy), so they are compared under one seed.
 """
 

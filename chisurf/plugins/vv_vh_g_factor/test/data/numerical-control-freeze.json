@@ -1,0 +1,1265 @@
+{
+  "generator_source": "chisurf/plugins/vv_vh_g_factor/test/test_emtk_vv_vh_g_factor_parity.py",
+  "generator": "make_data extracted unchanged via AST; deterministic physical polarized VV/VH data, not claimed measured data",
+  "files": {
+    "fast": {
+      "path": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/w1-gfactor-baseline-piw4o_x_/data/fast.dat",
+      "sha256": "76a5a414cd2db161c4362e90c70334bca48032aea263419e031aa283331bb89d"
+    },
+    "slow": {
+      "path": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/w1-gfactor-baseline-piw4o_x_/data/slow.dat",
+      "sha256": "c58b44c50c7364bdaafad1e6ead3c66a5f863e1345a46fdd718a85f0183dcb9b"
+    },
+    "batch1": {
+      "path": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/w1-gfactor-baseline-piw4o_x_/data/batch1.dat",
+      "sha256": "9462ea886111b756e3e4de4ef3d226c0bc7dcb6b25640ccad7692accb66be723"
+    },
+    "batch2": {
+      "path": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/w1-gfactor-baseline-piw4o_x_/data/batch2.dat",
+      "sha256": "c54167c4ba9210c49ca602bcdae826abdacb42200f89ee77ef08380393c76ef6"
+    }
+  },
+  "scratch": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/w1-gfactor-baseline-piw4o_x_",
+  "canvas_main": [
+    1600,
+    1000
+  ],
+  "canvas_batch": [
+    2200,
+    800
+  ],
+  "records": {
+    "defaults": {
+      "state": {
+        "g_factor": null,
+        "g_factor_stddev": null,
+        "g_factor_uncorrected": null,
+        "g_factor_corrected": null,
+        "region_bounds": [
+          0,
+          100
+        ],
+        "bg_region_bounds": [
+          0,
+          100
+        ],
+        "decay_shift": 0.0,
+        "use_background_correction": false,
+        "l1_estimate": null,
+        "l2_estimate": null,
+        "fp_tau_estimate_ns": null,
+        "fp_rs_expected": null,
+        "manual_g_override": false,
+        "fp_manual_l1_override": false,
+        "fp_manual_tau_override": false,
+        "fp_manual_rs_override": false,
+        "flip": false,
+        "bg_parallel_text": "N/A",
+        "bg_perpendicular_text": "N/A",
+        "fp_warning": "Warning: Load FP VV/VH data to estimate l1/l2."
+      },
+      "controls": [
+        {
+          "name": "load_button",
+          "class": "QPushButton",
+          "text": "Load VV/VH File",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "g_factor_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "g_factor_stddev_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "bg_correction_checkbox",
+          "class": "QCheckBox",
+          "text": "Background Correction",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": false
+        },
+        {
+          "name": "corrected_g_factor_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": false
+        },
+        {
+          "name": "corrected_g_factor_stddev_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": false
+        },
+        {
+          "name": "bg_parallel_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": false
+        },
+        {
+          "name": "bg_perpendicular_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": false
+        },
+        {
+          "name": "flip_checkbox",
+          "class": "QCheckBox",
+          "text": "Flip VV<->VH (data swapped in VV/VH)",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": false
+        },
+        {
+          "name": "shift_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.0
+        },
+        {
+          "name": "fp_load_button",
+          "class": "QPushButton",
+          "text": "Load FP VV/VH File",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "fp_file_label",
+          "class": "QLineEdit",
+          "text": "No FP file loaded",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "fp_rho_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 16.0
+        },
+        {
+          "name": "fp_dt_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 1.0
+        },
+        {
+          "name": "fp_tau_value",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.0
+        },
+        {
+          "name": "fp_rs_value",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.0
+        },
+        {
+          "name": "fp_l1_value",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.0
+        },
+        {
+          "name": "show_fast_checkbox",
+          "class": "QCheckBox",
+          "text": "Show fast dye",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "show_slow_checkbox",
+          "class": "QCheckBox",
+          "text": "Show slow dye",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "show_raw_checkbox",
+          "class": "QCheckBox",
+          "text": "Show raw",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "show_corrected_checkbox",
+          "class": "QCheckBox",
+          "text": "Show corrected",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "fp_r0_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.38
+        },
+        {
+          "name": "file_label",
+          "class": "QLineEdit",
+          "text": "No file loaded",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "batch_button",
+          "class": "QPushButton",
+          "text": "Batch...",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        }
+      ]
+    },
+    "existing_reference": {
+      "source": "/Users/tpeulen/dev/chisurf/chisurf/plugins/vv_vh_g_factor/test_vv_vh_data.dat",
+      "source_sha256": "2293d8fe745d9f147f3249436d3f10cae414aa73bf3b61f8c13f7871ac217e4d",
+      "state": {
+        "g_factor": 15.628071567366502,
+        "g_factor_stddev": null,
+        "g_factor_uncorrected": 15.628071567366502,
+        "g_factor_corrected": null,
+        "region_bounds": [
+          700.0,
+          900.0
+        ],
+        "bg_region_bounds": [
+          50.0,
+          150.0
+        ],
+        "decay_shift": 0.0,
+        "use_background_correction": false,
+        "l1_estimate": null,
+        "l2_estimate": null,
+        "fp_tau_estimate_ns": null,
+        "fp_rs_expected": null,
+        "manual_g_override": false,
+        "fp_manual_l1_override": false,
+        "fp_manual_tau_override": false,
+        "fp_manual_rs_override": false,
+        "flip": false,
+        "bg_parallel_text": "N/A",
+        "bg_perpendicular_text": "N/A",
+        "fp_warning": "Warning: Load FP VV/VH data to estimate l1/l2."
+      },
+      "controls": [
+        {
+          "name": "load_button",
+          "class": "QPushButton",
+          "text": "Load VV/VH File",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "g_factor_value",
+          "class": "QLineEdit",
+          "text": "15.6281",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "g_factor_stddev_value",
+          "class": "QLineEdit",
+          "text": "27.8015",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "bg_correction_checkbox",
+          "class": "QCheckBox",
+          "text": "Background Correction",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": false
+        },
+        {
+          "name": "corrected_g_factor_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": false
+        },
+        {
+          "name": "corrected_g_factor_stddev_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": false
+        },
+        {
+          "name": "bg_parallel_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": false
+        },
+        {
+          "name": "bg_perpendicular_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": false
+        },
+        {
+          "name": "flip_checkbox",
+          "class": "QCheckBox",
+          "text": "Flip VV<->VH (data swapped in VV/VH)",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": false
+        },
+        {
+          "name": "shift_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.0
+        },
+        {
+          "name": "fp_load_button",
+          "class": "QPushButton",
+          "text": "Load FP VV/VH File",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "fp_file_label",
+          "class": "QLineEdit",
+          "text": "No FP file loaded",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "fp_rho_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 16.0
+        },
+        {
+          "name": "fp_dt_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 1.0
+        },
+        {
+          "name": "fp_tau_value",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.0
+        },
+        {
+          "name": "fp_rs_value",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.0
+        },
+        {
+          "name": "fp_l1_value",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.0
+        },
+        {
+          "name": "show_fast_checkbox",
+          "class": "QCheckBox",
+          "text": "Show fast dye",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "show_slow_checkbox",
+          "class": "QCheckBox",
+          "text": "Show slow dye",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "show_raw_checkbox",
+          "class": "QCheckBox",
+          "text": "Show raw",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "show_corrected_checkbox",
+          "class": "QCheckBox",
+          "text": "Show corrected",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "fp_r0_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.38
+        },
+        {
+          "name": "file_label",
+          "class": "QLineEdit",
+          "text": "/Users/tpeulen/dev/chisurf/chisurf/plugins/vv_vh_g_factor/test_vv_vh_data.dat",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "batch_button",
+          "class": "QPushButton",
+          "text": "Batch...",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        }
+      ]
+    },
+    "no-background": {
+      "legacy": {
+        "g_factor": 1.2145038119193052,
+        "g_factor_stddev": null,
+        "g_factor_uncorrected": 1.2145038119193052,
+        "g_factor_corrected": null,
+        "region_bounds": [
+          358.0,
+          460.0
+        ],
+        "bg_region_bounds": [
+          25.0,
+          76.0
+        ],
+        "decay_shift": 0.0,
+        "use_background_correction": false,
+        "l1_estimate": null,
+        "l2_estimate": null,
+        "fp_tau_estimate_ns": 8.872124232289988,
+        "fp_rs_expected": 0.24445037115513843,
+        "manual_g_override": false,
+        "fp_manual_l1_override": false,
+        "fp_manual_tau_override": false,
+        "fp_manual_rs_override": false,
+        "flip": false,
+        "bg_parallel_text": "N/A",
+        "bg_perpendicular_text": "N/A",
+        "fp_warning": "Warning: linked l1=l2 estimate -0.20663 is outside expected range [0, 0.5]. Estimate shown for diagnostics only and will not be auto-applied."
+      },
+      "controls": [
+        {
+          "name": "load_button",
+          "class": "QPushButton",
+          "text": "Load VV/VH File",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "g_factor_value",
+          "class": "QLineEdit",
+          "text": "1.2145",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "g_factor_stddev_value",
+          "class": "QLineEdit",
+          "text": "0.1514",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "bg_correction_checkbox",
+          "class": "QCheckBox",
+          "text": "Background Correction",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": false
+        },
+        {
+          "name": "corrected_g_factor_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": false
+        },
+        {
+          "name": "corrected_g_factor_stddev_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": false
+        },
+        {
+          "name": "bg_parallel_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": false
+        },
+        {
+          "name": "bg_perpendicular_value",
+          "class": "QLineEdit",
+          "text": "N/A",
+          "tooltip": "",
+          "enabled": true,
+          "visible": false
+        },
+        {
+          "name": "flip_checkbox",
+          "class": "QCheckBox",
+          "text": "Flip VV<->VH (data swapped in VV/VH)",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": false
+        },
+        {
+          "name": "shift_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.0
+        },
+        {
+          "name": "fp_load_button",
+          "class": "QPushButton",
+          "text": "Load FP VV/VH File",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "fp_file_label",
+          "class": "QLineEdit",
+          "text": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/w1-gfactor-baseline-piw4o_x_/data/slow.dat",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "fp_rho_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 16.0
+        },
+        {
+          "name": "fp_dt_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.05
+        },
+        {
+          "name": "fp_tau_value",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 8.872124
+        },
+        {
+          "name": "fp_rs_value",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.24445
+        },
+        {
+          "name": "fp_l1_value",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.0
+        },
+        {
+          "name": "show_fast_checkbox",
+          "class": "QCheckBox",
+          "text": "Show fast dye",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "show_slow_checkbox",
+          "class": "QCheckBox",
+          "text": "Show slow dye",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "show_raw_checkbox",
+          "class": "QCheckBox",
+          "text": "Show raw",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "show_corrected_checkbox",
+          "class": "QCheckBox",
+          "text": "Show corrected",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "fp_r0_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.38
+        },
+        {
+          "name": "file_label",
+          "class": "QLineEdit",
+          "text": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/w1-gfactor-baseline-piw4o_x_/data/fast.dat",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "batch_button",
+          "class": "QPushButton",
+          "text": "Batch...",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        }
+      ],
+      "native": {
+        "g_factor": 1.2145038119193052,
+        "result": {
+          "g_factor": 1.2145038119193052,
+          "g_factor_uncorrected": 1.2145038119193052,
+          "g_factor_stddev_uncorrected": 0.151363884975406,
+          "g_factor_corrected": null,
+          "g_factor_stddev_corrected": null,
+          "bg_parallel_avg": 0.0,
+          "bg_perpendicular_avg": 0.0
+        },
+        "fp_result": {
+          "tau_estimate_ns": 8.872124232289988,
+          "tau_used_ns": 8.872124232289988,
+          "r_expected": 0.24445037115513843,
+          "l1": null,
+          "l2": null,
+          "warning": "Linked mixing estimate -0.206633 is outside the physical [0, 0.5] range; not applied."
+        },
+        "settings": {
+          "fast_file": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/w1-gfactor-baseline-piw4o_x_/data/fast.dat",
+          "slow_file": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/w1-gfactor-baseline-piw4o_x_/data/slow.dat",
+          "region": [
+            358.0,
+            460.0
+          ],
+          "background_region": [
+            25.0,
+            76.0
+          ],
+          "shift": 0.0,
+          "background": false,
+          "flip": false,
+          "manual_g": false,
+          "g_override": 1.0,
+          "fp_dt_ns": 0.05,
+          "fp_rho_ns": 16.0,
+          "fp_r0": 0.38,
+          "manual_tau": false,
+          "tau_override": 0.0,
+          "manual_rs": false,
+          "rs_override": 0.0,
+          "manual_l": false,
+          "l_override": 0.0,
+          "batch_files": []
+        }
+      }
+    },
+    "background": {
+      "legacy": {
+        "g_factor": 1.2187137034875877,
+        "g_factor_stddev": null,
+        "g_factor_uncorrected": 1.2145038119193052,
+        "g_factor_corrected": 1.2187137034875877,
+        "region_bounds": [
+          358.0,
+          460.0
+        ],
+        "bg_region_bounds": [
+          25.0,
+          76.0
+        ],
+        "decay_shift": 0.0,
+        "use_background_correction": true,
+        "l1_estimate": null,
+        "l2_estimate": null,
+        "fp_tau_estimate_ns": 8.864208010992826,
+        "fp_rs_expected": 0.24452819881944135,
+        "manual_g_override": false,
+        "fp_manual_l1_override": false,
+        "fp_manual_tau_override": false,
+        "fp_manual_rs_override": false,
+        "flip": false,
+        "bg_parallel_text": "2.7451",
+        "bg_perpendicular_text": "2.7843",
+        "fp_warning": "Warning: linked l1=l2 estimate -0.20922 is outside expected range [0, 0.5]. Estimate shown for diagnostics only and will not be auto-applied."
+      },
+      "controls": [
+        {
+          "name": "load_button",
+          "class": "QPushButton",
+          "text": "Load VV/VH File",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "g_factor_value",
+          "class": "QLineEdit",
+          "text": "1.2145",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "g_factor_stddev_value",
+          "class": "QLineEdit",
+          "text": "0.1514",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "bg_correction_checkbox",
+          "class": "QCheckBox",
+          "text": "Background Correction",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "corrected_g_factor_value",
+          "class": "QLineEdit",
+          "text": "1.2187",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "corrected_g_factor_stddev_value",
+          "class": "QLineEdit",
+          "text": "0.1551",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "bg_parallel_value",
+          "class": "QLineEdit",
+          "text": "2.7451",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "bg_perpendicular_value",
+          "class": "QLineEdit",
+          "text": "2.7843",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "flip_checkbox",
+          "class": "QCheckBox",
+          "text": "Flip VV<->VH (data swapped in VV/VH)",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": false
+        },
+        {
+          "name": "shift_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.0
+        },
+        {
+          "name": "fp_load_button",
+          "class": "QPushButton",
+          "text": "Load FP VV/VH File",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "fp_file_label",
+          "class": "QLineEdit",
+          "text": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/w1-gfactor-baseline-piw4o_x_/data/slow.dat",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "fp_rho_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 16.0
+        },
+        {
+          "name": "fp_dt_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.05
+        },
+        {
+          "name": "fp_tau_value",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 8.864208
+        },
+        {
+          "name": "fp_rs_value",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.244528
+        },
+        {
+          "name": "fp_l1_value",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.0
+        },
+        {
+          "name": "show_fast_checkbox",
+          "class": "QCheckBox",
+          "text": "Show fast dye",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "show_slow_checkbox",
+          "class": "QCheckBox",
+          "text": "Show slow dye",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "show_raw_checkbox",
+          "class": "QCheckBox",
+          "text": "Show raw",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "show_corrected_checkbox",
+          "class": "QCheckBox",
+          "text": "Show corrected",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "checked": true
+        },
+        {
+          "name": "fp_r0_spinbox",
+          "class": "QDoubleSpinBox",
+          "text": "",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true,
+          "value": 0.38
+        },
+        {
+          "name": "file_label",
+          "class": "QLineEdit",
+          "text": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/w1-gfactor-baseline-piw4o_x_/data/fast.dat",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "batch_button",
+          "class": "QPushButton",
+          "text": "Batch...",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        }
+      ],
+      "native": {
+        "g_factor": 1.2187137034875877,
+        "result": {
+          "g_factor": 1.2187137034875877,
+          "g_factor_uncorrected": 1.2145038119193052,
+          "g_factor_stddev_uncorrected": 0.151363884975406,
+          "g_factor_corrected": 1.2187137034875877,
+          "g_factor_stddev_corrected": 0.15505478515590784,
+          "bg_parallel_avg": 2.7450980392156863,
+          "bg_perpendicular_avg": 2.784313725490196
+        },
+        "fp_result": {
+          "tau_estimate_ns": 8.864208010992826,
+          "tau_used_ns": 8.864208010992826,
+          "r_expected": 0.24452819881944135,
+          "l1": null,
+          "l2": null,
+          "warning": "Linked mixing estimate -0.209225 is outside the physical [0, 0.5] range; not applied."
+        },
+        "settings": {
+          "fast_file": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/w1-gfactor-baseline-piw4o_x_/data/fast.dat",
+          "slow_file": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/w1-gfactor-baseline-piw4o_x_/data/slow.dat",
+          "region": [
+            358.0,
+            460.0
+          ],
+          "background_region": [
+            25.0,
+            76.0
+          ],
+          "shift": 0.0,
+          "background": true,
+          "flip": false,
+          "manual_g": false,
+          "g_override": 1.0,
+          "fp_dt_ns": 0.05,
+          "fp_rho_ns": 16.0,
+          "fp_r0": 0.38,
+          "manual_tau": false,
+          "tau_override": 0.0,
+          "manual_rs": false,
+          "rs_override": 0.0,
+          "manual_l": false,
+          "l_override": 0.0,
+          "batch_files": []
+        }
+      }
+    },
+    "shift=0.4;flip=False": {
+      "g_factor": 1.2145038119193052,
+      "g_factor_stddev": null,
+      "g_factor_uncorrected": 1.2145038119193052,
+      "g_factor_corrected": null,
+      "region_bounds": [
+        358.0,
+        460.0
+      ],
+      "bg_region_bounds": [
+        25.0,
+        76.0
+      ],
+      "decay_shift": 0.4,
+      "use_background_correction": false,
+      "l1_estimate": null,
+      "l2_estimate": null,
+      "fp_tau_estimate_ns": 8.882295923318784,
+      "fp_rs_expected": 0.24435044172519643,
+      "manual_g_override": false,
+      "fp_manual_l1_override": false,
+      "fp_manual_tau_override": false,
+      "fp_manual_rs_override": false,
+      "flip": false,
+      "bg_parallel_text": "2.7451",
+      "bg_perpendicular_text": "2.7843",
+      "fp_warning": "Warning: linked l1=l2 estimate -0.20691 is outside expected range [0, 0.5]. Estimate shown for diagnostics only and will not be auto-applied."
+    },
+    "shift=0.0;flip=True": {
+      "g_factor": 0.8356951672923063,
+      "g_factor_stddev": null,
+      "g_factor_uncorrected": 0.8356951672923063,
+      "g_factor_corrected": null,
+      "region_bounds": [
+        358.0,
+        460.0
+      ],
+      "bg_region_bounds": [
+        25.0,
+        76.0
+      ],
+      "decay_shift": 0.0,
+      "use_background_correction": false,
+      "l1_estimate": null,
+      "l2_estimate": null,
+      "fp_tau_estimate_ns": 8.733980652938246,
+      "fp_rs_expected": 0.2458156689500658,
+      "manual_g_override": false,
+      "fp_manual_l1_override": false,
+      "fp_manual_tau_override": false,
+      "fp_manual_rs_override": false,
+      "flip": true,
+      "bg_parallel_text": "2.7451",
+      "bg_perpendicular_text": "2.7843",
+      "fp_warning": "Warning: linked l1=l2 estimate 1.19421 is outside expected range [0, 0.5]. Estimate shown for diagnostics only and will not be auto-applied."
+    },
+    "shift=-1.5;flip=True": {
+      "g_factor": 0.8421557898850642,
+      "g_factor_stddev": null,
+      "g_factor_uncorrected": 0.8421557898850642,
+      "g_factor_corrected": null,
+      "region_bounds": [
+        358.0,
+        460.0
+      ],
+      "bg_region_bounds": [
+        25.0,
+        76.0
+      ],
+      "decay_shift": -1.5,
+      "use_background_correction": false,
+      "l1_estimate": null,
+      "l2_estimate": null,
+      "fp_tau_estimate_ns": 8.673704471852252,
+      "fp_rs_expected": 0.246416179902619,
+      "manual_g_override": false,
+      "fp_manual_l1_override": false,
+      "fp_manual_tau_override": false,
+      "fp_manual_rs_override": false,
+      "flip": true,
+      "bg_parallel_text": "2.7451",
+      "bg_perpendicular_text": "2.7843",
+      "fp_warning": "Warning: linked l1=l2 estimate 1.18804 is outside expected range [0, 0.5]. Estimate shown for diagnostics only and will not be auto-applied."
+    },
+    "batch": {
+      "snapshot": {
+        "g_raw": 1.2145038119193052,
+        "g_corr": 1.2187137034875877,
+        "l1": 0.0,
+        "l2": 0.0,
+        "shift": 0.0,
+        "flip": false,
+        "bg_vv": 2.7450980392156863,
+        "bg_vh": 2.784313725490196,
+        "apply_bg": true,
+        "region_min": 358.0,
+        "region_max": 460.0
+      },
+      "results": [
+        [
+          "batch1.dat",
+          0.16520767183457374,
+          358.0,
+          460.0,
+          2.7450980392156863,
+          2.784313725490196,
+          1.2187137034875877
+        ],
+        [
+          "batch2.dat",
+          0.34223192068264807,
+          358.0,
+          460.0,
+          2.7450980392156863,
+          2.784313725490196,
+          1.2187137034875877
+        ]
+      ],
+      "controls": [
+        {
+          "name": "",
+          "class": "QToolButton",
+          "text": "\u2795 Files",
+          "tooltip": "Add files.",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "",
+          "class": "QToolButton",
+          "text": "\ud83d\udcc1 Folder",
+          "tooltip": "Add a folder (scanned recursively).",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "",
+          "class": "QToolButton",
+          "text": "\ud83d\uddc4\ufe0f Database",
+          "tooltip": "Select a dataset from the MMFDB database (including S3-backed object stores).",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "",
+          "class": "QToolButton",
+          "text": "\u2796 Remove",
+          "tooltip": "Remove selected entries.",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "",
+          "class": "QToolButton",
+          "text": "\ud83d\uddd1\ufe0f Clear",
+          "tooltip": "Clear the list.",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "",
+          "class": "QPushButton",
+          "text": "Run Batch",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        },
+        {
+          "name": "",
+          "class": "QPushButton",
+          "text": "Save CSV...",
+          "tooltip": "",
+          "enabled": true,
+          "visible": true
+        }
+      ],
+      "columns": [
+        "filename",
+        "r_inf",
+        "region_min",
+        "region_max",
+        "bg_vv",
+        "bg_vh",
+        "g_factor"
+      ]
+    }
+  },
+  "network": "socket connect/create_connection forbidden; calculation client in-process; no archival/save action invoked",
+  "rejected_capture_format": "Initial1100x700 batch had clipped decimals and list unsynchronized by direct model assignment; producer corrected to public set_paths/Run Batch and final2200x800 format before any production edits."
+}

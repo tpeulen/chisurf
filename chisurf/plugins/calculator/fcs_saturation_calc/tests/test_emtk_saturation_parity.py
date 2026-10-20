@@ -1,8 +1,7 @@
 """The emtk saturation calculator equals the Qt tool: numbers, tables, summary, tooltips, layout, files and session.
 
-``golden_qt.json`` holds what the Qt tool (``gui/tool.py``) computed for six states, written by
-``okf/plugins/emtk-ports/fcs_saturation/scripts/capture_golden.py`` before any change to the Qt tool; the live Qt tool is also
-constructed here for the cases that need it. The control -> test list is in the REPORT.md of the port.
+``golden_qt.json`` holds what the Qt tool (``gui/tool.py``) computed for six states, captured before any change to the
+Qt tool; the live Qt tool is also constructed here for the cases that need it.
 """
 
 from __future__ import annotations

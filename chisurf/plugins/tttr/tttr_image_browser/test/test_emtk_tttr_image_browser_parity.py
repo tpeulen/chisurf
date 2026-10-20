@@ -24,7 +24,7 @@ from .conftest import REPO, two_detector_setup
 HERE = pathlib.Path(__file__).resolve().parent
 pytestmark = pytest.mark.usefixtures("hermetic")
 
-# Pinned from the Qt window before the port (okf/plugins/emtk-ports/tttr_image_browser/qt_values.json), real files of
+# Pinned from the Qt window before the port, real files of
 # test/data/clsm with the two-detector setup of conftest.py.
 QT_SP8 = dict(
     shape=[256, 512],

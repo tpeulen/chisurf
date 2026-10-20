@@ -1,7 +1,6 @@
 """The native count-rate app at parity with the Qt CountRateAnalyzer.
 
-Reference numbers: the Qt tool as committed (HEAD tool.py + view_model.py,
-``okf/plugins/emtk-ports/tttr_count_rate_analysis/scripts/capture_populated.py``)
+Reference numbers: the Qt tool as committed (HEAD tool.py + view_model.py)
 on ``test/data/clsm/Leica_SP5.ptu`` with one channel ``all`` holding every used
 routing channel printed ``mean_khz 44.72292671613037, std_khz 0.0,
 photons 6714549, time_s 150.13661879999998``.

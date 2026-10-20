@@ -71,12 +71,12 @@ def commit_fixture(root: Path, path: Path) -> None:
 
 def test_frontmatter_stub_is_written_and_idempotent(bundle: Path) -> None:
     """Missing metadata is repaired without replacing substantive prose."""
-    body = "# Meaningful heading\n\nA useful description of this particular report.\n"
-    path = write(bundle, "plugins/emtk-ports/example/REPORT.md", body)
+    body = "# Meaningful heading\n\nA useful description of this particular reference.\n"
+    path = write(bundle, "references/example.md", body)
     assert findings(bundle, "FM")
     assert fix(bundle, "FM") == 0
     repaired = path.read_text()
-    assert "type: Report" in repaired
+    assert "type: Reference" in repaired
     assert "Meaningful heading" in repaired
     assert repaired.endswith(body)
     assert not findings(bundle, "FM")

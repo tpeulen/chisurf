@@ -1,7 +1,7 @@
 """The native intensity-trace tool: the Qt tool's numbers, and real input (presses at drawn rects, typed keys, dialogs).
 
 Data: the tool's own demo (a molecule switching between two FRET states, dwell 20 / 80 ms, two detectors) and a temp
-copy of BH_SPC132.spc for the numbers the Qt widget recorded (``okf/plugins/emtk-ports/intensity_trace/qt_values.json``;
+copy of BH_SPC132.spc for the numbers the Qt widget recorded (``data/qt_values.json``;
 Compute HMM writes beside the file, so never on the repository's copy). Hermetic: temp settings and HOME.
 """
 
@@ -23,7 +23,7 @@ from chisurf.plugins.tttr.intensity_trace.model import IntensityTraceModel
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 SPC = REPO / "test/data/tttr/BH/132/BH_SPC132.spc"
-QT = REPO / "okf/plugins/emtk-ports/intensity_trace/qt_values.json"
+QT = Path(__file__).with_name("data") / "qt_values.json"
 CTRL_A = 0x04000000
 SIZES = [(1200, 800), (800, 600)]
 

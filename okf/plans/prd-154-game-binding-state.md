@@ -78,4 +78,3 @@ All111existing exactcandidate input/Qt/window/state/native cases pass. Source
 constructors/render/advance are unchanged; allsixsourceRuff0, base typing clean.
 RNG fixture correction is documented andallboardfields retained. The two custombool
 atomicity repairs are explicitly separate from ordinaryJSON parity.
-[Acceptance](../validation/release-readiness-w6f/game-binding-state-acceptance.json).

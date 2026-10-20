@@ -1,6 +1,5 @@
 """Physical TTTR lags stay in canonical milliseconds through merger, writer, reader and fit."""
 
-import importlib.util
 from pathlib import Path
 
 import numpy as np
@@ -17,11 +16,9 @@ REPO = Path(__file__).resolve().parents[5]
 
 
 def chunk_builder():
-    path = REPO / "okf/plugins/emtk-ports/fcs_merger/scripts/make_chunks.py"
-    spec = importlib.util.spec_from_file_location("physical_merger_chunks", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.build
+    from chisurf.plugins.fcs.fcs_merger.test.make_chunks import build
+
+    return build
 
 
 def test_measured_chunk_lag_uses_raw_ticks_header_and_canonical_ms(tmp_path):

@@ -3,7 +3,6 @@
 The window is drawn by the emtk frame loop (``ImApp.draw``) and driven only through ``press`` / ``release`` /
 ``pointer_move`` / ``wheel`` / ``key`` at the rectangles the controls were drawn in, or at the position of the
 text a button drew; the assertions read the visible outcome (field values, status text, plot labels, windows).
-The coverage list control -> test is in ``okf/plugins/emtk-ports/fret_calculator/REPORT.md``.
 """
 
 from __future__ import annotations
@@ -333,7 +332,7 @@ def test_the_help_button_opens_a_window_with_working_buttons(app):
 @pytest.mark.xfail(
     strict=True,
     reason="emtk gap: the help window's section buttons are all '...##filter' (one id), so a click on any but "
-    "the first never fires; see REPORT.md section 10",
+    "the first never fires",
 )
 def test_a_help_section_button_shows_only_that_section(app):
     press_text(app, action_caption("help"))

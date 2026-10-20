@@ -7,8 +7,7 @@ micro-time decay preview) -- under a strip with this step's Guide and Help. It o
 starts. The workflow reads the chosen setup through :meth:`BurstSetupSelectionApp.selected_setup_name` /
 :meth:`selected_setup_data`, and is told of every change by ``on_changed``.
 
-This replaced a 2178-line hand-written duplicate of that editor (kept for review under
-``okf/plugins/emtk-ports/burst_analysis/pre-upgrade/``). Nothing here imports Qt.
+This replaced a 2178-line hand-written duplicate of that editor. Nothing here imports Qt.
 """
 
 from __future__ import annotations

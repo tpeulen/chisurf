@@ -2,7 +2,7 @@
 
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` at the rectangles the controls were drawn in reach the
 window; the assertions read what a person sees (the model fields, the reference table, the plot's legend and axis labels,
-the folds). The control -> test list is in ``okf/plugins/emtk-ports/phasor_calculator/REPORT.md``.
+the folds).
 """
 
 from __future__ import annotations

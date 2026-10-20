@@ -263,13 +263,14 @@ A plugin documentation update is complete when:
 
 The owner acceptance note `AGY_ACCEPTANCE.md` (2026-10-03), folded here during
 release-readiness tree hygiene, applies to existing ports as well as new ones.
-An emtk port leaves the [preview gate](../../chisurf/core/plugin/emtk_preview.json)
-only after all five checks agree: personally inspected headless renders in
+An emtk port was accepted only after all five checks agreed: personally inspected headless renders in
 realistic states; real control interactions (including typed values, table
 selection, filters and awaited tour actions); a Qt-before/native-after control
 inventory with no lost controls; focused plugin and preview/parity guard tests;
 and a report, guide/figures, OKF evidence and focused local commit. A failing
-re-check returns the port to the gate until its owning defect is fixed.
+re-check reopened the port until its owning defect was fixed. The migration closed
+on 2026-10-20: every plugin opens its emtk window, and the preview gate
+(`emtk_preview.json`, `emtk_readiness`) and the per-port evidence tree were removed.
 
 Use [the parity workflow](../workflows/testing.md) and
 [its capture helper](../../test/gui/migration_parity.py), not construction tests

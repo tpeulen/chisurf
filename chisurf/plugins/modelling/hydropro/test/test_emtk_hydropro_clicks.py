@@ -3,7 +3,7 @@
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` at the rectangles the controls were drawn in (or at
 the text a button, a list entry or a header drew) and host file drops reach the window; the assertions read the visible
 outcome (the model, the table, the log, the dialogs). The HYDRO program is ``data/fake_hydro.sh`` (recorded output); the
-web browser is recorded, not opened. The control -> test list is in ``okf/plugins/emtk-ports/hydropro/REPORT.md``.
+web browser is recorded, not opened.
 """
 
 from __future__ import annotations

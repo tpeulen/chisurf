@@ -3,7 +3,6 @@
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` at the rectangles the controls were drawn in (or at the
 text a button, a header, a row or a dialog entry drew) and host file drops reach the window; the assertions read the visible
 outcome (the model, the tables, the lines, the windows). The session is the fake of ``fakes.py``: no real fit, no network.
-The control -> test list is in ``okf/plugins/emtk-ports/batch_analysis/REPORT.md``.
 """
 
 from __future__ import annotations

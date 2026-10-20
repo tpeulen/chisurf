@@ -3,7 +3,7 @@
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` at the rectangles the controls were drawn in (or at the
 text a button drew) and host file drops reach the window; the assertions read the visible outcome (the model's windows and
 backgrounds, the IRF list, the status text, the plot's drawn boundaries, the published snapshot). The photons are the micro-time
-shifter's demo SPC (real photons). The control -> test list is in ``okf/plugins/emtk-ports/img_calibration/REPORT.md``. A module
+shifter's demo SPC (real photons). A module
 guard fails the run if anything appears in the real ``~/.chisurf`` other than its ``logs`` folder.
 """
 

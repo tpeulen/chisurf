@@ -54,4 +54,3 @@ Exact overlay69passed plus one stale pending-frame fixture corrected separately;
 independent final6selection passed. Original dirtyrootfiles remain byte-identical;
 foreign semantic/style differences stay onlyin migratedworkingfiles/privatebackup.
 The generated catalogue is unchanged and no visible strings or contexts were added.
-[Acceptance](../validation/release-readiness-w6f/number-move-acceptance.json).

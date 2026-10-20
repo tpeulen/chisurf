@@ -4,8 +4,6 @@ Hermetic: settings, files and the HOME folder live in a temporary folder, nothin
 ``~/.chisurf`` and there is no network. The Qt wizard (``AutoForm`` over the shared ``AnisotropyViewModel``) is
 built offscreen with the reader the native model uses (a stub session carrying a ``TCSPCReader``), so both
 sides read the same synthetic IRFs and decays and the numbers must agree exactly.
-
-The control -> test list is in ``okf/plugins/emtk-ports/tr_anisotropy/REPORT.md``.
 """
 
 from __future__ import annotations

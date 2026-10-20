@@ -2,7 +2,7 @@
 
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` at the rectangles the controls were drawn in (or at the text
 a list entry or a button drew) reach the window; the assertions read the visible outcome (the model, the summary, the status line,
-the dialogs, the exported files). The control -> test list is in ``okf/plugins/emtk-ports/psf_calculator/REPORT.md``. The Qt tool
+the dialogs, the exported files). The Qt tool
 had no file drops, so there is no drop test.
 """
 

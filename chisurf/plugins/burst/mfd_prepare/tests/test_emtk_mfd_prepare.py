@@ -2,7 +2,6 @@
 
 The fixture is the in-repo measured BH SPC-132 burst folder of ``burst_selection``. Only pointer, wheel, typed keys and the host's
 file drop reach the window (``chisurf.plugins.emtk_test_input.Driver``); outcomes are read from what was drawn and from the model.
-The control -> test list is in ``okf/plugins/emtk-ports/mfd_prepare/REPORT.md``.
 """
 
 from __future__ import annotations

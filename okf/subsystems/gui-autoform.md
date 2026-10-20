@@ -28,9 +28,7 @@ The scoped implementation and independent reviews are verified. The real-data
 isolated native window pipeline measured 1.89x cold and 2.07x warm; these are not
 end-to-end Add-button speedups. Finish successful-action Main pairing without
 bypassing scientific history; old Main timings hid a caught checkpoint failure.
-The latest guarded smoke passes on the current shared tree; the cause of that change was not established. Commands,
-raw measurements, limits and next acceptance gates are in
-[TCSPC first-fit validation](/validation/tcspc-first-fit.md).
+The latest guarded smoke passes on the current shared tree; the cause of that change was not established.
 
 ## Fit window
 
@@ -979,7 +977,6 @@ scheduled phase; it is recorded so the declarative-UI choice keeps its rationale
 W5 roots are committed in emtk `a1398e0` (Driver first: `5de4c87`). Next is
 W7's authoritative schema exports and click-all; 102 schema failures remain,
 with every other existing Part A guard green.
-[Receipts, captures and measurement traps](/validation/release-readiness-w5.md).
 
 ViewSpecPanel now reuses the form grid rather than a SettingsEditor: column
 weights and wrapping work while group/search/table/numeric controls retain
@@ -1009,7 +1006,6 @@ registry references and are removed with five dedicated files and two export
 statements. Fresh runtime probes retain exact scientific/widget identity and
 four neighboring wizard classes;46 parent cases pass. Catalogue regeneration
 changes nothing. AV1/AV3/realSPC control baselines were inspected before removal.
-[Receipt](../validation/release-readiness-w1/dead-loader-retirement/receipt.json).
 
 
 ## Retained quenching property repair — 2026-10-07
@@ -1023,7 +1019,6 @@ and flag setters initialize/synchronize the original controls.74 parent cases
 pass; qualified constructor-repaired before/final after PNGs inspected with
 identical17 controls. Two unchanged Sticking/abstract-update type diagnostics
 have a separate owning investigation; they are not hidden by suppression.
-[Receipt](../validation/release-readiness-w1/quenching-properties/receipt.json).
 
 
 ## Dense plotting and stable column access — 2026-10-07
@@ -1034,33 +1029,32 @@ cases pass against the canonical installed Git revision, with byte parity for
 alpha, clip, transforms and DPI;21 lock refs/version updated and lockcheckgreen.
 Repeated unchanged table column visibility no longer resets horizontal scroll
 each frame; real transitions retain reset/invalidation and last-column safety.
-[Inspected measured evidence](../validation/release-readiness-w1/dense-markers/receipt.json).
 
 
 ### W1 FCS wizard retirement — 2026-10-07
 
 The FCS Correlator/toolbox, Merger and Burst FCS callers host their existing native apps; obsolete central FCS/TTTR wizard Python/generated/UI chains are retired. Public publication/background/PTO/td4 lineage, skipped-row sentinels and bounded cancel/rollback behavior are preserved. No scientific algorithm changed. The original 8de6 before-facts used header seconds as milliseconds and are retained explicitly as invalid historical unit evidence. Final SPC13213.5ns is1.35e-5ms through readers/fitting; the real MaxEnt0.001..20 grid and core None sentinel are preserved.
 
-Parent validations:56 host, earlier84 burst,54 diagnostic and15 new unit cases; final burst repeat and help/guide pointer review are recorded in the frozen acceptance receipt. All actual final images are inspected by the parent before execution. Next W1: GF row11, then rows12–14 and shared decorator retirement. Main gui.ui remains W9; W7 matrix acceptance remains open. Evidence: [FCS retirement](../validation/release-readiness-w1/fcs-retirement/acceptance.json).
+Parent validations:56 host, earlier84 burst,54 diagnostic and15 new unit cases; final burst repeat and help/guide pointer review are recorded in the frozen acceptance receipt. All actual final images are inspected by the parent before execution. Next W1: GF row11, then rows12–14 and shared decorator retirement. Main gui.ui remains W9; W7 matrix acceptance remains open.
 
 
 ## Installed toolkit0.1.7 table, texture and editor roots — 2026-10-07
 
 Canonical SDK2c30fc559 is installed from the declared Git source and pinned in all21 lock references. Parent installed-package/metadata assertion and explicit14-file owner validation:261 passed/1expectedskip. Table Ctrl/Command selection modifiers reach string/numeric editors; real detector values and portable roundtrip are verified. PixelPainter now respects nested texture/font clipping while preserving UV/alpha/DPI. Actual Qt Help body was already clipped correctly; its apparent software overflow was diagnostic-renderer debt, not a product layout fix. Code-editor descriptions now use the existing translated tooltip path and actual hover rectangle.
 
-Table/painter owned typing is clean. Fifteen inherited view_form declaration/inference findings are recorded unchanged without casts/suppressions; programme owner review remains open. Genuine narrow Help category packing is a separate application root. All recorded before/after PNGs were inspected by the parent. SDK source commits dd034d7/b92e9cb66/2c30fc559 are local; no provider/dependency or unrelated SDK/dialog/web changes. [Installed acceptance](../validation/release-readiness-w1/sdk-0.1.7/acceptance.json).
+Table/painter owned typing is clean. Fifteen inherited view_form declaration/inference findings are recorded unchanged without casts/suppressions; programme owner review remains open. Genuine narrow Help category packing is a separate application root. All recorded before/after PNGs were inspected by the parent. SDK source commits dd034d7/b92e9cb66/2c30fc559 are local; no provider/dependency or unrelated SDK/dialog/web changes.
 
 
 ## Native Help controls stay reachable in small windows — 2026-10-07
 
-Header actions and category filters now wrap using translated button widths; all sections remain reachable at600×400 and480×320. Full document text/live links are retained in a clipped scrollable child with stable identity, so moving the dialog preserves reading position. Footer space follows actual frame/font metrics, including2×DPI. Actual Qt body clipping was already correct; the separate SDK software texture clipping root is recorded in installed0.1.7. No guided-tour code or scientific/document text changed. Parent11 installed-SDK cases pass, scoped source/test typing andRuff clean, narrow/scroll/Outputs/DPI2 before-after images inspected. [Acceptance](../validation/release-readiness-w1/native-help/acceptance.json).
+Header actions and category filters now wrap using translated button widths; all sections remain reachable at600×400 and480×320. Full document text/live links are retained in a clipped scrollable child with stable identity, so moving the dialog preserves reading position. Footer space follows actual frame/font metrics, including2×DPI. Actual Qt body clipping was already correct; the separate SDK software texture clipping root is recorded in installed0.1.7. No guided-tour code or scientific/document text changed. Parent11 installed-SDK cases pass, scoped source/test typing andRuff clean, narrow/scroll/Outputs/DPI2 before-after images inspected.
 
 
 ## Complete detector-definition JSON editing — 2026-10-07
 
 The shared native detector editor restores the live Edit JSON action through a declared AutoForm code editor and Apply/Cancel modal. Existing portable definition validation and table projections run before committing; valid application preserves model/store/callback identity, preview data, last_used, unknown fields and calibration IDs unless explicitly edited. Invalid/read-only/busy/cancelled drafts leave the current definition unchanged. Apply is a working-definition change, not an implicit setup-file/MMFDB write.
 
-Parent8 installed-SDK JSON tests pass; owner20 new/native cases and scoped source/test typing/Ruff pass. All5 measured before/after/modal/error/apply PNGs were inspected. The broader owner-page selection reports80 passes and one width720 gch-visibility failure; that responsive boundary is being repaired/verified with the full reference-calibration phase, not waived. Core source and foreign widget semantics are excluded from this focused commit. [Acceptance](../validation/release-readiness-w1/detector-json/acceptance.json).
+Parent8 installed-SDK JSON tests pass; owner20 new/native cases and scoped source/test typing/Ruff pass. All5 measured before/after/modal/error/apply PNGs were inspected. The broader owner-page selection reports80 passes and one width720 gch-visibility failure; that responsive boundary is being repaired/verified with the full reference-calibration phase, not waived. Core source and foreign widget semantics are excluded from this focused commit.
 
 
 ## Independent native detector reference calibration — 2026-10-07
@@ -1069,7 +1063,7 @@ The shared detector row now reads an independent TTTR reference on a private def
 
 Actual pending-field hover commits the edit and starts computation; Apply queues rather than becoming disabled, waits for the completed result and publishes once. Readonly/error/cancel/context replacement, timing-only SET and changed fast-DAT handoffs refuse mutation. Parent drops delegate to the child during the reference lifetime and exact endpoints restore afterward; late reads dispose temporary resources without waking a closed host. Required imaging mixin close releases the child before the next MRO close. Nested Help/chooser Escape stays local.
 
-Parent111 targeted runtime cases and967 available programme/feature guards pass (16expectedskips); five full controls/Batch/scrolled/Help/Guide scenes and independent host/nested-input pairs were inspected. Shifted BH fixture G1.32776/SD.456709 is distinct from the unshifted provider-clock G1.34785469696/SD.48512835796; neither is measured instrument calibration ground truth. Source typing adds no diagnostics (74before/74after); existing native declaration work remains registered W0. BID's untracked handwritten prototype stays on disk for W6f adoption, excluded from source;16 HEAD-backed factories and3 real family lifecycles are guarded without skips. [Acceptance](../validation/release-readiness-w1/detector-reference/acceptance.json).
+Parent111 targeted runtime cases and967 available programme/feature guards pass (16expectedskips); five full controls/Batch/scrolled/Help/Guide scenes and independent host/nested-input pairs were inspected. Shifted BH fixture G1.32776/SD.456709 is distinct from the unshifted provider-clock G1.34785469696/SD.48512835796; neither is measured instrument calibration ground truth. Source typing adds no diagnostics (74before/74after); existing native declaration work remains registered W0. BID's untracked handwritten prototype stays on disk for W6f adoption, excluded from source;16 HEAD-backed factories and3 real family lifecycles are guarded without skips.
 
 
 ## Native microtime histogram retirement — 2026-10-07
@@ -1078,14 +1072,14 @@ The public CLI/manifest and remaining lifetime panel now use the existing native
 
 The plugin supplies a synthetic PTU Demo (3000VV/1500VH,32ps micro/25ns macro clocks,4-bin/.128ns FWHM) and real Guide awaits Demo then Compute. Current native defaults/scientific outputs preserve provider timing; the headerless BH3.2958984375ps is not independent instrument calibration and explicit25ps is validation only. Three polarized measured exports match the legacy bytes. Unpolarized output corrects the extra-all-source-VH bug:135967selected/4096rows rather than319624/8192. All17 final images were inspected, including legacy-host and complete detector controls; paired docs and3realfigures accompany the source.
 
-Parent112 targeted cases pass in three isolated normal-exit groups; scoped Ruff14/mypy6 are clean. The actual policy guard identified one stale Qt GUI allowance after entrypoint retirement; removing only that line makes all285 policy cases pass/16expectedskips, with other available guard files already green. No allowance or skip added. [Acceptance](../validation/release-readiness-w1/microtime-retirement/acceptance.json). W1 next is ordered Burst13, then Channel14 and shared Designer helper cleanup.
+Parent112 targeted cases pass in three isolated normal-exit groups; scoped Ruff14/mypy6 are clean. The actual policy guard identified one stale Qt GUI allowance after entrypoint retirement; removing only that line makes all285 policy cases pass/16expectedskips, with other available guard files already green. No allowance or skip added. W1 next is ordered Burst13, then Channel14 and shared Designer helper cleanup.
 
 
 ## Burst Selection legacy fallback retirement — 2026-10-07
 
 The unused legacy GUI/assets and runtime selector are removed. Public BurstSelectionTool/wizard retain the implemented modern Qt tool; the production Burst Analysis hub still uses the existing native factory. Native model/backend/search and output contracts are unchanged. Frozen real m000/m001 runs retain198 bursts (71/127),353909 photons/45868 selected, active71×10 table, ten numeric-column hashes, settings and72 control IDs. All10 after scenes were inspected against preserved before evidence; the loaded legacy143-row BUR diagnostic is not a legacy search rerun. Prior shared JSON/Preview controls are added by their earlier unit; existing header elision/read-clock0 are qualified rather than claimed as new corrections.
 
-Parent26 owning runtime cases and968 available guard/import cases pass (16expectedskips), scoped Ruff4/mypy2 clean. Current packaged instructions no longer recommend the deleted selector: four dated originals are archived in [history](../validation/release-readiness-w1/burst-selection-retirement/package-notes-history.zip), current reference paths remain and foreign verification formatting is preserved. Existing paired theory/workflow and one real figure accompany the source; canonical catalogue regeneration is byte-identical for the owned page. [Acceptance](../validation/release-readiness-w1/burst-selection-retirement/acceptance.json). Next is Channel14 and Designerhelpers; modern Qt surface retirement stays with W9.
+Parent26 owning runtime cases and968 available guard/import cases pass (16expectedskips), scoped Ruff4/mypy2 clean. Current packaged instructions no longer recommend the deleted selector: four dated originals are archived in history, current reference paths remain and foreign verification formatting is preserved. Existing paired theory/workflow and one real figure accompany the source; canonical catalogue regeneration is byte-identical for the owned page. Next is Channel14 and Designerhelpers; modern Qt surface retirement stays with W9.
 
 ## Where to pick this up — detector host retirement, 2026-10-08
 
@@ -1094,7 +1088,7 @@ Designer page/JSON/shift forms are retired after independent control/data and
 caller acceptance. Portable model, flags, full export/Finish and ownership
 lifecycle are the authority, not old combo/table fields. Parent80 final cases
 and959availableguards/16skips pass; real normal/narrow/enclosing/Optical and
-visible legacy/native pairs inspected. [Receipt](../validation/release-readiness-w1/channel-definition-retirement/acceptance.json).
+visible legacy/native pairs inspected.
 Next W1 unit removes unused Designer helper/cache/source-jump branches while
 retaining actual drag-file injection and explicit main gui.ui packaging. The
 main shell remains W9, and the separate Burst MLE model feature remains active.
@@ -1105,7 +1099,6 @@ The retired UI loader/cache/source-path branches are removed. Keep native specs
 and Python source resolution; do not restore obsolete UI metadata. The existing
 drag injector body is unchanged and actual MIME/drop behavior is regression
 tested. Main shell packaging is explicit, deferred to W9.
-[Receipt](../validation/release-readiness-w1/designer-helper-retirement/acceptance.json).
 Next active acceptance is the requested Burst MLE model feature; W0 owns the
 missing bundle guard/inherited typing before full programme closure.
 
@@ -1123,8 +1116,7 @@ before edits, then reconstructed from frozen source after a concurrent capture
 rerun overwrote files; both phases and SDK revisions are recorded.
 
 Remaining native factories still need explicit primary-spec declarations and
-real render acceptance. See [active job](../validation/release-readiness-w6g/current-job.md)
-and native-window-map.json; do not treat geometry-only declarations as new
+real render acceptance; do not treat geometry-only declarations as new
 AutoForm control coverage.
 
 Shared imaging/trajectory shells now read raw primary-spec geometry before
@@ -1147,7 +1139,6 @@ checks use active clips without hiding overflow at alignment boxes.
 Initial imperative audit reads 1,750 committed Python files and measures 1,202 bare
 visible literals (before alias refinement); the ledger is an open worklist,
 not an allowance or completed i18n claim. Tooltips now have 1,104 open findings.
-See the [active acceptance](../validation/release-readiness-w6g/current-job.md).
 
 Seven remaining calculators now consume explicit 640×480 defaults and preserve
 computed state. Compact FRET uses the SDK public first-viewport declaration,
@@ -1168,7 +1159,7 @@ checked. Each first example tour step awaits the real load_example control;
 shared hub page routing reveals that control without pressing it. The SDK and
 ChiSurf tour title reserve a separate drag row. Existing scientific results
 remain exact; the reader-owner repair restores all Flow frames and photons.
-[Demo acceptance](../validation/release-readiness-w6g/demo-contracts-acceptance.json)
+Demo acceptance
 records the qualified flow bias and remaining broader uniformity gates.
 
 Five more ordinary primary specs now declare host geometry while saved user
@@ -1178,7 +1169,7 @@ verified in actual scratch Qt captures. Result-selector rows measure visible
 labels with hide_double_hash=True, matching real button rectangles; hidden
 identities no longer cause premature wrapping. Existing selectors wrap without
 changing callbacks; a concise FRET title preserves its ##fretdist identity.
-[Acceptance and exact evidence](../validation/release-readiness-w6g/ordinary-window-acceptance.json)
+Acceptance and exact evidence
 qualifies offscreen screen clamping and remaining74declarations.
 
 Photon Table/LUT Tools and Trace Browser consume explicit primary geometry,
@@ -1188,7 +1179,7 @@ legacy declared descriptions explain threshold normalization and masked bins;
 changing that setting can alter correction construction, not just plotted
 amplitudes. Existing algorithms/defaults are retained. Public setup setters
 repair stale parity fixtures without restoring a private alias.
-[Acceptance](../validation/release-readiness-w6g/photon-viewer-acceptance.json)
+Acceptance
 records measured arrays, real tooltip renders and remaining71declarations.
 
 The external ndX owner now reads and packages a1200×800 primary declaration.
@@ -1197,7 +1188,7 @@ explicit CLI sizes and existing ChiSurf saved geometry retain precedence.
 Source tables, axes, histograms/marginals and controls remain exact across real
 before/after scenes. The owner adds no new persistence subsystem or loader.
 Individual PNG inspection avoids a multi-image presentation artifact mistaken
-for a black canvas. [Owner acceptance](../validation/release-readiness-w6g/ndx-window-acceptance.json)
+for a black canvas. Owner acceptance
 records the exact wheel/source identities and inherited static diagnostics.
 
 Three TTTR base apps now declare1100×720 initial geometry while preserving
@@ -1206,21 +1197,21 @@ host-only primary declaration, not a standalone-wrapper-only hint. Real detector
 scrolling proves late row/actions remain reachable; instrumented busy states
 are distinguished from naturally fast completion. The stale test painter now
 matches SDK stroke width semantics with its original counting/assertions.
-[Acceptance](../validation/release-readiness-w6g/tttr-window-acceptance.json)
+Acceptance
 records exact physical arrays/rates/windowrows and remaining FPS/card work.
 
 The FPS JSON card has its own1100×720 host declaration and preserves saved
 custom dimensions without changing other CardShell siblings. Actual AV
 computation, molecular rendering, point clouds/means/grid spacing and complete
 position/restraint/configuration data prove real before/after parity; a
-load-onlyfixture orskippedrenderer is not acceptance. [Exactcardacceptance](../validation/release-readiness-w6g/fps-card-window-acceptance.json)
+load-onlyfixture orskippedrenderer is not acceptance. Exactcardacceptance
 records tested geometry, fixture identity and scoped static limits.
 
 A real spectral-window baseline exposed a provider-call mismatch in the owning
 lifetime-FCS simulator: positive uncorrelated background lacked a decay pattern,
 so the engine generated prompt scatter at microtime zero. The caller now declares
 uniform calibrated bins; zero-background config/signal arrays are exact, while
-positive-background seeded outputs legitimately change. [Physical acceptance](../validation/release-readiness-w6g/lfcs-background-acceptance.json)
+positive-background seeded outputs legitimately change. Physical acceptance
 records actual native distribution/clock/provider checks. GUI geometry acceptance
 must be recaptured under this corrected caller, not force old scatter hashes.
 
@@ -1229,14 +1220,14 @@ computedcontrols/data. UniformTCSPCbackground fixes the lifetime-FCS caller's
 physicalcontract; afterbaseline/reference recapture is explicit. OptionalMEM
 completionstatus reports actualmainanalysis/failure; stochasticmodeltest
 assumptions usepairedspecies andobjective/gradient/convergence evidence rather
-than fixedcomponentorder/roundedtext orunnormalizedamplitudesum. [Spectralacceptance](../validation/release-readiness-w6g/spectral-window-acceptance.json)
+than fixedcomponentorder/roundedtext orunnormalizedamplitudesum. Spectralacceptance
 records independentproviderdiagnostics, realPNG andscopedstaticlimits.
 
 Calibration and PSF composite hosts now read declared1100×720 geometry before
 preparing/slicing their controls. Savedcustomdimensions retain precedence;
 actualphotons/calibrationApply andnoisybeadGaussian measurements are unchanged.
 ConciseemptyIRFcaption fits the initialhost, while metric-aware testpainter
-coverage retains actualclip/occlusion data. [Pairacceptance](../validation/release-readiness-w6g/imaging-window-acceptance.json)
+coverage retains actualclip/occlusion data. Pairacceptance
 records scientifictruth versus four detectedregions, ownership residue and
 headlessbefore/after/resize/reopen evidence.
 
@@ -1244,25 +1235,25 @@ Regionfilepath lifetime fitting andpreview now share declaredproducer scanner
 metadata delivery. Source-onlyproducer headers expose correct physical clocks,
 independently ofpreexistingworkingtree edits. Pythonimage counts use canonical
 owneru32 anddeferredchannel layout isaccurate; actualdataGUIacceptance must be
-recaptured afterthese scientificroots instead ofpreserving wrappedcounts. [Rootacceptance](../validation/release-readiness-w6g/region-root-acceptance.json)
+recaptured afterthese scientificroots instead ofpreserving wrappedcounts. Rootacceptance
 records realbroken/explicitreference physics and installedtest/arm64 identities.
 
-Spot Finder and Region MLE now declare1100×720 on their raw primary specs. Region filter/selector reserve measured caption widths; saved dimensions retain precedence. Actual corrected wide-count data and all control/scientific identities match before/after. [Pair acceptance](../validation/release-readiness-w6g/spot-region-window-acceptance.json) qualifies frozen-dipole versus ensemble polarization residuals and records actual arm64 screenshots, original/owned sources and commands. Reopening restores configuration; Preview/Run rebuild computed results.
+Spot Finder and Region MLE now declare1100×720 on their raw primary specs. Region filter/selector reserve measured caption widths; saved dimensions retain precedence. Actual corrected wide-count data and all control/scientific identities match before/after. Pair acceptance qualifies frozen-dipole versus ensemble polarization residuals and records actual arm64 screenshots, original/owned sources and commands. Reopening restores configuration; Preview/Run rebuild computed results.
 
-CLSM Draw and Generator now read1100×720 from rawprimary specs and expose their existing manualsettings methods through native preference hooks. Saved dimensions/physicalparameters/namedmasks retain precedence. [Pairacceptance](../validation/release-readiness-w6g/clsm-pair-window-acceptance.json) records realarm64data/map/pointer/export/persistence/tooltip proof; mixingtest/nativepainters duringheldgestures is an invalid physical baseline. No common painter change was needed.
+CLSM Draw and Generator now read1100×720 from rawprimary specs and expose their existing manualsettings methods through native preference hooks. Saved dimensions/physicalparameters/namedmasks retain precedence. Pairacceptance records realarm64data/map/pointer/export/persistence/tooltip proof; mixingtest/nativepainters duringheldgestures is an invalid physical baseline. No common painter change was needed.
 
-Audifier andMicrotimeShifter read1100×720 beforeprocessingrawprimaryspecs. Shifterunknown sampleproxyattributes no longerparseunopenedmetadata; scalarpaths/identities use stringwidgets, whilemultilineprose/sequence forms scrollabovefixedactions. [Pairacceptance](../validation/release-readiness-w6g/audifier-shifter-window-acceptance.json) recordsactualstream/audio/shifts/export/nativepreferences/PNG/table-scroll proof, preservedforeignhunks andallfourREDtestclosures.
+Audifier andMicrotimeShifter read1100×720 beforeprocessingrawprimaryspecs. Shifterunknown sampleproxyattributes no longerparseunopenedmetadata; scalarpaths/identities use stringwidgets, whilemultilineprose/sequence forms scrollabovefixedactions. Pairacceptance recordsactualstream/audio/shifts/export/nativepreferences/PNG/table-scroll proof, preservedforeignhunks andallfourREDtestclosures.
 
-ALEXCreator andmanualFileTools hostread1100×720 primarydeclarations withsavedgeometryretained. Splitterprogress/status staysinsideexistingIOdock; InspectorDatausesdeclared130pxminimum/horizontalnavigation forwideburstschemas. [Pairacceptance](../validation/release-readiness-w6g/alex-filetools-window-acceptance.json) recordsactual7childscientificoutputs,propertyfactorytypingrepair,realnativePNG/readability, exactownedsource andMFDpersistencequalification. Foreignconcept/modelportnotes remainunadopted.
+ALEXCreator andmanualFileTools hostread1100×720 primarydeclarations withsavedgeometryretained. Splitterprogress/status staysinsideexistingIOdock; InspectorDatausesdeclared130pxminimum/horizontalnavigation forwideburstschemas. Pairacceptance recordsactual7childscientificoutputs,propertyfactorytypingrepair,realnativePNG/readability, exactownedsource andMFDpersistencequalification. Foreignconcept/modelportnotes remainunadopted.
 
-PTOInspector andChiMOLhost read1200×800 primarydeclarations andretainstoredviewer geometry. PTOcontainer/data/curve/provenance readback isbyte/numerically unchanged; Chimolcoordinates/atom/secondary/state andactualrenderedframes remainexact. [Vieweracceptance](../validation/release-readiness-w6g/pto-chimol-window-acceptance.json) recordsrealstandalonebeforeafter/nativecontrol/tab/hash/test evidence andlazytyping/persistence/provider qualifications, withforeignhunks excluded.
+PTOInspector andChiMOLhost read1200×800 primarydeclarations andretainstoredviewer geometry. PTOcontainer/data/curve/provenance readback isbyte/numerically unchanged; Chimolcoordinates/atom/secondary/state andactualrenderedframes remainexact. Vieweracceptance recordsrealstandalonebeforeafter/nativecontrol/tab/hash/test evidence andlazytyping/persistence/provider qualifications, withforeignhunks excluded.
 
 Burst Browser’s native presentation now uses the existing declarative DataTable
 for the paged37-column measurement vocabulary, with typed numeric sort keys,
 original source row selection and horizontal navigation. The initial1200×800
 primary declaration retains saved geometry/dock precedence. E/S sliders include
 actual measured/current limits beyond[0,1], without altering scientific masks.
-[Verified uncommitted acceptance](../validation/release-readiness-w6g/burst-browser-window-acceptance.json)
+Verified uncommitted acceptance
 records real data, before/after inventory, static/targeted checks, paired docs and
 permissions that currently prevent canonical Git/board publication. No SDK sorting
 workaround, new dependency or scientific algorithm was introduced.
@@ -1272,7 +1263,7 @@ primaries, with saved host geometry taking precedence. Filter plots bound legend
 captions to160logical pixels and show the full original scientific identity on
 native hover; curve visibility remains stable across resize. Actual736×552 host
 clamping and control scrolling are measured separately from authored dimensions.
-[Pair acceptance](../validation/release-readiness-w6g/fcs-pair-window-acceptance.json)
+Pair acceptance
 records exact measured-repeat/filter/Project/export parity, correct canonical test
 isolation, poor-reference-fit and native-persistence qualifications. Canonical
 publication is pending read-only Git/board permissions; full manual tour gates
@@ -1283,7 +1274,7 @@ metadata before their layout/controls adaptations. The native generator stacks
 Mode options to preserve full captions on736×552; actual scroll and per-option
 scientific tooltips are verified. Its owner text loader retains columns for a
 one-row time/count IRF rather than interleaving the time value as a count.
-[Decay pair acceptance](../validation/release-readiness-w6g/decay-pair-window-acceptance.json)
+Decay pair acceptance
 records common corrected-core before/after proof, unchanged normal measuredIRF,
 raw fresh-UUID provenance, real exports/fits/renderings and physical/nativestate
 limits. Canonical publication remains pending current read-only permissions.
@@ -1294,7 +1285,7 @@ while preservingnumericalfits; its nested-selectionowner nowretainsfixed/seed/
 exactembedding semantics. MEMrawamplitude/defaultuniform labels andFRET/sampling
 checkbox layout aretruthful/reachable. Its samplingowner reconstructsSDKscaled
 entropy/objective andpriorconvention, retains countunits andhonorspartialsteps.
-[Lifetimepair acceptance](../validation/release-readiness-w6g/lifetime-pair-window-acceptance.json)
+Lifetimepair acceptance
 records realcommonobjective/worker/export/GUIproof, stochastic/method/persistence
 limits andexplicitinheritedtyping debt. Canonicalpublication remainspermission-
 blocked; this doesnotmarktheprogrammecomplete.
@@ -1303,14 +1294,14 @@ Burst MLE and Accurate FRET candidates consume1100×720 rawprimary metadata.
 MLEerror/readiness prose wraps; model choices remainthe shippedFit23/24/25.
 AccuratelegacyBUR input useslogicalrows/companions, unassignedrecords carry−3,
 andthefactor table usesdeclaredidentification/prior provenance. Actualnarrow
-long-cell text remainsreachablethroughnativehover. [Pair acceptance](../validation/release-readiness-w6g/burst-calibration-window-acceptance.json)
+long-cell text remainsreachablethroughnativehover. Pair acceptance
 separates theseverifiedsurfaces fromOS-IPC batchvalidation andread-onlySDKReport/
 Gitpublication gates; nofullprogrammecompletionclaim.
 
 BVA now consumes a1100×720 host-only primary declaration; existing controls
 andresponsiveviewport sizing remain. Its owner reader discovers BUR andmatching
 ending4 companion files beforetextdecode, preservingbinaryPTOcache andallrow/
-sentinel identities. [Acceptance](../validation/release-readiness-w6g/bva-window-acceptance.json)
+sentinel identities. Acceptance
 records actual152burst/SPCvariance/static/profile/nativeexport/companionparity,
 independentphotonreference,32PNGinspection, typedoptionalcallbacks andexplicit
 settings/type/publication limits. This isnot a fullAutoFormcontrolmigration.
@@ -1324,8 +1315,7 @@ caption and remain host-header work. Authored metadata is not proof of reachable
 help: attach to the actual submitted item and preserve more specific explanations.
 Source and installed-provider hover/paint, pointer departure, translation and
 unchanged default/narrow geometry are accepted. No controls/layout or scientific
-algorithms changed; no metadata recapture. Exact source/provider identities and
-accepted evidence are in [section-help acceptance](../validation/release-readiness-w6g/emtk-section-help-acceptance.json).
+algorithms changed; no metadata recapture.
 W0a and the production literal/ownership guards are complete. A0 keeps family
 repairs separate and aggregate release gates open.
 
@@ -1344,7 +1334,7 @@ have paired key-relocation evidence; the 1,155-literal denominator is unchanged.
 This closes the bounded shared host-help mechanism. Other hosts must bind their
 own outer description; missing family-authored help remains in the exact owner
 ledger, including four ALEX panels and three calibration tables. Aggregate W6
-still requires those repairs and empty allowances. [Host acceptance](../validation/release-readiness-w6g/host-help-acceptance.json).
+still requires those repairs and empty allowances.
 
 
 ## Core host declaration completion — 2026-10-09
@@ -1362,7 +1352,6 @@ occurrences shifted by insertion have paired source/text key-relocation receipts
 no allowance or family denominator grows. All116declared/shared window readers
 are covered, but that is not whole-plugin scientific/account/service acceptance.
 Other W6f and aggregate release obligations remain open.
-[Acceptance](../validation/release-readiness-w6f/core-window-acceptance.json).
 
 ## Nested disabled input and native tour text — 2026-10-09
 
@@ -1403,4 +1392,4 @@ before requesting host closure. No clipboard operation occurs on opening.
 Host-aware clipboard calls are intercepted in tests, preserving user contents.
 Six locales, two widths, actual modal/closed boundaries and Qt-free construction
 pass. Root inspected all before/default/narrow images;98/pass retains geometry
-and old Close. [Acceptance](../validation/release-readiness-w6f/about-help-acceptance.json).
+and old Close.

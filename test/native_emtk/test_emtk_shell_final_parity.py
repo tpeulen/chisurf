@@ -1,4 +1,4 @@
-"""Gaps the final shell parity pass found (okf/plugins/emtk-ports/final-parity/shell).
+"""Gaps the final Qt-vs-emtk shell parity pass found.
 
 The Start document shows the machine, the versions and the process's use, as the Qt workspace
 did: the Qt main window painted a watermark over its empty workspace (OS, RAM, Python, ChiSurf,

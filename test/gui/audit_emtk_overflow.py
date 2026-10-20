@@ -1,7 +1,7 @@
 """Mechanical audit of every plugin that ships both a Qt tool and an emtk app.
 
 For each plugin whose ``manifest.json`` declares ``entrypoints.gui`` *and*
-``entrypoints.emtk`` (``cookiecutter`` excluded, as ``test_emtk_preview_gate`` does):
+``entrypoints.emtk`` (``cookiecutter`` excluded):
 
 1. build the emtk app from its entrypoint, no arguments;
 2. draw 3 frames through ``app.draw`` with a ``RecordingPainter`` at 1200x800 and 800x600;

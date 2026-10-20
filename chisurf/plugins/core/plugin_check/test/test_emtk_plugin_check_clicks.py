@@ -3,8 +3,7 @@
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` at the rectangles the controls were drawn in (or at
 the text a button, a header or a row drew) and host file drops reach the window; the assertions read the visible outcome
 (the model, the table, the details, the status line, the windows). No sweep starts a real child process here: the
-model's ``_check`` is a stub that records what it was asked. The control -> test list is in
-``okf/plugins/emtk-ports/plugin_check/REPORT.md``.
+model's ``_check`` is a stub that records what it was asked.
 """
 
 from __future__ import annotations
@@ -614,7 +613,7 @@ def test_every_tour_card_button_that_is_not_over_the_table_works_on_every_step(d
 @pytest.mark.xfail(
     strict=True,
     reason="emtk gap: a table claims the press under the tour card although the card's button is drawn "
-    "later and on top, so Close Tour / Prev / Next over the table never fire; see REPORT.md section 10",
+    "later and on top, so Close Tour / Prev / Next over the table never fire",
 )
 def test_no_tour_card_button_is_dead_even_over_the_table(drv):
     assert _card_buttons_per_step(drv) == []

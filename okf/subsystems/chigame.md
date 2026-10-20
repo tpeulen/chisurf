@@ -13,8 +13,7 @@ timestamp: '2026-08-10T00:00:00Z'
    Help/Restart/Guide are implemented and verified as finite units. Remaining
    W6f audio, core/acquisition/setup/wizard and exact family metadata work stays
    open. All 116 window-reader records are closed; do not repeat that inventory.
-2. Measure: game chrome acceptance and source archive are under
-   [release-readiness-w6f](../validation/release-readiness-w6f/). Real driver
+2. Measure: real driver
    tests cover modal input, three awaited steps, six locales, embedded hub and
    all minefield difficulties. Ten before/after round states and complete old
    canvas command prefixes match; default/narrow contact sheets were inspected.
@@ -623,7 +622,6 @@ persistence boundary now restores only nonempty preferences. Complete saved roun
 and dimensions still return, and invalid nonempty payloads still fail. The resume
 section separates actionable work from preserved historical notes; its obsolete
 PICKUP allowances are removed, without broad bundle cleanup.
-[Acceptance](../validation/release-readiness-w6f/game-window-acceptance.json).
 
 
 # Shared native game lifecycle — 2026-10-09
@@ -640,7 +638,6 @@ shutdown/key rejection, idempotent audio release, Pong second-player pending-edg
 cleanup, closed pointer immutability and no post-close effect/toggle. All five full
 numeric state/paint/window snapshots are exactly equal. No audio backend or
 playback activation, new chrome or shared blind field restoration was introduced.
-[Acceptance](../validation/release-readiness-w6f/game-lifecycle-acceptance.json).
 
 
 # Number Quest canonical GUI consolidation — 2026-10-09
@@ -660,7 +657,7 @@ as unstaged differences. Registry descriptions remain unstaged. Exact original
 GUI formatting bytes/patches and migrated working-only deltas are preserved at
 `/private/tmp/prd154-number-move/owner/{before,foreign,worktree-only.patch}`.
 Do not clean/remove those originals or stage their semantic changes without the
-foreign owner's instruction. [Acceptance](../validation/release-readiness-w6f/number-move-acceptance.json).
+foreign owner's instruction.
 
 Queued existing nonblocking help mismatch: the retained canonical tooltip still
 mentionsA/D although actual direction bindings are Left/Right only; README now
@@ -682,7 +679,6 @@ control/render traces are exactly equal. The fixture now seeds actualRNG percase
 without omitting board/adjacency fields. Independent29tests and111existing exact
 cases pass. Two custombool exceptions now occur before model replacement in Pong/
 Mines, a separately tested atomicity repair; ordinaryJSON coercions remain unchanged.
-[Acceptance](../validation/release-readiness-w6f/game-binding-state-acceptance.json).
 
 ## Shared native game chrome — 2026-10-09
 
@@ -696,8 +692,6 @@ Help dialog from reaching Sound or Restart. Shared tour text/navigation translat
 before layout measurement; fixed IDs and English paint remain unchanged.
 
 Root inspected all before/default/narrow contact sheets. Original state and paint
-commands are preserved, with the intentional row appended. Exact provider,
-source, metadata translations, schema repair and foreign-edit preservation are
-recorded in the [acceptance](../validation/release-readiness-w6f/game-chrome-acceptance.json).
+commands are preserved, with the intentional row appended.
 The finite UI unit does not claim aggregate guard closure: concurrent commits
 introduced separately measured new findings, retained for the next prerequisite.

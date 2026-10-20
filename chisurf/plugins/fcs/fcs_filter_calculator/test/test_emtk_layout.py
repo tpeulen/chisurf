@@ -1,4 +1,4 @@
-"""Plot framing and hermetic Qt-free proof of the filter calculator's emtk app (partial upgrade: see the port's REPORT.md)."""
+"""Plot framing and hermetic Qt-free proof of the filter calculator's emtk app."""
 
 import time
 

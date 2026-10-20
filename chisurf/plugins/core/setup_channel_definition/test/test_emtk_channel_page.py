@@ -1,6 +1,5 @@
 """The one-page channel editor driven with REAL INPUT: pointer press and release at drawn rectangles, typed text, Enter,
-the wheel, drags and file drops. Every control of the page has a test here (the control -> test list is in
-``okf/plugins/emtk-ports/channel_editor/REPORT.md``).
+the wheel, drags and file drops. Every control of the page has a test here.
 
 Hermetic: setups files and MMFDB are temporary, the working directory of the file chooser is a temporary folder holding a
 copy of ``test/data/tttr/BH/132/BH_SPC132.spc``. The numeric parity of the page against the Qt page (the same setup, the

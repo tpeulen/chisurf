@@ -582,7 +582,6 @@ chisurf/plugins/tttr/tttr_lut_tools/tests
 chisurf/plugins/tttr/tttr_microtime_shifter/tests
 chisurf/plugins/tttr/tttr_time_windows/tests
 test/core/test_dye_definition_shipped.py
-test/core/test_emtk_preview_gate.py
 test/fio/test_ndxplorer_rpc_bridge.py
 test/fio/test_setup_store_fresh_database.py
 test/fitting/test_bff_sampler_result_boundary.py

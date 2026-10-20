@@ -46,13 +46,13 @@ The `burst/` group covers the confocal single-molecule FRET (smFRET) burst workf
 > **Qt tools retired (2026-10-11).** `burst_selection` and `burst_mle_analysis` are emtk apps over Qt-free models and engines
 > (`gui/native.py`, `gui/model.py`, `engine.py`); the Qt `BurstSelectionTool`, `MLELifetimeAnalysisWizard`, their `wizard.py`
 > launchers and the hosted emtk shells are gone. Sections below that describe docks, toolbars, `QMainWindow` embedding or
-> `BurstSelectionTool._setup_viewport_toolbar` describe the retired tools; the live behaviour is in
-> [the burst port survey](emtk-ports/burst-survey.md) and the `qt-retirement/` evidence beside each plugin.
+> `BurstSelectionTool._setup_viewport_toolbar` describe the retired tools; the live behaviour is in each plugin's
+> emtk app and its tests.
 
 | Plugin dir | Display name | What it does |
 |---|---|---|
 | `burst_analysis` | Burst Analysis | Integrated burst workflow bundling selection, BVA, MLE, browser and background estimation in one navigation-shell window. Also ships a Qt-free `api/workflow.py` facade (`BurstWorkflow`) for non-programmers. |
-| `alex_suite` | ALEX Suite | The old ALEX-Suite program's workflow as one native pipeline walked with **Next** (`gui/native.py`, `AlexHubApp` = Burst Analysis's hub with ALEX's steps): 1. Setup, 2. Files (with a seeded µs-ALEX **demo** measurement, `demo.py`), 3. Alternation (optional; µs-ALEX is detected and folded into the micro-time **on arrival**, `gui/alternation_model.py`, and the container plus the detected setup "ALEX Suite (auto)" go to every later step), 4. Burst search (Next runs it), 5. Background (on arrival), 6. Accurate FRET (Next calibrates), 7. E–S histogram (ndX, E against S); side tools Burst properties, Titration, BVA, ALEX-Suite CSV export (`gui/export_model.py`). Same `.pto` output as Burst Analysis. Port record and resume point: [burst-survey.md](emtk-ports/burst-survey.md). |
+| `alex_suite` | ALEX Suite | The old ALEX-Suite program's workflow as one native pipeline walked with **Next** (`gui/native.py`, `AlexHubApp` = Burst Analysis's hub with ALEX's steps): 1. Setup, 2. Files (with a seeded µs-ALEX **demo** measurement, `demo.py`), 3. Alternation (optional; µs-ALEX is detected and folded into the micro-time **on arrival**, `gui/alternation_model.py`, and the container plus the detected setup "ALEX Suite (auto)" go to every later step), 4. Burst search (Next runs it), 5. Background (on arrival), 6. Accurate FRET (Next calibrates), 7. E–S histogram (ndX, E against S); side tools Burst properties, Titration, BVA, ALEX-Suite CSV export (`gui/export_model.py`). Same `.pto` output as Burst Analysis. |
 | `burst_selection` | Burst Selection | Selects photon bursts from TTTR data and computes per-burst FRET indicators. |
 | `burst_background` | Burst Background Estimation | Estimates detector background rates from TTTR burst data. |
 | `burst_fusion` | Burst Fusion | **Optional** step after selection: merges the bursts one molecule produced — a passage the count-rate search cut into fragments — into single bursts, using the recurrence same-molecule probability, and writes them as a new burst folder the later steps then read. |
@@ -157,7 +157,7 @@ cannot contain the answer.
 
 `burst_mle_analysis` offers registered Fit23/24/25 models per burst per detector by Poisson maximum likelihood. The estimator itself is tttrlib's C++ `Fit23` (the Maus-2001 `2I*` MLE); ChiSurf wraps it through one Qt-free seam, `chisurf/core/fluorescence/mle/` (`Fit2x`, `Fit2xSettings`, `Fit2xResult`, `assemble_vv_vh`), rather than reconstructing the raw `tttrlib.Fit23` in every consumer. The batch worker (`_mp_worker.py`), the wizard's batch pass, and the image-MLE plugins (`microscopy/img_pixel_mle`, `microscopy/sm_image_mle`) all fit through this harness. See the [fitting subsystem](/subsystems/fitting.md) for the harness and the complementary in-core `noise_model="poisson"` (`2I*`) objective now available to the ordinary TCSPC decay fits.
 
-The native and embedded emtk panels expose the same validated model selector and editable AutoForm parameter table. Fit25 candidate lifetimes remain fixed inputs, with a separate winning index; each model's starts/fixed flags survive save/load. Fit26/reference-pattern and array-input models are explicitly unavailable in this workflow. Completed native batch results retain their original schema after selection changes. Both readers carry the full portable definition to the canonical LUT/shift seam; explicit clock overrides are ps/ns, applied once. The generated Demo writes real PTU/BUR inputs (seed20261008,16×1000photons,2ns input) into the settings cache and waits for the user's Auto/Fit actions. [Model/source acceptance](../validation/release-readiness-w1/mle-model-selection/acceptance.json) preserves measured Fit23 hashes and reviewed before/after inventory.
+The native and embedded emtk panels expose the same validated model selector and editable AutoForm parameter table. Fit25 candidate lifetimes remain fixed inputs, with a separate winning index; each model's starts/fixed flags survive save/load. Fit26/reference-pattern and array-input models are explicitly unavailable in this workflow. Completed native batch results retain their original schema after selection changes. Both readers carry the full portable definition to the canonical LUT/shift seam; explicit clock overrides are ps/ns, applied once. The generated Demo writes real PTU/BUR inputs (seed20261008,16×1000photons,2ns input) into the settings cache and waits for the user's Auto/Fit actions. Model/source acceptance preserves measured Fit23 hashes and reviewed before/after inventory.
 
 The `MLELifetimeAnalysisWizard` is a QMainWindow, but the `burst_analysis` shell embeds it by `takeCentralWidget()`-ing the wizard and hosting only that central widget — an embedded QMainWindow swallows clicks on native macOS, so the shell embeds the plain content and keeps the wizard object as the workflow's `"mle"` logic panel (it owns all fit state and widget references; `central._mle_wizard` back-refers to it). **Lifetime invariant:** the wizard is re-parented onto that extracted central widget as a plain hidden child (`_burst_mle` does `wizard.setParent(central, Qt.Widget)` + `hide()`), so wizard and content share one branch and one lifetime. This is load-bearing: the wizard's fit buttons live under `central` and are wired to `wizard` slots, so if the wizard were left in a separate branch (e.g. parented to the workflow window) a window/child cleanup could destroy it while the buttons survived — a later click would then fire a slot on a deleted C++ object (`wrapped C/C++ object … has been deleted`). It must be reparented as `Qt.Widget`, not `Qt.Window`: a `Qt.Window` reparent stays a top-level window that macOS actually shows — an empty little traffic-light window floating over the panel, whose close deletes the wizard and re-triggers the crash. A hidden non-window child never renders (so no QMainWindow-as-child click-swallow) and is not a closeable window. Pinned by `test_mle_wizard_shares_lifetime_with_embedded_widget`.
 
@@ -284,7 +284,7 @@ embedded widget now re-syncs on the model's own notification.
 
 The unused legacy GUI/assets and runtime selector are removed. Public BurstSelectionTool/wizard retain the implemented modern Qt tool; the production Burst Analysis hub still uses the existing native factory. Native model/backend/search and output contracts are unchanged. Frozen real m000/m001 runs retain198 bursts (71/127),353909 photons/45868 selected, active71×10 table, ten numeric-column hashes, settings and72 control IDs. All10 after scenes were inspected against preserved before evidence; the loaded legacy143-row BUR diagnostic is not a legacy search rerun. Prior shared JSON/Preview controls are added by their earlier unit; existing header elision/read-clock0 are qualified rather than claimed as new corrections.
 
-Parent26 owning runtime cases and968 available guard/import cases pass (16expectedskips), scoped Ruff4/mypy2 clean. Current packaged instructions no longer recommend the deleted selector: four dated originals are archived in [history](../validation/release-readiness-w1/burst-selection-retirement/package-notes-history.zip), current reference paths remain and foreign verification formatting is preserved. Existing paired theory/workflow and one real figure accompany the source; canonical catalogue regeneration is byte-identical for the owned page. [Acceptance](../validation/release-readiness-w1/burst-selection-retirement/acceptance.json). Next is Channel14 and Designerhelpers; modern Qt surface retirement stays with W9.
+Parent26 owning runtime cases and968 available guard/import cases pass (16expectedskips), scoped Ruff4/mypy2 clean. Current packaged instructions no longer recommend the deleted selector: four dated originals are archived in history, current reference paths remain and foreign verification formatting is preserved. Existing paired theory/workflow and one real figure accompany the source; canonical catalogue regeneration is byte-identical for the owned page. Next is Channel14 and Designerhelpers; modern Qt surface retirement stays with W9.
 
 ## Native window and result-provenance checkpoint — 2026-10-09
 
@@ -292,8 +292,7 @@ Fusion and Background native hosts consume authored1100×720 defaults, while
 saved geometry wins and responsive internal panes retain their viewport sizing.
 Actual worker outputs, physical photon arrays/clocks and control inventories
 match before/after; these source units are verified but uncommitted under the
-current managed filesystem. See [Fusion acceptance](../validation/release-readiness-w6g/burst-fusion-window-acceptance.json)
-and [Background acceptance](../validation/release-readiness-w6g/burst-background-window-acceptance.json).
+current managed filesystem.
 
 Fusion worker publication refreshes editable detector definitions only when the
 model's authoritative definition changes; unchanged jobs retain unapplied edits.
@@ -306,13 +305,12 @@ settings; complete numeric LUT metadata survives serialization. Cached interval
 refits retain their original detector context, and worker publication does not
 substitute current controls into completed-result provenance. Refit gestures
 update the display; Estimate publishes the result. Historical defective graphs
-remain retained rather than silently rewritten. Exact source/real-container/
-PNG/test receipts are in the acceptance archives and [current job](../validation/release-readiness-w6g/current-job.md).
+remain retained rather than silently rewritten.
 
 BVA accepts sequence-valued channel and micro-time-window inputs while retaining
 its immutable tuple defaults. The companion-discovery suffix sequence declares
 variable length. Five inherited annotation diagnostics are resolved; runtime
-computation and reader bodies are unchanged. [Type acceptance](../validation/release-readiness-w6g/bva-type-contract-acceptance.json)
+computation and reader bodies are unchanged. Type acceptance
 records physical checks and exact source authority.
 
 The non-burst IRF/background host also consumes its authored1100×720 default.
@@ -321,7 +319,7 @@ are formed; exported MLE binning is applied once while source clocks and full-pe
 display histograms remain unchanged. A known-prompt stream verifies the rendering
 and extraction; its fitted background does not exactly recover the authored rate,
 and the configured measured LUT does not establish good IRF calibration.
-[Acceptance](../validation/release-readiness-w6g/burst-irf-bg-window-acceptance.json)
+Acceptance
 records the physical/root/UI evidence and saved-geometry-only persistence.
 
 Burst-wise FCS also reads its authored1100×720 host default. Pair windows use
@@ -330,7 +328,7 @@ open-endpoint API and correlation normalization remain unchanged. An actual
 boundary photon correction is verified against independent event-pair counting.
 The gate description is reachable on the existing heading, and native toolbar
 scrolling exposes the whole status while restoring every action. See
-[acceptance](../validation/release-readiness-w6g/burst-fcs-window-acceptance.json)
+acceptance
 for exact source/real curve/export/translation/PNG evidence.
 
 Photon-by-photon kinetics now consumes the authored1100×720 host default.
@@ -339,8 +337,7 @@ row-sized parameter tables let the existing dock scroll the complete report.
 Selected-photon state exports retain measurement, raw index and original burst-row
 identity, split per source, with exact state-result parent UIDs. Run context records
 colour definitions and the actual macro-time clock. Simulation ordinals persist
-only in a separate non-instrument container. See [acceptance](../validation/release-readiness-w6g/burst-gs-window-acceptance.json)
-for real numerical/GUI/container evidence and finite-sample/persistence limits.
+only in a separate non-instrument container. Finite-sample and persistence limits were checked with real numerical, GUI and container runs.
 
 ## Actual workflow and per-burst worker verification — 2026-10-09
 
@@ -352,7 +349,6 @@ execute.58 targeted cases are covered by the initial41pass plus affected fixture
 file20pass and guide1pass. Stale Qt setup fields use the current filetype/model
 contract; Auto guide testing addresses the real Auto step after demo/model steps
 were added. All physical assertions retained. Production code and GUI unchanged.
-[Acceptance](../validation/release-readiness-w6g/ipc-verification-acceptance.json).
 
 ## Source-preserving new UI literal repair — 2026-10-10
 
@@ -362,5 +358,4 @@ help values now translate at their real sink. Actual conversion options and
 models remain unchanged: stripping only inserted wrappers/imports reproduces
 original source ASTs exactly. Real UI translation tests and source audits pass.
 This does not close the burst family's older UI omissions or the missing BID
-resource-backed help/tour and production demo. Exact source evidence is in the
-[UI guard integration acceptance](../validation/release-readiness-w6f/ui-guard-integration-acceptance.json).
+resource-backed help/tour and production demo.

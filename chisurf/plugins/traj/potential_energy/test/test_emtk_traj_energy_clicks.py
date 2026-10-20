@@ -2,8 +2,7 @@
 
 Only ``press`` / ``release`` / ``pointer_move`` / ``key`` / ``on_files_dropped`` reach the window (see
 ``traj_save_topology/test/real_input.py``); the assertions read what is drawn, the editor's and the model's fields,
-the table and the energies written, which are compared with what the Qt widget's model wrote. The control -> test
-list is in ``okf/plugins/emtk-ports/traj_energy/REPORT.md``.
+the table and the energies written, which are compared with what the Qt widget's model wrote.
 """
 
 from __future__ import annotations

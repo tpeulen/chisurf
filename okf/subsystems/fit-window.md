@@ -21,8 +21,7 @@ by `emtk.view_form.draw_form` in the one emtk surface of the main window's
 page, the hidden widget holder, the island overlay and the Qt-layout
 translator in `emtk_page.py` are gone. Dead `MolView`, `GlobalEt`,
 `_qwt_compat`, the Qt `FitTablePlot` and `table_plot.py` were deleted.
-Migration evidence (control inventory before/after, PNGs, both capture
-scripts): `okf/validation/fit-window-settings/`.
+The migration's before/after control inventory found no lost control.
 
 Open, in order:
 
@@ -210,5 +209,4 @@ remains intact. 23 focused completion/display/menu/editor tests pass.
 Actual A488 member/global Info and before/after menu PNGs were inspected.
 The previous global chi2r1.0000 concern is legitimate rounding of
 0.9999763241843488 on the shipped fixture, not an objective defect.
-Continue the open list above; [readiness evidence](../validation/release-readiness-w7.md)
-contains the scientific receipt and explicit interaction-gate limitations.
+Continue the open list above.

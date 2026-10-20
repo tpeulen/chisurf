@@ -645,8 +645,7 @@ Both manifests dropped `"gui"`.
    options dropped (emtk antialiases and pans with the left button always; plots follow the
    theme), the key removed with a load-time migration (`settings_utils.RETIRED_KEYS`), strings
    re-extracted and translated (de/fr). See "Settings ▸ Plots changed no plot".
-2. `okf/validation/release-readiness-w6g/plugin-inventory.md` is stale (the `plugin_inventory.py
-   --write` record): two plugins lost their Qt entry here, and other lanes' ports changed it too.
+2. The `plugin_inventory.py --write` record is stale: two plugins lost their Qt entry here, and other lanes' ports changed it too.
 3. Not tried / not done: an emtk **histogram** beside the colour ramp of `ImageView`; `Grid` image panels
    with the new frame slider (only the standalone `ImageView` has one); the `image` section's `add_roi`
    rotation (`rotatable` is accepted and ignored: emtk draws no rotation grip).
@@ -667,7 +666,6 @@ cases and959 available Part A guards pass (16 expected skips). All eight
 measured before/after scenes were inspected; the legacy PG unit image is
 byte-identical and all200 BH count-rate samples retain their hashes. Source
 typing45before/45after is an explicit inherited W0 gate, not fixed here.
-[Acceptance](../validation/release-readiness-w1/chiplot-axis-units/receipt.json).
 Next immediate caller: Burst Selection's28 plotting references; use this API
 and preserve its old SI settings before removing its direct-import allowance.
 

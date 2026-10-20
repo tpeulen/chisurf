@@ -1,7 +1,6 @@
 """The native RICS-precision app at parity with the Qt tool (AutoForm over the same view model).
 
-Reference numbers: the Qt tool as committed (HEAD ``gui/tool.py``,
-``okf/plugins/emtk-ports/rics_precision/scripts/capture_qt.py``) with n_repeats=10, n_images=20
+Reference numbers: the Qt tool as committed (HEAD ``gui/tool.py``) with n_repeats=10, n_images=20
 and every other setting at its default (seed 1) printed the nine rows, the verdict and the CSV
 pinned below; its failure for ``n_lags=15`` on an 8x8 image printed the message pinned below.
 """

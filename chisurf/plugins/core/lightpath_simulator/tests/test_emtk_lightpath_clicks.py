@@ -2,8 +2,7 @@
 
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` at the rectangles the controls were drawn in (or at the
 text a row or a button drew) and host file drops reach the window; the assertions read the visible outcome (the document, the
-status line, the tables, the dialogs, the files). The control -> test list is in
-``okf/plugins/emtk-ports/lightpath_simulator/REPORT.md``.
+status line, the tables, the dialogs, the files).
 """
 
 from __future__ import annotations

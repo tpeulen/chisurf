@@ -1,8 +1,7 @@
 """Click coverage of the native blind IRF estimator: every control operated with pointer, keys, wheel, drags and drops.
 
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` and the host's drop hook (``files_dropped``) reach the
-window; assertions read what is drawn, the model and the files written. The control -> test list is in
-``okf/plugins/emtk-ports/irf_estimator/REPORT.md``.
+window; assertions read what is drawn, the model and the files written.
 """
 
 from __future__ import annotations

@@ -3,8 +3,7 @@
 Only ``pointer_move`` / ``press`` / ``release`` / ``drag`` / ``wheel`` / ``key`` and the host's ``files_dropped`` reach the
 window, at the rectangles the controls were drawn in (``app.item_rects`` for the buttons and the guide's targets,
 ``form_state.rects`` for the spec's fields) or at the text a button drew; the assertions read the visible outcome (the model,
-the status line, the drawn strings, the files written). The control -> test list is in
-``okf/plugins/emtk-ports/burst_gs/REPORT.md`` section 6a.
+the status line, the drawn strings, the files written).
 """
 
 from __future__ import annotations

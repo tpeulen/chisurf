@@ -30,7 +30,6 @@ TYPE_BY_DIR = {
     "architecture": "Architecture",
     "subsystems": "Subsystem",
     "plugins": "Plugin Note",
-    "plugins/emtk-ports": "Report",
     "plans": "Plan",
     "prds": "PRD",
     "usecases": "Use Case",
@@ -39,7 +38,6 @@ TYPE_BY_DIR = {
     "specs": "Spec",
     "workflows": "Playbook",
     "handover": "Handover",
-    "validation": "Validation",
     "recipes": "Recipe",
 }
 LEGEND = {

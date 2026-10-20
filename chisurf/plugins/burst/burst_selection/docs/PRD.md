@@ -12,4 +12,3 @@ current public exports or verified behavior.
 
 Current workflow: [Photon burst identification](../../../../../docs/guides/13_burst_identification.md).
 Maintained knowledge: [Burst tools](../../../../../okf/plugins/burst.md).
-Original dated plans/checklists: [retained history archive](../../../../../okf/validation/release-readiness-w1/burst-selection-retirement/package-notes-history.zip).

@@ -253,4 +253,3 @@ portable state and strict metadata/identity/bounds/prior validation; corrupt
 repr ports never become live state. Runtime dictionaries keep live link/port
 identity.105 parent targeted cases pass withzeroexpectedfailures; four qualified
 before/after images inspected.
-[Acceptance record](../validation/release-readiness-w1/parameter-state/receipt.md).

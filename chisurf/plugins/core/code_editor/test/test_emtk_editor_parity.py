@@ -7,7 +7,7 @@ frozen; ``_recorded`` names the commit. So this file imports no Qt.
 Every Qt control is looked up in the emtk app by driving it (emtk ``Driver``: clicks on drawn
 text, never a call into the model), under :data:`RENAMED` when its caption changed. A control
 that is not reachable is a failure; deliberate differences are :data:`DELIBERATE`, each with its
-reason (``okf/plugins/emtk-ports/code_editor/deliberate.json`` says the same).
+reason.
 """
 
 from __future__ import annotations

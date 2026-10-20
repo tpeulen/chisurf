@@ -2,8 +2,7 @@
 
 Only ``pointer_move`` / ``press`` / ``release`` / ``wheel`` / ``key`` and the host's file drop reach the window, at the rectangles
 the controls were drawn in (``item_rects`` for buttons and fields, the table's own cell geometry for the tables, the drawn text for
-list entries and dialog buttons); the assertions read the visible outcome (the model, the drawn strings, the files written). The
-control -> test list is in ``okf/plugins/emtk-ports/fcs_saturation/REPORT.md``.
+list entries and dialog buttons); the assertions read the visible outcome (the model, the drawn strings, the files written).
 """
 
 from __future__ import annotations

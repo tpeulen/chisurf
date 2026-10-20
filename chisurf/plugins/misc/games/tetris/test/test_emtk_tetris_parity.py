@@ -1,8 +1,7 @@
 """The native Tetris against the retired Qt chigame view.
 
 Both drove :class:`..model.TetrisModel` (the Qt ``TetrisGame`` subclassed it; the committed Qt
-rules equalled it apart from action names and the draw helpers that moved to the view,
-``okf/plugins/emtk-ports/tetris/rules_diff_vs_head.txt``). Compared here: the Qt bindings (frozen
+rules equalled it apart from action names and the draw helpers that moved to the view). Compared here: the Qt bindings (frozen
 from the last committed ``tetris.py``) against the emtk keys, scripted keys, the Sound switch.
 """
 

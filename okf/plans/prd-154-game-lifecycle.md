@@ -74,4 +74,4 @@ All five full state/window/render-command snapshots are exactly equal. Existing
 input/Qt-host/window/native cases69pass against the same exact candidate overlay.
 One minimal GameApp shares lifecycle and optional object-audio methods, with leaf
 running/input-clear hooks; constructor ordering and protected algorithms/render/
-state validators remain intact. [Acceptance](../validation/release-readiness-w6f/game-lifecycle-acceptance.json).
+state validators remain intact.

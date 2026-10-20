@@ -7,7 +7,7 @@ Three layers, each with its own concern:
 * the **shell** hosting it as a core plugin (discovery from the manifest,
   ``open_plugin`` wiring, the dock window, close killing the sessions);
 * the **manifest** conforming to the shipped-plugin rules (ids, entrypoints,
-  the preview gate).
+  the native factory).
 """
 
 from __future__ import annotations
@@ -211,12 +211,6 @@ def test_the_manifest_declares_the_entrypoint():
     assert manifest["entrypoints"]["emtk"].endswith(":make_app")
     assert manifest["display_name"].startswith("Tools:")
     assert "Thomas-Otavio Peulen" in manifest["authors"]
-
-
-def test_the_plugin_is_not_a_preview():
-    from chisurf.core.plugin import emtk_readiness
-
-    assert not emtk_readiness.is_preview("terminal")
 
 
 def test_the_native_factory_resolves():

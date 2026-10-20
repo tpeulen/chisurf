@@ -1,8 +1,7 @@
 """The emtk burst-wise FCS correlator equals the Qt tool's computation and settings; layout, tooltips, isolation.
 
 The Qt tool computed through ``BurstFcsClient.correlate_file`` (the backend call) with a ``_BurstFcsModel`` for the settings; the
-numbers here are compared with exactly that path on the deterministic demonstration data of ``demo.py``. The control -> test list
-is in the port's REPORT.md.
+numbers here are compared with exactly that path on the deterministic demonstration data of ``demo.py``.
 """
 
 from __future__ import annotations

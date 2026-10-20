@@ -57,7 +57,7 @@ The public CLI/manifest and remaining lifetime panel now use the existing native
 
 The plugin supplies a synthetic PTU Demo (3000VV/1500VH,32ps micro/25ns macro clocks,4-bin/.128ns FWHM) and real Guide awaits Demo then Compute. Current native defaults/scientific outputs preserve provider timing; the headerless BH3.2958984375ps is not independent instrument calibration and explicit25ps is validation only. Three polarized measured exports match the legacy bytes. Unpolarized output corrects the extra-all-source-VH bug:135967selected/4096rows rather than319624/8192. All17 final images were inspected, including legacy-host and complete detector controls; paired docs and3realfigures accompany the source.
 
-Parent112 targeted cases pass in three isolated normal-exit groups; scoped Ruff14/mypy6 are clean. The actual policy guard identified one stale Qt GUI allowance after entrypoint retirement; removing only that line makes all285 policy cases pass/16expectedskips, with other available guard files already green. No allowance or skip added. [Acceptance](../validation/release-readiness-w1/microtime-retirement/acceptance.json). W1 next is ordered Burst13, then Channel14 and shared Designer helper cleanup.
+Parent112 targeted cases pass in three isolated normal-exit groups; scoped Ruff14/mypy6 are clean. The actual policy guard identified one stale Qt GUI allowance after entrypoint retirement; removing only that line makes all285 policy cases pass/16expectedskips, with other available guard files already green. No allowance or skip added. W1 next is ordered Burst13, then Channel14 and shared Designer helper cleanup.
 
 ## Native G-factor contract — 2026-10-09
 
@@ -66,14 +66,14 @@ Tail matching's G=VV/VH corrects VH in anisotropy and linked mixing; knownG2
 therefore produces zero fast-reference anisotropy. Batch columns keep readable
 minimum widths and scroll horizontally. Existing preferences reload reference
 files/settings and recompute, rather than storing their arrays. Scientific and
-layout regressions pass; [acceptance](../validation/release-readiness-w6g/gfactor-window-acceptance.json)
+layout regressions pass; acceptance
 and onefinalarchive retain bounded visual evidence. Verifiedsource remains
 uncommitted; broader convention/shift audits are queued separately.
 
 The direct deprecated VV/VH anisotropy host also consumes authored1100×720
 metadata and preserves saved geometry. Its existing known ratio/shift/background/
 batch/exports and preference reload remain exact. Three bounded captures verify
-baseline/default/narrow; [acceptance](../validation/release-readiness-w6g/vv-vh-window-acceptance.json)
+baseline/default/narrow; acceptance
 records the singlearchive and source status. This sizing change does not remove
 or redesign the deprecated entry point.
 
@@ -82,5 +82,5 @@ default, while legacy stepmetadata remains unchanged. NormalizedIRFs andshared
 VV/VH/globalfit links retain their configuredvalues; componentpanels adapt at
 narrowwidth. Creationis notanoptimizationquality claim. Threeboundedcaptures,
 targetedchecks andguardsonceatfreeze are recorded in
-[acceptance](../validation/release-readiness-w6g/anis-wizard-window-acceptance.json)
+acceptance
 andonefinalarchive.

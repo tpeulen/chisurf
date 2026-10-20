@@ -3,7 +3,7 @@
 Every control of the Qt tool and of its batch window is used the way a person uses it: the
 pointer moves over the drawn control, presses and releases, text is typed into a field, a plot's
 line is dragged, a file is dropped on the host. Each test asserts what the next frame shows
-(state, status text, table cell, plot data). The control -> test list is in REPORT.md.
+(state, status text, table cell, plot data).
 """
 
 from __future__ import annotations

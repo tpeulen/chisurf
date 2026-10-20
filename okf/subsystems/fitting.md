@@ -989,5 +989,4 @@ no flag remain visible. Current Parse FCS has134 ports and6 active equation
 targets. Re-derive with the completion/display/menu/editor focused regression
 files (23 passes), and compare the three shipped A488 curves to explicit
 weighted-residual arithmetic. Their global chi2r0.9999763241843488 rounds to
-1.0000 legitimately; no objective formula was changed. See
-[readiness evidence](../validation/release-readiness-w7.md).
+1.0000 legitimately; no objective formula was changed.

@@ -2,7 +2,6 @@
 
 The specs and the Qt-free contracts of ``setup_models`` must agree (labels, bounds, options), every binding of a
 spec must resolve on its form (``setup_forms``), and the declared controls must do what the hand-drawn cards did.
-Before/after inventories: okf/plugins/emtk-ports/acq/spec_compare.json.
 """
 
 from __future__ import annotations

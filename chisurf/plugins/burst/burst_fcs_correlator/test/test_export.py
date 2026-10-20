@@ -60,7 +60,7 @@ def test_native_run_writes_the_frozen_real_grid_and_indexed_container(source):
         assert series[0]["y"] == [1.0] and series[0]["marker"]
         assert series[0]["name"] == "Simple fit"
         facts = json.loads(
-            (REPO / "okf/validation/release-readiness-w1/fcs-before/burst-facts.json").read_text()
+            (Path(__file__).with_name("data") / "burst-facts.json").read_text()
         )
         expected = next(iter(facts["td4_files"].values()))
         assert not (source.parent / "td4").exists()  # a companion is an explicit export

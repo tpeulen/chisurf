@@ -183,7 +183,7 @@ status: resolved 2026-10-13
 - ~~acq BH / BrickMic / PicoQuant setup cards are hand-drawn emtk~~ — **resolved 2026-10-13**: they are
   `acq/gui/{bh,picoquant,brickmic}_setup.view.json` over `acq/gui/setup_forms.py`; the BH module checkboxes are a
   `data_table` with a *Use* column. Nothing stays hand-drawn. Before/after (hand-drawn vs spec, same state): BH
-  90 → 95, BrickMic 61 → 63, PicoQuant 58 → 58 controls, lost [] (`okf/plugins/emtk-ports/acq/spec_compare.json`);
+  90 → 95, BrickMic 61 → 63, PicoQuant 58 → 58 controls, lost [];
   spec and `BH_PARAMETERS` / `BrickMicSetupModel.FIELDS` kept equal by `acq/test/test_setup_specs.py`.
 - ~~Three `test_emtk_lightpath_clicks.py` tests fail~~ — **resolved 2026-10-13**: not MMFDB isolation. The
   window announced a finished backend call only when a frame had seen `controller.running` go True → False, so a
@@ -495,7 +495,7 @@ current ChiMOL viewer/sequence APIs in the owning Quest framework, and render
 every tab with the same data. Do not count the W7 factory-only PNG as a complete
 migration baseline. Numerical provider readiness is separate: the immutable
 IMP.bff core wheel supplies F arrays and residual callbacks with scientific
-oracle tests. [Readiness evidence](../validation/release-readiness-w7.md).
+oracle tests.
 
 ## QuEst moved into ChiSurf; a third of T4L sites have no AV at the default width (found 2026-10-12)
 
@@ -741,7 +741,7 @@ for layout only (resume list in [imaging plugins](../plugins/imaging.md)).
   the pixel steps auto-detect from the header alone. Owner: imaging (`pixel_maps.build_clsm`).
 * **Open — the imaging tools are largely untranslated in German and French** (hub "Search…", "Back", "Run all",
   Browser "Include subfolders", Spot Finder "Workflow", "Detection name", Region MLE tables, Colocalization coefficient
-  names). Owner: the queued i18n catalogue job (`okf/validation/release-readiness-w6g/current-job.md`).
+  names). Owner: the queued i18n catalogue job.
 * Seen, not mine: `chisurf/emtk/help_guide.py` (another lane) imported `emtk.type_scale` before it was installed in
   the env; `clsm_generator/test/test_emtk_clsm_generator_clicks.py::test_help_guide_and_the_tour_is_walked` uses
   `action_caption` without importing it (uncommitted edit of another lane).
@@ -1337,8 +1337,7 @@ raising "Error:" with the timing unchanged (File Type is deliberately ignored on
 `chisurf/plugins/core/setup_channel_definition/test/test_emtk_channel_page.py` (108 tests with the store tests, green). Original finding follows.
 
 
-Measured while giving `setup_channel_definition` its own tests; evidence and reproductions in
-`okf/plugins/emtk-ports/setup_channel_definition/REPORT.md`.
+Measured while giving `setup_channel_definition` its own tests.
 
 * **The first setup save on a fresh MMFDB is lost without an error.** `setup_store.save_setup_row` calls
   `db.ensure_user(user)` first; `ensure_user` inserts through `dao.insert` and leaves that insert in an open transaction,
@@ -1584,7 +1583,7 @@ indent 2, pto_inspector `vv_vh_g_factor` declaration.
 status: resolved 2026-10-10 — ruled: a missing user `settings_chisurf.yaml` means release defaults; the status row reads "defaults" and `settings_ok` needs only the settings folder, in both wizards (shared `utils`/`view_model`).
 
 **Measured** on a fresh temporary settings folder (`CHISURF_SETTINGS_DIR`), Qt wizard and emtk app alike
-(`okf/plugins/emtk-ports/boarding/before_populated_step2_settings.png`, `test_create_missing_writes_only_missing_files`):
+(`test_create_missing_writes_only_missing_files`):
 the Settings step lists `settings_chisurf.yaml` as **MISSING** and, because the step's check mark needs that file
 (`BoardingViewModel.settings_ok`), the step has no mark; pressing **Create missing files** changes nothing about it.
 *Cause:* `copy_settings_to_user_folder` skips `settings_chisurf.yaml` on purpose (the core reads it as defaults overlaid
@@ -1729,8 +1728,7 @@ Its center x419.5 misses the pane; the real radio indicator (337,270) remains
 reachable and selects merge. Descriptions absent/present have identical control
 rectangles; the current help-metadata unit neither introduces nor worsens this
 clipping. Capture a realistic French baseline before a bounded layout repair,
-retaining both option labels/values and narrow access. Exact measurement:
-[batch help acceptance](../validation/release-readiness-w6g/alex-batch-help-acceptance.json).
+retaining both option labels/values and narrow access.
 
 ## Shared anisotropy convention comments need an owner audit (2026-10-09)
 
@@ -1770,7 +1768,7 @@ an explicit convention audit and independent photon-count regressions in their
 owning paths before changing them; do not globally change the SDK mask or
 silently reinterpret stored definitions. This remains part of the programme's
 shared analysis/input-definition work, outside the current pair-correlation
-caller change. [Gate owner acceptance](../validation/release-readiness-w6g/burst-fcs-gate-owner-acceptance.json)
+caller change. Gate owner acceptance
 records the actual215/216-photon discrepancy and unchanged kernel normalization.
 
 ## Workflow and batch OS IPC verification — resolved (2026-10-09)
@@ -1785,7 +1783,6 @@ Native batch rows, lifetime histograms, numeric companion export, photon slices,
 state splits and non-Fit23 worker models are verified. No transport substitute,
 worker fake, skip or assertion suppression was added. Production code unchanged;
 all engine/test ASTs matched committed sources before fixture edits.
-[Acceptance](../validation/release-readiness-w6g/ipc-verification-acceptance.json).
 
 ## BVA input annotations — resolved source, publication pending (2026-10-09)
 
@@ -1796,7 +1793,7 @@ the companion-discovery suffix tuple declares its variable length. Exact default
 values and computation/reader bodies are unchanged. Eight targeted physical and
 row-alignment tests pass, Ruff/format and scoped mypy are clean. Five inherited
 diagnostics are resolved in writable source; canonical publication remains
-pending. [Acceptance](../validation/release-readiness-w6g/bva-type-contract-acceptance.json).
+pending.
 
 ## Background view loader strict typing — inherited, 2026-10-09
 
@@ -1810,7 +1807,7 @@ Retained while repairing exact parent identities and frozen result metadata;
 source and strict baseline outputs are in
 `/private/tmp/prd154-background-provenance-owner-fix/receipt.json`. Narrow the
 actual declared section type in its owner when this method is changed; do not
-widen Any or suppress errors. See [current job](../validation/release-readiness-w6g/current-job.md).
+widen Any or suppress errors.
 
 ## TTTR calibration report identification — resolved (2026-10-09)
 
@@ -1822,7 +1819,7 @@ longer infers adoption from a finite data candidate, including after prior
 fusion. Actual test/arm64 providers rebuilt;31 public report/column/adapter
 checks pass. Measured152 and known2400 payloads retain every numeric field;
 only the data-gamma label changes. ChiSurf provenance adapter was already
-published with the calibration unit. [Acceptance](../validation/release-readiness-w6g/gamma-report-acceptance.json).
+published with the calibration unit.
 
 ## MEM solver strict typing retains two duplicate-name diagnostics (2026-10-09)
 
@@ -1833,8 +1830,7 @@ sampling typing. The solver has two duplicate-name mypy diagnostics at its
 model-construction helpers; both reproduce against committedHEAD, and no new
 errors are introduced by the owned prior-export hunk. Resolve the owning
 annotations in the programme static gate without reverting scientific contract
-repairs or hiding diagnostics. Exact commands/baseline are in
-[the owner archive](../validation/release-readiness-w6g/mem-sampling-owner-current-job.zip).
+repairs or hiding diagnostics.
 
 ## LLTF scientific-owner strict typing remains incomplete (2026-10-09)
 
@@ -1844,9 +1840,7 @@ The verified nested-selection repair reduces strict mypy diagnostics in the
 fitter from74to66 with zero new errors. Existing broad annotations/config
 inference still fail; this is not a clean static-analysis claim. Resolve those
 owner declarations during the programme static-cleanup gate while preserving
-the actual physical regressions and cold-fit reference. Exact before/after
-identities and commands are in
-[the scientific-owner archive](../validation/release-readiness-w6g/lltf-selection-owner-current-job.zip).
+the actual physical regressions and cold-fit reference.
 
 ## H2MM settings JSON omits the detector definition promised by toolbar help
 
@@ -1878,7 +1872,7 @@ Fix/test the flag behavior in the emtk owner if retained after migration; do not
 create per-plugin handwritten scroll emulation. Current managed permissions make
 ~/dev/emtk read-only and approval is disabled, so the owner source cannot be
 changed here. Preserve the RED proof in
-[the Burst evidence archive](../validation/release-readiness-w6g/burst-browser-window-current-job.zip)
+the Burst evidence archive
 (owner-red-proof.json and before/after wheel PNGs); this remains a W5 owner gate.
 
 ## Three generated parameter-context pages need shared-edit reconciliation (2026-10-08)
@@ -1907,8 +1901,7 @@ scalar entries in four unrelated foreign working-tree pages: factor_graphs,
 frap, us_alex and fundamentals/instrumentation. The corresponding committed
 HEAD has zero malformed entries; none is introduced by these21doccandidates.
 Do not absorb or overwrite those foreign edits to obtain a green local test.
-Re-derive with targeted test/test_docs_sources.py and the docs receipt in the
-[demo archive](../validation/release-readiness-w6g/demo-contracts-final-source.zip).
+Re-derive with targeted test/test_docs_sources.py.
 Resolve with those pages' owner during W0/W14 integration.
 
 ## ndX inherited frame/launcher static diagnostics (2026-10-08)
@@ -1918,8 +1911,7 @@ status: open
 The declared-window unit preserves eight existing Ruff findings (import sorting,
 quoted annotation, legacy Dict spelling) and eight mypy findings in frame.py
 (names annotation, optional tuple/message/drag state, and pointer_release call
-inference). Original/final identities are in static-baseline-diagnostics.json
-inside [exact owner archive](../validation/release-readiness-w6g/ndx-window-final-source.zip).
+inference).
 No suppression was added. Owner45geometry/data tests pass; these do not prove
 all unrelated callback paths. The callable pointer_release signature accepts
 x/y/button/modifiers; its starred tuple inference is not a demonstrated runtime
@@ -1936,8 +1928,7 @@ status: open
 Thirteenexisting mypy findings in fps_json.py remain unchanged by the host
 geometry declaration: dynamic _View.card/ed attributes assigned via
 object.__setattr__, cache/drawsignature annotations, sideeffect tuples involving
-None-returning sync_status, andexactremaining messages recorded in
-static-baseline-diagnostics.json inside [cardarchive](../validation/release-readiness-w6g/fps-card-window-final-source.zip).
+None-returning sync_status.
 No suppression ornewruntime failure is introduced. Actual11AV computation,
 scoring/FlexFit/renderer andsavedgeometry tests pass; these do not prove all
 unrelated callback paths. Re-derive using recorded before/final commands and
@@ -1950,9 +1941,7 @@ status: open
 
 FLCSgui/model.py retains16exactbefore/finalmypy identities; corelifetime-FCS
 simulate.py retains its dataclass total_decay ndarray=None annotation. No new
-runtimefailure orsuppression is inferred. Fullmessages/commands/originals are
-in [spectralarchive](../validation/release-readiness-w6g/spectral-window-final-source.zip)
-and [backgroundarchive](../validation/release-readiness-w6g/lfcs-background-final-source.zip).
+runtimefailure orsuppression is inferred.
 ActualNNLS/MEM/correlation anduniformbackground/zero-signalphysics tests pass;
 this is not cleanstaticanalysis. Rootowns a separate boundedtypingcleanup with
 existingbehavior locked; do not alter numericalalgorithms orregolden spectra
@@ -1962,13 +1951,13 @@ to silence these diagnostics.
 
 status: open
 
-The shared reference source and real-control tests introduce no new diagnostics after optional-child invariants and explicit numerical oracle arrays were corrected. Exact shadow comparison retains74 inherited native caller/mixin typing messages; no messages were removed or suppressed. Resolve their existing model/host/painter contracts in the owning modules during W0 review, with their real factory/control regressions. A broad declaration rewrite cannot be treated as mechanical cleanup of a host_app wiring change; do not add per-caller casts or blanket ignores. [Owning command/baseline receipt](../validation/release-readiness-w1/detector-reference/type-comparison.json).
+The shared reference source and real-control tests introduce no new diagnostics after optional-child invariants and explicit numerical oracle arrays were corrected. Exact shadow comparison retains74 inherited native caller/mixin typing messages; no messages were removed or suppressed. Resolve their existing model/host/painter contracts in the owning modules during W0 review, with their real factory/control regressions. A broad declaration rewrite cannot be treated as mechanical cleanup of a host_app wiring change; do not add per-caller casts or blanket ignores.
 
 ## MMFDB result-registration static declarations incomplete (2026-10-07)
 
 status: open
 
-The focused archival session fix exposes12 inherited MMFDB registry/base/payload typing diagnostics under exact before/after shadow comparison with the test Python and separate cold caches. The initial shared-cache13-count contained one environment/cache artifact; it was not a source fix. The new session forwarding, archival service and tests add no diagnostics, and all four touched files pass Ruff. Finish the owning repository/codec type contracts with their payload regressions during W0 review; per-caller casts or blanket ignores would hide that boundary. Those broader contracts cannot be rewritten safely as mechanical annotation cleanup in this narrow actor handoff. [Exact commands, anchors and baselines](../validation/release-readiness-w1/reference-archive/receipt.json).
+The focused archival session fix exposes12 inherited MMFDB registry/base/payload typing diagnostics under exact before/after shadow comparison with the test Python and separate cold caches. The initial shared-cache13-count contained one environment/cache artifact; it was not a source fix. The new session forwarding, archival service and tests add no diagnostics, and all four touched files pass Ruff. Finish the owning repository/codec type contracts with their payload regressions during W0 review; per-caller casts or blanket ignores would hide that boundary. Those broader contracts cannot be rewritten safely as mechanical annotation cleanup in this narrow actor handoff.
 
 ## Native form static type declarations incomplete (2026-10-07)
 
@@ -1982,7 +1971,6 @@ binding attributes. Runtime APIs exist and261 installed owner checks pass.
 Complete typing in the classes/functions that own these contracts; avoid
 source ignores or per-application casts. This is broader declaration work
 than the one-line code-editor tooltip root and remains a programme gate.
-[Exact baseline and categories](../validation/release-readiness-w1/sdk-0.1.7/editor-type-comparison.json).
 
 ## ProteinMC RMF output missing from canonical core provider (2026-10-07)
 
@@ -1998,7 +1986,7 @@ format. A DCD-only default loses required metadata; no streaming molecular
 .pto writer was found in the inspected trajectory paths. This cannot be fixed
 as an import change without an output/backend contract. Do not silently
 mislabel .rmf3, substitute a provider fallback or declare sampling acceptance
-from import green. [Exact receipt and trace](../validation/release-readiness-w1/provider-build/receipt.md).
+from import green.
 
 ## Direct-communication guard migration debt (2026-10-07)
 
@@ -2011,7 +1999,7 @@ Its informational reporter also compared an int with N/A; that actual crash
 is fixed and its node passes. Remaining source/threshold guard failures require
 owning API/GUI migration and scanner scope review; never expand the shrinking
 allowance merely to mask them. This row cannot close the broad migration while
-preserving unrelated concurrent source edits. [Baseline proof](../validation/release-readiness-w1/simulator-retirement/guard-baseline.json).
+preserving unrelated concurrent source edits.
 
 ## Mixed legacy trajectory hub and native capture shutdown (2026-10-07)
 
@@ -2024,8 +2012,6 @@ subsequent native raster capture pass and finish with exit0; parent inspected
 both hosted states and the post-close raster. No retention/forced-exit workaround
 was added. This closes the measured row7 scenario; remaining Qt hub retirement
 and other lifetime contracts belong to their programme owners.
-[Final proof](../validation/release-readiness-w1/fret-retirement/receipt.md).
-[Historical native trace](../validation/release-readiness-w1/row7-prerequisites/mixed-native-backtrace.txt).
 
 ## IMP source bootstrap mutates namespace paths (2026-10-07)
 
@@ -2047,7 +2033,6 @@ exited 0; no shared-state failure, startup timeout or hang reproduced. Current
 committed tests already use Lifetime, real 64-point decays, RemoteError and
 scientific .cs.pto persistence contracts (`a67d359b2`, `4c21a578b`,
 `d577d93c1`). No new fixture change is justified by this stale baseline.
-[JUnit receipt](../validation/release-readiness-w7/server-lifecycle.xml).
 The following paragraphs are retained history, not an outstanding failure.
 
 **The RPC server could not build a fit at all.** ``fit_create`` resolves a model
@@ -2112,7 +2097,6 @@ exited 0; no shared-state failure, startup timeout or hang reproduced. Current
 committed tests already use Lifetime, real 64-point decays, RemoteError and
 scientific .cs.pto persistence contracts (`a67d359b2`, `4c21a578b`,
 `d577d93c1`). No new fixture change is justified by this stale baseline.
-[JUnit receipt](../validation/release-readiness-w7/server-lifecycle.xml).
 The following paragraphs are retained history, not an outstanding failure.
 
 **Found 2026-07-28**, while test-gating an unrelated proxy fix (RF-722).
@@ -2241,7 +2225,6 @@ expected failure are replaced with strict usable-state/identity assertions.
 105 targeted cases pass, zero expected failures. Live dictionary/graph aliases
 and value/hot-loop behavior are unchanged; unsupported linked/callable standalone
 files and irrecoverable old repr-only records fail explicitly.
-[Inspected editor and file proof](../validation/release-readiness-w1/parameter-state/receipt.md).
 
 ## Mixed targeted Qt/pyqtgraph process teardown (2026-10-07)
 
@@ -2296,8 +2279,7 @@ status: open — only the explicitly dated subitems below are resolved; remainin
 
 Fixed at once (`1182fe7ea`): the global-fit editor's Add/Remove/Add-global-parameter
 actions, its always-empty Local fits table, the silent `append_global_parameter`
-macro, unnamed background / Lin. table copies. Still open -- details and
-reproduction in `okf/validation/manual-screenshots/{fcs,general,anisotropy}.json`:
+macro, unnamed background / Lin. table copies. Still open:
 
 - **Resolved 2026-10-07, global completion/display:** graph write-back now
   publishes exact root/member fit events without reevaluation; Main refreshes
@@ -2307,8 +2289,7 @@ reproduction in `okf/validation/manual-screenshots/{fcs,general,anisotropy}.json
 - **Resolved 2026-10-07, Parse-Model link menu:** additive active-structure
   metadata restricts the menu to the equation's six targets while retaining
   all134 scientific catalogue ports and identities. Actual before/after menus
-  and native member/global Info pages were rendered and inspected. See
-  [verification](../validation/release-readiness-w7.md).
+  and native member/global Info pages were rendered and inspected.
 - **FCS hub:** the Correlator labels lag time in ms, the Merger in s, for the same curves.
 - **Confocor3 reader** loads every file as AC1/AC2/CC12/CC21 together; no single-channel option.
 - **Global View Load** needs the fitting server: on fits it does not know it reports
@@ -2438,7 +2419,7 @@ status: open
 
 Status: resolved 2026-10-06 — existing fix `401af4ab9` verified: EmTkHelpWindow renders paragraphs with im.markdown and live links; native helper seam 12 passed.
 
-**Measured** in traj_save_topology's help (`okf/plugins/emtk-ports/traj_save_topology/after_help_1200x800.png`):
+**Measured** in traj_save_topology's help:
 `chisurf/emtk/help_guide.py:EmTkHelpWindow.draw` hands each stripped source line to `im.text_wrapped`, so `**bold**`,
 `` `code` ``, `*emphasis*` and `[title](docs/…)` links show their markup, and a paragraph wrapped over several source
 lines breaks at every source newline (a bullet's continuation line starts flush left, outside the bullet). The Qt `?`
@@ -2493,14 +2474,14 @@ rate table, a seeded `np.random.normal` FRET scatter -- instead of the analysis 
 analysis of the user's data and is not. In the burst-analysis MLE step the real wizard is created and hidden and the
 mock is what is shown. Reproduce: open either app with no data and read the plot calls. Fix: draw only model results
 (an empty-state message when there are none); a demo is allowed only behind an explicit, labelled Demo action.
-PRD-153 now forbids invented data in a port. Survey: `okf/plugins/emtk-ports/burst-survey.md`.
+PRD-153 now forbids invented data in a port.
 
 ## chimol: the toolkit-free host loads a PDB through a different route than the Qt window (found 2026-10-01)
 
 status: open
 
 **Measured** with chimol's demo `148l.pdb`, same command `load <path>` on both hosts
-(`okf/plugins/emtk-ports/chimol/before_populated.png` Qt vs `after_populated_1200x800.png` emtk): both report 1363
+(Qt vs emtk at 1200x800): both report 1363
 atoms and the same object list, but the Qt window draws the ligands/hetero groups as spheres and its sequence strip
 starts at residue 0 with an extra leading code and an "… and 1 more chains" line, while the emtk host (chimol's
 `ChimolApp`, the same one `python -m chimol` opens) draws no hetero spheres, numbers from 1 and shows the system-info
@@ -2522,7 +2503,7 @@ status: open
 
 Status: resolved 2026-10-06 — emtk `67500cf`: ControlHost.closeEvent calls control.close() once; host/state tests and geometry captures verified.
 
-**Measured** with ndX (`okf/plugins/emtk-ports/ndxplorer/`): `chisurf.core.plugin.registry.build_plugin_widget` wraps an
+**Measured** with ndX: `chisurf.core.plugin.registry.build_plugin_widget` wraps an
 emtk factory's app in `emtk.qt_host.ControlHost(factory())` and returns the host; when that window closes,
 `ControlHost.closeEvent` only detaches the frame-request callback (`set_frame_request_callback(None)`) and nothing calls
 the app's `close()`. So every ported app's close -- saving a layout or session, stopping worker threads and executors,
@@ -2595,7 +2576,7 @@ Qt host is available, or port the missing pieces) and fix one side.
 in-process RPC client, `session_autosave=True`, closing with the host (session kept, Global View slot
 withdrawn); the MMFDB opener is the emtk `DatasetPicker` under the Qt label "From MMFDB…". Geometry is the
 host's; the dock layout lives in ChiSurf's native-state store instead of ndX's settings file. The route test
-now checks the app's wiring on either host. Report: `okf/plugins/emtk-ports/ndxplorer/REPORT.md`.
+now checks the app's wiring on either host.
 
 ## Two guard tests red on 2026-09-28, from uncommitted native-port files
 

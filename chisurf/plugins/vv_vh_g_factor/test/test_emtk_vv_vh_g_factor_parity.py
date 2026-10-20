@@ -28,10 +28,7 @@ from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
 from chisurf.plugins.vv_vh_g_factor.gui.model import GFactorModel
 
 PLUGIN = Path(__file__).parent.parent
-ORACLE_PATH = (
-    PLUGIN.parents[2]
-    / "okf/validation/release-readiness-w1/gfactor-before/numerical-control-freeze.json"
-)
+ORACLE_PATH = Path(__file__).with_name("data") / "numerical-control-freeze.json"
 
 REAL_CHISURF = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".chisurf"
 

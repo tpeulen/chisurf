@@ -17,7 +17,6 @@ from chisurf.plugins.microscopy.imaging_emtk.testing import (  # noqa: F401
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-EVIDENCE = REPO / "okf/plugins/emtk-ports/lightpath_simulator"
 BIG = (1200, 800)
 SMALL = (800, 600)
 

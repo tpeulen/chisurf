@@ -2,7 +2,7 @@
 
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` and the host's drop hook (``on_paths_dropped``) reach
 the window; the fit is the real LLTF command line on the shipped example (a subprocess, ~15 s), the assertions read what is
-drawn, the model and the files written. The control -> test list is in ``okf/plugins/emtk-ports/lltf/REPORT.md``.
+drawn, the model and the files written.
 """
 
 from __future__ import annotations

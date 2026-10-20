@@ -2,7 +2,7 @@
 
 Hermetic: settings in a temporary folder, files and the demo in a temporary folder (``demo_folder`` is redirected), no network (the database picker
 gets a stub client). References: (a) what the Qt window showed on a drifting TIFF with a known speed
-(``okf/plugins/emtk-ports/img_flow/qt_values.json``, captured by ``scripts/capture_qt_populated.py`` before the port), (b) the Qt tool itself,
+(``data/qt_values.json``, captured before the port), (b) the Qt tool itself,
 constructed offscreen and run on the same files, and (c) the plugin's own estimator called without the view model, and the speed written into the stack.
 """
 
@@ -30,18 +30,17 @@ from chisurf.plugins.microscopy.img_flow.gui.app import ImgFlowApp, make_app
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
-REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-EVIDENCE = REPO / "okf/plugins/emtk-ports/img_flow"
-QT_VALUES = json.loads((EVIDENCE / "qt_values.json").read_text(encoding="utf-8"))
-QT_CSV = (EVIDENCE / "qt_flow.csv").read_text(encoding="utf-8")
+DATA = HERE / "data"
+QT_VALUES = json.loads((DATA / "qt_values.json").read_text(encoding="utf-8"))
+QT_CSV = (DATA / "qt_flow.csv").read_text(encoding="utf-8")
 QT_SPEC = json.loads((PLUGIN / "gui" / "flow.view.json").read_text(encoding="utf-8"))
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "flow_emtk.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
 
 _make = importlib.util.spec_from_file_location(
-    "flow_make_data", EVIDENCE / "scripts" / "make_data.py"
+    "flow_make_data", DATA / "make_data.py"
 )
-assert _make is not None and _make.loader is not None, "evidence make_data.py missing"
+assert _make is not None and _make.loader is not None, "data/make_data.py missing"
 _data = importlib.util.module_from_spec(_make)
 _make.loader.exec_module(_data)
 TIMING = _data.TIMING

@@ -1,6 +1,6 @@
 """A fit page's notes table gives each column its widest cell's share, so cells never overlap.
 
-Found by the final shell parity pass (okf/plugins/emtk-ports/final-parity/shell): the What-if
+Found by the final Qt-vs-emtk shell parity pass: the What-if
 page's table split its width equally, and at a docked width "18.2743 ± 0.622" ran into the "r"
 column ("0.622−0.543").
 """

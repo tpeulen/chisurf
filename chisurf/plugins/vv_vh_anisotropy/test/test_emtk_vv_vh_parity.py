@@ -1,7 +1,7 @@
 """The native VV/VH anisotropy app at parity with the retired Qt VvVhAnisotropyCalculator.
 
 Numbers are compared with the values recorded from the genuine Qt tool (``qt_reference.json``) for the same
-generated input (``okf/plugins/emtk-ports/vv_vh_anisotropy/scripts/data.py``): r-infinity, the
+generated input (:func:`make`): r-infinity, the
 anisotropy trace and metadata files, and the batch rows. Two Qt defects are not reproduced and
 are tested as fixed: ``_shifted.dat`` was never written, and a file without numbers made the
 load slot and the batch raise.

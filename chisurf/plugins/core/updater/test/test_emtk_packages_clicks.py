@@ -2,7 +2,7 @@
 Escape, the wheel, drags. Nothing calls a model method to "click". All solver calls are fakes (``fakes.py``): each test reads the
 command line that reached ``PackageManager._popen`` and the visible outcome.
 
-Control -> test list: REPORT.md section "Real-input coverage (U2)". Drops: the window takes none (as the Qt dialog).
+Drops: the window takes none (as the Qt dialog).
 """
 
 from __future__ import annotations

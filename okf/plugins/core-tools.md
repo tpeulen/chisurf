@@ -37,9 +37,7 @@ Open front, in order:
 
 `core/mmfdb_admin` opens the native emtk app (`gui/app.py`, manifest
 `entrypoints.emtk`); the Qt `gui/tool.py` stays as the legacy `entrypoints.gui`.
-Parity against the 457-control Qt baseline, the deliberate differences, the
-screenshots read and the open follow-ups:
-[REPORT.md](emtk-ports/mmfdb_admin/REPORT.md#where-to-pick-this-up). Docs:
+It reached parity against the 457-control Qt baseline. Docs:
 `docs/guides/102_mmfdb_admin.md`, `docs/concepts/measurement_database.md`.
 Open front, in order: (1) the Qt `gui/tool.py` + its Qt-only views can be deleted once
 the owner accepts the port (nothing native imports them; `optical_components/__init__`

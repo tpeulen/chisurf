@@ -1,7 +1,7 @@
 """The native package manager against the Qt tool: tables, filter, and the command line each button's call hands the solver.
 
 SAFETY: ``PackageManager._popen`` is a fake (``fakes.py``); every command line is recorded and asserted, none is run. The
-reference values (``qt_values.json``, the ``pm_*`` keys) are what the Qt dialog produced before the port; a command line equals
+reference values (``data/qt_values.json``, the ``pm_*`` keys) are what the Qt dialog produced before the port; a command line equals
 the recorded one with the environment prefix of that machine replaced by this one's ``sys.prefix``.
 """
 
@@ -16,12 +16,7 @@ from emtk.testing import RecordingPainter
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
-REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-REF = json.loads(
-    (REPO / "okf" / "plugins" / "emtk-ports" / "updater" / "qt_values.json").read_text(
-        encoding="utf-8"
-    )
-)
+REF = json.loads((HERE / "data" / "qt_values.json").read_text(encoding="utf-8"))
 RECORDED_PREFIX = REF["pm_install"]["commands"][0][REF["pm_install"]["commands"][0].index("-p") + 1]
 
 

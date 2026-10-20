@@ -98,7 +98,7 @@ The public CLI/manifest and remaining lifetime panel now use the existing native
 
 The plugin supplies a synthetic PTU Demo (3000VV/1500VH,32ps micro/25ns macro clocks,4-bin/.128ns FWHM) and real Guide awaits Demo then Compute. Current native defaults/scientific outputs preserve provider timing; the headerless BH3.2958984375ps is not independent instrument calibration and explicit25ps is validation only. Three polarized measured exports match the legacy bytes. Unpolarized output corrects the extra-all-source-VH bug:135967selected/4096rows rather than319624/8192. All17 final images were inspected, including legacy-host and complete detector controls; paired docs and3realfigures accompany the source.
 
-Parent112 targeted cases pass in three isolated normal-exit groups; scoped Ruff14/mypy6 are clean. The actual policy guard identified one stale Qt GUI allowance after entrypoint retirement; removing only that line makes all285 policy cases pass/16expectedskips, with other available guard files already green. No allowance or skip added. [Acceptance](../validation/release-readiness-w1/microtime-retirement/acceptance.json). W1 next is ordered Burst13, then Channel14 and shared Designer helper cleanup.
+Parent112 targeted cases pass in three isolated normal-exit groups; scoped Ruff14/mypy6 are clean. The actual policy guard identified one stale Qt GUI allowance after entrypoint retirement; removing only that line makes all285 policy cases pass/16expectedskips, with other available guard files already green. No allowance or skip added. W1 next is ordered Burst13, then Channel14 and shared Designer helper cleanup.
 
 ## ALEX Creator automatic excitation regions — 2026-10-09
 
@@ -116,7 +116,7 @@ Single/batch/merge preserve the conversion contract and reject output phase
 truncation before writing. A copied output header keeps loaded metadata intact.
 [Scientific assumptions](../../docs/concepts/us_alex.md) and
 [workflow](../../docs/guides/100_alex_creator.md) describe multiple phases and
-record capacity. [Current integration state](../validation/release-readiness-w6g/current-job.md).
+record capacity.
 
 ## Photon Table lists every record, markers by kind (2026-10-13)
 

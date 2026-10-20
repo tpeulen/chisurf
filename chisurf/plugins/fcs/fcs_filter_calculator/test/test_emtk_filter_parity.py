@@ -2,7 +2,7 @@
 
 Numbers: ``test_emtk_layout.py`` pins the filters bit for bit to the Qt widget's (same inputs); here the Qt widget's default fit
 range, its instrument rows and its component list are compared, the tables are checked against the model, and every tab is drawn
-at both sizes with the clipping/overlap checker. The control -> test list is in the port's REPORT.md.
+at both sizes with the clipping/overlap checker.
 """
 
 from __future__ import annotations

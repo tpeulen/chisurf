@@ -24,11 +24,11 @@ Command line
 ::
 
     PYTHONPATH=. python -m test.gui.emtk_port_parity \\
-        after  <plugin_id> --out okf/plugins/emtk-ports/<plugin_id>
+        after  <plugin_id> --out DIR
     PYTHONPATH=. python -m test.gui.emtk_port_parity \\
-        compare <plugin_id> --out okf/plugins/emtk-ports/<plugin_id>
+        compare <plugin_id> --out DIR
 
-Files written to ``--out`` (all of them are committed with the port):
+Files written to ``--out``:
 
 * ``before.png`` / ``after_1200x800.png`` / ``after_800x600.png`` -- screenshots.
 * ``before.json`` / ``after.json`` -- control inventory (normalised text of every

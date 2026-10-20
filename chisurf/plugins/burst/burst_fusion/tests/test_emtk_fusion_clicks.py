@@ -3,7 +3,7 @@
 Only ``pointer_move`` / ``press`` / ``release`` / ``drag`` / ``wheel`` / ``key`` and the host's ``files_dropped`` reach the
 window, at the rectangles the controls were drawn in (``app.item_rects`` for the buttons, ``form_state.rects`` for the spec's
 fields) or at the text a button drew; the assertions read the visible outcome (the model, the status line, the drawn strings,
-the files written). The control -> test list is in ``okf/plugins/emtk-ports/burst_fusion/REPORT.md`` section 6a.
+the files written).
 """
 
 from __future__ import annotations
@@ -357,7 +357,7 @@ def test_mmfdb_datasets_picker_lists_a_dataset_selects_it_and_the_window_closes(
 @pytest.mark.xfail(
     strict=True,
     reason="emtk/picker gap: after its first click the MMFDB picker's buttons (Open selected, Cancel, "
-    "Refresh, scopes) never fire; see REPORT.md 'emtk gaps'",
+    "Refresh, scopes) never fire",
 )
 def test_mmfdb_datasets_picker_open_selected_takes_the_folder_and_cancel_closes(app):
     folder = demo_module.make_demo()

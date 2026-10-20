@@ -1,6 +1,6 @@
 """Escape cancels the shell's modal dialogs wherever the pointer is, as it does in the Qt window.
 
-Found by the final shell parity pass (okf/plugins/emtk-ports/final-parity/shell): the close
+Found by the final Qt-vs-emtk shell parity pass: the close
 guard, the update offer and the project file dialogs stayed up on Escape unless the pointer
 happened to be over them (emtk's ``DialogWindow`` closes on Escape only when hovered).
 """

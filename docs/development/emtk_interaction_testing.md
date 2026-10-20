@@ -148,9 +148,8 @@ until the full reader declaration is ported.
 
 The uncalled SpcFileWidget and its dedicated Designer file are removed.
 Photon reading, CSV inputs and native reader settings retain their existing
-interfaces. A real BH SPC132 baseline and control inventory are retained in
-the release-readiness evidence; this approved dead-widget deletion introduces
-no replacement window.
+interfaces. This approved dead-widget deletion introduces no replacement
+window.
 
 
 ## Measured SDT reader declaration

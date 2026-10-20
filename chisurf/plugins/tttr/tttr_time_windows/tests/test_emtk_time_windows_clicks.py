@@ -2,8 +2,7 @@
 
 Every control of the Qt tool (toolbar Process / Clear / Help, the file list with Files / Folder /
 Database / Remove / drop, the duration and output fields, Browse, the preview and the log) is used
-the way a person uses it, and each test asserts what the next frame shows. The control -> test
-list is in REPORT.md.
+the way a person uses it, and each test asserts what the next frame shows.
 """
 
 from __future__ import annotations

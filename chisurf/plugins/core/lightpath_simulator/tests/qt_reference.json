@@ -1,5 +1,5 @@
 {
- "_source": "Recorded from the live Qt LightPathSimulatorWidget (HEAD gui/tool.py, okf/plugins/emtk-ports/lightpath_simulator/pre-upgrade/qt_original_tool.py.txt) by scripts/capture_qt_populated.py over the generated catalogue of tests/catalog.py: qt_values.json. The Qt tool is retired; these are its answers.",
+ "_source": "Recorded from the live Qt LightPathSimulatorWidget (HEAD gui/tool.py) over the generated catalogue of tests/catalog.py. The Qt tool is retired; these are its answers.",
  "probes": 7,
  "nodes": [
   "light_source",

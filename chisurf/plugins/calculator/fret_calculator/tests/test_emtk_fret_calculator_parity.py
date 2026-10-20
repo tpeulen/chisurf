@@ -1,7 +1,7 @@
 """The native FRET calculator against the values the Qt tool showed, and against the backend services.
 
 Hermetic: settings in a temporary folder, no files, no network. The Qt tool is deleted: its numbers
-are frozen in ``okf/plugins/emtk-ports/fret_calculator/qt_values.json`` and pinned below. Every edit
+are frozen and pinned below. Every edit
 is typed into the real emtk field (click, type, Enter) so that the spec's ``call`` wiring is what is
 tested.
 """
@@ -104,7 +104,7 @@ def homo_state(m):
 # ── 1. numbers equal the frozen Qt values and the backend ----------------------------------------------- #
 
 def test_the_numbers_the_qt_tool_showed_are_pinned(app):
-    """Values read off the Qt window (okf/plugins/emtk-ports/fret_calculator/qt_values.json)."""
+    """Values read off the Qt window before it was deleted."""
     m = app.model.hetero
     assert (m.tau, m.E, m.kFRET) == (1.7599, 0.560037, 0.31823)
     for attr, value in (("tau0", 3.5), ("R0", 60.0), ("R", 55.0), ("sigma", 8.0)):

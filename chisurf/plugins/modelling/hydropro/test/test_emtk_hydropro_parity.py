@@ -32,7 +32,6 @@ from . import hermetic
 from .support import BIG, EXPECTED, REPO, SMALL, drain, make_world
 
 PLUGIN = Path(__file__).resolve().parent.parent
-EVIDENCE = REPO / "okf/plugins/emtk-ports/hydropro"
 #: The retired Qt ``HydroProTool``'s answers per case, recorded from the live tool and frozen.
 QT = json.loads(Path(__file__).with_name("qt_reference.json").read_text(encoding="utf-8"))
 

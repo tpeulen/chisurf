@@ -2,7 +2,7 @@
 
 SAFETY: every system action is a fake (``fakes.py``): no update, install, removal or environment change, no network. The
 update tests assert the command line that reached the fake runner, written out here (``Fakes.expected_*``), and the Qt
-tool is run beside the model on the same fakes. ``qt_values.json`` holds what the Qt tool produced before the port.
+tool is run beside the model on the same fakes. ``data/qt_values.json`` holds what the Qt tool produced before the port.
 """
 
 from __future__ import annotations
@@ -20,9 +20,7 @@ from .fakes import RELEASES
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
-REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-EVIDENCE = REPO / "okf" / "plugins" / "emtk-ports" / "updater"
-REF = json.loads((EVIDENCE / "qt_values.json").read_text(encoding="utf-8"))
+REF = json.loads((HERE / "data" / "qt_values.json").read_text(encoding="utf-8"))
 #: The version the reference run installed ("26.dev..." changes with every commit): its text is replaced by today's.
 REF_VERSION = REF["initial"]["current_version"]
 SAMPLE = REF["format_changelog"]["input"]

@@ -2,7 +2,7 @@
 
 Every control of the Qt tool (Predict, Export CSV, Guide, ?, the four setting panels, every
 field and the Membrane check box, the table and the plot) is used the way a person uses it, and
-each test asserts what the next frame shows. The control -> test list is in REPORT.md.
+each test asserts what the next frame shows.
 """
 
 from __future__ import annotations

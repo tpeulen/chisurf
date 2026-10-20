@@ -2,7 +2,7 @@
 
 Hermetic: temporary settings, HOME and spectra catalogue (generated spectra, tests/catalog.py), an in-process RPC client.
 The Qt tool is retired; its answers over the same catalogue are frozen in ``qt_reference.json`` (recorded from the live
-tool, okf/plugins/emtk-ports/lightpath_simulator/qt_values.json) and the native window must reproduce them exactly.
+tool) and the native window must reproduce them exactly.
 """
 
 from __future__ import annotations

@@ -1,8 +1,7 @@
 """The native κ² calculator against the Qt tool it replaces, every control and action driven through the UI.
 
 Hermetic: settings in a temporary folder, the CSV goes to ``tmp_path``, no network. The Qt tool is the
-committed AutoForm ``Kappa2Dist`` (its source is kept in ``okf/plugins/emtk-ports/kappa2_dist/pre-upgrade/
-qt_original_tool.py.txt``), built offscreen. The results are Monte-Carlo (numpy's global generator), so both
+committed AutoForm ``Kappa2Dist``, built offscreen. The results are Monte-Carlo (numpy's global generator), so both
 sides are seeded identically before every computation; the numbers must then agree exactly.
 """
 
@@ -166,7 +165,7 @@ def test_defaults_and_every_edit_equal_the_recorded_qt_tool(app):
 
 
 def test_the_numbers_the_qt_window_showed_are_pinned(app):
-    """Seed 7 values read off the Qt window (okf/plugins/emtk-ports/kappa2_dist/qt_values.json)."""
+    """Seed 7 values read off the Qt window."""
     m = app.tool._model
     assert (m.k2_mean, m.k2_sd) == pytest.approx((0.66644, 0.21922), abs=5e-6)
     assert (m.Rapp_mean, m.RappSD, m.delta_deg) == pytest.approx(

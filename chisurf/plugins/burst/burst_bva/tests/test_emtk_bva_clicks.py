@@ -2,8 +2,7 @@
 
 Only ``pointer_move`` / ``press`` / ``release`` / ``drag`` / ``wheel`` / ``key`` and the host's ``files_dropped`` reach the
 window, at the rectangles the controls were drawn in (``app.item_rects``) or at the text a button drew; the assertions read
-the visible outcome (the model, the status line, the drawn strings, the files written). The control -> test list is in
-``okf/plugins/emtk-ports/burst_bva/REPORT.md`` section 6a.
+the visible outcome (the model, the status line, the drawn strings, the files written).
 """
 
 from __future__ import annotations

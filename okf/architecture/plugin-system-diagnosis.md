@@ -92,8 +92,7 @@ PY=/Users/tpeulen/mambaforge/envs/arm64/bin/python
   test/core/test_plugin_system_robustness.py \
   test/core/test_plugin_metadata_reader.py \
   test/core/test_plugin_entrypoint_resolution.py \
-  test/core/test_plugin_cli_registration.py \
-  test/core/test_emtk_preview_gate.py -q --tb=short
+  test/core/test_plugin_cli_registration.py -q --tb=short
 
 "$PY" -m pytest \
   test/core/test_plugin_client.py \

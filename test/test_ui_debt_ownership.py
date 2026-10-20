@@ -6,7 +6,7 @@ from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-LEDGER = ROOT / "okf/validation/release-readiness-w6g/ui-debt-owners.json"
+LEDGER = ROOT / "test/data/ui_debt_owners.json"
 
 
 def test_every_remaining_ui_allowance_has_one_exact_owner():

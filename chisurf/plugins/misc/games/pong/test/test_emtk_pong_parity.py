@@ -1,8 +1,7 @@
 """The native Pong against the retired Qt chigame view.
 
 Both drove :class:`..model.PongModel` (the Qt ``PongGame`` subclassed it; the committed Qt rules
-equalled it method for method apart from action names and a host guard,
-``okf/plugins/emtk-ports/pong/rules_diff_vs_head.txt``). Compared here: the Qt bindings (frozen
+equalled it method for method apart from action names and a host guard). Compared here: the Qt bindings (frozen
 from the last committed ``pong.py``) against the emtk keys, a scripted rally, the Sound switch.
 """
 

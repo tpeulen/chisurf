@@ -169,12 +169,10 @@ Moved here unchanged: notes that are history, done work or standing rules rather
    `test_hub_membership.py`'s `SHARED`. Left: the hub inherits three ToolHubApp limits
    (fixed rail, header badge, a status line wider than its room covers Back / Next: worked
    around in `AlexHubApp` only, see known-issues) and the Qt shells
-   are still on disk; the ordered list is in
-   [burst-survey.md](../plugins/emtk-ports/burst-survey.md).
+   are still on disk.
 
 2. **Ribbon buttons that still open Qt:** none. MMFDB Admin is native
-   since 2026-10-06 (T-20261005-MMFDBEMTK, `entrypoints.emtk`; parity in
-   `okf/plugins/emtk-ports/mmfdb_admin/REPORT.md`). (Intensity
+   since 2026-10-06 (T-20261005-MMFDBEMTK, `entrypoints.emtk`). (Intensity
    trace landed as emtk; Screenshot is no longer a plugin but the main window's
    *Screenshot* action, `chisurf/gui/screenshot_action.py`, shown in Main › Window.)
 
@@ -204,5 +202,4 @@ Settings loader migrates historical full-address disabled/order/statefulness/
 toolbar preferences with explicit-current-key precedence. Continuation panels
 retain every8-record chunk; scroll tests reach the last button. Hidden FRET is
 not surfaced by a menu fold; its explicit workflow unit owns visibility.
-Remaining W6g work: shared tooltip/i18n/demo/window gates; the full programme
-resume is in [the current job](../validation/release-readiness-w6g/current-job.md).
+Remaining W6g work: shared tooltip/i18n/demo/window gates.

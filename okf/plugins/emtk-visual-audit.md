@@ -13,11 +13,9 @@ timestamp: '2026-10-10T00:00:00Z'
 The 52 image references in this page originally pointed to local, Git-ignored
 files. All 52 were present when preserved; none was tracked as a published image.
 Their unchanged bytes, adjacent capture metadata, the rich-document fixture and
-copies of the structured audit records are now members of the
-[concurrent OKF source evidence archive](../validation/release-readiness-w0a/concurrent-okf-source-evidence.zip).
-Member names below are code references inside that archive, not image URLs.
-`visual-audit/asset-manifest.json` records each original local path, ignore status,
-size and SHA256. Extract the archive to inspect the referenced members.
+copies of the structured audit records went into a release-readiness evidence
+archive that was removed from the repository when the migration closed
+(2026-10-20). Member names below are historical references, not files.
 
 These are historical captures. Packaging them does not rerun a plugin, revise a
 score, establish a currently loaded workflow or renew any release acceptance.
@@ -43,9 +41,8 @@ Use disposable settings/database directories and a new output directory.
 - The help fixture is preserved at archive member
   `visual-audit/assets/help-rich-document/fixture/feature_reference.md`.
   The retired Qt tool took it through `--document` with `--width 1280 --height 900`.
-  The tracked [populated help capture](emtk-ports/help/scripts/capture_populated.py)
-  uses a different page and viewport; it is a starting point, not an equivalent
-  reproduction of the archived CPU v3/v4 images.
+  The help port's populated capture used a different page and viewport; it was
+  not an equivalent reproduction of the archived CPU v3/v4 images.
 
 The original GPU driver command/environment and exact CPU v3/v4 capture driver
 were not preserved in this record. A matched replacement requires a separately

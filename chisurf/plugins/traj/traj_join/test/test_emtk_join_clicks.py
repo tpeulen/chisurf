@@ -2,7 +2,6 @@
 
 Only ``press`` / ``release`` / ``pointer_move`` / ``key`` / ``on_files_dropped`` reach the window (see
 ``traj_save_topology/test/real_input.py``); the assertions read what is drawn, the model's fields and the joined file.
-The control -> test list is in ``okf/plugins/emtk-ports/traj_join/REPORT.md``.
 """
 
 from __future__ import annotations

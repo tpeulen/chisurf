@@ -46,9 +46,8 @@ push), chimol `9425146` -- push only with the owner's approval.
    add keys to the scheme only -- `test_every_declared_field_is_in_the_scheme`
    requires scheme == dataclass fields (that is what `c1a7b80d3` fixed).
 2. **34 legacy manual screenshots remain** (`kind: legacy screenshot` in
-   `docs/references/figures.yaml`). Each has its reason in
-   `okf/validation/manual-screenshots/{fcs,anisotropy,general,fitting}.json`
-   (`not_replaced`): data not in the repo (A568, DNA, live-cell, HEK293T,
+   `docs/references/figures.yaml`). Their per-figure `not_replaced` reasons
+   (recorded in validation JSONs removed on 2026-10-20) fall into: data not in the repo (A568, DNA, live-cell, HEK293T,
    A488+eGFP joint), spreadsheets, external plots. rId127/138/139 (global-fit
    editor) were blocked by the editor bug fixed in `1182fe7ea` -- they can be
    retaken now with `docs/guides/screenshots/manual_anisotropy.py` /

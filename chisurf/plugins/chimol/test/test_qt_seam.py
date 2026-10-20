@@ -159,9 +159,7 @@ def test_the_toolkit_free_core_stays_toolkit_free(module):
 def test_the_qt_host_stays_retired():
     """``hosts/qt/`` was deleted at control parity with the toolkit-free host.
 
-    The before/after inventories are ChiSurf's
-    ``okf/plugins/emtk-ports/chimol/retire_*``. A Qt window coming back would be
-    a second implementation of the application, and the reason it was retired
-    is that two drift.
+    A Qt window coming back would be a second implementation of the
+    application, and the reason it was retired is that two drift.
     """
     assert not (PACKAGE / "hosts" / "qt").exists(), "a Qt host is back in chimol"

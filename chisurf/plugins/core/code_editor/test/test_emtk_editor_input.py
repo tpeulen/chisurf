@@ -256,7 +256,7 @@ def test_double_click_selects_a_word(ed):
 @pytest.mark.xfail(
     strict=True,
     reason="emtk gap: im.text_editor passes at most clicks=2 and modifiers=0 to the editor, so a triple click "
-    "(select line) and Shift+click (extend selection) never reach it; see REPORT.md",
+    "(select line) and Shift+click (extend selection) never reach it",
 )
 def test_triple_click_selects_a_line_and_shift_click_extends(ed):
     ed.click_at(1, 3, clicks=3)

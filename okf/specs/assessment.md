@@ -809,13 +809,13 @@ rather than adding another `Structure(...)` call site; a new call site violates 
 
 | ID | Subsystem | Finding | Status |
 |---|---|---|---|
-| [W1](/prds/prd-154.md) | Tree/GUI inputs | Legacy forms/helpers, environment paths and missing Burst MLE model selection blocked release | ✅ SOURCE FIXED — [model acceptance](/validation/release-readiness-w1/mle-model-selection/acceptance.json); bundle-wide guard remains W0 |
-| [W5](/prds/prd-154.md) | emtk/GUI | Input navigation, overflowing graph zoom, frames, grids, host lifecycle and geometry lacked shared root contracts | ✅ FIXED — [evidence](/validation/release-readiness-w5.md) |
+| [W1](/prds/prd-154.md) | Tree/GUI inputs | Legacy forms/helpers, environment paths and missing Burst MLE model selection blocked release | ✅ SOURCE FIXED; bundle-wide guard remains W0 |
+| [W5](/prds/prd-154.md) | emtk/GUI | Input navigation, overflowing graph zoom, frames, grids, host lifecycle and geometry lacked shared root contracts | ✅ FIXED |
 | [W0](/prds/prd-154.md) | OKF bundle | Lint findings and the missing bundle guard | ✅ DONE 2026-10-10 — 0 findings, `test/okf_bundle_baseline.json` empty |
 | [W2](/prds/prd-154.md) | Project | No autosave; history not bound to replayable actions | ✅ DONE 2026-10-10 — sibling `*.autosave.cs.pto`, history audit, lossless undo-redo-save-reload |
 | [W3](/prds/prd-154.md) | Sampling | Chains lost on save; diagnostics page stale; ndX could not open `.cs.pto` | ✅ DONE 2026-10-10 |
 | [W4](/prds/prd-154.md) | Burst workflow | Companion folders written directly; no run picker | ✅ DONE 2026-10-11 — open: batch rows do not carry the burst run |
-| [W6g](/prds/prd-154.md) | Plugin uniformity | Shared setup, guided workflows and accessible controls with scientific parity | 🚧 PARTIAL 2026-10-11 — chrome, vocabulary, tours, demos, empty tooltip/literal allow-lists done; open: games audio, Channel Definition defects, quest RPC backend, acquisition count-rate page. [Current job](/validation/release-readiness-w6g/current-job.md) |
+| [W6g](/prds/prd-154.md) | Plugin uniformity | Shared setup, guided workflows and accessible controls with scientific parity | 🚧 PARTIAL 2026-10-11 — chrome, vocabulary, tours, demos, empty tooltip/literal allow-lists done; open: games audio, Channel Definition defects, quest RPC backend, acquisition count-rate page. |
 | [W7](/prds/prd-154.md) | Click-all, CI | No e2e of every plugin; red suites | 🚧 PARTIAL 2026-10-11 — harness, `test-e2e`, CI job, release scenario landed; chimol tour and fcs_correlator/fcs_toolbox Stop button in progress |
 | [W8](/prds/prd-154.md) | Plotting | pyqtgraph still behind chiplot | ✅ DONE 2026-10-10 — import, backend, dependency struck; ~67 files still mention the word |
 | [W9](/prds/prd-154.md) | Qt retirement | Qt tools in every plugin family, Qt shell | 🚧 PARTIAL 2026-10-11 — phase 1: 505 to 245 allow-listed files; phase 2 (shell, `gui.ui`) not started |

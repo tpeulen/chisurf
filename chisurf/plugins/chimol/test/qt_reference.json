@@ -3,8 +3,7 @@
   "source_commit": "chimol b2a3f2b",
   "date": "2026-10-13",
   "widget": "chimol.hosts.qt.MolViewPluginWindow 1200x800, QT_QPA_PLATFORM=offscreen",
-  "action": "load test/data/atomic_coordinates/pdb_files/148l.pdb; orient",
-  "evidence": "okf/plugins/emtk-ports/chimol/retire_*.json"
+  "action": "load test/data/atomic_coordinates/pdb_files/148l.pdb; orient"
  },
  "menus": [
   [

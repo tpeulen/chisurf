@@ -92,5 +92,4 @@ child is not scrollable, exponential zoom factors are symmetric, and handled
 wheel input is consumed once. Equal opposite notches restore both scale and
 panning within 1e-12 even with overflow; idle redraws do not repeat zoom.
 65 targeted emtk/ChiSurf node tests passed.
-[Inspected zoom-in/out captures and programme handoff](/validation/release-readiness-w5.md).
 No graph work remains in W5; W7 is the next programme front.

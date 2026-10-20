@@ -578,7 +578,7 @@ def test_the_tour_is_walked_selecting_each_awaited_panel_with_the_card_clear(ui)
 
 @pytest.mark.xfail(
     strict=True,
-    reason="emtk gap: a tour card button lying over a data_table never answers a press (as in plugin_check); see REPORT.md",
+    reason="emtk gap: a tour card button lying over a data_table never answers a press (as in plugin_check)",
 )
 def test_the_tour_next_button_over_the_component_table_answers(ui):
     ui.click_name("guide")

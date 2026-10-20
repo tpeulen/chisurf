@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "measurement": "ui-debt-measurement.zip",
+  "scope": "Exact accepted findings only; two completed ALEX tooltip keys removed. No new audit or waiver.",
+  "checks": {
+    "tooltip": "test/test_tooltips.py::test_shipped_tooltip_contract_has_no_new_or_stale_debt",
+    "translation": "test/test_i18n_literals.py::test_shipped_literal_contract_has_no_new_or_stale_debt"
+  },
+  "closure": {
+    "tooltip": "Author meaningful help; prove it is reachable through the actual reader; preserve controls/options and real workflow. Remove the repaired key from allowance and this ledger, then pass its named guard.",
+    "translation": "Route the literal through translation; prove runtime locale lookup and preserve actions/data. Generate catalogues once per family batch. Remove the repaired key from allowance and this ledger, then pass its named guard."
+  },
+  "families": {
+    "chisurf/core/experiments": {
+      "owner": "W6f",
+      "scope": "chisurf/core/experiments/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/core/models": {
+      "owner": "W6f",
+      "scope": "chisurf/core/models/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/emtk": {
+      "owner": "W6g",
+      "scope": "chisurf/emtk/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/gui": {
+      "owner": "W6f",
+      "scope": "chisurf/gui/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/plugins/ai_settings": {
+      "owner": "W6f",
+      "scope": "chisurf/plugins/ai_settings/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/plugins/burst": {
+      "owner": "W6b",
+      "scope": "chisurf/plugins/burst/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/plugins/calculator": {
+      "owner": "W6e",
+      "scope": "chisurf/plugins/calculator/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/plugins/chimol": {
+      "owner": "W6d",
+      "scope": "chisurf/plugins/chimol/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/plugins/core": {
+      "owner": "W6f",
+      "scope": "chisurf/plugins/core/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/plugins/fcs": {
+      "owner": "W6a",
+      "scope": "chisurf/plugins/fcs/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/plugins/fluorescence_decay": {
+      "owner": "W6e",
+      "scope": "chisurf/plugins/fluorescence_decay/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/plugins/microscopy": {
+      "owner": "W6c",
+      "scope": "chisurf/plugins/microscopy/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/plugins/modelling": {
+      "owner": "W6d",
+      "scope": "chisurf/plugins/modelling/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/plugins/pch": {
+      "owner": "W6a",
+      "scope": "chisurf/plugins/pch/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/plugins/traj": {
+      "owner": "W6d",
+      "scope": "chisurf/plugins/traj/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/plugins/tttr": {
+      "owner": "W6a",
+      "scope": "chisurf/plugins/tttr/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "chisurf/plugins/vv_vh_g_factor": {
+      "owner": "W6a",
+      "scope": "chisurf/plugins/vv_vh_g_factor/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "modules/chimol": {
+      "owner": "W6d",
+      "scope": "modules/chimol/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    },
+    "modules/ndxplorer": {
+      "owner": "W6d",
+      "scope": "modules/ndxplorer/**",
+      "batch": "Finish the measured family or a disjoint coherent file group; W6g coordinates but does not absorb other owners."
+    }
+  },
+  "findings": []
+}

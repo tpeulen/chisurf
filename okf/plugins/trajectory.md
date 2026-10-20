@@ -78,4 +78,3 @@ surface once. Twelve cascading selectors become four native rows; scientific
 parameters and116×6 reference bytes are preserved. PDBSelector and the legacy
 FRET widget/sections retire.69 targeted tests and665 contract checks pass; real
 before/after and clean-close renders inspected.
-[Evidence](../validation/release-readiness-w1/fret-retirement/receipt.md).

@@ -1,0 +1,188 @@
+[
+  {
+    "object": "__qt__passive_wizardbutton0",
+    "class": "QPushButton",
+    "visible": true,
+    "enabled": false,
+    "tooltip": "",
+    "text": "< &Back"
+  },
+  {
+    "object": "__qt__passive_wizardbutton1",
+    "class": "QPushButton",
+    "visible": false,
+    "enabled": false,
+    "tooltip": "",
+    "text": "&Next >"
+  },
+  {
+    "object": "qt_wizard_commit",
+    "class": "QPushButton",
+    "visible": false,
+    "enabled": false,
+    "tooltip": "",
+    "text": "Commit"
+  },
+  {
+    "object": "qt_wizard_finish",
+    "class": "QPushButton",
+    "visible": true,
+    "enabled": true,
+    "tooltip": "",
+    "text": "&Finish"
+  },
+  {
+    "object": "tableWidget",
+    "class": "QTableWidget",
+    "visible": true,
+    "enabled": true,
+    "tooltip": "",
+    "rows": 6,
+    "columns": 5,
+    "headers": [
+      "Use",
+      "File",
+      "CR A (kHz)",
+      "CR B (kHz)",
+      "Duration (s)"
+    ],
+    "data": [
+      [
+        "",
+        "chnk-0000",
+        " 1.25",
+        " 1.25",
+        " 10.00"
+      ],
+      [
+        "",
+        "chnk-0001",
+        " 1.33",
+        " 1.33",
+        " 10.00"
+      ],
+      [
+        "",
+        "chnk-0002",
+        " 1.37",
+        " 1.37",
+        " 10.00"
+      ],
+      [
+        "",
+        "chnk-0003",
+        " 1.83",
+        " 1.83",
+        " 10.00"
+      ],
+      [
+        "",
+        "chnk-0004",
+        " 1.48",
+        " 1.48",
+        " 10.00"
+      ],
+      [
+        "",
+        "chnk-0005",
+        " 1.63",
+        " 1.63",
+        " 10.00"
+      ]
+    ]
+  },
+  {
+    "object": "",
+    "class": "QHeaderView",
+    "visible": true,
+    "enabled": true,
+    "tooltip": ""
+  },
+  {
+    "object": "",
+    "class": "QHeaderView",
+    "visible": true,
+    "enabled": true,
+    "tooltip": ""
+  },
+  {
+    "object": "",
+    "class": "QAbstractButton",
+    "visible": true,
+    "enabled": true,
+    "tooltip": "",
+    "text": ""
+  },
+  {
+    "object": "toolButton",
+    "class": "QToolButton",
+    "visible": true,
+    "enabled": true,
+    "tooltip": "",
+    "text": "help"
+  },
+  {
+    "object": "lineEdit",
+    "class": "QLineEdit",
+    "visible": true,
+    "enabled": true,
+    "tooltip": "",
+    "text": "/private/tmp/prd154-w1-fcs-row10-renders/merger/BH_SPC132"
+  },
+  {
+    "object": "toolButton_2",
+    "class": "QToolButton",
+    "visible": true,
+    "enabled": true,
+    "tooltip": "",
+    "text": "clear"
+  },
+  {
+    "object": "toolButton_3",
+    "class": "QToolButton",
+    "visible": true,
+    "enabled": true,
+    "tooltip": "",
+    "text": "save"
+  },
+  {
+    "object": "lineEdit_2",
+    "class": "QLineEdit",
+    "visible": true,
+    "enabled": true,
+    "tooltip": "",
+    "text": "/private/tmp/prd154-w1-fcs-row10-renders/merger/BH_SPC132.cor"
+  },
+  {
+    "object": "qt_toolbar_ext_button",
+    "class": "QToolButton",
+    "visible": false,
+    "enabled": false,
+    "tooltip": "",
+    "text": ""
+  },
+  {
+    "object": "",
+    "class": "QToolButton",
+    "visible": true,
+    "enabled": true,
+    "tooltip": "Walk me through this tool, one control at a time",
+    "text": "Guide"
+  },
+  {
+    "object": "",
+    "class": "QToolButton",
+    "visible": true,
+    "enabled": true,
+    "tooltip": "Show help",
+    "text": "?"
+  },
+  {
+    "object": "qt_wizard_cancel",
+    "class": "QPushButton",
+    "visible": true,
+    "enabled": true,
+    "tooltip": "",
+    "text": "Cancel"
+  }
+]

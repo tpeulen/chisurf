@@ -17,7 +17,7 @@ tells you which do not start.
 A check builds the plugin's native (emtk) window, draws it at two window sizes (1200 × 800 and 800 × 600), and closes it.
 The child process refuses any Qt import, so a native window that quietly depends on Qt fails. It does **not** run the
 plugin's analysis: a pass means *the window opens*, not that the science behind it is right. The tests of each plugin
-(and the parity reports under `okf/plugins/emtk-ports/`) are what establish that.
+are what establish that.
 
 Every check runs in its own process on throw-away settings and a throw-away home folder, so a plugin that writes a
 settings file or a log while starting cannot touch yours, and a hung or crashing plugin cannot take the sweep down: it

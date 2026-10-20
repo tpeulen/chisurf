@@ -171,9 +171,7 @@ A skipped 2CDE score remains NaN in memory. The canonical all-numeric companion
 writer serializes nonfinite values as numeric zero while retaining every
 positional row; consumers must distinguish that export sentinel from a computed
 zero. Actual 152-burst measurements and a missing-source fixture verify the
-reader/writer behavior. Current source is verified but uncommitted; see the
-[shared reader acceptance](../validation/release-readiness-w6g/bva-sidecar-owner-acceptance.json)
-and [2CDE acceptance](../validation/release-readiness-w6g/two-cde-window-acceptance.json).
+reader/writer behavior. Current source is verified but uncommitted;
 
 # `Last Photon` is inclusive
 
@@ -205,7 +203,7 @@ background selection is the complement of the union of complete intervals,
 including terminal photons and overlapping bursts. Actual BH174438 photons
 with L60/m10/1ms produce91 intervals and remove88 leaked endpoints after overlaps;
 all raw arrays and clock values remain unchanged. The verified source is
-uncommitted; [owner acceptance](../validation/release-readiness-w6g/burst-mask-owner-acceptance.json)
+uncommitted; owner acceptance
 records SDK/source hashes, physical masks and the loopback workflow test gate.
 
 # Related

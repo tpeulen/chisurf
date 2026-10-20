@@ -1,3 +1,3 @@
 # Accepted production literal debt (2026-10-09); only shrink this file.
-# Source: okf/validation/release-readiness-w6g/ui-debt-measurement.zip (translation.json).
+# Source: the W6g UI-debt measurement (translation contract).
 # Passing this guard does not complete the owning GUI families or aggregate W6.

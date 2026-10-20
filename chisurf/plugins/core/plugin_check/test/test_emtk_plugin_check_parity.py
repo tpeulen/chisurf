@@ -39,8 +39,6 @@ from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
-REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-EVIDENCE = REPO / "okf/plugins/emtk-ports/plugin_check"
 SPEC = PLUGIN / "gui/plugin_check_emtk.view.json"
 BIG = (1200, 800)
 SMALL = (800, 600)
@@ -181,7 +179,7 @@ REPAIRED_DECLARATIONS = {
 
 def test_the_baseline_rows_the_qt_tool_showed_are_matched_cell_for_cell(discovered):
     """The committed Qt capture (``qt_rows_listed.json``) is the independent reference for the Depends-on cells."""
-    baseline = json.loads((EVIDENCE / "qt_rows_listed.json").read_text())["rows"]
+    baseline = json.loads((HERE / "data" / "qt_rows_listed.json").read_text())["rows"]
     rows = PluginCheckModel(*discovered).check_rows()
 
     # The menu path (``Category:Group:Leaf``) is the registry's to reorganise, so the rows are matched by leaf

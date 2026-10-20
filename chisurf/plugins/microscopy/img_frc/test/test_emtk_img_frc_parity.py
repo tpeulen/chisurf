@@ -2,7 +2,7 @@
 
 Hermetic: settings in a temporary folder, files in ``tmp_path``, no network (the database picker gets a stub client). References:
 (a) what the Qt window showed on a Poisson-noise TIFF stack, a second stack and the real photon stream
-(``okf/plugins/emtk-ports/img_frc/qt_values.json``, captured by ``scripts/capture_qt_populated.py`` before the port), (b) the Qt tool itself,
+(``data/qt_values.json``, captured before the port), (b) the Qt tool itself,
 constructed offscreen and run on the same files, and (c) a written-out numpy split of the stack fed to the core's ring correlation, which does
 not go through the shared view model.
 """
@@ -33,18 +33,18 @@ from chisurf.plugins.microscopy.img_frc.gui.app import ImgFrcApp, make_app
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-EVIDENCE = REPO / "okf/plugins/emtk-ports/img_frc"
-QT_VALUES = json.loads((EVIDENCE / "qt_values.json").read_text(encoding="utf-8"))
-QT_CSV = (EVIDENCE / "qt_frc.csv").read_text(encoding="utf-8")
+DATA = HERE / "data"
+QT_VALUES = json.loads((DATA / "qt_values.json").read_text(encoding="utf-8"))
+QT_CSV = (DATA / "qt_frc.csv").read_text(encoding="utf-8")
 QT_SPEC = json.loads((PLUGIN / "gui" / "frc.view.json").read_text(encoding="utf-8"))
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "frc_emtk.view.json").read_text(encoding="utf-8"))
 HT3 = REPO / "test/data/clsm/PQ_Olympus_MFIS.ht3"
 BIG = (1200, 800)
 
 _make = importlib.util.spec_from_file_location(
-    "frc_make_data", EVIDENCE / "scripts" / "make_data.py"
+    "frc_make_data", DATA / "make_data.py"
 )
-assert _make is not None and _make.loader is not None, "evidence make_data.py missing"
+assert _make is not None and _make.loader is not None, "data/make_data.py missing"
 _data = importlib.util.module_from_spec(_make)
 _make.loader.exec_module(_data)
 

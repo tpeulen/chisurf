@@ -77,8 +77,6 @@ Fixture coverage proves dirty/untracked isolation, detection of new committed
 debt, provider failure, typed YAML preservation, encoded filenames, log content
 conservation and one-time board moves. Resume inspection stops at the next
 heading, so later design sections are not misclassified as pickup work.
-[Acceptance](../validation/release-readiness-w0a/acceptance.json) binds the single
-[source archive](../validation/release-readiness-w0a/source-evidence.zip) to file hashes.
 
 The game-host batch subsequently closes the15historical PICKUP findings in
 `subsystems/chigame.md` by separating its real resume from preserved history.
@@ -93,7 +91,6 @@ open.52 ignored historical images and adjacent provenance are published in one
 archive with explicit member names, not broken image links or new acceptance
 claims. Exact source-backed comparison removes67 genuinely stale records:
 the baseline shrinks2405→2338 with zero new or stale candidate findings.
-[Acceptance](../validation/release-readiness-w0a/concurrent-okf-acceptance.json).
 The production UI checks also pass on committed0b7e5e48e; their genuinely
 post-publication log is retained in the same integration evidence. W0b must
 still reach zero; this is not its full cleanup or programme completion.

@@ -2,8 +2,7 @@
 
 Every control of the Qt tool (the file list with Files / Folder / Database / Remove / Clear / drop,
 Calculate, Save, the results table and plot, Help / Guide, the channel editor's section and refresh
-controls) is used the way a person uses it, and each test asserts what the next frame shows. The
-control -> test list is in REPORT.md.
+controls) is used the way a person uses it, and each test asserts what the next frame shows.
 """
 
 from __future__ import annotations

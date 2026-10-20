@@ -2,11 +2,12 @@
 
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` at the rectangles the controls were drawn in (or
 at the text a button drew) reach the window; the assertions read the visible outcome (model values, status line,
-statistics table, dialog, windows). The coverage list control -> test is in
-``okf/plugins/emtk-ports/kappa2_dist/REPORT.md``.
+statistics table, dialog, windows).
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -16,7 +17,6 @@ from chisurf.emtk import job_gate
 from chisurf.plugins.emtk_layout import help_close_caption
 
 from .test_emtk_kappa2_dist_verify import (  # noqa: F401  (hermetic is an autouse fixture)
-    REPO,
     SIZE,
     SMALL,
     click,
@@ -237,7 +237,7 @@ def test_save_with_a_typed_file_name_writes_the_csv_and_the_status_line_says_so(
     written = tmp_path / "my_k2.csv"
     assert written.is_file(), [p.name for p in tmp_path.iterdir()]
     lines = written.read_text().splitlines()
-    qt_lines = (REPO / "okf/plugins/emtk-ports/kappa2_dist/qt_saved.csv").read_text().splitlines()
+    qt_lines = (Path(__file__).with_name("data") / "qt_saved.csv").read_text().splitlines()
     assert (
         lines[0] == "# Kappa2 Distribution"
         and lines[-1].count(",") == 1
@@ -330,7 +330,7 @@ def test_help_button_opens_the_help_window_whose_buttons_work(app):
 @pytest.mark.xfail(
     strict=True,
     reason="emtk gap: the help window's section buttons are all '...##filter' (one id), so a click on any but "
-    "the first never fires; see REPORT.md section 10",
+    "the first never fires",
 )
 def test_a_help_section_button_shows_only_that_section(app):
     press_text(app, "Help")

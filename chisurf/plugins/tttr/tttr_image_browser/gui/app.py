@@ -15,7 +15,7 @@ Page *Detector setup* hosts the shared setup editor (:class:`chisurf.emtk.channe
 unchanged; *Use setup and continue* hands its settings to the browser.
 
 The windows are plain ``im.begin`` windows: the mouse wheel does not reach an ``implot`` inside a ``DockManager``
-window (see REPORT.md). Photon files are never read in the draw loop: a mosaic loads on a worker
+window. Photon files are never read in the draw loop: a mosaic loads on a worker
 (:class:`~.model.MosaicLoader`), scans and exports on a snapshot job. All state is in :class:`~.model.ImageBrowserModel`.
 """
 

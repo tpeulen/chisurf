@@ -1,8 +1,7 @@
 """Click coverage of the native micro-time histogram: every control operated with pointer, keys, wheel, drags and host drops.
 
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` and the host's drop hook (``on_paths_dropped``) reach
-the window; assertions read what is drawn, the model's fields and the files written. The control -> test list is in
-``okf/plugins/emtk-ports/microtime_histogram/REPORT.md``.
+the window; assertions read what is drawn, the model's fields and the files written.
 """
 
 from __future__ import annotations

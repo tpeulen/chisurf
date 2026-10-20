@@ -71,16 +71,10 @@ def test_absent_primary_declaration_uses_family_fallback(tmp_path, monkeypatch):
 def test_saved_geometry_wins_and_rendering_preserves_real_merge(tmp_path, monkeypatch):
     """Resize/reopen retains native dimensions; the explicit state API rebuilds real curves."""
     isolate(tmp_path, monkeypatch)
-    import importlib.util
-
     from chisurf.plugins.fcs.fcs_merger.gui.app import create_app
+    from chisurf.plugins.fcs.fcs_merger.test.make_chunks import build
 
-    repo = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
-    script = repo / "okf/plugins/emtk-ports/fcs_merger/scripts/make_chunks.py"
-    spec = importlib.util.spec_from_file_location("merger_measured_chunks", script)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    folder = module.build(tmp_path / "BH_SPC132")
+    folder = build(tmp_path / "BH_SPC132")
     first = attach_native_state("merger_saved", create_app())
     try:
         assert first.load_folder(folder)

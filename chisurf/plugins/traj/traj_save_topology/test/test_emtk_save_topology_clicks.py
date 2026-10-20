@@ -1,8 +1,7 @@
 """Click coverage of the native Save-Topology tool: every control is operated with pointer, keys and host drops.
 
 Only ``press`` / ``release`` / ``pointer_move`` / ``key`` / ``on_files_dropped`` reach the window (see ``real_input``);
-the assertions read what is drawn, the model's fields and the file written. The control -> test list is in
-``okf/plugins/emtk-ports/traj_save_topology/REPORT.md``.
+the assertions read what is drawn, the model's fields and the file written.
 """
 
 from __future__ import annotations
