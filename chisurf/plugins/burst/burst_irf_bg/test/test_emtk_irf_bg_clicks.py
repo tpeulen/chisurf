@@ -17,6 +17,7 @@ import pytest
 from emtk import keys
 from emtk.testing import RecordingPainter
 
+from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.plugins.burst.burst_irf_bg.gui import view_model
 from chisurf.plugins.burst.burst_irf_bg.gui.app import create_app
 from chisurf.plugins.burst.burst_irf_bg.test.demo_data import IRF_PEAK_NS, build
@@ -330,7 +331,9 @@ def test_the_channel_definition_button_opens_the_editor_and_a_typed_routing_reac
     assert "TTTR Reading Routine:" not in draw(app).strings
     open_editor(app)
     strings = draw(app).strings
-    assert {"Channels", "Micro Time Ranges", "green", "red", "▼ Detectors"} <= set(strings)
+    assert {"Channels", "green", "red", "▼ Detectors"} <= set(strings)
+    # the gates column, under its full or narrow-host header
+    assert set(ChannelDefinitionWidget.DETECTOR_TITLES["ranges"]) & set(strings)
     type_into_cell(app, "green", "chs", "5")
     assert app.model._channels()["green"]["chs"] == [5]
     assert "5" in draw(app).strings

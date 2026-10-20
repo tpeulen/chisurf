@@ -1719,13 +1719,26 @@ class ChannelDefinitionWidget:
             )
         # In a narrow host the name column says "Name" and the button "Del", so all four columns fit.
         self._compact = im.get_content_region_avail()[0] < 520.0
-        control = self._window_table.control
+        self._retitle(self._window_table, self.WINDOW_TITLES)
+        self._draw_table(self._window_table, "windows", len(self.model.data["windows"]))
+
+    #: ``key: (title, title in a narrow host)`` -- a header sets its column's least width, so a long
+    #: header keeps a narrow table scrolling sideways however many columns it drops.
+    WINDOW_TITLES = {"name": (mark("Window Name"), mark("Name"))}
+    DETECTOR_TITLES = {
+        "name": (mark("Detector Name"), mark("Name")),
+        "ranges": (mark("Micro Time Ranges"), mark("Gates")),
+    }
+
+    def _retitle(self, binding, titles):
+        """Give the columns of *binding* named in *titles* their full or narrow-host header."""
+        control = binding.control
         for position, column in enumerate(control.columns):
-            wanted = mark("Name") if column.key == "name" and self._compact else None
-            wanted = wanted or (mark("Window Name") if column.key == "name" else column.title)
+            if column.key not in titles:
+                continue
+            wanted = titles[column.key][1 if self._compact else 0]
             if column.title != wanted:
                 control.columns[position] = replace(column, title=wanted)
-        self._draw_table(self._window_table, "windows", len(self.model.data["windows"]))
 
     #: Columns the Detectors table drops, in this order, when the page is too narrow for the others (they stay in the model).
     NARROW_COLUMNS = ("gch", "l1", "l2")
@@ -1774,6 +1787,7 @@ class ChannelDefinitionWidget:
             )
         width = im.get_content_region_avail()[0]
         self._compact = width < 520.0
+        self._retitle(self._detector_table, self.DETECTOR_TITLES)  # before measuring what fits
         hidden = self._narrow_detector_columns(width)
         for key in self.NARROW_COLUMNS:
             self._detector_table.control.set_column_hidden(key, key in hidden)

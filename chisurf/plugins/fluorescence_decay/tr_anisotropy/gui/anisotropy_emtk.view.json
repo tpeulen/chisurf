@@ -53,13 +53,13 @@
     "lifetime": {
       "sections": [
         {"type": "panel", "title": "Lifetime spectrum", "description": "The fluorescence lifetime components shared by the VV and VH fits.", "sections": [
-          {"type": "custom", "key": "data_table", "description": "Lifetime components: amplitude and lifetime in ns; double-click a cell to edit.", "options": {
+          {"type": "custom", "key": "data_table", "description": "Lifetime components: amplitude and lifetime in ns; click a cell to edit it, or a row's # to select the row for Delete.", "options": {
             "source": "rows", "selected_call": "select", "edited_call": "edit",
             "delete_call": "delete", "editable": true, "row_key": "row", "expand": true, "height": 120,
             "columns": [
-              {"key": "row", "title": "#", "width": 36, "tooltip": "Component number."},
-              {"key": "amplitude", "title": "Amplitude", "format": "%.4g", "tooltip": "Relative amplitude of the lifetime component; double-click to edit."},
-              {"key": "value", "title": "Lifetime (ns)", "format": "%.4g", "tooltip": "Fluorescence lifetime of the component in nanoseconds; double-click to edit."}
+              {"key": "row", "title": "#", "width": 36, "editable": false, "tooltip": "Component number; click it to select the row (Delete removes it)."},
+              {"key": "amplitude", "title": "Amplitude", "format": "%.4g", "tooltip": "Relative amplitude of the lifetime component; click to edit."},
+              {"key": "value", "title": "Lifetime (ns)", "format": "%.4g", "tooltip": "Fluorescence lifetime of the component in nanoseconds; click to edit."}
             ]}},
           {"type": "value", "attr": "new_amplitude", "label": "Amplitude", "kind": "float", "style": "spin",
            "minimum": 0.0, "maximum": 1000000.0, "decimals": 3, "step": 0.1, "description": "Amplitude of the component to add."},
@@ -75,13 +75,13 @@
     "rotation": {
       "sections": [
         {"type": "panel", "title": "Rotation spectrum", "description": "The rotational correlation components shared by the VV and VH fits.", "sections": [
-          {"type": "custom", "key": "data_table", "description": "Rotational components: amplitude and correlation time in ns; double-click a cell to edit.", "options": {
+          {"type": "custom", "key": "data_table", "description": "Rotational components: amplitude and correlation time in ns; click a cell to edit it, or a row's # to select the row for Delete.", "options": {
             "source": "rows", "selected_call": "select", "edited_call": "edit",
             "delete_call": "delete", "editable": true, "row_key": "row", "expand": true, "height": 120,
             "columns": [
-              {"key": "row", "title": "#", "width": 36, "tooltip": "Component number."},
-              {"key": "amplitude", "title": "Amplitude", "format": "%.4g", "tooltip": "Absolute anisotropy contribution of the component; double-click to edit."},
-              {"key": "value", "title": "Correlation time (ns)", "format": "%.4g", "tooltip": "Rotational correlation time of the component in nanoseconds; double-click to edit."}
+              {"key": "row", "title": "#", "width": 36, "editable": false, "tooltip": "Component number; click it to select the row (Delete removes it)."},
+              {"key": "amplitude", "title": "Amplitude", "format": "%.4g", "tooltip": "Absolute anisotropy contribution of the component; click to edit."},
+              {"key": "value", "title": "Correlation time (ns)", "format": "%.4g", "tooltip": "Rotational correlation time of the component in nanoseconds; click to edit."}
             ]}},
           {"type": "value", "attr": "new_amplitude", "label": "Amplitude", "kind": "float", "style": "spin",
            "minimum": 0.0, "maximum": 1000000.0, "decimals": 3, "step": 0.1, "description": "Amplitude of the component to add."},

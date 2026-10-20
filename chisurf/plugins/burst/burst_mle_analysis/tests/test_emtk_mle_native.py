@@ -16,6 +16,7 @@ import numpy as np
 import pytest
 from emtk import implot, keys
 
+from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.plugins.burst.burst_mle_analysis import engine
 from chisurf.plugins.burst.burst_mle_analysis.gui import fit_view
 from chisurf.plugins.burst.burst_mle_analysis.gui.native import create_app
@@ -271,7 +272,9 @@ def test_the_detector_setup_is_the_shared_editor_and_its_edits_reach_the_session
     drv = Driver(app)
     _shown = texts(drv.draw(2)) + texts(drv.draw(1))
     drv.click_text("Detector setup")
-    assert "Detector Name" in texts(drv.draw(2))
+    shown = texts(drv.draw(2))
+    # the detector table, under its full or narrow-host name header
+    assert "Channels" in shown and set(ChannelDefinitionWidget.DETECTOR_TITLES["name"]) & set(shown)
     rec = next(r for r in app.editor.detector_rows() if r["name"] == "red")
     app.editor.edit_detector(rec, "chs", "8, 9, 10")
     assert app.model.session.detectors["red"]["chs"] == [8, 9, 10]

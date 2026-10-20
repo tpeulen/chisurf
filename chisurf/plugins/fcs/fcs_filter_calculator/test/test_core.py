@@ -32,7 +32,8 @@ def test_manifest_and_entrypoints():
     here = pathlib.Path(__file__).resolve().parent.parent
     m = load_manifest(here / "manifest.json")
     assert m is not None and m.id == "fcs_filter_calculator"
-    assert m.menu_hidden is True
+    # Its own Spectroscopy > Correlation ribbon button since the FCS toolbox hub was dissolved.
+    assert m.menu_hidden is False
     assert m.entrypoints.cli and m.entrypoints.services
     names = {rpc.name for rpc in m.rpc_methods}
     assert {"fcs_filter.compute", "fcs_filter.compute_mfd_from_files"} <= names

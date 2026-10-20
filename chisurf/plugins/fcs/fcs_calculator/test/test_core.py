@@ -51,13 +51,14 @@ def test_inprocess_rpc_client_matches_core():
     assert abs(r["result"]["D_um2_s"] - direct["D_um2_s"]) < 1e-9
 
 
-def test_manifest_and_menu_hidden():
+def test_manifest_is_a_visible_ribbon_tool():
     from chisurf.core.plugin import load_manifest
 
     here = pathlib.Path(__file__).resolve().parent.parent
     m = load_manifest(here / "manifest.json")
     assert m is not None and m.id == "fcs_calculator"
-    assert m.menu_hidden is True
+    # Its own Spectroscopy > Correlation ribbon button since the FCS toolbox hub was dissolved.
+    assert m.menu_hidden is False
     names = {rpc.name for rpc in m.rpc_methods}
     assert "fcs_calculator.compute" in names
     assert m.entrypoints.cli  # CLI entrypoint declared

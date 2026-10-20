@@ -14,6 +14,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.plugins.burst.burst_h2mm.gui import result_view
 from chisurf.plugins.burst.burst_h2mm.gui.model import H2mmViewModel
 from chisurf.plugins.burst.burst_h2mm.gui.native import create_app
@@ -308,9 +309,10 @@ def test_the_detector_setup_is_the_shared_editor_and_edits_reach_the_model(app):
     drv = Driver(app)
     painter = tab(drv, "Detector setup")
     shown = texts(painter)
-    assert "Detector Name" in shown and "Channels" in shown, (
-        "the shared editor's detector table is not drawn"
-    )
+    # the detector table, under its full or narrow-host name header
+    assert (
+        set(ChannelDefinitionWidget.DETECTOR_TITLES["name"]) & set(shown) and "Channels" in shown
+    ), "the shared editor's detector table is not drawn"
     editor = app.editor
     rec = next(r for r in editor.detector_rows() if r["name"] == "green")
     editor.edit_detector(rec, "chs", "0, 1")

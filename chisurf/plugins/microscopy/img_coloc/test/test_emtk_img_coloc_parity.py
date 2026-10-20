@@ -41,8 +41,24 @@ QT_SPEC = json.loads((PLUGIN / "gui" / "coloc.view.json").read_text(encoding="ut
 BIG = (1200, 800)
 
 
+def _content_digest(path: Path) -> str:
+    """Streamed BLAKE2b of a file: constant memory however large the file is."""
+    import hashlib
+
+    digest = hashlib.blake2b()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def persistent_settings_state(root=None):
-    """Snapshot persistent files while ignoring only root logs and generated caches."""
+    """Snapshot persistent files while ignoring only root logs and generated caches.
+
+    Each file is recorded as ``(size, mtime_ns, content digest)``, never its bytes: the real
+    ``~/.chisurf`` holds gigabytes of structure caches and object-store blobs, and a snapshot
+    that kept them (taken at import and again in the last test) pushed the gate run into swap.
+    """
     import os
 
     root = Path(root) if root is not None else data._REAL_HOME / ".chisurf"
@@ -57,7 +73,7 @@ def persistent_settings_state(root=None):
                 continue
             path = Path(directory) / name
             stat = path.stat()
-            state[str(path)] = (stat.st_size, stat.st_mtime_ns, path.read_bytes())
+            state[str(path)] = (stat.st_size, stat.st_mtime_ns, _content_digest(path))
     return state
 
 
@@ -953,6 +969,19 @@ def test_the_views_get_the_space_and_the_settings_stay_beside_them(app, pair, si
 
 def test_zz_the_real_user_settings_were_never_touched():
     assert persistent_settings_state() == _REAL_BEFORE
+
+
+def test_the_settings_snapshot_holds_no_file_contents(tmp_path):
+    """A large file costs the snapshot a digest, not its bytes (the guard ran the gate into swap)."""
+    import sys
+
+    root = tmp_path / "user-settings"
+    root.mkdir()
+    (root / "blob.bin").write_bytes(b"\0" * (8 << 20))
+    state = persistent_settings_state(root)
+    assert sum(sys.getsizeof(field) for value in state.values() for field in value) < 4096
+    (root / "blob.bin").write_bytes(b"\1" * (8 << 20))
+    assert persistent_settings_state(root) != state
 
 
 def test_persistent_settings_guard_detects_actual_changes_and_ignores_generated_files(tmp_path):

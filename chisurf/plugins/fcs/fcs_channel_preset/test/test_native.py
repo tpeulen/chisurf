@@ -211,7 +211,10 @@ def test_actual_save_pointer_and_delayed_hover_tooltip(files):
     assert any("persist pairs" in s for s in painter.strings)
     app.pointer_press(x + w / 2, y + h / 2, LEFT_BUTTON)
     app.pointer_release(x + w / 2, y + h / 2, LEFT_BUTTON)
-    app.draw(RecordingPainter(), 0, 0, 1200, 800)
+    # A press and release between two frames reach two frames (emtk trickles the release
+    # into the frame after the press's), and the button fires on the release.
+    for _ in range(2):
+        app.draw(RecordingPainter(), 0, 0, 1200, 800)
     assert files[1].is_file()
     assert json.loads(files[1].read_text())["setups"]["bench"]["pairs"][0]["name"] == "GR"
 

@@ -6,9 +6,11 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from chisurf.core.fio.lut_context import clear_active_setup_lut, get_active_setup_lut
 from chisurf.core.setup_channel_definition import ChannelDefinition
+from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.plugins.emtk_layout import action_caption
 
 
@@ -379,7 +381,8 @@ def test_standalone_channel_editor_hover_help_and_populated_narrow_frame(tmp_pat
         app.io.mouse_pos = (-1.0, -1.0)
         narrow = RecordingPainter()
         app.draw(narrow, 0.0, 0.0, 320.0, 640.0)
-        assert "Detector Name" in narrow.strings
+        # a narrow host shows the short header (a long one kept the table scrolling sideways)
+        assert ChannelDefinitionWidget.DETECTOR_TITLES["name"][1] in narrow.strings
         assert "Channels" in narrow.strings
         preferences = app.export_settings()
         restored = create_app()
@@ -388,5 +391,31 @@ def test_standalone_channel_editor_hover_help_and_populated_narrow_frame(tmp_pat
             assert restored.get_settings()["detectors"]["green"]["mle_settings"] == {"keep": True}
         finally:
             restored.close()
+    finally:
+        app.close()
+
+
+@pytest.mark.parametrize("width", [430.0, 520.0])
+def test_a_narrow_host_shows_every_kept_detector_column_whole(tmp_path, width):
+    """Short headers in a narrow host: the long ones set the columns' least widths, and the
+    table kept scrolling sideways with its last button cell cut, however many columns it dropped."""
+    from chisurf.plugins.calculator.phasor_calculator.tests.driving import draw_clip
+    from chisurf.plugins.core.setup_channel_definition.gui.app import create_app
+
+    app = create_app(model=definition(file_path=tmp_path / "setups.json"))
+    try:
+        painter = draw_clip(app, (width, 900.0))
+        buttons = [
+            (rect, text, clip)
+            for rect, text, clip, _need in painter.shown
+            if text in {"G", "Del", "Calc G", "Delete"} and clip is not None and rect[1] > 200.0
+        ]
+        assert buttons, "the detector table's button cells were not drawn"
+        cut = [
+            f"{text!r} cell ends at {rect[0] + rect[2]:.0f}, its table at {clip[2]:.0f}"
+            for rect, text, clip in buttons
+            if rect[0] + rect[2] > clip[2] + 0.5
+        ]
+        assert not cut, cut
     finally:
         app.close()

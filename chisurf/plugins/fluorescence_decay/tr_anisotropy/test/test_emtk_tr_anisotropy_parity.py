@@ -588,7 +588,12 @@ def test_remove_selected_deletes_the_clicked_row_or_the_last_one(ui):
 
 def test_the_delete_key_removes_the_selected_row(ui):
     m = go(ui, "Components")
-    ui.click(ui.text_rect(ui.draw(), "0.28"))
+    painter = ui.draw()
+    _, y, _, _ = ui.text_rect(painter, "0.28")
+    # A click on a value cell opens it for typing (Delete then edits the text); the row's
+    # "#" cell is not editable and selects the row.
+    number = [t[:4] for t in painter.texts if t[5] == "1" and abs(t[1] - y) < 1.0]
+    ui.click(number[-1])
     ui.delete()
     assert m.rotation_spectrum == [[0.1, 10.0]]
 
