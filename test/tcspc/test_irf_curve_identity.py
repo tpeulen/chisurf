@@ -28,7 +28,6 @@ def group(monkeypatch):
     ]
     parent = ExperimentDataCurveGroup(curves, unique_identifier="irf-parent")
     monkeypatch.setattr(cs, "imported_datasets", [parent])
-    monkeypatch.setattr(macros, "_sync_editors", lambda fit: None)
     return parent, curves
 
 

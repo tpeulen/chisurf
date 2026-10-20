@@ -54,6 +54,7 @@ VISIBLE_CHILDREN = {
     "ndxplorer": "a standalone application; the ALEX suite embeds it as its E-S histogram.",
     "burst_fcs_correlator": "Burst-wise FCS is a burst-analysis step and its own Spectroscopy › "
     "Correlation tool (an FCS method).",
+    "zenodo_deposit": "its own Zenodo upload tool; Settings hosts only its upload-token panel.",
 }
 
 #: Hidden plugins with a GUI that no hub hosts, with the reason.

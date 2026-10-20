@@ -21,17 +21,17 @@ import chisurf as cs
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
-# The modules that call ``record_action`` directly (the audit-row writers).
-RECORD_SITES = (
-    "chisurf/core/agent/tools/fitting.py",
-    "chisurf/macros/core_fit.py",
-    "chisurf/macros/core_data.py",
-    "chisurf/gui/main.py",
-    "chisurf/gui/widgets/fitting/parameter_widgets.py",
-    "chisurf/gui/widgets/fitting/fit_controller.py",
-    "chisurf/emtk/fit_pages/pages/table_plot_emtk.py",
-    "chisurf/emtk/datasets.py",
+# The modules that call ``record_action`` directly (the audit-row writers),
+# discovered rather than listed: a fixed list went stale when the Qt shell
+# (``chisurf/gui/main.py`` and the Qt fitting widgets) was deleted.
+RECORD_SITES = tuple(
+    sorted(
+        str(path.relative_to(ROOT))
+        for path in (ROOT / "chisurf").rglob("*.py")
+        if "record_action(" in path.read_text(encoding="utf-8", errors="ignore")
+    )
 )
+
 
 NON_STATE_CLASSES = {"execution", "diagnostic"}
 
