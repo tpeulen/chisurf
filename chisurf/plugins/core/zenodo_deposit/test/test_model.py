@@ -437,3 +437,43 @@ def test_the_example_config_is_edited_and_saved_as_a_new_config(model, tmp_path)
     model.show_example()
     model.config_edit = json.dumps(dict(example, record="t4l-k60-n132c"))
     assert "exists already" in model.config_status  # another config is never overwritten
+
+
+def test_an_experiment_of_the_local_mmfdb_is_added_as_a_measurement(model, tmp_path):
+    raw = tmp_path / "lab" / "148L_tcspc_001.ptu"
+    raw.parent.mkdir()
+    raw.write_bytes(b"photons")
+
+    class Client:
+        def list_experiments(self):
+            return [{"experiment_id": "148L tcspc/001", "sample_id": "148L_65_141",
+                     "project_id": "demo", "started_at": "2026-06-11T09:15:00"}]
+
+        def get_experiment(self, exp_id):
+            return {"experiment_id": exp_id, "data": [
+                {"data_type": "tcspc", "storage_mode": "link", "file_path": str(raw)},
+                {"data_type": "spectra", "storage_mode": "embedded"}]}
+
+    model._mmfdb_factory = Client
+    model.select_record(model.records[0])
+    model.load_mmfdb()
+    _wait(model)
+    assert [r["sample"] for r in model.mmfdb_experiments] == ["148L_65_141"]
+    model.select_mmfdb_experiment(model.mmfdb_experiments[0])
+    assert model.enabled("add_from_mmfdb")
+    model.add_from_mmfdb()
+    _wait(model)
+    assert "measurements/148L_tcspc_001" in [i.id for i in model.record.items], model.message
+    assert (model.record.folder / "measurements/148L_tcspc_001/148L_tcspc_001.ptu").read_bytes() \
+        == b"photons"
+    assert "from mmfdb experiment 148L tcspc/001" in model.message
+
+
+def test_an_unreachable_mmfdb_says_so(model):
+    def down():
+        raise RuntimeError("timeout: no response within 5000ms")
+
+    model._mmfdb_factory = down
+    model.load_mmfdb()
+    _wait(model)
+    assert "did not answer" in model.message and model.mmfdb_experiments == []

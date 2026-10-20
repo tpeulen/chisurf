@@ -107,7 +107,8 @@ def _file_kind(name: str) -> str:
 class ZenodoDepositModel:
     """The records under a folder, the selected record's items and its gate."""
 
-    def __init__(self, client_factory=None, ndx_opener=None, runner=None) -> None:
+    def __init__(self, client_factory=None, ndx_opener=None, runner=None,
+                 mmfdb_factory=None) -> None:
         self.data_root = os.environ.get("MMFDB_DEPOSIT_ROOT", DEFAULT_ROOT)
         #: Where record build configs live (one JSON per record) and the commands
         #: that turn one into a record and then scan it. ``{config}`` and
@@ -155,6 +156,12 @@ class ZenodoDepositModel:
         self._client_factory = client_factory or (lambda base: ZenodoClient(base=base))
         #: ``opener(path)`` -- ndX's ``open_in_ndx`` unless a test supplies one.
         self._ndx_opener = ndx_opener
+        #: ``factory() -> client`` of the local mmfdb (``list_experiments``, ``get_experiment``);
+        #: the user editor's authenticated client unless a test supplies one.
+        self._mmfdb_factory = mmfdb_factory
+        #: The experiments of the local mmfdb (*From mmfdb*), and the one picked.
+        self.mmfdb_experiments: list[dict] = []
+        self.mmfdb_selected = ""
         self.refresh_records()
 
     # ── records under the root ───────────────────────────────────────────
@@ -302,6 +309,102 @@ class ZenodoDepositModel:
         self.refresh_records()
         self.message = (f"{r['item']}: {r['linked']} linked, {r['copied']} copied"
                         + (f", {r['present']} already there" if r["present"] else ""))
+
+    # ── step 2 from the local mmfdb ──────────────────────────────────────
+    def _mmfdb_client(self):
+        if self._mmfdb_factory is not None:
+            return self._mmfdb_factory()
+        from chisurf.plugins.core.user_editor.api.client import make_mmfdb_client
+
+        return make_mmfdb_client()
+
+    def load_mmfdb(self) -> None:
+        """List the experiments of the local mmfdb (on the worker: it is a server call)."""
+        def work():
+            client = self._mmfdb_client()
+            try:
+                return client.list_experiments()
+            finally:
+                getattr(client, "close", lambda: None)()
+
+        def done(rows):
+            self.mmfdb_experiments = [
+                {"id": str(e.get("experiment_id", "")), "sample": str(e.get("sample_id") or ""),
+                 "project": str(e.get("project_id") or ""),
+                 "started": str(e.get("started_at") or "")[:16].replace("T", " "),
+                 "by": str(e.get("measured_by_user_id") or ""),
+                 "device": str(e.get("measured_by_device_id") or ""),
+                 "detail": str(e.get("description") or e.get("details") or "")}
+                for e in rows or []]
+            self.message = f"{len(self.mmfdb_experiments)} experiment(s) in the local mmfdb"
+
+        def fail(exc):
+            self.mmfdb_experiments = []
+            self.message = (f"the local mmfdb did not answer ({exc}) -- start its server "
+                            "(MMFDB Admin) and load again")
+
+        self._busy("reading the local mmfdb")
+        self.job.start(work, done, fail)
+
+    def select_mmfdb_experiment(self, row: dict | None) -> None:
+        self.mmfdb_selected = row["id"] if row else ""
+
+    @staticmethod
+    def _mmfdb_path(entry: dict) -> Path | None:
+        """Where an experiment's data entry is on this machine: absolute, else under the
+        mmfdb object store. ``None`` for data held in the database itself."""
+        raw = entry.get("file_path") or entry.get("folder_path")
+        if not raw:
+            return None
+        p = Path(str(raw)).expanduser()
+        if p.is_absolute():
+            return p
+        try:
+            from chisurf.plugins.core.user_editor.api.client import mmfdb_settings
+
+            root = Path(str((mmfdb_settings().get("object_store") or {}).get("root", "objects")))
+        except Exception:  # noqa: BLE001 - no settings: the default store
+            root = Path("objects")
+        if not root.is_absolute():
+            root = Path.home() / ".chisurf" / "flr" / root
+        return root / p
+
+    def add_from_mmfdb(self) -> None:
+        """Add the picked experiment's data files as the item named in step 2 (its id when
+        none is named), with the same role and group as *Add files*."""
+        exp_id = self.mmfdb_selected
+        if not exp_id or self.record is None:
+            return
+
+        def work():
+            client = self._mmfdb_client()
+            try:
+                return client.get_experiment(exp_id) or {}
+            finally:
+                getattr(client, "close", lambda: None)()
+
+        def done(exp):
+            entries = exp.get("data") or []
+            paths = [self._mmfdb_path(e) for e in entries]
+            held = sum(1 for p in paths if p is None)
+            missing = [str(p) for p in paths if p is not None and not p.exists()]
+            found = [str(p) for p in paths if p is not None and p.exists()]
+            if missing or not found:
+                self.message = (f"{exp_id}: nothing added -- "
+                                + (f"not on this machine: {', '.join(missing[:3])}" if missing
+                                   else "no data files")
+                                + (f"; {held} entry(ies) held in the database" if held else ""))
+                return
+            if not self.add_name.strip():
+                self.add_name = re.sub(r"[^A-Za-z0-9._+-]", "_", exp_id)[:100]
+            self.add_paths(found)
+            self.message += f" (from mmfdb experiment {exp_id})"
+
+        def fail(exc):
+            self.message = f"could not read {exp_id} from the local mmfdb: {exc}"
+
+        self._busy(f"reading {exp_id} from the local mmfdb")
+        self.job.start(work, done, fail)
 
     def show_folder(self) -> None:
         """Open the record folder in the file manager (files dropped there count on Rescan)."""
@@ -1041,6 +1144,12 @@ class ZenodoDepositModel:
             return self.config_draft is not None
         if name == "create_record":
             return idle and not self.new_name_problem.startswith(("Type", "**"))
+        if name == "load_mmfdb":
+            return idle
+        if name == "add_from_mmfdb":
+            # the item name may be left empty: the experiment's id names it
+            return (idle and bool(self.mmfdb_selected) and self.record is not None
+                    and (self.add_role != "calibration" or bool(self.add_group.strip())))
         if name in ("add_files", "add_folder"):
             return idle and self._can_add()
         if name in ("show_folder", "scan_for_review"):

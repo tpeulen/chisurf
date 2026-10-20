@@ -209,6 +209,75 @@
                   ]
                 },
                 {
+                  "type": "panel",
+                  "title": "From mmfdb",
+                  "n_col": 1,
+                  "collapsible": true,
+                  "collapsed": true,
+                  "description": "Add an experiment of the local mmfdb: its data files go into the record as the item above (its id names it when Item is empty), as Measurement or Calibration.",
+                  "sections": [
+                    {
+                      "type": "button_row",
+                      "buttons": [
+                        {
+                          "action": "load_mmfdb",
+                          "label": "Load experiments",
+                          "description": "List the experiments of the local mmfdb (its server must run: MMFDB Admin)."
+                        },
+                        {
+                          "action": "add_from_mmfdb",
+                          "label": "Add experiment",
+                          "role": "primary",
+                          "description": "Put the selected experiment's data files into the record, hard-linked where they are on this disk. Data held inside the database (not as files) is not added."
+                        }
+                      ]
+                    },
+                    {
+                      "type": "custom",
+                      "key": "data_table",
+                      "description": "The experiments of the local mmfdb. Click one, then Add experiment.",
+                      "options": {
+                        "source": "mmfdb_experiments",
+                        "row_key": "id",
+                        "selected_call": "select_mmfdb_experiment",
+                        "editable": false,
+                        "fit_rows": true,
+                        "height": 200,
+                        "filter": true,
+                        "tooltip_key": "detail",
+                        "fit_columns": true,
+                        "min_column_width": 60,
+                        "columns": [
+                          {
+                            "key": "id",
+                            "title": "Experiment"
+                          },
+                          {
+                            "key": "sample",
+                            "title": "Sample"
+                          },
+                          {
+                            "key": "project",
+                            "title": "Project"
+                          },
+                          {
+                            "key": "started",
+                            "title": "Started"
+                          },
+                          {
+                            "key": "by",
+                            "title": "By"
+                          },
+                          {
+                            "key": "device",
+                            "title": "Device"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
                   "type": "custom",
                   "key": "code_editor",
                   "target": "record_tree",
