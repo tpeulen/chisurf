@@ -133,10 +133,10 @@
     "status": "ai-reviewed"
   },
   "10_lifetime_anisotropy_fitting.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "2b3f2c1a5ab0b1805979f87dc0c992d874e8322402ed7e8b26935b2740baa840",
+    "sha256": "13b8dba2900377f9eb17b0a66b09b84bb859e26a94c08ad63f160b9838ce770e",
     "status": "ai-reviewed"
   },
   "110_terminal.md": {
@@ -406,10 +406,10 @@
     "status": "ai-reviewed"
   },
   "48_regions.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "566b791b4f473fe7979a60a06931c95cd1ed409be4aff2ba6c87bcdd27e45deb",
+    "sha256": "dcf28dc835851323a2b2ee49a924a5024a2062169ea72e7ffad0c9c057280242",
     "status": "ai-reviewed"
   },
   "49_photon_by_photon_kinetics.md": {
@@ -420,17 +420,17 @@
     "status": "ai-reviewed"
   },
   "50_particle_tracking.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "aa7e87f200882aa293a43384332d5efc14a90ffa49e39454caa3e504ba7ba74a",
+    "sha256": "b0d14dd14ae6741eff5cc58ddb0d54781d12933cac65073d2191f9fd41ba4588",
     "status": "ai-reviewed"
   },
   "51_frc_resolution.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "030f9268e456773c363238e11acfbb4612592917bedde95cc18c708b4724b559",
+    "sha256": "82d5975e3f2e74c1b8787c8cea75c7b531a0783afffab9419933cab6a41c7fad",
     "status": "ai-reviewed"
   },
   "52_send_bursts_to_analysis.md": {
@@ -539,10 +539,10 @@
     "status": "ai-reviewed"
   },
   "67_number_and_brightness.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "c3045caaa8f9eab3f311fe0adf1ca39085d52e1cac4315c5ccc10076b02d4dfc",
+    "sha256": "22e43ef9f1d1767b43e087ceb9fa568ef61654c2c0c8714ec92648f54a781119",
     "status": "ai-reviewed"
   },
   "70_ask_the_documentation.md": {
@@ -553,17 +553,17 @@
     "status": "ai-reviewed"
   },
   "72_psf_calculator.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "ffb1eea9cc5775e9fc35606b40f98790e255ff53dc10f13c7ff5371363ec71e9",
+    "sha256": "798e4a981e4f13a9aee34e6d6f96f8b56cf25e134a7fa7f1816fbb8f7fa0901c",
     "status": "ai-reviewed"
   },
   "73_tttr_decay_and_correlation.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "76616bdbc1c899e7a5f0900958b406b95f809eafe4c66db6ed3266b35866b4e1",
+    "sha256": "1cae7d66a11d17c30c8dec96910e0a6b2f535410d7ad067ea3d62920019077cd",
     "status": "ai-reviewed"
   },
   "74_intensity_traces_and_file_tools.md": {
@@ -588,17 +588,17 @@
     "status": "ai-reviewed"
   },
   "77_phasor_calculator.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "643a0ae5bf4c5b3bda82105268fe47e59740fb834b848e1d4df20e4b0047c647",
+    "sha256": "0def93ed35e3bfa4d0b856d5e24bcfcb819b7b611e0a0280551e5e8526d5bb65",
     "status": "ai-reviewed"
   },
   "78_model_comparison_and_batch.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "1c289e6b6d0b7292a5095735f8af9fcc4b96cca0e146cdc481c32bfd826ad833",
+    "sha256": "c5cf3e5cecd2175442edc07c03b4f05b54763e047610945a429ca225880a8966",
     "status": "ai-reviewed"
   },
   "79_hydropro.md": {
@@ -637,10 +637,10 @@
     "status": "ai-reviewed"
   },
   "84_spot_finder.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "da400815f91a23b9d2b9b920f2202ab0cb7df357766a402a63bbc54ed67f4bcf",
+    "sha256": "f6eae552e1ce6913a567bc979f93a24d788abad4ba6115e752a48d930b948465",
     "status": "ai-reviewed"
   },
   "85_mfd_prepare.md": {
@@ -651,10 +651,10 @@
     "status": "ai-reviewed"
   },
   "86_image_browser.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "2116c5ff88ef744ad3fb6e8a7e6b9c355470c7f841f50d6aa09acdf9c3284d31",
+    "sha256": "e76a6c79f537b34da68b77614609a240d8e7e2b7f8e5a6f7f41af843f1805d15",
     "status": "ai-reviewed"
   },
   "87_channel_definition.md": {
@@ -665,10 +665,10 @@
     "status": "ai-reviewed"
   },
   "88_fret_docking.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "9f40432156b9af4e778aab3f4040849e6b58d29356b585d6e7a59c4a9ec5ea1c",
+    "sha256": "795e985cc9f9342ddfd16e9c8465819a1cf6dace35791d110e44a7cf6dae77f4",
     "status": "ai-reviewed"
   },
   "88_microtime_shifter.md": {
@@ -679,10 +679,10 @@
     "status": "ai-reviewed"
   },
   "89_microtime_histogram.md": {
-    "date": "2026-10-19",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "43a9847d88657fadcd7082a723066a85cf27dfb4ec7a6a92283c1b04ef169fb1",
+    "sha256": "a13cc8e891eab0ff81c619821eb4211fedf6f046fb0242b6a4eb5d991dc36732",
     "status": "ai-reviewed"
   },
   "90_updater.md": {
@@ -728,10 +728,10 @@
     "status": "ai-reviewed"
   },
   "96_plugin_check.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "ae407c5bcd004fb866d81eb430fd51117b36152e856c446a87d78328bd45322a",
+    "sha256": "411fece169af27f3d640a7d8d24c6a89670f8eb66daeed00258a666240e9b472",
     "status": "ai-reviewed"
   },
   "97_settings_hub.md": {
@@ -742,10 +742,10 @@
     "status": "ai-reviewed"
   },
   "98_clsm_generator.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "127eaa005a1450b117ed697fe73cf4e3f8c49686a983157743910eb12c82a894",
+    "sha256": "f0eef32a4787067d42ee370fc1d7e28cc32a791925eaf357779a3f90d0fddc8f",
     "status": "ai-reviewed"
   },
   "98_imaging_tools.md": {
@@ -756,10 +756,10 @@
     "status": "ai-reviewed"
   },
   "99_img_calibration.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "d8f3fe8325caf8bca278c7be243e2c7c0dfa6f0975f9a1406e154657fa9b3343",
+    "sha256": "a69af4f48a5fd471904aa71f1d92e4ace7bf82151271aefada66b4b0c0558672",
     "status": "ai-reviewed"
   },
   "fret_calibration.md": {

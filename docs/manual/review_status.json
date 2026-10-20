@@ -7,10 +7,10 @@
     "status": "ai-reviewed"
   },
   "analysis_dock.md": {
-    "date": "2026-10-19",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "eb7c7542f8b3d26cd050e4f66f2cba74bc60155539dec83f067b74e41b90c203",
+    "sha256": "fcc69a4345f78de2f44bf4f4afbb086d627c697880929396229eaaef400884b6",
     "status": "ai-reviewed"
   },
   "analysis_of_live_cell_experiments.md": {
@@ -315,10 +315,10 @@
     "status": "ai-reviewed"
   },
   "loading__plotting_data.md": {
-    "date": "2026-10-06",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "31cacbffabc6ce5b168649a994498a219db61d7a7398047428f73685ce34aa3d",
+    "sha256": "4eeee79d38b73400550779812f27c538e2779d90c8284c82a755f60ae5637082",
     "status": "ai-reviewed"
   },
   "loading_and_setting_up_the_egfp_data_set.md": {

@@ -91,10 +91,10 @@
     "status": "ai-reviewed"
   },
   "deconvolution.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "4e795fdac8d91f963fd0607fc3148df4b7eb5b03f50697e455d837a44c4af5cc",
+    "sha256": "7f6f7283d1458fb90621974c350e7fd8bea68e973f053b7a4c8aeb48614b24d3",
     "status": "ai-reviewed"
   },
   "density_clustering.md": {
@@ -259,10 +259,10 @@
     "status": "ai-reviewed"
   },
   "imaging_flim_phasor.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "0592c3661327011792cd78fe25ce6deae3c26ebfd47ad6178ff5746d82d17d4b",
+    "sha256": "c529c613478bfe5f36b066da333296017605325e571133f7d597b5f3ccc842d8",
     "status": "ai-reviewed"
   },
   "index.md": {
@@ -420,10 +420,10 @@
     "status": "ai-reviewed"
   },
   "point_spread_function.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "8378fc29da75c742bf59967f4a445994b5439e4e8959c9fe0227328bd3909d27",
+    "sha256": "ea6e84f9112f67996af330c3671dd9bce2f38e271954548e5690e21840c993c9",
     "status": "ai-reviewed"
   },
   "protein_monte_carlo.md": {
@@ -441,10 +441,10 @@
     "status": "ai-reviewed"
   },
   "region_properties.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "da59386723684125933ce31d47c89a53d912b9853cdd736fd8cdf9ac6082e30c",
+    "sha256": "7d1b9da1ae94fc09ea0e2368602fa0feea1f58a979d2fb837ff5e8920e0a65dd",
     "status": "ai-reviewed"
   },
   "scan_precision.md": {
@@ -462,10 +462,10 @@
     "status": "ai-reviewed"
   },
   "structure_trajectories.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "cfa161c9b1a20856a708788119362be8d779acc89268665117f374b02e472589",
+    "sha256": "3c22015f641e31ead096c76089fd4e42e12fbdd782b49ea9f530fbfdca51b640",
     "status": "ai-reviewed"
   },
   "super_resolution.md": {
