@@ -250,27 +250,33 @@
                         "columns": [
                           {
                             "key": "id",
-                            "title": "Experiment"
+                            "title": "Experiment",
+                            "description": "The mmfdb experiment id."
                           },
                           {
                             "key": "sample",
-                            "title": "Sample"
+                            "title": "Sample",
+                            "description": "The sample the experiment measured."
                           },
                           {
                             "key": "project",
-                            "title": "Project"
+                            "title": "Project",
+                            "description": "The project the experiment belongs to."
                           },
                           {
                             "key": "started",
-                            "title": "Started"
+                            "title": "Started",
+                            "description": "When the experiment started."
                           },
                           {
                             "key": "by",
-                            "title": "By"
+                            "title": "By",
+                            "description": "Who recorded the experiment."
                           },
                           {
                             "key": "device",
-                            "title": "Device"
+                            "title": "Device",
+                            "description": "The instrument the experiment was measured on."
                           }
                         ]
                       }
@@ -526,7 +532,8 @@
                     },
                     {
                       "action": "show_example",
-                      "label": "Example",
+                      "label": "Load example",
+                      "icon": "🧪",
                       "description": "Put an example config in the editor -- a real one, trimmed: one measurement, its setup and calibrations, the construct and the Zenodo block, each part with a _help note. Adapt it and Save config."
                     },
                     {
@@ -537,6 +544,7 @@
                     {
                       "action": "discard_config_edit",
                       "label": "Discard edits",
+                      "role": "danger",
                       "description": "Drop the edits; the editor shows the selected config again."
                     }
                   ]
