@@ -25,7 +25,7 @@ optimisers, and the stages declare the stored optimum as an extra start
 numbers move; ``REFIT`` pins them (the plan concept and ``okf/log.md`` list them beside the
 stored run's).
 
-Both are ``slow`` (minutes for (a), about an hour for (b) on 6 worker processes).
+Both are ``slow``: (a) about 4 minutes, (b) about two hours on 6 worker processes.
 """
 
 from __future__ import annotations
@@ -190,16 +190,25 @@ def test_the_stored_optimum_on_its_own_tables(golden):
     assert printed_mismatches(summary, golden) == []
 
 
-#: today's geometry, full run: per block (scale, low, high), model error, outlier sites,
-#: worst LOO site
-REFIT = {}
+#: today's geometry, full preset (64 random starts + the declared stored-run start): per block
+#: quench scale (best, 68 % low, high), model error, outlier sites, worst LOO site. The scale
+#: sits on its upper bound 10 for AF488 and Atto655, and delta on its bound or an offset-grid
+#: node: on the corrected geometry the declared bounds bind (see the plan concept).
+REFIT = {
+    "AF488 in H2O": (9.999930922685799, 7.1816404141318895, 10.000000000000002,
+                     0.2773148523539904, [], 211),
+    "Cy3B in H2O": (0.058437365872640985, 0.019204576710184332, 0.17781832849884918, 0.05,
+                    [], 95),
+    "Atto655 in D2O": (9.999930922685799, 8.829647609033929, 10.000000000000002,
+                       0.07714528110298623, [72, 95, 211, 219, 233], 219),
+    "Atto655 in D2O and H2O": (9.999930922685799, 8.84028667256224, 10.000000000000002,
+                               0.18054992490565375, [92], 92),
+}
 
 
 @pytest.mark.slow
 def test_the_refit_on_todays_geometry(golden):
-    if not REFIT:
-        pytest.skip("refit numbers not pinned yet")
-    result = st.Analysis(profile=True).run("all")
+    result = st.Analysis(profile=False).run("all")
     for label, (stage, block) in VIEWS.items():
         numbers = result.to_dict()["stages"][stage]["numbers"]["blocks"][block]
         scale = numbers["estimates"]["scale"]

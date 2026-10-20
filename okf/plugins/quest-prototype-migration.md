@@ -132,7 +132,8 @@ The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP6, WP7 (theor
    stamp), so a kernel rebuild without a reconfigure does **not** invalidate the cache: bump `site_table.SCHEMA` or clear the
    folder when a kernel changes. The labelled-residue cut keys on (chain, res_id) only, not the Bio.PDB hetero flag (no
    effect on MalE). The walk check is not `slow` (2 s), contrary to the plan's guess.
-1e. **In progress: WP4 (graph fit + stages + report). The interface for WP5/WP6 has landed (stable).**
+1e. **Done (engine) / open (science): WP4 graph fit + stages + report** (chisurf d465b4f8f interface, 5901dafa0 fast
+   `Site` de-duplication, 4ceaad395 fixes + reproduction, final commit pins the refit; mmfdb c190449). Interface stable:
    Files: `core/inference/{graph_fit,stages,report}.py`, `settings/analysis/{fit_parameters,stages,result_columns}.yaml`,
    `test/test_inference_graph_fit.py` (8 fast tests ~6 s, an analytic stand-in site model: truth recovery, outlier + LOO,
    propagation, profile, factor graph 48/20/3/18/2, stage plumbing, cancel, 2 worker processes = 1). mmfdb `c190449`
@@ -176,7 +177,36 @@ The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP6, WP7 (theor
      `profile_likelihood(view)` (a real profile: the block's sub-graph refitted at fixed scale values),
      `describe_graph(graph, titrated)` (IMP.bff `InferenceFactorGraph`). `report.explain/dye_line/summary_text/...` write
      the texts from the numbers.
-   **Open:** acceptance (a) on the 54 prototype tables and the refit (b) on today's geometry, `test_male_reproduction.py`.
+   Later additions: `graph_fit.settle/adopt`, `Block.add_start` (declared starts, `stages.yaml` `starts`, setting
+   `use_declared_starts`), `Analysis.replay(name, values, slopes)` / `solve_from`, `joint_fit(start=, minpack=)` +
+   `polish` (projected LM), site-table progress in `Analysis.run`, worker pools that hide `__main__` (plain scripts with
+   `workers > 1` need no main guard; subprocess test).
+   **(a) Measured** (`pytest -m slow test/test_male_reproduction.py -k stored_optimum`, 4 min, skips without
+   `~/dev/quest/prototype/cache`): at the stored optimum (blocks settled at the printed best fits + printed model
+   errors, joint fit polished from the printed parameters and slopes) on the 54 prototype tables every printed best fit
+   and 68 % end agrees to 4 decimals or within 0.3 % of the parameter's range, outlier sets exactly, LOO |z| within
+   0.15, K_graph within 0.002, naive 0.48 ns / 16 of 18, factor graph 48/20/3/18/2, graph sizes 41 and 19. Not compared:
+   "other regions possible" (needs the 64 searches), Stage B delta_static (not determined: drifts to its bound).
+   **Trap 1 (the search is not reproducible):** the 64 random starts of the stored seeds, on IMP.bff's L-BFGS-B, reach
+   other optima than the stored scipy run: AF488 scale 5.8 with 3 search outliers (stored 6.2, 4), Cy3B best log
+   posterior 25.0 (32.4 at the stored point; scale 0.22 vs 1.13), Stage B scale 3.3 (0.11); only Stage C lands in the
+   stored basin (s 0.107 vs 0.108, scale 0.11). Per-start the two optimisers are equally good (8 Cy3B starts compared);
+   the landscape has narrow basins. Hence the declared starts. A 256-start 30-iteration screen + polish still reached
+   only 26.2 for Cy3B. **Trap 2:** MINPACK (bounds transform) stopped with Atto655 static on its bound (joint cost 26.609
+   vs 26.601 at the stored optimum); restarts did not help (26.605), the projected LM polish from the stored point does.
+   **(b) Measured, refit on today's geometry** (`-k refit`, ~2.3 h on 6 workers; numbers pinned in `REFIT`, table in
+   [quenching inference](../../docs/concepts/quenching_inference.md) "MalE refit"): full / quick κ (68 %): AF488
+   10.0 (7.2–10) s 0.277 / 6.4 (3.0–10) s 0.131 (stored 6.2 (4.6–8.2)); Cy3B 0.058 (0.019–0.18) / 0.070 (0.021–0.24)
+   (stored 1.1 (0.19–6.7)); Atto655 D2O 10.0 (8.8–10) / 6.4 (4.9–8.5) (stored 0.111 (0.080–0.154)); Stage C 10.0
+   (8.8–10) / 10.0 (6.0–10) (stored 0.112 (0.080–0.157)); naive H2O 0.48 / 0.55 ns, 16 of 18; water-access r 0.49
+   (−0.29 without 322). Runtime full 8142 s, quick 1277 s (6 workers, loaded machine).
+   **What it blocks / next:** the refit is *not a result*: κ = 10 and δ = +2 (Atto655) are the upper bounds, δ = −1.0
+   (AF488 full, Atto655 quick) is a node of the δ interpolation (piecewise linear: kinks make local optima), static runs
+   to its bound. The bounds (`fit_parameters.yaml`: scale ≤ 10, delta −3…2) were set for the old frame where δ absorbed
+   the registration error. Owner decision needed: widen scale/delta (tables cover δ −4…+5), smooth the δ interpolation
+   (WP3 file), or reparametrise. WP6's "quick hits the bounds" is this, not the preset. Quick is still slow (1277 s): the
+   serial MINPACK stage dominates; next step is `joint_minpack: false` for quick (polish only, parallel Jacobians) and
+   the profile refits on the polish too. Stage C still does not narrow κ (Laplace factor 1.13 vs 1.13).
 1f. **Done: WP5 (headless surfaces, 2026-10-20), on the WP4 interface only.** One domain call,
    `core/runs.py: analyse(stages, data=, structures=, tables=, cache_dir=, preset=, fit_overrides=, workers=, profile=,
    output=, project_dir=, save_outputs=True, run_id=, progress=, cancel=, analysis=)` -> `{run_id, directory, files, result,

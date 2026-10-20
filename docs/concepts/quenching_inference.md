@@ -261,7 +261,12 @@ $\mathcal N(K_\text{mean}, K_\text{sd})$.
 1. **Search per block.** 64 L-BFGS-B starts (8 in the quick preset; the
    prototype's prose says 16, its code runs 64), uniform in the bounds, on a
    Student-t likelihood ($\nu$ = 3) with the model error $s$ free, plus the
-   ridge. A site the model cannot explain cannot drag the search.
+   ridge. A site the model cannot explain cannot drag the search. Declared
+   starts (the stored run's best fits) are searched as well. The landscape has
+   narrow basins, so which optimum 64 random starts reach depends on the
+   optimiser: with IMP.bff's L-BFGS-B the stored seeds miss the stored
+   Cy3B and Stage B basins (Cy3B best log posterior 25.0 against 32.4 at the
+   stored point).
 2. **Model error.** The measurement error alone is too small for a model with
    grid and side-chain approximations. $s$ solves
    $$
@@ -285,11 +290,18 @@ The Laplace intervals hold to the extent the posterior is Gaussian in $u$. An
 optional check samples the same local posterior with IMP.bff's stretch-move
 sampler ({ref}`concept-parameter-uncertainty`).
 
-**The "profile" of the quench scale is not a profile likelihood.** The
-histogram shown for it is $\exp$ of draws from the Laplace Gaussian of
-$\ln\kappa$, clipped to its bounds. It cannot show more than the Laplace sd
-already does. A real profile (re-optimising the other parameters along
-$\kappa$) is a separate computation.
+**The prototype's "profile" of the quench scale is not a profile likelihood.**
+Its histogram is $\exp$ of draws from the Laplace Gaussian of $\ln\kappa$,
+clipped to its bounds, and cannot show more than the Laplace sd already does.
+ChiSurf reports both: the Laplace draws, and a real profile likelihood. For the
+profile, the block's sub-graph (the block and the slopes it reads) is refitted
+at fixed $\kappa$ values, and the 68 % interval is where the deviance
+$2(\text{cost}-\text{cost}_\text{min})$ reaches 1.
+
+The joint fit runs MINPACK's Levenberg–Marquardt first. Its bounds transform
+can stop a parameter on a bound (Atto655's static strength at 0.001: cost
+26.609 against 26.601 at the stored optimum), so a projected
+Levenberg–Marquardt polish in the unit box finishes the fit.
 
 ## Leave-one-site-out
 
@@ -351,6 +363,40 @@ What the numbers say, and what they do not:
 - Few sites, many parameters: 9 sites × 2 structures leave several parameters
   not determined. That is a property of the data. Brightness (FCS) data would
   measure the dark fraction directly.
+
+## MalE refit on the corrected geometry
+
+The stored run's site tables came from an older accessible volume, in a grid
+frame that was off by up to 0.5 Å. On today's tables (current IMP.bff
+accessible volume, corrected frame), the stored parameters fit worse. For
+example, AF488's median |dev| rises from 0.047 to 0.165 ns. ChiSurf therefore
+refits. On the prototype's own tables, it reproduces the stored optimum
+(`test_male_reproduction.py`). The refit on today's tables gives these numbers
+(quench scale κ, 68 % Laplace interval):
+
+| data set | stored run (old tables) | refit, `full` preset | refit, `quick` preset |
+|---|---|---|---|
+| AF488 H₂O | 6.2 (4.6–8.2), s 0.050, outliers 92 219 233 | 10.0 (7.2–10), s 0.277, none | 6.4 (3.0–10), s 0.131, 92 219 233 |
+| Cy3B H₂O | 1.1 (0.19–6.7), s 0.050, none | 0.058 (0.019–0.18), s 0.050, none | 0.070 (0.021–0.24), s 0.050, 95 |
+| Atto655 D₂O (B) | 0.111 (0.080–0.154), s 0.065, 211 219 322 | 10.0 (8.8–10), s 0.077, 72 95 211 219 233 | 6.4 (4.9–8.5), s 0.050, 211 233 322 |
+| Atto655 D₂O + H₂O (C) | 0.112 (0.080–0.157), s 0.108, 322 | 10.0 (8.8–10), s 0.181, 92 | 10.0 (6.0–10), s 0.165, 92 211 233 |
+
+**These refits are not a result yet:**
+
+- κ sits on its upper bound (10) for AF488 and Atto655.
+- δ sits on its upper bound or exactly on a tested offset (Atto655 δ = 2.0;
+  AF488 δ = −1.0, the linear interpolation in δ has kinks there).
+- The static strength of Atto655 runs to its bound too.
+
+The declared bounds were set for the old frame, where δ absorbed the
+registration error, and they bind on the corrected geometry. The full and quick
+presets also land in different optima, so the posterior is strongly multimodal
+on these tables. Widening the κ and δ ranges, and smoothing the δ
+interpolation, are open decisions.
+
+The naive H₂O test is unchanged (median |dev| 0.48 ns, 16 of 18 sites above
+τ₀(H₂O)). Stage C still does not narrow the scale. Water-access r is 0.49 with
+all sites and −0.29 without 322; the stored run did not print it.
 
 ## Assumptions
 
