@@ -280,7 +280,7 @@ accessible volume ({doc}`23_accessible_volume`).
 (headless)=
 ## Headless
 
-Every panel is backed by a Qt-free view model in
+Every panel is backed by a UI-free view model in
 `chisurf/plugins/traj/<tool>/view_model.py`. The panel only sets its fields and
 calls its action. The geometry is in `chisurf.core.structure.trajectory_data`.
 This script ran on the example data:
@@ -321,7 +321,7 @@ fret.forster_radius, fret.tau0, fret.t_step = 52.0, 4.0, 1.0
 table = fret.calc("t4l_36_132.csv")   # frame, time, RDA, kappa, kappa2, kFRET
 ```
 
-It prints a median RMSD of 3.86 Å, 762 kept frames and ⟨κ²⟩ = 0.574. The other
+On the example, `np.median(rmsd)` is 3.86 Å, 762 frames are kept and ⟨κ²⟩ of `t4l_36_132.csv` is 0.574. The other
 view models follow the same pattern: `MDConverterViewModel.convert()`,
 `JoinTrajectoriesViewModel.save_joined(path)`,
 `RotateTranslateViewModel.save_rotated_translated(path)`,

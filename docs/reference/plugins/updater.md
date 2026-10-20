@@ -72,7 +72,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Theory** — [The application shell: settings, interface, account, help and hubs](/concepts/application_shell.md)
+- **Theory** — [The application shell: settings, interface, account and help](/concepts/application_shell.md)
 - **Workflow** — [Updating ChiSurf (Updater)](/guides/90_updater.md), [The Settings window: one list, every settings panel](/guides/97_settings_hub.md)
 
 ## Source

@@ -72,8 +72,8 @@ they are discovered automatically because `Model` derives from
 `FittingParameterGroup`, so nothing has to be registered by hand. `lb`/`ub` only
 take effect when `bounds_on=True`.
 
-The compute model and its editor are deliberately separate: models stay
-Qt-free and the editor is generated from a `.view.json` view spec (set `view_spec_file` on the
+The compute model and its editor are deliberately separate: models hold
+no UI code and the editor is generated from a `.view.json` view spec (set `view_spec_file` on the
 class). See {doc}`/development/index` for that framework.
 
 ### 1.2 Make it importable

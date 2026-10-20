@@ -24,31 +24,76 @@ Computed per-event observables of an analysis -- the feature vocabulary behind b
 
 | Item | Type | Description |
 |---|---|---|
+| `_flr_analysis_feature.analysis_block` | text | Data set of a graph fit: the measured lifetimes of one dye in the listed solvents, e.g. 'Atto655 in D2O and H2O'. |
+| `_flr_analysis_feature.analysis_graph` | code | Name of the declared graph a quantity was fitted in: one joint solve of several data sets that share titration slopes (a quenching analysis' stage declaration). |
 | `_flr_analysis_feature.area` | int | Region area, pixels. |
+| `_flr_analysis_feature.bimolecular_quenching_constant` | float | Bimolecular (collisional) quenching constant kq = K_SV / tau0 of a dye-quencher pair, in 1e9/(M s) = 1/(M ns). Negative values are recorded as measured; they are not quenching. |
+| `_flr_analysis_feature.bimolecular_quenching_constant_sd` | float | Standard deviation of the bimolecular quenching constant kq, 1e9/(M s). |
 | `_flr_analysis_feature.centroid_col` | float | Column coordinate of a region's centroid, pixels. |
 | `_flr_analysis_feature.centroid_row` | float | Row coordinate of a region's centroid, pixels. |
 | `_flr_analysis_feature.circularity` | float | 4*pi*area/perimeter^2 of a region; 1 for a disc. |
 | `_flr_analysis_feature.confidence_sigma` | float | Significance of the event's photon excess over the locally measured background, in standard deviations (0 when the engine does not provide it). |
 | `_flr_analysis_feature.count_rate_khz` | float | Selected photons per duration, kilohertz (-1.0 for an empty selection). |
+| `_flr_analysis_feature.dark_fraction` | float | Fraction of a dye ensemble that is dark: quenched below the shortest measurable lifetime, or statically quenched, so it does not contribute to the measured lifetime. |
+| `_flr_analysis_feature.day_to_day_error_abs` | float | Absolute part of the day-to-day error of a Stern-Volmer constant, 1/M: the scatter between days beyond each day's regression error, shared by all titrations of an analysis. |
+| `_flr_analysis_feature.day_to_day_error_rel` | float | Relative part of the day-to-day error of a Stern-Volmer constant, as a fraction of K_SV, shared by all titrations of an analysis. |
 | `_flr_analysis_feature.diffusion_time_mean` | float | Mean FCS diffusion time in milliseconds: the weighted mean of a diffusion-time distribution, or the fitted time in a single-component diffusion fit. Recorded separately for each channel pair. |
 | `_flr_analysis_feature.diffusion_time_peak` | float | Peak FCS diffusion time in milliseconds: the time at the maximum of the reported diffusion-time distribution, or the fitted time in a single-component diffusion fit. Recorded separately for each channel pair. |
 | `_flr_analysis_feature.duration_ms` | float | Time between the event's first and last selected photon, milliseconds (-1.0 for an empty selection). |
 | `_flr_analysis_feature.eccentricity` | float | Eccentricity of the ellipse with the region's second moments; 0 for a disc. |
+| `_flr_analysis_feature.estimate_note` | text | Note on a parameter estimate: not determined (the interval spans most of the range), at the edge of its range, other regions possible (another near-optimal search lies outside the interval), fixed, or derived from the residuals. |
 | `_flr_analysis_feature.file_name` | line | Name of the measurement file the event's photons belong to. |
 | `_flr_analysis_feature.first_photon` | int | Index of the event's first photon in the measurement's photon stream (per detector: first photon of that detector within the event; -1 when the detector saw none). |
 | `_flr_analysis_feature.id` | int |  |
+| `_flr_analysis_feature.inlier_flag` | boolean | True when the measurement entered the joint fit, i.e. it was not flagged as an outlier by the robust search. |
 | `_flr_analysis_feature.intensity_max` | float | Maximum intensity of the region in the underlying intensity image, counts. |
 | `_flr_analysis_feature.intensity_mean` | float | Mean intensity of the region in the underlying intensity image, counts. |
+| `_flr_analysis_feature.interval_method` | code | How an interval was obtained: laplace (16 and 84 % of the Gaussian at the best fit) or profile (where the profile deviance reaches 1). |
 | `_flr_analysis_feature.last_photon` | int | Index of the event's last photon, inclusive (-1 when the selection is empty). |
+| `_flr_analysis_feature.leave_one_out_coverage` | float | Fraction of left-out measurements that lie inside their one-standard-deviation error bar of the prediction from the others (about 0.68 for honest error bars). |
+| `_flr_analysis_feature.leave_one_out_z` | float | Leave-one-out deviation of a measurement in standard deviations: measured minus predicted value when the measurement is left out of the fit, divided by the combined error. |
+| `_flr_analysis_feature.lifetime_error_total` | float | Measurement error and model error of a lifetime added in quadrature, ns: how far a measured point may lie from its prediction. |
+| `_flr_analysis_feature.lifetime_point_count` | int | Number of lifetime measurements that contribute to a statistic or a fitted line. |
+| `_flr_analysis_feature.lifetime_series_count` | int | Number of solvent series (one labelled site and state measured at several heavy-water fractions) that contribute to a statistic. |
+| `_flr_analysis_feature.ligand_state` | code | Conformational or ligand-binding state of the labelled macromolecule a measurement was taken in, e.g. APO (ligand-free) or HOLO (ligand-bound). |
+| `_flr_analysis_feature.log_posterior` | float | Natural logarithm of the (unnormalised) posterior density a fit or a search reached. |
 | `_flr_analysis_feature.mean_macro_time_ms` | float | Midpoint of the first and last selected photon's macro times, milliseconds. A midpoint, not a photon-weighted mean -- inherited from the reference .bur format. |
 | `_flr_analysis_feature.mean_micro_time_ns` | float | Mean TCSPC micro time of the selected photons, nanoseconds (-1.0 when empty or the micro-time resolution is unknown). |
+| `_flr_analysis_feature.measured_lifetime` | float | Average fluorescence lifetime of a dye on a labelled site, ns, as measured (or read from the site's solvent line at a given solvent composition). |
+| `_flr_analysis_feature.measured_lifetime_sd` | float | Measurement error (standard deviation) of a measured site lifetime, ns. |
+| `_flr_analysis_feature.measurement_date` | int | Calendar day a measurement was taken, written as yyyymmdd (e.g. 20260826). Distinguishes repeated titrations or series of the same sample. |
+| `_flr_analysis_feature.measurement_relative_scatter` | float | Relative error of one lifetime measurement around its solvent line, in percent of the lifetime: the site's own scatter mixed with the dye's typical scatter. |
+| `_flr_analysis_feature.model_error` | float | Model error of a lifetime prediction, ns: the error added in quadrature to the measurement error so that the residuals are consistent with their errors. |
 | `_flr_analysis_feature.n_photons` | int | Number of selected photons in the event (0 for an empty selection). |
+| `_flr_analysis_feature.outlier_flag` | boolean | True when the measurement, left out of the fit, is predicted more than the outlier limit (in error bars) off. |
+| `_flr_analysis_feature.outlier_sites` | text | Labelled sites flagged as outliers, space separated. |
 | `_flr_analysis_feature.perimeter` | float | Region perimeter, pixels. |
 | `_flr_analysis_feature.pixel_col` | int | Column index of a pixel in an image analysis. |
 | `_flr_analysis_feature.pixel_number` | int | Flattened pixel index, row * line_length + column. |
 | `_flr_analysis_feature.pixel_row` | int | Row (line) index of a pixel in an image analysis. |
+| `_flr_analysis_feature.predicted_lifetime` | float | Average fluorescence lifetime of a dye on a labelled site predicted by a quenching model, ns. |
+| `_flr_analysis_feature.predicted_lifetime_high` | float | Predicted lifetime plus its standard deviation, ns. |
+| `_flr_analysis_feature.predicted_lifetime_low` | float | Predicted lifetime minus its standard deviation, ns. |
+| `_flr_analysis_feature.predicted_lifetime_sd` | float | Standard deviation of a predicted site lifetime from the parameter uncertainty, ns. |
+| `_flr_analysis_feature.profile_deviance` | float | Profile deviance of a parameter held at a value: twice the increase of the least-squares cost over its minimum when every other parameter is refitted; 1 bounds the 68 % interval. |
 | `_flr_analysis_feature.region_label` | int | Integer label of a segmented region in a label image. |
+| `_flr_analysis_feature.relative_scatter_leave_one_out` | float | Root-mean-square leave-one-out residual of single lifetime measurements around their solvent lines, as a fraction of the lifetime, on the scale of the pooled scatter. |
+| `_flr_analysis_feature.relative_scatter_pooled` | float | Pooled residual scatter of single lifetime measurements around their solvent lines, as a fraction of the lifetime (residual sum of squares over the pooled degrees of freedom). |
+| `_flr_analysis_feature.relative_scatter_robust` | float | Robust scatter of single lifetime measurements, as a fraction of the lifetime: 1.4826 times the median absolute leave-one-out residual, not moved by one bad series. |
+| `_flr_analysis_feature.search_rank` | int | Rank of one optimiser search among all searches of a multistart fit, 1 for the best log posterior. |
 | `_flr_analysis_feature.solidity` | float | Region area divided by its convex-hull area. |
+| `_flr_analysis_feature.solvent_exposure` | float | Solvent exposure of a dye position: the fraction of probe points on a sphere around the dye centre (dye radius plus a water radius) that are not covered by atoms of the macromolecule (Shrake-Rupley). |
+| `_flr_analysis_feature.solvent_isotope` | code | Isotopic form of the solvent a quantity refers to: H2O (normal water) or D2O (heavy water). Heavy water does not quench most dyes, so the pair separates water quenching from quenching by the macromolecule. |
+| `_flr_analysis_feature.stern_volmer_constant` | float | Stern-Volmer constant K_SV of a dye-quencher pair, 1/M: the slope of tau0/tau - 1 (or F0/F - 1) against the quencher concentration. |
+| `_flr_analysis_feature.stern_volmer_constant_sd` | float | Standard deviation of the Stern-Volmer constant K_SV, 1/M (the regression error of one line, or the posterior standard deviation when several days are combined). |
+| `_flr_analysis_feature.stickiest_residue_group` | code | Residue group (aromatic, hydrophobic, basic, acidic, polar) with the smallest determined slow factor, i.e. the group a dye sticks to most. |
+| `_flr_analysis_feature.titration_day_count` | int | Number of independent titration days (separate samples and stock solutions) that contribute to a quenching constant. |
+| `_flr_analysis_feature.water_access` | float | Water access of a labelled site: (1/tau(H2O) - 1/tau(D2O)) divided by the free dye's water quenching rate. 1 means as exposed to water as the free dye, 0 fully shielded. |
+| `_flr_analysis_feature.water_access_model` | float | Water access of a labelled site from a model: (1/tau_H2O - 1/tau_D2O) of the predicted lifetimes divided by the free dye's water quenching rate; 1 means as accessible as the free dye. |
+| `_flr_analysis_feature.water_access_model_sd` | float | Standard deviation of the model water access, propagated from the fit's covariance. |
+| `_flr_analysis_feature.water_access_sd` | float | Standard deviation of the water access of a labelled site. |
+| `_flr_analysis_feature.water_quenching_rate` | float | Water quenching rate kq_w of a dye, 1/ns: the slope of the decay rate 1/tau against the fraction of normal water (H2O) in an H2O/D2O mixture. |
+| `_flr_analysis_feature.water_quenching_rate_sd` | float | Standard deviation of the water quenching rate kq_w, 1/ns. |
 
 ## `_flr_fit_parameter`
 
@@ -186,6 +231,7 @@ Fit/model parameters, by registry key. This category holds the parameters a fitt
 | `_flr_fit_parameter.iw` | float | Width parameter of the synthetic IRF model. |
 | `_flr_fit_parameter.k2` | float | Orientation factor governing dipole-dipole coupling in FRET. |
 | `_flr_fit_parameter.kQ` | float | Fit parameter kQ. |
+| `_flr_fit_parameter.kQ_sd` | float | Standard deviation of the contact quenching rate kQ, 1/ns. |
 | `_flr_fit_parameter.l` | float | Model parameter l used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. |
 | `_flr_fit_parameter.l1` | float | Model parameter l1 used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. |
 | `_flr_fit_parameter.l2` | float | Model parameter l2 used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. |
@@ -215,6 +261,8 @@ Fit/model parameters, by registry key. This category holds the parameters a fitt
 | `_flr_fit_parameter.pureB` | float | Model parameter pureB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. |
 | `_flr_fit_parameter.pxl_dur` | float | Fit parameter pxl_dur. |
 | `_flr_fit_parameter.pxl_size` | float | Fit parameter pxl_size. |
+| `_flr_fit_parameter.quench_contact_offset` | float | Offset added to the dye-quencher contact distances of the quenching model, angstroms. |
+| `_flr_fit_parameter.quench_scale` | float | Common scale factor on a dye's contact quenching rates kQ of all quenching residue types (dimensionless). |
 | `_flr_fit_parameter.r0` | float | Frster radius R0 of the donor-acceptor pair. |
 | `_flr_fit_parameter.r_experimental` | float | Uncorrected experimental steady-state anisotropy from the raw parallel/perpendicular counts (rE of the BIFL export). |
 | `_flr_fit_parameter.r_scatter` | float | Scatter-corrected steady-state anisotropy derived from a polarised MLE (rS of the BIFL export). |
@@ -237,11 +285,21 @@ Fit/model parameters, by registry key. This category holds the parameters a fitt
 | `_flr_fit_parameter.rics_tauT` | float | Triplet/blinking correlation time τ_T in milliseconds. |
 | `_flr_fit_parameter.rics_w_r` | float | Radial waist of the detection PSF in µm. |
 | `_flr_fit_parameter.rics_w_z` | float | Axial waist of the detection PSF in µm. |
+| `_flr_fit_parameter.rotamer_weight` | float | Weight (0..1) of the side-chain rotamer ensemble of the quenching residues against their crystal positions. |
 | `_flr_fit_parameter.s` | float | Fit parameter s. |
 | `_flr_fit_parameter.sc` | float | Relative amplitude of a prompt scattering contribution that is added to the model decay. |
+| `_flr_fit_parameter.shield_lifetime_increment` | float | Lifetime increment of a dye shielded from the solvent, ns: the unquenched lifetime is tau0 + increment x (1 - solvent exposure). |
+| `_flr_fit_parameter.slow_factor_acidic` | float | Slow factor (0..1) of a dye near acidic residues (Asp, Glu). |
+| `_flr_fit_parameter.slow_factor_aromatic` | float | Slow factor (0..1) of a dye near aromatic residues (Trp, Tyr, His): the factor by which the dye's mobility is reduced within the slow radius. Smaller is stickier. |
+| `_flr_fit_parameter.slow_factor_basic` | float | Slow factor (0..1) of a dye near basic residues (Lys, Arg). |
+| `_flr_fit_parameter.slow_factor_common` | float | Common stickiness (slow factor, 0..1) of a dye on a macromolecular surface: the prior centre of the per-group slow factors. Smaller is stickier. |
+| `_flr_fit_parameter.slow_factor_hydrophobic` | float | Slow factor (0..1) of a dye near hydrophobic residues (Phe, Leu, Ile, Val, Met, Ala, Pro). |
+| `_flr_fit_parameter.slow_factor_polar` | float | Slow factor (0..1) of a dye near polar residues (Ser, Thr, Asn, Gln, Gly, Cys). |
 | `_flr_fit_parameter.slowf` | float | Model parameter slowf used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. |
 | `_flr_fit_parameter.soft_bifl_scatter` | int | fit23-family MLE setting: whether the scatter fraction was fitted softly (1) or held (0); echoed per row in BIFL-style exports. |
 | `_flr_fit_parameter.start` | float | Start time (or channel) of the fit/convolution window. |
+| `_flr_fit_parameter.static_quench_offset` | float | Offset of the contact distance of the static quenching channel, angstroms. |
+| `_flr_fit_parameter.static_quench_strength` | float | Strength of the static (dark-complex) quenching channel of a dye-quencher contact (dimensionless). |
 | `_flr_fit_parameter.stop` | float | Stop time (or channel) of the fit/convolution window. |
 | `_flr_fit_parameter.t0` | float | Fluorescence lifetime or characteristic decay time of this component. |
 | `_flr_fit_parameter.tBg` | float | Measurement time of the background acquisition. |
@@ -552,50 +610,55 @@ Data items describing a column in a burst-analysis artifact (.bur, .bg4, .br4, .
 
 | Item | Type | Description |
 |---|---|---|
-| `_mmfdb_burst_column.count_rate_khz` | float |  |
-| `_mmfdb_burst_column.duration_green_ms` | float |  |
-| `_mmfdb_burst_column.duration_ms` | float |  |
-| `_mmfdb_burst_column.duration_red_ms` | float |  |
+| `_mmfdb_burst_column.count_rate_khz` | float | Total burst count rate, N / Duration, in kHz. |
+| `_mmfdb_burst_column.duration_green_ms` | float | Macro-time span of the green-detector photons within the burst. t_last(green) - t_first(green). Sentinel -1.0 when the burst has no green photons. This is the Tg in the ndx equation Tg-Tr(ms) = Duration(green) - Duration(red). It is a macro-time (burst) duration, NOT a TCSPC micro-time difference. |
+| `_mmfdb_burst_column.duration_ms` | float | Macro-time span of the entire burst, t_last - t_first, in milliseconds. |
+| `_mmfdb_burst_column.duration_red_ms` | float | Macro-time span of the red-detector photons within the burst. t_last(red) - t_first(red). Sentinel -1.0 when the burst has no red photons. This is the Tr in Tg-Tr(ms). |
 | `_mmfdb_burst_column.f_aexc_aem` | int | Acceptor-excitation acceptor-emission integrated counts (ALEX). |
 | `_mmfdb_burst_column.f_aexc_dem` | int | Acceptor-excitation donor-emission integrated counts (ALEX). |
 | `_mmfdb_burst_column.f_dexc_aem` | int | Donor-excitation acceptor-emission integrated counts (ALEX). |
 | `_mmfdb_burst_column.f_dexc_dem` | int | Donor-excitation donor-emission integrated counts (ALEX). |
-| `_mmfdb_burst_column.first_photon` | int |  |
-| `_mmfdb_burst_column.gamma_green` | float |  |
-| `_mmfdb_burst_column.green_count_rate_khz` | float |  |
-| `_mmfdb_burst_column.last_photon` | int |  |
+| `_mmfdb_burst_column.first_photon` | int | Index of the first photon in the burst within the TTTR event stream. |
+| `_mmfdb_burst_column.gamma_green` | float | Detection-efficiency correction factor gamma from the Fit2x fit. |
+| `_mmfdb_burst_column.gamma_red` | float | Detection-efficiency correction factor gamma of the red-channel Fit2x fit. |
+| `_mmfdb_burst_column.green_count_rate_khz` | float | Green-detector count rate within the burst. Primary input to the ndx Sg equation and all downstream intensity-FRET derivations. |
+| `_mmfdb_burst_column.last_photon` | int | Index of the last photon in the burst (inclusive). |
 | `_mmfdb_burst_column.mean_macro_time_green_ms` | float | Midpoint of green-detector photon macro-time span within burst. |
-| `_mmfdb_burst_column.mean_macro_time_ms` | float |  |
+| `_mmfdb_burst_column.mean_macro_time_ms` | float | Midpoint of the burst's first and last photon macro times, (t_first + t_last) / 2, in ms. Despite the name this is a midpoint, not a photon-weighted mean. |
 | `_mmfdb_burst_column.mean_macro_time_red_ms` | float | Midpoint of red-detector photon macro-time span within burst. |
-| `_mmfdb_burst_column.mean_microtime_green_ns` | float |  |
-| `_mmfdb_burst_column.mean_microtime_red_ns` | float |  |
-| `_mmfdb_burst_column.mle_fitted_green` | int |  |
+| `_mmfdb_burst_column.mean_microtime_green_ns` | float | Mean TCSPC micro-time of the green-detector photons, converted to nanoseconds via micro_time_resolution. Sentinel -1.0 when no green photons or unknown resolution. |
+| `_mmfdb_burst_column.mean_microtime_red_ns` | float | Mean TCSPC micro-time of the red-detector photons, in nanoseconds. Sentinel -1.0 when no red photons or unknown resolution. |
+| `_mmfdb_burst_column.mle_fitted_green` | int | 1 if the Fit2x MLE fit converged for this burst on the green channel, 0 if it was skipped or failed. Failed fits write NaN in every numeric result column; this flag distinguishes "not attempted" from "attempted and produced a number". |
 | `_mmfdb_burst_column.mle_fitted_red` | int | 1 if the Fit2x fit converged for red, 0 otherwise. |
-| `_mmfdb_burst_column.n_photons` | int |  |
-| `_mmfdb_burst_column.n_photons_green` | int |  |
-| `_mmfdb_burst_column.n_photons_red` | int |  |
+| `_mmfdb_burst_column.n_photons` | int | Total photon count in the burst across all detectors. |
+| `_mmfdb_burst_column.n_photons_green` | int | Photon count in the burst on the green-detector routing channels. |
+| `_mmfdb_burst_column.n_photons_red` | int | Photon count in the burst on the red-detector routing channels. |
 | `_mmfdb_burst_column.phasor_g` | float | Phasor coordinate g (real part, cosine transform) of a pixel's or a burst's decay. |
 | `_mmfdb_burst_column.phasor_g_green` | float | Phasor coordinate g (real part, cosine transform) of the green channel of a pixel's or a burst's decay. |
 | `_mmfdb_burst_column.phasor_g_red` | float | Phasor coordinate g (real part, cosine transform) of the red channel of a pixel's or a burst's decay. |
 | `_mmfdb_burst_column.phasor_s` | float | Phasor coordinate s (imaginary part, sine transform) of a pixel's or a burst's decay. |
 | `_mmfdb_burst_column.phasor_s_green` | float | Phasor coordinate s (imaginary part, sine transform) of the green channel of a pixel's or a burst's decay. |
 | `_mmfdb_burst_column.phasor_s_red` | float | Phasor coordinate s (imaginary part, sine transform) of the red channel of a pixel's or a burst's decay. |
-| `_mmfdb_burst_column.proximity_ratio` | float |  |
+| `_mmfdb_burst_column.proximity_ratio` | float | Raw proximity ratio Nr / (Ng + Nr), uncorrected for background, leakage, or gamma. Distinct from the ndx-derived 'Proximity ratio' equation (which uses Sr and Sg). |
 | `_mmfdb_burst_column.r0_green` | float | Fundamental anisotropy r0 from the Fit2x fit. |
+| `_mmfdb_burst_column.r0_red` | float | Fundamental anisotropy r0 of the red-channel Fit2x fit. |
 | `_mmfdb_burst_column.r_experimental_green` | float | Experimental steady-state anisotropy of the green channel from Fit2x. |
 | `_mmfdb_burst_column.r_experimental_red` | float | Experimental steady-state anisotropy of the red channel from Fit2x. |
 | `_mmfdb_burst_column.r_scatter_green` | float | Scatter-reference anisotropy for the green channel from Fit2x. |
 | `_mmfdb_burst_column.r_scatter_red` | float | Scatter-reference anisotropy for the red channel from Fit2x. |
 | `_mmfdb_burst_column.rda` | float | Dye-to-dye distance from Fit2x MLE fit. Input to ndx Rapp and kFRET. |
-| `_mmfdb_burst_column.red_count_rate_khz` | float |  |
+| `_mmfdb_burst_column.red_count_rate_khz` | float | Red-detector count rate within the burst. Primary input to the ndx Sr equation. |
 | `_mmfdb_burst_column.rho_green` | float | Rotational correlation time rho from the Fit2x fit. |
+| `_mmfdb_burst_column.rho_red` | float | Rotational correlation time rho of the red-channel Fit2x fit. |
 | `_mmfdb_burst_column.s_delayed_yellow` | float | Red-detector rate in delayed micro-time window. Input to ndx Sy(PIE). |
 | `_mmfdb_burst_column.s_prompt_green` | float | Green-detector rate in prompt micro-time window. Input to ndx Sg(PIE). |
 | `_mmfdb_burst_column.s_prompt_red` | float | Red-detector rate in prompt micro-time window. Input to ndx Sr(PIE). |
 | `_mmfdb_burst_column.tau` | float | Burst mean lifetime used as time base for ALEX rate equations. |
-| `_mmfdb_burst_column.tau_green` | float |  |
+| `_mmfdb_burst_column.tau_green` | float | Fluorescence-weighted donor (green) lifetime from burst-wise Fit2x MLE. Primary lifetime input to ndx Var_tauD(A)), E_tau, and the FRET-line equations. |
+| `_mmfdb_burst_column.tau_red` | float | Fluorescence-weighted acceptor (red) lifetime from burst-wise Fit2x MLE on the red detection channels: the red counterpart of Tau (green). |
 | `_mmfdb_burst_column.td_mean` | float | Mean diffusion time from FCS/td4 companion analysis. |
-| `_mmfdb_burst_column.two_istar_green` | float |  |
+| `_mmfdb_burst_column.two_istar_green` | float | Corrected intensity 2I* from the Fit2x fit -- the quality-of-fit likelihood ratio metric. |
+| `_mmfdb_burst_column.two_istar_red` | float | Corrected intensity 2I* of the red-channel Fit2x fit -- the quality-of-fit likelihood ratio metric of Tau (red). |
 
 ## `_mmfdb_column`
 
@@ -684,7 +747,7 @@ Output columns computed by the ndx equation engine from input columns and consta
 | `_mmfdb_derived_column.fr` | float | Sr - Br - alpha*Sg. Corrected red signal. |
 | `_mmfdb_derived_column.fr_alex` | float | Sr(ALEX) - Br - alpha*Sg(ALEX). |
 | `_mmfdb_derived_column.fr_pie` | float | Sr(PIE) - Br - alpha*Sg(PIE). |
-| `_mmfdb_derived_column.fret_efficiency` | float |  |
+| `_mmfdb_derived_column.fret_efficiency` | float | (1 + Fd/Fa * PhiA/PhiD)^(-1). Intensity-based FRET efficiency. |
 | `_mmfdb_derived_column.fy_alex` | float | Sy(ALEX) - By. |
 | `_mmfdb_derived_column.fy_pie` | float | Sy(PIE) - By. |
 | `_mmfdb_derived_column.inv_sensitivity` | float | 1 / (1 - E * (1 - gG/gR * PhiD/PhiA)). |
@@ -733,7 +796,7 @@ Output columns computed by the ndx equation engine from input columns and consta
 | `_mmfdb_derived_column.tau_phi_green` | float | s corr (green) / (omega*g corr (green)), omega = 2*pi*f_rep*harmonic. Apparent phase lifetime. |
 | `_mmfdb_derived_column.tau_phi_red` | float | s corr (red) / (omega*g corr (red)), omega = 2*pi*f_rep*harmonic. Apparent phase lifetime. |
 | `_mmfdb_derived_column.td_` | float | Alias for td_mean. |
-| `_mmfdb_derived_column.tg_tr_ms` | float |  |
+| `_mmfdb_derived_column.tg_tr_ms` | float | Duration(green) - Duration(red). Burst macro-time duration difference between green and red detectors. NOT a micro-time difference. |
 | `_mmfdb_derived_column.total_rate` | float | Green Count Rate + Red Count Rate. |
 | `_mmfdb_derived_column.total_rate_alex` | float | Sg(ALEX) + Sr(ALEX). |
 | `_mmfdb_derived_column.var_e` | float | Var_tauD(A)) / tauD0^2. FRET-efficiency variance. |

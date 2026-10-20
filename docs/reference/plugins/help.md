@@ -41,7 +41,7 @@ This plugin's window is an EMTK app without declarative parameter sections: its 
 
 ## Theory and workflow
 
-- **Theory** — [The application shell: settings, interface, account, help and hubs](/concepts/application_shell.md)
+- **Theory** — [The application shell: settings, interface, account and help](/concepts/application_shell.md)
 - **Workflow** — [Asking the documentation](/guides/70_ask_the_documentation.md)
 
 ## Source
