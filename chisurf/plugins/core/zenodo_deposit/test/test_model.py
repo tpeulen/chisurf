@@ -94,7 +94,7 @@ def _wait(m: ZenodoDepositModel) -> None:
 
 def test_an_unscanned_folder_is_listed_and_scanned_on_open(model):
     assert model.records == [{"name": "t4l-demo", "state": "not scanned", "review": "",
-                              "remote": ""}]
+                              "remote": "", "pick": False}]
     model.select_record(model.records[0])
     assert [r["id"] for r in model.items][:2] == [
         "measurements/2014-08-12_7.5M-urea",
@@ -477,3 +477,28 @@ def test_an_unreachable_mmfdb_says_so(model):
     model.load_mmfdb()
     _wait(model)
     assert "did not answer" in model.message and model.mmfdb_experiments == []
+
+
+def test_the_record_table_says_what_is_uploaded_and_uploads_the_checked(model, fake):
+    test_review_opens_the_gate_and_upload_reaches_a_verified_draft(model, fake)
+    model.refresh_records()
+    (row,) = model.records
+    assert row["upload"] == "✓ uploaded, current" and row["last"]
+    model.pick_record(row, "pick", True)
+    assert model.upload_checked_label() == "Upload / update checked (0 of 1)"
+    assert not model.enabled("upload_checked")  # current: nothing to send
+    model.record.metadata["description"] = "Demo record, described better."
+    from mmfdb.deposit.record import refresh_metadata_item
+
+    refresh_metadata_item(model.record)
+    model.record.approve("Zenodo metadata", by="tester")
+    model.record.save()
+    model.refresh_records()
+    (row,) = model.records
+    assert row["upload"] == "changed since upload" and row["pick"]
+    assert model.enabled("upload_checked")
+    model.upload_checked()
+    _wait(model)
+    assert "t4l-demo: update ok" in model.message, model.message
+    model.refresh_records()
+    assert model.records[0]["upload"] == "✓ uploaded, current"

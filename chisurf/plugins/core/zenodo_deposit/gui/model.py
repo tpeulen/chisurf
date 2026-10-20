@@ -30,6 +30,7 @@ from mmfdb.deposit import (
     compare,
     credentials,
     publish,
+    record_status,
     reserve_doi,
     upload_history,
     upload_kind,
@@ -127,6 +128,8 @@ class ZenodoDepositModel:
         self.add_role = "measurement"
         self.add_name = ""
         self.add_group = ""
+        #: The records checked in the record table (*Upload / update checked*).
+        self.picked: set[str] = set()
         #: Which of the three publish questions is up (0: none).
         self.publish_stage = 0
         #: The measurements whose calibrations the review table shows (row keys).
@@ -174,26 +177,92 @@ class ZenodoDepositModel:
                 rec = DepositRecord.load(p)
             except (ValueError, OSError) as exc:
                 self._records.append({"name": p.name, "state": f"unreadable: {exc}",
-                                      "review": "", "remote": ""})
+                                      "review": "", "remote": "", "pick": False})
                 continue
             self._records.append(self._record_row(rec))
         unscanned = [d for d in sorted(root.iterdir()) if d.is_dir()
                      and not (root / f"{d.name}.deposit.json").exists()] if root.is_dir() else []
         for d in unscanned:
             self._records.append({"name": d.name, "state": "not scanned", "review": "",
-                                  "remote": ""})
+                                  "remote": "", "pick": False})
+        for row in self._records:
+            row["pick"] = row["name"] in self.picked
+
+    #: What the Upload column says for each upload_kind: is it on Zenodo, and as what.
+    UPLOAD_STATUS = {"new": "not uploaded", "update": "changed since upload",
+                     "current": "✓ uploaded, current", "new version": "published",
+                     "no package": "no package yet"}
 
     @staticmethod
     def _record_row(rec: DepositRecord) -> dict:
+        st = record_status(rec)
         c = rec.counts()
-        b = blockers(rec)
-        return {"name": rec.name,
-                "state": "cleared for upload" if not b else f"{len(b)} blocking",
+        return {"name": rec.name, "pick": False,
+                "state": "cleared for upload" if st["gate"] == "cleared" else st["gate"],
                 "review": f"{c['approved']}/{len(rec.items)} approved"
                           + (f", {c['rejected']} rejected" if c["rejected"] else ""),
-                "remote": (f"draft {rec.remote['deposition_id']}"
-                           if rec.remote.get("deposition_id") else "not uploaded")
-                          + (" (published)" if rec.remote.get("doi") else "")}
+                "remote": (f"draft {st['deposition']}" if st["state"] == "draft" else
+                           f"published {st['deposition']}" if st["state"] == "published"
+                           else "not uploaded"),
+                "upload": ZenodoDepositModel.UPLOAD_STATUS.get(st["upload"], st["upload"]),
+                "kind": st["upload"],
+                "doi": st["doi"] or (f"{st['reserved_doi']} (reserved)" if st["reserved_doi"]
+                                     else ""),
+                "last": st["last_upload"] + (f" ({st['uploads']}×)" if st["uploads"] > 1 else ""),
+                "detail": (f"md5 {st['md5']}" if st["md5"] else "no package built")
+                          + (f"; last upload {st['last_upload']}" if st["last_upload"] else "")}
+
+    # ── several records at once ──────────────────────────────────────────
+    def pick_record(self, row: dict, key: str, value) -> None:
+        """The record table's check box: pick a record for *Upload checked*."""
+        (self.picked.add if value else self.picked.discard)(row["name"])
+        row["pick"] = bool(value)
+
+    def _picked_uploads(self) -> list[str]:
+        """The checked records an upload would change: cleared, and not current."""
+        return [r["name"] for r in self._records
+                if r["name"] in self.picked and r.get("state") == "cleared for upload"
+                and r.get("kind") in ("new", "update", "new version")]
+
+    def upload_checked_label(self) -> str:
+        n, m = len(self._picked_uploads()), len(self.picked)
+        return f"Upload / update checked ({n} of {m})" if m else "Upload / update checked"
+
+    def upload_checked(self) -> None:
+        """Upload every checked record that is cleared and not current, one after another.
+
+        Each goes as what it needs (a new draft, an update, a new version); a
+        record that is current or not cleared is left and said.
+        """
+        names = self._picked_uploads()
+        skipped = sorted(self.picked - set(names))
+        make = self._client()
+        root = Path(self.data_root)
+
+        def work():
+            done = []
+            for i, name in enumerate(names, 1):
+                rec = DepositRecord.load(root / name)
+                kind = upload_kind(rec)
+                self.busy_step = f"{i}/{len(names)}: {name} ({kind})"
+                try:
+                    upload(rec, make())
+                    done.append(f"{name}: {kind} ok")
+                except Exception as exc:  # noqa: BLE001 - reported per record
+                    done.append(f"{name}: {kind} FAILED ({exc})")
+                finally:
+                    rec.save()
+            return done
+
+        def finish(lines):
+            self.refresh_records()
+            if self.record is not None:
+                self.record = DepositRecord.load(self.record.folder)
+            self.message = "; ".join(lines + ([f"left: {', '.join(skipped)} (current or not "
+                                                "cleared)"] if skipped else []))
+
+        self._busy(f"uploading {len(names)} record(s) to Zenodo")
+        self.job.start(work, finish, lambda exc: setattr(self, "message", f"upload failed: {exc}"))
 
     @property
     def records(self) -> list[dict]:
@@ -1168,6 +1237,8 @@ class ZenodoDepositModel:
             r, meta = self.open_record.remote, self.open_record.item(METADATA_ITEM)
             return (not r.get("reserved_doi") and not r.get("doi")
                     and meta.status == "approved" and not meta.errors)
+        if name == "upload_checked":
+            return idle and bool(self.token_source) and bool(self._picked_uploads())
         if name == "upload_draft":
             return (has_rec and idle and bool(self.token_source) and not blockers(self.record)
                     and upload_kind(self.record) != "current")

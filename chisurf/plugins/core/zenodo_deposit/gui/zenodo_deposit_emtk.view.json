@@ -27,32 +27,71 @@
         "min_column_width": 80,
         "columns": [
           {
+            "key": "pick",
+            "title": "✓",
+            "editable": true,
+            "width": 30,
+            "tooltip": "Check records to upload or update together (Upload / update checked)."
+          },
+          {
             "key": "name",
             "title": "Record",
-            "width": 320,
             "tooltip": "The record folder: one Zenodo entry, uploaded as one archive."
           },
           {
             "key": "review",
             "title": "Review",
-            "width": 170,
             "tooltip": "How many items are approved."
           },
           {
             "key": "state",
             "title": "Gate",
-            "width": 160,
             "tooltip": "Cleared for upload, or how many things still block it."
+          },
+          {
+            "key": "upload",
+            "title": "Upload",
+            "background": {
+              "✓ uploaded, current": "#2e6b3a",
+              "changed since upload": "#7a5a12"
+            },
+            "tooltip": "Is it on Zenodo: not uploaded, ✓ uploaded and current (this package and metadata), changed since upload (an update is due), or published."
           },
           {
             "key": "remote",
             "title": "Zenodo",
-            "width": 160,
-            "tooltip": "The draft this record was uploaded to, if any."
+            "tooltip": "The draft (or published record) it went to."
+          },
+          {
+            "key": "doi",
+            "title": "DOI",
+            "tooltip": "The published DOI, or the one reserved before publishing."
+          },
+          {
+            "key": "last",
+            "title": "Last upload",
+            "tooltip": "When it was last uploaded (and how often)."
           }
         ],
-        "fit_rows": true
+        "fit_rows": true,
+        "edited_call": "pick_record",
+        "tooltip_key": "detail",
+        "fit_columns": true
       }
+    },
+    {
+      "type": "button_row",
+      "key": "upload_checked_row",
+      "description": "Upload the checked records that are cleared and not current: each as a new draft, an update, or a new version.",
+      "buttons": [
+        {
+          "action": "upload_checked",
+          "label": "Upload / update checked",
+          "label_source": "upload_checked_label",
+          "role": "primary",
+          "description": "Upload every checked record that is cleared and changed since its last upload (or never uploaded), one after another. Nothing is published."
+        }
+      ]
     },
     {
       "type": "tabs",
