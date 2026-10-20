@@ -311,9 +311,8 @@ duplicates.
 
 **`../imp-tricks`** — a pure-Python tree that grafts itself into the `IMP`
 namespace at import time through its `sitecustomize.py`. It is **not** specific
-to `IMP.bff`: `cgmol`, `finite` and `speciation` are its own IMP
-namespaces. (`IMP.swarm` was one until 2026-10-20; it is CeCILL and now its own
-package, `../imp-swarm`, optional and not bundled.) Its role is to add features to IMP without waiting on a C++ build,
+to `IMP.bff`: `cgmol`, `finite`, `speciation` and `swarm` are its own IMP
+namespaces. Its role is to add features to IMP without waiting on a C++ build,
 and the layering is deliberate.
 
 **`../chisurf`** — the application. GUI, projects, plugins, orchestration. It is

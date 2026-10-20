@@ -10,17 +10,15 @@ timestamp: 2026-10-20T23:00:00+02:00
 
 ## Where to pick this up
 
-1. Open: **IMP.swarm — split out, 2026-10-20 (owner: "imp-tricks is not imp.bff — separate out").** It is
-   now its own package, **imp-swarm** (`~/dev/imp-swarm`, local repo, no remote yet; `CECILL-2.0`, the
-   official CeCILL v2.0 en+fr texts; history of its 58 files kept via filter-repo). Commits: imp-swarm
-   `5986873`, imp-tricks `9631f9e` (removal + `test_no_cecill_code_ships_here`), chimol `92b106a`
-   (demo names the missing package; frozen fallback logs why). The import name `IMP.swarm` survives
-   through a `.pth`-installed finder (`src/_imp_swarm_path.py`). ChiSurf imports it nowhere; the
-   installer bundles imp-tricks only, held by `test_stack_licences.py::test_the_installer_does_not_bundle_imp_swarm`.
-   **Open (owner decision):** should the installer ever ship imp-swarm? CeCILL is a GPL-compatible
-   copyleft, so shipping it means its text and source beside the installer, like IMP.bff. Until
-   decided, the installed app's biofilm demo shows the frozen run. Also open: a remote for imp-swarm,
-   and whether its provenance (translated vs. written from the papers) should be settled anyway.
+1. Done: **IMP.swarm is MIT, part of imp-tricks (owner, 2026-10-20); the CeCILL note was wrong.**
+   Owner: "self developed, but inspired by the biodyn thingi (iDynoMiCS), no copy." IMP.swarm is an
+   independent implementation inspired by the iDynoMiCS-2 biofilm model (Cockx et al. 2024); no
+   iDynoMiCS code was taken, parity checks compare behaviour only. A same-day split into a CeCILL
+   package (imp-tricks `9631f9e`, chisurf `e71aa6908`, chimol `92b106a`) was reverted by forward
+   commits: imp-tricks `7d8ed87` (files back, CeCILL line → MIT + origin note, "Maps to …java"
+   docstrings reworded, guard `tests/test_licence.py::test_no_file_names_another_licence_for_imp_tricks_code`),
+   chimol `38f3dd6` (kept only the logged frozen-copy fallback). `~/dev/imp-swarm` is now redundant;
+   deleting it is the owner's call.
 2. Measure: **the first tagged release with the IMP.bff sdist step** (not yet run on CI). Owner
    decision 2026-10-20: "sdist beside installer" (LGPL 2.1 §6). `build_imp_bff_sdist`
    (build_tools/build_installer.py) resolves the bundled IMP.bff version (`imp-bff` metadata; an IMP

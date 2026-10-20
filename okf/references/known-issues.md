@@ -13,12 +13,10 @@ status: open
   did not settle because each needs an owner decision, not an edit. Re-sweep a repository with
   `git ls-files | xargs grep -IlE 'GPL|General Public|MPL-2|Mozilla Public|CeCILL'` (skip `junk/`,
   lock files, `.ipynb`).
-- **IMP.swarm in imp-tricks — resolved 2026-10-20 by separation (owner decision).** IMP.swarm (CeCILL
-  v2 docs, an iDynoMiCS-2 reimplementation) left the MIT imp-tricks (`9631f9e`) for its own package
-  imp-swarm (`~/dev/imp-swarm`, CECILL-2.0, history kept). Optional for ChiMOL's biofilm demo (chimol
-  `92b106a`), not bundled by the installer; guards: imp-tricks `tests/test_licence.py`, chisurf
-  `test/test_stack_licences.py::test_the_installer_does_not_bundle_imp_swarm`. Still open: whether the
-  installer should ever ship it ([licence concept](../subsystems/licence-mit.md) item 1).
+- **IMP.swarm licence — withdrawn 2026-10-20 (owner).** IMP.swarm is MIT and part of imp-tricks; the
+  "licensed under CeCILL v2" line in its docs was wrong. It is self-developed, inspired by the iDynoMiCS-2
+  model, with no code copied. The CeCILL split was reverted (imp-tricks `7d8ed87`); guard
+  `tests/test_licence.py` in imp-tricks. [Licence concept](../subsystems/licence-mit.md) item 1.
 - **tttrlib: Apache-2.0 attribution — resolved 2026-10-20, tttrlib `c43d77919`.** `PhotonscoreD7.h/.cpp`
   port photonscore/d7 (Apache-2.0, Copyright 2026 Photonscore GmbH) and alex1075/photonsfile (MIT,
   Copyright (c) 2026 Alex Hunt). Both files now carry the upstream notices and a "MODIFIED by the
