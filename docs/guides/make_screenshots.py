@@ -64,6 +64,56 @@ def _grab_ndx_overlay_axes():
             tool.close()
 
 
+def _grab_parameter_link_menu():
+    """Grab the parameter link menu of the emtk shell for the linking reference.
+
+    Two FCS fits (Kristine_with_error and the FCS demo, the general diffusion
+    model); the link menu of the first fit's N is opened from its parameter
+    table with *Link N to* and the second fit expanded, then the Analysis dock and
+    the open menu are cropped out of the 1500x950 shell.
+    """
+    import io
+    import sys
+
+    from PIL import Image
+
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
+    from screenshots.shell_driver import idle, shell
+
+    from chisurf.core.experiments.fcs.demo import DEMO, make_demo
+    from chisurf.emtk.model_sections import LinkMenu
+    from test.native_emtk.test_emtk_shell_fits import KRISTINE, MODEL, _add_fit, _load
+
+    driver, wait = shell(size=(1500, 950))
+    app = driver.app
+    _load(driver, app, KRISTINE)
+    first = _add_fit(driver, app)
+    _load(driver, app, make_demo(), DEMO["experiment"], DEMO["reader"])
+    result = app.data.session.api.add_fit(
+        [len(app.data.datasets.datasets) - 1], model_name=MODEL
+    )
+    wait(lambda: idle(app) and result.get("uid") in app.data.windows)
+    app.data.show_fit(first)
+    wait(lambda: idle(app) and app.data.analysis.info)
+    fits: list = []
+    app.data.read_fits_for_links(fits.extend)
+    wait(lambda: idle(app) and fits)
+    record = next(p for p in app.data.analysis.parameters if p["name"] == "N")
+    views = app.data.editor.sections
+    menu = LinkMenu(views, record, fits, (150.0, 812.0))
+    views.dialogs.append(menu)
+    link_to = menu.panel.entries[0]
+    link_to.open = True
+    link_to.entries[1].open = True
+    driver.frame(4)
+    driver.hover((1400.0, 900.0))
+    driver.frame(3)
+    image = Image.open(io.BytesIO(driver.screenshot()))
+    image.crop((0, 520, 1000, 950)).save(FIG / "parameter_link_menu.png")
+    app.close()
+    print("wrote parameter_link_menu.png")
+
+
 def _grab_burst_browser():
     """Guide 28: the native Burst Browser on the real sm-DNA burst folder, histogram of E."""
     from emtk.testing import Driver
@@ -947,62 +997,19 @@ def _grab_irf_estimator():
 
 
 def _grab_console():
-    """The console answering a question about two fits that were really run.
+    """``console.png`` of guide 59: delegated to ``guides_56_65._grab_59_console``.
 
-    The console echoes nothing on its own -- the prompt shows whatever is in
-    the input buffer -- so a transcript has to be "typed" into the buffer
-    before each line is executed, or the figure shows bare ``In []:`` prompts.
+    That recipe asks ``api`` about a fit the shell really ran; the older body here set
+    ``cs.fits`` by hand and overwrote the guide's figure on every bulk run.
     """
-    import chisurf
-    from chisurf.core.fluorescence.decay_fit_model import build_lifetime_fit
-    n, dt = 512, 0.0323
-    t = np.arange(n) * dt
-    irf = np.exp(-0.5 * ((t - 1.0) / 0.12) ** 2)
-    irf /= irf.sum()
-    rng = np.random.default_rng(7)
-    fits = []
-    for name, tau in (("Donor-only", 3.8), ("FRET-high", 1.6)):
-        conv = np.convolve(np.exp(-t / tau), irf)[:n]
-        decay = rng.poisson(3.0e4 * conv / conv.max() + 5.0).astype(float)
-        fit = build_lifetime_fit(
-            decay, bin_width=dt, irf=irf, n_components=2,
-            start_bin=int(1.2 / dt), stop_bin=n - 1,
-        )
-        fit.data.name = name
-        fit.run()
-        fits.append(fit)
-    chisurf.fits = fits
+    import sys
 
-    # The emtk shell's console (the Qt Chinsole is legacy), hosted alone on the frame loop.
-    from emtk.app import ImApp
-    from emtk.testing import Driver
+    shots = str(pathlib.Path(__file__).resolve().parent / "screenshots")
+    if shots not in sys.path:
+        sys.path.insert(0, shots)
+    import guides_56_65
 
-    from chisurf.emtk.console import ShellConsole
-
-    tmp = pathlib.Path(tempfile.mkdtemp(prefix="chisurf_console_"))
-    console = ShellConsole({"cs": chisurf, "np": np}, history_path=tmp / "history.txt",
-                           session_file=tmp / "session.py")
-    size = (1000, 320)
-
-    def gui() -> None:
-        console.draw((0, 0, *size))
-        console.draw_overlays((0, 0, *size))
-
-    driver = Driver(ImApp(gui), size)
-    driver.frame(2)
-    for line in (
-        "cs.fits",
-        "fit = cs.fits[0]",
-        "fit.chi2r",
-        "[(f.name, round(f.chi2r, 3)) for f in cs.fits]",
-        "sorted(fit.model.parameters_all_dict)[:6]",
-    ):
-        console.execute(line)
-        driver.frame(2)
-    console.set_input("")  # leave the prompt bare, as a user would after running the lines
-    driver.frame(2)
-    driver.screenshot(FIG / "console.png")
-    print("wrote console.png", flush=True)
+    guides_56_65._grab_59_console()
 
 
 def _simulate_us_alex(path, *, frac_high=0.5, seed=11, duration=25.0):
@@ -1657,6 +1664,7 @@ def _grab_fret_line_tool():
 def main():
     """Generate all guide screenshots."""
     for grab in (
+        _grab_parameter_link_menu,
         _grab_burst_browser,
         _grab_2cde_tool,
         _grab_coloc_tool,

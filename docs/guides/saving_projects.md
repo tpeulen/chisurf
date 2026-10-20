@@ -8,12 +8,11 @@ tags: [guides, database, mmfdb]
 # Saving and reopening projects
 
 ```{warning}
-This replacement is still undergoing acceptance testing. Fresh independent
-review reproduced public API guard/UID ownership gaps, attachment loss on file
-resave, rejected shipped TTTR/DEER readers, forced local import authentication
-and non-atomic browser export. Preserve the original raw data and existing
-analysis files; do not rely on the new project snapshot as the sole copy of an
-analysis until those gates and independent review pass.
+The project format is pre-release and still being tested. Known gaps include
+attachments lost when a file is saved again, shipped readers (TTTR, DEER)
+whose state a project refuses to save, and a browser export that is not atomic. Keep the
+raw data and your analysis files; do not rely on a project file as the only
+copy of an analysis.
 ```
 
 A project saves the scientific session, not just the selected fit: imported
@@ -31,7 +30,7 @@ remote client settings, ordinary Save stores a project version there. A
 standalone service on localhost counts as a configured deployment; the
 hostname alone does not distinguish it from the desktop seed. Connection,
 authentication and storage errors are reported, not silently redirected to a
-local file. **Save As** remains the explicit portable-file operation.
+local file. **Export Project…** is the explicit portable-file operation.
 
 ## Save a portable project
 
@@ -80,7 +79,7 @@ Before a nonempty project is discarded, ChiSurf offers:
 Cancelling the save-file chooser or encountering a save error also keeps the
 session open. The same decision protects project replacement and reset.
 
-## In the native window
+## The File menu
 
 The ChiSurf window has the same **File** menu and shortcuts: **Save Project**
 (`Ctrl+S`), **Export Project…** (`Ctrl+Shift+S`, save under a new file), **Open
@@ -95,8 +94,8 @@ then removes the fit.
 **File ▸ Fits** saves and loads single fits: **Current Fit**
 (`Ctrl+Alt+S`), **All Fits** and **Load Fit** (see
 [Saving & exporting the results](../manual/saving__exporting_the_results.md)).
-**Macro ▸ Record** and **Macro ▸ Run Macro…** are described in
-[the console guide](59_console.md). Undo and redo cover the session since it
+**Macro ▸ Record** and **Macro ▸ Run Macro…** record console commands as a macro and run one (see
+[the console guide](59_console.md)). Undo and redo cover the session since it
 was opened; the undo history is not written into the project file.
 
 ## Failures do not mean an empty project
@@ -109,12 +108,6 @@ failed validation or replacement preserves the previous valid file.
 The current pre-release project schema is version 5. Old `.csp`/ZIP projects
 and earlier project schemas are not supported by this replacement. Do not
 rename an old archive to `.cs.pto` to try to convert it.
-
-For architecture and verification details, see the project-persistence record
-in `okf/subsystems/project-persistence.md`.
-
-The native Project Browser starts at 1200×800. Its project, version and artifact
-views use the same persisted data; a saved custom window size takes precedence.
 
 ## Theory
 

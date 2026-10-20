@@ -217,3 +217,5 @@ calltips, paging, inline figures. All of them are documented in
 - Guide: {doc}`110_terminal` — panes, splits, shell panes.
 - Concept: {doc}`../concepts/terminal` — what runs where, and the security note.
 - Tool: the **Code Editor** (`chisurf/plugins/core/code_editor/`).
+- The console itself: `chisurf/emtk/console.py` (the dock) on
+  `chisurf/core/console/` (the interpreter).

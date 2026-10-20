@@ -183,23 +183,38 @@ next potential to add.
 
 1. **Trajectory**, **Topology**.
 2. Pick a potential in the combo and set its parameters in the box below it,
-   set **Weight**, then **➕ Add**. The table lists the potentials added, and a
+   set **Weight**, then **Add**. The table lists the potentials added, and a
    double-click removes one.
-3. **Stride**, then **⚙ Process** and choose the output file.
+3. **Stride**, then **Process** and choose the output file.
 
-Only **Radius of Gyration**, **Clash potential** and **Ramachandran** run on a
-trajectory at present (see [Known defects](#known-defects)). On the example,
-the radius of gyration is 15.9 Å (15.3–16.4 Å over the frames). `FrameNbr` is
-1-based: at stride 10 the rows are 1, 11, 21, …, which are source frames 0,
-10, 20.
+The combo offers eight potentials. **Clash potential** and **Radius of
+Gyration** score the full-atom frame. **H-Bond**, **Iso-UNRES**,
+**Miyazawa-Jernigan**, **Go-Potential**, **ASA-Calpha** and **Ramachandran**
+score a residue-level model of it: backbone N, CA, C and O, one side-chain
+centroid per residue (the mass-weighted mean of CB and the atoms beyond it),
+and an amide H placed on the C(i−1)–N–CA bisector when the topology has none.
+H-Bond does not pair sequence neighbours. Go-Potential takes its native
+contacts from the first frame scored, so that frame is its minimum.
+Ramachandran sums the phi/psi map energy over the residues whose phi and psi
+are both defined (general, PRO and GLY maps).
+
+On the example at stride 10 (90 frames), the radius of gyration is 16.0 Å
+(15.1–17.3 Å), H-Bond finds about 170 backbone H-bonds per frame,
+Ramachandran scores 160 residues at −468 on average (about −2.9 per residue),
+and Miyazawa-Jernigan averages −910. H-Bond, the two contact potentials,
+Go-Potential and Ramachandran all score the first frame (the starting
+structure) lowest. `FrameNbr` is 1-based: at stride 10 the rows are 1, 11, 21,
+…, which are source frames 0, 10, 20.
+
+There is no accessible-volume potential. To score frames against FRET
+distances with accessible volumes, use `csc fret evaluate --top … --traj …`.
 
 ## FRET
 
 Writes, for every frame, the donor–acceptor distance, the orientation factor
 and the FRET rate. The dye transition dipoles are taken from two atoms each.
-The FRET tool is the same native panel in the shell dock and the standalone window.
-Its **Reference**, **Dipole atoms**, **Parameters** and **Process** sections
-retain file browse and drops, settings, output selection and the live log.
+The panel has the sections **Reference**, **Dipole atoms**, **Parameters** and
+**Process**; the shell dock and the standalone FRET window show the same panel.
 
 ```{figure} figures/traj_tools_fret.png
 :name: fig-traj-tools-fret
@@ -310,8 +325,21 @@ view models follow the same pattern: `MDConverterViewModel.convert()`,
 `JoinTrajectoriesViewModel.save_joined(path)`,
 `RotateTranslateViewModel.save_rotated_translated(path)`,
 `SaveTopologyViewModel.save_topology(path)` and
-`PotentialEnergyViewModel.process(path)`. The energy potential names come from
-`chisurf.plugins.traj.potential_energy.potential_specs`.
+`PotentialEnergyViewModel.process(path)`. The energy potentials are built
+by name with `make_potential`:
+
+```python
+from chisurf.plugins.traj.potential_energy.potential_specs import make_potential
+from chisurf.plugins.traj.potential_energy.view_model import PotentialEnergyViewModel
+
+energy = PotentialEnergyViewModel()
+energy.set_topology(top)
+energy.set_trajectory(dcd)
+energy.stride = 10
+for name in ("H-Bond", "Ramachandran", "Radius of Gyration"):
+    energy.add_potential(make_potential(name), 1.0, name=name)
+energy.process("t4l_energy.txt")   # FrameNbr, then one column per potential
+```
 
 ## Using it well
 
@@ -338,23 +366,13 @@ Measured on the example data. File references are to the current tree.
 * **A multi-model PDB reads back as its first model.**
   `trajectory_data.load` takes a structure file as a single frame, so a
   multi-frame `.pdb` written by Convert opens in ChiSurf with one frame.
-* **Six of the nine potentials fail on a trajectory.** H-Bond,
-  Miyazawa-Jernigan and ASA-Calpha fail with `Structure object has no
-  attribute 'l_res'`. Iso-UNRES and Go-Potential fail with `no attribute
-  'dist_ca'`. AV-Potential fails with "Positions not set". The scored
-  structure is a plain `Structure`, not the residue-level structure these
-  kernels need. Ramachandran runs but returns 0.000 for every frame. H-Bond is
-  the default combo entry.
 * **Stale units in `trajectory_data`.** The module, `Trajectory` and `rmsd`
   docstrings say nanometres. The coordinates, distances and RMSD are in
   ångström (the T4L coordinates span −29…34, and `compute_distances` itself
-  says Å). As a result, `chisurf/plugins/modelling/fret/core/trajectory.py:158`
-  (`compute_efficiencies`) still multiplies by 10 as a "nm → Å" step. That
-  gives E ≈ 2×10⁻⁵ where 0.97 is correct for a 27 Å pair at R0 = 52 Å, and
-  `rmsd_matrix` there is 10× too large.
-* The `traj2fret.py` command-line block (`__main__`) is Python 2
-  (`string.letters`) and reads `frame.timestep`, which the trajectory object
-  does not have.
+  says Å). As a result, `compute_efficiencies` in
+  `chisurf/plugins/modelling/fret/core/trajectory.py` still multiplies by 10
+  as a "nm → Å" step. That gives E ≈ 2×10⁻⁵ where 0.97 is correct for a 27 Å
+  pair at R0 = 52 Å, and `rmsd_matrix` there is 10× too large.
 
 ## See also
 
@@ -363,31 +381,8 @@ Measured on the example data. File references are to the current tree.
   factor: {ref}`concept-kappa2-orientation`.
 - Tools: the eight plugins under `chisurf/plugins/traj/` (`traj_align`, `traj_convert`, `potential_energy`,
   `fret_trajectory`, `traj_join`, `traj_remove_clashes`, `traj_rotate_translate`, `traj_save_topology`), each a
-  button of **Structure → Trajectory**.
+  button of **Structure → Trajectory**. Each window opens at 1100×720; a saved
+  size takes precedence.
 
-
-## Retained protein-quenching settings
-
-The existing quenching editor binds its kQ control to the scientific model
-parameter, so editing it and setting `kQ_scale` affect the same value.
-`quench_scale` is the canonical constructor option (default 0.01); the
-historical `k_quench_protein` option applies when no canonical value is given.
-The atom-exclusion editor accepts a whitespace-separated list, while the
-all-atoms flag chooses CB-only or non-excluded atoms for residue rate settings.
-Explicit per-residue atom lists keep their original meaning.
-
-## Native window geometry
-
-The shared native trajectory shell reads initial width/height from the tool's
-view spec before arranging its sections; an older spec defaults to 1100×720.
-Rotate/translate explicitly declares that size. Resizing is remembered by the
-native launcher, and startup dimensions are limited to the display. Geometry
-does not change matrices, translation, stride or exported coordinates.
-
-The FRET, energy, align, convert, join, clash-filter and topology tools now
-declare 1100×720 initial windows. Their fold and log descriptions explain inputs
-and outputs. Join's two radio options explain frame concatenation and atom
-stacking separately; atom stacking requires matching frame counts and an
-appropriate combined topology. Saved dimensions continue to take precedence.
 
 Tools: Align (`chisurf/plugins/traj/traj_align/`), Convert (`chisurf/plugins/traj/traj_convert/`), Join (`chisurf/plugins/traj/traj_join/`), Remove Clashed (`chisurf/plugins/traj/traj_remove_clashes/`), Rotate/Translate (`chisurf/plugins/traj/traj_rotate_translate/`), Save Topol (`chisurf/plugins/traj/traj_save_topology/`), Energy Calculator (`chisurf/plugins/traj/potential_energy/`), FRET (`chisurf/plugins/traj/fret_trajectory/`).

@@ -37,12 +37,8 @@ starts with the game defaults; an existing saved round is restored when availabl
 
 ### Help, Restart and Guide
 
-Each game has a shared **❓ Help / 🔁 Restart / 📖 Guide** row beside the shared
-**Sound** toggle. All five games draw these controls identically, with the same
-icons, captions and tooltips as every other ChiSurf tool. Sound
-stays pressed with 🔊 while on, shows 🔇 while off, and is greyed where the
-window has no audio output. The game canvas, scores and any pause behavior
-remain below the row.
+Each game has a **❓ Help / 🔁 Restart / 📖 Guide** row beside its **Sound** toggle. Sound shows 🔊 while on, 🔇 while
+off, and is greyed where the window has no audio output.
 
 1. Select a game. It supplies its own playable round; no measurement file or
    generated-data import is needed.
@@ -93,13 +89,13 @@ sound preference, and closing releases it once.
 
 ## 3. Application
 
-The games are tested with real key and pointer events through the window that hosts them
-(`chisurf/plugins/misc/games/test/test_games_real_input.py`): the paddle, piece, cursor and dial must actually move.
+The games are tested with real key and pointer events delivered to their emtk surface as the native window delivers
+them (`chisurf/plugins/misc/games/test/test_games_real_input.py`): the paddle, piece, cursor and dial must actually move.
 See also the generated reference pages, e.g. [Breakout](../reference/plugins/breakout.md).
 
-## 4. Native Python entrypoint
+## 4. Python
 
-The canonical Number Quest native app now lives in its GUI package:
+A game can be driven without a window, here Number Quest:
 
 ```python
 from chisurf.plugins.misc.games.number_quest.gui.app import make_app
@@ -113,7 +109,5 @@ app.close()
 ```
 
 The standalone launcher is `pixi run -e test python -m chisurf.emtk --plugin number_quest`.
-The richer app's controls, held/released keys, saved round and window dimensions
-are retained; the former alternate native implementation is retired.
 
 Tools: Number Quest (`chisurf/plugins/misc/games/number_quest/`), Minesweeper (`chisurf/plugins/misc/games/minesweeper/`), Tetris (`chisurf/plugins/misc/games/tetris/`), Pong (`chisurf/plugins/misc/games/pong/`), Breakout (`chisurf/plugins/misc/games/breakout/`).
