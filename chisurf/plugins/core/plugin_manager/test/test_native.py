@@ -32,21 +32,6 @@ def _model(tmp_path):
     return model, package
 
 
-def test_gui_runtime_selection_is_deterministic():
-    from types import SimpleNamespace
-
-    from chisurf.core.plugin.registry import select_gui_entrypoint
-
-    manifest = SimpleNamespace(
-        id="demo", entrypoints=SimpleNamespace(gui="pkg:Qt", emtk="pkg:Native")
-    )
-    assert select_gui_entrypoint(manifest, "emtk") == ("emtk", "pkg:Native")
-    assert select_gui_entrypoint(manifest, "qt") == ("qt", "pkg:Qt")
-    assert select_gui_entrypoint(manifest, "auto") == ("emtk", "pkg:Native")
-    only_qt = SimpleNamespace(id="qt", entrypoints=SimpleNamespace(gui="pkg:Qt", emtk=None))
-    assert select_gui_entrypoint(only_qt, "emtk") == ("qt", "pkg:Qt")
-
-
 def test_native_manager_renders_dependencies_and_preference_controls(tmp_path):
     from chisurf.plugins.core.plugin_manager.gui.app import PluginManagerApp
 

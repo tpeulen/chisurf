@@ -1,12 +1,11 @@
-"""Every route into ndX opens the same window: the emtk app, whichever shell hosts it.
+"""Every route into ndX opens the same window: the emtk app.
 
 The menu opens ndX through the manifest; tools hand it a file or a table. They
 used to build ChiSurf's Qt ``NdxWindow`` (the app in a ``ChisurfDockTool``);
-that window is retired. The manifest names only the emtk factory
-(:func:`chisurf.plugins.ndxplorer.gui.app.make_app`): the emtk shell docks the
-app and the ``--qt`` shell hosts it in a ``ControlHost`` (the generic route of
-:func:`chisurf.core.plugin.registry.build_plugin_widget`). Tools reach the open
-app through :func:`~chisurf.plugins.ndxplorer.gui.app.open_in_ndx` and
+that window is retired, as is the Qt shell. The manifest names only the emtk
+factory (:func:`chisurf.plugins.ndxplorer.gui.app.make_app`), which the emtk
+shell docks. Tools reach the open app through
+:func:`~chisurf.plugins.ndxplorer.gui.app.open_in_ndx` and
 :func:`~chisurf.plugins.ndxplorer.gui.app.show_table_in_ndx`.
 
 What the Qt window added to the app is kept and tested here without Qt: the
@@ -53,16 +52,13 @@ def make():
 
 
 def test_the_manifest_names_only_the_emtk_factory():
-    """No Qt window: both shells open ``make_app`` (the ``--qt`` one in a ``ControlHost``)."""
+    """No Qt window: the shell opens ``make_app``."""
     from chisurf.core.plugin.manifest import load_manifest
-    from chisurf.core.plugin.registry import select_gui_entrypoint
 
     manifest = load_manifest(PLUGIN_DIR / "manifest.json")
     assert manifest.entrypoints.gui is None
     emtk = "chisurf.plugins.ndxplorer.gui.app:make_app"
     assert manifest.entrypoints.emtk == emtk
-    for mode in ("auto", "emtk", "qt"):
-        assert select_gui_entrypoint(manifest, mode) == ("emtk", emtk), mode
     # The hosted window remembers its geometry, as the Qt window's did.
     assert manifest.statefulness.window.enabled
     source = (PLUGIN_DIR / "__init__.py").read_text()
