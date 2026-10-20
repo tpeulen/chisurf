@@ -11,9 +11,9 @@ Step-by-step guides for the fluorescence analyses in ChiSurf. Each guide shows
 **how to run the analysis in the actual user interface** and links to the
 matching {doc}`concept </concepts/index>` page for the underlying theory. Figures
 are real output — matplotlib plots produced by [`make_figures.py`](make_figures.py)
-from synthetic data using the very functions the guide describes, and GUI
-screenshots grabbed from the real widgets by
-[`make_screenshots.py`](make_screenshots.py) with the emtk apps drawn offscreen.
+from synthetic data using the very functions the guide describes, and
+screenshots of the real tools rendered headlessly (see
+[Regenerating the figures](#regenerating-the-figures)).
 
 The guides are grouped by what you are trying to measure. If you are starting
 from a raw photon file, begin with *Photon data and the burst pipeline*; if you
@@ -34,6 +34,7 @@ saving_projects
 
 65_live_acquisition
 12_handling_tttr_files
+87_channel_definition
 33_timestamps_and_bursts
 13_burst_identification
 15_background_rates
@@ -91,6 +92,7 @@ h2mm
 31_h2mm_simulation_validation
 20_ebfret_binned_hmm
 54_hidden_markov_models
+92_hmm_binned_traces
 49_photon_by_photon_kinetics
 11_pda2c
 42_pda3c
@@ -109,6 +111,7 @@ irf_estimation
 21_lifetime_from_bursts
 32_nsalex_lifetime
 76_decay_analysis_tools
+91_vv_vh_g_factor
 ```
 
 ## Correlation spectroscopy
@@ -142,14 +145,6 @@ irf_estimation
 77_phasor_calculator
 84_spot_finder
 86_image_browser
-87_channel_definition
-88_fret_docking
-90_updater
-97_settings_hub
-95_games
-96_plugin_check
-91_vv_vh_g_factor
-92_hmm_binned_traces
 93_psf_determination
 98_clsm_generator
 98_imaging_tools
@@ -169,6 +164,7 @@ irf_estimation
 79_hydropro
 80_quenching_estimator
 81_trajectory_tools
+88_fret_docking
 106_protein_monte_carlo
 ```
 
@@ -195,7 +191,7 @@ irf_estimation
 
 ## Where each guide starts in ChiSurf
 
-| Tutorial | ChiSurf entry point |
+| Guide | ChiSurf entry point |
 |----------|---------------------|
 | [FRET-2CDE / ALEX-2CDE burst dynamics](01_fret_2cde.md) | `tttrlib.TwoCDE`, `burst_2cde` plugin |
 | [Recurrence analysis (RASP)](02_recurrence_rasp.md) | `core.fluorescence.burst.recurrence` |
@@ -289,7 +285,7 @@ irf_estimation
 | [FRET docking and pair selection](88_fret_docking.md) | `fret_docking` (Structure → FRET → Docking & Screening), `fret` CLI, `fret.dock` RPC |
 | [The PSF measured on beads](93_psf_determination.md) | `psf_determination` (Imaging), `psf-determination` CLI, `PsfViewModel`, `psf_determination.fit.run` RPC |
 | [States and rates from a binned trace](92_hmm_binned_traces.md) | `hmm` (Spectroscopy → Kinetics), `csc hmm`, `HmmViewModel`, `hmm.fit` RPC |
-| [The G-factor of a polarised setup](91_vv_vh_g_factor.md) | `vv_vh_g_factor` (Spectroscopy → Fluorescence decay), `csc`/`vv-vh-g-factor`, `GFactorModel` |
+| [The G-factor of a polarised setup](91_vv_vh_g_factor.md) | `vv_vh_g_factor` (Spectroscopy → Decay), `csc`/`vv-vh-g-factor`, `GFactorModel` |
 | [The Settings window: one list, every settings panel](97_settings_hub.md) | `setup` (Setup → Settings), the hub that hosts every settings panel |
 | [Updating ChiSurf](90_updater.md) | `updater` (Setup → Settings → Updates), version check, changelog, Update Now |
 | [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → Photon data), `csc microtime-shift`, `core.fio.tttr_shift` |
@@ -303,8 +299,14 @@ irf_estimation
 pixi run -e docs python docs/guides/make_figures.py   # regenerate all figures
 ```
 
-GUI screenshots (e.g. tutorial 37) are regenerated separately by drawing the real
-emtk apps offscreen (needs the full GUI environment):
+or, outside pixi, with the project on the path:
+
+```bash
+PYTHONPATH=. python docs/guides/make_figures.py
+```
+
+GUI screenshots are regenerated separately by drawing the real emtk apps
+offscreen (needs the full GUI environment):
 
 ```bash
 PYTHONPATH=. python docs/guides/make_screenshots.py
@@ -318,22 +320,22 @@ from `docs/guides/make_screenshot_psf.py`.
 The per-guide screenshots of guides 02–67 and 83–85 live in
 `docs/guides/screenshots/`, one module per range of guides; run one module per
 process with `python docs/guides/screenshots/run.py <module> [_grab_name ...]`
-and settings isolated in a scratch `CHISURF_SETTINGS_DIR`.
-
-or, outside pixi, with the project on the path:
-
-```bash
-PYTHONPATH=. python docs/guides/make_figures.py
-```
+and settings isolated in a scratch `CHISURF_SETTINGS_DIR`. Where each figure
+came from, and how to retake it, is listed in the
+{doc}`figure index </reference/figures>`.
 
 All lengths in the polymer tutorials are in Ångström, FCS lag times in seconds
 (displayed in ms), and diffusion coefficients in µm²/s.
 
-## Application information
+## Application and settings
 
 ```{toctree}
 :maxdepth: 1
 
+97_settings_hub
+90_updater
+96_plugin_check
+95_games
 103_application_identity
 105_application_shell
 ```

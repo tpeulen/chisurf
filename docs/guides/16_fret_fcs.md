@@ -63,23 +63,13 @@ from the burst or full photon streams.
 
 ### Burst-wise FCS
 
-The native host declares **1100 × 720** pixels on first use; saved geometry
-takes precedence. Resizing or visiting tabs does not change the photons,
-channel pairs, padding or correlator settings that produced a displayed curve.
-A command-line `--size` explicitly requests another host size. Use the tool’s
-settings and curve exports for analysis records; window geometry alone is not
-a saved correlation result.
-
-
 **Spectroscopy ▸ Correlation ▸ Burst-wise FCS** (also
 the *Burst FCS* tool of **Spectroscopy ▸ Single-Molecule ▸ Burst Analysis**; the
 [FCS workflow](75_fcs_toolbox.md) correlates whole streams) correlates each burst
 separately, using only the photons of that burst ± **Padding**. The window has
-**Run FCS**, **Stop**, **Example**, **Guide** and **Help** on top, three tabs on
-the left and the plots on the right. All three entry points host the same native
-app. For a GPU desktop, the standalone launch is
-`pixi run -e test python -m chisurf.emtk --plugin burst_fcs_correlator --size 1200x800`;
-headless calculations use the core API below, without launching a window:
+**Run FCS**, **Stop**, **Load example**, **Guide** and **Help** on top, three tabs on
+the left and the plots on the right. All three entry points open the same window;
+on its own it is `python -m chisurf.emtk --plugin burst_fcs_correlator`.
 
 - **Inputs** — the **Burst folders or BUR/BST files** table (**Files...**,
   **Folder...**, **Database...**, **All**, **None**, **Remove**, **Clear**; files
@@ -115,12 +105,14 @@ reader definition too, because LUTs and channel shifts can move a photon across
 a gate boundary before the correlation is calculated.
 
 ```{figure} figures/burst_fcs_native_primary_window.png
+:name: fig-16-burst-fcs
 :width: 100%
 
-The native demo produces 24 correlations from eight bursts and three pairs.
-Simple mode shows one fitted-time marker; it is not a probability distribution.
-The simulated burst envelope illustrates the workflow rather than proving a
-physical diffusion constant or kinetic rate.
+After **Load example** and **Run FCS**: eight simulated bursts × three pairs
+(ACF_0, ACF_1, cross_01) give 24 curves. The selected curve (burst 0, ACF_0)
+with its Simple fit between the two fit-window lines; in Simple mode
+*Distribution P(tau_D)* shows one marker at the fitted diffusion time, not a
+distribution.
 ```
 
 **Run FCS** correlates every ticked file × pair × burst, with a progress bar.
@@ -129,32 +121,31 @@ The right side shows the correlation of the selected curve with its fit, the
 P(tau_D)** in MaxEnt mode. In Simple mode that panel shows a single estimate
 marker at the fitted diffusion time; it is not a probability distribution.
 **Export curves...** saves the curves as JSON.
-**Example** writes a small seeded demonstration data set (eight bursts on two
+**Load example** writes a small seeded demonstration data set (eight bursts on two
 detectors) and adds it, so the **Guide** can be walked without data. It waits
-for your **Example** click; correlation starts only when you press **Run FCS**.
+for your **Load example** click; correlation starts only when you press **Run FCS**.
 `make_demo()` from `chisurf.plugins.burst.burst_fcs_correlator.demo` returns
 the primary BST path; the photon file is alongside it as `SPC_FILENAME`. The
 files and JSON parameters live in `demos/burst_fcs_correlator` under the
 ChiSurf settings folder (`overwrite=True` regenerates them).
 
-The Run worker also publishes `<stem>.pto`, `td4/<stem>.td4` and
+**Run FCS** also writes `<stem>.pto`, `td4/<stem>.td4` and
 `td4/td4_settings.json` beside the measurement/analysis inputs. The TD4
 companion keeps one row per input burst, including NaN sentinel values where a
 burst or channel pair produced no estimate, with zero-interleaved numeric
 columns. The PTO stores produced rows keyed by **Burst Index**, with per-pair
 diffusion-time columns in milliseconds, settings and lineage derived from the
 bursts. Extending an existing PTO preserves its earlier scientific lineage.
-Outputs are prepared before publication; cancellation or failure preserves
-previous outputs. **Stop**, or closing the native app, requests
-worker cancellation; closing also shuts down its owned executor.
+**Stop** or closing the window cancels the run; a cancelled or failed run
+leaves earlier outputs as they were.
 
 ```{figure} figures/burst_fcs_settings.png
 :name: fig-16-burst-fcs-settings
 :width: 100%
 
-The Settings tab after **Load example**: Simple mode, three FCS bins, 20 cascades, and the 0.002 ms lower fit bound
-(**t_min**) and 0.001 / 20 ms MaxEnt grid presets. The Simple result does
-not establish numerical parity of a MaxEnt distribution.
+The **Settings** tab of the same run, at its defaults: 3 bins, 20 cascades,
+±100 ms padding, Simple fit with **t_min** 0.002 ms and **t_max** 0 (no bound);
+the MaxEnt grid **tau_D min/max** 0.001 / 20 ms is greyed until *MaxEnt* is chosen.
 ```
 
 For a headless calculation, supply the same photon-index ranges explicitly.
@@ -180,8 +171,8 @@ curves = correlate_burst_file(
 )
 ```
 
-This core call returns curves; it does not publish TD4/PTO files. The native
-Run worker performs that publication separately.
+This core call returns curves; it writes no TD4/PTO files — that is what
+**Run FCS** adds.
 
 ## Result
 

@@ -61,15 +61,6 @@ Two practical consequences follow from $G$ being a *statistical* quantity:
   indistinguishable by shape alone** — detector afterpulsing mimics fast
   photodynamics, and a slow drift mimics a slow diffusing component.
 
-Burst-wise correlations use selected photon intervals and declared channel
-pairs. This tool’s micro-time windows include the start channel and exclude
-the stop channel, matching BUR detector counts; an empty list is ungated.
-Adjacent windows therefore share no boundary photon. The decoded clock,
-reader corrections, padding and coarse or fine lag grid determine which
-photons contribute and the curve’s physical lag scale. Window resizing changes
-the display. See the [burst-wise workflow](../guides/16_fret_fcs.md) for the
-inputs and exports.
-
 (concept-fcs-photon-correlation)=
 ## Correlating photon time tags
 
@@ -111,7 +102,7 @@ occur. This $G$ plateaus at **1**, the convention with $G_\infty = 1$ above.
 - **Macro plus micro time.** Replacing each macro time by
   $t = t_\text{macro}\, n_\text{TAC} + \mu$ makes the clock one TAC channel
   wide, so one curve spans picoseconds (antibunching, rotation) to seconds
-  {cite}`felekyan2005` (`felekyan`, and **Fine** in **TTTR: Correlate**). It
+  {cite}`felekyan2005` (`felekyan`, and **Fine** in the FCS **Correlator**). It
   needs the macro clock to be the laser period, and $n_\text{casc}$ must grow by
   $\log_2 n_\text{TAC}$ to reach the same longest lag.
 - **Weights are filters.** Non-unit weights give time-gated FCS (weight 1 inside
@@ -144,10 +135,11 @@ $G$ at each lag is an average over photon pairs, so its noise depends on the
 measurement time, the count rate, $N$ and the bin width; long lags, with wide
 bins, are better determined than short ones. {cite}`koppel1974` gives the
 standard deviation for a Gaussian volume; the multiple-tau correlator's own
-noise is analysed in {cite}`schatzel1990`. **TTTR: Correlate** cuts the
-measurement into equal-time **splits**, correlates each, averages them, and
-takes the error bar from the Koppel-type model evaluated for one split's
-duration and count rate (`w.res = Koppel`; `none` gives uniform weights). The
+noise is analysed in {cite}`schatzel1990`. The FCS **Correlator** cuts the
+measurement into equal-time **Splits** and correlates each; the **FCS Merger**
+averages them and takes the error bar from their spread, and a single curve
+gets a Koppel-type noise model evaluated for its duration and count rate
+({src}`chisurf/core/fluorescence/fcs/__init__.py#noise`, `suren`). The
 scatter between splits is the model-free check: a split that disagrees with the
 rest is an aggregate, a bleaching step or a focus drift. The three ways of
 getting $\sigma$ are compared in {ref}`concept-fcs-error-bars`.
@@ -431,30 +423,24 @@ error of the mean over repeats, a model $\sigma$, or absent; a reader that finds
 none has to fall back to a model, so the numbers in a fit report depend on which
 it was.
 
-## From measured correlations to burst results
+## Burst-wise correlation
 
-The [FCS workflow](../guides/75_fcs_toolbox.md) is the same native app in the
-shell and the standalone emtk launcher: detector/channel definitions,
-files, optional photon filtering, correlation and repeat merging. Five more
-FCS tools are buttons of their own in Spectroscopy › Correlation, including
-[Burst-wise FCS](../guides/16_fret_fcs.md).
-Measured BH132 examples in those guides demonstrate chunked correlations,
-five-of-six repeat merging, full-stream photon filtering and a three-range
-Simple burst run. The observed MaxEnt controls and grid do not establish
-numerical parity of a measured MaxEnt distribution.
+[Burst-wise FCS](../guides/16_fret_fcs.md) correlates only the photons inside
+selected bursts, for declared channel pairs. Its micro-time windows are
+half-open — the start channel included, the stop channel excluded, as in the
+detector windows that produced the burst table — so adjacent windows share no
+boundary photon; an empty window list is ungated. The lag axis is in
+milliseconds throughout (the Kristine writer, reader and fitter); a BH SPC-132
+macro tick of 13.5 ns is 0.0000135 ms.
 
-A Simple burst fit estimates one diffusion time; its marker is not a
-distribution. MaxEnt instead estimates a regularized diffusion-time
-distribution. Both depend on the fitted lag window: the GUI excludes lags below
-0.002 ms by default, while the core settings default to unbounded `None`.
-Set the bound explicitly when comparing GUI and headless results.
-MaxEnt uses 0.001 / 20 ms GUI grid presets; entering zero explicitly requests
-a data-dependent automatic bound, as the core API's `None` defaults do.
-The Kristine writer, reader and FCS fitter all use millisecond lag axes;
-the BH132 raw header tick of 13.5 ns corresponds to 0.0000135 ms.
-Burst results retain their identity in the indexed PTO; the positional TD4
-companion retains every input burst row with NaN sentinels for missing estimates, so
-skipping a burst cannot shift later diffusion times onto the wrong bursts.
+Two fits read the curve. **Simple** estimates one diffusion time; **MaxEnt**
+estimates a regularized distribution of diffusion times (GUI grid 0.001–20 ms;
+0 asks for a data-dependent bound, as `None` does in the Python API). Both
+depend on the fitted lag window: the GUI excludes lags below 0.002 ms, the
+Python API defaults to no bound, so set it explicitly when comparing the two.
+Every input burst keeps a row in the results, a NaN sentinel where no estimate
+was made, so a skipped burst cannot shift later diffusion times onto the wrong
+bursts.
 
 ## References
 
@@ -478,23 +464,12 @@ skipping a burst cannot shift later diffusion times onto the wrong bursts.
   resolve them.
 - {cite}`hess2002` — the focal volume treated as an optical system: which
   aberrations bias $G(0)$ and which bias $\tau_D$.
-
 - {cite}`wahl2003`, {cite}`laurence2006`, {cite}`felekyan2005` — the three
   time-tag correlators tttrlib implements (multiple-tau, arbitrary bins, macro
   plus micro time).
-
 - {cite}`sheppard1977` — the theoretical foundation of confocal image formation; the PSF that FCS measures in.
 - {cite}`koppel1974` — the variance of a measured curve from counting
   statistics; {cite}`wohland2001` — which way of estimating it to trust.
-
-## Synthetic workflow check
-
-The [FCS workflow](../guides/75_fcs_toolbox.md) and
-[burst-wise FCS workflow](../guides/16_fret_fcs.md) provide seeded examples
-through `make_demo()`. The former returns the photon SPC; the latter returns
-the burst BST with its SPC alongside it. Parameters are recorded in JSON under
-the respective settings-owned `demos` folder. The guides await a real Example
-click before correlation; these simulations check a workflow, not a sample.
 
 ## See also
 
@@ -508,12 +483,6 @@ click before correlation; these simulations check a workflow, not a sample.
 - Model catalogue: {src}`chisurf/core/models/fcs/models.yaml`; correlator plugin
   `chisurf/plugins/fcs/fcs_correlator/`.
 - Tools in ChiSurf: the **Diffusion/Volume Calculator** (`chisurf/plugins/fcs/fcs_calculator/`) converts between $\tau_D$, $D$, $r_h$ and a concentration; **FCS-Merger** (`chisurf/plugins/fcs/fcs_merger/`) averages repeats; **Burst-wise FCS** (`chisurf/plugins/burst/burst_fcs_correlator/`) correlates inside bursts.
-
-The native merger separates presentation preferences from an analysis: stored
-window/dock geometry does not identify the repeated measurements or their
-screening choices. Reload and screen those curves explicitly, as described in
-{doc}`/guides/75_fcs_toolbox`; changing the window size leaves the mean,
-uncertainty and duration-weighted count rate unchanged.
 
 ## The FCS workflow
 

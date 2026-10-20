@@ -21,9 +21,9 @@ Theory: how photons are selected and combined is in {ref}`concept-microtime-hist
 **Spectroscopy → Decay → Histogram-Microtime**. Two tabs share the left dock:
 **Inputs and options** and **Detector definition** (the shared detector editor: reading routine, PIE windows,
 detectors, TAC linearization). The decay is on the right and gets the room. **Guide** walks through the tool, **Help**
-explains every group.
+explains every group. The window opens at 1100×720; a saved geometry takes precedence.
 
-The ChiSurf shell docks this emtk/AutoForm app. For a desktop with a working display/GPU, launch it with
+As a standalone window, launch it with
 `pixi run -e test python -m chisurf.plugins.tttr.microtime_histogram`.
 Its startup options can queue an existing burst-analysis folder:
 
@@ -205,8 +205,3 @@ combined-trace width. The unwanted all-source VH stream is absent.
 
 {doc}`73_tttr_decay_and_correlation` · {doc}`88_microtime_shifter` · {doc}`87_channel_definition` ·
 {doc}`/concepts/microtime_histogram`
-
-The native Microtime Histogram tool starts at 1100×720 with saved custom
-geometry taking precedence. The raw/gated photon histograms, physical clocks,
-polarization curves and reported FWHM retain their values across geometry
-restoration. Both detector and analysis pages remain reachable.

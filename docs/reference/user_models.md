@@ -165,15 +165,17 @@ Model registration is defensive at every step, which means **a broken entry is
 skipped without a dialog**:
 
 - if the dotted path cannot be imported or the attribute is missing,
-  `resolve_class` returns `None` and the entry is skipped (it logs only at debug
-  level: `cannot import … ` / `… has no attribute …`);
+  `chisurf.core.experiments.bootstrap.resolve_class` returns `None` and the
+  entry is skipped (it logs only at DEBUG level: `cannot import …` /
+  `… has no attribute …`);
 - a broken user model never prevents the other models or experiments from
   loading.
 
-If your model does not appear in the dropdown, check the dotted path and that the
-module imports in the same environment
-(`python -c "import my_package.my_models"`); turn on debug logging to see the
-reason.
+If your model does not appear in the dropdown, check the ChiSurf log with the
+level at DEBUG (`log_level: 10` in `settings_chisurf.yaml`) — a typo in the
+dotted path and a module that is not importable both fail this way, and neither
+raises a dialog. `resolve_class("my_package.my_models.MyScaledModel")` in the
+console tells you directly whether the path resolves.
 
 ---
 
