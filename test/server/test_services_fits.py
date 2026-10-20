@@ -736,20 +736,65 @@ def test_fit_create_builds_the_fit_the_qt_add_fit_macro_builds():
     assert meta["filename"] == "k.cor"
 
 
+def make_pda_curve():
+    """A synthetic two-colour PDA dataset (an S1S2 histogram of 60 photons at most), the PDA reader's shape.
+
+    Lived in the Qt-shell capture script deleted with the Qt shell (W9 S6).
+    """
+    import math
+
+    import numpy as np
+
+    import chisurf.core.fluorescence.tcspc as tcspc
+    from chisurf.core.data import DataCurve
+
+    nmax, nmin = 60, 5
+    n = np.arange(nmax + 1)
+    ps = np.exp(n * math.log(20.0) - 20.0 - np.array([math.lgamma(k + 1) for k in n]))
+    ps /= ps.sum()
+    s1s2 = np.zeros((nmax + 1, nmax + 1), dtype=float)
+    for count in range(nmin, nmax + 1):
+        g = np.arange(count + 1)
+        binom = np.array([math.comb(count, k) * 0.6**k * 0.4 ** (count - k) for k in g])
+        s1s2[g, count - g] += ps[count] * binom * 1000.0
+    ny, nx = s1s2.shape
+    rr, cc = np.indices((ny, nx))
+    y = s1s2.ravel(order="C")
+    pda = {
+        "maximum_number_of_photons": nmax,
+        "minimum_number_of_photons": nmin,
+        "minimum_time_window_length": 2e-3,
+        "segmentation": "time-bins",
+        "observation_time": 2e-3,
+        "channels": ([0], [1]),
+        "s1s2": s1s2,
+        "ps": ps,
+        "row_indices": rr.ravel().tolist(),
+        "col_indices": cc.ravel().tolist(),
+        "ndim": 2,
+        "shape": (ny, nx),
+        "size": int(y.size),
+        "tttr_indices": None,
+    }
+    return DataCurve(
+        name="synthetic-pda",
+        load_filename_on_init=False,
+        pda=pda,
+        y=y,
+        x=np.arange(y.size),
+        ey=tcspc.counting_noise(y),
+    )
+
+
 def test_a_pda_fit_has_weighted_residuals_and_a_durbin_watson_over_its_range():
     """PDA residuals are one per histogram bin, not one per data point: with the range
     ``fit.create`` sets (0..3720) ``Fit.weighted_residuals`` raised (3720 x against 81 y), so the
     Durbin-Watson statistic and the Residuals 2D page's label were missing in the emtk shell
     (the Qt window's empty 0..0 range hid it). Final shell parity pass, 2026-10-14."""
     import math
-    import sys
-    from pathlib import Path
 
     import chisurf as cs
     from chisurf.core.experiments.bootstrap import ensure_experiments_registered
-
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "native_emtk"))
-    from capture_shell_s2_models_qt_before import make_pda_curve
 
     ensure_experiments_registered()
     reader = next(r for r in cs.experiment["PDA"].readers if str(r.name) == "PTU/HT3/SPC")

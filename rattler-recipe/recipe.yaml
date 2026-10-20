@@ -129,7 +129,7 @@ requirements:
     # The UI toolkit the window, the plugins, the node editor and chimol draw
     # with. emtk is on PyPI but not conda-forge:
     # `pip install emtk` (source: github.com/tpeulen/emtk).
-    - emtk >=0.1.8
+    - emtk >=0.1.23
     # WebGPU, which emtk draws with: wgpu is the graphics API, rendercanvas the
     # per-platform surface, glfw the native window backend.
     # conda-forge spells it wgpu-py; PyPI spells it wgpu, imported as `wgpu`

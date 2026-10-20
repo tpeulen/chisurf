@@ -46,30 +46,14 @@ class _FakeDispatcher:
 def test_load_app_startup_services_uses_prefixed_config_order():
     """Prefixed config filenames define default startup order."""
     specs = load_app_startup_services()
+    # The Qt shell's startup services went with it (W9 S6); what is left is
+    # the server's mmfdb service and the emtk shell's two stages.
     assert [spec.id for spec in specs] == [
         "mmfdb",
-        "gui_imports",
-        "setup_ipython",
-        "startup_interface",
-        "setup_logging",
-        "init_setups",
-        "restore_setup_defaults",
-        "define_actions",
-        "load_tools",
-        "init_executors",
-        "arrange_widgets",
-        "setup_style",
         "emtk_experiments",
         "emtk_server",
         "emtk_connect",
         "emtk_session",
-        "bind_history_science",
-        "register_experiment_models",
-        "start_autosave",
-        "deferred_gui_imports",
-        "populate_plugins",
-        "check_updates",
-        "warmup_imports",
         "emtk_check_updates",
     ]
     mmfdb_spec = next(s for s in specs if s.id == "mmfdb")
