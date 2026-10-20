@@ -30,22 +30,22 @@ The plan below is the open front. Nothing in `chisurf/` has been changed for it 
    ([scipy retirement](/subsystems/scipy-retirement.md)), so the prototype's `cKDTree` cannot be
    carried over either.
 3. **Open: owner questions to settle before WP4 is accepted** (findings from reading the notebook):
-   - **The "key figure" does not show what its text claims in the stored run.** Stage B and
+   (a) **The "key figure" does not show what its text claims in the stored run.** Stage B and
      Stage C both give a quench scale of 0.11 (0.08–0.15/0.16). The narrowing that cells 50/56
      promise is not there. The profile plot only draws Laplace-Gaussian samples (`profile()`),
      not a profile likelihood. A real profile, as in `it08/it10 *_profiles.csv`, is a WP4 option.
-   - **Direct method vs random walk:** 2.59 ns vs 2.31 ± 0.03 ns (APO 233, slow 0.3, L 21.5).
+   (b) **Direct method vs random walk:** 2.59 ns vs 2.31 ± 0.03 ns (APO 233, slow 0.3, L 21.5).
      That passes the 0.35 ns tolerance, but it is a 12 % gap, and the text calls it "exact".
      WP3 must decide whether the IMP.bff closed-form `DynamicAccessibleVolume.update_occupancy`
      (Itô flux, p ∝ 1/D) is the same estimator as the prototype's `p ∝ 1/s`, and must record which
      one is used.
-   - **AF488 rms 0.62 ns vs median |dev| 0.047 ns.** Site 233 apo alone causes the gap
+   (c) **AF488 rms 0.62 ns vs median |dev| 0.047 ns.** Site 233 apo alone causes the gap
      (measured 1.339 ns, LOO z = 15.3). Cy3B has only 5 sites (10 lifetimes).
-   - Cell 32's markdown says "16 searches", but the code runs `N_STARTS = 64`.
-   - **AV width/grid conflict** (see the conflicts table): MalE uses W 0.5 / dg 0.5. The owner's 2026-10-11 "all use same defaults" sets W 4.5 / dg 0.9. Proposed: the notebook values are measured analysis settings, and the generic defaults stay IMP.bff's.
+   (d) Cell 32's markdown says "16 searches", but the code runs `N_STARTS = 64`.
+   (e) **AV width/grid conflict** (see the conflicts table): MalE uses W 0.5 / dg 0.5. The owner's 2026-10-11 "all use same defaults" sets W 4.5 / dg 0.9. Proposed: the notebook values are measured analysis settings, and the generic defaults stay IMP.bff's.
 4. **Blocked: German/French catalogues** of the new view.json are deferred to the i18n batch.
    Owner rule: no translation work in PRD-154 batches.
-5. **Tried and reverted (in the prototype itself, do not re-port):** the Brownian-walk *objective*
+5. **Tried and reverted:** (in the prototype itself, do not re-port) the Brownian-walk *objective*
    (it01–it06) as the fit target. It does not equilibrate at slow factors ≤ 0.1 (it07 docstring), and the
    equilibrium ensemble replaced it **in the inverse fit**. The walk itself stays (owner decision 2026-10-20, see WP9).
    A single stickiness or a residue-count shielding term
@@ -62,7 +62,7 @@ The plan below is the open front. Nothing in `chisurf/` has been changed for it 
    (Smoluchowski with the stickiness potential and the quenching sink on the AV grid; IMP.bff's grid diffusion solver),
    whose stationary state must equal the equilibrium ensemble — not by dropping the walk. The quest package never
    had the equilibrium ensemble, so the move did not lose it.
-8. **Tracked in PRD-154 as W16** ([prd-154](/prds/prd-154.md)).
+8. **Open: tracked in PRD-154 as W16** ([prd-154](/prds/prd-154.md)).
 
 # The rest of the quest repo vs the plugin (checked 2026-10-20)
 
