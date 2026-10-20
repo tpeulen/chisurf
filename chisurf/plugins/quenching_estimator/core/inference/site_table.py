@@ -799,9 +799,34 @@ def direct_lifetime(av, atoms, slow_factor, tau0, settings_=None):
         n_trajectories=1, random_seed=1,
     )
     m.update_grids()
-    density = np.asarray(m.get_density(), dtype=float).ravel()
-    s_map = np.asarray(m.get_slow_factor_map(), dtype=float).ravel()
-    k_map = np.asarray(m.get_quenching_rate_map(), dtype=float).ravel()
+    return equilibrium_lifetime(
+        m.get_density(), m.get_slow_factor_map(), m.get_quenching_rate_map(), tau0
+    )
+
+
+def equilibrium_lifetime(density, slow_factor_map, rate_map, tau0):
+    """Static mean lifetime over the equilibrium occupancy ``p ~ 1/s`` (notebook cell 23).
+
+    The one copy of the closed form: :func:`direct_lifetime` calls it on IMP.bff's maps,
+    and the forward simulator's ``"equilibrium"`` ensemble
+    (``core/ensembles.py``) on its own. With ``s = prod_g s_g^(n_g)`` it is the site
+    model's ``p ~ prod s^-n`` (:meth:`.site_model.Site.weights`).
+
+    Parameters
+    ----------
+    density, slow_factor_map, rate_map : array_like
+        Same-shape maps: occupancy (> 0 inside), slow factor ``s``, quenching rate (1/ns).
+    tau0 : float
+        ns.
+
+    Returns
+    -------
+    float
+        ``sum_x p(x) / (1/tau0 + k(x))``, ns.
+    """
+    density = np.asarray(density, dtype=float).ravel()
+    s_map = np.asarray(slow_factor_map, dtype=float).ravel()
+    k_map = np.asarray(rate_map, dtype=float).ravel()
     ok = (density > 0) & (s_map > 0)
     p = 1.0 / s_map[ok]
     p /= p.sum()

@@ -9,7 +9,7 @@ timestamp: '2026-10-20T00:00:00Z'
 
 # Where to pick this up
 
-The plan below is the open front. WP0, WP1, WP2, WP3, WP7b and WP7-theory have landed; WP4 and WP9 can start.
+The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP7-theory and WP9 have landed; WP4 is in progress.
 
 1. **Done: WP0 (data + golden).** `examples/male/` (3 CSVs, `provenance.json`, `1OMP.cif`,
    `1ANF.cif`), `core/inference/measurements.py`, `test/data/male_site_1omp72_L20.12.npz`,
@@ -56,7 +56,7 @@ The plan below is the open front. WP0, WP1, WP2, WP3, WP7b and WP7-theory have l
    stickiness (57.6 vs 58.2 Å for E55–E132); at slow 0.1 the walk gives 50.0 Å (the WP9 defect, shown in example 04).
    Notebook 04 (Haas–Steinberg) is covered by IMP.bff: `diffusion_propagate_krylov` on one voxel line of a 3-D grid
    (reflecting walls; the notebook's ends were absorbing); it is example 05. `scan`'s `dominant_quencher` names a residue
-   for a trace rate at QY 1.000 (E:55 "TYR 100 %"): the example filters on QY < 0.99; the record itself is unchanged (WP9's file).
+   for a trace rate at QY 1.000 (E:55 "TYR 100 %"): the example filters on QY < 0.99. **Fixed in WP9:** `scan.MIN_QUENCHED_FRACTION` (1 %) — no dominant quencher below it.
    The theory page states the overclaims of 3(a), 3(b), 3(d) as they are. **Open:** guide-80 example sections (WP7-guide).
 1c. **Done: WP1 (measurement statistics, 2026-10-20).** `core/inference/{columns,titration,lifetime_errors,kq_scaling}.py`,
    `settings/analysis/measurement_columns.yaml` (8 declared tables plus a `settings` block holding every selection the
@@ -204,15 +204,22 @@ The plan below is the open front. WP0, WP1, WP2, WP3, WP7b and WP7-theory have l
    (it12). The Cauchy loss of it05 was replaced by the Student-t (ν = 3) search plus a Gaussian
    joint fit. The AF4_C2R linker (16.46 Å) was the wrong reagent; AF488 is A48_C1R, 20.4 Å (it10).
 6. **Open: WP8** marks the prototype as migrated, last, once every WP has a commit hash.
-7. **Open: WP9.** The plugin's forward simulator still produces the known-wrong number in the sticky regime
-   (quest known-issue "At QuEst's default stickiness (0.1) the dye walk does not equilibrate", 2026-09-30).
-   **Measure:** MalE APO 95, AF488 reference kQ: the walk gives τX 1.36 ns at slow 0.3 and 2.41 ns at slow 0.1,
-   which is impossible at equilibrium. **Owner decision 2026-10-20: keep both ensembles** — the equilibrium ensemble
-   (the notebook's, for static τX/QY and the inverse fit) **and** the Brownian walk (more straightforward for FRET:
-   donor and acceptor move in time, photon race). The sticky-regime defect is fixed by **solving the diffusion PDE**
-   (Smoluchowski with the stickiness potential and the quenching sink on the AV grid; IMP.bff's grid diffusion solver),
-   whose stationary state must equal the equilibrium ensemble — not by dropping the walk. The quest package never
-   had the equilibrium ensemble, so the move did not lose it.
+7. **Done: WP9 (forward simulator, three ensembles, 2026-10-20).** `ensemble: "walk" | "equilibrium" | "pde"`
+   (`core/ensembles.py`, project key + catalog entry + form combo; default `walk`, FRET only with it). **Walk:** walkers
+   start from p ∝ 1/m (`core/av.py: simulate_walkers`, numpy, IMP.bff's walk rule; ~1000 walkers of 20–50 τ₀ per run,
+   `ensembles.walk_segment`), panels read walker 0. **Equilibrium:** `site_table.equilibrium_lifetime` (WP3's closed
+   form, `direct_lifetime` now calls it) on the walk's own maps. **PDE:** IMP.bff `GridDiffusionSolver(D0·m, b, w·b,
+   k, dg, dt, "detailed_balance", False, w=1/m)`, `.lifetime()` (PCG) + `.donor_decay()` (Lanczos) for the photons;
+   grids on the outer shell padded. **Measure:** `pytest chisurf/plugins/quenching_estimator/test/test_equilibrium_ensemble.py`
+   (fast part ~10 s; `-m slow` runs the walk-vs-PDE check, 3 seeds × 3 slow factors, ~9 min; at 10 ps it gave +0.68 % / +0.50 % / +2.2 %, all inside 3 SE). MalE APO 95, AF488 table, τ₀ 4.2, D 7, dg 0.9,
+   template walk (8 × 16 µs, 32 ps, 3 seeds): equilibrium 4.084 / 2.872 / 0.897 ns at slow 1 / 0.3 / 0.1 (monotone);
+   PDE 3.637 / 2.494 / 0.890; walk 3.638 ± 0.007 / 2.487 ± 0.014 / 0.876 ± 0.008 (−1.6 %, 1.9 σ at slow 0.1, reported; 105-ns walkers); old uniform-start walk 3.646 / 2.634 / 2.179.
+   PDE stationary = equilibrium to 1e-12, PDE D→0 = equilibrium to 1e-9. **Trap:** a short walk at slow 0.1 is few
+   independent starts (400 ns, 1 block → 5 walkers), so QY can read 1.000 or 0.5 by luck — noise now, not bias; use `pde`
+   for a donor-only number. **Moved:** baselines re-pinned (log 2026-10-20), `test_aa_specific_quenching`'s site pair
+   (E96 "does not quench" was the stuck walker; at equilibrium QY 0.47 — now E21 0.289 vs E55 0.935). **Open:** IMP.bff's
+   walk takes no start weight (the numpy walk moves there with a rebuild); PDE with FRET (an acceptor-averaged k_T in the
+   sink) is not wired; de/fr text of `ensemble` waits for the i18n batch.
 8. **Open: tracked in PRD-154 as W16** ([prd-154](/prds/prd-154.md)).
 
 # The rest of the quest repo vs the plugin (checked 2026-10-20)
@@ -239,9 +246,9 @@ Never brought over. Each entry says where it goes or why it is skipped.
 | `simulation_old/` (Cython/C++ legacy walk) | legacy | skip |
 | `tests/numba_oracles`, `test_numba_parity.py` | numba is retired | skip (the parity was proven before retirement, `148b891`) |
 | `okf/references/pet-quenching-theory.md` | partly in `docs/concepts/dye_quenching.md` | WP7 checks that its approximations list ("what the numbers can and cannot be trusted to mean") is in the concept |
-| `okf/references/known-issues.md`: walk does not equilibrate at slow 0.1 | open, inherited | **WP9** |
+| `okf/references/known-issues.md`: walk does not equilibrate at slow 0.1 | **resolved by WP9** (walk starts from p(x); PDE ensemble) | WP9 |
 | known-issue: IMP.bff C++ fps.json reader collapses a 3-radius AV to 1 radius | upstream, open in quest | WP2 re-checks it in imp.bff and files it there if still open |
-| `handover.md`: `asa`/`spherePoints` → IMP (`DUP-05`) | `core/av.py:535,542` still has them | WP2's `probe_solvent_exposure` and IMP.bff `sphere_points` replace them (WP9 deletes the copies) |
+| `handover.md`: `asa`/`spherePoints` → IMP (`DUP-05`) | **deleted by WP9** (the walk's ASA was computed and never read) | exposure is `probe_solvent_exposure` (site tables) |
 | `okf/validation/2026-10-06-contact-distances.json` | receipt only | skip (its test is `test/test_quencher_distances.py`) |
 | `data/*.xlsx` (untracked in quest) | missing | WP0 (CSV under `examples/male/`) |
 | `okf/subsystems/quenching-model.md` § "Dye-specific kQ from amino-acid titrations" | describes an *older* method, see conflicts | the notebook wins; WP7 writes the current method |
@@ -250,7 +257,7 @@ Never brought over. Each entry says where it goes or why it is skipped.
 
 | topic | quest package / it-scripts / quest OKF | notebook (wins) | owner |
 |---|---|---|---|
-| Ensemble for τX | Brownian walk + photon race (`core/dye_diffusion.py`, it01–it06) | equilibrium ensemble p ∝ ∏ s_t^(−n_t), no walk (cell 22) | WP3 (analysis: `site_model.Site.weights`, done), WP9 (forward sim keeps walk + PDE) |
+| Ensemble for τX | Brownian walk + photon race (`core/dye_diffusion.py`, it01–it06) | equilibrium ensemble p ∝ ∏ s_t^(−n_t), no walk (cell 22) | WP3 (analysis: `site_model.Site.weights`, done), WP9 (forward sim: equilibrium + walk from p(x) + PDE, done) |
 | Stickiness | one `slow_factor` 0.1 for every residue in every dye preset (`settings/dye_repository.json`) | five chemical groups + common, ridge prior ln 10 | WP1 presets, WP4 |
 | kq error model | σ = max(slope SE, leave-one-day-out jackknife, day-to-day 0.11 M⁻¹ + 7 %) (quest OKF quenching-model) | hierarchical closed-form posterior, day-to-day abs 0.01 M⁻¹ + rel 2 % | WP1 |
 | Negative/weak kq | "negative or not above 2σ counts as no quenching" (OKF; it scripts; notebook `load_titrations` still computes the unused flag `counts`) | positive part only, no 2σ cut (cell 19) | WP1 |
@@ -522,6 +529,7 @@ Paths are relative to `chisurf/plugins/quenching_estimator/` unless absolute.
 
 ## WP9: the forward simulator follows the notebook
 
+- **Status: done 2026-10-20** — see resume item 7.
 - **Goal:** QuEst's own simulate path must not give the non-equilibrated sticky-regime τX, and its dye presets must
   carry the MalE-measured values.
 - **Edit:** `core/simulation.py`, `core/dye_diffusion.py` (an `ensemble: "equilibrium" | "walk" | "pde"` choice, all three kept — owner 2026-10-20: the walk is the

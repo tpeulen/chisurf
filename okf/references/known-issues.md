@@ -769,9 +769,20 @@ must not be compared with the static AV <E>. Pinned by `test_fret_static_limit.p
 sticky differs by > 0.1). Still open as a design question (not changed): whether compounded stickiness should saturate
 (e.g. floor the product or use max/mean instead of the product) so a dye cannot freeze for the whole run.
 
-**Open 2 -- the dye-trajectory and ACF panels concatenate the parallel trajectories**: with *Parallel trajectories*
--1 (8 on this machine) the time axis runs to 8 x t_max (16 000 ns for t_max 2000). Seen in the plugin window after
-**Load example** -> **Simulate** (`docs/guides/figures/quest_demo_result.png`); pre-existing in QuEst.
+**Resolved 2026-10-20 (WP9) -- Open 2, the dye-trajectory and ACF panels concatenated the parallel trajectories**:
+the walk is now ~1000 walkers back to back, and both panels read walker 0 only (`simulate_project`,
+`SimulateDiffusion.frames_per_walker`).
+
+**Resolved 2026-10-20 (WP9) -- the walk did not equilibrate at slow factor <= 0.1** (inherited from quest): the walk
+started on a uniform voxel and stayed there (MalE APO 95, AF488: tau_x 2.18 ns against the equilibrium 0.90 ns at
+slow 0.1). Walkers now start from the equilibrium occupancy `1/m` (`core/av.py: simulate_walkers`), and the
+`ensemble` choice adds the equilibrium and PDE ensembles (`core/ensembles.py`). It also explains lead (a) above: the
+"94 % of 400 ns in low-mobility voxels" was one walker frozen where it started. **Open, upstream:** IMP.bff's
+`simulate_probe_diffusion` / `quenched_donor_photons` take no start distribution (`internal/RandomWalk.h` draws a
+uniform voxel), so the p(x)-started walk is numpy in the plugin; it moves to C++ once the walk takes a start weight
+(needs an IMP.bff rebuild). **Open, i18n batch:** the `ensemble` parameter has no de/fr text yet
+(`test/test_i18n.py: PENDING_TRANSLATION`), and the de/fr `t_max`/`t_step`/`parallel_trajectories` descriptions still
+describe the single-trajectory walk.
 
 **Open 3 -- the AV moved again (2026-10-12 08:03), and the suite follows it**: the imp.bff working tree makes
 FPS's every-node link search the default (`include/ProbeAccessibleVolumeDefaults.h`, owner 2026-10-12, reversing

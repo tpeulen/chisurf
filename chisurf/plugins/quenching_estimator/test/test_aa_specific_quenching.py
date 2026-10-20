@@ -224,8 +224,13 @@ class TestSimulationIsResidueSpecific:
         E9, re-picked 2026-10-12 when IMP.bff's AV obstacles became IMP's radii
         x 0.84 (imp.bff 3b1751b7e): E155 stopped quenching under this project
         (QY 1.000 with or without TRP); E9 is TRP-only (share 1.00) at QY 0.362.
+
+        E5, re-picked 2026-10-20 (WP9) on the equilibrium ensemble: with the walk
+        starting from equilibrium E9's TRP share was a stuck walker's; at equilibrium
+        E5 is TRP 0.996 at QY 0.821, the highest share on chain E.
         """
-        with_trp = simulate_project(_project(attachment={"chain": "E", "residue": 9, "atom": "CB"}))
+        site = {"chain": "E", "residue": 5, "atom": "CB"}
+        with_trp = simulate_project(_project(attachment=site, ensemble="equilibrium"))
         trp_share = next(
             row["quench_rate_fraction"]
             for row in (with_trp.aa_residence or [])
@@ -236,17 +241,15 @@ class TestSimulationIsResidueSpecific:
         table = default_amino_acid_interactions(slow_factor=0.1)
         table["TRP"]["kQ"] = 0.0
         without_trp = simulate_project(
-            _project(
-                attachment={"chain": "E", "residue": 9, "atom": "CB"},
-                amino_acid_interactions=table,
-            )
+            _project(attachment=site, amino_acid_interactions=table, ensemble="equilibrium")
         )
         trp_row = next(
             row for row in (without_trp.aa_residence or []) if row["residue_name"] == "TRP"
         )
         assert trp_row["mean_quench_rate"] == 0.0
         # Removing the dominant quencher must raise the quantum yield.
-        assert without_trp.quantum_yield_donor > with_trp.quantum_yield_donor
+        qy = "quantum_yield"
+        assert without_trp.ensemble_lifetimes[qy] > with_trp.ensemble_lifetimes[qy] + 0.1
 
     def test_quenching_is_site_dependent(self) -> None:
         """A site with quenchers in reach must quench more than an exposed one.
@@ -262,12 +265,19 @@ class TestSimulationIsResidueSpecific:
         AV_DEFAULT_RADIUS_SCALE = 0.84 (imp.bff 3b1751b7e): E99 barely quenches
         here any more (0.971); the full chain-E scan puts E158 lowest (0.104,
         then 141 0.123, 142 0.166), and E96 still does not quench (1.000).
+
+        Re-picked 2026-10-20 (WP9), when the walk began starting from the equilibrium
+        occupancy: "E96 does not quench" was where a uniformly started walker got stuck
+        at slow factor 0.1, not the site. At equilibrium E96 has QY 0.47 and E158 0.58;
+        the chain-E equilibrium scan puts E21 lowest (0.289) and E55 highest (0.935).
+        The check runs on the equilibrium ensemble, which is deterministic; the walk's
+        agreement with it is test_equilibrium_ensemble.py's.
         """
         near_quenchers = simulate_project(
-            _project(attachment={"chain": "E", "residue": 158, "atom": "CB"})
+            _project(attachment={"chain": "E", "residue": 21, "atom": "CB"}, ensemble="equilibrium")
         )
         far_site = simulate_project(
-            _project(attachment={"chain": "E", "residue": 96, "atom": "CB"})
+            _project(attachment={"chain": "E", "residue": 55, "atom": "CB"}, ensemble="equilibrium")
         )
-        assert near_quenchers.quantum_yield_donor < 0.5
-        assert far_site.quantum_yield_donor == pytest.approx(1.0)
+        assert near_quenchers.ensemble_lifetimes["quantum_yield"] == pytest.approx(0.289, abs=2e-3)
+        assert far_site.ensemble_lifetimes["quantum_yield"] == pytest.approx(0.935, abs=2e-3)

@@ -101,6 +101,8 @@ def test_unsticky_simulation_matches_the_static_av_average() -> None:
 def test_default_stickiness_is_not_the_static_average() -> None:
     expected = _static_mean_efficiency()
     mean = float(np.mean([_simulated_efficiency(0.1, seed) for seed in SEEDS]))
-    # Compounded stickiness (0.1 per overlapping residue sphere, down to 1e-8) traps the
-    # walkers, so the efficiency follows where they got stuck. Measured 0.46..0.85.
+    # Compounded stickiness (0.1 per overlapping residue sphere, down to 1e-8) weights the
+    # equilibrium occupancy 1/m towards the surface, so the dyes are not the uniform clouds
+    # the static average assumes. Before 2026-10-20 the walkers also started uniformly and
+    # froze there (0.46..0.85); now they start from 1/m and the gap is the occupancy's.
     assert mean > expected + 0.1

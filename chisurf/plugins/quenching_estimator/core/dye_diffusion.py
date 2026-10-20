@@ -4,7 +4,6 @@ import os
 import tempfile
 import time
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -16,10 +15,20 @@ from chisurf.plugins.quenching_estimator.core.av import (
     fret_rate_pair_trace,
     fret_rate_trace,
     grid_center_index,
-    simulate_traj,
-    spherePoints,
+    simulate_walkers,
+    walk_mobility,
 )
-from chisurf.plugins.quenching_estimator.core.av import asa as _fps_asa
+from chisurf.plugins.quenching_estimator.core.ensembles import (
+    decay_photons,
+    ensemble_fields,
+    equilibrium_lifetimes,
+    normalize_ensemble,
+    pde_decay,
+    pde_lifetimes,
+    pde_solver,
+    static_photons,
+    walk_segment,
+)
 from chisurf.plugins.quenching_estimator.core.io import write_xyz
 
 # No Qt in this module: the desktop form lives in `quest.gui`, and a headless
@@ -363,9 +372,6 @@ class SimulateDiffusion:
         output_file="out",
         verbose=False,
         critical_distance=None,
-        asa_calc=False,
-        asa_n_sphere_point=590,
-        asa_probe_radius=0.5,
         trajectory_suffix="_traj.xyz",
         all_quencher_atoms=True,
     ):
@@ -376,12 +382,6 @@ class SimulateDiffusion:
         :param output_file:
         :param verbose:
         :param critical_distance:
-        :param asa_calc: bool
-            By default False. If True the ASA of the residues is calculated
-        :param asa_n_sphere_point: int
-            By default 590. The number of sphere-points around each atoms used for the calculationg
-            of the ASA.
-        :param asa_probe_radius:
         :param trajectory_suffix:
         :param all_quencher_atoms:
         pdb_file: pdb-file of the structure
@@ -392,14 +392,9 @@ class SimulateDiffusion:
             print("-----------------")
         self.av = av
         self.all_quencher_atoms = all_quencher_atoms
-
-        # ASA of residues
-        self.asa_calc = asa_calc
-        self.asa_n_sphere_point = asa_n_sphere_point
-        self.asa_probe_radius = asa_probe_radius
-        self.asa_n_sphere_point = asa_n_sphere_point
-        self.asa_sphere_points = spherePoints(asa_n_sphere_point) if asa_calc else None
-        self._asa = None
+        #: Walkers and frames per walker of the last run (see :meth:`run`).
+        self.n_walkers = 0
+        self.frames_per_walker = 0
 
         self.pdb = av.structure.atoms
         self.verbose = verbose
@@ -502,34 +497,6 @@ class SimulateDiffusion:
             print("_quencher_atom_indices")
             print(self._quencher_atom_indices)
 
-        if self.verbose:
-            print("Calculating ASA of quenchers.")
-            print("radii:")
-            print(self.av.atoms["radius"])
-            print("coordinates:")
-            print(self.av.atoms["coord"])
-            print("Quencher atom-indices")
-            print(self._quencher_atom_indices)
-
-        quencher_atom_index_array = np.hstack(
-            [v.flatten() for v in list(self._quencher_atom_indices.values())]
-        )
-        asa_v = _fps_asa(
-            self.av.structure.atoms["coord"],
-            self.av.structure.atoms["radius"],
-            quencher_atom_index_array,
-            self.asa_sphere_points,
-            self.asa_probe_radius,
-        )
-
-        asa_it = (x for x in asa_v)
-        asa = OrderedDict()
-        for res_key in self._quencher_atom_indices:
-            asa[res_key] = [next(asa_it) for idx in self._quencher_atom_indices[res_key]]
-        self._asa = asa
-        if self.verbose:
-            print("Accessible surface area:")
-            print(self._asa)
         self._quencher_coordinates = get_quencher_coordinates(
             self.pdb, atom_mapping, verbose=self.verbose
         )
@@ -595,49 +562,15 @@ class SimulateDiffusion:
         return self._kQ
 
     @staticmethod
-    def _trajectory_seeds(random_seed, n_trajectories):
-        if random_seed is None:
-            if n_trajectories <= 1:
-                return [None]
-            return [
-                int(seed)
-                for seed in np.random.SeedSequence().generate_state(n_trajectories, dtype=np.uint32)
-            ]
-
-        base_seed = int(random_seed)
-        max_seed = (2**31) - 1
-        return [int((base_seed + idx * 104729) % max_seed) for idx in range(n_trajectories)]
-
-    @staticmethod
     def _resolve_parallel_trajectories(parallel_trajectories):
         requested = -1 if parallel_trajectories is None else int(parallel_trajectories)
         if requested == -1:
             return max(1, min(os.cpu_count() or 1, MAX_PARALLEL_TRAJECTORIES))
         return max(1, min(requested, MAX_PARALLEL_TRAJECTORIES))
 
-    @staticmethod
-    def _simulate_single_trajectory(
-        density, slow_density, dg, slow_fact, t_step, t_max, D, random_seed
-    ):
-        return simulate_traj(
-            density,
-            slow_density,
-            dg,
-            slow_fact=slow_fact,
-            t_step=t_step,
-            t_max=t_max,
-            D=D,
-            random_seed=random_seed,
-        )
-
     @property
     def quencher_coordinates(self):
         return np.vstack(list(self._quencher_coordinates.values()))
-
-    @property
-    def quencher_asa(self):
-        if self._asa is None:
-            raise ValueError("Set quencher property quencher_atom_indices first.")
 
     @property
     def quencher_atom_indices(self):
@@ -661,18 +594,22 @@ class SimulateDiffusion:
         verbose=True,
         random_seed=None,
         parallel_trajectories=-1,
+        t_walk=None,
         **kwargs,
     ):
-        """
+        """Walk the dye from its equilibrium occupancy (:func:`.av.simulate_walkers`).
 
         :param D: float
             diffusion coefficient of dye in Ang**2/ns
-        :param slow_fact: float
-            The diffusion coefficient of the dye within the slow-accessible volume is slower by a factor of slow_fact.
+        :param slow_fact: float or ``(ng, ng, ng)`` array
+            Mobility scaling: a scalar inside the slow (contact) volume, or the per-voxel
+            field (:func:`.av.walk_mobility`). Its inverse is the walk's equilibrium and
+            the walkers' start distribution.
         :param t_step: float
             The time-step of the simulation in nano-seconds
         :param t_max: float
-            The maximum time of the simulation in nano-seconds
+            Simulated time per trajectory block, in nano-seconds; the run covers
+            ``parallel_trajectories * t_max`` in all.
         :param save_traj: bool
             If True the trajectory is saved to self.output_file+'_traj.xyz'. Default value True
         :param save_j: int
@@ -681,60 +618,40 @@ class SimulateDiffusion:
         :param random_seed:
             Optional seed for deterministic trajectory diagnostics.
         :param parallel_trajectories:
-            Number of independent Brownian dynamics trajectories to run and
-            concatenate for downstream photon sampling. Use -1 for all CPU cores,
-            capped at 8.
+            Number of ``t_max`` blocks. Use -1 for all CPU cores, capped at 8 (the walkers
+            are vectorised, so this sets the simulated time, not threads).
+        :param t_walk:
+            Length of one walker, ns; ``None`` is ``t_max`` (one walker per block). The
+            blocks are cut into ``round(t_max / t_walk)`` independent walkers, each started
+            from the equilibrium occupancy, concatenated walker after walker.
         """
         verbose = verbose or self.verbose
         self.t_step = t_step
         dg = self.dg
         density, slow_density = self.av_fast, self.av_slow
-        n_trajectories = self._resolve_parallel_trajectories(parallel_trajectories)
+        n_blocks = self._resolve_parallel_trajectories(parallel_trajectories)
+        t_walk = float(t_max) if t_walk is None else min(float(t_max), float(t_walk))
+        per_block = max(1, int(round(float(t_max) / t_walk))) if t_walk > 0 else 1
+        n_walkers = n_blocks * per_block
         if verbose:
             print("Simulate dye-trajectory")
-            print("Simulation time [us]: %.2f" % (t_max / 1000))
+            print("Simulation time [us]: %.2f" % (n_blocks * t_max / 1000))
             print("Time-step [ps]: %.2f" % (t_step * 1000))
-            print("Number of steps: %.2f" % int(t_max / t_step))
-            print("Parallel trajectories: %i" % n_trajectories)
+            print("Walkers: %i x %.1f ns" % (n_walkers, t_walk))
             print("AV-grid parameter [Ang]: %.2f" % dg)
             print("Diff coeff. [Ang/ns2]: %.2f" % D)
-            print("Shape-AV slow (x,y,z): %s %s %s" % (slow_density.shape))
-            print("Shape-AV fast (x,y,z): %s %s %s" % (density.shape))
             print("------")
         start = time.process_time()
-        seeds = self._trajectory_seeds(random_seed, n_trajectories)
-        if n_trajectories == 1:
-            results = [
-                self._simulate_single_trajectory(
-                    density, slow_density, dg, slow_fact, t_step, t_max, D, seeds[0]
-                )
-            ]
-        else:
-            with ThreadPoolExecutor(max_workers=n_trajectories) as executor:
-                futures = [
-                    executor.submit(
-                        self._simulate_single_trajectory,
-                        density,
-                        slow_density,
-                        dg,
-                        slow_fact,
-                        t_step,
-                        t_max,
-                        D,
-                        seed,
-                    )
-                    for seed in seeds
-                ]
-                results = [future.result() for future in futures]
-
-        successful = [result for result in results if result[2] > 0]
-        if not successful:
+        mobility = walk_mobility(density, slow_density, slow_fact)
+        traj, n_steps, n_accepted, n_rejected = simulate_walkers(
+            density, mobility, dg, t_walk, t_step, D, n_walkers=n_walkers,
+            random_seed=random_seed,
+        )
+        if traj.shape[0] == 0:
             self._traj = None
             return
-        trajectories = [result[0] for result in successful]
-        traj = np.concatenate(trajectories, axis=0) if len(trajectories) > 1 else trajectories[0]
-        n_accepted = int(sum(result[2] for result in successful))
-        n_rejected = int(sum(result[3] for result in successful))
+        self.n_walkers = n_walkers
+        self.frames_per_walker = int(n_steps)
         traj += self.x0
         self._traj = traj
         k_quench_grid = getattr(self.av, "k_quench_grid", None)
@@ -805,6 +722,7 @@ class DonorDecay:
         acceptor_slow_radius=None,
         acceptor_amino_acid_interactions=None,
         acceptor_dynamics="trajectory",
+        ensemble=None,
     ):
         """
         quenching trajectory as calculated by SimulateDiffusion.quenched
@@ -845,8 +763,15 @@ class DonorDecay:
             atoms are then absent, so every residue's quenching centre falls
             back to its CB - which, sitting at the side-chain centre of mass, is
             a reasonable stand-in for the redox-active moiety.
+        :param ensemble: str
+            ``"walk"`` (default), ``"equilibrium"`` or ``"pde"``: where the dye sits during
+            the excited state (:mod:`.ensembles`). Only the walk simulates FRET.
         """
         self.verbose = verbose
+        self.ensemble = normalize_ensemble(ensemble)
+        #: :class:`.ensembles.EnsembleLifetimes` of the last equilibrium/PDE solve.
+        self.ensemble_lifetimes = None
+        self._ensemble_fields = None
         self._av = None
         self._diffusion = None
         self.tau0 = tau0
@@ -937,9 +862,78 @@ class DonorDecay:
 
     @property
     def diffusion(self):
-        if self._diffusion is None:
+        """The donor's walk, simulated on first use; ``None`` for the non-walk ensembles."""
+        if self._diffusion is None and self.ensemble == "walk":
             self.simulate_diffusion()
         return self._diffusion
+
+    @property
+    def walk_segment(self):
+        """Length of one walker, ns (:func:`.ensembles.walk_segment`)."""
+        if not self.tau0:
+            return None
+        n_blocks = SimulateDiffusion._resolve_parallel_trajectories(self.parallel_trajectories)
+        return walk_segment(self.tau0, self.t_max, n_blocks)
+
+    def _walk_mobility(self, av, slow_fact):
+        """The mobility field the walk runs on (and the ensembles read its inverse from)."""
+        if self.stickiness_mode == "amino_acid":
+            grid = getattr(av, "slow_factor_grid", None)
+            if grid is not None:
+                slow_fact = grid
+        return walk_mobility(av.density_fast, av.density_slow, slow_fact)
+
+    @property
+    def ensemble_fields(self):
+        """:class:`.ensembles.EnsembleFields` of the donor's volume, built on first use."""
+        if self._ensemble_fields is None:
+            av = self.av
+            self._ensemble_fields = ensemble_fields(
+                av.density_fast,
+                self._walk_mobility(av, self.slow_fact),
+                getattr(av, "k_quench_grid", None),
+                av.dg,
+                self.diffusion_coefficient,
+            )
+        return self._ensemble_fields
+
+    def solve_ensemble(self, verbose=False):
+        """The ``"equilibrium"`` / ``"pde"`` donor: lifetimes, then a photon trace.
+
+        The photon trace has the walk's shape (delay, emitted), so the histogram, the
+        quantum yield and the mean arrival time downstream read it unchanged.
+        """
+        if self.ensemble == "walk":
+            raise ValueError("solve_ensemble is the equilibrium/pde path; the walk walks")
+        f = self.ensemble_fields
+        if self.ensemble == "equilibrium":
+            self.ensemble_lifetimes = equilibrium_lifetimes(f, self.tau0)
+            self._photon_trace = static_photons(f, self.tau0, self.n_photons, self._photon_seed())
+        else:
+            solver = pde_solver(f)
+            self.ensemble_lifetimes = pde_lifetimes(f, self.tau0, solver)
+            t, intensity = pde_decay(f, self.tau0, solver)
+            self._photon_trace = decay_photons(
+                t, intensity, self.ensemble_lifetimes.quantum_yield, self.n_photons,
+                self._photon_seed(),
+            )
+        if verbose or self.verbose:
+            print("Ensemble %s: %s" % (self.ensemble, self.ensemble_lifetimes.as_dict()))
+        return self.ensemble_lifetimes
+
+    def ensemble_sample(self, n=20000):
+        """``n`` dye positions drawn from the equilibrium occupancy, Angstrom.
+
+        Same convention as a walk frame (a uniform point inside a voxel drawn from ``w``);
+        it is one-step walkers, so the two cannot disagree on where a voxel is.
+        """
+        av = self.av
+        mobility = self._walk_mobility(av, self.slow_fact)
+        xyz, _, _, _ = simulate_walkers(
+            av.density_fast, mobility, av.dg, 1.0, 1.0, 0.0, n_walkers=int(n),
+            random_seed=self.random_seed,
+        )
+        return xyz + av.x0
 
     @property
     def slow_center(self):
@@ -1131,11 +1125,19 @@ class DonorDecay:
     @property
     def photon_trace(self):
         if self._photon_trace is None:
-            self.calc_photons()
+            if self.ensemble == "walk":
+                self.calc_photons()
+            else:
+                self.solve_ensemble()
         return self._photon_trace
 
     @property
     def collisions(self):
+        """Share of the ensemble in contact with a quencher (walk: of the frames)."""
+        if self.ensemble != "walk":
+            if self.ensemble_lifetimes is None:
+                self.solve_ensemble()
+            return float(self.ensemble_lifetimes.contact_fraction)
         return float(self.diffusion.quenched.sum()) / self.diffusion.quenched.shape[0]
 
     @property
@@ -1185,11 +1187,7 @@ class DonorDecay:
         verbose = verbose or self.verbose
         av = self.av
         D = self.diffusion_coefficient
-        slow_fact = self.slow_fact
-        if self.stickiness_mode == "amino_acid":
-            slow_fact = getattr(av, "slow_factor_grid", None)
-            if slow_fact is None:
-                slow_fact = self.slow_fact
+        slow_fact = self._walk_mobility(av, self.slow_fact)
         diffusion = SimulateDiffusion(
             av, quencher=self.quencher, verbose=verbose, all_quencher_atoms=all_quencher_atoms
         )
@@ -1201,6 +1199,7 @@ class DonorDecay:
             t_step=self.t_step,
             random_seed=self.random_seed,
             parallel_trajectories=self.parallel_trajectories,
+            t_walk=self.walk_segment,
         )
         self._diffusion = diffusion
         success = diffusion._traj is not None
@@ -1368,11 +1367,7 @@ class DonorDecay:
                 "chain, residue and atom (fret.dyes[1].attachment)."
             )
 
-        slow_fact = self.acceptor_slow_fact_value
-        if self.stickiness_mode == "amino_acid":
-            grid = getattr(av, "slow_factor_grid", None)
-            if grid is not None:
-                slow_fact = grid
+        slow_fact = self._walk_mobility(av, self.acceptor_slow_fact_value)
 
         seed = self.random_seed
         if seed is not None:
@@ -1389,6 +1384,7 @@ class DonorDecay:
             t_step=self.t_step,
             random_seed=seed,
             parallel_trajectories=self.parallel_trajectories,
+            t_walk=self.walk_segment,
         )
         self._acceptor_diffusion = diffusion
         return diffusion._traj is not None
@@ -1631,6 +1627,15 @@ class DonorDecay:
 
         report(0.4, "Calculating slow AV (ACV)...")
         self._calc_slow_av(verbose=verbose)
+        self._ensemble_fields = None
+        self.ensemble_lifetimes = None
+        self._photon_trace = None
+
+        if self.ensemble != "walk":
+            report(0.6, "Solving the %s ensemble..." % self.ensemble)
+            self.solve_ensemble(verbose=verbose)
+            report(1.0, "Photon trace drawn from the %s ensemble." % self.ensemble)
+            return True
 
         report(0.6, "Simulating dye diffusion...")
         success = self.simulate_diffusion(verbose=verbose)

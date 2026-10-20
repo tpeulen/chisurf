@@ -72,13 +72,20 @@ class TestResolvingALocale:
         assert i18n.resolve_locale() == "en"
 
 
+#: Catalog entries added in a PRD-154 batch, whose de/fr text waits for the deferred
+#: i18n batch (owner rule: no translation work in those batches). They render in English
+#: meanwhile (``translate_catalog`` falls back key by key). A **shrinking** list: the i18n
+#: batch translates them and strikes the line; never add to it to make this test pass.
+PENDING_TRANSLATION = {"ensemble"}
+
+
 class TestEveryTranslationIsComplete:
     """A half-translated form is worse than an English one: it looks broken."""
 
     @pytest.mark.parametrize("code", TRANSLATED)
     def test_all_parameters_are_translated(self, code: str) -> None:
         translated = set(i18n.locale_data(code).get("parameters", {}))
-        missing = CATALOG_PATHS - translated
+        missing = CATALOG_PATHS - translated - PENDING_TRANSLATION
         assert not missing, f"{code}: untranslated parameters {sorted(missing)}"
 
     @pytest.mark.parametrize("code", TRANSLATED)

@@ -55,8 +55,9 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Unquenched lifetime (ns) | `tau0` | float |  | 0.0 … 1000.0 | Fluorescence lifetime of the donor dye in the absence of quenching. |
 | Donor diffusion coefficient (Å²/ns) | `donor_D` | float |  | 0.0 … 1000.0 | Diffusion coefficient of the donor dye in solution, when not interacting with the protein surface. |
-| Simulation time (ns) | `t_max` | float |  | 0.0 … 1000000000.0 | Total length of the simulated Brownian dynamics trajectory. |
-| Time step (ns) | `t_step` | float |  | 1e-06 … 1000.0 | Time step size for the Brownian dynamics trajectory calculation. |
+| Ensemble | `ensemble` | choice |  | choices: walk, equilibrium, pde | Where the dye sits during the excited state. 'walk': Brownian walkers, each started from the equilibrium occupancy (w = product of slow_factor^-1 over the residues in range), and a photon race along each; the only ensemble that simulates FRET, with Monte-Carlo noise. 'equilibrium': the static limit, every position decays on its own at 1/tau0 + kQ, weighted by w; exact and fast, what the inverse fit uses. 'pde': the diffusion equation on the AV grid with stickiness as a potential and quenching as a sink, solved without sampling noise; it includes motion during the excited state, and its stationary state is the equilibrium ensemble. The walk and the PDE describe the same physics and agree to the walk's time-step bias. |
+| Simulation time (ns) | `t_max` | float |  | 0.0 … 1000000000.0 | Simulated time per trajectory block (walk ensemble). The walk covers parallel_trajectories × t_max in all, cut into walkers of 20–50 × tau0 (about 1000 of them) that each start from the equilibrium occupancy. Unused by the equilibrium and PDE ensembles. |
+| Time step (ns) | `t_step` | float |  | 1e-06 … 1000.0 | Time step of the Brownian walk (walk ensemble). A smaller step shrinks the walk's bias at sticky boundaries; the equilibrium and PDE ensembles do not step. |
 | Simulated photons | `n_photons` | int |  | 1 … 2147483647 | Number of excitation photons simulated to reconstruct the fluorescence decay histogram. |
 | Decay bins | `n_bins` | int |  | 1 … 65535 | Number of time channels/bins used to construct the output decay histogram. |
 | Coarse-grained structure | `coarse_grained` | bool |  |  | Reduce the structure to backbone plus CB before simulating, with CB moved to the side-chain centre of mass. Side-chain atoms are then absent, so every residue's quenching centre falls back to that CB pseudo-atom, and the accessible volume grows because side chains no longer block it. This is a modelling choice, not a speed optimisation: QuEst's cost is dominated by the AV grid rather than the atom count. |
@@ -88,7 +89,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Parallel trajectories | `parallel_trajectories` | int |  | -1 … 1024 | Number of independent Brownian dynamics trajectories run concurrently and combined before photon sampling. Use -1 to use all CPU cores, capped at 8. |
+| Parallel trajectories | `parallel_trajectories` | int |  | -1 … 1024 | Number of t_max-long trajectory blocks in the walk ensemble. The walkers are vectorised, so this sets the total simulated time, not a thread count. Use -1 for the number of CPU cores, capped at 8. |
 | Slowing radius (Å) | `slow_radius` | float |  | 0.0 … 50.0 | Radius around each whole-protein amino-acid center where that residue type contributes its slow_factor to the diffusion coefficient grid. |
 | Save AV files | `save_avs` | bool |  |  | Whether to save the calculated accessible volume grids as XYZ files. |
 | Output file prefix | `output_file` | str |  |  | Base filename prefix used when saving simulation outputs, trajectories, and decays. |
@@ -124,7 +125,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Theory** — [Dye quenching by amino acids: photoinduced electron transfer at contact](/concepts/dye_quenching.md), [Molecular surfaces and solvent accessibility](/concepts/molecular_surfaces.md)
+- **Theory** — [Dye quenching by amino acids: photoinduced electron transfer at contact](/concepts/dye_quenching.md), [Molecular surfaces and solvent accessibility](/concepts/molecular_surfaces.md), [Quenching inference: stickiness and quench strength from measured lifetimes](/concepts/quenching_inference.md)
 - **Workflow** — [QuEst: predicting dye quenching at a labelling site](/guides/80_quenching_estimator.md)
 
 ## Source

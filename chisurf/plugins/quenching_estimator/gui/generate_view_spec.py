@@ -359,6 +359,8 @@ def build_view_spec(locale: str = DEFAULT_LOCALE) -> dict[str, Any]:
                 "buttons": [
                     {
                         "label": strings["button.simulate"],
+                        # The form's one primary action (emtk button roles).
+                        "role": "primary",
                         "action": "run_simulation",
                         "description": strings["button.simulate.description"],
                     },

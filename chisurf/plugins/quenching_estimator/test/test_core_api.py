@@ -192,21 +192,31 @@ def test_rejected_diffusion_steps_remain_at_last_accepted_position() -> None:
     density = np.zeros((3, 3, 3), dtype=np.uint8)
     density[1, 1, 1] = 1
     slow_density = density.copy()
-    slow_grid = np.ones_like(density, dtype=np.float64)
 
-    scalar_traj, scalar_accepted, _, scalar_rejected = fps.simulate_traj(
-        density, slow_density, 1.0, t_max=2.0, t_step=0.1, D=100.0, slow_fact=1.0
-    )
-    grid_traj, grid_accepted, _, grid_rejected = fps.simulate_traj(
-        density, slow_density, 1.0, t_max=2.0, t_step=0.1, D=100.0, slow_fact=slow_grid
-    )
+    for slow_fact in (1.0, np.ones_like(density, dtype=np.float64)):
+        mobility = fps.walk_mobility(density, slow_density, slow_fact)
+        traj, n_steps, accepted, rejected = fps.simulate_walkers(
+            density, mobility, 1.0, t_walk=2.0, t_step=0.1, D=100.0, random_seed=3
+        )
+        assert n_steps == 20 and traj.shape == (20, 3)
+        assert rejected > 0 and accepted == 1  # only the start
+        # Every frame is the start, a point inside voxel (1, 1, 1): offsets in [0, 1)
+        # from the anchor voxel grid_center_index(3) = 1.
+        assert np.allclose(traj, traj[0])
+        assert np.all((traj[0] >= 0.0) & (traj[0] < 1.0))
 
-    assert scalar_rejected > 0
-    assert grid_rejected > 0
-    assert np.allclose(scalar_traj, np.zeros_like(scalar_traj))
-    assert np.allclose(grid_traj, np.zeros_like(grid_traj))
-    assert scalar_accepted[0] == 1
-    assert grid_accepted[0] == 1
+
+def test_walkers_start_from_the_equilibrium_occupancy() -> None:
+    """The start voxel is drawn from 1/m: the sticky voxel holds what its weight says."""
+    density = np.zeros((4, 4, 4), dtype=np.uint8)
+    density[1, 1, 1] = density[2, 1, 1] = 1
+    mobility = np.ones(density.shape)
+    mobility[2, 1, 1] = 0.1  # 10x the weight of its neighbour
+    traj, _, _, _ = fps.simulate_walkers(
+        density, mobility, 1.0, t_walk=0.1, t_step=0.1, D=0.0, n_walkers=20000, random_seed=1
+    )
+    sticky = np.floor(traj[:, 0] + fps.grid_center_index(4)).astype(int) == 2
+    assert abs(sticky.mean() - 10.0 / 11.0) < 0.01
 
 
 def test_simulate_diffusion_combines_parallel_trajectories() -> None:

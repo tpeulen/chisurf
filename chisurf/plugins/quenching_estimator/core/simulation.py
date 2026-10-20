@@ -619,7 +619,17 @@ def top_quenchers(aa_residence: Any, limit: int = 3) -> list[dict[str, Any]]:
 def aa_residence_from_model(model: DonorDecay) -> list[dict[str, Any]]:
     """Return residue-type residence metrics for a completed donor model."""
 
-    raw_trajectory = getattr(getattr(model, "diffusion", None), "_traj", None)
+    is_trajectory = getattr(model, "ensemble", "walk") == "walk"
+    if is_trajectory:
+        raw_trajectory = getattr(getattr(model, "diffusion", None), "_traj", None)
+    else:
+        # The equilibrium and PDE ensembles have no path: their table is read off a
+        # sample of the equilibrium occupancy, and the columns that need time (dwell
+        # times, contact events) are not reported for it.
+        try:
+            raw_trajectory = model.ensemble_sample()
+        except Exception:
+            raw_trajectory = None
     if raw_trajectory is None:
         return []
 
@@ -658,7 +668,7 @@ def aa_residence_from_model(model: DonorDecay) -> list[dict[str, Any]]:
             quench_rates[residue_name] = 0.0
             quench_radii[residue_name] = 0.0
 
-    return _residue_type_metrics(
+    rows = _residue_type_metrics(
         raw_trajectory,
         {name: np.vstack(points) for name, points in centers_by_residue.items()},
         t_step=float(getattr(model, "t_step", 0.0) or 0.0),
@@ -670,6 +680,24 @@ def aa_residence_from_model(model: DonorDecay) -> list[dict[str, Any]]:
         quench_radii=quench_radii,
         quench_rates=quench_rates,
     )
+    if not is_trajectory:
+        for row in rows:
+            for key in _TIME_RESOLVED_RESIDENCE_KEYS:
+                row[key] = None
+    return rows
+
+
+#: Residence columns that read a trajectory's time order; ``None`` for an ensemble sample.
+_TIME_RESOLVED_RESIDENCE_KEYS = (
+    "total_time_ns",
+    "event_count",
+    "mean_event_time_ns",
+    "max_event_time_ns",
+    "attributed_total_time_ns",
+    "attributed_event_count",
+    "attributed_mean_event_time_ns",
+    "attributed_max_event_time_ns",
+)
 
 
 @dataclass
@@ -697,6 +725,14 @@ class DecaySimulationResult:
     contact_volume: Optional[float] = None
     contact_to_free_ratio: Optional[float] = None
     aa_residence: Optional[list[dict[str, Any]]] = None
+    #: ``"walk"``, ``"equilibrium"`` or ``"pde"`` (``core/ensembles.py``).
+    ensemble: str = "walk"
+    #: Species-averaged donor lifetime QY x tau0, ns. For the equilibrium and PDE
+    #: ensembles the exact value (no photon noise), else the photon estimate.
+    tau_x: Optional[float] = None
+    #: The equilibrium/PDE solve: tau_x, tau_f, QY, contact share, static and
+    #: fast-exchange limits (``EnsembleLifetimes.as_dict``). ``None`` for the walk.
+    ensemble_lifetimes: Optional[dict[str, Any]] = None
 
 
 def load_project(path: Path | str) -> MutableMapping[str, Any]:
@@ -761,6 +797,7 @@ def build_donor_from_project(
         random_seed=donor_dye.get("random_seed", p.get("random_seed")),
         parallel_trajectories=int(parallel_trajectories),
         coarse_grained=bool(p.get("coarse_grained", donor_dye.get("coarse_grained", False))),
+        ensemble=p.get("ensemble"),
     )
 
     structure_source = pdb_path or p.get("pdb")
@@ -769,6 +806,14 @@ def build_donor_from_project(
     d.structure = str(resolve_structure_path(structure_source))
 
     fret = p.get("fret") or {}
+    if fret.get("enabled") and d.ensemble != "walk":
+        # The transfer rate is read along the donor's and the acceptor's paths; the
+        # equilibrium and PDE ensembles have no paths. Refused rather than silently
+        # walking, so the ensemble a result reports is the one that produced it.
+        raise ValueError(
+            f"FRET needs the 'walk' ensemble (got {d.ensemble!r}): the transfer rate is "
+            "computed along the dyes' trajectories."
+        )
     if fret.get("enabled"):
         d.fret_enabled = True
         dyes = fret.get("dyes") or []
@@ -1089,7 +1134,11 @@ def simulate_project(
                 getattr(model.diffusion, "t_step", project_dict.get("t_step", 0.0)) or 0.0
             )
             distances = model.diffusion.distance_to_mean
+            # The walk is many walkers back to back; a correlation or a path drawn
+            # across their seams would show jumps no dye made, so both read walker 0.
+            first = int(getattr(model.diffusion, "frames_per_walker", 0) or 0) or None
             if distances is not None:
+                distances = distances[:first]
                 # Correlate the full series, then thin only what gets plotted.
                 trajectory_autocorr = autocorr_to_tau_window(
                     distances,
@@ -1107,7 +1156,7 @@ def simulate_project(
             raw_trajectory = getattr(model.diffusion, "_traj", None)
             if raw_trajectory is not None and len(raw_trajectory) > 0:
                 trajectory_points = _subsample_points(
-                    raw_trajectory, max_trajectory_points, decimals=2
+                    raw_trajectory[:first], max_trajectory_points, decimals=2
                 )
         if render_data and hasattr(model, "av") and model.av is not None:
             # The full clouds stay on disk as .xyz/.mrc; what travels through
@@ -1141,6 +1190,15 @@ def simulate_project(
         lifetime_donor = float(np.mean(dts[phs == 1])) if np.sum(phs) > 0 else 0.0
     except Exception:
         lifetime_donor = 0.0
+
+    ensemble_lifetimes = (
+        None if model.ensemble_lifetimes is None else model.ensemble_lifetimes.as_dict()
+    )
+    tau_x = (
+        ensemble_lifetimes["tau_x"]
+        if ensemble_lifetimes is not None
+        else float(model.quantum_yield) * float(model.tau0)
+    )
 
     # Calculate AV and contact volume metrics in Ang3. These must come from the
     # complete point clouds, not the thinned copies shipped to the viewer.
@@ -1223,6 +1281,9 @@ def simulate_project(
             "contact_volume": contact_volume,
             "contact_to_free_ratio": contact_to_free_ratio,
             "aa_residence": aa_residence,
+            "ensemble": model.ensemble,
+            "tau_x": tau_x,
+            "ensemble_lifetimes": ensemble_lifetimes,
         }
     )
     if save_outputs:
@@ -1308,6 +1369,8 @@ def simulate_project(
                 if fret_eff is not None:
                     f.write(f"fret_efficiency,{float(fret_eff)}\n")
                 f.write(f"lifetime_donor,{float(lifetime_donor)}\n")
+                f.write(f"ensemble,{model.ensemble}\n")
+                f.write(f"tau_x,{float(tau_x)}\n")
                 if av_volume is not None:
                     f.write(f"av_volume,{float(av_volume)}\n")
                 if contact_volume is not None:
@@ -1372,6 +1435,9 @@ def simulate_project(
         contact_volume=contact_volume,
         contact_to_free_ratio=contact_to_free_ratio,
         aa_residence=aa_residence,
+        ensemble=model.ensemble,
+        tau_x=tau_x,
+        ensemble_lifetimes=ensemble_lifetimes,
     )
 
 

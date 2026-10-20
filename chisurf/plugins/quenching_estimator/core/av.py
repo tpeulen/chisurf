@@ -415,7 +415,8 @@ def dRmp(av1, av2):
 
 
 # ---------------------------------------------------------------------------
-# Grid stamps, the Brownian walk, ASA and the FRET rate traces -- IMP.bff's C++
+# Grid stamps and the FRET rate traces -- IMP.bff's C++; the Brownian walk -- numpy
+# until IMP.bff's walk takes a start distribution (see `simulate_walkers`).
 #
 # All of it is general fluorescence machinery and lives in IMP.bff's compiled
 # core, flat in its namespace (`IMP.bff.slow_factor_grid`, ...). The C++ kernels
@@ -505,56 +506,108 @@ def subav(density, ng, dg, slow_radius, rs, r0):
     return np.ascontiguousarray(np.asarray(mask).reshape(shape) > 0, dtype=np.uint8)
 
 
-def simulate_traj(d, ds, dg, t_max, t_step, D, slow_fact, random_seed=None):
-    """One Brownian trajectory of the dye centre in its accessible volume.
+def walk_mobility(density, slow_density, slow_fact):
+    """The per-voxel step-variance scaling the walk uses, ``(ng, ng, ng)`` float64.
 
-    Returns ``(xyz, accepted, n_accepted, n_rejected)`` with ``xyz`` of shape
-    ``(n_frames, 3)``, relative to the grid anchor. ``slow_fact`` is a scalar
-    applied inside ``ds`` or a ``(ng, ng, ng)`` mobility field
-    (:func:`IMP.bff.simulate_probe_diffusion` builds the field from either).
+    The rule :func:`IMP.bff.simulate_probe_diffusion` applies: ``slow_fact`` with more than
+    one entry *is* the field; a scalar applies wherever ``slow_density`` is nonzero (and
+    everywhere is 1 without one). One copy of the rule, so the walk and the ensembles that
+    read its equilibrium (:mod:`.ensembles`) cannot disagree on the field.
     """
-    from IMP.bff import simulate_probe_diffusion
-
-    slow = np.asarray(1.0 if slow_fact is None else slow_fact, dtype=np.float64)
-    slow_density = [] if ds is None else _flat(ds, np.int32)
-    walk = simulate_probe_diffusion(
-        _flat(d, np.int32),
-        slow_density,
-        float(dg),
-        float(t_max),
-        float(t_step),
-        float(D),
-        slow.ravel(),
-        cxx_seed(random_seed),
-    )
-    xyz = np.asarray(walk.get_xyz(), dtype=np.float64).reshape(-1, 3)
-    accepted = np.asarray(walk.get_accepted())
-    return xyz, accepted, int(walk.n_accepted), int(walk.n_rejected)
+    shape = np.shape(density)
+    factors = np.asarray(1.0 if slow_fact is None else slow_fact, dtype=np.float64)
+    if factors.size > 1:
+        return np.ascontiguousarray(factors.reshape(shape))
+    mobility = np.ones(shape, dtype=np.float64)
+    if slow_density is not None and float(factors.ravel()[0]) != 1.0:
+        mobility[np.asarray(slow_density).reshape(shape) > 0] = float(factors.ravel()[0])
+    return mobility
 
 
-def spherePoints(nSphere: int):
-    """``nSphere`` roughly equidistant points on the unit sphere, ``(n, 3)``."""
-    from IMP.bff import sphere_points
+def simulate_walkers(
+    density, mobility, dg, t_walk, t_step, D, n_walkers=1, start_weight=None, random_seed=None
+):
+    """Brownian walkers of the dye centre, each started from the stationary occupancy.
 
-    return np.asarray(sphere_points(int(nSphere)), dtype=np.float64).reshape(-1, 3)
+    The walk is IMP.bff's (``internal/RandomWalk.h``): positions in voxel units, voxel
+    ``floor(p)``, a Gaussian step of variance ``2 D m dt / dg^2`` per axis with ``m`` read at
+    the current voxel (Ito), rejected when it would leave the volume. Its stationary state
+    is ``p ~ 1/m`` -- for the sticky field ``m = prod s^n`` that is the equilibrium ensemble
+    ``prod s^-n``.
 
+    **What differs is the start.** IMP.bff's walk starts on a uniformly drawn voxel and
+    takes no start distribution. In a sticky volume (slow factor <= 0.1) a walker does not
+    reach the sticky voxels within a run, so a uniform start leaves the ensemble far from
+    equilibrium and the decay reports where the walkers began (2.18 ns against the
+    equilibrium 0.90 ns, MalE APO 95, AF488 at slow 0.1). Here each walker starts on a voxel
+    drawn from ``start_weight`` (default ``1/m``, the walk's own equilibrium) at a uniform
+    point inside it, so every frame of every walker is a sample of the equilibrium
+    ensemble and nothing has to equilibrate. It is numpy, vectorised over walkers, until
+    IMP.bff's walk takes a start weight (okf/references/known-issues.md).
 
-def asa(r, vdw, probe_atom_indices, sphere_points, probe=1.0, radius=2.5):
-    """Solvent-accessible surface area of the probe atoms."""
-    from IMP.bff import solvent_accessible_surface
+    Parameters
+    ----------
+    density : numpy.ndarray
+        ``(ng, ng, ng)``, nonzero where the dye may be.
+    mobility : numpy.ndarray
+        ``(ng, ng, ng)`` step-variance scaling (:func:`walk_mobility`).
+    dg : float
+        Voxel edge, Angstrom.
+    t_walk, t_step : float
+        Length of each walker and the time step, ns.
+    D : float
+        Diffusion coefficient, Angstrom^2/ns (per-component variance ``2 D dt``).
+    n_walkers : int
+        Independent walkers.
+    start_weight : numpy.ndarray, optional
+        ``(ng, ng, ng)`` start distribution, unnormalised.
+    random_seed : int, optional
+        Reproducible when given.
 
-    points = [] if sphere_points is None else _flat(sphere_points)
-    return np.asarray(
-        solvent_accessible_surface(
-            _flat(r),
-            _flat(vdw),
-            [int(i) for i in np.asarray(probe_atom_indices).ravel()],
-            points,
-            float(probe),
-            float(radius),
-        ),
-        dtype=np.float64,
-    )
+    Returns
+    -------
+    xyz : numpy.ndarray
+        ``(n_walkers * n_steps, 3)``, walker after walker, in Angstrom relative to the grid
+        anchor (voxel ``grid_center_index(ng)``), as IMP.bff's walk reports it.
+    n_steps : int
+        Frames per walker.
+    n_accepted, n_rejected : int
+    """
+    occupied = np.asarray(density) > 0
+    shape = occupied.shape
+    ng = int(shape[0])
+    flat_occupied = occupied.ravel()
+    n_steps = max(1, int(round(float(t_walk) / float(t_step))))
+    n_walkers = max(1, int(n_walkers))
+    active = np.flatnonzero(flat_occupied)
+    if active.size == 0:
+        return np.zeros((0, 3)), n_steps, 0, 0
+    m = np.asarray(mobility, dtype=np.float64).ravel()
+    weight = (1.0 / m) if start_weight is None else np.asarray(start_weight, np.float64).ravel()
+    p = weight[active]
+    p = p / p.sum()
+    rng = np.random.default_rng(None if random_seed is None else int(random_seed) & 0x7FFFFFFF)
+    voxel = active[rng.choice(active.size, size=n_walkers, p=p)]
+    pos = np.stack(np.unravel_index(voxel, shape), axis=1).astype(np.float64)
+    pos += rng.random((n_walkers, 3))
+    sigma = np.sqrt(2.0 * float(D) * float(t_step)) / float(dg)
+    scale = np.sqrt(np.clip(m, 0.0, None))
+    out = np.empty((n_steps, n_walkers, 3), dtype=np.float64)
+    out[0] = pos
+    n_acc = n_walkers
+    for i in range(1, n_steps):
+        new = pos + rng.standard_normal((n_walkers, 3)) * (sigma * scale[voxel])[:, None]
+        ijk = np.floor(new).astype(np.int64)
+        ok = np.all((ijk >= 0) & (ijk < ng), axis=1)
+        flat = np.where(ok, (ijk[:, 0] * ng + ijk[:, 1]) * ng + ijk[:, 2], 0)
+        ok &= flat_occupied[flat]
+        pos[ok] = new[ok]
+        voxel[ok] = flat[ok]
+        n_acc += int(ok.sum())
+        out[i] = pos
+    half = grid_center_index(ng)
+    xyz = (out.transpose(1, 0, 2).reshape(-1, 3) - half) * float(dg)
+    return xyz, n_steps, n_acc, n_walkers * n_steps - n_acc
 
 
 def _kappa2_or_isotropic(kappa2) -> float:

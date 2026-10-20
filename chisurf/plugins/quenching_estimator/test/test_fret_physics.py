@@ -321,11 +321,19 @@ class TestTheAcceptorDiffusesAndSticks:
         """Its diffusion coefficient must reach the physics, not just the schema."""
         from chisurf.plugins.quenching_estimator.api.local import simulate_project
 
-        fast = self._project()
-        fast["fret"]["dyes"][1]["D"] = 20.0
-        slow = self._project()
-        slow["fret"]["dyes"][1]["D"] = 0.5
+        # Since the walkers start from the equilibrium occupancy (2026-10-20), D no longer
+        # moves where the acceptor is -- only how fast it gets there -- so the efficiency of
+        # a short run is nearly D-independent (0.7489 vs 0.7484). What D must change is the
+        # acceptor's step: rms displacement per frame ~ sqrt(D) (40x in D, ~6x in step,
+        # less where steps are rejected at the wall).
+        def acceptor_step(d):
+            project = self._project()
+            project["fret"]["dyes"][1]["D"] = d
+            model = build_donor_from_project(project)
+            model.update_all()
+            walk = model.acceptor_diffusion
+            xyz = walk._traj[: walk.frames_per_walker]
+            return float(np.sqrt((np.diff(xyz, axis=0) ** 2).sum(axis=1).mean()))
 
-        assert simulate_project(fast, save_outputs=False).fret_efficiency != pytest.approx(
-            simulate_project(slow, save_outputs=False).fret_efficiency, abs=1e-3
-        )
+        assert acceptor_step(20.0) > 3.0 * acceptor_step(0.5)
+        assert simulate_project(self._project(), save_outputs=False).fret_efficiency > 0.0

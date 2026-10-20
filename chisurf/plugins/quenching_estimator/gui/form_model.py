@@ -39,6 +39,7 @@ from chisurf.plugins.quenching_estimator.core.av import (
     DEFAULT_ALLOWED_SPHERE_RADIUS,
     DEFAULT_RADIUS_SCALE,
 )
+from chisurf.plugins.quenching_estimator.core.ensembles import DEFAULT_ENSEMBLE
 from chisurf.plugins.quenching_estimator.core.i18n import resolve_locale, translate_catalog, ui
 from chisurf.plugins.quenching_estimator.core.project import (
     DEFAULT_FORSTER_RADIUS,
@@ -72,6 +73,7 @@ FIELD_PATHS: OrderedDict[str, str] = OrderedDict(
         ("dg", "dg"),
         ("tau0", "tau0"),
         ("donor_D", "fret.dyes.0.D"),
+        ("ensemble", "ensemble"),
         ("critical_distance", "critical_distance"),
         ("t_max", "t_max"),
         ("t_step", "t_step"),
@@ -105,6 +107,8 @@ FIELD_PATHS: OrderedDict[str, str] = OrderedDict(
 FIELD_DEFAULTS: dict[str, Any] = {
     "av_allowed_sphere_radius": DEFAULT_ALLOWED_SPHERE_RADIUS,
     "av_radius_scale": DEFAULT_RADIUS_SCALE,
+    # A project from before the ensemble choice ran the walk.
+    "ensemble": DEFAULT_ENSEMBLE,
 }
 
 #: Catalog entries that are *not* a scalar field, and where they live instead.

@@ -138,22 +138,37 @@ models, but three views of one diffusion problem:
 3. **Brownian walk.** A stochastic realisation of the PDE (trajectories plus
    a photon race). This is the straightforward path for FRET, where donor and
    acceptor dynamics and the per-frame transfer rate matter
-   ({ref}`concept-dye-quenching`). It converges to the PDE only if the
-   trajectories sample the volume within $t_\text{max}$. At slow factors
-   ≤ 0.1 they do not: the walkers stay where they start, and the decay
-   reports where they got stuck (example 04 shows 50 Å vs 58 Å for a T4L pair).
+   ({ref}`concept-dye-quenching`). Each walker starts from $p(x)$, so every
+   frame is already an equilibrium sample and nothing has to equilibrate. A
+   walker started on a uniform voxel does not reach the sticky voxels within a
+   run at slow factors ≤ 0.1, and its decay then reports where it began
+   (example 04 shows 50 Å vs 58 Å for a T4L pair with that start).
 
 The walk's slow factor scales the local mobility, and its equilibrium is
 $p \propto 1/D$ (the Itô flux form $D_ip_i - D_jp_j$), so a friction field acts
 as the attraction $p \propto 1/s$ that the equilibrium ensemble writes down
-directly.
+directly. The PDE keeps the mobility $D_0\prod s^{n}$ and the weight
+$w = \prod s^{-n}$ as separate inputs (a detailed-balance flux), so its
+stationary state is $w$ exactly.
 
-**Direct vs walk, measured.** APO site 233, $s$ = 0.3 for all residues,
-$L$ = 21.5 Å, τ₀ = 4.108 ns: equilibrium (static) 2.59 ns, walk (3 seeds ×
-16 trajectories × 16 µs) 2.31 ± 0.03 ns. The 0.28 ns (12 %) gap is not noise:
-the walk includes transport into contact during the excited state, which the
-static average leaves out. The two are equal only in the static limit, so the
-equilibrium value is not an exact walk replacement.
+**The three, measured** (QuEst forward simulator, MalE APO site 95, AF488
+reference $k_Q$ table, one slow factor $s$ for every residue, τ₀ = 4.2 ns,
+$D_0$ = 7 Å²/ns, grid 0.9 Å; `test/test_equilibrium_ensemble.py`):
+
+| $s$ | equilibrium (static) | PDE | walk from $p(x)$ | fast exchange |
+|---|---|---|---|---|
+| 1 | 4.084 ns | 3.637 ns | 3.638 ± 0.007 ns | 3.335 ns |
+| 0.3 | 2.872 ns | 2.494 ns | 2.487 ± 0.014 ns | 1.057 ns |
+| 0.1 | 0.897 ns | 0.890 ns | 0.876 ± 0.008 ns | 0.500 ns |
+
+The walk (3 seeds, template run: 8 × 16 µs at 32 ps) agrees with the PDE at $s$ = 1 and 0.3 and is 1.6 % (1.9σ) low at 0.1; the
+equilibrium value is longer because it leaves out transport into contact during
+the excited state, and the two meet as the dye stops moving (at $s$ = 0.1 the
+mobility $D_0 s^{n}$ is nearly zero). The walk started on a uniform voxel gave
+2.18 ns at $s$ = 0.1, the defect the $p(x)$ start removes. In the site-table
+geometry (APO 233, $s$ = 0.3, $L$ = 21.5 Å) the direct (static) value is
+2.832 ns and the walk 2.76 ± 0.10 ns (the notebook's 2.59 ns was a voxel-frame
+error).
 
 ## The site model
 

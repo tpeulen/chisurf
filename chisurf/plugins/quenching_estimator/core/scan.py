@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterator, Mapping, MutableMapping, Optional, Tuple
 
 __all__ = [
+    "MIN_QUENCHED_FRACTION",
     "SITE_AV_PARAMETER_KEYS",
     "site_project",
     "simulate_site",
@@ -38,6 +39,13 @@ SITE_AV_PARAMETER_KEYS: tuple[str, ...] = (
     "allowed_sphere_radius",
     "radius_scale",
 )
+
+
+#: Share of the light a site must lose (1 - QY) before a scan names its dominant
+#: quencher. 1 % is the WP7b example's QY < 0.99 cut and above the photon noise of a
+#: default run (sqrt(QY(1-QY)/N) ~ 0.1 % at N = 1e4); the full ``quenchers`` list is
+#: still reported, so nothing is hidden.
+MIN_QUENCHED_FRACTION = 0.01
 
 
 def site_project(
@@ -149,6 +157,11 @@ def simulate_site(
         return _failure(name, position, str(exc))
 
     quenchers = api.top_quenchers(getattr(result, "aa_residence", None))
+    # A residue in range with a trace rate is still "the strongest quencher" of a site
+    # that is not quenched (E:55 "TYR 100 %" at QY 1.000). Naming one is a claim that
+    # the site *is* quenched, so it is made only when the light lost says so.
+    quenched = 1.0 - float(result.quantum_yield_donor or 0.0) >= MIN_QUENCHED_FRACTION
+    dominant = quenchers[0] if (quenchers and quenched) else None
     return {
         "name": name,
         "chain": site["attachment"]["chain"],
@@ -162,8 +175,8 @@ def simulate_site(
         "av_volume": getattr(result, "av_volume", None),
         "contact_volume": getattr(result, "contact_volume", None),
         "contact_to_free_ratio": getattr(result, "contact_to_free_ratio", None),
-        "dominant_quencher": quenchers[0]["residue_name"] if quenchers else None,
-        "dominant_quencher_fraction": (quenchers[0]["quench_rate_fraction"] if quenchers else None),
+        "dominant_quencher": dominant["residue_name"] if dominant else None,
+        "dominant_quencher_fraction": dominant["quench_rate_fraction"] if dominant else None,
         "quenchers": quenchers,
     }
 

@@ -84,6 +84,18 @@
       "unit": "Å²/ns",
       "description": "Diffusion coefficient of the donor dye in solution, when not interacting with the protein surface."
     },
+    "ensemble": {
+      "label": "Ensemble",
+      "category": "Simulation",
+      "type": "choice",
+      "default": "walk",
+      "options": [
+        "walk",
+        "equilibrium",
+        "pde"
+      ],
+      "description": "Where the dye sits during the excited state. 'walk': Brownian walkers, each started from the equilibrium occupancy (w = product of slow_factor^-1 over the residues in range), and a photon race along each; the only ensemble that simulates FRET, with Monte-Carlo noise. 'equilibrium': the static limit, every position decays on its own at 1/tau0 + kQ, weighted by w; exact and fast, what the inverse fit uses. 'pde': the diffusion equation on the AV grid with stickiness as a potential and quenching as a sink, solved without sampling noise; it includes motion during the excited state, and its stationary state is the equilibrium ensemble. The walk and the PDE describe the same physics and agree to the walk's time-step bias."
+    },
     "critical_distance": {
       "label": "Fallback contact radius",
       "category": "Quenching",
@@ -96,14 +108,14 @@
       "category": "Simulation",
       "type": "number",
       "unit": "ns",
-      "description": "Total length of the simulated Brownian dynamics trajectory."
+      "description": "Simulated time per trajectory block (walk ensemble). The walk covers parallel_trajectories × t_max in all, cut into walkers of 20–50 × tau0 (about 1000 of them) that each start from the equilibrium occupancy. Unused by the equilibrium and PDE ensembles."
     },
     "t_step": {
       "label": "Time step",
       "category": "Simulation",
       "type": "number",
       "unit": "ns",
-      "description": "Time step size for the Brownian dynamics trajectory calculation."
+      "description": "Time step of the Brownian walk (walk ensemble). A smaller step shrinks the walk's bias at sticky boundaries; the equilibrium and PDE ensembles do not step."
     },
     "n_photons": {
       "label": "Simulated photons",
@@ -121,7 +133,7 @@
       "label": "Parallel trajectories",
       "category": "Advanced",
       "type": "integer",
-      "description": "Number of independent Brownian dynamics trajectories run concurrently and combined before photon sampling. Use -1 to use all CPU cores, capped at 8."
+      "description": "Number of t_max-long trajectory blocks in the walk ensemble. The walkers are vectorised, so this sets the total simulated time, not a thread count. Use -1 for the number of CPU cores, capped at 8."
     },
     "slow_radius": {
       "label": "Slowing radius",
