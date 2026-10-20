@@ -53,37 +53,40 @@ class _FakeHost:
         return self._surface_obj
 
 
-#: Refresh rates a screen the viewer runs on can have. The ceiling has to sit
-#: above all of them -- see the test below for why "above" and not "at".
+#: Refresh rates a screen the viewer runs on can have.
 REFRESH_RATES = (60, 75, 90, 120, 144, 165, 240)
 
 
-def test_the_frame_ceiling_is_above_every_refresh_rate_a_screen_has():
-    """A ceiling under the refresh rate does not cap the rate -- it halves it.
+def _presented_fps(ceiling: float, refresh: float) -> float:
+    """What a vsynced window shows under *ceiling*: the first vsync after the interval."""
+    import math
 
-    The display paces the frames: the canvas presents with vsync, so a 60 Hz
-    screen draws 60 and a 120 Hz screen draws 120, which is exactly what
-    `requestAnimationFrame` does for the page. That is the whole reason the two
-    hosts can be said to behave the same.
+    slot = 1.0 / refresh
+    return 1.0 / (math.ceil((1.0 / ceiling) / slot - 1e-9) * slot)
 
-    Put the ceiling *below* the refresh rate and the scheduler sleeps its own
-    period first; the frame then misses the vsync boundary it was aiming at and
-    presentation waits for the next one, so the rate lands on a *fraction* of
-    the refresh rate. It has happened twice, and both times the number was half:
 
-    * rendercanvas' own default of 30 gave a hard 15 fps on every model;
-    * a ceiling of 60 gave a hard 30 on a 120 Hz display, measured at 59.7 fps
-      before and 119.9 after -- while the same machine's browser ran at 120.
+def test_the_frame_ceiling_never_halves_the_rate_below_sixty():
+    """The window's ceiling is fitted to the screen, so no screen drops under 60 fps.
 
-    A ceiling *at* the refresh rate is not enough either: 60 on a 60 Hz screen
-    leaves no slack for a frame that runs a little long, which is what the
-    halving is. So it is set above the fastest screen anyone has.
+    The display paces the frames: the canvas presents with vsync. A ceiling
+    *at* a vsync fraction beats against the grid and halves the rate -- it has
+    happened twice (rendercanvas' default 30 gave a hard 15; 60 gave a hard 30
+    on a 120 Hz screen). A ceiling far above every refresh rate (the old 240)
+    avoided that but drew a frame per pointer event from a fast mouse. So the
+    default is emtk's, which ``open_canvas`` turns into the slowest whole
+    fraction of the screen's refresh rate that still reaches 60, plus a margin.
+    chimol must hand that default through untouched, or the fitting never runs.
     """
-    from chimol.hosts.native.canvas import DEFAULT_MAX_FPS
+    from emtk.native import DEFAULT_MAX_FPS as EMTK_DEFAULT
+    from emtk.native import _frame_ceiling
+    from chimol.hosts.native import canvas as native
 
-    assert DEFAULT_MAX_FPS >= max(REFRESH_RATES), (
-        f"a {DEFAULT_MAX_FPS} fps ceiling halves the rate on a {max(REFRESH_RATES)} Hz screen"
-    )
+    assert native.DEFAULT_MAX_FPS == EMTK_DEFAULT
+    assert native._max_fps() == EMTK_DEFAULT, "chimol's default must let emtk fit the screen"
+    for refresh in REFRESH_RATES:
+        shown = _presented_fps(_frame_ceiling(refresh), refresh)
+        assert shown >= 60.0 - 1e-6, f"{refresh} Hz shows {shown:.1f} fps"
+        assert shown <= 100.0 + 1e-6, f"{refresh} Hz draws {shown:.1f} fps, a frame per event"
 
 
 def test_the_shipped_configuration_agrees_with_the_default():
@@ -110,20 +113,25 @@ def test_the_shipped_configuration_agrees_with_the_default():
     assert spec.default == DEFAULT_MAX_FPS
 
 
-def test_an_existing_configuration_is_lifted_off_the_old_ceiling():
+def test_an_existing_configuration_is_lifted_off_the_old_ceilings():
     """A default written into a user's file reaches nobody without a migration.
 
-    Every existing copy of `chimol_display.json` carries `max_fps: 60`, which
-    was the shipped default and not a choice anybody made -- so it is migrated,
-    and a value the user *did* choose is left alone.
+    Existing copies of `chimol_display.json` carry `max_fps: 60` (before schema
+    20) or `240` (before 23), both shipped defaults and not choices anybody
+    made -- so each is migrated onto today's default, and a value the user
+    *did* choose is left alone.
     """
-    from chimol.core.settings.config import (
-        DISPLAY_CONFIG_MIGRATIONS,
-    )
+    from chimol.core.settings.config import DISPLAY_CONFIG_MIGRATIONS, apply_display_config_migrations
     from chimol.hosts.native.canvas import DEFAULT_MAX_FPS
 
-    changed = DISPLAY_CONFIG_MIGRATIONS[20]["renderer"]["max_fps"]
-    assert changed == (60, DEFAULT_MAX_FPS)
+    for old in (60, 240):
+        cfg = {"renderer": {"max_fps": old}}
+        apply_display_config_migrations(cfg, 19)
+        assert cfg["renderer"]["max_fps"] == DEFAULT_MAX_FPS, old
+    chosen = {"renderer": {"max_fps": 144}}
+    apply_display_config_migrations(chosen, 19)
+    assert chosen["renderer"]["max_fps"] == 144
+    assert DISPLAY_CONFIG_MIGRATIONS[23]["renderer"]["max_fps"] == (240, DEFAULT_MAX_FPS)
 
 
 def test_the_present_method_can_be_pinned_by_hand(monkeypatch):

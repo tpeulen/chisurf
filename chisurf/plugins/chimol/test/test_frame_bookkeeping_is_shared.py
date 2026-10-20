@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import inspect
 import pathlib
+import re
 
 import pytest
 from chimol.viewport.canvas import CanvasRenderer
@@ -58,7 +59,15 @@ def test_the_page_has_no_second_clock():
     boot = pathlib.Path(emtk.web.__file__).with_name("boot.js")
     text = boot.read_text(encoding="utf-8")
     assert ".pump()" not in text, "boot.js still advances the movie by hand"
-    assert "page.animating()" in text, "the rAF loop lost its continuation check"
+    # The continuation check, however boot.js spells the call into Python
+    # (`page.animating()` once, `call(methods.animating)` since the loader
+    # caches bound handlers): inside the rAF callback, `animating` decides
+    # whether another frame is requested.
+    callback = re.search(r"requestAnimationFrame\(\(\) => \{(.*?)\n    \}\);", text, re.S)
+    assert callback, "boot.js no longer drives its frames from requestAnimationFrame"
+    assert re.search(r"animating\b.*redraw\(\)", callback.group(1)), (
+        "the rAF loop lost its continuation check"
+    )
 
 
 def test_a_frame_fills_the_counters(monkeypatch):

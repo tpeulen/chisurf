@@ -173,27 +173,41 @@ def test_a_delete_moves_it_and_the_row_goes(measured):
 # --------------------------------------------------------- every consumer
 
 
-def test_all_three_hosts_consume_the_registry():
-    """The rule is written once and used by each host, rather than three times.
+def test_every_host_consumes_the_registry():
+    """The rule is written once and used by each host, rather than once per host.
 
     Checked by reading the source, deliberately: the browser host cannot be
     constructed here, and the property that matters is that no host is left
-    keeping the list in step by hand.
+    keeping the list in step by hand. The hosts are *discovered* -- every
+    package under ``chimol/hosts`` -- not listed, so a retired host (the Qt
+    window went in October) does not fail this and a new one is not missed. A
+    host that is a subclass of another (the notebook page is the web page)
+    consumes through it.
     """
     import inspect
     import pathlib
+    import re
 
-    root = pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent
-    hosts = {
-        "toolkit-free": root / "hosts" / "native" / "app.py",
-        "Qt": root / "hosts" / "qt" / "window.py",
-        "browser": root / "hosts" / "web" / "page.py",
+    root = pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent / "hosts"
+    packages = sorted(p.parent for p in root.glob("*/__init__.py"))
+    sources = {
+        pkg.name: "\n".join(f.read_text(encoding="utf-8") for f in sorted(pkg.glob("*.py")))
+        for pkg in packages
     }
-    for label, path in hosts.items():
-        text = path.read_text(encoding="utf-8")
-        assert "consume_object_changes" in text, (
-            f"the {label} host does not consume the object registry"
+    assert {"native", "web"} <= set(sources), sorted(sources)
+
+    def consumes(name: str, seen: frozenset = frozenset()) -> bool:
+        text = sources[name]
+        if "consume_object_changes" in text:
+            return True
+        parents = set(re.findall(r"^from \.\.(\w+)(?:\.\w+)* import", text, re.M))
+        return any(
+            consumes(parent, seen | {name})
+            for parent in parents & set(sources) - seen - {name}
         )
+
+    for name in sources:
+        assert consumes(name), f"the {name} host does not consume the object registry"
 
 
 # ---------------------------------------------------------------- history

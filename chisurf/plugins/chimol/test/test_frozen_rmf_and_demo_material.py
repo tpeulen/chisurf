@@ -89,8 +89,13 @@ def test_the_loader_takes_the_sidecar_when_rmf_is_missing(tmp_path, monkeypatch)
 # --------------------------------------------------------------------------- #
 # The demo material
 # --------------------------------------------------------------------------- #
-def test_the_biofilm_resolves_to_the_frozen_copy_without_the_simulator(monkeypatch):
+def test_the_biofilm_resolves_to_the_frozen_copy_without_the_simulator(monkeypatch, tmp_path):
     from chimol.plugins.demos import material as demo_data
+
+    # A host without the simulator has never generated the material either: a
+    # copy an earlier run left in the shared demo cache (CHIMOL_DEMO_CACHE, kept
+    # between test runs on purpose) is found before the frozen one, rightly.
+    monkeypatch.setenv("CHIMOL_DEMO_CACHE", str(tmp_path / "empty_demo_cache"))
 
     def unavailable(name):
         raise demo_data.DemoDataUnavailable("no simulator here")
