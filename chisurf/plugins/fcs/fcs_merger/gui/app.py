@@ -177,8 +177,8 @@ class MergerApp(ImApp):
     def mean_correlation(self):
         return self.model.mean_correlation
 
-    def set_correlations(self, correlations, source_folder=None, labels=None):
-        self.model.set_correlations(correlations, source_folder, labels)
+    def set_correlations(self, correlations, source_folder=None, labels=None, provenance=None):
+        self.model.set_correlations(correlations, source_folder, labels, provenance)
 
     # -- actions -----------------------------------------------------------------------
     def _used(self, name):

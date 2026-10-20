@@ -1,0 +1,31 @@
+{
+  "_comment": "The Files & Steps file table (drawn by gui/steps.py FilesStepApp). One row per added file or folder, a folder's files as its children; the selected row is the file whose count-rate trace is drawn below.",
+  "title": "Files",
+  "sections": [
+    {
+      "type": "custom",
+      "key": "data_table",
+      "options": {
+        "source": "file_rows",
+        "row_key": "key",
+        "tree_key": "parent",
+        "expanded_attr": "expanded_folders",
+        "selection": "single",
+        "selected_attr": "selected_file",
+        "selected_call": "file_selected",
+        "edited_call": "file_edited",
+        "editable_call": "file_cell_editable",
+        "tooltip_key": "path",
+        "selection_note": false,
+        "columns": [
+          {"key": "use", "title": "Use", "width": 44, "editable": true, "shade": false,
+           "tooltip": "Use this file or folder: only ticked rows are correlated."},
+          {"key": "name", "title": "File",
+           "tooltip": "Select a file to draw its time regions on the count-rate trace below; a folder stands for the TTTR files in it."},
+          {"key": "regions", "title": "Regions", "width": 72, "shade": false,
+           "tooltip": "Time regions drawn on the file's trace (a folder: on its files). 0: the whole file is used."}
+        ]
+      }
+    }
+  ]
+}

@@ -163,7 +163,8 @@ def test_dragging_on_the_trace_draws_a_region_that_reaches_the_correlator(two_fi
     start, stop = regions[0]
     lo, hi = hub.child._view[:2]
     np.testing.assert_allclose([start, stop], [lo + 0.2 * (hi - lo), lo + 0.6 * (hi - lo)], atol=0.02)
-    assert hub.shown("[1 region(s)]"), "the file list marks a file with regions"
+    row = next(r for r in files.file_rows() if r["key"] == file_key(a))
+    assert row["regions"] == 1, "the file table counts a file's regions"
     # the correlator gets only those photons of a (and all of b)
     hub.nav("correlator")
     ta, tb = times_s(_read(a)), times_s(_read(b))
@@ -196,3 +197,29 @@ def test_file_picker_lists_every_file_and_to_all_copies(two_files, tmp_path):
     files.regions.clear()
     files.restore_settings(state)
     assert files.regions.get(a) == [(0.1, 0.9)]
+
+
+def test_clicking_a_row_draws_that_files_trace_one_file_at_a_time(two_files, tmp_path):
+    from emtk.events import SHIFT_MODIFIER
+
+    a, b = two_files
+    hub = _hub()
+    files = _files_with_trace(hub, [tmp_path])  # one folder row, its two files as children
+    control = files._table.control
+    assert files.trace_file == file_key(a)
+    hub.press_text("b.spc")
+    assert files.trace_file == file_key(b) and control.selected_indices() == [2]
+    x, y, w, h = hub.text_rect("a.spc")
+    hub.app.pointer_move(x + w / 2, y + h / 2)
+    hub.draw(1)
+    hub.app.pointer_press(x + w / 2, y + h / 2, 1, SHIFT_MODIFIER)
+    hub.draw(1)
+    hub.app.release()
+    hub.draw(2)
+    assert control.selected_indices() == [1], "a shift-click selects one file, not a range"
+    files.add_region(0.1, 0.5)
+    files.add_region(1.0, 1.5)
+    rows = {r["name"]: r["regions"] for r in files.file_rows()}
+    assert rows["a.spc"] == 2 and rows["b.spc"] == 0 and rows[tmp_path.name + "/"] == 2
+    hub.draw(2)
+    assert hub.shown("2"), "the Regions column shows the count"

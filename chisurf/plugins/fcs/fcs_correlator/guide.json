@@ -21,7 +21,7 @@
     {
       "title": "Draw which stretches are correlated",
       "page": "files",
-      "text": "Below the steps is the count-rate trace of one file; the list beside <b>Regions</b> holds every file the correlator gets (a folder's files one by one). With <b>✏ Draw</b> on, drag across the trace to add a region, drag a region's edge to move it and right-click it to remove it. Only photons inside a file's regions are filtered and correlated: cut away an aggregate spike, a bubble or the bleaching start. A file without regions is used whole; <b>To all files</b> gives the others the same regions.",
+      "text": "Select one file in the table to draw its count-rate trace below the steps; the <b>Regions</b> column counts each file's regions. With <b>✏ Draw</b> on, drag across the trace to add a region, drag a region's edge to move it and right-click it to remove it. Only photons inside a file's regions are filtered and correlated: cut away an aggregate spike, a bubble or the bleaching start. A file without regions is used whole; <b>To all files</b> gives the others the same regions.",
       "target": {"name": "draw_regions"},
       "await": {"hint": "Switch on <b>✏ Draw</b>."}
     },
@@ -45,7 +45,7 @@
     },
     {
       "title": "Screen and merge",
-      "text": "The <b>FCS Merger</b> receives the pieces. Untick the ones that do not belong, look at the merged curve, then save it or add it to ChiSurf for fitting.",
+      "text": "The <b>FCS Merger</b> receives the pieces. Untick the ones that do not belong, look at the merged curve, then save it or add it to ChiSurf for fitting. Beside the <i>.cor</i> goes <i>.cor.json</i>: the raw files, their regions and every setting, enough to compute the curve again from the photons.",
       "target": {"panel": "FCS Merger"},
       "await": {"hint": "Select <b>5. FCS Merger</b> on the left."}
     }

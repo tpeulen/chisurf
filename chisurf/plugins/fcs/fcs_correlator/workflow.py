@@ -226,13 +226,19 @@ class FcsWorkflow:
         expanded = self.expanded_files()
         if expanded:
             model._analysis_folder = pathlib.Path(expanded[0]).resolve().parent
+        from .provenance import photon_record
+
         if self.context.use_photon_filter:
             # Correlate the photons the filter kept; fall back to the raw files when the filter step has no
             # selection yet, so the correlator is never left empty.
             filtered = self.filtered_tttr(filter_model)
             model._tttr = filtered if filtered is not None else self.load_raw_combined(expanded)
+            files = list(filter_model._files) if filtered is not None else expanded
+            used_filter = filter_model if filtered is not None else None
+            model._photon_record = photon_record(self, files, used_filter)
         elif expanded:
             model._tttr = self.load_raw_combined(expanded)
+            model._photon_record = photon_record(self, expanded)
 
     @staticmethod
     def merger_input(correlator_model) -> tuple[list, pathlib.Path | None]:
@@ -243,3 +249,8 @@ class FcsWorkflow:
         if folder is not None and sub:
             folder = pathlib.Path(folder) / sub
         return correlations, folder
+
+    @staticmethod
+    def merger_provenance(correlator_model) -> dict | None:
+        """The settings record of the correlator's curves (photons, regions, filter, correlator settings)."""
+        return getattr(correlator_model, "_provenance", None)

@@ -185,7 +185,9 @@ class FcsHubApp(ToolHubApp):
         elif role == "merger":
             correlations, folder = self.workflow.merger_input(self.correlator_model)
             if correlations:
-                child.set_correlations(correlations, folder)
+                child.set_correlations(
+                    correlations, folder, provenance=self.workflow.merger_provenance(self.correlator_model)
+                )
             elif folder is not None and Path(folder).is_dir():
                 child.model.folder = str(folder)
                 child.load_folder(folder)

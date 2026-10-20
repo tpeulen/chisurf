@@ -18,11 +18,14 @@ timestamp: '2026-07-05T00:00:00Z'
    χ² across fits: `[(f["name"], f["chi2r_current"]) for f in api.list_fits(statistics=True)]` (a row's `chi2r` is
    the last run's, `None` before a run). Filter calculator residual axis: `Residual / σ` under the dock title.
 3. Measure: method of the pass and every defect: known issue "QA walk of the FCS, lifetime, …" (found 2026-10-11).
-4. Open: (time regions, 2026-10-19) step 3 still shows only the *first* file (`FilterSettingsModel._tttr`), so with
-   several files the filter plots do not show the regions of the others although they are applied (photon count via
-   `FcsWorkflow.filtered_tttr`). Next: a file picker in step 3 sharing `FilesStepApp.trace_file`. Measure: two
-   `test/streams.py::diffusion_spc` files, region on the second only → step 3 info text unchanged (the trap), correlator
-   photon count = in-region(b) + all(a). Regions are not yet written to the `.pto` provenance of the curves.
+4. Open (time regions, 2026-10-20): step 3 still shows only the *first* file (`FilterSettingsModel._tttr`); with
+   several files its plots do not show the others' regions although they are applied. Next: drive step 3's file from
+   `FilesStepApp.selected_file`. Measure: two `test/streams.py::diffusion_spc` files, region on the second only →
+   step 3 info unchanged (the trap), correlator photons = in-region(b) + all(a). Burst-wise FCS and the lifetime-FCS
+   simulator write correlation output without the `.cor.json` settings record (only the merger path has it).
+5. Measure (reproducibility): `test_provenance.py` correlates with regions + filter + 3 splits, merges 2, then
+   `reproduce()` from the `.cor.json` alone gives the identical curve (`assert_array_equal`). Trap: a record built at
+   merger time would carry settings changed after Correlate — it is snapshotted in `correlate_data`.
 
 ## Overview
 
@@ -296,7 +299,7 @@ See also: [plugin system](/architecture/plugin-system.md), [Plugins target](/spe
 
 The FCS Correlator/toolbox, Merger and Burst FCS callers host their existing native apps; obsolete central FCS/TTTR wizard Python/generated/UI chains are retired. Public publication/background/PTO/td4 lineage, skipped-row sentinels and bounded cancel/rollback behavior are preserved. No scientific algorithm changed. The original 8de6 before-facts used header seconds as milliseconds and are retained explicitly as invalid historical unit evidence. Final SPC13213.5ns is1.35e-5ms through readers/fitting; the real MaxEnt0.001..20 grid and core None sentinel are preserved.
 
-Parent validations:56 host, earlier84 burst,54 diagnostic and15 new unit cases; final burst repeat and help/guide pointer review are recorded in the frozen acceptance receipt. All actual final images are inspected by the parent before execution. Next W1: GF row11, then rows12–14 and shared decorator retirement. Main gui.ui remains W9; W7 matrix acceptance remains open. Evidence: [FCS retirement](../validation/release-readiness-w1/fcs-retirement/acceptance.json).
+Parent validations:56 host, earlier84 burst,54 diagnostic and15 new unit cases; final burst repeat and help/guide pointer review are recorded in the frozen acceptance receipt. All actual final images are inspected by the parent before execution. Next W1: GF row11, then rows12–14 and shared decorator retirement. Main gui.ui remains W9; W7 matrix acceptance remains open.
 
 ### Time regions on the count-rate trace (Files & Steps) — 2026-10-19
 
@@ -310,3 +313,22 @@ implot view captured on the plot's first frame is the pre-fit `0..1` (so a new f
 explicitly); locked (drawing) axes never auto-fit; `get_item_rect()` after `end_plot` is a legend text, not the plot.
 Same change fixed folder expansion: it matched suffixes against tttrlib container *names* (`SPC-130`), dropping every
 `.spc`/`.h5` file in a folder (guard `test_time_regions.py::test_a_folder_stands_for_its_spc_files`).
+
+### The `.cor` settings file (provenance) and the file table — 2026-10-20
+
+Every `.cor` written by `chisurf.core.fluorescence.fcs.merge.save_mean_correlation` gets `<name>.cor.json`
+(`chisurf/core/fluorescence/fcs/provenance.py`: `kind chisurf.fcs.correlation`, `version 1`): `inputs` (path, size,
+SHA-256, time regions), `reading` (container type, detector settings, channel defs), `photon_filter` (step-3
+settings or `null`), `correlator` (public settings + lifetime filter path/checksum), `merge.chunks`, `output`
+(name + SHA-256). Without a record the file still exists with `"source": "unknown"`; a folder merge names its
+correlation files (`"source": "correlations"`). Flow: `FcsWorkflow.apply_to_correlator` sets
+`CorrelatorSettingsModel._photon_record`; `correlate_data` snapshots `_provenance`; the hub hands it to the merger
+(`set_correlations(provenance=)`), whose `merge_record` adds the chunks and checksums at save (worker thread).
+`fcs_correlator/provenance.py::reproduce` re-runs the workflow headless (refuses changed raw files);
+`python -m chisurf.plugins.fcs.fcs_correlator.provenance x.cor.json -o y.cor` prints `max |ΔG|`.
+
+Step 2's file list is a `data_table` from `fcs_correlator/files.view.json` (Use / File / Regions, folders as tree
+parents, `selection: "single"` — added to emtk 4876c64 for this). The selected row is the traced file
+(`selected_attr: selected_file`); `FilesStepApp.current` is derived from it, because a click on an already selected
+row does not call `selected_call` (a stored copy went stale and greyed Remove).
+

@@ -349,6 +349,9 @@ least for $G(0)$ and most for $\tau_D$ {cite}`qian1991`. Watch for:
   When it is confined to stretches of the measurement, leave those out rather
   than fitting them: the correlator's time regions
   ({ref}`fig-fcs-toolbox-regions`) keep only the photons of the clean stretches.
+  Which stretches were kept is part of the result: the settings file written
+  beside every `.cor` records them with the raw files and settings, so the
+  curve can be computed again from the photons.
 - **Triplet and diffusion must be separated in time.** The triplet term is only
   reliably resolved when $\tau_\text{trip} \ll \tau_D$; if they overlap, the two
   factors trade against one another.

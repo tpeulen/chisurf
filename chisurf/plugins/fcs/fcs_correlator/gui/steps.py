@@ -104,11 +104,6 @@ class _Dialogs:
 # ── 2. Files & Steps ─────────────────────────────────────────────────────────
 
 
-def _regions_suffix(n: int) -> str:
-    """What a file's label carries when it has regions."""
-    return "  " + tr("[{n} region(s)]").format(n=n) if n else ""
-
-
 class FilesStepApp(ImApp):
     """The checked file list (Files..., Folder..., Database, All, None, Remove, Clear), the optional steps, and the
     count-rate trace of each file to draw its time regions on (only photons inside them are correlated)."""
@@ -142,7 +137,24 @@ class FilesStepApp(ImApp):
         self._expanded: tuple[tuple[str, ...], list[str]] = ((), [])
         self._drag_start: float | None = None
         self._view: tuple[float, float, float, float] | None = None
+        #: The file table (``files.view.json``): its rows, rebuilt only when what they show changes, the folders
+        #: shown open, and the selected row (the table writes it; :meth:`select_trace_file` sets it too).
+        self.expanded_folders: set[str] = set()
+        self.selected_file: dict | None = None
+        self._rows: list[dict] = []
+        self._rows_token: tuple | None = None
+        self._table = None
         super().__init__(gui=self.render, continuous=False)
+
+    @property
+    def current(self) -> int:
+        """The added path selected in the table (the one Remove takes); -1 when none is, or a folder's file is."""
+        key = (self.selected_file or {}).get("key")
+        return self.paths.index(key) if key in self.paths else -1
+
+    @current.setter
+    def current(self, index: int) -> None:
+        self.selected_file = {"key": self.paths[index]} if 0 <= index < len(self.paths) else None
 
     # what the workflow reads
     @property
@@ -172,6 +184,7 @@ class FilesStepApp(ImApp):
                 self.checked.add(p)
                 added += 1
         if added:
+            self.expanded_folders.update(p for p in self.paths if Path(p).is_dir())
             self.changed()
         return added
 
@@ -185,6 +198,10 @@ class FilesStepApp(ImApp):
             except Exception:  # noqa: BLE001 - no tttrlib: list the ticked paths themselves
                 self._expanded = (checked, list(checked))
         return self._expanded[1]
+
+    def listed_files(self) -> list[str]:
+        """Every file the table lists (ticked or not), folders expanded: the files a trace can be drawn for."""
+        return [r["key"] for r in self.file_rows() if not Path(r["key"]).is_dir()]
 
     def trace(self, path: str):
         """``(x_s, rate_kHz, duration_s)`` of *path*, ``None`` while it is read (on a worker) or when unreadable."""
@@ -214,7 +231,98 @@ class FilesStepApp(ImApp):
     def select_trace_file(self, path: str) -> None:
         if path != self.trace_file:
             self.trace_file, self._view, self._drag_start = path, None, None
+            self.selected_file = {"key": path}
             self.request_frame()
+
+    # the file table (files.view.json)
+    def _folder_files(self, folder: str) -> list[str]:
+        try:
+            return expand_paths([folder])
+        except Exception:  # noqa: BLE001 - no tttrlib: a folder without listed files
+            return []
+
+    def file_rows(self) -> list[dict]:
+        """One row per added path (``use`` ticks it), a folder's files as its children; ``regions`` counts the
+        time regions drawn (a folder: on its files)."""
+        token = (
+            tuple(self.paths),
+            frozenset(self.checked),
+            tuple(sorted((k, tuple(v)) for k, v in self.regions.by_file.items())),
+        )
+        if token == self._rows_token:
+            return self._rows
+        rows = []
+        for path in self.paths:
+            if Path(path).is_dir():
+                children = self._folder_files(path)
+                rows.append(
+                    {
+                        "key": path,
+                        "parent": "",
+                        "path": path,
+                        "use": path in self.checked,
+                        "name": Path(path).name + "/",
+                        "regions": sum(len(self.regions.get(f)) for f in children),
+                    }
+                )
+                rows += [
+                    {
+                        "key": f,
+                        "parent": path,
+                        "path": f,
+                        "use": "",
+                        "name": Path(f).name,
+                        "regions": len(self.regions.get(f)),
+                    }
+                    for f in children
+                ]
+            else:
+                rows.append(
+                    {
+                        "key": path,
+                        "parent": "",
+                        "path": path,
+                        "use": path in self.checked,
+                        "name": Path(path).name,
+                        "regions": len(self.regions.get(path)),
+                    }
+                )
+        self._rows, self._rows_token = rows, token
+        return rows
+
+    def file_cell_editable(self, record, key) -> bool:
+        return key == "use" and not record.get("parent")
+
+    def file_edited(self, record, key, value) -> None:
+        if key == "use" and not record.get("parent"):
+            (self.checked.add if value else self.checked.discard)(record["key"])
+            self.on_used(f"check.{self.paths.index(record['key'])}")
+            self.changed()
+
+    def file_selected(self, record) -> None:
+        """A row was clicked: its file's trace is drawn (a folder's: its first file's); a top-level row is the one
+        Remove takes."""
+        if not record:
+            return
+        key = record["key"]
+        if key in self.paths:
+            self.on_used(f"row.{self.paths.index(key)}")
+        if Path(key).is_dir():
+            self.expanded_folders.add(key)
+            children = self._folder_files(key)
+            if children:
+                self.select_trace_file(children[0])
+        else:
+            self.select_trace_file(key)
+        self.selected_file = record
+
+    def _table_binding(self):
+        if self._table is None:
+            from emtk.widgets.data_table import TableBinding
+
+            spec = json.loads((HERE / "files.view.json").read_text(encoding="utf-8"))
+            self._table = TableBinding(spec["sections"][0], self)
+        return self._table
 
     def add_region(self, start: float, stop: float, path: str | None = None) -> None:
         path = path or self.trace_file
@@ -233,9 +341,10 @@ class FilesStepApp(ImApp):
             self.changed()
 
     def remove_current(self) -> None:
-        if 0 <= self.current < len(self.paths):
-            self.checked.discard(self.paths.pop(self.current))
-            self.current = min(self.current, len(self.paths) - 1)
+        index = self.current
+        if 0 <= index < len(self.paths):
+            self.checked.discard(self.paths.pop(index))
+            self.current = min(index, len(self.paths) - 1)
             self.changed()
 
     def clear(self) -> None:
@@ -308,26 +417,15 @@ class FilesStepApp(ImApp):
             x, y = im.get_cursor_screen_pos()
             regions_h = REGIONS_HEIGHT if self.paths else 0.0
             list_h = max(80.0, im.get_content_region_avail()[1] - 90.0 - regions_h)
-            im.begin_child("files_list", (im.get_content_region_avail()[0], list_h))
             if not self.paths:
+                im.begin_child("files_list", (im.get_content_region_avail()[0], list_h))
                 im.text_disabled(tr("No file. Add files or a folder, or drop them here."))
-            for i, path in enumerate(list(self.paths)):
-                on = path in self.checked
-                changed, on = im.checkbox(f"##check{i}", on)
-                if changed:
-                    (self.checked.add if on else self.checked.discard)(path)
-                    self.changed()
-                im.set_item_tooltip(tr("Use this file."))
-                self.item_rects[f"check.{i}"] = im.get_item_rect()
-                im.same_line()
-                label = path + _regions_suffix(len(self.regions.get(path)))
-                if im.selectable(f"{label}##row{i}", i == self.current):
-                    self.current = i
-                    if not Path(path).is_dir():
-                        self.select_trace_file(str(Path(path).resolve()))
-                im.set_item_tooltip(path)
-                self.item_rects[f"row.{i}"] = im.get_item_rect()
-            im.end_child()
+                im.end_child()
+            else:
+                from emtk.widgets.data_table import draw_table
+
+                draw_table(self._table_binding(), "fcs_files", height=list_h)
+                self._row_rects()
             self.item_rects["files"] = (x, y, im.get_content_region_avail()[0], list_h)
             used = 0.0
             for label, key, tip, enabled, act in (
@@ -424,36 +522,44 @@ class FilesStepApp(ImApp):
         if self.picker is not None:
             self.picker.render(frame)
 
+    def _row_rects(self) -> None:
+        """``check.i`` / ``row.i``: the Use and File cells of the i-th added path, where the table drew them."""
+        control = self._table.control
+        body, widths = control._body_box, control._widths
+        if body is None or len(widths) < 2:
+            return
+        top = control._rows_top if getattr(control, "_rows_top", None) is not None else body[1]
+        order = control.order()
+        for i, path in enumerate(self.paths):
+            pos = next((n for n, idx in enumerate(order) if control.key_of(idx) == path), None)
+            if pos is None or not (control.bar.top <= pos < control.bar.top + control._visible):
+                continue
+            y = top + (pos - control.bar.top) * control._row_h
+            self.item_rects[f"check.{i}"] = (body[0], y, widths[0], control._row_h)
+            self.item_rects[f"row.{i}"] = (body[0] + widths[0], y, widths[1], control._row_h)
+
     def _draw_regions(self) -> None:
         """The file to draw on, Draw / Clear / To all, and its count-rate trace with the regions shaded."""
         im.separator()
-        files = self.region_files()
+        files = self.listed_files()
         im.text(tr("Regions:"))
         im.set_item_tooltip(
             tr(
-                "Which stretches of each measurement are correlated. Pick a file, switch on Draw and drag on its "
+                "Which stretches of each measurement are correlated. Select a file in the table, switch on Draw and "
+                "drag on its "
                 "count-rate trace; a file without regions is used whole."
             )
         )
         if not files:
             im.same_line()
-            im.text_disabled(tr("Tick a file to draw its regions."))
+            im.text_disabled(tr("Add a file to draw its regions."))
             return
         if self.trace_file not in files:
-            self.trace_file, self._view = files[0], None
+            self.select_trace_file(files[0])
         path = self.trace_file
-        labels = []
-        for f in files:
-            labels.append(Path(f).name + _regions_suffix(len(self.regions.get(f))))
         im.same_line()
-        im.set_next_item_width(min(360.0, max(120.0, im.get_content_region_avail()[0] * 0.4)))
-        changed, index = im.combo("##region_file", files.index(path), labels)
-        if changed:
-            self.select_trace_file(files[index])
-            self.on_used("region_file")
-        im.set_item_tooltip(
-            tr("The file whose regions are drawn: every file passed to the correlator.")
-        )
+        im.text(Path(path).name)
+        im.set_item_tooltip(tr("The file selected in the table above: {path}").format(path=path))
         self.item_rects["region_file"] = im.get_item_rect()
         im.same_line()
         changed, value = im.checkbox(tr("✏ Draw"), self.draw_mode)

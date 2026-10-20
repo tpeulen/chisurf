@@ -82,8 +82,13 @@ def _correlation_from_cor_array(arr: np.ndarray) -> dict[str, Any]:
 
 def parse_correlation_folder(folder: pathlib.Path) -> list[dict[str, Any]]:
     """Load all ``.cor`` (and legacy ``.json.gz``) correlation chunks in a folder."""
+    return [curve for curve, _path in parse_correlation_folder_with_paths(folder)]
+
+
+def parse_correlation_folder_with_paths(folder: pathlib.Path) -> list[tuple[dict[str, Any], pathlib.Path]]:
+    """``(correlation, path)`` of every readable ``.json.gz`` then ``.cor`` chunk in a folder."""
     folder = pathlib.Path(folder)
-    out: list[dict[str, Any]] = []
+    out: list[tuple[dict[str, Any], pathlib.Path]] = []
     if not folder.is_dir():
         return out
 
@@ -94,21 +99,28 @@ def parse_correlation_folder(folder: pathlib.Path) -> list[dict[str, Any]]:
             from chisurf.core.fio.zipped import open_maybe_zipped
 
             with open_maybe_zipped(file) as fp:
-                out.append(json.load(fp))
+                out.append((json.load(fp), file))
         except Exception:
             continue
 
     for file in sorted(folder.glob("*.cor")):
         try:
             arr = np.loadtxt(str(file), delimiter="\t")
-            out.append(_correlation_from_cor_array(arr))
+            out.append((_correlation_from_cor_array(arr), file))
         except Exception:
             continue
     return out
 
 
-def save_mean_correlation(correlation: dict, filename: pathlib.Path) -> None:
-    """Write a merged correlation to a ChiSurf ``.cor`` file (Kristine format).
+def save_mean_correlation(
+    correlation: dict, filename: pathlib.Path, provenance: dict | None = None
+) -> pathlib.Path:
+    """Write a merged correlation to a ChiSurf ``.cor`` file (Kristine format) and its settings file beside it.
+
+    *provenance* is the record of how the correlation was computed (:mod:`.provenance`); it is written as
+    ``<name>.cor.json`` with the output's checksum added. Without one the settings file still exists and says so
+    (``"source": "unknown"``): a ``.cor`` never leaves without the file that tells whether it can be reproduced.
+    Returns the settings file's path.
 
     The uncertainty column is written only when the merge produced one at all
     (a single curve has no spread). Where it did, points whose standard error
@@ -143,6 +155,12 @@ def save_mean_correlation(correlation: dict, filename: pathlib.Path) -> None:
     else:
         c = np.vstack([x, y, suren_column])
     np.savetxt(str(filename), c.T, delimiter="\t", fmt="%.5g")
+    from .provenance import new_record, write_settings
+
+    record = provenance if provenance is not None else new_record(
+        "unknown", note="Written without the settings that computed it: not reproducible."
+    )
+    return write_settings(filename, record)
 
 
 def merge_folder(folder: pathlib.Path, output: pathlib.Path | None = None) -> dict[str, Any]:
@@ -150,12 +168,20 @@ def merge_folder(folder: pathlib.Path, output: pathlib.Path | None = None) -> di
 
     Returns the merged correlation as a transport-friendly dict.
     """
-    correlations = parse_correlation_folder(folder)
+    loaded = parse_correlation_folder_with_paths(folder)
+    correlations = [curve for curve, _path in loaded]
     if not correlations:
         raise ValueError(f"No .cor/.json.gz correlation files found in {folder}")
     merged = compute_average_correlations(correlations)
     if output is not None:
-        save_mean_correlation(merged, output)
+        from .provenance import file_entry, new_record
+
+        record = new_record(
+            "correlations",
+            inputs=[file_entry(path) for _curve, path in loaded],
+            merge={"used": [True] * len(loaded)},
+        )
+        save_mean_correlation(merged, output, record)
     return {
         "x": np.asarray(merged["x"], dtype=float).tolist(),
         "y": np.asarray(merged["y"], dtype=float).tolist(),

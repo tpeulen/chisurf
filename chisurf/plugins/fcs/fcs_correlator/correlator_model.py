@@ -107,6 +107,11 @@ class CorrelatorSettingsModel:
         self._lifetime_filters: typing.Any = None
         self._filter_labels: list[str] | None = None
         self._filter_source: str = ""
+        self._filter_path: str = ""
+        #: The settings record of the photons in ``_tttr`` (set with them by the workflow) and of the last
+        #: Correlate (that record plus the correlator settings): what the merger writes beside the ``.cor``.
+        self._photon_record: dict | None = None
+        self._provenance: dict | None = None
         self._species_a: int = 0
         self._species_b: int = 0
 
@@ -203,12 +208,14 @@ class CorrelatorSettingsModel:
             labels = [f"Species {k + 1}" for k in range(filters.shape[0])]
         self.set_lifetime_filters(filters, labels)
         self._filter_source = p.name
+        self._filter_path = str(p.resolve())
         return filters.shape[0]
 
     def clear_lifetime_filter(self) -> None:
         """Unload lifetime filters and return to detector-channel correlation."""
         self.set_lifetime_filters(None, None)
         self._filter_source = ""
+        self._filter_path = ""
 
     @staticmethod
     def _subset_species(filters, indices):
@@ -230,6 +237,11 @@ class CorrelatorSettingsModel:
         """
         if self._tttr is None or len(self._tttr) == 0:
             return "No photons selected for correlation. Please load data."
+        self._provenance = None
+        if self._photon_record is not None:
+            from .provenance import correlator_record
+
+            self._provenance = {**self._photon_record, "correlator": correlator_record(self)}
         if self._lifetime_filters is not None:
             self._correlate_lifetime_filtered()
             return f"{len(self._correlations)} species correlation(s)."

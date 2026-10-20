@@ -122,9 +122,11 @@ The example measurement with two drawn regions: 3.5 s of its 5 s are correlated.
 Below the step switches is the count-rate trace of one file. Which photons
 enter the correlator is drawn on it, per file:
 
-* **Regions** — the file whose trace is shown. The list holds every file the
-  correlator gets, a folder's files one by one; a file with regions carries
-  `[n region(s)]` here and in the file list.
+* **The file table** — one row per added file or folder, a folder's files under
+  it; **Use** ticks a row in or out, **Regions** counts the time regions drawn
+  on each file (a folder: on its files; 0 is the whole file). The selected row
+  is the file whose trace is drawn, one file at a time — a folder row shows
+  its first file.
 * **✏ Draw** — drag across the trace to add a region, drag a region's edge to
   move it, right-click a region to remove it. Off, the trace pans and zooms as
   any plot; drawing keeps the view you left it at.
@@ -254,6 +256,41 @@ and the workflow's Correlator view label lag time in ms.
   correlated stream, `cr5.cor` beside the data file.
 * **Add to ChiSurf** saves (if needed) and loads that file as an FCS dataset,
   ready for {doc}`09_diffusion_fcs`.
+
+### The settings file beside every `.cor`
+
+Every saved `.cor` gets `<name>.cor.json` beside it: what computes the same
+curve again from the raw photon streams.
+
+| Key | What it holds |
+|---|---|
+| `inputs` | each raw file: path, size, SHA-256 and its time regions |
+| `reading` | container type, detector setup and channel definitions |
+| `photon_filter` | the step-3 settings, `null` when the raw photons were correlated |
+| `correlator` | bins, cascades, splits, method, channels, micro-time ranges, lifetime filters (path and checksum) |
+| `merge` | which correlated pieces (`chunks`) the mean averaged |
+| `output` | the `.cor` file name and its SHA-256 |
+
+The settings are those at **Correlate**: changing a field afterwards does not
+change what the record says was used. A `.cor` merged from a folder of
+correlation files names those files instead (`"source": "correlations"`); it can
+be re-merged, not re-correlated.
+
+Reproduce a curve headlessly:
+
+```bash
+python -m chisurf.plugins.fcs.fcs_correlator.provenance merged.cor.json -o again.cor
+```
+
+It refuses a raw file whose checksum differs from the record's, prints the
+largest difference to the recorded `.cor` (`max |ΔG|`, 0 when nothing changed)
+and writes `again.cor` with its own settings file. From Python:
+
+```python
+from chisurf.plugins.fcs.fcs_correlator.provenance import reproduce
+
+merged, pieces = reproduce("merged.cor.json")  # merged["x"] in ms, merged["y"] = G
+```
 
 ChiSurf's Kristine `.cor` writer, reader and FCS fitter use lag time in
 milliseconds. For this BH132 fixture, the header's raw macro-time tick is

@@ -100,12 +100,17 @@ class MergerModel:
         self.output = ""
         self.status = "Drop or open a folder of correlation curves."
         self.error = ""
+        #: How the curves were computed (:mod:`chisurf.core.fluorescence.fcs.provenance`), handed on by the
+        #: correlator; ``None`` for curves read from files, whose record names those files instead.
+        self.provenance = None
         self._rows = []
 
     # -- curves ------------------------------------------------------------------------
-    def set_correlations(self, correlations, source_folder=None, paths=None):
-        """Show *correlations* (all used); a source folder sets the folder and the Qt target."""
+    def set_correlations(self, correlations, source_folder=None, paths=None, provenance=None):
+        """Show *correlations* (all used); a source folder sets the folder and the Qt target. *provenance* is the
+        record of how they were computed (the correlator's), written with the merge as its settings file."""
         validate(correlations)
+        self.provenance = provenance
         self.correlations = list(correlations)
         self.paths = (
             list(paths) if paths else [f"chnk-{i:04}" for i in range(len(self.correlations))]
@@ -119,6 +124,7 @@ class MergerModel:
 
     def clear(self):
         self.correlations, self.paths, self.use, self.selected = [], [], [], -1
+        self.provenance = None
         self.folder = self.output = self.error = ""
         self.status = "Drop or open a folder of correlation curves."
         self._rebuild()
@@ -194,8 +200,27 @@ class MergerModel:
         target = Path(filename or self.output or "")
         if not str(filename or self.output or "").strip():
             raise ValueError("Set a target file first.")
-        save_mean_correlation(mean, target)
+        save_mean_correlation(mean, target, self.merge_record())
         return target
+
+    def merge_record(self):
+        """The settings record of the merge: the correlator's (which pieces were averaged added), or for curves read
+        from files, those files."""
+        from chisurf.core.fluorescence.fcs.provenance import complete_inputs, file_entry, new_record
+
+        chosen = [i for i, used in enumerate(self.use) if used] or list(range(len(self.use)))
+        merge = {
+            "used": [i in chosen for i in range(len(self.use))],
+            "chunks": [self.correlations[i].get("chunk", i) for i in chosen],
+        }
+        if self.provenance is not None:
+            return complete_inputs({**self.provenance, "merge": merge})
+        files = [Path(p) for p in self.paths if Path(p).is_file()]
+        return new_record(
+            "correlations" if files else "unknown",
+            inputs=[file_entry(p) for p in files],
+            merge=merge,
+        )
 
     # -- persisted state ---------------------------------------------------------------
     def export_state(self):
