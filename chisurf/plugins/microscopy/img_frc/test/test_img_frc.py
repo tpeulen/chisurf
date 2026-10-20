@@ -289,16 +289,14 @@ def test_the_cli_fails_loudly_when_nothing_crosses(tmp_path):
 
 # ── imaging toolbox ────────────────────────────────────────────────────────
 def test_frc_is_a_step_of_the_imaging_toolbox():
-    """It measures a recorded image, so it belongs in the pipeline — after Drift.
+    """It measures a recorded image from the shared source, so it belongs in the pipeline.
 
-    Drift blurs the image and so lowers the measured resolution; measuring it on
-    frames that are not yet aligned reports the drift, not the microscope.
+    (Drift Correction, which used to precede it here, is a ribbon tool of its own now.)
     """
     from chisurf.plugins.microscopy.imaging_tools.gui.app import PANELS, ImagingToolsApp
 
     roles = [row[0] for row in PANELS]
     assert "frc" in roles
-    assert roles.index("frc") > roles.index("drift")
     assert "frc" in ImagingToolsApp.PIPELINE_ORDER
 
     panel = PANELS[roles.index("frc")]

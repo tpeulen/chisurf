@@ -37,9 +37,7 @@ QT_SPEC = json.loads((PLUGIN / "gui" / "flow.view.json").read_text(encoding="utf
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "flow_emtk.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
 
-_make = importlib.util.spec_from_file_location(
-    "flow_make_data", DATA / "make_data.py"
-)
+_make = importlib.util.spec_from_file_location("flow_make_data", DATA / "make_data.py")
 assert _make is not None and _make.loader is not None, "data/make_data.py missing"
 _data = importlib.util.module_from_spec(_make)
 _make.loader.exec_module(_data)
@@ -444,9 +442,16 @@ def test_the_database_picker_window_close_button_closes_it(app, drv, flow_tif):
 
 
 def test_a_drop_loads_the_file_and_a_drop_while_a_worker_runs_is_refused(app, drv, flow_tif):
-    assert drv.drop(flow_tif) is True
-    assert app.job.busy and app.files_dropped([str(flow_tif)]) is False
-    drv.settle()
+    from chisurf.emtk import job_gate
+
+    job_gate.arm()  # hold the load open: a small file loads within the drop's own frames
+    try:
+        assert drv.drop(flow_tif) is True
+        assert app.job.busy and app.files_dropped([str(flow_tif)]) is False
+        job_gate.release()
+        drv.settle()
+    finally:
+        job_gate.disarm()
     assert Path(app.model.filename) == flow_tif and app.files_dropped([]) is False
 
 
@@ -549,15 +554,26 @@ def test_a_new_file_clears_the_previous_result(app, drv, flow_tif, tmp_path, flo
 
 
 def test_the_actions_and_the_form_are_greyed_while_a_worker_runs(app, drv, flow_tif):
-    app.model.open_path(str(flow_tif))
-    assert app.job.busy
-    runs = []
-    app.model.map_flow = lambda: runs.append(1)
-    drv.click("map_flow")
-    assert runs == []
-    drv.click("method")
-    assert "Pair correlation — when it arrives" not in drv.draw(1).strings
-    drv.settle()
+    from chisurf.emtk import job_gate
+
+    # Hold the run open: on a small file it ends within the click's own frames, and the
+    # controls were enabled again by the time they were clicked.
+    job_gate.arm()
+    try:
+        app.model.open_path(str(flow_tif))
+        assert app.job.busy
+        runs = []
+        app.model.map_flow = lambda: runs.append(1)
+        drv.click("map_flow")
+        assert runs == [] and app.job.busy
+        drv.click("method")
+        assert (
+            "Pair correlation — when it arrives" not in drv.draw(1).strings
+        )  # the list did not open
+        job_gate.release()
+        drv.settle()
+    finally:
+        job_gate.disarm()
 
 
 def test_a_worker_that_raises_is_reported_not_swallowed(app, drv, flow_tif, monkeypatch):

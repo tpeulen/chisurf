@@ -186,7 +186,7 @@ def _stop_servers_started_by_the_module():
 
 @pytest.fixture(scope="module", autouse=True)
 def _release_imaging_worker_and_caches():
-    """Stop the imaging worker process and drop the TTTR/CLSM caches after each module.
+    """Stop the imaging worker process and drop the TTTR/CLSM and reader caches after each module.
 
     ``pixel_maps`` keeps one spawned worker (reads hold the GIL, so they run out of process)
     and in-process LRU caches for the app's lifetime; in a test run that lifetime is every
@@ -195,7 +195,6 @@ def _release_imaging_worker_and_caches():
     process that never ended).
     """
     yield
-    pixel_maps = sys.modules.get("chisurf.core.fluorescence.imaging.pixel_maps")
-    if pixel_maps is not None:
-        pixel_maps.shutdown_proc_pool()
-        pixel_maps.clear_imaging_cache()
+    from test.process_caches import release_process_caches
+
+    release_process_caches()

@@ -202,24 +202,19 @@ def test_view_spec_loads_and_names_real_sources():
 
 
 # --- toolbox integration ---------------------------------------------------
-def test_drift_is_registered_in_the_imaging_toolbox():
-    """The tool is reachable from Image Tools, before the numbered pipeline.
+def test_drift_is_its_own_imaging_ribbon_tool_not_a_pipeline_step():
+    """Drift Correction consumes no shared setup/source/HDF5/calibration, so it left Image Tools.
 
-    Drift correction is pre-processing: every per-pixel map in the numbered
-    steps is built from frames that must already be aligned, so the panel has
-    to sit ahead of them and inside the pipeline order the 'Next' button walks.
+    Image Tools keeps only the tools that take the pipeline's shared inputs; Drift is a
+    Spectroscopy > Imaging button of its own (a listed, not hidden, plugin).
     """
+    from pathlib import Path
+
+    from chisurf.core.plugin import load_manifest
     from chisurf.plugins.microscopy.imaging_tools.gui.app import PANELS, ImagingToolsApp
 
-    names = [row[2] for row in PANELS]
-    roles = [row[0] for row in PANELS]
-    assert "drift" in roles, "the drift panel is not registered in the toolbox"
-
-    # ordered before every numbered analysis step
-    assert names.index("Drift") < names.index("1. Intensity")
-    order = ImagingToolsApp.PIPELINE_ORDER
-    assert "drift" in order
-    assert order.index("drift") < order.index("pixel_intensity")
-
-    panel = PANELS[roles.index("drift")]
-    assert panel[3], "every navigation entry needs a description"
+    assert "drift" not in [row[0] for row in PANELS]
+    assert "drift" not in ImagingToolsApp.PIPELINE_ORDER
+    manifest = load_manifest(Path(__file__).resolve().parents[1] / "manifest.json")
+    assert manifest.display_name == "Spectroscopy:Imaging:Drift Correction"
+    assert manifest.menu_hidden is False

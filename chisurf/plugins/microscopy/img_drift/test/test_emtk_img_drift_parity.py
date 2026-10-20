@@ -39,9 +39,7 @@ EMTK_SPEC = json.loads((PLUGIN / "gui" / "drift_emtk.view.json").read_text(encod
 HT3 = REPO / "test/data/clsm/PQ_Olympus_MFIS.ht3"
 BIG = (1200, 800)
 
-_make = importlib.util.spec_from_file_location(
-    "drift_make_data", DATA / "make_data.py"
-)
+_make = importlib.util.spec_from_file_location("drift_make_data", DATA / "make_data.py")
 assert _make is not None and _make.loader is not None, "data/make_data.py missing"
 _data = importlib.util.module_from_spec(_make)
 _make.loader.exec_module(_data)
@@ -434,15 +432,24 @@ def test_a_new_bad_file_clears_the_previous_result(app, drv, tiff, tmp_path):
 
 
 def test_the_actions_and_the_form_are_greyed_while_a_run_is_in_flight(app, drv, tiff):
-    app.model.open_path(str(tiff))
-    assert app.job.busy
-    runs = []
-    app.model.measure = lambda: runs.append(1)
-    drv.click("measure")
-    assert runs == []
-    drv.click("reference")
-    assert "Previous frame" not in drv.draw(1).strings  # the list did not open
-    drv.settle()
+    from chisurf.emtk import job_gate
+
+    # Hold the run open: on a small file it ends within the click's own frames, and the
+    # controls were enabled again by the time they were clicked.
+    job_gate.arm()
+    try:
+        app.model.open_path(str(tiff))
+        assert app.job.busy
+        runs = []
+        app.model.measure = lambda: runs.append(1)
+        drv.click("measure")
+        assert runs == [] and app.job.busy
+        drv.click("reference")
+        assert "Previous frame" not in drv.draw(1).strings  # the list did not open
+        job_gate.release()
+        drv.settle()
+    finally:
+        job_gate.disarm()
 
 
 def test_a_worker_that_raises_is_reported_not_swallowed(app, drv, tiff, monkeypatch):

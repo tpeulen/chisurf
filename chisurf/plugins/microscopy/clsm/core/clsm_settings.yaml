@@ -1,7 +1,7 @@
 PTU:
   tttr_type: PTU
   routine: default
-  frame_marker: 4,
+  frame_marker: 4, 6
   line_start_marker: 1
   line_stop_marker: 2
   event_type_marker: 1

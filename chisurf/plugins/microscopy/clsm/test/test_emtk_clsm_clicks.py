@@ -74,7 +74,7 @@ def test_open_dialog_every_way_out_then_pick_loads_and_fills_the_markers(empty):
     ui.app.dialog.enter(str(SP5.parent))
     ui.dialog_pick(SP5.name)
     settle(ui)
-    assert ui.app.model.tttr_data is not None and ui.app.model.setup.frame_marker_text == "4"
+    assert ui.app.model.tttr_data is not None and ui.app.model.setup.frame_marker_text == "4,6"
     assert ui.shown("Leica_SP5.ptu")
 
 
@@ -149,8 +149,9 @@ def test_a_real_drag_paints_the_decay_follows_and_clear_selection_empties_it(bui
     ui = built
     ui.draw(3)
     m = ui.app.model
-    x0, y0 = ui.app.canvas.pick_pixels(120, 1500)
-    x1, y1 = ui.app.canvas.pick_pixels(136, 1500)
+    col, row = photon_pixel(ui)
+    x0, y0 = ui.app.canvas.pick_pixels(max(col - 8, 0), row)
+    x1, y1 = ui.app.canvas.pick_pixels(col + 8, row)
     ui.app.pointer_move(x0, y0)
     ui.draw(1)
     ui.app.press(x0, y0)
@@ -172,14 +173,28 @@ def test_paint_toggle_off_leaves_the_image_untouched(built):
     ui.click("paint", fx=0.05)
     assert ui.app.paint is False
     ui.draw(3)
-    x, y = ui.app.canvas.pick_pixels(120, 1500)
+    x, y = ui.app.canvas.pick_pixels(*photon_pixel(ui))
     ui.click_at(x, y)
     assert not np.any(ui.app.model.selection_mask > 0)
 
 
-def paint(ui, at=(128, 1500)):
-    """Drag over the image at pixel *at* (default: a pixel of the Leica scan that holds photons)."""
+def photon_pixel(ui):
+    """``(column, row)`` of the brightest pixel of the image on screen.
+
+    Derived, not hard-coded: the frame geometry is the reader's (header frame markers
+    {4, 6} make the Leica scan 230 x 256 x 256; with {4} it was 3 x 3316 x 256),
+    and a fixed pixel outside the frame or in an empty patch paints nothing.
+    """
+    image = np.asarray(ui.app.model.current_image)
+    row, col = np.unravel_index(int(np.argmax(image)), image.shape)
+    assert image[row, col] > 0, "the image holds no photons"
+    return int(col), int(row)
+
+
+def paint(ui, at=None):
+    """Drag over the image at pixel *at* (default: the brightest pixel of the scan)."""
     ui.draw(3)
+    at = photon_pixel(ui) if at is None else at
     x, y = ui.app.canvas.pick_pixels(*at)
     ui.app.pointer_move(x, y)
     ui.draw(1)
