@@ -17,6 +17,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -95,8 +96,11 @@ class ZenodoDepositApp(ImApp):
         render_markdown(text)
         im.spacing()
         yes = im.button(f"{button}##publish-yes")
+        im.set_item_tooltip(
+            tr("Answer yes. The third yes publishes the record, which cannot be undone.")
+        )
         im.same_line()
-        no = im.button("Cancel##publish-no")
+        no = action_button("cancel", tooltip=tr("Stop here: nothing is published."), id="publish-no")
         self.publish_window.end()
         if yes:
             self.model.confirm_publish()

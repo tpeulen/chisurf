@@ -268,11 +268,11 @@ class TerminalApp(ImApp):
         self.item_rects["split_down"] = im.get_item_rect()
         im.set_item_tooltip(tr("Split the active pane stacked"))
         im.same_line()
-        if im.small_button(tr("Close") + "##term_close"):
+        if action_button("close", tooltip=tr("Close the active pane"), shortcut="Ctrl+W",
+                         id="term_close"):
             self.close_pane()
             self.tour.notify_used("close")
         self.item_rects["close"] = im.get_item_rect()
-        im.set_item_tooltip(tr("Close the active pane") + " (Ctrl+W)")
         im.same_line()
         if action_button("guide"):
             self.tour.start()

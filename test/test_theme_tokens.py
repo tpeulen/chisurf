@@ -277,11 +277,9 @@ def test_the_shell_settings_menu_switches_the_theme(settings_dir):
     app = EmtkShellApp({}, loader=lambda plugin_id: None)
     try:
         settings = next(items for title, items in app.session_menus() if "Settings" in title)
-        actions = {action.key: action for action in settings}
-        assert "styles" in actions
-        styles_action = actions["styles"]
-        assert styles_action.children
-        child_actions = {a.key: a for a in styles_action.children}
+        # The session menus are flat (d09a926fd): one checked entry per style,
+        # directly in Settings, not a "styles" submenu.
+        child_actions = {action.key: action for action in settings}
         assert "style_light" in child_actions
         assert "style_dark" in child_actions
         assert "style_dark_blue" in child_actions

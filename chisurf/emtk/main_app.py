@@ -1089,7 +1089,7 @@ class EmtkShellApp(ImApp):
     # ── session menus ─────────────────────────────────────────────────────
 
     def _theme_actions(self) -> list[MenuAction]:
-        """Settings ▸ Styles: submenu listing all available styles (switch now and keep for next start)."""
+        """Settings: one checked entry per available style (switch now and keep for next start)."""
         import pathlib
 
         from emtk import theme

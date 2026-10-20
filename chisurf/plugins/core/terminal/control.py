@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from emtk import style as _style
 from emtk.events import ALT_MODIFIER, CONTROL_MODIFIER, META_MODIFIER, SHIFT_MODIFIER
 from emtk.keys import (
     KEY_BACKSPACE,
@@ -186,7 +187,7 @@ class TerminalControl:
         px = x + self._pad_x + start_col * self._glyph_w
         width = (end_col - start_col + 1) * self._glyph_w
         p.fill_rect(px, y + self._pad_y + row * self._line_h, width, self._line_h,
-                    (66, 150, 250, 64))
+                    _style.TEXT_SELECTED_BG)
 
     def _draw_caret(self, p, x: float, y: float, first: int,
                     row: int, col: int, base_fg: tuple) -> None:

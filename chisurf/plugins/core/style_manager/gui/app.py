@@ -8,6 +8,7 @@ import shutil
 from typing import Any
 
 from emtk import im
+from emtk import style as _style
 from emtk.app import ImApp
 from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
@@ -355,7 +356,7 @@ class StylePreview:
             )
             im.text("Preview")
             if self._error:
-                im.text_colored((255, 120, 120, 255), self._error[:120])
+                im.text_colored(_style.TEXT_DANGER, self._error[:120])
             elif style is None:
                 im.text_wrapped("Nothing parsed yet.")
             else:
