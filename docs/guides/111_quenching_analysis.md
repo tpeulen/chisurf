@@ -180,8 +180,7 @@ estimates = result.stages["B"].tables["estimates"]
 print(estimates[["parameter", "value", "low_68", "high_68", "note"]])
 ```
 
-The searches run in worker processes started with *spawn*, so in a script put the calls under
-`if __name__ == "__main__":` (a notebook or the console needs nothing), or pass `workers=1`.
+The searches run in worker processes; a plain script needs no `if __name__ == "__main__":` guard.
 
 In the background, with progress and cancel:
 

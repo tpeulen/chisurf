@@ -248,8 +248,8 @@ The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP6, WP7 (theor
    no fit numbers on purpose: it points at the concept's "MalE results" table, so update that table, not the guide.
    **Measure:** `pytest test/test_docs_okf.py test/test_docs_links.py`; the CLI/API snippets were run with
    `--set n_starts=2 --no-profile --workers 2` on cached tables (~3 min under load for stage B).
-   **Trap:** `api.analyse` with workers > 1 from a *script* without an `if __name__ == "__main__":` guard fails
-   (spawn re-imports the script: "Analysis failed: An attempt has been made to start a new process..."); the guide says so.
+   **Resolved (4ceaad395):** `api.analyse` with workers > 1 from an unguarded *script* used to fail (spawn re-imported the script);
+   __main__ now hides its `__file__`/`__spec__` while the workers start (subprocess test). Work items must not be functions defined in __main__.
 2. **Done: WP2 (IMP.bff kernels, imp.bff `0b178903a`).** It unblocked WP3; the kernels and the voxel-frame fix are in
    imp.bff `okf/quest-site-kernels.md`.
 3. **Open: owner questions to settle before WP4 is accepted** (findings from reading the notebook):
