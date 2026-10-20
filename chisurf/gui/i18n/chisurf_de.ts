@@ -70755,6 +70755,30 @@ fortgesetzt werden.
             <source>The experiments of the local mmfdb. Click one, then Add experiment.</source>
             <translation type="unfinished"/>
         </message>
+        <message>
+            <source>The instrument the experiment was measured on.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The mmfdb experiment id.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The project the experiment belongs to.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The sample the experiment measured.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>When the experiment started.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Who recorded the experiment.</source>
+            <translation type="unfinished"/>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>
