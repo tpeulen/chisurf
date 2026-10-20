@@ -186,7 +186,9 @@ def test_the_installer_texts_are_the_upstream_texts():
 def test_the_installer_writes_the_licence_folder(tmp_path):
     from build_tools import build_installer
 
-    out = build_installer.install_licence_texts(tmp_path, Path(sys.executable))
+    sdist = "imp_bff-0.15.0a2.dev248+g127e1b104.tar.gz"
+    out = build_installer.install_licence_texts(tmp_path, Path(sys.executable),
+                                                imp_bff_sdist=sdist)
     names = {p.name for p in out.iterdir()}
     assert names == {"LICENSE-ChiSurf.txt", "LICENSE-docs.txt", "LGPL-2.1.txt",
                      "tttrlib-BSD-3-Clause.txt", "NOTICE.txt"}
@@ -194,3 +196,5 @@ def test_the_installer_writes_the_licence_folder(tmp_path):
     assert "{" not in notice, "an unfilled placeholder"
     assert "LGPL-2.1-or-later" in notice
     assert "https://github.com/tpeulen/IMP.bff" in notice
+    assert sdist in notice, "NOTICE must name the exact sdist file"
+    assert "same release page" in notice

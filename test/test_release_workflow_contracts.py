@@ -122,3 +122,94 @@ def test_every_packaging_platform_runs_smoke_checks_first():
     # No Qt platform plugin to point at "offscreen" any more: the Qt shell left
     # with W9, and the emtk smoke run needs no env override on macOS/Windows.
     assert "QT_QPA_PLATFORM" not in conditions["runner.os != 'Linux'"].get("env", {})
+
+
+def test_the_imp_bff_sdist_is_released_beside_every_installer():
+    """LGPL 2.1 section 6: IMP.bff's source goes onto the same release page as the installers."""
+    from build_tools import build_installer
+
+    folder = build_installer.IMP_BFF_SDIST_DIR
+    build = _workflow("pixi-ci.yml")["jobs"]["build"]["steps"]
+    upload = next(
+        step
+        for step in build
+        if step.get("uses", "").startswith("actions/upload-artifact@")
+        and step["with"].get("path") == f"dist/{folder}/*.tar.gz"
+    )
+    # Every OS that builds an installer uploads its sdist: no runner.os filter.
+    assert "if" not in upload
+    assert upload["with"]["if-no-files-found"] == "error"
+    assert upload["with"]["name"].startswith("imp-bff-sdist-")
+    package = next(
+        i for i, step in enumerate(build) if "build-installer" in step.get("run", "")
+    )
+    assert build.index(upload) > package
+
+    release = _workflow("pixi-ci.yml")["jobs"]["release"]["steps"]
+    download = next(
+        step
+        for step in release
+        if step.get("uses", "").startswith("actions/download-artifact@")
+        and step["with"].get("pattern") == "imp-bff-sdist-*"
+    )
+    assert download["with"]["merge-multiple"] == "true"
+    gh = next(step for step in release if step.get("uses", "").startswith("softprops/"))
+    files = gh["with"]["files"].split()
+    source = f"{download['with']['path']}/*.tar.gz"
+    assert source in files
+    assert {"artifacts/linux/*.AppImage", "artifacts/macos/*.dmg",
+            "artifacts/windows/*.exe"} <= set(files)
+    assert gh["with"]["fail_on_unmatched_files"] == "true"
+
+
+def test_the_installer_builds_the_sdist_and_names_it_in_the_notice():
+    """make_runtime builds the sdist and hands its file name to NOTICE.txt."""
+    import inspect
+
+    from build_tools import build_installer
+
+    body = inspect.getsource(build_installer.make_runtime)
+    assert "build_imp_bff_sdist(py, DIST)" in body
+    assert "imp_bff_sdist=sdist.name" in body
+    notice = (build_installer.LICENCES_DIR / "NOTICE.txt").read_text(encoding="utf-8")
+    assert "{imp_bff_sdist}" in notice and "same release page" in notice
+
+
+@pytest.mark.parametrize(
+    ("version", "direct_url", "rev"),
+    [
+        ("0.15.0a2.dev248+g127e1b104", None, "127e1b104"),
+        ("0.15.0a2.dev248+g127e1b104.d20261020", None, "127e1b104"),
+        ("0.15.0", None, "v0.15.0"),
+        ("ab5de21", None, "ab5de21"),
+        ("0.15.0a2.dev248+g127e1b104",
+         {"url": "https://github.com/tpeulen/IMP.bff.git",
+          "vcs_info": {"vcs": "git", "commit_id": "127e1b104e659add434992d24bdfb606c8c4ce8b"}},
+         "127e1b104e659add434992d24bdfb606c8c4ce8b"),
+    ],
+)
+def test_the_sdist_source_revision_is_the_bundled_one(version, direct_url, rev):
+    from build_tools import build_installer
+
+    assert build_installer.imp_bff_source_revision(version, direct_url) == rev
+
+
+def test_an_unknown_imp_bff_version_cannot_be_released():
+    from build_tools import build_installer
+
+    with pytest.raises(ValueError):
+        build_installer.imp_bff_source_revision("unknown")
+
+
+def test_the_sdist_must_be_of_the_bundled_version():
+    from build_tools import build_installer
+
+    match = build_installer.imp_bff_sdist_matches
+    assert match("imp_bff-0.15.0a2.dev248+g127e1b104.tar.gz", "0.15.0a2.dev248+g127e1b104")
+    assert not match("imp_bff-0.15.0a2.dev249+gdeadbeef0.tar.gz", "0.15.0a2.dev248+g127e1b104")
+    assert not match("imp-bff-0.15.0.zip", "0.15.0")
+    assert match("bff-0.14.4.dev547+gab5de21d3.tar.gz", "ab5de21")  # before the rename
+    assert not match("numpy-2.0.tar.gz", "2.0")
+    # bundled as an IMP module build, which reports only its commit
+    assert match("imp_bff-0.15.0a2.dev248+g127e1b104.tar.gz", "127e1b1")
+    assert not match("imp_bff-0.15.0a2.dev248+g127e1b104.tar.gz", "ab5de21")

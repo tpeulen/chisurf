@@ -19,18 +19,18 @@ status: open
   `92b106a`), not bundled by the installer; guards: imp-tricks `tests/test_licence.py`, chisurf
   `test/test_stack_licences.py::test_the_installer_does_not_bundle_imp_swarm`. Still open: whether the
   installer should ever ship it ([licence concept](../subsystems/licence-mit.md) item 1).
-- **tttrlib: Apache-2.0 attribution.** `modules/io/ps/include/PhotonscoreD7.h` is "a std-only port of the
-  public, Apache-2.0 reference decoder" (photonscore/d7, photonsfile). Apache-2.0 code may be ported into
-  BSD-3-Clause tttrlib, but §4 then wants the upstream copyright notice kept, a statement that the file
-  was changed, and the Apache licence text shipped. The header names the source but carries none of the
-  three. Either add them (and an Apache-2.0 text under tttrlib's licences) or record that only the format
-  was taken.
-- **LGPL source offer for the installer.** The installer now ships the LGPL 2.1 text and a NOTICE naming
-  the imp-bff version and its repository (`build_tools/licenses/NOTICE.txt`). LGPL 2.1 §4/§6 is strictly
-  met by object code accompanied by source, by source offered from the same place as the download, or by
-  a written offer valid three years. Pointing at GitHub satisfies the second only if the installer is
-  also downloaded from GitHub. Decide: ship the imp-bff sdist inside the installer, publish it beside
-  each installer release, or add a written offer to NOTICE.txt. Not added on the owner's behalf.
+- **tttrlib: Apache-2.0 attribution — resolved 2026-10-20, tttrlib `c43d77919`.** `PhotonscoreD7.h/.cpp`
+  port photonscore/d7 (Apache-2.0, Copyright 2026 Photonscore GmbH) and alex1075/photonsfile (MIT,
+  Copyright (c) 2026 Alex Hunt). Both files now carry the upstream notices and a "MODIFIED by the
+  tttrlib developers" statement; tttrlib gains `NOTICE` and `licenses/{Apache-2.0,photonsfile-MIT}.txt`,
+  shipped by `wheel.license-files` and the py/cli/r recipes' `license_file`. Guard:
+  `test/python/misc/test_third_party_notices.py` (tttrlib).
+- **LGPL source offer for the installer — resolved 2026-10-20.** Owner decision: "sdist beside
+  installer". The installer build makes the sdist of the exact imp-bff version it bundles
+  (`build_imp_bff_sdist`, `build_tools/build_installer.py`), NOTICE.txt names that file and says it is
+  on the same release page, and `.github/workflows/pixi-ci.yml` uploads it with every installer.
+  Guard: `test/test_release_workflow_contracts.py`. First tagged release still to be checked by eye —
+  [licence concept](../subsystems/licence-mit.md) "Where to pick this up".
 - **Rebuild artefacts carrying the old licence.** labelizer's `site/wheels/imp_bff-0.15.0a2…whl` (built
   2026-09-24) says `License: MPL-2.0` in METADATA; imp.bff `5bb2bf267` fixed the declaration, so the next
   wheel build is right. QuEst's web frontend pulls `sharp` with `@img/sharp-libvips-*` (LGPL-3.0-or-later)

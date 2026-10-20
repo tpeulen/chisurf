@@ -164,14 +164,24 @@ in exactly that way:
   moved into IMP.bff, ChiSurf calls its public interface (the numpy adapters
   in `chisurf/core/math/special.py` and `chisurf/core/fluorescence/crosstalk.py`
   forward to it; they do not reimplement it).
-- **Text and source with the installer.** The installer
+- **Text with the installer.** The installer
   (`build_tools/build_installer.py`) writes a `licenses/` folder into the
   runtime (`Contents/Resources/licenses` in the macOS app): ChiSurf's MIT
   licence, this documentation's CC BY-SA 4.0, tttrlib's BSD-3-Clause, the
   **LGPL 2.1** text, and `NOTICE.txt`, which repeats these terms, records the
   shipped imp-bff version (its `+g<hash>` suffix names the source commit) and
-  where the complete source is: <https://github.com/tpeulen/IMP.bff>. The
-  texts live in `build_tools/licenses/`.
+  names the source file below. The texts live in `build_tools/licenses/`.
+- **Source beside the installer.** The installer carries IMP.bff as object
+  code, so LGPL 2.1 §6 asks for its complete source to be offered from the same
+  place. Every [ChiSurf release](https://github.com/Fluorescence-Tools/chisurf/releases)
+  therefore lists, next to the macOS, Linux and Windows installers, the
+  **source distribution of the exact imp-bff version they bundle**
+  (`imp_bff-<version>.tar.gz`). The installer build makes it: it reads the
+  bundled version, checks out that revision of
+  <https://github.com/tpeulen/IMP.bff>, runs `python -m build --sdist`, refuses
+  an sdist whose version differs from the bundled one, and writes the file name
+  into `NOTICE.txt`. A build that cannot produce the sdist fails, and the
+  release job uploads it with the installers (`.github/workflows/pixi-ci.yml`).
 
 The splash screen and the About window state the same: ChiSurf MIT, the
 documentation CC BY-SA 4.0, tttrlib BSD-3-Clause, IMP.bff LGPL-2.1-or-later.

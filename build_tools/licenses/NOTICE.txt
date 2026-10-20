@@ -36,11 +36,19 @@ these terms:
   ChiSurf picks up whatever IMP.bff is installed.
 * No ChiSurf source file copies IMP.bff code; ChiSurf calls IMP.bff's public
   interface.
-* The complete corresponding source code of IMP.bff is available at
+* The complete corresponding source code of the IMP.bff shipped here is
+  the source distribution
+
+      {imp_bff_sdist}
+
+  published on the same release page as this installer, beside it, for
+  every installer of every ChiSurf release (the "Assets" of the ChiSurf
+  {chisurf_version} release at {releases_url}).
+  It is built from the exact source of the shipped version,
+  imp-bff {imp_bff_version}: a "+g<hash>" suffix names the source commit,
+  and the release tag of the same version names it otherwise. The same
+  source is also in the IMP.bff repository,
       https://github.com/tpeulen/IMP.bff
-  The version shipped here is {imp_bff_version}; a "+g<hash>" suffix names
-  the exact source commit, and the release tag of the same version names it
-  otherwise.
 
 ChiSurf's own MIT licence does not restrict what you may do with IMP.bff, and
 the LGPL does not extend to ChiSurf.

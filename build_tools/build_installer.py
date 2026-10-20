@@ -55,6 +55,17 @@ IS_MAC = sys.platform == "darwin"
 IMP_TRICKS_REPO = os.environ.get("IMP_TRICKS_REPO", "https://gitlab.peulen.xyz/tpeulen/imp-tricks.git")
 IMP_TRICKS_REF = os.environ.get("IMP_TRICKS_REF", "main")
 
+#: Where the source of the bundled IMP.bff comes from. LGPL 2.1 §6 is met by
+#: publishing that source -- the sdist of the exact imp-bff version in the
+#: runtime -- beside every installer on the same release page (see
+#: build_imp_bff_sdist and the release job in .github/workflows/pixi-ci.yml).
+IMP_BFF_REPO = os.environ.get("IMP_BFF_REPO", "https://github.com/tpeulen/IMP.bff.git")
+#: Folder under DIST that build_imp_bff_sdist writes the one sdist into; the release
+#: workflow uploads ``dist/source/*.tar.gz``. (Its distribution name is ``imp_bff``;
+#: IMP.bff revisions before the rename built it as ``bff``.)
+IMP_BFF_SDIST_DIR = "source"
+IMP_BFF_SDIST_NAMES = ("imp_bff", "bff")
+
 # Packages whose bundled "tests" dirs are safe to drop (NOT tables/pytables,
 # which imports its tests at runtime).
 TEST_PKGS = ("numpy", "pandas", "skimage", "mdtraj")
@@ -213,7 +224,8 @@ def make_runtime(prefix: Path, *, conda_extras: list[str], pip_nodeps: list[str]
     rc = subprocess.call([sys.executable, str(Path(__file__).resolve()), "--strip-only", str(prefix)])
     if rc != 0:
         print(f"WARNING: slimming step exited {rc}; shipping un-slimmed env", file=sys.stderr, flush=True)
-    install_licence_texts(prefix, py)
+    sdist = build_imp_bff_sdist(py, DIST)
+    install_licence_texts(prefix, py, imp_bff_sdist=sdist.name)
     return py
 
 
@@ -228,7 +240,26 @@ def _installed_version(py: Path, dist: str) -> str:
         return "unknown"
 
 
-def install_licence_texts(prefix: Path, py: Path) -> Path:
+def bundled_imp_bff_version(py: Path) -> str:
+    """The version of the IMP.bff in the runtime of *py*.
+
+    The pip package records it as distribution ``imp-bff``. An IMP module build
+    (the conda ``imp.bff`` package) has no such metadata; its
+    ``IMP.bff.get_module_version()`` is the short source commit instead.
+    """
+    version = _installed_version(py, "imp-bff")
+    if version != "unknown":
+        return version
+    try:
+        out = subprocess.run(
+            [str(py), "-c", "import IMP.bff as b; print(b.get_module_version())"],
+            capture_output=True, text=True, timeout=120, check=True)
+        return out.stdout.strip() or "unknown"
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+
+
+def install_licence_texts(prefix: Path, py: Path, *, imp_bff_sdist: str) -> Path:
     """Write ``<prefix>/licenses``: every licence text the installer must carry.
 
     Slimming deletes ``conda-meta`` and ``share/doc``, and a conda package keeps its
@@ -237,7 +268,9 @@ def install_licence_texts(prefix: Path, py: Path) -> Path:
     distributed under. The folder holds ChiSurf's MIT licence, the documentation's
     CC BY-SA 4.0, tttrlib's BSD-3-Clause, the LGPL 2.1 and ``NOTICE.txt``, which
     states how IMP.bff is shipped (separate, unmodified, dynamically loaded,
-    replaceable) and where its source is, with the shipped imp-bff version filled in.
+    replaceable) and where its source is, with the shipped imp-bff version and the
+    file name of its sdist (*imp_bff_sdist*, published on the same release page as
+    the installer) filled in.
     """
     out = prefix / "licenses"
     rmtree(out)
@@ -249,10 +282,114 @@ def install_licence_texts(prefix: Path, py: Path) -> Path:
     notice = (LICENCES_DIR / "NOTICE.txt").read_text(encoding="utf-8")
     (out / "NOTICE.txt").write_text(
         notice.format(chisurf_version=get_version(),
-                      imp_bff_version=_installed_version(py, "imp-bff")),
+                      releases_url=load_info()["update_url"],
+                      imp_bff_version=bundled_imp_bff_version(py),
+                      imp_bff_sdist=imp_bff_sdist),
         encoding="utf-8")
     print(f"[licences] wrote {out}", flush=True)
     return out
+
+
+def imp_bff_source_revision(version: str, direct_url: dict | None = None) -> str:
+    """The IMP.bff git revision whose source is the bundled imp-bff *version*.
+
+    A pip install from git records the commit in ``direct_url.json``
+    (*direct_url*), which wins. Otherwise a setuptools-scm version past a tag
+    carries the commit as ``+g<hash>``; a plain release version is its tag,
+    ``v<version>`` (IMP.bff tags are ``vX.Y.Z``). A bare commit hash (what an
+    IMP module build reports, see bundled_imp_bff_version) is itself the revision.
+    """
+    commit = ((direct_url or {}).get("vcs_info") or {}).get("commit_id")
+    if commit:
+        return str(commit)
+    m = re.search(r"\+g([0-9a-f]{7,40})(?:\.|$)", version)
+    if m:
+        return m.group(1)
+    if re.fullmatch(r"[0-9a-f]{7,40}", version):  # an IMP module build's commit
+        return version
+    if not version or version == "unknown":
+        raise ValueError("imp-bff version unknown: cannot name the source to publish")
+    return f"v{version}"
+
+
+def imp_bff_sdist_matches(sdist_name: str, version: str) -> bool:
+    """Whether *sdist_name* is the sdist of imp-bff *version* (PEP 625 file name)."""
+    m = re.fullmatch(r"([a-z_]+)-(.+)\.tar\.gz", sdist_name)
+    if m is None or m.group(1) not in IMP_BFF_SDIST_NAMES:
+        return False
+    built = m.group(2)
+    if re.fullmatch(r"[0-9a-f]{7,40}", version):
+        # Bundled as a bare commit: the sdist of that commit is "<tag>" when the
+        # commit is tagged, else "<next>.devN+g<hash>" with a matching hash.
+        m = re.search(r"\+g([0-9a-f]{7,40})", built)
+        if m is None:
+            return "+" not in built
+        a, b = m.group(1), version
+        return a.startswith(b) or b.startswith(a)
+    try:
+        from packaging.version import Version
+        return Version(built) == Version(version)
+    except Exception:  # packaging missing or a non-PEP 440 string: compare literally
+        return built == version
+
+
+def _direct_url(py: Path, dist: str) -> dict | None:
+    """``direct_url.json`` of distribution *dist* in the runtime of *py*, if any."""
+    code = ("import importlib.metadata as m, json, sys; "
+            f"t = m.distribution({dist!r}).read_text('direct_url.json'); "
+            "sys.stdout.write(t or '')")
+    try:
+        out = subprocess.run([str(py), "-c", code], capture_output=True, text=True,
+                             timeout=120, check=True).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if not out:
+        return None
+    import json
+    try:
+        return json.loads(out)
+    except ValueError:
+        return None
+
+
+def build_imp_bff_sdist(py: Path, out_dir: Path) -> Path:
+    """Build the sdist of the imp-bff version bundled in the runtime of *py*.
+
+    LGPL 2.1 §6: the installer carries IMP.bff as object code, so its complete
+    source is published beside every installer on the same release page. This
+    clones IMP.bff (full history and tags, which setuptools-scm needs to reproduce
+    the version), checks out the bundled revision, runs ``python -m build --sdist``
+    in a throw-away venv, checks the built version equals the bundled one, and
+    writes the file into ``<out_dir>/source/``, which the release workflow uploads
+    beside the installers. Any failure stops the build: an installer without its
+    source is not releasable.
+    """
+    version = bundled_imp_bff_version(py)
+    rev = imp_bff_source_revision(version, _direct_url(py, "imp-bff"))
+    print(f"[sdist] imp-bff {version} -> {IMP_BFF_REPO} @ {rev}", flush=True)
+    work = Path(tempfile.mkdtemp(prefix="imp-bff-sdist-"))
+    try:
+        src, venv, built = work / "src", work / "venv", work / "dist"
+        run(["git", "clone", "--filter=blob:none", "--no-checkout", IMP_BFF_REPO, src])
+        run(["git", "-C", src, "checkout", "--detach", rev])
+        run([sys.executable, "-m", "venv", venv])
+        vpy = venv / ("Scripts/python.exe" if IS_WIN else "bin/python")
+        run([vpy, "-m", "pip", "install", "--quiet", "build"])
+        run([vpy, "-m", "build", "--sdist", "--outdir", built, src])
+        found = sorted(built.glob("*.tar.gz"))
+        if len(found) != 1:
+            sys.exit(f"ERROR: expected one sdist in {built}, got {found}")
+        if not imp_bff_sdist_matches(found[0].name, version):
+            sys.exit(f"ERROR: built {found[0].name}, but the runtime ships imp-bff {version}")
+        dest_dir = out_dir / IMP_BFF_SDIST_DIR
+        rmtree(dest_dir)
+        dest_dir.mkdir(parents=True)
+        dest = dest_dir / found[0].name
+        shutil.copy2(found[0], dest)
+        print(f"[sdist] wrote {dest}", flush=True)
+        return dest
+    finally:
+        rmtree(work)
 
 
 def _install_imp_tricks(py: Path, env: dict) -> None:

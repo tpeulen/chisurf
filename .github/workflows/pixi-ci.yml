@@ -298,6 +298,18 @@ jobs:
           path: dist/*.exe
           if-no-files-found: error
 
+      # LGPL 2.1 §6 for IMP.bff: build_installer.py writes the sdist of the exact
+      # imp-bff version it bundled into dist/source/ (and names that file in the
+      # installer's licenses/NOTICE.txt). It goes onto the release page beside
+      # every installer; a build without it fails here rather than shipping
+      # object code without its source.
+      - name: Upload IMP.bff source distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: imp-bff-sdist-${{ runner.os }}
+          path: dist/source/*.tar.gz
+          if-no-files-found: error
+
       - name: Upload Linux conda packages
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
@@ -371,13 +383,24 @@ jobs:
           name: packages-windows
           path: conda-packages/windows
 
+      # One sdist per bundled imp-bff version: the platforms normally bundle the
+      # same version, so merging by file name leaves one copy of it.
+      - name: Download IMP.bff source distributions
+        uses: actions/download-artifact@v4
+        with:
+          pattern: imp-bff-sdist-*
+          merge-multiple: true
+          path: artifacts/source
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          fail_on_unmatched_files: true
           files: |
             artifacts/linux/*.AppImage
             artifacts/macos/*.dmg
             artifacts/windows/*.exe
+            artifacts/source/*.tar.gz
             conda-packages/**/*.conda
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, 'a') || contains(github.ref_name, 'b') || contains(github.ref_name, 'rc') }}

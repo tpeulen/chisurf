@@ -3,14 +3,14 @@ type: Subsystem
 title: 'Licence: GPL → MIT, and the stack table (2026-10-17, audited 2026-10-20)'
 description: 'ChiSurf and its family are MIT, tttrlib BSD-3-Clause, IMP.bff LGPL-2.1-or-later; docs/licensing.md holds the table, test/test_stack_licences.py holds every repository to it, the installer ships the LGPL text.'
 tags: [subsystems]
-timestamp: 2026-10-20T18:00:00+02:00
+timestamp: 2026-10-20T23:00:00+02:00
 ---
 
 # Licence: GPL → MIT (2026-10-17)
 
 ## Where to pick this up
 
-1. **IMP.swarm — split out, 2026-10-20 (owner: "imp-tricks is not imp.bff — separate out").** It is
+1. Open: **IMP.swarm — split out, 2026-10-20 (owner: "imp-tricks is not imp.bff — separate out").** It is
    now its own package, **imp-swarm** (`~/dev/imp-swarm`, local repo, no remote yet; `CECILL-2.0`, the
    official CeCILL v2.0 en+fr texts; history of its 58 files kept via filter-repo). Commits: imp-swarm
    `5986873`, imp-tricks `9631f9e` (removal + `test_no_cecill_code_ships_here`), chimol `92b106a`
@@ -21,14 +21,28 @@ timestamp: 2026-10-20T18:00:00+02:00
    copyleft, so shipping it means its text and source beside the installer, like IMP.bff. Until
    decided, the installed app's biofilm demo shows the frozen run. Also open: a remote for imp-swarm,
    and whether its provenance (translated vs. written from the papers) should be settled anyway.
-2. **LGPL source offer.** The installer ships the LGPL text and NOTICE with the imp-bff version and
-   repository; strict §4/§6 compliance additionally wants the sdist in or beside the installer, or a
-   written offer. Owner decision; known issues has the options.
-3. **tttrlib `PhotonscoreD7.h`** is a port of Apache-2.0 code without the Apache notice/text.
-4. Re-measure: `pytest test/test_stack_licences.py` (skips repos not checked out — on CI only chisurf
+2. Measure: **the first tagged release with the IMP.bff sdist step** (not yet run on CI). Owner
+   decision 2026-10-20: "sdist beside installer" (LGPL 2.1 §6). `build_imp_bff_sdist`
+   (build_tools/build_installer.py) resolves the bundled IMP.bff version (`imp-bff` metadata; an IMP
+   module build has none and reports its short commit via `get_module_version()`), its revision
+   (`direct_url.json` commit, else `+g<hash>`, else tag `v<version>`), clones `IMP_BFF_REPO` with
+   history and tags (setuptools-scm needs both to reproduce the version; a shallow clone gives a wrong
+   version and the mismatch check fails the build), builds `python -m build --sdist` in a throw-away
+   venv; output `dist/source/<name>-<version>.tar.gz`, named in NOTICE.txt. pixi-ci uploads
+   `imp-bff-sdist-<os>` from every build job; the release job merges them and attaches
+   `artifacts/source/*.tar.gz` with the installers (`fail_on_unmatched_files`). Measured locally
+   2026-10-20 against `~/dev/imp.bff` with the arm64 env: 35 MB `bff-0.14.4.dev547+gab5de21d3.tar.gz`
+   (pre-rename revisions build as `bff`, hence `IMP_BFF_SDIST_NAMES`). On the first tag, check the
+   release page lists the sdist and that a DMG's `Contents/Resources/licenses/NOTICE.txt` names it.
+   Guard: `test/test_release_workflow_contracts.py`.
+3. Measure: `pytest test/test_stack_licences.py` (skips repos not checked out — on CI only chisurf
    itself is checked, so a sibling repo can drift unseen there; run it on the dev machine) and the
-   grep in known issues. `docs/references/review_status.json` will show `licensing.md` stale until the
+   grep in known issues. `docs/references/review_status.json` shows `licensing.md` stale until the
    docs review pass re-signs it.
+
+Resolved 2026-10-20: tttrlib `c43d77919` gives `PhotonscoreD7.h/.cpp` their upstream notices
+(photonscore/d7 Apache-2.0 *and* alex1075/photonsfile MIT — the file ports both), a change statement,
+`NOTICE` and `licenses/`, shipped by the wheel and the recipes.
 
 ## Owner decision 2026-10-20 — the stack table
 
