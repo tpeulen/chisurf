@@ -109,7 +109,7 @@ def shot_scoring_range(s: ManualShell) -> None:
     s.show_analysis()
     s.folds(fit=True)
     s.page("Fit")
-    s.save("manual_scoring_range.png", crop=(0, 120, 1500, 800))
+    s.save("manual_scoring_range.png", crop=s.below_ribbon(1500, 800))
 
 
 def shot_fit_before_after(s: ManualShell) -> None:
@@ -118,10 +118,10 @@ def shot_fit_before_after(s: ManualShell) -> None:
     s.show_analysis()
     s.folds("Lifetimes", fit=True)
     s.page("Fit")
-    before = s.save("_before.png", crop=(0, 120, 1500, 950))
+    before = s.save("_before.png", crop=s.below_ribbon(1500, 950))
     s.run_fit()
     s.driver.frame(4)
-    after = s.save("_after.png", crop=(0, 120, 1500, 950))
+    after = s.save("_after.png", crop=s.below_ribbon(1500, 950))
     s.stack("manual_fit_before_after.png", [before, after], ["a  before Fit", "b  after Fit"])
     before.unlink()
     after.unlink()
@@ -146,7 +146,7 @@ def shot_sampling(s: ManualShell) -> None:
     s.app.docks.focus(ANALYSIS_KEY)
     s.page("Chain diagnostics")
     s.driver.frame(10)
-    s.save("manual_sampling.png", crop=(0, 120, 1500, 800))
+    s.save("manual_sampling.png", crop=s.below_ribbon(1500, 800))
 
 
 def shot_equation_parsing(s: ManualShell) -> None:
@@ -163,7 +163,7 @@ def shot_equation_parsing(s: ManualShell) -> None:
     s.run_fit()
     s.folds("Equation", "Equation parameters", fit=False)
     s.page("Fit")
-    s.save("manual_equation_parsing.png", crop=(0, 120, 1500, 800))
+    s.save("manual_equation_parsing.png", crop=s.below_ribbon(1500, 800))
 
 
 def shot_donor_reference(s: ManualShell) -> None:

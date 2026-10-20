@@ -139,6 +139,20 @@ class ManualShell(Shell):
         self.app.docks.focus(PLOT_KEY)
         self.driver.frame(4)
 
+    def below_ribbon(self, right: float, bottom: float) -> tuple[int, int, int, int]:
+        """The crop box ``(0, top, right, bottom)`` that leaves out the menu bar and the ribbon.
+
+        *top* is measured from the shell now (the menu bar's height plus the ribbon's, which
+        changes with its group captions, its fold and *Menu Switch*), never a constant: a fixed
+        top cut off the docks' tab row once the ribbon grew.
+        """
+        from chisurf.emtk.main_app import MENU_BAR
+
+        self.driver.frame(2)
+        app = self.app
+        top = MENU_BAR + (app.ribbon.height() if getattr(app, "_ribbon_enabled", True) else 0.0)
+        return (0, int(round(top)), int(right), int(bottom))
+
     def save(self, name: str, crop=None) -> pathlib.Path:
         """Write the window (or the pixel box *crop*) to ``docs/manual/figures/<name>``."""
         from PIL import Image

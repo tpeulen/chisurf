@@ -239,7 +239,10 @@ own startup stages (item 5): S5 is done.
     Ctrl+Tab and *View ▸ Workspace* act on them only. Tools, the help browser and the code editor (`main_app.host_in_shell`,
     via `code_links.host_in_open_shell`) open as docks in `TOOL_REGION` ("center", sibling tabs of `"workspace"`;
     taking full dock width without auto-floating); they dock in any other region, float over the whole window, and are
-    never workspace children. Re-derive: `test/native_emtk/test_emtk_shell_workspace.py` (15 passed),
+    never workspace children. Re-checked 2026-10-20 when a docs agent read the tabs as a regression of the 10-13
+    "right of the workspace" layout: it is the 10-14 decision (85a7306a8), unchanged since; the manual page and
+    Fig.17 now say so. Escape now closes the Workspace's *Windows* list while a fit window holds the keys (emtk
+    `dde6f61`, `DockManager.handle_key`; `test_escape_closes_the_window_list_while_a_fit_window_has_the_keys`). Re-derive: `test/native_emtk/test_emtk_shell_workspace.py` (15 passed),
     `test/native_emtk/test_emtk_shell_fit_windows.py` (4 passed), `test/native_emtk/test_emtk_shell_final_parity.py` (5 passed).
     Figures: `docs/manual/figures/main_mdi_*.png`
     (`docs/guides/screenshots/manual_general.py mdi_tiled_and_tabbed`). Deliberate: *Start* is a workspace
@@ -398,7 +401,7 @@ Each row is one capability the shell uses. Evidence is given as `file:line`. "em
 | Tooltips | Qt tooltips and `install_tooltip_wrapping` | `emtk.tooltip` | — | S1 done | emtk `test_tooltip.py` |
 | Clipboard | Qt | `emtk.clipboard` (glfw/platform) | — | done | emtk `test_clipboard.py` |
 | DPI and export | Qt scaling, `widget.grab()` | `NativeHost` ratio, `emtk.scaled_painter`, `--screenshot` | — | done | `test_emtk_shell_flag_opens_the_emtk_surface` |
-| Multi-window | every plugin is its own top-level Qt window | one `NativeHost` per process; fit windows are the documents of the **Workspace** (centre region, emtk `workspace=True` on region and window): Tile / Cascade / Tabbed / Windows, minimize strip, Ctrl+Tab, clamped, persisted; every tool, the help browser and the code editor is a dock (tabbed right of the Workspace, dockable elsewhere, floating over the window), never a Workspace window and never a second process | **gap**: a second OS window sharing one app (detached docks on a second monitor) | Workspace done; second monitor open | `test/native_emtk/test_emtk_shell_workspace.py`, emtk `tests/test_docking_workspace.py` |
+| Multi-window | every plugin is its own top-level Qt window | one `NativeHost` per process; fit windows are the documents of the **Workspace** (centre region, emtk `workspace=True` on region and window): Tile / Cascade / Tabbed / Windows, minimize strip, Ctrl+Tab, clamped, persisted; every tool, the help browser and the code editor is a dock (tabbed beside the Workspace tab in the centre, dockable elsewhere, floating over the window), never a Workspace window and never a second process | **gap**: a second OS window sharing one app (detached docks on a second monitor) | Workspace done; second monitor open | `test/native_emtk/test_emtk_shell_workspace.py`, emtk `tests/test_docking_workspace.py` |
 | Text input, IME | Qt `inputMethodEvent` | `emtk.ime`: commits as typed text, preedit in `io.preedit` drawn at the caret of `input_text`, `TextEditor`, `TextField`; `qt_host.inputMethodEvent`; native holds back a composition's keys (`MarkedTextProbe`) | inline preedit in the glfw window, the browser's composition events (resume item 12) | S4 done | emtk `tests/test_ime.py`, `test_emtk_shell_console.py::test_composed_input_types_into_the_console` |
 | Molecular viewer | chimol `hosts/qt` | chimol native host (`ChimolApp`), hosted by `chisurf.plugins.chimol.app` | none (`hosts/qt` deleted in chimol a53e512) | S7: done 2026-10-13 | `chisurf/plugins/chimol/test/` (native), `test_emtk_chimol_parity.py` |
 | Watermark, sparkline | `widgets/system_info_watermark.py` | chiplot or `emtk.implot` | — | S5 (or drop) | — |

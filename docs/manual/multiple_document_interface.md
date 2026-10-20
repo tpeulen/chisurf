@@ -1,7 +1,7 @@
 ---
 type: Manual Page
 title: Multiple document interface
-description: The Workspace is where the fit windows live and are arranged; every tool is a dock beside it.
+description: The Workspace is where the fit windows live and are arranged; every tool is a dock tabbed beside it.
 tags: [manual, fitting, multiple, document, interface]
 ---
 
@@ -14,10 +14,11 @@ there, it cannot be docked in another panel, and when the main window shrinks th
 in. The Workspace itself cannot be closed or hidden; it keeps its place even when it is empty.
 
 Tools are not Workspace windows. A tool opened from the menus, the ribbon or the Tools panel -- and the
-help browser and the code editor -- opens as a **dock**, a tab of the panel right of the Workspace. Like
-the *Read data*, *Analysis* or *Console* docks it can be dragged to another panel, tabbed with other docks,
-floated over the main window or closed; it is never one of the Workspace's windows, and the Workspace's
-commands leave it where it is.
+help browser and the code editor -- opens as a **dock**, a tab beside the *Workspace* tab in the centre
+panel: the Workspace is itself a dock there, one that cannot be closed. A click on a tab brings that tool or
+the Workspace forward. Like the *Read data*, *Analysis* or *Console* docks a tool can be dragged by its tab
+to another panel (to keep it in view beside the fits), tabbed with other docks, floated over the main window
+or closed; it is never one of the Workspace's windows, and the Workspace's commands leave it where it is.
 
 The **Tools** panel lists every tool under its menu. Typing into *Filter tools* at its top narrows the
 list; the field stays there while the list scrolls under it. Down moves from the field into the list, Up
@@ -38,9 +39,10 @@ same way.
 ```
 
 **Fig.17 The Workspace.** Top: two fit windows tiled in the Workspace (**Tile**); the *Histogram-Microtime*
-and *Calculators* tools are docks right of it. Middle: the fits cascaded (**Cascade**), the first minimized
+and *FRET Calculator* tools are docks, tabs beside the *Workspace* tab. Middle: the fits cascaded (**Cascade**), the first minimized
 to the strip along the Workspace's bottom, and the **Windows** list open -- it lists the fits only. Bottom:
-the fits as tabs (**Tabbed**), one shown at a time and chosen by its tab. The tools stay docked throughout.
+the fits as tabs (**Tabbed**), one shown at a time and chosen by its tab. The tools stay tabbed beside the
+Workspace throughout.
 **×** on a fit window closes only the window; the fit stays in the session.
 
 ## Arranging the windows
@@ -53,7 +55,7 @@ Workspace* has the same ones. They act on the fit windows (and *Start*), never o
 | **Tile** (*Tile Windows*) | Lays the windows out side by side in a near-square grid. No tile is smaller than 380 × 280 pixels; what does not fit is minimized and waits on the strip. |
 | **Cascade** (*Cascade Windows*) | Floats the windows, each a title bar below and right of the last, the last one on top. |
 | **Tabbed** (*Tab Windows*) | Makes every window a tab of the Workspace. |
-| **Windows ▾** | Lists the windows (a minimized one says so); a click brings that window to the front. |
+| **Windows ▾** | Lists the windows (a minimized one says so); a click brings that window to the front, Escape closes the list. |
 | *Next Window*, **Ctrl+Tab** | Brings the next window to the front; **Ctrl+Shift+Tab** goes back. Works while a tool has the keyboard; skips the tools. |
 
 A fit window's **_** button minimizes it to the strip along the bottom of the Workspace; a click on its

@@ -120,7 +120,7 @@ def run_shell_shots(names: list[str]) -> None:
             _select_datasets(s, (1, 2))
             _pointer(s, _dataset_row_point(s, 2), "right")
             s.driver.frame(3)
-            s.save("main_datasets_context_menu.png", crop=(0, 120, 480, 470))
+            s.save("main_datasets_context_menu.png", crop=s.below_ribbon(480, 470))
         elif name == "datasets_grouped":
             _read_four(s)
             s.app.docks.focus(DATASETS_KEY)
@@ -137,18 +137,18 @@ def run_shell_shots(names: list[str]) -> None:
             s.driver.hover((1495.0, 5.0))
             s.driver.frame(3)
             _console(s, "[d['name'] for d in api.list_datasets()]")
-            s.save("main_datasets_grouped.png", crop=(0, 120, 1500, 950))
+            s.save("main_datasets_grouped.png", crop=s.below_ribbon(1500, 950))
         elif name == "datasets_with_fits":
             _read_four(s)
             _two_fits(s)
             s.app.docks.focus(DATASETS_KEY)
-            s.save("main_datasets_fits.png", crop=(0, 120, 1500, 800))
+            s.save("main_datasets_fits.png", crop=s.below_ribbon(1500, 800))
         elif name == "analysis_dock":
             _read_four(s)
             _two_fits(s)
             s.show_analysis()
             s.folds("Convolution", fit=True)
-            s.save("main_analysis_dock.png", crop=(0, 120, 1500, 950))
+            s.save("main_analysis_dock.png", crop=s.below_ribbon(1500, 950))
         elif name == "overview":
             _read_four(s)
             _two_fits(s)
@@ -172,19 +172,19 @@ def run_shell_shots(names: list[str]) -> None:
             s.app.tile_windows()
             s.driver.hover((1495.0, 5.0))
             s.driver.frame(6)
-            s.save("main_mdi_tiled.png", crop=(0, 120, 1500, 950))
+            s.save("main_mdi_tiled.png", crop=s.below_ribbon(1500, 950))
             s.app.cascade_windows()
             fits = [w.key for w in s.data.windows.values()]
             docks.minimize(fits[0])
             s.driver.frame(4)
             s.driver.click(docks._workspace_buttons["windows"])
             s.driver.frame(4)
-            s.save("main_mdi_cascade.png", crop=(0, 120, 1500, 950))
+            s.save("main_mdi_cascade.png", crop=s.below_ribbon(1500, 950))
             s.driver.escape()
             s.app.tab_windows()
             docks.focus(fits[1])
             s.driver.frame(6)
-            s.save("main_mdi_tabbed.png", crop=(0, 120, 1500, 950))
+            s.save("main_mdi_tabbed.png", crop=s.below_ribbon(1500, 950))
         elif name == "read_data_vvvh":
             s.app.docks.focus(READ_KEY)
             read = s.data.read

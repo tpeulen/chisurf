@@ -3,8 +3,9 @@
 Owner's rule (2026-10-13): "workspace is simply where the fits live, the plugins, ie, the tools go
 separate all are in docks." So the workspace's children are the fit windows (and Start, which
 fills it while it has no fit); Tile, Cascade, Tabbed, Ctrl+Tab and the window list act on them
-only. A tool, the help browser and the code editor open as docks -- tabbed right of the workspace
-by default, dockable anywhere else, floating over the whole window -- and never become workspace
+only. A tool, the help browser and the code editor open as docks -- tabbed beside the Workspace
+tab in the centre by default (owner, 2026-10-14: the Workspace is itself a dock, one that cannot be
+closed), dockable anywhere else, floating over the whole window -- and never become workspace
 windows. emtk enforces the rule (``DockWindow.workspace``, ``tests/test_docking_workspace.py``
 there); this is the shell using it, driven as a user drives it with
 :class:`emtk.testing_realistic.RealisticDriver` -- real presses, drags and keys -- with probe
@@ -271,6 +272,39 @@ def test_the_workspace_tool_bar_and_its_window_list_name_the_fits_only():
     labels = {a.label for a in shell.workspace_actions()}
     assert {"One", "Two", "Three"} <= labels
     assert not {"Settings", "File tools", "Games"} & labels
+
+
+def test_escape_closes_the_window_list_while_a_fit_window_has_the_keys():
+    """The list is drawn in the shell's frame; Escape must close it whoever holds the keys.
+
+    Keys go to the focused fit window's own surface (its plots are a hosted child), so before
+    emtk's ``DockManager.handle_key`` took Escape for an open menu the list stayed open -- it
+    was left open in the manual's *Tabbed* figure.
+    """
+    shell, driver = _shell()
+    _open_tools(shell, driver)
+    child = ImApp(lambda: None)
+    shell.docks.add_window(
+        "fit.hosted",
+        "Hosted",
+        lambda box: shell.host_child("fit.hosted", "fit.hosted", child, box),
+        dock="center",
+        scrollable=False,
+        padding=0.0,
+        core=True,
+        workspace=True,
+    )
+    driver.frame(3)
+    docks = shell.docks
+    docks.focus("fit.hosted")
+    driver.frame(2)
+    driver.click(docks._workspace_buttons["windows"])
+    driver.frame(2)
+    assert shell.workspace_docks._menus_shown, "the window list opened"
+    assert docks.focused == "fit.hosted" and "fit.hosted" in shell._drawn, "the fit has the keys"
+    driver.escape()
+    driver.frame(3)
+    assert not shell.workspace_docks._menus_shown, "Escape closed the window list"
 
 
 def test_right_click_on_the_empty_workspace_offers_its_commands():

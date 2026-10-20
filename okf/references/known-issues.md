@@ -6,8 +6,21 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## The Workspace manual page no longer matches what the shell draws (found 2026-10-20, branch `mcts-native-baseline`)
 
-status: open — blocks `test_review_levels.py::test_the_shipped_manual_records_its_ai_review`
-(`docs/manual/multiple_document_interface.md` is *stale*: f114e1f20 edited it after its review).
+status: resolved 2026-10-20 — the placement is intended; the page, Fig.17 and its captions follow it, and
+the page is AI-reviewed again.
+
+- **Resolution.** Tools as tabs beside the *Workspace* tab is the owner's 2026-10-14 decision ("tools land
+  in docks, workspace is also in dock, fitwindows land in workspace ... a special dock that cannot be
+  closed"), implemented in 85a7306a8 (`TOOL_REGION = "center"`) and unchanged since; no emtk 0.1.25–0.1.27
+  commit moved it. The page and the `qt-retirement` concept still said "right of the Workspace" because the
+  concept's item 10 had lost the 10-14 text in merge 855e54604 (restored in e61f7caaa). The crop now
+  follows the measured menu bar + ribbon height (`ManualShell.below_ribbon`, used by `manual_general.py`
+  and `manual_fitting.py`); the three `main_mdi_*.png` were retaken. Retaking them showed the *Tabbed*
+  figure with the Windows list still open: Escape went to the focused fit window's hosted surface and never
+  reached the list in the shell's frame. Fixed in emtk `dde6f61` (`DockManager.handle_key` takes Escape for
+  an open menu); guard `test_escape_closes_the_window_list_while_a_fit_window_has_the_keys`. The other
+  figures cropped at y=120 (`main_datasets_*`, `main_analysis_dock`, `manual_scoring_range`, ...) still
+  carry the old cut until retaken.
 
 - **Measurement.** `PYTHONPATH=. python docs/guides/screenshots/manual_general.py mdi_tiled_and_tabbed`
   (scratch `CHISURF_SETTINGS_DIR`). Tools opened with `open_plugin` (Histogram-Microtime, FRET
