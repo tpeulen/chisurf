@@ -190,23 +190,8 @@ own startup stages (item 5): S5 is done.
    so an ast scan of the installed `emtk` package (function-body imports of `emtk.*`, `fontTools.*` and `PIL.*`)
    yields `FRAME_MODULES`. A test would compare the tuple with the scan, so an emtk pin bump that adds a lazy
    import fails it instead of reappearing as a gate wait in `plugin_frame_times`.
-6. Measure: (done 2026-10-13) opening a fit window imports no Qt: `test/native_emtk/test_fit_window_is_qt_free.py`
-   (subprocess; the full guard `test_opening_a_fit_window_imports_no_qt` passes, xfail removed, and
-   `test_every_shipped_page_class_resolves_without_qt` resolves all 24 `PLOT_CLASSES` keys with `qtpy` unloaded).
-   What moved: chiplot's core is `chisurf/chiplot/` (panel API `PlotAPI`/`Panel`, handles, styles, backends; no Qt
-   at import, guard `test/test_chiplot_core_qt_free.py`), and `chisurf.gui.chiplot` is the Qt host layer (`Plot`,
-   `Grid`, `ImageView`, `VolumeView` widgets + a re-export of the core). The page modules moved from
-   `chisurf/gui/plots/` to `chisurf/emtk/fit_pages/pages/` (`StateSchemePlot` out of the autoform section into
-   `pages/state_scheme_emtk.py`); `emtk_settings.py` (the Qt *Plot settings* dock host) is
-   `chisurf/gui/widgets/fitting/plot_settings_host.py`; the Qt-free `glyphs` and `fitting_client` the pages needed
-   are `chisurf/core/glyphs.py` and `chisurf/core/api/fitting_client.py`. No shims: every importer was rewritten.
-   Parity: the 18 pages of two real fitted IBH fits (`Decay_577D` lifetime, `+577A+GTPgS` Gaussian FRET; every page,
-   `chisurf.emtk.fit_report.render_fit_images(pages=None)`) are byte-identical PNGs before and after. Traps: `style`
-   parsed colours with `QColor`; the Qt-free `int_color` reproduces `QColor.fromHsvF` only with Qt's own float form
-   (`1-(1-f)`) and a rounded `/257` channel reduction (`>>8` and the `qt_div_257` spelling both differ by one on
-   about a third of hues). Since the S6-blocker slice (same day) the core names no Qt at all (item 9; source-grep
-   guard in `test/test_chiplot_core_qt_free.py`). Rejected, still: making `chisurf.gui.__init__` lazy (tests
-   monkeypatch attributes on that module).
+6. Done 2026-10-13: opening a fit window imports no Qt (`test/native_emtk/test_fit_window_is_qt_free.py`);
+   the record is under "History".
 7. Measure: whole-window parity, `test/native_emtk/test_emtk_shell_whole_parity.py` against
    `shell_whole_qt_inventory.json`: `KNOWN_GAPS` empty since 2026-10-11 (was 23). The fixture clicks every ribbon
    tab and the Log dock's tabs, as a user does; renamed captions (`?` → ❓ Help, `Language: English` → 🌍 EN, `P` →
@@ -244,20 +229,19 @@ own startup stages (item 5): S5 is done.
    `core/actions/project_actions.py`, `core/project/{transition,ui_state}.py`, `server/services/projects.py`;
    `skip_qt_widgets` in the serialisation API; the manifest `gui` entrypoint field; the dead
    `controller_class` key in `experiment_configs.yaml`.
-10. Measure: the **Workspace is where the fits live; every tool is a dock** (owner, 2026-10-13: "workspace is
-    simply where the fits live, the plugins, ie, the tools go separate all are in docks"). The shell's centre is
-    `Region("center", workspace=True)`; its documents are the windows added with `workspace=True` -- the fit
-    windows (`fit_docks.open_window`) and *Start*, which fills it while there is no fit. They float inside it
-    (clamped back in on resize) or are its tabs, and dock nowhere else. Tile (emtk `tile_grid`, `MIN_TILE`;
-    overflow minimized to the strip), Cascade, Tabbed, the Windows list, Ctrl+Tab and *View ▸ Workspace* act on
-    them only. Tools, the help browser and the code editor (`main_app.host_in_shell`, via
-    `code_links.host_in_open_shell`) open as docks in `TOOL_REGION` ("right", right of the workspace;
-    `_tool_region` re-makes it as a split of the workspace when a saved layout lacks it); they dock in any
-    other region, float over the whole window, and are never workspace children. emtk enforces the rule
-    (`DockWindow.workspace`, `DockManager.admits` / `target_admits`; `dock()`, `add_window()` and `restore()`
-    redirect a window asked into the wrong place; emtk `410f791`, `tests/test_docking_workspace.py`).
-    Re-derive: `test/native_emtk/test_emtk_shell_workspace.py` (15, one with a real fit; run with
-    `PYTHONPATH=~/dev/emtk` until the pin moves past `410f791`). Figures: `docs/manual/figures/main_mdi_*.png`
+10. Measure: the **Workspace is where the fits live; every tool is a dock** (owner, 2026-10-14: "i want that tools
+    land in docks, workspace is also in dock, fitwindows land in workspace. in the end workspace is a dock, but a
+    special dock that cannot be closed"). The shell's outer dock manager (`ShellDockManager`) docks `"workspace"` in
+    the center region with `closable=False, core=True`; it contains `self.workspace_docks` (`Region("center", workspace=True)`).
+    Its documents are the windows added with `workspace=True` -- the fit windows (`fit_docks.open_window`) and *Start*,
+    which fills it while there is no fit. They float inside it (clamped back in on resize) or are its tabs, and dock
+    nowhere else. Tile (emtk `tile_grid`, `MIN_TILE`; overflow minimized to the strip), Cascade, Tabbed, the Windows list,
+    Ctrl+Tab and *View ▸ Workspace* act on them only. Tools, the help browser and the code editor (`main_app.host_in_shell`,
+    via `code_links.host_in_open_shell`) open as docks in `TOOL_REGION` ("center", sibling tabs of `"workspace"`;
+    taking full dock width without auto-floating); they dock in any other region, float over the whole window, and are
+    never workspace children. Re-derive: `test/native_emtk/test_emtk_shell_workspace.py` (15 passed),
+    `test/native_emtk/test_emtk_shell_fit_windows.py` (4 passed), `test/native_emtk/test_emtk_shell_final_parity.py` (5 passed).
+    Figures: `docs/manual/figures/main_mdi_*.png`
     (`docs/guides/screenshots/manual_general.py mdi_tiled_and_tabbed`). Deliberate: *Start* is a workspace
     document (it is what the empty workspace shows), so Tile/Tabbed include it while it is open. Tried and
     reverted: (a) tiling by splitting the centre into regions (it multiplied regions and stacked the overflow
@@ -307,6 +291,28 @@ own startup stages (item 5): S5 is done.
     Open: Windows/Linux transparency is unverified (glfw `TRANSPARENT_FRAMEBUFFER` + Vulkan `premultiplied`
     should work; where neither mode is offered the window draws opaque with black where the art is clear); no
     taskbar suppression (macOS shows the one Dock icon of the process anyway).
+13. Measure: the **final screenshot parity pass of the shell** (owner, 2026-10-14, before S6 deletes the Qt
+    window): 95 Qt/emtk pairs in `okf/plugins/emtk-ports/final-parity/shell/` (`index.html` side by side,
+    `report.json`, `README.md`; the tree was removed with the migration evidence in 3fce04a9c, read it with
+    `git show 3fce04a9c^:okf/plugins/emtk-ports/final-parity/shell/README.md`). Re-derive: `capture_qt.py` then `capture_emtk.py` (one process at a time, scratch
+    `CHISURF_SETTINGS_DIR` and `HOME`), then `build_report.py <qt dir> <emtk dir>`; the verdicts are hand-written
+    in `verdicts.json` after reading every pair. Result: χ²ᵣ and every parameter of the four fits (TCSPC lifetime +
+    IRF, FCS, PDA, global) are bit-identical in both shells; 58 parity, 17 fixed in the pass, 3 deliberate, 17 gap.
+    Owner follow-ups the same day: a tool wider than its dock (never placed by the user) opens floating at its
+    declared size; the system-info watermark is drawn in the workspace background (emtk 0.1.15
+    `DockManager.workspace_background`); every new fit opens as a cascaded window inside the workspace, a tab
+    only while the fits are tabbed (`test_emtk_shell_fit_windows.py`). Follow-up 2026-10-17: live CPU/memory
+    usage tracking and sparklines are fully hooked up (`chisurf/core/system_info.py`, `chisurf/emtk/main_app.py`);
+    `psutil.Process` instance caching prevents 0% CPU readouts, draw lists receive 0..255 integer RGBA tuples so
+    track and polylines are visible, and `next_frame_in` requests frames on a 1.0s cadence for live monitoring.
+    Open, cosmetic: the global parameter
+    table drops columns at the default width (known issues). Traps: (a) the IBH `decay_fit` files carry no channel width -- set the reader's `dt` to
+    0.0141 ns in *both* shells or the TCSPC fit lands on nonsense in both; (b) headless on private RPC ports the
+    Qt fit window never gets `fit.ran`, so it shows the pre-fit curve until `window.update()` -- a harness
+    artefact, not a shell difference; (c) an emtk dialog's Escape used to need the pointer over it, so a driver
+    that "pressed Escape" left the modal up (fixed: emtk 0.1.13 and `shell_session.escape_pressed`).
+    Tried and reverted: widening the tool region to a tool's declared width on open -- nearly every tool declares
+    >= 1100 px, so it halved the workspace and broke tile / cascade (`test_emtk_shell_workspace.py`).
 
 
 # Traps for slice S2
@@ -578,6 +584,24 @@ bootstrap (`test/agent/test_bootstrap.py`). Tests: Qt-only tests retired, behavi
 tests ported to the emtk apps or the Qt-free API; the list is in the branch's commit bodies. Verified with Qt
 blocked by a meta-path finder: `import chisurf`, `python -m chisurf --help`, a headless shell frame (inspected),
 `test_emtk_shell.py` 11 passed, and the guard files one at a time.
+
+**Opening a fit window imports no Qt (former item 6, done 2026-10-13).** Measure: opening a fit window imports no Qt:
+`test/native_emtk/test_fit_window_is_qt_free.py` (subprocess; the full guard `test_opening_a_fit_window_imports_no_qt`
+passes, xfail removed, and `test_every_shipped_page_class_resolves_without_qt` resolves all 24 `PLOT_CLASSES` keys
+with `qtpy` unloaded). What moved: chiplot's core is `chisurf/chiplot/` (panel API `PlotAPI`/`Panel`, handles,
+styles, backends; no Qt at import, guard `test/test_chiplot_core_qt_free.py`), and `chisurf.gui.chiplot` is the Qt
+host layer (`Plot`, `Grid`, `ImageView`, `VolumeView` widgets + a re-export of the core). The page modules moved
+from `chisurf/gui/plots/` to `chisurf/emtk/fit_pages/pages/` (`StateSchemePlot` out of the autoform section into
+`pages/state_scheme_emtk.py`); `emtk_settings.py` (the Qt *Plot settings* dock host) is
+`chisurf/gui/widgets/fitting/plot_settings_host.py`; the Qt-free `glyphs` and `fitting_client` the pages needed
+are `chisurf/core/glyphs.py` and `chisurf/core/api/fitting_client.py`. No shims: every importer was rewritten.
+Parity: the 18 pages of two real fitted IBH fits (`Decay_577D` lifetime, `+577A+GTPgS` Gaussian FRET; every page,
+`chisurf.emtk.fit_report.render_fit_images(pages=None)`) are byte-identical PNGs before and after. Traps: `style`
+parsed colours with `QColor`; the Qt-free `int_color` reproduces `QColor.fromHsvF` only with Qt's own float form
+(`1-(1-f)`) and a rounded `/257` channel reduction (`>>8` and the `qt_div_257` spelling both differ by one on
+about a third of hues). Since the S6-blocker slice (same day) the core names no Qt at all (item 9; source-grep
+guard in `test/test_chiplot_core_qt_free.py`). Rejected, still: making `chisurf.gui.__init__` lazy (tests
+monkeypatch attributes on that module).
 
 **Plugin Qt allow-list, 244 → 0 (former item 1).** Measure: the allow-list is **empty** since the mmfdb_admin slice (2026-10-13; 30 entries at chisurf 7e0514d95, all mmfdb_admin, 33 at 96d3b6f1d, 52 when the ndX/chimol-leftovers slice started,
 64 before the parallel 2026-10-13 slices, 171 before the chimol slice, 184 before the Trace Browser host went
