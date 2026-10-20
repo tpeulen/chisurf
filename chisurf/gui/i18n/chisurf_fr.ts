@@ -69484,6 +69484,1415 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
             <source>🔍 Check (re-fit)</source>
             <translation type="unfinished"/>
         </message>
+        <message>
+            <source>({n} queued)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>0 · Create</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>1 · Review</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>2 · Upload</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Approve publish&lt;/b&gt; approves exactly this package; &lt;b&gt;Publish&lt;/b&gt; is grey until the draft matches it. Publishing is irreversible.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Close&lt;/b&gt; ends the active pane's session and removes the pane. Ctrl+W does the same. A pane whose process already exited stays visible until you close it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Filter Calc...&lt;/b&gt; opens the fFCS Filter Calculator in a window of its own and hands it these files, on the same micro-time binning, as its mixed decay. The filters it saves are what &lt;b&gt;Load filters...&lt;/b&gt; reads for species-resolved correlation. The other FCS tools (2D-FLCS, the lifetime-FCS simulator, burst-wise FCS and the diffusion / volume calculator) are buttons of their own in the ribbon's &lt;b&gt;Spectroscopy › Correlation&lt;/b&gt; group.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;New&lt;/b&gt; opens another pane of the same kind as the one you are in. Ctrl+T does the same.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Python&lt;/b&gt; opens the built-in Python console, which already knows the open datasets and fits. The shell pane runs your own shell on a pseudo-terminal.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Reset styles&lt;/b&gt; restores the shipped files. And if a style leaves the window unreadable, delete that &lt;code&gt;.css&lt;/code&gt; from your settings directory and restart — ChiSurf falls back to the default appearance.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Split&lt;/b&gt; divides the active pane so two sessions are visible side by side. The stacked variant sits next to it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Upload draft&lt;/b&gt; stays grey until every item is approved and the package matches what you approved. It uploads into a Zenodo &lt;i&gt;draft&lt;/i&gt; and checks the md5 there; nothing is published.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A Python pane is the main window's console: &lt;code&gt;cs&lt;/code&gt; is the package, &lt;code&gt;api&lt;/code&gt; the session (fits, datasets, parameters), &lt;code&gt;gui&lt;/code&gt; the window. Tab completes against the live objects and &lt;code&gt;obj?&lt;/code&gt; explains anything. The &lt;b&gt;?&lt;/b&gt; lists the keys and the &lt;code&gt;%&lt;/code&gt; commands.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A measurement (sample data) or a calibration (IRF/scatter, buffer, dyes, DNA references).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A reference the measurements need (IRF/scatter, buffer, dyes, DNA): the files land under calibrations/&lt;group&gt;/&lt;item&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A row's &lt;b&gt;Approve&lt;/b&gt; button binds your decision to the item's content: if it changes later, it is pending again. Right-click a row to &lt;b&gt;Reject&lt;/b&gt; it (the record is blocked until it is fixed), undo a decision, or open it in ndX.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A tour points at one real control at a time and waits for the user to use it. Read by chisurf.emtk.help_guide and, for painted chrome, by chimol.tour.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Access</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Add as</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Add folder…</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Advanced · Build from a project script</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>After the upload: compare the draft, approve publishing this exact package, publish.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>An empty record folder under the data root. Skip this step to work on a record picked in the list above.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>An emtk style sheet is a small CSS dialect. A rule names a control (&lt;code&gt;button&lt;/code&gt;), a state (&lt;code&gt;:hover&lt;/code&gt;) or a part (&lt;code&gt;menu::item&lt;/code&gt;) and sets its colours; &lt;code&gt;padding&lt;/code&gt; and &lt;code&gt;border-radius&lt;/code&gt; set the spacing of every control.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Answer yes. The third yes publishes the record, which cannot be undone.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Approve all</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Approve every item not decided yet (not rejected ones, not ones failing the check).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Approve every item not decided yet, ⚠ flagged ones included, at its current content. Rejected items and items failing the machine check are left as they are. The Note, if any, is stored with each approval.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Approve publish</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Approve publishing exactly this package (its md5). A rebuilt package needs a new approval.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Approve the item as it is now: if it changes later, it is pending again.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Approve the item as it is now; bound to its content.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Ask Zenodo whether the token may create depositions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Below the steps is the count-rate trace of one file; the list beside &lt;b&gt;Regions&lt;/b&gt; holds every file the correlator gets (a folder's files one by one). With &lt;b&gt;✏ Draw&lt;/b&gt; on, drag across the trace to add a region, drag a region's edge to move it and right-click it to remove it. Only photons inside a file's regions are filtered and correlated: cut away an aggregate spike, a bubble or the bleaching start. A file without regions is used whole; &lt;b&gt;To all files&lt;/b&gt; gives the others the same regions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Block the record until the item is fixed and approved; the Note says why.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Blur behind dialogs</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Browse the editable style sheets copied to your user settings directory</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Build package</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Build record</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Build the archive and upload it into a Zenodo draft. Locked until every item is approved.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Build the selected record; rebuilding keeps every approval whose item did not change.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Built</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Burstwise analysis folder:</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Burstwise folder &amp; settings</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Burstwise → PTO Import</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Burstwise → PTO help</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Burstwise→PTO</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Button</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Calibrate G, VH shift and mixing for a reader; the values return to it on close.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Check</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Check Zenodo</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Check every item of the record and decide on it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Check table mappings and TTTR source resolution without writing .mmfdb.pto.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>ChiSurf's built-in Python console as a terminal pane: tmux-style tabs, splits and floating windows around the console engine.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose &lt;b&gt;Measurement&lt;/b&gt; or &lt;b&gt;Calibration&lt;/b&gt;, name the item, then &lt;b&gt;Add files…&lt;/b&gt; or &lt;b&gt;Add folder…&lt;/b&gt;. Files are hard-linked, never overwritten.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose Burstwise Folder</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose Folder</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose Local TTTR Root Prefix</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose Output Directory</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose a folder; it is added with its inner layout.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose how raw TTTR files are located: by re-mapping original paths from .mti or by checking for files with matching stems beside the folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose one or more files to add as this item.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose the kind of pane</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Clear all log messages.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Clear regions</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Cleared for upload, or how many things still block it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Click Run to convert detected measurements into .mmfdb.pto containers.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Click Scan to discover measurement stems, companion tables, Info settings, and folder-name parameters.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Click a record.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Click an item.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Close a pane</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Close the active pane</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Combo</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Comma separated, e.g. smFRET, T4 lysozyme, urea unfolding.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Configs</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Confirm deletion of user custom style files and restore packaged defaults</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Containers written: {c} | Measurements: {m}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Conversion cancelled by user.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Conversion results</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Convert a legacy burstwise analysis folder to PTO.MFDB containers.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Convert legacy burstwise analysis folders (bi4_bur/bg4/br4/BIDs/Info/.mti) to PTO.MFDB containers.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Convert legacy burstwise folder to .mmfdb.pto containers.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Convert to PTO</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Converting...</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create a new style sheet without replacing an existing one</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create a record, or pick one in the list.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create record</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Creators</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Ctrl+C interrupts</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Decide</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Delete the stored token from the keychain.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Disabled text</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Discard edits</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Drag to add a region; right-click a region to remove it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Draw which stretches are correlated</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Drawing mode: drag on the trace to add a region, drag a region's edge to move it, right-click a region to remove it. Off: drag and scroll to pan and zoom.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Drop the edits; the editor shows the selected config again.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Dry run (scan and validate without writing)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Each row is one future Zenodo entry. Its review lives beside the folder, never inside the upload. Click the record you want to check.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Edit ChiSurf's emtk style sheets (.css files in the settings directory) and apply one to the running window.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Edit style sheet with syntax highlighting, selection, clipboard and undo/redo; hex colours show a swatch and braces fold</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Embargo until</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Enter a file name; .css is added automatically and directory components are rejected</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Enter or browse for a legacy burstwise folder. Folders can also be dragged and dropped directly onto the window.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Every item of the record; each measurement with the calibrations it uses nested under it (one calibration, stored once, can serve several). Approve a row with its button; right-click for Reject, Undo decision or Open in ndX (also a double click). ⚠ = check first; hover a row for why, its content and origin.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Every measurement folder, calibration folder and metadata file is one row. A &lt;b&gt;⚠&lt;/b&gt; means the builder could not decide alone: data was added, or a role was inferred. Hover a row for the reason, click it for the details.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Every upload of this record (new draft, update, new version) and every published version, newest first -- kept in the record's review state.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Exactly the deposition metadata the upload sends.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Example</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Explicit output directory for .mmfdb.pto containers; empty writes beside folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fill in step 3: title, creators as &lt;code&gt;Family, Given&lt;/code&gt;, description, keywords. What is missing is listed under the form. Then &lt;b&gt;Scan for review&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Filter Calc could not open: {error}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Flag legacy columns not matched in the flrCIF dictionary.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Flagged items first</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Folder and archive name: lower case, digits, '.', '_' or '-', e.g. t4l-unfolding-smfret-k60-n132c.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Folder parameters: selection={sel}, threshold={th}, min_photons={mp}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>For a project whose records are generated by a build script from a config (e.g. T4L): pick the config, Build record.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Gate</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Get the record's final DOI now, before publishing -- to write into a manuscript. It sends the approved Zenodo metadata into a draft (made if there is none, no files needed). The DOI resolves once the record is published. Grey until the Zenodo metadata is approved, or when a DOI is reserved already.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Give every file passed to the correlator this file's regions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Give it a title, then press &lt;b&gt;Create record&lt;/b&gt;; it stays grey until the name is valid. (A record a project script builds is under &lt;i&gt;Advanced&lt;/i&gt;.)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Holds</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Hover me</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How many files the series holds.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How many items are approved.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How many reasons this item needs a closer look; hover the row to read them.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Import log</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>In &lt;b&gt;0 · Create&lt;/b&gt;, type the record's name: lower case, no spaces. It becomes the folder and the archive name. (Already have one? Pick it in the list at the top instead.)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>In this order: build the archive from the approved content, then upload it into a draft.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Info file: {name}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Input field</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Intensity (kHz)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Interrupt</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Kept the mixed decay loaded here; the FCS correlator's files were not read over it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Keywords</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Legacy burstwise directory (containing bi4_bur, bg4, br4, Info, .mti).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>License</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Lifetime filters come from the Filter Calculator</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List every measurement, calibration and metadata item with its digest; approvals of unchanged items are kept.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Local path where raw TTTR files reside</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Local root prefix:</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Look at the bursts of the item's .mmfdb.pto before approving.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>MTI file: {name} ({n} entries)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Make a record by hand in four steps -- name it, put its data in, fill in what Zenodo shows, scan it -- then review it in 1 · Review. A record built by a project script is under Advanced.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Make the empty record and open it. Grey until the name is valid and not taken.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Make the record</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Matches &lt;stem&gt;.ht3/.spc/.ptu next to burstwise folder:
+{path}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Measurement</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Measurement, calibration or metadata; shared ×n: a calibration used by n measurements, stored once.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Name the record</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Needed for open and embargoed access; data is usually cc-by-4.0. Pick one or type any Zenodo licence id (e.g. odbl-1.0).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No containers written (dry run or missing source TTTRs).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No conversion results yet. Run conversion to inspect output.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No open terminal panes. Click 'New' or 'Python' above.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No photons to draw on.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Not built, built but not scanned, or built and scanned (ready for review).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Note</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Nothing parsed yet.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Number of files and total size of the item.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Old root prefix in .mti:</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>One per line: Family, Given; Affiliation; ORCID (affiliation and ORCID optional).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>One per line: relation and identifier, e.g. isSupplementTo 10.1101/2026.01.01.123456 (the paper).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>One row per build config. Click one to see it; Build record creates (or rebuilds) the record folder under the data root.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>One row per record (one future Zenodo entry). Click a record to review it; a folder that was never scanned is scanned when you open it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a Python console pane (the built-in console engine)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a new pane</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a pane</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a terminal CLI pane</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open the record folder. Files you put there yourself are picked up by Scan for review.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Optional version, e.g. 1.0.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Original prefix recorded in .mti (e.g. N:\)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Output directory (empty: beside folder):</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>PTO Container</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Panes, like tmux</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Paste the token and press Save. The field is cleared once it is stored; the token goes to the system keychain, never into a file or ChiSurf's settings.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pending, Approved or Rejected; (changed) when the content changed after approval.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick a record</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Close&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;New&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press Run.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press Scan.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press the side-by-side &lt;b&gt;Split&lt;/b&gt; button.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Preview sample: shows how this control looks in the theme; it does nothing</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Preview: the Markdown rendered, roughly as Zenodo shows it. Source: the text as it is in the file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Publication date, YYYY-MM-DD.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Publish (irreversible)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Publish the draft: it gets a DOI and can no longer be changed. You are asked three times. Grey until the draft matches the package and publishing is approved.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Publishing is separate</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Put an example config in the editor -- a real one, trimmed: one measurement, its setup and calibrations, the construct and the Zenodo block, each part with a _help note. Adapt it and Save config.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Put files or folders into the open record. Each addition is one item a reviewer judges: a measurement, or a calibration of a setup-and-day group.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Put its data in</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Python</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Python Terminal</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Re-read the record folder after you changed something in it. Reviews are kept; a changed item is pending again.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Read the FCS correlator's checked files as the mixed decay, on its micro-time binning.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Read the draft back from Zenodo and compare it with the local package.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Read the record folder into the items you review in 1 · Review.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Regions:</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Related</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Remove this file's regions (it is used whole).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Remove token</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Report unmapped columns</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rescan folder</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Reserve DOI</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Resolve via .mti prefix mapping</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return the burstwise_import workflow contract.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Review a deposition record item by item -- every measurement folder, calibration folder and metadata file, with where it came from and why it is flagged -- then upload it as a Zenodo draft and check the draft against the local package. Nothing is uploaded until every item is approved at its current content; publishing needs its own approval of the exact package.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Review first, then upload. The token is needed only for uploading.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Review results</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rich text; &lt;b&gt; and &lt;i&gt; are honoured by the tour card.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Run the build (link raws, write containers, generate and validate metadata.cif, verify) and then the review scan, on a worker. Grey until a config is selected and saved.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Running…</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Running… {seconds:.1f} s</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sample data: the files land under measurements/&lt;item&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Save config</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Save to keychain</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Scan a folder to view detected tables, Info, and parameters.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Scan folder contents</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Scan folder for measurement tables, Info, MTI, and parameters.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Scan for review</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Second</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select a legacy burstwise folder to import.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select analysis folder</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select burstwise analysis folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select local root prefix directory.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select output directory.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sent to Zenodo (JSON)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show in Finder</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Size of the file, or of the whole series.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Slider</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Source TTTR Resolution:</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Source resolution</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Split the active pane</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Split the active pane side by side</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Split the active pane stacked</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Split ⇣</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Split ⇥</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stem</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stems beside folder</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Step 1 · New record</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Step 2 · Add data</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Step 3 · Zenodo metadata</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Step 4 · Scan for review</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Steps 2-4 work on the open record.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stop conversion.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stop here: nothing is published.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Store the pasted token in the system keychain. Grey while the field is empty.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Store, test or remove the token.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stored with your decision, e.g. which file you looked at or why you rejected the item.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Switch on &lt;b&gt;✏ Draw&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Switch on Draw to add regions; only the photons inside them are correlated.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Tables: {roles}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Terminal</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Terminal panes like tmux: tabs, splits and floating windows of real PTY sessions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Terminal sessions need a POSIX pseudo-terminal.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Terminal sessions need a POSIX pseudo-terminal; this platform has none.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Test token</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The FCS workflow: multi-tau correlation of TTTR photon streams in five steps -- channel definitions (detectors and PIE windows), files, optional photon/burst filter, correlation, and screening and merging of the curves. Filter Calc... hands the files to the fFCS Filter Calculator.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The Markdown rendered, roughly as Zenodo shows it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The Zenodo draft and whether its file matches the local package.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The Zenodo title (you can change it in step 3).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The calibration group: the setup and day it calibrates, e.g. 2014-08-12_pq-hydraharp.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The deposition metadata exactly as the upload sends it to Zenodo, read-only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The deposition metadata that is submitted with the draft: title, creators with affiliations, license, keywords. It comes from the record's build config.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The draft this record was uploaded to, if any.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The drop-down lists the &lt;code&gt;.css&lt;/code&gt; style sheets in your ChiSurf settings directory. The shipped styles are copied there on first run, so editing one never touches the installation.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The file whose regions are drawn: every file passed to the correlator.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The file, or a numbered series {first…last}.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The folder of record build configs (one JSON per record: its measurements, calibrations, sources, construct, setups and Zenodo metadata).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The folder or file in the record; a measurement's calibrations are nested under it (▸ folds them).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The item is pending again.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The item's folder name, e.g. 2014-08-12_0M-urea or h2o-scatter.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The one thing to do next. Follow it from top to bottom and nothing can be skipped: upload unlocks only after every item is approved.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The package (size, md5) and what still blocks the upload.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The personal access token used to upload. Kept in the system keychain only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The quick brown fox jumps over the lazy dog.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The record description as it will appear on Zenodo (HTML).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The record folder: one Zenodo entry, uploaded as one archive.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The record the config builds.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The record title.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The record's DOI: reserved before publishing, or the published one.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The results pane lists written .mmfdb.pto containers and flags any columns that could not be mapped to the dictionary.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The selected JSON file, read-only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The selected Markdown file's source, read-only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The selected Markdown file, rendered.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The selected build config, or the example: edit it here and Save config (keys starting with _ are notes, ignored by the build).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The selected file's text, read-only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The selected flrCIF/mmCIF file, read-only, highlighted: tags, loops and text fields.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The selected folder's files. A numbered series (the rollover files of one acquisition) is one row: ▸ shows its files.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The selected item: what to check first. Hover its row for where it came from.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The structure with the donor (blue) and acceptor (red) attachment sites rendered in ChiMOL.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The text exactly as it is in the file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Third</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>This tool packages legacy burst analysis folders (bi4_bur, bg4, br4, Info, .mti) into standardized .mmfdb.pto containers.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>This tool shows sessions as &lt;b&gt;panes&lt;/b&gt;: tabs, side-by-side splits and floating windows. Each pane is either a real shell or ChiSurf's Python console. The toolbar above controls them.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Tick a file to draw its regions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>To all files</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Token</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Trial run on the Zenodo sandbox</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Type a name for the record.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Undo decision</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Unmapped Columns</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Upload a draft</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Upload draft</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Upload the package into a Zenodo DRAFT and check its md5 there: a new draft, an update of the draft (its package replaced), or -- once published -- a new version. Nothing is published. Grey until every item is approved, the package matches, a token is set, and the draft does not already hold this package.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Upload to sandbox.zenodo.org instead of zenodo.org. The sandbox needs its own token (Zenodo token tab).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What Zenodo shows</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What Zenodo shows about the record. Checked as you type; it is reviewed and approved like any item.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What a Python pane knows</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What is still missing, or that the metadata is complete.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What the data are and how they were measured (HTML allowed: &lt;p&gt;, &lt;ul&gt;, &lt;a&gt;).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What the file is, by its extension.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What the last build printed: per container the burst tables, sidecars, encodings and checks, and VERIFY_OK or what failed.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What the record holds now: every item with its file count and size.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What was just done, or what is running.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>When an embargoed record opens, YYYY-MM-DD.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>When the record folder was last written.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Where the chosen files will land.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Whether a token is set for the selected Zenodo (production or sandbox), and how to create one.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Whether the edited config can be saved, and under which name.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Whether the name can be used, and what will be created.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Which stretches of each measurement are correlated. Pick a file, switch on Draw and drag on its count-rate trace; a file without regions is used whole.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>While a dialog is open, everything behind it is blurred, so the dialog is the only thing in focus. Kept for the next start.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Why Upload draft is grey, if it is.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the edited config to the configs folder as &lt;record&gt;.json. Grey while the text is not valid JSON, its "record" is not a record name, or another config has that name.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the upload archive from the record as it is now (stored ZIP, every member CRC-checked).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Written .mmfdb.pto containers:</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Zenodo</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Zenodo deposit</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Zenodo token</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Zenodo upload type; measurement data is a dataset.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>[{n} region(s)]</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>open, embargoed (with a date), restricted or closed.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>optional, stored with your next decision</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>paste the token here</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>whole file, {d:.2f} s</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>{n} queued cell(s) dropped</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>{n} region(s), {t:.2f} s of {d:.2f} s</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>⚠️ Flagged unmapped columns ({n} stems):</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>✏ Draw</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>✓ Found {n} measurement stems</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>🔍  Scan</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Add an experiment of the local mmfdb: its data files go into the record as the item above (its id names it when Item is empty), as Measurement or Calibration.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Add experiment</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>By</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Device</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>From mmfdb</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List the experiments of the local mmfdb (its server must run: MMFDB Admin).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load experiments</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Put the selected experiment's data files into the record, hard-linked where they are on this disk. Data held inside the database (not as files) is not added.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Started</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The experiments of the local mmfdb. Click one, then Add experiment.</source>
+            <translation type="unfinished"/>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>
