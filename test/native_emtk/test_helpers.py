@@ -243,7 +243,7 @@ def test_cancelled_dataset_open_does_not_deliver_callback():
 
 
 def test_dataset_picker_renders_controls_and_tooltips(monkeypatch):
-    from emtk import im
+    from emtk import im, im_widgets
     from emtk.testing import RecordingPainter
 
     from chisurf.emtk.dataset_picker import DatasetPicker
@@ -261,6 +261,8 @@ def test_dataset_picker_renders_controls_and_tooltips(monkeypatch):
     picker.total = 1
     tooltips = []
     monkeypatch.setattr(im, "set_item_tooltip", tooltips.append)
+    # emtk helpers (im.filter_field, the search field here) set theirs through im_widgets.
+    monkeypatch.setattr(im_widgets, "set_item_tooltip", tooltips.append)
     painter = RecordingPainter()
     box = (0.0, 0.0, 1000.0, 700.0)
     with im.frame(painter, box):
@@ -269,6 +271,7 @@ def test_dataset_picker_renders_controls_and_tooltips(monkeypatch):
     assert len(tooltips) >= 10
     assert any("dataset raw-1" in text for text in tooltips)
     assert any("previous page" in text for text in tooltips)
+    assert any("Search dataset names" in text for text in tooltips)
 
 
 def test_guided_tour_waits_for_real_target_when_host_opted_in():

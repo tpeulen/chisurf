@@ -4,9 +4,22 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## The burstwise sample the burstwise_import tests read was pruned from a scratch cache (found 2026-10-20, branch `mcts-native-baseline`)
+
+status: open
+
+`chisurf/plugins/burst/burstwise_import/tests/test_surfaces.py` and `test_plugin.py` read the real legacy
+sample at `~/.hermes/cache/scratch/burstwise_samples/burstwise_All 0.1066#60` (87 stems). That folder is a
+pulled copy in an agent scratch cache which prunes itself (`.last_prune`); it is gone on this machine, so
+`test_cli_scan_runs_on_sample` (the one test without the skip) failed the gate's burst chunk. All tests
+reading it now share one `needs_sample` skip, which means the end-to-end import, scan and convert paths are
+**not exercised at all** here. Measure: `ls "$HOME/.hermes/cache/scratch/burstwise_samples"`; the skips show
+in `pytest chisurf/plugins/burst/burstwise_import/tests -rs`. Fix: a small committed (or test-resource
+cached) excerpt of the sample, a few stems with their `Info` folder, so the tests run everywhere.
+
 ## Spot Finder reads the Leica SP5 test scan as one 7921-line frame (found 2026-10-20, branch `mcts-native-baseline`)
 
-status: resolved 2026-10-20 in tttrlib `5d126dec3` — the cause was not the salvage path but the marker layout: the file
+status: resolved 2026-10-20 — tttrlib `5d126dec3`: the cause was not the salvage path but the marker layout: the file
 emits its frame marker with the stop of each frame's last line, 210 times merged into one record (routing channel
 6 = 4|2) and 21 times as 4 then 2. The header names only 4, so the merged records were never frame edges and each
 separate one shifted every later (start, stop) pair onto a fly-back; splitting the 7921 salvaged lines by `n_lines`

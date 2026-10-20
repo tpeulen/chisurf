@@ -91,6 +91,22 @@ def _guard_real_user_db():
 
 
 @pytest.fixture(autouse=True)
+def _forget_recent_projects():
+    """Start every test with an empty recent-projects list.
+
+    The hermetic settings folder is shared by the whole session, so a project one test opened
+    or saved used to reach every later test: a shell drawn after it showed that project under
+    File > Recent instead of "No recent projects", and its Qt-inventory parity failed by
+    test order alone.
+    """
+    yield
+    try:
+        (_HERMETIC_SETTINGS_DIR / "recent_projects.json").unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+@pytest.fixture(autouse=True)
 def _enforce_c_numeric_locale():
     """Ensure LC_NUMERIC stays 'C' even if a test or Qt initializes the user locale."""
     import locale

@@ -204,6 +204,9 @@ class MMFDBClient:
                 )
         self._client = client
         self._token: str | None = None
+        # Set by close(): a call still in flight on a worker thread when its window closed
+        # fails afterwards (its transport is gone), and nobody is left to act on that.
+        self._closed = False
         # Remember the connection parameters so the login dialog can show/edit
         # the endpoint and reconnect to a different server if needed.
         self.inprocess = inprocess
@@ -246,7 +249,13 @@ class MMFDBClient:
         return InProcessClient(dispatcher)
 
     def close(self) -> None:
-        """Release the transport (a ZMQ client holds a context that blocks interpreter exit while its sockets are open)."""
+        """Release the transport (a ZMQ client holds a context that blocks interpreter exit while its sockets are open).
+
+        A call still running on a worker thread then fails without logging an error: the
+        window that asked for it has gone, so the failure is not a fault anyone can act on,
+        and logged later it reads as an error of whatever runs next.
+        """
+        self._closed = True
         closer = getattr(self._client, "close", None)
         if callable(closer):
             try:
@@ -1503,6 +1512,7 @@ class MMFDBClient:
         self, method: str, params: dict[str, Any] | None = None, quiet: bool = False
     ) -> dict[str, Any]:
         result = self._client.call(method, params or {})
+        quiet = quiet or self._closed
         if result.get("jsonrpc") == "2.0" and "error" in result:
             error = result["error"]
             if isinstance(error, Mapping):

@@ -13,8 +13,8 @@ from emtk.testing import Driver, RecordingPainter
 from chisurf.core.dataspec.schema import validate_view_spec
 from chisurf.emtk.state import attach_native_state
 
+# The games hub ("gui.app") was removed in fb08bbdd4: every game is its own dock.
 CASES = [
-    ("gui.app", (1200, 800)),
     ("minesweeper.gui.app", (560, 620)),
     ("number_quest.gui.app", (560, 420)),
 ]
@@ -72,8 +72,6 @@ def test_real_constructor_reads_declared_default(name, expected):
         assert app.window_size == expected
         driver = Driver(app, expected)
         assert driver.draw(2).texts
-        if name == "gui.app":
-            assert app.child is not None and not app.error
     finally:
         close_app(app)
 
@@ -115,7 +113,7 @@ def test_saved_resize_wins_over_changed_declaration(name, expected, monkeypatch)
 
 def exercise(app, name, size):
     """Drive real game keys and retain deterministic state plus drawn controls."""
-    actual = app.child if name == "gui.app" else app
+    actual = app
     if name == "minesweeper.gui.app":
         actual.game._fixed_mine_positions = {
             (0, 0),
@@ -145,15 +143,6 @@ def exercise(app, name, size):
         assert actual.estimate == previous + 1
         driver.press(KEY_RETURN)
         assert actual.history == [51]
-        if name == "gui.app":
-            # The rows by their remembered rectangles: the header repeats the selected
-            # game's name, so the drawn text "Number Quest" is not only the list row.
-            driver.draw(2)
-            driver.click(app.item_rects["game_Minesweeper"])
-            assert app.selected == "Minesweeper" and not app.error
-            driver.draw(2)
-            driver.click(app.item_rects["game_Number Quest"])
-            assert app.child is actual and actual.history == [51]
     painter = driver.draw(2)
     return actual.export_settings(), list(painter.texts)
 

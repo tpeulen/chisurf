@@ -25,6 +25,11 @@ SAMPLE = (
     / "burstwise_samples"
     / "burstwise_All 0.1066#60"
 )
+#: The sample is a pulled copy in a scratch cache that is pruned: every test reading it skips
+#: without it (a missing folder is not a failure of the plugin).
+needs_sample = pytest.mark.skipif(
+    not SAMPLE.is_dir(), reason="pulled burstwise sample not present"
+)
 
 
 # -- manifest carries all three entrypoints --------------------------------------
@@ -86,7 +91,7 @@ def test_api_resolver_mti_prefix_mode(tmp_path: pathlib.Path):
     assert r("stemA", mti) == real
 
 
-@pytest.mark.skipif(not SAMPLE.is_dir(), reason="pulled burstwise sample not present")
+@needs_sample
 def test_api_import_folder_reports_stems():
     from chisurf.plugins.burst.burstwise_import.api import import_folder
 
@@ -105,6 +110,7 @@ def test_cli_group_loads_and_has_commands():
     assert {"convert", "scan"} <= names
 
 
+@needs_sample
 def test_cli_scan_runs_on_sample(capsys):
     pytest.importorskip("click")
     from click.testing import CliRunner
@@ -117,7 +123,7 @@ def test_cli_scan_runs_on_sample(capsys):
     assert "stems: 87" in res.output
 
 
-@pytest.mark.skipif(not SAMPLE.is_dir(), reason="pulled burstwise sample not present")
+@needs_sample
 def test_cli_convert_end_to_end(tmp_path: pathlib.Path):
     """One-stem mini-copy of the sample, a stand-in TTTR beside it, convert."""
     import shutil
