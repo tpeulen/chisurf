@@ -93,6 +93,10 @@ the photons decide: each candidate's integer neighbourhood is folded, and the
 period whose folded detector signal is most modulated wins. Only that fold is
 coherent — a period one unit out smears over $10^5$ cycles — so the true one
 stands out by orders of magnitude.
+The spectrum is taken twice, at $w$ and at $w\varphi$ ($\varphi$ the golden
+ratio): a bin exactly a whole number of periods wide holds the same complete
+cycles every time, so the alternation cancels from that spectrum entirely, and
+no period can make both widths whole multiples.
 
 A wrong $T$ is silent, not loud: the folded phase smears out, the windows land on
 nothing in particular, and the analysis proceeds to a stoichiometry histogram

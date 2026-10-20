@@ -513,6 +513,64 @@ def auto_alex_windows(
 _PHASE_BINS = 32
 
 
+#: Ratio of the second spectrum's bin width to the first (see `detect_alex_period`).
+_GOLDEN = (1.0 + 5.0**0.5) / 2.0
+
+
+def _signed_spectrum(t, sign, width: int, min_period: int, max_period: int, span: int) -> dict:
+    """Power spectrum of the signed photon stream binned at ``width``, and its in-band peak.
+
+    Parameters
+    ----------
+    t, sign : ndarray
+        Photon times relative to the first photon, and +1 (donor) / -1 (acceptor).
+    width : int
+        Bin width in macro-time units.
+    min_period, max_period : int
+        The searched band of periods.
+    span : int
+        Length of the analysed record in macro-time units.
+
+    Returns
+    -------
+    dict
+        ``width``, ``record`` (binned length), ``coarse`` (peak period, possibly
+        an alias), ``confidence`` (peak over band median), ``power`` and
+        ``periods`` over the band.
+
+    Raises
+    ------
+    ValueError
+        If no FFT period falls inside the band.
+    """
+    n_bins = int(span // width) + 1
+    signal = np.bincount(t // width, weights=sign, minlength=n_bins)
+    signal -= signal.mean()
+    power = np.abs(np.fft.rfft(signal)) ** 2
+    # k = 0 is the (already removed) mean; period = total length / k.
+    k = np.arange(power.size)
+    record = n_bins * width
+    with np.errstate(divide="ignore"):
+        periods = np.where(k > 0, record / np.maximum(k, 1), np.inf)
+    band = (periods >= min_period) & (periods <= max_period)
+    if not band.any():
+        raise ValueError(
+            f"no candidate period between {min_period} and {max_period} "
+            f"macro-time units in a {span}-unit span"
+        )
+    band_power = np.where(band, power, 0.0)
+    peak = int(np.argmax(band_power))
+    median = float(np.median(power[band])) or 1.0
+    return {
+        "width": int(width),
+        "record": int(record),
+        "coarse": float(periods[peak]),
+        "confidence": float(band_power[peak] / median),
+        "power": power[band],
+        "periods": periods[band],
+    }
+
+
 def detect_alex_period(
     macro_times,
     routing_channels,
@@ -604,28 +662,20 @@ def detect_alex_period(
     # tried and reverted (524 cycles lost to low-frequency drift and returned
     # 78400 for a period of 8000). So the spectrum is allowed to alias, and the
     # alias is unfolded below rather than avoided here.
-    bin_width = max(1, int(min_period // 16), -(-span // max_bins))
-    n_bins = int(span // bin_width) + 1
-    signal = np.bincount(t // bin_width, weights=sign, minlength=n_bins)
-    signal -= signal.mean()
-
-    spectrum = np.fft.rfft(signal)
-    power = np.abs(spectrum) ** 2
-    # k = 0 is the (already removed) mean; period = total length / k.
-    k = np.arange(power.size)
-    record = n_bins * bin_width
-    with np.errstate(divide="ignore"):
-        periods = np.where(k > 0, record / np.maximum(k, 1), np.inf)
-    band = (periods >= min_period) & (periods <= max_period)
-    if not band.any():
-        raise ValueError(
-            f"no candidate period between {min_period} and {max_period} "
-            f"macro-time units in a {span}-unit span"
-        )
-    band_power = np.where(band, power, 0.0)
-    peak = int(np.argmax(band_power))
-    coarse = float(periods[peak])
-    median = float(np.median(power[band])) or 1.0
+    #
+    # Two bin widths, because a boxcar bin that is a whole number of periods
+    # wide integrates every cycle to the same value: the line, and every
+    # harmonic, cancels exactly. The second width is the first times the golden
+    # ratio, which no whole number of periods can make an integer again for
+    # both (and is never near one for small multiples). Each spectrum offers its
+    # own aliases; the photons judge the union.
+    width = max(1, int(min_period // 16), -(-span // max_bins))
+    widths = (width, max(width + 1, int(round(width * _GOLDEN))))
+    spectra = [_signed_spectrum(t, sign, w, min_period, max_period, span) for w in widths]
+    # The reported spectrum is the one where the line stands out more; a null
+    # in the other is exactly the case the second width is there for.
+    main = max(spectra, key=lambda spec: spec["confidence"])
+    coarse = main["coarse"]
 
     # Unfold the alias. Binning samples the stream every `bin_width`, so a line
     # at the true frequency f appears at |f - n / bin_width| for some integer n,
@@ -635,16 +685,19 @@ def detect_alex_period(
     # The candidates are not ranked by the spectrum (boxcar binning attenuates
     # each by a different sinc) but by the photons themselves, below.
     #
-    # Their positions are sharp: the peak frequency is known to half an FFT bin,
-    # 1 / (2 * record), so a candidate period P is known to P**2 / (2 * record)
-    # -- a fraction of a unit on any file long enough to alias.
-    f_alias = 1.0 / coarse
-    f_sample = 1.0 / bin_width
-    centres = []
-    for n in range(int(bin_width // max(min_period, 1)) + 2):
-        for f in (n * f_sample - f_alias, n * f_sample + f_alias):
-            if f > 0 and min_period <= 1.0 / f <= max_period:
-                centres.append(1.0 / f)
+    # Their positions are sharp: the peak frequency is known to an FFT bin,
+    # 1 / record, so a candidate period P is known to P**2 / record -- a
+    # fraction of a unit on any file long enough to alias.
+    centres = {}
+    for spec in spectra:
+        f_alias = 1.0 / spec["coarse"]
+        f_sample = 1.0 / spec["width"]
+        for n in range(int(spec["width"] // max(min_period, 1)) + 2):
+            for f in (n * f_sample - f_alias, n * f_sample + f_alias):
+                if f > 0 and min_period <= 1.0 / f <= max_period:
+                    reach = int(np.ceil(1.0 / (f * f * spec["record"]) + 0.5))
+                    key = int(round(1.0 / f))
+                    centres[key] = max(centres.get(key, 0), reach)
 
     def _modulation(times, weights, candidate: int) -> float:
         """Total power of the folded phase histogram at one trial period."""
@@ -672,24 +725,24 @@ def detect_alex_period(
     stride = max(1, t.size // int(scan_photons))
     survey_t, survey_sign = t[::stride], sign[::stride]
 
-    if len(centres) == 1:
-        # Unaliased: the one estimate gets the wide +-2 % scan it always had.
+    aliased = any(2 * spec["width"] >= min_period for spec in spectra)
+    if not aliased:
+        # Unaliased: the estimate gets the wide +-2 % scan it always had.
         lo = max(min_period, int(coarse * 0.98))
         hi = min(max_period, int(coarse * 1.02) + 1)
         step = max(1, (hi - lo) // 400)
         trials = list(range(lo, hi + 1, step))
     else:
-        # A hundred-odd aliases, each a few integers wide. Screen them on a
+        # A few hundred aliases, each a few integers wide. Screen them on a
         # sparser stream first -- the true one stands out by orders of magnitude
         # (it is the only one whose fold is coherent), so a fifth of the survey
         # ranks them -- and give the survey proper only the best few.
         step = 1
         screen_t, screen_sign = survey_t[::5], survey_sign[::5]
         ranked = []
-        for centre in centres:
-            reach = int(np.ceil(centre * centre / record)) + 2
-            lo = max(min_period, int(np.floor(centre)) - reach)
-            hi = min(max_period, int(np.ceil(centre)) + reach)
+        for centre, reach in centres.items():
+            lo = max(min_period, centre - reach)
+            hi = min(max_period, centre + reach)
             ints = range(lo, hi + 1)
             score = max(_modulation(screen_t, screen_sign, c) for c in ints)
             ranked.append((score, ints))
@@ -715,9 +768,9 @@ def detect_alex_period(
 
     return {
         "period": int(best),
-        "confidence": float(band_power[peak] / median),
-        "power": power[band],
-        "periods": periods[band],
+        "confidence": float(main["confidence"]),
+        "power": main["power"],
+        "periods": main["periods"],
     }
 
 

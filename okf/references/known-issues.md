@@ -3377,9 +3377,17 @@ the best four scanned and the winner refined on every photon. The long span (and
 so the line's strength) is kept. Real file: 8000, contrast 11805, 3.6 s (old
 code: 4.1 s, wrong). Guard:
 `alex_suite/tests/test_alternation.py::test_period_is_recovered_when_the_record_is_long_enough_to_alias`
-(periods 8000 and 7993 over 3·10⁶ cycles; old code returns ~20000). Residual
-edge, not seen: boxcar binning nulls the line when `bin_width` is an integer
-multiple of the period (sinc zero); a second bin width would cover it.
+(periods 8000 and 7993 over 3·10⁶ cycles; old code returns ~20000).
+
+**Null edge closed 2026-10-20.** A boxcar bin that is a whole number of periods
+wide integrates every cycle alike, so the line and all harmonics cancel exactly
+(with `bin_width = 2·8000` the 8f2677d64 code returned **80**, contrast 20). The
+spectrum is now taken at two widths, `w` and `round(w·φ)` (golden ratio), each
+offers its aliases, the photons judge the union, and the reported contrast is
+the larger of the two. Guard:
+`test_period_is_recovered_when_the_bin_width_is_a_whole_number_of_periods`
+(`max_bins` chosen so `bin_width == 2·PERIOD` exactly). Real file still 8000 /
+11805, 3.9–4.2 s (screen window tightened to ±ceil(P²/record + ½)).
 
 ## The background estimator's default tail window can fit an empty range
 

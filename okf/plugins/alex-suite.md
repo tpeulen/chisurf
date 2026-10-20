@@ -28,8 +28,11 @@ timestamp: '2026-09-08T17:01:52+02:00'
    refused the file. Now unfolded (see *period* below; known-issues "ALEX period
    spectrum" resolved). Re-derive: `detect_alex_period` on any ≥ 300 s 12.5 ns
    file must return 8000; the guard is the synthetic 3·10⁶-cycle test in
-   `alex_suite/tests/test_alternation.py`. Open edge: a bin width that is an
-   integer multiple of the period nulls the line (sinc zero); not seen yet.
+   `alex_suite/tests/test_alternation.py`. The sinc-null edge (bin width a
+   whole number of periods) is closed too: a second spectrum at `w·φ`, guard
+   `test_period_is_recovered_when_the_bin_width_is_a_whole_number_of_periods`.
+   Budget: ~4 s on the 300 s file; two FFTs (~2 s) and ~800 screen folds
+   (~1.5 s) are the cost, so widen the screen window only with a measurement.
 
 0a. Open: **The alternation gates are editable now — the remaining half is the
    *period*.** Detection writes the period and both gates into spin boxes, the
@@ -192,7 +195,8 @@ The old dialog asked for seven numbers. All seven are in the data:
   across a laser window. The FFT bin widens with the record, so a long file is
   sampled below Nyquist and the peak is an **alias**: every `|n/w ± 1/peak|` in
   the band is a candidate and the fold modulation picks the real one (a 300 s
-  `.sm` at 12.5 ns: bin 5722, alias 20107, true 8000).
+  `.sm` at 12.5 ns: bin 5722, alias 20107, true 8000). Two widths (`w`, `w·φ`)
+  because a bin of whole periods cancels the line exactly.
 - **laser edges** — `auto_alex_windows`. **Not** the plateaus of the folded
   intensity, which is what it used to look for and what fails on every real
   measurement: both lasers keep the sample emitting, so there is no laser-off

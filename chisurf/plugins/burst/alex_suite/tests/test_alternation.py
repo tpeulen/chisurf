@@ -104,6 +104,26 @@ def test_period_is_recovered_when_the_record_is_long_enough_to_alias():
         assert result["confidence"] > 50
 
 
+def test_period_is_recovered_when_the_bin_width_is_a_whole_number_of_periods():
+    """A bin exactly k periods wide integrates every cycle alike; the line must not vanish.
+
+    Boxcar binning at a whole multiple of the period makes every bin hold the
+    same number of complete cycles, so the alternation and all its harmonics
+    cancel out of that spectrum exactly and its peak is noise. ``max_bins`` is
+    chosen here so the first bin width is exactly two periods; the second,
+    incommensurate width is what still sees the line.
+    """
+    t, routing = alternating_stream(n=300_000, period=PERIOD, cycles=3_000_000, seed=5)
+    span = int(t[-1] - t[0]) + 1
+    max_bins = -(-span // (2 * PERIOD))
+    assert -(-span // max_bins) == 2 * PERIOD  # the null case, not a near miss
+    result = detect_alex_period(
+        t, routing, donor_channels=[0], acceptor_channels=[1], max_bins=max_bins
+    )
+    assert result["period"] == PERIOD
+    assert result["confidence"] > 50
+
+
 def test_continuous_wave_data_is_refused_rather_than_converted():
     """Non-alternating data does not get converted on a noise-peak "period".
 
