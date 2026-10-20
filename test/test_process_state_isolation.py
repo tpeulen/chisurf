@@ -127,3 +127,30 @@ def test_a_runtime_mmfdb_token_is_forgotten(isolated):
             assert credentials.load_runtime_session_token("127.0.0.1", 8765, "admin") is None
         ''',
     )
+
+
+def test_a_dataset_picker_call_finishes_inside_the_test_that_started_it(isolated):
+    _passes(
+        isolated,
+        '''
+        import threading
+
+        from chisurf.emtk import dataset_picker
+
+        RELEASE = threading.Event()
+        FINISHED = threading.Event()
+
+        def slow_browse():
+            RELEASE.wait(10)
+            FINISHED.set()
+
+        def test_a_leaves_a_database_call_running():
+            dataset_picker._SESSION_CLIENT = "client of this test's database"
+            dataset_picker._submit(slow_browse)
+            threading.Timer(0.3, RELEASE.set).start()
+
+        def test_b_starts_after_it_finished_and_builds_its_own_client():
+            assert FINISHED.is_set()
+            assert dataset_picker._SESSION_CLIENT is None
+        ''',
+    )

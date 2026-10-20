@@ -63,7 +63,7 @@ the page is AI-reviewed again.
 
 ## The chimol gate held every window it built; 22 failures from five causes (found 2026-10-20, branch `mcts-native-baseline`)
 
-status: resolved 2026-10-20 (chimol `4b6a984`, `7c40dc0`; chisurf tests) — except the IMP rebuild race, open below.
+status: resolved 2026-10-20 — chimol `4b6a984`, `7c40dc0` and chisurf tests; except the IMP rebuild race, open below.
 
 - **Leak.** Batch 4 (`chisurf/plugins/chimol[4/7]`) was stopped by the out-of-process watchdog
   (swap grew 3 GB while the tree passed 1 GB; RSS peaked at 1.4 GB). Walking forward from

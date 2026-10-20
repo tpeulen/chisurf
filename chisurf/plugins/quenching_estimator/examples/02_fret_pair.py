@@ -15,8 +15,8 @@ Theory: docs/concepts/fret.md, docs/concepts/dye_quenching.md.
 
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
+from emtk.figure import Figure
 
 from chisurf.plugins.quenching_estimator.api import local as quest
 from chisurf.plugins.quenching_estimator.core.project import DEFAULT_FORSTER_RADIUS
@@ -60,18 +60,16 @@ weak = quest.simulate(fret_project(35.0))
 print(f"  R0 = 35 A gives E = {weak.fret_efficiency:.3f}")
 assert weak.fret_efficiency < result.fret_efficiency
 
-fig, (ax, bx) = plt.subplots(1, 2, figsize=(10, 4))
-ax.semilogy(t, np.clip(fd0, 0.1, None) / fd0.max(), label="donor only")
-ax.semilogy(t, np.clip(fda, 0.1, None) / fd0.max(), label="donor + acceptor")
+fig = Figure(1, 2, size=(1200, 480))
+ax, bx = fig.ax(0, 0), fig.ax(0, 1)
+ax.line(t, np.clip(fd0, 0.1, None) / fd0.max(), label="donor only")
+ax.line(t, np.clip(fda, 0.1, None) / fd0.max(), label="donor + acceptor")
+ax.set_log(y=True)
 ax.set_xlim(0, 25)
-ax.set_xlabel("time / ns")
-ax.set_ylabel("counts / max(donor only)")
+ax.set_labels("time / ns", "counts / max(donor only)")
 ax.legend()
-bx.plot(t[usable], et)
+bx.line(t[usable], et)
 bx.set_ylim(0, 1)
-bx.set_xlabel("time / ns")
-bx.set_ylabel("E(t)")
+bx.set_labels("time / ns", "E(t)")
 bx.set_title("Time-resolved transfer efficiency")
-fig.tight_layout()
-fig.savefig("02_fret_pair.png", dpi=120)
-plt.show()
+fig.save("02_fret_pair.png")

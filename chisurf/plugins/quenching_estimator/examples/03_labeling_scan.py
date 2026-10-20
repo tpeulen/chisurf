@@ -12,7 +12,7 @@ Theory: docs/concepts/dye_quenching.md.
 
 from pathlib import Path
 
-import matplotlib.pyplot as plt
+from emtk.figure import Figure
 
 from chisurf.plugins.quenching_estimator.api import local as quest
 
@@ -59,12 +59,13 @@ assert any(r["status"] == "failed" for r in records)
 print("\nA bright site (QY near 1) reports the dye faithfully; a quenched one is")
 print("sensitive to its environment. Which you want depends on the experiment.")
 
-fig, ax = plt.subplots(figsize=(6, 3.5))
-ax.bar([r["name"] for r in ok], [r["quantum_yield"] for r in ok])
-ax.axhline(1.0, color="k", lw=0.6)
+fig = Figure(size=(720, 420))
+ax = fig.ax()
+positions = list(range(len(ok)))
+ax.bars(positions, [r["quantum_yield"] for r in ok])
+ax.set_xticks(positions, [r["name"] for r in ok])
+ax.hline(1.0, color="k", width=0.6)
 ax.set_ylim(0, 1.05)
-ax.set_ylabel("quantum yield (1 = not quenched)")
+ax.set_labels(y="quantum yield (1 = not quenched)")
 ax.set_title("Labelling-site scan, T4 lysozyme")
-fig.tight_layout()
-fig.savefig("03_labeling_scan.png", dpi=120)
-plt.show()
+fig.save("03_labeling_scan.png")

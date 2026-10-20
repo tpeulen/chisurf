@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Sequence
@@ -13,13 +13,46 @@ from emtk.i18n import tr
 from chisurf.plugins.emtk_layout import action_button
 
 if TYPE_CHECKING:
-    from concurrent.futures import Future
-
     from emtk.dialog_window import DialogWindow
 
 DEFAULT_KINDS = ("raw_data", "raw_measurement", "external_reference")
 _SESSION_CLIENT: Any = None
 _EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="mmfdb-picker")
+_IN_FLIGHT: set[Future[Any]] = set()
+
+
+def _submit(fn: Callable[..., Any], *args: Any) -> Future[Any]:
+    """Run one database call on the picker's worker and remember it until it finishes."""
+    future = _EXECUTOR.submit(fn, *args)
+    _IN_FLIGHT.add(future)
+    future.add_done_callback(_IN_FLIGHT.discard)
+    return future
+
+
+def wait_for_background_work(timeout: float = 30.0) -> bool:
+    """Block until every database call a picker started has finished.
+
+    Closing a picker does not stop a call already running: it opens (and may create) the
+    configured database on its worker thread. A caller that is about to point the process at
+    another database, or tear it down, waits here first.
+
+    Parameters
+    ----------
+    timeout : float
+        Seconds to wait at most.
+
+    Returns
+    -------
+    bool
+        ``True`` when nothing is left running.
+    """
+    from concurrent.futures import wait
+
+    pending = list(_IN_FLIGHT)
+    if not pending:
+        return True
+    _done, not_done = wait(pending, timeout=timeout)
+    return not not_done
 
 
 @dataclass
@@ -132,7 +165,7 @@ class DatasetPicker:
     def _request_refresh(self) -> None:
         if self._pending is None:
             self._pending_kind = "browse"
-            self._pending = _EXECUTOR.submit(self.refresh)
+            self._pending = _submit(self.refresh)
             self._pending_frame_hooked = False
             self._request_completion_frame()
 
@@ -332,7 +365,7 @@ class DatasetPicker:
                 self.accept()
             elif self.selection is not None:
                 self._pending_kind = "open"
-                self._pending = _EXECUTOR.submit(resolve_local_path, self.client, self.selection)
+                self._pending = _submit(resolve_local_path, self.client, self.selection)
                 self._pending_frame_hooked = False
                 self._request_completion_frame()
         im.set_item_tooltip(

@@ -84,13 +84,14 @@
             {
               "action": "run_analysis",
               "label": "Run",
-              "icon": "▶",
+              "icon": "▶️",
               "role": "primary",
               "description": "Build the missing site tables and run the chosen stages in the background. The window stays usable; the bar shows how far it is."
             },
             {
               "action": "cancel_analysis",
               "label": "Cancel",
+              "icon": "✕",
               "description": "Stop the run at its next checkpoint (between site tables, between searches, at a joint-fit step). A search already running in a worker finishes first."
             },
             {

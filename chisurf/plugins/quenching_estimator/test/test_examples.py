@@ -1,8 +1,8 @@
 """The example scripts in ``examples/`` must run as their docstrings say.
 
 An example that no longer runs is worse than none, and the only way to know is
-to run it. Each script runs in a subprocess, headless (``MPLBACKEND=Agg``),
-from a scratch directory so the figure it saves lands there. They are sized to
+to run it. Each script runs in a subprocess from a scratch directory, so the
+figure it saves (an :mod:`emtk.figure`, drawn without a window) lands there. They are sized to
 finish in seconds (about 20 s for all five), so none is marked slow.
 """
 
@@ -45,7 +45,6 @@ def test_example_explains_itself(script: Path) -> None:
 @pytest.mark.parametrize("script", _examples(), ids=lambda p: p.stem)
 def test_example_runs(script: Path, tmp_path: Path) -> None:
     env = dict(os.environ)
-    env["MPLBACKEND"] = "Agg"
     env["PYTHONPATH"] = os.pathsep.join(
         p for p in (str(REPO_ROOT), env.get("PYTHONPATH", "")) if p
     )

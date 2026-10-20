@@ -121,7 +121,11 @@ def test_native_docks_and_controls_survive_declaration(
 
 
 def test_selection_narrow_default_reveals_detector_actions(tmp_path, monkeypatch):
-    """The existing sideways table scrollbar reveals row actions at the tool default."""
+    """Row actions are reachable at the tool default without scrolling sideways.
+
+    Since 49e773134 a narrow host drops gch/l1/l2 and shortens the headers before it scrolls, so
+    at the default size the table fits and Delete's own cell takes the click.
+    """
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
     monkeypatch.setenv("MMFDB_DATABASE_PATH", str(tmp_path / "metadata.sqlite"))
     module = importlib.import_module("chisurf.plugins.burst.burst_selection.gui.native")
@@ -141,9 +145,11 @@ def test_selection_narrow_default_reveals_detector_actions(tmp_path, monkeypatch
         drv = Driver(app, size=(1100, 720))
         drv.draw()
         control = app.editor._detector_table.control
-        x, y, width, height = control._hbar_box
-        drv.click((x + width * 0.9, y + height * 0.5))
-        assert control.first_column > 0
-        assert any(cell[2] == "delete" for cell in app.editor._detector_buttons.cells())
+        assert control._hbar_box is None
+        buttons = app.editor._detector_buttons
+        cell = next(cell for cell in buttons.cells() if cell[2] == "delete")
+        x, y, width, height = cell[3]
+        hit = buttons.hit(x + width / 2, y + height / 2)
+        assert hit is not None and hit[1] == "delete", cell
     finally:
         app.close()

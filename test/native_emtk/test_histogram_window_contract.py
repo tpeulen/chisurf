@@ -85,14 +85,15 @@ def test_default_geometry_retains_both_pages_and_plot_controls(tmp_path, monkeyp
 def test_default_setup_table_reveals_detector_row_actions(tmp_path, monkeypatch):
     """G/Delete of a detector row are reachable without altering the definition.
 
-    At 1100x720 the (widened) setup dock shows them outright; at 800x600 the table overflows and
-    its horizontal scrollbar brings them into view.
+    At both 1100x720 and 800x600 the setup dock shows them outright: since 49e773134 a narrow
+    host drops gch/l1/l2 and shortens the headers before it would scroll sideways, so the table
+    fits and a click on Delete's own cell reaches it.
     """
     isolate(tmp_path, monkeypatch)
     from chisurf.plugins.tttr.microtime_histogram.demo import SETUP
     from chisurf.plugins.tttr.microtime_histogram.gui.app import create_app
 
-    for size, scrolls in (((1100, 720), False), ((800, 600), True)):
+    for size in ((1100, 720), (800, 600)):
         app = create_app()
         try:
             app.editor.load_definition(copy.deepcopy(SETUP))
@@ -101,12 +102,12 @@ def test_default_setup_table_reveals_detector_row_actions(tmp_path, monkeypatch)
             drv = Driver(app, size=size)
             drv.draw()
             table = app.editor._detector_table.control
-            assert (table._hbar_box is not None) == scrolls, size
-            if scrolls:
-                x, y, width, height = table._hbar_box
-                drv.click((x + width * 0.9, y + height * 0.5))
-                assert table.first_column > 0
-            assert any(cell[2] == "delete" for cell in app.editor._detector_buttons.cells())
+            assert table._hbar_box is None, size
+            buttons = app.editor._detector_buttons
+            cell = next(cell for cell in buttons.cells() if cell[2] == "delete")
+            x, y, width, height = cell[3]
+            hit = buttons.hit(x + width / 2, y + height / 2)
+            assert hit is not None and hit[1] == "delete", (size, cell)
             assert app.editor.model.get_settings() == before
         finally:
             app.close()

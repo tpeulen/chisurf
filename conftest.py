@@ -138,6 +138,27 @@ def _restore_mmfdb_login_cache():
 
 
 @pytest.fixture(autouse=True)
+def _wait_for_dataset_picker_work():
+    """Let a picker's database call finish inside the test that started it.
+
+    A dataset picker browses MMFDB on a worker thread and caches the client it built; closing
+    the window does not stop the call. Left running, it opened the *next* test's database
+    (each test points ``MMFDB_DATABASE_PATH`` at its own ``tmp_path``) and held the write lock
+    while that test saved a setup -- ``database is locked`` in a test that never opened a
+    picker. The cached client is reset for the same reason: it belongs to the old database.
+
+    pytest orders autouse fixtures of one conftest by name, and tears them down in reverse:
+    the name sorts after ``_restore_*`` so this waits *before* those restore the login cache
+    the worker may still be importing.
+    """
+    yield
+    picker = sys.modules.get("chisurf.emtk.dataset_picker")
+    if picker is not None:
+        picker.wait_for_background_work(timeout=60.0)
+        picker.reset_session_client()
+
+
+@pytest.fixture(autouse=True)
 def _restore_mmfdb_runtime_config():
     """Give every test the host-registered mmfdb resolvers the application installs at import.
 

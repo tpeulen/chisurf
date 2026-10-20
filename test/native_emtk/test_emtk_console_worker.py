@@ -72,10 +72,15 @@ def _frames_until(driver: Driver, predicate, timeout: float = 10.0) -> list[floa
 
 def test_a_sleeping_cell_leaves_the_window_drawing(driver, shell):
     console = shell.console
+    console.set_input("")
+    driver.type("import time; time.sleep(2)")
+    # Only the Enter is timed: typing the cell is frames, and a loaded machine draws them slowly.
     started = time.monotonic()
-    _submit(driver, "import time; time.sleep(2)")
+    driver.press(KEY_RETURN)
     assert time.monotonic() - started < 1.0, "Enter returned while the cell sleeps"
-    assert console.busy and console.running is not None
+    assert console.busy
+    # The worker thread takes the cell when the scheduler runs it, not by the time Enter returns.
+    _frames_until(driver, lambda: console.running is not None, timeout=1.0)
     painter = driver.frame(1)
     assert any("Running" in s for s in painter.strings), "the running state is drawn"
     assert "Interrupt" in painter.strings
@@ -115,11 +120,17 @@ def test_ctrl_c_interrupts_a_busy_loop_and_the_console_stays_usable(driver, shel
 
 def test_a_second_cell_queues_behind_the_first(driver, shell):
     console = shell.console
-    _submit(driver, "import time; time.sleep(0.5); order = ['first']")
+    # The first cell holds until the test lets it go: a fixed sleep raced the typing of the second
+    # cell, which on a loaded machine outlasted it (the first had finished, nothing was queued).
+    gate = threading.Event()
+    console.engine.user_ns["gate"] = gate
+    _submit(driver, "gate.wait(30); order = ['first']")
     _submit(driver, "order.append('second')")
+    _frames_until(driver, lambda: console.running is not None, timeout=5.0)
     assert console.queued == 1
     painter = driver.frame(1)
     assert any("1 queued" in s for s in painter.strings)
+    gate.set()
     _frames_until(driver, lambda: not console.busy)
     assert console.engine.user_ns["order"] == ["first", "second"]
 

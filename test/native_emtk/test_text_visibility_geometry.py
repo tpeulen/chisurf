@@ -94,10 +94,14 @@ def test_real_detector_delete_cell_is_reachable_after_public_horizontal_scroll()
         }
     )
 
+    # Narrow enough that the table still scrolls sideways with Delete cut: since 49e773134 a
+    # narrow host drops gch/l1/l2 and shortens its headers first, so at 380 px Delete fits.
+    width_px = 240
+
     def render():
         """Render the actual shared table in a narrow ordinary window."""
         im.set_next_window_pos((0, 0))
-        im.set_next_window_size((380, 620))
+        im.set_next_window_size((width_px, 620))
         if im.begin(
             "table-visibility", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
         ):
@@ -109,7 +113,7 @@ def test_real_detector_delete_cell_is_reachable_after_public_horizontal_scroll()
         painter = None
         for _ in range(3):
             painter = ClipPainter()
-            app.draw(painter, 0, 0, 380, 620)
+            app.draw(painter, 0, 0, width_px, 620)
         buttons = editor._detector_buttons
         _, _, key, rect = next(cell for cell in buttons.cells() if cell[2] == "delete")
         x, y, width, height = rect
@@ -118,7 +122,7 @@ def test_real_detector_delete_cell_is_reachable_after_public_horizontal_scroll()
         control.scroll_columns(len(control.visible_columns()) - 1)
         for _ in range(2):
             painter = ClipPainter()
-            app.draw(painter, 0, 0, 380, 620)
+            app.draw(painter, 0, 0, width_px, 620)
         _, _, key, rect = next(cell for cell in buttons.cells() if cell[2] == "delete")
         x, y, width, height = rect
         hit = buttons.hit(x + width / 2, y + height / 2)

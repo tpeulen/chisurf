@@ -15,8 +15,8 @@ Theory: docs/concepts/dye_quenching.md.
 
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
+from emtk.figure import Figure
 
 from chisurf.plugins.quenching_estimator.api import local as quest
 
@@ -72,15 +72,14 @@ assert result.quantum_yield_donor * project["tau0"] < result.lifetime_donor
 # Both runs excite the same number of dyes, so one common scale shows the
 # missing amplitude; normalising each curve to its own peak would hide it.
 scale = unquenched.donor_counts.max()
-fig, ax = plt.subplots(figsize=(6, 4))
+fig = Figure(size=(720, 480))
+ax = fig.ax()
 for label, r in (("E:5, next to TRP", result), ("E:69, no quencher", unquenched)):
     c = np.clip(r.donor_counts.astype(float), 0.1, None)
-    ax.semilogy(r.time, c / scale, label=f"{label}: QY {r.quantum_yield_donor:.2f}")
+    ax.line(r.time, c / scale, label=f"{label}: QY {r.quantum_yield_donor:.2f}")
+ax.set_log(y=True)
 ax.set_xlim(0, 25)
-ax.set_xlabel("time / ns")
-ax.set_ylabel("counts / peak of E:69")
+ax.set_labels("time / ns", "counts / peak of E:69")
 ax.set_title("Donor decay at two labelling sites")
 ax.legend()
-fig.tight_layout()
-fig.savefig("01_donor_quenching.png", dpi=120)
-plt.show()
+fig.save("01_donor_quenching.png")

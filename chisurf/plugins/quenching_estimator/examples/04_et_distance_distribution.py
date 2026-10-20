@@ -26,8 +26,8 @@ Theory: docs/concepts/distance_distributions.md, docs/concepts/quenching_inferen
 
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
+from emtk.figure import Figure
 
 from chisurf.core.math import numerics
 from chisurf.plugins.quenching_estimator.api import local as quest
@@ -102,14 +102,12 @@ print("Without stickiness the decay and the volumes agree. With it, the walk doe
 print("not sample the volume within t_max and the decay reports where it got stuck.")
 assert abs(mean_free - rda_e) < 3.0
 
-fig, ax = plt.subplots(figsize=(6, 4))
-ax.plot(r_axis, p_free, lw=2, label=f"E(t), no stickiness: <R> = {mean_free:.0f} A")
-ax.plot(r_axis, p_sticky, lw=1.5, ls="--", label=f"E(t), slow factor 0.1: <R> = {mean_sticky:.0f} A")
-ax.axvline(rda_e, color="k", ls=":", label=f"<R_DA>_E from the AVs = {rda_e:.0f} A")
-ax.set_xlabel("R_DA / A")
-ax.set_ylabel("p(R)")
+fig = Figure(size=(720, 480))
+ax = fig.ax()
+ax.line(r_axis, p_free, width=2, label=f"E(t), no stickiness: <R> = {mean_free:.0f} A")
+ax.line(r_axis, p_sticky, dash="--", label=f"E(t), slow factor 0.1: <R> = {mean_sticky:.0f} A")
+ax.vline(rda_e, color="k", dash=":", label=f"<R_DA>_E from the AVs = {rda_e:.0f} A")
+ax.set_labels("R_DA / A", "p(R)")
 ax.set_title("Distance distribution deconvolved from E(t)")
-ax.legend(fontsize=8)
-fig.tight_layout()
-fig.savefig("04_et_distance_distribution.png", dpi=120)
-plt.show()
+ax.legend("nw")
+fig.save("04_et_distance_distribution.png")

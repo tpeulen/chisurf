@@ -25,8 +25,8 @@ Theory: docs/concepts/quenching_inference.md (ensembles), docs/concepts/fret.md.
 """
 
 import IMP.bff
-import matplotlib.pyplot as plt
 import numpy as np
+from emtk.figure import Figure
 
 TAU0 = 4.0  # ns, donor without acceptor
 R0 = 50.0  # A
@@ -87,18 +87,16 @@ assert all(a < b for a, b in zip(E_values, E_values[1:]))
 
 # How the surviving population moves to long distances: short distances decay
 # first, so the excited-state distribution drifts outward unless D refills it.
-fig, (ax, bx) = plt.subplots(1, 2, figsize=(10, 4))
+fig = Figure(1, 2, size=(1200, 480))
+ax, bx = fig.ax(0, 0), fig.ax(0, 1)
 for D, (time, f, E) in decays.items():
-    ax.semilogy(time, f, label=f"D = {D:g}: E = {E:.2f}")
-ax.set_xlabel("time / ns")
-ax.set_ylabel("excited-state population")
-ax.legend(fontsize=8)
+    ax.line(time, f, label=f"D = {D:g}: E = {E:.2f}")
+ax.set_log(y=True)
+ax.set_labels("time / ns", "excited-state population")
+ax.legend()
 for t_snap in (0.5, 2.0, 5.0, 10.0):
     _, _, n_snap = solve(10.0, t_end=t_snap)
-    bx.plot(r, n_snap / n_snap.sum(), label=f"t = {t_snap:g} ns")
-bx.set_xlabel("R_DA / A")
-bx.set_ylabel("normalised n(R, t), D = 10 A^2/ns")
-bx.legend(fontsize=8)
-fig.tight_layout()
-fig.savefig("05_diffusion_modulated_fret.png", dpi=120)
-plt.show()
+    bx.line(r, n_snap / n_snap.sum(), label=f"t = {t_snap:g} ns")
+bx.set_labels("R_DA / A", "normalised n(R, t), D = 10 A^2/ns")
+bx.legend("nw")
+fig.save("05_diffusion_modulated_fret.png")
