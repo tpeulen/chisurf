@@ -133,10 +133,10 @@
     "status": "ai-reviewed"
   },
   "plugins/ai_settings.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "930e187239955190a960ec00c2f06848aae34a026afc90a8ee406a91e3a2fa4b",
+    "sha256": "a2106d2be7e9ed65d603b0eb231411b539d32484ad27c5ca68cf902a1fcb4b3f",
     "status": "ai-reviewed"
   },
   "plugins/alex_suite.md": {
@@ -161,10 +161,10 @@
     "status": "ai-reviewed"
   },
   "plugins/boarding.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "474bb155ee84f48fc71b75ea028b5df7d6297eb9ddb2b755f43bedb2926e1941",
+    "sha256": "6df06b9465c420e4d0bc304cb8894efc8098c876835511ce46d2ac1782b754a1",
     "status": "ai-reviewed"
   },
   "plugins/breakout.md": {
@@ -434,10 +434,10 @@
     "status": "ai-reviewed"
   },
   "plugins/help.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "8ece9d55d0de6f9c82cf6e6c22b24dfbd62badac3f43264eff8a4e4199879e83",
+    "sha256": "4f64ac4d199f64f351ee6dd562cd370d80529d421c98e64babffd8bc6b1df521",
     "status": "ai-reviewed"
   },
   "plugins/hmm.md": {
@@ -598,7 +598,7 @@
     "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "8b54a27f0c1ec25d7c54e5f5ce5ee339218fab3c20d0bf0e32a458952891ac02",
+    "sha256": "ba1a49bf85fab050a378c0a726102ed4ed9350745bc1a24979a3185aa57332f1",
     "status": "ai-reviewed"
   },
   "plugins/mfd_prepare.md": {
@@ -644,10 +644,10 @@
     "status": "ai-reviewed"
   },
   "plugins/model_manager.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "1ae564583b766b4dac699396b7ebfa4ef67126b1fb7ea2c3a0afb93ee1c0e7cf",
+    "sha256": "819af4347a8cdd312802febbc99a9f6a2198339a4c4e558645eaa365d083ffe0",
     "status": "ai-reviewed"
   },
   "plugins/ndxplorer.md": {
@@ -686,24 +686,24 @@
     "status": "ai-reviewed"
   },
   "plugins/plot_settings.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "2c4881e672883abe2bc138bd9c1fa5719694c5726d66009b0842e757192ec820",
+    "sha256": "2b6a3cf2362aa053b399178317ddf3d8dd9453efba68ce677d73dd3dd84e8ad4",
     "status": "ai-reviewed"
   },
   "plugins/plugin_check.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "98ffa88b8fcf833b016f1ee0f640476704a1bdf4b4ed87aaa99a849d1162c3ed",
+    "sha256": "06ac4456ddccb7a664bc9126c81e2191bf7f355bbf06bab88eb49c5fb7c3a61d",
     "status": "ai-reviewed"
   },
   "plugins/plugin_manager.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "1ba4b6d704e240a9cbc736917bf343f26ebde5734dbc2a699d6d549fdf3e9a4d",
+    "sha256": "c4f2c9feec6e719fa4c00ed5cb16a693e037f49a2487ec822c9704d3a51b5c8a",
     "status": "ai-reviewed"
   },
   "plugins/pong.md": {
@@ -784,10 +784,10 @@
     "status": "ai-reviewed"
   },
   "plugins/setup.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "f7bf2d39d809dc0c4b51b2b44414f9b80f03207ac62b062b577478e7ff135a8a",
+    "sha256": "1a077a3ed368ae079f7ea68ea7a0455cfaddb24af00f34b503a3a90404f70977",
     "status": "ai-reviewed"
   },
   "plugins/setup_channel_definition.md": {
@@ -812,17 +812,17 @@
     "status": "ai-reviewed"
   },
   "plugins/style_manager.md": {
-    "date": "2026-10-19",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "aa1a94cb94e2bee3e3173ab7c8b376f41418b05d025f7baf65dac21ec3883ba3",
+    "sha256": "539e830bc79da39ae7709281d7440e5fd7ba24ca2928c37d1cb1a82936e866a2",
     "status": "ai-reviewed"
   },
   "plugins/switch_user.md": {
     "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "25edf61be9db5a6ca9c34553e9d71b36c1eb7266e3e35fca9a2176cc49974933",
+    "sha256": "d343b4e847a3b5ad405ad77e7b092448ca41be35065fe2096c301c45f2ab2588",
     "status": "ai-reviewed"
   },
   "plugins/synthetic_decay.md": {
@@ -980,10 +980,10 @@
     "status": "ai-reviewed"
   },
   "plugins/updater.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "2f76ca23466a16d7388b477bc9b893b8d303aa6a346ec2b5082090af97cdda6d",
+    "sha256": "ff994fa48da4a3f5e80a9a9a3b8fcf30fb689bd29d28668b5f9b3aa8a21e9f67",
     "status": "ai-reviewed"
   },
   "plugins/user_editor.md": {
@@ -1036,10 +1036,10 @@
     "status": "ai-reviewed"
   },
   "user_models.md": {
-    "date": "2026-10-19",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "b1b1c9c8895899241f1e7c894646ebec8bb100645fd91aa7123c19babd0dbca6",
+    "sha256": "5808d3954291b8ec6175578fecf61a2cb12b9d7fdc2913b124b9cb0395ed1510",
     "status": "ai-reviewed"
   }
 }
