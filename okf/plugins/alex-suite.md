@@ -23,6 +23,14 @@ timestamp: '2026-09-08T17:01:52+02:00'
 
 ## Where to pick this up
 
+00. Done 2026-10-20 — **period detection on long records.** A 300 s µs-ALEX `.sm`
+   aliased the period spectrum (bin 5722 > T/2), returned 20189 and the Suite
+   refused the file. Now unfolded (see *period* below; known-issues "ALEX period
+   spectrum" resolved). Re-derive: `detect_alex_period` on any ≥ 300 s 12.5 ns
+   file must return 8000; the guard is the synthetic 3·10⁶-cycle test in
+   `alex_suite/tests/test_alternation.py`. Open edge: a bin width that is an
+   integer multiple of the period nulls the line (sinc zero); not seen yet.
+
 0a. Open: **The alternation gates are editable now — the remaining half is the
    *period*.** Detection writes the period and both gates into spin boxes, the
    shaded bands on the plot are the same values (drag or type, they stay in
@@ -181,7 +189,10 @@ The old dialog asked for seven numbers. All seven are in the data:
   `auto_alex_windows`): bin the *signed* donor-minus-acceptor stream, take the
   spectral peak, then finish on an integer scan of the folded modulation. The
   integer matters: one macro-time unit out, over 10⁵ cycles, walks the phase
-  across a laser window.
+  across a laser window. The FFT bin widens with the record, so a long file is
+  sampled below Nyquist and the peak is an **alias**: every `|n/w ± 1/peak|` in
+  the band is a candidate and the fold modulation picks the real one (a 300 s
+  `.sm` at 12.5 ns: bin 5722, alias 20107, true 8000).
 - **laser edges** — `auto_alex_windows`. **Not** the plateaus of the folded
   intensity, which is what it used to look for and what fails on every real
   measurement: both lasers keep the sample emitting, so there is no laser-off

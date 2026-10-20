@@ -84,6 +84,16 @@ gaps — and which plateau is the donor excitation follows from which detector i
 brighter in it. That last comparison is what a "channel flip" setting used to
 guess at.
 
+The spectrum is binned at a width $w$ set by the FFT length, so $w$ grows with
+the record while $T$ does not: a 300 s record at a 12.5 ns clock is binned at
+$w \approx 5700$ units against $T = 8000$, below the Nyquist limit $w < T/2$, and
+the line then appears at an alias $|1/T - n/w|$. The peak alone does not say
+which $n$, so every $n$ that puts $T$ in the searched range is a candidate, and
+the photons decide: each candidate's integer neighbourhood is folded, and the
+period whose folded detector signal is most modulated wins. Only that fold is
+coherent — a period one unit out smears over $10^5$ cycles — so the true one
+stands out by orders of magnitude.
+
 A wrong $T$ is silent, not loud: the folded phase smears out, the windows land on
 nothing in particular, and the analysis proceeds to a stoichiometry histogram
 with one peak instead of three. The check is the picture, and the *contrast* of

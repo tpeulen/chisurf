@@ -22,10 +22,10 @@ GREEN = (300, 3700)
 RED = (4300, 7700)
 
 
-def alternating_stream(n=400_000, period=PERIOD, seed=3):
+def alternating_stream(n=400_000, period=PERIOD, seed=3, cycles=6000):
     """Photons whose detector depends on which laser window they fall in."""
     rng = np.random.default_rng(seed)
-    t = np.sort(rng.integers(0, period * 6000, n))
+    t = np.sort(rng.integers(0, period * cycles, n))
     phase = t % period
     green_on = (phase >= GREEN[0]) & (phase < GREEN[1])
     red_on = (phase >= RED[0]) & (phase < RED[1])
@@ -84,6 +84,24 @@ def test_swapped_channels_swap_the_windows_not_the_period():
     )
     assert np.allclose(a["green"], b["red"])
     assert np.allclose(a["red"], b["green"])
+
+
+def test_period_is_recovered_when_the_record_is_long_enough_to_alias():
+    """A long record at a fine clock bins the spectrum below Nyquist; the period survives.
+
+    The FFT length is capped, so its bin width grows with the record while the
+    period stays a hardware setting. A 300 s µs-ALEX file at 12.5 ns (2.4e10
+    units, period 8000) bins at 5722 units -- 1.4 samples per period -- and the
+    line aliases to ~20000. That alias was returned as the period, the
+    channel assignment then saw no alternation, and the ALEX Suite refused the
+    measurement. Same span and clock here, with a non-round period too, so the
+    answer cannot be a lucky multiple of the bin width.
+    """
+    for period in (8000, 7993):
+        t, routing = alternating_stream(n=300_000, period=period, cycles=3_000_000, seed=5)
+        result = detect_alex_period(t, routing, donor_channels=[0], acceptor_channels=[1])
+        assert result["period"] == period
+        assert result["confidence"] > 50
 
 
 def test_continuous_wave_data_is_refused_rather_than_converted():

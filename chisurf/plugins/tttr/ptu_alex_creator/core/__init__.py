@@ -596,14 +596,14 @@ def detect_alex_period(
     if max_period is None:
         max_period = max(int(span // 50), min_period * 2)
 
-    # NOTE: `bin_width` is set by `max_bins`, so the alternation ends up sampled
-    # only ~2.6 times per period on a long file -- just above Nyquist. It works
-    # here and it is what makes the spectral line detectable at all (the line's
-    # power grows with the number of cycles seen, so the long span is doing the
-    # work), but it is close to an edge: see the known-issues entry before
-    # changing either constant. Shortening the span to bin more finely was tried
-    # and reverted -- 524 cycles is not enough for the line to beat low-frequency
-    # drift, and the detector returned 78400 for a period of 8000.
+    # `bin_width` is set by `max_bins`, so it grows with the *length* of the
+    # record while the period is a fixed hardware setting: a 300 s file at
+    # 12.5 ns is binned at 5722 units against a period of 8000, below Nyquist.
+    # The long span is not optional -- the line's power grows with the number of
+    # cycles seen, and binning finely over a short leading slice instead was
+    # tried and reverted (524 cycles lost to low-frequency drift and returned
+    # 78400 for a period of 8000). So the spectrum is allowed to alias, and the
+    # alias is unfolded below rather than avoided here.
     bin_width = max(1, int(min_period // 16), -(-span // max_bins))
     n_bins = int(span // bin_width) + 1
     signal = np.bincount(t // bin_width, weights=sign, minlength=n_bins)
@@ -613,8 +613,9 @@ def detect_alex_period(
     power = np.abs(spectrum) ** 2
     # k = 0 is the (already removed) mean; period = total length / k.
     k = np.arange(power.size)
+    record = n_bins * bin_width
     with np.errstate(divide="ignore"):
-        periods = np.where(k > 0, n_bins * bin_width / np.maximum(k, 1), np.inf)
+        periods = np.where(k > 0, record / np.maximum(k, 1), np.inf)
     band = (periods >= min_period) & (periods <= max_period)
     if not band.any():
         raise ValueError(
@@ -626,10 +627,35 @@ def detect_alex_period(
     coarse = float(periods[peak])
     median = float(np.median(power[band])) or 1.0
 
-    # The FFT bin is `bin_width` wide in period; `apply_alex` folds on an
-    # integer, and being one unit out over 10^5 cycles walks the phase right
-    # across a laser window. So finish on the photons: scan the integers around
-    # the coarse estimate and keep the one whose folded phase is most modulated.
+    # Unfold the alias. Binning samples the stream every `bin_width`, so a line
+    # at the true frequency f appears at |f - n / bin_width| for some integer n,
+    # and the peak alone cannot say which n. Every n that puts the period inside
+    # [min_period, max_period] is a candidate; when `bin_width` is under half of
+    # `min_period` only n = 0 survives and this is the plain spectral estimate.
+    # The candidates are not ranked by the spectrum (boxcar binning attenuates
+    # each by a different sinc) but by the photons themselves, below.
+    #
+    # Their positions are sharp: the peak frequency is known to half an FFT bin,
+    # 1 / (2 * record), so a candidate period P is known to P**2 / (2 * record)
+    # -- a fraction of a unit on any file long enough to alias.
+    f_alias = 1.0 / coarse
+    f_sample = 1.0 / bin_width
+    centres = []
+    for n in range(int(bin_width // max(min_period, 1)) + 2):
+        for f in (n * f_sample - f_alias, n * f_sample + f_alias):
+            if f > 0 and min_period <= 1.0 / f <= max_period:
+                centres.append(1.0 / f)
+
+    def _modulation(times, weights, candidate: int) -> float:
+        """Total power of the folded phase histogram at one trial period."""
+        phase = (times % candidate) * _PHASE_BINS // candidate
+        counts = np.bincount(phase, weights=weights, minlength=_PHASE_BINS)
+        return float(np.sum(counts[:_PHASE_BINS] ** 2))
+
+    # `apply_alex` folds on an integer, and being one unit out over 10^5 cycles
+    # walks the phase right across a laser window. So finish on the photons:
+    # scan the integers around each candidate and keep the one whose folded
+    # phase is most modulated.
     #
     # In two passes, because one pass over every photon per candidate was the
     # whole cost of detection -- 322 candidates x a modulo over 2 M photons =
@@ -638,15 +664,7 @@ def detect_alex_period(
     # pass reads a thinned stream that still spans the whole measurement and the
     # refinement pass reads all of it over the handful of candidates that
     # survive. Same scoring function, same answer, ~20x less arithmetic.
-    lo = max(min_period, int(coarse * 0.98))
-    hi = min(max_period, int(coarse * 1.02) + 1)
-
-    def _modulation(times, weights, candidate: int) -> float:
-        """Total power of the folded phase histogram at one trial period."""
-        phase = (times % candidate) * _PHASE_BINS // candidate
-        counts = np.bincount(phase, weights=weights, minlength=_PHASE_BINS)
-        return float(np.sum(counts[:_PHASE_BINS] ** 2))
-
+    #
     # Thinned by stride, which keeps the full span (and so the full period
     # resolution) while cutting the arithmetic. Photon arrival is Poisson, so a
     # stride in *index* is not periodic in *time* and cannot alias with the
@@ -654,15 +672,38 @@ def detect_alex_period(
     stride = max(1, t.size // int(scan_photons))
     survey_t, survey_sign = t[::stride], sign[::stride]
 
-    step = max(1, (hi - lo) // 400)
+    if len(centres) == 1:
+        # Unaliased: the one estimate gets the wide +-2 % scan it always had.
+        lo = max(min_period, int(coarse * 0.98))
+        hi = min(max_period, int(coarse * 1.02) + 1)
+        step = max(1, (hi - lo) // 400)
+        trials = list(range(lo, hi + 1, step))
+    else:
+        # A hundred-odd aliases, each a few integers wide. Screen them on a
+        # sparser stream first -- the true one stands out by orders of magnitude
+        # (it is the only one whose fold is coherent), so a fifth of the survey
+        # ranks them -- and give the survey proper only the best few.
+        step = 1
+        screen_t, screen_sign = survey_t[::5], survey_sign[::5]
+        ranked = []
+        for centre in centres:
+            reach = int(np.ceil(centre * centre / record)) + 2
+            lo = max(min_period, int(np.floor(centre)) - reach)
+            hi = min(max_period, int(np.ceil(centre)) + reach)
+            ints = range(lo, hi + 1)
+            score = max(_modulation(screen_t, screen_sign, c) for c in ints)
+            ranked.append((score, ints))
+        ranked.sort(key=lambda item: item[0], reverse=True)
+        trials = sorted({c for _, ints in ranked[:4] for c in ints})
+
     best, best_score = int(round(coarse)), -np.inf
-    for candidate in range(lo, hi + 1, step):
+    for candidate in trials:
         score = _modulation(survey_t, survey_sign, candidate)
         if score > best_score:
             best, best_score = candidate, score
 
     # Refine on every photon, over the survey's own step either side -- the
-    # coarse winner is only known to within `step`, and the thinning makes the
+    # survey winner is only known to within `step`, and the thinning makes the
     # scores noisier, so the true integer can sit a unit or two away.
     fine_lo = max(min_period, best - step - 2)
     fine_hi = min(max_period, best + step + 2)

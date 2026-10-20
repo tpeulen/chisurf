@@ -3336,7 +3336,7 @@ defines an equivalent, the declaration should point at theirs instead.
 
 ## The ALEX period spectrum runs at 2.6 samples per period
 
-status: open
+status: resolved
 
 **Measured 2026-09-08.** `detect_alex_period` bins the signed donor−acceptor
 stream and takes the peak of its power spectrum. `bin_width` is chosen to make
@@ -3364,6 +3364,22 @@ straight substitution.
 Not urgent: the integer scan that follows is what sets the final answer, and it
 is now measured over the full record (see the log entry for 2026-09-08), so the
 FFT only has to land within 2 %.
+
+**Resolved 2026-10-20.** It crossed: the owner's 300 s BmrA ALEX `.sm`
+(1.25 M photons, 12.5 ns clock, span 2.4e10) binned at **5722** — 1.4 samples per
+period — the line aliased to 20107, the ±2 % integer scan returned 20189, the
+channel assignment then found no alternation and the ALEX Suite refused the
+file ("the detector ratio does not alternate ... spread 0.015"). Fix in
+`detect_alex_period`: the alias is unfolded instead of avoided — every
+`|n/bin_width ± 1/coarse|` inside the band is a candidate, each known to
+`P²/record`, screened on a fifth of the survey photons by the fold modulation,
+the best four scanned and the winner refined on every photon. The long span (and
+so the line's strength) is kept. Real file: 8000, contrast 11805, 3.6 s (old
+code: 4.1 s, wrong). Guard:
+`alex_suite/tests/test_alternation.py::test_period_is_recovered_when_the_record_is_long_enough_to_alias`
+(periods 8000 and 7993 over 3·10⁶ cycles; old code returns ~20000). Residual
+edge, not seen: boxcar binning nulls the line when `bin_width` is an integer
+multiple of the period (sinc zero); a second bin width would cover it.
 
 ## The background estimator's default tail window can fit an empty range
 
