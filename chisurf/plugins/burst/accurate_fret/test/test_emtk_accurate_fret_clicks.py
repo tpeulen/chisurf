@@ -3,8 +3,7 @@
 The app is drawn by the emtk frame loop; the tests only ``press`` / ``release`` / ``pointer_move`` / ``key`` at the
 rectangles the controls were drawn in (or at the text a button or list entry drew), through the file dialog, the
 channel lists and the host's drop, and assert the visible outcome: status line, model values, the result tables, the
-plots' series, the files written. The coverage list control -> test is in
-``okf/plugins/emtk-ports/accurate_fret/REPORT.md``.
+plots' series, the files written.
 """
 
 from __future__ import annotations
@@ -194,7 +193,9 @@ def test_a_dropped_path_that_does_not_exist_is_reported(app):
 def test_each_channel_list_opens_and_a_click_on_a_column_maps_it(app, bursts, name):
     load_by_clicks(app, bursts)
     draw(app)
-    click(app, rect_of(app, name))
+    # The channel fields are editable choices (type a column, or pick one): the
+    # body is a text field and the list opens from the arrow beside it.
+    click(app, rect_of(app, name + ".arrow"))
     painter = draw(app, frames=1)
     entries = [
         t[5]
@@ -207,7 +208,9 @@ def test_each_channel_list_opens_and_a_click_on_a_column_maps_it(app, bursts, na
             "Tau (green)",
         )
     ]
-    assert len(set(entries)) == 4  # every column of the file is offered
+    # every column of the file is offered: the open list repeats all four names
+    # beside the four closed channel fields that show one each
+    assert len(set(entries)) == 4 and len(entries) >= 8
     other = (
         "Red Count Rate (KHz)"
         if getattr(app.model, name) != "Red Count Rate (KHz)"
@@ -235,14 +238,30 @@ def test_calibrate_click_is_refused_with_the_reason_until_a_table_is_loaded_then
     assert "0.0798" in painter.strings and "α" in painter.strings  # the factor table cell shows it
 
 
-def test_the_stop_button_cancels_a_running_calibration_and_keeps_the_previous_state(app, bursts):
+def test_the_stop_button_cancels_a_running_calibration_and_keeps_the_previous_state(
+    app, bursts, monkeypatch
+):
+    import threading
+
     load_by_clicks(app, bursts)
-    app.model.n_bootstrap = 400  # long enough to be stopped
+    app.model.n_bootstrap = 400
+    # Hold the worker at its first progress report until Stop has been clicked: a
+    # calibration that happened to finish between the two clicks (a loaded machine
+    # draws slowly) made this test fail on timing, not on behaviour.
+    clicked = threading.Event()
+    report = app.controller.progress
+
+    def held(fraction, message):
+        clicked.wait(30.0)
+        return report(fraction, message)
+
+    monkeypatch.setattr(app.controller, "progress", held)
     draw(app)
     click(app, rect_of(app, "Calibrate"))
     assert app.controller.running
     click(app, text_rect(draw(app), "Stop calibration / read"))
     assert "Stopping" in app.controller.status
+    clicked.set()
     wait(app)
     assert (
         app.controller.status == "Calibration/read cancelled; previous result retained."
