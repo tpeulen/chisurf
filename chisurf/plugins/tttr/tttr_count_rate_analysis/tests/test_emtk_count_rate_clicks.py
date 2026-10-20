@@ -296,8 +296,12 @@ def test_a_drop_reaches_the_app_through_the_native_host(ui, folder):
 
 # -- the channel editor (the shared detector-channel widget) -----------------------------------------------------------
 def _window_table_drawn(ui):
-    """The PIE window table's name column is drawn ("Name" when the page is compact)."""
-    return ui.drawn("Window Name") or ui.drawn("Name")
+    """The PIE window table's header is drawn.
+
+    Its name column says "Name" when the page is compact, and so does the Detectors table's
+    (49e773134), so a bare "Name" says nothing; "Start" and "End" are the window table's own.
+    """
+    return ui.drawn("Start") and ui.drawn("End")
 
 
 def test_the_editor_section_headers_fold_and_unfold(ui):

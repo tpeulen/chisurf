@@ -266,7 +266,9 @@ def test_processing_through_the_ui_writes_the_physics_of_the_picked_atoms(
         assert ui.dialog_open and ui.shown("Output-file") and ui.shown("small_fret.csv")
         ui.save_dialog_type_name(str(target))
         ui.press_text("Save")
-        assert not ui.dialog_open and ui.app.running
+        # Save started the work: it is still running, or it already finished and reported (``save`` clears the
+        # notice, ``poll`` sets it). A short run can finish inside the frames the click draws.
+        assert not ui.dialog_open and (ui.app.running or bool(ui.app.notice or ui.app.status))
         ui.settle()
         table = _table(target)
         r, kappa, rate = _reference(xyz[::2], donor, acceptor, 55.0, 3.5)

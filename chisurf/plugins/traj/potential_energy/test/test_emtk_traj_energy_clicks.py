@@ -376,7 +376,9 @@ def test_processing_through_the_ui_writes_the_energies_the_qt_widgets_model_wrot
         assert ui.dialog_open
         ui.save_dialog_type_name(str(target))
         ui.press_text("Save")
-        assert not ui.dialog_open and ui.app.running
+        # Save started the work: it is still running, or it already finished and reported (``save`` clears the
+        # notice, ``poll`` sets it). A short run can finish inside the frames the click draws.
+        assert not ui.dialog_open and (ui.app.running or bool(ui.app.notice or ui.app.status))
         ui.settle()
         assert ui.shown("Processed 4 frame(s).")
         assert target.read_text() == qt["energies"]

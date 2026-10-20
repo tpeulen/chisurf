@@ -41,6 +41,13 @@ def _pages() -> list[pathlib.Path]:
     return sorted(p for p in root.rglob("*.md") if "_build" not in p.parts)
 
 
+#: Pages per sweep test. The corpus grows with every plugin and guide, and one test over all of
+#: it (466 pages, ~115 s per size on 2026-10-20) ran into the per-test timeout; a fixed chunk keeps
+#: each test bounded however large ``docs/`` becomes, and names the chunk a failure is in.
+CHUNK = 60
+N_CHUNKS = -(-len(_pages()) // CHUNK)
+
+
 def _reader_texts(driver, reader):
     """``(string, measured_bounds)`` of every text drawn inside the reader's clip."""
     rx, ry, _rw, _rh = reader
@@ -124,12 +131,15 @@ def test_every_figure_referenced_from_docs_loads_as_a_picture(app):
 
 
 @pytest.mark.parametrize("size", SIZES, ids=lambda s: f"{s[0]}x{s[1]}")
-def test_every_page_renders_without_clipped_or_overlapping_text(app, size):
+@pytest.mark.parametrize("chunk", range(N_CHUNKS), ids=lambda c: f"pages{c * CHUNK}+")
+def test_every_page_renders_without_clipped_or_overlapping_text(app, size, chunk):
+    pages = _pages()[chunk * CHUNK : (chunk + 1) * CHUNK]
+    assert pages, "the documentation has fewer pages than when the chunks were counted"
     driver = RealisticDriver(app, size)
     driver.frame(2)
     root = help_toc.docs_root()
     failures: list[str] = []
-    for page in _pages():
+    for page in pages:
         app.model.open_page(page)
         driver.frame(2)
         name = str(page.relative_to(root))

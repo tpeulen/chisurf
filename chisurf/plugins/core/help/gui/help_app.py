@@ -14,6 +14,7 @@ import pathlib
 import re
 import threading
 from dataclasses import dataclass, field
+from functools import lru_cache
 from queue import Empty, Queue
 from typing import TYPE_CHECKING, Callable
 
@@ -51,6 +52,19 @@ if TYPE_CHECKING:
     from chisurf.plugins.ai_settings.gui.app import AISettingsApp
 
 _LOGGER = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=8192)
+def _resolved(path: str | pathlib.Path) -> str:
+    """``str(Path(path).resolve())``, remembered.
+
+    The tree, the breadcrumb and the page order compare every node's file against the open
+    page on every frame; resolving each one walks the file system (``realpath``), several
+    hundred times a frame for the full documentation tree. A documentation path does not
+    move while the reader is open.
+    """
+    return str(pathlib.Path(path).resolve())
+
 
 WINDOW_BG = (28, 30, 36, 255)
 
@@ -907,7 +921,7 @@ class HelpModel:
 
         def walk(node, trail):
             for child in node.children:
-                if child.path and str(pathlib.Path(child.path).resolve()) == target:
+                if child.path and _resolved(child.path) == target:
                     return trail
                 found = walk(child, trail + [child.title])
                 if found is not None:
@@ -1197,7 +1211,7 @@ class HelpModel:
             return
         curr_str = str(self.current_path)
         for i, node in enumerate(self.order):
-            if node.path and str(pathlib.Path(node.path).resolve()) == curr_str:
+            if node.path and _resolved(node.path) == curr_str:
                 previous = self.order[i - 1].path if i > 0 else None
                 if previous:
                     self.open_page(previous)
@@ -1208,7 +1222,7 @@ class HelpModel:
             return
         curr_str = str(self.current_path)
         for i, node in enumerate(self.order):
-            if node.path and str(pathlib.Path(node.path).resolve()) == curr_str:
+            if node.path and _resolved(node.path) == curr_str:
                 following = self.order[i + 1].path if i < len(self.order) - 1 else None
                 if following:
                     self.open_page(following)
@@ -1602,7 +1616,7 @@ class HelpGui:
 
         def walk(node, trail):
             for child in node.children:
-                if child.path and str(pathlib.Path(child.path).resolve()) == target:
+                if child.path and _resolved(child.path) == target:
                     return trail
                 found = walk(child, trail | {id(child)})
                 if found is not None:
@@ -1668,7 +1682,7 @@ class HelpGui:
 
                     active = bool(
                         self.model.current_path
-                        and pathlib.Path(path_str).resolve() == self.model.current_path
+                        and _resolved(path_str) == str(self.model.current_path)
                     )
                     if im.selectable(title, active):
                         self.model.open_page(path_str)
@@ -1727,7 +1741,7 @@ class HelpGui:
             is_active = bool(
                 self.model.current_path
                 and node.path
-                and str(pathlib.Path(node.path).resolve()) == str(self.model.current_path)
+                and _resolved(node.path) == str(self.model.current_path)
             )
             label = node.title
             status = (
@@ -1982,9 +1996,7 @@ class HelpGui:
             im.same_line()
             sym_str = f" :: {self.model.source_symbol}" if self.model.source_symbol else ""
             line_str = f" (Line {self.model.source_line})" if self.model.source_line else ""
-            im.text_colored(
-                _style.HEADING_1, f"{self.model.source_path.name}{sym_str}{line_str}"
-            )
+            im.text_colored(_style.HEADING_1, f"{self.model.source_path.name}{sym_str}{line_str}")
 
             im.same_line()
             im.text_disabled("|")
