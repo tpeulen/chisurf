@@ -185,3 +185,18 @@ def test_every_stage_on_todays_geometry(golden, tmp_path):
         dev = np.asarray(dev)
         got = (np.sqrt((dev**2).mean()), np.median(np.abs(dev)), np.mean(dark))
         assert np.allclose(got, REPIN_STAGES[stage], rtol=1e-9, atol=0), stage
+
+
+def test_unique_rows_equals_numpy_unique(shipped):
+    table = shipped.table
+    n = np.asarray(table.neighbours).astype(float)
+    features = np.concatenate([n, np.asarray(table.contacts).astype(np.float32).reshape(len(n), -1),
+                               np.asarray(table.exposure, float)[:, None]], 1)
+    _, first, count = np.unique(features, axis=0, return_index=True, return_counts=True)
+    got_first, got_count = sm.unique_rows(features)
+    assert np.array_equal(got_first, first) and np.array_equal(got_count, count)
+    # ties, negative zero and an all-equal block
+    x = np.array([[0.0, 1.0], [-0.0, 1.0], [0.0, 0.5], [2.0, 0.0], [0.0, 1.0]])
+    _, first, count = np.unique(x, axis=0, return_index=True, return_counts=True)
+    got = sm.unique_rows(x)
+    assert np.array_equal(got[0], first) and np.array_equal(got[1], count)
