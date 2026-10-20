@@ -66,7 +66,7 @@ dependencies = [
     # chimol draw with it, so it is not optional.
     # emtk is on PyPI (source: github.com/tpeulen/emtk). The bound is
     # chisurf.emtk.requirement.EMTK_MIN_VERSION, checked at startup.
-    "emtk>=0.1.26",
+    "emtk>=0.1.27",
     "PyYAML",
     "packaging",
     "python-docx",

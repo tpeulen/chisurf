@@ -13,7 +13,7 @@ change that starts using an emtk API newer than the current minimum.
 from __future__ import annotations
 
 #: The oldest emtk this tree runs against.
-EMTK_MIN_VERSION = "0.1.26"
+EMTK_MIN_VERSION = "0.1.27"
 
 
 class EmtkTooOld(RuntimeError):
