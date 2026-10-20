@@ -81,7 +81,7 @@ session open. The same decision protects project replacement and reset.
 
 ## The File menu
 
-The ChiSurf window has the same **File** menu and shortcuts: **Save Project**
+The **File** menu holds the project commands: **Save Project**
 (`Ctrl+S`), **Export Project…** (`Ctrl+Shift+S`, save under a new file), **Open
 Project…**, **Import Project…**, **Close Project**, **Reinitialize** (`Ctrl+R`),
 **Recent Projects** and **Quit** (`Ctrl+Q`); **View** has **Undo** (`Ctrl+Z`)

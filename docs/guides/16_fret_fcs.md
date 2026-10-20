@@ -68,7 +68,7 @@ the *Burst FCS* tool of **Spectroscopy ▸ Single-Molecule ▸ Burst Analysis**;
 [FCS workflow](75_fcs_toolbox.md) correlates whole streams) correlates each burst
 separately, using only the photons of that burst ± **Padding**. The window has
 **Run FCS**, **Stop**, **Load example**, **Guide** and **Help** on top, three tabs on
-the left and the plots on the right. All three entry points open the same window;
+the left and the plots on the right. Both entry points open the same window;
 on its own it is `python -m chisurf.emtk --plugin burst_fcs_correlator`.
 
 - **Inputs** — the **Burst folders or BUR/BST files** table (**Files...**,

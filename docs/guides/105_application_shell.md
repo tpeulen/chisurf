@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: 'Working in the shell: interface, account, calculators and wizards'
-description: Switch between menu bar and ribbon, sign in as another MMFDB user, and find the calculators and wizards in the Tools tab.
+description: Show or hide the ribbon, sign in as another MMFDB user, and find the calculators and wizards in the Tools tab.
 tags: [guides, database, mmfdb]
 ---
 
@@ -14,7 +14,8 @@ the calculators (`chisurf/plugins/calculator/`, `chisurf/plugins/fret_line/`, `c
 
 ## 1. Menu bar or ribbon
 
-*Setup → Menu Switch* toggles the open main window and opens no window of its own. The choice is saved and restored at
+*Setup → Menu Switch* shows or hides the ribbon of the open main window and opens no window of its own;
+the menu bar stays either way. The choice is saved and restored at
 the next start. Without a main window (a headless run) it reports that nothing changed and why.
 
 ## 2. Another account
@@ -30,7 +31,7 @@ What the account may change is decided by the database ([MMFDB Admin](102_mmfdb_
 
 ## 3. Calculators and Wizards
 
-Each calculator and each wizard is a button of the *Tools* tab and opens in a dock of its own.
+Each calculator and each wizard is a button of the *Tools* tab and opens as a tab beside the Workspace.
 
 - *Tools → Calculators*: F-Test, FCS Saturation, FRET Calculator (hetero- and homoFRET), FRET Line Generator, Kappa2
   Distribution, Light Path Simulator, PSF Calculator, Phasor Calculator, RICS Precision, Spectra Downloader. See

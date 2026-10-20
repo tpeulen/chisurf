@@ -47,8 +47,8 @@ never by pointing Python at `__main__.py` directly — running the file adds
 
 The window opens with a tabbed column on the left — the **Tools** tree,
 **Read data** and **Datasets** above, **Analysis** and **Plot settings** below —
-so the rest of the width belongs to the workspace, where *Start* and the fit
-windows open, and to the tools, which open as docks beside them. **Log** and
+so the rest of the width belongs to the **Workspace**, where *Start* and the fit
+windows open; a tool opens as a tab beside the Workspace tab. **Log** and
 **Console** share the bottom edge. See
 [Multiple document interface](../manual/multiple_document_interface.md).
 
@@ -157,8 +157,8 @@ ranked, each with the passage that matched, and the tree narrows to them.
 DOI in a *Further reading* list, a manual page's *See also* box — all of them
 go somewhere; `Alt+Left` walks back, and every page carries previous /
 next along the reading order.
-- **Every plugin's** `?` **button opens its page here**, and its
-`Guide` button walks you through the tool's own controls.
+- **Every plugin's** **❓ Help** **button opens its page here**, and its
+**📖 Guide** button walks you through the tool's own controls.
 - **The text scales** with `Ctrl++` / `Ctrl+-` (`Ctrl+0` resets),
 or `Ctrl` and the scroll wheel. Headings, tables and formulas scale with
 it, because the page is re-rendered rather than magnified.

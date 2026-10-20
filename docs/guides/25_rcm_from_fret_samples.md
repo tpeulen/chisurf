@@ -29,7 +29,7 @@ separates).
 The correction machinery lives in {src}`chisurf/core/fluorescence/fret/calibration.py`
 (γ/β, leakage, direct excitation, and the routing-correction matrix), and the
 ALEX/PIE stream handling in tttrlib (`tttrlib.corrected_es`). The
-E–S-based `tttrlib.global_es_correction` / `refine_calibration` derive the correction
+E–S-based `tttrlib.global_es_correction` and the module's `refine_calibration` derive the correction
 factors from the sample's own donor-only / acceptor-only / FRET populations; the
 `ptu_alex_creator` and micro-time-gating tools prepare PIE/ALEX streams.
 

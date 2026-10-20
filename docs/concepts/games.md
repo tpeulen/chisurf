@@ -66,7 +66,7 @@ for the per-game actions.
 ## Where it lives
 
 Each game is a button of **Tools › Games** (`chisurf/plugins/misc/games/<game>/`; Number Quest, Minesweeper, Tetris,
-Pong, Breakout) and opens in a window of its own; the package `chisurf/plugins/misc/games/` only holds what they share
+Pong, Breakout) and opens as a tab beside the Workspace; the package `chisurf/plugins/misc/games/` only holds what they share
 (header row, audio, shortcut filter). A game keeps its state while another window is in front and mutes its sound
 whenever its window is not in front; the keys and the Help, Restart and Guide controls are in the
 [Games workflow](../guides/95_games.md).

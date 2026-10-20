@@ -1,13 +1,13 @@
 ---
 type: Guide
 title: Sampling a protein under FRET distance restraints
-description: 'Tool: Structure → Computation → Protein Monte Carlo (proteinmc), a command-line plugin. Samples torsion-angle conformations of a structure that satisfy FPS distance restraints and writes them as an RMF3 trajectory.'
+description: 'Tool: Protein Monte Carlo (proteinmc), a command-line plugin with no menu entry. Samples torsion-angle conformations of a structure that satisfy FPS distance restraints and writes them as an RMF3 trajectory.'
 tags: [guides, sampling, fret, structure, plugins]
 ---
 
 # Sampling a protein under FRET distance restraints
 
-**Tool:** *Structure → Computation → Protein Monte Carlo* (`proteinmc`), `csc proteinmc`. It has no window: it is a
+**Tool:** Protein Monte Carlo (`proteinmc`), `csc proteinmc`. Its manifest is menu-hidden and it has no window: it is a
 command and a Python runner. **What you get:** an RMF3 trajectory of conformations, and per frame the total
 energy, the restraint $\chi^2$ and the RMSD to the start. Theory: [Protein Monte Carlo](../concepts/protein_monte_carlo.md).
 

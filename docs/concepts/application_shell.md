@@ -1,13 +1,13 @@
 ---
 type: Concept
-title: 'The application shell: settings, interface, account, help and hubs'
+title: 'The application shell: settings, interface, account and help'
 description: What the shell around the analysis tools holds as state, which of it is per user and which per machine, and where calculators and wizards sit in the menus.
 tags: [concepts, settings, application, shell]
 anchor: concept-application-shell
 ---
 
 (concept-application-shell)=
-# The application shell: settings, interface, account, help and hubs
+# The application shell: settings, interface, account and help
 
 The shell holds no measurement. It holds the state that decides how a measurement is analysed and shown, and it
 separates that state by owner.
@@ -27,7 +27,7 @@ window.
 ## Dialogs in front
 
 A dialog (a question, a help window, a file or form dialog) washes and blurs what lies behind it, so it is the one
-thing in focus. *Settings ▸ Styles ▸ Blur behind dialogs* switches the blur off (the wash stays) and is kept for the
+thing in focus. *Settings ▸ Blur behind dialogs* switches the blur off (the wash stays) and is kept for the
 next start (`gui.modal_blur` in `settings_chisurf.yaml`).
 
 ## A tool opened twice
@@ -43,7 +43,7 @@ Help, About, Open Project, Updates, Plugins, Switch User, the boarding wizard).
 A calculator maps parameters to a number or a curve without data: $R_0$ and $E(R)$, a phasor, the PSF volume. A wizard
 chains several tools with a fixed order of decisions. A tool is an entry in its menu group, not a page inside a
 launcher: every calculator is a button of **Tools › Calculators** and every wizard (Anisotropy Wizard, Batch Analysis)
-a button of **Tools › Wizards**, each opening in a dock of its own. A window that lists several steps is kept only
+a button of **Tools › Wizards**, each opening as a tab beside the Workspace. A window that lists several steps is kept only
 where the steps share state, as Image Tools' imaging pipeline does.
 
 ## Help

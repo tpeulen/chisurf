@@ -1,14 +1,14 @@
 ---
 type: Guide
 title: 'Games: a break between fits'
-description: 'Tools: Tools → Games, five buttons -- number_quest, minesweeper, tetris, pong and breakout -- each a window of its own.'
+description: 'Tools: Tools → Games, five buttons -- number_quest, minesweeper, tetris, pong and breakout -- each a tool of its own.'
 tags: [guides, games]
 ---
 
 # Games: a break between fits
 
 **Tools:** the *Games* group of the *Tools* ribbon tab: five buttons, `number_quest`, `minesweeper`,
-`tetris`, `pong` and `breakout`, each opening its game in a window of its own. Each game is built from the physics and statistics of fluorescence (a lifetime
+`tetris`, `pong` and `breakout`, each opening its game as a tab beside the Workspace. Each game is built from the physics and statistics of fluorescence (a lifetime
 dial, a hot-pixel field, a spectral wall of bricks), but nothing here analyses data. See [Games and generated round data](../concepts/games.md)
 for the interpretation of the lifetime curve and the limits of these displays.
 
@@ -28,8 +28,8 @@ The Tools tab with the Games group opened: one button per game (collapsed into a
 Breakout in play, in its own window: the shared header row, the field, the keys in the footer.
 ```
 
-Press a game's button: it opens as a dock of its own, beside the others, and keeps its round while you look at
-another window. Click into the game before typing: the keys go to the window in front, press and release.
+Press a game's button: it opens as a tab beside the Workspace (a dock that can be moved, floated or closed) and
+keeps its round while you look at another window. Click into the game before typing: the keys go to the window in front, press and release.
 
 Window defaults are Breakout 820×690, Pong 820×640, Tetris 520×620, Minesweeper 560×620 and Number Quest 560×420.
 Resizing a window keeps that size when it reopens. A first launch

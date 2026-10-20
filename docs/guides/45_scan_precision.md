@@ -122,8 +122,7 @@ csc rics-precision 10 --pixel-time 8 --nx 64 --ny 64 --frames 100 \
 ```
 
 It prints the swept table, the best dwell and where your own setting sits;
-`--json` emits the whole sweep for a script to consume. All of the compute is
-Qt-free, so it needs no display.
+`--json` emits the whole sweep for a script to consume. It needs no display.
 
 A dwell time the estimator cannot evaluate is a `null` in the JSON (and an empty
 field in the CSV) rather than a `NaN`, so the payload parses under a strict

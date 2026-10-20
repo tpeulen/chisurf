@@ -242,7 +242,7 @@ I\rangle^2$ convention), lags are in ms.
 
 ## 5. FCS Merger
 
-The chunks arrive here directly; **Browse… / Open** instead loads a folder of
+The chunks arrive here directly; **📂 Open folder…** instead loads a folder of
 `.cor` (or legacy `.json.gz`) chunk files.
 
 ```{figure} figures/fcs_native_bh132_merger.png
@@ -313,7 +313,7 @@ The standalone **FCS-Merger** window (`chisurf/plugins/fcs/fcs_merger/`) has the
 same table for a folder of chunks you already have: drop the folder (or one of
 its files) on the window, or **📂 Open folder…**. A click on **Use** or a double
 click on a row includes or excludes a curve, and **Delete** removes it from the
-list (not from disk). **Target** is the file **💾 Save** writes, `<folder>.cor`
+list (not from disk). **Target** is the file **Save** writes, `<folder>.cor`
 beside the folder by default; **Save as…** writes elsewhere.
 
 The window remembers its size, not the analysis: reopen the folder and check

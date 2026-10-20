@@ -17,7 +17,7 @@ and every example below works on an empty session.
 
 The Console dock hosts the Terminal tool (`chisurf/plugins/core/terminal/`): a
 strip of pane actions (**New**, **Terminal**, **Python**, **Split ⇥**,
-**Split ⇣**, **Close**, *Guide*, `?`) over the window's own Python pane. More
+**Split ⇣**, **Close**, **Guide**, **Help**) over the window's own Python pane. More
 Python panes or shell panes open beside it; panes, splits and keys are in
 {doc}`110_terminal`, the theory in {doc}`../concepts/terminal`.
 
@@ -201,7 +201,7 @@ as in any other field.
 
 ## Headless
 
-Everything above works without a window. The interpreter is the Qt-free
+Everything above works without a window. The interpreter is
 `chisurf.core.console`, and a script, the `csc` CLI or the ZMQ server reach the
 same API through `chisurf.core.api.ChiSurfAPI`.
 

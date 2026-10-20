@@ -208,7 +208,7 @@ Two runnable examples ship with ChiSurf:
 
 ## Python API
 
-The coefficients are Qt-free and reusable on their own arrays:
+The coefficients are plain functions, reusable on your own arrays:
 
 ```python
 from chisurf.core.fluorescence.imaging import (

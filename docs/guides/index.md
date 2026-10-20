@@ -277,11 +277,11 @@ irf_estimation
 | [QuEst: predicting dye quenching at a labelling site](80_quenching_estimator.md) | `quenching_estimator` |
 | [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](81_trajectory_tools.md) | `traj_align`, `traj_convert`, `traj_fret`, ... (Structure → Trajectory, one button each), `core.structure.trajectory_data` |
 | [FRET lines: static, dynamic and model lines for the E–lifetime plot](82_fret_lines.md) | `fret_line` (Tools › Calculators), `core.fluorescence.fret.lines` |
-| [Spectra, overlap integrals and R₀](83_spectra_and_r0.md) | `spectra_downloader` (Spectroscopy menu), Förster calculator (TCSPC FRET κ² row → calc R0) |
+| [Spectra, overlap integrals and R₀](83_spectra_and_r0.md) | `spectra_downloader` (Tools → Calculators), Förster calculator (TCSPC FRET κ² row → calc R0) |
 | [Finding spots and objects in an image](84_spot_finder.md) | `spot_finder` (a step of Image Tools), `csc spot-finder`, `spot_finder.core.spots` |
-| [Checking a burst folder before an MFD fit](85_mfd_prepare.md) | `mfd_prepare` (no menu; CLI/RPC), `core.fluorescence.mfd.prepare` |
+| [Checking a burst folder before an MFD fit](85_mfd_prepare.md) | `mfd_prepare` (File → Data → MFD Prepare; CLI/RPC), `core.fluorescence.mfd.prepare` |
 | [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Spectroscopy → Imaging → Image Tools → Browser), `csc tttr-image-browser`, `core.image` |
-| [Detector setup: channels, PIE windows, timing and LUTs](87_channel_definition.md) | `setup_channel_definition` (Setup → Channel Definition), the shared detector setup editor |
+| [Detector setup: channels, PIE windows, timing and LUTs](87_channel_definition.md) | `setup_channel_definition` (Setup → Settings → Channel Definition), the shared detector setup editor |
 | [FRET docking and pair selection](88_fret_docking.md) | `fret_docking` (Structure → FRET → Docking & Screening), `fret` CLI, `fret.dock` RPC |
 | [The PSF measured on beads](93_psf_determination.md) | `psf_determination` (Imaging), `psf-determination` CLI, `PsfViewModel`, `psf_determination.fit.run` RPC |
 | [States and rates from a binned trace](92_hmm_binned_traces.md) | `hmm` (Spectroscopy → Kinetics), `csc hmm`, `HmmViewModel`, `hmm.fit` RPC |
@@ -289,8 +289,8 @@ irf_estimation
 | [The Settings window: one list, every settings panel](97_settings_hub.md) | `setup` (Setup → Settings), the hub that hosts every settings panel |
 | [Updating ChiSurf](90_updater.md) | `updater` (Setup → Settings → Updates), version check, changelog, Update Now |
 | [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → Photon data), `csc microtime-shift`, `core.fio.tttr_shift` |
-| [The FRET calculator](107_fret_calculator.md) | `fret_calculator` (Tools → FRET-Calculator), `fret_calculator.*` RPC, `core.algorithms` |
-| [Sampling a protein under FRET distance restraints](106_protein_monte_carlo.md) | `proteinmc` (Structure → Computation), `csc proteinmc`, `ProteinMCRunner` |
+| [The FRET calculator](107_fret_calculator.md) | `fret_calculator` (Tools → Calculators), `fret_calculator.*` RPC, `core.algorithms` |
+| [Sampling a protein under FRET distance restraints](106_protein_monte_carlo.md) | `proteinmc` (no menu entry; CLI), `csc proteinmc`, `ProteinMCRunner` |
 | [Reading the photons of a TTTR file](108_photon_table.md) | `photon_table` (Tools → Photon data), `PhotonTableModel` |
 
 ## Regenerating the figures
