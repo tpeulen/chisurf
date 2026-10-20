@@ -199,7 +199,8 @@ Ramachandran sums the phi/psi map energy over the residues whose phi and psi
 are both defined (general, PRO and GLY maps).
 
 On the example at stride 10 (90 frames), the radius of gyration is 16.0 Å
-(15.1–17.3 Å), H-Bond finds about 170 backbone H-bonds per frame,
+(15.1–17.3 Å), H-Bond scores 4.2 on average (−56.6 to 78.8; the column is
+the summed pair energy of the hb.npy table, not a count of H-bonds),
 Ramachandran scores 160 residues at −468 on average (about −2.9 per residue),
 and Miyazawa-Jernigan averages −910. H-Bond, the two contact potentials,
 Go-Potential and Ramachandran all score the first frame (the starting
