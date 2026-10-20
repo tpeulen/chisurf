@@ -1,9 +1,9 @@
 ---
 type: Plugin Reference
 title: Pong
-description: Classic Pong game with CPU opponent, score tracking, and particle effects; contained in the Games hub.
+description: Classic Pong game with CPU opponent, score tracking, and particle effects.
 resource: chisurf/plugins/misc/games/pong/
-tags: [reference, plugins, pong, tools, miscellaneous, games]
+tags: [reference, plugins, pong, tools, games]
 anchor: plugin-pong
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -11,15 +11,15 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-pong)=
 # Pong
 
-Classic Pong game with CPU opponent, score tracking, and particle effects; contained in the Games hub.
+Classic Pong game with CPU opponent, score tracking, and particle effects.
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
 | Plugin id | `pong` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Tools → Miscellaneous → Games → **Pong** |
-| Categories | Tools, Miscellaneous, Games |
+| Menu path | Tools → Games → **Pong** |
+| Categories | Tools, Games |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, services |
 | State namespace | `pong_game` |

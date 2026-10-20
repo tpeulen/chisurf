@@ -1,15 +1,15 @@
 ---
 type: Plugin Reference
-title: RICS-Precision
+title: RICS Precision
 description: Predict how precisely a raster scan (RICS) will measure a diffusion coefficient, and find the dwell time that measures it best — from the intended settings alone, before the microscope time is spent.
 resource: chisurf/plugins/calculator/rics_precision/
-tags: [reference, plugins, rics-precision, main, tools]
+tags: [reference, plugins, rics-precision, tools, calculators, imaging]
 anchor: plugin-rics_precision
 generator: build_tools/docs/generate_plugin_docs.py
 ---
 
 (plugin-rics_precision)=
-# RICS-Precision
+# RICS Precision
 
 Predict how precisely a raster scan (RICS) will measure a diffusion coefficient, and find the dwell time that measures it best — from the intended settings alone, before the microscope time is spent.
 
@@ -18,8 +18,8 @@ Predict how precisely a raster scan (RICS) will measure a diffusion coefficient,
 | Field | Value |
 | --- | --- |
 | Plugin id | `rics_precision` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Main → Tools → **RICS-Precision** |
-| Categories | Main, Tools |
+| Menu path | Tools → Calculators → **RICS Precision** |
+| Categories | Tools, Calculators, Imaging |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk |
 | State namespace | `rics_precision` |

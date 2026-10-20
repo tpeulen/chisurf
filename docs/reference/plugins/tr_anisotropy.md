@@ -1,15 +1,15 @@
 ---
 type: Plugin Reference
-title: Anisotropy-Wizard
+title: Anisotropy Wizard
 description: 'Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra.'
 resource: chisurf/plugins/fluorescence_decay/tr_anisotropy/
-tags: [reference, plugins, tr-anisotropy, spectroscopy, fluorescence-decay, decay]
+tags: [reference, plugins, tr-anisotropy, tools, wizards, fluorescence-decay]
 anchor: plugin-tr_anisotropy
 generator: build_tools/docs/generate_plugin_docs.py
 ---
 
 (plugin-tr_anisotropy)=
-# Anisotropy-Wizard
+# Anisotropy Wizard
 
 Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra.
 
@@ -18,8 +18,8 @@ Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polaris
 | Field | Value |
 | --- | --- |
 | Plugin id | `tr_anisotropy` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Decay → **Anisotropy-Wizard** |
-| Categories | Spectroscopy, Fluorescence decay, Decay |
+| Menu path | Tools → Wizards → **Anisotropy Wizard** |
+| Categories | Tools, Wizards, Fluorescence decay |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk |
 | State namespace | `tr_anisotropy` |
@@ -83,7 +83,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Time-resolved fluorescence anisotropy](/concepts/anisotropy.md)
-- **Workflow** — [Fluorescence lifetime and anisotropy decay fitting](/guides/10_lifetime_anisotropy_fitting.md)
+- **Workflow** — [Working in the shell: interface, account, calculators and wizards](/guides/105_application_shell.md), [Fluorescence lifetime and anisotropy decay fitting](/guides/10_lifetime_anisotropy_fitting.md)
 
 ## Source
 

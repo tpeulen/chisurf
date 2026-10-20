@@ -70,7 +70,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Configs | `configs_dir` | str |  |  | The folder of record build configs (one JSON per record: its measurements, calibrations, sources, construct, setups and Zenodo metadata). |
-| config_text | `config_text` | code_editor |  |  | The selected build config, read-only. Edit it in the project, then Build record. |
+| config_edit | `config_edit` | code_editor |  |  | The selected build config, or the example: edit it here and Save config (keys starting with _ are notes, ignored by the build). |
 | build_log | `build_log` | code_editor |  |  | What the last build printed: per container the burst tables, sidecars, encodings and checks, and VERIFY_OK or what failed. |
 
 ### 1 · Review

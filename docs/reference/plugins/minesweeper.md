@@ -1,9 +1,9 @@
 ---
 type: Plugin Reference
 title: Minesweeper
-description: A Minesweeper game with selectable playfield size and mine count, contained in the Games hub.
+description: A Minesweeper game with selectable playfield size and mine count.
 resource: chisurf/plugins/misc/games/minesweeper/
-tags: [reference, plugins, minesweeper, tools, miscellaneous, games]
+tags: [reference, plugins, minesweeper, tools, games]
 anchor: plugin-minesweeper
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -11,15 +11,15 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-minesweeper)=
 # Minesweeper
 
-A Minesweeper game with selectable playfield size and mine count, contained in the Games hub.
+A Minesweeper game with selectable playfield size and mine count.
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
 | Plugin id | `minesweeper` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Tools → Miscellaneous → Games → **Minesweeper** |
-| Categories | Tools, Miscellaneous, Games |
+| Menu path | Tools → Games → **Minesweeper** |
+| Categories | Tools, Games |
 | Version | 1.0.0 |
 | Surfaces | emtk |
 

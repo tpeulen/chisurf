@@ -1,9 +1,9 @@
 ---
 type: Plugin Reference
 title: Tetris
-description: Spectral Tetris with line clearing, score tracking, pause and restart; contained in the Games hub.
+description: Spectral Tetris with line clearing, score tracking, pause and restart.
 resource: chisurf/plugins/misc/games/tetris/
-tags: [reference, plugins, tetris, tools, miscellaneous, games]
+tags: [reference, plugins, tetris, tools, games]
 anchor: plugin-tetris
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -11,15 +11,15 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-tetris)=
 # Tetris
 
-Spectral Tetris with line clearing, score tracking, pause and restart; contained in the Games hub.
+Spectral Tetris with line clearing, score tracking, pause and restart.
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
 | Plugin id | `tetris` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Tools → Miscellaneous → Games → **Tetris** |
-| Categories | Tools, Miscellaneous, Games |
+| Menu path | Tools → Games → **Tetris** |
+| Categories | Tools, Games |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, services |
 | State namespace | `tetris_game` |

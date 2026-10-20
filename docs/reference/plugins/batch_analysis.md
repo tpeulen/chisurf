@@ -1,15 +1,15 @@
 ---
 type: Plugin Reference
-title: Batch-Analysis
+title: Batch Analysis
 description: Apply one pre-optimised template fit to many datasets or files in one pass and export the consolidated results (CSV, DOCX report, per-run ZIP).
 resource: chisurf/plugins/core/batch_analysis/
-tags: [reference, plugins, batch-analysis, main, tools, analysis]
+tags: [reference, plugins, batch-analysis, tools, wizards, analysis]
 anchor: plugin-batch_analysis
 generator: build_tools/docs/generate_plugin_docs.py
 ---
 
 (plugin-batch_analysis)=
-# Batch-Analysis
+# Batch Analysis
 
 Apply one pre-optimised template fit to many datasets or files in one pass and export the consolidated results (CSV, DOCX report, per-run ZIP).
 
@@ -18,8 +18,8 @@ Apply one pre-optimised template fit to many datasets or files in one pass and e
 | Field | Value |
 | --- | --- |
 | Plugin id | `batch_analysis` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Main → Tools → **Batch-Analysis** |
-| Categories | Main, Tools, Analysis |
+| Menu path | Tools → Wizards → **Batch Analysis** |
+| Categories | Tools, Wizards, Analysis |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk |
 | State namespace | `batch_analysis` |
@@ -51,7 +51,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Parameter uncertainty: priors, posteriors and sampling](/concepts/parameter_uncertainty.md)
-- **Workflow** — [Model comparison and batch fits](/guides/78_model_comparison_and_batch.md)
+- **Workflow** — [Working in the shell: interface, account, calculators and wizards](/guides/105_application_shell.md), [Model comparison and batch fits](/guides/78_model_comparison_and_batch.md)
 
 ## Source
 

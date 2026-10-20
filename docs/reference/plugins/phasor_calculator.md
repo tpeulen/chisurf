@@ -1,15 +1,15 @@
 ---
 type: Plugin Reference
-title: Phasor-Calculator
+title: Phasor Calculator
 description: 'Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line.'
 resource: chisurf/plugins/calculator/phasor_calculator/
-tags: [reference, plugins, phasor-calculator, main, tools, phasor-flim]
+tags: [reference, plugins, phasor-calculator, tools, calculators, phasor-flim]
 anchor: plugin-phasor_calculator
 generator: build_tools/docs/generate_plugin_docs.py
 ---
 
 (plugin-phasor_calculator)=
-# Phasor-Calculator
+# Phasor Calculator
 
 Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line.
 
@@ -18,8 +18,8 @@ Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks
 | Field | Value |
 | --- | --- |
 | Plugin id | `phasor_calculator` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Main → Tools → **Phasor-Calculator** |
-| Categories | Main, Tools, Phasor-FLIM |
+| Menu path | Tools → Calculators → **Phasor Calculator** |
+| Categories | Tools, Calculators, Phasor-FLIM |
 | Version | 1.0.0 |
 | Surfaces | emtk |
 | State namespace | `phasor_calculator` |

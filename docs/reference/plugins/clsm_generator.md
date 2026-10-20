@@ -3,7 +3,7 @@ type: Plugin Reference
 title: CLSM Generator
 description: Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s).
 resource: chisurf/plugins/microscopy/clsm_generator/
-tags: [reference, plugins, clsm-generator, spectroscopy, imaging, simulate]
+tags: [reference, plugins, clsm-generator, spectroscopy, imaging, simulation]
 anchor: plugin-clsm_generator
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,8 +18,8 @@ Generate a synthetic CLSM photon image from an intensity image + per-detector li
 | Field | Value |
 | --- | --- |
 | Plugin id | `clsm_generator` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Imaging → Simulate → **CLSM Generator** |
-| Categories | Spectroscopy, Imaging, Simulate |
+| Menu path | Spectroscopy → Imaging → **CLSM Generator** |
+| Categories | Spectroscopy, Imaging, Simulation |
 | Version | 1.0.0 |
 | Surfaces | emtk |
 | State namespace | `clsm_generator` |

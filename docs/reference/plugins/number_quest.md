@@ -1,9 +1,9 @@
 ---
 type: Plugin Reference
 title: Number Quest
-description: A small number-guessing game contained in the Games hub.
+description: A small number-guessing game.
 resource: chisurf/plugins/misc/games/number_quest/
-tags: [reference, plugins, number-quest, tools, miscellaneous, games]
+tags: [reference, plugins, number-quest, tools, games]
 anchor: plugin-number_quest
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -11,15 +11,15 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-number_quest)=
 # Number Quest
 
-A small number-guessing game contained in the Games hub.
+A small number-guessing game.
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
 | Plugin id | `number_quest` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Tools → Miscellaneous → Games → **Number Quest** |
-| Categories | Tools, Miscellaneous, Games |
+| Menu path | Tools → Games → **Number Quest** |
+| Categories | Tools, Games |
 | Version | 1.0.0 |
 | Surfaces | emtk |
 

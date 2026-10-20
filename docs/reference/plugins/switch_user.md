@@ -42,7 +42,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [The application shell: settings, interface, account, help and hubs](/concepts/application_shell.md)
-- **Workflow** — [Working in the shell: interface, account and the two hubs](/guides/105_application_shell.md)
+- **Workflow** — [Working in the shell: interface, account, calculators and wizards](/guides/105_application_shell.md)
 
 ## Source
 

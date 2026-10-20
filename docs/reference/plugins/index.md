@@ -10,7 +10,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **127 plugins**, **91** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the controls of the others are described in each plugin's guide, and every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **124 plugins**, **91** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the controls of the others are described in each plugin's guide, and every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -19,7 +19,7 @@ Of the **127 plugins**, **91** build their interface from declarative AutoForm s
 *
 ```
 
-**127 plugins** across 28 categories.
+**124 plugins** across 26 categories.
 
 ## Core
 
@@ -49,22 +49,6 @@ Of the **127 plugins**, **91** build their interface from declarative AutoForm s
 | [Boarding Wizard](boarding.md) *(hidden)* | Startup onboarding wizard for first-run ChiSurf configuration. |
 | [Documentation](help.md) | Documentation browser and help resource viewer for ChiSurf. |
 
-## Main → Tools
-
-| Plugin | Summary |
-| --- | --- |
-| [Batch-Analysis](batch_analysis.md) *(hidden)* | Apply one pre-optimised template fit to many datasets or files in one pass and export the consolidated results (CSV, DOCX report, per-run ZIP). |
-| [F-Test](f_test.md) *(hidden)* | F-test calculator: compare two nested model fits (confidence &lt;-> chi2 threshold) and compute the chi2-max upper limit of a single fit at a confidence level. Declarative AutoForm view; values load from open fits. |
-| [FRET-Calculator](fret_calculator.md) *(hidden)* | Combined heteroFRET and homoFRET parameter calculator. |
-| [Phasor-Calculator](phasor_calculator.md) *(hidden)* | Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line. |
-| [RICS-Precision](rics_precision.md) *(hidden)* | Predict how precisely a raster scan (RICS) will measure a diffusion coefficient, and find the dwell time that measures it best — from the intended settings alone, before the microscope time is spent. |
-
-## Microscopy
-
-| Plugin | Summary |
-| --- | --- |
-| [PSF Calculator](psf_calculator.md) *(hidden)* | Compute and view a 3-D point-spread function: scalar, Airy or vectorial Richards-Wolf, with the input polarization at the objective pupil. |
-
 ## Setup
 
 | Plugin | Summary |
@@ -91,7 +75,6 @@ Of the **127 plugins**, **91** build their interface from declarative AutoForm s
 | [FCS](fcs_correlator.md) | The FCS workflow: multi-tau correlation of TTTR photon streams in five steps -- channel definitions (detectors and PIE windows), files, optional photon/burst filter, correlation, and screening and merging of the curves. Filter Calc... hands the files to the fFCS Filter Calculator. |
 | [FCS Converter](fcs_convert.md) *(hidden)* | Convert correlation-curve files between the supported FCS formats from the command line (csc). |
 | [FCS Filter Calculator](fcs_filter_calculator.md) | Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns. |
-| [FCS Saturation](fcs_saturation.md) *(hidden)* | FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5). |
 | [FCS-Merger](fcs_merger.md) *(hidden)* | Merge / average multiple FCS correlation curves to improve signal-to-noise. |
 | [Lifetime-FCS Simulator](fcs-lfcs-sim.md) | Simulate diffusing species with distinct fluorescence lifetimes and optional interconversion, then recover them by lifetime-filtered (FLCS) correlation. |
 | [PCH](pch.md) | Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. Compute PCH histograms from TTTR files and fit multi-species models to extract molecular brightness and occupancy. |
@@ -100,7 +83,6 @@ Of the **127 plugins**, **91** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [Anisotropy-Wizard](tr_anisotropy.md) *(hidden)* | Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra. |
 | [Histogram-Microtime](microtime_histogram.md) | Create and inspect TTTR microtime histograms. |
 | [IRF Estimation](irf_estimator.md) | Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution. |
 | [Lazy Lifetime Analysis](lltf.md) | Lazy Lifetime Analysis for TCSPC fluorescence decay data. |
@@ -114,24 +96,24 @@ Of the **127 plugins**, **91** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [Accurate FRET](accurate_fret.md) *(hidden)* | Accurate FRET (Hellenkamp): automatic alpha/beta/gamma/delta from the burst populations, the optics prior of a saved light path and the static FRET line, with E-S and E-lifetime views. |
-| [FRET Line Generator](fret_line.md) *(hidden)* | Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Results are suitable for overlaying on smFRET 2D histograms in ndX. |
 
 ## Spectroscopy → Imaging
 
 | Plugin | Summary |
 | --- | --- |
+| [CLSM Generator](clsm_generator.md) | Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s). |
 | [CLSM-Draw](clsm.md) *(hidden)* | Create CLSM-TTTR image representations, select pixels interactively, and export fluorescence-decay histograms. |
 | [Colocalization](img_coloc.md) *(hidden)* | Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) on TIFF stacks and photon-stream images, with an interactive intensity scatter gate. |
-| [Drift Correction](img_drift.md) *(hidden)* | Measure and remove inter-frame sample drift in TIFF stacks and photon-stream images. Photon streams are corrected photon by photon, so lifetimes and correlations stay valid. |
+| [Drift Correction](img_drift.md) | Measure and remove inter-frame sample drift in TIFF stacks and photon-stream images. Photon streams are corrected photon by photon, so lifetimes and correlations stay valid. |
 | [FRC Resolution](img_frc.md) *(hidden)* | Measure the resolution an image actually achieved by Fourier ring correlation — of a TIFF stack or a photon stream — and read it against the 1/7, ½-bit or 2σ criterion. |
 | [Flow Maps](img_flow.md) *(hidden)* | Map the velocity field of a sample from its own correlations — one arrow per tile, over the image. No model and no fit: the velocity is read off where a correlation peak is. Ships a simulated demo whose flow profile is known, so the arrows can be checked. |
 | [IRF & BG](img_calibration.md) *(hidden)* | Per-detector IRF file and background (kHz) calibration; transferred to phasor and pixel-wise MLE. Optional (skippable) pipeline step. |
-| [Image Tools](imaging_tools.md) | Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow Maps, Particle Tracking, Colocalization, the per-pixel maps, CLSM Draw, Region MLE, PSF Determination, CLSM Generator. |
+| [Image Tools](imaging_tools.md) | The imaging pipeline: the steps that share one detector setup, photon source, imaging HDF5 and IRF & BG calibration -- Setup, Image Browser, FRC Resolution, Flow Maps, Colocalization, the numbered per-pixel maps (Intensity, Number & Brightness, Mean Micro-Time, IRF & BG, Phasor-FLIM, Pixel-wise MLE), CLSM Draw, Spot Finder and Region MLE. |
 | [Intensity](img_pixel_intensity.md) *(hidden)* | Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference) that N&B / phasor / MLE enrich. |
 | [Mean Micro-Time](img_pixel_micro_time.md) *(hidden)* | Per-pixel mean micro-time (arrival time) maps from TTTR imaging data. |
 | [Number & Brightness](img_pixel_nb.md) *(hidden)* | Per-pixel Number & Brightness from TTTR imaging stacks: apparent B and N, molecular brightness and number, cross N&B, analog-detector calibration, bleaching detrending, and gating a brightness population back onto the image. |
-| [PSF Determination](psf_determination.md) *(hidden)* | 3D Gaussian PSF fitting and bead detection for confocal microscopy. |
-| [Particle Tracking](img_tracking.md) *(hidden)* | Single-particle tracking: detect diffraction-limited particles in every frame, link them into trajectories by exact assignment with gap closing, and fit the diffusion coefficient and anomalous exponent from the mean squared displacement. |
+| [PSF Determination](psf_determination.md) | 3D Gaussian PSF fitting and bead detection for confocal microscopy. |
+| [Particle Tracking](img_tracking.md) | Single-particle tracking: detect diffraction-limited particles in every frame, link them into trajectories by exact assignment with gap closing, and fit the diffusion coefficient and anomalous exponent from the mean squared displacement. |
 | [Phasor-FLIM](img_pixel_phasor.md) *(hidden)* | Per-pixel phasor (g, s) maps and phasor plot from TTTR imaging data. |
 | [Spot Finder](spot_finder.md) *(hidden)* | Detect spots and regions in imaging data and persist them, with their pixels, into the measurement's container. |
 
@@ -141,12 +123,6 @@ Of the **127 plugins**, **91** build their interface from declarative AutoForm s
 | --- | --- |
 | [Pixel-wise MLE](img_pixel_mle.md) *(hidden)* | Pixel-wise MLE lifetime analysis for TTTR imaging data. |
 | [Region MLE](region_mle.md) *(hidden)* | Region MLE lifetime analysis from TTTR imaging data (PTU). |
-
-## Spectroscopy → Imaging → Simulate
-
-| Plugin | Summary |
-| --- | --- |
-| [CLSM Generator](clsm_generator.md) *(hidden)* | Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s). |
 
 ## Spectroscopy → Imaging → Tools
 
@@ -194,7 +170,6 @@ Of the **127 plugins**, **91** build their interface from declarative AutoForm s
 | --- | --- |
 | [Docking & Screening](fret_docking.md) | FRET-restrained rigid-body docking, refinement, structure-library screening and error estimation using IMP + IMP.bff accessible volumes (a thin shim around IMP.pmi). |
 | [FPS JSON Editor](fps_json_editor.md) | Edit fps.json labelling plans in ChiMOL's labelling editor (positions, distances, FlexFit, accessible volumes); validate payloads and fetch PDB structures headlessly. |
-| [Kappa2 Distribution](kappa2_dist.md) *(hidden)* | Calculate and visualise the k² orientation-factor distribution for FRET using WIC, DWT, or isotropic models. |
 
 ## Structure → Modelling
 
@@ -226,26 +201,32 @@ Of the **127 plugins**, **91** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [Calculators](calculators.md) | Hub that groups ChiSurf's FRET-line, FRET/homoFRET, FCS and phasor-plot calculators and embeds the selected one in a two-panel view. |
+| [F-Test](f_test.md) | F-test calculator: compare two nested model fits (confidence &lt;-> chi2 threshold) and compute the chi2-max upper limit of a single fit at a confidence level. Declarative AutoForm view; values load from open fits. |
+| [FCS Saturation](fcs_saturation.md) | FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5). |
+| [FRET Calculator](fret_calculator.md) | Combined heteroFRET and homoFRET parameter calculator. |
+| [FRET Line Generator](fret_line.md) | Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Results are suitable for overlaying on smFRET 2D histograms in ndX. |
+| [Kappa2 Distribution](kappa2_dist.md) | Calculate and visualise the k² orientation-factor distribution for FRET using WIC, DWT, or isotropic models. |
 | [Light Path Simulator](lightpath_simulator.md) | Optical light path simulator to calculate crosstalk and R0 overlap integrals. |
+| [PSF Calculator](psf_calculator.md) | Compute and view a 3-D point-spread function: scalar, Airy or vectorial Richards-Wolf, with the input polarization at the objective pupil. |
+| [Phasor Calculator](phasor_calculator.md) | Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line. |
+| [RICS Precision](rics_precision.md) | Predict how precisely a raster scan (RICS) will measure a diffusion coefficient, and find the dwell time that measures it best — from the intended settings alone, before the microscope time is spent. |
 | [Spectra Downloader](spectra_downloader.md) | Download, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources) |
-| [Wizards](wizards.md) | Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view. |
+
+## Tools → Games
+
+| Plugin | Summary |
+| --- | --- |
+| [Breakout](breakout.md) | Classic Breakout game with progressive difficulty, multiple brick types, mouse/keyboard control, and particle effects. |
+| [Minesweeper](minesweeper.md) | A Minesweeper game with selectable playfield size and mine count. |
+| [Number Quest](number_quest.md) | A small number-guessing game. |
+| [Pong](pong.md) | Classic Pong game with CPU opponent, score tracking, and particle effects. |
+| [Tetris](tetris.md) | Spectral Tetris with line clearing, score tracking, pause and restart. |
 
 ## Tools → Miscellaneous
 
 | Plugin | Summary |
 | --- | --- |
 | [Plugin-Check](plugin_check.md) *(hidden)* | Tests all ChiSurf plugins for startup errors and reports successes, failures, and skipped checks. |
-
-## Tools → Miscellaneous → Games
-
-| Plugin | Summary |
-| --- | --- |
-| [Breakout](breakout.md) *(hidden)* | Classic Breakout game with progressive difficulty, multiple brick types, mouse/keyboard control, and particle effects; contained in the Games hub. |
-| [Minesweeper](minesweeper.md) *(hidden)* | A Minesweeper game with selectable playfield size and mine count, contained in the Games hub. |
-| [Number Quest](number_quest.md) *(hidden)* | A small number-guessing game contained in the Games hub. |
-| [Pong](pong.md) *(hidden)* | Classic Pong game with CPU opponent, score tracking, and particle effects; contained in the Games hub. |
-| [Tetris](tetris.md) *(hidden)* | Spectral Tetris with line clearing, score tracking, pause and restart; contained in the Games hub. |
 
 ## Tools → Photon data
 
@@ -262,7 +243,6 @@ Of the **127 plugins**, **91** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [Code Editor](code_editor.md) | Shared multi-document code/text editor with project navigation, symbols, diagnostics, and optional Python LSP integration. |
-| [Games](games.md) | A collection of built-in games: Number Quest, Minesweeper, Tetris, Pong, and Breakout. |
 | [MMFDB Admin](mmfdb_admin.md) | Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives. |
 | [Python Terminal](python_terminal.md) | ChiSurf's built-in Python console as a terminal pane: tmux-style tabs, splits and floating windows around the console engine. |
 | [Terminal](terminal.md) | Terminal panes like tmux: tabs, splits and floating windows of real PTY sessions. |
@@ -280,6 +260,13 @@ Of the **127 plugins**, **91** build their interface from declarative AutoForm s
 | [Acquisition](acq.md) | Single-molecule fluorescence acquisition: stream photons from real TCSPC hardware or the built-in tttrlib Sim* photon simulator (confocal diffusion with FRET, anisotropy and photophysics). |
 | [Global View](globalview.md) | Interactive network graph for visualizing and managing parameter relationships across fits in global analysis. |
 | [ndX](ndxplorer.md) | Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data. |
+
+## Tools → Wizards
+
+| Plugin | Summary |
+| --- | --- |
+| [Anisotropy Wizard](tr_anisotropy.md) | Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra. |
+| [Batch Analysis](batch_analysis.md) | Apply one pre-optimised template fit to many datasets or files in one pass and export the consolidated results (CSV, DOCX report, per-run ZIP). |
 
 ## Uncategorized
 

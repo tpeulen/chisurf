@@ -3,7 +3,7 @@ type: Plugin Reference
 title: FRET Line Generator
 description: Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Results are suitable for overlaying on smFRET 2D histograms in ndX.
 resource: chisurf/plugins/fret_line/
-tags: [reference, plugins, fret-line, spectroscopy, fret, analysis]
+tags: [reference, plugins, fret-line, tools, calculators, fret, analysis]
 anchor: plugin-fret_line
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,8 +18,8 @@ Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Resul
 | Field | Value |
 | --- | --- |
 | Plugin id | `fret_line` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → FRET → **FRET Line Generator** |
-| Categories | Spectroscopy, FRET, Analysis |
+| Menu path | Tools → Calculators → **FRET Line Generator** |
+| Categories | Tools, Calculators, FRET, Analysis |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |
 | State namespace | `fret_line` |
@@ -59,7 +59,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Förster resonance energy transfer (FRET)](/concepts/fret.md)
-- **Workflow** — [FRET lines: static, dynamic and model lines for the E–lifetime plot](/guides/82_fret_lines.md)
+- **Workflow** — [Working in the shell: interface, account, calculators and wizards](/guides/105_application_shell.md), [FRET lines: static, dynamic and model lines for the E–lifetime plot](/guides/82_fret_lines.md)
 
 ## Source
 

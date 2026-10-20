@@ -3,7 +3,7 @@ type: Plugin Reference
 title: F-Test
 description: 'F-test calculator: compare two nested model fits (confidence <-> chi2 threshold) and compute the chi2-max upper limit of a single fit at a confidence level. Declarative AutoForm view; values load from open fits.'
 resource: chisurf/plugins/core/f_test/
-tags: [reference, plugins, f-test, main, tools, statistics]
+tags: [reference, plugins, f-test, tools, calculators, statistics]
 anchor: plugin-f_test
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,8 +18,8 @@ F-test calculator: compare two nested model fits (confidence &lt;-> chi2 thresho
 | Field | Value |
 | --- | --- |
 | Plugin id | `f_test` |
-| Menu path | not in the menus (opened from a hub or another tool); display name Main → Tools → **F-Test** |
-| Categories | Main, Tools, Statistics |
+| Menu path | Tools → Calculators → **F-Test** |
+| Categories | Tools, Calculators, Statistics |
 | Version | 2.0.0 |
 | Surfaces | emtk |
 | State namespace | `f_test` |
@@ -51,7 +51,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Parameter uncertainty: priors, posteriors and sampling](/concepts/parameter_uncertainty.md)
-- **Workflow** — [The decay tools, Lazy Lifetime Analysis and synthetic decays](/guides/76_decay_analysis_tools.md), [Model comparison and batch fits](/guides/78_model_comparison_and_batch.md)
+- **Workflow** — [Working in the shell: interface, account, calculators and wizards](/guides/105_application_shell.md), [The decay tools, Lazy Lifetime Analysis and synthetic decays](/guides/76_decay_analysis_tools.md), [Model comparison and batch fits](/guides/78_model_comparison_and_batch.md)
 
 ## Source
 
