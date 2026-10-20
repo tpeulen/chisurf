@@ -925,7 +925,7 @@ def test_the_imaging_hub_contract(app, drv, photon_folder):
     )
     app._coordinator = Hub()
     app.model.can_next = True
-    app.apply_pipeline_context({"file": str(photon_folder / SP8)})
+    app.apply_pipeline_context({"source": str(photon_folder / SP8)})
     drv.settle()
     assert app.model.current_folder == str(photon_folder) and app.model.current_file == str(
         photon_folder / SP8

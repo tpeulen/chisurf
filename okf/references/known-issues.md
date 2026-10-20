@@ -4,9 +4,25 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Spot Finder reads the Leica SP5 test scan as one 7921-line frame (found 2026-10-20, branch `mcts-native-baseline`)
+
+status: open — owner: imaging (`spot_finder/core/spots.py::load_intensity`) or tttrlib, whichever owns the auto layout.
+
+`load_intensity` builds `tttrlib.CLSMImage(tttr, channels=..., fill=True)` from the header alone. On
+`test/data/clsm/Leica_SP5.ptu` the header reads `n_lines=256, n_pixel_per_line=256, marker_frame_start=[4]`, but the
+file has fewer than two frame markers, so tttrlib warns "no complete frames; salvaging 1 frame(s) with 7921 line(s)"
+and returns a `(1, 7921, 256)` image: a Preview finds ~4000 one-pixel regions along a strip. CLSM Draw on the same
+file passes its own markers. Measure: `np.asarray(tttrlib.CLSMImage(tttrlib.TTTR(SP5), channels=[0,1,2],
+fill=True).intensity).shape`. The fix is to split the salvaged lines by the header's `n_lines` (in tttrlib, where the
+salvage lives), not a reshape in the plugin. Leica SP8 reads 512 x 512 and is what the hub hand-off test uses.
+
 ## CLSM Draw and Spot Finder never adopt the Image Tools source (found 2026-10-20, branch `mcts-native-baseline`)
 
-status: open
+status: resolved 2026-10-20 — the receivers read the coordinator's `source` (CLSM Draw, the Spot Finder view model
+and the Image Browser model no longer look for `files` / `file`, which nobody sent). CLSM Draw also applies a setup or
+source that arrives during a load once the load ends (`_pending_setup` / `_pending_pipeline` were stored and never
+read). Test: `imaging_tools/test/test_emtk_imaging_tools_handoff.py` (Browser row click on the hub → both tools open the
+SP8 scan and draw it, PixelPainter PNGs inspected). Original finding follows.
 
 The Image Tools coordinator hands every step `{"source": <photon file>, "hdf5": <imaging HDF5>}`
 (`ImagingToolsApp._apply_context`), but `clsm/gui/app.py::apply_pipeline_context`,

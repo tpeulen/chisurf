@@ -494,10 +494,10 @@ class SpotFinderViewModel(MleObserverMixin):
         self.notify("settings")
 
     def apply_pipeline_context(self, payload: dict) -> None:
-        """Adopt the pipeline's source file(s)."""
-        files = payload.get("files") or ([payload["file"]] if payload.get("file") else [])
-        if files:
-            self.files = [str(f) for f in files]
+        """Adopt the pipeline's source (the Browser's photon file)."""
+        source = (payload or {}).get("source")
+        if source:
+            self.files = [str(source)]
         self.notify("settings")
 
     def apply_calibration(self, calibration: dict) -> None:

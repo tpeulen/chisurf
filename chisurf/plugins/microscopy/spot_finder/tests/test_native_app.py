@@ -244,7 +244,7 @@ def test_pipeline_updates_are_not_lost_to_background_delivery():
     app = make_app(model=model)
     app.start("preview")
     assert model.started.wait(5)
-    app.apply_pipeline_context({"files": ["new.tif"]})
+    app.apply_pipeline_context({"source": "new.tif"})
     assert model.files == ["old.tif"]
     model.proceed.set()
     finish(app)

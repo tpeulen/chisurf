@@ -654,9 +654,9 @@ class ClsmApp(TourTarget, ImApp):
         if self.job.busy:
             self._pending_pipeline = dict(payload)
             return
-        files = payload.get("files") or ([payload["file"]] if payload.get("file") else [])
-        if files:
-            self.open_paths(files)
+        source = payload.get("source")
+        if source and str(source) != self.model.filename:
+            self.open_paths([source])
 
     def state_dict(self):
         return dict(
@@ -697,7 +697,16 @@ class ClsmApp(TourTarget, ImApp):
         self._executor.shutdown(wait=False, cancel_futures=True)
 
     def render(self):
-        if self.job.poll():
+        loaded = self.job.poll()
+        if not self.job.busy:
+            # A setup or source that arrived while a job ran is applied once it ended, not dropped.
+            pending_setup, self._pending_setup = self._pending_setup, None
+            pending_pipeline, self._pending_pipeline = self._pending_pipeline, None
+            if pending_setup:
+                self.apply_setup_settings(pending_setup)
+            if pending_pipeline:
+                self.apply_pipeline_context(pending_pipeline)
+        if loaded:
             self.selection_version += 1
             self.canvas.reset()
             m = self.model

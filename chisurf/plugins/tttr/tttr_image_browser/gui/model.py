@@ -181,10 +181,10 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
 
     def apply_pipeline_context(self, payload: dict) -> None:
         """The imaging hub's current source: open the folder that holds it and select it."""
-        files = payload.get("files") or ([payload["file"]] if payload.get("file") else [])
-        if not files:
+        source = (payload or {}).get("source")
+        if not source:
             return
-        first = pathlib.Path(str(files[0]))
+        first = pathlib.Path(str(source))
         folder = first if first.is_dir() else first.parent
         if self.current_folder != str(folder):
             self.open_folder(str(folder))
