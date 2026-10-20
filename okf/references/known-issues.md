@@ -6,7 +6,13 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## Spot Finder reads the Leica SP5 test scan as one 7921-line frame (found 2026-10-20, branch `mcts-native-baseline`)
 
-status: open — owner: imaging (`spot_finder/core/spots.py::load_intensity`) or tttrlib, whichever owns the auto layout.
+status: resolved 2026-10-20 in tttrlib `5d126dec3` — the cause was not the salvage path but the marker layout: the file
+emits its frame marker with the stop of each frame's last line, 210 times merged into one record (routing channel
+6 = 4|2) and 21 times as 4 then 2. The header names only 4, so the merged records were never frame edges and each
+separate one shifted every later (start, stop) pair onto a fly-back; splitting the 7921 salvaged lines by `n_lines`
+would have produced fly-back frames. tttrlib now adds frame|stop to header-derived PTU frame markers and pairs each
+line start with its closing stop. Header-only read: `(230, 256, 256)`, `load_intensity` → `(256, 256)`; test
+`tttrlib/test/python/clsm/test_CLSM_frame_marker_with_line_stop.py`. Original finding follows.
 
 `load_intensity` builds `tttrlib.CLSMImage(tttr, channels=..., fill=True)` from the header alone. On
 `test/data/clsm/Leica_SP5.ptu` the header reads `n_lines=256, n_pixel_per_line=256, marker_frame_start=[4]`, but the
