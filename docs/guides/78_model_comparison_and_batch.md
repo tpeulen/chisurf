@@ -28,8 +28,8 @@ to 512, fit window channels 55–480) and its donor–acceptor partner
 
 ### Open the tool
 
-**Tools → Calculators**, entry **📉 F-test / χ²-max**. The manifest name
-`Main:Tools:F-Test` is hidden from the menu. The toolbar holds **From fit**,
+**Tools → Calculators → 📉 F-Test** (manifest address `Tools:Calculators:F-Test`).
+The toolbar holds **From fit**,
 **Load example** (a simulated two-lifetime decay fitted both ways), **Guide**
 and **?**, which opens the formulas.
 

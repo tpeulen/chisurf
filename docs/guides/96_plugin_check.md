@@ -25,7 +25,7 @@ is terminated after 30 seconds (5 in a safe sweep) and reported as a failure.
 
 ## 1. Open the tool
 
-Plugin Check is under **Setup → Settings → Plugin Check**, and standalone under **Tools → Miscellaneous → Plugin-Check**. The window lists every discovered plugin, the ones that
+Plugin Check is under **Setup → Settings → Plugin Check**; its manifest is menu-hidden, so that is the only way in (standalone: `python -m chisurf.emtk --plugin plugin_check`). The window lists every discovered plugin, the ones that
 ship with ChiSurf and the ones in your own plugin directory, with every row *pending* until a sweep reaches it.
 
 ```{figure} figures/plugin_check.png
