@@ -136,3 +136,56 @@ def test_apply_restyles_the_running_application_with_the_shared_widget_fragments
     m.application_callback = lambda text: False
     assert m.apply() and m.status.endswith("at the next launch.")
 
+
+
+def test_apply_restyles_emtk_live_and_supports_css(tmp_path):
+    from emtk import im, theme
+    from emtk import style as emtk_style
+    from emtk.testing import RecordingPainter
+
+    from chisurf.plugins.core.style_manager.gui.app import StyleManagerApp
+
+    m = model(tmp_path)
+    # Test creating a .css file
+    assert m.new("modern.css")
+    assert m.current_file.name == "modern.css"
+    m.editor.set_text("window { background-color: #112233; color: #ffffff; } button { background-color: #445566; }")
+    app = StyleManagerApp(m)
+    try:
+        pressed = []
+        original = im.button
+        im.button = lambda label, *a, **k: pressed.append(label) or label == "Apply"
+        try:
+            with im.frame(RecordingPainter(), (0, 0, 800, 600)):
+                app._render()
+        finally:
+            im.button = original
+        assert emtk_style.WINDOW_BG == (17, 34, 51, 255)
+        assert emtk_style.BUTTON == (68, 85, 102, 255)
+        assert "Applied modern.css to EMTK" in m.status
+    finally:
+        theme.apply_theme("dark")
+        app.close()
+
+
+def test_editor_uses_default_code_editor_and_no_yellow_popup(tmp_path):
+    from emtk.im_core import Col
+    from emtk.stylesheet import parse_stylesheet
+
+    m = model(tmp_path)
+    assert m.editor.config.show_line_numbers is True
+    assert m.editor.config.tab_size == 4
+    assert m.editor.config.font_role == "code"
+
+    # Verify that tooltip does not turn POPUP_BG yellow
+    css_with_tooltip = """
+    menu {
+        background-color: #2c2c2c;
+    }
+    tooltip {
+        background-color: rgba(255, 200, 80, 0.9);
+        color: #000000;
+    }
+    """
+    _, _, style = parse_stylesheet(css_with_tooltip)
+    assert style.color(Col.POPUP_BG) == (44, 44, 44, 255)
