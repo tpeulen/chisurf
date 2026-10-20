@@ -25,7 +25,8 @@ optimisers, and the stages declare the stored optimum as an extra start
 numbers move; ``REFIT`` pins them (the plan concept and ``okf/log.md`` list them beside the
 stored run's).
 
-Both are ``slow``: (a) about 4 minutes, (b) about two hours on 6 worker processes.
+Both are ``slow``: (a) about 4 minutes, (b) about 3.3 hours on 7 worker processes (the serial
+MINPACK joint fit of the 41-parameter graph alone is 1.5 h).
 """
 
 from __future__ import annotations
@@ -209,19 +210,21 @@ def test_the_stored_optimum_on_its_own_tables(golden):
     assert printed_mismatches(summary, golden) == []
 
 
-#: today's geometry, full preset (64 random starts + the declared stored-run start): per block
-#: quench scale (best, 68 % low, high), model error, outlier sites, worst LOO site. The scale
-#: sits on its upper bound 10 for AF488 and Atto655, and delta on its bound or an offset-grid
-#: node: on the corrected geometry the declared bounds bind (see the plan concept).
+#: today's geometry, full preset, widened bounds and the B-spline delta (64 random starts + the
+#: declared stored-run start): per block quench scale (best, 68 % low, high), model error, outlier
+#: sites, worst LOO site. Only Cy3B has an interior optimum; AF488 lands at scale 0.015 / delta
+#: +4.5 (quick: 42 / -1.9, a second basin), Atto655 on the dark-contact plateau (see the plan
+#: concept, item 1e). Before the widening (scale <= 10, delta -3..2, linear delta): AF488 10.0,
+#: Cy3B 0.058, Atto655 B 10.0, C 10.0.
 REFIT = {
-    "AF488 in H2O": (9.999930922685799, 7.1816404141318895, 10.000000000000002,
-                     0.2773148523539904, [], 211),
-    "Cy3B in H2O": (0.058437365872640985, 0.019204576710184332, 0.17781832849884918, 0.05,
+    "AF488 in H2O": (0.014776803845645725, 0.010000000000000005, 0.024326108586084576,
+                     0.19299198868744974, [219, 233], 233),
+    "Cy3B in H2O": (0.08568546650054865, 0.034483252855539964, 0.21291492424378694, 0.05,
                     [], 95),
-    "Atto655 in D2O": (9.999930922685799, 8.829647609033929, 10.000000000000002,
-                       0.07714528110298623, [72, 95, 211, 219, 233], 219),
-    "Atto655 in D2O and H2O": (9.999930922685799, 8.84028667256224, 10.000000000000002,
-                               0.18054992490565375, [92], 92),
+    "Atto655 in D2O": (75.26526160882409, 0.9302544748315781, 100.00000000000013,
+                       0.09717941309634227, [92, 95, 211, 233], 92),
+    "Atto655 in D2O and H2O": (26.688616941197953, 0.3210809696126574, 100.00000000000013,
+                               0.10650529966572247, [233, 322], 322),
 }
 
 

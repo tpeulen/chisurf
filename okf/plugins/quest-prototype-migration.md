@@ -11,20 +11,20 @@ timestamp: '2026-10-20T00:00:00Z'
 
 Every work package has landed (record below); WP4's science is the open front.
 
-- Open: **WP4 refit has no clean interior optimum on the corrected geometry.** After widening (κ ≤ 100, δ −4…+5,
-  γ ≤ 100, δ_s −4…0) and the B-spline δ interpolation, quick gives AF488 κ 42 (36–49) δ −1.9, Cy3B κ 0.070
-  (0.028–0.18) δ 1.3 (interior, the only clean one), Atto655 D₂O κ 9.5 (0.24–100, not determined; profile flat from
-  0.3 to 100), Stage C κ 38 (7–100) with δ 4.2 and its δ profile minimum on the +5 table end. The second-best AF488
-  search (within 2 log-posterior) is κ 0.012 at δ +5: κ and δ trade off (few strong contacts vs many weak ones).
-  The full-preset refit with these settings was running when this was written; its numbers go into `REFIT`
-  (`test/test_male_reproduction.py`, still the pre-widening pins) and the concept's "MalE refit" table.
-  Owner decision needed on a reparametrisation (record item 1e, "Proposal").
+- Open: **WP4 refit has no clean interior optimum on the corrected geometry** (owner decision on a reparametrisation,
+  record item 1e "Proposal"). Widened (κ ≤ 100, δ −4…+5, γ ≤ 100, δ_s −4…0) with the B-spline δ, full / quick κ (68 %):
+  AF488 0.015 (0.010–0.024) δ 4.5 / 42 (36–49) δ −1.9 — two basins, κ–δ trade off (many weak vs few strong contacts),
+  12 of 65 full searches within 2 log-posterior span δ 0.6–5; Cy3B 0.086 (0.034–0.21) δ 1.2 / 0.070 (0.028–0.18) δ 1.3
+  — the one interior optimum; Atto655 D₂O 75 (0.93–100) γ 58 / 9.5 (0.24–100); Stage C 27 (0.32–100) δ −1.1 / 38
+  (7–100) δ 4.2 — the dark-contact plateau (C's κ profile deviance < 0.2 from 10 to 100). Pinned in `REFIT`
+  (`test/test_male_reproduction.py -k refit`, 3.3 h on 7 workers).
 - Measure: refit + profiles: scratch runner pattern `Analysis(preset).run("all")`, then
   `graph_fit.profile_likelihood(view, "delta", values=np.linspace(-4, 5, 19), workers=…)` with
   `profile_likelihood.method: polish`. **Trap:** a polish profile in this landscape is jagged (AF488 deviance 105 at
-  κ 17.8, 6.6 at 31.6): warm starts jump basins, so read the minimum and the ends, not the curve.
+  κ 17.8, 6.6 at 31.6; full Atto655 D₂O δ deviances 90–910 away from the optimum are failed refits, not
+  evidence): warm starts jump basins, so read the minimum and the ends, not the curve.
 - Measure: quick runtime 685 s on 6 workers (was 1277 s): the 9 searches per block are now ~80 % of it (AF488
-  113 s, Atto655 joint 200 s, Atto655 D₂O 190 s). Full: the serial MINPACK joint fit alone took 5500 s on the
+  113 s, Atto655 joint 200 s, Atto655 D₂O 190 s). Full (7 workers): 11 793 s; the serial MINPACK joint fit alone took 5500 s on the
   41-parameter graph; `joint_minpack: false` for full too would cut ~1.5 h (owner decision: MINPACK is the stored
   run's path).
 - Open: owner questions 3(a) (the "key figure" does not narrow κ) and 3(c)/(d) (record item 3) are still open.

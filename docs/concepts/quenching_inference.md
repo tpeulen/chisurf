@@ -401,39 +401,40 @@ sat at δ = −2.8 Å. There a contact is a handful of voxels, so a 0.3 Å
 registration shift decides it.
 
 The first refit on these tables put κ and δ on the stored run's bounds. With
-the bounds widened and δ read through a B-spline, the quick preset gives (κ, 68 %
-Laplace interval):
+the bounds widened and δ read through a B-spline, the two presets give (κ, 68 %
+Laplace interval; model error s; outlier sites; δ in Å):
 
-| data set | stored run (old tables) | refit, `quick` preset | δ (Å) |
+| data set | stored run (old tables) | refit, `full` preset | refit, `quick` preset |
 |---|---|---|---|
-| AF488 H₂O | 6.2 (4.6–8.2), s 0.050, outliers 92 219 233 | 42 (36–49), s 0.154, 211 219 | −1.9 |
-| Cy3B H₂O | 1.1 (0.19–6.7), s 0.050, none | 0.070 (0.028–0.18), s 0.050, none | 1.3 (0.9–1.7) |
-| Atto655 D₂O (B) | 0.111 (0.080–0.154), s 0.065, 211 219 322 | 9.5 (0.24–100), s 0.128, 322 | −3.1 |
-| Atto655 D₂O + H₂O (C) | 0.112 (0.080–0.157), s 0.108, 322 | 38 (7–100), s 0.237, 322 | 4.2 (3.5–4.9) |
+| AF488 H₂O | 6.2 (4.6–8.2), s 0.050, 92 219 233 | 0.015 (0.010–0.024), s 0.193, 219 233; δ 4.5 | 42 (36–49), s 0.154, 211 219; δ −1.9 |
+| Cy3B H₂O | 1.1 (0.19–6.7), s 0.050, none | 0.086 (0.034–0.21), s 0.050, none; δ 1.2 | 0.070 (0.028–0.18), s 0.050, none; δ 1.3 |
+| Atto655 D₂O (B) | 0.111 (0.080–0.154), s 0.065, 211 219 322 | 75 (0.93–100), s 0.097, 92 95 211 233; δ 0.9 | 9.5 (0.24–100), s 0.128, 322; δ −3.1 |
+| Atto655 D₂O + H₂O (C) | 0.112 (0.080–0.157), s 0.108, 322 | 27 (0.32–100), s 0.107, 233 322; δ −1.1 | 38 (7–100), s 0.237, 322; δ 4.2 |
 
 **There is no clean interior optimum yet:**
 
-- Only Cy3B has one: its profiles in κ and δ have their minimum inside the
-  range.
-- AF488's κ profile has its minimum at 32–46 and rises at 100. A second search
-  within 2 log-posterior units sits at κ = 0.012, δ = +5: a few strong contacts
-  explain the data as well as many weak ones.
-- Atto655 in D₂O does not determine κ: the profile deviance stays below 1.5
-  from 0.3 to 100. Above about 10, a contact makes the dye dark, and κ only
-  rescales the fractional rotamer contacts.
-- Stage C's δ profile has its minimum at the +5 Å end of the tables.
+- Only Cy3B has one. Both presets agree, and its κ and δ profiles have their
+  minimum inside the range.
+- AF488 has two basins. Full lands at κ 0.015, δ +4.5 (many weak contacts),
+  quick at κ 42, δ −1.9 (a few strong ones). Twelve of full's 65 searches
+  within 2 log-posterior units span δ 0.6–5.0. The κ profile varies by less
+  than 9.1 in deviance between 0.01 and 100.
+- Atto655 sits on a plateau. Above κ ≈ 10 a contact makes the dye dark, and
+  κ then only rescales the fractional rotamer contacts. The static strength γ
+  runs high too (58 in B). Stage C's κ profile is flat (deviance < 0.2) from
+  10 to 100.
 - Strong stickiness (s ≈ 0.001) collapses an ensemble onto one voxel. Atto655
   HOLO 72, 92 and 95 all put 99.999 % of the weight on one voxel next to two
   aromatic residues, so which voxels are reachable decides the optimum.
 
 A reparametrisation is proposed in the migration plan but not implemented: fit
 κ times the mean contact count at δ, use a distance-continuous rate kernel, and
-put a floor on s. The full-preset refit with the widened settings replaces the
-one quoted before (κ 10.0 on its old bound for AF488 and Atto655).
+put a floor on s. Before the widening, the full refit had κ = 10.0 on its old
+bound for AF488 and both Atto655 stages.
 
-The naive H₂O test is unchanged (median |dev| 0.48 ns, 16 of 18 sites above
-τ₀(H₂O)). Stage C still does not narrow the scale. Water-access r is 0.49 with
-all sites and −0.29 without 322; the stored run did not print it.
+Naive H₂O test (full refit): median |dev| 0.50 ns, 16 of 18 sites above
+τ₀(H₂O). Water-access r is 0.39 with all sites and −0.08 without site 322; the
+stored run did not print it.
 
 ## Assumptions
 
