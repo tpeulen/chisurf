@@ -57,6 +57,8 @@ settings:
   search_maxiter: 200
   seed: 2026
   block_seed_stride: 1000
+  # Also search from the starts declared per data set in settings/analysis/stages.yaml.
+  use_declared_starts: true
 
   # Model error s: the root of median(r^2 / (sigma^2 + s^2)) = median of chi-square(1), searched
   # in model_error_bracket (ns), never below model_error_floor.
@@ -73,6 +75,12 @@ settings:
   k_range_sd: 8.0
   joint_diff_step: 1.0e-3
   joint_max_nfev: 400
+  # MINPACK tolerances of the joint fit's first stage; then at most joint_polish_iterations
+  # projected Levenberg-Marquardt steps in the unit box (central-difference Jacobians), until a
+  # step lowers the cost by less than joint_polish_rtol (relative).
+  joint_tolerance: 1.0e-10
+  joint_polish_iterations: 40
+  joint_polish_rtol: 1.0e-10
 
   # Laplace approximation: central-difference step in u, and no direction may get more than
   # this variance (half its range as an error bar).
@@ -102,5 +110,6 @@ presets:
     n_starts: 8
     search_maxiter: 60
     joint_max_nfev: 60
+    joint_polish_iterations: 5
     profile_likelihood: {points: 7, span_sd: 3.0, max_nfev: 20}
     sampler_check: {steps: 200, runs: 8, walkers: 40, start_spread: 0.002, first_seed: 100}

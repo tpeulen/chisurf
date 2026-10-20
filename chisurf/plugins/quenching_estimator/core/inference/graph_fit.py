@@ -32,8 +32,10 @@ squares, Brent root); no scipy. Every number is declared in
 from __future__ import annotations
 
 import concurrent.futures as _futures
+import contextlib as _contextlib
 import multiprocessing as _mp
 import os
+import sys as _sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -480,6 +482,37 @@ class Block:
         self.tau_x = np.asarray(rows["tau_x"], float)
         self.sigma_meas = np.asarray(rows["sigma_meas"], float)
         self.searches, self.best_x, self.s, self.use = [], None, None, None
+        self.starts = []
+
+    def add_start(self, values):
+        """Add a declared start to the search (beside the random ones).
+
+        Parameters
+        ----------
+        values : dict
+            Natural-unit values by reported name (``scale``, ``s_basic``, ...); a free
+            parameter left out starts at the middle of its range, ``model_error`` at the
+            declared floor.
+
+        Returns
+        -------
+        numpy.ndarray
+            The free vector added.
+        """
+        specs = _spec_map(self.settings)
+        x = []
+        for name, lo, hi in zip(self.free, self.lo, self.hi):
+            spec = specs[name]
+            if spec.label in values:
+                v = float(values[spec.label])
+                x.append(np.log(v) if spec.log else v)
+            elif name == "ln_model_error":
+                x.append(np.log(float(self.settings["model_error_floor"])))
+            else:
+                x.append(0.5 * (lo + hi))
+        x = np.clip(np.array(x), self.lo, self.hi)
+        self.starts.append(x)
+        return x
 
     def theta(self, x, K=None, s=None):
         """The parameter set of a free vector.
@@ -574,12 +607,13 @@ class Block:
 
 
 def find_most_probable(block, seed, maxiter):
-    """One robust search from a random start.
+    """One robust search from a random start (or a given one).
 
     Parameters
     ----------
     block : Block
-    seed : int
+    seed : int or numpy.ndarray
+        Seed of a uniform random start, or the start itself (a free vector).
     maxiter : int
 
     Returns
@@ -587,7 +621,10 @@ def find_most_probable(block, seed, maxiter):
     tuple
         ``(x, log_posterior)``.
     """
-    x0 = block.start(seed)
+    if np.ndim(seed):
+        x0 = np.clip(np.asarray(seed, float), block.lo, block.hi)
+    else:
+        x0 = block.start(int(seed))
     sol = _numerics.minimize(
         lambda x: -block.robust_log_posterior(x),
         x0,
@@ -664,6 +701,31 @@ def _check(cancel):
         raise CancelledError("quenching analysis cancelled")
 
 
+@_contextlib.contextmanager
+def _main_hidden():
+    """Start worker processes without re-running the caller's ``__main__``.
+
+    A spawned worker normally imports the parent's main script again, so a plain script
+    without an ``if __name__ == "__main__":`` guard would start the analysis once more in
+    every worker (and multiprocessing stops it). The workers here need nothing from
+    ``__main__`` -- the work items are this module's functions and chisurf objects -- so
+    while they start, ``__main__`` hides its file and spec and the workers skip it.
+    ``ProcessPoolExecutor`` starts its processes in ``submit``, inside this block.
+    """
+    main = _sys.modules.get("__main__")
+    saved = {k: getattr(main, k) for k in ("__file__", "__spec__") if hasattr(main, k)}
+    try:
+        for k in saved:
+            if k == "__file__":
+                delattr(main, k)
+            else:
+                setattr(main, k, None)
+        yield
+    finally:
+        for k, v in saved.items():
+            setattr(main, k, v)
+
+
 def _map(function, worker_function, payload, items, workers, progress=None, cancel=None,
          label=""):
     """``[function(item) for item in items]``, in worker processes when ``workers > 1``.
@@ -706,7 +768,8 @@ def _map(function, worker_function, payload, items, workers, progress=None, canc
         initializer=_worker_init, initargs=(payload,),
     )
     try:
-        index = {pool.submit(worker_function, item): i for i, item in enumerate(items)}
+        with _main_hidden():
+            index = {pool.submit(worker_function, item): i for i, item in enumerate(items)}
         done = 0
         pending = set(index)
         while pending:
@@ -750,18 +813,73 @@ def search(block, seed, fit_settings=None, workers=None, progress=None, cancel=N
     fs = fit_settings or block.settings
     maxiter = int(fs["search_maxiter"])
     seeds = [int(seed) + k for k in range(int(fs["n_starts"]))]
+    seeds += [np.asarray(x, float) for x in block.starts]
     found = _map(
         lambda k: find_most_probable(block, k, maxiter), _worker_search,
         dict(block=block.lean(), maxiter=maxiter), seeds, workers, progress, cancel,
         label=f"{block.label}: search",
     )
-    found = sorted(found, key=lambda f: -f[1])
+    return settle(block, found, fs)
+
+
+def settle(block, found, fit_settings=None):
+    """Take a block's best search: its model error and inlier mask.
+
+    Parameters
+    ----------
+    block : Block
+    found : sequence of (x, log_posterior)
+        Search results (any order).
+    fit_settings : dict, optional
+
+    Returns
+    -------
+    Block
+        With ``searches`` (best first), ``best_x``, ``s`` and ``use`` set.
+    """
+    fs = fit_settings or block.settings
+    found = sorted(((np.asarray(x, float), float(lp)) for x, lp in found), key=lambda f: -f[1])
     block.searches, block.best_x = found, np.asarray(found[0][0])
     th = block.theta(block.best_x)
     residual = block.predictions(th) - block.tau_x
     s = model_error(residual, block.sigma_meas, fs)
     block.use = np.abs(residual) / np.sqrt(block.sigma_meas**2 + s**2) <= fs["outlier_limit"]
     block.s = model_error(residual[block.use], block.sigma_meas[block.use], fs)
+    return block
+
+
+def adopt(block, values, fit_settings=None):
+    """Settle a block at given parameters instead of searching (e.g. a stored run's).
+
+    Parameters
+    ----------
+    block : Block
+    values : dict
+        Internal values of the block's free parameters; a missing ``ln_model_error`` takes
+        the value of best robust log posterior on a grid over its range. ``model_error``
+        (ns), when given, replaces the model error the search rule derives (the inlier mask
+        stays the rule's).
+    fit_settings : dict, optional
+
+    Returns
+    -------
+    Block
+        As :func:`settle` with one "search".
+    """
+    x = np.array([values.get(n, np.nan) for n in block.free], float)
+    if "ln_model_error" in block.free and "ln_model_error" not in values:
+        i = block.free.index("ln_model_error")
+        grid = np.linspace(block.lo[i], block.hi[i], 201)
+
+        def at(v):
+            x[i] = v
+            return block.robust_log_posterior(x)
+
+        x[i] = max(grid, key=at)
+    x = np.clip(x, block.lo, block.hi)
+    settle(block, [(x, block.robust_log_posterior(x))], fit_settings)
+    if "model_error" in values:
+        block.s = float(values["model_error"])
     return block
 
 
@@ -979,7 +1097,91 @@ class Graph:
         return out
 
 
-def joint_fit(graph, workers=None, cancel=None, max_nfev=None):
+@dataclass
+class OptimizeSummary:
+    """The joint fit's outcome.
+
+    Attributes
+    ----------
+    x : numpy.ndarray
+        Best u.
+    cost : float
+        ``0.5 * sum(r^2)`` there.
+    status : int
+        MINPACK's status of the first stage.
+    nfev : int
+        Its evaluations.
+    minpack_cost : float
+        Cost after the first stage (before the polish).
+    """
+
+    x: np.ndarray
+    cost: float
+    status: int
+    nfev: int
+    minpack_cost: float
+
+
+def polish(graph, u, iterations, rtol, workers=None, cancel=None):
+    """Projected Levenberg-Marquardt in the unit box.
+
+    Each step solves ``(J^T J + mu diag(J^T J)) d = -J^T r`` on the parameters that are not
+    held at a bound by their gradient, clips to the box, and is accepted when the cost falls
+    (``mu`` shrinks) or retried with a larger ``mu``.
+
+    Parameters
+    ----------
+    graph : Graph
+    u : numpy.ndarray
+        Start.
+    iterations : int
+        Accepted steps at most.
+    rtol : float
+        Stop when an accepted step lowers the cost by less than this (relative).
+    workers : int, optional
+    cancel : callable, optional
+
+    Returns
+    -------
+    dict
+        ``u``, ``cost``, ``steps`` (accepted), ``costs`` (after each accepted step).
+    """
+    lo, hi = graph.u_clip, 1 - graph.u_clip
+    r = graph.evaluate(u)[0]
+    cost = 0.5 * float(r @ r)
+    costs, mu, steps = [cost], 1e-3, 0
+    while steps < iterations:
+        _check(cancel)
+        J, _ = graph.jacobian(u, workers=workers, cancel=cancel)
+        g = J.T @ r
+        free = ~(((u <= lo * 1.0001) & (g > 0)) | ((u >= hi - lo * 1e-4) & (g < 0)))
+        if not free.any():
+            break
+        A = J[:, free].T @ J[:, free]
+        accepted = False
+        for _ in range(12):
+            d = np.linalg.solve(A + mu * np.diag(np.diag(A) + 1e-12), -g[free])
+            trial = u.copy()
+            trial[free] = np.clip(u[free] + d, lo, hi)
+            r_t = graph.evaluate(trial)[0]
+            cost_t = 0.5 * float(r_t @ r_t)
+            if cost_t < cost:
+                accepted = True
+                break
+            mu *= 4.0
+        if not accepted:
+            break
+        gain = (cost - cost_t) / cost
+        u, r, cost = trial, r_t, cost_t
+        mu = max(mu / 3.0, 1e-9)
+        steps += 1
+        costs.append(cost)
+        if gain < rtol:
+            break
+    return dict(u=u, cost=cost, steps=steps, costs=costs)
+
+
+def joint_fit(graph, workers=None, cancel=None, max_nfev=None, start=None, minpack=True):
     """The joint least-squares fit of a graph and its Laplace approximation (in place).
 
     Parameters
@@ -991,11 +1193,17 @@ def joint_fit(graph, workers=None, cancel=None, max_nfev=None):
         Checked at every residual evaluation of the fit.
     max_nfev : int, optional
         The declared ``joint_max_nfev`` by default.
+    start : numpy.ndarray, optional
+        Start in u; the blocks' search bests and the slope means by default.
+    minpack : bool, optional
+        Run MINPACK's Levenberg-Marquardt first (default); False only polishes from *start*
+        (to replay a known optimum).
 
     Returns
     -------
     Graph
-        With ``u``, ``cov``, ``Jr``, ``Jp``, ``residual``, ``prediction``, ``fit`` set.
+        With ``u``, ``cov``, ``Jr``, ``Jp``, ``residual``, ``prediction``, ``fit``,
+        ``polish`` set.
     """
     fs = graph.settings
     budget = int(fs["joint_max_nfev"] if max_nfev is None else max_nfev)
@@ -1004,8 +1212,24 @@ def joint_fit(graph, workers=None, cancel=None, max_nfev=None):
         _check(cancel)
         return graph.evaluate(u)[0]
 
-    sol = _numerics.least_squares(residuals, graph.start(), bounds=(0.0, 1.0),
-                                  diff_step=float(fs["joint_diff_step"]), max_nfev=budget)
+    # MINPACK's Levenberg-Marquardt works through a bounds transform, which makes a parameter
+    # near its bound (static at 0.001, s_aromatic at 1) slow to move; the projected
+    # Levenberg-Marquardt polish works in the unit box on central-difference Jacobians and
+    # finishes the fit.
+    u = graph.start() if start is None else np.asarray(start, float)
+    status, nfev, first = 0, 0, float("nan")
+    if minpack:
+        tol = float(fs["joint_tolerance"])
+        sol = _numerics.least_squares(residuals, u, bounds=(0.0, 1.0), ftol=tol, xtol=tol,
+                                      gtol=tol, diff_step=float(fs["joint_diff_step"]),
+                                      max_nfev=budget)
+        u, status, nfev, first = np.asarray(sol.x, float), int(sol.status), int(sol.nfev), \
+            float(sol.cost)
+    u = np.clip(u, graph.u_clip, 1 - graph.u_clip)
+    graph.polish = polish(graph, u, int(fs["joint_polish_iterations"]),
+                          float(fs["joint_polish_rtol"]), workers=workers, cancel=cancel)
+    sol = OptimizeSummary(x=graph.polish["u"], cost=graph.polish["cost"], status=status,
+                          nfev=nfev, minpack_cost=first)
     graph.fit = sol
     graph.u = np.asarray(sol.x, float)
     graph.residual, graph.prediction = graph.evaluate(graph.u)
@@ -1377,6 +1601,8 @@ def fit_graph(blocks, seed=None, fit_settings=None, workers=None, progress=None,
     Parameters
     ----------
     blocks : sequence of Block
+        A block that is already settled (:func:`search`, :func:`settle`, :func:`adopt`) is
+        not searched again.
     seed : int, optional
         Block ``b`` searches from ``seed + block_seed_stride * b``; declared ``seed`` by
         default.
@@ -1410,7 +1636,8 @@ def fit_graph(blocks, seed=None, fit_settings=None, workers=None, progress=None,
     for b, block in enumerate(blocks):
         def inner(done, total, label, b=b):
             report((b + done / total) / n_steps, f"{label} {done}/{total}")
-        search(block, seed + stride * b, fs, workers, inner, cancel)
+        if block.best_x is None:
+            search(block, seed + stride * b, fs, workers, inner, cancel)
         report((b + 1) / n_steps,
                f"{block.label}: model error {block.s:.3f} ns, "
                f"{int((~block.use).sum())} outlier lifetime(s)")

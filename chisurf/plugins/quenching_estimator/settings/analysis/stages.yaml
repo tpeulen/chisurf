@@ -5,7 +5,10 @@
 # of one dye in the listed solvents, starting from the free dye's tau0 in `tau0` (the solvent
 # whose free-dye lifetime the prediction starts from), with the water term of each solvent
 # (`free_dye` = the free reference dye's water quenching rate kq_w,free times the exposure;
-# no entry = 0). Blocks of one graph share the titration slopes they read, so a stage that
+# no entry = 0). `starts` are declared search starts beside the random ones (natural units):
+# here the stored MalE run's printed best fits, so a run can only do better than that basin
+# (the multistart search alone misses narrow basins; okf/plugins/quest-prototype-migration.md).
+# Blocks of one graph share the titration slopes they read, so a stage that
 # reports one block of a graph still needs the whole graph solved.
 #
 # A *stage* reports blocks of a solved graph, or a test on another stage's result. `order` is
@@ -16,14 +19,18 @@ settings:
     joint:
       description: AF488 and Cy3B in H2O, Atto655 in D2O and H2O; one graph through the slopes.
       blocks:
-        - {label: AF488 in H2O, dye: AF488, solvents: [H2O], tau0: H2O}
-        - {label: Cy3B in H2O, dye: Cy3B, solvents: [H2O], tau0: H2O}
+        - {label: AF488 in H2O, dye: AF488, solvents: [H2O], tau0: H2O,
+           starts: [{s_common: 0.3522, s_aromatic: 1.0, s_hydrophobic: 0.4951, s_basic: 0.129, s_acidic: 0.3968, s_polar: 0.2138, scale: 6.1571, delta: -0.4172, lam: 0.0216}]}
+        - {label: Cy3B in H2O, dye: Cy3B, solvents: [H2O], tau0: H2O,
+           starts: [{s_common: 0.2072, s_aromatic: 0.9432, s_hydrophobic: 0.2905, s_basic: 0.1158, s_acidic: 0.1456, s_polar: 0.0827, scale: 1.1327, delta: 1.0099, dtau_shield: 1.3714}]}
         - {label: Atto655 in D2O and H2O, dye: Atto655, solvents: [D2O, H2O], tau0: D2O,
-           water: {H2O: free_dye}}
+           water: {H2O: free_dye},
+           starts: [{s_common: 0.0503, s_aromatic: 0.0108, s_hydrophobic: 0.2125, s_basic: 0.0033, s_acidic: 0.2549, s_polar: 0.1663, scale: 0.1119, delta: -2.6314, static: 0.0011, delta_static: -1.0008, dtau_shield: 0.0214}]}
     heavy_water:
       description: Atto655 in D2O alone, with the slopes it reads.
       blocks:
-        - {label: Atto655 in D2O, dye: Atto655, solvents: [D2O], tau0: D2O}
+        - {label: Atto655 in D2O, dye: Atto655, solvents: [D2O], tau0: D2O,
+           starts: [{s_common: 0.0213, s_aromatic: 0.0011, s_hydrophobic: 0.1724, s_basic: 0.0029, s_acidic: 0.4432, s_polar: 0.0186, scale: 0.1106, delta: -2.8238, static: 0.001, delta_static: -1.0011, dtau_shield: 0.061}]}
 
   stages:
     A:
@@ -66,4 +73,5 @@ settings:
   order: [A, B, naive_h2o, C, summary]
 
   # Relative cost of the steps, for the progress bar.
-  progress_weights: {joint: 6.0, heavy_water: 2.0, profile: 1.0, other: 0.05}
+  # `site_tables` is the share of a graph's step spent loading (or building) its site tables.
+  progress_weights: {joint: 6.0, heavy_water: 2.0, profile: 1.0, other: 0.05, site_tables: 0.1}

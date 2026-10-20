@@ -233,3 +233,27 @@ def test_cancel_stops_at_the_next_checkpoint(data):
     with pytest.raises(CancelledError):
         a.run("A", cancel=cancel)
     assert "joint" not in a.result.graphs
+
+
+UNGUARDED = """
+from chisurf.plugins.quenching_estimator.core.inference import stages as st
+from chisurf.plugins.quenching_estimator.test.test_inference_graph_fit import FakeLibrary
+data = st.load_analysis_data(library=FakeLibrary())
+a = st.Analysis(data, preset="quick", workers=2, profile=False,
+                fit_overrides=dict(n_starts=3, search_maxiter=3, joint_max_nfev=2))
+r = a.run("B")
+print("OK", r.stages["B"].numbers["blocks"]["Atto655 in D2O"]["stats"]["n_rows"])
+"""
+
+
+def test_worker_processes_from_a_script_without_main_guard(tmp_path):
+    import subprocess
+    import sys
+
+    script = tmp_path / "unguarded.py"
+    script.write_text(UNGUARDED)
+    out = subprocess.run([sys.executable, str(script)], capture_output=True, text=True,
+                         timeout=600, cwd=str(tmp_path))
+    assert out.returncode == 0, out.stderr[-3000:]
+    assert "OK 18" in out.stdout
+    assert out.stdout.count("OK") == 1          # the workers did not re-run the script

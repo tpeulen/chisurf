@@ -503,18 +503,39 @@ class Analysis:
 
     # ---- graphs
 
-    def blocks(self, graph_name):
+    def blocks(self, graph_name, progress=None, cancel=None):
         """Fresh (unsearched) blocks of a declared graph.
+
+        The site models are loaded (built and cached on first use) before the blocks are
+        made, one table at a time, so a first run reports where it is.
 
         Parameters
         ----------
         graph_name : str
+        progress : callable, optional
+            ``progress(done, total, message)`` after each site table.
+        cancel : callable, optional
+            Checked between site tables.
 
         Returns
         -------
         list of graph_fit.Block
         """
         spec = self.declaration["graphs"][graph_name]
+        lengths = self.data.site_settings["linker_lengths"]
+        keys = []
+        for entry in spec["blocks"]:
+            for solvent in entry["solvents"]:
+                for r in self.data.rows(entry["dye"], solvent):
+                    key = (str(r["state"]), int(r["site"]), float(lengths[entry["dye"]]))
+                    if key not in keys:
+                        keys.append(key)
+        for k, key in enumerate(keys):
+            _gf._check(cancel)
+            self.data.library.site(*key)
+            if progress:
+                progress(k + 1, len(keys), f"site table {key[0]} {key[1]} L {key[2]:g} "
+                                           f"({k + 1}/{len(keys)})")
         out = []
         for entry in spec["blocks"]:
             dye = entry["dye"]
@@ -525,9 +546,13 @@ class Analysis:
                 parts.append(rows)
                 points += self.data.points(dye, rows, self.data.water_rate(water.get(solvent)))
             rows = np.concatenate(parts) if len(parts) > 1 else parts[0]
-            out.append(_gf.Block(entry["label"], dye, rows, points,
-                                 self.data.tau0(dye, entry["tau0"]), self.data.context,
-                                 self.fit_settings, self.groups))
+            block = _gf.Block(entry["label"], dye, rows, points,
+                              self.data.tau0(dye, entry["tau0"]), self.data.context,
+                              self.fit_settings, self.groups)
+            if self.fit_settings.get("use_declared_starts", True):
+                for start in entry.get("starts") or []:
+                    block.add_start(start)
+            out.append(block)
         return out
 
     def graph(self, name, progress=None, cancel=None):
@@ -546,10 +571,87 @@ class Analysis:
         graph_fit.GraphResult
         """
         if name not in self.result.graphs:
+            share = float(self.declaration["progress_weights"].get("site_tables", 0.1))
+
+            def loading(done, total, message):
+                if progress:
+                    progress(share * done / total, message)
+
+            def fitting(fraction, message):
+                if progress:
+                    progress(share + (1 - share) * fraction, message)
+
+            blocks = self.blocks(name, progress=loading, cancel=cancel)
             self.result.graphs[name] = _gf.fit_graph(
-                self.blocks(name), fit_settings=self.fit_settings, workers=self.workers,
-                progress=progress, cancel=cancel, name=name, titrated=self.data.titrated,
+                blocks, fit_settings=self.fit_settings, workers=self.workers,
+                progress=fitting, cancel=cancel, name=name, titrated=self.data.titrated,
             )
+        return self.result.graphs[name]
+
+    def replay(self, name, values, slopes, progress=None, cancel=None):
+        """Re-evaluate a stored optimum: settle at *values*, polish from them, no search.
+
+        The joint fit starts at the given block parameters and titration slopes and is only
+        polished (no MINPACK stage), so the Laplace intervals, leave one out and notes are
+        taken at the stored run's optimum. Model errors come from ``values[label]
+        ["model_error"]`` when given.
+
+        Parameters
+        ----------
+        name : str
+            Declared graph.
+        values : dict
+            ``{block label: {internal name: value}}``.
+        slopes : dict
+            ``{(dye, amino_acid): K_SV}``.
+        progress, cancel : callable, optional
+
+        Returns
+        -------
+        graph_fit.GraphResult
+        """
+        blocks = self.blocks(name, cancel=cancel)
+        for block in blocks:
+            _gf.adopt(block, values[block.label], self.fit_settings)
+        graph = _gf.Graph(blocks, self.fit_settings)
+        v = [slopes[key] if b is None else blocks[b].best_x[i] for b, key, i in graph.layout]
+        _gf.joint_fit(graph, workers=self.workers, cancel=cancel, start=graph.to_u(np.array(v)),
+                      minpack=False)
+        self.result.graphs[name] = _gf.GraphResult(
+            name=name, graph=graph, views=_gf.block_views(graph, name),
+            k_table=_gf.k_table(graph, name),
+            structure=_gf.describe_graph(graph, self.data.titrated))
+        if progress:
+            progress(1.0, f"{name} replayed")
+        return self.result.graphs[name]
+
+    def solve_from(self, name, values, progress=None, cancel=None):
+        """Solve a graph starting from given block parameters instead of searching.
+
+        Each block is settled at its values (model error and inliers by the search's rule,
+        :func:`graph_fit.adopt`), then the joint fit, Laplace and leave one out run as usual.
+        This replays a stored run's searches (e.g. the MalE prototype's printed estimates).
+
+        Parameters
+        ----------
+        name : str
+            Declared graph.
+        values : dict
+            ``{block label: {internal name: value}}``; a block missing here is searched.
+        progress, cancel : callable, optional
+
+        Returns
+        -------
+        graph_fit.GraphResult
+        """
+        blocks = self.blocks(name)
+        for block in blocks:
+            if block.label in values:
+                _gf.adopt(block, values[block.label], self.fit_settings)
+        self.result.graphs[name] = _gf.fit_graph(
+            blocks, fit_settings=self.fit_settings, workers=self.workers, progress=progress,
+            cancel=cancel, name=name, titrated=self.data.titrated,
+        )
         return self.result.graphs[name]
 
     def profile_of(self, graph_name, label, progress=None, cancel=None):
