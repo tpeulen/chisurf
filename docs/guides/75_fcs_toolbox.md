@@ -482,7 +482,6 @@ differ by one; $N = 1/(G(0)-1)$ on one and $N = 1/G(0)$ on the other.
   {doc}`73_tttr_decay_and_correlation` (quick one-file correlation) · {doc}`17_filtered_fcs`
   · {doc}`06_nsfcs_second_order` · {doc}`12_handling_tttr_files` ·
   {doc}`35_combining_repeats`.
-- Tools: **FCS** (`chisurf/plugins/fcs/fcs_toolbox/`), built on
-  `chisurf/plugins/fcs/fcs_correlator/`; channel pairs
+- Tools: **FCS** (`chisurf/plugins/fcs/fcs_correlator/`); channel pairs
   (`chisurf/plugins/fcs/fcs_channel_preset/`); converter
   (`chisurf/plugins/fcs/fcs_convert/`).

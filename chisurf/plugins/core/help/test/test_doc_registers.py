@@ -108,7 +108,7 @@ def test_the_refresh_rule_is_written_down():
         "review-set",
         "Never invent a DOI",
         "Address it by\n  **symbol**",
-        "QT_QPA_PLATFORM=offscreen",
+        "Driver.screenshot",  # headless capture since the Qt shell retired (855e54604)
     ):
         assert expected in text, expected
 

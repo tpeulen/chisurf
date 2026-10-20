@@ -165,7 +165,7 @@ def run_shell_shots(names: list[str]) -> None:
             docks = s.app.docks
             docks.confine = True
             s.app.open_plugin("microtime_histogram")
-            s.app.open_plugin("calculators")
+            s.app.open_plugin("fret_calculator")
             s.settle(lambda: all(h.build is None for h in s.app.hosted.values()), "the tools")
             docks.hide("start")  # closed with its ×, as a user does once the fits are there
             s.show_analysis()

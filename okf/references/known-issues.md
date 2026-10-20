@@ -4,6 +4,25 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## The Workspace manual page no longer matches what the shell draws (found 2026-10-20, branch `mcts-native-baseline`)
+
+status: open — blocks `test_review_levels.py::test_the_shipped_manual_records_its_ai_review`
+(`docs/manual/multiple_document_interface.md` is *stale*: f114e1f20 edited it after its review).
+
+- **Measurement.** `PYTHONPATH=. python docs/guides/screenshots/manual_general.py mdi_tiled_and_tabbed`
+  (scratch `CHISURF_SETTINGS_DIR`). Tools opened with `open_plugin` (Histogram-Microtime, FRET
+  Calculator) now open as **tabs beside the Workspace tab** in the same panel, not as docks in a
+  panel right of it; the page ("a tab of the panel right of the Workspace") and Fig.17's caption
+  ("*Calculators* docked right") describe the old layout. The ribbon also grew (group captions), so
+  the shot's fixed `crop=(0, 120, ...)` cuts off the left panel's tab row. Take an uncropped shot
+  first (patch `ManualShell.save` to drop `crop`) to see the whole window.
+- **Decide first** whether tool-beside-Workspace is the intended placement (emtk 0.1.26/0.1.27 dock
+  changes, or the shell's open-tool area) or a regression; then fix the shell or the page, retake the
+  three `main_mdi_*.png` (crop from the measured ribbon height, not 120), update the captions in the
+  page and `docs/references/figures.yaml`, and only then `csc help review-set ... --ai`.
+- **Done already.** The script opened the removed `calculators` hub; it now opens `fret_calculator`.
+  The committed figures are still the pre-change ones (regenerated ones were not accepted).
+
 ## The chimol gate held every window it built; 22 failures from five causes (found 2026-10-20, branch `mcts-native-baseline`)
 
 status: resolved 2026-10-20 (chimol `4b6a984`, `7c40dc0`; chisurf tests) — except the IMP rebuild race, open below.

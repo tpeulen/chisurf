@@ -21,10 +21,10 @@
     "status": "ai-reviewed"
   },
   "anisotropy_wizard.md": {
-    "date": "2026-10-06",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "483599d69ed36eecfd1b9b30cfac84e6d7ba895c33f55e428ff80fbb6c8f3a7c",
+    "sha256": "71c2b2e39ad5366054ca1132589b1ee3cc67ff4c26dfa51b9c066057b736ac52",
     "status": "ai-reviewed"
   },
   "calculation_of_codiffusing_molecules.md": {
@@ -196,10 +196,10 @@
     "status": "ai-reviewed"
   },
   "fcalculator.md": {
-    "date": "2026-10-06",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "5a231a27123172763ac18e7cd4852d6dfb16f03c2d1a435ba963f4eba40150ef",
+    "sha256": "b7d7687a0a31f5156219cad8b1e4bf02856f50e68b04808ad43c0cbe2ec29edc",
     "status": "ai-reviewed"
   },
   "fit_interface.md": {
@@ -329,10 +329,10 @@
     "status": "ai-reviewed"
   },
   "loading_the_alexa488_data_into_the_anisotropy_plugin.md": {
-    "date": "2026-10-13",
+    "date": "2026-10-20",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "81523f7474ba491d420f82f077170da46a20ac590f42253f647081765ba4e277",
+    "sha256": "30b908b9ab785d1be7d8f80d4c304a3f14753fd4e688884ab71144f45ad0fb4c",
     "status": "ai-reviewed"
   },
   "loading_the_data_defining_the_reading_parameter.md": {

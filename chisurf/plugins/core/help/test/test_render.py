@@ -343,6 +343,9 @@ _LEAKED_MARKUP = (
 )
 
 _CODE_BLOCK = re.compile(r"<pre.*?</pre>|<code.*?</code>", re.DOTALL)
+# A rendered equation is an image whose alt text is its LaTeX source, and LaTeX braces
+# (``k^\mathrm{ref}``) look like a role; alt text is not prose, so it is not searched.
+_ALT_TEXT = re.compile(r'\salt="[^"]*"')
 
 
 def test_no_page_in_the_tree_leaks_its_markup():
@@ -367,6 +370,7 @@ def test_no_page_in_the_tree_leaks_its_markup():
     assert len(pages) > 100, "the documentation tree was not found"
     for page in pages:
         html = _CODE_BLOCK.sub(" ", _as_the_browser_renders(page, renderer))
+        html = _ALT_TEXT.sub(" ", html)
         for marker in _LEAKED_MARKUP:
             if marker in html:
                 offenders.append((str(page.relative_to(root)), marker))

@@ -421,7 +421,7 @@ def test_the_dependency_table_has_its_own_filter_and_count(trio):
     deps = table(app, DEPS)
     total = len(deps.order())
     assert total >= 9 and f"{total} rows" in deps.status_text()
-    deps.filter.set_text("drift")
+    deps.filter.set_text("img_flow")  # unique since fb08bbdd4 dropped img_drift from Image Tools
     draw(app)
     assert len(deps.order()) == 1 and f"1 of {total} rows" in deps.status_text()
     deps.filter.set_text("zzz")

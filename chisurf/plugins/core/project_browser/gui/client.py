@@ -16,6 +16,10 @@ class ProjectBrowserClient(MMFDBClient):
             self._client = mmfdb_client._client
             self._token = mmfdb_client.token
             self.mode = mmfdb_client.mode
+            # This branch adopts a live transport instead of calling the base __init__, so
+            # it must set every per-instance field the base methods read (``_closed`` is
+            # read on every call).
+            self._closed = getattr(mmfdb_client, "_closed", False)
             for field in ("base_url", "host", "cmd_port", "pub_port", "inprocess"):
                 if hasattr(mmfdb_client, field):
                     setattr(self, field, getattr(mmfdb_client, field))
