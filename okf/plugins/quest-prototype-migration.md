@@ -9,7 +9,7 @@ timestamp: '2026-10-20T00:00:00Z'
 
 # Where to pick this up
 
-The plan below is the open front. WP0, WP7b and WP7-theory have landed; WP1 and WP2 can start.
+The plan below is the open front. WP0, WP1, WP2, WP3, WP7b and WP7-theory have landed; WP4 and WP9 can start.
 
 1. **Done: WP0 (data + golden).** `examples/male/` (3 CSVs, `provenance.json`, `1OMP.cif`,
    `1ANF.cif`), `core/inference/measurements.py`, `test/data/male_site_1omp72_L20.12.npz`,
@@ -35,7 +35,8 @@ The plan below is the open front. WP0, WP7b and WP7-theory have landed; WP1 and 
    equals the npz" and "direct = 2.59" cannot both pass on the current IMP.bff. WP2/WP3 must find
    which AV argument or radius moved and decide whether to reproduce the old grid or re-pin the
    golden with a log line. The `Site` golden (`site_lifetimes`) does not depend on this, because it
-   reads the shipped/cached tables.
+   reads the shipped/cached tables. **Resolved (WP2 bisect + WP3 re-pin, item 1d):** four owner-approved FPS-parity AV
+   changes plus a voxel-frame bug; re-pinned on today's geometry, the prototype kept as an exact regression.
    **Interfaces for later packages:** `measurements.load_measurements(folder=None) -> Measurements`
    (`lifetimes`, `titration_points`, `titration_summary` as numpy structured arrays, `corrections`
    as `SiteCorrection` tuples, `folder`). Field names are in `LIFETIME_FIELDS`,
@@ -91,13 +92,48 @@ The plan below is the open front. WP0, WP7b and WP7-theory have landed; WP1 and 
    *printed* stage estimates. kQ is the unscaled table, so the presets do not reproduce the notebook's τX until WP4/WP9
    decide whether the quench scale is folded into kQ. Cys takes the Trp ratio, as Pro does (MalE has no Cys, so this is
    an extrapolation).
-2. **Open: WP2 (IMP.bff kernels) blocks WP3.** Without per-voxel exposure, rotamer quencher
-   ensembles and voxel-centre/neighbour accessors in IMP.bff, the site tables would have to
-   be written in Python here. That breaks the rule that geometry kernels belong in IMP.bff, and it
-   costs about 6 min per 54 tables in pure Python. The `water_exposure` loop over 64 shell points
-   with Python per-voxel KD queries is the hot spot. scipy is no longer a chisurf runtime dependency
-   ([scipy retirement](/subsystems/scipy-retirement.md)), so the prototype's `cKDTree` cannot be
-   carried over either.
+1d. **Done: WP3 (site tables + site model, 2026-10-20).** `core/inference/{site_table,site_model}.py`,
+   `settings/analysis/site_model.yaml` (every cell-6/23/25 selection plus the declared `site_predictions` and
+   `site_exposure` tables, terms resolve in mmfdb 1.12), `test/test_inference_site_{table,model}.py` (11 fast tests ~13 s,
+   2 `slow` ~4 min), `test/data/male_site_1omp72_L20.12_volume.npz` (the prototype's voxel set: indices, ng, dg,
+   attachment). **Measure:** `pytest chisurf/plugins/quenching_estimator/test/test_inference_site_{table,model}.py`
+   (`-m slow` for the 54-table checks; the golden-row one skips unless `~/dev/quest/prototype/cache` is present with the
+   golden's sha256). **Proved exact:** on the prototype volume in its own frame
+   (`grid_origin = attachment − ((ng−1)//2 − 0.5)·dg`) the port gives the shipped table bit for bit (neighbours, float16
+   contacts, exposure 0.0 diff); `Site.lifetime` gives every one of the 82 golden rows with `==` (not 1e-9) on the 54
+   prototype tables, and cell 53's time-weighted exposure exactly. **Re-pinned (decision 2026-10-20, see the AV conflict
+   row):** today's IMP.bff AV + the corrected grid frame. APO 72 L 20.12: 97 722 → 106 992 voxels (the array door
+   `get_av` with IMP radii × 0.84 equals `get_av_from_pdb` on the site PDB at APO/HOLO 72/233, voxel for voxel); reachable
+   e 0.9621 → 0.9644 (186: 0.9748 → 0.9740); Stage C time-weighted e at 72 0.662 → 0.651, 186 0.483 → 0.498. Direct APO 233
+   (L 21.5, slow 0.3) **2.832 ns** (notebook 2.59; 2.523 old frame + today's AV), walk 2.76 ± 0.10 ns (seeds 1–3, 2 s):
+   |Δ| 0.07 ns, 2.6 % — the frame fix closes most of the 12 % gap of owner question 3(b). At the printed stage parameters
+   the rebuilt tables fit worse (rms/median |dev| ns): AF488 0.616/0.047 → 0.649/0.165, Cy3B 0.023/0.010 → 0.255/0.205,
+   Atto655 D₂O 0.633/0.061 → 0.853/0.242, Stage C 0.523/0.094 → 0.791/0.225. **This is expected, not a defect:** the
+   contact offset δ (AF488 −0.42, Cy3B +1.01, Atto655 −2.8 Å) absorbed the old frame's ≤ 0.5 Å registration error, so
+   **WP4 must refit on the corrected geometry**; its accept numbers are the stored run's and can only be compared within
+   their 68 % intervals after the refit, not at 1e-9. Every one of the 54 rebuilt tables grows 6–12 % (APO 72 at L 19.74/20.12/20.4: 99 530/106 992/112 774; re-derive any with
+   `SiteLibrary().table(state, site, L).n_voxels`). One table builds in ~1.3 s (≈ 2.5 s with the AV
+   and caching), 54 in ~2.5 min. **Ensemble:** the site model uses the notebook's closed form p ∝ count·∏ s_g^(−n_g) in
+   numpy (`Site.weights`), not IMP.bff's `DynamicAccessibleVolume.update_occupancy`; the Itô stationary state p ∝ 1/D is
+   the same estimator only when D ∝ s (imp.bff `okf/quest-site-kernels.md` item 2), which the cell-23 check (`direct_lifetime`,
+   p ∝ 1/s of the quenching model's own maps) confirms against the walk. The walk and a PDE path stay for WP9.
+   **Interfaces for WP4 (stable):** `site_table.settings()`; `site_table.site_table(structure_path, site, linker_length,
+   chain=None, settings_=None, cache_dir=None, use_cache=True) -> SiteTable` (`.neighbours (n,20) int8`, `.contacts
+   (n,5,10,2) float16`, `.exposure (n,) float32`, `.voxel_indices`, `.meta`, `.path`, `.voxel_centres()`), cached as
+   `<settings>/cache/quenching_estimator/site_tables/site_<key>.npz` (`site_key` = structure sha256 + site + linker + every
+   table setting + `SCHEMA` + `IMP.bff.__version__`); `site_table.male_structure(state)`; `site_model.Site(table_or_path)`
+   with `.weights(theta)`, `.seen(theta, tau0, water)`, `.lifetime(theta, tau0, water) -> (tau_x, dark, visible_e)`,
+   `.exposure_profile(...)`, `.groups`; `site_model.predict(points, theta, tau0)`; `site_model.SiteLibrary(structures=None,
+   cache_dir=None)` with `.site(state, site, L)` (memoised) and `.points(rows, linker_length=None, water=None)` (linker from
+   the declared `linker_lengths[dye]`); `predictions_table(rows)` / `exposure_table(rows)` (declared columns). θ keys:
+   `ln_s_<group>`, `ln_scale`, `delta`, `lam`, `ln_static`, `delta_static`, optional `dtau_shield`, `kq` (5-vector in
+   `quenchers` order; from `kq_scaling.kq_vector`). `ln_s_common` does not enter the model (ridge centre only).
+   **Traps:** `IMP.bff.__version__` reads `ab5de21` on the build tree although its HEAD is `0b178903a` (configure-time
+   stamp), so a kernel rebuild without a reconfigure does **not** invalidate the cache: bump `site_table.SCHEMA` or clear the
+   folder when a kernel changes. The labelled-residue cut keys on (chain, res_id) only, not the Bio.PDB hetero flag (no
+   effect on MalE). The walk check is not `slow` (2 s), contrary to the plan's guess.
+2. **Done: WP2 (IMP.bff kernels, imp.bff `0b178903a`).** It unblocked WP3; the kernels and the voxel-frame fix are in
+   imp.bff `okf/quest-site-kernels.md`.
 3. **Open: owner questions to settle before WP4 is accepted** (findings from reading the notebook):
    (a) **The "key figure" does not show what its text claims in the stored run.** Stage B and
      Stage C both give a quench scale of 0.11 (0.08–0.15/0.16). The narrowing that cells 50/56
@@ -107,11 +143,12 @@ The plan below is the open front. WP0, WP7b and WP7-theory have landed; WP1 and 
      That passes the 0.35 ns tolerance, but it is a 12 % gap, and the text calls it "exact".
      WP3 must decide whether the IMP.bff closed-form `DynamicAccessibleVolume.update_occupancy`
      (Itô flux, p ∝ 1/D) is the same estimator as the prototype's `p ∝ 1/s`, and must record which
-     one is used.
+     one is used. **Answered by WP3 (item 1d):** most of the gap was the voxel-frame bug; in the grid frame direct
+     2.832 vs walk 2.76 ± 0.10 ns (2.6 %). The site model uses the notebook's p ∝ ∏ s^(−n) in numpy.
    (c) **AF488 rms 0.62 ns vs median |dev| 0.047 ns.** Site 233 apo alone causes the gap
      (measured 1.339 ns, LOO z = 15.3). Cy3B has only 5 sites (10 lifetimes).
    (d) Cell 32's markdown says "16 searches", but the code runs `N_STARTS = 64`.
-   (e) **AV width/grid conflict** (see the conflicts table): MalE uses W 0.5 / dg 0.5. The owner's 2026-10-11 "all use same defaults" sets W 4.5 / dg 0.9. Proposed: the notebook values are measured analysis settings, and the generic defaults stay IMP.bff's.
+   (e) **AV width/grid conflict** (see the conflicts table): MalE uses W 0.5 / dg 0.5. The owner's 2026-10-11 "all use same defaults" sets W 4.5 / dg 0.9. **Decided 2026-10-20:** the notebook values are measured analysis settings (`settings/analysis/site_model.yaml`), and the generic defaults stay IMP.bff's.
 4. **Blocked: German/French catalogues** of the new view.json are deferred to the i18n batch.
    Owner rule: no translation work in PRD-154 batches.
 5. **Tried and reverted:** (in the prototype itself, do not re-port) the Brownian-walk *objective*
@@ -168,7 +205,7 @@ Never brought over. Each entry says where it goes or why it is skipped.
 
 | topic | quest package / it-scripts / quest OKF | notebook (wins) | owner |
 |---|---|---|---|
-| Ensemble for τX | Brownian walk + photon race (`core/dye_diffusion.py`, it01–it06) | equilibrium ensemble p ∝ ∏ s_t^(−n_t), no walk (cell 22) | WP3 (analysis), WP9 (forward sim) |
+| Ensemble for τX | Brownian walk + photon race (`core/dye_diffusion.py`, it01–it06) | equilibrium ensemble p ∝ ∏ s_t^(−n_t), no walk (cell 22) | WP3 (analysis: `site_model.Site.weights`, done), WP9 (forward sim keeps walk + PDE) |
 | Stickiness | one `slow_factor` 0.1 for every residue in every dye preset (`settings/dye_repository.json`) | five chemical groups + common, ridge prior ln 10 | WP1 presets, WP4 |
 | kq error model | σ = max(slope SE, leave-one-day-out jackknife, day-to-day 0.11 M⁻¹ + 7 %) (quest OKF quenching-model) | hierarchical closed-form posterior, day-to-day abs 0.01 M⁻¹ + rel 2 % | WP1 |
 | Negative/weak kq | "negative or not above 2σ counts as no quenching" (OKF; it scripts; notebook `load_titrations` still computes the unused flag `counts`) | positive part only, no 2σ cut (cell 19) | WP1 |
@@ -177,7 +214,7 @@ Never brought over. Each entry says where it goes or why it is skipped.
 | Robust loss | Cauchy (it05) | Student-t ν = 3 search + Gaussian joint fit | WP4 |
 | Error bars | MCMC DE posteriors (notebook 2026-09-30, superseded) | Laplace on the joint fit; MCMC only as an optional check | WP4 |
 | Linker | QuEst 21.5 Å for every dye (it02–it09, repository `Alexa488`/`AF488`) | A48_C1R 20.4, C3B_C2R 19.74, T65_C2R 20.12 Å | WP1 presets, WP2 kernel |
-| AV width / grid | quest `bdcf3e8` + owner 2026-10-11 "all use same defaults": IMP.bff W 4.5 Å, dg 0.9 | MalE analysis: W 0.5 Å, dye radius 3.5 Å, grid 0.5 Å | **ask the owner.** Proposal: MalE presets carry the notebook's values explicitly as measured analysis settings (`site_model.yaml`); the generic defaults stay IMP.bff's. Record the decision here. |
+| AV width / grid | quest `bdcf3e8` + owner 2026-10-11 "all use same defaults": IMP.bff W 4.5 Å, dg 0.9 | MalE analysis: W 0.5 Å, dye radius 3.5 Å, grid 0.5 Å | **Decided 2026-10-20:** W 0.5 / dg 0.5 / R 3.5 are explicit analysis settings in `settings/analysis/site_model.yaml`; generic defaults stay IMP.bff's 4.5 / 0.9. **The AV itself is re-pinned to today's IMP.bff** (FPS-parity link search, allowed sphere, IMP radii × 0.84; bisected in imp.bff `okf/quest-site-kernels.md`, cannot be undone by argument) **and the corrected grid frame**; one exact-prototype regression on the shipped prototype volume keeps the port's arithmetic honest (WP3, item 1d). |
 | D, τ₀ in presets | `D` 7, τ₀ 4.2 ns (Alexa488) | D 7.5 (grid options only, irrelevant at equilibrium), τ₀ 4.108 measured | WP1 presets |
 | Static quenching | "dark only below TAU_MIN" (it08) | separate static channel `exp(−static·contacts(δ_static))`, fixed off for AF488/Cy3B (cell 29) | WP3/WP4 |
 
@@ -337,6 +374,9 @@ Paths are relative to `chisurf/plugins/quenching_estimator/` unless absolute.
 
 ## WP3: site tables and the site model (plugin)
 
+- **Status: done 2026-10-20** (resume item 1d). The accept line below was written before the frame bug was found: the
+  exact half holds on the prototype volume (shipped table bit for bit, all 82 golden rows `==`); the rebuilt-table and
+  "2.59 ns" halves are re-pinned on today's geometry (106 992 voxels, direct 2.832 ns, walk 2.76 ± 0.10).
 - **Goal:** turn (structure, site, linker) into the per-voxel feature table, cached, and predict τX for a parameter set.
 - **Create:** `core/inference/site_table.py` (build with WP2 kernels + `QuenchedDonorDecay` contact maps per quencher ×
   δ × source; content-addressed cache), `core/inference/site_model.py` (`Site`: unique-row compression, `weights`, `seen`,
@@ -449,7 +489,7 @@ Paths are relative to `chisurf/plugins/quenching_estimator/` unless absolute.
 - **Accept:** MalE APO 95 AF488 reference kQ: equilibrium τX decreases monotonically from slow 1 → 0.3 → 0.1; the PDE's
   stationary distribution equals the equilibrium ensemble (test); the PDE decay and a long p(x)-started walk agree within
   their statistical error at slow 1 and 0.3, and the walk's deviation at slow 0.1 is reported, not hidden. The APO 233,
-  slow 0.3 value matches WP3's 2.59 ns.
+  slow 0.3 value matches WP3's re-pinned 2.832 ns (`site_table.direct_lifetime`; the notebook's 2.59 was the old frame).
 - **Deps:** WP3 (the site model's equilibrium code is reused, not duplicated). It does not touch WP5/WP6 files.
 
 ## WP7b: quest tutorials as examples

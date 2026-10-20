@@ -17,6 +17,10 @@ module                        owns
                               errors, leave-one-out coverage, free-dye tau0,
                               measured water access
 :mod:`.kq_scaling`            contact kQ per dye from the titration ratios
+:mod:`.site_table`            per-voxel site tables (neighbour counts, quencher
+                              contacts, water exposure) from IMP.bff kernels, cached
+:mod:`.site_model`            the equilibrium site model: tau_X, dark fraction and
+                              visible exposure for a parameter set
 ============================  ====================================================
 
 Everything here is numpy only: no pandas, no scipy. The record of what is ported from the

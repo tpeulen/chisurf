@@ -1,0 +1,105 @@
+# Site tables and the site model of a quenching analysis
+# (core/inference/{site_table,site_model}.py).
+#
+# A site table is one row per accessible-volume voxel of a labelled site: how many residues
+# of each type are near the dye there, how many quenchers touch it at every tested contact
+# distance (crystal side chains and rotamers), and how much of the dye water can reach. The
+# site model turns a table and a parameter set into the measured lifetime (equilibrium
+# ensemble p ~ prod_t s_t^(-n_t), visibility cutoff, static channel, shielding, water term).
+#
+# `settings` are the measured analysis settings of the MalE data set; they are selections,
+# not code constants. The generic accessible-volume defaults stay IMP.bff's
+# (W 4.5 A, grid 0.9 A); this analysis uses W 0.5 A and grid 0.5 A explicitly (owner
+# decision 2026-10-20, okf/plugins/quest-prototype-migration.md, conflicts table).
+# The output tables below are built through core/inference/columns.py with `term`s from the
+# mmfdb/flrCIF dictionaries.
+
+settings:
+  # The labelled chain and the atom the linker starts from.
+  chain: A
+  attachment_atom: CB
+  # At the labelled residue only these atoms stay (the dye replaces the side chain).
+  site_atoms: [N, CA, C, O, CB]
+  # Elements never kept as obstacles.
+  dropped_elements: [H, D]
+  # Accessible volume (A): stretched linker length comes per dye; width, dye radius and grid
+  # are this analysis' values. `av` entries that are null take IMP.bff's defaults (allowed
+  # sphere, link search, obstacle radius scale) -- the re-pinned geometry.
+  linker_width: 0.5
+  dye_radius: 3.5
+  grid: 0.5
+  av: {allowed_sphere_radius: null, link_search: null, radius_scale: null}
+  # Residues that quench (MalE has no Cys) and the chemical groups of stickiness.
+  quenchers: [TRP, TYR, MET, HIS, PRO]
+  groups:
+    aromatic: [TRP, TYR, HIS]
+    hydrophobic: [PHE, LEU, ILE, VAL, MET, ALA, PRO]
+    basic: [LYS, ARG]
+    acidic: [ASP, GLU]
+    polar: [SER, THR, ASN, GLN, GLY, CYS]
+  # A residue closer than this (A) to the dye makes it sticky.
+  slow_radius: 8.5
+  # Tested changes of the contact distance (A).
+  radius_offsets: [-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+  # A side-chain rotamer closer than this (A) to another heavy atom is impossible.
+  clash: 2.8
+  # Water exposure (Shrake-Rupley): water radius, test points on the shell, and the atom
+  # radii a water molecule may not overlap (default for other elements).
+  water_radius: 1.4
+  exposure_points: 64
+  water_vdw_radii: {C: 1.70, N: 1.55, O: 1.52, S: 1.80}
+  water_vdw_default: 1.70
+  # Lifetimes shorter than this (ns) cannot be measured: such dyes are dark. The visibility
+  # is 1 / (1 + (tau_min / tau)^visibility_power).
+  tau_min: 0.10
+  visibility_power: 4
+  # Grid options of the quenching model's maps (contact maps; the walk check uses its own).
+  grid_options: {critical_distance: 8.5, slow_radius: 8.5, probe_radius: 3.5,
+                 diffusion_coefficient: 7.5, slow_fact: 0.5, t_step: 0.032, n_photons: 1}
+  # The MalE structures, sites and stretched linker lengths (A).
+  structures: {APO: 1OMP.cif, HOLO: 1ANF.cif}
+  sites: [72, 92, 95, 186, 211, 219, 233, 309, 322]
+  linker_lengths: {AF488: 20.4, Cy3B: 19.74, Atto655: 20.12}
+  # Equilibrium ensemble against the Brownian walk, on one site (notebook cell 23).
+  validation: {state: APO, site: 233, slow_factor: 0.3, linker_length: 21.5, tau0: 4.108,
+               critical_distance: 8.5, diffusion_coefficient: 7.5, t_step: 0.032,
+               t_max: 16000.0, n_photons: 200000, n_trajectories: 16, seeds: [1, 2, 3],
+               tolerance: 0.35}
+
+site_predictions:
+  description: Predicted lifetime of a dye at a site for one parameter set (site model).
+  columns:
+    - {column: dye, dtype: str, units: "", term: _flr_probe_list.chromophore_name,
+       description: "The dye."}
+    - {column: solvent, dtype: str, units: "", term: _flr_analysis_feature.solvent_isotope,
+       description: "H2O or D2O."}
+    - {column: state, dtype: str, units: "", term: _flr_analysis_feature.ligand_state,
+       description: "APO or HOLO."}
+    - {column: site, dtype: int, units: "", term: _flr_poly_probe_position.seq_id,
+       description: "Labelled residue."}
+    - {column: linker_length, dtype: float, units: A, term: _flr_FPS_AV_parameter.linker_length,
+       description: "Stretched linker length of the site table."}
+    - {column: water, dtype: float, units: 1/ns, term: _flr_analysis_feature.water_quenching_rate,
+       description: "Water quenching rate of a fully exposed dye (0 in D2O)."}
+    - {column: tau0, dtype: float, units: ns, term: _flr_fit_parameter.tau0,
+       description: "Free-dye lifetime the prediction starts from."}
+    - {column: lifetime, dtype: float, units: ns, term: _flr_analysis_feature.predicted_lifetime,
+       description: "Mean lifetime of the visible dye over the equilibrium ensemble."}
+    - {column: dark_fraction, dtype: float, units: fraction, term: _flr_analysis_feature.dark_fraction,
+       description: "Share of the dye too fast to measure or statically quenched."}
+    - {column: visible_exposure, dtype: float, units: fraction, term: _flr_analysis_feature.solvent_exposure,
+       description: "Water exposure averaged over the visible dye's time."}
+
+site_exposure:
+  description: Water exposure of one site, over reachable positions and over the visible dye's time.
+  columns:
+    - {column: site, dtype: int, units: "", term: _flr_poly_probe_position.seq_id,
+       description: "Labelled residue."}
+    - {column: state, dtype: str, units: "", term: _flr_analysis_feature.ligand_state,
+       description: "APO or HOLO."}
+    - {column: reachable, dtype: float, units: fraction, term: _flr_analysis_feature.solvent_exposure,
+       description: "Mean exposure of all reachable positions (not weighted by where the dye spends its time)."}
+    - {column: visible, dtype: float, units: fraction, term: _flr_analysis_feature.solvent_exposure,
+       description: "Mean exposure weighted by the visible dye's time."}
+    - {column: dark_fraction, dtype: float, units: fraction, term: _flr_analysis_feature.dark_fraction,
+       description: "Share of the dye that is dark."}
