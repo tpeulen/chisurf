@@ -9,7 +9,7 @@ timestamp: '2026-10-20T00:00:00Z'
 
 # Where to pick this up
 
-The plan below is the open front. WP0 has landed; WP1, WP2, WP7-theory and WP7b can start.
+The plan below is the open front. WP0, WP7b and WP7-theory have landed; WP1 and WP2 can start.
 
 1. **Done: WP0 (data + golden).** `examples/male/` (3 CSVs, `provenance.json`, `1OMP.cif`,
    `1ANF.cif`), `core/inference/measurements.py`, `test/data/male_site_1omp72_L20.12.npz`,
@@ -47,6 +47,16 @@ The plan below is the open front. WP0 has landed; WP1, WP2, WP7-theory and WP7b 
    That run's CSVs are *not* in `prototype/output/`. The full-model CSVs that are on disk
    (`20260930-162323_*`) come from an older model (lam free, no `dtau_shield`, no `FIXED`),
    so do not use them as fit references.
+1b. **Done: WP7b (examples) and WP7-theory (2026-10-20).** `examples/0[1-5]_*.py` + `test/test_examples.py`
+   (11 tests, ~22 s, none slow), `docs/concepts/quenching_inference.md` (registered, cross-linked; `dye_quenching.md`
+   updated where the notebook superseded it). **Measure:** `pytest chisurf/plugins/quenching_estimator/test/test_examples.py`.
+   **Traps found:** quest's site E:100 is buried at the current AV default (W 4.5): example 01 uses E:5 (TRP, QY 0.715)
+   vs E:69 (QY 1.000), example 03 keeps E:100 as the failed-record demo. E(t) → p(R) agrees with the AVs only without
+   stickiness (57.6 vs 58.2 Å for E55–E132); at slow 0.1 the walk gives 50.0 Å (the WP9 defect, shown in example 04).
+   Notebook 04 (Haas–Steinberg) is covered by IMP.bff: `diffusion_propagate_krylov` on one voxel line of a 3-D grid
+   (reflecting walls; the notebook's ends were absorbing); it is example 05. `scan`'s `dominant_quencher` names a residue
+   for a trace rate at QY 1.000 (E:55 "TYR 100 %"): the example filters on QY < 0.99; the record itself is unchanged (WP9's file).
+   The theory page states the overclaims of 3(a), 3(b), 3(d) as they are. **Open:** guide-80 example sections (WP7-guide).
 2. **Open: WP2 (IMP.bff kernels) blocks WP3.** Without per-voxel exposure, rotamer quencher
    ensembles and voxel-centre/neighbour accessors in IMP.bff, the site tables would have to
    be written in Python here. That breaks the rule that geometry kernels belong in IMP.bff, and it
@@ -379,7 +389,7 @@ Paths are relative to `chisurf/plugins/quenching_estimator/` unless absolute.
 
 ## WP7: documentation
 
-- **Theory (can start after WP1):** `docs/concepts/quenching_inference.md`. It covers: Stern–Volmer and kq; the hierarchical day-to-day model
+- **Theory (done 2026-10-20, resume item 1b):** `docs/concepts/quenching_inference.md`. It covers: Stern–Volmer and kq; the hierarchical day-to-day model
   and its closed-form evidence; kQ scaling relative to AF488; the equilibrium ensemble p ∝ ∏ s_t^{−n_t}; the TAU_MIN visibility and static
   channel; shielding τ₀ + Δτ(1−e); water quenching kq_w,free·e; Shrake–Rupley exposure; the Laplace approximation with clipped eigenvalues;
   LOO by a Newton step; the model-error criterion median χ²₁ = 0.455. Cite Peulen 2017 [10.1021/acs.jpcb.7b03441](https://doi.org/10.1021/acs.jpcb.7b03441),
@@ -408,6 +418,8 @@ Paths are relative to `chisurf/plugins/quenching_estimator/` unless absolute.
 - **Deps:** WP3 (the site model's equilibrium code is reused, not duplicated). It does not touch WP5/WP6 files.
 
 ## WP7b: quest tutorials as examples
+
+- **Status: done 2026-10-20** — five scripts (04 = notebook 03, 05 = notebook 04 on IMP.bff's lattice solver); see resume item 1b.
 
 - **Create:** `examples/01_donor_quenching.py`, `examples/02_fret_pair.py`, `examples/03_labeling_scan.py`,
   `examples/04_et_distance_distribution.py` (from notebooks 01–03 and quest `examples/`), `test/test_examples.py`;
@@ -449,6 +461,6 @@ Paths are relative to `chisurf/plugins/quenching_estimator/` unless absolute.
 | 7 | `docs/concepts/{quenching_inference,dye_quenching,index}.md`, `docs/guides/{111_quenching_analysis,80_quenching_estimator,index}.md`, `docs/plugins*` (generated), this concept | none |
 | 8 | none | quest `prototype/*.py`, `prototype/male_quenching_analysis.ipynb`, `prototype/MIGRATED.md` |
 | 9 | `core/{simulation,dye_diffusion,av}.py`, `settings/parameter_catalog.json`, `gui/generate_view_spec.py`, `gui/quest.view.json`, `test/test_equilibrium_ensemble.py`, `test/baselines/{generate.py,imp_bff.json}` | none |
-| 7b | `examples/0[1-4]_*.py`, `test/test_examples.py` (guide 80 sections go through WP7) | none |
+| 7b | `examples/0[1-5]_*.py`, `test/test_examples.py` (guide 80 sections go through WP7) | none |
 
 `okf/log.md` is shared and is only edited through `python -m build_tools.dev_utils.safe_edit log`.

@@ -18,6 +18,8 @@ process that biases a FRET measurement is also used deliberately as a probe of
 contact formation, in PET-FCS.
 
 For the simulation tool, see {doc}`the QuEst guide </guides/80_quenching_estimator>`.
+Estimating stickiness and quench strength from measured lifetimes is
+{ref}`concept-quenching-inference`.
 Quenching between freely diffusing partners (Stern–Volmer, the Rehm–Weller
 driving force, nucleobases) is covered in {ref}`fundamentals-quenching-mechanisms`;
 this page is about a dye tethered to a structure.
@@ -45,7 +47,9 @@ before excitation {cite}`doose2005`.
 **Which residues.** For oxazine and rhodamine dyes, tryptophan is essentially
 the only amino-acid quencher {cite}`marme2003,doose2005`. The xanthene
 Alexa488 is also quenched by tyrosine, methionine and histidine
-{cite}`chen2010`.
+{cite}`chen2010`. Free-dye titrations on MalE give the ranking per dye: AF488
+Trp > Tyr > Met ≈ His; Cy3B by Trp alone; Atto655 most strongly, per
+molecule, by Tyr ({ref}`concept-quenching-inference`).
 
 ## What quenching does to the observables
 
@@ -81,6 +85,15 @@ the dye reaches a quencher and how long it stays there. For this reason QuEst
 simulates a trajectory instead of averaging over the AV {cite}`peulen2017`.
 Unspecific adhesion to the surface lengthens the stays, which is why it has to
 be modelled too.
+
+Adhesion also decides whether a trajectory is long enough. At slow factors
+≤ 0.1 the walkers stay near where they start within $t_\text{max}$, so the
+decay reports where they got stuck rather than the volume. QuEst therefore has
+three views of the dye's position: the equilibrium ensemble (static
+$\tau_X$/QY, the inverse fit), the diffusion PDE on the AV grid (stationary
+state = equilibrium ensemble; the fix for the sticky regime), and the Brownian
+walk as its stochastic realisation (FRET). See
+{ref}`concept-quenching-inference`.
 
 ## The QuEst model
 
@@ -127,9 +140,10 @@ library QuEst calls (`IMP.bff.pet_quenching_reference()` and
 | CYS | 0.8 | 3.5 | 7.0 | SG |
 
 The other fourteen residues have $k_Q = 0$. $R_i$ is the surface contact
-distance plus the dye radius. These are starting values, meant to be calibrated
-against measured donor lifetimes with a common scale factor on $k_Q$. They are
-not fixed constants for every dye.
+distance plus the dye radius. These are starting values for a xanthene dye, not constants for every dye.
+For another dye the row is transferred by free-dye titrations
+($k_Q \propto k_q(\text{dye})/k_q(\text{AF488})$ per residue) and then scaled
+by one fitted quench scale per dye ({ref}`concept-quenching-inference`).
 
 For T4 lysozyme (PDB 148L, chain E, 163 residues) the table counts 18
 quenching residues: 3 Trp (126, 138, 158), 6 Tyr, 5 Met, 3 Pro and 1 His. The
@@ -144,18 +158,24 @@ structure is of a cysteine-free variant, so there is no Cys.
   comparison between candidate labelling sites.
 - **Calibrate on several sites at once.** A single measured lifetime can be
   fitted by more than one combination of $k_Q$ scale and stickiness. Several
-  sites fitted jointly separate the two.
+  sites fitted jointly separate the two, and for a water-quenched dye H₂O and
+  D₂O together constrain where the dye sits
+  ({ref}`concept-quenching-inference`).
 - **Clean the structure.** Crystal waters and ligands block the AV and hide
   quenchers. Remove waters before simulating. Missing side chains remove
   quenching centres.
-- **Static quenching is outside the model.** Dark complexes formed before
-  excitation lower the brightness without changing the simulated decay.
+- **Static quenching is outside the forward simulation.** Dark complexes
+  formed before excitation lower the brightness without changing the simulated
+  decay. The inference model has a static channel and a visibility cutoff
+  ($\tau_\text{min}$ = 0.1 ns) for this ({ref}`concept-quenching-inference`).
 
 ## See also
 
 - Guide: {doc}`/guides/80_quenching_estimator`.
 - Fundamentals: {ref}`fundamentals-quenching-mechanisms`.
-- Related concepts: {ref}`concept-accessible-volume` (where the dye can be),
+- Related concepts: {ref}`concept-quenching-inference` (the inverse problem:
+  stickiness and quench strength from measured lifetimes),
+  {ref}`concept-accessible-volume` (where the dye can be),
   {ref}`concept-fret` (what donor quenching does to a FRET efficiency),
   {ref}`concept-fcs-correlation` (the bunching term PET-FCS reads),
   {ref}`concept-hydrodynamics` (diffusion coefficients).

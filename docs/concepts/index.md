@@ -138,6 +138,7 @@ live_streaming_analysis
 accessible_volume
 hydrodynamics
 dye_quenching
+quenching_inference
 structure_trajectories
 protein_monte_carlo
 molecular_surfaces

@@ -17,6 +17,7 @@ is this plugin: ChiSurf no longer depends on that package, and a guard test
 | `cli/cli.py` | `csc quest` |
 | `gui/` | Qt-free form model, generated view spec (`generate_view_spec.py` → `quest.view[.de|.fr].json`), the emtk window (`app.py`) and its Qt host (`tool.py`), `help.md`, `guide.json` |
 | `demo.py`, `examples/148l.pdb` | The demo the guided tour starts from |
+| `examples/0[1-5]_*.py` | Linear tutorials (donor quenching, FRET pair, site scan, E(t) → p(R), Haas–Steinberg); run by `test/test_examples.py` |
 | `test/` | The engine's suite (moved from QuEst) and the plugin's own tests; `test/baselines/` pins geometry and decay numbers |
 
 ## Tests
