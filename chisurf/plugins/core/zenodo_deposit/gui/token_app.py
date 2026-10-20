@@ -61,6 +61,23 @@ class ZenodoTokenApp(ImApp):
         draw_sections(self.sections, self.model, self.form)
         im.end()
 
+    # -- persistence ------------------------------------------------------------------- #
+    def export_settings(self) -> dict:
+        """Which Zenodo the page shows, and its folded sections; never the token (keychain)."""
+        return {"sandbox": bool(self.model.sandbox), "folds": dict(self.form.folds)}
+
+    def restore_settings(self, settings: dict) -> None:
+        """Restore :meth:`export_settings`; a switched repository re-reads its token."""
+        if not isinstance(settings, dict):
+            return
+        folds = settings.get("folds", {})
+        if isinstance(folds, dict):
+            self.form.folds.update({str(k): bool(v) for k, v in folds.items()})
+        sandbox = bool(settings.get("sandbox", self.model.sandbox))
+        if sandbox != self.model.sandbox:
+            self.model.sandbox = sandbox
+            self.model.lookup_token()
+
     def close(self) -> None:
         self.model.close()
 
