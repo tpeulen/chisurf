@@ -15,6 +15,7 @@ live while a gigabyte moves.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import time
@@ -53,6 +54,7 @@ from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 #: Where records live unless the user points elsewhere (an external disk:
 #: the data passes through this machine for review).
+HERE = Path(__file__).resolve().parent
 DEFAULT_ROOT = "/Volumes/SD1TB/T4L_Unfolded/records"
 #: Record build configs and the commands that build and scan one (T4L defaults).
 DEFAULT_CONFIGS = "/Users/tpeulen/projects/T4L_Unfolded/scripts/records"
@@ -114,6 +116,8 @@ class ZenodoDepositModel:
         self.build_command = DEFAULT_BUILD
         self.scan_command = DEFAULT_SCAN
         self.config_name = ""
+        #: The config being edited (an example, or changes to the selected one); ``None``: none.
+        self.config_draft: str | None = None
         self.build_log = ""
         #: Step 1 -- a new record by hand.
         self.new_name = ""
@@ -469,11 +473,61 @@ class ZenodoDepositModel:
 
     def select_config(self, row: dict | None) -> None:
         self.config_name = row["name"] if row else ""
+        self.config_draft = None
 
     @property
     def config_text(self) -> str:
         p = Path(self.configs_dir) / f"{self.config_name}.json"
         return p.read_text(encoding="utf-8") if self.config_name and p.is_file() else ""
+
+    @property
+    def config_edit(self) -> str:
+        """The config editor: the text being edited, else the selected config."""
+        return self.config_draft if self.config_draft is not None else self.config_text
+
+    @config_edit.setter
+    def config_edit(self, text: str) -> None:
+        if text != self.config_edit:
+            self.config_draft = text
+
+    def show_example(self) -> None:
+        """Put the example config (one measurement, its calibrations, the Zenodo block) in the
+        editor, to adapt and save under its own record name."""
+        self.config_draft = (HERE / "example_config.json").read_text(encoding="utf-8")
+        self.config_name = ""
+        self.message = ("example config in the editor: change \"record\" and the units, "
+                        "then Save config")
+
+    @property
+    def config_status(self) -> str:
+        if self.config_draft is None:
+            return ""
+        try:
+            name = json.loads(self.config_draft).get("record", "")
+        except (ValueError, AttributeError) as exc:
+            return f"**Not valid JSON:** {exc}"
+        problem = valid_name(str(name))
+        if problem:
+            return f"**\"record\" is not a record name:** {problem}"
+        target = Path(self.configs_dir) / f"{name}.json"
+        if target.is_file() and name != self.config_name:
+            return f"**{name}.json exists already** -- give the record another name"
+        return f"Unsaved -- *Save config* writes `{name}.json` to the configs folder."
+
+    def save_config(self) -> None:
+        if self.config_draft is None or not self.config_status.startswith("Unsaved"):
+            self.message = "cannot save: " + (self.config_status or "nothing edited")
+            return
+        name = json.loads(self.config_draft)["record"]
+        target = Path(self.configs_dir) / f"{name}.json"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(self.config_draft if self.config_draft.endswith("\n")
+                          else self.config_draft + "\n", encoding="utf-8")
+        self.config_name, self.config_draft = name, None
+        self.message = f"saved {target.name}: Build record builds it"
+
+    def discard_config_edit(self) -> None:
+        self.config_draft = None
 
     def build_record(self) -> None:
         """Build the selected config into a record, then scan it -- on the worker.
@@ -980,7 +1034,11 @@ class ZenodoDepositModel:
         if name == "approve_all":
             return has_rec and idle and bool(self._approvable())
         if name == "build_record":
-            return idle and bool(self.config_name)
+            return idle and bool(self.config_name) and self.config_draft is None
+        if name == "save_config":
+            return idle and self.config_status.startswith("Unsaved")
+        if name == "discard_config_edit":
+            return self.config_draft is not None
         if name == "create_record":
             return idle and not self.new_name_problem.startswith(("Type", "**"))
         if name in ("add_files", "add_folder"):

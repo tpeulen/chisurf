@@ -1,0 +1,169 @@
+{
+  "_help": "A record build config: one JSON per record. The build script links the raw files of every unit from <data_root>/sources/<source> into <record>/<path>, converts their burst analyses into containers, links each measurement to its calibrations, and writes README.md, metadata.cif, origins.json and the checksums. Keys starting with _ are notes and are ignored.",
+  "record": "example-t4l-s44-n132c-2014",
+  "label": "harmonized layout",
+  "title": "T4 Lysozyme Urea Unfolding — smFRET Construct S44pAcF/N132C",
+  "summary": "Raw single-molecule FRET data of double-labeled T4 lysozyme (Alexa488-pAcF44 donor × Alexa647-Cys132 acceptor) at 0 M urea, each with the calibrations of its own setup and measurement day.",
+  "data_root": "/Volumes/SD1TB/T4L_Unfolded",
+  "construct": {
+    "_help": "What was measured: the protein, its labelling sites and dyes.",
+    "number": 10,
+    "id": "S44pAcF_N132C",
+    "name": "S44pAcF/N132C",
+    "dyes": "Alexa488/Alexa647",
+    "details": [
+      "T4L (C54T/C97A) S44pAcF N132C. Donor: Alexa488-hydroxylamine conjugated to",
+      "p-acetyl-L-phenylalanine 44 (keto handle). Acceptor: Alexa647-maleimide on cysteine 132."
+    ],
+    "probes": [
+      {
+        "chromophore": "Alexa Fluor 488",
+        "reactive_name": "Alexa Fluor 488 hydroxylamine",
+        "role": "donor",
+        "seq": 44,
+        "mutated": true,
+        "description": "Alexa Fluor 488 hydroxylamine conjugated to the keto group of 4-acetyl-L-phenylalanine 44 (oxime)"
+      },
+      {
+        "chromophore": "Alexa Fluor 647",
+        "reactive_name": "Alexa Fluor 647 C2-maleimide",
+        "role": "acceptor",
+        "seq": 132,
+        "mutated": true,
+        "description": "Alexa Fluor 647 maleimide conjugated to cysteine 132 (thioether)"
+      }
+    ],
+    "background": "cysteine-free pseudo-wild type C54T/C97A",
+    "sequence": "MNIFEMLRIDEGLRLKIYKDTEGYYTIGIGHLLTKSPSLNAAKSELDKAIGRNTNGVITKDEAEKLFNQDVDAAVRGILRNAKLKPVYDSLDAVRRAALINMVFQMGETGVAGFTNSLRMLQQKRWDEAAVNLAKSRWYNQTPNRAKRVITTFRTGTWDAYKNL",
+    "sequence_source": "PDB 1L63 (T4 lysozyme, cysteine-free pseudo-wild type C54T/C97A), with the substitutions below",
+    "substitutions": {
+      "44": "4AF",
+      "132": "CYS"
+    },
+    "mutations": "C54T, C97A, S44(4AF), N132C"
+  },
+  "setups": {
+    "_help": "One entry per instrument set-up and day; units name it in 'setup'.",
+    "2014-08-12_pq-hydraharp": {
+      "short": "PicoQuant HydraHarp 400 (Split_*.ht3)",
+      "instrument_id": "minimos-2014",
+      "instrument_pc": "N:\\Singlem\\singlem14-3\\August\\12_T4L_DR (PicoQuant HydraHarp 400, HT3)",
+      "instrument": [
+        "Home-built confocal epi-illumination microscope (2014). TCSPC: PicoQuant",
+        "HydraHarp 400 in HT3 mode (Info file: reading routine 'PQ TH3R', laser rep.",
+        "15.62 ns). Eight detection channels: 2 colours (green, red) x 2 polarizations x",
+        "2 detectors per colour and polarization (dead-time-free); photons on routing",
+        "channels 0-7 in every Split_*.ht3."
+      ],
+      "setup_id": "singlem-2014-hydraharp-8ch",
+      "channels": [
+        {
+          "name": "green",
+          "channels": "4 detectors: parallel and perpendicular, each split over 2 detectors (dead-time-free); routing 0-7 pairs 1:0, 3:2, 5:4, 7:6 (protocol)"
+        },
+        {
+          "name": "red",
+          "channels": "4 detectors: parallel and perpendicular, each split over 2 detectors (dead-time-free)"
+        }
+      ]
+    }
+  },
+  "units": [
+    {
+      "_help": "A measurement: 'source' is under <data_root>/sources/, 'setup' names a setups entry, 'calibrations' (optional) the calibration folders of that setup it uses (default: all of them), 'trees' the analyses kept, 'flags' what the reviewer must check.",
+      "path": "measurements/2014-08-12_0M-urea",
+      "source": "2014-08-12/44-132_0murea_sm",
+      "server": "/mnt/user/Science/Measurements/Singlem/singlem14-3/August/12_T4L_DR/44-132_0murea_sm",
+      "content": "S44pAcF/N132C DA, 0 M urea",
+      "date": "2014-08-12",
+      "urea": "0",
+      "signal": "DA",
+      "condition": "0 M urea",
+      "setup": "2014-08-12_pq-hydraharp",
+      "buffer": "0 M urea; 50 mM Na-phosphate, 150 mM NaCl (manuscript methods); plus 1 uM UNLABELED T4L wt* (no dye, invisible to detection; added as 1 uL per protocol to block surface adsorption); dye-labelled T4L S44pAcF/N132C at single-molecule (pM) dilution (protocol: 0.5 in 500, 0.5 in 500); room temperature",
+      "thresholds": "threshold All 0.0294#60",
+      "details": [
+        "Background count rates (protocol of 2014-08-12, kHz): H2O green 0.831, red 0.601;",
+        "buffer 0 M urea green 1.673, red 1.004."
+      ],
+      "settings": [
+        "Protocol: 8 channel set-up, Nunc chambers (8), 60 uW green at the objective."
+      ],
+      "flags": [
+        "added measurement: not in the experiment list for #10, but documented in the 2014-08-12 protocol (S44 N132 (A488, A647) 0M urea, burstwise_All 0.0294#60) -- confirm"
+      ],
+      "calibrations": [
+        "h2o-scatter-irf",
+        "buffer-0M-urea"
+      ]
+    },
+    {
+      "path": "calibrations/2014-08-12_pq-hydraharp/buffer-0M-urea",
+      "source": "2014-08-12/buffer_0m",
+      "server": "/mnt/user/Science/Measurements/Singlem/singlem14-3/August/12_T4L_DR/buffer_0m",
+      "content": "buffer, 0 M urea (50 mM Na-phosphate, 150 mM NaCl): background"
+    },
+    {
+      "path": "calibrations/2014-08-12_pq-hydraharp/h2o-scatter-irf",
+      "source": "2014-08-12/irf",
+      "server": "/mnt/user/Science/Measurements/Singlem/singlem14-3/August/12_T4L_DR/irf",
+      "content": "clean H2O: scatter and instrument response; the Green Scatter of every 2014 burst analysis (Paris Info: irf/Split_irf-*_10.dat, *_32.dat)",
+      "flags": [
+        "role from the analysis' Info file (Green Scatter) -- confirm this folder is the water measurement"
+      ]
+    }
+  ],
+  "license": "CC-BY-4.0",
+  "zenodo": {
+    "_help": "The Zenodo metadata (reviewed as an item before upload). Never name the container format here.",
+    "title": "T4 lysozyme urea unfolding — single-molecule FRET (MFD), construct S44pAcF/N132C (example, 0 M urea): raw TTTR data, burst analysis and calibrations",
+    "upload_type": "dataset",
+    "description": "<p>Raw single-molecule FRET data (multiparameter fluorescence detection, TTTR) of double-labelled T4 lysozyme S44pAcF/N132C (Alexa Fluor 488 donor at 4-acetyl-L-phenylalanine 44, Alexa Fluor 647 acceptor at cysteine 132; cysteine-free pseudo-wild type C54T/C97A) at 0 M urea, with the burst analysis of every measurement in one analysis container per measurement and the calibrations of each setup and measurement day. Metadata: flrCIF/mmfdb <code>metadata.cif</code> (validated against the mmCIF, IHM, IHM-FLR and mmfdb dictionaries); provenance in <code>origins.json</code>; checksums in <code>manifest_sha256.csv</code>. Part of the T4L urea-unfolding series.</p>",
+    "creators": [
+      {
+        "name": "Hemmen, Katherina",
+        "affiliation": "Rudolf Virchow Center for Translational and Integrative Bioimaging, Julius-Maximilians University of Wuerzburg"
+      },
+      {
+        "name": "Peulen, Thomas-Otavio",
+        "affiliation": "Biophysical Chemistry, Department of Chemistry and Chemical Biology, Technische Universität Dortmund"
+      },
+      {
+        "name": "Rohrbeck, Daniel",
+        "affiliation": "Molekulare Physikalische Chemie, Heinrich-Heine-Universität Düsseldorf"
+      },
+      {
+        "name": "Rodnin, Dmitro",
+        "affiliation": "Molekulare Physikalische Chemie, Heinrich-Heine-Universität Düsseldorf"
+      },
+      {
+        "name": "Felekyan, Suren",
+        "affiliation": "Molekulare Physikalische Chemie, Heinrich-Heine-Universität Düsseldorf"
+      },
+      {
+        "name": "Kühnemuth, Ralf",
+        "affiliation": "Molekulare Physikalische Chemie, Heinrich-Heine-Universität Düsseldorf"
+      },
+      {
+        "name": "Seidel, Claus A. M.",
+        "affiliation": "Molekulare Physikalische Chemie, Heinrich-Heine-Universität Düsseldorf"
+      },
+      {
+        "name": "Sanabria, Hugo",
+        "affiliation": "Department of Physics and Astronomy, Clemson University"
+      }
+    ],
+    "keywords": [
+      "T4 lysozyme",
+      "protein unfolding",
+      "urea",
+      "single-molecule FRET",
+      "MFD",
+      "TTTR",
+      "flrCIF"
+    ],
+    "license": "cc-by-4.0",
+    "access_right": "open",
+    "notes": "Creators and affiliations from the manuscript 'Revealing the Hidden Dynamics in T4L Unfolding Energy Landscape' (Hemmen, Peulen, Rohrbeck, Rodnin, Felekyan, Kühnemuth, Seidel, Sanabria; in preparation). Construct S44pAcF/N132C is part of the series but not among the variants analysed in that manuscript."
+  }
+}

@@ -453,22 +453,44 @@
                       "action": "build_record",
                       "label": "Build record",
                       "role": "primary",
-                      "description": "Run the build (link raws, write containers, generate and validate metadata.cif, verify) and then the review scan, on a worker. Grey until a config is selected."
+                      "description": "Run the build (link raws, write containers, generate and validate metadata.cif, verify) and then the review scan, on a worker. Grey until a config is selected and saved."
+                    },
+                    {
+                      "action": "show_example",
+                      "label": "Example",
+                      "description": "Put an example config in the editor -- a real one, trimmed: one measurement, its setup and calibrations, the construct and the Zenodo block, each part with a _help note. Adapt it and Save config."
+                    },
+                    {
+                      "action": "save_config",
+                      "label": "Save config",
+                      "description": "Write the edited config to the configs folder as <record>.json. Grey while the text is not valid JSON, its \"record\" is not a record name, or another config has that name."
+                    },
+                    {
+                      "action": "discard_config_edit",
+                      "label": "Discard edits",
+                      "description": "Drop the edits; the editor shows the selected config again."
                     }
                   ]
                 },
                 {
+                  "type": "info",
+                  "key": "config_status",
+                  "source": "config_status",
+                  "is_markdown": true,
+                  "description": "Whether the edited config can be saved, and under which name."
+                },
+                {
                   "type": "custom",
                   "key": "code_editor",
-                  "target": "config_text",
+                  "target": "config_edit",
                   "options": {
                     "language": "json",
-                    "read_only": true,
+                    "read_only": false,
                     "stretch": 1,
                     "min_height": 120,
                     "height": 200
                   },
-                  "description": "The selected build config, read-only. Edit it in the project, then Build record."
+                  "description": "The selected build config, or the example: edit it here and Save config (keys starting with _ are notes, ignored by the build)."
                 },
                 {
                   "type": "custom",

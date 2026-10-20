@@ -415,3 +415,25 @@ def test_a_doi_is_reserved_from_the_upload_tab(model, fake):
     assert "10.5281/zenodo.9" in model.message
     assert "Reserved DOI:** `10.5281/zenodo.9`" in model.reserved_doi_text
     assert not model.enabled("reserve_doi_action")
+
+
+def test_the_example_config_is_edited_and_saved_as_a_new_config(model, tmp_path):
+    model.configs_dir = str(tmp_path / "configs")
+    model.show_example()
+    example = json.loads(model.config_edit)
+    assert example["record"] == "example-t4l-s44-n132c-2014" and example["units"]
+    assert model.config_status.startswith("Unsaved") and not model.enabled("build_record")
+    model.config_edit = model.config_edit.replace("example-t4l-s44-n132c-2014", "Bad Name")
+    assert '"record" is not a record name' in model.config_status
+    assert not model.enabled("save_config")
+    model.config_edit = "{ not json"
+    assert model.config_status.startswith("**Not valid JSON")
+    model.config_edit = json.dumps(dict(example, record="t4l-k60-n132c"), indent=2)
+    model.save_config()
+    saved = tmp_path / "configs" / "t4l-k60-n132c.json"
+    assert json.loads(saved.read_text())["record"] == "t4l-k60-n132c"
+    assert model.config_name == "t4l-k60-n132c" and model.config_draft is None
+    assert model.enabled("build_record")
+    model.show_example()
+    model.config_edit = json.dumps(dict(example, record="t4l-k60-n132c"))
+    assert "exists already" in model.config_status  # another config is never overwritten
