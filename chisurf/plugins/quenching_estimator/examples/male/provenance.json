@@ -1,0 +1,93 @@
+{
+  "dataset": "MalE (maltose-binding protein) labelled with AF488, Cy3B and Atto655 at nine sites, apo (PDB 1OMP) and holo (PDB 1ANF), in H2O/D2O mixtures; free-dye amino-acid titrations",
+  "owner": "Thomas-Otavio Peulen (own measurements)",
+  "date": "2026-09-29",
+  "source_workbooks": {
+    "260929_All fits MalE.xlsx": {
+      "sha256": "6d9b359585a9f9d18e9f53264f8e0be17bfb310ce736b752fd8e929c61663664",
+      "bytes": 199584
+    },
+    "amino acids dynamic quenching.xlsx": {
+      "sha256": "a92a36d0b5b4caf19bb2118337d44a0013ae099b6e743222575f66463b78bfbf",
+      "bytes": 10794
+    }
+  },
+  "converted_by": "chisurf/plugins/quenching_estimator/test/baselines/make_male_prototype.py --convert",
+  "conversion": "cell values copied verbatim (floats written with repr, so they read back bit-exact); only the listed columns are kept; rows without a dye are dropped from the lifetime table",
+  "files": {
+    "tcspc_fit_results.csv": {
+      "workbook": "260929_All fits MalE.xlsx",
+      "sheet": "TCSPC fit results",
+      "rows": 248,
+      "columns": [
+        "Date",
+        "D2O %",
+        "Variant",
+        "Dye",
+        "Condition",
+        "tauX",
+        "Data path name"
+      ],
+      "sha256": "b798b14ae2393d33593a8b72bc11da73e428d96733ca02dda1f8ae5185313bf3"
+    },
+    "amino_acid_quenching_flt.csv": {
+      "workbook": "260929_All fits MalE.xlsx",
+      "sheet": "amino acid quenching FLT",
+      "rows": 297,
+      "columns": [
+        "Date",
+        "Dye",
+        "Amino acid",
+        "Concentration, mM",
+        "tauX0, ns",
+        "tauX"
+      ],
+      "sha256": "409cf3d48cbaa8e98f0d0e098fc6bd0474b9d0b22adff47d5e540029ee6645b7"
+    },
+    "titration_summary.csv": {
+      "workbook": "amino acids dynamic quenching.xlsx",
+      "sheet": "Sheet1",
+      "rows": 17,
+      "columns": [
+        "dye",
+        "quencher",
+        "n_dates",
+        "n_points",
+        "tau0_ns",
+        "KSV_per_M",
+        "KSV_err_per_M",
+        "kq_per_M_s",
+        "kq_err_per_M_s"
+      ],
+      "renamed_from": [
+        "Dye",
+        "Quencher",
+        "n dates",
+        "n points",
+        "tau0, ns",
+        "KSV, 1/M",
+        "+/-",
+        "kq, 1/(M s)",
+        "+/-"
+      ],
+      "sha256": "03f8b0ac5edbd84bb81176e3a9daefcb95ea2e0ee84f3f173914f33de313d481"
+    }
+  },
+  "structures": {
+    "1OMP.cif": {
+      "pdb": "1OMP",
+      "state": "APO",
+      "source": "~/dev/imp.bff/examples/structure/MBP/1OMP.cif",
+      "license": "PDB data, CC0 1.0",
+      "sha256": "8fc0436ac9314dce1c504e6016e1fc05d95f5b71faa245036efb6e3efe670b8f"
+    },
+    "1ANF.cif": {
+      "pdb": "1ANF",
+      "state": "HOLO",
+      "source": "~/dev/imp.bff/examples/structure/MBP/1ANF.cif",
+      "license": "PDB data, CC0 1.0",
+      "sha256": "54a33f49073210a129a74ab256fab4f8dfedc3df5a4d43360d92e5636b93572f"
+    }
+  },
+  "site_number_rule": "the site is taken from the data file name (MalE<site><dye>) where it differs from Variant"
+}

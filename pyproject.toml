@@ -192,7 +192,9 @@ namespaces = true
     # installed copy without them raises where a source checkout works.
     "*.wgsl",
     # Agent skills ship as SKILL.md documents beside the code that uses them.
-    "*.md"
+    "*.md",
+    # Example structures in mmCIF (QuEst's MalE analysis: 1OMP apo, 1ANF holo).
+    "*.cif"
 ]
 "chisurf.settings.constants" = ["*.json"]
 

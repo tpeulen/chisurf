@@ -9,19 +9,44 @@ timestamp: '2026-10-20T00:00:00Z'
 
 # Where to pick this up
 
-The plan below is the open front. Nothing in `chisurf/` has been changed for it yet.
+The plan below is the open front. WP0 has landed; WP1, WP2, WP7-theory and WP7b can start.
 
-1. **Open: WP0 (data + golden) first.** Every other package tests against
-   `test/baselines/male_prototype.json`, so this file has to exist before they start.
-   **Measure:** it is made by *executing* the prototype's deterministic notebook cells
-   (Steps 0–3, cell 25 helpers, the `Site` class of cell 29) against the prototype's
-   own `cache/` npz files. Copying printed numbers is not enough. The notebook's printed
-   tables are rounded to 2–4 digits, and its table in cell 17 is truncated (`...`).
-   **Trap:** the stored notebook outputs are from a cordeshub run (`RUN_STAMP 20261001-134626`).
+1. **Done: WP0 (data + golden).** `examples/male/` (3 CSVs, `provenance.json`, `1OMP.cif`,
+   `1ANF.cif`), `core/inference/measurements.py`, `test/data/male_site_1omp72_L20.12.npz`,
+   `test/baselines/{make_male_prototype.py,male_prototype.json}`, `test/test_male_measurements.py`.
+   **Regenerate:** `QT_QPA_PLATFORM=offscreen <arm64>/bin/python
+   chisurf/plugins/quenching_estimator/test/baselines/make_male_prototype.py` (`--convert` also
+   rewrites the CSVs from `~/dev/quest/data/*.xlsx`; `--no-walk` skips the 2-min walk). It executes
+   notebook cells 2–31 plus cell 33's row selection, reads the 54 site tables from
+   `prototype/cache/` (stops if one is missing), and checks that the shipped CSVs read by
+   `measurements.py` give the notebook's workbook frames exactly. Two runs give byte-identical JSON.
+   **Checks passed:** `data` (64 rows) and `K_POSTERIOR` (17) equal `output/20261001-142438_*` bit for
+   bit. `Site.lifetime` at the *printed* (4-digit) stage estimates gives the printed rms/median
+   (AF488 0.616/0.047, Cy3B 0.023/0.010, Atto655 D₂O 0.633/0.061, joint 0.523/0.094; AF488 mean dark
+   13 %), and the naive H₂O test gives 0.48 ns, 16/18. So the cached tables and the `Site` code
+   are the stored run's. Golden keys and their meaning are in the JSON's `about` and in each
+   section's `note`. Water-access r at the printed Stage C parameters is 0.32 (0.37 without 322);
+   the stored run never printed it.
+   **Trap for WP2/WP3: today's IMP.bff does not rebuild the cached tables.** Rebuilding APO 72
+   L 20.12 with cell 25's own code and IMP.bff `ab5de21` gives 106 992 AV points, not 97 722 (the
+   site PDB is byte-identical, so the AV call changed). The direct method at APO 233 likewise gives
+   2.52 ns, not 2.59 (walk here 2.38 ± 0.05). The likely cause is the 2026-10-12 IMP.bff obstacle
+   radii change (`imp_atom_radius`), which is not verified. Until it is pinned down, "rebuilt table
+   equals the npz" and "direct = 2.59" cannot both pass on the current IMP.bff. WP2/WP3 must find
+   which AV argument or radius moved and decide whether to reproduce the old grid or re-pin the
+   golden with a log line. The `Site` golden (`site_lifetimes`) does not depend on this, because it
+   reads the shipped/cached tables.
+   **Interfaces for later packages:** `measurements.load_measurements(folder=None) -> Measurements`
+   (`lifetimes`, `titration_points`, `titration_summary` as numpy structured arrays, `corrections`
+   as `SiteCorrection` tuples, `folder`). Field names are in `LIFETIME_FIELDS`,
+   `TITRATION_POINT_FIELDS` and `TITRATION_SUMMARY_FIELDS`. Lifetimes have `site` (float, NaN for
+   the free dye). Titration points drop rows without dye or τ, as the notebook does. Empty floats
+   are NaN and empty ints are −1. The CSVs keep the workbook column names, except the summary,
+   which has two `+/-` columns and so uses the notebook's names.
+   **Trap (still true):** the stored notebook outputs are from a cordeshub run (`RUN_STAMP 20261001-134626`).
    That run's CSVs are *not* in `prototype/output/`. The full-model CSVs that are on disk
    (`20260930-162323_*`) come from an older model (lam free, no `dtau_shield`, no `FIXED`),
-   so do not use them as fit references. Data-only CSVs (`20261001-142438_*`) are identical to
-   the notebook (checked: `measured_lifetimes_with_errors.csv`, `chapter1_stern_volmer_posterior.csv`).
+   so do not use them as fit references.
 2. **Open: WP2 (IMP.bff kernels) blocks WP3.** Without per-voxel exposure, rotamer quencher
    ensembles and voxel-centre/neighbour accessors in IMP.bff, the site tables would have to
    be written in Python here. That breaks the rule that geometry kernels belong in IMP.bff, and it
