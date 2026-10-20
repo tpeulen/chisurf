@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-20
+
+- PRD-154 gate-1 leftovers: IRF identity, history audit, startup services and PDA fit tests freed of Qt-shell references; hub membership lists zenodo_deposit as a visible Setup child; emtk minimum 0.1.23 (emtk.backdrop) in requirement/pyproject/recipe; ALEX demo draws from its declared DEMO again; Settings > Zenodo exports/restores state; styles-menu and burst-table tests follow the flat menu and denser rows; mmfdb reads the Å Förster column back as nm; emtk folding stale-pair guard left in emtk's uncommitted tree (known-issues).
+
 ## 2026-10-19
 - FCS correlator: per-file time regions drawn on the count-rate trace in Files & Steps (`fcs_correlator/regions.py`, cut into raw and filtered photon paths after invert/gap fill); folder expansion no longer drops .spc/.h5 files (matched tttrlib container names, not extensions); docs guide 75 + concept, guide card, [FCS](plugins/fcs.md).
 

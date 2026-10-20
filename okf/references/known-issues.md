@@ -4,6 +4,21 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## emtk text-editor folding fix rides on uncommitted emtk work (found 2026-10-20, branch `mcts-native-baseline`)
+
+status: open
+
+The `Folds` class in `~/dev/emtk/emtk/widgets/text_editor.py` exists only in emtk's
+uncommitted working tree (with the untracked `tests/test_text_editor_folding_colors.py`).
+Select-all + type in a folding editor indexed fold pairs of the old, longer text
+(`IndexError` in `Folds._build_map` via `reveal`), which broke every JSON edit in
+`test/native_emtk/test_channel_definition_json.py`. The guard (skip pairs past the
+shortened document until `update()` re-reads them) and its test
+`test_typing_over_the_whole_document_never_indexes_stale_folds` were applied in that
+working tree but cannot be committed apart from the feature they patch. Whoever commits
+the folding feature commits them with it; until then, discarding emtk's tree reopens
+the five channel-definition failures.
+
 ## `plugins.toolbar_plugins` pins nothing in the emtk shell (found 2026-10-19, branch `mcts-native-baseline`)
 
 status: open
