@@ -1393,3 +1393,27 @@ Host-aware clipboard calls are intercepted in tests, preserving user contents.
 Six locales, two widths, actual modal/closed boundaries and Qt-free construction
 pass. Root inspected all before/default/narrow images;98/pass retains geometry
 and old Close.
+
+## Shell key routing: a release goes where its press went — 2026-10-20
+
+A tool docked in the emtk shell (`chisurf/emtk/main_app.py`) or a hub
+(`chisurf/emtk/tool_hub.py`) gets each key's **release** from the child that
+took its **press** (`_key_owners` / `_child_keys`), even when the focus moved on
+meanwhile; `focus_lost` releases every key a child still holds. Before this the
+shell forwarded presses only, so a game opened from Tools > Games never saw a key
+go up: Tetris auto-repeated the move and Pong's paddle kept going ("too many
+presses land and do not stop landing"). Separately, emtk's native host
+(`emtk/native.py`) sends a printable key's release with the text its `char` event
+typed: with a char backend (glfw) the key_down carries neither key nor text, so
+the release of "w" arrived as `(0, "", 0)` and Pong's W/S paddle never stopped,
+even standalone. Guards: `test/native_emtk/test_emtk_shell_game_keys.py` (real
+key_down/key_up through `RealisticDriver` into the shell) and emtk's
+`tests/test_native_events.py::test_a_printable_key_typed_via_char_is_released_as_its_text`.
+
+Where to pick this up:
+1. Any new composite host (a surface hosting child apps) must forward
+   `key_release` to the press's owner and `focus_lost`; there is no shared emtk
+   mixin for child composition yet — a third copy is the moment to add one to emtk.
+2. emtk `tests/test_testing_realistic.py::test_hidden_glfw_window_{press,wheel}_after_the_window_moved_under_a_still_hand`
+   fail identically with and without this change on this machine (pointer, not
+   keys; a real hidden GLFW window) — not investigated.

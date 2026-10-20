@@ -144,6 +144,8 @@ class ToolHubApp(ImApp):
         self.child_box = (230.0, HEADER, 970.0, 688.0)
         self._painter = None
         self._child_focus = False
+        #: Key -> the tool that took its press: the release goes there, even after a switch.
+        self._child_keys: dict[int, Any] = {}
         self._child_capture = False
         #: Steps still to walk (fast-forward), and whether Next waits for the current step's run to end.
         self._ff_queue: list[str] = []
@@ -714,8 +716,25 @@ class ToolHubApp(ImApp):
 
     def key(self, key, text="", modifiers=0):
         if self.child and self._child_focus and not self._overlay_open():
+            self._child_keys[int(key)] = self.child
             return self.child.key(key, text, modifiers)
         return super().key(key, text, modifiers)
+
+    def key_release(self, key, text="", modifiers=0):
+        """A key whose press went to a tool comes up there too, or a game keeps it held."""
+        child = self._child_keys.pop(int(key), None)
+        release = getattr(child, "key_release", None) if child is not None else None
+        if callable(release):
+            return release(key, text, modifiers)
+        return False
+
+    def focus_lost(self):
+        """The window lost the keyboard: every key a tool still holds goes up there."""
+        owners, self._child_keys = self._child_keys, {}
+        for key, child in owners.items():
+            release = getattr(child, "key_release", None)
+            if callable(release):
+                release(key, "", 0)
 
     def animating(self):
         return super().animating() or self.building or bool(self.child and self.child.animating())

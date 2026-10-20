@@ -468,6 +468,8 @@ class EmtkShellApp(ImApp):
         self._capture: str | None = None
         #: Child that was pressed last (gets the keys).
         self._focus: str | None = None
+        #: Key -> the child that took its press: its release goes there, wherever the focus is by then.
+        self._key_owners: dict[int, Any] = {}
         #: The children drawn in the last frame: child id -> (dock window key, app, box).
         self._drawn: dict[str, tuple[str, Any, tuple[float, float, float, float]]] = {}
         self.docks = ShellDockManager(
@@ -2129,8 +2131,37 @@ class EmtkShellApp(ImApp):
         if self._shortcut(key, modifiers, child):
             return True
         if child is not None:
+            self._key_owners[int(key)] = child
             return child.key(key, text, modifiers)
         return super().key(key, text, modifiers)
+
+    def key_release(self, key, text="", modifiers=0):
+        """A key came up: tell the child that took its press, as the native and Qt hosts tell a tool.
+
+        Without it a game docked here never saw a key go up -- the key stayed held, so Tetris
+        auto-repeated the move and Pong's paddle kept going after release. The press's owner gets
+        it even when the focus moved on meanwhile; a release with no recorded press goes to the
+        focused child.
+        """
+        child = self._key_owners.pop(int(key), None)
+        if child is None:
+            focus_id = self._focus or (self.docks.focused if self.docks.focused in self._drawn else None)
+            child, _origin = self._child(focus_id)
+        release = getattr(child, "key_release", None) if child is not None else None
+        if callable(release):
+            return release(key, text, modifiers)
+        return False
+
+    def focus_lost(self):
+        """The window lost the keyboard (the Qt host says so; no releases follow): release held keys."""
+        owners, self._key_owners = self._key_owners, {}
+        for key, child in owners.items():
+            release = getattr(child, "key_release", None)
+            if callable(release):
+                try:
+                    release(key, "", 0)
+                except Exception:  # noqa: BLE001 - one tool failing must not keep the others' keys held
+                    _log.exception("releasing a key in %r failed", child)
 
     def compose(self, text, cursor=None):
         """The input method's composition goes where the keys go: the focused child, else the shell."""
