@@ -668,6 +668,38 @@ A single pytest process runs ~33k tests. Two failure modes have taken the machin
   stop costs one chunk, not the run; `--resume` continues. Two single-process gate runs on
   2026-10-19 were stopped at 27 % and 25 % by the swap rule -- correctly, other agents' suites
   and the owner's own fits had swap at 5 of 6 GB.
+- **A chunk's hours can be the machine asleep, not the tests.** The 2026-10-19/20 gate run
+  reported `chisurf/plugins/calculator` at 15947 s and `chisurf/plugins/burst` at 9583 s;
+  the pytest footer in the same logs says 277.8 s and 727 s. pytest times itself with
+  `perf_counter` (mach_absolute_time, which stops while the Mac sleeps); the runner used
+  `time.time()`. `pmset -g log` shows the lid closed at 23:40:12 and the machine reopened at
+  06:39:17; in between it only ran in 45-second maintenance DarkWakes (00:00, 01:12, 02:13,
+  03:14 ...), which is exactly when the burst chunk finished (02:13:55) and the calculator
+  chunk crept forward until it finished 26 s after the lid opened (06:39:43). Neither chunk
+  waited for memory (the two "waiting for 3000 MB" lines are at the start of the run).
+  The runner now records `seconds` from the monotonic clock (awake time), adds
+  `wall_seconds`/`slept_seconds` when the two differ by over a minute, and holds
+  `caffeinate -i -s` for its lifetime (stops idle sleep; a closed lid on battery still
+  sleeps). Before chasing a slow chunk, compare its `seconds` with the pytest footer in
+  its log: if they disagree, look at `pmset -g log | grep -E " (Sleep|Wake|DarkWake) "`.
+- **What the awake time of the burst chunk was spent on: PixelPainter text.** Timing the
+  158 burst test files one by one (`--durations`), the slow tests were the click-through
+  ones (`burst_gs` `test_the_simulate_and_fit_steps_wait_for_their_controls` 52.8 s,
+  `burst_background` 23.2 s, `burst_irf_bg` 19.3 s) and every `test_port_is_qt_free`
+  (8-16 s). A profile put ~95 % of a frame in emtk's `PixelPainter._text_run` — a
+  pure-Python box filter summing every atlas texel under every pixel (3.7 s per 800x600
+  frame) — and ~3.4 s per fresh process in the pure-Python PNG unfilter of the glyph
+  atlas, paid again by each `qt_free` subprocess. Fixed in emtk (`emtk/testing.py`): a
+  per-glyph summed-area table, a memo of each placed glyph's covered pixels, and the atlas
+  decoded through Pillow when present. Pixels are bit-identical (frame hashes unchanged);
+  a repeated frame is 0.37 s; gs test 52.8 s -> 8.2 s (file 73 s -> 11 s), background 23.2 s -> 2.2 s (file 41 s -> 9 s). The remaining heavy files do real
+  work (`mfd_prepare` fixture runs a 152-burst preparation per test, `burst_h2mm` real
+  fits, `burst_fusion` writes folders).
+- **Chunks of a big plugin family are batches.** A family with more than 40 test files
+  runs as `<family>[i/n]` chunks of the sorted file list (chimol, 241 files, was killed by
+  the resource guard at RSS > 3 GB as one process; burst, core, fcs, microscopy,
+  quenching_estimator and tttr are batched too). `chisurf/plugins/cookiecutter-chisurf-plugin`
+  is skipped: its `test_*.py` are template sources (pytest exit 2).
 - **Where to pick this up (2026-10-19).** Measured: the first 7228 tests (27 %, up to
   `test/native_emtk/test_emtk_shell_model_sections.py`) — no unbounded growth, peak tree
   2.2 GB in `test/fluorescence/test_mfd_simulation.py`; record

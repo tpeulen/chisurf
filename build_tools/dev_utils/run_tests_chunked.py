@@ -17,6 +17,14 @@ Usage::
 Results land in ``~/.cache/chisurf/test-resources/gate/``: ``<chunk>.log`` per chunk and
 ``summary.json`` (chunk -> exit code, counts, seconds). The exit code is 0 only when every
 chunk passed.
+
+``seconds`` is the time the machine was *awake* running the chunk (the monotonic clock,
+which stops while the machine sleeps); ``wall_seconds`` and ``slept_seconds`` appear when
+the two differ by more than a minute. A gate left running over a closed lid once reported
+the calculator chunk at 4.4 h when pytest itself took 278 s: the machine slept from 23:40
+to 06:39 and the chunk only crept forward in 45-second maintenance wakes. On macOS the
+runner holds a ``caffeinate -i -s`` assertion for its lifetime, which stops idle sleep
+(and system sleep on AC); closing the lid on battery still sleeps the machine.
 """
 
 from __future__ import annotations
@@ -25,6 +33,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -53,6 +62,14 @@ ENV = {
 START_FREE_MB = 3000
 
 
+#: Plugin directories that hold no real tests: the plugin template's ``test_*.py`` are
+#: cookiecutter sources (pytest exits 2 on them).
+SKIP_FAMILIES = {"cookiecutter-chisurf-plugin"}
+#: A plugin family with more test files than this runs as ``<family>[i/n]`` batches of
+#: about this many files: chimol (241 files) keeps scene/GPU caches per module, and as one
+#: process it was stopped by the resource guard at RSS > 3 GB.
+BATCH_FILES = 40
+
 #: The name of the chunk that holds the test files directly under test/.
 LOOSE = "test/*.py"
 
@@ -71,17 +88,34 @@ def chunks() -> list[str]:
         found.append(LOOSE)
     plugins = ROOT / "chisurf" / "plugins"
     for family in sorted(p for p in plugins.iterdir() if p.is_dir()):
-        if any(family.rglob("test_*.py")):
-            found.append(str(family.relative_to(ROOT)))
+        if family.name in SKIP_FAMILIES or not any(family.rglob("test_*.py")):
+            continue
+        name = str(family.relative_to(ROOT))
+        n = len(_family_files(name))
+        if n > BATCH_FILES:
+            parts = -(-n // BATCH_FILES)
+            found.extend(f"{name}[{i}/{parts}]" for i in range(1, parts + 1))
+        else:
+            found.append(name)
     for path in sorted((ROOT / "chisurf").iterdir()):
         if path.is_dir() and path.name != "plugins" and any(path.rglob("test_*.py")):
             found.append(str(path.relative_to(ROOT)))
     return found
 
 
+def _family_files(family: str) -> list[str]:
+    return sorted(str(p.relative_to(ROOT)) for p in (ROOT / family).rglob("test_*.py"))
+
+
 def _targets(chunk: str) -> list[str]:
     if chunk == LOOSE:
         return sorted(str(p.relative_to(ROOT)) for p in (ROOT / "test").glob("test_*.py"))
+    batch = re.fullmatch(r"(.+)\[(\d+)/(\d+)\]", chunk)
+    if batch:
+        family, index, parts = batch.group(1), int(batch.group(2)), int(batch.group(3))
+        files = _family_files(family)
+        size = -(-len(files) // parts)
+        return files[(index - 1) * size:index * size]
     return [chunk]
 
 
@@ -100,6 +134,17 @@ def _wait_for_memory() -> None:
             print(f"  waiting for {START_FREE_MB} MB available ({_available_mb():.0f} now)", flush=True)
             waited = True
         time.sleep(15)
+
+
+def _hold_awake() -> subprocess.Popen | None:
+    """Keep macOS from idle-sleeping while the gate runs; ``None`` elsewhere.
+
+    ``-w`` ties the assertion to this process, so it ends with the runner even when the
+    runner is killed.
+    """
+    if sys.platform != "darwin" or shutil.which("caffeinate") is None:
+        return None
+    return subprocess.Popen(["caffeinate", "-i", "-s", "-w", str(os.getpid())])
 
 
 def _counts(text: str) -> dict:
@@ -122,12 +167,13 @@ def main(argv=None) -> int:
     summary = json.loads(summary_path.read_text()) if args.resume and summary_path.is_file() else {}
     todo = args.only or chunks()
     env = {**os.environ, **ENV}
+    awake = _hold_awake()
     for chunk in todo:
         if args.resume and chunk in summary and summary[chunk]["exit"] in (0, 1, 5):
             continue
         _wait_for_memory()
-        log = OUT / (chunk.replace("/", "__").replace("*", "loose") + ".log")
-        started = time.time()
+        log = OUT / (re.sub(r"[\[\]]", "_", chunk).replace("/", "__").replace("*", "loose") + ".log")
+        started, started_wall = time.monotonic(), time.time()
         print(f"{chunk} ...", flush=True)
         with open(log, "w") as fh:
             code = subprocess.call(
@@ -136,9 +182,16 @@ def main(argv=None) -> int:
                 cwd=ROOT, env=env, stdout=fh, stderr=subprocess.STDOUT,
             )
         counts = _counts(log.read_text(errors="replace"))
-        summary[chunk] = {"exit": code, **counts, "seconds": round(time.time() - started, 1)}
+        seconds, wall = time.monotonic() - started, time.time() - started_wall
+        summary[chunk] = {"exit": code, **counts, "seconds": round(seconds, 1)}
+        slept = ""
+        if wall - seconds > 60:
+            summary[chunk].update(wall_seconds=round(wall, 1), slept_seconds=round(wall - seconds, 1))
+            slept = f" (machine slept {wall - seconds:.0f}s; wall {wall:.0f}s)"
         summary_path.write_text(json.dumps(summary, indent=1))
-        print(f"  exit {code} {counts} {summary[chunk]['seconds']}s", flush=True)
+        print(f"  exit {code} {counts} {summary[chunk]['seconds']}s{slept}", flush=True)
+    if awake is not None:
+        awake.terminate()
     bad = {c: r for c, r in summary.items() if c in todo and r["exit"] not in (0, 5)}
     print(f"{len(todo) - len(bad)}/{len(todo)} chunks green; failing: {sorted(bad)}")
     return 0 if not bad else 1
