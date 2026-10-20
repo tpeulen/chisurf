@@ -9,7 +9,7 @@ timestamp: '2026-10-20T00:00:00Z'
 
 # Where to pick this up
 
-The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP7-theory and WP9 have landed; WP4 is in progress (its interface is stable; WP5 is built on it).
+The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP6, WP7-theory and WP9 have landed; WP4 is in progress (its interface is stable; WP5 is built on it).
 
 1. **Done: WP0 (data + golden).** `examples/male/` (3 CSVs, `provenance.json`, `1OMP.cif`,
    `1ANF.cif`), `core/inference/measurements.py`, `test/data/male_site_1omp72_L20.12.npz`,
@@ -211,6 +211,33 @@ The plan below is the open front. WP0, WP1, WP2, WP3, WP7b, WP5, WP7-theory and 
      api; r = api.analyse("B", preset="quick"); r["result"].stages["B"].tables["estimates"]`; background:
      `j = api.analyse("all", background=True)["job_id"]; api.job(j)["progress"]; api.cancel_job(j); api.analysis_result(j)`.
      The `docs/reference/plugins/quenching_estimator.md` RPC table needs `pixi run -e docs docs-plugins` after this lands.
+1f. **Done: WP6 (Analysis page, demo, tour, 2026-10-20).** The QuEst window has two pages, switched in a strip at its
+   top (`gui/app.py`: `QuEstWindow.page`, `show_page`, `draw_pages`): **Forward model** (unchanged) and **Analysis**
+   (`gui/analysis_card.py`: `AnalysisModel` Qt-free + `AnalysisCard` on `CardShell`, its own `analysis_help.md` and
+   `analysis_guide.json`, 10 steps, 4 awaits, step 2 = `load_example`). The page is `gui/analysis.view.json`: the run
+   panel, then the result `tabs` *Data* (Stern-Volmer + hyper-posterior heatmap + K_SV/kq, site lifetimes, free-dye tau0,
+   water bars), *kQ per dye*, *Site tables* (row per built table, exposure histogram of the selected one), *Fit* (stage +
+   data set choice, report text as markdown, parity with x/y errors, outlier rings, tau0 lines, forest on log x, LOO bars
+   + 3 sigma line, scale profile, estimates/predictions, K before/after), *Water* (access parity + r, time-weighted
+   exposure stairs, scale B vs C), *Summary* (scale and stickiness on log axes, dye table). Tables read the **declared**
+   columns (`tables.<name>.columns` -> `settings/analysis/*.yaml`; only the site-table summary declares its own in the
+   spec). Load, site-table building and stages run on a worker thread (`AnalysisModel._start`, `poll` on the UI thread);
+   the card builds the missing site tables itself first, one by one, so the first run has a progress line and a cancel
+   point per table (WP4's `Analysis.run` reports nothing while `blocks()` builds them). `demo.py`: `DEMO["analysis"]`
+   stages `examples/male` into `<demo folder>/male`; `analysis_demo()` -> (folder, `"quick"`). There is no legacy Qt
+   baseline (a new surface); de/fr deferred (item 4).
+   **Measure:** `pytest chisurf/plugins/quenching_estimator/test/test_emtk_analysis_card.py` (14 tests ~15 s, WP4's
+   `FakeLibrary` stand-in: page switch, both sizes, tooltips, load by click, declared columns, run fills every tab
+   without blocking the frame, write, cancel, every tour step resolves, settings round trip) + the demo test in
+   `test_demo_and_guide.py`. **Real QA (2026-10-20, read by the implementer):** MalE demo + quick, workers = every CPU,
+   site tables cached, another agent's full run on the same machine: **1117 s**; site tables from scratch ~10 s each
+   (46). Screenshots (scratchpad, not shipped) of every tab at 1280x820, Fit at 1280x2600, narrow 800x600. The quick run
+   puts the quench scale at its bounds (AF488 0.01 = lower, Atto655 10 = upper; stored 6.2 / 0.11): that is WP4's open
+   acceptance on today's geometry, not the GUI. **Open:** (1) Run calls `core.inference.stages` in process, not WP5's
+   `api.analyse(background=True)`: the API takes no site library (the tests' stand-in) and returns JSON over a transport,
+   while the card reads `StageResult` objects; route through the facade once it does, and the run then appears in the
+   job list. (2) Docs: WP7-guide (`docs/guides/111_*`) uses this page's screenshots. (3) The Data tab is long (scrolls);
+   no colour bar on the hyper-posterior heatmap.
 2. **Done: WP2 (IMP.bff kernels, imp.bff `0b178903a`).** It unblocked WP3; the kernels and the voxel-frame fix are in
    imp.bff `okf/quest-site-kernels.md`.
 3. **Open: owner questions to settle before WP4 is accepted** (findings from reading the notebook):

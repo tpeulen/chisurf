@@ -11,6 +11,10 @@ The ``?`` and **Guide** buttons are drawn by the card itself: ``CardShell`` buil
 ``EmTkGuidedTour`` from this folder's ``help.md`` and ``guide.json`` (the card's resource folder is this one), so the
 plugin window and its Qt host show one help page and walk one tour. **Load example** gives the
 tour T4 lysozyme to work on (``demo.py``).
+
+The window has two pages, switched in the strip at its top: **Forward model** (the card above) and **Analysis**
+(:mod:`.analysis_card`: the inverse analysis of measured site lifetimes, with its own ``?`` help and tour). The pages
+share the window; a run on one page keeps running while the other is shown.
 """
 
 from __future__ import annotations
@@ -85,12 +89,91 @@ def make_app():
     from emtk import im
     from emtk.i18n import tr
 
+    from chisurf.plugins.quenching_estimator.gui.analysis_card import AnalysisCard
     from chisurf.plugins.quenching_estimator.gui.card import QuestCard
 
     class QuEstWindow(QuestCard):
-        """The card plus attachment-site picking by residue."""
+        """The card plus attachment-site picking by residue, and the Analysis page beside it."""
 
         pick_target = "donor"
+        #: ``(key, caption, tooltip)`` of the window's pages.
+        PAGES = (
+            ("forward", "Forward model", "Simulate the decay of a dye at one site from the structure."),
+            (
+                "analysis",
+                "Analysis",
+                "Fit the quenching chemistry and stickiness of the dyes to measured lifetimes on many sites.",
+            ),
+        )
+
+        def __init__(self) -> None:
+            self.page = "forward"
+            super().__init__()
+            self.analysis = AnalysisCard(page_bar=self.draw_pages)
+            self.analysis.set_frame_request_callback(self.request_frame)
+
+        # ── pages ─────────────────────────────────────────────────────────
+
+        def draw_pages(self, card) -> None:
+            """The page switch, drawn in the strip above the docks of whichever page is shown."""
+            captions = {tr(caption): key for key, caption, _ in self.PAGES}
+            pressed = card.tab_row(
+                list(captions),
+                tr(dict((k, c) for k, c, _ in self.PAGES)[self.page]),
+                {tr(caption): tr(tip) for _, caption, tip in self.PAGES},
+            )
+            if pressed is not None and captions.get(pressed, self.page) != self.page:
+                self.show_page(captions[pressed])
+
+        def show_page(self, page: str) -> None:
+            """Show the ``forward`` or the ``analysis`` page."""
+            self.page = page
+            self.used(f"page_{page}")
+            self.analysis.used(f"page_{page}")
+            self.request_frame()
+
+        def toolbar_height(self) -> float:
+            return 34.0
+
+        def draw_toolbar(self, box) -> None:
+            self.draw_pages(self)
+
+        def render(self) -> None:
+            if self.page == "analysis":
+                self.analysis.render()
+            else:
+                super().render()
+
+        def before_frame(self) -> None:
+            super().before_frame()
+            if self.page != "analysis" and self.analysis.model.poll():
+                self.analysis.status = self.analysis.model.status
+
+        def animating(self) -> bool:
+            return super().animating() or self.analysis.animating()
+
+        def next_frame_in(self):
+            times = [t for t in (super().next_frame_in(), self.analysis.next_frame_in()) if t is not None]
+            return min(times) if times else None
+
+        def on_files_dropped(self, paths) -> bool:
+            if self.page == "analysis":
+                return self.analysis.on_files_dropped(paths)
+            return super().on_files_dropped(paths)
+
+        def export_settings(self) -> dict:
+            return {**super().export_settings(), "page": self.page, "analysis": self.analysis.export_settings()}
+
+        def restore_settings(self, settings: dict) -> None:
+            super().restore_settings(settings)
+            if isinstance(settings, dict):
+                self.analysis.restore_settings(settings.get("analysis") or {})
+                if settings.get("page") in ("forward", "analysis"):
+                    self.page = settings["page"]
+
+        def close(self) -> None:
+            self.analysis.close()
+            super().close()
 
         def pick(self, chain: str, residue: int) -> None:
             self.status = pick_site(self.session, self.pick_target, chain, residue)

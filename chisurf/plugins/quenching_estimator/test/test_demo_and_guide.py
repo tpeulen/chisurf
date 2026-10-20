@@ -96,3 +96,26 @@ def test_make_demo_writes_a_stamped_project_once_and_load_example_reads_it(tmp_p
     model = ProjectFormModel(locale="en")
     assert model.load_example() == path
     assert model.attachment_residue == 36 and model.fret_enabled is False
+
+
+def test_make_demo_stages_the_male_measurements_for_the_analysis_page(tmp_path):
+    """The Analysis page's demo: ``make_demo`` copies ``examples/male`` beside the project, stamped with it."""
+    from chisurf.plugins.quenching_estimator.core.inference.measurements import load_measurements
+    from chisurf.plugins.quenching_estimator.demo import (
+        ANALYSIS_DATA,
+        ANALYSIS_FILES,
+        DEMO,
+        analysis_demo,
+        demo_folder,
+    )
+
+    folder, preset = analysis_demo()
+    assert folder == demo_folder() / DEMO["analysis"]["data"] and preset == "quick"
+    for name in ANALYSIS_FILES:
+        assert (folder / name).read_bytes() == (ANALYSIS_DATA / name).read_bytes()
+    m = load_measurements(folder)
+    assert len(m.lifetimes) and len(m.titration_points) and len(m.titration_summary)
+    # an edited staged file is noticed by the stamp and written again
+    (folder / ANALYSIS_FILES[0]).write_text("edited", encoding="utf-8")
+    analysis_demo()
+    assert (folder / ANALYSIS_FILES[0]).read_bytes() == (ANALYSIS_DATA / ANALYSIS_FILES[0]).read_bytes()

@@ -21,6 +21,10 @@ Every field has a tooltip with the project path it edits.
 
 **Simulate** runs the project in the background; **Cancel** discards the result of a run (a single trajectory cannot be interrupted). The state line shows the donor quantum yield QY (1 means no quenching), the mean lifetime and, with FRET, the transfer efficiency E. The plots are the decay, the dye's distance from its mean position over the trajectory and its position autocorrelation. **Project JSON** shows the project as the command line (`quest`) and the RPC methods read it.
 
+## Analysis page
+
+The **Analysis** page (the switch at the top of the window) works in the other direction. From the lifetimes measured on many labelled sites, together with the free-dye titrations, it fits each dye's quench strength and stickiness. Its **Load example** loads the MalE data set. The page has its own **Help** and **Guide**, and its theory is in [Quenching inference](docs/concepts/quenching_inference.md).
+
 ## Limits
 
 - **Quenching is a step in distance.** A quencher inside its contact radius quenches at its full rate, one outside not at all; the rates are a reference table, not a fit to your data.

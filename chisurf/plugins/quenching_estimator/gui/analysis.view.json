@@ -1,0 +1,460 @@
+{
+  "_comment": "The Analysis page of the QuEst window (analysis_card.py), drawn by emtk. Top-level panels are dock windows: the run settings on the left, the results on the right. Tables read the declared columns of settings/analysis/*.yaml through columns_source; custom 'analysis_plot' sections are the card's implot drawings, named by target.",
+  "window": {
+    "width": 1280,
+    "height": 820
+  },
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Analysis",
+      "dock": "inputs",
+      "n_col": 1,
+      "description": "Which measurements are analysed, how thoroughly, and the run.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Load the shipped MalE measurements, or pick a folder of your own.",
+          "buttons": [
+            {
+              "action": "load_example",
+              "label": "Load example",
+              "icon": "🧪",
+              "description": "Load the shipped MalE data set (nine labelled sites, three dyes, apo and holo, H2O and D2O, plus the free-dye amino-acid titrations) and choose the quick preset."
+            },
+            {
+              "action": "choose_folder",
+              "label": "Data folder…",
+              "icon": "📂",
+              "description": "Pick a folder holding the three measurement tables: tcspc_fit_results.csv, amino_acid_quenching_flt.csv and titration_summary.csv (the layout of examples/male)."
+            }
+          ]
+        },
+        {
+          "type": "value",
+          "attr": "data_folder",
+          "label": "Data",
+          "kind": "str",
+          "read_only": true,
+          "elide": "start",
+          "placeholder": "press Load example, or pick a data folder",
+          "description": "The measurement folder being analysed. Its three CSV tables are read when the folder is chosen; the titrations, lifetimes and kQ per dye are shown at once, before any fit."
+        },
+        {
+          "type": "choice",
+          "attr": "preset",
+          "label": "Preset",
+          "options": ["quick", "full"],
+          "labels": ["Quick", "Full"],
+          "descriptions": [
+            "8 searches with short iterations and a 7-point profile: about 20 minutes on a desktop, for a first look; the numbers are less reliable.",
+            "64 searches and the full joint fit, as the stored analysis: hours on a desktop (the stored run took 24 minutes on 44 cores)."
+          ],
+          "call": "preset_changed",
+          "description": "How thoroughly the inverse fit searches. Changing it discards the solved graphs."
+        },
+        {
+          "type": "choice",
+          "attr": "stage_selection",
+          "label": "Stages",
+          "options_source": "stage_options",
+          "description": "Which stages to run: all of them in the declared order, or one stage and whatever it needs (stage A solves the joint graph, so C after A costs nothing more)."
+        },
+        {
+          "type": "value",
+          "attr": "workers",
+          "label": "Workers",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 256,
+          "style": "spin",
+          "special_text": "every CPU",
+          "description": "Worker processes for the searches and Jacobians; 0 uses every CPU, 1 runs in this process. The numbers do not depend on it."
+        },
+        {
+          "type": "toggle",
+          "attr": "profile",
+          "label": "Profile likelihood",
+          "description": "Also compute the profile likelihood of the quench scale (the data set's sub-graph refitted at fixed scale values). It costs about one joint fit per point."
+        },
+        {
+          "type": "button_row",
+          "description": "Run the analysis, stop it, or write its tables.",
+          "buttons": [
+            {
+              "action": "run_analysis",
+              "label": "Run",
+              "icon": "▶",
+              "role": "primary",
+              "description": "Build the missing site tables and run the chosen stages in the background. The window stays usable; the bar shows how far it is."
+            },
+            {
+              "action": "cancel_analysis",
+              "label": "Cancel",
+              "description": "Stop the run at its next checkpoint (between site tables, between searches, at a joint-fit step). A search already running in a worker finishes first."
+            },
+            {
+              "action": "write_results",
+              "label": "Write results…",
+              "icon": "💾",
+              "description": "Write every table of the stages run so far as CSV, the numbers as summary.json and the texts as report.md into a folder."
+            }
+          ]
+        },
+        {
+          "type": "progress",
+          "attr": "progress_fraction",
+          "text_source": "progress_text",
+          "description": "How far the run is."
+        },
+        {
+          "type": "info",
+          "source": "state_text",
+          "description": "What the last action did, or why it did not."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Results",
+      "dock": "results",
+      "n_col": 1,
+      "description": "The measurements, their statistics and the fit results, one subject per tab.",
+      "sections": [
+        {
+          "type": "tabs",
+          "key": "results",
+          "description": "One subject per tab.",
+          "sections": [
+            {
+              "type": "tab",
+              "key": "data",
+              "title": "Data",
+              "description": "The titrations and the lifetimes on the protein, with the statistics derived from them.",
+              "sections": [
+                {
+                  "type": "choice",
+                  "attr": "data_dye",
+                  "label": "Dye",
+                  "options_source": "dye_options",
+                  "description": "The dye whose titrations and water quenching are plotted."
+                },
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "stern_volmer",
+                  "description": "Stern-Volmer plot: tau0/tau - 1 of the free dye against the amino-acid concentration, every titration point, with the posterior slope K_SV of each amino acid as a line."
+                },
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "hyper_posterior",
+                  "description": "Posterior of the day-to-day error that all titrations share: absolute part (1/M) against relative part, on log axes. The K_SV errors are averaged over it."
+                },
+                {
+                  "type": "custom",
+                  "key": "data_table",
+                  "description": "The K_SV posterior of every titration and the bimolecular quenching constant kq = K_SV / tau0.",
+                  "options": {
+                    "source": "tables.k_posterior.rows",
+                    "columns_source": "tables.k_posterior.columns",
+                    "height": 180,
+                    "fit_columns": true,
+                    "status": true
+                  }
+                },
+                {
+                  "type": "custom",
+                  "key": "data_table",
+                  "description": "The lifetime of every labelled site, read from its heavy-water line at 0 % and 100 % D2O, with its measurement error.",
+                  "options": {
+                    "source": "tables.site_lifetimes.rows",
+                    "columns_source": "tables.site_lifetimes.columns",
+                    "height": 220,
+                    "filter": true,
+                    "fit_columns": true,
+                    "status": true
+                  }
+                },
+                {
+                  "type": "custom",
+                  "key": "data_table",
+                  "description": "Free-dye lifetimes tau0 in normal and heavy water: where every prediction starts.",
+                  "options": {
+                    "source": "tables.free_dye_lifetimes.rows",
+                    "columns_source": "tables.free_dye_lifetimes.columns",
+                    "fit_rows": true,
+                    "fit_columns": true
+                  }
+                },
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "water_bars",
+                  "description": "Water quenching rate kq_w of the chosen dye per site (slope of 1/tau against the H2O fraction); apo and holo side by side."
+                }
+              ]
+            },
+            {
+              "type": "tab",
+              "key": "kq",
+              "title": "kQ per dye",
+              "description": "Contact quenching rate of every quenching residue for each dye, scaled from the reference chemistry by the titrations.",
+              "sections": [
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "kq_bars",
+                  "description": "kQ at contact per residue (bars) and dye (colours), with its uncertainty propagated from the K_SV posterior."
+                },
+                {
+                  "type": "custom",
+                  "key": "data_table",
+                  "description": "kQ at contact per dye and quenching residue.",
+                  "options": {
+                    "source": "tables.kq_contact.rows",
+                    "columns_source": "tables.kq_contact.columns",
+                    "height": 240,
+                    "filter": true,
+                    "fit_columns": true,
+                    "status": true
+                  }
+                }
+              ]
+            },
+            {
+              "type": "tab",
+              "key": "sites",
+              "title": "Site tables",
+              "description": "The per-position features of every labelled site: accessible volume, residue neighbours, quencher contacts and water exposure.",
+              "sections": [
+                {
+                  "type": "button_row",
+                  "description": "Build the site tables without fitting.",
+                  "buttons": [
+                    {
+                      "action": "build_site_tables",
+                      "label": "Build site tables",
+                      "description": "Compute (or read from the cache) the site table of every measured site at each dye's linker length, in the background. A run does this first anyway."
+                    }
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "key": "data_table",
+                  "description": "One row per site table the analysis holds. Select a row to see its exposure histogram.",
+                  "options": {
+                    "source": "tables.site_tables.rows",
+                    "row_key": "key",
+                    "selected_call": "select_site_table",
+                    "selection": "single",
+                    "height": 260,
+                    "filter": true,
+                    "fit_columns": true,
+                    "status": true,
+                    "columns": [
+                      {"key": "dye", "title": "Dye", "description": "Dye whose linker length the table was built at."},
+                      {"key": "state", "title": "State", "description": "APO (PDB 1OMP) or HOLO (PDB 1ANF)."},
+                      {"key": "site", "title": "Site", "description": "Labelled residue.", "shade": false},
+                      {"key": "linker_length", "title": "Linker", "units": "A", "format": "%.2f", "description": "Stretched linker length of the dye."},
+                      {"key": "positions", "title": "Positions", "description": "Reachable dye positions (voxels of the accessible volume)."},
+                      {"key": "distinct", "title": "Distinct", "description": "Positions with distinct features; the fit evaluates these only."},
+                      {"key": "exposure", "title": "Exposure", "format": "%.3f", "description": "Mean water exposure over the reachable positions (1 = as exposed as the free dye)."},
+                      {"key": "neighbours", "title": "Neighbours", "format": "%.2f", "description": "Mean number of residues within the slowing radius of a position."}
+                    ]
+                  }
+                },
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "site_exposure",
+                  "description": "Water exposure of the selected site's reachable positions (histogram over positions, not weighted by where the dye spends its time)."
+                }
+              ]
+            },
+            {
+              "type": "tab",
+              "key": "fit",
+              "title": "Fit",
+              "description": "Estimates, predictions and checks of one data set of one stage.",
+              "sections": [
+                {
+                  "type": "choice",
+                  "attr": "view_stage",
+                  "label": "Stage",
+                  "options_source": "fit_stage_options",
+                  "call": "stage_changed",
+                  "description": "The stage whose result is shown (A: AF488 and Cy3B in H2O; B: Atto655 in D2O; the naive H2O transfer test; C: Atto655 in D2O and H2O)."
+                },
+                {
+                  "type": "choice",
+                  "attr": "view_block",
+                  "label": "Data set",
+                  "options_source": "block_options",
+                  "description": "The data set of the stage (one dye in its solvents)."
+                },
+                {
+                  "type": "info",
+                  "source": "stage_text",
+                  "is_markdown": true,
+                  "description": "The stage's result in words, written from its numbers."
+                },
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "parity",
+                  "description": "Predicted against measured lifetime per site: x error = measurement and model error, y error = prediction uncertainty; ringed points are outliers; dashed lines are the free-dye tau0 per solvent."
+                },
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "forest",
+                  "description": "The multiplicative parameters (stickiness per group, quench scale, static channel) with their 68 % intervals, on a log axis."
+                },
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "loo",
+                  "description": "Leave one site out: the largest |z| of each site's prediction when the site is left out of the fit; above the dashed line (3) a site is an outlier."
+                },
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "profile",
+                  "description": "Quench scale: the profile likelihood (deviance, the sub-graph refitted at each fixed scale) and the Laplace 68 % interval."
+                },
+                {
+                  "type": "custom",
+                  "key": "data_table",
+                  "description": "Estimates of the data set with their 68 % intervals; a note says when a parameter is not determined or sits at a bound.",
+                  "options": {
+                    "source": "tables.estimates.rows",
+                    "columns_source": "tables.estimates.columns",
+                    "height": 240,
+                    "fit_columns": true,
+                    "status": true
+                  }
+                },
+                {
+                  "type": "custom",
+                  "key": "data_table",
+                  "description": "Measured and predicted lifetime of every site of the data set.",
+                  "options": {
+                    "source": "tables.predictions.rows",
+                    "columns_source": "tables.predictions.columns",
+                    "height": 240,
+                    "filter": true,
+                    "fit_columns": true,
+                    "status": true
+                  }
+                },
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "k_graph",
+                  "description": "Titration slopes K_SV as measured (titrations alone) and after the graph fit (the protein lifetimes also inform them), with 68 % intervals."
+                },
+                {
+                  "type": "custom",
+                  "key": "data_table",
+                  "description": "The titration slopes the graph reads, measured and after the fit.",
+                  "options": {
+                    "source": "tables.titration_slopes.rows",
+                    "columns_source": "tables.titration_slopes.columns",
+                    "height": 200,
+                    "fit_columns": true
+                  }
+                }
+              ]
+            },
+            {
+              "type": "tab",
+              "key": "water",
+              "title": "Water",
+              "description": "Stage C: does the model's water exposure explain the measured difference between normal and heavy water?",
+              "sections": [
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "water_access",
+                  "description": "Water access per site, model against measured (1 = as exposed as the free dye), with both errors."
+                },
+                {
+                  "type": "custom",
+                  "key": "data_table",
+                  "description": "Measured and model water access per site.",
+                  "options": {
+                    "source": "tables.water_access.rows",
+                    "columns_source": "tables.water_access.columns",
+                    "height": 200,
+                    "fit_columns": true
+                  }
+                },
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "exposure",
+                  "description": "Time-weighted water exposure of the declared sites: how much of the visible dye's time is spent at each exposure."
+                },
+                {
+                  "type": "custom",
+                  "key": "data_table",
+                  "description": "Water exposure per site over reachable positions and over the visible dye's time.",
+                  "options": {
+                    "source": "tables.exposure.rows",
+                    "columns_source": "tables.exposure.columns",
+                    "fit_rows": true,
+                    "fit_columns": true
+                  }
+                },
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "scale_compare",
+                  "description": "Quench scale of Atto655 from heavy water alone (B) and from heavy and normal water together (C): profile likelihoods and Laplace intervals. Narrower in C means normal water added information."
+                }
+              ]
+            },
+            {
+              "type": "tab",
+              "key": "summary",
+              "title": "Summary",
+              "description": "What each dye tells, across the stages.",
+              "sections": [
+                {
+                  "type": "info",
+                  "source": "summary_text",
+                  "is_markdown": true,
+                  "description": "One line per dye, written from the numbers."
+                },
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "summary_scale",
+                  "description": "Quench scale of each dye's final data set with its 68 % interval, on a log axis."
+                },
+                {
+                  "type": "custom",
+                  "key": "analysis_plot",
+                  "target": "summary_stickiness",
+                  "description": "Stickiness per residue group and dye (1 = not sticky, smaller = the dye lingers longer near that group), with 68 % intervals, on a log axis."
+                },
+                {
+                  "type": "custom",
+                  "key": "data_table",
+                  "description": "One row per dye: the quench scale, the stickiest group and the outlier sites.",
+                  "options": {
+                    "source": "tables.dye_summary.rows",
+                    "columns_source": "tables.dye_summary.columns",
+                    "fit_rows": true,
+                    "fit_columns": true
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

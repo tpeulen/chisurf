@@ -11,6 +11,13 @@ plugin's guide in the documentation). The run is short (a few seconds) on purpos
 (``<settings>/demos/quenching_estimator``, stamped by :mod:`chisurf.plugins.demo_cache`), and the
 window's *Load example* reads that project, so the window, the CLI and a test all start from the
 same file.
+
+The *Analysis* page has a demo of its own: the measured MalE data set (``examples/male``, the
+owner's lifetimes on nine labelled sites and the free-dye amino-acid titrations). :func:`make_demo`
+stages its three tables into ``<demo folder>/male`` beside the forward-model project, and
+:func:`analysis_demo` returns that folder with the fit preset the tour runs (``quick``: about 19 min
+on a desktop once the site tables are cached, measured 2026-10-20; the full preset takes hours; the
+numbers are less reliable).
 """
 
 from __future__ import annotations
@@ -25,6 +32,17 @@ DEMO_STRUCTURE = Path(__file__).resolve().parent / "examples" / "148l.pdb"
 #: Donor attachment of the demo, (chain, residue, atom).
 DEMO_SITE = ("E", 36, "CB")
 
+#: The measured data set the Analysis page's demo analyses (shipped with the plugin).
+ANALYSIS_DATA = Path(__file__).resolve().parent / "examples" / "male"
+
+#: The files of that data set the demo stages (the measurement reader's three tables + provenance).
+ANALYSIS_FILES = (
+    "tcspc_fit_results.csv",
+    "amino_acid_quenching_flt.csv",
+    "titration_summary.csv",
+    "provenance.json",
+)
+
 #: The demo, in one place so the guide, the cache stamp and the tests agree.
 DEMO: dict[str, Any] = dict(
     version=1,
@@ -34,6 +52,7 @@ DEMO: dict[str, Any] = dict(
     n_photons=200_000,
     t_max=2000.0,
     random_seed=7,
+    analysis=dict(data="male", files=list(ANALYSIS_FILES), preset="quick"),
 )
 
 #: The demo project's file name inside the cache folder.
@@ -65,7 +84,8 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> P
     from chisurf.plugins.demo_cache import is_current, record
 
     folder = demo_folder() if folder is None else Path(folder)
-    names = [DEMO_STRUCTURE.name, PROJECT_FILENAME]
+    data = DEMO["analysis"]["data"]
+    names = [DEMO_STRUCTURE.name, PROJECT_FILENAME, *(f"{data}/{n}" for n in ANALYSIS_FILES)]
     project_path = folder / PROJECT_FILENAME
     if not overwrite and is_current(folder, names, DEMO):
         return project_path
@@ -74,8 +94,28 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> P
     model = ProjectFormModel(locale="en")
     apply_demo(model, folder)
     model.save_project(project_path)
+    (folder / data).mkdir(parents=True, exist_ok=True)
+    for name in ANALYSIS_FILES:
+        shutil.copyfile(ANALYSIS_DATA / name, folder / data / name)
     record(folder, names, DEMO)
     return project_path
+
+
+def analysis_demo(folder: str | Path | None = None) -> tuple[Path, str]:
+    """The Analysis page's demo: the staged MalE measurement folder and the fit preset to run.
+
+    Parameters
+    ----------
+    folder : str or Path, optional
+        Cache directory; defaults to :func:`demo_folder`.
+
+    Returns
+    -------
+    tuple of (Path, str)
+        The folder holding the three measurement tables, and the preset name (``"quick"``).
+    """
+    project = make_demo(folder)
+    return project.parent / DEMO["analysis"]["data"], str(DEMO["analysis"]["preset"])
 
 
 def demo_structure(directory: str | Path | None = None) -> Path:

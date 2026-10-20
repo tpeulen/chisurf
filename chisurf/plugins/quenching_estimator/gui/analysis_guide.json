@@ -1,0 +1,60 @@
+{
+  "_comment": "Guided tour of the QuEst window's Analysis page (analysis_card.py). Steps point at real controls (the action and attr names of analysis.view.json, results.<tab> for the result tabs, the plot targets) and wait for the user to press them. Load example stages the shipped MalE data set, so the tour needs none of the user's files.",
+  "steps": [
+    {
+      "title": "What the analysis fits",
+      "text": "The forward model predicts the lifetime of one dye at one site. This page goes the other way. From lifetimes measured on many labelled sites, and from the free dye titrated against amino acids, it fits how strongly each dye is quenched on the protein and near which residues it lingers.<br/><br/>You press the buttons; the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "Start from the demo",
+      "text": "<b>Load example</b> loads the MalE data set that ships with ChiSurf: nine sites, the dyes AF488, Cy3B and Atto655, apo and holo, in normal and heavy water. It also chooses the quick preset. With your own data, use <b>Data folder…</b> on a folder with the same three tables.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>Load example</b>."}
+    },
+    {
+      "title": "The measurements, before any fit",
+      "text": "<b>Data</b> shows the Stern–Volmer titrations with their posterior slopes, the day-to-day error that all titrations share, and the lifetime of every site with its error. All of this is computed as the folder is read.",
+      "target": {"name": "stern_volmer"}
+    },
+    {
+      "title": "How thoroughly",
+      "text": "<i>Quick</i> runs a few searches (about 20 minutes on a desktop), which is enough to see the shape of the answer. <i>Full</i> is the stored analysis and takes hours. Leave it on Quick for the tour.",
+      "target": {"attr": "preset"}
+    },
+    {
+      "title": "Run",
+      "text": "<b>Run</b> first builds the site table of every measured site (accessible volume, neighbouring residues, quencher contacts, water exposure). The tables are cached, so only the first run pays for them. Then it fits the stages in the background, and the bar shows how far it has got. You can keep reading the Data tab meanwhile.",
+      "target": {"name": "run_analysis"},
+      "await": {"hint": "Press <b>Run</b>. The bar fills while it works."}
+    },
+    {
+      "title": "One data set at a time",
+      "text": "<b>Fit</b> shows one stage and data set: the result in words, the estimates with their 68 % intervals, and the checks.",
+      "target": {"name": "results.fit"},
+      "await": {"hint": "Open the <b>Fit</b> tab (after the run has finished)."}
+    },
+    {
+      "title": "Does the model reproduce the measurements?",
+      "text": "Each point is a site: measured lifetime across, predicted lifetime up, with both errors. Ringed points are outliers. The dashed lines are the free dye's lifetime: a site above it is brighter than the free dye.",
+      "target": {"name": "parity"}
+    },
+    {
+      "title": "Which sites the fit hangs on",
+      "text": "Each site is left out in turn and predicted from the others. A bar above the dashed line at 3 is a site that the rest of the data cannot explain.",
+      "target": {"name": "loo"}
+    },
+    {
+      "title": "Water",
+      "text": "<b>Water</b> belongs to stage C. Atto655 is quenched by water as well, so the difference between normal and heavy water measures how exposed the dye is at each site. The model predicts that exposure from the structure, without a new parameter.",
+      "target": {"name": "results.water"},
+      "await": {"hint": "Open the <b>Water</b> tab."}
+    },
+    {
+      "title": "What each dye tells",
+      "text": "<b>Summary</b> gives one line per dye: its quench scale and the residue group it sticks to most, on log axes. <b>Write results…</b> saves every table as CSV for your own plots. Press <b>Help</b> for every control.",
+      "target": {"name": "results.summary"},
+      "await": {"hint": "Open the <b>Summary</b> tab."}
+    }
+  ]
+}
