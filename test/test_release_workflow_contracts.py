@@ -119,4 +119,6 @@ def test_every_packaging_platform_runs_smoke_checks_first():
     conditions = {step.get("if"): step for index, step in smoke}
     assert {"runner.os == 'Linux'", "runner.os != 'Linux'"} <= set(conditions)
     assert "xvfb-run -a" in conditions["runner.os == 'Linux'"]["run"]
-    assert conditions["runner.os != 'Linux'"]["env"]["QT_QPA_PLATFORM"] == "offscreen"
+    # No Qt platform plugin to point at "offscreen" any more: the Qt shell left
+    # with W9, and the emtk smoke run needs no env override on macOS/Windows.
+    assert "QT_QPA_PLATFORM" not in conditions["runner.os != 'Linux'"].get("env", {})

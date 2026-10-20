@@ -55,10 +55,10 @@ def test_jupyter_entrypoints_are_gone_from_source():
         "def start_jupyter(",
         "def populate_notebooks(",
     )
-    sources = [
-        REPO_ROOT / "chisurf" / "gui" / "__init__.py",
-        REPO_ROOT / "chisurf" / "startup" / "gui_services.py",
-    ]
+    # The Qt shell (and its ``startup/gui_services.py``) is gone; scan whatever
+    # the startup package holds now, so a deleted file cannot break the guard.
+    sources = [REPO_ROOT / "chisurf" / "gui" / "__init__.py"]
+    sources += sorted((REPO_ROOT / "chisurf" / "startup").rglob("*.py"))
     offenders = []
     for path in sources:
         for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):

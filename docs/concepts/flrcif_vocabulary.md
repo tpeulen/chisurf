@@ -2,7 +2,7 @@
 type: Concept
 title: The flrCIF and MMFDB vocabulary
 description: Generated reference of the categories and items ChiSurf persists, defined in the mmfdb extension dictionaries.
-tags: [concepts, database, mmfdb]
+tags: [concepts, mmfdb, flrcif, vocabulary]
 anchor: concept-flrcif-vocabulary
 ---
 
@@ -52,7 +52,7 @@ Computed per-event observables of an analysis -- the feature vocabulary behind b
 
 ## `_flr_fit_parameter`
 
-Fit/model parameters, by registry key.
+Fit/model parameters, by registry key. This category holds the parameters a fitting application exposes in its parameter registry, exported to MMFDB under software-agnostic flrCIF identifiers. Each item corresponds to one registry entry; the item name is the registry key, not any program's spelling.
 
 | Item | Type | Description |
 |---|---|---|
@@ -307,7 +307,7 @@ Fit/model parameters, by registry key.
 
 | Item | Type | Description |
 |---|---|---|
-| `_flr_fret_calibration_parameters.phi_donor` | float | The IHM-FLR dictionary defines phi_acceptor but not its donor counterpart, although the detection-correction factor gamma is (gR*phi_acceptor)/(gG*phi_donor) and needs both. Stored so a calibration can be read back without the donor yield having to be remembered separately from the measurement it was determined with. |
+| `_flr_fret_calibration_parameters.phi_donor` | float | Fluorescence quantum yield of the donor. The IHM-FLR dictionary defines phi_acceptor but not its donor counterpart, although the detection-correction factor gamma is (gR*phi_acceptor)/(gG*phi_donor) and needs both. Stored so a calibration can be read back without the donor yield having to be remembered separately from the measurement it was determined with. |
 
 ## `_flr_fret_forster_radius`
 
@@ -316,7 +316,7 @@ ChiSurf extensions to the FLR_FRET_FORSTER_RADIUS category. These fields are use
 | Item | Type | Description |
 |---|---|---|
 | `_flr_fret_forster_radius.details` | text | Free-text provenance of the Forster radius (how it was measured or computed). |
-| `_flr_fret_forster_radius.forster_radius` | float | The Forster radius of the probe pair, in angstroms. |
+| `_flr_fret_forster_radius.forster_radius` | float | The Forster radius of the probe pair, in angstroms. Upstream flrCIF declares no unit for this item, and the default here was 5.0 -- a nanometre value in a field every consumer reads as angstroms, where a Forster radius is 40-70. Declared and corrected to the same physical quantity, 50 angstroms. |
 | `_flr_fret_forster_radius.id` |  |  |
 | `_flr_fret_forster_radius.index_of_refraction` | float | Refractive index of the medium for FRET pair. Default is 1.4 for water. |
 | `_flr_fret_forster_radius.kappa_squared` | float | Orientation factor kappa squared for FRET pair. Default is 2/3 (0.666667) for dynamic averaging. |
@@ -350,7 +350,7 @@ ChiSurf schema bindings for probe descriptor columns stored in probes.
 
 ## `_flr_probe_list`
 
-ChiSurf schema bindings for fluorescence probe list fields stored in the
+ChiSurf schema bindings for fluorescence probe list fields stored in the local probes table.
 
 | Item | Type | Description |
 |---|---|---|
@@ -384,7 +384,7 @@ ChiSurf extensions to the FLR_SAMPLE_CONDITION category. These fields are used b
 
 ## `_flr_sample_probe_details`
 
-ChiSurf schema bindings for sample/probe association fields stored in
+ChiSurf schema bindings for sample/probe association fields stored in flr_sample_probe.
 
 | Item | Type | Description |
 |---|---|---|
@@ -432,30 +432,30 @@ Dataset artifact representing a raw measurement or processed result. Ownership a
 |---|---|---|
 | `_mmfdb_artifact.artifact_id` | code |  |
 | `_mmfdb_artifact.artifact_kind` | code |  |
-| `_mmfdb_artifact.author` | text | Free text, because an author list is not a controlled vocabulary and a writer that has to normalise one will get it wrong or drop it. This is the upstream author of the DATA, not whoever ran the tool -- that is _mmfdb_operation.operator_user_id, and the two are routinely different: a converted rotamer library is somebody else's measurement in this package's format. |
-| `_mmfdb_artifact.checksum` | code |  |
-| `_mmfdb_artifact.checksum_algorithm` | code |  |
+| `_mmfdb_artifact.author` | text | Who made the data this artifact holds, as they name themselves. Free text, because an author list is not a controlled vocabulary and a writer that has to normalise one will get it wrong or drop it. This is the upstream author of the DATA, not whoever ran the tool -- that is _mmfdb_operation.operator_user_id, and the two are routinely different: a converted rotamer library is somebody else's measurement in this package's format. |
+| `_mmfdb_artifact.checksum` | code | Digest of the payload, lowercase hexadecimal, in the algorithm named by _mmfdb_artifact.checksum_algorithm. This is what makes an artifact held by reference, or embedded in a container, restorable with a guarantee rather than merely restorable. |
+| `_mmfdb_artifact.checksum_algorithm` | code | Which digest _mmfdb_artifact.checksum holds. The object store addresses blobs by md5 and verifies them by sha256, so both occur. |
 | `_mmfdb_artifact.citation` | text | Where the data was published: a DOI where one exists, otherwise enough of a reference to find it. |
-| `_mmfdb_artifact.created_by_user_id` | code |  |
+| `_mmfdb_artifact.created_by_user_id` | code | User who created/registered this artifact. NULL for builtin/shared artifacts. Used for dataset-browser scoping (own vs public). |
 | `_mmfdb_artifact.data_blob` | text |  |
 | `_mmfdb_artifact.data_format` | code |  |
 | `_mmfdb_artifact.data_json` | code |  |
 | `_mmfdb_artifact.experiment_id` | code |  |
-| `_mmfdb_artifact.file_path` | line |  |
+| `_mmfdb_artifact.file_path` | line | Path to the artifact when it is held by reference rather than copied into the object store. A container object names its member here, in the "<container>\|<member>" form the reader understands. |
 | `_mmfdb_artifact.folder_path` | code |  |
-| `_mmfdb_artifact.is_public` | int |  |
-| `_mmfdb_artifact.is_sidecar` | int | A reader extracting the measurement must extract the sidecars with it; a reader enumerating what a container holds should not count them as measurements. 1 for a sidecar, 0 or absent otherwise. |
-| `_mmfdb_artifact.license` | line | A writer that has neither should say so out of band rather than guess: an artifact whose terms are unknown is a different thing from one that is unrestricted, and the difference matters to whoever redistributes it. |
+| `_mmfdb_artifact.is_public` | int | GUI visibility flag. 1 = visible to all users; 0 = visible only to the owning user (created_by_user_id) or admins. |
+| `_mmfdb_artifact.is_sidecar` | int | Whether this artifact is a file that only exists BESIDE another one and cannot be read alone. A Becker & Hickl `.spc` keeps half its header in a `.set` next to it: hand a reader the `.spc` on its own and it decodes with the wrong resolution and no error. The `.set` is therefore not a second measurement and not a derived result -- the two categories a container otherwise has -- and listing it as either misleads. It is a part of its primary, and the primary is named by _mmfdb_edge.source_node_id on the sidecar. A reader extracting the measurement must extract the sidecars with it; a reader enumerating what a container holds should not count them as measurements. 1 for a sidecar, 0 or absent otherwise. |
+| `_mmfdb_artifact.license` | line | An SPDX license identifier, WHERE ONE EXISTS -- "GPL-3.0-only", "MIT". Deliberately not mandatory and deliberately not the only way to state terms. A great deal of scientific data is released under conditions that have no SPDX identifier at all -- "free for academic use" is the common one -- and coining a LicenseRef for it would state something the upstream did not. Use _mmfdb_artifact.terms for those, and expect to see one or the other rather than both. A writer that has neither should say so out of band rather than guess: an artifact whose terms are unknown is a different thing from one that is unrestricted, and the difference matters to whoever redistributes it. |
 | `_mmfdb_artifact.metadata_json` | code |  |
-| `_mmfdb_artifact.mime_type` | line |  |
+| `_mmfdb_artifact.mime_type` | line | RFC 6838 media type of the payload. |
 | `_mmfdb_artifact.object_uuid` | code |  |
-| `_mmfdb_artifact.redistributed_via` | text | This exists because the licences differ along that chain and recording only the immediate source loses it. The worked case: the Dunbrack 2010 backbone-dependent rotamer library reaches this stack through FASPR, which is MIT, while the library itself is not -- an artifact naming only FASPR would understate its obligations, and one naming only Dunbrack would lose where the bytes were actually obtained. |
-| `_mmfdb_artifact.row_count` | int |  |
-| `_mmfdb_artifact.row_grain` | code | `label_site` is a position on a polymer that a label could be attached to -- an (asym_id, seq_id) pair, the same thing `_flr_poly_probe_position` addresses. It is not `species` and not `state`: those count what a molecule IS, and this counts a PLACE ON one. A table of label-site scores is finer than one row per residue whenever more than one quantity is scored at a position, which is the normal case -- so a reader joins it on (asym_id, seq_id, score_type) and not on row order. |
-| `_mmfdb_artifact.size_bytes` | int |  |
-| `_mmfdb_artifact.source` | text | _mmfdb_edge.source_node_id says which artifact IN HERE it came from; this says what came in from outside, which no edge can point at. |
-| `_mmfdb_artifact.storage_mode` | code |  |
-| `_mmfdb_artifact.terms` | text | Carried verbatim. A summary of a licence is not a licence. |
+| `_mmfdb_artifact.redistributed_via` | text | The intermediary the data reached this package through, when it did not come straight from its author. This exists because the licences differ along that chain and recording only the immediate source loses it. The worked case: the Dunbrack 2010 backbone-dependent rotamer library reaches this stack through FASPR, which is MIT, while the library itself is not -- an artifact naming only FASPR would understate its obligations, and one naming only Dunbrack would lose where the bytes were actually obtained. |
+| `_mmfdb_artifact.row_count` | int | Rows or events in a tabular payload, recorded so that a listing can report the size of a table without decoding it. Advisory. |
+| `_mmfdb_artifact.row_grain` | code | What one row of a tabular artifact IS. Two tables can only be joined once it is known what their rows count. A burst table and a dwell table are both "results of the same analysis" and are not the same shape: a dwell subdivides a burst, so a dwell table is finer, and a table of fused bursts is coarser than the bursts it fused. Formats that cannot state this force every result onto one grid, and the relations that do not fit that grid are then carried outside the format or lost. Stating the grain is what lets an artifact-to-artifact edge (see _mmfdb_edge.source_row_column) be resolved to rows. `spectrum` is one curve: a wavelength axis and the intensities paired with it, as `_mmfdb_spectrum` stores them. It is NOT `curve_point`, which is one point of one curve -- a table at `spectrum` grain has one row per (probe, spectrum_type) and carries arrays, which is both what the `spectra` table holds and, in a serialisation with arrays, about a tenth the size of the same data written a point per row. `label_site` is a position on a polymer that a label could be attached to -- an (asym_id, seq_id) pair, the same thing `_flr_poly_probe_position` addresses. It is not `species` and not `state`: those count what a molecule IS, and this counts a PLACE ON one. A table of label-site scores is finer than one row per residue whenever more than one quantity is scored at a position, which is the normal case -- so a reader joins it on (asym_id, seq_id, score_type) and not on row order. `spot` and `region` are not synonyms and the difference is not pedantry. A spot is a point-like detection -- a localisation, with a position and at most a width. A region is an arbitrary connected set of pixels that owns its own pixel list: a cell nucleus, a hand-drawn area, a watershed basin. A table of nuclei declared at `spot` grain is a false statement about its rows, of the same kind as calling a file of binned traces a photon stream, and it is false in the one field a reader consults to decide what may be joined to it. |
+| `_mmfdb_artifact.size_bytes` | int | Size of the payload in octets. |
+| `_mmfdb_artifact.source` | text | What this artifact was made FROM, when that is a thing outside this database -- an upstream file name, a database release, an accession. _mmfdb_edge.source_node_id says which artifact IN HERE it came from; this says what came in from outside, which no edge can point at. |
+| `_mmfdb_artifact.storage_mode` | code | Where the bytes actually are. The column has existed since the table was first written by hand; declaring it here is what lets a reader resolve the term rather than guess at it. |
+| `_mmfdb_artifact.terms` | text | The conditions of use in words, for data whose terms have no SPDX identifier -- "free for academic use", "no commercial redistribution". Carried verbatim. A summary of a licence is not a licence. |
 | `_mmfdb_artifact.terms_url` | code | Where the terms actually live, so a reader can check them rather than trust this file's paraphrase. |
 | `_mmfdb_artifact.url` | code |  |
 | `_mmfdb_artifact.validation_message` | code |  |
@@ -548,7 +548,7 @@ A data file embedded in the deposit, base64-encoded, so the CIF is a single self
 
 ## `_mmfdb_burst_column`
 
-Data items describing a column in a burst-analysis artifact
+Data items describing a column in a burst-analysis artifact (.bur, .bg4, .br4, .bv4, .2c4, .td4). These are the input columns the ndx equation engine reads.
 
 | Item | Type | Description |
 |---|---|---|
@@ -603,14 +603,14 @@ What one column of a serialised table is. A column carries a name and a dtype, w
 
 | Item | Type | Description |
 |---|---|---|
-| `_mmfdb_column.description` | text |  |
-| `_mmfdb_column.item` | line |  |
-| `_mmfdb_column.name` | line |  |
-| `_mmfdb_column.units` | code | Spellings follow mmCIF's ITEM_UNITS_LIST wherever it has the unit, so "seconds", "nanoseconds", "hertz" and "counts" are the community's words -- 15 of the 28 here are already its own. Its 78 codes have an odd gap: it carries nanoseconds and femtoseconds but neither milliseconds nor picoseconds, and no concentration, rate multiple or count-of-photons. Those 13 are added here rather than invented at each call site. |
+| `_mmfdb_column.description` | text | Prose about the column, for a reader who has only the file. ############# ## CATEGORY: mmfdb_units ############# |
+| `_mmfdb_column.item` | line | The mmCIF item this column corresponds to, when there is one, so a table can be projected onto the dictionary rather than matched by name. |
+| `_mmfdb_column.name` | line | The column's name, and the key it is looked up by. |
+| `_mmfdb_column.units` | code | The physical unit of the column's values. Spellings follow mmCIF's ITEM_UNITS_LIST wherever it has the unit, so "seconds", "nanoseconds", "hertz" and "counts" are the community's words -- 15 of the 28 here are already its own. Its 78 codes have an odd gap: it carries nanoseconds and femtoseconds but neither milliseconds nor picoseconds, and no concentration, rate multiple or count-of-photons. Those 13 are added here rather than invented at each call site. "dimensionless" is for a ratio that genuinely has no unit -- an efficiency, an anisotropy -- and is not the same as saying nothing, which means the unit is unknown. |
 
 ## `_mmfdb_constant`
 
-Scalar calibration constants used by the ndx equation engine
+Scalar calibration constants used by the ndx equation engine (gG/gR, alpha, beta, PhiA, PhiD, forster_radius, ...). Mirrors ndx mfd.constants.json.
 
 | Item | Type | Description |
 |---|---|---|
@@ -650,17 +650,17 @@ What a serialised container is, written into the container itself. A photon cont
 
 | Item | Type | Description |
 |---|---|---|
-| `_mmfdb_container.dictionary_hash` | code |  |
-| `_mmfdb_container.dictionary_version` | code |  |
-| `_mmfdb_container.format` | code |  |
-| `_mmfdb_container.format_version` | code |  |
-| `_mmfdb_container.profile` | line |  |
-| `_mmfdb_container.profile_read_version` | int |  |
-| `_mmfdb_container.profile_version` | code |  |
+| `_mmfdb_container.dictionary_hash` | code | SHA-256 of that dictionary as loaded, lowercase hexadecimal. A version is what an author declares; this is what was actually used, and the two disagree exactly when someone edited a dictionary without bumping it. |
+| `_mmfdb_container.dictionary_version` | code | ``_dictionary.version`` of the MMFDB extension dictionary whose terms the file is tagged with. |
+| `_mmfdb_container.format` | code | The container format underneath the profile, e.g. ``pto``. |
+| `_mmfdb_container.format_version` | code | Version of that container format. |
+| `_mmfdb_container.profile` | line | Name of the profile the file conforms to, e.g. ``PTO.MFDB``. |
+| `_mmfdb_container.profile_read_version` | int | Minimum profile version required to read the file correctly. A reader implementing less than this must refuse it rather than misread it. |
+| `_mmfdb_container.profile_version` | code | Version of the profile that wrote the file. A reader accepts a higher one and skips what it does not know. |
 
 ## `_mmfdb_derived_column`
 
-Output columns computed by the ndx equation engine from input
+Output columns computed by the ndx equation engine from input columns and constants. Every equation output key in mfd.equations.yaml must appear here.
 
 | Item | Type | Description |
 |---|---|---|
@@ -752,10 +752,10 @@ Edges in the MMFDB provenance/knowledge graph.
 | `_mmfdb_edge.relationship_type` | code |  |
 | `_mmfdb_edge.settings_hash` | code |  |
 | `_mmfdb_edge.software_version` | code |  |
-| `_mmfdb_edge.source_node_id` | code | The column has existed in the hand-written DDL since the table was first created; declaring it here is what lets a reader resolve it rather than guess. Leaving it undeclared had a concrete cost: a writer with nowhere to put the parent reference put it in `relationship_type` instead, so asking a file for the relationship between two artifacts returned an integer where a term was expected -- and the *relation* itself, the thing that says HOW the derived data relates to the primary, was never recorded at all. |
+| `_mmfdb_edge.source_node_id` | code | What this edge points AT -- the artifact the derived one came from. The column has existed in the hand-written DDL since the table was first created; declaring it here is what lets a reader resolve it rather than guess. Leaving it undeclared had a concrete cost: a writer with nowhere to put the parent reference put it in `relationship_type` instead, so asking a file for the relationship between two artifacts returned an integer where a term was expected -- and the *relation* itself, the thing that says HOW the derived data relates to the primary, was never recorded at all. In a serialised container this is an object UID. In the database it is an artifact or operation id; `source_node_type` says which. |
 | `_mmfdb_edge.source_node_type` | code |  |
-| `_mmfdb_edge.source_row_column` | line | An edge between two artifacts says the tables are related. It does not say which rows correspond, and a great deal of information has been lost historically by leaving that to positional alignment: two tables merged by counting rows agree only while both have the same rows in the same order, and disagree silently the moment one of them does not. Naming the key column makes the join declared data rather than a convention a reader has to already know. |
-| `_mmfdb_edge.target_node_id` | code | What this edge points FROM -- the derived artifact. |
+| `_mmfdb_edge.source_row_column` | line | Column of the source table holding the key this edge joins on. An edge between two artifacts says the tables are related. It does not say which rows correspond, and a great deal of information has been lost historically by leaving that to positional alignment: two tables merged by counting rows agree only while both have the same rows in the same order, and disagree silently the moment one of them does not. Naming the key column makes the join declared data rather than a convention a reader has to already know. |
+| `_mmfdb_edge.target_node_id` | code | What this edge points FROM -- the derived artifact. Implicit in a container, where an edge is a tag on the derived object and the target is therefore the object carrying the tag. Declared because the database stores edges as free-standing rows, where it is not implicit. |
 | `_mmfdb_edge.target_node_type` | code |  |
 | `_mmfdb_edge.target_row_column` | line | Column of the target table holding the key this edge joins on. See _mmfdb_edge.source_row_column. |
 | `_mmfdb_edge.timestamp` | code |  |
@@ -766,16 +766,16 @@ Append-only log of interactive analysis operations. One row per recorded action.
 
 | Item | Type | Description |
 |---|---|---|
-| `_mmfdb_event_log.action_type` | line |  |
-| `_mmfdb_event_log.event_id` | code |  |
-| `_mmfdb_event_log.event_timestamp` | datetime |  |
+| `_mmfdb_event_log.action_type` | line | Canonical action name (dotted form is authoritative). The detail column maps each action to the coarse mmfdb_operation.operation_type it emits ('.' = fine-grained action with no operation). |
+| `_mmfdb_event_log.event_id` | code | Stable UUID identity of the event; equals the in-memory operation-history event id so the projection is identity-stable across save/restore. |
+| `_mmfdb_event_log.event_timestamp` | datetime | The event's own ISO-8601 timestamp (distinct from the audit created_at). |
 | `_mmfdb_event_log.history_version` | code |  |
-| `_mmfdb_event_log.operation_id` | code |  |
-| `_mmfdb_event_log.operation_type` | line |  |
-| `_mmfdb_event_log.payload_json` | text |  |
-| `_mmfdb_event_log.project_id` | code |  |
+| `_mmfdb_event_log.operation_id` | code | Links a coarse event to the semantic mmfdb_operation it produced (if any). |
+| `_mmfdb_event_log.operation_type` | line | Coarse operation classification for this event, drawn from mmfdb_operation.operation_type; null for fine-grained actions. |
+| `_mmfdb_event_log.payload_json` | text | JSON-encoded enriched action payload (opaque to the database). |
+| `_mmfdb_event_log.project_id` | code | Project / session scope of the event; null for session-only events. |
 | `_mmfdb_event_log.replayable` | boolean |  |
-| `_mmfdb_event_log.seq` | int |  |
+| `_mmfdb_event_log.seq` | int | Monotonic per-project ordinal giving the log's total order (clock-skew proof). |
 | `_mmfdb_event_log.side_effect_class` | code |  |
 | `_mmfdb_event_log.source_uid` | code |  |
 | `_mmfdb_event_log.summary` | text |  |
@@ -813,9 +813,9 @@ A per-position score of how suitable a site is for attaching a fluorescent label
 | `_mmfdb_label_score.artifact_id` | code | The artifact these scores belong to, so a table of them is provenance- tracked like any other result. |
 | `_mmfdb_label_score.asym_id` | code | Chain the scored position is in, as mmCIF names a chain. |
 | `_mmfdb_label_score.comp_id` | ucode | Residue type at that position, carried so a table of scores is readable without the structure beside it. |
-| `_mmfdb_label_score.definition` | ucode | Absent means the definition was not recorded -- never "the usual one". |
+| `_mmfdb_label_score.definition` | ucode | WHOSE definition of the score_type this value follows -- the program or published method that defines the number, not a code for it. Two programs may both report a "tryptophan proximity score" and not mean the same number: one may count tryptophans inside a radius and another weight them by distance, and the two are not comparable even though the score_type is. Recording the definition is what lets a reader pool the values that may be pooled and separate the ones that may not, without parsing settings whose keys differ per implementation. Read it with score_type, which already says what is being scored: the pair (`tryptophan_proximity`, `labelizer`) is "tryptophan proximity, as Labelizer defines it". The value here therefore names only the *source*, and does not repeat the quantity. A name here is a name, not an abbreviation. An implementation's internal tag for a score -- Labelizer calls its tryptophan-proximity parameter `tp` and its charge environment `ce` -- is private to that program and means nothing to a reader of this dictionary. If one program grows two incompatible definitions of the same score_type, add a second value that says so in words. Absent means the definition was not recorded -- never "the usual one". |
 | `_mmfdb_label_score.label_score_id` | code |  |
-| `_mmfdb_label_score.score_type` | ucode | Which implementation produced a particular value is _mmfdb_label_score.definition, and the two answer different questions -- the same split as _mmfdb_operation.operation_type and .algorithm. |
+| `_mmfdb_label_score.score_type` | ucode | WHAT is being scored. Deliberately coarse, because it is the join key: every tryptophan-proximity score is `tryptophan_proximity` whoever computed it and however, so they can be compared, pooled or plotted against each other without knowing the implementation. Which implementation produced a particular value is _mmfdb_label_score.definition, and the two answer different questions -- the same split as _mmfdb_operation.operation_type and .algorithm. |
 | `_mmfdb_label_score.seq_id` | int | Sequence position scored. With asym_id this locates the residue, and is what joins a score to _flr_poly_probe_position -- so "which sites did we score, and which did we label" is one query rather than two files. |
 | `_mmfdb_label_score.status` | ucode | Why a position has no value, when it has none. This exists so that "excluded on purpose" and "could not be computed" are different facts, which is exactly what an in-band sentinel destroys. |
 | `_mmfdb_label_score.units` | ucode | An _mmfdb_units code. Most of these scores are `dimensionless`, which is a claim worth making explicitly rather than by omission -- a solvent exposure reported as an area is `angstroms` squared and a proximity as `angstroms`, and which one a definition uses is not guessable. |
@@ -859,7 +859,7 @@ A data-processing operation recorded for provenance tracking.
 
 | Item | Type | Description |
 |---|---|---|
-| `_mmfdb_operation.algorithm` | code | Absent means unrecorded, not "the usual one". A writer that knows its estimator says so; nothing infers one. |
+| `_mmfdb_operation.algorithm` | code | WHICH algorithm carried out this _mmfdb_operation.operation_type. `operation_type` says what was done and is deliberately coarse, because it is the join key: everything that produces a per-burst lifetime is `burst_lifetime_fitting`, so a reader can find them all without knowing how any of them worked. That coarseness is a problem for the reader who does care -- a maximum-likelihood lifetime, a phasor lifetime and a moment-derived lifetime are not the same estimator, do not have the same bias, and must not be pooled into one histogram. Recording the estimator is what lets them be told apart without parsing settings_json, whose keys differ per implementation and are not a controlled vocabulary. Two operations of the same type and different algorithm are different analyses, and a reader may keep both. Two of the same type AND the same algorithm differing only in settings are re-runs, distinguished by _mmfdb_operation.settings_hash. Absent means unrecorded, not "the usual one". A writer that knows its estimator says so; nothing infers one. |
 | `_mmfdb_operation.command_line` | text | The command line that produced this operation, for operations run by an external tool (operation_type ``external_tool``). Stored verbatim as the invocation string so that the exact call is queryable rather than buried in free-form settings_json. Null for in-process operations. |
 | `_mmfdb_operation.dictionary_hash` | code | SHA-256 of the bytes of mmfdb_flr_ext.dic in force when this operation was recorded, lowercase hexadecimal. A version is what an author declares; this is what was actually loaded, and the two disagree exactly when someone edited a dictionary without bumping it. |
 | `_mmfdb_operation.dictionary_version` | code | The ``_dictionary.version`` of mmfdb_flr_ext.dic in force when this operation was recorded. An operation is tagged with controlled terms, and a term can be renamed or withdrawn by a later revision; without this the row cannot say which vocabulary it meant, and a reader has no way to tell drift from a typo. |
@@ -914,7 +914,7 @@ Typed parameter schema for an operation type — the data-side analog of a chine
 | `_mmfdb_operation_parameter_def.operation_type` | code |  |
 | `_mmfdb_operation_parameter_def.repeatable` | boolean |  |
 | `_mmfdb_operation_parameter_def.required` | boolean |  |
-| `_mmfdb_operation_parameter_def.role_domain` | code |  |
+| `_mmfdb_operation_parameter_def.role_domain` | code | Names the role domain for a repeatable parameter (e.g. detector_channel). |
 | `_mmfdb_operation_parameter_def.units` | code |  |
 | `_mmfdb_operation_parameter_def.upper_bound` | float |  |
 | `_mmfdb_operation_parameter_def.value_type` | code |  |
@@ -927,7 +927,7 @@ A scalar optical property of a probe: a quantum yield, a molar extinction coeffi
 |---|---|---|
 | `_mmfdb_optical_property.id` | int |  |
 | `_mmfdb_optical_property.probe_id` | code | The probe this is a property of. Joins to `_flr_probe_list.probe_id`, so a dye described here and a dye described in flrCIF are the same dye. |
-| `_mmfdb_optical_property.property_name` | ucode | A reader must expect others, and must not read a missing `unit` as dimensionless. Migrating the stored names onto the canonical ones is a separate, tracked job; it is not something a dictionary can assert. |
+| `_mmfdb_optical_property.property_name` | ucode | WHICH scalar this is. DELIBERATELY NOT AN ENUMERATION. An `_item_enumeration` here is a closed set and generates a CHECK constraint, and the primary dataset in this stack would violate it: 19882 optical properties are stored under 76 distinct names written by importers that never agreed -- `qy` beside `q_fluor`, `ext_coeff` beside `molar_extinction`, `em_max` beside `Emission max`, some of it mojibake -- with `unit` NULL on every one. Filter and detector properties share the table with dye properties. Declaring a closed set would make a fresh database reject the data it exists to hold, which is a worse failure than an uncontrolled column. The CANONICAL names a writer should use, and what they mean: quantum_yield fluorescence quantum yield, dimensionless, 0-1 extinction_coefficient molar extinction at the absorption maximum excitation_maximum wavelength of the absorption maximum emission_maximum wavelength of the emission maximum fluorescence_lifetime the unquenched fluorescence lifetime anisotropy_fundamental the fundamental anisotropy r0, dimensionless steric_radius chromophore radius as a steric obstacle hydrodynamic_radius radius governing rotational diffusion A reader must expect others, and must not read a missing `unit` as dimensionless. Migrating the stored names onto the canonical ones is a separate, tracked job; it is not something a dictionary can assert. |
 | `_mmfdb_optical_property.property_value` | float | The value. Absent when the property was not measured -- never zero: a quantum yield of 0 is a real and unusual claim about a dye. |
 | `_mmfdb_optical_property.unit` | ucode | An _mmfdb_column.units term, plus the two an extinction coefficient needs. `dimensionless` for a quantum yield or an anisotropy is a positive claim and should be written rather than omitted. |
 
@@ -951,7 +951,7 @@ Named parameters associated with an operation.
 | `_mmfdb_parameter.parameter_type` | code |  |
 | `_mmfdb_parameter.parameter_uuid` | code |  |
 | `_mmfdb_parameter.prior_json` | code |  |
-| `_mmfdb_parameter.role` | code |  |
+| `_mmfdb_parameter.role` | code | Optional role/index distinguishing repeated parameter rows of the same name on one operation (the data-side analog of chinet's multiple ports), e.g. the detector channel for a per-channel shift. NULL/empty for scalar parameters (exactly one row per operation+name). |
 | `_mmfdb_parameter.standard_error` | float |  |
 | `_mmfdb_parameter.units` | code |  |
 | `_mmfdb_parameter.upper_bound` | float |  |
@@ -1025,7 +1025,7 @@ What kind of thing a probe is, and who makes it. Kept in the _mmfdb_ namespace r
 
 | Item | Type | Description |
 |---|---|---|
-| `_mmfdb_probe.dipole_atoms` | text | Absent is a positive statement, not missing data: it means the probe is modelled as an isotropic emitter, which is what kappa^2 = 2/3 assumes. A consumer that silently substitutes the isotropic value for a probe whose dipole *was* recorded, and lost, gets a plausible orientation factor and no indication it was invented. |
+| `_mmfdb_probe.dipole_atoms` | text | The two atom names whose separation defines the transition dipole, stored as an array. Absent is a positive statement, not missing data: it means the probe is modelled as an isotropic emitter, which is what kappa^2 = 2/3 assumes. A consumer that silently substitutes the isotropic value for a probe whose dipole *was* recorded, and lost, gets a plausible orientation factor and no indication it was invented. |
 | `_mmfdb_probe.negative_atoms` | text | Atom names carrying a formal negative charge, as an array. See _mmfdb_probe.positive_atoms. |
 | `_mmfdb_probe.positive_atoms` | text | Atom names carrying a formal positive charge, as an array. A probe's net charge is not decoration: it decides whether the probe is attracted to or repelled from the surface it is tethered beside, and a sulfonated dye beside an acidic patch behaves unlike a neutral one. |
 | `_mmfdb_probe.probe_id` | code | The probe this row describes; the _flr_probe_list.chromophore_name. |
@@ -1042,8 +1042,8 @@ A named, versioned procedure (measurement / processing / analysis) that operatio
 | `_mmfdb_protocol.created_by_user_id` | code |  |
 | `_mmfdb_protocol.description` | text |  |
 | `_mmfdb_protocol.is_public` | int |  |
-| `_mmfdb_protocol.name` | code |  |
-| `_mmfdb_protocol.operation_type` | code |  |
+| `_mmfdb_protocol.name` | code | The protocol's stable name; shared across versions (UNIQUE with version, enforced by the repository). |
+| `_mmfdb_protocol.operation_type` | code | The PRD-11 operation kind this protocol realizes; its declared parameter schema (mmfdb_operation_parameter_def) is the protocol's parameter schema. |
 | `_mmfdb_protocol.protocol_id` | code |  |
 | `_mmfdb_protocol.setup_id` | code |  |
 | `_mmfdb_protocol.version` | int |  |
@@ -1146,7 +1146,7 @@ Many-to-many link of a reagent lot to what used it — an operation (a measureme
 
 | Item | Type | Description |
 |---|---|---|
-| `_mmfdb_reagent_usage.lot_id` | code |  |
+| `_mmfdb_reagent_usage.lot_id` | code | References mmfdb_reagent_lot.lot_id (a logical reference; the dictionary-generated lot_id code key is not emitted as a PRIMARY KEY, so no hard FK — the repository manages reagent-usage integrity, as for mmfdb_study_member.study_id). |
 | `_mmfdb_reagent_usage.role` | code |  |
 | `_mmfdb_reagent_usage.target_id` | code |  |
 | `_mmfdb_reagent_usage.target_type` | code |  |
@@ -1174,14 +1174,14 @@ Structured reading/processing setup record for TTTR detector setups. Each named 
 
 | Item | Type | Description |
 |---|---|---|
-| `_mmfdb_setup.created_by_user_id` | code |  |
-| `_mmfdb_setup.is_public` | int | GUI visibility flag. 1 (default) = visible to all users |
+| `_mmfdb_setup.created_by_user_id` | code | User who created this detector setup. NULL for builtin/shared setups. |
+| `_mmfdb_setup.is_public` | int | GUI visibility flag. 1 (default) = visible to all users; 0 = visible only to the owning user (created_by_user_id). |
 | `_mmfdb_setup.macro_time_resolution` | float |  |
-| `_mmfdb_setup.make_fine` | int |  |
+| `_mmfdb_setup.make_fine` | int | Correlator make_fine flag for FCS channel setups. |
 | `_mmfdb_setup.micro_time_binning` | int |  |
 | `_mmfdb_setup.micro_time_resolution` | float |  |
-| `_mmfdb_setup.n_bins` | int |  |
-| `_mmfdb_setup.n_casc` | int |  |
+| `_mmfdb_setup.n_bins` | int | Correlator number of bins for FCS channel setups. |
+| `_mmfdb_setup.n_casc` | int | Correlator number of cascades for FCS channel setups. |
 | `_mmfdb_setup.name` | line |  |
 | `_mmfdb_setup.setup_id` | code |  |
 | `_mmfdb_setup.version` | int |  |
@@ -1194,14 +1194,14 @@ Append-only calibration snapshot for a detector channel within a reading/process
 |---|---|---|
 | `_mmfdb_setup_calibration.calibrated_at` | datetime |  |
 | `_mmfdb_setup_calibration.channel_name` | line |  |
-| `_mmfdb_setup_calibration.created_by_user_id` | code |  |
+| `_mmfdb_setup_calibration.created_by_user_id` | code | User who created this calibration snapshot. NULL for migrated defaults. |
 | `_mmfdb_setup_calibration.g_factor` | float |  |
-| `_mmfdb_setup_calibration.g_factor_calibration_id` | text |  |
-| `_mmfdb_setup_calibration.g_factor_channels` | text |  |
+| `_mmfdb_setup_calibration.g_factor_calibration_id` | text | The MMFDB calibration artifact identifier for this G-factor. |
+| `_mmfdb_setup_calibration.g_factor_channels` | text | JSON array of channel indices used for G-factor calculation. |
 | `_mmfdb_setup_calibration.id` | int |  |
-| `_mmfdb_setup_calibration.l1` | float |  |
-| `_mmfdb_setup_calibration.l2` | float |  |
-| `_mmfdb_setup_calibration.method` | line |  |
+| `_mmfdb_setup_calibration.l1` | float | Leakage parameter l1 (donor leakage into acceptor channel). |
+| `_mmfdb_setup_calibration.l2` | float | Leakage parameter l2 (acceptor leakage into donor channel). |
+| `_mmfdb_setup_calibration.method` | line | Method used to determine the calibration values (e.g. manual, migrated, jordi_g_factor). |
 | `_mmfdb_setup_calibration.setup_id` | code |  |
 
 ## `_mmfdb_setup_detector_channel`
@@ -1210,14 +1210,14 @@ Detector channel definition within a reading/processing setup. Each row defines 
 
 | Item | Type | Description |
 |---|---|---|
-| `_mmfdb_setup_detector_channel.channels` | text |  |
+| `_mmfdb_setup_detector_channel.channels` | text | JSON array of TCSPC channel indices routed to this detector. |
 | `_mmfdb_setup_detector_channel.g_factor` | float |  |
-| `_mmfdb_setup_detector_channel.g_factor_calibration_id` | text |  |
-| `_mmfdb_setup_detector_channel.g_factor_channels` | text |  |
+| `_mmfdb_setup_detector_channel.g_factor_calibration_id` | text | The MMFDB calibration artifact identifier for this G-factor. |
+| `_mmfdb_setup_detector_channel.g_factor_channels` | text | JSON array of channel indices used for G-factor calculation. |
 | `_mmfdb_setup_detector_channel.id` | int |  |
-| `_mmfdb_setup_detector_channel.l1` | float |  |
-| `_mmfdb_setup_detector_channel.l2` | float |  |
-| `_mmfdb_setup_detector_channel.micro_time_ranges` | text |  |
+| `_mmfdb_setup_detector_channel.l1` | float | Leakage parameter l1 (donor leakage into acceptor channel). |
+| `_mmfdb_setup_detector_channel.l2` | float | Leakage parameter l2 (acceptor leakage into donor channel). |
+| `_mmfdb_setup_detector_channel.micro_time_ranges` | text | JSON array of [start, end] micro-time window pairs. |
 | `_mmfdb_setup_detector_channel.name` | line |  |
 | `_mmfdb_setup_detector_channel.setup_id` | code |  |
 
@@ -1227,13 +1227,13 @@ FCS channel correlation pair within an FCS channel setup. Each row defines one p
 
 | Item | Type | Description |
 |---|---|---|
-| `_mmfdb_setup_fcs_pair.channel_a` | line |  |
-| `_mmfdb_setup_fcs_pair.channel_b` | line |  |
+| `_mmfdb_setup_fcs_pair.channel_a` | line | Name of the first detector channel in the correlation pair. |
+| `_mmfdb_setup_fcs_pair.channel_b` | line | Name of the second detector channel in the correlation pair. |
 | `_mmfdb_setup_fcs_pair.id` | int |  |
-| `_mmfdb_setup_fcs_pair.kind` | line |  |
-| `_mmfdb_setup_fcs_pair.make_fine` | int |  |
-| `_mmfdb_setup_fcs_pair.n_bins` | int |  |
-| `_mmfdb_setup_fcs_pair.n_casc` | int |  |
+| `_mmfdb_setup_fcs_pair.kind` | line | Optional kind/label for the pair (e.g. auto, cross). |
+| `_mmfdb_setup_fcs_pair.make_fine` | int | Correlator make_fine flag for this correlation pair (0/1). Overrides the setup-level default when set. |
+| `_mmfdb_setup_fcs_pair.n_bins` | int | Correlator number of bins for this correlation pair. Overrides the setup-level default when set. |
+| `_mmfdb_setup_fcs_pair.n_casc` | int | Correlator number of cascades for this correlation pair. Overrides the setup-level default when set. |
 | `_mmfdb_setup_fcs_pair.name` | line |  |
 | `_mmfdb_setup_fcs_pair.setup_id` | code |  |
 
@@ -1243,11 +1243,11 @@ PIE (Pulsed Interleaved Excitation) or micro-time window definition within a rea
 
 | Item | Type | Description |
 |---|---|---|
-| `_mmfdb_setup_pie_window.end` | int |  |
+| `_mmfdb_setup_pie_window.end` | int | End micro-time bin (inclusive). |
 | `_mmfdb_setup_pie_window.id` | int |  |
 | `_mmfdb_setup_pie_window.name` | line |  |
 | `_mmfdb_setup_pie_window.setup_id` | code |  |
-| `_mmfdb_setup_pie_window.start` | int |  |
+| `_mmfdb_setup_pie_window.start` | int | Start micro-time bin (inclusive). |
 
 ## `_mmfdb_spectrum`
 
@@ -1270,9 +1270,9 @@ Lifecycle transition log (LIMS P1). One row per state change of a tracked entity
 | Item | Type | Description |
 |---|---|---|
 | `_mmfdb_state_transition.entity_id` | code |  |
-| `_mmfdb_state_transition.entity_type` | code |  |
-| `_mmfdb_state_transition.from_state` | code |  |
-| `_mmfdb_state_transition.operator_user_id` | code |  |
+| `_mmfdb_state_transition.entity_type` | code | The kind of entity whose state changed (e.g. sample, artifact, operation). |
+| `_mmfdb_state_transition.from_state` | code | The prior state; null/empty for the initial transition into a lifecycle. |
+| `_mmfdb_state_transition.operator_user_id` | code | The user who performed the transition (references flr_sample_users.user_id). ############################################ ## mmfdb_state_transition_rule (PRD-12) # ############################################ |
 | `_mmfdb_state_transition.reason` | text |  |
 | `_mmfdb_state_transition.to_state` | code |  |
 | `_mmfdb_state_transition.transition_id` | int |  |
@@ -1309,7 +1309,7 @@ Configurable per-study metadata as key/value pairs (the existing key-value patte
 | `_mmfdb_study_key_value.details` | text |  |
 | `_mmfdb_study_key_value.key` | code |  |
 | `_mmfdb_study_key_value.kv_id` | int |  |
-| `_mmfdb_study_key_value.study_id` | code |  |
+| `_mmfdb_study_key_value.study_id` | code | References mmfdb_study.study_id (a logical reference; see mmfdb_study_member). |
 | `_mmfdb_study_key_value.value` | text |  |
 
 ## `_mmfdb_study_member`
@@ -1322,7 +1322,7 @@ Many-to-many membership linking existing samples / artifacts into a study. membe
 | `_mmfdb_study_member.member_row_id` | int |  |
 | `_mmfdb_study_member.member_type` | code |  |
 | `_mmfdb_study_member.role` | code |  |
-| `_mmfdb_study_member.study_id` | code |  |
+| `_mmfdb_study_member.study_id` | code | References mmfdb_study.study_id (a logical reference; the dictionary-generated study_id is not emitted as a PRIMARY KEY, so no hard FK — the repository manages study membership integrity, as for mmfdb_operation.protocol_id). |
 
 ## `_mmfdb_units`
 
@@ -1330,10 +1330,10 @@ One row per unit: its code, how it is written for a person, and what it is in SI
 
 | Item | Type | Description |
 |---|---|---|
-| `_mmfdb_units.code` | code |  |
-| `_mmfdb_units.si_factor` | float |  |
-| `_mmfdb_units.si_unit` | code |  |
-| `_mmfdb_units.symbol` | line |  |
+| `_mmfdb_units.code` | code | The canonical code, as used by _mmfdb_column.units and _item_units.code. Follows ITEM_UNITS_LIST where that has the unit. |
+| `_mmfdb_units.si_factor` | float | Multiply a value in this unit by this to get _mmfdb_units.si_unit. Absent for a unit that is not a scaled SI quantity. |
+| `_mmfdb_units.si_unit` | code | The SI (or SI-derived) unit _mmfdb_units.si_factor converts to. |
+| `_mmfdb_units.symbol` | line | How the unit is written for a person: "ns", "kHz", "ms". This is what an axis label or a table header shows, and having it here is what stops each display inventing its own. |
 
 ## `_mmfdb_vocabulary`
 

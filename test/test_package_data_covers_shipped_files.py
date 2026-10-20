@@ -69,11 +69,9 @@ KNOWN_UNCOVERED = {
     ".xlsm",  # potential-energy databases
     ".pdf",  # reference document beside those databases
     ".icns",
-    ".ico",
-    ".qrc",  # icons and the Qt resource manifest
+    ".ico",  # icons (the Qt resource manifest went with the Qt shell)
     ".ini",
     ".yml",  # device and plugin configuration
-    ".pdat",  # the fortune database
     ".bmp",  # one more icon the installed copy would lack
 }
 

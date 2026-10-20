@@ -6,7 +6,7 @@ help browser renders a dead link as plain text. A reader sees a phrase that
 looks like a reference to something and simply cannot follow it.
 
 - ``{cite}`key```   -> an entry in docs/references/bibliography.yaml
-- ``{ref}`anchor``` -> an ``(anchor)=`` target defined by some page
+- ``{ref}`anchor``` -> an ``(anchor)=`` target or ``:name:`` defined by some page
 - ``{doc}`/path```  -> a page that exists on disk
 """
 
@@ -24,7 +24,11 @@ SKIP = ("_build", "_old_manual", "_ext")
 CITE = re.compile(r"\{cite\}`([^`\n]+)`")
 REF = re.compile(r"\{ref\}`([^`\n]+)`")
 DOC = re.compile(r"\{doc\}`([^`\n]+)`")
-ANCHOR = re.compile(r"^\(([A-Za-z0-9_.-]+)\)=", re.M)
+ANCHOR = re.compile(r"^\(([A-Za-z0-9_.:-]+)\)=", re.M)
+#: A directive's ``:name:`` option names a figure or equation; Sphinx and the
+#: help browser's cross-reference resolver (``plugins/core/help/api/xref.py``)
+#: both accept it as a ``{ref}`` target.
+NAMED = re.compile(r"^[ \t]*:name:[ \t]*([A-Za-z0-9_.:-]+)[ \t]*$", re.M)
 
 #: Used in documentation-maintenance prose as a literal example of the syntax,
 #: not as a citation of a work named "key".
@@ -83,6 +87,7 @@ def test_every_ref_resolves():
     anchors = set()
     for _, text in _pages():
         anchors.update(ANCHOR.findall(text))
+        anchors.update(NAMED.findall(text))
     bad = []
     for path, text in _pages():
         for m in REF.finditer(text):

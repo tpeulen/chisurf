@@ -80,13 +80,6 @@ from chisurf.emtk.help_guide import TourTarget
 class BurstFusionGui(TourTarget):
     """The immediate-mode GUI logic and rendering for Burst Fusion."""
 
-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
-        """Store a control's rectangle, in the hosting app's registry when there is one."""
-        if self.remember_to is not None:
-            self.remember_to(name, rect)
-        else:
-            super().remember(name, rect)
-
     def __init__(
         self,
         model: FusionViewModel | None = None,
@@ -97,8 +90,6 @@ class BurstFusionGui(TourTarget):
         self.model = model if model is not None else FusionViewModel()
         #: the run controller, installed by the hosting app (``None``: run the model directly)
         self.controller: FusionController | None = None
-        #: where remembered rectangles go when an app hosts this GUI (``None``: own dict)
-        self.remember_to: Callable[..., None] | None = None
         self.on_demo = on_demo
         self.on_guide = on_guide
         self.on_help = on_help
@@ -483,8 +474,9 @@ class BurstFusionApp(ImApp):
             model=model, on_demo=on_demo, on_guide=on_guide, on_help=on_help
         )
         self.model = self.fusion_gui.model
+        # One rectangle registry: the GUI's TourTarget.remember and the app's
+        # ImApp.remember both write into this shared dict, which the tour reads.
         self.item_rects = self.fusion_gui.item_rects
-        self.fusion_gui.remember_to = self.remember
         self.fusion_gui.controller = self.controller
         super().__init__(gui=self._render)
 
