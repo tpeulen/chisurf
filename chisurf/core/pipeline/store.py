@@ -1,6 +1,7 @@
 """Persist pipeline definitions and runs.
 
-A pipeline is a *saveable, shareable document* (the Orange3 ``.ows`` lesson): its
+A pipeline is a *saveable, shareable document*: the graph a user built is what
+another user opens and re-runs, so it is stored as data, not rebuilt by code. Its
 graph structure is stored in the dictionary-declared ``mmfdb_pipeline`` /
 ``mmfdb_pipeline_node`` / ``mmfdb_pipeline_edge`` tables (structured, not a blob — only
 the per-node parameter bag is JSON). A *run* groups the recorded operation chain via

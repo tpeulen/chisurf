@@ -218,9 +218,11 @@ A burst table with forty parameters holds 780 two-parameter plots, and the one
 that shows the populations is rarely the first one tried. **Find informative
 projections** scores every pair (and every candidate third axis) and lists them
 best first, in the background, so the plots worth looking at are found rather
-than hunted for. The design is Orange3's *VizRank*; a **Rank by** switch picks
-one of three questions, and every score is computed on one random sample of the
-bursts (5 000 by default), identical for every view.
+than hunted for. The idea is *VizRank* (Leban, Zupan, Vidmar & Bratko,
+[10.1007/s10618-005-0031-5](https://doi.org/10.1007/s10618-005-0031-5)): score
+each projection, rank them. A **Rank by** switch picks one of three questions,
+and every score is computed on one random sample of the bursts (5 000 by
+default), identical for every view.
 
 **Separation** (the default). In smFRET the informative view is the one where
 the molecules fall apart into species — donor-only, acceptor-only and FRET
@@ -274,16 +276,16 @@ times and photon counts into clusters, and a Gaussian-mixture BIC gain calls any
 skewed or curved single population (a log-normal count rate, a banana) three
 components. The valley score costs about a millisecond per pair.
 
-**Correlation.** Spearman's $\rho$ of the pair (Orange3's correlation ranking),
-over the same columns: it finds parameters that measure related things — $E$ and
-a lifetime, a rate and its count — not populations.
+**Correlation.** Spearman's $\rho$ of the pair, over the same columns: it finds
+parameters that measure related things — $E$ and a lifetime, a rate and its count —
+not populations.
 
 **Classes.** Offered when classes exist — the gate (inside vs outside), each
 gate as its own population, the clusters, or a z parameter that holds labels — a
 view is good when bursts of one class sit next to each other. For every burst the
 $k = 10$ nearest bursts in the view are found and the share $p_o$ with the same
-class is averaged (Orange3's scatter-plot score). The table shows it corrected for
-chance,
+class is averaged (VizRank's $k$-nearest-neighbour score). The table shows it
+corrected for chance,
 
 $$\kappa = \frac{p_o - p_e}{1 - p_e}, \qquad p_e = \sum_c p_c^2 ,$$
 

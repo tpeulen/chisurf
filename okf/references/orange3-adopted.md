@@ -9,6 +9,8 @@ convention-exempt: true
 
 # What ChiSurf took from Orange3
 
+> **Update 2026-10-20.** ndX's VizRank framework and projection scores are being reimplemented clean-room from `modules/ndxplorer/doc/cleanroom/vizrank_spec.md` (ndxplorer spec commit d6574bc); text here that names `ndxplorer/analysis/vizrank.py`, `vizrank_model.py` or `projection_scores.py` describes the code being replaced. The two adoptions in the main tree, `chisurf/gui/task.py` (background-task contract) and `chisurf/gui/widgets/messages.py` (declared messages), were deleted with the Qt shell in 68783966d. Remaining Orange-attributed content in the MIT stack was removed: emtk 92d11c1 replaces the `widgets/data_table.py` diverging bar colours (Orange's correlation colours) with emtk's own theme tokens `TABLE_BAR` / `TABLE_BAR_POSITIVE` / `TABLE_BAR_NEGATIVE` (blue/orange, light and dark variants); [multidimensional exploration](../../docs/concepts/multidimensional_exploration.md) credits VizRank to Leban, Zupan, Vidmar & Bratko 2006 ([10.1007/s10618-005-0031-5](https://doi.org/10.1007/s10618-005-0031-5)) instead of Orange; the `chisurf/core/pipeline/store.py` docstring describes saved pipelines on their own terms. `chisurf/core/curve.py` keeps write-locked arrays and the `unlocked()` name (an idea and a method name, not code); the file holds no Orange text.
+
 Four concepts in ChiSurf (and ndX) were **taken from Orange3** (Bioinformatics Lab,
 University of Ljubljana; GPL-3.0), a visual dataflow environment for data mining
 that has solved a set of problems ChiSurf keeps running into. This concept is
