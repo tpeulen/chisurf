@@ -45,9 +45,10 @@ The plan below is the open front. Nothing in `chisurf/` has been changed for it 
    - **AV width/grid conflict** (see the conflicts table): MalE uses W 0.5 / dg 0.5. The owner's 2026-10-11 "all use same defaults" sets W 4.5 / dg 0.9. Proposed: the notebook values are measured analysis settings, and the generic defaults stay IMP.bff's.
 4. **Blocked: German/French catalogues** of the new view.json are deferred to the i18n batch.
    Owner rule: no translation work in PRD-154 batches.
-5. **Tried and reverted (in the prototype itself, do not re-port):** the Brownian-walk objective
-   (it01–it06). It does not equilibrate at slow factors ≤ 0.1 (it07 docstring), and the
-   equilibrium ensemble replaced it. A single stickiness or a residue-count shielding term
+5. **Tried and reverted (in the prototype itself, do not re-port):** the Brownian-walk *objective*
+   (it01–it06) as the fit target. It does not equilibrate at slow factors ≤ 0.1 (it07 docstring), and the
+   equilibrium ensemble replaced it **in the inverse fit**. The walk itself stays (owner decision 2026-10-20, see WP9).
+   A single stickiness or a residue-count shielding term
    `exp(-α n)` (it11) was replaced by per-group stickiness (it08) and Shrake–Rupley exposure
    (it12). The Cauchy loss of it05 was replaced by the Student-t (ν = 3) search plus a Gaussian
    joint fit. The AF4_C2R linker (16.46 Å) was the wrong reagent; AF488 is A48_C1R, 20.4 Å (it10).
@@ -55,8 +56,12 @@ The plan below is the open front. Nothing in `chisurf/` has been changed for it 
 7. **Open: WP9.** The plugin's forward simulator still produces the known-wrong number in the sticky regime
    (quest known-issue "At QuEst's default stickiness (0.1) the dye walk does not equilibrate", 2026-09-30).
    **Measure:** MalE APO 95, AF488 reference kQ: the walk gives τX 1.36 ns at slow 0.3 and 2.41 ns at slow 0.1,
-   which is impossible at equilibrium. The notebook's equilibrium ensemble is the fix. The quest package never
-   had it, so the move did not lose it.
+   which is impossible at equilibrium. **Owner decision 2026-10-20: keep both ensembles** — the equilibrium ensemble
+   (the notebook's, for static τX/QY and the inverse fit) **and** the Brownian walk (more straightforward for FRET:
+   donor and acceptor move in time, photon race). The sticky-regime defect is fixed by **solving the diffusion PDE**
+   (Smoluchowski with the stickiness potential and the quenching sink on the AV grid; IMP.bff's grid diffusion solver),
+   whose stationary state must equal the equilibrium ensemble — not by dropping the walk. The quest package never
+   had the equilibrium ensemble, so the move did not lose it.
 8. **Tracked in PRD-154 as W16** ([prd-154](/prds/prd-154.md)).
 
 # The rest of the quest repo vs the plugin (checked 2026-10-20)
@@ -364,12 +369,16 @@ Paths are relative to `chisurf/plugins/quenching_estimator/` unless absolute.
 
 - **Goal:** QuEst's own simulate path must not give the non-equilibrated sticky-regime τX, and its dye presets must
   carry the MalE-measured values.
-- **Edit:** `core/simulation.py`, `core/dye_diffusion.py` (an `ensemble: "equilibrium" | "walk"` choice; equilibrium is
-  the default for τX/QY when slow factors < 1, and decays come from p(x)-started walks or the grid solver), `core/av.py`
+- **Edit:** `core/simulation.py`, `core/dye_diffusion.py` (an `ensemble: "equilibrium" | "walk" | "pde"` choice, all three kept — owner 2026-10-20: the walk is the
+  straightforward FRET path and stays; the PDE (grid diffusion solver with stickiness potential + quenching sink) gives the
+  dynamics without the walk's equilibration defect; equilibrium is the static limit and the default for τX/QY in the inverse fit;
+  the walk must be started from p(x) and checked against the PDE), `core/av.py`
   (delete `asa`/`spherePoints` once WP2's kernel is pinned), `settings/parameter_catalog.json`, `gui/generate_view_spec.py`
   + the regenerated `gui/quest.view.json` (en only; de/fr deferred), `test/test_equilibrium_ensemble.py` (new),
   `test/baselines/{generate.py,imp_bff.json}` (re-pin with a log line accounting for every moved number).
-- **Accept:** MalE APO 95 AF488 reference kQ: equilibrium τX decreases monotonically from slow 1 → 0.3 → 0.1. The APO 233,
+- **Accept:** MalE APO 95 AF488 reference kQ: equilibrium τX decreases monotonically from slow 1 → 0.3 → 0.1; the PDE's
+  stationary distribution equals the equilibrium ensemble (test); the PDE decay and a long p(x)-started walk agree within
+  their statistical error at slow 1 and 0.3, and the walk's deviation at slow 0.1 is reported, not hidden. The APO 233,
   slow 0.3 value matches WP3's 2.59 ns.
 - **Deps:** WP3 (the site model's equilibrium code is reused, not duplicated). It does not touch WP5/WP6 files.
 
