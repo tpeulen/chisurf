@@ -128,7 +128,12 @@ class ManualShell(Shell):
     def page(self, name: str):
         """Bring the fit window's page *name* forward (a click on its tab) and return the page."""
         window = self.window()
-        self.driver.click(name)
+        if name in window.names:
+            # A narrow fit window elides its tab captions ("Chain di…"), so a click by caption
+            # misses; select the page by its index as the tab click does.
+            window.surface.set_current(window.names.index(name))
+        else:
+            self.driver.click(name)
         self.driver.frame(4)
         return window.current_page()
 
