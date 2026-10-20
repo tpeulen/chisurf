@@ -141,7 +141,7 @@ class TestTheServicesRegisterIntoAHostDispatcher:
 
         register_services(Dispatcher())
         assert declared == set(registered) == set(registered_method_names())
-        assert len(declared) == 16
+        assert len(declared) == 20
 
     def test_a_registered_method_actually_runs(self) -> None:
         from chisurf.plugins.quenching_estimator.rpc.services import register_services
