@@ -315,10 +315,10 @@
     "status": "ai-reviewed"
   },
   "34_exporting_burst_data.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-21",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "204c3ac4eea69b12bcfeba7a3dcbf3dec360b218f70e40147c088ca46644d367",
+    "sha256": "b2e9c231ed2d3fd6e3fd08bef4e1511897ffee4cd0a58876cd3e23887744aa83",
     "status": "ai-reviewed"
   },
   "35_combining_repeats.md": {

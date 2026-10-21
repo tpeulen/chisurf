@@ -34,6 +34,11 @@ This plugin's window is an EMTK app without declarative parameter sections: its 
 | `burstwise_import.jobs.import_folder` | yes | Convert a legacy burstwise analysis folder to PTO.MFDB containers. |
 | `burstwise_import.contract.describe` | no | Return the burstwise_import workflow contract. |
 
+## Theory and workflow
+
+- **Theory** — [File tools: operations on the container, not the measurement](/concepts/file_tools.md)
+- **Workflow** — [Exporting burst data](/guides/34_exporting_burst_data.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burstwise_import/`

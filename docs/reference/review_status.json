@@ -266,10 +266,10 @@
     "status": "ai-reviewed"
   },
   "plugins/burstwise_import.md": {
-    "date": "2026-10-19",
+    "date": "2026-10-21",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "778614281398792f1aa10f18162f1210295049e8449b6f34e04d6729a711b93a",
+    "sha256": "87f95017e244bc36a2d348da3efad93a2c04dfa1ff7e592e225e74e326d09d0b",
     "status": "ai-reviewed"
   },
   "plugins/calculators.md": {

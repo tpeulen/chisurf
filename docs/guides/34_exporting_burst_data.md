@@ -51,6 +51,18 @@ placed by the burst number its table declares; one that cannot be placed is refu
 rather than guessed. A zero in a companion is therefore the export's "skipped";
 the container still holds the real value.
 
+The door swings both ways: **Burstwise→PTO** (`chisurf/plugins/burst/burstwise_import/`,
+**File → Data**) reads a legacy burstwise folder back in — `bi4_bur/` (or `bur/`),
+the `…4` companions, `BIDs/`, `Info/` and the `.mti` list — and writes one `.pto`
+container per measurement, its columns carried under their flrCIF dictionary
+names, with any column the dictionary cannot place named in the report instead of
+silently renamed. Each stem's raw TTTR file is found beside the folder or through
+the paths the `.mti` records, with an old drive or server prefix rewritten to a
+local root; by default the container references that file beside it rather than
+embedding it (the deposition layout), and **Dry run** reports every container it
+would write before writing one. Without a window, `csc burstwise_import --help`
+lists the same conversion.
+
 The **Runs** table in Burst Selection and H2MM lists the analyses in a container;
 pick one and the next step reads that run. **Decay from selected bursts** (Burst
 Selection) pools the micro times of the bursts inside the histogram range of the
