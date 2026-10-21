@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from typing import Any
 
@@ -62,29 +63,83 @@ def _numeric(table, column: str) -> np.ndarray | None:
     return out
 
 
+def _find_detector_columns(names: Sequence[str], role: str) -> list[str]:
+    """Find per-detector photon count column names for role ('green'/'donor' or 'red'/'acceptor')."""
+    pattern = re.compile(r"^number of photons \((?P<name>[^)]+)\)$", re.IGNORECASE)
+    cols = []
+    for col in names:
+        m = pattern.match(str(col).strip())
+        if m:
+            det = m.group("name").lower()
+            if role == "green" and ("green" in det or "donor" in det):
+                cols.append(col)
+            elif role == "red" and ("red" in det or "acceptor" in det):
+                cols.append(col)
+    return cols
+
+
+def _find_rate_columns(names: Sequence[str], role: str) -> list[str]:
+    """Find per-detector count-rate column names for role ('green'/'donor' or 'red'/'acceptor')."""
+    pattern = re.compile(r"^(?P<name>.*)\s+count rate\s*\(khz\)$", re.IGNORECASE)
+    cols = []
+    for col in names:
+        m = pattern.match(str(col).strip())
+        if m:
+            det = m.group("name").lower()
+            if role == "green" and ("green" in det or "donor" in det):
+                cols.append(col)
+            elif role == "red" and ("red" in det or "acceptor" in det):
+                cols.append(col)
+    return cols
+
+
+def _find_detector_series(table, role: str) -> np.ndarray | None:
+    """Return the summed numeric series for role ('green' or 'red') when present."""
+    names = _names(table)
+    cols = _find_detector_columns(names, role)
+    if cols:
+        arrays = [_numeric(table, c) for c in cols]
+        arrays = [a for a in arrays if a is not None]
+        if arrays:
+            total = np.zeros_like(arrays[0], dtype=float)
+            for a in arrays:
+                total += np.where(np.isfinite(a) & (a > 0), a, 0.0)
+            return total
+    rates = _find_rate_columns(names, role)
+    if rates:
+        arrays = [_numeric(table, c) for c in rates]
+        arrays = [a for a in arrays if a is not None]
+        if arrays:
+            total = np.zeros_like(arrays[0], dtype=float)
+            for a in arrays:
+                total += np.where(np.isfinite(a) & (a > 0), a, 0.0)
+            return total
+    return None
+
+
 def proximity_ratio(frame) -> np.ndarray | None:
     """Compute the burst proximity ratio PR = red / (green + red).
 
     Uses an explicit ``Proximity Ratio`` column when present, otherwise the
-    per-detector green/red photon counts (``Number of Photons (red|green)``), then
-    the green/red count rates. Returns ``None`` when no source columns exist.
-    Bursts with no green+red signal yield ``NaN`` (excluded from histograms),
-    rather than collapsing to 0.
+    per-detector green/red photon counts (``Number of Photons (red|green)``,
+    case-insensitive, supporting Red/Green, donor/acceptor, or polarization-split
+    streams), then the green/red count rates. Returns ``None`` when no source
+    columns exist. Bursts with no green+red signal yield ``NaN`` (excluded from
+    histograms), rather than collapsing to 0.
     """
     explicit = _numeric(frame, "Proximity Ratio")
     if explicit is not None:
         return explicit
-    for red_col, green_col in (
-        ("Number of Photons (red)", "Number of Photons (green)"),
-        ("Red Count Rate (KHz)", "Green Count Rate (KHz)"),
-    ):
-        red = _numeric(frame, red_col)
-        green = _numeric(frame, green_col)
-        if red is not None and green is not None:
-            total = red + green
-            return np.divide(
-                red, total, out=np.full(_rows(frame), np.nan, dtype=float), where=total > 0
-            )
+    red = _find_detector_series(frame, "red")
+    green = _find_detector_series(frame, "green")
+    if red is not None and green is not None:
+        total = red + green
+        return np.divide(
+            red,
+            total,
+            out=np.full(_rows(frame), np.nan, dtype=float),
+            where=(total > 0) & np.isfinite(total) & (red >= 0) & (green >= 0),
+        )
     return None
 
 
