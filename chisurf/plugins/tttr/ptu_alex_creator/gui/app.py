@@ -163,6 +163,8 @@ class AlexApp(TourTarget, ImApp):
             return False
         if name == "load_input":
             return bool(str(self.model.input_file).strip())
+        if name == "load_example":
+            return not self.preview_job.running
         if name == "choose_save":
             return self.model.has_data
         if name == "detect_period":
@@ -498,6 +500,18 @@ class AlexApp(TourTarget, ImApp):
         self.selected_path = ""
 
     # -- the form's actions ------------------------------------------------------------------------------------ #
+    def load_example(self):
+        """Generate the demonstration stream (alternation still in the macro time) and load it."""
+        from ..demo import demo_folder, make_demo
+
+        try:
+            path = make_demo(demo_folder())
+        except OSError as exc:
+            self.error(exc)
+            return
+        self.model.input_file = str(path)
+        self.load(str(path))
+
     def choose_input(self):
         self.choose(lambda picked: self.load(picked[0]))
 

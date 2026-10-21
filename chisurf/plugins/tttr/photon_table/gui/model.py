@@ -156,7 +156,7 @@ class PhotonTableViewModel:
 
     def enabled(self, name: str) -> bool:
         """Which buttons can be pressed now."""
-        if name in ("request_open",):
+        if name in ("request_open", "load_example"):
             return not self.busy
         if name in ("go_first", "go_prev", "go_next", "go_last", "request_copy"):
             return self.loaded and not self.busy
@@ -207,6 +207,14 @@ class PhotonTableViewModel:
         return ""
 
     # ── buttons ───────────────────────────────────────────────────────
+    def load_example(self) -> None:
+        """Generate the demonstration stream and show its photons."""
+        if self.busy:
+            return
+        from ..demo import demo_folder, make_demo
+
+        self.load_path(str(make_demo(demo_folder())))
+
     def request_open(self) -> None:
         self.request = "open"
 

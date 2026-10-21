@@ -65,6 +65,21 @@ class SplitterController:
             mode="folder",
         )
 
+    def load_example(self):
+        """Generate the demonstration stream and load it, output beside the cache."""
+        from ..demo import demo_folder, make_demo
+
+        if self.job.running:
+            return False
+        try:
+            path = make_demo(demo_folder())
+        except OSError as exc:
+            self.message = str(exc)
+            return False
+        self._model.output_folder = str(demo_folder())
+        self.load_input(str(path))
+        return True
+
     def load_input(self, path):
         if self.job.running:
             return

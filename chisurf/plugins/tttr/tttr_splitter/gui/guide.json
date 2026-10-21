@@ -1,18 +1,18 @@
 [
   {
-    "title": "Choose the input",
-    "text": "Press the browse button beside Input file and choose a TTTR measurement. The guide does not choose a file for you.",
-    "target": "input",
-    "await": {
-      "hint": "Press the browse button beside Input file."
-    }
-  },
-  {
     "title": "Choose the output",
     "text": "Press the browse button beside Output folder and select a destination.",
     "target": "output",
     "await": {
       "hint": "Press the browse button beside Output folder."
+    }
+  },
+  {
+    "title": "Load the example",
+    "text": "Press <b>Load example</b> to generate a deterministic demonstration measurement (two detectors, hundreds of thousands of photons) in the settings cache and load it — the output folder is set beside it, ready to split. Press the browse button beside Input file instead to choose a real TTTR measurement. The guide does not choose a file for you.",
+    "target": "load_example",
+    "await": {
+      "hint": "Press <b>Load example</b>."
     }
   },
   {

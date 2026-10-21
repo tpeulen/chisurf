@@ -509,6 +509,14 @@ class AudifierApp(TourTarget, ImApp):
         if paths:
             self.load(paths[0])
 
+    def load_example(self):
+        """Generate the demonstration stream in the settings cache and load it."""
+        from ..demo import demo_folder, make_demo
+
+        path = make_demo(demo_folder())
+        if self.load(path):
+            self.message = f"Example loaded: {Path(path).name}"
+
     def on_files_dropped(self, paths):
         """The host's drop verb: the first file is the stream to load."""
         if self.dialog is None and paths:
@@ -682,6 +690,11 @@ class AudifierApp(TourTarget, ImApp):
         pressed = button_row(
             [
                 {
+                    "label": "Load example",
+                    "key": "load_example",
+                    "tip": "Generate the deterministic demonstration stream (a µs-ALEX measurement with bursts on two detectors) and load it.",
+                },
+                {
                     "label": "Load TTTR",
                     "key": "load",
                     "tip": "Load a photon stream. Drag and drop is also supported.",
@@ -735,7 +748,10 @@ class AudifierApp(TourTarget, ImApp):
             "guide": self.guide.start,
             "help": self.help.show,
         }
-        if pressed:
+        if pressed == "load_example":
+            self.load_example()
+            self.guide.notify_used(pressed)
+        elif pressed:
             try:
                 actions[pressed]()
                 self.guide.notify_used(pressed)

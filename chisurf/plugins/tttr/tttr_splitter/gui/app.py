@@ -95,6 +95,12 @@ class SplitterGui(TourTarget):
     def show_help(self) -> None:
         self.help_window.show()
 
+    def load_example(self) -> None:
+        """Load the generated demonstration stream through the controller."""
+        loader = getattr(self.tool, "load_example", None)
+        if callable(loader):
+            loader()
+
     def draw(self, w: float = 0.0, h: float = 0.0) -> None:
         vp = im.get_main_viewport()
         width = float(w or vp.size[0] or 860.0)
@@ -139,6 +145,17 @@ class SplitterGui(TourTarget):
         tool = self.tool
         m = self.model
 
+        if im.button(tr("Load example")):
+            self.load_example()
+            self.tour.notify_used("load_example")
+        im.set_item_tooltip(
+            tr(
+                "Generate the deterministic demonstration stream (two detectors, plenty of "
+                "photons) in the settings cache and load it for splitting."
+            )
+        )
+        self.remember("load_example")
+        im.same_line()
         if im.button(tr("✂ Convert / Split"), role="primary"):
             if callable(self.on_run):
                 self.on_run()

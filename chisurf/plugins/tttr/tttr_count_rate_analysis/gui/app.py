@@ -185,6 +185,12 @@ class CountRateGui(TourTarget):
         """Tell the tour that the user pressed the control it is waiting for."""
         self.tour.notify_used(name)
 
+    def load_example(self) -> None:
+        """Queue the generated demonstration stream through the controller."""
+        loader = getattr(self.tool, "load_example", None)
+        if callable(loader):
+            loader()
+
     def show_help(self) -> None:
         self.help_window.show()
 
@@ -226,6 +232,15 @@ class CountRateGui(TourTarget):
 
     def _draw_files(self, box: tuple[float, float, float, float]) -> None:
         im.begin_disabled(self.busy())
+        if im.button(tr("Load example")):
+            self.load_example()
+            self._used("load_example")
+        im.set_item_tooltip(
+            tr("Generate the deterministic demonstration stream in the settings cache and queue it.")
+        )
+        self.remember("load_example")
+        if im.get_line_avail() >= im.calc_text_size(tr("Add files"))[0] + 24:
+            im.same_line()
         if im.button(tr("Add files")):
             self._used("add_files")
             if callable(self.on_add_files):

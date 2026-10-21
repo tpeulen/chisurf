@@ -177,6 +177,32 @@ class CountRateController:
     def add_database(self):
         self.dataset_picker.open()
 
+    def load_example(self):
+        """Generate the demonstration stream, define its detectors, and queue it."""
+        if self.job.running:
+            return False
+        from ..demo import demo_folder, make_demo
+
+        try:
+            path = make_demo(demo_folder())
+        except OSError as exc:
+            self.message = str(exc)
+            return False
+        self.adopt_editor_definition(
+            {
+                "setup_name": "ALEX demo",
+                "detectors": {
+                    "donor": {"chs": [0], "micro_time_ranges": [[0, 4095]]},
+                    "acceptor": {"chs": [1], "micro_time_ranges": [[0, 4095]]},
+                },
+                "windows": {},
+            },
+            "ALEX demo",
+        )
+        self._model.add_files([str(path)])
+        self.message = f"Example queued: {Path(path).name}. Press Calculate."
+        return True
+
     def calculate(self):
         if self.channel_editor._future is not None:
             self.message = "Wait for the detector calibration read to finish."

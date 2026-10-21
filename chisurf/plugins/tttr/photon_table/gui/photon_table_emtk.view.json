@@ -13,6 +13,8 @@
           "type": "button_row",
           "description": "Open a TTTR file, or copy the rows shown now.",
           "buttons": [
+            {"action": "load_example", "label": "Load example",
+             "description": "Generate the deterministic demonstration stream (a µs-ALEX measurement with bursts on two detectors) in the settings cache and show its photons."},
             {"action": "request_open", "label": "Open TTTR...",
              "description": "Open a TTTR file (.ptu, .ht3, .phu, ...). Dropping one on the window does the same."},
             {"action": "request_copy", "label": "Copy visible",

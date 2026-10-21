@@ -18,6 +18,8 @@
           "type": "button_row",
           "description": "Load a VV/VH file, save the results, or process many files with the same settings.",
           "buttons": [
+            {"action": "load_example", "label": "Load example",
+             "description": "Generate the reference decays (known r(t) = r0·exp(-t/ρ), four files) in the settings cache, load the slow protein's decay and queue all four for the batch."},
             {"action": "request_load", "label": "Load VV/VH file…",
              "description": "Load a paired parallel/perpendicular decay (.dat or .txt, VV followed by VH). Dropping a file on the window does the same."},
             {"action": "request_save", "label": "Save outputs…",

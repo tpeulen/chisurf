@@ -8,9 +8,9 @@
     },
     {
       "title": "Queue the files",
-      "text": "Add TTTR files, a folder, or datasets from the database — or drop them on the window. All must have the same number of micro-time bins; the preview sums them by routing channel.",
-      "target": {"name": "add_files"},
-      "await": {"hint": "Press <b>➕ Files…</b> and pick a photon file."}
+      "text": "Press <b>Load example</b> to generate a deterministic demonstration stream — two detectors whose decays begin 500 micro-time bins apart — in the settings cache and read it, then let the tool align them. Real data goes through <b>➕ Files…</b>, a folder, or datasets from the database — or drop it on the window. All files must have the same number of micro-time bins; the preview sums them by routing channel.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>Load example</b>."}
     },
     {
       "title": "The rising edges",

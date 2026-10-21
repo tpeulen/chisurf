@@ -133,6 +133,19 @@ class TimeWindowController:
             self.app.time_window_gui.select_preview(0)
         self.request_frame()
 
+    def load_example(self) -> bool:
+        """Generate the demonstration stream in the settings cache and queue it."""
+        from ..demo import demo_folder, make_demo
+
+        try:
+            path = make_demo(demo_folder())
+        except OSError as exc:
+            self.notify(str(exc))
+            return False
+        self.add_paths([path])
+        self.notify(f"Example queued: {Path(path).name}. Press Process.")
+        return True
+
     def drop_paths(self, paths) -> bool:
         """Queue the TTTR files among *paths*; a dropped folder is searched recursively.
 

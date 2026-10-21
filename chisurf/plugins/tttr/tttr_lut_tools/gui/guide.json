@@ -8,9 +8,9 @@
     },
     {
       "title": "Load a uniform-illumination file",
-      "text": "Press <b>Files</b> and pick a flat-light TTTR file (or <b>Folder</b> / <b>Database</b>, or drop it on the window). The raw TAC histogram appears in the upper plot.",
-      "target": {"name": "request_add_files"},
-      "await": {"hint": "Press <b>Files</b> and choose a file."}
+      "text": "Press <b>Load example</b> to generate a deterministic demonstration measurement (two detectors with distinct micro-time decays) in the settings cache and read it — no file of your own needed. <b>Files</b> picks a real flat-light TTTR file (or <b>Folder</b> / <b>Database</b>, or drop it on the window). The raw TAC histogram appears in the upper plot.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>Load example</b>."}
     },
     {
       "title": "Pick the channel",

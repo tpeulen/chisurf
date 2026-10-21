@@ -2,20 +2,20 @@
   "_comment": "Guided tour of the Photon Table. 'name' is the emtk control (a spec action or field, or a window the app draws).",
   "steps": [
     {
-      "title": "Open a TTTR file",
-      "text": "<b>Open TTTR...</b> chooses a .ptu, .ht3, .phu, .pt3 or other TTTR file; you can also drop one on the window. The photons are read in the background and the table starts at the first photon.",
-      "target": {
-        "name": "request_open"
-      },
-      "await": {
-        "hint": "Press <b>Open TTTR...</b>, then pick a file or close the dialog."
-      }
-    },
-    {
       "title": "What the file holds",
       "text": "The file name, the number of photons (and of marker records besides them), the measurement time and the number of micro-time channels the header declares, then the records of each kind and the routing channels that occur in the data.",
       "target": {
         "name": "file_summary"
+      }
+    },
+    {
+      "title": "Generate an example",
+      "text": "<b>Load example</b> writes a deterministic demonstration measurement (a µs-ALEX stream with bursts on two detectors) into the settings cache and shows its photons — no file of your own needed. <b>Open TTTR...</b> chooses a real .ptu, .ht3, .phu, .pt3 or other TTTR file instead; you can also drop one on the window.",
+      "target": {
+        "name": "load_example"
+      },
+      "await": {
+        "hint": "Press <b>Load example</b>."
       }
     },
     {

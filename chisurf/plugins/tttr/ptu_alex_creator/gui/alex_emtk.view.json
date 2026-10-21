@@ -19,6 +19,7 @@
         {
           "type": "button_row",
           "buttons": [
+            {"label": "Load example", "action": "load_example", "description": "Generate the deterministic demonstration stream (a µs-ALEX measurement with the alternation still in the macro time) in the settings cache and load it."},
             {"label": "Open…", "icon": "📂", "action": "choose_input", "description": "Choose a TTTR file and preview its folded ALEX phase."},
             {"label": "Load", "action": "load_input", "description": "Read the file named above."},
             {"label": "Save as…", "action": "choose_save", "description": "Write the converted photon data to a new file; the input is never overwritten. Grey until a file is loaded."}

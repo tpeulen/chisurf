@@ -106,6 +106,19 @@ class NativeHeaderEditor(ImApp):
         if paths:
             self.load(paths[0])
 
+    def load_example(self):
+        """Generate the demonstration PTU in the settings cache and read its header."""
+        from ..demo import demo_folder, make_demo
+
+        if self.job.running:
+            return False
+        try:
+            path = make_demo(demo_folder())
+        except OSError as exc:
+            self.error(exc)
+            return False
+        return self.load(path)
+
     def export_settings(self):
         return {"last_directory": self.last_directory}
 

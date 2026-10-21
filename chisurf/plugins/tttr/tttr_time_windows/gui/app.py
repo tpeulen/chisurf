@@ -121,6 +121,12 @@ class TimeWindowGui(TourTarget):
             wait_for_controls=True,
         )
 
+    def load_example(self) -> None:
+        """Queue the generated demonstration stream through the controller."""
+        loader = getattr(self.tool, "load_example", None)
+        if callable(loader):
+            loader()
+
     # ── plumbing ──────────────────────────────────────────────────────────
 
     def start_guide(self) -> None:
@@ -146,6 +152,14 @@ class TimeWindowGui(TourTarget):
     # ── the file queue ────────────────────────────────────────────────────
 
     def _draw_files(self, box: tuple[float, float, float, float]) -> None:
+        if im.button(tr("Load example")):
+            self.load_example()
+            self._used("load_example")
+        im.set_item_tooltip(
+            tr("Generate the deterministic demonstration stream in the settings cache and queue it.")
+        )
+        self.remember("load_example")
+        im.same_line()
         if im.button(tr("Files")):
             self._used("add_files")
             if callable(self.on_add_files):

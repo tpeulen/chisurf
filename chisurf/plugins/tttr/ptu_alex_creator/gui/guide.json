@@ -1,69 +1,69 @@
 {
- "_comment": "Guided tour for the ALEX Creator. Targets are the names the app registers for its controls; a step with an await waits until the user operates that control (the tour never presses it).",
- "steps": [
-  {
-   "title": "Load a photon file",
-   "text": "ALEX alternates excitation lasers within the macro-time. Loading detects measured phase candidates automatically at the configured Period and Shift; review them before assigning laser identities. Press <b>Open…</b> and choose a TTTR file (a .sm, .ptu, .ht3 ...), or drop one on the window. Its folded ALEX phase appears as a histogram.",
-   "target": {
-    "name": "choose_input"
-   },
-   "await": {
-    "hint": "Press <b>Open…</b> and choose a file."
-   }
-  },
-  {
-   "title": "Measure the period",
-   "text": "Press <b>Detect period</b> to measure the alternation period from the photons themselves: the two busiest detectors alternate, and the strongest line of that alternation sets <b>Period</b>. A stream that does not alternate is refused with its contrast and Period stays as it was. The histogram and the excitation regions fold again at the measured period.",
-   "target": {
-    "name": "detect_period"
-   },
-   "await": {
-    "hint": "Press <b>Detect period</b>."
-   }
-  },
-  {
-   "title": "Set the period and the shift",
-   "text": "<b>Period</b> is the alternation period in macro-time units (not seconds) and <b>Shift</b> moves the phase. Type a value and press Enter, or use the arrows or the mouse wheel over a field: the histogram on the right folds again at once. Set them to the known instrument period and phase. Re-detect updates all excitation-region candidates; inspect Start/End, transition warnings and detector groups before confirming Review. Regions are overlays and do not filter photons.",
-   "target": {
-    "name": "timing"
-   },
-   "await": {
-    "hint": "Change <b>Shift</b> (or <b>Period</b>) and watch the histogram."
-   }
-  },
-  {
-   "title": "Define the excitation ranges",
-   "text": "Each row is one excitation phase found in the folded histogram and drawn as a shaded band. Double-click <b>Start</b> or <b>End</b> to define a range by hand (Start above End wraps across phase zero), and tick <b>Review</b> once checked. <b>Re-detect</b> replaces your edits with the measured ranges. Regions never filter the exported photons.",
-   "target": {
-    "name": "redetect_regions"
-   }
-  },
-  {
-   "title": "Write the converted file",
-   "text": "<b>Save as…</b> writes a new photon file whose micro-time is the folded ALEX phase, in the output container chosen under <b>Output</b> (Formats). The input file is never overwritten. The button stays grey until a file is loaded.",
-   "target": {
-    "name": "choose_save"
-   },
-   "await": {
-    "hint": "Press <b>Save as…</b> (Cancel in the dialog to skip writing)."
-   }
-  },
-  {
-   "title": "Queue files for a batch",
-   "text": "For many files, <b>Add files…</b> (or <b>Folder…</b>, or the session database) fills the queue below. The period, shift and formats above apply to every file in it; select a row and press <b>Remove</b> (or Delete) to drop one.",
-   "target": {
-    "name": "choose_files"
-   },
-   "await": {
-    "hint": "Press <b>Add files…</b> (Cancel in the dialog to skip)."
-   }
-  },
-  {
-   "title": "Convert each, or merge",
-   "text": "Choose <b>Convert each</b> (needs an output folder) or <b>Merge into one</b> (successive streams are joined with continuing macro-time before folding), then press <b>Run batch</b>. The written file names appear above the histogram.",
-   "target": {
-    "name": "run_batch"
-   }
-  }
- ]
+  "_comment": "Guided tour for the ALEX Creator. Targets are the names the app registers for its controls; a step with an await waits until the user operates that control (the tour never presses it).",
+  "steps": [
+    {
+      "title": "Measure the period",
+      "text": "Press <b>Detect period</b> to measure the alternation period from the photons themselves: the two busiest detectors alternate, and the strongest line of that alternation sets <b>Period</b>. A stream that does not alternate is refused with its contrast and Period stays as it was. The histogram and the excitation regions fold again at the measured period.",
+      "target": {
+        "name": "detect_period"
+      },
+      "await": {
+        "hint": "Press <b>Detect period</b>."
+      }
+    },
+    {
+      "title": "Load an example measurement",
+      "text": "<b>Load example</b> generates a deterministic demonstration stream — a µs-ALEX measurement whose excitation alternation is still in the macro time — in the settings cache and loads it: the folded ALEX phase appears as a histogram. <b>Open…</b> chooses a real TTTR file instead (a .sm, .ptu, .ht3 ...), or drop one on the window. Loading detects measured phase candidates automatically at the configured Period and Shift; review them before assigning laser identities.",
+      "target": {
+        "name": "load_example"
+      },
+      "await": {
+        "hint": "Press <b>Load example</b>."
+      }
+    },
+    {
+      "title": "Set the period and the shift",
+      "text": "<b>Period</b> is the alternation period in macro-time units (not seconds) and <b>Shift</b> moves the phase. Type a value and press Enter, or use the arrows or the mouse wheel over a field: the histogram on the right folds again at once. Set them to the known instrument period and phase. Re-detect updates all excitation-region candidates; inspect Start/End, transition warnings and detector groups before confirming Review. Regions are overlays and do not filter photons.",
+      "target": {
+        "name": "timing"
+      },
+      "await": {
+        "hint": "Change <b>Shift</b> (or <b>Period</b>) and watch the histogram."
+      }
+    },
+    {
+      "title": "Define the excitation ranges",
+      "text": "Each row is one excitation phase found in the folded histogram and drawn as a shaded band. Double-click <b>Start</b> or <b>End</b> to define a range by hand (Start above End wraps across phase zero), and tick <b>Review</b> once checked. <b>Re-detect</b> replaces your edits with the measured ranges. Regions never filter the exported photons.",
+      "target": {
+        "name": "redetect_regions"
+      }
+    },
+    {
+      "title": "Write the converted file",
+      "text": "<b>Save as…</b> writes a new photon file whose micro-time is the folded ALEX phase, in the output container chosen under <b>Output</b> (Formats). The input file is never overwritten. The button stays grey until a file is loaded.",
+      "target": {
+        "name": "choose_save"
+      },
+      "await": {
+        "hint": "Press <b>Save as…</b> (Cancel in the dialog to skip writing)."
+      }
+    },
+    {
+      "title": "Queue files for a batch",
+      "text": "For many files, <b>Add files…</b> (or <b>Folder…</b>, or the session database) fills the queue below. The period, shift and formats above apply to every file in it; select a row and press <b>Remove</b> (or Delete) to drop one.",
+      "target": {
+        "name": "choose_files"
+      },
+      "await": {
+        "hint": "Press <b>Add files…</b> (Cancel in the dialog to skip)."
+      }
+    },
+    {
+      "title": "Convert each, or merge",
+      "text": "Choose <b>Convert each</b> (needs an output folder) or <b>Merge into one</b> (successive streams are joined with continuing macro-time before folding), then press <b>Run batch</b>. The written file names appear above the histogram.",
+      "target": {
+        "name": "run_batch"
+      }
+    }
+  ]
 }

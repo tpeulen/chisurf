@@ -86,6 +86,12 @@ class HeaderEditorGui(TourTarget):
     def show_help(self) -> None:
         self.help_window.show()
 
+    def load_example(self) -> None:
+        """Read the generated demonstration PTU through the tool."""
+        loader = getattr(self.tool, "load_example", None)
+        if callable(loader):
+            loader()
+
     def draw(self, w: float = 0.0, h: float = 0.0) -> None:
         vp = im.get_main_viewport()
         width = float(w or vp.size[0] or 860.0)
@@ -129,6 +135,14 @@ class HeaderEditorGui(TourTarget):
     # ── the tags dock ─────────────────────────────────────────────────────
 
     def _draw_tags(self, box: tuple[float, float, float, float]) -> None:
+        if im.button(tr("Load example")):
+            self.load_example()
+            self.tour.notify_used("load_example")
+        im.set_item_tooltip(
+            tr("Generate a deterministic demonstration PTU in the settings cache and read its header.")
+        )
+        self.remember("load_example")
+        im.same_line()
         if action_button(
             "open", tooltip=tr("Open a TTTR file (PTU / HT3 / SPC / HDF5) and read its header.")
         ):

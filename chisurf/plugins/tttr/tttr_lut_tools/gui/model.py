@@ -378,6 +378,17 @@ class LutToolModel:
             self.message = str(error)
 
     # -- actions --------------------------------------------------------------------- #
+    def load_example(self):
+        """Generate the demonstration stream in the settings cache and read it."""
+        from ..demo import demo_folder, make_demo
+
+        try:
+            path = str(make_demo(demo_folder()))
+        except OSError as error:
+            self.message = str(error)
+            return
+        self.add_files([path])
+
     def add_files(self, paths):
         """Add photon files (or folders) to the shown tab; reads them as a job."""
         added = self.ws.expand(paths)

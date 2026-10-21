@@ -131,6 +131,23 @@ class AnisotropyModel:
     def request_load(self):
         self.request = "load"
 
+    def load_example(self) -> None:
+        """Generate the reference decays; load the slow protein's, queue all four."""
+        from ..demo import PRIMARY, demo_folder, make_demo, paths
+        from ..demo import DEMO as DEMO_SETTINGS
+
+        folder = demo_folder()
+        make_demo(folder)
+        files = paths(folder)
+        self.g_factor = float(DEMO_SETTINGS["g_factor"])
+        self.l1 = float(DEMO_SETTINGS["l1"])
+        self.l2 = float(DEMO_SETTINGS["l2"])
+        self.apply_bg = True
+        self.bg_vv = float(DEMO_SETTINGS["background_counts"])
+        self.bg_vh = float(DEMO_SETTINGS["background_counts"])
+        self.add_batch_paths([str(p) for p in files.values()])
+        self.load(str(files[PRIMARY]))
+
     def request_save(self):
         self.request = "save"
 

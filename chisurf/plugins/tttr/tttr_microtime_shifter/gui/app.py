@@ -307,6 +307,7 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         if self.job.running:
             return name not in (
                 "auto_align",
+                "load_example",
                 "save_dialog",
                 "save_batch",
                 "register",
@@ -378,6 +379,19 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         self.dialog_callback = callback
         self.dialog_window.title = title
         self.dialog_window.show()
+
+    def load_example(self):
+        """Generate the demonstration stream (detectors' decays 500 bins apart) and read it."""
+        from ..demo import demo_folder, make_demo
+
+        if self.job.running:
+            return False
+        try:
+            path = make_demo(demo_folder())
+        except OSError as exc:
+            self.message = str(exc)
+            return False
+        return self.add_paths([path])
 
     def add_paths(self, paths):
         if self.job.running:
@@ -730,6 +744,17 @@ class MicrotimeShifterApp(TourTarget, ImApp):
             or self.dialog is not None
             or self.sample_definition is not None
         )
+        if im.button(tr("Load example")):
+            self.load_example()
+            self.tour.notify_used("load_example")
+        im.set_item_tooltip(
+            tr(
+                "Generate the demonstration stream (two detectors with offset micro-time decays) "
+                "in the settings cache and read it."
+            )
+        )
+        self.remember("load_example")
+        im.same_line()
         buttons = (
             (
                 "➕  Files…",
