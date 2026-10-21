@@ -1,7 +1,7 @@
 """The native ALEX Suite: the old ALEX-Suite program's workflow as one linear pipeline, walked with Next.
 
 Seven numbered steps (setup, files, µs-ALEX alternation, burst search, background, accurate FRET, E–S histogram)
-and four side tools (burst properties, titration, BVA, the ALEX-Suite CSV export) behind one rail, drawn with emtk.
+and three side tools (burst properties, titration, BVA) behind one rail, drawn with emtk.
 The hub is :class:`~chisurf.plugins.burst.burst_analysis.gui.native.BurstAnalysisHubApp` with ALEX's own steps:
 the hand-off of the setup, the files and the bursts from step to step (``BurstWorkflowContext``, ``_to_<role>``,
 ``_apply_downstream``) is Burst Analysis's, so an analysis started here is the same analysis, written to the same
@@ -12,7 +12,7 @@ the hand-off of the setup, the files and the bursts from step to step (``BurstWo
   ("ALEX Suite (auto)") to every later step (:meth:`AlexHubApp.adopt_alex_conversion`);
 * Next on Accurate FRET calibrates (α, β, γ, δ from the bursts), and the E–S step opens the bursts in ndX with the
   constants the measurement now stores;
-* the titration and the CSV export are seeded with the workflow's bursts and corrections.
+* the titration is seeded with the workflow's bursts and corrections.
 
 So a user gets from files to an E–S histogram with Next presses only. Nothing here imports Qt.
 """
@@ -113,15 +113,6 @@ STEPS: list[dict[str, Any]] = [
         "plugin": "burst/burst_bva",
         "description": "Burst variance analysis: is a population one state, or fast exchange between two?",
     },
-    {
-        "name": "Export (ALEX-Suite CSV)",
-        "icon": "💾",
-        "role": "legacy_export",
-        "optional": True,
-        "help": str(HERE / "help.md"),
-        "description": "The five CSV files the old program wrote, for scripts built on that layout. The analysis "
-        "itself is in the .pto container.",
-    },
 ]
 
 #: The E–S step's axes, in order of preference (ndX's equations name them; the first one a table has wins).
@@ -176,7 +167,6 @@ class AlexHubApp(BurstAnalysisHubApp):
         extra = {
             "alternation": self._make_alternation,
             "titration": self._make_titration,
-            "legacy_export": self._make_export,
         }
         for panel in self.tools:
             if panel["role"] in extra:
@@ -237,11 +227,6 @@ class AlexHubApp(BurstAnalysisHubApp):
         from .step_apps import TitrationStepApp
 
         return TitrationStepApp()
-
-    def _make_export(self):
-        from .step_apps import ExportStepApp
-
-        return ExportStepApp()
 
     # -- the conversion becomes the workflow's data and setup -------------------------------------------------- #
     def adopt_alex_conversion(self, setup: dict, converted) -> None:
@@ -384,11 +369,6 @@ class AlexHubApp(BurstAnalysisHubApp):
         calibration = self._calibration()
         if calibration and self._changed("titration", "corrections", calibration):
             child.step.set_corrections(**calibration)
-
-    def _to_legacy_export(self, child) -> None:
-        sources = burst_sources(self.context)
-        if sources and self._changed("legacy_export", "files", [str(p) for p in sources]):
-            child.set_burst_files(sources)
 
     # -- Next ------------------------------------------------------------------------------------------------ #
     def next_step(self) -> None:

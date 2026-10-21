@@ -77,7 +77,11 @@ def wait_for(drv, condition, timeout=60.0) -> None:
 
 
 def test_the_rail_is_the_legacy_panel_table():
-    """The retired Qt shell's steps and side tools (qt_reference.json); Setup's role is the burst hub's 'setup' (was 'channels')."""
+    """The retired Qt shell's steps and side tools (qt_reference.json); Setup's role is the burst hub's 'setup' (was 'channels').
+
+    The ALEX-Suite CSV export panel is deliberately absent from the native rail: the pipeline stores the analysis
+    in the ``.pto`` container (pto end to end) and the converter command writes the old files.
+    """
     import json
 
     from chisurf.plugins.burst.alex_suite.gui.native import STEPS
@@ -91,12 +95,13 @@ def test_the_rail_is_the_legacy_panel_table():
         if not p.get("separator")
     ]
     native = [p["role"] for p in STEPS if not p.get("separator")]
-    assert native == legacy
+    assert native == [role for role in legacy if role != "legacy_export"]
+    assert "legacy_export" not in native
     numbered = [p["name"] for p in STEPS if p["name"][:1].isdigit()]
     assert [int(n.split(".")[0]) for n in numbered] == list(range(1, 8))
     assert numbered[0] == "1. Setup" and numbered[1] == "2. Files"
     optional = {p["role"] for p in STEPS if p.get("optional")}
-    assert optional == {"alternation", "titration", "legacy_export"}
+    assert optional == {"alternation", "titration"}
     assert "(optional)" in next(p["name"] for p in STEPS if p.get("role") == "alternation")
 
 
@@ -180,19 +185,14 @@ def test_next_alone_takes_the_demo_from_files_to_an_es_histogram(hub, settings):
     assert es.model.source.size > 300
     assert not hub._neighbour(1) or hub.panel["role"] == "es"
 
-    # the side tools read the same bursts
+    # the side tools read the same bursts; the old CSV export step is gone (pto e2e — the
+    # converter command `csc alex-suite export-legacy` writes those files instead)
     hub.select("titration")
     drv.draw(2)
     assert len(hub.children["titration"].model.rows) == 1
     assert hub.children["titration"].model.gamma == pytest.approx(hub._calibration()["gamma"])
-    hub.select("legacy_export")
-    drv.draw(2)
-    export = hub.children["legacy_export"]
-    assert len(export.model.bur_files) == 1
-    written = export.model.run_export(
-        str(export.model.bur_files[0]), "demo", "TE", dict(export.export_gui.parts)
-    )
-    assert len(written) == 4 and all(p.is_file() and p.parent == demo[0].parent for p in written)
+    assert "legacy_export" not in hub.children
+    assert all(panel.get("role") != "legacy_export" for panel in hub.tools)
     hub.select("browser")
     settle(drv)
     assert hub.children["browser"].model.table is not None
@@ -276,7 +276,7 @@ def test_alex_controls_have_tooltips(hub):
     sys.modules.pop("test", None)
     from test.gui.emtk_port_parity import emtk_inventory
 
-    for role in ("setup", "data", "alternation", "titration", "legacy_export"):
+    for role in ("setup", "data", "alternation", "titration"):
         hub.select(role)
         inventory = emtk_inventory(hub)
         assert inventory["controls_without_tooltip"] == [], role

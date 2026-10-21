@@ -2,9 +2,9 @@
 
 The plugin is a *shell* (the native emtk hub in :mod:`.gui.native`): every analysis step hosts a tool that
 already exists (ALEX Creator, Burst Selection, Background, Accurate FRET, ndX, Burst Browser, BVA, Trace
-Browser). What it adds is the **order** those tools are used in, the names the old program used for them, and
-the two things the old program had that ChiSurf did not: a titration / stack-plot analysis and an export that
-writes the CSV files ALEX-Suite wrote.
+Browser). What it adds is the **order** those tools are used in, the names the old program used for them, the
+one thing the old program had that ChiSurf did not — a titration / stack-plot analysis — and the converter
+(:mod:`.cli`) for the CSV files ALEX-Suite wrote, which the pto-only pipeline itself no longer emits.
 """
 
 from __future__ import annotations

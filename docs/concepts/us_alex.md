@@ -225,5 +225,7 @@ Source: `chisurf/plugins/tttr/ptu_alex_creator/`
 The `chisurf/plugins/burst/alex_suite/` tool walks the classic ALEX workflow as one linear pipeline of ChiSurf's own steps:
 setup, files, alternation (µs-ALEX data is folded on arrival into a `.pto` with the setup *ALEX Suite (auto)*; PIE data
 is left alone), burst search, background, accurate FRET (α, δ, γ, β from the bursts) and the E-S histogram, plus
-titration, BVA and the ALEX-Suite CSV export. The result is an ordinary ChiSurf burst analysis that other tools read.
+titration and BVA. The pipeline stores the analysis in the `.pto` container only; the ALEX-Suite CSV export the old
+program had is the converter command (`csc alex-suite export-legacy`). The result is an ordinary ChiSurf burst
+analysis that other tools read.
 Steps and the mapping from the original program are in the [ALEX Suite workflow](../guides/66_alex_suite.md).

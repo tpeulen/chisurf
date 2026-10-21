@@ -52,8 +52,8 @@ histogram shows the low- and high-FRET populations at S ≈ 0.5. The rail marks 
 steps that are done (✓) and the ones that have bursts to work on (•).
 ```
 
-The side tools below the line — burst properties, titration, BVA and the CSV
-export — read the same bursts and are not part of the Next walk.
+The side tools below the line — burst properties, titration and BVA — read the
+same bursts and are not part of the Next walk.
 
 ## Where each window went
 
@@ -69,7 +69,10 @@ export — read the same bursts and are not part of the Next walk.
 | *Burst Properties* | **Burst properties** |
 | *Titration* | **Titration** |
 | *BVA* | **BVA** |
-| *Export* (five CSVs) | **Export (ALEX-Suite CSV)** |
+
+*Export* (the five CSVs) is gone from the pipeline on purpose: the analysis
+lives in the `.pto` container, and the old files are the converter's job
+afterwards — `csc alex-suite export-legacy` (see [Export](#export)).
 
 Two things are gone rather than moved. The **channel-flip** checkbox: the
 alternation step works out which detector is which from which laser window it is
@@ -224,17 +227,28 @@ come back precise and wrong.
 
 ## Export
 
-The last step writes the five CSV files the old program wrote — `_meta`,
-`_hist_E`, `_hist_S`, `_hist_2D`, `_original_bursts` — with the same section
-headers, so scripts and spreadsheets built on that layout keep working. It is a
-convenience, not the storage: the analysis is in the `.pto`.
+The pipeline itself has no export step: it stores the analysis in the `.pto`
+container, end to end. For the five CSV files the old program wrote — `_meta`,
+`_hist_E`, `_hist_S`, `_hist_2D`, `_original_bursts`, with the same section
+headers, so scripts and spreadsheets built on that layout keep working — use
+the converter afterwards:
+
+```bash
+csc alex-suite export-legacy bursts.bur run
+```
+
+It reads a `.bur` table or a `.pto` run (`m000.pto/sliding_window_All 0.1500#60`)
+and writes the files beside *stem*; `--parts` selects a subset of
+`meta,hist_E,hist_S,hist_2D,original_bursts`. In Python the same writer is
+`chisurf.plugins.burst.alex_suite.api.legacy_export.write_legacy_export`.
 
 ## Headless
 
 ```bash
 csc alex-suite alternation *.sm --donor 0 --acceptor 1
 csc burst-selection --help                       # the ordinary burst search
-csc alex-suite histogram bursts.bur --export run
+csc alex-suite histogram bursts.bur
+csc alex-suite export-legacy bursts.bur run      # the old ALEX-Suite CSVs
 csc alex-suite titration series.csv --populations 2
 ```
 

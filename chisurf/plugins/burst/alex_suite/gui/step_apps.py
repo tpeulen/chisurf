@@ -1,7 +1,7 @@
-"""The ALEX Suite's own steps as native emtk apps (no Qt): files with demo data, alternation, titration, CSV export.
+"""The ALEX Suite's own steps as native emtk apps (no Qt): files with demo data, alternation, titration.
 
-Each app reuses the view of :mod:`.app` (``AlexAlternationGui``, ``TitrationGui``, ``LegacyExportGui``) over a
-Qt-free model (:mod:`.alternation_model`, :mod:`.titration_view_model`, :mod:`.export_model`), and adds what the
+Each app reuses the view of :mod:`.app` (``AlexAlternationGui``, ``TitrationGui``) over a
+Qt-free model (:mod:`.alternation_model`, :mod:`.titration_view_model`), and adds what the
 native hub needs: file choosers drawn in the app (``emtk.file_dialog.FileDialog``), the background job's ``running``
 flag (Next waits for it), and frames while it runs. The files step is Burst Analysis's data step with the ALEX
 Suite's demo measurement under its proceed button.
@@ -21,8 +21,7 @@ from chisurf.plugins.burst.burst_analysis.gui.setup_selection_app import BurstSe
 from chisurf.plugins.emtk_layout import action_button
 
 from .alternation_model import AlexAlternationModel
-from .app import AlexAlternationApp, LegacyExportApp, TitrationApp
-from .export_model import LegacyExportModel
+from .app import AlexAlternationApp, TitrationApp
 from .titration_view_model import TitrationViewModel
 
 if TYPE_CHECKING:
@@ -237,32 +236,9 @@ class TitrationStepApp(TitrationApp):
     on_files_dropped = files_dropped
 
 
-# -- Export (ALEX-Suite CSV) -------------------------------------------------------------------------------- #
-class ExportStepApp(LegacyExportApp):
-    """The ALEX-Suite CSV export over :class:`LegacyExportModel`."""
-
-    def __init__(self, model: LegacyExportModel | None = None) -> None:
-        self.model = model if model is not None else LegacyExportModel()
-        super().__init__(self.model)
-
-    def set_burst_files(self, files) -> None:
-        self.model.set_burst_files(files)
-        gui = self.export_gui
-        gui.selected_index = min(gui.selected_index, max(0, len(self.model.bur_files) - 1))
-
-    def files_dropped(self, paths) -> bool:
-        paths = [str(p) for p in paths or ()]
-        if paths:
-            self.set_burst_files(paths)
-        return bool(paths)
-
-    on_files_dropped = files_dropped
-
-
 __all__ = [
     "AlexDataSelectionApp",
     "AlternationStepApp",
-    "ExportStepApp",
     "TitrationStep",
     "TitrationStepApp",
 ]

@@ -1,12 +1,11 @@
 """EMTK immediate-mode UIs for the ALEX Suite's own workflow steps.
 
-Three panels, one file, because they are one workflow's steps rather than
-three tools: the µs-ALEX alternation (step 3), the titration series and the
-ALEX-Suite-compatible CSV export. Each app renders inside the EMTK canvas of
-the workflow shell — no Qt widgets, no modal dialogs — while the panels in
-:mod:`.alternation`, :mod:`.titration` and :mod:`.legacy_export_panel` keep
-the workflow hand-off API (``set_files``, ``set_burst_files``, …) and the
-Qt-free models behind them.
+Two panels, one file, because they are one workflow's steps rather than
+two tools: the µs-ALEX alternation (step 3) and the titration series. Each
+app renders inside the EMTK canvas of the workflow shell — no Qt widgets, no
+modal dialogs — while the panels in :mod:`.alternation` and :mod:`.titration`
+keep the workflow hand-off API (``set_files``, ``set_burst_files``, …) and
+the Qt-free models behind them.
 """
 
 from __future__ import annotations
@@ -29,7 +28,6 @@ from chisurf.plugins.emtk_layout import action_button, action_caption, same_line
 
 if TYPE_CHECKING:
     from .alternation import AlexAlternationPanel
-    from .legacy_export_panel import LegacyExportPanel
     from .titration import TitrationPanel
 
 logger = logging.getLogger(__name__)
@@ -62,11 +60,6 @@ def _make_tour(widget: Any, item_rects: dict) -> EmTkGuidedTour:
     )
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# Legacy export — the five CSV files the old ALEX-Suite wrote
-# ═══════════════════════════════════════════════════════════════════════
-
-
 def _typed_number(gui: Any, key: str, label: str, value, minimum, maximum, integer: bool = True):
     """A typed number field of *gui* (rect remembered as *key*); the committed number, else *value*."""
     committed, _ = typed_number_field(
@@ -82,171 +75,8 @@ def _typed_number(gui: Any, key: str, label: str, value, minimum, maximum, integ
     return value if committed is None else committed
 
 
-class LegacyExportGui(TourTarget):
-    """EMTK GUI for the ALEX-Suite five-file CSV export."""
-
-    def __init__(
-        self,
-        panel: Any,
-        on_guide: Callable[[], None] | None = None,
-        on_help: Callable[[], None] | None = None,
-    ) -> None:
-        self.panel = panel
-        self.on_guide = on_guide
-        self.on_help = on_help
-
-        # Mirrors the Qt panel's widgets; committed straight to the export call.
-        self.selected_index: int = 0
-        self.sample_text: str = ""
-        self.buffer_text: str = ""
-        self.parts: dict[str, bool] = {
-            "metadata": True,
-            "e_histogram": True,
-            "s_histogram": True,
-            "histogram_2d": True,
-            "original_bursts": False,
-        }
-
-        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
-        self.on_used: Callable[[str], None] | None = None
-
-        self.help_window = _make_help(panel, "ALEX-Suite CSV Export — Help & Reference")
-        self.tour = _make_tour(panel, self.item_rects)
-
-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
-        r = rect if rect is not None else im.get_item_rect()
-        if r is not None:
-            self.item_rects[name] = tuple(r)
-
-    def start_guide(self) -> None:
-        self.tour.start()
-
-    def show_help(self) -> None:
-        self.help_window.show()
-
-    def files(self) -> list[str]:
-        return [str(p) for p in getattr(self.panel, "_bur_files", [])]
-
-    def draw(self, w: float = 0.0, h: float = 0.0, y_offset: float = 0.0) -> None:
-        vp = im.get_main_viewport()
-        width = float(w or vp.size[0] or 760.0)
-        height = float(h or vp.size[1] or 560.0)
-
-        im.set_next_window_pos((0.0, y_offset), im.Cond.ALWAYS)
-        im.set_next_window_size((width, max(100.0, height - y_offset)), im.Cond.ALWAYS)
-        if im.begin(
-            "##legacy_export",
-            (0.0, y_offset, width, max(100.0, height - y_offset)),
-            im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE | im.WindowFlags.NO_MOVE,
-        ):
-            im.text_wrapped(
-                tr(
-                    "The five CSV files the old ALEX-Suite wrote — for scripts "
-                    "built on that layout. The analysis itself stays in the "
-                    ".pto container and the burst companions beside it."
-                )
-            )
-            im.separator()
-
-            files = self.files()
-            if files:
-                if self.selected_index >= len(files):
-                    self.selected_index = len(files) - 1
-                im.set_next_item_width(-160.0)
-                changed, new_idx = im.combo("##BurstFile", self.selected_index, files)
-                im.set_item_tooltip(
-                    tr("Burst file (from the burst search) whose data is exported.")
-                )
-                if changed:
-                    self.selected_index = new_idx
-                self.remember("burst_file")
-            else:
-                im.text_colored("No bursts yet — run the burst search first.", (0.9, 0.6, 0.3, 1.0))
-
-            im.spacing()
-            # Leave room for the labels on the right (a full-width field pushed "Buffer" past the edge).
-            im.set_next_item_width(-80.0)
-            ch, self.sample_text = im.input_text_with_hint(
-                "Sample", self.sample_text, "e.g. dsDNA 15 bp, Cy3B/ATTO647N"
-            )
-            im.set_item_tooltip(tr("Sample description written into the CSV metadata."))
-            im.set_next_item_width(-80.0)
-            ch, self.buffer_text = im.input_text_with_hint(
-                "Buffer", self.buffer_text, "e.g. TE + 100 mM NaCl"
-            )
-            im.set_item_tooltip(tr("Buffer description written into the CSV metadata."))
-
-            im.separator()
-            labels = (
-                ("metadata", "Metadata"),
-                ("e_histogram", "E histogram"),
-                ("s_histogram", "S histogram"),
-                ("histogram_2d", "2-D histogram"),
-                ("original_bursts", "All bursts"),
-            )
-            for i, (key, label) in enumerate(labels):
-                if i:
-                    im.same_line()
-                _, self.parts[key] = im.checkbox(f"{label}##{key}", self.parts[key])
-                im.set_item_tooltip(tr("Include this part in the CSV export."))
-            self.remember("parts")
-
-            im.separator()
-            if im.button(tr("💾 Write ALEX-Suite CSVs"), role="primary"):
-                self.panel.run_export(
-                    source=files[self.selected_index] if files else "",
-                    sample=self.sample_text,
-                    buffer=self.buffer_text,
-                    parts=dict(self.parts),
-                )
-            im.set_item_tooltip(
-                tr("Write the five ALEX-Suite CSV files beside the selected burst file.")
-            )
-            self.remember("run")
-
-            same_line_or_wrap(action_caption("help"))
-            if action_button("help"):
-                self.show_help()
-            self.remember("help")
-
-            im.spacing()
-            im.separator()
-            im.text_wrapped(self.panel._status_text or "")
-        im.end()
-
-        if self.help_window.open:
-            self.help_window.draw((0.0, 0.0, width, height))
-        if self.tour.active:
-            self.tour.draw(width, height)
-
-
-class LegacyExportApp(ImApp):
-    """The EMTK ImApp for the ALEX-Suite CSV export step."""
-
-    def __init__(self, panel: LegacyExportPanel) -> None:
-        self.panel = panel
-        self.export_gui = LegacyExportGui(
-            panel,
-            on_guide=self.start_guide,
-            on_help=self.show_help,
-        )
-        super().__init__(gui=self._render, continuous=False)
-
-    @property
-    def item_rects(self) -> dict[str, tuple[float, float, float, float]]:
-        return self.export_gui.item_rects
-
-    def start_guide(self) -> None:
-        self.export_gui.start_guide()
-
-    def show_help(self) -> None:
-        self.export_gui.show_help()
-
-    def _render(self) -> None:
-        self.export_gui.draw()
-
-
 # ═══════════════════════════════════════════════════════════════════════
+# Titration — a concentration series of FRET histograms# ═══════════════════════════════════════════════════════════════════════
 # Titration — a concentration series of FRET histograms
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -818,49 +648,6 @@ class TitrationState:
             logger.warning(f"Titration export failed: {exc}")
 
 
-class LegacyExportState:
-    """Standalone state container for the ALEX-Suite CSV export step."""
-
-    def __init__(self) -> None:
-        self._bur_files: list[Path] = []
-        self._status_text: str = "Drop burst files (.bur, .pto) here to export."
-
-    def set_burst_files(self, files: list[str | Path]) -> None:
-        self._bur_files = [Path(p) for p in files]
-        if self._bur_files:
-            self._status_text = f"{len(self._bur_files)} burst file(s) available."
-
-    def run_export(self, source: str, sample: str, buffer: str, parts: dict) -> None:
-        if not source:
-            self._status_text = "Pick a burst file first."
-            return
-        from chisurf.plugins.burst.alex_suite.api.histograms import es_histograms
-        from chisurf.plugins.burst.alex_suite.api.legacy_export import (
-            LegacyExport,
-            Metadata,
-            write_legacy_export,
-        )
-
-        path = Path(source)
-        try:
-            histograms = es_histograms(path)
-            burst_table = None
-            if parts.get("original_bursts"):
-                from chisurf.core.fluorescence.burst.table import read_burst_table
-
-                burst_table = read_burst_table(path)
-            written = write_legacy_export(
-                path.with_suffix(""),
-                histograms,
-                metadata=Metadata(sample_name=sample, buffer=buffer),
-                parts=LegacyExport(**{key: bool(v) for key, v in parts.items()}),
-                burst_table=burst_table,
-            )
-            self._status_text = f"Wrote {len(written)} file(s) in {path.parent}"
-        except Exception as exc:
-            self._status_text = f"Export failed: {exc}"
-
-
 class AlexSuiteGui(TourTarget):
     """Unified immediate-mode GUI for the ALEX Suite workflow steps."""
 
@@ -875,11 +662,9 @@ class AlexSuiteGui(TourTarget):
 
         self.alternation_state = AlexAlternationState()
         self.titration_state = TitrationState()
-        self.export_state = LegacyExportState()
 
         self.alternation_gui = AlexAlternationGui(self.alternation_state)
         self.titration_gui = TitrationGui(self.titration_state)
-        self.export_gui = LegacyExportGui(self.export_state)
 
         self.selected_tab: str = "alternation"
         self.on_help = on_help
@@ -921,7 +706,6 @@ class AlexSuiteGui(TourTarget):
             tabs = [
                 ("alternation", "🚦 Alternation"),
                 ("titration", "🧪 Titration"),
-                ("export", "💾 Legacy Export"),
             ]
             for tab_id, tab_label in tabs:
                 is_selected = self.selected_tab == tab_id
@@ -952,8 +736,6 @@ class AlexSuiteGui(TourTarget):
             self.alternation_gui.draw(width, height, y_offset=bar_h)
         elif self.selected_tab == "titration":
             self.titration_gui.draw(width, height, y_offset=bar_h)
-        elif self.selected_tab == "export":
-            self.export_gui.draw(width, height, y_offset=bar_h)
 
         if self.help_window.open:
             self.help_window.draw((0.0, 0.0, width, height))
@@ -973,7 +755,6 @@ class AlexSuiteApp(ImApp):
         rects = dict(self.suite_gui.item_rects)
         rects.update(self.suite_gui.alternation_gui.item_rects)
         rects.update(self.suite_gui.titration_gui.item_rects)
-        rects.update(self.suite_gui.export_gui.item_rects)
         return rects
 
     def start_guide(self) -> None:
@@ -995,7 +776,6 @@ class AlexSuiteApp(ImApp):
                 self.suite_gui.selected_tab = "alternation"
             elif ext in burst_exts:
                 self.suite_gui.titration_state.set_burst_files([p])
-                self.suite_gui.export_state.set_burst_files([p])
                 if self.suite_gui.selected_tab == "alternation":
                     self.suite_gui.selected_tab = "titration"
         return True
@@ -1064,9 +844,6 @@ __all__ = [
     "AlexAlternationState",
     "AlexSuiteApp",
     "AlexSuiteGui",
-    "LegacyExportApp",
-    "LegacyExportGui",
-    "LegacyExportState",
     "TitrationApp",
     "TitrationGui",
     "TitrationState",

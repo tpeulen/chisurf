@@ -48,7 +48,6 @@ import numpy as np
 from chisurf.core.datastore import (
     numeric_column,
     row_count,
-    take_where,
 )
 
 # Full micro-time acceptance when a stream declares no window (SPC is 12-bit).
@@ -1268,7 +1267,6 @@ class BurstWorkflow:
         Bursts
             The selected bursts; call ``.bva()`` or ``.h2mm()`` on the result.
         """
-        from chisurf.core.fluorescence.burst.photons import load_bur_dataframe
         from chisurf.plugins.burst.burst_selection.api.io import load_tttr
         from chisurf.plugins.burst.burst_selection.api.models import (
             AnalysisRequest,
@@ -1289,11 +1287,11 @@ class BurstWorkflow:
 
         local_paths = [self._fetch(handle) for handle in handles]
 
+        # Pto end to end: the search stores the bursts in the measurement's own
+        # container (the default output) and writes no legacy `.bur` beside it.
+        # Old formats are the exporters' job afterwards (the PTO inspector's
+        # *Export legacy*), not an option of this workflow.
         settings = AnalysisSettings()
-        # The container *and* the legacy file: this method hands back
-        # `roles["bur"]` to its caller, so a `.bur` has to exist. The default is
-        # the container alone.
-        settings.output_formats = ["pto", "bur"]
         settings.photon_filter = PhotonFilterSettings(
             channels=setup.all_routing_channels(),
             filter_active=filter_active,
@@ -1307,8 +1305,9 @@ class BurstWorkflow:
             min_photons=min_photons, photon_window=photon_window, time_window=time_window
         )
 
-        out_dir = self._workdir / f"bursts_{handles[0][:8]}"
-        out_dir.mkdir(parents=True, exist_ok=True)
+        # Nothing else to create: with no ``output_dir`` the search writes the
+        # container beside each measurement and implies no legacy ``.bur``
+        # beside it (a directory request is what makes the search write one).
         request = AnalysisRequest(
             files=[str(p) for p in local_paths],
             filetype=setup.file_type,
@@ -1317,21 +1316,25 @@ class BurstWorkflow:
             # proximity ratio are computed from.
             detectors=setup.summary_detectors(),
             settings=settings,
-            output_dir=str(out_dir),
         )
         result = analyze_request(request)
-        bur_paths = [
-            roles["bur"] for roles in result.output_paths_by_file.values() if "bur" in roles
-        ]
+        # Read the bursts back out of the containers the search wrote, one per
+        # measurement, through the same reader every downstream analysis uses —
+        # which also strips the `.bur` interleave, so the rows are real bursts
+        # already and no sentinel filtering is needed here.
+        from chisurf.core.datastore import concat_stores
+        from chisurf.core.fio.fluorescence.burst import read_burst_analysis
 
-        table = load_bur_dataframe(bur_paths)
-        real_names = {p.name for p in local_paths}
-        # Keep only real burst rows (drop interleaved zero separators, whose
-        # "First File" is the sentinel "0" rather than a measurement).
-        table = take_where(
-            table,
-            [str(v) in real_names for v in np.asarray(table["First File"])],
-        )
+        stores = [
+            read_burst_analysis(Path(roles["pto"]), "PTO")[0]
+            for roles in result.output_paths_by_file.values()
+            if "pto" in roles
+        ]
+        if not stores:
+            raise RuntimeError(
+                "the burst search wrote no container to read the bursts from"
+            )
+        table = stores[0] if len(stores) == 1 else concat_stores(stores)
         tttrs = {p.name: load_tttr(p, filetype=setup.file_type) for p in local_paths}
         return Bursts(
             names=[p.name for p in local_paths],

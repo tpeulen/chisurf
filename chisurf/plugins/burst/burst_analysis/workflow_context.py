@@ -6,7 +6,6 @@ bursts do the later steps read" the same way. Nothing here imports a GUI toolkit
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -77,16 +76,20 @@ def folder_from_result(result: object) -> Path | None:
 
 def materialize_handoff(
     context: BurstWorkflowContext, frames_by_file: Mapping[Any, Any]
-) -> Path | None:
+) -> list[Path] | None:
     """Give the later steps something to read the bursts from when the search wrote no folder.
 
-    For a `.pto` source that is the container itself: it already holds the bursts, beside the photons they were
-    found in, and every downstream read goes through ``read_burst_analysis``, which opens one. Writing a
-    ``burst_analysis_handoff/`` folder of `.bur` files there put the same results in a second place — and the
-    second place went stale the moment the selection was re-run.
+    The workflow stores bursts in `.pto` containers, end to end, so the hand-off is the containers
+    themselves — never a folder of `.bur` tables. For a `.pto` source that is the container itself: it
+    already holds the bursts, beside the photons they were found in, and every downstream read goes
+    through ``read_burst_analysis``, which opens one. Anything else gets a container written beside
+    each measurement (a vendor file has nowhere to keep the bursts); a user who needs the old folder
+    layout asks the exporter for it afterwards (the PTO inspector's **Export legacy…**, or
+    ``csc csg_pto_inspect export-legacy``), the way every other old format is reached.
 
-    Anything else still gets the folder: a vendor file has nowhere to keep the bursts, and the legacy layout is
-    what the readers understand. *frames_by_file* maps a raw file (path or its string) to its burst table.
+    Returns the burst sources to adopt (the first is what the status line and the later steps name),
+    or ``None`` when there is nothing to hand on. *frames_by_file* maps a raw file (path or its
+    string) to its burst table.
     """
     if not frames_by_file:
         return None
@@ -99,14 +102,11 @@ def materialize_handoff(
     containers = [p for p in raw_files if p.suffix.lower() == SUFFIX]
     if containers and len(containers) == len(raw_files):
         # One container is one measurement; the later steps take the first and read the rest the same way.
-        return containers[0]
+        return [containers[0]]
 
-    output_folder = raw_files[0].parent / "burst_analysis_handoff"
-    bur_folder = output_folder / "bi4_bur"
-    bur_folder.mkdir(parents=True, exist_ok=True)
+    from chisurf.plugins.burst.burst_selection.api.io import write_container
 
-    from chisurf.plugins.burst.burst_selection.api.io import write_bur, write_container
-
+    written: list[Path] = []
     for raw_path in raw_files:
         frame = None
         for key in (raw_path.resolve(), raw_path, str(raw_path.resolve()), str(raw_path)):
@@ -115,20 +115,11 @@ def materialize_handoff(
                 break
         if frame is None:
             continue
-        write_bur(frame, bur_folder / f"{raw_path.stem}.bur")
-        # The same bursts, in the measurement's own file: the handoff folder is a bridge between two steps of
-        # one session and is rewritten each time; the container is where they keep living.
         try:
-            write_container(raw_path, frame, parameters=context.to_payload())
-        except Exception as exc:  # noqa: BLE001 - the .bur hand-off above is what the later steps read
+            written.append(Path(write_container(raw_path, frame, parameters=context.to_payload())))
+        except Exception as exc:  # noqa: BLE001 - a container that will not write leaves no hand-off
             logger.warning(f"Could not write the container for {raw_path}: {exc}")
-
-    payload = context.to_payload()
-    payload["raw_files"] = [str(path) for path in raw_files]
-    (output_folder / "burst_analysis_handoff.json").write_text(
-        json.dumps(payload, indent=2, default=str)
-    )
-    return output_folder
+    return written or None
 
 
 def burst_sources(context: BurstWorkflowContext) -> list[Path]:

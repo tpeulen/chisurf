@@ -29,18 +29,19 @@ other tools. Three levels are common:
 
 Every burst step writes its result as a **run into the measurement's `.pto`**:
 the burst search, BVA, 2CDE, the lifetime fits, H2MM, burst FCS, fusion. Nothing
-writes a `bv4/`, `2c4/`, `bh4/` … companion folder any more. The one folder still
-written is the burst search's own on a vendor file (`.spc`, `.ptu`, …), which has
-no container to hold it: `<search>/bi4_bur/<stem>.bur` beside the file (Burst
-Selection says so under **Output**); the later steps then write into a `.pto`
-beside each measurement. When an older tool
-(ndX's folder reader, the Seidel/Margarita software) needs the folder layout, you
-ask for it once, explicitly:
+writes a `bv4/`, `2c4/`, `bh4/` … companion folder any more, and the burst search
+writes no `.bur` table either — on a vendor file (`.spc`, `.ptu`, …) its container
+simply sits beside the measurement, and every later step reads the bursts back out
+of a container. When an older tool
+(ndX's folder reader, the Seidel/Margarita software, ALEX-Suite-era scripts) needs
+the old layouts, you ask for it once, explicitly, with the converters:
 
 - in the **PTO inspector**: open the container, press **Export legacy…** and
   choose a folder;
 - on the command line: `csc csg_pto_inspect export-legacy m000.pto out_folder`;
-- in Python: `chisurf.core.fio.fluorescence.legacy_export.export_legacy(container, out_dir)`.
+- in Python: `chisurf.core.fio.fluorescence.legacy_export.export_legacy(container, out_dir)`;
+- for the five ALEX-Suite CSV files: `csc alex-suite export-legacy m000.pto/<run> stem`
+  (see the [ALEX Suite guide](66_alex_suite.md)).
 
 The export writes `bi4_bur/<stem>.bur` for each burst run and, beside it, one
 `<ending>4/<stem>.<ending>` companion per analysis (`bv4`, `2c4`, `bg4`/`br4`/`by4`,

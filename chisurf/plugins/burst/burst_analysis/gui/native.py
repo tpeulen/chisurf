@@ -278,13 +278,20 @@ class BurstAnalysisHubApp(ToolHubApp):
         artifacts = result.get("mmfdb_artifacts") or {}
         if artifacts:
             self.context.mmfdb_artifacts = dict(artifacts)
-        folder = folder_from_result(result) or materialize_handoff(
-            self.context, model.frames_by_file
+        folder = folder_from_result(result)
+        sources = (
+            None if folder is not None else materialize_handoff(self.context, model.frames_by_file)
         )
         # A fresh burst search supersedes any fusion of the previous one.
         self._fusion_source = self._fused_folder = None
         if folder is not None:
             self.context.set_burst_folder(folder)
+        elif sources:
+            # The hand-off wrote the containers themselves: the first is what the later steps
+            # name, and they read the rest the same way (one measurement, one container).
+            self.context.set_burst_folder(sources[0])
+            folder = sources[0]
+        if folder is not None:
             self.status = f"Bursts for the later steps: {folder}"
         self._apply_downstream(skip=("data", "selection"))
         self.wants_frame = True

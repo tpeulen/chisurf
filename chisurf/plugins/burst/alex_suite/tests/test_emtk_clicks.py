@@ -1,9 +1,10 @@
 """Real-input click tests for the alex_suite EMTK app (AGY_ACCEPTANCE bar).
 
 Every interactive control is operated through the Driver: tabs switch, the
-burst-file combo opens and selects, Sample/Buffer fields accept typing, the
-five part-checkboxes toggle, the Write button runs the export on a real table,
-Help opens its window, and the titration table's cells take typed values.
+fields accept typing, Help opens its window, and the titration table's cells
+take typed values. The old ALEX-Suite CSV export is not part of the app any
+more (the pipeline is pto end to end; the converter command writes those
+files), which the tab test asserts.
 """
 
 from __future__ import annotations
@@ -58,10 +59,17 @@ def test_tabs_switch_by_click(app, drv):
     assert app.suite_gui.selected_tab == "alternation"
     drv.click_text("🧪 Titration")
     assert app.suite_gui.selected_tab == "titration"
-    drv.click_text("💾 Legacy Export")
-    assert app.suite_gui.selected_tab == "export"
     drv.click_text("🚦 Alternation")
     assert app.suite_gui.selected_tab == "alternation"
+
+
+def test_the_legacy_export_tab_is_gone(app, drv):
+    """The pto pipeline has no ALEX-Suite CSV export step: old formats are the converter's job."""
+    drv.draw(2)
+    assert not hasattr(app.suite_gui, "export_gui")
+    assert not hasattr(app.suite_gui, "export_state")
+    assert not drv.drawn("💾 Legacy Export")
+    assert not drv.drawn("💾 Write ALEX-Suite CSVs")
 
 
 def test_alternation_fields_take_typing(app, drv):
@@ -77,49 +85,14 @@ def test_alternation_fields_take_typing(app, drv):
     assert state.acceptor_text == "1"
 
 
-def test_export_checkboxes_toggle_by_click(app, drv, tmp_path):
-    app.suite_gui.selected_tab = "export"
-    p = tmp_path / "sample.bur"
-    _write_burst_table(p, _burst_table(50, 0.4, seed=1))
-    app.suite_gui.export_state.set_burst_files([p])
-    drv.draw(2)
-    gui = app.suite_gui.export_gui
-    before = dict(gui.parts)
-    for key in ("metadata", "e_histogram", "histogram_2d"):
-        label = {
-            "metadata": "Metadata",
-            "e_histogram": "E histogram",
-            "histogram_2d": "2-D histogram",
-        }[key]
-        drv.click_text(label, last=True)
-        assert gui.parts[key] != before[key], f"{label} checkbox did not toggle"
-        before[key] = gui.parts[key]
-
-
-def test_export_write_button_runs_on_a_real_table(app, drv, tmp_path, monkeypatch):
-    app.suite_gui.selected_tab = "export"
-    p = tmp_path / "sample.bur"
-    _write_burst_table(p, _burst_table(120, 0.45, seed=7))
-    app.suite_gui.export_state.set_burst_files([p])
-    drv.draw(2)
-    calls = []
-    monkeypatch.setattr(
-        app.suite_gui.export_gui.panel,
-        "run_export",
-        lambda **kw: calls.append(kw),
-    )
-    drv.click_text("💾 Write ALEX-Suite CSVs")
-    assert calls, "the Write button did not reach run_export"
-    assert calls[0]["sample"] == app.suite_gui.export_gui.sample_text
-
-
 def test_help_button_opens_the_help_window(app, drv):
-    app.suite_gui.selected_tab = "export"
+    app.suite_gui.selected_tab = "titration"
     drv.draw(2)
-    assert not app.suite_gui.export_gui.help_window.open
-    drv.click_text(action_caption("help"))
+    gui = app.suite_gui.titration_gui
+    assert not gui.help_window.open
+    drv.click_text(action_caption("help"), last=True)
     drv.draw(2)
-    assert app.suite_gui.export_gui.help_window.open
+    assert gui.help_window.open
 
 
 def test_titration_cells_take_typing(app, drv, tmp_path):

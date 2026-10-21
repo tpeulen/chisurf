@@ -101,7 +101,7 @@
     },
     {
       "title": "Below the line: the Advanced Options",
-      "text": "<b>Burst properties</b> (the burst table), <b>Titration</b> (a concentration series fitted together, seeded with your bursts and the γ / β of step 6), <b>BVA</b>, and <b>Export</b> (the five CSV files of the old program). They read the same bursts and are not part of the Next walk.",
+      "text": "<b>Burst properties</b> (the burst table), <b>Titration</b> (a concentration series fitted together, seeded with your bursts and the γ / β of step 6), and <b>BVA</b>. They read the same bursts and are not part of the Next walk. The old program's five CSV export is not a step any more: the analysis stays in the .pto container, and <b>csc alex-suite export-legacy</b> writes those files when a script needs them.",
       "target": {}
     },
     {

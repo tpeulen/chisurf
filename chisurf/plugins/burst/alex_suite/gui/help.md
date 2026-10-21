@@ -41,7 +41,11 @@ click. Generated photons and their parameter sidecar live in
 | *Burst Properties* | **Burst properties** |
 | *Titration* | **Titration** |
 | *BVA* | **BVA** |
-| *Export* (five CSVs) | **Export (ALEX-Suite CSV)** |
+
+*Export* (the five CSVs) has no row because it is no longer a step: the analysis
+lives in the `.pto` container, and the old files come from the converter
+afterwards — `csc alex-suite export-legacy bursts.bur run` — whenever a script
+or spreadsheet built on that layout needs them.
 
 Two things have no row because they are gone rather than moved: the **channel
 flip** checkbox (the alternation step works out which detector is which from
@@ -120,6 +124,7 @@ against each other, and both come back precise and wrong.
 ```
 csc alex-suite alternation *.sm --donor 0 --acceptor 1
 csc burst-selection ...            # the ordinary burst search
+csc alex-suite export-legacy bursts.bur run   # the five ALEX-Suite CSVs
 csc alex-suite titration series.csv --populations 2
 ```
 

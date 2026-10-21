@@ -1,9 +1,11 @@
-"""Headless ALEX Suite: alternation conversion, histograms, titration, export.
+"""Headless ALEX Suite: alternation conversion, histograms, titration, and the old format's converter.
 
 Everything the window does that is not already another tool's command. The burst
 search itself is ``csc burst-selection`` and the corrections are
 ``csc accurate-fret`` — those are not repeated here, because the pipeline is the
-ordinary one.
+ordinary one. The pipeline writes ``.pto`` containers only; ``export-legacy``
+is the converter for the five ALEX-Suite CSV files, for the scripts and
+spreadsheets built on that layout.
 """
 
 from __future__ import annotations
@@ -21,6 +23,23 @@ def _channels(text: str) -> list[int] | None:
     if not stripped or stripped == "auto":
         return None
     return [int(part) for part in stripped.replace(";", ",").split(",") if part.strip()]
+
+
+class BurstTableParam(click.Path):
+    """A burst table that may live inside a ``.pto`` (``m000.pto/<run>``) — not a path on disk.
+
+    The pipeline's output is a container run, and ``es_histograms``/``read_burst_table`` open one;
+    plain ``click.Path(exists=True)`` refused the path before any reader saw it.
+    """
+
+    def convert(self, value, param, ctx):
+        path = pathlib.Path(str(value))
+        node = path
+        while node.suffix.lower() != ".pto" and node.parent != node:
+            node = node.parent
+        if node.suffix.lower() == ".pto" and node.exists():
+            return str(value)
+        return super().convert(value, param, ctx)
 
 
 @click.group("alex-suite")
@@ -105,22 +124,15 @@ def alternation(files, donor, acceptor, out_dir, detect_only, as_json) -> None:
 
 
 @cli.command("histogram")
-@click.argument("burst_table", type=click.Path(exists=True))
+@click.argument("burst_table", type=BurstTableParam(exists=True))
 @click.option("--gamma", type=float, default=1.0, help="Detection/quantum-yield ratio.")
 @click.option("--beta", type=float, default=1.0, help="Excitation-flux ratio.")
 @click.option("--alpha", type=float, default=0.0, help="Donor leakage.")
 @click.option("--delta", type=float, default=0.0, help="Direct acceptor excitation.")
 @click.option("--min-photons", type=float, default=0.0, help="Minimum photons per burst.")
 @click.option("--bins", type=int, default=101, help="Bins on both axes.")
-@click.option(
-    "--export",
-    "export_stem",
-    type=click.Path(),
-    default=None,
-    help="Write the ALEX-Suite CSV export with this stem.",
-)
-def histogram(burst_table, gamma, beta, alpha, delta, min_photons, bins, export_stem) -> None:
-    """Report the E-S histogram of a burst table, optionally exporting it."""
+def histogram(burst_table, gamma, beta, alpha, delta, min_photons, bins) -> None:
+    """Report the E-S histogram of a burst table."""
     from chisurf.plugins.burst.alex_suite.api.histograms import (
         Corrections,
         Thresholds,
@@ -141,18 +153,73 @@ def histogram(burst_table, gamma, beta, alpha, delta, min_photons, bins, export_
         finite = np.isfinite(result.s)
         if finite.any():
             click.echo(f"S peak      {result.s_centres[int(np.argmax(result.s_hist))]:.3f}")
-    if export_stem:
-        from chisurf.plugins.burst.alex_suite.api.legacy_export import (
-            write_legacy_export,
-        )
 
-        for path in write_legacy_export(
-            export_stem,
-            result,
-            corrections=corrections,
-            thresholds=Thresholds(total_min=min_photons),
-        ):
-            click.echo(f"wrote       {path}")
+
+#: The ``--parts`` names (the export file's suffix) and the :class:`LegacyExport` field each switches on.
+_PART_FIELDS = {
+    "meta": "metadata",
+    "hist_E": "e_histogram",
+    "hist_S": "s_histogram",
+    "hist_2D": "histogram_2d",
+    "original_bursts": "original_bursts",
+}
+
+
+@cli.command("export-legacy")
+@click.argument("burst_table", type=BurstTableParam(exists=True))
+@click.argument("stem", type=click.Path())
+@click.option("--sample", default="", help="Sample description written into the _meta file.")
+@click.option("--buffer", "buffer_", default="", help="Buffer description written into the _meta file.")
+@click.option(
+    "--parts",
+    default="meta,hist_E,hist_S,hist_2D",
+    show_default=True,
+    help="Comma-separated subset of meta,hist_E,hist_S,hist_2D,original_bursts.",
+)
+def export_legacy(burst_table, stem, sample, buffer_, parts) -> None:
+    """Write the five ALEX-Suite CSV files the old program wrote, beside STEM.
+
+    The converter for the old export layout: the pipeline itself stores the
+    analysis in the ``.pto`` container (pto end to end), so a script or
+    spreadsheet built on the ALEX-Suite files gets them from here instead.
+    BURST_TABLE is a ``.bur`` table or a ``.pto`` run
+    (``m000.pto/sliding_window_All 0.1500#60``).
+    """
+    from chisurf.plugins.burst.alex_suite.api.histograms import es_histograms
+    from chisurf.plugins.burst.alex_suite.api.legacy_export import (
+        LegacyExport,
+        Metadata,
+        write_legacy_export,
+    )
+
+    requested = [part.strip() for part in parts.split(",") if part.strip()]
+    unknown = [part for part in requested if part not in _PART_FIELDS]
+    if unknown:
+        raise click.ClickException(
+            f"unknown part(s) {unknown}; the parts are {sorted(_PART_FIELDS)}"
+        )
+    selected = LegacyExport(**{field: part in requested for part, field in _PART_FIELDS.items()})
+
+    path = pathlib.Path(burst_table)
+    pathlib.Path(stem).parent.mkdir(parents=True, exist_ok=True)
+    try:
+        histograms = es_histograms(path)
+        burst_table_columns = None
+        if selected.original_bursts:
+            from chisurf.core.fluorescence.burst.table import read_burst_table
+
+            burst_table_columns = read_burst_table(path)
+        written = write_legacy_export(
+            stem,
+            histograms,
+            metadata=Metadata(sample_name=sample, buffer=buffer_),
+            parts=selected,
+            burst_table=burst_table_columns,
+        )
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+    for export_path in written:
+        click.echo(f"wrote       {export_path}")
 
 
 @cli.command("titration")
