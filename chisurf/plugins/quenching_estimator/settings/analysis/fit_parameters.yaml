@@ -117,8 +117,12 @@ settings:
   profile_likelihood: {points: 13, span_sd: 3.0, method: minpack, max_nfev: 60,
                        polish_iterations: 20}
 
-  # Optional MCMC check of the Laplace error bars (IMP.bff stretch-move sampler).
-  sampler_check: {steps: 1500, runs: 8, walkers: 40, start_spread: 0.002, first_seed: 100}
+  # Optional MCMC check of the Laplace error bars (core/inference/sampler_check.py; the
+  # prototype's RUN_SAMPLER_CHECK / cell 40): a stretch-move ensemble on the data set's own
+  # posterior (slopes and model error held at the best fit) against the Laplace intervals.
+  # Off by default; stages that run it list their blocks under `sampler_check:` (stage A).
+  sampler_check: {enabled: false, steps: 1500, runs: 8, walkers: 40, start_spread: 0.002,
+                  first_seed: 100}
 
 # Presets override `settings` keys. `quick` is a fast test run (results less reliable).
 presets:
@@ -131,4 +135,5 @@ presets:
     joint_polish_iterations: 15
     profile_likelihood: {points: 7, span_sd: 3.0, method: polish, max_nfev: 20,
                          polish_iterations: 8}
-    sampler_check: {steps: 200, runs: 8, walkers: 40, start_spread: 0.002, first_seed: 100}
+    sampler_check: {enabled: false, steps: 200, runs: 8, walkers: 40, start_spread: 0.002,
+                    first_seed: 100}

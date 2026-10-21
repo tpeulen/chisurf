@@ -41,6 +41,7 @@ from . import graph_fit as _gf
 from . import lifetime_errors as _lifetime_errors
 from . import measurements as _measurements
 from . import report as _report
+from . import sampler_check as _sampler_check
 from . import site_model as _site_model
 from . import site_table as _site_table
 from . import titration as _titration
@@ -475,6 +476,12 @@ class Analysis:
     profile : bool, optional
         Compute the declared profile likelihoods (default True; they cost about a joint fit
         of the block's sub-graph per point).
+    sampler_check : bool or dict, optional
+        The optional MCMC check of the Laplace error bars (:mod:`.sampler_check`, the
+        prototype's cell 40). None follows the declared ``sampler_check`` setting (off by
+        default); True forces it on with the declared numbers; a dict adds options over the
+        declared ones (``{"steps": 500}``). It runs for the blocks a stage declares under
+        ``sampler_check:`` (stage A: the AF488 data set, as in cell 49).
     stage_path : str or pathlib.Path, optional
         Stage declaration.
 
@@ -485,12 +492,14 @@ class Analysis:
     """
 
     def __init__(self, data=None, preset=None, fit_overrides=None, workers=None, profile=True,
-                 stage_path=STAGES):
+                 sampler_check=None, stage_path=STAGES):
         self.data = data if data is not None else load_analysis_data()
         self.preset = preset
         self.fit_settings = _gf.settings(preset, fit_overrides)
         self.workers = workers
         self.profile = bool(profile)
+        self.sampler_check = _sampler_check.resolve(sampler_check,
+                                                    self.fit_settings.get("sampler_check"))
         self.declaration = stage_settings(stage_path)
         groups = list(self.data.site_settings["groups"])
         declared = [p.label[2:] for p in _gf.parameter_specs(self.fit_settings)
@@ -500,6 +509,7 @@ class Analysis:
         self.groups = groups
         self.result = AnalysisResult(preset=preset, fit_settings=self.fit_settings)
         self._profiles = {}
+        self._sampler_checks = {}
 
     # ---- graphs
 
@@ -676,6 +686,37 @@ class Analysis:
                                                          progress=progress, workers=self.workers)
         return self._profiles[key]
 
+    def sampler_check_of(self, graph_name, label, progress=None, cancel=None):
+        """The MCMC-vs-Laplace comparison of one data set (computed once).
+
+        Runs only when the check is enabled (:attr:`sampler_check`); the numbers are the
+        declared ``sampler_check`` setting's, unless the :class:`Analysis` was given others.
+
+        Parameters
+        ----------
+        graph_name, label : str
+        progress : callable, optional
+            ``progress(done, total, label)``.
+        cancel : callable, optional
+
+        Returns
+        -------
+        dict
+            :func:`sampler_check.sampler_check`.
+        """
+        if self.sampler_check is None:
+            raise ValueError("the sampler check is off (enable it with sampler_check=True, "
+                             "a dict of options, or the declared sampler_check setting)")
+        key = (graph_name, label)
+        if key not in self._sampler_checks:
+            view = self.graph(graph_name).view(label)
+            o = self.sampler_check
+            self._sampler_checks[key] = _sampler_check.sampler_check(
+                view, steps=o.get("steps"), runs=o.get("runs"), walkers=o.get("walkers"),
+                start_spread=o.get("start_spread"), first_seed=o.get("first_seed"),
+                cancel=cancel, progress=progress)
+        return self._sampler_checks[key]
+
     # ---- running
 
     def _plan(self, names):
@@ -693,7 +734,7 @@ class Analysis:
         stages = self.declaration["stages"]
         steps, seen = [], set()
 
-        def need_graph(graph, profiles=()):
+        def need_graph(graph, profiles=(), checks=()):
             if graph not in self.result.graphs and ("graph", graph) not in seen:
                 seen.add(("graph", graph))
                 steps.append(("graph", graph, float(weights.get(graph, weights["other"]))))
@@ -703,6 +744,13 @@ class Analysis:
                     if key not in self._profiles and ("profile", key) not in seen:
                         seen.add(("profile", key))
                         steps.append(("profile", key, float(weights["profile"])))
+            if self.sampler_check is not None:
+                for label in checks:
+                    key = (graph, label)
+                    if key not in self._sampler_checks and ("sampler", key) not in seen:
+                        seen.add(("sampler", key))
+                        steps.append(("sampler", key,
+                                      float(weights.get("sampler_check", weights["other"]))))
 
         def need(name):
             spec = stages[name]
@@ -715,7 +763,8 @@ class Analysis:
                 other = spec["compare_scale"]["with"]
                 need_graph(other["graph"], [other["block"]])
             if spec.get("graph"):
-                need_graph(spec["graph"], spec.get("profile", []))
+                need_graph(spec["graph"], spec.get("profile", []),
+                           spec.get("sampler_check", []))
             if name not in self.result.stages and ("stage", name) not in seen:
                 seen.add(("stage", name))
                 steps.append(("stage", name, float(weights["other"])))
@@ -751,6 +800,10 @@ class Analysis:
         summary, ``profile`` values and deviance); stage A also ``k_graph`` (rows of
         ``graph_titration_slopes``); stage C ``water_access`` and ``exposure`` (per site the
         histogram data). ``summary``: ``scale`` and ``stickiness`` per dye.
+
+        With the sampler check enabled (:attr:`Analysis.sampler_check`), a ``blocks`` stage
+        also carries ``sampler_check:<label>`` (``rows``, ``n_samples``, ``acceptance``,
+        ``verdict``) and the comparison in ``numbers`` and ``text``.
         """
         names = self.declaration["order"] if stages == "all" else (
             [stages] if isinstance(stages, str) else list(stages))
@@ -772,6 +825,9 @@ class Analysis:
             elif kind == "profile":
                 self.profile_of(*what, cancel=cancel,
                                 progress=lambda d, t, m, w=weight: say(d / t, m, w))
+            elif kind == "sampler":
+                self.sampler_check_of(*what, cancel=cancel,
+                                      progress=lambda d, t, m, w=weight: say(d / t, m, w))
             else:
                 self.result.stages[what] = self._stage(what)
             done += weight
@@ -898,6 +954,19 @@ class Analysis:
         for v in views:
             if (v.label in spec.get("profile", []) and self.profile):
                 text.append(_report.profile_text(v.label, numbers["blocks"][v.label]))
+        check_labels = spec.get("sampler_check", [])
+        if self.sampler_check is not None and check_labels:
+            numbers["sampler_check"] = {}
+            for v in views:
+                if v.label not in check_labels:
+                    continue
+                check = self.sampler_check_of(g.name, v.label)
+                numbers["sampler_check"][v.label] = check
+                numbers["blocks"][v.label]["sampler_check"] = check
+                plots[f"sampler_check:{v.label}"] = dict(
+                    rows=check["parameters"], n_samples=check["n_samples"],
+                    acceptance=check["acceptance"], verdict=check["verdict"])
+                text.append(_sampler_check.text(check))
         if "compare_scale" in spec:
             cmp = spec["compare_scale"]
             other = self.graph(cmp["with"]["graph"]).view(cmp["with"]["block"])
@@ -1082,7 +1151,7 @@ class Analysis:
 
 
 def run_stage(stage, data=None, preset=None, fit_overrides=None, workers=None, progress=None,
-              cancel=None, profile=True, analysis=None):
+              cancel=None, profile=True, sampler_check=None, analysis=None):
     """Run one stage (and what it needs) headless.
 
     Parameters
@@ -1098,9 +1167,11 @@ def run_stage(stage, data=None, preset=None, fit_overrides=None, workers=None, p
     progress : callable, optional
         ``progress(percent, message)``.
     cancel : callable, optional
-        ``cancel() -> bool``.
+        ``cancel() -> bool``; raises :class:`CancelledError` at the next checkpoint.
     profile : bool, optional
         Compute the profile likelihoods.
+    sampler_check : bool or dict, optional
+        The optional MCMC check of the Laplace error bars (see :class:`Analysis`).
     analysis : Analysis, optional
         Continue an analysis (its solved graphs are reused); the other arguments except
         *progress*/*cancel* are then ignored.
@@ -1110,7 +1181,8 @@ def run_stage(stage, data=None, preset=None, fit_overrides=None, workers=None, p
     AnalysisResult
     """
     analysis = analysis or Analysis(data, preset=preset, fit_overrides=fit_overrides,
-                                    workers=workers, profile=profile)
+                                    workers=workers, profile=profile,
+                                    sampler_check=sampler_check)
     return analysis.run(stage, progress=progress, cancel=cancel)
 
 

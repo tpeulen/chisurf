@@ -39,6 +39,9 @@ settings:
       graph: joint
       blocks: [AF488 in H2O, Cy3B in H2O]
       profile: [AF488 in H2O]
+      # the optional MCMC check of the Laplace error bars (fit_parameters.yaml sampler_check;
+      # the prototype's cell 49 compared the AF488 data set): runs when the check is enabled
+      sampler_check: [AF488 in H2O]
     B:
       title: Stage B - Atto655 in heavy water
       kind: blocks
@@ -74,4 +77,5 @@ settings:
 
   # Relative cost of the steps, for the progress bar.
   # `site_tables` is the share of a graph's step spent loading (or building) its site tables.
-  progress_weights: {joint: 6.0, heavy_water: 2.0, profile: 1.0, other: 0.05, site_tables: 0.1}
+  progress_weights: {joint: 6.0, heavy_water: 2.0, profile: 1.0, sampler_check: 1.0,
+                     other: 0.05, site_tables: 0.1}
