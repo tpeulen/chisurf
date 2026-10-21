@@ -94,7 +94,7 @@
         "equilibrium",
         "pde"
       ],
-      "description": "Where the dye sits during the excited state. 'walk': Brownian walkers, each started from the equilibrium occupancy (w = product of slow_factor^-1 over the residues in range), and a photon race along each; the only ensemble that simulates FRET, with Monte-Carlo noise. 'equilibrium': the static limit, every position decays on its own at 1/tau0 + kQ, weighted by w; exact and fast, what the inverse fit uses. 'pde': the diffusion equation on the AV grid with stickiness as a potential and quenching as a sink, solved without sampling noise; it includes motion during the excited state, and its stationary state is the equilibrium ensemble. The walk and the PDE describe the same physics and agree to the walk's time-step bias."
+      "description": "Where the dye sits during the excited state. 'walk': Brownian walkers, each started from the equilibrium occupancy (w = product of slow_factor^-1 over the residues in range), and a photon race along each; FRET reads the transfer rate off the dyes' trajectories, with Monte-Carlo noise. 'equilibrium': the static limit, every position decays on its own at 1/tau0 + kQ, weighted by w; exact and fast, what the inverse fit uses. 'pde': the diffusion equation on the AV grid with stickiness as a potential and quenching as a sink, solved without sampling noise; it includes motion during the excited state, and its stationary state is the equilibrium ensemble. The walk and the PDE describe the same physics and agree to the walk's time-step bias. Both simulate FRET: the PDE's is the fast-acceptor limit (the acceptor averaged over its volume) entering as a transfer-rate field in the sink, so fret.acceptor_dynamics must be 'averaged'."
     },
     "critical_distance": {
       "label": "Fallback contact radius",
@@ -276,7 +276,7 @@
       "label": "Acceptor dynamics",
       "category": "FRET Acceptor",
       "type": "choice",
-      "description": "How the acceptor is treated: 'trajectory' simulates its Brownian walk with its own diffusion coefficient and stickiness and uses the instantaneous donor-acceptor distance, 'averaged' averages over its static accessible volume (the fast-acceptor limit, valid only when it explores that volume quickly compared with the donor lifetime). The two disagree because a cloud is weighted uniformly while a trajectory is weighted by where the dye dwells.",
+      "description": "How the acceptor is treated: 'trajectory' simulates its Brownian walk with its own diffusion coefficient and stickiness and uses the instantaneous donor-acceptor distance, 'averaged' averages over its static accessible volume (the fast-acceptor limit, valid only when it explores that volume quickly compared with the donor lifetime). The two disagree because a cloud is weighted uniformly while a trajectory is weighted by where the dye dwells. The 'pde' ensemble has no donor trajectory to pair one with, so it requires 'averaged'.",
       "options": [
         "trajectory",
         "averaged"

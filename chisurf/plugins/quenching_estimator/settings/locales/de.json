@@ -171,7 +171,7 @@
     },
     "fret.acceptor_dynamics": {
       "label": "Akzeptordynamik",
-      "description": "Wie der Akzeptor behandelt wird: „trajectory“ simuliert seine Brownsche Bewegung mit eigenem Diffusionskoeffizienten und eigener Haftung und verwendet den momentanen Donor-Akzeptor-Abstand, „averaged“ mittelt über sein statisches zugängliches Volumen (Grenzfall des schnellen Akzeptors, nur gültig, wenn er dieses Volumen schnell im Vergleich zur Donorlebensdauer durchläuft). Beide unterscheiden sich, weil eine Punktwolke gleichmäßig gewichtet wird, eine Trajektorie hingegen danach, wo sich der Farbstoff tatsächlich aufhält."
+      "description": "Wie der Akzeptor behandelt wird: „trajectory“ simuliert seine Brownsche Bewegung mit eigenem Diffusionskoeffizienten und eigener Haftung und verwendet den momentanen Donor-Akzeptor-Abstand, „averaged“ mittelt über sein statisches zugängliches Volumen (Grenzfall des schnellen Akzeptors, nur gültig, wenn er dieses Volumen schnell im Vergleich zur Donorlebensdauer durchläuft). Beide unterscheiden sich, weil eine Punktwolke gleichmäßig gewichtet wird, eine Trajektorie hingegen danach, wo sich der Farbstoff tatsächlich aufhält. Das „pde“-Ensemble hat keine Donortrajektorie zum Gegenpaaren und verlangt daher „averaged“."
     },
     "fret.dyes.1.slow_radius": {
       "label": "Verlangsamungsradius des Akzeptors",

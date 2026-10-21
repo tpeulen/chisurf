@@ -12,15 +12,20 @@ project's ``ensemble``:
     fit uses (:func:`..inference.site_table.equilibrium_lifetime` is the one copy of that sum).
 ``"walk"``
     Brownian walkers started from ``p(x)`` and a photon race along each
-    (:func:`.av.simulate_walkers`). The straightforward path for FRET, where the donor and
-    the acceptor move. Unbiased at any slow factor because it starts at equilibrium; its
-    remaining error is Monte-Carlo noise plus a time-step bias at sticky boundaries.
+    (:func:`.av.simulate_walkers`). The donor and the acceptor move, so FRET
+    reads the transfer rate off their trajectories. Unbiased at any slow factor
+    because it starts at equilibrium; its remaining error is Monte-Carlo noise
+    plus a time-step bias at sticky boundaries.
 ``"pde"``
     The Smoluchowski equation with the stickiness as a potential and quenching as a sink,
     solved on the AV grid by IMP.bff's ``GridDiffusionSolver`` (``flux_form=
     "detailed_balance"``, weight ``w``, mobility ``D0 m``). Its stationary state without the
     sink is exactly ``w``; with the sink it is the decay *with* transport during the
     excited state, with no sampling noise. The walk is its stochastic realisation.
+    It has no trajectory either, so its FRET is the fast-acceptor limit:
+    :func:`.av.fret_rate_grid` evaluates the walk's ``averaged`` kernel at the
+    occupied voxel centres and the field joins the sink — the same
+    ``donor_decay`` then produces the D-A decay.
 
 Theory: ``docs/concepts/quenching_inference.md`` ("Where the dye sits: three ensembles").
 """
@@ -35,6 +40,7 @@ import numpy as np
 __all__ = [
     "DEFAULT_ENSEMBLE",
     "ENSEMBLES",
+    "FRET_ENSEMBLES",
     "WALK_SEGMENT_TAU0",
     "WALK_TARGET_WALKERS",
     "EnsembleFields",
@@ -53,7 +59,11 @@ __all__ = [
 #: The three ensembles a project can ask for.
 ENSEMBLES = ("equilibrium", "walk", "pde")
 
-#: The walk: what QuEst always ran, and the only one that simulates FRET.
+#: The ensembles that simulate FRET: the walk along the dyes' trajectories, the
+#: PDE as a transfer-rate field (the fast-acceptor limit) joining the sink.
+FRET_ENSEMBLES = ("walk", "pde")
+
+#: What QuEst always ran, and the default.
 DEFAULT_ENSEMBLE = "walk"
 
 #: Length of one walker, in units of tau0, between these bounds. Each photon starts on a

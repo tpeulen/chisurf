@@ -79,7 +79,8 @@ def validate_project(
     ProjectValidationError
         If a required key is absent, the structure cannot be resolved, no donor
         dye with a diffusion coefficient is defined, the time range is empty, the
-        ensemble is unknown, or FRET is asked of an ensemble other than the walk.
+        ensemble is unknown, or FRET is asked of an ensemble other than the
+        walk or the pde.
     """
 
     missing = [key for key in REQUIRED_TOP_LEVEL_KEYS if key not in project]
@@ -116,16 +117,20 @@ def validate_project(
         except ValueError as exc:
             raise ProjectValidationError(str(exc)) from exc
 
-    from chisurf.plugins.quenching_estimator.core.ensembles import normalize_ensemble
+    from chisurf.plugins.quenching_estimator.core.ensembles import (
+        FRET_ENSEMBLES,
+        normalize_ensemble,
+    )
 
     try:
         ensemble = normalize_ensemble(project.get("ensemble"))
     except ValueError as exc:
         raise ProjectValidationError(str(exc)) from exc
-    if fret_block.get("enabled") and ensemble != "walk":
+    if fret_block.get("enabled") and ensemble not in FRET_ENSEMBLES:
         raise ProjectValidationError(
-            f"FRET needs the 'walk' ensemble (got {ensemble!r}): the transfer rate is "
-            "computed along the dyes' trajectories."
+            f"FRET needs the 'walk' or 'pde' ensemble (got {ensemble!r}): the transfer "
+            "rate follows the donor-acceptor distance -- along the walk's trajectories, "
+            "or, for the PDE, the acceptor averaged over its volume."
         )
 
     t_start = project.get("t_start", 0.0)
@@ -170,8 +175,8 @@ def template_project(*, with_fret: bool = True) -> MutableMapping[str, Any]:
         "n_bins": 4096,
         "parallel_trajectories": -1,
         # Where the dye sits during the excited state: "walk" (Brownian walkers from
-        # the equilibrium occupancy, the only one with FRET), "equilibrium" (static
-        # limit) or "pde" (diffusion equation on the AV grid). core/ensembles.py.
+        # the equilibrium occupancy), "equilibrium" (static limit) or "pde"
+        # (diffusion equation on the AV grid). core/ensembles.py.
         "ensemble": "walk",
         "attachment": {"chain": "A", "residue": 1, "atom": "CB"},
         "save_avs": False,

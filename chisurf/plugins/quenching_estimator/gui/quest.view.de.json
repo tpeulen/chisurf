@@ -154,7 +154,7 @@
                   "type": "choice",
                   "attr": "ensemble",
                   "label": "Ensemble",
-                  "description": "Where the dye sits during the excited state. 'walk': Brownian walkers, each started from the equilibrium occupancy (w = product of slow_factor^-1 over the residues in range), and a photon race along each; the only ensemble that simulates FRET, with Monte-Carlo noise. 'equilibrium': the static limit, every position decays on its own at 1/tau0 + kQ, weighted by w; exact and fast, what the inverse fit uses. 'pde': the diffusion equation on the AV grid with stickiness as a potential and quenching as a sink, solved without sampling noise; it includes motion during the excited state, and its stationary state is the equilibrium ensemble. The walk and the PDE describe the same physics and agree to the walk's time-step bias.",
+                  "description": "Where the dye sits during the excited state. 'walk': Brownian walkers, each started from the equilibrium occupancy (w = product of slow_factor^-1 over the residues in range), and a photon race along each; FRET reads the transfer rate off the dyes' trajectories, with Monte-Carlo noise. 'equilibrium': the static limit, every position decays on its own at 1/tau0 + kQ, weighted by w; exact and fast, what the inverse fit uses. 'pde': the diffusion equation on the AV grid with stickiness as a potential and quenching as a sink, solved without sampling noise; it includes motion during the excited state, and its stationary state is the equilibrium ensemble. The walk and the PDE describe the same physics and agree to the walk's time-step bias. Both simulate FRET: the PDE's is the fast-acceptor limit (the acceptor averaged over its volume) entering as a transfer-rate field in the sink, so fret.acceptor_dynamics must be 'averaged'.",
                   "options": [
                     "walk",
                     "equilibrium",
@@ -359,7 +359,7 @@
                   "type": "choice",
                   "attr": "acceptor_dynamics",
                   "label": "Akzeptordynamik",
-                  "description": "Wie der Akzeptor behandelt wird: „trajectory“ simuliert seine Brownsche Bewegung mit eigenem Diffusionskoeffizienten und eigener Haftung und verwendet den momentanen Donor-Akzeptor-Abstand, „averaged“ mittelt über sein statisches zugängliches Volumen (Grenzfall des schnellen Akzeptors, nur gültig, wenn er dieses Volumen schnell im Vergleich zur Donorlebensdauer durchläuft). Beide unterscheiden sich, weil eine Punktwolke gleichmäßig gewichtet wird, eine Trajektorie hingegen danach, wo sich der Farbstoff tatsächlich aufhält.",
+                  "description": "Wie der Akzeptor behandelt wird: „trajectory“ simuliert seine Brownsche Bewegung mit eigenem Diffusionskoeffizienten und eigener Haftung und verwendet den momentanen Donor-Akzeptor-Abstand, „averaged“ mittelt über sein statisches zugängliches Volumen (Grenzfall des schnellen Akzeptors, nur gültig, wenn er dieses Volumen schnell im Vergleich zur Donorlebensdauer durchläuft). Beide unterscheiden sich, weil eine Punktwolke gleichmäßig gewichtet wird, eine Trajektorie hingegen danach, wo sich der Farbstoff tatsächlich aufhält. Das „pde“-Ensemble hat keine Donortrajektorie zum Gegenpaaren und verlangt daher „averaged“.",
                   "options": [
                     "trajectory",
                     "averaged"

@@ -667,6 +667,59 @@ def fret_rate_pair_trace(
     )
 
 
+def fret_rate_grid(
+    density,
+    x0,
+    dg,
+    acceptor_points,
+    R0: float,
+    tau0: float,
+    r_min: float = 7.0,
+    kappa2=None,
+    max_acceptor_points: int = 512,
+):
+    """The acceptor-averaged FRET rate (1/ns) at the centre of every occupied voxel.
+
+    The PDE's version of the fast-acceptor limit: :func:`fret_rate_trace`
+    evaluated at the occupied voxels' centres instead of along a trajectory, so
+    the ensemble that has no trajectory uses the *same* kernel and the same
+    ``r_min``/``kappa2`` conventions as the walk's ``averaged`` regime. Zero
+    where the dye cannot sit.
+
+    Parameters
+    ----------
+    density : numpy.ndarray
+        ``(ng, ng, ng)`` occupancy; a voxel is occupied where it is nonzero.
+    x0 : array_like
+        The grid anchor (the position of voxel ``grid_center_index(ng)``).
+    dg : float
+        Voxel edge, Angstrom.
+    acceptor_points : numpy.ndarray
+        The acceptor's accessible-volume cloud, as for :func:`fret_rate_trace`.
+    """
+    density = np.asarray(density)
+    if density.ndim != 3 or density.shape[0] != density.shape[1] or density.shape[0] != density.shape[2]:
+        raise ValueError(f"expected a cubic density grid, got shape {density.shape}")
+    ng = density.shape[0]
+    origin = np.asarray(x0, dtype=np.float64) - ((ng - 1) // 2) * float(dg)
+    occupied = np.nonzero(density > 0)
+    grid = np.zeros(density.shape, dtype=np.float64)
+    centres = np.stack(occupied, axis=1) * float(dg) + origin
+    if centres.shape[0] == 0:
+        return grid
+    rates = fret_rate_trace(
+        centres,
+        acceptor_points,
+        R0=R0,
+        tau0=tau0,
+        r_min=r_min,
+        max_acceptor_points=max_acceptor_points,
+        kappa2=kappa2,
+    )
+    grid[occupied] = np.asarray(rates, dtype=np.float64)
+    return grid
+
+
 def density2points(nx, ny, nz, dg, density, r0):
     """Occupied voxels of a density grid, as an ``(n, 3)`` cloud in Angstrom.
 

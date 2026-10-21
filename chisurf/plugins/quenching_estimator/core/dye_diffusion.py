@@ -12,6 +12,7 @@ from chisurf.plugins.quenching_estimator.core.av import (
     AV,
     ISOTROPIC_KAPPA2,
     RDAMeanE,
+    fret_rate_grid,
     fret_rate_pair_trace,
     fret_rate_trace,
     grid_center_index,
@@ -765,7 +766,9 @@ class DonorDecay:
             a reasonable stand-in for the redox-active moiety.
         :param ensemble: str
             ``"walk"`` (default), ``"equilibrium"`` or ``"pde"``: where the dye sits during
-            the excited state (:mod:`.ensembles`). Only the walk simulates FRET.
+            the excited state (:mod:`.ensembles`). The walk and the pde simulate FRET --
+            the walk along the dyes' trajectories, the pde as the fast-acceptor
+            limit (a transfer-rate field joining the sink).
         """
         self.verbose = verbose
         self.ensemble = normalize_ensemble(ensemble)
@@ -844,6 +847,10 @@ class DonorDecay:
         self.fret_av_parameter = None
         self._acceptor_av = None
         self._photon_trace_fret = None
+        #: :class:`.ensembles.EnsembleLifetimes` of the last PDE D-A solve
+        #: (``None`` for the walk and the equilibrium ensembles).
+        self.fret_ensemble_lifetimes = None
+        self._fret_ensemble_fields = None
 
     def __str__(self):
         s = ""
@@ -1425,6 +1432,21 @@ class DonorDecay:
             return None
         return float(RDAMeanE(self.av, acceptor_av, self.fret_R0_angstrom, n_samples))
 
+    @property
+    def fret_r_min(self) -> float:
+        """The closest physical approach of the two dye centres, in Angstrom.
+
+        Both dyes are *centres*, so it is the sum of their radii — two spheres
+        cannot interpenetrate, and (R0/r)^6 diverges if they are allowed to.
+        Shared by the walk's rate trace and the PDE's rate grid.
+        """
+        donor_radius = float((self.av_parameter or {}).get("radius1", _pet().DEFAULT_DYE_RADIUS))
+        acceptor_params = (
+            self.fret_av_parameter if self.fret_av_parameter is not None else self.av_parameter
+        )
+        acceptor_radius = float((acceptor_params or {}).get("radius1", _pet().DEFAULT_DYE_RADIUS))
+        return donor_radius + acceptor_radius
+
     def calc_fret_rate_trace(self, verbose=False):
         """FRET rate for every frame, in 1/ns.
 
@@ -1462,15 +1484,7 @@ class DonorDecay:
         if trajectory is None:
             raise ValueError("Run the diffusion simulation before computing FRET rates.")
 
-        # Both dyes are *centres*, so the closest physical approach is the sum
-        # of the two radii — two spheres cannot interpenetrate, and (R0/r)^6
-        # diverges if they are allowed to.
-        donor_radius = float((self.av_parameter or {}).get("radius1", _pet().DEFAULT_DYE_RADIUS))
-        acceptor_params = (
-            self.fret_av_parameter if self.fret_av_parameter is not None else self.av_parameter
-        )
-        acceptor_radius = float((acceptor_params or {}).get("radius1", _pet().DEFAULT_DYE_RADIUS))
-        r_min = donor_radius + acceptor_radius
+        r_min = self.fret_r_min
 
         if str(self.acceptor_dynamics).lower() == "averaged":
             rates = fret_rate_trace(
@@ -1506,6 +1520,9 @@ class DonorDecay:
         if not getattr(self, "fret_enabled", False):
             self._photon_trace_fret = None
             return
+        if self.ensemble == "pde":
+            self._calc_photons_fret_pde(verbose=verbose)
+            return
         k_fret = self.calc_fret_rate_trace(verbose=verbose)
         donor_traj = self.diffusion
         k_quench = donor_traj.k_quench
@@ -1522,6 +1539,90 @@ class DonorDecay:
             random_seed=self._photon_seed(),
         )
         self._photon_trace_fret = dts, phs
+
+    @property
+    def fret_ensemble_fields(self):
+        """The D-A maps of the PDE ensemble, built on first use.
+
+        The donor's maps with the transfer rate added to the sink and nothing
+        else changed -- the transfer is a parallel de-excitation channel, exactly
+        as it is added to the walk's frame rates.
+        """
+        if self._fret_ensemble_fields is None:
+            av = self.av
+            k_fret = self._pde_fret_rate_field()
+            k_quench = getattr(av, "k_quench_grid", None)
+            total = k_fret if k_quench is None else k_quench + k_fret
+            self._fret_ensemble_fields = ensemble_fields(
+                av.density_fast,
+                self._walk_mobility(av, self.slow_fact),
+                total,
+                av.dg,
+                self.diffusion_coefficient,
+            )
+        return self._fret_ensemble_fields
+
+    def _pde_fret_rate_field(self):
+        """The acceptor-averaged transfer rate on the donor's grid, 1/ns.
+
+        Raises
+        ------
+        ValueError
+            When no acceptor dye is defined, or when the project asks for
+            ``acceptor_dynamics = "trajectory"``: the PDE has no donor
+            trajectory to pair one with, so its FRET is the fast-acceptor
+            limit.
+        """
+        verbose = self.verbose
+        acceptor_av = (
+            self._acceptor_av
+            if self._acceptor_av is not None
+            else self.calc_acceptor_av(verbose=verbose)
+        )
+        if acceptor_av is None:
+            raise ValueError(
+                "FRET is enabled but the acceptor dye is not defined: set its "
+                "chain, residue and atom (fret.dyes[1].attachment)."
+            )
+        if str(self.acceptor_dynamics).lower() != "averaged":
+            raise ValueError(
+                "The PDE ensemble has no donor trajectory, so its FRET is the "
+                "fast-acceptor limit: set fret.acceptor_dynamics to 'averaged' "
+                f"(got {self.acceptor_dynamics!r})."
+            )
+        av = self.av
+        return fret_rate_grid(
+            av.density_fast,
+            av.x0,
+            av.dg,
+            acceptor_av.points,
+            R0=self.fret_R0_angstrom,
+            tau0=self.tau0,
+            r_min=self.fret_r_min,
+            kappa2=self.fret_kappa2,
+        )
+
+    def _calc_photons_fret_pde(self, verbose=False):
+        """The D-A decay on the PDE path: the same ``donor_decay``, one more sink.
+
+        Builds the D-A maps (:attr:`fret_ensemble_fields`), solves them with the
+        same :func:`.ensembles.pde_solver`, and draws the photons from the D-A
+        decay exactly as :meth:`solve_ensemble` draws them from the donor-only
+        one. The exact lifetimes land in :attr:`fret_ensemble_lifetimes`.
+        """
+        f_da = self.fret_ensemble_fields
+        solver = pde_solver(f_da)
+        self.fret_ensemble_lifetimes = pde_lifetimes(f_da, self.tau0, solver)
+        t, intensity = pde_decay(f_da, self.tau0, solver)
+        self._photon_trace_fret = decay_photons(
+            t, intensity, self.fret_ensemble_lifetimes.quantum_yield, self.n_photons,
+            self._photon_seed(),
+        )
+        if verbose or self.verbose:
+            print(
+                "Ensemble %s with FRET: %s"
+                % (self.ensemble, self.fret_ensemble_lifetimes.as_dict())
+            )
 
     @property
     def photon_trace_fret(self):
@@ -1630,6 +1731,8 @@ class DonorDecay:
         self._ensemble_fields = None
         self.ensemble_lifetimes = None
         self._photon_trace = None
+        self._fret_ensemble_fields = None
+        self.fret_ensemble_lifetimes = None
 
         if self.ensemble != "walk":
             report(0.6, "Solving the %s ensemble..." % self.ensemble)

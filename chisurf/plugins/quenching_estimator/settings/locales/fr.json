@@ -171,7 +171,7 @@
     },
     "fret.acceptor_dynamics": {
       "label": "Dynamique de l'accepteur",
-      "description": "Traitement de l'accepteur : « trajectory » simule sa marche brownienne avec son propre coefficient de diffusion et sa propre adhérence, et utilise la distance donneur-accepteur instantanée ; « averaged » moyenne sur son volume accessible statique (limite de l'accepteur rapide, valable seulement s'il parcourt ce volume rapidement devant la durée de vie du donneur). Les deux diffèrent parce qu'un nuage est pondéré uniformément alors qu'une trajectoire l'est par les endroits où le fluorophore séjourne."
+      "description": "Traitement de l'accepteur : « trajectory » simule sa marche brownienne avec son propre coefficient de diffusion et sa propre adhérence, et utilise la distance donneur-accepteur instantanée ; « averaged » moyenne sur son volume accessible statique (limite de l'accepteur rapide, valable seulement s'il parcourt ce volume rapidement devant la durée de vie du donneur). Les deux diffèrent parce qu'un nuage est pondéré uniformément alors qu'une trajectoire l'est par les endroits où le fluorophore séjourne. L'ensemble « pde » n'a pas de trajectoire du donneur à lui associer ; il exige donc « averaged »."
     },
     "fret.dyes.1.slow_radius": {
       "label": "Rayon de ralentissement de l'accepteur",

@@ -24,6 +24,7 @@ from chisurf.plugins.quenching_estimator.core.dye_diffusion import (
     DonorDecay,
     normalize_amino_acid_interactions,
 )
+from chisurf.plugins.quenching_estimator.core.ensembles import FRET_ENSEMBLES
 from chisurf.plugins.quenching_estimator.core.photon import simulate_decay_quench
 from chisurf.plugins.quenching_estimator.core.structure import resolve_structure_path
 
@@ -806,13 +807,15 @@ def build_donor_from_project(
     d.structure = str(resolve_structure_path(structure_source))
 
     fret = p.get("fret") or {}
-    if fret.get("enabled") and d.ensemble != "walk":
-        # The transfer rate is read along the donor's and the acceptor's paths; the
-        # equilibrium and PDE ensembles have no paths. Refused rather than silently
+    if fret.get("enabled") and d.ensemble not in FRET_ENSEMBLES:
+        # The transfer rate follows the donor-acceptor distance: along the walk's
+        # trajectories, or, for the PDE, the acceptor averaged over its volume.
+        # The equilibrium ensemble has neither. Refused rather than silently
         # walking, so the ensemble a result reports is the one that produced it.
         raise ValueError(
-            f"FRET needs the 'walk' ensemble (got {d.ensemble!r}): the transfer rate is "
-            "computed along the dyes' trajectories."
+            f"FRET needs the 'walk' or 'pde' ensemble (got {d.ensemble!r}): the transfer "
+            "rate follows the donor-acceptor distance -- along the walk's trajectories, "
+            "or, for the PDE, the acceptor averaged over its volume."
         )
     if fret.get("enabled"):
         d.fret_enabled = True
