@@ -371,7 +371,7 @@ def convert_measurement(
         inventory = scan_folder(tree)
         info_params = parse_info(inventory["info"]) if inventory["info"] else {}
         mti = parse_mti(inventory["mti"]) if inventory["mti"] else {}
-        per_tree.append((inventory, info_params, mti))
+        per_tree.append((tree, inventory, info_params, mti))
         for stem, roles in sorted(inventory["tables"].items()):
             if "bursts" not in roles or stem in raw_by_stem:
                 continue
@@ -389,25 +389,32 @@ def convert_measurement(
         report.containers.append(str(container))
     # keep per-tree folder parameters reachable for callers (GUI summary)
     report.parameters = {
-        tree.name: inventory["parameters"]
-        for tree, (inventory, _i, _m) in zip(trees, per_tree)
+        tree.name: inventory["parameters"] for tree, inventory, _i, _m in per_tree
     }
 
-    for (inventory, info_params, mti) in per_tree:
+    # all rollover files of one acquisition are ONE measurement: per tree
+    # (threshold setting) the stems' tables concatenate into ONE bursts table
+    # and ONE table per companion -- rows carry their file origin in the legacy
+    # First File/Last File columns -- instead of one table set per file
+    wrote_any = False
+    for tree, inventory, info_params, mti in per_tree:
+        stems_here = []
         for stem, roles in sorted(inventory["tables"].items()):
             if "bursts" not in roles:
                 continue
             report.stems.append(stem)
-            raw = raw_by_stem.get(stem)
-            if raw is None:
+            if raw_by_stem.get(stem) is not None:
+                stems_here.append((stem, roles))
+            else:
                 report.unmapped_columns.setdefault(stem, []).append("<no source TTTR>")
-                continue
-            if not dry_run:
-                _write_tables(
-                    container, raw, stem, roles, dictionary, info_params,
-                    inventory["parameters"], report, write_burst_artifact, raw_data,
-                )
-    if not dry_run and raw_by_stem:
+        if not stems_here or dry_run:
+            continue
+        _write_concatenated(
+            container, stems_here, dictionary, info_params,
+            inventory["parameters"], report, write_burst_artifact, raw_data,
+        )
+        wrote_any = True
+    if wrote_any:
         _compact_container(container)
     return report
 
@@ -454,76 +461,92 @@ def _compact_container(container):
     container.unlink()
     target.replace(container)
 
-def _write_tables(
-    container, raw, stem, roles, dictionary, info_params, folder_params, report,
+def _concat(tables: list[dict], dictionary, report, label):
+    """Read, rename, and concatenate one role's tables across all stems.
+
+    Row order follows stem order (lexical), and the legacy string columns
+    ``First File``/``Last File`` carry each row's file origin, so the merged
+    table stays traceable to its raw file without one table per file.
+    """
+    merged: dict[str, list] = {}
+    unmapped: list[str] = []
+    renames_all: dict[str, str] = {}
+    for table_path in tables:
+        table = read_legacy_table(table_path)
+        renames, unm = rename_columns(list(table), dictionary)
+        unmapped.extend(u for u in unm if u not in unmapped)
+        renames_all.update(renames)
+        if renames:
+            table = {renames.get(k, k): v for k, v in table.items()}
+        for col, vals in table.items():
+            merged.setdefault(col, []).extend(np.asarray(vals).tolist())
+    if unmapped:
+        report.unmapped_columns[label] = unmapped
+    return {c: np.asarray(v) for c, v in merged.items()}, renames_all
+
+
+def _write_concatenated(
+    container, stems_here, dictionary, info_params, folder_params, report,
     write_burst_artifact, raw_data,
 ):
-    """Append one stem's tables of one tree into the measurement container.
+    """Write one tree's analysis of the WHOLE measurement into the container.
 
-    The container already exists (created once per measurement with every raw
-    file referenced); each write opens it by path. Table names carry the stem
-    (``<stem>/bursts``, ``<stem>/mle_green``), so stems do not collide, and
-    ``derived_from`` names the stem's own stream so result->raw is walkable.
+    All rollover files of the acquisition are one measurement, so one
+    ``bursts`` selection and one table per companion are written per threshold
+    setting (tree) -- not one set per file. The container already references
+    every raw; the merged tables derive from all of them.
     """
-    burst_table = read_legacy_table(roles["bursts"])
-    renames, unmapped = rename_columns(list(burst_table), dictionary)
-    if unmapped:
-        report.unmapped_columns[stem] = unmapped
-    if renames:
-        burst_table = {renames.get(k, k): v for k, v in burst_table.items()}
+    import numpy as np  # local: keep module import cost off the scan path
+
+    label = folder_params.get("label") or "measurement"
+    burst_paths = [roles["bursts"] for _stem, roles in stems_here]
+    burst_table, renames = _concat(burst_paths, dictionary, report, f"{label}/bursts")
     settings = {
         "source": "legacy burstwise folder",
         "folder_parameters": folder_params,
         "info": info_params,
         "column_renames": renames,
+        "n_files": len(stems_here),
     }
-    # the container's payload objects are named after their raw file
-    # (``<raw name>`` from Measurement.create), so the stem's own stream is
-    # addressable by that name; write_burst_artifact falls back to the
-    # container's first stream when the name is missing, and the stem->raw
-    # mapping is 1:1, which keeps the parent correct in both cases
     write_burst_artifact(
         Path(container),
         burst_table,
-        name=f"{stem}/bursts",
+        name="bursts",
         artifact_kind="burst_table",
         operation_type="burst_selection",
         row_grain="burst",
         parameters=settings,
-        derived_from=raw.name,
         out_dir=str(Path(container).parent),
         raw_data=raw_data,
     )
     # companion tables are per-burst analyses of the same search: bg4/br4 are
     # the burst-wise MLE lifetime fits. `burst_lifetime_fitting` is the
     # dictionary term AND what ndX's reader recognises as a companion.
-    for role, path in roles.items():
-        if role == "bursts":
-            continue
-        table = read_legacy_table(path)
-        ren2, unm2 = rename_columns(list(table), dictionary)
-        if unm2:
-            report.unmapped_columns.setdefault(stem, []).extend(unm2)
-        if ren2:
-            table = {ren2.get(k, k): v for k, v in table.items()}
+    # folder_parameters is in the identity: one measurement has several trees
+    # (thresholds); without it every tree's companions share one settings
+    # hash and the second tree would REPLACE the first's fits.
+    roles_present = sorted(
+        {r for _stem, roles in stems_here for r in roles if r != "bursts"}
+    )
+    for role in roles_present:
+        table, _ren = _concat(
+            [roles[role] for _stem, roles in stems_here if role in roles],
+            dictionary, report, f"{label}/{role}",
+        )
         write_burst_artifact(
             Path(container),
             table,
-            name=f"{stem}/{role}",
+            name=role,
             artifact_kind="burst_table",
             operation_type="burst_lifetime_fitting",
             row_grain="burst",
-            # folder_parameters MUST be in the identity: one measurement has
-            # several burstwise trees (different thresholds), and without
-            # them every tree's companions share one settings hash -- the
-            # second tree would REPLACE the first's fits instead of sitting
-            # beside them
             parameters={
                 "source_role": role,
                 "info": info_params,
                 "folder_parameters": folder_params,
+                "n_files": len(stems_here),
             },
-            derived_from=f"{stem}/bursts",
+            derived_from="bursts",
             out_dir=str(Path(container).parent),
             raw_data=raw_data,
         )

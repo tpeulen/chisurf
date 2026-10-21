@@ -9,12 +9,11 @@ from chisurf.core.plugin.manifest import validate_manifest
 
 
 def test_trajectory_manifests_drive_plugin_discovery():
-    """Verify trajectory manifests are discovered and hidden as intended."""
+    """Verify trajectory manifests are discovered, each its own Structure › Trajectory entry."""
     repo_root = pathlib.Path(__file__).resolve().parents[2]
     traj_root = repo_root / "chisurf" / "plugins" / "traj"
 
     expected = {
-        "traj_tools": "Structure:Trajectory:Traj Tools",
         "traj_align": "Structure:Trajectory:Align",
         "traj_convert": "Structure:Trajectory:Convert",
         "traj_energy_calculator": "Structure:Trajectory:Energy Calculator",
@@ -34,9 +33,8 @@ def test_trajectory_manifests_drive_plugin_discovery():
     for manifest_id, display_name in expected.items():
         info = infos[manifest_id]
         assert info["plugin_name"] == display_name
-        # ``traj_tools`` is the family's ribbon button (Structure › Trajectory);
-        # the tools it hosts are menu-hidden and reached through it.
-        assert info["menu_hidden"] == (manifest_id != "traj_tools")
+        # No hub: every trajectory tool is its own ribbon button (Structure › Trajectory).
+        assert not info["menu_hidden"]
         assert not info["cli_only"]
         assert info["module_path"].startswith("chisurf.plugins.traj.")
 

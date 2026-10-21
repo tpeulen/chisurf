@@ -117,5 +117,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/fcs/fcs_correlator/`
 - Manifest: {src}`chisurf/plugins/fcs/fcs_correlator/manifest.json`
 - UI spec: {src}`chisurf/plugins/fcs/fcs_correlator/correlator.view.json`
+- UI spec: {src}`chisurf/plugins/fcs/fcs_correlator/files.view.json`
 - UI spec: {src}`chisurf/plugins/fcs/fcs_correlator/filter.view.json`
 - UI spec: {src}`chisurf/plugins/fcs/fcs_correlator/merger.view.json`

@@ -34,7 +34,7 @@ def test_manifest_loads():
     assert manifest.id == "burstwise_import"
     assert manifest.version == "0.1.0"
     assert manifest.display_name == "File:Data:Burstwise→PTO"
-    assert manifest.icon == "📦"
+    assert manifest.icon == "📥"  # import action, not a closed box
     assert manifest.categories == ["File", "Data"]
     assert manifest.authors == ["Thomas-Otavio Peulen"]
     assert manifest.entrypoints.emtk == "chisurf.plugins.burst.burstwise_import.gui.app:create_app"

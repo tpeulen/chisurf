@@ -1646,9 +1646,29 @@ class Measurement:
     # -- lifecycle ------------------------------------------------------------
 
     def commit(self) -> None:
-        """Make everything written since the last commit visible, atomically."""
+        """Make everything written since the last commit visible, atomically.
+
+        A container that gained many objects since it was created can outgrow
+        its index reserve ("the index outgrew its reserved space"). That is
+        not recoverable here -- see the dedicated error below -- so the
+        reserve must be right at create() time.
+        """
         if not self._f.commit():
-            raise PtoMfdbError(f"could not commit {self._path}: {self._f.error()}")
+            err = self._f.error()
+            if "reserved space" in err:
+                # deliberately NOT auto-compacted (compacting would rewrite
+                # the container with an index sized for what it now holds,
+                # sidecar references staying references): compacting under an
+                # open handle mid-write has produced damaged files. The
+                # container's
+                # index must be reserved large enough at create() (see
+                # Measurement.create); if this fires, that estimate was wrong
+                # and the caller must recreate with a larger reserve.
+                raise PtoMfdbError(
+                    f"{self._path} outgrew its index reserve ({err}); "
+                    "recreate it with a larger max_objects at Measurement.create"
+                )
+            raise PtoMfdbError(f"could not commit {self._path}: {err}")
 
     def close(self) -> None:
         """Release the file handle, and the writer lock with it.
