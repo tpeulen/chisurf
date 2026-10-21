@@ -464,12 +464,20 @@ class BurstAnalysisHubApp(ToolHubApp):
         if self.context.raw_files and not child.model.files:
             controller.add_files([str(p) for p in self.context.raw_files])
         # Compute on arrival, as the Qt step does: nothing is asked that the data cannot answer.
+        reason = getattr(child.model, "can_estimate", lambda: None)()
         if (
             not getattr(child.model, "diagnostics", None)
-            and getattr(child.model, "can_estimate", lambda: "not ready")() is None
+            and reason is None
             and not controller.running
         ):
             controller.run()
+        elif reason is not None:
+            # A refusal is a state the user has to be able to act on: dropping it
+            # here left the step opened with a permanently blank plot and no
+            # reason anywhere (the ALEX-on-pre-converted-data bug).
+            child.model.status = reason
+            controller.status = reason
+            self.status = reason
 
     def _to_irf_bg(self, child) -> None:
         controller = child.controller
