@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 
 import pytest
+from emtk import keys
 
 from chisurf.plugins.burst.alex_suite import demo
 from chisurf.plugins.burst.alex_suite.gui.alternation_model import AlexAlternationModel
@@ -87,12 +88,15 @@ def test_detect_and_convert_button_then_a_typed_gate_republishes_the_setup(
     [(setup, files)] = handed
     assert [Path(p).name for p in files] == ["alex_demo_alex.pto"]
     assert setup["windows"]["prompt"] == model.windows["green"]
-    # Define the donor range by hand: the planted laser edges, typed into the gate fields.
-    drv.type_into_name("green_from", str(demo.DONOR_GATE[0]))
-    drv.type_into_name("green_to", str(demo.DONOR_GATE[1]))
+    # Define the donor range by hand: the gate fields step with the arrow keys.
+    low0, high0 = model.windows["green"]
+    drv.click(drv.rect("green_from"))
+    drv.press(keys.KEY_UP)
+    drv.click(drv.rect("green_to"))
+    drv.press(keys.KEY_DOWN)
     drv.draw(3)
-    assert model.windows["green"] == list(demo.DONOR_GATE)
-    assert handed[-1][0]["windows"]["prompt"] == list(demo.DONOR_GATE)
+    assert model.windows["green"] == [low0 + 1, high0 - 1]
+    assert handed[-1][0]["windows"]["prompt"] == model.windows["green"], "a gate edit republishes the setup"
     assert handed[-1][1] == files, "a gate edit republishes the setup and reconverts nothing"
 
 

@@ -120,6 +120,11 @@ class Driver:
         self.app.key(keys.KEY_RETURN, "\r")
         self.draw(2)
 
+    def press(self, code: int, modifiers: int = 0) -> None:
+        """Press and release *code* (an emtk ``keys.KEY_*``), e.g. an arrow key."""
+        self.app.key(code, "", modifiers)
+        self.draw(2)
+
     def escape(self) -> None:
         self.app.key(keys.KEY_ESCAPE, "")
         self.draw(2)

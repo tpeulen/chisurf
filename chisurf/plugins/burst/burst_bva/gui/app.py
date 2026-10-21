@@ -494,15 +494,13 @@ class BurstBvaGui:
         im.text(tr("Photons per slice:"))
         im.same_line(col_x)
         im.set_next_item_width(120)
-        changed, pps = im.drag_float(
-            "##photons_per_slice", float(self.model.photons_per_slice), 1.0, 1.0, 500.0, "%.0f"
-        )
+        changed, pps = im.drag_int("##photons_per_slice", int(self.model.photons_per_slice), 1, 1, 500)
         im.set_item_tooltip(
             tr("Number of photons per slice when splitting bursts for the variance analysis.")
         )
         self.remember("photons_per_slice")
         if changed:
-            self.model.photons_per_slice = max(1, int(round(pps)))
+            self.model.photons_per_slice = max(1, int(pps))
             self.model.notify("param")
 
         im.spacing()
@@ -513,22 +511,22 @@ class BurstBvaGui:
         im.text(tr("Bins X:"))
         im.same_line(col_x)
         im.set_next_item_width(120)
-        changed, bx = im.drag_float("##bins_x", float(self.model.bins_x), 1.0, 10.0, 500.0, "%.0f")
+        changed, bx = im.drag_int("##bins_x", int(self.model.bins_x), 1, 10, 500)
         im.set_item_tooltip(tr("Number of histogram bins along the mean proximity-ratio axis."))
         self.remember("bins_x")
         if changed:
-            self.model.bins_x = max(10, int(round(bx)))
+            self.model.bins_x = max(10, int(bx))
             self.model.notify("bins")
 
         im.align_text_to_frame_padding()
         im.text(tr("Bins Y:"))
         im.same_line(col_x)
         im.set_next_item_width(120)
-        changed, by = im.drag_float("##bins_y", float(self.model.bins_y), 1.0, 10.0, 500.0, "%.0f")
+        changed, by = im.drag_int("##bins_y", int(self.model.bins_y), 1, 10, 500)
         im.set_item_tooltip(tr("Number of histogram bins along the standard-deviation axis."))
         self.remember("bins_y")
         if changed:
-            self.model.bins_y = max(10, int(round(by)))
+            self.model.bins_y = max(10, int(by))
             self.model.notify("bins")
 
         # Toggles

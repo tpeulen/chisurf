@@ -846,11 +846,16 @@ class ChannelDefinitionWidget:
         return self._text[key]
 
     def _number_input(self, key, value, tip, kind=float, name=None):
-        """A typed number field (a text field: Enter or a click elsewhere keeps it; a typo keeps the last valid value).
+        """A number field (an int is an arrow-key spinbox; a float a text field: Enter or a click elsewhere keeps it; a typo keeps the last valid value).
 
-        Returns the new value when the user typed a valid one this frame, else ``None``.
+        Returns the new value when the user set a valid one this frame, else ``None``.
         """
         from emtk import im
+
+        if kind is int:
+            changed, stepped = im.drag_int("##" + key, int(value), 1.0, None, None, "%d")
+            self._item(name or key, tip)
+            return int(stepped) if changed else None
 
         text = self._text_field(key, value)
         changed, text = im.input_text("##" + key, text)
@@ -2345,7 +2350,7 @@ class ChannelDefinitionWidget:
                 f"shift_{channel}",
             )
             if value is not None:
-                self._shift_draft[channel] = value
+                self._shift_draft[channel] = int(value)
         if im.button(tr("OK") + "##shift_ok"):
             self.model.data["channel_shifts"] = {
                 str(c): int(s) for c, s in self._shift_draft.items() if int(s)

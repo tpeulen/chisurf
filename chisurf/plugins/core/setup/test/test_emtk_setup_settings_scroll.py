@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import pytest
 
+from emtk import keys
+
 from chisurf.plugins.core.setup.test import seeded
 from chisurf.plugins.emtk_test_input import CTRL, SIZE, SMALL, Driver
 
@@ -123,15 +125,25 @@ def type_into_field(drv, label, text, commit="enter"):
         drv.click(caption[:4])
 
 
-def test_an_integer_setting_is_typed_and_a_fraction_is_refused(hub):
+def step_setting(drv, label, code, mods=0, times=1):
+    """Focus the integer field *label* and press *code* (an arrow key) *times* times."""
+    drv.app.child.setting_filter = label
+    drv.draw(2)
+    drv.click(field(drv, label), fx=0.3)
+    for _ in range(times):
+        drv.press(code, mods)
+    return drv.draw(1)
+
+
+def test_an_integer_setting_steps_with_the_arrow_keys(hub):
     import yaml
 
     editor = hub.app.child
-    type_into_field(hub, "gui.plot.font_size", "14")
-    assert yaml.safe_load(editor.document.text)["gui"]["plot"]["font_size"] == 14
-    type_into_field(hub, "gui.plot.font_size", "1.5")
-    assert yaml.safe_load(editor.document.text)["gui"]["plot"]["font_size"] == 14
-    assert "gui.plot.font_size" in editor.error
+    before = yaml.safe_load(editor.document.text)["gui"]["plot"]["font_size"]
+    step_setting(hub, "gui.plot.font_size", keys.KEY_UP)
+    assert yaml.safe_load(editor.document.text)["gui"]["plot"]["font_size"] == before + 1
+    step_setting(hub, "gui.plot.font_size", keys.KEY_DOWN)
+    assert yaml.safe_load(editor.document.text)["gui"]["plot"]["font_size"] == before
 
 
 def test_a_float_setting_commits_on_click_away(hub):
@@ -153,17 +165,18 @@ def test_parse_number_clamps_and_refuses_fractions_for_integers():
             parse_number(bad, integer=integer)
 
 
-def test_save_pressed_straight_after_typing_writes_the_typed_number(hub):
+def test_save_pressed_straight_after_stepping_writes_the_stepped_number(hub):
     import os
     from pathlib import Path
 
     import yaml
 
-    type_into_field(hub, "gui.plot.font_size", "17", commit=None)
+    before = yaml.safe_load(hub.app.child.document.text)["gui"]["plot"]["font_size"]
+    step_setting(hub, "gui.plot.font_size", keys.KEY_UP, times=2)
     bx = hub.app.child_box[0]
     save = [t for t in hub.draw(2).texts if t[5] == "Save" and t[0] >= bx][-1]
     hub.click(save[:4])
     written = yaml.safe_load(
         (Path(os.environ["CHISURF_SETTINGS_DIR"]) / "settings_chisurf.yaml").read_text()
     )
-    assert written["gui"]["plot"]["font_size"] == 17
+    assert written["gui"]["plot"]["font_size"] == before + 2

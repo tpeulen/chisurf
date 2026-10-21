@@ -1,8 +1,9 @@
-"""The editor settings' RPC ports take typed numbers, operated with real pointer and keyboard input."""
+"""The editor settings' RPC ports step with the arrow keys and stay in the Qt range."""
 
 from __future__ import annotations
 
 import pytest
+from emtk import keys
 
 from chisurf.plugins.core.code_editor.gui.editor_app import CodeEditorApp
 from chisurf.plugins.emtk_test_input import Driver
@@ -16,13 +17,25 @@ def drv(tmp_path):
     return Driver(app)
 
 
-def test_rpc_ports_are_typed_and_clamped_to_the_qt_range(drv):
+def step_name(drv, name, code, times=1):
+    """Click the integer field *name* and press an arrow key *times* times."""
+    drv.click(drv.rect(name))
+    for _ in range(times):
+        drv.press(code)
+
+
+def test_rpc_ports_step_with_the_arrows_and_stay_in_the_qt_range(drv):
     model = drv.app.model
-    drv.type_into_name("rpc_cmd_port", "9123")
-    assert model.rpc_cmd_port == 9123
-    drv.type_into_name("rpc_pub_port", "-1")
-    assert model.rpc_pub_port == 1024, "a negative port is clamped to the Qt minimum"
-    drv.type_into_name("rpc_pub_port", "70000")
-    assert model.rpc_pub_port == 65535
+    start = model.rpc_cmd_port
+    step_name(drv, "rpc_cmd_port", keys.KEY_UP)
+    assert model.rpc_cmd_port == start + 1
+    model.rpc_pub_port = 1024
+    step_name(drv, "rpc_pub_port", keys.KEY_DOWN)
+    assert model.rpc_pub_port == 1024, "the Qt minimum is a floor"
+    step_name(drv, "rpc_pub_port", keys.KEY_UP)
+    assert model.rpc_pub_port == 1025
+    model.rpc_pub_port = 65535
+    step_name(drv, "rpc_pub_port", keys.KEY_UP)
+    assert model.rpc_pub_port == 65535, "the Qt maximum is a ceiling"
     drv.type_into_name("rpc_cmd_port", "port")
-    assert model.rpc_cmd_port == 9123, "text that is not a number leaves the port"
+    assert model.rpc_cmd_port == start + 1, "text that is not a number leaves the port"
