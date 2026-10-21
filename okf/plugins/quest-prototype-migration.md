@@ -28,11 +28,15 @@ Every work package has landed (record below); WP4's science is the open front.
   free-amino-acid contact volume ∫κ f 4πr²dr fixed by the titrations) is what removes this trade-off; the kernel
   alone does not.
 - Verify: the slow gate `-m slow test_male_reproduction.py -k refit` has no completed run in the kept guard
-  records; the guard killed it twice on 2026-10-21 via the swap-growth heuristic — foreign swap charged to the
-  run once the 7-worker tree passes 1 GB (its own tree is stable at ~2.6 GB, under the 4096 MB cap, while the
-  desktop sat at 8 GB swap from other apps). Relaunched 2026-10-21 10:25 with
-  `CHISURF_TEST_MAX_SWAP_GROWTH_MB=0` and `CHISURF_TEST_MIN_FREE_MB=2048` (tree cap and disk floor unchanged —
-  genuine exhaustion still stops the run), log `~/.cache/chisurf/slow-refit-rerun-20261021.log`. **Pending.**
+  records, and the guard killed it three times on 2026-10-21: twice via the swap-growth heuristic — foreign
+  swap charged to the run once the 7-worker tree passes 1 GB while the desktop sat at 8 GB swap from other
+  apps — and once, 1 h 45 m in at the second parallel phase, via the RSS cap: the run's own legitimate peak
+  is **4181 MB > the 4096 default** (the parent holds the 64-start search results while the pools retire;
+  first parallel phase ~3.3 GB, serial MINPACK joint fit ~1.1 GB). Relaunched 12:11 with
+  `CHISURF_TEST_MAX_RSS_MB=6144`, `CHISURF_TEST_MAX_SWAP_GROWTH_MB=0`, `CHISURF_TEST_MIN_FREE_MB=2048`
+  (free-memory and disk floors unchanged — genuine exhaustion still stops the run), log
+  `~/.cache/chisurf/slow-refit-rerun2-20261021.log`. **Pending.** The cap raise is a measured-footprint
+  correction, not a bypass: tree > 6 GB or available < 2 GB still kills the run.
 - Measure: refit + profiles: scratch runner pattern `Analysis(preset).run("all")`, then
   `graph_fit.profile_likelihood(view, "delta", values=np.linspace(-4, 5, 19), workers=…)` with
   `profile_likelihood.method: polish`. **Trap:** a polish profile in this landscape is jagged (AF488 deviance 105 at
