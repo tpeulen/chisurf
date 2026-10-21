@@ -3,6 +3,7 @@
 ## 2026-10-21
 
 - QuEst WP4c full kernel refit (2026-10-21, 7 workers, 26 146 s; run started 2026-10-20, harvested after the session died on the API limit): REFIT re-pinned in test_male_reproduction.py on the default kernel rate model. Scale (68 %): AF488 0.015 -> 0.019 (0.016-0.023) now interior (kappa profile 0.0173-0.0180) but an equal-posterior basin at kappa 0.028 / l 2.0 persists (quick's l profile prefers 2.0); Cy3B 0.086 -> 0.20 (0.12-0.35) with l 0.58 (0.50-0.68) interior, profiles agree - the clean block; Atto655 D2O 75 -> 0.27 (0.016-4.7) with l on its 2.0 bound (profile monotone down) and static 33 (2-100, undetermined) - the plateau moved from kappa to (l, gamma); Stage C 27 -> 0.026 (0.010-0.099) at the scale lower bound, l 0.1 (profile prefers 0.20, 0.18-0.23). Model errors 0.123 / 0.050 / 0.234 / 0.152; outliers AF488 211 233, Cy3B none, Atto655 D2O none (worst 322), Stage C 92 233 322. Naive H2O median |dev| 0.45 ns (16/18); water r 0.44 (0.22 without 322). No single joint interior optimum; the kappa-l trade-off is kappa-delta in kernel parameters (kappa e^-u/l invariant along kappa->kappa e^t, l->l(1+t)); prior tying them (titration contact volume) proposed, owner decision. okf/plugins/quest-prototype-migration.md item 1e, docs/concepts/quenching_inference.md results table.
+- burst: draw interphoton histograms and visible window dT as lines rather than circles, and collapse per-file legend suffixes when series > 8
 
 ## 2026-10-20
 

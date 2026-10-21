@@ -466,9 +466,8 @@ class BackgroundViewModel:
         return rows
 
     def iht_series(self) -> list[dict]:
-        """Inter-photon-time histogram points + fitted-tail lines, per detector."""
-        series: list[dict] = []
-        multi = len(self.diagnostics) > 1
+        """Inter-photon-time histogram lines + fitted-tail model lines, per detector."""
+        records = []
         for path, det_diags in self.diagnostics.items():
             stem = os.path.basename(path)
             for det, diag in det_diags.items():
@@ -476,29 +475,38 @@ class BackgroundViewModel:
                 counts = np.asarray(diag.counts, dtype=float)
                 if centers.size == 0:
                     continue
-                color = "#{:02x}{:02x}{:02x}".format(*det_color(det))
-                label = det if not multi else f"{det} · {stem}"
-                nz = counts > 0
-                series.append(
-                    {
-                        "x": centers[nz],
-                        "y": counts[nz],
-                        "name": label,
-                        "color": color,
-                        "style": "none",
-                        "symbol": "o",
-                    }
-                )
-                model = np.asarray(diag.model, dtype=float)
-                # Only where the model predicts something observable. It is an
-                # exponential drawn over the whole range, so a steep fit reaches
-                # 1e-15 counts at the far end -- and a log y axis then autoscales
-                # over twenty decades, squashing the data into the top eighth of
-                # the plot. Half a count is the floor: nothing below it can be
-                # seen in a histogram of counts.
-                m = model >= 0.5
-                if m.any():
-                    series.append({"x": centers[m], "y": model[m], "color": color, "width": 2})
+                records.append((det, stem, centers, counts, diag))
+        # Histograms are dense, so the data are drawn as lines: a marker per bin
+        # is a draw call per point for no extra information. With many files the
+        # per-file suffixes would flood the legend -- there one entry per
+        # detector is enough and the per-file series share the detector's entry
+        # (items registered under the same label collapse into one).
+        collapse_legend = len(records) > 8
+        multi = len(self.diagnostics) > 1
+        series: list[dict] = []
+        for det, stem, centers, counts, diag in records:
+            color = "#{:02x}{:02x}{:02x}".format(*det_color(det))
+            label = det if not multi or collapse_legend else f"{det} · {stem}"
+            nz = counts > 0
+            series.append(
+                {
+                    "x": centers[nz],
+                    "y": counts[nz],
+                    "name": label,
+                    "color": color,
+                    "width": 1.0,
+                }
+            )
+            model = np.asarray(diag.model, dtype=float)
+            # Only where the model predicts something observable. It is an
+            # exponential drawn over the whole range, so a steep fit reaches
+            # 1e-15 counts at the far end -- and a log y axis then autoscales
+            # over twenty decades, squashing the data into the top eighth of
+            # the plot. Half a count is the floor: nothing below it can be
+            # seen in a histogram of counts.
+            m = model >= 0.5
+            if m.any():
+                series.append({"x": centers[m], "y": model[m], "color": color, "width": 2})
         return series
 
     def rate_rows(self) -> list[dict]:

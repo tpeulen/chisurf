@@ -629,10 +629,17 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         if implot.begin_plot("Inter-photon time", (-1, -1)):
             implot.setup_axes("Photon index", "dT (ms)")
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
-            if "all" in curves:
-                implot.plot_scatter(tr("All photons"), *curves["all"], size=1.5)
-            if "selected" in curves:
-                implot.plot_scatter(tr("Selected photons"), *curves["selected"], size=1.5)
+            collapse_legend = len(curves) > 8
+            for key in ("all", "selected"):
+                if key in curves:
+                    implot.plot_line(
+                        tr("All photons") if key == "all" else tr("Selected photons"),
+                        *curves[key],
+                    )
+            for key, data in curves.items():
+                if key not in ("all", "selected"):
+                    name = key.split(" · ")[0] if collapse_legend and " · " in key else key
+                    implot.plot_line(name, *data)
             limits = m.thresholds()
             for n, key in enumerate(("dt_min", "dt_max")):
                 limit = limits[key]
