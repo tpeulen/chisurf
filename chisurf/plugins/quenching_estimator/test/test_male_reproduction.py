@@ -23,7 +23,8 @@ optimisers, and the stages declare the stored optimum as an extra start
 (b) **Refit on today's geometry** (re-pinned site tables: IMP.bff AV + corrected grid frame,
 ``test_inference_site_table.py``). The stored parameters do not fit these tables, so the
 numbers move; ``REFIT`` pins them (the plan concept and ``okf/log.md`` list them beside the
-stored run's).
+stored run's). Since WP4c the default rate model is the distance-continuous kernel, so the
+pins are the full preset's kernel refit (26 146 s / 7 workers, 2026-10-21).
 
 Both are ``slow``: (a) about 4 minutes, (b) about 3.3 hours on 7 worker processes (the serial
 MINPACK joint fit of the 41-parameter graph alone is 1.5 h).
@@ -216,19 +217,23 @@ def test_the_stored_optimum_on_its_own_tables(golden):
 
 #: today's geometry, full preset, widened bounds and the B-spline delta (64 random starts + the
 #: declared stored-run start): per block quench scale (best, 68 % low, high), model error, outlier
-#: sites, worst LOO site. Only Cy3B has an interior optimum; AF488 lands at scale 0.015 / delta
-#: +4.5 (quick: 42 / -1.9, a second basin), Atto655 on the dark-contact plateau (see the plan
-#: concept, item 1e). Before the widening (scale <= 10, delta -3..2, linear delta): AF488 10.0,
-#: Cy3B 0.058, Atto655 B 10.0, C 10.0.
+#: sites, worst LOO site — the full preset on the distance-continuous kernel (the default
+#: ``rate_model: kernel`` since WP4c). Cy3B and AF488 have interior κ optima (AF488's Laplace
+#: point sits in the weak-short basin κ 0.019 / ℓ 0.25; an equal-posterior basin at
+#: κ 0.028 / ℓ 2.0 exists — see the plan concept, item 1e); Atto655 D₂O trades κ for ℓ and γ
+#: (ℓ on its 2.0 bound, γ 33); Stage C's κ is at its lower bound with ℓ at 0.1.
+#: Contact-shell refit before the kernel (a86b8b45a): AF488 0.015 / δ 4.5, Cy3B 0.086 / δ 1.2,
+#: Atto655 B 75 / δ 0.9, Stage C 27 / δ −1.1. Before the widening (scale <= 10, delta -3..2,
+#: linear delta): AF488 10.0, Cy3B 0.058, Atto655 B 10.0, C 10.0.
 REFIT = {
-    "AF488 in H2O": (0.014776803845645725, 0.010000000000000005, 0.024326108586084576,
-                     0.19299198868744974, [219, 233], 233),
-    "Cy3B in H2O": (0.08568546650054865, 0.034483252855539964, 0.21291492424378694, 0.05,
-                    [], 95),
-    "Atto655 in D2O": (75.26526160882409, 0.9302544748315781, 100.00000000000013,
-                       0.09717941309634227, [92, 95, 211, 233], 92),
-    "Atto655 in D2O and H2O": (26.688616941197953, 0.3210809696126574, 100.00000000000013,
-                               0.10650529966572247, [233, 322], 322),
+    "AF488 in H2O": (0.018993707780214936, 0.015774486412262954, 0.02286990053506561,
+                     0.12313972015868524, [211, 233], 233),
+    "Cy3B in H2O": (0.20156847014563464, 0.11729262282158863, 0.34639730257079204, 0.05,
+                    [], 233),
+    "Atto655 in D2O": (0.2719287067917118, 0.015717317204356557, 4.704697412158641,
+                       0.23431961034596274, [], 322),
+    "Atto655 in D2O and H2O": (0.026359098603066483, 0.010000000000000005, 0.09919865546784587,
+                               0.15165744019337826, [92, 233, 322], 322),
 }
 
 

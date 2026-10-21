@@ -423,40 +423,48 @@ frame, same volume) and to 0.242 ns (today's volume). The stored Atto655 fit
 sat at δ = −2.8 Å. There a contact is a handful of voxels, so a 0.3 Å
 registration shift decides it.
 
-The first refit on these tables put κ and δ on the stored run's bounds. With
-the bounds widened and δ read through a B-spline, the two presets give (κ, 68 %
-Laplace interval; model error s; outlier sites; δ in Å):
+The first refit on these tables (contact-shell model, δ through a B-spline)
+put κ and δ on the stored run's bounds. With the distance-continuous kernel
+(default `rate_model: kernel`) the two presets give (κ, ℓ, 68 % Laplace
+interval; model error s; outlier sites; ℓ in Å):
 
 | data set | stored run (old tables) | refit, `full` preset | refit, `quick` preset |
 |---|---|---|---|
-| AF488 H₂O | 6.2 (4.6–8.2), s 0.050, 92 219 233 | 0.015 (0.010–0.024), s 0.193, 219 233; δ 4.5 | 42 (36–49), s 0.154, 211 219; δ −1.9 |
-| Cy3B H₂O | 1.1 (0.19–6.7), s 0.050, none | 0.086 (0.034–0.21), s 0.050, none; δ 1.2 | 0.070 (0.028–0.18), s 0.050, none; δ 1.3 |
-| Atto655 D₂O (B) | 0.111 (0.080–0.154), s 0.065, 211 219 322 | 75 (0.93–100), s 0.097, 92 95 211 233; δ 0.9 | 9.5 (0.24–100), s 0.128, 322; δ −3.1 |
-| Atto655 D₂O + H₂O (C) | 0.112 (0.080–0.157), s 0.108, 322 | 27 (0.32–100), s 0.107, 233 322; δ −1.1 | 38 (7–100), s 0.237, 322; δ 4.2 |
+| AF488 H₂O | 6.2 (4.6–8.2), s 0.050, 92 219 233 | 0.019 (0.016–0.023), ℓ 0.25, s 0.123, 211 233 | 6.7 (3.9–11.5), ℓ 0.20, s 0.244, 233 |
+| Cy3B H₂O | 1.1 (0.19–6.7), s 0.050, none | 0.20 (0.12–0.35), ℓ 0.58 (0.50–0.68), s 0.050, none | 0.19 (0.012–3.0), ℓ 0.21, s 0.050, none |
+| Atto655 D₂O (B) | 0.111 (0.080–0.154), s 0.065, 211 219 322 | 0.27 (0.016–4.7), ℓ 2.0 (at bound), s 0.234, none; γ 33 | 6.4 (1.5–27), ℓ 0.1 (at bound), s 0.235, 322 |
+| Atto655 D₂O + H₂O (C) | 0.112 (0.080–0.157), s 0.108, 322 | 0.026 (0.010–0.099), ℓ 0.1 (at bound), s 0.152, 92 233 322 | 0.01 (at bound), ℓ 0.1, s 0.138, 92 95 233 322 |
 
-**There is no clean interior optimum yet:**
+**Two of four blocks have interior optima now, but there is still no single
+joint one:**
 
-- Only Cy3B has one. Both presets agree, and its κ and δ profiles have their
-  minimum inside the range.
-- AF488 has two basins. Full lands at κ 0.015, δ +4.5 (many weak contacts),
-  quick at κ 42, δ −1.9 (a few strong ones). Twelve of full's 65 searches
-  within 2 log-posterior units span δ 0.6–5.0. The κ profile varies by less
-  than 9.1 in deviance between 0.01 and 100.
-- Atto655 sits on a plateau. Above κ ≈ 10 a contact makes the dye dark, and
-  κ then only rescales the fractional rotamer contacts. The static strength γ
-  runs high too (58 in B). Stage C's κ profile is flat (deviance < 0.2) from
-  10 to 100.
-- Strong stickiness (s ≈ 0.001) collapses an ensemble onto one voxel. Atto655
-  HOLO 72, 92 and 95 all put 99.999 % of the weight on one voxel next to two
-  aromatic residues, so which voxels are reachable decides the optimum.
+- Cy3B is the clean block: κ 0.20 (0.12–0.35) and ℓ 0.58 Å (0.50–0.68) both
+  interior, and its κ and ℓ profiles put their minima inside the range
+  (κ 0.13–0.30; the ℓ profile's deviance rises by more than 1 on both sides).
+- AF488 has a proper interior κ optimum — 0.019 (0.016–0.023), a factor 330
+  off the stored run's 6.2, with the κ profile interior too (0.0173–0.0180)
+  and the ℓ profile minimal at ℓ 0.20–0.25 — but the optimum is not unique:
+  full's own searches hold an equal-log-posterior second basin at
+  κ 0.028 / ℓ 2.0, and quick's ℓ profile prefers ℓ 2.0 outright. Weak-and-long
+  and strong-and-short reach fit equally well.
+- Atto655 D₂O sits on the plateau in its new place: κ is interior in Laplace
+  (0.27, 0.016–4.7) but ℓ runs to its 2.0 bound and the static strength γ to
+  33 (undetermined, 2.0–100). The ℓ profile decreases monotonically to 2.0.
+- Stage C's κ is at the 0.01 lower bound and its ℓ at the 0.1 bound; the ℓ
+  profile prefers 0.20 (0.18–0.23) over the Laplace point.
+- Strong stickiness (s ≈ 0.001) still collapses an ensemble onto one voxel.
+  Atto655 HOLO 72, 92 and 95 all put 99.999 % of the weight on one voxel next
+  to two aromatic residues, so which voxels are reachable decides the optimum.
 
-A reparametrisation is proposed in the migration plan but not implemented: fit
-κ times the mean contact count at δ, use a distance-continuous rate kernel, and
-put a floor on s. Before the widening, the full refit had κ = 10.0 on its old
-bound for AF488 and both Atto655 stages.
+The κ–ℓ trade-off is the old κ–δ trade-off in the kernel's parameters (κ·e^−u/ℓ
+is invariant along κ→κe^t, ℓ→ℓ+t·ℓ): without a prior tying them — for example
+the free-amino-acid contact volume ∫κ f 4πr²dr fixed by the titrations — the
+weak-long and strong-short families fit equally well. That reparametrisation is
+proposed in the migration plan but not implemented. Before the widening, the
+full refit had κ = 10.0 on its old bound for AF488 and both Atto655 stages.
 
-Naive H₂O test (full refit): median |dev| 0.50 ns, 16 of 18 sites above
-τ₀(H₂O). Water-access r is 0.39 with all sites and −0.08 without site 322; the
+Naive H₂O test (full kernel refit): median |dev| 0.45 ns, 16 of 18 sites above
+τ₀(H₂O). Water-access r is 0.44 with all sites and 0.22 without site 322; the
 stored run did not print it.
 
 ## Assumptions

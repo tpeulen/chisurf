@@ -11,14 +11,21 @@ timestamp: '2026-10-20T00:00:00Z'
 
 Every work package has landed (record below); WP4's science is the open front.
 
-- Open: **WP4c distance-continuous kernel (default `rate_model: kernel`) still has no single interior optimum.**
-  Quick (κ, ℓ, 68 % Laplace): AF488 κ 6.7 (3.9–11.5), ℓ 0.20 (0.10–0.39) Å, but its ℓ profile finds a lower cost at
-  ℓ 2.0 / κ 0.03 (deviance 3.9 better): κ and ℓ trade off (strong and short vs weak and long reach), the same family
-  as κ–δ before; Cy3B ℓ 0.21 (0.10–0.51) interior in Laplace and profile, κ not determined (profile < 1.7 over
-  0.01–100); Atto655 D₂O ℓ on its 0.1 bound, static and δ_s on bounds, profile again prefers ℓ 2; Stage C κ 0.01 and ℓ 0.1
-  on bounds, ℓ profile 0.20 (0.18–0.23). Full refit with the kernel running when this was written; `REFIT` still pins
-  the contact-shell full run (a86b8b45a). Next decision (owner): a prior tying κ and ℓ (e.g. the free-amino-acid contact
-  volume ∫κ f 4πr²dr fixed by the titrations) is what removes this trade-off; the kernel alone does not.
+- Open: **WP4c distance-continuous kernel (default `rate_model: kernel`): the full refit is in and pinned
+  (2026-10-21, chisurf `<this commit>`); two of four blocks now have interior optima, the κ–ℓ trade-off remains.**
+  Full (κ, ℓ, 68 % Laplace, 26 146 s / 7 workers): AF488 κ 0.019 (0.016–0.023) — a proper interior optimum, a
+  factor 330 off the stored 6.2 — with the κ profile interior too (0.0173–0.0180), and the ℓ profile minimal at
+  ℓ 0.20–0.25 (deviance +29.2 at the 2.0 bound); **but** full's own searches hold an equal-log-posterior second
+  basin at κ 0.028 / ℓ 2.0 (13.45 vs 13.46), and quick's ℓ profile prefers ℓ 2.0 outright: the strong-short vs
+  weak-long degeneracy persists across searches (the full profile's single-basin refits do not see the other
+  basin — the known polish/jump trap two bullets down); Cy3B κ 0.20 (0.12–0.35) and ℓ 0.58 (0.50–0.68) both
+  interior and the profiles agree (κ 0.13–0.30, ℓ minimal at 0.63 with +1.1/+2.8 one step either side) — the clean
+  block; Atto655 D₂O κ interior in Laplace (0.27, 0.016–4.7) but ℓ on its 2.0 upper bound (profile monotone down
+  to 2.0) and static 33 undetermined — the plateau moved from κ to (ℓ, γ); Stage C κ 0.026 (0.010–0.099) at the
+  scale lower bound, ℓ on its 0.1 bound (profile prefers 0.20, 0.18–0.23). The stored-vs-refit verdict is
+  unchanged: no single joint interior optimum. Next decision (owner): a prior tying κ and ℓ (e.g. the
+  free-amino-acid contact volume ∫κ f 4πr²dr fixed by the titrations) is what removes this trade-off; the kernel
+  alone does not.
 - Measure: refit + profiles: scratch runner pattern `Analysis(preset).run("all")`, then
   `graph_fit.profile_likelihood(view, "delta", values=np.linspace(-4, 5, 19), workers=…)` with
   `profile_likelihood.method: polish`. **Trap:** a polish profile in this landscape is jagged (AF488 deviance 105 at
