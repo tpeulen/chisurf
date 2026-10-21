@@ -2,7 +2,7 @@
 type: Concept
 title: 'Quenching inference: stickiness and quench strength from measured lifetimes'
 description: How free-dye titrations, H2O/D2O series and lifetimes of a dye at many protein sites are joined in one Bayesian model that estimates where the dye sticks and how strongly contact quenches it, with the equilibrium ensemble, water exposure, the Laplace approximation and leave-one-out.
-tags: [concepts, structure, quenching, inference, fitting]
+tags: [concepts, quenching, inference]
 anchor: concept-quenching-inference
 ---
 

@@ -2,7 +2,7 @@
 type: Guide
 title: 'QuEst Analysis: quench scale and stickiness from measured site lifetimes'
 description: Fitting how strongly a dye is quenched on a protein and near which residues it lingers, from lifetimes measured at many labelled sites and free-dye titrations, on the Analysis page of QuEst; the MalE demo, the presets and stages, reading the result tabs, csc quest analyse, the Python API and RPC.
-tags: [guides, quenching, inference, fitting, tcspc, headless]
+tags: [guides, fitting, python, api]
 ---
 
 # QuEst Analysis: quench scale and stickiness from measured site lifetimes

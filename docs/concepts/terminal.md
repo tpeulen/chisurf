@@ -2,7 +2,7 @@
 type: Concept
 title: 'Terminal and Python console: shells and Python inside the session'
 description: What the Terminal and Python Terminal tools are, how their panes, splits and floating windows work, what the Python console has in scope, and why both run code with the user's own rights.
-tags: [concepts, terminal, console, scripting]
+tags: [concepts, python, terminal]
 anchor: concept-terminal
 ---
 

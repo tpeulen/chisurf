@@ -2,7 +2,7 @@
 type: Guide
 title: 'QuEst: predicting dye quenching at a labelling site'
 description: 'Simulating the PET-quenched donor decay of a dye tethered to a protein with QuEst (accessible volume, three ensembles: Brownian walk, equilibrium, diffusion PDE; photon Monte-Carlo), choosing its settings, reading the quantum yield and decay, the built-in T4 lysozyme demo, the headless CLI and the Python API.'
-tags: [guides, fret, tcspc, decay, dynamics, photons, settings, headless]
+tags: [guides, fret, tcspc, decay, diffusion, photons, settings, headless]
 ---
 
 # QuEst: predicting dye quenching at a labelling site

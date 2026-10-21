@@ -2,7 +2,7 @@
 type: Guide
 title: The photon-data tools and count rates (Tools › Photon data)
 description: 'Where the photon-level TTTR tools live (Tools › Photon data: ALEX Creator, Audifier, Count Rate Analysis, Microtime Shifter, Photon Table), which clock each one acts on, how each tool keeps its own detector setup, and a count-rate check across many files from the GUI, the CLI and Python.'
-tags: [guides, tttr, photons, file-formats]
+tags: [guides, photons, tttr, gui, cli, headless, python]
 ---
 
 # The photon-data tools and count rates (Tools › Photon data)

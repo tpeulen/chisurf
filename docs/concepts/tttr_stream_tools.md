@@ -1,6 +1,6 @@
 ---
 type: Concept
-title: 'The two clocks of a photon record'
+title: The two clocks of a photon record
 description: The macro time and micro time of a TTTR record, what each is used for, and which photon-data tool (Tools › Photon data) changes which clock; ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier.
 tags: [concepts, tttr, photons]
 anchor: concept-tttr-stream-tools

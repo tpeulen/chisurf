@@ -2,7 +2,7 @@
 type: Guide
 title: 'Terminal panes: shells and Python side by side'
 description: Open the Terminal or Python Terminal tool, add, split and close panes, and know which keys the panes keep for themselves.
-tags: [guides, terminal, console]
+tags: [guides, python, terminal]
 ---
 
 # Terminal panes: shells and Python side by side
