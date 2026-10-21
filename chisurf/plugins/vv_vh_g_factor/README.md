@@ -76,7 +76,6 @@ In the tail region of a fluorescence decay, where rotational diffusion has rando
 When running as a standalone application:
 - Python 3.6+
 - PyQt5
-- PyQtGraph
 - NumPy
 
 For icon generation (optional):

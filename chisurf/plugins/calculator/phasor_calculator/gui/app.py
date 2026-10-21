@@ -62,7 +62,7 @@ _LETTER_COLOURS = {
 
 
 def _rgba(col) -> tuple[int, int, int, int]:
-    """One overlay colour: a pyqtgraph letter, a hex string or an RGB tuple."""
+    """One overlay colour: a single-letter colour code, a hex string or an RGB tuple."""
     if isinstance(col, str):
         if col in _LETTER_COLOURS:
             return _LETTER_COLOURS[col]

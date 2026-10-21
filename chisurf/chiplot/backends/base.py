@@ -429,7 +429,7 @@ class Canvas(abc.ABC):
     def provides_native_menu(self) -> bool:
         """Whether the backend already shows its own rich right-click menu.
 
-        When ``True`` (pyqtgraph), chiplot keeps that menu (export/CSV/image are
+        When ``True`` (emtk), chiplot keeps that menu (export/CSV/image are
         already there) and only injects custom actions into it. When ``False``,
         chiplot builds its own menu.
         """

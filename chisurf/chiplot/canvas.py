@@ -601,7 +601,7 @@ class PlotAPI:
     def set_menu_enabled(self: _P, enabled: bool) -> _P:
         """Enable/disable the right-click menu. Returns ``self``.
 
-        The backend's own menu where it has one (pyqtgraph), chiplot's menu
+        The backend's own menu where it has one (emtk), chiplot's menu
         otherwise -- whichever a right-click would show.
         """
         if self._native_menu:
@@ -623,7 +623,7 @@ class PlotAPI:
     def add_menu_action(self: _P, label: str, callback) -> _P:
         """Add a custom entry to the right-click menu. Returns ``self``.
 
-        Works whether the menu is the backend's native one (pyqtgraph) or
+        Works whether the menu is the backend's native one (emtk) or
         chiplot's own fallback.
 
         Parameters

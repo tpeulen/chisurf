@@ -40,7 +40,7 @@ DIALOGS = {
     "open_irf": ("Open IRF (TTTR) file", "open", PHOTON_FILE_FILTER),
 }
 
-#: Series colours of the model's plot sources (pyqtgraph letters -> RGBA).
+#: Series colours of the model's plot sources (single-letter colour codes -> RGBA).
 COLOURS = {
     "y": (255, 215, 0, 255),
     "c": (0, 200, 220, 255),

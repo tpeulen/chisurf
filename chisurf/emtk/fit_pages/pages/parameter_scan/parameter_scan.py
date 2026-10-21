@@ -361,7 +361,7 @@ class ParameterScanPlot(plotbase.Plot):
             if x.size == 0 or y.size == 0:
                 return
 
-            # Avoid feeding all-NaN arrays into pyqtgraph, which leads to
+            # Avoid feeding all-NaN arrays into the plot, which leads to
             # RuntimeWarnings about NaN slices.
             if not np.any(np.isfinite(x)) or not np.any(np.isfinite(y)):
                 return
