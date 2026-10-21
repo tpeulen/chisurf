@@ -6,7 +6,19 @@ import json
 import numpy as np
 import pytest
 
-PLUGINS = ("intensity_trace", "microtime_histogram")
+PLUGINS = (
+    "intensity_trace",
+    "microtime_histogram",
+    "audifier",
+    "photon_table",
+    "ptu_alex_creator",
+    "tttr_count_rate_analysis",
+    "tttr_header_edit",
+    "tttr_lut_tools",
+    "tttr_microtime_shifter",
+    "tttr_splitter",
+    "tttr_time_windows",
+)
 
 
 @pytest.mark.parametrize("plugin", PLUGINS)
