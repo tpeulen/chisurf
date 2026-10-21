@@ -185,6 +185,7 @@ class BurstwiseImportApp(ImApp, TourTarget):
             im.same_line()
         if im.button(scan_caption, role="primary"):
             self.scan()
+            self.tour.notify_used("scan_button")
         im.set_item_tooltip(tr("Scan folder for measurement tables, Info, MTI, and parameters."))
         self.remember("scan_button")
 
@@ -241,11 +242,17 @@ class BurstwiseImportApp(ImApp, TourTarget):
             tr("Resolve via .mti prefix mapping"), self.model.resolver_mode == "mti"
         ):
             self.model.resolver_mode = "mti"
+        im.set_item_tooltip(
+            tr("Look up each raw TTTR path by re-mapping the original drive prefix recorded in the folder's .mti file.")
+        )
 
         if im.get_line_avail() >= im.calc_text_size(tr("Stems beside folder"))[0] + 40.0:
             im.same_line()
         if im.radio_button(tr("Stems beside folder"), self.model.resolver_mode == "beside"):
             self.model.resolver_mode = "beside"
+        im.set_item_tooltip(
+            tr("Find raw TTTR files with matching stems beside the analysis folder.")
+        )
 
         if self.model.resolver_mode == "mti":
             im.text(tr("Old root prefix in .mti:"))
@@ -309,6 +316,7 @@ class BurstwiseImportApp(ImApp, TourTarget):
             role="primary",
         ):
             self.convert()
+            self.tour.notify_used("convert_button")
         self.remember("convert_button")
         im.end_disabled()
 
