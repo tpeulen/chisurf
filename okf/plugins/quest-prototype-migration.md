@@ -35,8 +35,12 @@ Every work package has landed (record below); WP4's science is the open front.
   first parallel phase ~3.3 GB, serial MINPACK joint fit ~1.1 GB). Relaunched 12:11 with
   `CHISURF_TEST_MAX_RSS_MB=6144`, `CHISURF_TEST_MAX_SWAP_GROWTH_MB=0`, `CHISURF_TEST_MIN_FREE_MB=2048`
   (free-memory and disk floors unchanged — genuine exhaustion still stops the run), log
-  `~/.cache/chisurf/slow-refit-rerun2-20261021.log`. **Pending.** The cap raise is a measured-footprint
-  correction, not a bypass: tree > 6 GB or available < 2 GB still kills the run.
+  `~/.cache/chisurf/slow-refit-rerun2-20261021.log`. **Result 2026-10-21 14:34: PASS —
+  `1 passed, 1 deselected in 8763.93s (2:26:03)`, EXIT:0**, confirming the `e95b1599c` refit pins in the
+  gate itself (first completed run in the kept guard records; final guard row: RSS 573 MB, tree 575 MB,
+  disk 12.5 GB, no kill). The cap raise is a measured-footprint
+  correction, not a bypass: tree > 6 GB or available < 2 GB still kills the run. WP4c engineering is done;
+  the κ–ℓ / contact-volume prior below remains an owner decision.
 - Measure: refit + profiles: scratch runner pattern `Analysis(preset).run("all")`, then
   `graph_fit.profile_likelihood(view, "delta", values=np.linspace(-4, 5, 19), workers=…)` with
   `profile_likelihood.method: polish`. **Trap:** a polish profile in this landscape is jagged (AF488 deviance 105 at
