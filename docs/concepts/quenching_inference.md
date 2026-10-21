@@ -441,7 +441,7 @@ joint one:**
 - Cy3B is the clean block: κ 0.20 (0.12–0.35) and ℓ 0.58 Å (0.50–0.68) both
   interior, and its κ and ℓ profiles put their minima inside the range
   (κ 0.13–0.30; the ℓ profile's deviance rises by more than 1 on both sides).
-- AF488 has a proper interior κ optimum — 0.019 (0.016–0.023), a factor 330
+- AF488 has a proper interior κ optimum — 0.019 (0.016–0.023), a factor 326
   off the stored run's 6.2, with the κ profile interior too (0.0173–0.0180)
   and the ℓ profile minimal at ℓ 0.20–0.25 — but the optimum is not unique:
   full's own searches hold an equal-log-posterior second basin at
@@ -449,9 +449,10 @@ joint one:**
   and strong-and-short reach fit equally well.
 - Atto655 D₂O sits on the plateau in its new place: κ is interior in Laplace
   (0.27, 0.016–4.7) but ℓ runs to its 2.0 bound and the static strength γ to
-  33 (undetermined, 2.0–100). The ℓ profile decreases monotonically to 2.0.
-- Stage C's κ is at the 0.01 lower bound and its ℓ at the 0.1 bound; the ℓ
-  profile prefers 0.20 (0.18–0.23) over the Laplace point.
+  33 (68 % 2.0–100). The ℓ profile decreases monotonically to 2.0.
+- Stage C's κ interval runs into the 0.01 lower bound (0.026, 0.010–0.099)
+  and its ℓ sits at the 0.1 bound; the ℓ profile prefers 0.20 (0.18–0.23)
+  over the Laplace point.
 - Strong stickiness (s ≈ 0.001) still collapses an ensemble onto one voxel.
   Atto655 HOLO 72, 92 and 95 all put 99.999 % of the weight on one voxel next
   to two aromatic residues, so which voxels are reachable decides the optimum.

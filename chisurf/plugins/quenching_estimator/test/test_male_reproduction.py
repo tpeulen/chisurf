@@ -219,7 +219,7 @@ def test_the_stored_optimum_on_its_own_tables(golden):
 #: declared stored-run start): per block quench scale (best, 68 % low, high), model error, outlier
 #: sites, worst LOO site — the full preset on the distance-continuous kernel (the default
 #: ``rate_model: kernel`` since WP4c). Cy3B and AF488 have interior κ optima (AF488's Laplace
-#: point sits in the weak-short basin κ 0.019 / ℓ 0.25; an equal-posterior basin at
+#: point sits in the short-reach basin κ 0.019 / ℓ 0.25; an equal-posterior long-reach basin at
 #: κ 0.028 / ℓ 2.0 exists — see the plan concept, item 1e); Atto655 D₂O trades κ for ℓ and γ
 #: (ℓ on its 2.0 bound, γ 33); Stage C's κ is at its lower bound with ℓ at 0.1.
 #: Contact-shell refit before the kernel (a86b8b45a): AF488 0.015 / δ 4.5, Cy3B 0.086 / δ 1.2,
