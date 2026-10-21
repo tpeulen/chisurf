@@ -493,8 +493,26 @@ class TrajToolApp(TourTarget, ImApp):
             self.remember(f"{path_field.key}_browse")
         self.draw_extra_io(width)
 
+    def load_example(self) -> None:
+        """The family demo affordance: the shipped example in, this tool's action run on it.
+
+        The example is the trajectory the ``traj`` family shares (see
+        :mod:`chisurf.plugins.traj.demo_data`); the tool-specific extras (a
+        potential to add, atom picks) come from the plugin's own ``demo`` module.
+        """
+        from chisurf.plugins.traj import demo_data
+
+        demo_data.run_plugin_demo(self)
+
     def _draw_action(self) -> None:
         im.spacing()
+        if im.button(tr("Load example")):
+            self.load_example()
+        im.set_item_tooltip(tr(
+            "Load the example trajectory this tool ships with and run the action on it."
+        ))
+        self.remember("example")
+        im.same_line()
         if im.button(self.action.label):
             self.tour.notify_used(self.action.key)
             self.begin_save()
