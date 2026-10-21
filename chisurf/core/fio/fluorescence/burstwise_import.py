@@ -461,7 +461,7 @@ def _compact_container(container):
     container.unlink()
     target.replace(container)
 
-def _concat(tables: list[dict], dictionary, report, label):
+def _concat(table_paths: list[Path], dictionary, report, label):
     """Read, rename, and concatenate one role's tables across all stems.
 
     Row order follows stem order (lexical), and the legacy string columns
@@ -471,7 +471,7 @@ def _concat(tables: list[dict], dictionary, report, label):
     merged: dict[str, list] = {}
     unmapped: list[str] = []
     renames_all: dict[str, str] = {}
-    for table_path in tables:
+    for table_path in table_paths:
         table = read_legacy_table(table_path)
         renames, unm = rename_columns(list(table), dictionary)
         unmapped.extend(u for u in unm if u not in unmapped)
