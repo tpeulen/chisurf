@@ -445,6 +445,21 @@ class BurstBackgroundApp(ImApp):
             self.controller.on_show_channels = lambda: self.bg_gui.docks.focus("channels")
         super().__init__(gui=self._render)
 
+    @property
+    def running(self) -> bool:
+        """Whether this tool's work is under way: the estimate, or the calibration read the channel editor started.
+
+        The workflow hub's Next / fast-forward wait on this (``ToolHubApp._busy``), so without it a running
+        estimate looked idle and the walk left the step before its results were published.
+        """
+        controller = self.controller
+        if controller is None:
+            return False
+        return bool(
+            getattr(controller, "running", False)
+            or getattr(controller.channel_definition, "_future", None) is not None
+        )
+
     def start_guide(self) -> None:
         """Start guided tour inside EMTK."""
         self.bg_gui.start_guide()
