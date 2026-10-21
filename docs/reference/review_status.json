@@ -350,10 +350,10 @@
     "status": "ai-reviewed"
   },
   "plugins/fcs_correlator.md": {
-    "date": "2026-10-14",
+    "date": "2026-10-21",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "c7990acb0799a461560bcab4bc9c9a4f639236e789d53399545eea3a78b82197",
+    "sha256": "eb163005b2681fcaa799b9210f185fac22463ac046b79e736159984f3fe9facd",
     "status": "ai-reviewed"
   },
   "plugins/fcs_filter_calculator.md": {
@@ -763,10 +763,10 @@
     "status": "ai-reviewed"
   },
   "plugins/quenching_estimator.md": {
-    "date": "2026-10-19",
+    "date": "2026-10-21",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "943d54b34101cafb5651e646721ac3f20fdc3fb82656c3a8a0cf4abdecf096f2",
+    "sha256": "398ddac1358301df891b991dd77d21148b7a662bafef755d5bb54c3743b0d140",
     "status": "ai-reviewed"
   },
   "plugins/region_mle.md": {
