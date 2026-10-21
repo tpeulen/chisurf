@@ -12,7 +12,7 @@ timestamp: '2026-10-20T00:00:00Z'
 Every work package has landed (record below); WP4's science is the open front.
 
 - Open: **WP4c distance-continuous kernel (default `rate_model: kernel`): the full refit is in and pinned
-  (2026-10-21, chisurf `<this commit>`); two of four blocks now have interior optima, the κ–ℓ trade-off remains.**
+  (2026-10-21, chisurf `e95b1599c`); two of four blocks now have interior optima, the κ–ℓ trade-off remains.**
   Full (κ, ℓ, 68 % Laplace, 26 146 s / 7 workers): AF488 κ 0.019 (0.016–0.023) — a proper interior optimum, a
   factor 326 off the stored 6.2 — with the κ profile interior too (0.0173–0.0180), and the ℓ profile minimal at
   ℓ 0.20–0.25 (deviance +29.2 at the 2.0 bound); **but** full's own searches hold an equal-log-posterior second
