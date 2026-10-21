@@ -16,6 +16,7 @@ instrument (about 1.5 s for 3.8 M photons), the conversion writes one ``.pto`` c
 
 from __future__ import annotations
 
+import copy
 import logging
 import threading
 import time
@@ -135,6 +136,89 @@ def needs_conversion(path: Path) -> bool:
     return not (micro_times.size and int(micro_times.max()) > 0)
 
 
+def container_setup(path: Path) -> dict:
+    """The detector setup stored inside a measurement container (``{}`` when it stores none).
+
+    A ``.pto`` the workflow has already analysed carries its background estimate beside the photons, and
+    that estimate records the detector definitions it used — routing channels and micro-time gates. Reading
+    them back gives a container this suite converted *earlier* its setup again, without re-running the
+    detection: the fold is already in the micro-time (the step decided "pie"), so there is nothing left to
+    measure, but without a setup every later step was handed the measurement and no detectors.
+
+    The payload is shaped like the setup the burst-selection hand-off carries (``setup_name``,
+    ``detectors``, ``windows``, ``tttr_reading``), so the hub can adopt it through the conversion path
+    unchanged. Plain PIE data stores no such definitions and gets ``{}``.
+    """
+    from chisurf.core.fio.pto import SUFFIX, Measurement
+
+    path = Path(path)
+    if path.suffix.lower() != SUFFIX:
+        return {}
+    try:
+        with Measurement.open(path, writable=False) as measurement:
+            # Newest first: a container may carry several estimates, the last one is the current one.
+            for artifact in reversed(measurement.artifacts(operation_type="background_correction")):
+                stored = measurement.provenance(artifact.uid).get("settings") or {}
+                detectors = _detector_map(stored)
+                if detectors:
+                    return _setup_from_detectors(detectors)
+    except Exception as exc:  # noqa: BLE001 - unreadable: there is simply nothing to adopt
+        logger.warning(
+            f"ALEX Suite: could not read a stored setup from {Path(path).name} - {exc}"
+        )
+    return {}
+
+
+def _detector_map(stored: dict) -> dict:
+    """The ``{name: detector}`` definitions inside a stored background payload (``{}`` if it holds none).
+
+    The estimate stores the complete result settings with the detectors under ``detectors``; older
+    containers store the bare detector mapping.
+    """
+    if not isinstance(stored, dict):
+        return {}
+    for candidate in (stored.get("detectors"), stored):
+        if not isinstance(candidate, dict):
+            continue
+        detectors = {
+            str(name): copy.deepcopy(info)
+            for name, info in candidate.items()
+            if isinstance(info, dict) and info.get("chs")
+        }
+        if detectors:
+            return detectors
+    return {}
+
+
+def _setup_from_detectors(detectors: dict) -> dict:
+    """A setup payload for detectors read back from a container; the windows are the distinct gates.
+
+    The detectors gate themselves (each carries its ``micro_time_ranges``); the named windows are what the
+    Seidel-vocabulary streams are called after — donor excitation first ("prompt"), acceptor second
+    ("delayed"), the same order :func:`build_setup` writes them in.
+    """
+    gates: list[list[int]] = []
+    for info in detectors.values():
+        for gate in info.get("micro_time_ranges") or []:
+            try:
+                lo, hi = int(gate[0]), int(gate[1])
+            except (TypeError, ValueError, IndexError):
+                continue
+            if lo < hi and [lo, hi] not in gates:
+                gates.append([lo, hi])
+    windows: dict[str, list[int]] = {}
+    if len(gates) == 1:
+        windows["prompt"] = gates[0]
+    elif len(gates) >= 2:
+        windows["prompt"], windows["delayed"] = gates[0], gates[1]
+    return {
+        "setup_name": SETUP_NAME,
+        "detectors": detectors,
+        "windows": windows,
+        "tttr_reading": {"file_type": "PTO", "micro_time_binning": 1},
+    }
+
+
 def phase_histogram(folded, period: int, donor_channels, acceptor_channels) -> dict[str, Any]:
     """Histogram the folded phase per detector (200 bins over one period).
 
@@ -232,7 +316,27 @@ class AlexAlternationModel:
                 f"{files[0].name} already has a micro-time (PIE / ns-ALEX, or converted before): nothing to convert. "
                 "Press Next; or Detect only to check for an alternation anyway."
             )
+            self._republish_container_setup(files[0])
         self.notify("files")
+
+    def _republish_container_setup(self, path: Path) -> None:
+        """Publish the detector setup a converted container already stores (the "pie" pass-through).
+
+        A container this suite wrote earlier is never folded again — and was never given a setup either,
+        which left the Background step refusing an estimate it could not answer and swallowing the reason.
+        Its stored estimate names the detectors; the hub adopts it through the same channel a fresh
+        conversion takes (``on_converted`` → the workflow context and the setup store), so every later step
+        is handed detectors.
+        """
+        setup = container_setup(path)
+        if not setup:
+            return
+        if callable(self.on_converted):
+            self.on_converted(setup, [])
+        self.status_text = (
+            f"{path.name} already has a micro-time; its stored detector setup “{SETUP_NAME}” is published "
+            "again for the later steps. Press Next; or Detect only to check for an alternation anyway."
+        )
 
     # -- the action ------------------------------------------------------------------------------------------ #
     def run(self, *, convert: bool = True) -> bool:
@@ -489,6 +593,7 @@ __all__ = [
     "SETUP_NAME",
     "AlexAlternationModel",
     "build_setup",
+    "container_setup",
     "needs_conversion",
     "parse_channels",
     "phase_histogram",
