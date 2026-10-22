@@ -115,6 +115,60 @@ def test_bundle_ships_shell_emtk_and_wheels_without_qt_or_test_trees(tmp_path):
     ], f"compat modules missing from the archive: {compat}"
 
 
+def test_the_glyph_vocabulary_and_the_split_buttons_are_baked(tmp_path):
+    """chisurf's own glyph vocabulary is in the atlas the page ships.
+
+    The manifest-icon test below guards the plugin menus; the shell's own
+    buttons spell their marks with ``chisurf.core.glyphs`` and plain UI
+    strings, which no manifest carries -- so the Console dock's *Split ⇥* /
+    *Split ⇣* drew the ``¤`` placeholder on the web page ("still characters
+    missing, for vertical and horz splitting of the terminals") and every
+    Glyphs.* pictograph added since the last bake did the same. The glyphs
+    are read from the installed ``chisurf.core.glyphs`` plus a short list of
+    UI strings that spell marks inline, so a vocabulary addition fails here
+    until the atlas is re-baked.
+    """
+    import ast as _ast
+    import inspect as _inspect
+
+    import chisurf.core.glyphs as glyphs_mod
+
+    import emtk  # noqa: F401 - the atlas the page ships is emtk's
+
+    from emtk.grapheme import glyph_of
+
+    from emtk.web.serve import pack_zip
+
+    bundle = _bundle()
+    archive = zipfile.ZipFile(pack_zip(bundle, tmp_path / "app.zip"))
+    meta = json.loads(archive.read("emtk/atlas/chrome.json").decode("utf-8"))
+    charset = set(meta["charset"])
+    colour_cells = meta.get("icons") or {}
+
+    # every non-ASCII constant of the glyph vocabulary...
+    wanted: set[str] = set()
+    for node in _ast.walk(_ast.parse(_inspect.getsource(glyphs_mod))):
+        if isinstance(node, _ast.Assign):
+            values = node.value.elts if isinstance(node.value, (_ast.Tuple, _ast.List)) else [node.value]
+            for v in values:
+                if isinstance(v, _ast.Constant) and isinstance(v.value, str):
+                    wanted |= {c for c in v.value if ord(c) > 127}
+    # ...plus the marks UI strings spell inline (terminal split, LUT steps,
+    # the script letters the FRET literature writes units with)
+    wanted |= set("⇥⇣①②ℓ′†★☆☐☑✗✖✎✏⏸⏹⏭⏮↺↻⬆⬇●◉⦿∠⊛ϵ")
+    wanted = {glyph_of(c) if ord(c) > 0x1F000 else c for c in wanted}
+    wanted -= {"\ufe0f", "\u200d"}
+
+    missing = sorted(
+        f"{c!r} (U+{ord(c):04X})" for c in wanted
+        if c not in charset and c not in colour_cells
+    )
+    assert not missing, (
+        f"shell glyphs the shipped atlas cannot draw -- re-bake "
+        f"emtk's atlas (tools/bake_chrome_atlas.py): {missing}"
+    )
+
+
 def test_every_plugin_manifest_icon_is_a_baked_glyph(tmp_path):
     """The icons the plugin menus spell are in the atlas the page ships.
 
