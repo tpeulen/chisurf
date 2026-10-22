@@ -109,6 +109,48 @@ def test_bundle_ships_shell_emtk_and_wheels_without_qt_or_test_trees(tmp_path):
     ], f"compat modules missing from the archive: {compat}"
 
 
+def test_every_plugin_manifest_icon_is_a_baked_glyph(tmp_path):
+    """The icons the plugin menus spell are in the atlas the page ships.
+
+    The browser has no font engine: the runtime glyph cache has nothing to
+    load there, so a manifest ``icon`` outside the baked rows drew the ``¤``
+    placeholder -- the owner's "all emoticons and icons are missing". The
+    icons are read from the packed manifests themselves, so a plugin that adds
+    a new pictograph fails here until the atlas is re-baked.
+    """
+    import json
+
+    from emtk.grapheme import glyph_of
+
+    from emtk.web.serve import pack_zip
+
+    bundle = _bundle()
+    archive = zipfile.ZipFile(pack_zip(bundle, tmp_path / "app.zip"))
+    meta = json.loads(archive.read("emtk/atlas/chrome.json").decode("utf-8"))
+    charset = set(meta["charset"])
+    tables = meta["glyphs"]
+
+    checked = 0
+    missing = []
+    for name in archive.namelist():
+        parts = name.split("/")
+        if len(parts) < 4 or parts[0] != "chisurf" or parts[1] != "plugins" \
+                or parts[-1] != "manifest.json":
+            continue
+        icon = json.loads(archive.read(name).decode("utf-8")).get("icon", "")
+        if not icon or icon.endswith((".png", ".svg")):
+            continue
+        checked += 1
+        base = glyph_of(icon[0])
+        if base not in charset:
+            missing.append(f"{'/'.join(parts[2:-1])}: {icon!r} ({base!r} not baked)")
+            continue
+        for face in ("regular", "bold"):
+            assert base in tables[face], f"{name}: {icon!r} missing from {face}"
+    assert checked >= 9, f"only {checked} manifest icons found -- enumeration broke"
+    assert not missing, f"manifest icons the shipped atlas cannot draw: {missing}"
+
+
 # -- the site, and its boot under node ---------------------------------------- #
 
 @pytest.mark.slow
