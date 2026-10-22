@@ -88,7 +88,15 @@ class SnapshotJob:
                 self.messages.put(("done", None, str(exc), list(events)))
 
         self.thread = threading.Thread(target=run, daemon=True)
-        self.thread.start()
+        try:
+            self.thread.start()
+        except RuntimeError:
+            # No threads on this host (the web page): compute inline; the
+            # done message is already on the queue for poll().
+            from chisurf.emtk.background_build import _FinishedThread
+
+            run()
+            self.thread = _FinishedThread()
         return True
 
     def poll(self):

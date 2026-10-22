@@ -67,7 +67,10 @@ import sys
 import threading
 import time
 from collections import deque
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
+
+if TYPE_CHECKING:
+    from chisurf.emtk.background_build import _FinishedThread
 
 from emtk import im
 from emtk.i18n import tr
@@ -938,8 +941,15 @@ class ShellConsole:
         # through the outbox, and what they ask of the window through the call queue.
         self._lock = threading.Lock()
         self._jobs: queue.SimpleQueue[Cell | None] = queue.SimpleQueue()
-        self._worker: threading.Thread | None = None
+        # A ``_FinishedThread`` stand-in is assigned when the host has no
+        # threads (the web page) -- it quacks like a finished worker.
+        self._worker: "threading.Thread | _FinishedThread | None" = None
         self._worker_id: int | None = None
+        # A browser page without cross-origin isolation has no worker threads
+        # (Pyodide cannot start one without SharedArrayBuffer): cells then run
+        # inline on the submitting thread (:meth:`_ensure_worker`). The desktop
+        # never takes that branch -- Thread.start does not raise there.
+        self._inline = False
         self._pending: list[Cell] = []
         self._current: Cell | None = None
         self._unfinished = 0
@@ -1234,6 +1244,8 @@ class ShellConsole:
         return len(self._pending)
 
     def _ensure_worker(self) -> None:
+        if self._inline:
+            return
         if self._worker is not None and self._worker.is_alive():
             return
         ready = threading.Event()
@@ -1244,7 +1256,18 @@ class ShellConsole:
             self._work()
 
         self._worker = threading.Thread(target=work, name="chisurf-console-cell", daemon=True)
-        self._worker.start()
+        try:
+            self._worker.start()
+        except RuntimeError:
+            # No threads on this host (the web page): the submitting thread is
+            # the worker. Cells run one at a time still -- start() runs them
+            # inline, so two frames never interleave cells.
+            from .background_build import _FinishedThread
+
+            self._inline = True
+            self._worker_id = threading.get_ident()
+            self._worker = _FinishedThread()
+            return
         ready.wait()
 
     def _work(self) -> None:
@@ -1292,6 +1315,9 @@ class ShellConsole:
             self._pending.append(cell)
             self._unfinished += 1
         self._ensure_worker()
+        if self._inline:
+            self._run_cell(cell)  # the submitting thread is the worker
+            return cell
         self._jobs.put(cell)
         return cell
 

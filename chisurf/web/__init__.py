@@ -99,7 +99,7 @@ APP = "chisurf.web:make_app"
 DEFAULT_PORT = 8790
 
 #: Loaded from the Pyodide distribution (numpy and Pillow come anyway).
-PYODIDE_PACKAGES = ("numpy", "scipy", "pyyaml", "Pillow", "lzma")
+PYODIDE_PACKAGES = ("numpy", "scipy", "pyyaml", "Pillow", "lzma", "fonttools")
 
 #: Entries of the ``chisurf`` package that stay behind: the Qt GUI shell this
 #: page replaces, and the cookiecutter template (no plugin). Everything else
@@ -245,10 +245,17 @@ def bundle(tttrlib_wheel: bool = True, impbff_wheel: bool = True):
         elif wanted:
             print(f"no {name} wheel for Pyodide found (${WHEELS[name][0]}); "
                   "the page boots without it")
+    # The wheel's missing pure-Python submodules ride in the archive under our
+    # own namespace; make_app() installs them into the wheel's package at boot.
+    compat = _tttrlib_compat_files()
+    if not compat:
+        print("warning: no tttrlib python submodules found to ship "
+              "(ndimage/signal/interpolate/matfile)")
     return Bundle(
         app=APP,
         packages=["chisurf"],
         extra_packages=extra,
+        extra_files=compat,
         pyodide_packages=pyodide,
         wheels=wheels,
         exclude=tuple(exclude_built),
@@ -489,6 +496,59 @@ def start_web_session(
     return session
 
 
+#: Pure-Python ``tttrlib`` submodules the Pyodide wheel does not carry (it ships
+#: only the compiled extension and ``pipeline.py``). They are copied from the
+#: local installation into the archive under our own namespace (no package
+#: shadowing) and :func:`_install_tttrlib_python_modules` writes them into the
+#: wheel's package directory at page boot, before the shell imports.
+TTTRLIB_PYTHON_MODULES = ("ndimage.py", "signal.py", "interpolate.py", "matfile.py")
+
+
+def _tttrlib_compat_files() -> dict:
+    """The missing submodules' sources, keyed by their archive path."""
+    import tttrlib
+
+    root = pathlib.Path(tttrlib.__file__).parent
+    files = {}
+    for name in TTTRLIB_PYTHON_MODULES:
+        path = root / name
+        if path.is_file():
+            files[f"chisurf/web/_tttrlib_compat/{name}"] = path.read_bytes()
+    return files
+
+
+def _install_tttrlib_python_modules() -> None:
+    """Give the in-browser ``tttrlib`` its pure-Python submodules.
+
+    The Pyodide wheel ships only the compiled extension; ``chisurf.core`` and
+    the burst plugins import ``tttrlib.ndimage`` and friends at module level.
+    The archive carries the files under ``chisurf/web/_tttrlib_compat/``; write
+    them next to the wheel's ``tttrlib/__init__.py``, which is exactly where a
+    full install has them.
+    """
+    import importlib.util
+
+    compat = pathlib.Path(__file__).parent / "_tttrlib_compat"
+    if not compat.is_dir():
+        return
+    import tttrlib
+
+    root = pathlib.Path(tttrlib.__file__).parent
+    written = []
+    for name in TTTRLIB_PYTHON_MODULES:
+        module = name[:-3]
+        if importlib.util.find_spec(f"tttrlib.{module}") is not None:
+            continue  # a full install: nothing to add
+        source = compat / name
+        if source.is_file():
+            (root / name).write_bytes(source.read_bytes())
+            written.append(module)
+    if written:
+        import importlib
+
+        importlib.invalidate_caches()
+
+
 def make_app() -> Any:
     """The page's factory: the emtk shell over the socket-free session.
 
@@ -497,6 +557,7 @@ def make_app() -> Any:
     splash and no update check -- a page boots fresh every time, and the
     browser tab is its own window.
     """
+    _install_tttrlib_python_modules()
     from chisurf.emtk.main_app import EmtkShellApp
 
     return EmtkShellApp(session_factory=start_web_session, post_show=False)

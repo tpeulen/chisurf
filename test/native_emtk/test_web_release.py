@@ -96,6 +96,18 @@ def test_bundle_ships_shell_emtk_and_wheels_without_qt_or_test_trees(tmp_path):
     # A wheel would have been tidier; compiled desktop extensions must not ride.
     assert not [n for n in names if n.endswith((".so", ".node", ".dylib"))]
 
+    # The tttrlib Pyodide wheel ships only the compiled extension; the
+    # pure-Python submodules chisurf imports at module level ride in the
+    # archive and make_app() installs them (caught by the real-browser run:
+    # fret_line died on 'No module named tttrlib.matfile').
+    compat = [n for n in names if n.startswith("chisurf/web/_tttrlib_compat/")]
+    assert sorted(compat) == [
+        "chisurf/web/_tttrlib_compat/interpolate.py",
+        "chisurf/web/_tttrlib_compat/matfile.py",
+        "chisurf/web/_tttrlib_compat/ndimage.py",
+        "chisurf/web/_tttrlib_compat/signal.py",
+    ], f"compat modules missing from the archive: {compat}"
+
 
 # -- the site, and its boot under node ---------------------------------------- #
 
@@ -112,7 +124,12 @@ def test_build_only_site_boots_under_node(tmp_path):
     config = _config(site)
     assert config["app"] == "chisurf.web:make_app"
     assert config["archive"].startswith("app.zip")
-    assert config["pyodide_packages"] == ["numpy", "Pillow", "scipy", "pyyaml", "lzma"]
+    # fonttools: a frame module's import chain reaches fontTools at boot --
+    # the real-browser run caught it (the node harness stubs Pyodide's
+    # package loader, so it cannot see a missing distribution package).
+    assert config["pyodide_packages"] == [
+        "numpy", "Pillow", "scipy", "pyyaml", "lzma", "fonttools",
+    ]
     joined = " ".join(config["wheels"])
     assert "tttrlib" in joined, "the required tttrlib wheel is not on the page"
     assert all((site / w).is_file() for w in config["wheels"])

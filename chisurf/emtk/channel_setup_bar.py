@@ -12,7 +12,10 @@ from __future__ import annotations
 
 import copy
 import threading
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from chisurf.emtk.background_build import _FinishedThread
 
 from chisurf.core.fio import setup_store
 from chisurf.core.setup_channel_definition import ChannelDefinition
@@ -47,7 +50,8 @@ class SetupToolbar:
         #: Whether :meth:`reload_async` is still reading the store.
         self.loading = False
         self._loaded: tuple | None = None
-        self._thread: threading.Thread | None = None
+        # A ``_FinishedThread`` stand-in lands here on a host without threads.
+        self._thread: "threading.Thread | _FinishedThread | None" = None
 
     # ------------------------------------------------------------------ state
     @property
@@ -130,7 +134,15 @@ class SetupToolbar:
         from chisurf.emtk.background_build import track
 
         self._thread = track(threading.Thread(target=work, name="chisurf-setup-store", daemon=True))
-        self._thread.start()
+        try:
+            self._thread.start()
+        except RuntimeError:
+            # No threads on this host (the web page): read on the calling
+            # thread and leave a finished stand-in, so poll() adopts as usual.
+            from chisurf.emtk.background_build import _FinishedThread
+
+            work()
+            self._thread = _FinishedThread()
 
     def wait(self, timeout: float = 60.0) -> None:
         """Let a :meth:`reload_async` read finish (a closing window must not leave it touching the store)."""

@@ -4,7 +4,18 @@ import pathlib
 import warnings
 
 import numpy as np
-from tttrlib.matfile import MatStruct, loadmat
+
+try:
+    from tttrlib.matfile import MatStruct, loadmat
+except ImportError:  # the Pyodide wheel ships only the compiled extension
+    MatStruct = None
+
+    def loadmat(*args, **kwargs):
+        raise RuntimeError(
+            "MAT-file support needs tttrlib.matfile, which this build does not "
+            "ship (the Pyodide wheel carries only the compiled extension)."
+        )
+
 
 import chisurf as cs
 import chisurf.core.fluorescence.fcs

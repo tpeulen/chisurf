@@ -35,7 +35,18 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 import numpy as np
-from tttrlib.matfile import loadmat, savemat
+
+try:
+    from tttrlib.matfile import loadmat, savemat
+except ImportError:  # the Pyodide wheel ships only the compiled extension
+
+    def loadmat(*args, **kwargs):
+        raise RuntimeError(
+            "MAT-file support needs tttrlib.matfile, which this build does not "
+            "ship (the Pyodide wheel carries only the compiled extension)."
+        )
+
+    savemat = loadmat
 
 from .core.model import COLORS, Analysis, Controls, Expect, HmmParams, Series, Viterbi
 
