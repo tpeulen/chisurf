@@ -263,6 +263,10 @@ class PsfDeterminationApp(ImApp):
         self.model.load_demo()
         self.bead_index = 0
 
+    def load_example(self):
+        """The sweep/demo affordance name for the tool's own *Load demo*."""
+        self.load_demo()
+
     def controls(self, box):
         m = self.model
         idle = not (self.job.busy or self.dialog is not None or self.picker.is_open)

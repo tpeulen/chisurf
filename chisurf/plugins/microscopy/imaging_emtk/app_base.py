@@ -111,6 +111,30 @@ class ImagingToolApp(ImApp):
         """Hook: the spec as loaded (a subclass may lay it out or extend it)."""
         return spec
 
+    def _demo_module(self):
+        """The plugin's demo module when it ships one (the *Load example* affordance)."""
+        import importlib
+
+        try:
+            return importlib.import_module(
+                f"chisurf.plugins.microscopy.{self.GUI_DIR.parent.name}.demo"
+            )
+        except ModuleNotFoundError:
+            return None
+
+    def load_example(self) -> None:
+        """The demo affordance: the plugin's shared synthetic stack in, the tool's run on it.
+
+        The plugin's ``demo`` module produces the example (see
+        :mod:`chisurf.plugins.microscopy.demo_stack`) and hands it to the model,
+        so the tool runs the same path a dropped file takes.
+        """
+        demo = self._demo_module()
+        if demo is None:
+            self.model.status_line = "This tool has no example data."
+            return
+        demo.load_into(self)
+
     def _draw_main(self, box: tuple) -> None:
         """Hook: what fills the frame under the dialogs (the dock windows)."""
         self.docks.draw(box)
@@ -219,6 +243,11 @@ class ImagingToolApp(ImApp):
         if action_button("guide"):
             self.tour.start()
         self.item_rects["guide"] = im.get_item_rect()
+        if self._demo_module() is not None:  # only tools with a demo offer the example
+            im.same_line()
+            if action_button("example"):
+                self.load_example()
+            self.item_rects["example"] = im.get_item_rect()
         if self.CANCELLABLE:
             im.same_line()
             im.begin_disabled(not (self.job.busy or self.model.busy))
