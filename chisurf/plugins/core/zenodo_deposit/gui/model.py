@@ -300,7 +300,7 @@ class ZenodoDepositModel:
         """``"yes"`` while a record is open: steps 2-4 are shown only then."""
         return "yes" if self.record is not None else "no"
 
-    no_record_hint = ("**Steps 2-4** (add data, Zenodo metadata, scan) appear once a record is "
+    no_record_hint = ("The panels below (add data, Zenodo metadata, scan) appear once a record is "
                       "open: create one above, or click one in the list at the top.")
 
     @property
@@ -610,7 +610,7 @@ class ZenodoDepositModel:
             return head + f"**{len(problems)} to fix before upload:**\n" + "\n".join(
                 f"- {_md(p)}" for p in problems)
         return head + ("**Complete.** It is reviewed like any item: approve *Zenodo metadata* in "
-                       "*1 · Review*. Any later edit voids that approval.")
+                       "*2 · Review*. Any later edit voids that approval.")
 
     @property
     def metadata_json(self) -> str:
@@ -624,7 +624,7 @@ class ZenodoDepositModel:
         """Re-read the record after adding data: the items a reviewer then judges."""
         self.rescan()
         if self.record is not None:
-            self.message = (f"{len(self.record.items)} items to review -- open *1 · Review*")
+            self.message = (f"{len(self.record.items)} items to review -- open *2 · Review*")
 
     # ── creating a record from its build config ──────────────────────────
     @property
@@ -753,7 +753,7 @@ class ZenodoDepositModel:
             return ""
         m = self.record.metadata or {}
         if not m:
-            return "**No Zenodo metadata** -- fill it in *0 · Create*, step 3."
+            return "**No Zenodo metadata** -- complete it in *1 · Create*."
         lines = [f"**Title:** {_md(m.get('title', ''))}", "", "**Creators:**", ""] + [
             f"- {c.get('name')} -- {c.get('affiliation', '')}" for c in m.get("creators", [])
         ] + ["", f"**License:** {m.get('license', '')} · **Type:** {m.get('upload_type', '')} · "
@@ -817,8 +817,9 @@ class ZenodoDepositModel:
         for m in measurements:
             rows.append(self._row(m, m.id))
             for c in uses[m.id]:
-                rows.append(self._row(by_id[c], f"{m.id}>{c}", m.id,
-                                      c.removeprefix("calibrations/"), count[c]))
+                label = (c.removeprefix("calibrations/") if c.startswith("calibrations/")
+                         else "ref: " + c.removeprefix("measurements/"))
+                rows.append(self._row(by_id[c], f"{m.id}>{c}", m.id, label, count[c]))
         rows += [self._row(i, i.id) for i in items
                  if i.role == "calibration" and i.id not in count]
         rows += [self._row(i, i.id) for i in items if i.role not in ("measurement", "calibration")]
@@ -1264,38 +1265,37 @@ class ZenodoDepositModel:
         if self.job.running:
             return f"**Working:** {self.busy_what}…"
         if self.token_source == "":
-            return ("**Step 0 -- enter your Zenodo token** in the *Zenodo token* tab. "
+            return ("**Enter your Zenodo token** in the *Token* tab. "
                     "Reviewing works without it; uploading does not.")
         if self.record is None:
-            return ("**Step 1 -- pick a record** in the list above, or make a new one in "
-                    "*0 · Create*.")
+            return ("**Pick a record** in the list above, or make a new one in *1 · Create*.")
         rec = self.record
         if rec.remote.get("doi"):
             return f"**Done:** {rec.name} is published, DOI {rec.remote['doi']}."
         if not any(i.role in ("measurement", "calibration") for i in rec.items):
-            return ("**Step 2 -- add data** (*0 · Create*): name an item, then *Add files…* or "
+            return ("**Add data** (*1 · Create*): name an item, then *Add files…* or "
                     "*Add folder…*.")
         if zenodo_problems(rec.metadata):
-            return ("**Step 3 -- complete the Zenodo metadata** (*0 · Create*): "
+            return ("**Complete the Zenodo metadata** (*1 · Create*): "
                     f"{len(zenodo_problems(rec.metadata))} field(s) missing or wrong, listed "
                     "under the form.")
         c = rec.counts()
         open_items = [i for i in rec.items if i.status != "approved"]
         if c["rejected"]:
             return (f"**Fix {c['rejected']} rejected item(s)** in the record folder, then "
-                    "*Rescan* (Upload tab) and review them again.")
+                    "*Rescan* (*3 · Upload*) and review them again.")
         if open_items:
             flagged = sum(1 for i in open_items if i.flags)
-            return (f"**Step 4 -- review** (*1 · Review*): {len(open_items)} of {len(rec.items)} items still "
+            return (f"**Review** (*2 · Review*): {len(open_items)} of {len(rec.items)} items still "
                     "to check" + (f", {flagged} of them flagged (Check column) -- start with those" if flagged
                        else "")
                     + ". Approve a row with its button; right-click it to reject.")
         b = blockers(rec)
         if b:
-            return ("**Step 5 -- build the package** (Upload tab): everything is approved, the "
+            return ("**Build the package** (*3 · Upload*): everything is approved, the "
                     "archive must be built from exactly this content.")
         if not rec.remote.get("deposition_id"):
-            return ("**Step 6 -- upload the draft** (Upload tab). Nothing is published; you can "
+            return ("**Upload the draft** (*3 · Upload*). Nothing is published; you can "
                     "still look at the draft on Zenodo afterwards.")
         diff = compare(rec)
         if diff:

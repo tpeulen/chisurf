@@ -3,7 +3,7 @@
   "steps": [
     {
       "title": "Name the record",
-      "text": "In <b>0 · Create</b>, type the record's name: lower case, no spaces. It becomes the folder and the archive name. (Already have one? Pick it in the list at the top instead.)",
+      "text": "In <b>1 · Create</b>, type the record's name: lower case, no spaces. It becomes the folder and the archive name. (Already have one? Pick it in the list at the top instead.)",
       "target": {
         "name": "new_name"
       },

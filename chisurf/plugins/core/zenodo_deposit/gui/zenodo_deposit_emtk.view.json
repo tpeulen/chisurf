@@ -99,13 +99,13 @@
       "sections": [
         {
           "type": "panel",
-          "title": "0 · Create",
+          "title": "1 · Create",
           "description": "Make a record by hand in four steps -- name it, put its data in, fill in what Zenodo shows, scan it -- then review it in 1 · Review. A record built by a project script is under Advanced.",
           "n_col": 1,
           "sections": [
             {
               "type": "panel",
-              "title": "Step 1 · New record",
+              "title": "New record",
               "n_col": 1,
               "collapsible": true,
               "description": "An empty record folder under the data root. Skip this step to work on a record picked in the list above.",
@@ -152,7 +152,8 @@
                   "is_markdown": true,
                   "description": "Whether the name can be used, and what will be created."
                 }
-              ]
+              ],
+              "collapsed": true
             },
             {
               "type": "info",
@@ -167,7 +168,7 @@
             },
             {
               "type": "panel",
-              "title": "Step 2 · Add data",
+              "title": "Add data",
               "n_col": 1,
               "collapsible": true,
               "description": "Put files or folders into the open record. Each addition is one item a reviewer judges: a measurement, or a calibration of a setup-and-day group.",
@@ -337,11 +338,12 @@
               "hidden_when": {
                 "attr": "has_record",
                 "equals": "no"
-              }
+              },
+              "collapsed": true
             },
             {
               "type": "panel",
-              "title": "Step 3 · Zenodo metadata",
+              "title": "Zenodo metadata",
               "n_col": 1,
               "collapsible": true,
               "description": "What Zenodo shows about the record. Checked as you type; it is reviewed and approved like any item.",
@@ -481,11 +483,12 @@
               "hidden_when": {
                 "attr": "has_record",
                 "equals": "no"
-              }
+              },
+              "collapsed": false
             },
             {
               "type": "panel",
-              "title": "Step 4 · Scan for review",
+              "title": "Scan for review",
               "n_col": 1,
               "collapsible": true,
               "description": "Read the record folder into the items you review in 1 · Review.",
@@ -505,11 +508,12 @@
               "hidden_when": {
                 "attr": "has_record",
                 "equals": "no"
-              }
+              },
+              "collapsed": true
             },
             {
               "type": "panel",
-              "title": "Advanced · Build from a project script",
+              "title": "Build from a project script",
               "n_col": 1,
               "collapsible": true,
               "collapsed": true,
@@ -625,7 +629,7 @@
         },
         {
           "type": "panel",
-          "title": "1 · Review",
+          "title": "2 · Review",
           "description": "Check every item of the record and decide on it.",
           "n_col": 1,
           "sections": [
@@ -905,114 +909,131 @@
         },
         {
           "type": "panel",
-          "title": "2 · Upload",
+          "title": "3 · Upload",
           "description": "Build the archive and upload it into a Zenodo draft. Locked until every item is approved.",
           "n_col": 1,
           "sections": [
             {
-              "type": "info",
-              "key": "zenodo_text",
-              "source": "zenodo_text",
-              "is_markdown": true,
-              "description": "The deposition metadata that is submitted with the draft: title, creators with affiliations, license, keywords. It comes from the record's build config."
-            },
-            {
-              "type": "custom",
-              "key": "code_editor",
-              "target": "zenodo_description",
-              "options": {
-                "language": "none",
-                "read_only": true,
-                "height": 90
-              },
-              "description": "The record description as it will appear on Zenodo (HTML)."
-            },
-            {
-              "type": "info",
-              "key": "gate_text",
-              "source": "gate_text",
-              "is_markdown": true,
-              "description": "The package (size, md5) and what still blocks the upload."
-            },
-            {
-              "type": "button_row",
-              "description": "In this order: build the archive from the approved content, then upload it into a draft.",
-              "buttons": [
+              "type": "panel",
+              "title": "Draft",
+              "n_col": 1,
+              "collapsible": true,
+              "sections": [
                 {
-                  "action": "build_package",
-                  "label": "Build package",
-                  "description": "Write the upload archive from the record as it is now (stored ZIP, every member CRC-checked)."
+                  "type": "info",
+                  "key": "zenodo_text",
+                  "source": "zenodo_text",
+                  "is_markdown": true,
+                  "description": "The deposition metadata that is submitted with the draft: title, creators with affiliations, license, keywords. It comes from the record's build config."
                 },
                 {
-                  "action": "upload_draft",
-                  "label": "Upload draft",
-                  "label_source": "upload_label",
-                  "role": "primary",
-                  "description": "Upload the package into a Zenodo DRAFT and check its md5 there: a new draft, an update of the draft (its package replaced), or -- once published -- a new version. Nothing is published. Grey until every item is approved, the package matches, a token is set, and the draft does not already hold this package."
+                  "type": "custom",
+                  "key": "code_editor",
+                  "target": "zenodo_description",
+                  "options": {
+                    "language": "none",
+                    "read_only": true,
+                    "height": 90
+                  },
+                  "description": "The record description as it will appear on Zenodo (HTML)."
                 },
                 {
-                  "action": "rescan",
-                  "label": "Rescan folder",
-                  "description": "Re-read the record folder after you changed something in it. Reviews are kept; a changed item is pending again."
+                  "type": "info",
+                  "key": "gate_text",
+                  "source": "gate_text",
+                  "is_markdown": true,
+                  "description": "The package (size, md5) and what still blocks the upload."
+                },
+                {
+                  "type": "button_row",
+                  "description": "In this order: build the archive from the approved content, then upload it into a draft.",
+                  "buttons": [
+                    {
+                      "action": "build_package",
+                      "label": "Build package",
+                      "description": "Write the upload archive from the record as it is now (stored ZIP, every member CRC-checked)."
+                    },
+                    {
+                      "action": "upload_draft",
+                      "label": "Upload draft",
+                      "label_source": "upload_label",
+                      "role": "primary",
+                      "description": "Upload the package into a Zenodo DRAFT and check its md5 there: a new draft, an update of the draft (its package replaced), or -- once published -- a new version. Nothing is published. Grey until every item is approved, the package matches, a token is set, and the draft does not already hold this package."
+                    },
+                    {
+                      "action": "rescan",
+                      "label": "Rescan folder",
+                      "description": "Re-read the record folder after you changed something in it. Reviews are kept; a changed item is pending again."
+                    }
+                  ]
+                },
+                {
+                  "type": "info",
+                  "key": "upload_hint",
+                  "source": "upload_hint",
+                  "description": "Why Upload draft is grey, if it is."
                 }
               ]
             },
             {
-              "type": "info",
-              "key": "upload_hint",
-              "source": "upload_hint",
-              "description": "Why Upload draft is grey, if it is."
-            },
-            {
-              "type": "toggle",
-              "attr": "sandbox",
-              "label": "Trial run on the Zenodo sandbox",
-              "description": "Upload to sandbox.zenodo.org instead of zenodo.org. The sandbox needs its own token (Zenodo token tab)."
-            },
-            {
-              "type": "info",
-              "key": "remote_text",
-              "source": "remote_text",
-              "description": "The Zenodo draft and whether its file matches the local package."
-            },
-            {
-              "type": "info",
-              "key": "reserved_doi_text",
-              "source": "reserved_doi_text",
-              "is_markdown": true,
-              "description": "The record's DOI: reserved before publishing, or the published one."
-            },
-            {
-              "type": "info",
-              "key": "uploads_text",
-              "source": "uploads_text",
-              "is_markdown": true,
-              "description": "Every upload of this record (new draft, update, new version) and every published version, newest first -- kept in the record's review state."
-            },
-            {
-              "type": "button_row",
-              "description": "After the upload: compare the draft, approve publishing this exact package, publish.",
-              "buttons": [
+              "type": "panel",
+              "title": "DOI & publish",
+              "n_col": 1,
+              "collapsible": true,
+              "collapsed": true,
+              "sections": [
                 {
-                  "action": "reserve_doi_action",
-                  "label": "Reserve DOI",
-                  "description": "Get the record's final DOI now, before publishing -- to write into a manuscript. It sends the approved Zenodo metadata into a draft (made if there is none, no files needed). The DOI resolves once the record is published. Grey until the Zenodo metadata is approved, or when a DOI is reserved already."
+                  "type": "toggle",
+                  "attr": "sandbox",
+                  "label": "Trial run on the Zenodo sandbox",
+                  "description": "Upload to sandbox.zenodo.org instead of zenodo.org. The sandbox needs its own token (Zenodo token tab)."
                 },
                 {
-                  "action": "check_remote",
-                  "label": "Check Zenodo",
-                  "description": "Read the draft back from Zenodo and compare it with the local package."
+                  "type": "info",
+                  "key": "remote_text",
+                  "source": "remote_text",
+                  "description": "The Zenodo draft and whether its file matches the local package."
                 },
                 {
-                  "action": "approve_publish",
-                  "label": "Approve publish",
-                  "description": "Approve publishing exactly this package (its md5). A rebuilt package needs a new approval."
+                  "type": "info",
+                  "key": "reserved_doi_text",
+                  "source": "reserved_doi_text",
+                  "is_markdown": true,
+                  "description": "The record's DOI: reserved before publishing, or the published one."
                 },
                 {
-                  "action": "publish_record",
-                  "label": "Publish (irreversible)",
-                  "role": "danger",
-                  "description": "Publish the draft: it gets a DOI and can no longer be changed. You are asked three times. Grey until the draft matches the package and publishing is approved."
+                  "type": "info",
+                  "key": "uploads_text",
+                  "source": "uploads_text",
+                  "is_markdown": true,
+                  "description": "Every upload of this record (new draft, update, new version) and every published version, newest first -- kept in the record's review state."
+                },
+                {
+                  "type": "button_row",
+                  "description": "After the upload: compare the draft, approve publishing this exact package, publish.",
+                  "buttons": [
+                    {
+                      "action": "reserve_doi_action",
+                      "label": "Reserve DOI",
+                      "description": "Get the record's final DOI now, before publishing -- to write into a manuscript. It sends the approved Zenodo metadata into a draft (made if there is none, no files needed). The DOI resolves once the record is published. Grey until the Zenodo metadata is approved, or when a DOI is reserved already."
+                    },
+                    {
+                      "action": "check_remote",
+                      "label": "Check Zenodo",
+                      "description": "Read the draft back from Zenodo and compare it with the local package."
+                    },
+                    {
+                      "action": "approve_publish",
+                      "label": "Approve publish",
+                      "description": "Approve publishing exactly this package (its md5). A rebuilt package needs a new approval."
+                    },
+                    {
+                      "action": "publish_record",
+                      "label": "Publish (irreversible)",
+                      "role": "danger",
+                      "description": "Publish the draft: it gets a DOI and can no longer be changed. You are asked three times. Grey until the draft matches the package and publishing is approved."
+                    }
+                  ]
                 }
               ]
             }
@@ -1020,7 +1041,7 @@
         },
         {
           "type": "panel",
-          "title": "Zenodo token",
+          "title": "Token",
           "description": "The personal access token used to upload. Kept in the system keychain only.",
           "n_col": 1,
           "sections": [
