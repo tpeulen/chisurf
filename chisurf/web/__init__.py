@@ -140,6 +140,25 @@ PLUGIN_EXCLUDE = ("cookiecutter-chisurf-plugin",)
 #: environment). The database layer is never imported.
 MMFDB_KEEP = ("__init__.py", "config.py", "deposit", "security")
 
+#: Attributes the shipped (standalone) IMP.bff wheel cannot carry **by
+#: design**, which packed sources may still reference. The Pyodide wheel is
+#: the IMP-free core: no ``IMP.atom`` (so no PDB/mmCIF via IMP --
+#: ``read_structure_table``; chisurf's own reader handles plain PDB and the
+#: import site raises a message saying so), no RMF (``RmfStructureWriter``),
+#: no tttrlib link (``HmmSurrogate``), and no IMP model/docking engine
+#: (``DockingAssembly`` and friends -- the modelling/fret plugin is a desktop
+#: plugin). Everything else the packed sources use must be IN the wheel; the
+#: web-release test fails on anything missing but undeclared, which is how a
+#: stale wheel (no ``FitResidualFunction`` -> PSF fits dead) gets caught.
+IMPBFF_STANDALONE_ABSENT = (
+    "read_structure_table", "RmfStructureWriter",
+    "HmmSurrogate", "hmm_surrogate",
+    "DockingAssembly", "DockingParameters", "DockingResult", "DockingStop",
+    "LoadedStructure", "create_docking_assembly", "dock_minimize",
+    "estimate_docking_errors", "score_assembly",
+    "load_structure_with_particles",
+)
+
 #: The parts of ``chimol`` the page ships: its readers, which ``chisurf.core``
 #: imports; the viewer does not come.
 CHIMOL_KEEP = ("__init__.py", "io")

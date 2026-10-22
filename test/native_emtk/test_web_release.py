@@ -136,6 +136,69 @@ def test_optional_impbff_wheel_is_found_or_the_page_degrades():
     assert wheel.is_file()
 
 
+def test_the_impbff_wheel_covers_the_attributes_the_page_uses(tmp_path):
+    """The IMP.bff twin of the tttrlib wheel guard.
+
+    PSF Determination's fit leg died with ``module 'IMP.bff' has no attribute
+    'FitResidualFunction'``: the shipped IMP.bff wheel predated the current
+    source, exactly like the tttrlib wheel did. Every ``IMP.bff.<attr>`` /
+    ``from IMP.bff import <attr>`` (and ``bff.<attr>`` for the canonical
+    ``import IMP.bff as bff`` alias) the packed sources use must be defined by
+    the wheel's ``IMP/bff/__init__.py`` or exported by its extension.
+    """
+    import io
+
+    from chisurf.web import IMPBFF_STANDALONE_ABSENT, find_wheel
+    from emtk.web.serve import pack_zip
+
+    wheel_path = find_wheel("IMP.bff")
+    if wheel_path is None:
+        pytest.skip("no IMP.bff Pyodide wheel built; the page boots without it")
+    wheel = zipfile.ZipFile(io.BytesIO(wheel_path.read_bytes()))
+    init_name = next(
+        (n for n in wheel.namelist() if n.replace("\\", "/") == "IMP/bff/__init__.py"),
+        None,
+    )
+    assert init_name, "the wheel does not install IMP/bff (import IMP.bff cannot work)"
+    init = wheel.read(init_name).decode("utf-8", "replace")
+    ext = b"".join(wheel.read(n) for n in wheel.namelist() if n.endswith((".so", ".pyd")))
+    defined = set(re.findall(r"^def (\w+)", init, re.M))
+    defined |= set(re.findall(r"^class (\w+)", init, re.M))
+    defined |= set(re.findall(r"^(\w+)\s*=", init, re.M))
+    defined |= set(re.findall(r"from \.(?:\w+\.)* import (.+)", init))  # re-exports
+    defined = {d.strip() for group in defined for d in group.split(",") if d.strip()}
+
+    archive = zipfile.ZipFile(pack_zip(_bundle(), tmp_path / "app.zip"))
+    absent = set(IMPBFF_STANDALONE_ABSENT)  # IMP-bound, absent by design
+    missing = []
+    for src in sorted(n for n in archive.namelist()
+                      if n.startswith("chisurf/") and n.endswith(".py")):
+        text = archive.read(src).decode("utf-8", "replace")
+        # docstrings quote attribute paths in prose (``bff.distance_metrics``
+        # in quenching docs) -- strip them; code references survive
+        text = re.sub(r'"""(?:.|\n)*?"""|\'\'\'(?:.|\n)*?\'\'\'', "", text)
+        for attr in sorted(set(re.findall(r"\bIMP\.bff\.(\w+)", text))):
+            if attr.startswith("_") or attr.endswith("_") or attr in absent:
+                continue
+            if attr not in defined and attr.encode() not in ext:
+                missing.append(f"{src}: IMP.bff.{attr}")
+        for group in re.findall(r"from IMP\.bff import ([\w, ]+)", text):
+            for attr in (a.strip() for a in group.split(",")):
+                attr = attr.split(" as ")[0].strip()
+                if attr and attr.isidentifier() and attr not in defined and attr not in absent:
+                    missing.append(f"{src}: from IMP.bff import {attr}")
+        if re.search(r"^\s*import IMP\.bff as bff\b", text, re.M):
+            for attr in sorted(set(re.findall(r"\bbff\.(\w+)", text))):
+                if attr.startswith("_") or attr.endswith("_") or attr in absent:
+                    continue
+                if attr not in defined and attr.encode() not in ext:
+                    missing.append(f"{src}: bff.{attr}")
+    assert not missing, (
+        f"the shipped IMP.bff wheel lacks attributes the packed sources use -- "
+        f"rebuild it (imp.bff tools/pyodide/build_wheel.sh): {sorted(set(missing))[:10]}"
+    )
+
+
 # -- the bundle --------------------------------------------------------------- #
 
 def test_bundle_ships_shell_emtk_and_wheels_without_qt_or_test_trees(tmp_path):
