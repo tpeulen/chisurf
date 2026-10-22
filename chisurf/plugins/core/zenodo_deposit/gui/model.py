@@ -1006,7 +1006,8 @@ class ZenodoDepositModel:
         """
         if not row or self.record is None or self.item is None:
             return
-        folder = self.open_record.folder / self.item.id
+        folder = (self.open_record.folder / self.item.id
+                  if self.preview_kind == "listing" else self.open_record.folder)
         key = str(row.get("key") or row.get("name") or "")
         path = folder / key
         part, of = "", ""
@@ -1035,31 +1036,10 @@ class ZenodoDepositModel:
         except UnicodeDecodeError:
             text, binary = "", True
         if suffix in self._VIEW_TTTR:
-            try:
-                # The TTTR inspector (plugins/tttr/tttr_header_edit) is the one
-                # tool that reads TTTR files: its view model provides both the
-                # header tags and the photon preview.
-                from chisurf.plugins.tttr.tttr_header_edit.gui.view_model import (
-                    HeaderEditorViewModel,
-                )
-
-                vm = HeaderEditorViewModel()
-                vm.load_file(str(path))
-                rows = vm.photon_rows
-                head = f"**{rel}** -- {vm.source_container.upper()} container"
-                if of:
-                    head += f" ({of}, series {part})"
-                info = (head + "\n\n" + vm.photon_summary +
-                        "\n\nShowing the first {:,} events -- the same photon "
-                        "table as the *TTTR inspector*. Macro/micro times are "
-                        "the format's raw clock; the header tags carry units "
-                        "and setup.".format(len(rows)))
-                self.file_view = {"path": str(path), "title": rel, "language": "Markdown",
-                                  "text": info, "markdown": True, "photons": rows,
-                                  "series": of}
-                return
-            except Exception as exc:  # noqa: BLE001 - fall through to the card
-                self.message = f"photon table failed ({exc}); showing the info card"
+            title = rel + (f"  ({of}, series {part})" if of else "")
+            self.file_view = {"kind": "tttr", "path": str(path), "title": title,
+                              "series": of}
+            return
         if binary:
             info = (f"**{rel}** -- {_file_kind(rel)}, {path.stat().st_size:,} bytes.\n\n"
                     "Binary raw data: not shown as text. The measurement's sidecar "
@@ -1086,6 +1066,13 @@ class ZenodoDepositModel:
         files under it; a file alone is a row of its own.
         """
         if self.preview_kind != "listing":
+            # A file item (README, metadata.cif, a sidecar): one row, double
+            # click opens it in the modal viewer like any listed file.
+            if self.preview_kind in ("markdown", "json", "mmcif", "text"):
+                path = self.open_record.folder / self.item.id
+                return [{"key": self.item.id, "parent": "", "name": self.item.id,
+                         "count": "", "size": _size(path.stat().st_size),
+                         "kind": _file_kind(self.item.id)}]
             return []
         from mmfdb.deposit.record import content_files
 

@@ -764,93 +764,8 @@
             },
             {
               "type": "custom",
-              "key": "code_editor",
-              "target": "preview_json",
-              "hidden_when": {
-                "attr": "editor_kind",
-                "not_equals": "json"
-              },
-              "options": {
-                "language": "json",
-                "read_only": true,
-                "height": 240,
-                "stretch": 1,
-                "min_height": 140
-              },
-              "description": "The selected JSON file, read-only."
-            },
-            {
-              "type": "custom",
-              "key": "code_editor",
-              "target": "preview_cif",
-              "hidden_when": {
-                "attr": "editor_kind",
-                "not_equals": "mmcif"
-              },
-              "options": {
-                "language": "mmcif",
-                "read_only": true,
-                "height": 240,
-                "stretch": 1,
-                "min_height": 140
-              },
-              "description": "The selected flrCIF/mmCIF file, read-only, highlighted: tags, loops and text fields."
-            },
-            {
-              "type": "choice",
-              "attr": "md_mode",
-              "label": "Show",
-              "style": "radio",
-              "options": [
-                "Preview",
-                "Source"
-              ],
-              "hidden_when": {
-                "attr": "md_view",
-                "equals": ""
-              },
-              "description": "Preview: the Markdown rendered, roughly as Zenodo shows it. Source: the text as it is in the file.",
-              "descriptions": [
-                "The Markdown rendered, roughly as Zenodo shows it.",
-                "The text exactly as it is in the file."
-              ]
-            },
-            {
-              "type": "info",
-              "key": "md_rendered",
-              "source": "preview_md_rendered",
-              "is_markdown": true,
-              "hidden_when": {
-                "attr": "md_view",
-                "not_equals": "preview"
-              },
-              "description": "The selected Markdown file, rendered."
-            },
-            {
-              "type": "custom",
-              "key": "code_editor",
-              "target": "preview_md",
-              "hidden_when": {
-                "attr": "md_view",
-                "not_equals": "source"
-              },
-              "options": {
-                "language": "markdown",
-                "read_only": true,
-                "height": 240,
-                "stretch": 1,
-                "min_height": 140
-              },
-              "description": "The selected Markdown file's source, read-only."
-            },
-            {
-              "type": "custom",
               "key": "data_table",
-              "hidden_when": {
-                "attr": "editor_kind",
-                "not_equals": "listing"
-              },
-              "description": "The selected folder's files. A numbered series (the rollover files of one acquisition) is one row: ▸ shows its files.",
+              "description": "The selected item's files. Double-click a file to view it in a modal -- text and JSON in a code viewer, Markdown rendered, TTTR files (ht3/ptu/...) open the TTTR inspector with their header tags and photon table. A numbered series (the rollover files of one acquisition) is one foldable row and opens its first file.",
               "options": {
                 "source": "item_files",
                 "row_key": "key",
@@ -888,23 +803,6 @@
                 ],
                 "activated_call": "open_file_view"
               }
-            },
-            {
-              "type": "custom",
-              "key": "code_editor",
-              "target": "preview_txt",
-              "hidden_when": {
-                "attr": "editor_kind",
-                "not_equals": "text"
-              },
-              "options": {
-                "language": "none",
-                "read_only": true,
-                "height": 240,
-                "stretch": 1,
-                "min_height": 140
-              },
-              "description": "The selected file's text, read-only."
             }
           ]
         },

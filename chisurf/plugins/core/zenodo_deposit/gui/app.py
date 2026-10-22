@@ -60,6 +60,10 @@ class ZenodoDepositApp(ImApp):
                                         key="file-view")
         self.file_editor = None          # TextEditor, rebuilt when the file changes
         self.file_editor_path = None
+        self.tttr_window = DialogWindow("TTTR Inspector", size=(1100.0, 760.0),
+                                        key="tttr-inspector")
+        self.inspector = None            # NativeHeaderEditor of the open TTTR file
+        self.inspector_path = None
         self.publish_window = DialogWindow("Publish", size=(560.0, 190.0),
                                            key="zenodo-deposit-publish", fit_height=True)
         self.docks = DockManager(Region("deposit"))
@@ -82,6 +86,7 @@ class ZenodoDepositApp(ImApp):
         im.end_disabled()
         self.help_window.draw(box)
         self.draw_file_window(box)
+        self.draw_tttr_window(box)
         self.tour.draw(*vp.size)
         self.draw_dialog(box)
         self.draw_progress(box)
@@ -117,7 +122,7 @@ class ZenodoDepositApp(ImApp):
         text files in a read-only code editor, Markdown rendered, binary raw
         data as a short info card."""
         m = self.model
-        if m.file_view is None:
+        if m.file_view is None or m.file_view.get("kind") == "tttr":
             self.file_window.hide()
             return
         self.file_window.title = f"File: {m.file_view['title']}"
@@ -125,26 +130,7 @@ class ZenodoDepositApp(ImApp):
         pressed = self.file_window.begin(box)
         from emtk.widgets.markdown import render_markdown
 
-        if m.file_view.get("photons"):
-            render_markdown(m.file_view["text"])
-            from emtk.widgets.data_table import TableBinding, draw_table
-
-            path = m.file_view["path"]
-            if getattr(self, "photon_table_path", None) != path:
-                section = {"type": "custom", "key": "data_table",
-                           "options": {"source": "file_view_photons", "row_key": "i",
-                                       "editable": False, "height": 300, "stretch": 1.0,
-                                       "min_height": 120,
-                                       "columns": [
-                                           {"key": "i", "title": "#", "align": "right"},
-                                           {"key": "rch", "title": "Routing ch", "align": "right"},
-                                           {"key": "macro", "title": "Macro time (raw)", "align": "right"},
-                                           {"key": "micro", "title": "Micro time (raw)", "align": "right"},
-                                       ]}}
-                self.photon_table = TableBinding(section, m)
-                self.photon_table_path = path
-            draw_table(self.photon_table, "file-view-photons")
-        elif m.file_view.get("markdown"):
+        if m.file_view.get("markdown"):
             render_markdown(m.file_view["text"])
         else:
             from emtk.widgets.text_editor import TextEditor, shipped_languages
@@ -166,6 +152,54 @@ class ZenodoDepositApp(ImApp):
                 editor.scroll(-3 if io.mouse_wheel > 0 else 3)
         self.file_window.end()
         if pressed == "close":
+            m.close_file_view()
+
+    def draw_tttr_window(self, box: Any) -> None:
+        """A double-clicked TTTR file opens the TTTR inspector itself (the
+        plugins/tttr/tttr_header_edit tool) in a modal: header tags and the
+        photon table, loaded in the background so big files do not stall."""
+        m = self.model
+        fv = m.file_view
+        if not fv or fv.get("kind") != "tttr":
+            self.tttr_window.hide()
+            if self.inspector is not None:      # released with the view
+                self.inspector.close()
+                self.inspector, self.inspector_path = None, None
+            return
+        path = fv["path"]
+        if self.inspector_path != path:
+            if self.inspector is not None:
+                self.inspector.close()
+            from chisurf.plugins.tttr.tttr_header_edit.gui.native import (
+                NativeHeaderEditor,
+            )
+
+            self.inspector = NativeHeaderEditor()
+            self.inspector_path = path
+            self.inspector.load(path)          # background job
+        self.tttr_window.title = f"TTTR Inspector — {fv['title']}"
+        self.tttr_window.show()
+        pressed = self.tttr_window.begin(box)
+        inspector = self.inspector
+        if inspector is not None:
+            inspector.job.poll()
+            x, y = im.get_cursor_screen_pos()
+            width, height = im.get_content_region_avail()[:2]
+            inspector.docks.draw((x, y, max(100.0, width), max(120.0, height)))
+            if inspector.dialog is not None:   # its Open / Save-as-PTU chooser
+                if im.begin("Header file chooser"):
+                    result = inspector.dialog.draw()
+                    if result is not None:
+                        callback = inspector.dialog_callback
+                        inspector.dialog = None
+                        if result:
+                            callback(result)
+                im.end()
+        self.tttr_window.end()
+        if pressed == "close":
+            if inspector is not None:
+                inspector.close()
+            self.inspector, self.inspector_path = None, None
             m.close_file_view()
 
     def draw_progress(self, box: Any) -> None:
