@@ -125,7 +125,26 @@ class ZenodoDepositApp(ImApp):
         pressed = self.file_window.begin(box)
         from emtk.widgets.markdown import render_markdown
 
-        if m.file_view.get("markdown"):
+        if m.file_view.get("photons"):
+            render_markdown(m.file_view["text"])
+            from emtk.widgets.data_table import TableBinding, draw_table
+
+            path = m.file_view["path"]
+            if getattr(self, "photon_table_path", None) != path:
+                section = {"type": "custom", "key": "data_table",
+                           "options": {"source": "file_view_photons", "row_key": "i",
+                                       "editable": False, "height": 300, "stretch": 1.0,
+                                       "min_height": 120,
+                                       "columns": [
+                                           {"key": "i", "title": "#", "align": "right"},
+                                           {"key": "rch", "title": "Routing ch", "align": "right"},
+                                           {"key": "macro", "title": "Macro time (raw)", "align": "right"},
+                                           {"key": "micro", "title": "Micro time (raw)", "align": "right"},
+                                       ]}}
+                self.photon_table = TableBinding(section, m)
+                self.photon_table_path = path
+            draw_table(self.photon_table, "file-view-photons")
+        elif m.file_view.get("markdown"):
             render_markdown(m.file_view["text"])
         else:
             from emtk.widgets.text_editor import TextEditor, shipped_languages

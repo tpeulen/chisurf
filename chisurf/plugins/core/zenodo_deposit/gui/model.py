@@ -989,6 +989,14 @@ class ZenodoDepositModel:
                        ".sql": "SQL", ".txt": None, ".csv": None, ".log": None,
                        ".ini": None, ".dat": None, ".set": None}
     _VIEW_TEXT_CAP = 2_000_000  # bytes read as text at most
+    _VIEW_TTTR = {".ht3", ".ptu", ".pt3", ".spc", ".sdt"}  # read as photon tables
+    _VIEW_PHOTON_ROWS = 400    # events shown in the table
+
+    @property
+    def file_view_photons(self) -> list[dict]:
+        """The photon-table rows of the open file view (source of its table)."""
+        fv = self.file_view or {}
+        return fv.get("photons", [])
 
     def open_file_view(self, row: dict | None) -> None:
         """Show a file of the selected item's folder in the modal viewer.
@@ -1026,6 +1034,31 @@ class ZenodoDepositModel:
             binary = text.count("\x00") + sum(1 for ch in text[:4000] if ord(ch) < 9) > 8
         except UnicodeDecodeError:
             text, binary = "", True
+        if suffix in self._VIEW_TTTR:
+            try:
+                import numpy as np
+                import tttrlib
+
+                t = tttrlib.TTTR(str(path))
+                n = int(t.n_valid_events) or int(t.n_records_in_file)
+                k = min(n, self._VIEW_PHOTON_ROWS)
+                mt, ut, rch = t.macro_times, t.micro_times, t.routing_channels
+                rows = [{"i": i + 1, "rch": str(int(rch[i])),
+                         "macro": f"{int(mt[i]):,}", "micro": str(int(ut[i]))}
+                        for i in range(k)]
+                used = sorted(int(c) for c in (t.get_used_routing_channels()
+                                               if hasattr(t, "get_used_routing_channels") else []))
+                info = (f"**{rel}** -- {t.get_tttr_record_type()}, "
+                        f"{t.get_tttr_container_type()} container\n\n"
+                        f"{n:,} events ({t.acquisition_time:.1f} s); routing channels "
+                        f"{used}; showing the first {k:,}. Macro/micro times are the "
+                        "format's raw clock; the sidecar and header carry units and setup.")
+                self.file_view = {"path": str(path), "title": rel, "language": "Markdown",
+                                  "text": info, "markdown": True, "photons": rows,
+                                  "series": of}
+                return
+            except Exception as exc:  # noqa: BLE001 - fall through to the card
+                self.message = f"photon table failed ({exc}); showing the info card"
         if binary:
             info = (f"**{rel}** -- {_file_kind(rel)}, {path.stat().st_size:,} bytes.\n\n"
                     "Binary raw data: not shown as text. The measurement's sidecar "
