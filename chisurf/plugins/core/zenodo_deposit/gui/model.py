@@ -32,6 +32,8 @@ from mmfdb.deposit import (
     publish,
     record_status,
     reserve_doi,
+    host_of,
+    remote_view,
     upload_history,
     upload_kind,
     upload_plan,
@@ -148,7 +150,7 @@ class ZenodoDepositModel:
         #: The file shown in the modal viewer: {"path", "title", "language",
         #: "text", "markdown"} -- set by open_file_view, cleared by close_file_view.
         self.file_view: dict | None = None
-        self.sandbox = False
+        self._sandbox = False
         #: What is typed in the token field; cleared once it is stored.
         self.token_entry = ""
         self.token_check = ""
@@ -185,7 +187,7 @@ class ZenodoDepositModel:
                 self._records.append({"name": p.name, "state": f"unreadable: {exc}",
                                       "review": "", "remote": "", "pick": False})
                 continue
-            self._records.append(self._record_row(rec))
+            self._records.append(self._record_row(rec, host_of(self._base)))
         unscanned = [d for d in sorted(root.iterdir()) if d.is_dir()
                      and not (root / f"{d.name}.deposit.json").exists()] if root.is_dir() else []
         for d in unscanned:
@@ -200,8 +202,8 @@ class ZenodoDepositModel:
                      "no package": "no package yet"}
 
     @staticmethod
-    def _record_row(rec: DepositRecord) -> dict:
-        st = record_status(rec)
+    def _record_row(rec: DepositRecord, host: str) -> dict:
+        st = record_status(rec, host)
         c = rec.counts()
         return {"name": rec.name, "pick": False,
                 "state": "cleared for upload" if st["gate"] == "cleared" else st["gate"],
@@ -243,13 +245,14 @@ class ZenodoDepositModel:
         names = self._picked_uploads()
         skipped = sorted(self.picked - set(names))
         make = self._client()
+        host = self._host
         root = Path(self.data_root)
 
         def work():
             done = []
             for i, name in enumerate(names, 1):
                 rec = DepositRecord.load(root / name)
-                kind = upload_kind(rec)
+                kind = upload_kind(rec, host)
                 self.busy_step = f"{i}/{len(names)}: {name} ({kind})"
                 try:
                     upload(rec, make())
@@ -1270,10 +1273,10 @@ class ZenodoDepositModel:
     def remote_text(self) -> str:
         if self.record is None:
             return ""
-        r = self.record.remote
+        r = self._r()
         if not r.get("deposition_id"):
             return "Zenodo: not uploaded."
-        diff = compare(self.record)
+        diff = compare(self.record, self._host)
         return (f"Zenodo draft {r['deposition_id']} ({r.get('state', '?')}), checked "
                 f"{r.get('checked_at', 'never')}: "
                 + ("matches the package." if not diff else "; ".join(diff))
@@ -1287,15 +1290,15 @@ class ZenodoDepositModel:
             return "Upload draft"
         return {"new": "Upload draft", "update": "Update draft",
                 "new version": "Upload new version", "current": "Draft is up to date"
-                }[upload_kind(self.record)]
+                }[upload_kind(self.record, self._host)]
 
     @property
     def uploads_text(self) -> str:
         """Every upload of this record and every published version, newest first."""
         if self.record is None:
             return ""
-        r = self.record.remote
-        ups, pubs = upload_history(self.record), list(r.get("published", []))
+        r = self._r()
+        ups, pubs = upload_history(self.record, self._host), list(r.get("published", []))
         if r.get("doi"):
             pubs.append({"deposition_id": r["deposition_id"], "doi": r["doi"],
                          "published_at": r.get("published_at", "")})
@@ -1389,18 +1392,18 @@ class ZenodoDepositModel:
         if name in ("rescan", "build_package"):
             return has_rec and idle
         if name == "check_remote":
-            return has_rec and idle and bool(self.open_record.remote.get("deposition_id"))
+            return has_rec and idle and bool(self._r().get("deposition_id"))
         if name == "reserve_doi_action":
             if not (has_rec and idle and bool(self.token_source)):
                 return False
-            r, meta = self.open_record.remote, self.open_record.item(METADATA_ITEM)
+            r, meta = self._r(), self.open_record.item(METADATA_ITEM)
             return (not r.get("reserved_doi") and not r.get("doi")
                     and meta.status == "approved" and not meta.errors)
         if name == "upload_checked":
             return idle and bool(self.token_source) and bool(self._picked_uploads())
         if name == "upload_draft":
             return (has_rec and idle and bool(self.token_source) and not blockers(self.record)
-                    and upload_kind(self.record) != "current")
+                    and upload_kind(self.record, self._host) != "current")
         if name in ("save_token",):
             return idle and bool(self.token_entry.strip())
         if name == "test_token":
@@ -1409,11 +1412,11 @@ class ZenodoDepositModel:
             return idle and self.token_source in ("keychain", credentials.UNCHECKED)
         if name == "approve_publish":
             return has_rec and idle and bool(self.open_record.remote.get("deposition_id")) \
-                and not compare(self.record) and not self.open_record.remote.get("doi")
+                and not compare(self.record, self._host) and not self._r().get("doi")
         if name == "publish_record":
             return has_rec and idle and bool(self.token_source) \
-                and not blockers(self.record, for_publish=True) \
-                and not self.open_record.remote.get("doi")
+                and not blockers(self.record, for_publish=True, host=self._host) \
+                and not self._r().get("doi")
         return True
 
     # ── the one line that says what to do next ───────────────────────────
@@ -1428,8 +1431,9 @@ class ZenodoDepositModel:
         if self.record is None:
             return ("**Pick a record** in the list above, or make a new one in *1 · Create*.")
         rec = self.record
-        if rec.remote.get("doi"):
-            return f"**Done:** {rec.name} is published, DOI {rec.remote['doi']}."
+        r = self._r()
+        if r.get("doi"):
+            return f"**Done:** {rec.name} is published, DOI {r['doi']}."
         if not any(i.role in ("measurement", "calibration") for i in rec.items):
             return ("**Add data** (*1 · Create*): name an item, then *Add files…* or "
                     "*Add folder…*.")
@@ -1452,10 +1456,10 @@ class ZenodoDepositModel:
         if b:
             return ("**Build the package** (*3 · Upload*): everything is approved, the "
                     "archive must be built from exactly this content.")
-        if not rec.remote.get("deposition_id"):
+        if not self._r().get("deposition_id"):
             return ("**Upload the draft** (*3 · Upload*). Nothing is published; you can "
                     "still look at the draft on Zenodo afterwards.")
-        diff = compare(rec)
+        diff = compare(rec, self._host)
         if diff:
             return f"**Check the draft:** {'; '.join(diff)}. Upload again or *Check Zenodo*."
         if rec.publish.status != "approved" or rec.publish.digest != rec.package.get("md5"):
@@ -1465,8 +1469,37 @@ class ZenodoDepositModel:
 
     # ── the Zenodo token ─────────────────────────────────────────────────
     @property
+    def sandbox(self) -> bool:
+        """The sandbox switch: sandbox.zenodo.org instead of zenodo.org.
+
+        Flipping it re-reads the records for the other repository -- the two
+        keep separate remote states, so a trial run on the sandbox never
+        touches what the tool knows (or would upload) about production.
+        """
+        return self._sandbox
+
+    @sandbox.setter
+    def sandbox(self, on: bool) -> None:
+        if on == self._sandbox:
+            return
+        self._sandbox = bool(on)
+        self.refresh_records()
+        if self.record is not None:
+            self.record = DepositRecord.load(self.record.folder)
+
+    @property
     def _base(self) -> str:
         return SANDBOX if self.sandbox else PRODUCTION
+
+    @property
+    def _host(self) -> str:
+        """Which repository the tool talks to now (sandbox or production)."""
+        return host_of(self._base)
+
+    def _r(self) -> dict:
+        """The open record's remote state for THIS repository: a sandbox trial
+        run never mixes with the production state (and the other way round)."""
+        return remote_view(self.open_record, self._host)
 
     @property
     def token_source(self) -> str:
@@ -1482,7 +1515,7 @@ class ZenodoDepositModel:
         where = "sandbox.zenodo.org" if self.sandbox else "zenodo.org"
         src = self.token_source
         state = {"keychain": "stored in the system keychain",
-                 "environment": "taken from the ZENODO_TOKEN environment variable",
+                 "environment": f"taken from the {'ZENODO_SANDBOX_TOKEN' if self.sandbox else 'ZENODO_TOKEN'} environment variable",
                  credentials.UNCHECKED: "not looked up yet -- the system keychain is read "
                                         "when you press *Test token* or upload",
                  "": "**not set** -- uploading is impossible until you enter one"}[src]
@@ -1544,7 +1577,7 @@ class ZenodoDepositModel:
         if self.record is None or not self.record.package.get("md5"):
             return []
         rows = []
-        for op in upload_plan(self.record)["ops"]:
+        for op in upload_plan(self.record, self._host)["ops"]:
             act = {"upload": "→ upload", "replace": "→ replace",
                    "keep": "= identical", "delete": "× delete"}[op["action"]]
             rows.append({"file": op["file"], "action": act,
@@ -1562,7 +1595,7 @@ class ZenodoDepositModel:
             return ""
         if not self.record.package.get("md5"):
             return "No package yet -- build one first (tab 2, *Build package*)."
-        plan = upload_plan(self.record)
+        plan = upload_plan(self.record, self._host)
         c, where = plan["counts"], plan["deposition"]
         if plan["kind"] == "current":
             return ("Draft is up to date -- nothing to send. "
@@ -1672,7 +1705,8 @@ class ZenodoDepositModel:
 
     def upload_draft(self) -> None:
         rec, make = self.record, self._client()
-        kind = upload_kind(rec)
+        host = self._host
+        kind = upload_kind(rec, host)
         what = {"new": "uploading to a new Zenodo draft",
                 "update": "updating the Zenodo draft",
                 "new version": "uploading a new version to Zenodo"}.get(kind, "uploading")
@@ -1680,7 +1714,7 @@ class ZenodoDepositModel:
         def work():
             remote = upload(rec, make())
             return f"{kind}: draft {remote['deposition_id']}, " + (
-                "; ".join(compare(rec)) or "md5 verified")
+                "; ".join(compare(rec, host)) or "md5 verified")
 
         self._run(what, work)
 
@@ -1698,7 +1732,7 @@ class ZenodoDepositModel:
     def reserved_doi_text(self) -> str:
         if self.record is None:
             return ""
-        r = self.record.remote
+        r = self._r()
         if r.get("doi"):
             return f"**DOI:** {r['doi']} (published)"
         if r.get("reserved_doi"):

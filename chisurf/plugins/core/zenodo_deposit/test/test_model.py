@@ -78,7 +78,7 @@ def model(tmp_path: Path, monkeypatch, fake: FakeZenodo) -> ZenodoDepositModel:
         (rec / rel).parent.mkdir(parents=True, exist_ok=True)
         (rec / rel).write_bytes(data)
     monkeypatch.setenv("MMFDB_DEPOSIT_ROOT", str(root))
-    m = ZenodoDepositModel(client_factory=lambda base: ZenodoClient(token="t", session=fake))
+    m = ZenodoDepositModel(client_factory=lambda base: ZenodoClient(base=base, token="t", session=fake))
     return m
 
 
@@ -342,6 +342,37 @@ def test_the_review_tree_draws_the_files(model):
     assert any(t.strip().startswith("Split-0000.ht3") for t in texts), "file row not drawn"
     # the old separate table (its Type column header) is gone
     assert "Type" not in texts
+
+
+def test_flipping_the_sandbox_switch_keeps_the_states_apart(model, fake):
+    """A sandbox trial run never mixes into what the tool knows of production."""
+    model.select_record(model.records[0])
+    _fill_metadata(model)
+    model.build_package()
+    _wait(model)
+    for row in model.items:
+        model.select_item(row)
+        model.approve_item()
+
+    # trial run on the sandbox
+    model.sandbox = True
+    assert model.upload_label() == "Upload draft" and "Nothing is on Zenodo yet." in model.preflight_text
+    model.upload_draft()
+    _wait(model)
+    assert "md5 verified" in model.message
+    assert "matches the package" in model.remote_text
+    assert {r["action"] for r in model.preflight_rows} == {"= identical"}
+
+    # back on production: nothing was uploaded there, nothing is claimed
+    model.sandbox = False
+    assert model.upload_label() == "Upload draft"
+    assert "Zenodo: not uploaded." in model.remote_text
+    assert "Nothing is on Zenodo yet." in model.preflight_text
+    assert all(r["action"] == "→ upload" for r in model.preflight_rows)
+
+    # and the sandbox state is still there when the switch goes back
+    model.sandbox = True
+    assert "matches the package" in model.remote_text
 
 
 def test_the_plan_panel_draws_with_its_table(model):
