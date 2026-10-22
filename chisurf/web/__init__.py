@@ -25,6 +25,10 @@ What the page carries
 * **IMP.bff**'s Pyodide wheel (the IMP-free core) -- the port runtime behind
   chisurf's fitting parameters. Without it the page boots anyway and the
   affected features say why they are off;
+* the **documentation** the help plugin browses: the user-facing ``docs/``
+  markdown (getting started, fundamentals, guides, concepts, manual,
+  reference) packed under its ``docs/...`` paths by :mod:`chisurf.web.docs`,
+  so the page's help lists the same pages the desktop's does;
 * any further ``--wheels``.
 
 Which plugins
@@ -251,11 +255,19 @@ def bundle(tttrlib_wheel: bool = True, impbff_wheel: bool = True):
     if not compat:
         print("warning: no tttrlib python submodules found to ship "
               "(ndimage/signal/interpolate/matfile)")
+    # The help plugin's documentation: without it the page's help browser has
+    # nothing to list (the checkout's docs/ does not exist in a browser tab).
+    from chisurf.web.docs import doc_files
+
+    docs = doc_files()
+    if not docs:
+        print("warning: no documentation found to ship; the page's help "
+              "browser will be empty")
     return Bundle(
         app=APP,
         packages=["chisurf"],
         extra_packages=extra,
-        extra_files=compat,
+        extra_files={**compat, **docs},
         pyodide_packages=pyodide,
         wheels=wheels,
         exclude=tuple(exclude_built),
