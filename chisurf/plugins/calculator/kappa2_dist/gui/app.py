@@ -542,6 +542,14 @@ def make_app(kappa2: float = 0.667, **kwargs):
 
     app.gui = draw
 
+    def load_example():
+        """The demo affordance: the shipped inputs, computed and exported."""
+        from chisurf.plugins.calculator.kappa2_dist.demo import load_into
+
+        return load_into(app)
+
+    app.load_example = load_example
+
     def write(path):
         m = state._model
         if m._k2scale is None or m._k2hist is None:

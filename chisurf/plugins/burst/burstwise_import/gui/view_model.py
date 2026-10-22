@@ -58,6 +58,12 @@ class BurstwiseImportViewModel:
             except Exception:
                 logger.warning("BurstwiseImportViewModel observer failed", exc_info=True)
 
+    def load_example(self) -> None:
+        """The demo affordance: the shipped legacy sample folder, inventoried."""
+        from chisurf.plugins.burst.burstwise_import.demo import load_into
+
+        load_into(self)
+
     def set_folder(self, folder: str | Path) -> None:
         """Set active burstwise folder."""
         self.folder = str(folder).strip()

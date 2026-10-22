@@ -146,6 +146,10 @@ class RegionMleApp(ImApp):
         elif event == "start_export":
             self._request_dialog("export")
 
+    def load_example(self) -> None:
+        """The demo affordance alias for the tool's own *Load demo*."""
+        self.start_job("load_demo")
+
     def animating(self) -> bool:
         """Keep drawing while a worker runs, so its result appears."""
         return self.job.busy or self.picker.is_open or super().animating()
