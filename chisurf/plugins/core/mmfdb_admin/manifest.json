@@ -1069,6 +1069,267 @@
     {
       "name": "provenance.graph.export",
       "summary": "Export the provenance subgraph as a JSON-serializable structure."
+    },
+    {
+      "name": "project_browser.save",
+      "summary": "Authorize, allocate and publish one immutable project version atomically.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "project_name": {
+            "type": "string"
+          },
+          "project_payload": {
+            "type": "object"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "parent_version_id": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "public"
+            ]
+          },
+          "fit_count": {
+            "type": "integer"
+          },
+          "dataset_count": {
+            "type": "integer"
+          },
+          "branch_uuid": {
+            "type": "string"
+          },
+          "resource_bundle": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "project_name",
+          "project_payload"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_browser.restore",
+      "summary": "Restore the exact JSON snapshot stored on a project operation.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "version_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_browser.list",
+      "summary": "List readable canonical project versions grouped by project ID.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "show_public": {
+            "type": "boolean"
+          },
+          "search": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_browser.export_csp",
+      "summary": "Export the exact authorized snapshot as typed PTO bytes, never a client path.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "version_id": {
+            "type": "string"
+          },
+          "target_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id",
+          "target_path"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_browser.import_preview",
+      "summary": "Preview a supplied portable content bundle against the authenticated database.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "archive_base64": {
+            "type": "string"
+          },
+          "file_path": {
+            "type": "string"
+          },
+          "archive_object_uuid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "archive_base64",
+          "file_path",
+          "archive_object_uuid"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_browser.import_csp",
+      "summary": "Publish supplied exact science through the immutable-version allocator.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "archive_base64": {
+            "type": "string"
+          },
+          "file_path": {
+            "type": "string"
+          },
+          "resolve_collisions": {
+            "type": "string",
+            "enum": [
+              "rename",
+              "replace",
+              "fail"
+            ]
+          },
+          "archive_object_uuid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "archive_base64",
+          "file_path",
+          "archive_object_uuid"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_browser.delete_version",
+      "summary": "Tombstone a project version (audited, reversible only by a new version).",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "version_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_browser.create_branch",
+      "summary": "Create a new branch from an existing version.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          },
+          "from_version_id": {
+            "type": "string"
+          },
+          "branch_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "from_version_id",
+          "branch_name"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_browser.list_branches",
+      "summary": "List branches and counts exclusively from readable project versions.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_browser.version_graph",
+      "summary": "Get the full version DAG for a project.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_browser.artifacts",
+      "summary": "List all artifacts for a project version.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "version_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_browser.parameters",
+      "summary": "List all parameters for a project version (across all fits).",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "version_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id"
+        ],
+        "additionalProperties": false
+      }
     }
   ],
   "optional_requires": {
