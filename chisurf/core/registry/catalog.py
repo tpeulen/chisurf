@@ -76,8 +76,15 @@ def prefetch() -> bool:
     if ready():
         return True
     if _prefetch_thread is None or not _prefetch_thread.is_alive():
-        _prefetch_thread = threading.Thread(target=_compiled, name="chisurf-registry", daemon=True)
-        _prefetch_thread.start()
+        thread = threading.Thread(target=_compiled, name="chisurf-registry", daemon=True)
+        try:
+            thread.start()
+            _prefetch_thread = thread
+        except RuntimeError:
+            # No thread to spare (Pyodide without cross-origin isolation):
+            # compile inline once -- a slower frame, the same registry.
+            _compiled()
+            return True
     return False
 
 

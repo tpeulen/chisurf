@@ -1,6 +1,6 @@
 """Single-job execution with publication on the EMTK frame thread."""
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Event
 
 from chisurf.emtk import job_gate
@@ -34,7 +34,21 @@ class BackgroundJob:
             with job_gate.hold(ticket, self.cancelled.is_set) as go:
                 return work() if go else None
 
-        self.future = self.executor.submit(guarded)
+        try:
+            self.future = self.executor.submit(guarded)
+        except RuntimeError:
+            # No thread can be started (Pyodide without cross-origin
+            # isolation): run the work inline and hand poll() an already
+            # finished future, so publication and error reporting flow the
+            # exact same path as on a thread-capable host. An inline run
+            # cannot be cancelled -- stop() before start() still clears the
+            # gate check, and the frame blocks for the work's duration.
+            inline = Future()
+            try:
+                inline.set_result(guarded())
+            except BaseException as exc:  # noqa: BLE001 - reported via poll()
+                inline.set_exception(exc)
+            self.future = inline
         return True
 
     def poll(self):

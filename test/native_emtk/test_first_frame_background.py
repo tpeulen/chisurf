@@ -159,6 +159,58 @@ def test_registry_prefetch_reports_ready_once_read():
     assert catalog.ready() and catalog.prefetch()
 
 
+def test_background_job_runs_inline_when_no_thread_can_start(monkeypatch):
+    """The Pyodide shape: ThreadPoolExecutor.submit cannot spawn a worker.
+
+    BackgroundJob (the FCS Filter Calculator's worker, among others) then
+    runs the work inline and hands poll() an already finished future, so
+    publication and error reporting flow the exact same path as on a
+    thread-capable host -- the real-browser run caught the open dying with
+    ``RuntimeError: can't start new thread``.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
+
+    def no_workers(self, fn):
+        raise RuntimeError("can't start new thread")
+
+    monkeypatch.setattr(ThreadPoolExecutor, "submit", no_workers)
+
+    job = BackgroundJob()
+    got, failed = [], []
+    assert job.start(lambda: "done", got.append, failed.append)
+    assert job.running  # the finished future keeps the job busy until poll()
+    job.poll()
+    assert got == ["done"] and failed == []
+    assert not job.running
+    job.close()
+
+    # An inline failure reaches the error callback through the same poll().
+    job = BackgroundJob()
+    boom = RuntimeError("work exploded")
+    assert job.start(lambda: (_ for _ in ()).throw(boom), got.append, failed.append)
+    job.poll()
+    assert failed == [boom] and got == ["done"]
+    job.close()
+
+
+def test_registry_prefetch_runs_inline_when_no_thread_can_start(monkeypatch):
+    """Same shape for the registry prefetch: compile inline, report ready."""
+    import threading
+
+    from chisurf.core.registry import catalog
+
+    def no_start(self):
+        raise RuntimeError("can't start new thread")
+
+    monkeypatch.setattr(threading.Thread, "start", no_start)
+    catalog.refresh()
+    catalog._prefetch_thread = None
+    assert not catalog.ready()
+    assert catalog.prefetch() and catalog.ready()
+
+
 def test_plugin_manifests_are_read_once_and_handed_out_as_copies(monkeypatch):
     from chisurf.emtk import plugins
 
