@@ -885,7 +885,8 @@
                     "align": "right",
                     "tooltip": "Size of the file, or of the whole series."
                   }
-                ]
+                ],
+                "activated_call": "open_file_view"
               }
             },
             {

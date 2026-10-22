@@ -56,6 +56,10 @@ class ZenodoDepositApp(ImApp):
         self.progress_window = DialogWindow("Working", size=(520.0, 170.0), close_button=False,
                                             key="zenodo-deposit-progress", escape_closes=False,
                                             fit_height=True)
+        self.file_window = DialogWindow("File", size=(900.0, 620.0),
+                                        key="file-view")
+        self.file_editor = None          # TextEditor, rebuilt when the file changes
+        self.file_editor_path = None
         self.publish_window = DialogWindow("Publish", size=(560.0, 190.0),
                                            key="zenodo-deposit-publish", fit_height=True)
         self.docks = DockManager(Region("deposit"))
@@ -77,6 +81,7 @@ class ZenodoDepositApp(ImApp):
         self.docks.draw(box)
         im.end_disabled()
         self.help_window.draw(box)
+        self.draw_file_window(box)
         self.tour.draw(*vp.size)
         self.draw_dialog(box)
         self.draw_progress(box)
@@ -106,6 +111,43 @@ class ZenodoDepositApp(ImApp):
             self.model.confirm_publish()
         elif no or pressed == "close":
             self.model.cancel_publish()
+
+    def draw_file_window(self, box: Any) -> None:
+        """The file a reviewer double-clicked in the file listing, in a modal:
+        text files in a read-only code editor, Markdown rendered, binary raw
+        data as a short info card."""
+        m = self.model
+        if m.file_view is None:
+            self.file_window.hide()
+            return
+        self.file_window.title = f"File: {m.file_view['title']}"
+        self.file_window.show()
+        pressed = self.file_window.begin(box)
+        from emtk.widgets.markdown import render_markdown
+
+        if m.file_view.get("markdown"):
+            render_markdown(m.file_view["text"])
+        else:
+            from emtk.widgets.text_editor import TextEditor, shipped_languages
+
+            path = m.file_view["path"]
+            if self.file_editor is None or self.file_editor_path != path:
+                langs = {k.lower(): v for k, v in shipped_languages().items()}
+                language = langs.get(str(m.file_view.get("language") or "").lower())
+                self.file_editor = TextEditor(m.file_view["text"], language=language,
+                                              read_only=True)
+                self.file_editor_path = path
+            editor = self.file_editor
+            cb = self.file_window.content_box
+            ex, ey = (cb[0], cb[1]) if cb else (0.0, 0.0)
+            avail_w, avail_h = im.get_content_region_avail()[:2]
+            editor.draw(im.get_current_context().p, ex, ey, avail_w, max(avail_h, 60.0))
+            io = im.get_current_context().io
+            if io.mouse_wheel and im.is_item_hovered():
+                editor.scroll(-3 if io.mouse_wheel > 0 else 3)
+        self.file_window.end()
+        if pressed == "close":
+            m.close_file_view()
 
     def draw_progress(self, box: Any) -> None:
         """While a job runs: what it is, its current step, the time so far; Cancel for a build."""

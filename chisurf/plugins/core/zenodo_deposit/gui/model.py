@@ -142,6 +142,9 @@ class ZenodoDepositModel:
         self.pick_directory = os.path.expanduser("~")
         self._runner = runner
         self.note = ""
+        #: The file shown in the modal viewer: {"path", "title", "language",
+        #: "text", "markdown"} -- set by open_file_view, cleared by close_file_view.
+        self.file_view: dict | None = None
         self.sandbox = False
         #: What is typed in the token field; cleared once it is stored.
         self.token_entry = ""
@@ -979,6 +982,66 @@ class ZenodoDepositModel:
     @property
     def preview_txt(self) -> str:
         return self.preview_text if self.preview_kind in ("text", "listing") else ""
+
+    # ── the file viewer (double click in the file listing) ────────────────
+    _VIEW_LANGUAGES = {".json": "JSON", ".yaml": "YAML", ".yml": "YAML",
+                       ".py": "Python", ".md": "Markdown", ".cif": "mmCIF",
+                       ".sql": "SQL", ".txt": None, ".csv": None, ".log": None,
+                       ".ini": None, ".dat": None, ".set": None}
+    _VIEW_TEXT_CAP = 2_000_000  # bytes read as text at most
+
+    def open_file_view(self, row: dict | None) -> None:
+        """Show a file of the selected item's folder in the modal viewer.
+
+        A numbered-series row (one acquisition split over rollover files)
+        shows its first file; the title says which of how many.
+        """
+        if not row or self.record is None or self.item is None:
+            return
+        folder = self.open_record.folder / self.item.id
+        key = str(row.get("key") or row.get("name") or "")
+        path = folder / key
+        part, of = "", ""
+        if not path.is_file():
+            # a series row: its key is head{first…last}tail -- show the first file
+            head, _, rest = key.partition("{")
+            if not head or not rest:
+                return
+            import glob as _glob
+            cand = sorted(Path(p) for p in
+                          _glob.glob(str(folder / (_glob.escape(head) + "*"))))
+            cand = [c for c in cand if c.is_file()]
+            if not cand:
+                return
+            path = cand[0]
+            part = key
+            of = f"1 of {len(cand)}"
+        rel = path.relative_to(folder).as_posix()
+        suffix = path.suffix.lower()
+        language = self._VIEW_LANGUAGES.get(suffix, "")
+        data = path.open("rb").read(self._VIEW_TEXT_CAP + 1)
+        truncated = len(data) > self._VIEW_TEXT_CAP
+        try:
+            text = data[: self._VIEW_TEXT_CAP].decode("utf-8")
+            binary = text.count("\x00") + sum(1 for ch in text[:4000] if ord(ch) < 9) > 8
+        except UnicodeDecodeError:
+            text, binary = "", True
+        if binary:
+            info = (f"**{rel}** -- {_file_kind(rel)}, {path.stat().st_size:,} bytes.\n\n"
+                    "Binary raw data: not shown as text. The measurement's sidecar "
+                    "JSON and the protocol carry its parameters; the manifest holds its "
+                    "sha256.")
+            self.file_view = {"path": str(path), "title": rel, "language": "Markdown",
+                              "text": info, "markdown": True}
+        else:
+            if truncated:
+                text += "\n… (truncated)"
+            self.file_view = {"path": str(path), "title": rel if not of else f"{rel}  ({of}, series {part})",
+                              "language": language or None, "text": text,
+                              "markdown": suffix == ".md"}
+
+    def close_file_view(self) -> None:
+        self.file_view = None
 
     @property
     def item_files(self) -> list[dict]:
