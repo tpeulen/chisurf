@@ -56,6 +56,77 @@ def test_required_tttrlib_wheel_is_found():
     )
 
 
+def test_the_tttrlib_wheel_covers_the_compat_modules_fast_paths(tmp_path):
+    """Every compiled call the shipped pure-Python tttrlib modules make exists
+    in the shipped wheel.
+
+    The PSF Determination page died with ``module 'tttrlib' has no attribute
+    'ndi_label'``: the Pyodide wheel predated tttrlib's ndimage C ops, while
+    the compat modules -- copied from a *current* install -- called fast paths
+    the wheel never compiled. Nothing compared the two ends; this does,
+    statically: every ``_t.<name>(`` a compat module calls must be defined by
+    the wheel's generated ``tttrlib/__init__.py`` or exported by its extension.
+    """
+    import io
+
+    from chisurf.web import TTTRLIB_PYTHON_MODULES, find_wheel
+    from emtk.web.serve import pack_zip
+
+    archive = zipfile.ZipFile(pack_zip(_bundle(), tmp_path / "app.zip"))
+    compat = {
+        name: archive.read(name).decode("utf-8")
+        for name in archive.namelist()
+        if name.startswith("chisurf/web/_tttrlib_compat/") and name.endswith(".py")
+    }
+    assert compat, (
+        "the bundle ships no tttrlib compat modules; the page cannot filter an image"
+    )
+
+    wheel_path = find_wheel("tttrlib")
+    assert wheel_path is not None and wheel_path.is_file()
+    wheel = zipfile.ZipFile(io.BytesIO(wheel_path.read_bytes()))
+    init = wheel.read("tttrlib/__init__.py").decode("utf-8", "replace")
+    ext = b"".join(
+        wheel.read(n) for n in wheel.namelist() if n.endswith(".so")
+    )
+    defined = set(re.findall(r"^def (\w+)", init, re.M))
+    defined |= set(re.findall(r"^(\w+)\s*=\s*_tttrlib", init, re.M))
+    defined |= set(re.findall(r"^class (\w+)", init, re.M))
+    # module-level constants (``HMM_UNASSIGNED = cvar.HMM_UNASSIGNED``, plain
+    # dicts) -- generated __init__ files assign them, guards miss them
+    defined |= set(re.findall(r"^([A-Z][A-Z_0-9]*)\s*=", init, re.M))
+
+    missing = []
+    for name, source in compat.items():
+        for call in sorted(set(re.findall(r"\b_t\.(\w+)\(", source))):
+            if call not in defined and call.encode() not in ext:
+                missing.append(f"{name}: _t.{call}")
+
+    # And the direct uses: every ``tttrlib.<attr>`` / ``from tttrlib import
+    # <attr>`` the packed sources make must exist in the wheel or be one of
+    # the pure-Python submodules the bundle installs beside it.
+    submodules = {name.rsplit("/", 1)[-1][:-3] for name in compat} | {"pipeline"}
+    allowed = defined | submodules
+    for src in sorted(n for n in archive.namelist()
+                     if n.startswith("chisurf/") and n.endswith(".py")):
+        text = archive.read(src).decode("utf-8", "replace")
+        for attr in sorted(set(re.findall(r"\btttrlib\.(\w+)", text))):
+            if attr.startswith("_") or attr.endswith("_"):
+                continue  # dunders, and ellipses inside docstring patterns
+            if attr not in allowed:
+                missing.append(f"{src}: tttrlib.{attr}")
+        for group in re.findall(r"from tttrlib import ([\w, ]+)", text):
+            for attr in (a.strip() for a in group.split(",")):
+                attr = attr.split(" as ")[0].strip()
+                if attr and attr.isidentifier() and attr not in allowed:
+                    missing.append(f"{src}: from tttrlib import {attr}")
+    assert not missing, (
+        f"the shipped tttrlib wheel lacks the compiled fast paths the shipped "
+        f"compat modules call -- rebuild it (tttrlib tools/pyodide/build_wheel.sh): "
+        f"{missing}"
+    )
+
+
 def test_optional_impbff_wheel_is_found_or_the_page_degrades():
     from chisurf.web import find_wheel
 
