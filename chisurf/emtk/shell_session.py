@@ -407,7 +407,11 @@ class ShellProject:
     def _attach(self, session: Any) -> None:
         """Connect to *session*, follow its events and take the undo baseline."""
         self._session = session
-        if getattr(session, "server", None) is None:
+        if getattr(session, "server", None) is None or getattr(
+            session.server, "cmd_port", None
+        ) is None:
+            # No server (an adopted session) or a port-less one (the web page's
+            # in-process host): there is nothing to open a socket channel to.
             self.status = tr(
                 "This session has no local server: the project actions are not available."
             )

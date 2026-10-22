@@ -1464,7 +1464,12 @@ class EmtkShellApp(ImApp):
             # A connection of the console's own: its cells call from the console's worker thread,
             # and the docks' connection is theirs (the client serialises its own calls).
             api = getattr(session, "api", None)
-            if getattr(session, "server", None) is not None:
+            if (
+                getattr(session, "server", None) is not None
+                and getattr(session.server, "cmd_port", None) is not None
+            ):
+                # A connection of the console's own: its cells call from the console's worker thread,
+                # and the docks' connection is theirs (the client serialises its own calls).
                 from chisurf.emtk.shell_session import ProjectChannel
 
                 try:
@@ -1472,6 +1477,8 @@ class EmtkShellApp(ImApp):
                     api = self._console_channel.api
                 except Exception:  # noqa: BLE001 - the console still runs Python without ``api``
                     _log.exception("connecting the console to the session failed")
+            # else: a port-less server (the web page's in-process host) keeps
+            # the session's own API -- local mode, no sockets to connect.
             names["api"] = api
         self._console_names = names
         for console in self._python_consoles():
