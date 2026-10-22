@@ -118,7 +118,8 @@ APP = "chisurf.web:make_app"
 DEFAULT_PORT = 8790
 
 #: Loaded from the Pyodide distribution (numpy and Pillow come anyway).
-PYODIDE_PACKAGES = ("numpy", "scipy", "pyyaml", "Pillow", "lzma", "fonttools")
+PYODIDE_PACKAGES = ("numpy", "scipy", "pyyaml", "Pillow", "lzma", "fonttools",
+                    "requests", "pyodide-http")
 
 #: Entries of the ``chisurf`` package that stay behind: the Qt GUI shell this
 #: page replaces, and the cookiecutter template (no plugin). Everything else
@@ -131,8 +132,13 @@ CHISURF_EXCLUDE = ("gui",)
 PLUGIN_EXCLUDE = ("cookiecutter-chisurf-plugin",)
 
 #: The parts of ``mmfdb`` the page ships: its root re-exports ``config``, which
-#: ``chisurf.core.settings`` reads; the database layer is never imported.
-MMFDB_KEEP = ("__init__.py", "config.py")
+#: ``chisurf.core.settings`` reads, and the Zenodo deposit path
+#: (:mod:`mmfdb.deposit`, what ``chisurf.plugins.core.zenodo_deposit`` drives)
+#: with the credential store it reads (``mmfdb.security`` is inert at import:
+#: its ``__init__`` is empty and ``credentials.py`` is stdlib-only; the token
+#: store itself never runs in a tab -- a token is given or read from the
+#: environment). The database layer is never imported.
+MMFDB_KEEP = ("__init__.py", "config.py", "deposit", "security")
 
 #: The parts of ``chimol`` the page ships: its readers, which ``chisurf.core``
 #: imports; the viewer does not come.
@@ -811,6 +817,15 @@ def make_app() -> Any:
     window.
     """
     _install_tttrlib_python_modules()
+    try:
+        # ``requests`` (the Zenodo client's transport) has no sockets in a
+        # tab; pyodide-http routes it over fetch. Without the patch the page
+        # still boots -- only a deposit upload would fail.
+        import importlib  # noqa: PLC0415
+
+        importlib.import_module("pyodide_http").patch_all()
+    except Exception:  # pragma: no cover - depends on the loaded package set
+        pass
     from chisurf.emtk.main_app import EmtkShellApp
 
     store = WebSettingsStore()

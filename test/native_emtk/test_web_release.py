@@ -91,6 +91,12 @@ def test_bundle_ships_shell_emtk_and_wheels_without_qt_or_test_trees(tmp_path):
 
     # The runtime dependencies ndX pages also carry, plus emtk's draw data.
     assert "mmfdb/config.py" in names and "chimol/io/__init__.py" in names
+    # The Zenodo deposit path ships with the credential store it reads; the
+    # zenodo_deposit plugin is a window over mmfdb.deposit, so a page without
+    # it cannot open the plugin (the bug the real-browser run caught).
+    assert "mmfdb/deposit/__init__.py" in names, "no mmfdb.deposit: the Zenodo plugin dies"
+    assert "mmfdb/deposit/zenodo.py" in names and "mmfdb/deposit/record.py" in names
+    assert "mmfdb/security/credentials.py" in names, "the token store module is missing"
     assert any(n.startswith("emtk/atlas/") for n in names), "no glyph atlas: no label draws"
     assert any(n.endswith(".wgsl") for n in names), "no shader: nothing draws"
     # A wheel would have been tidier; compiled desktop extensions must not ride.
@@ -205,8 +211,11 @@ def test_build_only_site_boots_under_node(tmp_path):
     # fonttools: a frame module's import chain reaches fontTools at boot --
     # the real-browser run caught it (the node harness stubs Pyodide's
     # package loader, so it cannot see a missing distribution package).
+    # requests + pyodide-http: the Zenodo deposit client's transport, routed
+    # over fetch (a tab has no sockets).
     assert config["pyodide_packages"] == [
         "numpy", "Pillow", "scipy", "pyyaml", "lzma", "fonttools",
+        "requests", "pyodide-http",
     ]
     joined = " ".join(config["wheels"])
     assert "tttrlib" in joined, "the required tttrlib wheel is not on the page"
