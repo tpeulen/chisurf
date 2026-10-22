@@ -205,6 +205,12 @@ class BatchModel(Stepper, BatchViewModel):
         """The names of the fits (read when the step is entered, on Refresh and before a run)."""
         return list(self._fit_names)
 
+    def load_example(self) -> None:
+        """The demo affordance: the test fakes' session in, the wizard staged to run."""
+        from chisurf.plugins.core.batch_analysis.demo import load_into
+
+        load_into(self)
+
     def on_step(self, index: int) -> None:
         if self.STEPS[index].id in ("files", "run"):
             self.reload_fits()

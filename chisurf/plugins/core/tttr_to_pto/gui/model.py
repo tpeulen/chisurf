@@ -131,6 +131,12 @@ class TttrToPtoModel:
     def request_add(self) -> None:
         self.request = "add"
 
+    def load_example(self) -> None:
+        """The demo affordance: queue the shared tttr generator's SPC stream."""
+        from chisurf.plugins.core.tttr_to_pto.demo import load_into
+
+        load_into(self)
+
     def add_paths(self, paths) -> bool:
         """Unpack each container; pack all vendor files of this call together.
 

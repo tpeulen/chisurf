@@ -313,6 +313,12 @@ class FlcApp(ImApp):
                     implot.plot_scatter("chosen", np.array([x[corner]]), np.array([y[corner]]))
             implot.end_plot()
 
+    def load_example(self) -> None:
+        """The demo affordance: simulate the example stream, then run the analysis."""
+        from chisurf.plugins.fcs.flc_2d.demo import load_into
+
+        load_into(self)
+
     # ── file dialogs ───────────────────────────────────────────────────
     def _open_requested_dialog(self) -> None:
         """Turn the model's ``dialog`` request into a :class:`FileDialog`."""

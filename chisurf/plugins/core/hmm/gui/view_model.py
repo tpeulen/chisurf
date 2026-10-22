@@ -224,6 +224,12 @@ class HmmViewModel:
         """Ask the host to run :meth:`run_scan` on a background thread."""
         self.notify("start_scan")
 
+    def load_example(self) -> None:
+        """The demo affordance: the seeded two-state trace, loaded and fit."""
+        from chisurf.plugins.core.hmm.demo import load_into
+
+        load_into(self)
+
     def run(self) -> None:
         """Fit the HMM to the loaded traces (blocking; call off the UI thread)."""
         if not self.traces:

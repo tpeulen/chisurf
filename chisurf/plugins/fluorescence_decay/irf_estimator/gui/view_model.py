@@ -105,6 +105,12 @@ class IRFViewModel:
         self.range_bounds = [0.0, float(len(values) - 1)]
         self.status = f"Loaded {len(values)} channels."
 
+    def load_example(self) -> None:
+        """The demo affordance: the seeded VV/VH decay, loaded and estimated."""
+        from chisurf.plugins.fluorescence_decay.irf_estimator.demo import load_into
+
+        load_into(self)
+
     def load_file(self, path):
         from ..backend.services import load_decay_handler
 

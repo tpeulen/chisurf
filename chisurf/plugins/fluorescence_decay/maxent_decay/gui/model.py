@@ -384,6 +384,12 @@ class MEMModel:
             "donor": None if self.donor is None else self.donor.copy(),
         }
 
+    def load_example(self) -> None:
+        """The demo affordance: the seeded bi-exponential decay, loaded and reconstructed."""
+        from chisurf.plugins.fluorescence_decay.maxent_decay.demo import load_into
+
+        load_into(self)
+
     def run(self):
         snapshot = self.snapshot()
         self.result = solve_snapshot(snapshot)

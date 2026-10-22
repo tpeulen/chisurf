@@ -736,6 +736,12 @@ class FilterApp(TourTarget, ImApp):
 
         unregister_parameter_group(self.registry_owner)
 
+    def load_example(self) -> None:
+        """The demo affordance: the shipped example population, recomputed."""
+        from chisurf.plugins.fcs.fcs_filter_calculator.demo import load_into
+
+        load_into(self)
+
     def _take_correlator_files(self) -> None:
         """Read the handed-over correlator files as the mixed decay -- unless the user loaded one of their own."""
         if getattr(self.model, "_total_paths", None) and not self.mixed_from_correlator:
