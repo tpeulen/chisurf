@@ -408,6 +408,11 @@ class EmtkShellApp(ImApp):
         :mod:`chisurf.emtk.post_show`) once the session is adopted. ``True`` runs the declared
         stages, a callable ``runner(on_stage) -> metadata`` stands in for them (tests); off by
         default, so a test's shell never asks the update server.
+    settings_sink : callable, optional
+        ``settings_sink(state)`` hears :meth:`export_settings` whenever the persisted shape changes
+        (a plugin opened or closed). The desktop persists through :func:`attach_native_state`
+        instead and passes nothing; the web page sinks into ``localStorage``
+        (:func:`chisurf.web.make_app`).
     """
 
     def __init__(
@@ -419,6 +424,7 @@ class EmtkShellApp(ImApp):
         console_session_file: Any = None,
         splash: Any = None,
         post_show: Any = False,
+        settings_sink: Callable[[dict], None] | None = None,
     ) -> None:
         from chisurf.emtk.frame_modules import import_frame_modules
 
@@ -457,6 +463,8 @@ class EmtkShellApp(ImApp):
         self._canvas = (1400, 900)
         self._screenshot_pending = False
         self.loader = loader or _default_loader
+        #: ``settings_sink(export_settings())`` on a persisted-shape change; ``None`` on the desktop.
+        self._settings_sink = settings_sink
         self.window_size = (1400, 900)
         self.item_rects: dict[str, tuple] = {}
         self.hosted: dict[str, HostedPlugin] = {}
@@ -687,7 +695,22 @@ class EmtkShellApp(ImApp):
             self._focus = hosted.key
         self.status = tr("Opening {name}…").format(name=hosted.title())
         _log.info("open %s", plugin_id)
+        self._emit_settings_change()
         return hosted
+
+    def _emit_settings_change(self) -> None:
+        """Hand :meth:`export_settings` to the ``settings_sink``, once, with failures said.
+
+        The persisted shape changed (a plugin opened or closed); a sink that saves must hear it.
+        A sink that fails must not take the open/close down with it.
+        """
+        sink = getattr(self, "_settings_sink", None)
+        if sink is None:
+            return
+        try:
+            sink(self.export_settings())
+        except Exception:  # noqa: BLE001 - saving must not break opening
+            _log.exception("the settings sink failed")
 
     def instances(self, plugin_id: str) -> list[HostedPlugin]:
         """Every opening of *plugin_id* in the shell, first opened first."""
@@ -838,6 +861,7 @@ class EmtkShellApp(ImApp):
             self._focus = None
         if self._capture == hosted.key:
             self._capture = None
+        self._emit_settings_change()
 
     def _collect_builds(self) -> None:
         for plugin_id, hosted in self.hosted.items():

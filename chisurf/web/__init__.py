@@ -62,17 +62,27 @@ variable naming the file, else the newest match under a checkout's
 
 Data comes in by dropping a file (a ``.bur``, a ``.csv``, a ``.ptu``) or a whole
 folder on the view, or through *Mount folder...* (Chrome); a save is a download.
+
+The user's settings survive a reload: what the shell's
+:func:`chisurf.emtk.main_app.EmtkShellApp.export_settings` holds -- the plugins
+that were open, the ribbon -- plus both dock layouts is kept under one
+``localStorage`` key (:data:`SETTINGS_KEY`) and put back at the next boot.
+Writes go through a :class:`WebSettingsStore` (localStorage, session-only dict
+where there is none), debounced behind the shell's ``settings_sink`` and
+flushed when the page goes away.
 """
 
 from __future__ import annotations
 
 import collections
 import glob
+import json
 import logging
 import os
 import pathlib
 import sys
 import threading
+import time
 from typing import Any, Callable, Optional, Sequence
 
 __all__ = [
@@ -83,9 +93,14 @@ __all__ = [
     "MMFDB_KEEP",
     "PYODIDE_PACKAGES",
     "PLUGIN_EXCLUDE",
+    "SETTINGS_DEBOUNCE_S",
+    "SETTINGS_KEY",
+    "SETTINGS_VERSION",
     "WHEELS",
     "BusEventSubscriber",
     "WebEventHost",
+    "WebSettingsStore",
+    "WebSettingsSaver",
     "bundle",
     "find_wheel",
     "main",
@@ -508,6 +523,309 @@ def start_web_session(
     return session
 
 
+# -- user settings across reloads (localStorage through the js bridge) --------- #
+
+#: The one ``localStorage`` key the page's settings live under (namespaced, versioned).
+SETTINGS_KEY = "chisurf.web.settings.v1"
+
+#: The payload format written under :data:`SETTINGS_KEY`; a stored payload of another
+#: version is dropped rather than half-understood.
+SETTINGS_VERSION = 1
+
+#: Seconds a settings write waits for the next one (the shell's sink fires per
+#: plugin open/close; a boot's restore fires them in a burst, and a pagehide flush
+#: saves regardless).
+SETTINGS_DEBOUNCE_S = 1.5
+
+
+def _local_storage() -> Any:
+    """The browser's ``localStorage``, or ``None`` where there is none.
+
+    ``js`` only exists inside Pyodide; a stripped or privacy-restricted page can
+    also lack the storage (or its methods, when cookies are off the page is
+    still given ``localStorage`` -- but a hostile embedder may not). ``None``
+    means the store falls back to memory: settings last for the session only.
+    """
+    try:
+        from js import localStorage  # noqa: PLC0415 - only exists inside Pyodide
+    except Exception:  # noqa: BLE001 - ImportError off the page, FFI errors on a broken one
+        return None
+    for method in ("getItem", "setItem", "removeItem"):
+        if not hasattr(localStorage, method):
+            return None
+    return localStorage
+
+
+class WebSettingsStore:
+    """One JSON payload of user settings, kept across page reloads.
+
+    ``localStorage`` and not cookies: an origin gets megabytes of it rather
+    than a cookie's ~4 KB, it is never sent with a request, and it is read and
+    written synchronously right where the shell runs. Cookies would force every
+    boot through a server round-trip to learn nothing new.
+
+    The payload is a single namespaced key (``chisurf.web.settings.v1``) holding
+    one JSON object -- one write, one read, one key to clear. A quota error
+    (``setItem`` raising) degrades to the session: :meth:`set` says ``False``,
+    the page keeps running without persistence, and the notice is logged once.
+    Without a ``localStorage`` at all (tests, a host that is not a page) a
+    plain dict stands in -- same session-only behaviour, no browser needed.
+    """
+
+    def __init__(self, storage: Any = None) -> None:
+        # ``storage=None`` discovers the browser's storage; anything falsy
+        # (``False`` in the tests) forces the session-only fallback.
+        self._storage = _local_storage() if storage is None else (storage or None)
+        self._fallback: dict[str, str] = {}
+        self._warned = False
+
+    @property
+    def persistent(self) -> bool:
+        """Whether settings survive a reload (a real storage backs the store)."""
+        return self._storage is not None
+
+    def get(self, key: str = SETTINGS_KEY) -> Optional[dict]:
+        """The stored payload, or ``None``. A corrupt one is dropped, not raised on."""
+        if self._storage is None:
+            raw = self._fallback.get(str(key))
+        else:
+            try:
+                raw = self._storage.getItem(str(key))
+            except Exception:  # noqa: BLE001 - an unreadable storage reads as empty
+                _log.exception("reading the stored settings failed")
+                return None
+        if raw is None:
+            return None
+        try:
+            state = json.loads(str(raw))
+        except ValueError:
+            # A half-write or a payload of a format this page no longer speaks:
+            # drop it and boot fresh, rather than restore from a broken state.
+            _log.warning("dropping a corrupt stored settings payload")
+            self.delete(key)
+            return None
+        return state if isinstance(state, dict) else None
+
+    def set(self, key: str = SETTINGS_KEY, payload: Optional[dict] = None) -> bool:
+        """Store *payload* (the page's settings, whole); ``False`` when the storage refused."""
+        raw = json.dumps(payload if payload is not None else {})
+        try:
+            if self._storage is None:
+                self._fallback[str(key)] = raw
+            else:
+                self._storage.setItem(str(key), raw)
+            return True
+        except Exception as exc:  # noqa: BLE001 - QuotaExceededError and friends cross as JsException
+            self.failed(exc)
+            return False
+
+    def delete(self, key: str = SETTINGS_KEY) -> None:
+        """Forget the stored payload (a corrupt one, a *reset*)."""
+        self._fallback.pop(str(key), None)
+        if self._storage is not None:
+            try:
+                self._storage.removeItem(str(key))
+            except Exception:  # noqa: BLE001 - a storage that refuses writes refuses removals
+                _log.exception("removing the stored settings failed")
+
+    def failed(self, exc: Exception) -> None:
+        """Say a write was refused, once: settings last for this session only."""
+        if not self._warned:
+            self._warned = True
+            _log.warning(
+                "settings are not persisted (%s: %s); they last for this "
+                "session only", type(exc).__name__, exc)
+
+
+def capture_settings(app: Any) -> dict:
+    """The payload saved under :data:`SETTINGS_KEY`: the shell's own settings
+    (the open plugins, the ribbon) plus both dock layouts."""
+    return {
+        "version": SETTINGS_VERSION,
+        "saved_at": round(time.time(), 3),
+        "shell": app.export_settings(),
+        "docks": {
+            name: docks.state()
+            for name, docks in dict(getattr(app, "native_layouts", {})).items()
+        },
+    }
+
+
+def apply_settings(app: Any, saved: dict) -> None:
+    """Put a stored payload back: the dock layouts first, then the shell's settings.
+
+    That is the order the desktop restores in (a layout's places exist before
+    :meth:`restore_settings` reopens the plugins that go in them). Anything
+    malformed is skipped, never raised on -- a bad payload must not keep the
+    page from booting.
+    """
+    if not isinstance(saved, dict):
+        return
+    docks = saved.get("docks")
+    if isinstance(docks, dict):
+        for name, layout in dict(getattr(app, "native_layouts", {})).items():
+            state = docks.get(name)
+            if not isinstance(state, dict):
+                continue
+            try:
+                layout.restore(state)
+            except Exception:  # noqa: BLE001 - one bad layout must not stop the boot
+                _log.exception("restoring the %s dock layout failed", name)
+    shell = saved.get("shell")
+    if isinstance(shell, dict):
+        try:
+            app.restore_settings(shell)
+        except Exception:  # noqa: BLE001 - the page boots without its old settings
+            _log.exception("restoring the stored settings failed")
+
+
+class WebSettingsSaver:
+    """Writes the shell's settings through a :class:`WebSettingsStore`.
+
+    As the shell's ``settings_sink`` it saves debounced (:data:`SETTINGS_DEBOUNCE_S`):
+    plugin opens come in bursts (a restore opens several). On the page a timer is
+    JavaScript's ``setTimeout`` -- Pyodide has no thread to sleep on --; off the
+    page a :class:`threading.Timer` stands in. :meth:`flush` saves right now;
+    the page's ``pagehide`` and ``visibilitychange`` (hidden) call it, because
+    ``beforeunload`` is unreliable and a tab killed without it would lose the
+    last debounce window.
+    """
+
+    def __init__(self, app: Any, store: WebSettingsStore,
+                 debounce: float = SETTINGS_DEBOUNCE_S) -> None:
+        self.app = app
+        self.store = store
+        self.debounce = float(debounce)
+        #: Successful and refused writes (tests and diagnostics).
+        self.written = 0
+        self.refused = 0
+        self._timer: Any = None
+        self._proxy: Any = None
+        self._listeners: list[Any] = []
+
+    def __call__(self, state: dict) -> None:
+        """The shell's ``settings_sink``: the shape changed, schedule a save."""
+        self.schedule()
+
+    # -- scheduling --------------------------------------------------------- #
+    def schedule(self) -> None:
+        """Save *debounce* seconds from now; a change in the window replaces the wait."""
+        self.cancel()
+        timer = self._browser_timer(int(self.debounce * 1000))
+        if timer is not None:
+            self._timer = timer
+            return
+        try:
+            timer = threading.Timer(self.debounce, self.flush)
+            timer.daemon = True
+            timer.start()
+        except Exception:  # noqa: BLE001 - Pyodide: no threads; save right away
+            self.flush()
+            return
+        self._timer = timer
+
+    def _browser_timer(self, delay_ms: int) -> Any:
+        """A ``setTimeout`` id on the page, ``None`` off it (or on a broken bridge)."""
+        try:
+            from js import window  # noqa: PLC0415 - only exists inside Pyodide
+            from pyodide.ffi import create_proxy  # noqa: PLC0415
+        except Exception:  # noqa: BLE001 - not a page
+            return None
+        try:
+            if self._proxy is None:
+                # The proxy is held on ``self``: a collected one would take the
+                # callback's target with it and the timer would never fire.
+                self._proxy = create_proxy(self.flush)
+            return window.setTimeout(self._proxy, delay_ms)
+        except Exception:  # noqa: BLE001 - a broken bridge falls back to the thread timer
+            return None
+
+    def cancel(self) -> None:
+        """Drop a pending save."""
+        timer, self._timer = self._timer, None
+        if timer is None:
+            return
+        try:
+            if hasattr(timer, "cancel"):  # a threading.Timer
+                timer.cancel()
+            else:  # a setTimeout id
+                from js import window  # noqa: PLC0415
+
+                window.clearTimeout(timer)
+        except Exception:  # noqa: BLE001 - cancelling is best-effort
+            pass
+
+    # -- saving -------------------------------------------------------------- #
+    def flush(self, *args: Any) -> bool:
+        """Write the payload now (the pagehide shape). ``True`` when written."""
+        self.cancel()
+        if self.app is None:
+            return False
+        try:
+            payload = capture_settings(self.app)
+        except Exception:  # noqa: BLE001 - a half-built shell must not break the save
+            _log.exception("collecting the shell's settings failed")
+            return False
+        if self.store.set(SETTINGS_KEY, payload):
+            self.written += 1
+            return True
+        self.refused += 1
+        return False
+
+    def listen_to_page(self) -> bool:
+        """Flush when the page goes away: ``pagehide`` and a ``visibilitychange``
+        to hidden. ``False`` off a page (nothing to listen to)."""
+        try:
+            from js import document, window  # noqa: PLC0415 - only inside Pyodide
+            from pyodide.ffi import create_proxy  # noqa: PLC0415
+        except Exception:  # noqa: BLE001 - not a page
+            return False
+
+        def on_visibility(event: Any = None) -> None:
+            if str(getattr(document, "visibilityState", "") or "") == "hidden":
+                self.flush()
+
+        for target, name, callback in (
+            (window, "pagehide", self.flush),
+            (document, "visibilitychange", on_visibility),
+        ):
+            try:
+                proxy = create_proxy(callback)
+                self._listeners.append(proxy)  # held: a collected proxy stops listening
+                target.addEventListener(name, proxy)
+            except Exception:  # noqa: BLE001 - one listener less still leaves the flush debounced
+                _log.exception("listening for %s failed", name)
+        return True
+
+
+def make_app() -> Any:
+    """The page's factory: the emtk shell over the socket-free session, its
+    settings kept across reloads in ``localStorage``.
+
+    A stored payload (:data:`SETTINGS_KEY`, written by the shell's
+    ``settings_sink`` through a :class:`WebSettingsSaver`) is put back at boot:
+    the dock layouts, then the plugins that were open and the ribbon
+    (:meth:`EmtkShellApp.restore_settings`). Without one -- a first visit, a
+    cleared storage, a corrupt payload -- the page boots fresh, as it always
+    did. There is no splash and no update check, and the browser tab is the
+    window.
+    """
+    _install_tttrlib_python_modules()
+    from chisurf.emtk.main_app import EmtkShellApp
+
+    store = WebSettingsStore()
+    saved = store.get(SETTINGS_KEY) or {}
+    saver = WebSettingsSaver(None, store)
+    app = EmtkShellApp(
+        session_factory=start_web_session, post_show=False, settings_sink=saver
+    )
+    saver.app = app
+    if saved:
+        apply_settings(app, saved)
+    saver.listen_to_page()
+    return app
+
+
 #: Pure-Python ``tttrlib`` submodules the Pyodide wheel does not carry (it ships
 #: only the compiled extension and ``pipeline.py``). They are copied from the
 #: local installation into the archive under our own namespace (no package
@@ -559,20 +877,6 @@ def _install_tttrlib_python_modules() -> None:
         import importlib
 
         importlib.invalidate_caches()
-
-
-def make_app() -> Any:
-    """The page's factory: the emtk shell over the socket-free session.
-
-    Unlike the desktop's :func:`chisurf.emtk.main_app.make_app`, nothing is
-    persisted (no stored layout is read, none is written back) and there is no
-    splash and no update check -- a page boots fresh every time, and the
-    browser tab is its own window.
-    """
-    _install_tttrlib_python_modules()
-    from chisurf.emtk.main_app import EmtkShellApp
-
-    return EmtkShellApp(session_factory=start_web_session, post_show=False)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
