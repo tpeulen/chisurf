@@ -54,6 +54,9 @@ class HeaderEditorGui(TourTarget):
         #: The string editors of the tag table — the source of truth for the
         #: cells, committed to the model on every edit and rebuilt on load.
         self._rows: list[dict] = []
+        #: The photon preview table (a scrollable DataTable, wheel-driven).
+        self._photon_binding = None
+        self._photon_binding_model = None
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
 
         layout = Split(
@@ -284,21 +287,24 @@ class HeaderEditorGui(TourTarget):
                 n=len(self.model.photon_rows))
         )
         im.separator()
-        rows = self.model.photon_rows
-        table_h = max(float(box[3]) - 76.0, 100.0)
-        if im.begin_table("photon_table", 4, _TABLE_FLAGS | im.TableFlags.SCROLL_Y,
-                          (0, table_h)):
-            im.table_setup_column("#", im.TableColumnFlags.WIDTH_FIXED, 64.0)
-            im.table_setup_column("Routing ch", im.TableColumnFlags.WIDTH_FIXED, 110.0)
-            im.table_setup_column("Macro time (raw)", im.TableColumnFlags.WIDTH_STRETCH)
-            im.table_setup_column("Micro time (raw)", im.TableColumnFlags.WIDTH_STRETCH)
-            im.table_headers_row()
-            for row in rows:
-                im.table_next_row()
-                for col, key in enumerate(("i", "rch", "macro", "micro")):
-                    im.table_set_column_index(col)
-                    im.text(row[key])
-            im.end_table()
+        from emtk.widgets.data_table import TableBinding, draw_table
+
+        model = self.model
+        if (self._photon_binding is None
+                or self._photon_binding_model is not model):
+            section = {"type": "custom", "key": "data_table",
+                       "options": {"source": "photon_rows", "row_key": "i",
+                                   "editable": False, "height": 260.0,
+                                   "stretch": 1.0, "min_height": 100.0,
+                                   "columns": [
+                                       {"key": "i", "title": "#", "align": "right"},
+                                       {"key": "rch", "title": "Routing ch", "align": "right"},
+                                       {"key": "macro", "title": "Macro time (raw)", "align": "right"},
+                                       {"key": "micro", "title": "Micro time (raw)", "align": "right"},
+                                   ]}}
+            self._photon_binding = TableBinding(section, model)
+            self._photon_binding_model = model
+        draw_table(self._photon_binding, "photon_rows")
         self.remember("photons")
 
 
