@@ -649,7 +649,7 @@
        "type": "custom",
        "key": "data_table",
        "title": "",
-       "description": "Every item of the record; each measurement with the calibrations it uses nested under it (one calibration, stored once, can serve several). Approve a row with its button; right-click for Reject, Undo decision or Open in ndX (also a double click). ⚠ = check first; hover a row for why, its content and origin.",
+       "description": "Every item of the record, its files under it: each measurement with the calibrations it uses nested under it (one calibration, stored once, can serve several), and every folder's files under their item -- a numbered series (one acquisition over rollover files) as one foldable row. Approve a row with its button; right-click for Reject, Undo decision or Open in ndX. Double click opens a file in the modal viewer, an item in ndX. ⚠ = check first; hover a row for why, its content and origin.",
        "options": {
         "source": "items",
         "row_key": "key",
@@ -701,7 +701,7 @@
         ],
         "fit_rows": true,
         "selection_note": false,
-        "activated_call": "open_in_ndx",
+        "activated_call": "open_tree_row",
         "context_menu": [
          {
           "label": "Approve",
@@ -761,48 +761,6 @@
          "description": "Stored with your decision, e.g. which file you looked at or why you rejected the item."
         }
        ]
-      },
-      {
-       "type": "custom",
-       "key": "data_table",
-       "description": "The selected item's files. Double-click a file to view it in a modal -- text and JSON in a code viewer, Markdown rendered, TTTR files (ht3/ptu/...) open the TTTR inspector with their header tags and photon table. A numbered series (the rollover files of one acquisition) is one foldable row and opens its first file.",
-       "options": {
-        "source": "item_files",
-        "row_key": "key",
-        "tree_key": "parent",
-        "editable": false,
-        "expand": true,
-        "stretch": 1,
-        "min_height": 140,
-        "height": 240,
-        "min_column_width": 50,
-        "fit_columns": true,
-        "columns": [
-         {
-          "key": "name",
-          "title": "File",
-          "tooltip": "The file, or a numbered series {first…last}."
-         },
-         {
-          "key": "kind",
-          "title": "Type",
-          "tooltip": "What the file is, by its extension."
-         },
-         {
-          "key": "count",
-          "title": "Files",
-          "align": "right",
-          "tooltip": "How many files the series holds."
-         },
-         {
-          "key": "size",
-          "title": "Size",
-          "align": "right",
-          "tooltip": "Size of the file, or of the whole series."
-         }
-        ],
-        "activated_call": "open_file_view"
-       }
       }
      ]
     },

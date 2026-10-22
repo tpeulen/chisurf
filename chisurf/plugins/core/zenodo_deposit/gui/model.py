@@ -118,6 +118,8 @@ class ZenodoDepositModel:
         self.configs_dir = os.environ.get("MMFDB_DEPOSIT_CONFIGS", DEFAULT_CONFIGS)
         self.build_command = DEFAULT_BUILD
         self.scan_command = DEFAULT_SCAN
+        #: per-item file rows for the review tree (cleared when the record changes)
+        self._files_of: dict[str, list[dict]] = {}
         self.config_name = ""
         #: The config being edited (an example, or changes to the selected one); ``None``: none.
         self.config_draft: str | None = None
@@ -273,6 +275,7 @@ class ZenodoDepositModel:
         return self._records
 
     def select_record(self, row: dict | None) -> None:
+        self._files_of = {}
         """Open the record a row names (scanning it first when it has no review yet)."""
         if not row:
             return
@@ -820,14 +823,67 @@ class ZenodoDepositModel:
         rows = []
         for m in measurements:
             rows.append(self._row(m, m.id))
+            rows += self._file_rows(m, m.id)
             for c in uses[m.id]:
                 label = (c.removeprefix("calibrations/") if c.startswith("calibrations/")
                          else "ref: " + c.removeprefix("measurements/"))
-                rows.append(self._row(by_id[c], f"{m.id}>{c}", m.id, label, count[c]))
+                key = f"{m.id}>{c}"
+                rows.append(self._row(by_id[c], key, m.id, label, count[c]))
+                rows += self._file_rows(by_id[c], key)
         rows += [self._row(i, i.id) for i in items
                  if i.role == "calibration" and i.id not in count]
+        rows += [r for i in items if i.role == "calibration" and i.id not in count
+                 for r in self._file_rows(i, i.id)]
         rows += [self._row(i, i.id) for i in items if i.role not in ("measurement", "calibration")]
         return rows
+
+    def _file_rows(self, item, parent_key: str) -> list[dict]:
+        """An item's files as leaf rows of the review tree, under *parent_key*.
+
+        A numbered series (one acquisition over rollover files) is one foldable
+        row with its files under it. The rows carry the owning item's id, so
+        selecting one selects the item and its review; double-click opens the
+        file in the modal viewer.
+        """
+        if self.record is None:
+            return []
+        cached = self._files_of.get(f"{parent_key}")
+        if cached is not None:
+            return cached
+        rows: list[dict] = []
+        if (self.open_record.folder / item.id).is_dir():
+            from mmfdb.deposit.record import content_files
+
+            folder = self.open_record.folder / item.id
+            series: dict[tuple[str, str], list] = {}
+            for f in content_files(folder):
+                rel = f.relative_to(folder).as_posix()
+                m = _NUMBERED.search(rel)
+                key = (rel[:m.start()], rel[m.end():]) if m else (rel, "")
+                series.setdefault(key, []).append((rel, m.group(0) if m else "", f.stat().st_size))
+            for (head, tail), files in series.items():
+                kind = _file_kind(files[0][0])
+                if len(files) == 1:
+                    rel, _, size = files[0]
+                    rows.append(self._file_row(rel, rel, parent_key, kind, _size(size), item.id))
+                    continue
+                nums = sorted(n for _, n, _ in files)
+                name = f"{head}{{{nums[0]}…{nums[-1]}}}{tail}"
+                skey = f"{parent_key}|{name}"
+                rows.append(self._file_row(name, name, parent_key, kind,
+                                           f"{len(files)} files · " + _size(sum(s for *_, s in files)),
+                                           item.id, count=len(files)))
+                rows += [self._file_row(rel.rsplit("/", 1)[-1], rel, skey, kind, _size(sz), item.id)
+                         for rel, _, sz in sorted(files)]
+        self._files_of[parent_key] = rows
+        return rows
+
+    @staticmethod
+    def _file_row(shown: str, rel: str, parent: str, kind: str, size: str,
+                  item_id: str, count: int = 1) -> dict:
+        return {"key": f"{parent}|{rel}", "parent": parent, "id": item_id,
+                "item": "\u2003" + shown, "status": "", "flags": "", "role": kind,
+                "holds": size, "act": "", "detail": rel, "file": rel, "count": count}
 
     @staticmethod
     def _item_tooltip(it) -> str:
@@ -1005,11 +1061,19 @@ class ZenodoDepositModel:
         A numbered-series row (one acquisition split over rollover files)
         shows its first file; the title says which of how many.
         """
-        if not row or self.record is None or self.item is None:
+        if not row or self.record is None:
             return
-        folder = (self.open_record.folder / self.item.id
-                  if self.preview_kind == "listing" else self.open_record.folder)
-        key = str(row.get("key") or row.get("name") or "")
+        if row.get("file") and row.get("id"):
+            # a file row of the review tree: resolve against its owning item
+            owner = self.open_record.folder / str(row["id"])
+            folder = owner if owner.is_dir() else self.open_record.folder
+            key = str(row["file"])
+        else:
+            if self.item is None:
+                return
+            folder = (self.open_record.folder / self.item.id
+                      if self.preview_kind == "listing" else self.open_record.folder)
+            key = str(row.get("key") or row.get("name") or "")
         path = folder / key
         part, of = "", ""
         if not path.is_file():
@@ -1054,6 +1118,14 @@ class ZenodoDepositModel:
             self.file_view = {"path": str(path), "title": rel if not of else f"{rel}  ({of}, series {part})",
                               "language": language or None, "text": text,
                               "markdown": suffix == ".md"}
+
+    def open_tree_row(self, row: dict | None) -> None:
+        """Double click in the review tree: a file row opens the file in the
+        modal viewer (a series shows its first file), an item row opens ndX."""
+        if row and row.get("file"):
+            self.open_file_view(row)
+        else:
+            self.open_in_ndx(row)
 
     def close_file_view(self) -> None:
         self.file_view = None
@@ -1173,6 +1245,7 @@ class ZenodoDepositModel:
         """Re-read the record folder: new digests, kept reviews, changed items pending."""
         if self.record is None:
             return
+        self._files_of = {}
         self.record = scan(self.record.folder)
         self.record.save()
         self.refresh_records()

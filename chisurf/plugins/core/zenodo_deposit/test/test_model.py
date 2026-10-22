@@ -96,7 +96,8 @@ def test_an_unscanned_folder_is_listed_and_scanned_on_open(model):
     assert model.records == [{"name": "t4l-demo", "state": "not scanned", "review": "",
                               "remote": "", "pick": False}]
     model.select_record(model.records[0])
-    assert [r["id"] for r in model.items][:2] == [
+    # the item ids, with the files interleaved as their children in the tree
+    assert [r["id"] for r in model.items if not r.get("file")][:2] == [
         "measurements/2014-08-12_7.5M-urea",
         "calibrations/2014-08-12_pq-hydraharp/h2o-scatter-irf"]
     assert (model.record.folder.parent / "t4l-demo.deposit.json").is_file()
@@ -325,6 +326,24 @@ def test_a_record_is_made_by_hand_in_four_steps(model, tmp_path):
     assert model.record.item("Zenodo metadata").status == "pending"
 
 
+def test_the_review_tree_draws_the_files(model):
+    """Tab 2 is one tree: item rows carry their files; no separate file table."""
+    from emtk.testing import Driver
+
+    from chisurf.plugins.core.zenodo_deposit.gui.app import ZenodoDepositApp
+
+    app = ZenodoDepositApp(model)
+    ui = Driver(app, (1400, 900))
+    model.select_record(next(r for r in model.records if r["name"] == "t4l-demo"))
+    ui.click("2 · Review")
+    ui.frame(2)
+    texts = [t[5] for t in ui.painter.texts]
+    assert "measurements/2014-08-12_7.5M-urea" in texts
+    assert any(t.strip().startswith("Split-0000.ht3") for t in texts), "file row not drawn"
+    # the old separate table (its Type column header) is gone
+    assert "Type" not in texts
+
+
 def test_the_plan_panel_draws_with_its_table(model):
     """The upload tab opens on the Before-upload plan; its table scrolls."""
     from emtk.testing import Driver
@@ -393,9 +412,11 @@ def test_calibrations_are_nested_under_the_measurements_that_use_them(model):
     irf = "calibrations/2014-08-12_pq-hydraharp/h2o-scatter-irf"
     meas = "measurements/2014-08-12_7.5M-urea"
     rec.item(meas).uses = [irf]
+    model._files_of = {}  # the shown files follow the new nesting
     rows = model.items
     keys = [r["key"] for r in rows]
-    assert keys.index(meas) + 1 == keys.index(f"{meas}>{irf}")
+    # the calibration nests under its measurement (which now also carries its files)
+    assert keys.index(meas) < keys.index(f"{meas}>{irf}")
     child = rows[keys.index(f"{meas}>{irf}")]
     assert child["parent"] == meas and child["id"] == irf
     assert child["item"] == "2014-08-12_pq-hydraharp/h2o-scatter-irf"
@@ -403,6 +424,30 @@ def test_calibrations_are_nested_under_the_measurements_that_use_them(model):
     assert meas in model.expanded
     model.approve_item(child)  # a decision on the nested row is on the one item
     assert rec.item(irf).status == "approved"
+
+
+def test_the_files_live_in_the_review_tree(model):
+    """A folder item's files are its children; a series is one foldable row;
+    double click opens a file in the modal, not the separate table of old."""
+    model.select_record(model.records[0])
+    meas = "measurements/2014-08-12_7.5M-urea"
+    rows = {r["key"]: r for r in model.items}
+    file_row = rows[f"{meas}|Split-0000.ht3"]
+    assert file_row["parent"] == meas and file_row["id"] == meas
+    assert file_row["item"].strip() == "Split-0000.ht3"
+    assert file_row["role"] == "PicoQuant HT3 photons"
+    # selecting a file row selects its item
+    model.select_item(file_row)
+    assert model.item.id == meas
+    # a double click opens the file in the modal viewer
+    model.open_tree_row(file_row)
+    assert model.file_view["kind"] == "tttr" and model.file_view["title"] == "Split-0000.ht3"
+    # an item row keeps opening ndX
+    opened = []
+    model._ndx_opener = opened.append
+    (model.record.folder / meas / "2014-08-12_7.5M-urea.mmfdb.pto").write_bytes(b"pto")
+    model.open_tree_row(rows[meas])
+    assert opened and opened[0].name.endswith(".mmfdb.pto")
 
 
 def test_an_approval_takes_the_warning_off_its_row(model):
