@@ -27,6 +27,8 @@ The code editor below the buttons fills the rest of the window: a folder lists e
 Approve an item with the button on its row; right-click a row to Reject it, Undo the decision or open it in ndX (a double click opens it too). The Note under the item is stored with your next decision. Hover a row for its content, where it came from and the review so far. An approval records the item's content digest: when anything in the item changes later, it shows as **Pending (changed)** and must be approved again. Rescan re-reads the folder after a change.
 
 ## Upload
+*Before upload* names every file operation the upload would run now: what is sent, what replaces a changed file, what is identical already on the draft, and what would be deleted from it -- nothing leaves the machine until you press the upload button. Press *Check* (in *DOI & publish*) to compare the plan against the live draft.
+
 The Zenodo metadata at the top of *3 · Upload* is what is submitted with the draft -- the version you approved in *2 · Review*.
 
 Build package writes the archive from the record as it is now. Upload draft is grey until every item is approved and the package was built from exactly that content; it uploads into a Zenodo **draft** and checks the file's md5 there. Check Zenodo reads the draft back and compares it with the local package at any later time. The sandbox switch sends everything to sandbox.zenodo.org for a trial run.

@@ -1,80 +1,80 @@
 {
-  "_comment": "Guided tour of the Zenodo deposit tool. 'name' is the emtk control (a spec action, or a table).",
-  "steps": [
-    {
-      "title": "Name the record",
-      "text": "In <b>1 · Create</b>, type the record's name: lower case, no spaces. It becomes the folder and the archive name. (Already have one? Pick it in the list at the top instead.)",
-      "target": {
-        "name": "new_name"
-      },
-      "await": {
-        "hint": "Type a name for the record."
-      }
-    },
-    {
-      "title": "Make the record",
-      "text": "Give it a title, then press <b>Create record</b>; it stays grey until the name is valid. (A record a project script builds is under <i>Advanced</i>.)",
-      "target": {
-        "name": "create_record"
-      },
-      "await": {
-        "hint": "Create a record, or pick one in the list."
-      }
-    },
-    {
-      "title": "Put its data in",
-      "text": "Choose <b>Measurement</b> or <b>Calibration</b>, name the item, then <b>Add files…</b> or <b>Add folder…</b>. Files are hard-linked, never overwritten.",
-      "target": {
-        "name": "add_files"
-      }
-    },
-    {
-      "title": "What Zenodo shows",
-      "text": "Fill in step 3: title, creators as <code>Family, Given</code>, description, keywords. What is missing is listed under the form. Then <b>Scan for review</b>.",
-      "target": {
-        "name": "scan_for_review"
-      }
-    },
-    {
-      "title": "Pick a record",
-      "text": "Each row is one future Zenodo entry. Its review lives beside the folder, never inside the upload. Click the record you want to check.",
-      "target": {
-        "name": "records_table"
-      },
-      "await": {
-        "hint": "Click a record."
-      }
-    },
-    {
-      "title": "Flagged items first",
-      "text": "Every measurement folder, calibration folder and metadata file is one row. A <b>⚠</b> means the builder could not decide alone: data was added, or a role was inferred. Hover a row for the reason, click it for the details.",
-      "target": {
-        "name": "items_table"
-      },
-      "await": {
-        "hint": "Click an item."
-      }
-    },
-    {
-      "title": "Decide",
-      "text": "A row's <b>Approve</b> button binds your decision to the item's content: if it changes later, it is pending again. Right-click a row to <b>Reject</b> it (the record is blocked until it is fixed), undo a decision, or open it in ndX.",
-      "target": {
-        "name": "items_table"
-      }
-    },
-    {
-      "title": "Upload a draft",
-      "text": "<b>Upload draft</b> stays grey until every item is approved and the package matches what you approved. It uploads into a Zenodo <i>draft</i> and checks the md5 there; nothing is published.",
-      "target": {
-        "name": "upload_draft"
-      }
-    },
-    {
-      "title": "Publishing is separate",
-      "text": "<b>Approve publish</b> approves exactly this package; <b>Publish</b> is grey until the draft matches it. Publishing is irreversible.",
-      "target": {
-        "name": "publish_record"
-      }
-    }
-  ]
+ "_comment": "Guided tour of the Zenodo deposit tool. 'name' is the emtk control (a spec action, or a table).",
+ "steps": [
+  {
+   "title": "Name the record",
+   "text": "In <b>1 · Create</b>, type the record's name: lower case, no spaces. It becomes the folder and the archive name. (Already have one? Pick it in the list at the top instead.)",
+   "target": {
+    "name": "new_name"
+   },
+   "await": {
+    "hint": "Type a name for the record."
+   }
+  },
+  {
+   "title": "Make the record",
+   "text": "Give it a title, then press <b>Create record</b>; it stays grey until the name is valid. (A record a project script builds is under <i>Advanced</i>.)",
+   "target": {
+    "name": "create_record"
+   },
+   "await": {
+    "hint": "Create a record, or pick one in the list."
+   }
+  },
+  {
+   "title": "Put its data in",
+   "text": "Choose <b>Measurement</b> or <b>Calibration</b>, name the item, then <b>Add files…</b> or <b>Add folder…</b>. Files are hard-linked, never overwritten.",
+   "target": {
+    "name": "add_files"
+   }
+  },
+  {
+   "title": "What Zenodo shows",
+   "text": "Fill in step 3: title, creators as <code>Family, Given</code>, description, keywords. What is missing is listed under the form. Then <b>Scan for review</b>.",
+   "target": {
+    "name": "scan_for_review"
+   }
+  },
+  {
+   "title": "Pick a record",
+   "text": "Each row is one future Zenodo entry. Its review lives beside the folder, never inside the upload. Click the record you want to check.",
+   "target": {
+    "name": "records_table"
+   },
+   "await": {
+    "hint": "Click a record."
+   }
+  },
+  {
+   "title": "Flagged items first",
+   "text": "Every measurement folder, calibration folder and metadata file is one row. A <b>⚠</b> means the builder could not decide alone: data was added, or a role was inferred. Hover a row for the reason, click it for the details.",
+   "target": {
+    "name": "items_table"
+   },
+   "await": {
+    "hint": "Click an item."
+   }
+  },
+  {
+   "title": "Decide",
+   "text": "A row's <b>Approve</b> button binds your decision to the item's content: if it changes later, it is pending again. Right-click a row to <b>Reject</b> it (the record is blocked until it is fixed), undo a decision, or open it in ndX.",
+   "target": {
+    "name": "items_table"
+   }
+  },
+  {
+   "title": "Upload a draft",
+   "text": "<b>Before upload</b> lists the plan: every file that would be sent, replaced, kept or deleted, before anything leaves the machine. <b>Upload draft</b> stays grey until every item is approved and the package matches what you approved. It uploads into a Zenodo <i>draft</i> and checks the md5 there; nothing is published.",
+   "target": {
+    "name": "upload_draft"
+   }
+  },
+  {
+   "title": "Publishing is separate",
+   "text": "<b>Approve publish</b> approves exactly this package; <b>Publish</b> is grey until the draft matches it. Publishing is irreversible.",
+   "target": {
+    "name": "publish_record"
+   }
+  }
+ ]
 }

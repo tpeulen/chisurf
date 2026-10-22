@@ -34,6 +34,7 @@ from mmfdb.deposit import (
     reserve_doi,
     upload_history,
     upload_kind,
+    upload_plan,
     refresh_metadata_item,
     refresh_remote,
     scan,
@@ -1458,6 +1459,56 @@ class ZenodoDepositModel:
                                 else f"could not reach Zenodo: {exc}")
 
         self.job.start(work, done, fail)
+
+    # ── the plan: what an upload would send, before anything is sent ─────
+    @property
+    def preflight_rows(self) -> list[dict]:
+        """One row per file operation the upload would do now.
+
+        Read from the review state (the remote as last checked); *Check*
+        refreshes the remote and with it this table.
+        """
+        if self.record is None or not self.record.package.get("md5"):
+            return []
+        rows = []
+        for op in upload_plan(self.record)["ops"]:
+            act = {"upload": "→ upload", "replace": "→ replace",
+                   "keep": "= identical", "delete": "× delete"}[op["action"]]
+            rows.append({"file": op["file"], "action": act,
+                         "size": _size(op["bytes"]) if op["bytes"] else
+                         ("" if op["action"] != "delete" else _size(op["remote_bytes"])),
+                         "md5": (op["md5"] or op["remote_md5"] or "")[:12],
+                         "state": {"upload": "new", "replace": "changed",
+                                   "keep": "same", "delete": "extra on remote"}[op["action"]]})
+        return rows
+
+    @property
+    def preflight_text(self) -> str:
+        """The plan in one line: what will be sent, deleted, and pushed."""
+        if self.record is None:
+            return ""
+        if not self.record.package.get("md5"):
+            return "No package yet -- build one first (tab 2, *Build package*)."
+        plan = upload_plan(self.record)
+        c, where = plan["counts"], plan["deposition"]
+        if plan["kind"] == "current":
+            return ("Draft is up to date -- nothing to send. "
+                    + (f"Draft {where}." if where else ""))
+        head = {"new": "First upload", "update": "Update of draft",
+                "new version": "New version of"}[plan["kind"]]
+        parts = []
+        if c["upload"]:
+            parts.append(f"send {c['upload']} new file(s)")
+        if c["replace"]:
+            parts.append(f"replace {c['replace']}")
+        if c["delete"]:
+            parts.append(f"delete {c['delete']} remote file(s)")
+        parts.append("push the Zenodo metadata" if plan["metadata"] == "push"
+                     else "metadata unchanged")
+        return (f"**{head}** ({_size(plan['bytes'])} to transfer): "
+                + ", ".join(parts) + "."
+                + (f" Checked against draft {where} as of its last *Check*."
+                   if where else " Nothing is on Zenodo yet."))
 
     # ── why a button is grey ─────────────────────────────────────────────
     @property

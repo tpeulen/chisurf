@@ -133,6 +133,42 @@ def test_review_opens_the_gate_and_upload_reaches_a_verified_draft(model, fake):
     assert "| new | 9 |" in model.uploads_text
 
 
+def test_the_upload_tab_shows_the_plan_before_anything_is_sent(model, fake):
+    model.select_record(model.records[0])
+    _fill_metadata(model)
+    model.build_package()
+    _wait(model)
+    for row in model.items:
+        model.select_item(row)
+        model.note = "checked"
+        model.approve_item()
+
+    # before the first upload: every file is named as to-be-sent
+    rows = {(r["file"], r["action"]) for r in model.preflight_rows}
+    assert rows == {("t4l-demo.zip", "→ upload"), ("README.md", "→ upload")}
+    assert "First upload" in model.preflight_text and "2 new file(s)" in model.preflight_text
+    assert "Nothing is on Zenodo yet." in model.preflight_text
+
+    model.upload_draft()
+    _wait(model)
+    # after the verified upload: nothing left to send
+    assert {r["action"] for r in model.preflight_rows} == {"= identical"}
+    assert "nothing to send" in model.preflight_text
+
+    # a changed record closes the gate AND names the changed file in the plan
+    (model.record.folder / "README.md").write_text("# changed\n")
+    model.rescan()
+    for row in model.items:
+        model.select_item(row)
+        model.approve_item()
+    model.build_package()
+    _wait(model)
+    by_file = {r["file"]: r for r in model.preflight_rows}
+    assert by_file["t4l-demo.zip"]["action"] == "→ replace"
+    assert by_file["README.md"]["action"] == "→ replace"
+    assert "replace 2" in model.preflight_text
+
+
 def test_publishing_asks_three_times(model, fake):
     test_review_opens_the_gate_and_upload_reaches_a_verified_draft(model, fake)
     model.publish_record()
@@ -270,7 +306,7 @@ def test_a_record_is_made_by_hand_in_four_steps(model, tmp_path):
     assert model.enabled("create_record")
     model.create_record()
     assert model.record.name == "k60-n132c"
-    assert "add data" in model.next_step
+    assert "Add data" in model.next_step
     assert not model.enabled("add_files")  # no item named yet
     model.add_name = "2014-08-12_0M-urea"
     model.add_files()
@@ -289,6 +325,28 @@ def test_a_record_is_made_by_hand_in_four_steps(model, tmp_path):
     assert model.record.item("Zenodo metadata").status == "pending"
 
 
+def test_the_plan_panel_draws_with_its_table(model):
+    """The upload tab opens on the Before-upload plan; its table scrolls."""
+    from emtk.testing import Driver
+
+    from chisurf.plugins.core.zenodo_deposit.gui.app import ZenodoDepositApp
+
+    app = ZenodoDepositApp(model)
+    ui = Driver(app, (1400, 900))
+    model.select_record(next(r for r in model.records if r["name"] == "t4l-demo"))
+    model.build_package()
+    _wait(model)
+    for row in model.items:
+        model.select_item(row)
+        model.approve_item()
+    ui.click("3 · Upload")
+    ui.frame(2)
+    texts = [t[5] for t in ui.painter.texts]
+    assert "Before upload" in texts, "the plan panel is not drawn"
+    assert "First upload" in " ".join(texts), "the plan line is not drawn"
+    assert any(t.startswith("t4l-demo.zip") for t in texts), "the plan table is not drawn"
+
+
 def test_a_layout_saved_with_the_panel_closed_still_shows_it(model):
     """The window was empty once its only panel had been closed and that layout saved."""
     from emtk.testing import Driver
@@ -301,7 +359,7 @@ def test_a_layout_saved_with_the_panel_closed_still_shows_it(model):
     ui = Driver(app, (1200, 800))
     ui.frame(3)
     texts = [t[5] for t in ui.painter.texts]
-    assert "0 · Create" in texts and "×" not in texts
+    assert "1 · Create" in texts and "×" not in texts
 
 
 def test_approve_all_leaves_rejections_and_failed_checks(model):
