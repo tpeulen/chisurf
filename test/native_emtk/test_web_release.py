@@ -117,11 +117,22 @@ def test_every_plugin_manifest_icon_is_a_baked_glyph(tmp_path):
     placeholder -- the owner's "all emoticons and icons are missing". The
     icons are read from the packed manifests themselves, so a plugin that adds
     a new pictograph fails here until the atlas is re-baked.
+
+    With the colour band, *baked* is not enough: a monochrome mask in the
+    text colour is the grey silhouette the owner rejected ("the icons are
+    super ugly and black and white"). So every manifest icon must also be in
+    the atlas's colour table -- emoji rasterised from a pinned Noto Color
+    Emoji at bake time -- and the shipped PNG must actually carry the cell's
+    chroma, because a table that points at an empty region draws nothing
+    and a mask draws grey.
     """
     import json
 
+    import numpy as np
+
     from emtk.grapheme import glyph_of
 
+    from emtk.gpu_atlas import png_decode
     from emtk.web.serve import pack_zip
 
     bundle = _bundle()
@@ -129,9 +140,15 @@ def test_every_plugin_manifest_icon_is_a_baked_glyph(tmp_path):
     meta = json.loads(archive.read("emtk/atlas/chrome.json").decode("utf-8"))
     charset = set(meta["charset"])
     tables = meta["glyphs"]
+    colour_cells = meta.get("icons") or {}
+    assert len(colour_cells) >= 100, \
+        f"only {len(colour_cells)} colour pictographs baked"
+    width, height, rgba = png_decode(archive.read("emtk/atlas/chrome.png"))
+    atlas_rgba = np.frombuffer(bytes(rgba), dtype=np.uint8).reshape(height, width, 4)
 
     checked = 0
     missing = []
+    mono_only = []
     for name in archive.namelist():
         parts = name.split("/")
         if len(parts) < 4 or parts[0] != "chisurf" or parts[1] != "plugins" \
@@ -147,8 +164,27 @@ def test_every_plugin_manifest_icon_is_a_baked_glyph(tmp_path):
             continue
         for face in ("regular", "bold"):
             assert base in tables[face], f"{name}: {icon!r} missing from {face}"
+        # the colour band is what the page draws for it; a mono-only icon is
+        # the grey bake back again. A handful of marks are monochrome *by
+        # design* -- ◐ ▮ ◎ ↔ have no colour form in the pinned face (and the
+        # geometric ones are drawn as text marks everywhere) -- so the floor
+        # below is a count, not a per-icon demand.
+        if base not in colour_cells:
+            mono_only.append(f"{'/'.join(parts[2:-1])}: {icon!r}")
+            continue
+        x, y, w, h = colour_cells[base]
+        cell = atlas_rgba[y:y + h, x:x + w]
+        opaque = cell[..., 3] > 64
+        assert opaque.any(), f"{name}: {icon!r}'s colour cell is blank in the PNG"
+        r, g, b = (cell[..., i][opaque].astype(int) for i in range(3))
+        assert ((r != g) | (g != b)).any(), \
+            f"{name}: {icon!r}'s colour cell carries no chroma"
     assert checked >= 9, f"only {checked} manifest icons found -- enumeration broke"
     assert not missing, f"manifest icons the shipped atlas cannot draw: {missing}"
+    assert len(mono_only) <= 6, \
+        f"manifest icons that lost their colour cell (re-bake the atlas): {mono_only}"
+    assert checked - len(mono_only) >= 100, \
+        f"only {checked - len(mono_only)} of {checked} manifest icons draw in colour"
 
 
 # -- the site, and its boot under node ---------------------------------------- #
