@@ -6,7 +6,6 @@ from collections.abc import Callable
 from importlib import resources
 from typing import TYPE_CHECKING, Any
 
-from chisurf.server.transport.zmq import ZmqClient
 
 
 class RemoteError(Exception):
@@ -145,6 +144,8 @@ class ChisurfClient:
         host: str = "127.0.0.1",
         timeout_ms: int = 5000,
     ):
+        from chisurf.server.transport.zmq import ZmqClient  # noqa: PLC0415 - pyzmq is optional (the page runs in-process)
+
         self._client = ZmqClient(
             cmd_port=cmd_port,
             pub_port=pub_port,

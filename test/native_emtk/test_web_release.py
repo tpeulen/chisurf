@@ -657,3 +657,148 @@ def test_background_build_falls_back_to_the_calling_thread(monkeypatch):
     results = build.collect()
     assert results == {"tool": (made, None)}
     assert not build.busy and build.collect() is None
+
+
+def test_the_packed_page_imports_only_what_it_ships(tmp_path):
+    """Every module-level import reachable from the page must be shipped.
+
+    The web shell opened the Hidden Markov model tool into an error panel:
+    ``ModuleNotFoundError: No module named 'click'`` -- the GUI's view model
+    imported one loader from the CLI module, and the CLI module is click from
+    its first line. The page never ships click; nothing compared what the
+    packed page can import with what it packs. This walks module-level
+    imports transitively -- the web app's factory and every plugin GUI the
+    shell can open, through every packed module they reach -- and fails on
+    the first import the page cannot satisfy: not stdlib, not packed, not a
+    Pyodide package, not in a shipped wheel.
+    """
+    import ast
+    import io
+
+    import sys as _sys
+
+    from emtk.web.serve import DEFAULT_PYODIDE_PACKAGES, pack_zip
+
+    bundle = _bundle()
+    archive = zipfile.ZipFile(pack_zip(bundle, tmp_path / "closure.zip"))
+
+    # The packed modules, by dotted name.
+    packed = {}
+    for name in archive.namelist():
+        if not name.endswith(".py"):
+            continue
+        parts = name[:-3].split("/")
+        if parts[-1] == "__init__":
+            parts = parts[:-1]
+        if parts:
+            packed[".".join(parts)] = name
+
+    # Importable roots the wheels provide: each wheel's top-level packages.
+    wheel_roots = set()
+    for wheel_path in getattr(bundle, "wheels", []):
+        wheel = zipfile.ZipFile(io.BytesIO(Path(wheel_path).read_bytes()))
+        for entry in wheel.namelist():
+            if entry.endswith((".py", ".so")) and "/" in entry:
+                top = entry.split("/")[0]
+                if not top.startswith("_"):
+                    wheel_roots.add(top)
+            elif entry.endswith(".py"):
+                wheel_roots.add(entry[:-3])
+
+    # Pyodide distribution packages, by the names they import as (the
+    # distribution name and the import name are not always the same word).
+    _IMPORT_NAME = {"Pillow": "PIL", "pyyaml": "yaml", "pyodide-http": "pyodide_http",
+                    "fonttools": "fontTools"}
+    pyodide_roots = {p for p in (*DEFAULT_PYODIDE_PACKAGES, *bundle.pyodide_packages)}
+    pyodide_roots = {_IMPORT_NAME.get(name, name) for name in pyodide_roots}
+    pyodide_roots |= set(_IMPORT_NAME.values())
+
+    allowed = set(_sys.stdlib_module_names) | set(packed) | wheel_roots | pyodide_roots
+
+    # Roots: the page's app factory and every plugin entry the shell can
+    # open -- the ``emtk`` entrypoint each packed manifest declares, which is
+    # exactly the module the shell imports when the tool opens (the bundle
+    # excludes the desktop-only plugins, so what is packed is what opens).
+    roots = []
+    for name in archive.namelist():
+        if not re.fullmatch(r"chisurf/plugins/(?:[^/]+/)*manifest\.json", name):
+            continue
+        entry = json.loads(archive.read(name)).get("entrypoints", {}).get("emtk", "")
+        module = entry.split(":", 1)[0] if entry else ""
+        if module and module in packed:
+            roots.append(module)
+    roots += [name for name in packed  # a manifest-less plugin still ships a GUI
+              if re.fullmatch(r"chisurf\.plugins(?:\.[^.]+){1,2}\.gui\.app", name)]
+    roots = list(dict.fromkeys([*roots, "chisurf.web"]))
+    assert roots, "no plugin GUIs packed; the shell would have nothing to open"
+
+    def module_imports(dotted: str):
+        """Module-level imports of *dotted*, as (level, target_or_None, root)."""
+        source = archive.read(packed[dotted]).decode("utf-8", "replace")
+        tree = ast.parse(source)
+        found = []
+        statements = list(ast.iter_child_nodes(tree))
+        while statements:
+            node = statements.pop()
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                continue  # runs only when called, not when the module opens
+            if isinstance(node, ast.Import):
+                found.extend((0, alias.name, alias.name.split(".")[0]) for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                level = node.level or 0
+                base = node.module or ""
+                found.append((level, base, base.split(".")[0]))
+                for alias in node.names:  # from X import name: X.name may be a module
+                    found.append((level, f"{base}.{alias.name}" if base else alias.name,
+                                  base.split(".")[0]))
+            elif isinstance(node, ast.If) and isinstance(node.test, ast.Name) \
+                    and node.test.id == "TYPE_CHECKING":
+                pass  # never executes: typing-only imports
+            elif isinstance(node, ast.Try):
+                optional = any(
+                    getattr(handler.type, "id", getattr(handler.type, "attr", ""))
+                    in ("ImportError", "ModuleNotFoundError", "Exception")
+                    for handler in node.handlers
+                )
+                if not optional:
+                    statements.extend(ast.iter_child_nodes(node))
+                # an ImportError-guarded import is optional: the page runs
+                # without it, and the guard says so in code
+            else:
+                statements.extend(ast.iter_child_nodes(node))
+        return found
+
+    def resolve(dotted: str, level: int, target: str):
+        """Absolute dotted name of an import in module *dotted*, or None."""
+        if not level:
+            return target or None
+        is_package = packed[dotted].endswith("/__init__.py")
+        parts = dotted.split(".")
+        drop = level if not is_package else level - 1
+        package = ".".join(parts[: len(parts) - drop]) if drop else dotted
+        return f"{package}.{target}" if target else (package or None)
+
+    seen, queue, missing = set(), list(dict.fromkeys(roots)), []
+    while queue:
+        dotted = queue.pop()
+        if dotted in seen or dotted not in packed:
+            continue
+        seen.add(dotted)
+        for level, target, root in module_imports(dotted):
+            absolute = resolve(dotted, level, target)
+            resolved_root = root if not level else (absolute or root).split(".")[0]
+            if resolved_root not in allowed and absolute not in packed:
+                missing.append(f"{packed[dotted]}: import {'.' * level}{target}"
+                               f" (needs {resolved_root!r}, not shipped)")
+                continue
+            # visit the target and the packages it executes
+            if absolute:
+                parts = absolute.split(".")
+                for depth in range(1, len(parts) + 1):
+                    queue.append(".".join(parts[:depth]))
+
+    assert not missing, (
+        "the packed page imports modules it does not ship -- a tool opened "
+        "on the page would die with ModuleNotFoundError:\n  "
+        + "\n  ".join(sorted(set(missing))[:25])
+    )

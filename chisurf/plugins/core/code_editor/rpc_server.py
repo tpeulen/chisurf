@@ -8,7 +8,6 @@ from typing import Any
 from chisurf.plugins.core.code_editor.backend.services import dispatch
 from chisurf.plugins.core.code_editor.document_store import DocumentStore
 from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
-from chisurf.server.transport.zmq import ZmqServer
 
 
 class EditorRpcServer:
@@ -28,6 +27,8 @@ class EditorRpcServer:
         self.store = store
         self.runner = runner
         self._events: queue.Queue[dict[str, Any]] = queue.Queue()
+        from chisurf.server.transport.zmq import ZmqServer  # noqa: PLC0415 - lazy
+
         self._server = ZmqServer(
             handler=self._dispatch,
             cmd_port=cmd_port,

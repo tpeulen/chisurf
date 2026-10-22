@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from chisurf.server.transport.zmq import ZmqClient
 
 from ..api.client import LightPathClient
 
@@ -19,6 +18,8 @@ class LightPathZmqClient(LightPathClient):
     ) -> None:
         """Initialize the ZMQ client wrapper."""
         super().__init__(
+            from chisurf.server.transport.zmq import ZmqClient  # noqa: PLC0415 - lazy
+
             ZmqClient(
                 cmd_port=cmd_port,
                 pub_port=pub_port,

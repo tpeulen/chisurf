@@ -8,7 +8,10 @@ from chisurf.server.dispatcher import ServiceDispatcher
 from chisurf.server.eventbus import EventBus, InProcessEventBus
 from chisurf.server.jobs import JobManager
 from chisurf.server.session import SessionState
-from chisurf.server.transport.zmq import ZmqServer
+try:  # pyzmq is an optional transport; the web page runs the in-process bus
+    from chisurf.server.transport.zmq import ZmqServer
+except ImportError:  # pragma: no cover - the page, and any env without pyzmq
+    ZmqServer = None
 from chisurf.startup.services import AppStartupServiceManager
 
 _log = logging.getLogger(__name__)

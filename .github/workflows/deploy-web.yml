@@ -1,0 +1,126 @@
+name: Deploy web release
+
+# Deposit the chisurf web build (emtk/Pyodide/WebGPU) at https://peulen.xyz/chisurf/
+# -- the same static-site way smfret and ndx are served: rsync the built site
+# over the tailnet to the unraid box's web share, which the swag nginx serves
+# (location ^~ /chisurf/, added 2026-10-22).
+#
+# One-time setup, all done 2026-10-22 except (3):
+#   1. DEPLOY_SSH_KEY / DEPLOY_HOST / DEPLOY_HOST_KEY secrets (deploy key is
+#      root@kvault's authorized_keys entry restricted to from="100.64.0.0/10",
+#      so only a tailnet-connected runner can use it).
+#   2. The tttrlib + IMP.bff Pyodide wheels as release assets under the
+#      `web-wheels` tag (rebuilt wheels: new assets under a new tag, then
+#      update WHEELS_TAG below).
+#   3. TS_AUTHKEY: a Tailscale auth key (ephemeral, tag:tag:ci), created in
+#      the Tailscale admin console and set as a repo secret. Without it the
+#      job builds and then stops with a notice -- nothing is deposited.
+#
+# The page ships whatever `emtk` is importable at build time, so emtk comes
+# from git (EMTK_REF below), not PyPI: fixes to the web face are pushed to
+# emtk's main before a deposit is triggered here.
+
+on:
+  workflow_dispatch:
+    inputs:
+      emtk_ref:
+        description: 'emtk to build the page with (pip spec)'
+        required: false
+        default: 'git+https://github.com/tpeulen/emtk@main'
+      wheels_tag:
+        description: 'Release tag holding the Pyodide wheels'
+        required: false
+        default: 'web-wheels-v1'
+  push:
+    branches: [main, development]
+
+env:
+  PYTHONUNBUFFERED: "1"
+  QT_QPA_PLATFORM: offscreen
+  WHEELS_TAG: web-wheels-v1
+  EMTK_REF: git+https://github.com/tpeulen/emtk@main
+
+jobs:
+  deposit:
+    name: Deposit at peulen.xyz/chisurf
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: latest
+          cache: true
+
+      - name: Install the environment and emtk
+        run: |
+          pixi install --environment dev
+          pixi run --environment dev python -m pip install --no-deps --force-reinstall \
+            "${{ github.event.inputs.emtk_ref || env.EMTK_REF }}"
+          pixi run --environment dev python -c "import emtk; print('emtk', emtk.__version__ if hasattr(emtk, '__version__') else emtk.__file__)"
+
+      - name: Fetch the Pyodide wheels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.event.inputs.wheels_tag || env.WHEELS_TAG }}"
+          mkdir -p wheels && cd wheels
+          gh release download "$tag" --repo fluorescence-tools/chisurf \
+            --pattern 'tttrlib-*.whl' --pattern 'imp_bff-*.whl'
+          ls -l
+
+      - name: Build the site
+        run: |
+          # the wheel env vars want a file, not a glob (find_wheel is_file's it)
+          tttrlib_wheel=$(echo "$PWD"/wheels/tttrlib-*.whl | awk '{print $1}')
+          impbff_wheel=$(echo "$PWD"/wheels/imp_bff-*.whl | awk '{print $1}')
+          pixi run --environment dev env \
+            CHISURF_WEB_TTTRLIB_WHEEL="$tttrlib_wheel" \
+            CHISURF_WEB_IMPBFF_WHEEL="$impbff_wheel" \
+            python -m chisurf.web --build-only --out site
+          ls -l site
+
+      - name: Has a Tailscale auth key?
+        id: has-ts
+        run: |
+          if [ -n "${{ secrets.TS_AUTHKEY }}" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::TS_AUTHKEY is not set -- building only, no deposit. Create a Tailscale auth key (ephemeral, tag:tag:ci) and add it as the repo secret TS_AUTHKEY."
+          fi
+
+      - name: Join the tailnet
+        if: steps.has-ts.outputs.available == 'true'
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+
+      - name: rsync the site to the web share
+        if: steps.has-ts.outputs.available == 'true'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: |
+          install -m 600 /dev/null key && printf '%s' "$DEPLOY_SSH_KEY" > key
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_HOST_KEY" > ~/.ssh/known_hosts
+          ssh -i key -o IdentitiesOnly=yes "root@$DEPLOY_HOST" \
+            'mkdir -p /mnt/user/www/peulen.xyz/chisurf'
+          rsync -r --delete --no-perms --no-owner --no-group --exclude .DS_Store \
+            -e "ssh -i $PWD/key -o IdentitiesOnly=yes" \
+            site/ "root@$DEPLOY_HOST:/mnt/user/www/peulen.xyz/chisurf/"
+          ssh -i key -o IdentitiesOnly=yes "root@$DEPLOY_HOST" \
+            'find /mnt/user/www/peulen.xyz/chisurf -name "._*" -delete'
+
+      - name: Check the deposited page
+        if: steps.has-ts.outputs.available == 'true'
+        run: |
+          sleep 5   # let Cloudflare's edge see the new files
+          curl -fsSI https://peulen.xyz/chisurf/ | head -1
+          curl -fsS https://peulen.xyz/chisurf/ | grep -o 'app.zip?v=[0-9a-f]*' | head -1
+          test -n "$(curl -fsS https://peulen.xyz/chisurf/ | grep -o 'app.zip?v=[0-9a-f]*')" \
+            && echo "deposit verified: the page names its archive"

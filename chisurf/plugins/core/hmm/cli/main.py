@@ -14,37 +14,12 @@ import json
 import pathlib
 
 import click
-import numpy as np
 
+from ..api.io import load_trace
 from ..api.models import HmmSettings
 from ..core.analysis import fit_traces, scan_state_counts
 
 __all__ = ["cli", "load_trace"]
-
-
-def load_trace(path: str) -> np.ndarray:
-    """Load a binned trace from ``.npy`` or a delimited text file.
-
-    Parameters
-    ----------
-    path : str
-        File to read. ``.npy`` is loaded as-is; anything else is parsed as
-        delimited text, comma-separated if the first non-comment line contains
-        a comma.
-
-    Returns
-    -------
-    numpy.ndarray
-        Trace of shape ``(n_bins, n_channels)``.
-    """
-    file = pathlib.Path(path)
-    if file.suffix.lower() == ".npy":
-        data = np.load(file)
-    else:
-        text = file.read_text().splitlines()
-        sample = next((line for line in text if line and not line.startswith("#")), "")
-        data = np.loadtxt(file, delimiter="," if "," in sample else None)
-    return data if data.ndim == 2 else data[:, None]
 
 
 def _settings(states, covariance, iterations, tol, time_step, seed, no_accelerate):
