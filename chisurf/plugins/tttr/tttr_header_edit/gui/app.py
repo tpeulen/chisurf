@@ -1,8 +1,10 @@
-"""EMTK immediate-mode UI for the TTTR Header Editor.
+"""EMTK immediate-mode UI for the TTTR Inspector.
 
 Left: the header tags as an editable table — one row per tag, the type chosen
 from the tag-type combo, plus Open / Add / Remove / Save-as-PTU actions and the
-source summary. Right: the read-only JSON view of the edited header. The widget
+source summary. Right, top: the read-only JSON view of the edited header;
+bottom: the photon preview — the opened file's first events (routing channel,
+macro and micro time). The widget
 (:class:`~.native.NativeHeaderEditor`) keeps the Qt-free
 :class:`~..view_model.HeaderEditorViewModel`, the file dialogs and the OS drop;
 this app renders its state. The string editors are the source of truth for the
@@ -54,13 +56,17 @@ class HeaderEditorGui(TourTarget):
         self._rows: list[dict] = []
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
 
-        layout = Split("h", 0.62, Region("tags"), Region("json"))
+        layout = Split(
+            "h", 0.62, Region("tags"),
+            Split("v", 0.45, Region("json"), Region("photons")),
+        )
         self.docks = DockManager(layout)
         self.docks.add_window("tags", "Header tags", self._draw_tags, dock="tags")
         self.docks.add_window("json", "Header JSON", self._draw_json, dock="json")
+        self.docks.add_window("photons", "Photons", self._draw_photons, dock="photons")
 
         self.help_window = EmTkHelpWindow(
-            title="TTTR Header Editor — Help & Reference",
+            title="TTTR Inspector — Help & Reference",
             resource=Path(__file__).parent / "help.md",
             owner=tool,
             on_start_guide=self.start_guide,
@@ -262,8 +268,42 @@ class HeaderEditorGui(TourTarget):
         self.remember("json")
 
 
+    # ── the photons dock ──────────────────────────────────────────────────
+    def _draw_photons(self, box: tuple[float, float, float, float]) -> None:
+        if not self.model.photon_rows:
+            im.text_wrapped(
+                tr("Open a TTTR file — its first events appear here "
+                   "(routing channel, macro and micro time).")
+            )
+            self.remember("photons")
+            return
+        im.text_disabled(tr(self.model.photon_summary))
+        im.set_item_tooltip(
+            tr("First {n} events; macro/micro times are the format's raw clock; "
+               "the header tags carry units and setup.").format(
+                n=len(self.model.photon_rows))
+        )
+        im.separator()
+        rows = self.model.photon_rows
+        table_h = max(float(box[3]) - 76.0, 100.0)
+        if im.begin_table("photon_table", 4, _TABLE_FLAGS | im.TableFlags.SCROLL_Y,
+                          (0, table_h)):
+            im.table_setup_column("#", im.TableColumnFlags.WIDTH_FIXED, 64.0)
+            im.table_setup_column("Routing ch", im.TableColumnFlags.WIDTH_FIXED, 110.0)
+            im.table_setup_column("Macro time (raw)", im.TableColumnFlags.WIDTH_STRETCH)
+            im.table_setup_column("Micro time (raw)", im.TableColumnFlags.WIDTH_STRETCH)
+            im.table_headers_row()
+            for row in rows:
+                im.table_next_row()
+                for col, key in enumerate(("i", "rch", "macro", "micro")):
+                    im.table_set_column_index(col)
+                    im.text(row[key])
+            im.end_table()
+        self.remember("photons")
+
+
 class HeaderEditorApp(ImApp):
-    """The EMTK ImApp for the TTTR header editor."""
+    """The EMTK ImApp for the TTTR inspector (header + photon preview)."""
 
     def __init__(
         self,

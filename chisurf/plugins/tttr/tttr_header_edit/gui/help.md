@@ -1,6 +1,8 @@
-# TTTR Header Editor
+# TTTR Inspector
 
-Open or drop a TTTR file to inspect its header tags. Reading and saving run in
+Open or drop a TTTR file to inspect it: the **Photons** dock lists its first
+events (routing channel, macro and micro time) and the **Header tags** dock
+edits the header. Reading and saving run in
 the background. Add tags, edit names/types/values/indices, or remove rows. The
 JSON dock shows the last valid header. Invalid edits remain visible in the table
 and prevent saving until corrected.

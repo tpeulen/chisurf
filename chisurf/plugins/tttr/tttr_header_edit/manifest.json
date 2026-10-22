@@ -1,13 +1,16 @@
 {
   "id": "tttr_header_edit",
   "version": "1.0.0",
-  "display_name": "File:Data:TTTR Header editor",
+  "display_name": "File:Data:TTTR Inspector",
   "icon": "🏷️",
-  "description": "View and edit the header tags of any TTTR file tttrlib reads (PTU, HT3, SPC, Photon-HDF5): change, add or remove tags and save the photons unchanged into a new PTU file, the only container that keeps arbitrary tags.",
+  "description": "Inspect any TTTR file tttrlib reads (PTU, HT3, SPC, Photon-HDF5): the photon table -- first events with routing channel, macro and micro time -- and the header tags as an editable table. Edited headers save into a new PTU file, the only container that keeps arbitrary tags, with the photons copied unchanged.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": ["File", "Data"],
+  "categories": [
+    "File",
+    "Data"
+  ],
   "entrypoints": {
     "script": "__init__.py",
     "emtk": "chisurf.plugins.tttr.tttr_header_edit.gui.native:create_app"

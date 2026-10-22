@@ -1036,23 +1036,24 @@ class ZenodoDepositModel:
             text, binary = "", True
         if suffix in self._VIEW_TTTR:
             try:
-                import numpy as np
-                import tttrlib
+                # The TTTR inspector (plugins/tttr/tttr_header_edit) is the one
+                # tool that reads TTTR files: its view model provides both the
+                # header tags and the photon preview.
+                from chisurf.plugins.tttr.tttr_header_edit.gui.view_model import (
+                    HeaderEditorViewModel,
+                )
 
-                t = tttrlib.TTTR(str(path))
-                n = int(t.n_valid_events) or int(t.n_records_in_file)
-                k = min(n, self._VIEW_PHOTON_ROWS)
-                mt, ut, rch = t.macro_times, t.micro_times, t.routing_channels
-                rows = [{"i": i + 1, "rch": str(int(rch[i])),
-                         "macro": f"{int(mt[i]):,}", "micro": str(int(ut[i]))}
-                        for i in range(k)]
-                used = sorted(int(c) for c in (t.get_used_routing_channels()
-                                               if hasattr(t, "get_used_routing_channels") else []))
-                info = (f"**{rel}** -- {t.get_tttr_record_type()}, "
-                        f"{t.get_tttr_container_type()} container\n\n"
-                        f"{n:,} events ({t.acquisition_time:.1f} s); routing channels "
-                        f"{used}; showing the first {k:,}. Macro/micro times are the "
-                        "format's raw clock; the sidecar and header carry units and setup.")
+                vm = HeaderEditorViewModel()
+                vm.load_file(str(path))
+                rows = vm.photon_rows
+                head = f"**{rel}** -- {vm.source_container.upper()} container"
+                if of:
+                    head += f" ({of}, series {part})"
+                info = (head + "\n\n" + vm.photon_summary +
+                        "\n\nShowing the first {:,} events -- the same photon "
+                        "table as the *TTTR inspector*. Macro/micro times are "
+                        "the format's raw clock; the header tags carry units "
+                        "and setup.".format(len(rows)))
                 self.file_view = {"path": str(path), "title": rel, "language": "Markdown",
                                   "text": info, "markdown": True, "photons": rows,
                                   "series": of}

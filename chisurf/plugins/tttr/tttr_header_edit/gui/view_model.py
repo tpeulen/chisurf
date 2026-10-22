@@ -1,4 +1,4 @@
-"""Qt-free view-model backing the TTTR Header Editor tool.
+"""Qt-free view-model backing the TTTR Inspector tool.
 
 :class:`HeaderEditorViewModel` holds the parsed header tags of any
 :mod:`tttrlib`-readable time-tagged file (PicoQuant PTU/HT3, Becker&Hickl SPC,
@@ -84,12 +84,19 @@ class HeaderEditorViewModel:
 
         return load_view_spec(_VIEW_JSON)
 
+    #: Events listed in the photon preview table.
+    _PHOTON_ROWS = 400
+
     def __init__(self) -> None:
         self.opened_path: str | None = None
         #: Canonical container name of the opened file (e.g. ``"ptu"``/``"ht3"``).
         self.source_container: str = ""
         self._parsed: dict = {}
         self.json_text: str = ""
+        #: Read-only photon preview of the opened file (first ``_PHOTON_ROWS``
+        #: events) and a one-line summary -- the Photons dock of the inspector.
+        self.photon_rows: list[dict] = []
+        self.photon_summary: str = ""
         self._observers: list = []
         self.load_json(SAMPLE_JSON)
 
@@ -171,6 +178,27 @@ class HeaderEditorViewModel:
         self.opened_path = path
         self.source_container = self._detect_container(path, tttr)
         self.load_json(tttr.header.json)
+        self._photon_preview(tttr)
+
+    def _photon_preview(self, tttr) -> None:
+        """First events + a summary line for the Photons dock (never raises)."""
+        try:
+            mt, ut, rch = tttr.macro_times, tttr.micro_times, tttr.routing_channels
+            n = int(tttr.n_valid_events) or int(tttr.n_records_in_file)
+            k = min(n, self._PHOTON_ROWS)
+            self.photon_rows = [
+                {"i": i + 1, "rch": str(int(rch[i])),
+                 "macro": f"{int(mt[i]):,}", "micro": str(int(ut[i]))}
+                for i in range(k)
+            ]
+            used = sorted(int(c) for c in tttr.get_used_routing_channels())
+            self.photon_summary = (
+                f"{n:,} events · {tttr.acquisition_time:.1f} s · "
+                f"record type {tttr.get_tttr_record_type()} · routing channels {used}"
+            )
+        except Exception:
+            logger.debug("photon preview failed", exc_info=True)
+            self.photon_rows, self.photon_summary = [], ""
 
     #: Backwards-compatible alias for :meth:`load_file`.
     load_ptu = load_file
