@@ -869,15 +869,35 @@ TTTRLIB_PYTHON_MODULES = ("ndimage.py", "signal.py", "interpolate.py", "matfile.
 
 
 def _tttrlib_compat_files() -> dict:
-    """The missing submodules' sources, keyed by their archive path."""
-    import tttrlib
+    """The missing submodules' sources, keyed by their archive path.
 
-    root = pathlib.Path(tttrlib.__file__).parent
+    The wheel is read first: the rebuilt Pyodide wheels ship the pure-Python
+    submodules themselves, and a build machine that has no native ``tttrlib``
+    (the CI's pixi environment) still finds them. A native install is the
+    fallback for wheels that ship the extension only.
+    """
     files = {}
-    for name in TTTRLIB_PYTHON_MODULES:
-        path = root / name
-        if path.is_file():
-            files[f"chisurf/web/_tttrlib_compat/{name}"] = path.read_bytes()
+    wheel = find_wheel("tttrlib")
+    if wheel is not None:
+        import zipfile
+
+        with zipfile.ZipFile(wheel) as archive:
+            for name in TTTRLIB_PYTHON_MODULES:
+                try:
+                    files[f"chisurf/web/_tttrlib_compat/{name}"] = archive.read(
+                        f"tttrlib/{name}")
+                except KeyError:
+                    pass
+    if not files:
+        import tttrlib
+
+        if tttrlib.__file__ is None:  # a namespace-only install has no sources
+            return files
+        root = pathlib.Path(tttrlib.__file__).parent
+        for name in TTTRLIB_PYTHON_MODULES:
+            path = root / name
+            if path.is_file():
+                files[f"chisurf/web/_tttrlib_compat/{name}"] = path.read_bytes()
     return files
 
 
