@@ -31,6 +31,21 @@ _LIVE: weakref.WeakSet[BackgroundBuild] = weakref.WeakSet()
 _THREADS: weakref.WeakSet[threading.Thread] = weakref.WeakSet()
 
 
+class _FinishedThread:
+    """Stands in for a batch run on the calling thread (a host with no threads).
+
+    Only what :meth:`BackgroundBuild.collect` asks of a worker: not alive, and
+    a join that does nothing. A real ``threading.Thread`` that was never
+    started would raise on ``join``.
+    """
+
+    def is_alive(self) -> bool:
+        return False
+
+    def join(self, timeout: float | None = None) -> None:
+        return None
+
+
 def track(thread: threading.Thread) -> threading.Thread:
     """Register a worker that reads what a window's first frames show (a store, a registry) for :func:`join_all`."""
     import_frame_modules()
@@ -59,7 +74,7 @@ class BackgroundBuild:
     def __init__(self, wake: Callable[[], None] | None = None) -> None:
         #: Called from the worker when the batch is done (an app's thread-safe ``request_frame``).
         self.wake = wake
-        self._thread: threading.Thread | None = None
+        self._thread: threading.Thread | Any = None
         self._keys: tuple[Hashable, ...] = ()
         self._results: dict[Hashable, tuple[Any, BaseException | None]] = {}
         _LIVE.add(self)
@@ -97,7 +112,17 @@ class BackgroundBuild:
                 self.wake()
 
         self._thread = threading.Thread(target=work, name=name, daemon=True)
-        self._thread.start()
+        try:
+            self._thread.start()
+        except Exception:
+            # A browser page without cross-origin isolation has no worker
+            # threads (Pyodide cannot start one without SharedArrayBuffer):
+            # run the batch on the calling thread and leave a finished build
+            # behind, so collect() hands the results over as usual. The
+            # desktop never takes this branch -- Thread.start does not raise
+            # there.
+            work()
+            self._thread = _FinishedThread()
         return True
 
     def collect(

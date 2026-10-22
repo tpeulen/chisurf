@@ -340,3 +340,28 @@ def test_bus_event_subscriber_mirrors_the_socket_subscriber():
     assert sub.drain() == 1 and seen[-1]["topic"] == "fit.ran"
     bus.publish("fit.ran", {})
     assert sub.drain() == 0, "after stop() the bus must not queue new events"
+
+
+# -- the batch, on a host with no threads -------------------------------------- #
+
+def test_background_build_falls_back_to_the_calling_thread(monkeypatch):
+    """Pyodide without cross-origin isolation cannot start a worker: the batch
+    then runs inline and collect() still hands it over (the page's session
+    start, fits and plugin opens all ride on this)."""
+    import threading
+
+    from chisurf.emtk.background_build import BackgroundBuild
+
+    def refuse(self, *args, **kwargs):
+        raise RuntimeError("Pyodide simulated: cannot start a thread")
+
+    monkeypatch.setattr(threading.Thread, "start", refuse)
+    wakes = []
+    build = BackgroundBuild(wake=lambda: wakes.append(1))
+    made = object()
+    assert build.start({"tool": lambda: made}) is True
+    assert wakes == [1], "the inline batch must still wake the hub"
+    assert build.busy and not build.running
+    results = build.collect()
+    assert results == {"tool": (made, None)}
+    assert not build.busy and build.collect() is None
