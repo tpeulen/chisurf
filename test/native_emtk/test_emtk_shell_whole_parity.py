@@ -66,6 +66,8 @@ ALIASES: dict[str, tuple[str, str]] = {
 
 #: Qt captions present in the emtk shell under another spelling, or not controls at all.
 RENAMED = {
+    "tttrheadereditor": "the menu row and ribbon button say TTTR Inspector, the tool's current name",
+    "clsmgenerator": "the menu row and ribbon button say CLSM Simulator, the tool's current name",
     "dataset": "the Docks toggle is called Read data, the dock's own title",
     "fit": "the Docks toggle is called Analysis, the dock's own title",
     "plot-options": "the Docks toggle is called Plot settings, the dock's own title",

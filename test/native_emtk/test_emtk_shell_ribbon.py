@@ -27,8 +27,11 @@ BEFORE = json.loads(Path(__file__).with_name("shell_s5_qt_inventory.json").read_
 #: Qt ribbon buttons the emtk shell does not have yet; each is an open item of the ledger
 #: (``okf/subsystems/qt-retirement.md``). This list only shrinks.
 KNOWN_GAPS: dict[str, str] = {}
-#: Qt ribbon controls replaced on purpose, and by what (none since Menu Switch and the pin are ported).
-DELIBERATE: dict[str, str] = {}
+#: Qt ribbon controls replaced on purpose, and by what.
+DELIBERATE: dict[str, str] = {
+    "tttrheadereditor": "the tool is called TTTR Inspector -- the header editor is one view of it",
+    "clsmgenerator": "the tool is called CLSM Simulator -- a generated scan is a simulation",
+}
 #: The Qt ribbon's corner controls, by tooltip or class, and the emtk control that replaces each.
 CORNER = {
     "Collapse Ribbon": "ribbon.fold",
