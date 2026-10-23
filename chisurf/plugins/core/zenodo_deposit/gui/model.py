@@ -154,9 +154,11 @@ class ZenodoDepositModel:
         #: "text", "markdown"} -- set by open_file_view, cleared by close_file_view.
         self.file_view: dict | None = None
         self._sandbox = False
-        #: Build the archive WITHOUT the editable metadata (README.md,
-        #: metadata.cif): they ride beside it as sidecars, so correcting them
-        #: later is a metadata-only swap and never re-sends the raw data.
+        #: Build the archive WITHOUT the metadata files (the editable README.md
+        #: and metadata.cif AND the provenance, origins.json and
+        #: manifest_sha256.csv): they ride beside it as sidecars, so correcting
+        #: or regenerating any of them later is a metadata-only swap and never
+        #: re-sends the raw data.
         self.separate_metadata = False
         #: What is typed in the token field; cleared once it is stored.
         self.token_entry = ""
@@ -869,24 +871,36 @@ class ZenodoDepositModel:
                  if i.role == "calibration" and i.id not in count]
         rows += [r for i in items if i.role == "calibration" and i.id not in count
                  for r in self._file_rows(i, i.id)]
-        rows += [self._row(i, i.id) for i in items if i.role not in ("measurement", "calibration")]
+        # the other items (the metadata files, the Zenodo metadata, stray
+        # files): a file item keeps its one file row, so it stays viewable
+        tail = [i for i in items if i.role not in ("measurement", "calibration")]
+        rows += [self._row(i, i.id) for i in tail]
+        rows += [r for i in tail for r in self._file_rows(i, i.id)]
         return rows
 
     def _file_rows(self, item, parent_key: str) -> list[dict]:
         """An item's files as leaf rows of the review tree, under *parent_key*.
 
         A numbered series (one acquisition over rollover files) is one foldable
-        row with its files under it. The rows carry the owning item's id, so
-        selecting one selects the item and its review; double-click opens the
-        file in the modal viewer.
+        row with its files under it. A file item -- README.md, metadata.cif,
+        origins.json, the manifest: in the metadata-separate mode they are the
+        draft's sidecars -- is one row of its own, so it stays viewable in the
+        tree. The rows carry the owning item's id, so selecting one selects the
+        item and its review; double-click opens the file in the modal viewer.
         """
         if self.record is None:
             return []
         cached = self._files_of.get(f"{parent_key}")
         if cached is not None:
             return cached
+        p = self.open_record.folder / item.id
+        if p.is_file():
+            rows = [self._file_row(item.id, item.id, parent_key, _file_kind(item.id),
+                                   _size(p.stat().st_size), item.id)]
+            self._files_of[parent_key] = rows
+            return rows
         rows: list[dict] = []
-        if (self.open_record.folder / item.id).is_dir():
+        if p.is_dir():
             from mmfdb.deposit.record import content_files
 
             folder = self.open_record.folder / item.id
@@ -1293,10 +1307,12 @@ class ZenodoDepositModel:
             return "Open a record."
         b = blockers(self.record)
         pkg = self.record.package
-        head = (f"Package: `{Path(pkg['path']).name}`, {pkg['bytes']:,} B, md5 `{pkg['md5']}`"
-                + (" -- metadata separate: the editable metadata rides beside the zip"
-                   if pkg.get("mode") == "metadata-separate" else "")
-                if pkg.get("path") else "Package: not built")
+        head = f"Package: `{Path(pkg['path']).name}`, {pkg['bytes']:,} B, md5 `{pkg['md5']}`"
+        if pkg.get("mode") == "metadata-separate":
+            names = ", ".join(sc["name"] for sc in pkg.get("sidecars", []))
+            head += (f" -- metadata separate: {names or 'the metadata files'} "
+                     "ride beside the zip")
+        head = head if pkg.get("path") else "Package: not built"
         if not b:
             return f"{head}\n\n**Cleared for upload.**"
         shown = "\n".join(f"- {_md(x)}" for x in b[:8]) + (f"\n- … {len(b) - 8} more" if len(b) > 8
@@ -1748,9 +1764,12 @@ class ZenodoDepositModel:
 
         def work():
             p = build_package(rec, out, separate_metadata=separate)
-            return (f"package built: {p.name}, md5 {rec.package['md5']}"
-                    + (" -- metadata separate: README.md and metadata.cif ride beside the zip"
-                       if separate else ""))
+            msg = f"package built: {p.name}, md5 {rec.package['md5']}"
+            if separate:
+                names = ", ".join(sc["name"] for sc in rec.package.get("sidecars", []))
+                msg += (f" -- metadata separate: {names or 'the metadata files'} "
+                        "ride beside the zip")
+            return msg
 
         self._run("building the package", work)
 

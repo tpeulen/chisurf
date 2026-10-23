@@ -79,6 +79,11 @@ def model(tmp_path: Path, monkeypatch, fake: FakeZenodo) -> ZenodoDepositModel:
         "measurements/2014-08-12_7.5M-urea/Split-0000.ht3": b"photons",
         "calibrations/2014-08-12_pq-hydraharp/h2o-scatter-irf/Split_irf-0000.ht3": b"irf",
         "README.md": b"# demo\n",
+        # the metadata a real record carries (as the T4L records do): the
+        # editable files AND the provenance beside the data
+        "metadata.cif": b"data_demo\n",
+        "origins.json": b'{"original_locations": {}}\n',
+        "manifest_sha256.csv": b"file,sha256\n",
     }.items():
         (rec / rel).parent.mkdir(parents=True, exist_ok=True)
         (rec / rel).write_bytes(data)
@@ -149,10 +154,12 @@ def test_the_upload_tab_shows_the_plan_before_anything_is_sent(model, fake):
         model.note = "checked"
         model.approve_item()
 
-    # before the first upload: every file is named as to-be-sent
+    # before the first upload: every file is named as to-be-sent (a bundled
+    # draft carries the zip plus its readable sidecars README.md, metadata.cif)
     rows = {(r["file"], r["action"]) for r in model.preflight_rows}
-    assert rows == {("t4l-demo.zip", "→ upload"), ("README.md", "→ upload")}
-    assert "First upload" in model.preflight_text and "2 new file(s)" in model.preflight_text
+    assert rows == {("t4l-demo.zip", "→ upload"), ("README.md", "→ upload"),
+                    ("metadata.cif", "→ upload")}
+    assert "First upload" in model.preflight_text and "3 new file(s)" in model.preflight_text
     assert "Nothing is on Zenodo yet." in model.preflight_text
 
     model.upload_draft()
@@ -172,6 +179,7 @@ def test_the_upload_tab_shows_the_plan_before_anything_is_sent(model, fake):
     by_file = {r["file"]: r for r in model.preflight_rows}
     assert by_file["t4l-demo.zip"]["action"] == "→ replace"
     assert by_file["README.md"]["action"] == "→ replace"
+    assert by_file["metadata.cif"]["action"] == "= identical"
     assert "replace 2" in model.preflight_text
 
 
@@ -842,3 +850,164 @@ def test_the_upload_tab_draws_the_metadata_swap_and_its_toggle(model):
     texts = [t[5] for t in ui.painter.texts]
     assert "Swap metadata" in texts, "the metadata-swap button is not drawn"
     assert "Build the metadata separate" in texts, "the separate-metadata toggle is not drawn"
+
+
+# -- the actual 5-file metadata-separate draft: the zip plus FOUR sidecars ----
+
+def test_a_five_file_separate_draft_swaps_the_changed_sidecars_without_the_raw_zip(model, fake):
+    """A real metadata-separate draft holds the raw zip AND README.md,
+    metadata.cif, origins.json and manifest_sha256.csv. A metadata correction
+    the way a builder writes it -- the README re-written, and with it the
+    manifest that hashes it -- swaps exactly those two sidecars; origins.json
+    (untouched) and metadata.cif stay 'keep', and the raw zip is never PUT."""
+    zip_on_zenodo = _separate_upload(model, fake)
+    puts = [c for c in fake.calls if c[0] == "PUT" and "/bucket/" in c[1]]
+    assert set(fake.files) == {"t4l-demo.zip", "README.md", "metadata.cif",
+                               "origins.json", "manifest_sha256.csv"}
+    assert {r["action"] for r in model.preflight_rows} == {"= identical"}
+
+    (model.record.folder / "README.md").write_text("# demo, corrected\n")
+    # a regeneration rewrites the manifest: it hashes the editable files
+    (model.record.folder / "manifest_sha256.csv").write_text(" regenerated manifest\n")
+    model.rescan()
+    assert model.record.item("README.md").status == "pending"
+    assert model.record.item("manifest_sha256.csv").status == "pending"
+    assert model.record.item("origins.json").status == "approved"  # untouched provenance
+    for row in model.items:
+        model.select_item(row)
+        if model.item is not None and model.item.status != "approved":
+            model.approve_item()
+    assert model.enabled("upload_draft"), model.gate_text  # the gate opens WITHOUT a rebuild
+    assert model.enabled("upload_metadata_only"), model.metadata_only_text
+    text = model.metadata_only_text
+    assert "README.md" in text and "manifest_sha256.csv" in text, text
+    assert "origins.json" not in text and "metadata.cif" not in text, text
+    assert "raw archive stays" in text, text
+    model.upload_metadata_only()
+    _wait(model)
+    assert "md5 verified" in model.message, model.message
+    assert [c for c in fake.calls if c[0] == "PUT" and "/bucket/" in c[1]] == puts + [
+        ("PUT", "https://z/bucket/9/README.md"),
+        ("PUT", "https://z/bucket/9/manifest_sha256.csv")]
+    assert fake.files["t4l-demo.zip"] == zip_on_zenodo  # byte-identical raw archive
+
+
+def test_an_origins_only_edit_swaps_only_the_provenance(model, fake):
+    """Provenance is editable beside the data on its own: rewriting
+    origins.json alone swaps exactly that file -- README, CIF, manifest and
+    the raw archive stay untouched."""
+    zip_on_zenodo = _separate_upload(model, fake)
+    puts = [c for c in fake.calls if c[0] == "PUT" and "/bucket/" in c[1]]
+    (model.record.folder / "origins.json").write_text(
+        '{"original_locations": {"m": {"server": "s"}}}\n')
+    model.rescan()
+    model.approve_item({"id": "origins.json"})
+    assert model.enabled("upload_metadata_only"), model.metadata_only_text
+    model.upload_metadata_only()
+    _wait(model)
+    assert "md5 verified" in model.message, model.message
+    assert [c for c in fake.calls if c[0] == "PUT" and "/bucket/" in c[1]] == puts + [
+        ("PUT", "https://z/bucket/9/origins.json")]
+    assert fake.files["t4l-demo.zip"] == zip_on_zenodo
+
+
+def test_the_metadata_files_are_single_rows_of_the_tree(model):
+    """README.md, metadata.cif, origins.json and manifest_sha256.csv are file
+    rows under their items -- nested in the one review tree, not a separate
+    table -- and a double click opens them in the modal viewer (they are draft
+    files a reviewer must be able to read)."""
+    model.select_record(model.records[0])
+    rows = {r["key"]: r for r in model.items}
+    for name in ("README.md", "metadata.cif", "origins.json", "manifest_sha256.csv"):
+        row = rows.get(f"{name}|{name}")
+        assert row is not None and row.get("file") == name and row["id"] == name, name
+    model.open_tree_row(rows["origins.json|origins.json"])
+    assert model.file_view and model.file_view["title"] == "origins.json"
+    assert '"original_locations"' in model.file_view["text"]
+    model.close_file_view()
+    model.open_tree_row(rows["README.md|README.md"])
+    assert model.file_view["markdown"] and "# demo" in model.file_view["text"]
+    model.close_file_view()
+    # a file row is its item: selecting it reviews the item, the item row decides
+    model.select_item(rows["origins.json|origins.json"])
+    assert model.item_id == "origins.json"
+    model.approve_item(rows["origins.json"])
+    assert model.record.item("origins.json").status == "approved"
+
+
+def test_the_upload_tab_draws_all_five_files_of_a_separate_draft(model, fake):
+    """The plan renders the actual draft: the zip and every sidecar, and the
+    gate line says which files ride beside the zip."""
+    from emtk.testing import Driver
+
+    from chisurf.plugins.core.zenodo_deposit.gui.app import ZenodoDepositApp
+
+    model.select_record(model.records[0])
+    _fill_metadata(model)
+    model.separate_metadata = True
+    model.build_package()
+    _wait(model)
+    assert "metadata separate" in model.message, model.message
+    assert "origins.json" in model.message and "manifest_sha256.csv" in model.message
+    for row in model.items:
+        model.select_item(row)
+        model.approve_item()
+    ui = Driver(ZenodoDepositApp(model), (1400, 900))
+    ui.click("3 · Upload")
+    ui.frame(2)
+    texts = [t[5] for t in ui.painter.texts]
+    for name in ("t4l-demo.zip", "README.md", "metadata.cif",
+                 "origins.json", "manifest_sha256.csv"):
+        assert any(t.startswith(name) for t in texts), f"{name} is not drawn in the plan"
+    assert "ride beside the zip" in " ".join(texts), model.gate_text
+    assert "Swap metadata" in texts
+
+
+def test_the_swap_button_clicks_through_the_real_gui_binding(model, fake):
+    """The enabled gate is the drawn button's gate: with the draft holding the
+    raw archive unchanged and the corrected sidecars re-approved, clicking the
+    drawn Swap metadata button swaps exactly the changed sidecars; with the
+    change not yet re-approved the same click sends nothing (grey)."""
+    zip_on_zenodo = _separate_upload(model, fake)
+    puts = [c for c in fake.calls if c[0] == "PUT" and "/bucket/" in c[1]]
+    (model.record.folder / "README.md").write_text("# demo, corrected\n")
+    (model.record.folder / "manifest_sha256.csv").write_text(" regenerated manifest\n")
+    model.rescan()
+    for row in model.items:
+        model.select_item(row)
+        if model.item is not None and model.item.status != "approved":
+            model.approve_item()
+
+    from emtk.testing import Driver
+
+    from chisurf.plugins.core.zenodo_deposit.gui.app import ZenodoDepositApp
+
+    app = ZenodoDepositApp(model)
+    ui = Driver(app, (1400, 900))
+    ui.click("3 · Upload")
+    ui.frame(2)
+    assert "Swap metadata" in [t[5] for t in ui.painter.texts]
+    ui.click("Swap metadata")          # the real binding: view button -> model action
+    _wait(model)
+    assert "md5 verified" in model.message, model.message
+    assert [c for c in fake.calls if c[0] == "PUT" and "/bucket/" in c[1]] == puts + [
+        ("PUT", "https://z/bucket/9/README.md"),
+        ("PUT", "https://z/bucket/9/manifest_sha256.csv")]
+    assert fake.files["t4l-demo.zip"] == zip_on_zenodo
+
+    # the same click on the greyed button sends nothing: the README changed again
+    # and is pending again -- the swap is locked until it is reviewed
+    (model.record.folder / "README.md").write_text("# demo, corrected twice\n")
+    model.rescan()
+    assert not model.enabled("upload_metadata_only")  # the drawn button's gate
+    app2 = ZenodoDepositApp(model)
+    ui2 = Driver(app2, (1400, 900))
+    ui2.click("3 · Upload")
+    ui2.frame(2)
+    calls = len(fake.calls)
+    ui2.click("Swap metadata")
+    ui2.frame(3)
+    _wait(model)
+    assert len(fake.calls) == calls  # nothing was sent
+    assert fake.files["t4l-demo.zip"] == zip_on_zenodo
+    assert model.record.item("README.md").status == "pending"

@@ -53,15 +53,17 @@ Such a record takes its Zenodo metadata from the config.
 ```{figure} figures/109_zenodo_deposit_review.png
 :width: 100%
 
-The Review tab: one row per item, flagged items marked in the Check column.
-The selected metadata file is shown read-only in the code editor (mmCIF
-highlighting for `metadata.cif`, JSON for `origins.json`).
+The Review tab: one row per item, flagged items marked in the Check column,
+every folder's files nested under their item.
 ```
 
 Click a record (a folder never scanned is scanned when opened), then click
 each item. Start with the flagged ones: hover a row or read the panel below
 the table for why it is flagged, where it came from on the server, and which
-files it holds. The code editor under the buttons lists a folder's files with sizes, or shows a metadata file; **Open in ndX** opens the item's `.mmfdb.pto` to look at the bursts. Then **Approve** or **Reject**, optionally with a note. Changing a
+files it holds. Double click a file row to read it in a modal viewer (mmCIF
+highlighting for `metadata.cif`, JSON for `origins.json`); **Open in ndX**
+opens the item's `.mmfdb.pto` to look at the bursts. Then **Approve** or
+**Reject**, optionally with a note. Changing a
 folder after approving it puts it back to *Pending (changed)* — press
 *Rescan folder* after any change.
 
@@ -76,7 +78,13 @@ draft* stays grey until the list is empty.
 ```
 
 *Build package* writes the archive (stored ZIP, every member CRC-checked).
-*Upload draft* sends it into a Zenodo **draft** and compares its MD5; nothing
+With **Build the metadata separate** every metadata file stays out of it: the
+editable `README.md` and `metadata.cif` and the provenance (`origins.json`,
+`manifest_sha256.csv`) are uploaded beside the zip as sidecars, so correcting
+or regenerating them later is a **Swap metadata** on the unpublished draft --
+the changed sidecars and the reviewed Zenodo metadata only, never the raw
+archive. *Upload draft* sends the package into a Zenodo **draft** and compares
+its MD5; nothing
 is published. *Check Zenodo* compares the draft with the local package at any
 time. Tick *Trial run on the Zenodo sandbox* for a test against
 sandbox.zenodo.org.

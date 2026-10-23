@@ -681,7 +681,7 @@
                   "type": "toggle",
                   "attr": "separate_metadata",
                   "label": "Build the metadata separate",
-                  "description": "Keep the editable metadata (README.md, metadata.cif) out of the raw archive: they are uploaded beside it as sidecars, so correcting them later is a metadata-only swap and never re-sends the raw data."
+                  "description": "Keep every metadata file out of the raw archive: the editable README.md and metadata.cif AND the provenance (origins.json, manifest_sha256.csv) are uploaded beside it as sidecars, so correcting or regenerating any of them later is a metadata-only swap and never re-sends the raw data."
                 },
                 {
                   "type": "info",
@@ -713,7 +713,7 @@
                       {
                         "key": "file",
                         "title": "File",
-                        "tooltip": "The file of the planned operation: the package zip, its sidecars (README.md, metadata.cif), or a remote file."
+                        "tooltip": "The file of the planned operation: the package zip, one of its sidecar metadata files (README.md and metadata.cif; with the metadata-separate build also origins.json and manifest_sha256.csv), or a remote file."
                       },
                       {
                         "key": "action",
@@ -787,7 +787,7 @@
                       "action": "upload_metadata_only",
                       "label": "Swap metadata",
                       "label_source": "metadata_label",
-                      "description": "Swap the metadata of the unpublished draft without sending the raw archive: the changed sidecars (README.md, metadata.cif) and the reviewed Zenodo metadata only. Grey while anything blocks (the edited metadata must be reviewed again), before the first upload, once published (immutable), and when the draft does not hold the raw archive unchanged."
+                      "description": "Swap the metadata of the unpublished draft without sending the raw archive: the changed sidecars -- the editable README.md and metadata.cif and, when the build keeps them beside the zip, the provenance origins.json and manifest_sha256.csv -- and the reviewed Zenodo metadata only. Grey while anything blocks (the edited metadata must be reviewed again), before the first upload, once published (immutable), and when the draft does not hold the raw archive unchanged."
                     },
                     {
                       "action": "rescan",
