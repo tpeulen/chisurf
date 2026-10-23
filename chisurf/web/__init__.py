@@ -259,6 +259,40 @@ def _exclude_all_but(name: str, keep: Sequence[str]) -> list[str]:
     return out
 
 
+def plugin_apps() -> dict:
+    """Every packed plugin id mapped to ``?app=``'s shell shortcut spec.
+
+    The page is multi-app: ``?app=hmm`` boots the shell with the HMM tool
+    open. The ids are the manifest ids (lowercase, URL-safe); a name someone
+    types is resolved against labels too at boot
+    (:func:`chisurf.web.plugin_page._resolve`). Plugins the build does not
+    pack (:data:`PLUGIN_EXCLUDE`) are not offered.
+    """
+    import json
+    import re
+
+    root = _package_dir("chisurf")
+    if root is None:
+        return {}
+    specs = {}
+    for manifest in sorted((root / "plugins").rglob("manifest.json")):
+        rel = "chisurf/" + manifest.relative_to(root).as_posix()
+        if any(rel.startswith(prefix) for prefix in
+               (f"chisurf/plugins/{name}/" for name in PLUGIN_EXCLUDE)):
+            continue
+        data = json.loads(manifest.read_text())
+        plugin_id = str(data.get("id") or manifest.parent.name)
+        if data.get("entrypoints", {}).get("emtk"):
+            specs[plugin_id] = "chisurf.web.plugin_page:make_app"
+            # a URL someone types is a name: the label answers too, its case
+            # and punctuation aside (the page resolves further at boot)
+            label = str(data.get("display_name") or data.get("name") or "")
+            alias = re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")
+            if alias and alias not in specs:
+                specs[alias] = "chisurf.web.plugin_page:make_app"
+    return specs
+
+
 def bundle(tttrlib_wheel: bool = True, impbff_wheel: bool = True):
     """The :class:`emtk.web.serve.Bundle` for ChiSurf: app, dependencies, wheels."""
     from emtk.web.serve import DEFAULT_PYODIDE_PACKAGES, Bundle
@@ -275,20 +309,31 @@ def bundle(tttrlib_wheel: bool = True, impbff_wheel: bool = True):
             if tree.is_dir() and tree.name in ("test", "tests"):
                 exclude.append("chisurf/" + tree.relative_to(plugins_root.parent).as_posix() + "/")
     extra, exclude_built = [], list(exclude)
-    for name, keep in (("mmfdb", MMFDB_KEEP), ("chimol", CHIMOL_KEEP)):
-        if _package_dir(name) is not None:
+    chimol_full = _package_dir("chimol") is not None and _package_dir("ihm") is not None
+    for name, keep in (("mmfdb", MMFDB_KEEP), (None if chimol_full else "chimol", CHIMOL_KEEP)):
+        if name is not None and _package_dir(name) is not None:
             extra.append(name)
             exclude_built += _exclude_all_but(name, keep)
     # ndX rides on the same page: one archive, one deposit, started with
     # ?app=ndx. It carries its own chisurf-core readers (chimol.io, mmfdb's
     # config) -- the same keep-limited trees above -- plus its own package.
-    apps = {}
+    apps = plugin_apps()  # ?app=<plugin id> opens that tool in the shell
     if _package_dir("ndxplorer") is not None and _package_dir("chimol") is not None:
         # chimol.io with it: the ndX app imports it through chisurf's core at
         # boot -- naming the app without its reader would start it into an error
         extra.append("ndxplorer")
         exclude_built.append("ndxplorer/tests/")
-        apps = {"ndx": "ndxplorer.app.frame:make_app"}
+        apps["ndx"] = "ndxplorer.app.frame:make_app"
+    if chimol_full:
+        # ChiMOL standalone (?app=chimol): the whole viewer -- the same rules
+        # its own page builds with -- beside the readers the other apps share.
+        from chimol.hosts.web.serve import (  # noqa: PLC0415 - build-time import
+            CHIMOL_SUFFIXES, EXCLUDE_PREFIXES as CHIMOL_EXCLUDE)
+        extra += ["chimol", "ihm"]
+        exclude_built += list(CHIMOL_EXCLUDE)
+        exclude_built.append("chimol/test/")
+        apps["chimol"] = "chimol.hosts.web.page:make_app"
+        suffixes = tuple(CHIMOL_SUFFIXES)
     pyodide = list(DEFAULT_PYODIDE_PACKAGES)
     pyodide += [p for p in PYODIDE_PACKAGES if p not in pyodide]
     wheels = []
@@ -313,10 +358,17 @@ def bundle(tttrlib_wheel: bool = True, impbff_wheel: bool = True):
     if not docs:
         print("warning: no documentation found to ship; the page's help "
               "browser will be empty")
+    kwargs = {}
+    if chimol_full:
+        # ChiMOL ships its data files (.pdb, .cif, .dcd, .npz, .pto, .cml)
+        from emtk.web.serve import INCLUDE_SUFFIXES  # noqa: PLC0415 - build-time
+
+        kwargs["include_suffixes"] = tuple(INCLUDE_SUFFIXES) + tuple(suffixes)
     return Bundle(
         app=APP,
         apps=apps,
         packages=["chisurf"],
+        **kwargs,
         extra_packages=extra,
         extra_files={**compat, **docs},
         pyodide_packages=pyodide,
