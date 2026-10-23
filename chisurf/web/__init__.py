@@ -279,6 +279,16 @@ def bundle(tttrlib_wheel: bool = True, impbff_wheel: bool = True):
         if _package_dir(name) is not None:
             extra.append(name)
             exclude_built += _exclude_all_but(name, keep)
+    # ndX rides on the same page: one archive, one deposit, started with
+    # ?app=ndx. It carries its own chisurf-core readers (chimol.io, mmfdb's
+    # config) -- the same keep-limited trees above -- plus its own package.
+    apps = {}
+    if _package_dir("ndxplorer") is not None and _package_dir("chimol") is not None:
+        # chimol.io with it: the ndX app imports it through chisurf's core at
+        # boot -- naming the app without its reader would start it into an error
+        extra.append("ndxplorer")
+        exclude_built.append("ndxplorer/tests/")
+        apps = {"ndx": "ndxplorer.app.frame:make_app"}
     pyodide = list(DEFAULT_PYODIDE_PACKAGES)
     pyodide += [p for p in PYODIDE_PACKAGES if p not in pyodide]
     wheels = []
@@ -305,6 +315,7 @@ def bundle(tttrlib_wheel: bool = True, impbff_wheel: bool = True):
               "browser will be empty")
     return Bundle(
         app=APP,
+        apps=apps,
         packages=["chisurf"],
         extra_packages=extra,
         extra_files={**compat, **docs},

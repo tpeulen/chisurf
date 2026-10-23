@@ -729,6 +729,12 @@ def test_the_packed_page_imports_only_what_it_ships(tmp_path):
             roots.append(module)
     roots += [name for name in packed  # a manifest-less plugin still ships a GUI
               if re.fullmatch(r"chisurf\.plugins(?:\.[^.]+){1,2}\.gui\.app", name)]
+    # A multi-app page mounts more than one entry: every app the build
+    # names is a root, exactly like the default one.
+    for spec in dict(getattr(bundle, "apps", {}) or {}).values():
+        module = spec.split(":", 1)[0]
+        if module in packed:
+            roots.append(module)
     roots = list(dict.fromkeys([*roots, "chisurf.web"]))
     assert roots, "no plugin GUIs packed; the shell would have nothing to open"
 

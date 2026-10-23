@@ -19,6 +19,12 @@ name: Deploy web release
 # The page ships whatever `emtk` is importable at build time, so emtk comes
 # from git (EMTK_REF below), not PyPI: fixes to the web face are pushed to
 # emtk's main before a deposit is triggered here.
+#
+# The archive is multi-app: ndX rides on the same page (?app=ndx), packed
+# from the same-source-tree neighbours -- ndxplorer is this repo's submodule,
+# chimol (private: needs CHIMOL_TOKEN) and mmfdb are checked out beside it.
+# https://peulen.xyz/ndx redirects to /chisurf/?app=ndx; there is no separate
+# ndx deposit any more.
 
 on:
   workflow_dispatch:
@@ -48,6 +54,32 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive   # modules/ndxplorer: the ndX app
+
+      - name: Has a chimol token?
+        id: has-chimol
+        run: |
+          if [ -n "${{ secrets.CHIMOL_TOKEN }}" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::CHIMOL_TOKEN is not set -- the deposit ships without the ndX app."
+          fi
+
+      - name: Check out chimol (private)
+        if: steps.has-chimol.outputs.available == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: tpeulen/chimol
+          token: ${{ secrets.CHIMOL_TOKEN }}
+          path: tree/chimol
+
+      - name: Check out mmfdb
+        uses: actions/checkout@v4
+        with:
+          repository: Fluorescence-Tools/mmfdb
+          path: tree/mmfdb
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
@@ -60,6 +92,14 @@ jobs:
           pixi run --environment dev python -m pip install --no-deps --force-reinstall \
             "${{ github.event.inputs.emtk_ref || env.EMTK_REF }}"
           pixi run --environment dev python -c "import emtk; print('emtk', emtk.__version__ if hasattr(emtk, '__version__') else emtk.__file__)"
+          # ndX rides on the same archive (started with ?app=ndx)
+          pixi run --environment dev python -m pip install --no-deps -e tree/mmfdb -e modules/ndxplorer
+          if [ "${{ steps.has-chimol.outputs.available }}" = "true" ]; then
+            pixi run --environment dev python -m pip install --no-deps -e tree/chimol
+            pixi run --environment dev python -c "import ndxplorer, chimol.io; print('ndxplorer + chimol.io importable')"
+          else
+            pixi run --environment dev python -c "import ndxplorer; print('ndxplorer importable (chimol behind: no CHIMOL_TOKEN)')"
+          fi
 
       - name: Fetch the Pyodide wheels
         env:
