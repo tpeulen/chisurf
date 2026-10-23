@@ -208,14 +208,14 @@ def test_dropped_photon_files_land_in_the_queue_and_legacy_bursts_do_not(ui, tmp
     bur.write_text("First File\tLast File\tFirst Photon\tLast Photon\nunits\n0\t0\t10\t500\n")
     ui.drop(SPC, bur)
     assert ui.app.model.files == [str(SPC.resolve())]
-    assert ui.app.model.bid_files == []
+    assert ui.app.model.burst_files == []
 
 
 def test_a_foreign_file_is_not_queued(ui, tmp_path):
     other = tmp_path / "notes.txt"
     other.write_text("x")
     ui.drop(other)
-    assert not ui.app.model.files and not ui.app.model.bid_files
+    assert not ui.app.model.files and not ui.app.model.burst_files
 
 
 def test_checkbox_none_all_remove_and_clear(loaded, tmp_path):
@@ -250,9 +250,23 @@ def test_the_context_menu_removes_an_input(loaded):
 
 
 def test_find_corresponding_tttr_reports_what_it_could_not_find(ui, tmp_path):
-    bur = tmp_path / "nothing_here.bur"
-    bur.write_text("First Photon\tLast Photon\n1\t2\n")
-    ui.drop(bur)
+    import pandas as pd
+
+    from chisurf.plugins.burst.burst_selection.api.io import write_container
+
+    lonely = tmp_path / "nowhere" / "m999.pt3"
+    lonely.parent.mkdir()
+    lonely.write_bytes(b"x")
+    container = write_container(
+        lonely,
+        pd.DataFrame({"first photon": [1], "last photon": [2]}),
+        parameters={"demo": 1},
+        run="demo search",
+    )
+    # the container was made somewhere the photons are not: the search says so
+    moved = tmp_path / "m999.pto"
+    moved.write_bytes(Path(container).read_bytes())
+    ui.app.model.add_paths([moved], bursts=True)
     ui.click("burst_header")
     ui.click("burst_find")
     ui.settle()
@@ -263,10 +277,10 @@ def test_burst_buttons_open_their_dialogs(ui):
     assert "burst_files" not in ui.app.item_rects  # folded away until asked for
     ui.click("burst_header")
     ui.click("burst_files")
-    assert ui.dialog_open and ui.shown("Burst indices")
+    assert ui.dialog_open and ui.shown("Burst containers")
     ui.press_text("Cancel")
     ui.click("burst_folder")
-    assert ui.dialog_open and ui.shown("Burstwise folder")
+    assert ui.dialog_open and ui.shown("Burst container folder")
     ui.press_text("Cancel")
     assert not ui.dialog_open
 

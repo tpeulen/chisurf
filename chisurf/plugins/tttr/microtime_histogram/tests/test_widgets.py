@@ -8,23 +8,32 @@ import pytest
 from chisurf.plugins.tttr.microtime_histogram.gui.model import HistogramModel
 
 
-def test_bid_folder_expands_to_bur_and_bst(tmp_path):
-    """Recursive folder input preserves both supported burst-index formats."""
-    (tmp_path / "bi4_bur").mkdir()
-    (tmp_path / "bi4_bur" / "x.bur").write_bytes(b"x")
-    (tmp_path / "BID").mkdir()
-    (tmp_path / "BID" / "y.bst").write_bytes(b"x")
+def _write_burst_container(raw: Path, first=1, last=5) -> Path:
+    """A measurement with one burst run: the .pto provenance of a search."""
+    import pandas as pd
+
+    from chisurf.plugins.burst.burst_selection.api.io import write_container
+
+    df = pd.DataFrame({"first photon": [first], "last photon": [last]})
+    return Path(write_container(raw, df, parameters={"demo": 1}, run="demo search"))
+
+
+def test_a_folder_expands_to_its_burst_containers(tmp_path):
+    """Recursive folder input finds the .pto containers a search wrote."""
+    (tmp_path / "burstwise").mkdir()
+    (tmp_path / "burstwise" / "m000.pt3").write_bytes(b"x")
+    _write_burst_container(tmp_path / "burstwise" / "m000.pt3")
     model = HistogramModel()
-    model.add_paths([tmp_path], bids=True)
-    assert {Path(path).name for path in model.bid_files} == {"x.bur", "y.bst"}
+    model.add_paths([tmp_path], bursts=True)
+    assert {Path(path).name for path in model.burst_files} == {"m000.pto"}
 
 
-def test_bid_folder_without_index_files_is_empty(tmp_path):
+def test_a_folder_without_containers_stays_empty(tmp_path):
     """Unrelated inputs cannot become selected burst gates."""
     (tmp_path / "unrelated.txt").write_bytes(b"x")
     model = HistogramModel()
-    model.add_paths([tmp_path], bids=True)
-    assert model.bid_files == []
+    model.add_paths([tmp_path], bursts=True)
+    assert model.burst_files == []
 
 
 _SPC = Path(__file__).resolve().parents[5] / "test/data/tttr/BH/132/BH_SPC132.spc"

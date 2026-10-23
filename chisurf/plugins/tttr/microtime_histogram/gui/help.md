@@ -15,7 +15,7 @@ column.
 - **Photon files** — **Files…**, **Folder…** (recursive), **Database…** (the MMFDB object store), or drop files on
   the window. Tick a file to include it; **All / None / Remove / Clear** act on the list (right-click a row to remove it).
   Headerless SPC data needs its subtype in *TTTR format*.
-- **Burst selections** — queue `.bst`/`.bur` photon-index files; photon bounds are inclusive, overlaps are counted once
+- **Burst selections** — queue `.pto` burst containers (a search's bursts in the measurement's provenance); photon bounds are inclusive, overlaps are counted once
   and bounds are clipped to the stream. **Find TTTR** looks four folders up for the matching photon files.
 - **Detector and channels** — the detector chooses the interleaved routing channels (parallel, perpendicular, ...) and
   the G-factor; *Parallel* / *Perpendicular* can be edited. Switching *Polarization resolved* merges or splits the current

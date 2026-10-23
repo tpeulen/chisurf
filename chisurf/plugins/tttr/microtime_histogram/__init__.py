@@ -7,7 +7,7 @@ from Time-Tagged Time-Resolved (TTTR) fluorescence data.
 Features:
 - Loading and processing of TTTR files from various formats
 - Creation of microtime histograms for parallel and perpendicular detection channels
-- Support for burst selection using BID/BUR files for single-molecule analysis
+- Burst-restricted histograms from .pto provenance (the measurement's own burst runs)
 - Cumulative histogram generation from multiple files
 - Export of histogram data for further analysis
 - Integration with ChiSurf for advanced data processing

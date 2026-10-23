@@ -1,4 +1,4 @@
-"""Launch the native histogram workflow with optional BID startup inputs."""
+"""Launch the native histogram workflow with optional burst-container startup inputs."""
 
 from __future__ import annotations
 
@@ -25,11 +25,11 @@ def _measurement_setup(folder: Path) -> str | None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Launch the existing native app while preserving BID-folder startup options."""
+    """Launch the native app, optionally starting from a folder of burst containers."""
     parser = argparse.ArgumentParser(
-        description="Process BID files and create microtime histograms."
+        description="Create microtime histograms, optionally burst-restricted from .pto provenance."
     )
-    parser.add_argument("--bid-folder", help="Folder containing BID/BUR/BST files")
+    parser.add_argument("--pto-folder", help="Folder containing .pto burst containers")
     parser.add_argument(
         "--setup-name", help="Saved setup; otherwise read measurement Info metadata"
     )
@@ -37,9 +37,9 @@ def main(argv: list[str] | None = None) -> int:
         "--auto-transfer", action="store_true", help="Transfer the computed histogram to ChiSurf"
     )
     args = parser.parse_args(argv)
-    folder = Path(args.bid_folder) if args.bid_folder else None
+    folder = Path(args.pto_folder) if args.pto_folder else None
     if folder is not None and not folder.is_dir():
-        print(f"Error: BID folder '{folder}' does not exist or is not a directory")
+        print(f"Error: container folder '{folder}' does not exist or is not a directory")
         return 1
 
     from emtk.native import NativeHost
@@ -51,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     control = create_app()
     if folder is not None:
         setup = args.setup_name or _measurement_setup(folder)
-        control.load_bid_folder(folder, setup_name=setup, auto_transfer=args.auto_transfer)
+        control.load_burst_folder(folder, setup_name=setup, auto_transfer=args.auto_transfer)
     host = NativeHost(control, title=tr("Histogram-Microtime"))
     try:
         host.run()

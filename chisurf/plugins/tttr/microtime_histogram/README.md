@@ -8,7 +8,7 @@ This plugin provides tools for creating, visualizing, and analyzing microtime hi
 - Loading and processing of TTTR files from various formats with progress bars
 - Creation of microtime histograms for parallel and perpendicular detection channels with interactive legend
 - Support for interleaved channel format (matching MLE burst plugin implementation)
-- Support for burst selection using BID/BUR/BST files for single-molecule analysis
+- Burst-restricted histograms from `.pto` provenance (the measurement's own burst runs)
 - Cumulative histogram generation from multiple files
 - Export of histogram data for further analysis
 - Integration with ChiSurf for advanced data processing
@@ -65,8 +65,8 @@ properties and dynamics.
    - Channel information is automatically populated from the Detector Setup tab
    - Channels are handled in interleaved format (parallel/perpendicular alternating) for compatibility with MLE burst plugin
    - Adjust timeshift values for parallel and perpendicular channels if needed
-5. For single-molecule analysis, drop BID/BUR/BST files or folders containing these files
-   - You can drop entire folders containing .bur or .bst files for batch processing
+5. For single-molecule analysis, queue the measurements' `.pto` burst containers
+   - A folder expands to every `.pto` in it for batch processing
    - The plugin will automatically search for corresponding TTTR files with progress indicators
    - Progress bars show both the search progress and file loading progress
 6. Generate and visualize microtime histograms
@@ -83,7 +83,7 @@ csc_microtime_histogram --bid-folder /path/to/bid/folder [--setup-name SETUP_NAM
 ```
 
 Parameters:
-- `--bid-folder`: Path to the folder containing BID/BUR/BST files
+- `--pto-folder`: Path to the folder containing `.pto` burst containers
 - `--setup-name`: (Optional) Name of the setup to use. If not provided, the plugin will try to read it from photon_selection_parameters.json in the Info folder
 - `--auto-transfer`: (Optional) If specified, automatically transfer the histogram to ChiSurf
 

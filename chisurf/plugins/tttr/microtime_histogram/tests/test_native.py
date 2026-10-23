@@ -48,9 +48,20 @@ def test_histogram_polarization_shift_fwhm_and_saved_flat_decay(tmp_path):
 
 
 def test_burst_header_columns_and_safe_inclusive_mask(tmp_path):
-    path = tmp_path / "one.bur"
-    path.write_text("First File\tLast File\tFirst Photon\tLast Photon\nunits\n0\t0\t2\t4\n")
-    assert read_burst_ranges(path) == [(2, 4)]
+    import pandas as pd
+
+    from chisurf.plugins.burst.burst_selection.api.io import write_container
+
+    raw = tmp_path / "one.ptu"
+    raw.write_bytes(b"x")
+    container = write_container(
+        raw,
+        pd.DataFrame({"first photon": [2], "last photon": [4]}),
+        parameters={"demo": 1},
+        run="demo search",
+    )
+    assert read_burst_ranges(container) == [(2, 4)]
+    assert read_burst_ranges(tmp_path / "not_a_container.pto") == []
     np.testing.assert_array_equal(
         burst_mask(6, [(2, 4), (4, 100)]), [False, False, True, True, True, True]
     )
@@ -62,8 +73,16 @@ def test_burst_header_columns_and_safe_inclusive_mask(tmp_path):
 def test_burst_selection_and_detector_excitation_gates(tmp_path):
     source = tmp_path / "one.ptu"
     source.write_bytes(b"x")
-    bid = tmp_path / "one.ptu.bst"
-    bid.write_text("1\t5\n")
+    import pandas as pd
+
+    from chisurf.plugins.burst.burst_selection.api.io import write_container
+
+    container = write_container(
+        source,
+        pd.DataFrame({"first photon": [1], "last photon": [5]}),
+        parameters={"demo": 1},
+        run="demo search",
+    )
     model = HistogramModel()
     model.auto_save = False
     model.set_setup(
@@ -74,7 +93,7 @@ def test_burst_selection_and_detector_excitation_gates(tmp_path):
     )
     model.window = "excitation"
     model.add_paths([source])
-    model.add_paths([bid], bids=True)
+    model.add_paths([container], bursts=True)
     model.compute(reader=lambda _: Stream())
     assert model.cumulative_parallel.sum() == 1 and model.cumulative_perpendicular.sum() == 1
 

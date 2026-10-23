@@ -1,4 +1,10 @@
-"""Toolkit-free microtime histograms, burst gates and polarization exports."""
+"""Toolkit-free microtime histograms, burst gates and polarization exports.
+
+Bursts arrive as ``.pto`` provenance: the burst runs a search wrote into the
+measurement's container (``first photon``/``last photon``, inclusive). The
+legacy ``.bst``/``.bur`` index files are reached only through the dedicated
+legacy import/export plugins.
+"""
 
 from __future__ import annotations
 
@@ -9,40 +15,41 @@ from pathlib import Path
 import numpy as np
 
 from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
+from chisurf.core.fio.pto import SUFFIX as PTO_SUFFIX
 from chisurf.core.fio.staging import TTTR_EXTENSIONS, open_tttr
 
 
+def _column_label(column) -> str:
+    """The name of a table column, however the store spells it."""
+    name = getattr(column, "name", column)
+    try:
+        return str(name() if callable(name) else name)
+    except Exception:  # noqa: BLE001 - a column that will not name itself
+        return str(column)
+
+
 def read_burst_ranges(path):
-    lines = Path(path).read_text().splitlines()
-    if not lines:
+    """The inclusive photon-index ranges of the burst run in a `.pto` container.
+
+    A container, or one run in one; without a run the newest burst search is
+    read. Returns ``[]`` when the container holds no burst table with
+    ``first photon``/``last photon`` columns.
+    """
+    from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
+
+    try:
+        table = read_burst_table(path)
+    except Exception:  # noqa: BLE001 - an unreadable container has no bursts
         return []
-    first = lines[0].split("\t")
-    normalized = [re.sub(r"[^a-z]", "", value.lower()) for value in first]
-    first_column = next(
-        (
-            i
-            for i, key in enumerate(normalized)
-            if key in {"firstphoton", "startphoton", "startidx"}
-        ),
-        None,
-    )
-    last_column = next(
-        (i for i, key in enumerate(normalized) if key in {"lastphoton", "stopphoton", "stopidx"}),
-        None,
-    )
-    ranges = []
-    for line in lines[1:] if first_column is not None else lines:
-        if not line.strip() or line.lstrip().startswith(("#", "//")):
-            continue
-        fields = line.replace(",", "\t").split()
-        try:
-            start = int(fields[first_column or 0])
-            stop = int(fields[last_column if last_column is not None else 1])
-        except (ValueError, IndexError):
-            continue
-        if start >= 0 and stop >= start:
-            ranges.append((start, stop))
-    return ranges
+    if table is None:
+        return []
+    labels = {_column_label(c): _column_label(c) for c in table.columns}
+    first, last = labels.get("first photon"), labels.get("last photon")
+    if first is None or last is None:
+        return []
+    starts = np.asarray(table[first], dtype=np.int64)
+    stops = np.asarray(table[last], dtype=np.int64)
+    return [(int(s), int(e)) for s, e in zip(starts, stops) if s >= 0 and e >= s]
 
 
 def burst_mask(count, ranges):
@@ -109,8 +116,9 @@ class HistogramModel:
     def __init__(self):
         self.files = []
         self.enabled = {}
-        self.bid_files = []
-        self.bid_enabled = {}
+        #: Burst containers (`.pto`): one search's bursts as provenance, not loose index files.
+        self.burst_files = []
+        self.burst_enabled = {}
         self.setup = {"detectors": {}, "windows": {}, "tttr_reading": {}}
         self.detector = ""
         self.parallel = [0]
@@ -185,7 +193,7 @@ class HistogramModel:
         p = ",".join(map(str, self.parallel)) or "all"
         s = ",".join(map(str, self.perpendicular)) or "all"
         directory = (
-            Path(self.selected_bids()[0]).parent if self.selected_bids() else Path(files[0]).parent
+            Path(self.selected_bursts()[0]).parent if self.selected_bursts() else Path(files[0]).parent
         )
         self.output = str(
             directory / f"{stem}{'_' + self.detector if self.detector else ''}_({p})-({s}).dat"
@@ -194,17 +202,17 @@ class HistogramModel:
     def selected_files(self):
         return [Path(path) for path in self.files if self.enabled.get(str(path), True)]
 
-    def selected_bids(self):
-        return [Path(path) for path in self.bid_files if self.bid_enabled.get(str(path), True)]
+    def selected_bursts(self):
+        return [Path(path) for path in self.burst_files if self.burst_enabled.get(str(path), True)]
 
-    def add_paths(self, paths, bids=False):
-        target = self.bid_files if bids else self.files
+    def add_paths(self, paths, bursts=False):
+        target = self.burst_files if bursts else self.files
         for path in paths:
             p = Path(path)
             candidates = sorted(p.rglob("*")) if p.is_dir() else [p]
             for candidate in candidates:
                 candidate = candidate.resolve()
-                extensions = (".bst", ".bur") if bids else TTTR_EXTENSIONS
+                extensions = (PTO_SUFFIX,) if bursts else TTTR_EXTENSIONS
                 if (
                     candidate.is_file()
                     and candidate.suffix.lower() in extensions
@@ -215,18 +223,26 @@ class HistogramModel:
 
     @staticmethod
     def base_name(path):
+        """The identity a burst container shares with the photons it was made on."""
         stem = Path(path).stem
-        return re.sub(r"_\d+$", "", stem) if Path(path).suffix.lower() == ".bur" else stem
+        return re.sub(r"_\d+$", "", stem)
 
     def find_corresponding_files(self):
+        """The photon files the queued burst containers were made on.
+
+        A container is written beside its measurement, so the search starts in
+        its own folder and walks up for layouts that keep analyses apart.
+        """
         found = []
-        for bid in self.selected_bids():
-            stem = self.base_name(bid)
-            for directory in [bid.parent, *list(bid.parents)[1:4]]:
+        for burst in self.selected_bursts():
+            stem = self.base_name(burst)
+            for directory in [burst.parent, *list(burst.parents)[1:4]]:
                 candidates = [
                     path
                     for path in directory.glob(stem + "*")
-                    if path.is_file() and path.suffix.lower() in TTTR_EXTENSIONS
+                    if path.is_file()
+                    and path.suffix.lower() in TTTR_EXTENSIONS
+                    and path.resolve() != burst.resolve()
                 ]
                 if candidates:
                     found.extend(candidates)
@@ -245,7 +261,7 @@ class HistogramModel:
             raise ValueError("Define at least one detector routing channel.")
         if self.binning < 1:
             raise ValueError("Binning factor must be positive.")
-        bursts = {self.base_name(path): read_burst_ranges(path) for path in self.selected_bids()}
+        bursts = {self.base_name(path): read_burst_ranges(path) for path in self.selected_bursts()}
         histograms = {}
         resolution = None
         reading = setup_lut_open_kwargs(self.setup)
@@ -388,8 +404,8 @@ class HistogramModel:
             for key in (
                 "files",
                 "enabled",
-                "bid_files",
-                "bid_enabled",
+                "burst_files",
+                "burst_enabled",
                 "setup",
                 "detector",
                 "parallel",

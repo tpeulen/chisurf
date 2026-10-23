@@ -1,4 +1,4 @@
-"""Native EMTK TTTR/BID histogram workflow with the full shared setup editor.
+"""Native EMTK TTTR histogram workflow with the full shared setup editor.
 
 Two dock tabs on the left as in the Qt wizard (Inputs and options, Detector definition) and the decay on the right.
 The options are the view spec ``histogram.view.json`` drawn by emtk's view_form over :class:`HistogramFields` (a proxy of
@@ -43,7 +43,7 @@ PHOTON_FILTERS = [
     ("Photon data", ["*.pto", "*.ptu", "*.ht3", "*.ht2", "*.spc", "*.phu", "*.tttr"]),
     ("All files", ["*"]),
 ]
-BURST_FILTERS = [("Burst indices", ["*.bst", "*.bur"]), ("All files", ["*"])]
+BURST_FILTERS = [("Burst containers", ["*.pto"]), ("All files", ["*"])]
 DECAY_FILTERS = [("Decay", ["*.dat", "*.txt"]), ("All files", ["*"])]
 
 
@@ -240,8 +240,8 @@ class HistogramApp(TourTarget, ImApp):
                 for key in (
                     "files",
                     "enabled",
-                    "bid_files",
-                    "bid_enabled",
+                    "burst_files",
+                    "burst_enabled",
                     "setup",
                     "detector",
                     "parallel",
@@ -287,10 +287,10 @@ class HistogramApp(TourTarget, ImApp):
         if not self.job.running:
             self.model.add_paths(paths)
 
-    def add_bids(self, paths):
+    def add_bursts(self, paths):
         if not self.job.running:
-            self.model.add_paths(paths, bids=True)
-            self.model.message = f"{len(self.model.bid_files)} burst selection(s) queued."
+            self.model.add_paths(paths, bursts=True)
+            self.model.message = f"{len(self.model.burst_files)} burst container(s) queued."
             self.find_sources()
 
     def load_example(self):
@@ -356,7 +356,7 @@ class HistogramApp(TourTarget, ImApp):
             lambda: work(model), publish, lambda exc: setattr(self.model, "message", str(exc))
         )
 
-    def load_bid_folder(self, folder, setup_name=None, auto_transfer=False):
+    def load_burst_folder(self, folder, setup_name=None, auto_transfer=False):
         if self.job.running or self.editor._future is not None:
             return False
         snapshot = self.model.snapshot()
@@ -370,9 +370,9 @@ class HistogramApp(TourTarget, ImApp):
                 if setup_name not in store.setups:
                     raise ValueError(f"Unknown detector setup: {setup_name}")
                 snapshot.set_setup(store.setups[setup_name])
-            snapshot.bid_files = []
-            snapshot.bid_enabled = {}
-            snapshot.add_paths([folder], bids=True)
+            snapshot.burst_files = []
+            snapshot.burst_enabled = {}
+            snapshot.add_paths([folder], bursts=True)
             snapshot.find_corresponding_files()
             snapshot.compute(reader=self.reader, cancel_cb=self.job.cancelled.is_set)
             if auto_transfer:
@@ -448,7 +448,7 @@ class HistogramApp(TourTarget, ImApp):
     def clear(self):
         self.job.stop()
         self.model.files = []
-        self.model.bid_files = []
+        self.model.burst_files = []
         self.model.invalidate()
         self.model.message = "Inputs cleared."
 
@@ -545,7 +545,7 @@ class HistogramApp(TourTarget, ImApp):
             self.tour.notify_used(row)
 
     def remove_input(self, key, path):
-        paths = self.model.files if key == "photon" else self.model.bid_files
+        paths = self.model.files if key == "photon" else self.model.burst_files
         if path in paths:
             paths.remove(path)
         self.selected[key] = None
@@ -586,11 +586,12 @@ class HistogramApp(TourTarget, ImApp):
         self.remember("fwhm")
         self.draw_photon_list()
         open_bursts = im.collapsing_header(
-            "Burst selections (BID/BUR)", 32 if self.model.bid_files else 0
+            "Burst selections (.pto)", 32 if self.model.burst_files else 0
         )
         im.set_item_tooltip(
             tr(
-                "Restrict the photons to bursts: queue .bst/.bur photon-index files (inclusive bounds)."
+                "Restrict the photons to bursts: queue .pto containers carrying a burst run "
+                "(inclusive photon bounds, read from the provenance)."
             )
         )
         self.remember("burst_header")
@@ -637,28 +638,28 @@ class HistogramApp(TourTarget, ImApp):
             (
                 "files",
                 "➕  Files…",
-                "Queue inclusive photon-index burst selections (BID/BUR).",
+                "Queue .pto burst containers: a burst search's photons, read from provenance.",
                 lambda: self.choose(
-                    "Burst indices", self.add_bids, multiple=True, filters=BURST_FILTERS
+                    "Burst containers", self.add_bursts, multiple=True, filters=BURST_FILTERS
                 ),
             ),
             (
                 "folder",
                 "📁  Folder…",
-                "Expand a folder to its .bst/.bur photon-index files.",
+                "Expand a folder to its .pto burst containers.",
                 lambda: self.choose(
-                    "Burstwise folder", self.add_bids, mode="folder", filters=BURST_FILTERS
+                    "Burst container folder", self.add_bursts, mode="folder", filters=BURST_FILTERS
                 ),
             ),
             (
                 "find",
                 "🔍  Find TTTR",
-                "Search four parent directories for the photon files the burst selections "
+                "Search the containers' folders for the photon files the bursts "
                 "were made on.",
                 self.find_sources,
             ),
         ]
-        self.draw_queue("", "burst", self.model.bid_files, self.model.bid_enabled, pickers)
+        self.draw_queue("", "burst", self.model.burst_files, self.model.burst_enabled, pickers)
 
     def draw_plot(self, box):
         flags = [

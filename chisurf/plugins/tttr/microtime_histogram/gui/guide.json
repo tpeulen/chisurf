@@ -18,7 +18,7 @@
     },
     {
       "title": "Queue photon files",
-      "text": "The demonstration file is already queued. For your own measurements, add files, a folder or datasets from the database, or drop them on the window. Untick a file to leave it out; Burst selections (BID/BUR) restrict the photons to bursts.",
+      "text": "The demonstration file is already queued. For your own measurements, add files, a folder or datasets from the database, or drop them on the window. Untick a file to leave it out; Burst selections (.pto) restrict the photons to bursts.",
       "target": {
         "name": "photon_files"
       }
