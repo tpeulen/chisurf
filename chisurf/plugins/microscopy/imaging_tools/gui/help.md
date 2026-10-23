@@ -6,7 +6,7 @@ The imaging pipeline in one window: the steps that share one context, a list on 
 
 Setup and Browser come first, then Resolution, Flow and Colocalization, which read the Browser's source with the Setup's detector windows. The numbered steps, 1. Intensity to 6. Pixel-wise MLE, build per-pixel maps in one shared imaging HDF5. CLSM Draw, Spot Finder and Region MLE follow below the rule; they take the Setup's detectors and, Region MLE, the source and the IRF & BG calibration. Search keeps the tools whose name or description contains the text. A tool marked pending has no native version yet.
 
-Tools that read their own input and take none of this context are ribbon entries of their own, in **Spectroscopy › Imaging**: Drift Correction (align a stack before the maps are built), Particle Tracking, PSF Determination and CLSM Generator.
+Tools that read their own input and take none of this context are ribbon entries of their own, in **Spectroscopy › Imaging**: Drift Correction (align a stack before the maps are built), Particle Tracking, PSF Determination and CLSM Simulator.
 
 ## What is shared
 

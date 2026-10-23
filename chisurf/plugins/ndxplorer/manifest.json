@@ -10,7 +10,7 @@
     "Tools",
     "Views"
   ],
-  "icon": "\ud83d\udd2d",
+  "icon": "📊",
   "state_namespace": "ndxplorer",
   "statefulness": {
     "enabled": true,
@@ -24,13 +24,17 @@
       "name": "open_path",
       "summary": "Open a burst-analysis folder, a .pto or a table file, as File > Open does.",
       "receive": "chisurf.plugins.ndxplorer.gui.app:receive_path",
-      "required": ["path"]
+      "required": [
+        "path"
+      ]
     },
     {
       "name": "table",
       "summary": "Show an in-memory table (a DataSource or a column store) a tool has just computed.",
       "receive": "chisurf.plugins.ndxplorer.gui.app:receive_table",
-      "required": ["table"]
+      "required": [
+        "table"
+      ]
     }
   ],
   "entrypoints": {

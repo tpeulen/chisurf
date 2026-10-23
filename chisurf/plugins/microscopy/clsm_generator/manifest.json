@@ -1,7 +1,7 @@
 {
   "id": "clsm_generator",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Imaging:CLSM Generator",
+  "display_name": "Spectroscopy:Imaging:CLSM Simulator",
   "description": "Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s).",
   "authors": [
     "Thomas-Otavio Peulen"
@@ -11,7 +11,7 @@
     "Imaging",
     "Simulation"
   ],
-  "icon": "🧪",
+  "icon": "🔬",
   "state_namespace": "clsm_generator",
   "statefulness": {
     "enabled": true,

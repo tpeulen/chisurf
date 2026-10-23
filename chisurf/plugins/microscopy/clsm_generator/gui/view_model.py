@@ -1,4 +1,4 @@
-"""Qt-free view-model for the CLSM Generator tool.
+"""Qt-free view-model for the CLSM Simulator tool.
 
 Loads an intensity image + per-detector lifetime map(s), simulates a CLSM photon
 image with

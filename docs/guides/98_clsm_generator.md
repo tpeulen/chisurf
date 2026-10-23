@@ -1,13 +1,13 @@
 ---
 type: Guide
-title: 'CLSM Generator: a scan whose answer is known'
+title: 'CLSM Simulator: a scan whose answer is known'
 description: Generate confocal photon scans from brightness and per-detector lifetime maps, then inspect and export them.
 tags: [guides, photons, tcspc, lifetime]
 ---
 
-# CLSM Generator: a scan whose answer is known
+# CLSM Simulator: a scan whose answer is known
 
-**Tool:** *Spectroscopy → Imaging → CLSM Generator* (`clsm_generator`), a window of its own: it reads only the maps you give it. It simulates the photon stream of a confocal lifetime scan from maps
+**Tool:** *Spectroscopy → Imaging → CLSM Simulator* (`clsm_generator`), a window of its own: it reads only the maps you give it. It simulates the photon stream of a confocal lifetime scan from maps
 you provide: a brightness image and one **fluorescence lifetime map per detector**. Because you chose the lifetimes, the
 result is a test for the analysis tools ([pixel MLE](24_scan_images.md), [CLSM-Draw](24_scan_images.md), the
 [Spot Finder](84_spot_finder.md)): they must give back what you put in.

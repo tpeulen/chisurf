@@ -163,7 +163,7 @@ class ClsmGeneratorApp(ImApp):
             for k in ("lifetimes", "simulation")
         }
         self.help_window = EmTkHelpWindow(
-            title="CLSM Generator — Help", resource=Path(__file__).with_name("help.md"), owner=self
+            title="CLSM Simulator — Help", resource=Path(__file__).with_name("help.md"), owner=self
         )
         self.tour = EmTkGuidedTour(
             steps=Path(__file__).with_name("guide.json"),

@@ -1,1 +1,1 @@
-"""GUI for the CLSM Generator (AutoForm)."""
+"""GUI for the CLSM Simulator (AutoForm)."""

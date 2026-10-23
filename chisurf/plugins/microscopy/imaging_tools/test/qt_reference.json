@@ -110,7 +110,7 @@
   },
   {
    "role": "clsm_generator",
-   "name": "CLSM Generator",
+   "name": "CLSM Simulator",
    "description": "Generate a synthetic CLSM photon image from an intensity image and per-detector lifetime maps: a known answer to check the imaging pipeline against.",
    "separator": null
   }

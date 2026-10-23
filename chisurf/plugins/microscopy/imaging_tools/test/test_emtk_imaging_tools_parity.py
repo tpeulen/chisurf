@@ -122,7 +122,7 @@ SPLIT_OUT = {
     "drift": ("microscopy/img_drift", "Spectroscopy:Imaging:Drift Correction"),
     "tracking": ("microscopy/img_tracking", "Spectroscopy:Imaging:Particle Tracking"),
     "psf": ("microscopy/psf_determination", "Spectroscopy:Imaging:PSF Determination"),
-    "clsm_generator": ("microscopy/clsm_generator", "Spectroscopy:Imaging:CLSM Generator"),
+    "clsm_generator": ("microscopy/clsm_generator", "Spectroscopy:Imaging:CLSM Simulator"),
 }
 #: Pipeline tools whose description named a tool that left (where it "sits after Drift"): reworded on purpose.
 REWORDED = {"frc", "flow", "coloc"}

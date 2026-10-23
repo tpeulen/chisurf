@@ -1,4 +1,4 @@
-# CLSM Generator
+# CLSM Simulator
 
 Load a relative **intensity image** and one **lifetime map in ns for each detector**.
 TIFF, NPY and NPZ maps are supported. All maps must have matching 2-D shapes;

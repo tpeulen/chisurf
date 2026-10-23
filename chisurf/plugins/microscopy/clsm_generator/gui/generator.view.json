@@ -1,11 +1,11 @@
 {
   "window": {"width": 1100, "height": 720},
-  "_comment": "CLSM Generator. AutoForm over ClsmGeneratorViewModel: load an intensity image + one lifetime map per detector (TIFF/numpy), set simulation parameters, and Generate a synthetic CLSM photon image whose per-pixel intensity and lifetime match the inputs. The image_browser shows the input maps and the reconstruction; Save writes the photon stream (.npz / .ptu / .spc / .ht3) plus an intensity TIFF.",
+  "_comment": "CLSM Simulator. AutoForm over ClsmGeneratorViewModel: load an intensity image + one lifetime map per detector (TIFF/numpy), set simulation parameters, and Generate a synthetic CLSM photon image whose per-pixel intensity and lifetime match the inputs. The image_browser shows the input maps and the reconstruction; Save writes the photon stream (.npz / .ptu / .spc / .ht3) plus an intensity TIFF.",
   "sections": [
     {
       "type": "dock_area",
       "description": "Simulate a TTTR CLSM measurement from an intensity image and lifetime maps.",
-      "title": "CLSM Generator",
+      "title": "CLSM Simulator",
       "sections": [
         {
           "type": "panel",
