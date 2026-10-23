@@ -14,10 +14,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im, implot, style
+from emtk.view_form import FormState, draw_sections
 from emtk.app import ImApp
 from emtk.i18n import tr
-from emtk.im_core import ItemFlags, get_current_context
+from emtk.im_core import get_current_context
 
+from chisurf.emtk.advanced import advanced_mode
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
     action_caption,
@@ -35,6 +37,38 @@ WINDOW_BG = (30, 32, 38, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
 ACCENT_GRAY = (158, 158, 158, 255)
 ACCENT_RED = (214, 39, 40, 255)
+
+
+#: The analysis parameters as spin fields: typed values commit on Enter, the
+#: arrows step, the bounds are the Qt tool's spin ranges (applied on commit).
+PARAM_SECTIONS = [
+    {
+        "type": "value", "attr": "window_length", "label": "Min window length (s):",
+        "kind": "float", "style": "spin", "minimum": 0.0001, "maximum": 10.0,
+        "decimals": 4, "call": "on_param_edited",
+        "description": "Minimum window length in seconds used to slice bursts into photon subsets.",
+    },
+    {
+        "type": "value", "attr": "photons_per_slice", "label": "Photons per slice:",
+        "kind": "int", "style": "spin", "minimum": 1, "maximum": 500,
+        "call": "on_param_edited",
+        "description": "Number of photons per slice when splitting bursts for the variance analysis.",
+    },
+]
+BINS_SECTIONS = [
+    {
+        "type": "value", "attr": "bins_x", "label": "Bins X:",
+        "kind": "int", "style": "spin", "minimum": 10, "maximum": 500,
+        "call": "on_bins_edited",
+        "description": "Number of histogram bins along the mean proximity-ratio axis.",
+    },
+    {
+        "type": "value", "attr": "bins_y", "label": "Bins Y:",
+        "kind": "int", "style": "spin", "minimum": 10, "maximum": 500,
+        "call": "on_bins_edited",
+        "description": "Number of histogram bins along the standard-deviation axis.",
+    },
+]
 
 
 class BurstBvaGui:
@@ -68,6 +102,8 @@ class BurstBvaGui:
 
         self.region_rect: list[float] = [0.2, 0.05, 0.8, 0.35]
         self.selected_settings_tab = "BVA Settings"
+        #: The spin fields of the parameters (view-form: typed + arrows + Enter).
+        self.param_form = FormState(on_used=self.track)
         self._folder_text: str | None = None
         self._microtime_text: dict[str, str] = {}
         #: The shared detector editor (``chisurf.emtk.channel_definition``) and the detectors picked from it.
@@ -255,33 +291,39 @@ class BurstBvaGui:
                 else:
                     self.remember("BVA Settings")
 
-                opened = im.begin_tab_item("Channel Definitions")
-                im.set_item_tooltip(tr("Set detector routing and microtime gates."))
-                if opened:
-                    self.selected_settings_tab = "Channel Definitions"
-                    self.remember("Channel Definitions")
-                    self._draw_channel_definitions()
-                    im.end_tab_item()
-                else:
-                    self.remember("Channel Definitions")
-
-                opened = im.begin_tab_item("Detectors")
-                im.set_item_tooltip(
-                    tr(
-                        "The shared detector editor: setups, reading routine, PIE windows and detectors."
-                    )
-                )
-                if opened:
-                    self.selected_settings_tab = "Detectors"
-                    self.remember("Detectors")
-                    if self.editor is not None:
-                        self.editor.draw()
-                        self.item_rects.update(
-                            {f"detectors.{k}": v for k, v in self.editor.item_rects.items()}
+                # In the pipeline the setup comes from the pipeline's Setup Selection
+                # step: the hosted editor shows which one, editing happens there.
+                # The raw channel controls are advanced (off by default).
+                hosted = self.editor is not None and getattr(self.editor, "hosted", False)
+                if advanced_mode() or not hosted:
+                    opened = im.begin_tab_item("Detectors")
+                    im.set_item_tooltip(
+                        tr(
+                            "The detector setup this analysis uses. In the pipeline it is "
+                            "the one Setup Selection chose."
                         )
-                    im.end_tab_item()
-                else:
-                    self.remember("Detectors")
+                    )
+                    if opened:
+                        self.selected_settings_tab = "Detectors"
+                        self.remember("Detectors")
+                        if self.editor is not None:
+                            self.editor.draw()
+                            self.item_rects.update(
+                                {f"detectors.{k}": v for k, v in self.editor.item_rects.items()}
+                            )
+                        im.end_tab_item()
+                    else:
+                        self.remember("Detectors")
+                if advanced_mode():
+                    opened = im.begin_tab_item("Channel Definitions")
+                    im.set_item_tooltip(tr("Set detector routing and microtime gates."))
+                    if opened:
+                        self.selected_settings_tab = "Channel Definitions"
+                        self.remember("Channel Definitions")
+                        self._draw_channel_definitions()
+                        im.end_tab_item()
+                    else:
+                        self.remember("Channel Definitions")
                 im.end_tab_bar()
 
             im.spacing()
@@ -459,75 +501,14 @@ class BurstBvaGui:
             self.model.set_folder(text)
 
     def _draw_bva_parameters(self) -> None:
-        """Draw BVA parameter controls."""
-        # A drag reports every step (``LIVE_EDIT_ON_INPUT``): without the flag emtk reports a drag only on release,
-        # with the value the model already had, so dragging a field changed nothing.
-        im.push_item_flag(ItemFlags.LIVE_EDIT_ON_INPUT, True)
-        try:
-            self._draw_bva_parameter_fields()
-        finally:
-            im.pop_item_flag()
-
-    def _draw_bva_parameter_fields(self) -> None:
+        """Draw BVA parameter controls: spin fields (typed or stepped, keyboard-editable)."""
         im.spacing()
         im.text_colored(style.HEADING_4, "Analysis Parameters")
-
-        # Window length
-        col_x = 175.0
-        im.align_text_to_frame_padding()
-        im.text(tr("Min window length (s):"))
-        im.same_line(col_x)
-        im.set_next_item_width(120)
-        changed, wl = im.drag_float(
-            "##window_length", self.model.window_length, 0.001, 0.0001, 10.0, "%.4f s"
-        )
-        im.set_item_tooltip(
-            tr("Minimum window length in seconds used to slice bursts into photon subsets.")
-        )
-        self.remember("window_length")
-        if changed:
-            self.model.window_length = max(0.0001, float(wl))
-            self.model.notify("param")
-
-        # Photons per slice
-        im.align_text_to_frame_padding()
-        im.text(tr("Photons per slice:"))
-        im.same_line(col_x)
-        im.set_next_item_width(120)
-        changed, pps = im.drag_int("##photons_per_slice", int(self.model.photons_per_slice), 1, 1, 500)
-        im.set_item_tooltip(
-            tr("Number of photons per slice when splitting bursts for the variance analysis.")
-        )
-        self.remember("photons_per_slice")
-        if changed:
-            self.model.photons_per_slice = max(1, int(pps))
-            self.model.notify("param")
-
+        draw_sections(PARAM_SECTIONS, self.model, self.param_form)
         im.spacing()
         im.text_colored(style.HEADING_4, "Display Options")
-
-        # Bins
-        im.align_text_to_frame_padding()
-        im.text(tr("Bins X:"))
-        im.same_line(col_x)
-        im.set_next_item_width(120)
-        changed, bx = im.drag_int("##bins_x", int(self.model.bins_x), 1, 10, 500)
-        im.set_item_tooltip(tr("Number of histogram bins along the mean proximity-ratio axis."))
-        self.remember("bins_x")
-        if changed:
-            self.model.bins_x = max(10, int(bx))
-            self.model.notify("bins")
-
-        im.align_text_to_frame_padding()
-        im.text(tr("Bins Y:"))
-        im.same_line(col_x)
-        im.set_next_item_width(120)
-        changed, by = im.drag_int("##bins_y", int(self.model.bins_y), 1, 10, 500)
-        im.set_item_tooltip(tr("Number of histogram bins along the standard-deviation axis."))
-        self.remember("bins_y")
-        if changed:
-            self.model.bins_y = max(10, int(by))
-            self.model.notify("bins")
+        draw_sections(BINS_SECTIONS, self.model, self.param_form)
+        self.item_rects.update(self.param_form.rects)
 
         # Toggles
         if im.checkbox(tr("Show static line"), self.model.show_static_line)[0]:

@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from emtk import im, implot
+from emtk.view_form import FormState, draw_sections
 from emtk.app import ImApp
 from emtk.i18n import tr
 from emtk.im_core import get_current_context
@@ -57,6 +58,36 @@ def _hex_to_rgba(col: Any, alpha: int = 255) -> tuple[int, int, int, int]:
     if len(c) == 6:
         return int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16), alpha
     return (100, 150, 240, alpha)
+
+
+#: The fit window and histogram controls as spin fields (typed + arrows + Enter);
+#: the ``call`` hooks keep the from/to pair increasing and refit.
+BACKGROUND_SECTIONS = [
+    {
+        "type": "value", "attr": "fit_from_ms", "label": "Fit from (ms):",
+        "kind": "float", "style": "spin", "minimum": 0.0, "decimals": 3,
+        "call": "on_fit_from_edited", "suffix": " ms",
+        "description": "Lower edge of the inter-photon-time tail window (in ms) fitted as background.",
+    },
+    {
+        "type": "value", "attr": "fit_to_ms", "label": "Fit to (ms):",
+        "kind": "float", "style": "spin", "minimum": 0.0, "decimals": 3,
+        "call": "on_fit_to_edited", "suffix": " ms",
+        "description": "Upper edge of the inter-photon-time tail window (in ms) fitted as background.",
+    },
+    {
+        "type": "value", "attr": "binsize_ms", "label": "Bin width (ms):",
+        "kind": "float", "style": "spin", "minimum": 0.001, "decimals": 3,
+        "call": "on_binsize_edited", "suffix": " ms",
+        "description": "Histogram bin width of the inter-photon-time distribution in milliseconds.",
+    },
+    {
+        "type": "value", "attr": "min_counts", "label": "Min counts / bin:",
+        "kind": "int", "style": "spin", "minimum": 0, "maximum": 1000,
+        "call": "on_min_counts_edited",
+        "description": "Bins with fewer counts than this are ignored when fitting the tail.",
+    },
+]
 
 
 class BurstBackgroundGui:
@@ -103,6 +134,8 @@ class BurstBackgroundGui:
         self.on_used = self.tour.notify_used  # the Run step waits for Estimate
 
         self.model.add_observer(self._on_model_event)
+        #: The spin fields of the fit window (view-form: typed + arrows + Enter).
+        self.param_form = FormState(on_used=self.track)
 
         from emtk.docking import DockManager, Region, Split
 
@@ -173,52 +206,9 @@ class BurstBackgroundGui:
         im.begin_disabled(self.controller is not None and self.controller.running)
         im.text_colored(ACCENT_BLUE, tr("Fit Settings"))
 
-        # Fit from / to (ms)
-        im.text(tr("Fit from (ms):"))
-        im.set_next_item_width(avail_w)
-        ch_lo, new_lo = im.drag_float(
-            "##fit_from", float(self.model.fit_from_ms), 0.01, 0.001, 1000.0, "%.3f"
-        )
-        im.set_item_tooltip(
-            tr("Lower edge of the inter-photon-time tail window (in ms) fitted as background.")
-        )
-        if ch_lo and new_lo > 0 and (self.model.fit_to_ms <= 0 or new_lo < self.model.fit_to_ms):
-            self.model.fit_from_ms = float(new_lo)
-            self.model.update()
-
-        im.text(tr("Fit to (ms):"))
-        im.set_next_item_width(avail_w)
-        ch_hi, new_hi = im.drag_float(
-            "##fit_to", float(self.model.fit_to_ms), 0.01, 0.001, 1000.0, "%.3f"
-        )
-        im.set_item_tooltip(
-            tr("Upper edge of the inter-photon-time tail window (in ms) fitted as background.")
-        )
-        if ch_hi and new_hi > self.model.fit_from_ms:
-            self.model.fit_to_ms = float(new_hi)
-            self.model.update()
-
-        im.text(tr("Bin width (ms):"))
-        im.set_next_item_width(avail_w)
-        ch_bin, new_bin = im.drag_float(
-            "##bin_w", float(self.model.binsize_ms), 0.01, 0.001, 10.0, "%.3f"
-        )
-        im.set_item_tooltip(
-            tr("Histogram bin width of the inter-photon-time distribution in milliseconds.")
-        )
-        if ch_bin and new_bin > 0:
-            self.model.binsize_ms = float(new_bin)
-            self.model.update()
-
-        im.text(tr("Min counts / bin:"))
-        im.set_next_item_width(avail_w)
-        ch_cnt, new_cnt = im.drag_int("##min_cnt", int(self.model.min_counts), 1, 0, 1000)
-        im.set_item_tooltip(
-            tr("Bins with fewer counts than this are ignored when fitting the tail.")
-        )
-        if ch_cnt and new_cnt >= 0:
-            self.model.min_counts = int(new_cnt)
-            self.model.update()
+        # Fit from / to (ms): spin fields -- typed or stepped, commits on Enter
+        draw_sections(BACKGROUND_SECTIONS, self.model, self.param_form)
+        self.item_rects.update(self.param_form.rects)
 
         im.spacing()
         im.separator()

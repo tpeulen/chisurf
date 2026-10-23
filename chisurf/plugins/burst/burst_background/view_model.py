@@ -358,6 +358,33 @@ class BackgroundViewModel:
                     starved.add(name)
         return starved
 
+    # -- view-form ``call`` hooks of the spin fields -------------------------------------------- #
+    def on_fit_from_edited(self, *_args) -> None:
+        """``fit_from_ms`` committed: keep the window increasing and refit."""
+        if self.fit_to_ms > 0 and self.fit_from_ms >= self.fit_to_ms:
+            self.fit_from_ms = max(0.0, self.fit_to_ms - self.binsize_ms)
+        if self.fit_from_ms < 0:
+            self.fit_from_ms = 0.0
+        self.update()
+
+    def on_fit_to_edited(self, *_args) -> None:
+        """``fit_to_ms`` committed: keep the window increasing and refit."""
+        if self.fit_to_ms <= self.fit_from_ms:
+            self.fit_to_ms = self.fit_from_ms + self.binsize_ms
+        self.update()
+
+    def on_binsize_edited(self, *_args) -> None:
+        """``binsize_ms`` committed: refit."""
+        if self.binsize_ms <= 0:
+            self.binsize_ms = 0.001
+        self.update()
+
+    def on_min_counts_edited(self, *_args) -> None:
+        """``min_counts`` committed: refit."""
+        if self.min_counts < 0:
+            self.min_counts = 0
+        self.update()
+
     def update(self) -> None:
         """AutoForm hook: a bound field changed.
 

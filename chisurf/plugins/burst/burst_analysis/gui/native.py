@@ -179,6 +179,7 @@ class BurstAnalysisHubApp(ToolHubApp):
         for panel in panels:
             if panel.get("role") in {
                 "selection",
+                "bva",
                 "mle",
                 "segment_mle",
                 "background",

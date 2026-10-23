@@ -240,8 +240,6 @@ def test_preview_then_plots_histogram_gmm_and_exports(model, tmp_path):
     cif = model.export_flr_cif(tmp_path / "out.cif")
     text = cif.read_text()
     assert "_pH 7.4" in text and "loop_" in text
-    bur = model.save_bur(tmp_path / "all.bur")
-    assert bur.read_text().count("\n") > 100
     assert model.output_path() and Path(model.output_path()).exists()
     assert model.output_folder() is not None
 
@@ -254,6 +252,6 @@ def test_empty_model_has_no_invented_data(hermetic):
     assert m.histogram() is None and m.scatter() is None and m.burst_rows() == []
     assert m.prepare_run() == "No TTTR files selected."
     with pytest.raises(ValueError):
-        m.save_bur("x.bur")
+        m.export_flr_cif("x.cif")
     assert isinstance(np.asarray(m.feature_data("Duration (ms)")), np.ndarray)
     assert json.loads(m.result_json())["settings"]["photon_filter"]["used_filter"] == "tttrlib"

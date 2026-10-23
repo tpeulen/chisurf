@@ -69,15 +69,11 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
     DIALOGS = {
         "add_files": ("Add TTTR files", "open"),
         "add_folder": ("Add a folder of TTTR files", "folder"),
-        "save_bur": ("Save the burst table (.bur)", "save"),
-        "export_bur": ("Export the displayed table (.bur)", "save"),
         "export_cif": ("Export as flrCIF", "save"),
         "save_settings": ("Save Burst Selection settings", "save"),
         "load_settings": ("Load Burst Selection settings", "open"),
     }
     FILTERS = {
-        "save_bur": [("Burst table", ["*.bur"])],
-        "export_bur": [("Burst table", ["*.bur"]), ("All files", ["*"])],
         "export_cif": [("flrCIF", ["*.cif", "*.mmcif"]), ("All files", ["*"])],
         "save_settings": [("JSON", ["*.json"])],
         "load_settings": [("JSON", ["*.json"])],
@@ -287,9 +283,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         if filters:
             options["filters"] = filters
         filename = ""
-        if action == "save_bur" and self.model.files:
-            filename = self.model.files[0].with_suffix(".bur").name
-        elif action == "export_cif":
+        if action == "export_cif":
             filename = "bursts.cif"
         elif action == "save_settings":
             filename = "burst_selection_settings.json"
@@ -311,10 +305,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                     self.model.status_text = (
                         "Nothing new to add (already listed, or no TTTR files)."
                     )
-            elif action == "save_bur":
-                self.model.save_bur(result[0])
-            elif action == "export_bur":
-                self.model.export_bur(result[0])
             elif action == "export_cif":
                 self.model.export_flr_cif(result[0])
             elif action == "save_settings":
@@ -464,20 +454,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                     "key": "toolAction_refresh",
                     "enabled": has_files and not busy,
                     "tip": "Filter the visible window again and redraw the plots.",
-                },
-                {
-                    "label": "Save .bur",
-                    "key": "save_bur",
-                    "enabled": has_result and not busy,
-                    "tip": "Write the burst tables of every file as one .bur."
-                    if has_result
-                    else "Run the search first.",
-                },
-                {
-                    "label": "Export .bur",
-                    "key": "export_bur",
-                    "enabled": shown,
-                    "tip": "Write the displayed table (with File Idx) as a tab-separated .bur.",
                 },
                 {
                     "label": "Export flrCIF",

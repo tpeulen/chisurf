@@ -62,6 +62,14 @@ class BvaViewModel:
         if callback in self._observers:
             self._observers.remove(callback)
 
+    def on_param_edited(self, *_args) -> None:
+        """A spin field committed an analysis parameter (view-form ``call`` hook)."""
+        self.notify("param")
+
+    def on_bins_edited(self, *_args) -> None:
+        """A spin field committed a bin count (view-form ``call`` hook)."""
+        self.notify("bins")
+
     def notify(self, event: str = "change") -> None:
         for obs in list(self._observers):
             try:

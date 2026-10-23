@@ -277,7 +277,13 @@ class ToolHubApp(ImApp):
         from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 
         editors = []
-        for owner in (child, getattr(child, "tool", None), getattr(child, "controller", None)):
+        # A step may keep its editor one nesting level deep (BVA's native app inside
+        # its compatibility wrapper), so search the child, its tool/controller and
+        # every object it directly holds.
+        owners = [child, getattr(child, "tool", None), getattr(child, "controller", None)]
+        if hasattr(child, "__dict__"):
+            owners += [v for v in vars(child).values() if hasattr(v, "__dict__")]
+        for owner in owners:
             for value in vars(owner).values() if hasattr(owner, "__dict__") else ():
                 if isinstance(value, ChannelDefinitionWidget) and value not in editors:
                     editors.append(value)

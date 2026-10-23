@@ -1440,23 +1440,6 @@ class BurstSelectionModel(RunPickerMixin):
         frames = [f for f in self.frames_by_file.values() if f is not None and row_count(f)]
         return concat_stores(frames) if frames else None
 
-    def save_bur(self, path) -> Path:
-        """Write the burst tables of every file of the last run as one ``.bur`` (the Qt "Save .bur")."""
-        frame = self.combined_frame()
-        if frame is None:
-            raise ValueError("No burst table to save: run the search first.")
-        self.client.save_bur(frame, Path(path))
-        self.status_text = f"Saved {path}"
-        return Path(path)
-
-    def export_bur(self, path) -> Path:
-        """Write the displayed table (the active file, with ``File Idx``) as a tab-separated ``.bur``."""
-        if self.display_frame is None or row_count(self.display_frame) == 0:
-            raise ValueError("No burst data to export.")
-        write_csv_table(str(path), self.display_frame)
-        self.status_text = f"Exported to {path}"
-        return Path(path)
-
     def export_flr_cif(self, path) -> Path:
         """Write the displayed table and the metadata as flrCIF (the Qt ``_write_flr_cif``)."""
         if self.display_frame is None or row_count(self.display_frame) == 0:

@@ -78,9 +78,9 @@
     },
     {
       "title": "Hand the bursts on",
-      "text": "<b>Save .bur</b> writes one table, <b>Export flrCIF</b> the table with its metadata, and <b>Open in ndX</b> explores the run's burst folder.",
+      "text": "<b>Export flrCIF</b> writes the displayed table with its metadata, and <b>Open in ndX</b> explores the run's burst folder. Legacy .bur tables come from the <b>Legacy Export</b> plugin.",
       "target": {
-        "name": "save_bur",
+        "name": "export_cif",
         "tab": "files"
       }
     }

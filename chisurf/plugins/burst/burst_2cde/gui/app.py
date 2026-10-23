@@ -16,10 +16,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im, implot, style
+from emtk.view_form import FormState, draw_sections
 from emtk.app import ImApp
 from emtk.i18n import tr
 from emtk.im_core import get_current_context
 
+from chisurf.emtk.advanced import advanced_mode, draw_toggle
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
@@ -77,6 +79,8 @@ class BurstTwoCdeGui:
             wait_for_controls=True,
         )
         self.model.add_observer(self._on_model_event)
+        #: The spin fields of the parameters (view-form: typed + arrows + Enter).
+        self.param_form = FormState(on_used=self.track)
 
     def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
         if self.on_remember is not None:
@@ -95,7 +99,18 @@ class BurstTwoCdeGui:
         self.help_window.show()
 
     def _on_model_event(self, event: str) -> None:
-        pass
+        """A parameter changed: recompute and redraw when there is something to recompute.
+
+        The link the settings panel needs: tau, kernel, variant or the detector
+        assignment changed with a result on screen -- run again (the result cache
+        keys on the fingerprint, so an unchanged analysis is not recomputed).
+        """
+        if event not in {"variant", "kernel", "tau", "donor", "acceptor", "file_type", "channels"}:
+            return
+        if self.model.is_running or self.model.is_locked or not self.model.folder:
+            return
+        if callable(self.on_run):
+            self.on_run()
 
     def track(self, name: str) -> None:
         """Record usage of a named control (a guided tour awaits it by that name)."""
@@ -270,19 +285,41 @@ class BurstTwoCdeGui:
         )
         self.remember("twocde_kernel")
 
-        # tau
-        im.text(tr("τ (window):"))
-        changed, tau = im.drag_float(
-            "##twocde_tau", self.model.tau_us, 1.0, 1.0, 100000.0, "%.1f µs"
+        # tau: a spin field -- typed or stepped, commits on Enter, recomputes
+        draw_sections(
+            [{
+                "type": "value", "attr": "tau_us", "label": "τ (window):",
+                "kind": "float", "style": "spin", "minimum": 1.0, "decimals": 1,
+                "call": "on_tau_edited", "suffix": " µs",
+                "description": "Averaging window τ in microseconds used when computing "
+                               "the 2CDE metric; the plot recomputes when it commits.",
+            }],
+            self.model, self.param_form,
         )
-        im.set_item_tooltip(
-            tr("Averaging window τ in microseconds used when computing the 2CDE metric.")
-        )
-        if changed:
-            self.model.tau_us = max(1.0, float(tau))
-            self.model.notify("tau")
-        self.remember("twocde_tau")
+        self.item_rects.update(self.param_form.rects)
 
+        # Detector assignment: taken from the workflow's Setup Selection; the raw
+        # fields are advanced controls, hidden unless asked for.
+        im.text_colored(style.HEADING_4, tr("Detectors"))
+        im.text_wrapped(
+            tr("Donor {} · Acceptor {} · {}").format(
+                self.model.donor_channels_text or "?",
+                self.model.acceptor_channels_text or "?",
+                self.model.file_type,
+            )
+        )
+        im.set_item_tooltip(tr(
+            "The detector assignment the workflow's Setup Selection step hands over."
+        ))
+        if draw_toggle():
+            pass  # the switch redraws; the fields below appear on the next frame
+        if advanced_mode():
+            self._draw_advanced_detectors()
+
+        # (the raw donor/acceptor/file-type inputs live in _draw_advanced_detectors)
+
+    def _draw_advanced_detectors(self) -> None:
+        """The raw detector fields: routing channels and file type (advanced)."""
         # Donor channels
         im.text(tr("Donor routing channels:"))
         changed, donor = im.input_text("##twocde_donor", self.model.donor_channels_text, hint="0,8")

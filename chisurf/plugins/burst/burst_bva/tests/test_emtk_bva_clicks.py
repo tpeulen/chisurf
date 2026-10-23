@@ -104,6 +104,15 @@ def type_into(app, name, text, size=SIZE, enter=True):
         draw(app, size, frames=2)
 
 
+def type_number(app, name, text, size=SIZE):
+    """Click a number field, select all, type *text*, Enter."""
+    from chisurf.plugins.emtk_test_input import Driver
+
+    drv = Driver(app, size)
+    drv.draw(1)
+    drv.type_into_name(name, str(text))
+
+
 def drag_field(app, name, dx, size=SIZE, steps=6):
     """Press on a drag field and move the pointer sideways by *dx* pixels in *steps* moves."""
     draw(app, size)
@@ -238,7 +247,7 @@ def test_clear_click_removes_the_result_and_the_scatter(app, measurement):
 
 
 def test_save_defaults_click_writes_the_ini_and_a_new_window_restores_it(app, measurement):
-    drag_field(app, "photons_per_slice", 30)
+    type_number(app, "photons_per_slice", 30)
     pps = app.model.photons_per_slice
     assert pps != 10
     app.model.set_folder(measurement)
@@ -352,23 +361,21 @@ def test_save_plot_dialog_cancel_writes_nothing(app, tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "name,start,dx",
+    "name,start,typed",
     [
-        ("window_length", 0.01, 60),
-        ("photons_per_slice", 10, 40),
-        ("bins_x", 51, 40),
-        ("bins_y", 51, 40),
+        ("window_length", 0.01, "0.05"),
+        ("photons_per_slice", 10, "30"),
+        ("bins_x", 51, "80"),
+        ("bins_y", 51, "120"),
     ],
 )
-def test_each_drag_field_changes_its_value_and_the_drawn_text(app, name, start, dx):
+def test_each_number_field_takes_a_typed_value_and_draws_it(app, name, start, typed):
+    """The parameters are spinboxes now: keyboard entry works, the value lands."""
     assert getattr(app.model, name) == pytest.approx(start)
-    drag_field(app, name, dx)
-    after = getattr(app.model, name)
-    assert after > start, (name, after)
-    drag_field(app, name, -2 * dx)
-    assert getattr(app.model, name) < after
+    type_number(app, name, typed)
     value = getattr(app.model, name)
-    shown = f"{value:.4f} s" if name == "window_length" else f"{value:.0f}"
+    assert value == pytest.approx(float(typed)), (name, value)
+    shown = f"{value:.4f}" if name == "window_length" else f"{value:.0f}"
     assert shown in draw(app).strings  # the field shows the new value
 
 
@@ -381,10 +388,10 @@ def test_each_drag_field_changes_its_value_and_the_drawn_text(app, name, start, 
         ("bins_y", 10, 500),
     ],
 )
-def test_a_drag_stops_at_the_range_limits_of_the_qt_tool(app, name, low, high):
-    drag_field(app, name, -3000, steps=30)
+def test_a_typed_value_stops_at_the_range_limits_of_the_qt_tool(app, name, low, high):
+    type_number(app, name, 0)
     assert getattr(app.model, name) == pytest.approx(low)
-    drag_field(app, name, 20000, steps=40)
+    type_number(app, name, 100000)
     assert getattr(app.model, name) == pytest.approx(high)
 
 
@@ -392,7 +399,7 @@ def test_a_bins_drag_redraws_the_profile_without_a_recompute(app, measurement):
     run_and_wait(app, measurement)
     before = app.model.get_plot_data()
     result = app.model.df
-    drag_field(app, "bins_x", -20)
+    type_number(app, "bins_x", 30)
     after = app.model.get_plot_data()
     assert (
         app.model.bins_x < 51
@@ -417,7 +424,7 @@ def test_auto_update_checkbox_and_a_parameter_drag_recompute_without_writing(app
     settle(app)
     first = app.model.df
     assert first is not None and not (measurement / "bv4").exists()
-    drag_field(app, "photons_per_slice", 30)
+    type_number(app, "photons_per_slice", 30)
     settle(app)
     assert (
         app.model.df is not first and not (measurement / "bv4").exists()
@@ -426,8 +433,8 @@ def test_auto_update_checkbox_and_a_parameter_drag_recompute_without_writing(app
     press(app, "auto_update")
     assert app.model.auto_update is False
     result = app.model.df
-    drag_field(app, "photons_per_slice", -20)
-    assert not app.controller.running and app.model.df is result  # off: the drag recomputes nothing
+    type_number(app, "photons_per_slice", 45)
+    assert not app.controller.running and app.model.df is result  # off: typing recomputes nothing
 
 
 # -- the channel definitions tab ------------------------------------------------------------------------------------ #
@@ -630,7 +637,7 @@ def test_the_flow_works_in_the_small_window_too(app, measurement):
         app.model.df is not None
         and "Done – 60 bursts with Std > 0 on 60 total" in draw(app, SMALL).strings
     )
-    drag_field(app, "bins_x", 30, SMALL)
+    type_number(app, "bins_x", 90, SMALL)
     assert app.model.bins_x > 51
     click(app, app.item_rects["clear"], SMALL)
     assert app.model.df is None

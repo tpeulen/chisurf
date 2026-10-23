@@ -62,6 +62,10 @@ class TwoCdeViewModel:
         if callback in self._observers:
             self._observers.remove(callback)
 
+    def on_tau_edited(self, *_args) -> None:
+        """A spin field committed τ (view-form ``call`` hook): recompute."""
+        self.notify("tau")
+
     def notify(self, event: str = "change") -> None:
         for obs in list(self._observers):
             try:
