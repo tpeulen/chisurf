@@ -767,39 +767,6 @@ class ScientificOperations:
                     routing_histograms[int(rch)] = hist
             except Exception as e:
                 logging.warning(f"Error loading routing channels from {path.name}: {e}")
-        elif ext == ".bst":
-            from .decay_io import parse_bst_file
-
-            tttr_path, ranges = parse_bst_file(path)
-            if tttr_path and ranges:
-                import tttrlib
-
-                try:
-                    data = tttrlib.TTTR(str(tttr_path))
-                    header = data.get_header()
-                    try:
-                        n_tac = header.number_of_micro_time_channels
-                    except AttributeError:
-                        try:
-                            n_tac = header["number_of_micro_time_channels"]
-                        except (KeyError, TypeError):
-                            n_tac = 4096
-                    microtimes = data.micro_times
-                    routing = data.routing_channels
-                    microtimes, n_tac = self._micro_time_axis(header, microtimes, n_tac)
-                    unique_routing = np.unique(routing)
-                    for rch in unique_routing:
-                        hist = np.zeros(n_tac, dtype=np.float64)
-                        for start, end in ranges:
-                            if start < len(microtimes) and end <= len(microtimes):
-                                burst_mt = microtimes[start : min(end + 1, len(microtimes))]
-                                burst_rt = routing[start : min(end + 1, len(routing))]
-                                mask = (burst_rt == rch) & (burst_mt >= 0) & (burst_mt < n_tac)
-                                np.add.at(hist, burst_mt[mask], 1)
-                        routing_histograms[int(rch)] = hist
-                except Exception as e:
-                    logging.warning(f"Error loading BST routing channels from {path.name}: {e}")
-        self._routing_cache[path_str] = routing_histograms
         return routing_histograms
 
     def _load_and_sum_vectors(self, paths: list[pathlib.Path], chs: list[str] | None) -> np.ndarray:
@@ -823,7 +790,7 @@ class ScientificOperations:
         all_histograms = []
         for path in paths:
             ext = path.suffix.lower()
-            if ext in (".spc", ".ptu", ".ht3", ".tttr", ".bst"):
+            if ext in (".spc", ".ptu", ".ht3", ".tttr"):
                 routing_hists = self._load_routing_channels(path)
                 if routing_channels:
                     combined = None

@@ -179,7 +179,11 @@ def test_workflow_hands_photons_filter_and_curves_on(tmp_path):
     assert np.interp(0.02, x, y) > 1.5 and abs(np.interp(5.0, x, y) - 1.0) < 0.1
     curves, folder = flow.merger_input(corr)
     assert len(curves) == 1 and folder == spc.parent / "cr5"
-    assert not filter_step_allowed([str(tmp_path / "x.bst")])
+    # .bst/.bur are not inputs at all any more; photon streams keep the step on.
+    from chisurf.plugins.fcs.fcs_correlator.workflow import FILE_EXTENSIONS
+
+    assert ".bst" not in FILE_EXTENSIONS and ".bur" not in FILE_EXTENSIONS
+    assert filter_step_allowed([str(tmp_path / "x.pto")])
 
 
 # ---- the hub, real input --------------------------------------------------------------------------------------------
@@ -274,20 +278,6 @@ def test_file_list_buttons_and_dialogs(tmp_path):
     assert files.paths == [str(demo.resolve())]
     hub.click("database")
     assert files.picker is not None and files.picker.is_open
-    hub.app.close()
-
-
-def test_bst_files_switch_the_filter_off(tmp_path):
-    bst = tmp_path / "a.bst"
-    bst.write_text("0 10\n")
-    hub = _hub()
-    hub.child.add_paths([str(make_demo(tmp_path))])
-    hub.click("use_filter")
-    assert hub.child.use_filter
-    hub.app.on_files_dropped([str(bst)])
-    assert not hub.child.use_filter and not hub.app.panel_enabled("filter")
-    hub.click("use_filter")
-    assert not hub.child.use_filter  # disabled while a .bst file is ticked
     hub.app.close()
 
 

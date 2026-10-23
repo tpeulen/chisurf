@@ -125,26 +125,6 @@ def test_native_autofit_uses_real_lifetime_model():
     assert model._result is not None
 
 
-def test_native_bst_routing_includes_last_photon(tmp_path, monkeypatch):
-    from types import SimpleNamespace
-
-    tttr = tmp_path / "one.ptu"
-    tttr.write_bytes(b"x")
-    bst = tmp_path / "one.ptu.bst"
-    bst.write_text("0\t2\n")
-    data = SimpleNamespace(
-        micro_times=np.array([0, 1, 2, 3]),
-        routing_channels=np.zeros(4, dtype=int),
-        get_header=lambda: SimpleNamespace(
-            number_of_micro_time_channels=8, micro_time_resolution=1e-10
-        ),
-    )
-    monkeypatch.setattr("tttrlib.TTTR", lambda *args: data)
-    model = FilterModel(example=False)
-    histogram = model._load_routing_channels(bst)[0]
-    np.testing.assert_array_equal(histogram[:4], [1, 1, 1, 0])
-
-
 def test_native_slow_compute_keeps_frame_responsive_and_discards_stop(monkeypatch):
     from threading import Event
 

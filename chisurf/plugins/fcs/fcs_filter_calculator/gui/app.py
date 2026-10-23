@@ -213,7 +213,7 @@ class FilterApp(TourTarget, ImApp):
         callback,
         mode="open",
         multiple=False,
-        filters="Decay (*.pto *.txt *.dat *.csv *.spc *.ptu *.ht3 *.tttr *.bst);;All files (*)",
+        filters="Decay (*.pto *.txt *.dat *.csv *.spc *.ptu *.ht3 *.tttr);;All files (*)",
         filename="",
     ):
         if self.job.running:

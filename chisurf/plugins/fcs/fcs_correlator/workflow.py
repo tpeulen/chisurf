@@ -15,7 +15,10 @@ import numpy as np
 from .regions import TimeRegions
 
 #: Files the Files step accepts (the Qt list's extensions).
-FILE_EXTENSIONS = (".spc", ".ht3", ".ptu", ".hdf", ".h5", ".bst", ".bur")
+#: Photon-stream inputs: the container first, then the vendor stream files the
+#: container is packed from. Legacy .bst/.bur layouts are reached through the
+#: legacy import/export plugins, never loaded here.
+FILE_EXTENSIONS = (".pto", ".spc", ".ht3", ".ptu", ".hdf", ".h5")
 #: The photon files a folder in the Files step stands for (burst lists are added one by one).
 FOLDER_EXTENSIONS = (".spc", ".ht3", ".ptu", ".hdf", ".h5", ".pto")
 
@@ -75,8 +78,9 @@ def expand_paths(paths) -> list[str]:
 
 
 def filter_step_allowed(files) -> bool:
-    """The photon filter step needs photons: a checked Burst-ID (``.bst``) file turns it off (Qt rule)."""
-    return not any(pathlib.Path(str(f)).suffix.lower() == ".bst" for f in files)
+    """The photon filter step needs photons: it is always allowed -- inputs are
+    photon streams (containers or vendor files), never burst-ID tables."""
+    return True
 
 
 class FcsWorkflow:
