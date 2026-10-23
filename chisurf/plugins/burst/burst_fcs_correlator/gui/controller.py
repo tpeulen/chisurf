@@ -262,27 +262,18 @@ class BurstFcsController(RunPickerMixin):
                     )
                 continue
             if path.is_dir():
-                bur = list(path.glob("bi4_bur/*.bur")) + list(path.glob("bur/*.bur"))
-                bur += list(path.glob("*.bur"))
-                candidates.extend(bur or list(path.glob("BID/*.bst")) + list(path.glob("*.bst")))
+                # Folders hold containers; the legacy .bur/.bst layouts are
+                # reached through the legacy import/export plugins, never here.
+                candidates.extend(sorted(path.glob("*.pto")))
             else:
                 candidates.append(path)
             for candidate in candidates:
-                if candidate.suffix.lower() == ".bst":
-                    root = path if path.is_dir() else candidate.parent
-                    raw, ranges = core.parse_bst_file(candidate)
-                elif candidate.suffix.lower() == ".bur":
-                    root = (
-                        candidate.parent.parent
-                        if candidate.parent.name in ("bi4_bur", "bur")
-                        else candidate.parent
-                    )
-                    raw, ranges = core.parse_bur_file(candidate, root)
-                else:
+                if candidate.suffix.lower() != ".pto":
                     continue
+                raw, ranges = core.parse_burst_container(candidate)
                 if raw is not None and ranges:
                     results.append((raw, ranges))
-                    self._resolved_roots.append(root)
+                    self._resolved_roots.append(Path(candidate))
         return results
 
     def check_cancel(self):

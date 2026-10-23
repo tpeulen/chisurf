@@ -54,6 +54,8 @@ class PtoInspectorApp(TourTarget, ImApp):
     window_size = (1200, 800)
 
     def __init__(self, model=None, tool_loader=None):
+        #: The open node context menu (right-click on a provenance node), or None.
+        self._node_popup: dict | None = None
         install()
         spec = json.loads(Path(__file__).with_name("pto.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, self.window_size)
@@ -254,8 +256,6 @@ class PtoInspectorApp(TourTarget, ImApp):
             tr("Open") if action == "open" else tr("Export"), size=(780, 560)
         )
 
-    def choose_legacy_folder(self):
-        self.file_action = "legacy"
         self.dialog = FileDialog(
             tr("Legacy folder"),
             mode="folder",
@@ -263,8 +263,6 @@ class PtoInspectorApp(TourTarget, ImApp):
         )
         self.file_window = DialogWindow(tr("Legacy folder"), size=(780, 560))
 
-    def export_legacy(self, folder):
-        self.notice = self.model.export_legacy(str(folder))
 
     def choose_pack_directory(self):
         self.file_action = "pack"
@@ -319,6 +317,31 @@ class PtoInspectorApp(TourTarget, ImApp):
         if kind == "node":
             self.model.select_node(node)
 
+    def compute_histogram(self):
+        """Pass the selected photon stream to the micro-time histogram tool.
+
+        The provenance graph says where the photons came from; computing the
+        histogram of a node is the natural next step on it, so it lives here as
+        a context action instead of a transfer button in the histogram window.
+        """
+        child = self.tool_loader("microtime_histogram")
+        target = getattr(child, "model", child)
+        container = self.model.filename
+        node = self.graph.document.node_for_number(
+            self.graph.editor.get_selected_node()
+        ) if hasattr(self.graph.editor, "get_selected_node") else None
+        payload = container
+        if node is not None and node.id and container:
+            payload = f"{container}/{node.id}"
+        for setter in ("add_files", "set_filename", "set_path", "load_file"):
+            fn = getattr(target, setter, None)
+            if callable(fn) and payload:
+                fn([payload] if setter == "add_files" else payload)
+                break
+        self.child = child
+        self._opened_tools.append(child)
+        return child
+
     def open_tool(self):
         if not self.tools:
             self.notice = tr("No tool for this operation.")
@@ -352,13 +375,6 @@ class PtoInspectorApp(TourTarget, ImApp):
                 "Export the selected payload.",
                 lambda: self.choose_file("export"),
                 bool(self.model.selected),
-            ),
-            (
-                "📤  Export legacy…",
-                "Unpack every run into the Seidel/Margarita burst folder older tools read: "
-                "bi4_bur/*.bur beside one companion directory per analysis.",
-                self.choose_legacy_folder,
-                bool(self.model.inspection),
             ),
             ("help", "Read the inspector help.", lambda: setattr(self.help, "open", True), True),
             ("guide", "Start the guided tour.", self.tour.start, True),
@@ -438,6 +454,23 @@ class PtoInspectorApp(TourTarget, ImApp):
             and y <= self.io.mouse_pos[1] <= y + h
         ):
             self.safe(self.open_tool)
+        if hovered is not None and self.io.mouse_clicked[2] and not self._node_popup:
+            node = self.graph.document.node_for_number(hovered)
+            if node:
+                self._node_popup = {"node": node.id, "kind": str(node.config.get("kind", ""))}
+        if self._node_popup:
+            if im.begin_popup("pto_node_menu"):
+                if im.selectable(tr("Open this step's tool")):
+                    self.safe(self.open_tool)
+                    self._node_popup = None
+                photon_kinds = ("tttr_photon_stream", "photon_stream")
+                if self._node_popup["kind"] in photon_kinds or self._node_popup["kind"] == "":
+                    if im.selectable(tr("Compute micro-time histogram")):
+                        self.safe(self.compute_histogram)
+                        self._node_popup = None
+                im.end_popup()
+            if not im.is_popup_open("pto_node_menu"):
+                self._node_popup = None
 
     def refresh_payload(self):
         if self._payload_uid == self.model.selected_uid:
@@ -581,8 +614,6 @@ class PtoInspectorApp(TourTarget, ImApp):
                         if action == "open"
                         else self.pack_vendor_files(selected[0])
                         if action == "pack"
-                        else self.export_legacy(selected[0])
-                        if action == "legacy"
                         else self.export_payload(selected[0])
                     )
                 )

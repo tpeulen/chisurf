@@ -44,6 +44,7 @@ __all__ = [
     "COMPANIONS",
     "COMPANION_ENDINGS",
     "export_legacy",
+    "plan_legacy",
 ]
 
 logger = logging.getLogger(__name__)
@@ -184,6 +185,47 @@ def _on_grid(
     out = np.zeros((n_bursts, matrix.shape[1]), dtype=float)  # the sentinel row
     out[index] = matrix
     return out
+
+
+def plan_legacy(container) -> list[dict]:
+    """One row per run of *container*: what :func:`export_legacy` writes for it.
+
+    The preview of the export, decided by the same rules the writer applies, so
+    it cannot drift: a burst-table run becomes ``bi4_bur/<stem>.bur`` (ending
+    ``bur``), a per-burst analysis becomes its registered companion ending
+    (detector-keyed operations give every detector's ending joined by ``/``),
+    and anything else is skipped (ending ``""``) -- never guessed at.
+
+    Returns
+    -------
+    list of dict
+        ``run`` (display name), ``operation``, ``ending`` (``""`` = skipped).
+    """
+    from chisurf.core.fio.analysis_path import split_artifact_name, split_container_path
+    from chisurf.core.fio.pto import Measurement, is_measurement
+
+    path, _ = split_container_path(container)
+    if path is None or not pathlib.Path(path).exists() or not is_measurement(path):
+        return []
+    rows: list[dict] = []
+    with Measurement.open(path, writable=False) as m:
+        for obj in m.artifacts():
+            operation = str(m.tag(obj.uid, _OPERATION) or "")
+            if not operation:
+                continue
+            name = split_artifact_name(obj.name)[1] or str(obj.name)
+            if _is_burst_table(name, operation):
+                ending = "bur"
+            elif operation in _NOT_COMPANIONS or operation not in COMPANIONS:
+                ending = ""
+            else:
+                mapped = COMPANIONS[operation]
+                ending = "/".join(
+                    sorted(set(mapped.values())) if isinstance(mapped, Mapping) else (mapped,)
+                )
+            rows.append({"run": name, "operation": operation, "ending": ending})
+    rows.sort(key=lambda r: (r["ending"] == "", r["run"]))
+    return rows
 
 
 def export_legacy(

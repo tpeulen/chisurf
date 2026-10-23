@@ -77,7 +77,6 @@ class HistogramFields:
             "compute",
             "save",
             "save_as",
-            "transfer",
         ):  # the app's actions, not the model's same-named methods
             return getattr(app, name)
         if hasattr(app.model, name):
@@ -148,11 +147,6 @@ class HistogramFields:
             return model.cumulative_ps is not None and not app.job.running
         if name == "save_as":
             return model.cumulative_ps is not None and not app.job.running
-        if name == "transfer":
-            return (
-                bool(model.selected_files() or model.cumulative_ps is not None)
-                and not app.job.running
-            )
         if name == "detector":
             return bool(model.setup.get("detectors"))
         return True
@@ -739,17 +733,9 @@ class HistogramApp(TourTarget, ImApp):
             self.input_signature = signature
 
     def on_paths_dropped(self, paths):
-        photons = []
-        bursts = []
-        for path in paths:
-            if Path(path).suffix.lower() in {".bst", ".bur"}:
-                bursts.append(path)
-            else:
-                photons.append(path)
-        if photons:
-            self.add_files(photons)
-        if bursts:
-            self.add_bids(bursts)
+        # Photon streams only: the legacy .bst/.bur layouts are reached through
+        # the legacy import/export plugins, never dropped here.
+        self.add_files([p for p in paths or ()])
 
     def export_settings(self):
         return self.model.export_settings()

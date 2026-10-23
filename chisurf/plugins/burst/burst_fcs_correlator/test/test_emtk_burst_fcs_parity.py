@@ -48,8 +48,8 @@ def hermetic(tmp_path, monkeypatch):
 
 @pytest.fixture(scope="module")
 def data(tmp_path_factory):
-    table = demo.make_demo(tmp_path_factory.mktemp("burst_demo"))
-    return table.parent / demo.SPC_FILENAME, table
+    container = demo.make_demo(tmp_path_factory.mktemp("burst_demo"))
+    return container, container
 
 
 @pytest.fixture
@@ -74,14 +74,16 @@ def run(drv, data, pairs=PAIRS):
 
 
 def test_the_demonstration_data_is_deterministic(tmp_path):
-    table_a = demo.make_demo(tmp_path / "a")
-    a = table_a.parent / demo.SPC_FILENAME, table_a
-    table_b = demo.make_demo(tmp_path / "b")
-    b = table_b.parent / demo.SPC_FILENAME, table_b
-    assert hashlib.sha256(a[0].read_bytes()).digest() == hashlib.sha256(b[0].read_bytes()).digest()
-    assert a[1].read_text() == b[1].read_text()
-    ranges = [tuple(map(int, line.split())) for line in a[1].read_text().splitlines()]
-    assert len(ranges) == demo.N_BURSTS and ranges[0] == (0, demo.PHOTONS_PER_BURST - 1)
+    """The photons and the burst run regenerate identically (a container also carries
+    creation metadata, so the *data* is compared, not the container bytes)."""
+    from chisurf.plugins.burst.burst_fcs_correlator.core import algorithms as core
+
+    a = demo.make_demo(tmp_path / "a")
+    b = demo.make_demo(tmp_path / "b")
+    ranges_a = core.parse_burst_container(f"{a}/{demo.RUN_NAME}")[1]
+    ranges_b = core.parse_burst_container(f"{b}/{demo.RUN_NAME}")[1]
+    assert ranges_a == ranges_b
+    assert len(ranges_a) == demo.N_BURSTS and ranges_a[0] == (0, demo.PHOTONS_PER_BURST - 1)
 
 
 def test_the_demonstration_stream_reads_back_with_its_resolutions(data):

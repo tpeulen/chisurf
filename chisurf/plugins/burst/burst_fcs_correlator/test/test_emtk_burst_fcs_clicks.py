@@ -41,8 +41,8 @@ def no_failed_draws(caplog):
 
 @pytest.fixture(scope="module")
 def data(tmp_path_factory):
-    table = demo.make_demo(tmp_path_factory.mktemp("burst_clicks"))
-    return table.parent / demo.SPC_FILENAME, table
+    container = demo.make_demo(tmp_path_factory.mktemp("burst_clicks"))
+    return container, container
 
 
 @pytest.fixture
@@ -96,14 +96,14 @@ def test_run_is_greyed_without_input_and_a_click_does_nothing(drv):
 def test_example_adds_the_demonstration_data_and_the_pairs(drv):
     drv.click("load_example")
     c = ctrl(drv)
-    assert len(c.files) == 1 and c.files[0].endswith(demo.TABLE_NAME)
+    assert len(c.files) == 1 and c.files[0].endswith(demo.CONTAINER_NAME)
     assert [p["pair_name"] for p in c._pair_presets] == ["ACF_0", "ACF_1", "cross_01"]
     assert c.status.startswith("Demonstration data added")
-    assert drv.control("file_rows").value(0, "name") == demo.TABLE_NAME
+    assert drv.control("file_rows").value(0, "name") == demo.CONTAINER_NAME
     # A long settings-cache folder can elide the filename by one more character.
-    # Require the displayed identity to be a true prefix of the actual table.
+    # Require the displayed identity to be a true prefix of the actual container.
     assert any(
-        s.startswith("burst_fcs_") and demo.TABLE_NAME.startswith(s.rstrip(".…"))
+        s.startswith("burst_fcs_") and demo.CONTAINER_NAME.startswith(s.rstrip(".…"))
         for s in drv.draw(2).strings
     )
 
@@ -261,7 +261,7 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
 def test_files_dialog_lists_the_picked_table_and_cancel_adds_nothing(drv, data, tmp_path):
     import shutil
 
-    shutil.copy(data[1], tmp_path / "picked.spc.bst")
+    shutil.copy(data[1], tmp_path / "picked.pto")
     drv.click("add_files")
     assert drv.app.dialog is not None
     drv.draw(4)
@@ -269,10 +269,10 @@ def test_files_dialog_lists_the_picked_table_and_cancel_adds_nothing(drv, data, 
     assert drv.app.dialog is None and not ctrl(drv).files
     drv.click("add_files")
     drv.draw(4)
-    drv.click_text("picked.spc.bst")
+    drv.click_text("picked.pto")
     drv.click_text("Open", last=True)
     assert (
-        ctrl(drv).files == [str(tmp_path / "picked.spc.bst")]
+        ctrl(drv).files == [str(tmp_path / "picked.pto")]
         and ctrl(drv).status == "1 input(s) listed."
     )
 
@@ -309,21 +309,21 @@ def test_a_broken_dropped_json_reports(drv, tmp_path):
 def test_the_use_checkbox_all_none_remove_and_clear(drv, data, tmp_path):
     import shutil
 
-    for name in ("a.spc.bst", "b.spc.bst"):
-        shutil.copy(data[1], tmp_path / name)
-    ctrl(drv).add_files([str(tmp_path / "a.spc.bst"), str(tmp_path / "b.spc.bst")])
+    for name in ("a.pto", "b.pto"):
+        shutil.copy(data[0], tmp_path / name)
+    ctrl(drv).add_files([str(tmp_path / "a.pto"), str(tmp_path / "b.pto")])
     drv.draw(3)
     drv.click("remove_files")  # greyed: nothing is selected yet
     assert len(ctrl(drv).files) == 2
     drv.click_cell("file_rows", 0, "use")
-    assert ctrl(drv).checked_files() == [str(tmp_path / "b.spc.bst")]
+    assert ctrl(drv).checked_files() == [str(tmp_path / "b.pto")]
     drv.click("check_none")
     assert ctrl(drv).checked_files() == []
     drv.click("check_all")
     assert len(ctrl(drv).checked_files()) == 2
     drv.click_cell("file_rows", 1, "name")
     drv.click("remove_files")
-    assert ctrl(drv).files == [str(tmp_path / "a.spc.bst")]
+    assert ctrl(drv).files == [str(tmp_path / "a.pto")]
     drv.click("clear")
     assert ctrl(drv).files == [] and ctrl(drv).status == "Inputs and results cleared."
 

@@ -47,7 +47,7 @@ def left_edge_of_plot(ui):
 
 
 def test_the_run_buttons_are_always_inside_the_dock_without_scrolling(ui):
-    for name in ("compute", "save", "save_as", "transfer", "guide", "help"):
+    for name in ("compute", "save", "save_as", "guide", "help"):
         x, y, w, h = ui.app.item_rects[name]
         assert x >= 0 and x + w <= left_edge_of_plot(ui), (name, ui.app.item_rects[name])
         assert y + h <= ui.size[1], (name, "is below the window")
@@ -87,7 +87,7 @@ def test_inputs_start_in_one_caption_column(ui):
 def test_number_fields_are_short_and_buttons_do_not_overlap(ui):
     for name in ("dt_ns", "g_factor", "vv_shift", "vh_shift"):
         assert ui.app.item_rects[name][2] <= 180, name
-    assert_disjoint(ui.app.item_rects, ["compute", "save", "save_as", "transfer"])
+    assert_disjoint(ui.app.item_rects, ["compute", "save", "save_as"])
     assert_disjoint(ui.app.item_rects, ["photon_files", "photon_folder", "photon_database"])
 
 
@@ -115,7 +115,7 @@ def test_the_idle_window_has_no_misleading_controls(tmp_path):
         try:
             ui.app.definition_changed(SETUP)
             ui.draw(3)
-            for name in ("compute", "save", "save_as", "transfer"):
+            for name in ("compute", "save", "save_as"):
                 assert not ui.app.enabled(name)
             assert ui.shown("Nothing queued.") and ui.shown("Time (ns)")
             assert_texts_apart(ui.last)

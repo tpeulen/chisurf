@@ -1,0 +1,18 @@
+{
+  "id": "legacy_export",
+  "version": "1.0.0",
+  "display_name": "File:Data:Legacy Export",
+  "description": "The dedicated way out of the .pto world: unpack a container into the Seidel/Margarita legacy burst folder (bi4_bur/*.bur plus one companion directory per analysis), and write the five ALEX-Suite CSVs from a container run. The workflow tools read and write .pto only; legacy formats are reached from here.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "File",
+    "Data"
+  ],
+  "icon": "\ud83d\udce4",
+  "entrypoints": {
+    "cli": "csc_legacy_export=chisurf.plugins.core.legacy_export.cli.main:cli",
+    "emtk": "chisurf.plugins.core.legacy_export.gui.app:make_app"
+  }
+}

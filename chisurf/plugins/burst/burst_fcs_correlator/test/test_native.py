@@ -13,12 +13,11 @@ def test_native_settings_pairs_and_actual_ranges_roundtrip(tmp_path):
     app = create_app()
     ctrl = app.controller
     try:
-        raw = tmp_path / "measurement.ptu"
-        raw.touch()
-        bst = tmp_path / "measurement.ptu.bst"
-        bst.write_text("0 100\n200 400\n")
-        app.on_paths_dropped([bst])
-        assert ctrl.resolve_files() == [(raw, [(0, 100), (200, 400)])]
+        from .driving import make_input_container
+
+        raw, container = make_input_container(tmp_path, [(0, 100), (200, 400)])
+        app.on_paths_dropped([container])
+        assert ctrl.resolve_files() == [(container.resolve(), [(0, 100), (200, 400)])]
         assert ctrl.apply_pairs('[{"pair_name":"cross","chs_a":[0],"chs_b":[1]}]')
         assert not ctrl.apply_pairs('[{"pair_name":"bad","chs_a":[],"chs_b":[1]}]')
         ctrl._model.n_bins = 5
@@ -39,13 +38,10 @@ def test_native_correlation_publishes_real_fits_and_preserves_on_cancel(tmp_path
     import shutil
     from pathlib import Path
 
-    raw = tmp_path / "measurement.spc"
-    shutil.copyfile(
-        Path(__file__).resolve().parents[5] / "test/data/tttr/BH/132/BH_SPC132.spc", raw
-    )
-    bst = tmp_path / "measurement.spc.bst"
-    bst.write_text("0 100\n")
-    ctrl.add_files([bst])
+    from .driving import make_input_container
+
+    raw, container = make_input_container(tmp_path, [(0, 100)])
+    ctrl.add_files([container])
     tau = np.logspace(-3, 2, 60)
     g = 1 + 0.5 / (1 + tau) / np.sqrt(1 + tau / 3.5**2)
     fit = core.fit_curve(tau, g, core.BurstFcsSettings())

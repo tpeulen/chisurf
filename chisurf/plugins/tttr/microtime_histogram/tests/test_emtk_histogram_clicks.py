@@ -129,7 +129,7 @@ def computed(loaded):
 
 
 def test_the_idle_window_offers_only_what_can_act(ui):
-    for name in ("compute", "save", "save_as", "transfer"):
+    for name in ("compute", "save", "save_as"):
         assert not ui.app.enabled(name), name
     ui.click("compute")
     ui.click("save")
@@ -202,15 +202,13 @@ def test_the_database_button_opens_the_picker_and_closes_again(ui):
     assert not ui.app.dataset_picker.is_open
 
 
-def test_dropped_photon_and_burst_files_land_in_their_lists(ui, tmp_path):
+def test_dropped_photon_files_land_in_the_queue_and_legacy_bursts_do_not(ui, tmp_path):
+    """Photon streams only: the legacy .bst/.bur layouts are not inputs any more."""
     bur = tmp_path / "BH_SPC132.bur"
     bur.write_text("First File\tLast File\tFirst Photon\tLast Photon\nunits\n0\t0\t10\t500\n")
     ui.drop(SPC, bur)
-    ui.click("burst_header")
-    assert ui.app.model.files == [str(SPC.resolve())] and ui.app.model.bid_files == [
-        str(bur.resolve())
-    ]
-    assert ui.shown("BH_SPC132.bur") and ui.shown(SPC.name)
+    assert ui.app.model.files == [str(SPC.resolve())]
+    assert ui.app.model.bid_files == []
 
 
 def test_a_foreign_file_is_not_queued(ui, tmp_path):
@@ -483,18 +481,20 @@ def test_save_as_asks_for_a_name_and_every_way_out_works(computed, tmp_path):
     np.testing.assert_array_equal(np.loadtxt(target), computed.app.model.cumulative_ps)
 
 
-def test_transfer_saves_and_hands_the_dataset_to_chisurf(tmp_path):
-    got = []
-    ui = Ui(create_app(add_dataset=lambda path, params: got.append((path, params))), SIZE)
+def test_save_writes_the_histogram_file(tmp_path):
+    """No transfer button any more: Save writes it, the .pto/ChiSurf side reads it."""
+    ui = Ui(create_app(add_dataset=lambda path, params: None), SIZE)
     try:
         ui.app.definition_changed(SETUP)
         ui.pick("filetype", "SPC-130")
         ui.drop(SPC)
         ui.type_into("output", str(tmp_path / "t.dat"))
-        ui.click("transfer")
+        ui.click("compute")
         ui.settle()
-        assert got and Path(got[0][0]).exists() and got[0][1]["polarization"] == "vm"
-        assert ui.app.model.message == "Added histogram to ChiSurf."
+        ui.click("save")
+        ui.settle()
+        assert (tmp_path / "t.dat").exists()
+        assert "transfer" not in ui.app.item_rects
     finally:
         ui.app.close()
 

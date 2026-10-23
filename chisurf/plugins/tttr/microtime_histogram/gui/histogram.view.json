@@ -1,5 +1,8 @@
 {
-  "window": {"width": 1100, "height": 720},
+  "window": {
+    "width": 1100,
+    "height": 720
+  },
   "_comment": "Options of the micro-time histogram, drawn by emtk's view_form against HistogramFields in gui/app.py (attrs are its fields, button actions the app's methods, `enabled(name)` its hook). The detector definition itself is the shared channel-definition editor (its own dock tab).",
   "sections": [
     {
@@ -22,25 +25,20 @@
           "buttons": [
             {
               "action": "compute",
-              "label": "▶  Compute",
+              "label": "\u25b6  Compute",
               "role": "primary",
               "description": "Read the selected photons and burst gates in a background worker."
             },
             {
               "action": "save",
               "label": "Save",
-              "icon": "💾",
+              "icon": "\ud83d\udcbe",
               "description": "Write the current shifted cumulative VV/VH decay to Output."
             },
             {
               "action": "save_as",
-              "label": "Save as…",
+              "label": "Save as\u2026",
               "description": "Choose another decay filename."
-            },
-            {
-              "action": "transfer",
-              "label": "Transfer to ChiSurf",
-              "description": "Save and add a TCSPC dataset with the current G-factor, time step and polarization."
             }
           ]
         },

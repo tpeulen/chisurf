@@ -30,8 +30,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("chisurf.plugins.burst")
 
-#: Burst tables the titration file chooser offers.
-BURST_PATTERNS = ["*.bur", "*.pto", "*.csv", "*.txt"]
+#: Burst tables the titration file chooser offers: the container (the pipeline's
+#: own format) and the plain-text tables. Legacy .bur folders are reached through
+#: the legacy-export/import plugins, never opened directly here.
+BURST_PATTERNS = ["*.pto", "*.csv", "*.txt"]
 
 
 class _Dialog:

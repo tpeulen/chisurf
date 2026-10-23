@@ -1,10 +1,12 @@
 """A deterministic demonstration data set the burst-wise FCS correlator can generate itself.
 
-``make_demo(folder)`` writes a small photon stream (``burst_fcs_demo.spc``, a Becker & Hickl SPC-130 file) and its burst table
-(``burst_fcs_demo.spc.bst``, one ``first last`` photon-index pair per line), so the tool, its guide and its tests have something
-to correlate without the user's own files. The photons are drawn from a seeded generator: eight bursts, each an inhomogeneous
-Poisson process whose rate has a Gaussian envelope (a molecule crossing the focus, 1 ms wide) on a weak background, split at
-random between two detectors with a 4 ns fluorescence decay. Nothing here is a measurement.
+``make_demo(folder)`` writes one container (``burst_fcs_demo.pto``): the photon stream (a Becker & Hickl SPC-130
+file, embedded) with one burst-search run, so the tool, its guide and its tests have something to correlate without
+the user's own files. The tool reads containers; the legacy ``.bst``/``.bur`` layouts are reached only through the
+legacy import/export plugins, so the demo is what a real input looks like. The photons are drawn from a seeded
+generator: eight bursts, each an inhomogeneous Poisson process whose rate has a Gaussian envelope (a molecule
+crossing the focus, 1 ms wide) on a weak background, split at random between two detectors with a 4 ns fluorescence
+decay. Nothing here is a measurement.
 """
 
 from __future__ import annotations
@@ -28,11 +30,14 @@ MICRO_RES = 3.2958984375e-12
 N_MICRO = 4096
 LIFETIME_S = 4.0e-9
 STREAM_NAME = "burst_fcs_demo.spc"
-TABLE_NAME = "burst_fcs_demo.spc.bst"
+#: The one file the demo puts in the folder: stream and bursts in one container.
+CONTAINER_NAME = "burst_fcs_demo.pto"
+#: The container's single burst-search run.
+RUN_NAME = "runFull#1"
 
 
 SPC_FILENAME = STREAM_NAME
-MEMBERS = (SPC_FILENAME, TABLE_NAME)
+MEMBERS = (CONTAINER_NAME,)
 
 
 class DemoConfig(TypedDict):
@@ -159,14 +164,16 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> P
     Returns
     -------
     pathlib.Path
-        Burst table; the explicitly named SPC stream is its companion.
+        The container: the photon stream embedded, one burst-search run beside it.
     """
     import tttrlib
+
+    from chisurf.plugins.burst.burst_selection.api.io import write_container
 
     folder = Path(folder) if folder is not None else demo_folder()
     config = DEMO.copy()
     if not overwrite and _cache_is_good(folder, config):
-        return folder / TABLE_NAME
+        return folder / CONTAINER_NAME
     folder.mkdir(parents=True, exist_ok=True)
     # Publish only complete newly written files. A failed writer cannot corrupt
     # the previously usable input; no unrelated folder members are removed.
@@ -182,14 +189,40 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> P
         header.set_micro_time_resolution(config["micro_resolution_s"])
         if not stream.write(str(staged / SPC_FILENAME), config["format"], header):
             raise OSError(f"could not write {staged / SPC_FILENAME}")
-        (staged / TABLE_NAME).write_text("".join(f"{a} {b}\n" for a, b in ranges), encoding="utf-8")
+        container = Path(
+            write_container(
+                staged / SPC_FILENAME,
+                demo_burst_table(ranges),
+                parameters={"demo": True, "bursts": int(len(ranges))},
+                out_dir=staged,
+                run=RUN_NAME,
+            )
+        )
         record = {
             "parameters": config,
             "sha256": {
-                name: hashlib.sha256((staged / name).read_bytes()).hexdigest() for name in MEMBERS
+                name: hashlib.sha256((staged / name).read_bytes()).hexdigest()
+                for name in (CONTAINER_NAME,)
             },
         }
         (staged / "demo.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
-        for name in (*MEMBERS, "demo.json"):
+        for name in (CONTAINER_NAME, "demo.json"):
             os.replace(staged / name, folder / name)
-    return folder / TABLE_NAME
+    return folder / CONTAINER_NAME
+
+
+def demo_burst_table(ranges):
+    """A burst table as the container stores it: zero rows between the bursts, as a ``.bur`` has them."""
+    import pandas as pd
+
+    n = len(ranges)
+    table = pd.DataFrame(
+        {
+            "First Photon": np.zeros(2 * n + 1),
+            "Last Photon": np.zeros(2 * n + 1),
+            "First File": [STREAM_NAME] * (2 * n + 1),
+        }
+    )
+    table.loc[1::2, "First Photon"] = [a for a, _ in ranges]
+    table.loc[1::2, "Last Photon"] = [b for _, b in ranges]
+    return table

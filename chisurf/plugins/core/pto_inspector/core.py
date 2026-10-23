@@ -36,7 +36,6 @@ __all__ = [
     "RUN_PICKER_SECTION",
     "RunPickerMixin",
     "artifact_rows",
-    "export_legacy",
     "provenance_graph",
     "run_rows_for",
     "short_uid",
@@ -382,31 +381,6 @@ class PtoInspection:
 
 
 # -- free functions (testable without a file) ---------------------------------
-
-
-def export_legacy(path: str | Path, out_dir: str | Path) -> list[Path]:
-    """Unpack a container into the Seidel/Margarita burst folder.
-
-    The one explicit export: ``bi4_bur/<stem>.bur`` per burst run, beside one
-    ``<ending>4/<stem>.<ending>`` companion per analysis, with a row for every
-    burst (the skipped ones as sentinel rows). See
-    :func:`chisurf.core.fio.fluorescence.legacy_export.export_legacy`.
-
-    Parameters
-    ----------
-    path : str or pathlib.Path
-        The ``.pto``.
-    out_dir : str or pathlib.Path
-        The folder that receives the layout.
-
-    Returns
-    -------
-    list of pathlib.Path
-        Every file written.
-    """
-    from chisurf.core.fio.fluorescence.legacy_export import export_legacy as _export
-
-    return _export(path, out_dir)
 
 
 def artifact_rows(infos: Iterable[ArtifactInfo]) -> list[dict]:

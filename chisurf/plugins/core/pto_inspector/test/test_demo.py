@@ -14,7 +14,7 @@ def test_demo_container_opens_with_its_two_tables(tmp_path):
 
 def test_demo_container_exports_to_the_legacy_burst_folder(tmp_path):
     """The inspector's one export must accept the container it ships as its own demo."""
-    from chisurf.plugins.core.pto_inspector.core import export_legacy
+    from chisurf.plugins.core.legacy_export.core import export_burst_folder as export_legacy
 
     path = make_demo(tmp_path / "demo")
     written = export_legacy(path, tmp_path / "out")

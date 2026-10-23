@@ -40,9 +40,10 @@ def rows(source, value=0.5):
 def test_native_run_writes_the_frozen_real_grid_and_indexed_container(source):
     app = create_app()
     ctrl = app.controller
-    bst = source.with_name(source.name + ".bst")
-    bst.write_text("0 5000\n6000 11000\n12000 17000\n")
-    ctrl.add_files([bst])
+    from .driving import make_input_container
+
+    source, container = make_input_container(source.parent, [(0, 5000), (6000, 11000), (12000, 17000)])
+    ctrl.add_files([container])
     ctrl.apply_pairs('[{"pair_name":"green_ACF","chs_a":[0,1],"chs_b":[0,1]}]')
     ctrl._model.padding_ms = 0
     ctrl._model.n_bins = 3
@@ -142,20 +143,6 @@ def test_concurrent_output_change_is_preserved_and_rejected(source):
     assert original_pto != b"external analysis"
 
 
-def test_selected_analysis_root_keeps_bid_output_beside_burst_folder(source):
-    """A directory's BID child does not move its companion into an undiscoverable subfolder."""
-    app = create_app()
-    bid = source.parent / "BID"
-    bid.mkdir()
-    (bid / (source.name + ".bst")).write_text("0 5000\n6000 11000\n")
-    app.controller.add_files([source.parent])
-    try:
-        assert app.controller.resolve_files() == [(source, [(0, 5000), (6000, 11000)])]
-        assert app.controller._resolved_roots == [source.parent]
-    finally:
-        app.close()
-
-
 def test_two_analysis_folders_of_one_measurement_publish_together(source):
     """The shared measurement container is staged once while both positional grids survive."""
     first = source.parent / "analysis-a"
@@ -183,9 +170,10 @@ def test_publication_uses_worker_and_gui_frames_remain_responsive_on_cancel(sour
 
     app = create_app()
     ctrl = app.controller
-    bst = source.with_name(source.name + ".bst")
-    bst.write_text("0 5000\n6000 11000\n")
-    ctrl.add_files([bst])
+    from .driving import make_input_container
+
+    _raw, container = make_input_container(source.parent, [(0, 5000), (6000, 11000)])
+    ctrl.add_files([container])
     ctrl._model.padding_ms = 0
     entered, release = threading.Event(), threading.Event()
     worker_ids = []
@@ -224,9 +212,10 @@ def test_stop_after_completed_publication_keeps_successful_output(source):
     """A queued Stop click arriving after the finished worker cannot relabel committed results cancelled."""
     app = create_app()
     ctrl = app.controller
-    bst = source.with_name(source.name + ".bst")
-    bst.write_text("0 5000\n")
-    ctrl.add_files([bst])
+    from .driving import make_input_container
+
+    source, container = make_input_container(source.parent, [(0, 5000)])
+    ctrl.add_files([container])
     try:
         ctrl._on_run()
         ctrl._future.result(timeout=30)
@@ -269,9 +258,10 @@ def test_native_maxent_preset_fields_are_actual_effective_grid_and_auto_is_expli
 
     app = create_app()
     ctrl = app.controller
-    bst = source.with_name(source.name + ".bst")
-    bst.write_text("0 5000\n")
-    ctrl.add_files([bst])
+    from .driving import make_input_container
+
+    source, container = make_input_container(source.parent, [(0, 5000)])
+    ctrl.add_files([container])
     driver = Driver(app, size=(1200, 850))
     try:
         app.select_tab("Settings")
