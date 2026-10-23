@@ -1,4 +1,4 @@
-"""Native histogram launch keeps the real legacy BID-folder command-line contract."""
+"""Native histogram launch keeps the burst-container command-line contract."""
 
 import json
 from pathlib import Path
@@ -16,8 +16,8 @@ def native_launch(monkeypatch):
 
     calls = []
     surface = SimpleNamespace(
-        load_bid_folder=lambda folder, setup_name=None, auto_transfer=False: (
-            calls.append(("bid", str(folder), setup_name, auto_transfer)) or True
+        load_burst_folder=lambda folder, setup_name=None, auto_transfer=False: (
+            calls.append(("pto", str(folder), setup_name, auto_transfer)) or True
         ),
     )
     monkeypatch.setattr(app, "create_app", lambda: surface)
@@ -50,39 +50,39 @@ def test_plain_launcher_uses_the_native_surface_and_closes(native_launch):
     assert native_launch == [("host",), ("run",), ("close",)]
 
 
-def test_bid_arguments_reach_the_existing_native_loader(tmp_path, native_launch):
+def test_pto_arguments_reach_the_native_loader(tmp_path, native_launch):
     """Named setup and automatic transfer remain explicit operational inputs."""
     from chisurf.plugins.tttr.microtime_histogram.__main__ import main
 
-    assert main(["--bid-folder", str(tmp_path), "--setup-name", "measured", "--auto-transfer"]) == 0
+    assert main(["--pto-folder", str(tmp_path), "--setup-name", "measured", "--auto-transfer"]) == 0
     assert native_launch == [
-        ("bid", str(tmp_path), "measured", True),
+        ("pto", str(tmp_path), "measured", True),
         ("host",),
         ("run",),
         ("close",),
     ]
 
 
-def test_bid_setup_is_inferred_from_measurement_info(tmp_path, native_launch):
+def test_pto_setup_is_inferred_from_measurement_info(tmp_path, native_launch):
     """The existing parent-Info lookup still selects the measurement's stored setup."""
     from chisurf.plugins.tttr.microtime_histogram.__main__ import main
 
-    folder = tmp_path / "BID"
+    folder = tmp_path / "pto"
     folder.mkdir()
     info = tmp_path / "Info"
     info.mkdir()
     (info / "photon_selection_parameters.json").write_text(
         json.dumps({"selected_setup": "measured"})
     )
-    assert main(["--bid-folder", str(folder)]) == 0
-    assert native_launch[0] == ("bid", str(folder), "measured", False)
+    assert main(["--pto-folder", str(folder)]) == 0
+    assert native_launch[0] == ("pto", str(folder), "measured", False)
 
 
-def test_missing_bid_folder_does_not_open_a_window(tmp_path, native_launch):
+def test_missing_pto_folder_does_not_open_a_window(tmp_path, native_launch):
     """A bad batch path remains an error and never starts a GUI or worker."""
     from chisurf.plugins.tttr.microtime_histogram.__main__ import main
 
-    assert main(["--bid-folder", str(tmp_path / "missing")]) == 1
+    assert main(["--pto-folder", str(tmp_path / "missing")]) == 1
     assert native_launch == []
 
 
@@ -90,19 +90,19 @@ def test_setup_info_grandparent_fallback_requires_missing_parent_info(tmp_path, 
     """Keep the established metadata search order without silently changing precedence."""
     from chisurf.plugins.tttr.microtime_histogram.__main__ import main
 
-    folder = tmp_path / "measurement" / "bi4_bur"
+    folder = tmp_path / "measurement" / "pto"
     folder.mkdir(parents=True)
     info = tmp_path / "Info"
     info.mkdir()
     (info / "photon_selection_parameters.json").write_text(
         json.dumps({"selected_setup": "grandparent"})
     )
-    assert main(["--bid-folder", str(folder)]) == 0
-    assert native_launch[0] == ("bid", str(folder), "grandparent", False)
+    assert main(["--pto-folder", str(folder)]) == 0
+    assert native_launch[0] == ("pto", str(folder), "grandparent", False)
     native_launch.clear()
     (folder.parent / "Info").mkdir()
-    assert main(["--bid-folder", str(folder)]) == 0
-    assert native_launch[0] == ("bid", str(folder), None, False)
+    assert main(["--pto-folder", str(folder)]) == 0
+    assert native_launch[0] == ("pto", str(folder), None, False)
 
 
 def test_manifest_and_public_package_retire_the_legacy_wizard():

@@ -1,10 +1,9 @@
 """A number field for emtk apps.
 
-Integer fields are ``im.input_int`` spinboxes: drag them or press Up/Down (hold the
-modifier for the fast step) to change the value, which commits as soon as it moves.
-Float fields keep a typed ``input_text`` whose in-progress text lives in a
-caller-owned *buffers* dict (a frame never wipes the caret's text) and that commits
-on Enter or a click elsewhere, parsed and clamped.
+Whole numbers and floats are typed the same way: an ``input_text`` whose in-progress
+text lives in a caller-owned *buffers* dict (a frame never wipes the caret's text)
+and that commits on Enter or a click elsewhere, parsed and clamped. A whole-number
+field refuses a fraction rather than rounding what the user did not type.
 """
 
 from __future__ import annotations
@@ -42,22 +41,21 @@ def typed_number_field(
 ):
     """Draw the field for *value*; return ``(committed, error)``.
 
-    ``committed`` is the parsed, clamped number when the value moved this frame (an
-    integer field: a drag or an Up/Down arrow; a float field: the user pressed Enter
-    or clicked away after typing), else ``None``. ``error`` is the message for
-    committed text that is not a number (the value is then left unchanged); an
-    integer field never errors, the spinbox only ever holds whole numbers.
-    *key* is the field's ImGui id; for a float field it is also the key in *buffers*.
+    ``committed`` is the parsed, clamped number when the value moved this frame (the
+    user pressed Enter or clicked away after typing), else ``None``. ``error`` is the
+    message for committed text that is not a number of the field's kind -- a
+    whole-number field refuses a fraction -- and the value is then left unchanged.
+    *key* is the field's ImGui id and the key of its in-progress text in *buffers*.
     *label*, when given, is drawn beside the field. *description* supplies translated
     domain help; otherwise the tooltip explains how the field is edited and its bounds.
     """
-    if integer:
-        return _integer_field(key, value, minimum, maximum, label, description)
+    kind = tr("whole number") if integer else tr("number")
     flags = int(im.InputTextFlags.ENTER_RETURNS_TRUE) | int(im.InputTextFlags.AUTO_SELECT_ALL)
-    shown = buffers.get(key, format(value, "g"))
+    shown = buffers.get(key, format(value, "d" if integer else "g"))
     entered, typed = im.input_text(str(label) + "##" + str(key), shown, "", flags)
     tooltip = _number_tooltip(
-        description, tr("Enter a number. Press Enter or click elsewhere to commit."),
+        description,
+        tr(f"Enter a {kind}. Press Enter or click elsewhere to commit."),
         minimum, maximum,
     )
     im.set_item_tooltip(tooltip)
@@ -68,42 +66,10 @@ def typed_number_field(
         return None, ""
     text = buffers.pop(key)
     try:
-        return parse_number(text, False, minimum, maximum), ""
+        return parse_number(text, integer, minimum, maximum), ""
     except ValueError:
-        return None, f"{text!r} is not a number"
+        return None, f"{text!r} is not a {kind}"
 
-
-def _integer_field(key, value, minimum, maximum, label, description):
-    """The integer spinbox: drag, or Up/Down arrows step by one and commit at once.
-
-    ``im.drag_int`` (not ``input_int``, whose arrow step rides the float path) keeps
-    the field plain -- the -/+ steppers would crowd the half-width paired fields this
-    helper draws -- while the keyboard arrows and the bounds still work.
-    """
-    current = int(value)
-    changed, stepped = im.drag_int(
-        str(label) + "##" + str(key), current, 1.0, minimum, maximum, "%d"
-    )
-    im.set_item_tooltip(
-        _number_tooltip(
-            description,
-            tr("Drag, or press Up/Down to step by one."),
-            minimum, maximum,
-        )
-    )
-    if not changed:
-        return None, ""
-    new = _clamp(int(stepped), minimum, maximum)
-    return (new, "") if new != _clamp(current, minimum, maximum) else (None, "")
-
-
-def _clamp(value, minimum, maximum):
-    """*value* clamped to ``[minimum, maximum]`` (either side may be ``None``)."""
-    if minimum is not None:
-        value = max(minimum, value)
-    if maximum is not None:
-        value = min(maximum, value)
-    return value
 
 
 def _number_tooltip(description, how, minimum, maximum):

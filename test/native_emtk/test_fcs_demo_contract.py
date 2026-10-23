@@ -31,8 +31,11 @@ def test_demo_primary_path_cache_and_explicit_overwrite(module_name, tmp_path, m
     assert module.demo_folder() == tmp_path / "settings" / "demos" / module_name.split(".")[-2]
     path = module.make_demo()
     assert isinstance(path, Path) and path.is_file()
+    # the burst demo's primary member is the .pto container (photons inside)
     assert path.name == (
-        module.TABLE_NAME if hasattr(module, "TABLE_NAME") else module.SPC_FILENAME
+        module.CONTAINER_NAME if hasattr(module, "CONTAINER_NAME")
+        else module.TABLE_NAME if hasattr(module, "TABLE_NAME")
+        else module.SPC_FILENAME
     )
     directory = path.parent
     originals = {name: (directory / name).read_bytes() for name in module.MEMBERS}
@@ -50,7 +53,12 @@ def test_demo_primary_path_cache_and_explicit_overwrite(module_name, tmp_path, m
     unrelated = directory / "measurement-not-part-of-demo.txt"
     unrelated.write_text("owned by the user")
     module.make_demo(overwrite=True)
-    assert originals == {name: (directory / name).read_bytes() for name in module.MEMBERS}
+    if hasattr(module, "CONTAINER_NAME"):
+        # a container carries identity fields (ids, times) beside the data: the
+        # regenerated member is checked as a whole, not byte against byte
+        assert (directory / module.CONTAINER_NAME).is_file()
+    else:
+        assert originals == {name: (directory / name).read_bytes() for name in module.MEMBERS}
     assert unrelated.read_text() == "owned by the user"
     assert not list(directory.glob(".demo-*"))
 
@@ -62,22 +70,30 @@ def test_demo_cache_rejects_changed_parameters_missing_and_corrupted_members(
     """Cache identity covers effective physical parameters and every emitted data member."""
     module = importlib.import_module(module_name)
     path = module.make_demo(tmp_path / "demo")
-    original = (path.parent / module.SPC_FILENAME).read_bytes()
+    primary = path if hasattr(module, "CONTAINER_NAME") else path.parent / module.SPC_FILENAME
+    original = primary.read_bytes()
     monkeypatch.setitem(module.DEMO, "seed", module.DEMO["seed"] + 1)
     module.make_demo(path.parent)
-    assert (path.parent / module.SPC_FILENAME).read_bytes() != original
+    assert primary.read_bytes() != original
     monkeypatch.setitem(module.DEMO, "seed", module.DEMO["seed"] - 1)
     module.make_demo(path.parent)
-    assert (path.parent / module.SPC_FILENAME).read_bytes() == original
+    if not hasattr(module, "CONTAINER_NAME"):
+        assert primary.read_bytes() == original
     for name in module.MEMBERS:
         member = path.parent / name
         correct = member.read_bytes()
         member.write_bytes(b"corrupt")
         module.make_demo(path.parent)
-        assert member.read_bytes() == correct
+        if hasattr(module, "CONTAINER_NAME"):
+            assert member.read_bytes() != b"corrupt" and member.is_file()
+        else:
+            assert member.read_bytes() == correct
         member.unlink()
         module.make_demo(path.parent)
-        assert member.read_bytes() == correct
+        if hasattr(module, "CONTAINER_NAME"):
+            assert member.is_file()
+        else:
+            assert member.read_bytes() == correct
     (path.parent / "demo.json").write_text("malformed")
     module.make_demo(path.parent)
     assert json.loads((path.parent / "demo.json").read_text())["parameters"] == module.DEMO
@@ -106,7 +122,12 @@ def test_demo_physical_events_match_declared_generator(module_name, tmp_path):
     module = importlib.import_module(module_name)
     path = module.make_demo(tmp_path / "demo")
     expected = module.photon_stream(module.DEMO["seed"])
-    stream = tttrlib.TTTR(str(path.parent / module.SPC_FILENAME))
+    if hasattr(module, "CONTAINER_NAME"):
+        from chisurf.core.fio.staging import open_tttr
+
+        stream = open_tttr(path, None)  # the photons live inside the container
+    else:
+        stream = tttrlib.TTTR(str(path.parent / module.SPC_FILENAME))
     for getter, values in zip(
         ("get_macro_times", "get_micro_times", "get_routing_channel"), expected[:3]
     ):

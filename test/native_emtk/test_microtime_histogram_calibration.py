@@ -172,21 +172,31 @@ def test_physical_inputs_polarization_toggle_keeps_routing_and_other_settings(mo
 
 
 @pytest.mark.parametrize("entrypoint", ["api", "cli"])
-def test_bid_startup_uses_saved_setup_real_photons_and_transfers_once(
+def test_pto_startup_uses_saved_setup_real_photons_and_transfers_once(
     tmp_path, monkeypatch, entrypoint
 ):
-    """Actual batch startup preserves calibrated timing, burst-folder export and transfer values."""
+    """Actual batch startup preserves calibrated timing, burst provenance and transfer values."""
     import shutil
 
+    import pandas as pd
+
     from chisurf.core.setup_channel_definition import ChannelDefinition
+    from chisurf.plugins.burst.burst_selection.api.io import write_container
     from chisurf.plugins.tttr.microtime_histogram.gui.app import create_app
 
     source = tmp_path / SOURCE.name
     shutil.copyfile(SOURCE, source)
     stream = tttrlib.TTTR(str(source), "SPC-130")
-    folder = tmp_path / "bi4_bur"
-    folder.mkdir()
-    (folder / "BH_SPC132.bst").write_text(f"0\t{len(stream.micro_times) - 1}\n")
+    container = Path(
+        write_container(
+            source,
+            pd.DataFrame(
+                {"first photon": [0], "last photon": [len(stream.micro_times) - 1]}
+            ),
+            parameters={"run": 1},
+            run="all photons",
+        )
+    )
     setup = _setup(True)
 
     def refresh(store):
@@ -209,8 +219,8 @@ def test_bid_startup_uses_saved_setup_real_photons_and_transfers_once(
     try:
         app.model.auto_save = False
         if entrypoint == "api":
-            assert app.load_bid_folder(
-                folder, setup_name="validation-declared-25ps", auto_transfer=True
+            assert app.load_burst_folder(
+                tmp_path, setup_name="validation-declared-25ps", auto_transfer=True
             )
             completed = app.job.future.result(timeout=15)
         else:
@@ -243,8 +253,8 @@ def test_bid_startup_uses_saved_setup_real_photons_and_transfers_once(
             assert (
                 launcher.main(
                     [
-                        "--bid-folder",
-                        str(folder),
+                        "--pto-folder",
+                        str(tmp_path),
                         "--setup-name",
                         "validation-declared-25ps",
                         "--auto-transfer",
@@ -268,12 +278,12 @@ def test_bid_startup_uses_saved_setup_real_photons_and_transfers_once(
         assert app.editor.model.data["detectors"] == app.model.setup["detectors"]
         assert app.model.parallel == [8, 3]
         assert app.model.perpendicular == [0]
-        assert app.model.selected_bids() == [folder / "BH_SPC132.bst"]
+        assert app.model.selected_bursts() == [container]
         assert app.model.fwhm_ns == pytest.approx(app.model.fwhm_bins * 0.025)
         assert app.model.cumulative_ps.sum() == 135967
         assert len(transferred) == 1
         output, parameters = transferred[0]
-        assert output.parent == folder
+        assert output.parent == tmp_path
         assert parameters["dt"] == 0.025
         np.testing.assert_array_equal(np.loadtxt(output), app.model.cumulative_ps)
     finally:

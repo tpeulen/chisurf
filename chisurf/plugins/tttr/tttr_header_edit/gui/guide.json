@@ -1,18 +1,18 @@
 [
     {
+        "title": "Open a measurement",
+        "text": "Press <b>Open</b> to choose a supported TTTR file (PTU / HT3 / SPC / HDF5) and read its header — or press <b>Load example</b> for a deterministic demonstration PTU, no file of your own needed. The guide waits for your click; it does not choose or load a file for you.",
+        "target": "open",
+        "await": {
+            "hint": "Press Open (or Load example)."
+        }
+    },
+    {
         "title": "Add a tag",
         "text": "Press Add to append a tag, then edit its name, type, value and index in the table. Invalid edits block saving.",
         "target": "add",
         "await": {
             "hint": "Press Add in the header tags panel."
-        }
-    },
-    {
-        "title": "Open an example header",
-        "text": "Press <b>Load example</b> to generate a deterministic demonstration PTU in the settings cache and read its header — no file of your own needed. Press Open instead to choose a supported TTTR file. The guide waits for your click; it does not choose or load a file for you.",
-        "target": "load_example",
-        "await": {
-            "hint": "Press <b>Load example</b>."
         }
     },
     {
