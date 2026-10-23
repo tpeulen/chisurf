@@ -24,6 +24,7 @@ import socket
 import subprocess
 import sys
 import zipfile
+from unittest import mock as unittest_mock
 from pathlib import Path
 
 import pytest
@@ -659,6 +660,85 @@ def test_background_build_falls_back_to_the_calling_thread(monkeypatch):
     assert not build.busy and build.collect() is None
 
 
+def test_the_desktop_only_database_tools_are_not_packed(tmp_path):
+    """The mmfdb database plugins are desktop-only: never packed, never offered.
+
+    The 2026-10-23 browser plugin sweep opened every plugin the page offers:
+    78 built, drew and closed; the four mmfdb tools died building -- their
+    imports reach the database layer (``mmfdb.repository`` / ``schema`` /
+    ``client`` / ``provenance``) that :data:`MMFDB_KEEP` never ships, and the
+    RPC ones need loopback sockets a tab cannot bind. They are excluded from
+    the page (:data:`PLUGIN_EXCLUDE`); this pins that they stay excluded and
+    that the exclusion does not overmatch a working web plugin.
+    """
+    from chisurf.web import PLUGIN_EXCLUDE
+    from emtk.web.serve import pack_zip
+
+    archive = zipfile.ZipFile(pack_zip(_bundle(), tmp_path / "excluded.zip"))
+    names = archive.namelist()
+    for name in PLUGIN_EXCLUDE:
+        assert not [n for n in names if n.startswith(f"chisurf/plugins/{name}/")], (
+            f"chisurf/plugins/{name} is desktop-only and must not ship on the page"
+        )
+    # the exclusion is surgical: working web plugins still pack
+    for still_ships in ("chisurf/plugins/core/zenodo_deposit/manifest.json",
+                        "chisurf/plugins/tttr/tttr_time_windows/manifest.json"):
+        assert still_ships in names, f"{still_ships} must still pack"
+
+
+def test_the_packed_plugin_set_imports_without_the_database_layer(tmp_path):
+    """Every packed plugin entrypoint imports with the database layer blocked.
+
+    The page ships mmfdb's config, deposit and security only. A packed plugin
+    whose import chain reaches any other mmfdb submodule builds into an error
+    panel when opened on the page (the sweep's four findings). Importing each
+    packed entrypoint module -- which executes its package ``__init__`` too --
+    with those submodules blocked must succeed: this is the page's import
+    reality, replayed on the desktop.
+    """
+    import builtins
+
+    from emtk.web.serve import pack_zip
+
+    archive = zipfile.ZipFile(pack_zip(_bundle(), tmp_path / "dblock.zip"))
+    entrypoints = []
+    for name in archive.namelist():
+        if not re.fullmatch(r"chisurf/plugins/(?:[^/]+/)*manifest\.json", name):
+            continue
+        entry = json.loads(archive.read(name)).get("entrypoints", {}).get("emtk", "")
+        module = entry.split(":", 1)[0] if entry else ""
+        if module:
+            entrypoints.append(module)
+    assert len(entrypoints) > 60, "the packed plugin set looks truncated"
+
+    database_layer = (
+        "mmfdb.repository", "mmfdb.schema", "mmfdb.client", "mmfdb.provenance",
+        "mmfdb.admin", "mmfdb.samples", "mmfdb.models", "mmfdb.users",
+    )
+    real_import = builtins.__import__
+
+    def blocked(name, *args, **kwargs):
+        for missing in database_layer:
+            if name == missing or name.startswith(missing + "."):
+                raise ModuleNotFoundError(f"No module named {missing!r}")
+        return real_import(name, *args, **kwargs)
+
+    failures = []
+    for module in sorted(set(entrypoints)):
+        builtins.__import__ = blocked
+        try:
+            with unittest_mock.patch.dict(sys.modules):
+                __import__(module, fromlist=["_"])
+        except ModuleNotFoundError as error:
+            failures.append(f"{module}: {error}")
+        finally:
+            builtins.__import__ = real_import
+    assert not failures, (
+        "packed plugins import the mmfdb database layer the page never ships:\n  "
+        + "\n  ".join(failures)
+    )
+
+
 def test_the_packed_page_imports_only_what_it_ships(tmp_path):
     """Every module-level import reachable from the page must be shipped.
 
@@ -739,7 +819,7 @@ def test_the_packed_page_imports_only_what_it_ships(tmp_path):
     assert roots, "no plugin GUIs packed; the shell would have nothing to open"
 
     def module_imports(dotted: str):
-        """Module-level imports of *dotted*, as (level, target_or_None, root)."""
+        """Module-level imports of *dotted*, as (level, target, root, is_alias)."""
         source = archive.read(packed[dotted]).decode("utf-8", "replace")
         tree = ast.parse(source)
         found = []
@@ -749,14 +829,15 @@ def test_the_packed_page_imports_only_what_it_ships(tmp_path):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 continue  # runs only when called, not when the module opens
             if isinstance(node, ast.Import):
-                found.extend((0, alias.name, alias.name.split(".")[0]) for alias in node.names)
+                found.extend((0, alias.name, alias.name.split(".")[0], False)
+                             for alias in node.names)
             elif isinstance(node, ast.ImportFrom):
                 level = node.level or 0
                 base = node.module or ""
-                found.append((level, base, base.split(".")[0]))
+                found.append((level, base, base.split(".")[0], False))
                 for alias in node.names:  # from X import name: X.name may be a module
                     found.append((level, f"{base}.{alias.name}" if base else alias.name,
-                                  base.split(".")[0]))
+                                  base.split(".")[0], True))
             elif isinstance(node, ast.If) and isinstance(node.test, ast.Name) \
                     and node.test.id == "TYPE_CHECKING":
                 pass  # never executes: typing-only imports
@@ -790,12 +871,32 @@ def test_the_packed_page_imports_only_what_it_ships(tmp_path):
         if dotted in seen or dotted not in packed:
             continue
         seen.add(dotted)
-        for level, target, root in module_imports(dotted):
+        for level, target, root, is_alias in module_imports(dotted):
             absolute = resolve(dotted, level, target)
             resolved_root = root if not level else (absolute or root).split(".")[0]
             if resolved_root not in allowed and absolute not in packed:
                 missing.append(f"{packed[dotted]}: import {'.' * level}{target}"
                                f" (needs {resolved_root!r}, not shipped)")
+                continue
+            # A keep-limited package ships only some of its submodules (mmfdb
+            # keeps config, deposit and security; chimol its viewer core).
+            # There the root being packed is not enough: a submodule named by
+            # a real import but not packed is a ModuleNotFoundError when the
+            # tool opens -- the 2026-10-23 browser sweep caught
+            # spectra_downloader's package __init__ importing mmfdb.repository,
+            # which never ships. ``from X import name`` names are classes and
+            # functions as often as modules, so only whole-module imports
+            # (import X.Y, from X.Y import z) carry the requirement.
+            keep_limited = {"mmfdb", "chimol"}
+            if (
+                not is_alias
+                and absolute
+                and resolved_root in keep_limited
+                and absolute not in packed
+            ):
+                missing.append(f"{packed[dotted]}: import {'.' * level}{target}"
+                               f" ({absolute!r}: its package ships, this submodule"
+                               f" does not)")
                 continue
             # visit the target and the packages it executes
             if absolute:

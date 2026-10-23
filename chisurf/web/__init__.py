@@ -129,7 +129,25 @@ PYODIDE_PACKAGES = ("numpy", "scipy", "pyyaml", "Pillow", "lzma", "fonttools",
 CHISURF_EXCLUDE = ("gui",)
 
 #: Plugin directories that stay behind.
-PLUGIN_EXCLUDE = ("cookiecutter-chisurf-plugin",)
+#: Desktop-only plugins the page does not pack or offer. ``burst_selection``
+#: registers its runs through the provenance layer at startup: the web session
+#: already drops it from the menu with a swallowed error, so it is not packed
+#: either. The mmfdb database
+#: tools (``mmfdb_admin``, ``switch_user``, ``spectra_downloader``) import the
+#: database layer -- :data:`MMFDB_KEEP` ships config, deposit and security
+#: only, by design ("the database layer is never imported") -- and their RPC
+#: needs loopback sockets a browser tab cannot bind. The micro-time shifter's
+#: sample-annotation pipeline reaches ``mmfdb.provenance`` while its app is
+#: built. Found by the 2026-10-23 browser plugin sweep: every other plugin
+#: builds, draws and closes on the page (78 ok, 1 command action).
+PLUGIN_EXCLUDE = (
+    "cookiecutter-chisurf-plugin",
+    "core/mmfdb_admin",
+    "core/switch_user",
+    "spectra_downloader",
+    "tttr/tttr_microtime_shifter",
+    "burst/burst_selection",
+)
 
 #: The parts of ``mmfdb`` the page ships: its root re-exports ``config``, which
 #: ``chisurf.core.settings`` reads, and the Zenodo deposit path
