@@ -636,3 +636,59 @@ def test_the_record_table_says_what_is_uploaded_and_uploads_the_checked(model, f
     assert "t4l-demo: update ok" in model.message, model.message
     model.refresh_records()
     assert model.records[0]["upload"] == "✓ uploaded, current"
+
+
+def _sandbox_trial(model: ZenodoDepositModel) -> None:
+    """A verified draft on the sandbox, exactly as the plugin's flow builds it."""
+    model.select_record(model.records[0])
+    _fill_metadata(model)
+    model.build_package()
+    _wait(model)
+    for row in model.items:
+        model.select_item(row)
+        model.approve_item()
+    model.sandbox = True
+    model.upload_draft()
+    _wait(model)
+    assert "md5 verified" in model.message, model.message
+
+
+def test_approve_publish_unlocks_for_a_verified_sandbox_draft(model, fake):
+    """The approve-publish gate reads THIS host's remote state. It used to read
+    the flat ``remote["deposition_id"]`` that the per-host migration empties,
+    so the button stayed grey forever and the GUI publish flow was dead."""
+    _sandbox_trial(model)
+    assert model.enabled("approve_publish"), model.remote_text
+    model.approve_publish()
+    assert model.enabled("publish_record"), model.gate_text
+    # production has no draft: over there the gate stays shut
+    model.sandbox = False
+    assert not model.enabled("approve_publish")
+
+
+def test_check_remote_reports_the_host_it_checked(model, fake):
+    """Checking on the sandbox compares the sandbox draft; the compare used to
+    run against production and claimed "not uploaded" about a verified draft."""
+    _sandbox_trial(model)
+    model.check_remote()
+    _wait(model)
+    assert "not uploaded" not in model.message, model.message
+    assert "remote matches the package" in model.message, model.message
+
+
+def test_a_record_with_a_quarantined_legacy_remote_says_so(model, fake):
+    """A legacy flat remote is surfaced as waiting for a host -- not silently
+    shown as just another 'not uploaded' record."""
+    model.select_record(model.records[0])
+    state = model.record.folder.parent / "t4l-demo.deposit.json"
+    d = json.loads(state.read_text())
+    d["remote"] = {"deposition_id": 624694, "state": "unsubmitted", "files": [],
+                   "uploads": [{"at": "2026-10-22T10:00:00", "kind": "new",
+                                "deposition_id": 624694, "md5": "x", "verified": True}]}
+    state.write_text(json.dumps(d))
+    model.refresh_records()
+    row = next(r for r in model.records if r["name"] == "t4l-demo")
+    assert "legacy" in row["remote"], row
+    model.select_record(row)
+    text = model.remote_text
+    assert "legacy" in text and "migrate-remote" in text, text

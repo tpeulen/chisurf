@@ -211,6 +211,7 @@ class ZenodoDepositModel:
                           + (f", {c['rejected']} rejected" if c["rejected"] else ""),
                 "remote": (f"draft {st['deposition']}" if st["state"] == "draft" else
                            f"published {st['deposition']}" if st["state"] == "published"
+                           else "legacy remote (migrate)" if st.get("legacy")
                            else "not uploaded"),
                 "upload": ZenodoDepositModel.UPLOAD_STATUS.get(st["upload"], st["upload"]),
                 "kind": st["upload"],
@@ -1275,6 +1276,12 @@ class ZenodoDepositModel:
             return ""
         r = self._r()
         if not r.get("deposition_id"):
+            if "_legacy" in self.record.remote:
+                return ("This record has a **legacy remote state** (deposition ids from "
+                        "before the two repositories were tracked separately) whose host "
+                        "is not recorded. Nothing uploads to it or publishes it. Attach it "
+                        "to the repository it belongs to: `python -m mmfdb.deposit "
+                        "migrate-remote <record-folder> --sandbox|--production`.")
             return "Zenodo: not uploaded."
         diff = compare(self.record, self._host)
         return (f"Zenodo draft {r['deposition_id']} ({r.get('state', '?')}), checked "
@@ -1411,7 +1418,7 @@ class ZenodoDepositModel:
         if name == "forget_token":
             return idle and self.token_source in ("keychain", credentials.UNCHECKED)
         if name == "approve_publish":
-            return has_rec and idle and bool(self.open_record.remote.get("deposition_id")) \
+            return has_rec and idle and bool(self._r().get("deposition_id")) \
                 and not compare(self.record, self._host) and not self._r().get("doi")
         if name == "publish_record":
             return has_rec and idle and bool(self.token_source) \
@@ -1540,7 +1547,8 @@ class ZenodoDepositModel:
             return
         ok = credentials.store_token(self._base, tok)
         self.message = "token stored in the system keychain" if ok else (
-            "no system keychain available: set ZENODO_TOKEN instead")
+            f"no system keychain available: set "
+            f"{'ZENODO_SANDBOX_TOKEN' if self.sandbox else 'ZENODO_TOKEN'} instead")
         self.token_check = ""
 
     def forget_token(self) -> None:
@@ -1742,11 +1750,11 @@ class ZenodoDepositModel:
                 "(it sends the approved Zenodo metadata into a draft; no files needed).")
 
     def check_remote(self) -> None:
-        rec, make = self.record, self._client()
+        rec, make, host = self.record, self._client(), self._host
 
         def work():
             refresh_remote(rec, make())
-            return "; ".join(compare(rec)) or "remote matches the package"
+            return "; ".join(compare(rec, host)) or "remote matches the package"
 
         self._run("checking Zenodo", work)
 

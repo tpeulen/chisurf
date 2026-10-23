@@ -37,4 +37,4 @@ Build package writes the archive from the record as it is now. Upload draft is g
 Publishing is irreversible. It needs its own approval (Approve publish), bound to the md5 of the package in the draft, and a draft that matches it; a rebuilt package voids the approval.
 
 ## Same path from a terminal
-`python -m mmfdb.deposit new|add|metadata|scan|status|review|package|upload|check|approve-publish|publish` uses the same review file and the same gate. The token is read from `ZENODO_TOKEN`.
+`python -m mmfdb.deposit new|add|metadata|scan|status|review|package|upload|check|approve-publish|publish|migrate-remote` uses the same review file and the same gate. The token is read from `ZENODO_TOKEN` (zenodo.org) or `ZENODO_SANDBOX_TOKEN` (sandbox.zenodo.org).
