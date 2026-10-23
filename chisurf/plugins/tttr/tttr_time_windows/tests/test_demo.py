@@ -19,28 +19,30 @@ from chisurf.plugins.tttr.tttr_time_windows.demo import make_demo
 def example(tmp_path_factory):
     """Generate the demonstration stream once for this module."""
     path = make_demo(tmp_path_factory.mktemp("time-windows-demo"))
-    out = path.parent / "bids"
-    result = analyze_files_handler([str(path)], time_window_ms=50.0, output_dir=str(out))
+    result = analyze_files_handler([str(path)], time_window_ms=50.0)
     assert result.get("ok", True), result
-    return path, out, result
+    return path, result
 
 
 def test_a_40_s_measurement_cuts_into_50_ms_windows(example):
-    """800 windows of 50 ms cover the whole demonstration stream."""
-    path, out, result = example
+    """800 windows of 50 ms cover the whole demonstration stream, in the .pto."""
+    from chisurf.core.datastore import row_count
+    from chisurf.core.fio.fluorescence.burst_tree import list_runs, read_burst_table
+
+    path, result = example
     payload = result.get("result", {})
     n_windows = payload["n_windows"][str(path)]
-    bst = sorted(out.rglob("*.bst"))
     assert n_windows == 800
-    assert len(bst) == 1
-    assert bst[0].stat().st_size > 0
+    container = path.with_suffix(".pto")
+    assert container.is_file(), payload.get("output_paths")
+    runs = list_runs(container)
+    assert any("time_window 50 ms" in run for run in runs), runs
+    table = read_burst_table(container)
+    assert table is not None and row_count(table) == 800
 
 
 def test_a_shorter_window_yields_more_windows(example):
     """The window duration actually controls the cut."""
-    path, out, _ = example
-    result = analyze_files_handler(
-        [str(path)], time_window_ms=25.0, output_dir=str(out.parent / "bids25")
-    )
+    path, _ = example
+    result = analyze_files_handler([str(path)], time_window_ms=25.0)
     assert result.get("result", {})["n_windows"][str(path)] == 1600
-

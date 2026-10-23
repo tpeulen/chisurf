@@ -41,7 +41,7 @@ def register_services(dispatcher: Any) -> None:
 def list_methods() -> dict[str, str]:
     """Return the Time Window Bins RPC method catalogue."""
     return {
-        METHOD_ANALYZE_FILES: "Split TTTR files into fixed-duration time-window BIDs.",
+        METHOD_ANALYZE_FILES: "Split TTTR files into fixed-duration time-window BIDs (a run per measurement container).",
         METHOD_DESCRIBE_CONTRACT: "Return the Time Window Bins workflow contract.",
     }
 
@@ -60,8 +60,8 @@ def analyze_files_handler(
     time_window_ms : float
         Time window duration in milliseconds.
     output_dir : str, optional
-        Output directory for ``.bst`` files. If omitted, an output
-        directory is derived from the first input file.
+        Kept for call compatibility; the windows go into each measurement's own
+        ``.pto`` container, beside the input.
 
     Returns
     -------
@@ -115,15 +115,16 @@ def contract_handler() -> dict[str, Any]:
     return service_success(contract_descriptor())
 
 
-def _resolve_output_dir(request: Any) -> Path:
-    """Resolve or derive the output directory for a request."""
+def _resolve_output_dir(request: Any) -> Path | None:
+    """Resolve the output directory for a request, if one was asked for.
+
+    The windows land in each measurement's own container, beside the input, so
+    a directory is only honoured when the caller passed one explicitly (the
+    container then lives there); the ``<stem>_TW_<window>ms`` folder tree the
+    ``.bst`` files used to grow is gone with them.
+    """
     if request.output_dir:
         out_dir = Path(request.output_dir)
-    elif request.files:
-        first = Path(request.files[0])
-        folder_name = f"{first.stem}_TW_{request.time_window_ms:.0f}ms"
-        out_dir = first.parent / folder_name
-    else:
-        out_dir = Path("time_window_output")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    return out_dir
+        out_dir.mkdir(parents=True, exist_ok=True)
+        return out_dir
+    return None

@@ -40,14 +40,27 @@ def app():
 
 
 # 1. processing writes the Qt tool's file, byte for byte
-def test_process_writes_the_qt_tools_bst(app, tmp_path):
+def test_process_writes_the_qt_tools_windows(app, tmp_path):
+    """Same tool, same answers as the Qt one -- now as a run in the container.
+
+    The Qt tool wrote a ``.bst`` whose sha256 was pinned here; the inclusive
+    first/last rows it held are the rows the ``time_window`` run carries.
+    """
+    import numpy as np
+
+    from chisurf.core.datastore import row_count
+    from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
+
     pytest.importorskip("tttrlib")
     if not PTU.exists():
         pytest.skip("sample PTU not available")
+    # work on a copy: the tool writes the container beside the input, and the
+    # fixture PTU lives in the repository
+    ptu = tmp_path / PTU.name
+    ptu.write_bytes(PTU.read_bytes())
     tool = app.tool
-    tool.add_paths([PTU])
+    tool.add_paths([ptu])
     tool.time_window_ms = 10000.0
-    tool.output_dir_text = str(tmp_path)
     tool._process_all()  # pressed while the preview of the added file loads
     assert tool.process_pending or tool._job_kind == "process"
     for _ in range(600):  # frames, as the app runs them
@@ -56,11 +69,17 @@ def test_process_writes_the_qt_tools_bst(app, tmp_path):
         _draw(app, times=1)
         if not tool.job.running and not tool.process_pending:
             break
-    written = sorted(tmp_path.rglob("*.bst"))
-    assert [w.name for w in written] == ["Leica_SP5.bst"], written
-    out = written[0]
-    assert out.stat().st_size == 246
-    assert hashlib.sha256(out.read_bytes()).hexdigest().startswith(QT_BST_SHA256_PREFIX)
+    container = ptu.with_suffix(".pto")
+    assert container.is_file()
+    table = read_burst_table(container)
+    assert table is not None and row_count(table) == 16
+    rows = np.asarray(
+        [tuple(r) for r in zip(table["first photon"], table["last photon"])],
+        dtype=np.int64,
+    ).reshape(-1, 2)
+    # inclusive on both ends, and consecutive windows tile without sharing a photon
+    assert (rows[1:, 0] == rows[:-1, 1] + 1).all()
+    assert not sorted(tmp_path.rglob("*.bst")), "no loose .bst any more"
     assert any("16 windows" in line for line in tool._log_lines)
 
 

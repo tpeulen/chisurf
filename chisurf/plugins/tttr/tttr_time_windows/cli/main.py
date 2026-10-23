@@ -21,7 +21,7 @@ from ..api.models import TimeWindowResult
 def cli(ctx: click.Context, version: bool) -> None:
     """Time Window Bins CLI.
 
-    Split TTTR files into fixed-duration time-window BID files (.bst).
+    Split TTTR files into fixed-duration time-window BIDs (a run per measurement container).
     """
     if version:
         click.echo("Time Window Bins CLI v1.0.0")
@@ -42,7 +42,7 @@ def cli(ctx: click.Context, version: bool) -> None:
 @click.option(
     "--output-dir",
     type=click.Path(file_okay=False),
-    help="Directory for generated .bst files.",
+    help="Kept for compatibility; the windows go into each measurement's .pto container.",
 )
 def analyze(
     files: list[str],
@@ -55,15 +55,11 @@ def analyze(
         return
 
     time_window_s = time_window_ms / 1000.0
-    if output_dir:
-        out_dir = Path(output_dir)
-    elif files:
-        first = Path(files[0])
-        folder_name = f"{first.stem}_TW_{time_window_ms:.0f}ms"
-        out_dir = first.parent / folder_name
-    else:
-        out_dir = Path("time_window_output")
-    out_dir.mkdir(parents=True, exist_ok=True)
+    # The windows land in each measurement's own container beside the input;
+    # an explicit --output-dir is honoured, the old <stem>_TW_<window>ms tree is not grown.
+    out_dir: Path | None = Path(output_dir) if output_dir else None
+    if out_dir is not None:
+        out_dir.mkdir(parents=True, exist_ok=True)
 
     n_windows: dict[str, int] = {}
     output_paths: dict[str, str] = {}

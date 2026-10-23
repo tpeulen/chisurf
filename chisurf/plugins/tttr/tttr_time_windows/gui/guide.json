@@ -2,6 +2,16 @@
   "_comment": "Guided tour for the TTTR time-window tool. Steps point at real controls; the ones the user must use wait for them.",
   "steps": [
     {
+      "title": "Queue the files",
+      "text": "Each queued TTTR file is cut into consecutive windows of equal duration. Press <b>Load example</b> to generate a deterministic demonstration measurement (a µs-ALEX stream with bursts) in the settings cache and queue it. <b>Files</b> (or dropping files or a folder on the window) queues real data; <b>Folder</b> and <b>Database</b> queue whole sets.",
+      "target": {
+        "action": "add_files"
+      },
+      "await": {
+        "hint": "Queue a file: press <b>Files</b>, drop one on the window, or press <b>Load example</b>."
+      }
+    },
+    {
       "title": "Choose the window duration",
       "text": "The duration in milliseconds. Short windows give many windows with few photons each; the dashed lines in the preview follow the value (they are left out when they would be too dense to tell apart).",
       "target": {
@@ -9,23 +19,6 @@
       },
       "await": {
         "hint": "Change the <b>Time window (ms)</b> value and press Enter."
-      }
-    },
-    {
-      "title": "Queue the files",
-      "text": "Each queued TTTR file is cut into consecutive windows of equal duration. Press <b>Load example</b> to generate a deterministic demonstration measurement (a µs-ALEX stream with bursts) in the settings cache and queue it. <b>Files</b> (or dropping files or a folder on the window) queues real data; <b>Folder</b> and <b>Database</b> queue whole sets. Click a queued file to preview its intensity trace.",
-      "target": {
-        "name": "load_example"
-      },
-      "await": {
-        "hint": "Press <b>Load example</b>."
-      }
-    },
-    {
-      "title": "Choose the output folder",
-      "text": "Leave it empty and the tool creates a folder next to the first input file; after processing the field shows the folder that was used.",
-      "target": {
-        "action": "output"
       }
     },
     {
@@ -37,7 +30,7 @@
     },
     {
       "title": "Process",
-      "text": "Writes one .bst file per input with the inclusive start and stop photon of every window. The processing log lists the windows per file.",
+      "text": "Writes the windows into each measurement's own <b>.pto</b> container as a <b>time_window</b> run -- the inclusive first and last photon of every window, where every burst reader finds them. The processing log lists the windows per file.",
       "target": {
         "action": "process"
       },

@@ -194,7 +194,7 @@ def test_time_window_arrows_step_by_one_millisecond(ui):
 
 
 def test_output_folder_field_takes_typed_text(ui):
-    ui.click("Auto (derived from first fil…")  # the field's hint
+    ui.click("Beside each measurement")  # the field's hint
     ui.type("results")
     ui.enter()
     assert ui.app.tool.output_dir_text == "results" and ui.drawn("results")
@@ -221,7 +221,7 @@ def test_process_button_without_files_says_so_in_the_log(ui):
 def test_process_button_runs_the_analysis_with_the_typed_settings_and_logs_the_windows(ui, folder):
     queue_both(ui)
     set_time_window(ui, "25")
-    ui.click("Auto (derived from first fil…")
+    ui.click("Beside each measurement")
     ui.type(str(folder / "out"))
     ui.enter()
     ui.click("Process")
@@ -283,7 +283,7 @@ def test_each_help_button_opens_the_help_window(ui, nth):
 def test_guide_button_starts_the_tour_which_waits_for_each_control(ui):
     tour = ui.app.time_window_gui.tour
     ui.click(action_caption("guide"))
-    assert tour.active and ui.drawn("Step 1 of 5: Queue the files") and tour.awaiting
+    assert tour.active and ui.drawn("Step 1 of 4: Queue the files") and tour.awaiting
     ui.click("Files")  # the awaited button
     assert not tour.awaiting
     ui.click("Cancel")

@@ -259,17 +259,18 @@ class TimeWindowGui(TourTarget):
         if "time_window_ms" in self.form.rects:
             self.item_rects["time_window"] = self.form.rects["time_window_ms"]
 
-        im.text(tr("Output folder:"))
+        im.text(tr("Container folder:"))
         im.same_line()
         browse_w = im.calc_text_size(action_caption("browse"))[0] + 24.0
         caption_w = max(im.get_line_avail() - browse_w - 8.0, 60.0)
         im.set_next_item_width(caption_w)
         _, hint = im.input_text_with_hint(
-            "##output_dir", tool.output_dir_text, "Auto (derived from first file)"
+            "##output_dir", tool.output_dir_text, "Beside each measurement"
         )
         im.set_item_tooltip(
             tr(
-                "Where the .bst files go. Leave empty to create a folder next to the first input file."
+                "The windows go into each measurement's own .pto container. Leave empty "
+                "and the container is the one beside the input file."
             )
         )
         if hint != tool.output_dir_text:
@@ -293,7 +294,12 @@ class TimeWindowGui(TourTarget):
                 f"{metadata.get('total_windows', '?')} windows total",
                 (0.4, 0.85, 0.5, 1.0),
             )
-            im.text_disabled(f"Output: {metadata.get('output_dir', '?')}")
+            im.text_disabled(
+                tr("Output: {}").format(
+                    metadata.get("output_dir")
+                    or tr("each measurement's .pto container, beside the input")
+                )
+            )
 
     def refresh_preview(self) -> None:
         """Reload the preview for the current selection (settings changed)."""
