@@ -32,6 +32,7 @@ class FakeZenodo:
 
     def __init__(self):
         self.files, self.published, self.reserved = {}, False, False
+        self.calls = []  # (method, url) -- proves what was (never) sent
 
     def _dep(self):
         meta = {"prereserve_doi": {"doi": "10.5281/zenodo.9", "recid": 9}} if self.reserved else {}
@@ -40,24 +41,28 @@ class FakeZenodo:
                 "links": {"bucket": "https://z/bucket/9"}}
 
     def post(self, url, json=None, headers=None):
+        self.calls.append(("POST", url))
         self.reserved |= bool(((json or {}).get("metadata") or {}).get("prereserve_doi"))
         if url.endswith("/actions/publish"):
             self.published = True
         return self.R(201, self._dep())
 
     def put(self, url, data=None, json=None, headers=None):
+        self.calls.append(("PUT", url))
         if "/bucket/" in url:
             self.files[url.rsplit("/", 1)[1]] = data.read()
             return self.R(201, {})
         return self.R(200, self._dep())
 
     def get(self, url, headers=None, params=None):
+        self.calls.append(("GET", url))
         if url.endswith("/files"):
             return self.R(200, [{"filename": n, "checksum": hashlib.md5(b).hexdigest(),
                                  "filesize": len(b), "id": n} for n, b in self.files.items()])
         return self.R(200, self._dep())
 
     def delete(self, url, headers=None):
+        self.calls.append(("DELETE", url))
         return self.R(204)
 
 
@@ -717,3 +722,123 @@ def test_a_record_with_a_quarantined_legacy_remote_says_so(model, fake):
     model.select_record(row)
     text = model.remote_text
     assert "legacy" in text and "migrate-remote" in text, text
+
+
+# -- metadata-separate packages: a metadata edit never re-sends the raw archive --
+
+def _separate_upload(model: ZenodoDepositModel, fake: FakeZenodo) -> bytes:
+    """A verified draft built with the metadata separate; returns the zip's bytes."""
+    model.select_record(model.records[0])
+    _fill_metadata(model)
+    model.separate_metadata = True
+    model.build_package()
+    _wait(model)
+    assert "metadata separate" in model.message, model.message
+    for row in model.items:
+        model.select_item(row)
+        model.approve_item()
+    model.upload_draft()
+    _wait(model)
+    assert "md5 verified" in model.message, model.message
+    return fake.files["t4l-demo.zip"]
+
+
+def test_a_metadata_edit_swaps_without_resending_the_raw_archive(model, fake):
+    """The user's path: correct the README of an uploaded record, review it again,
+    swap -- the draft's raw archive is byte-identical and was never PUT again."""
+    zip_on_zenodo = _separate_upload(model, fake)
+    puts = [c for c in fake.calls if c[0] == "PUT"]
+    (model.record.folder / "README.md").write_text("# demo, corrected\n")
+    model.rescan()
+    assert model.record.item("README.md").status == "pending"  # fresh review required
+    model.approve_item({"id": "README.md"})
+    assert model.enabled("upload_draft"), model.gate_text  # the gate opens WITHOUT a rebuild
+    assert "Cleared for upload" in model.gate_text
+    assert model.enabled("upload_metadata_only"), model.metadata_only_text
+    assert "README.md" in model.metadata_only_text and "raw archive" in model.metadata_only_text
+    model.upload_metadata_only()
+    _wait(model)
+    assert "md5 verified" in model.message, model.message
+    assert [c for c in fake.calls if c[0] == "PUT"] == puts + [("PUT", "https://z/bucket/9/README.md")]
+    assert fake.files["t4l-demo.zip"] == zip_on_zenodo  # byte-identical raw archive
+    assert "| metadata-only | 9 |" in model.uploads_text
+    assert model.upload_label() == "Draft is up to date"
+    assert not model.enabled("upload_metadata_only")  # nothing left to swap
+
+
+def test_the_metadata_swap_refuses_a_changed_raw_archive(model, fake):
+    """Raw content changed: the swap is locked -- first a rebuild, then a full
+    upload of the new archive; the swap never sends raw bytes."""
+    _separate_upload(model, fake)
+    (model.record.folder / "measurements/2014-08-12_7.5M-urea/Split-0000.ht3").write_bytes(b"new")
+    model.rescan()
+    assert not model.enabled("upload_metadata_only")  # the change is not even reviewed
+    for row in model.items:
+        model.approve_item(row)
+    assert not model.enabled("upload_metadata_only")  # the archive predates the content
+    assert "rebuild" in model.metadata_only_text
+    model.build_package()
+    _wait(model)
+    assert not model.enabled("upload_metadata_only")  # the draft holds the OLD archive
+    assert "raw archive" in model.metadata_only_text
+    puts = [c for c in fake.calls if c[0] == "PUT" and "/bucket/" in c[1]]
+    model.upload_metadata_only()
+    _wait(model)
+    assert "refused" in model.message, model.message
+    assert [c for c in fake.calls if c[0] == "PUT" and "/bucket/" in c[1]] == puts
+
+
+def test_the_metadata_swap_is_greyed_without_a_draft_and_after_publish(model, fake):
+    """Draft-only: nothing to swap into before the first upload, and a published
+    version is immutable (a correction is a new version, the full upload)."""
+    model.select_record(model.records[0])
+    _fill_metadata(model)
+    model.separate_metadata = True
+    model.build_package()
+    _wait(model)
+    for row in model.items:
+        model.select_item(row)
+        model.approve_item()
+    assert not model.enabled("upload_metadata_only")
+    assert "no draft" in model.metadata_only_text
+    model.upload_draft()
+    _wait(model)
+    assert "no file changed" in model.metadata_only_text  # nothing to swap yet
+    (model.record.folder / "README.md").write_text("# corrected\n")
+    model.rescan()
+    model.approve_item({"id": "README.md"})
+    assert model.enabled("upload_metadata_only")
+    model.upload_metadata_only()
+    _wait(model)
+    assert "md5 verified" in model.message
+    model.approve_publish()
+    model.publish_record()
+    for _ in range(3):
+        model.confirm_publish()
+    _wait(model)
+    assert fake.published
+    (model.record.folder / "README.md").write_text("# corrected again\n")
+    model.rescan()
+    model.approve_item({"id": "README.md"})
+    assert not model.enabled("upload_metadata_only")
+    assert "published" in model.metadata_only_text
+
+
+def test_the_upload_tab_draws_the_metadata_swap_and_its_toggle(model):
+    from emtk.testing import Driver
+
+    from chisurf.plugins.core.zenodo_deposit.gui.app import ZenodoDepositApp
+
+    model.select_record(model.records[0])
+    _fill_metadata(model)
+    model.build_package()
+    _wait(model)
+    for row in model.items:
+        model.select_item(row)
+        model.approve_item()
+    ui = Driver(ZenodoDepositApp(model), (1400, 900))
+    ui.click("3 · Upload")
+    ui.frame(2)
+    texts = [t[5] for t in ui.painter.texts]
+    assert "Swap metadata" in texts, "the metadata-swap button is not drawn"
+    assert "Build the metadata separate" in texts, "the separate-metadata toggle is not drawn"

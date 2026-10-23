@@ -678,11 +678,24 @@
               "description": "The plan of the upload this tab would run now, file by file: what is sent, what is replaced, what is identical already on the draft, and what would be deleted from it. Press Check (DOI & publish panel) to compare against the live draft.",
               "sections": [
                 {
+                  "type": "toggle",
+                  "attr": "separate_metadata",
+                  "label": "Build the metadata separate",
+                  "description": "Keep the editable metadata (README.md, metadata.cif) out of the raw archive: they are uploaded beside it as sidecars, so correcting them later is a metadata-only swap and never re-sends the raw data."
+                },
+                {
                   "type": "info",
                   "key": "preflight_text",
                   "source": "preflight_text",
                   "is_markdown": true,
                   "description": "The plan in one line, before anything leaves the machine."
+                },
+                {
+                  "type": "info",
+                  "key": "metadata_only_text",
+                  "source": "metadata_only_text",
+                  "is_markdown": true,
+                  "description": "The metadata-only swap: the changed sidecars and the Zenodo metadata, never the raw archive -- and why it refuses, if it does."
                 },
                 {
                   "type": "custom",
@@ -769,6 +782,12 @@
                       "label_source": "upload_label",
                       "role": "primary",
                       "description": "Upload the package into a Zenodo DRAFT and check its md5 there: a new draft, an update of the draft (its package replaced), or -- once published -- a new version. Nothing is published. Grey until every item is approved, the package matches, a token is set, and the draft does not already hold this package."
+                    },
+                    {
+                      "action": "upload_metadata_only",
+                      "label": "Swap metadata",
+                      "label_source": "metadata_label",
+                      "description": "Swap the metadata of the unpublished draft without sending the raw archive: the changed sidecars (README.md, metadata.cif) and the reviewed Zenodo metadata only. Grey while anything blocks (the edited metadata must be reviewed again), before the first upload, once published (immutable), and when the draft does not hold the raw archive unchanged."
                     },
                     {
                       "action": "rescan",

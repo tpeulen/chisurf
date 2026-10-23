@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import time
 from pathlib import Path
 
@@ -29,18 +30,20 @@ from mmfdb.deposit import (
     build_package,
     compare,
     credentials,
+    host_of,
+    metadata_plan,
     publish,
     record_status,
-    reserve_doi,
-    host_of,
-    remote_view,
-    upload_history,
-    upload_kind,
-    upload_plan,
     refresh_metadata_item,
     refresh_remote,
+    remote_view,
+    reserve_doi,
     scan,
     upload,
+    upload_history,
+    upload_kind,
+    upload_metadata,
+    upload_plan,
 )
 from mmfdb.deposit.compose import (
     ACCESS_RIGHTS,
@@ -151,6 +154,10 @@ class ZenodoDepositModel:
         #: "text", "markdown"} -- set by open_file_view, cleared by close_file_view.
         self.file_view: dict | None = None
         self._sandbox = False
+        #: Build the archive WITHOUT the editable metadata (README.md,
+        #: metadata.cif): they ride beside it as sidecars, so correcting them
+        #: later is a metadata-only swap and never re-sends the raw data.
+        self.separate_metadata = False
         #: What is typed in the token field; cleared once it is stored.
         self.token_entry = ""
         self.token_check = ""
@@ -1287,6 +1294,8 @@ class ZenodoDepositModel:
         b = blockers(self.record)
         pkg = self.record.package
         head = (f"Package: `{Path(pkg['path']).name}`, {pkg['bytes']:,} B, md5 `{pkg['md5']}`"
+                + (" -- metadata separate: the editable metadata rides beside the zip"
+                   if pkg.get("mode") == "metadata-separate" else "")
                 if pkg.get("path") else "Package: not built")
         if not b:
             return f"{head}\n\n**Cleared for upload.**"
@@ -1435,6 +1444,13 @@ class ZenodoDepositModel:
         if name == "upload_draft":
             return (has_rec and idle and bool(self.token_source) and not blockers(self.record)
                     and upload_kind(self.record, self._host) != "current")
+        if name == "upload_metadata_only":
+            if not (has_rec and idle and bool(self.token_source)):
+                return False
+            plan = metadata_plan(self.record, self._host)
+            return (not plan["refused"]
+                    and (plan["metadata"] == "push"
+                         or any(o["action"] in ("upload", "replace") for o in plan["ops"])))
         if name in ("save_token",):
             return idle and bool(self.token_entry.strip())
         if name == "test_token":
@@ -1728,12 +1744,57 @@ class ZenodoDepositModel:
     def build_package(self) -> None:
         rec = self.open_record
         out = rec.folder.parent.parent / ZIPS
+        separate = self.separate_metadata
 
         def work():
-            p = build_package(rec, out)
-            return f"package built: {p.name}, md5 {rec.package['md5']}"
+            p = build_package(rec, out, separate_metadata=separate)
+            return (f"package built: {p.name}, md5 {rec.package['md5']}"
+                    + (" -- metadata separate: README.md and metadata.cif ride beside the zip"
+                       if separate else ""))
 
         self._run("building the package", work)
+
+    def upload_metadata_only(self) -> None:
+        """Swap the metadata of the unpublished draft -- the raw archive is not sent.
+
+        Same gate as an upload (the edited metadata must be reviewed again);
+        refused for a published record and when the draft does not hold the raw
+        archive unchanged (:meth:`mmfdb.deposit.upload_metadata`).
+        """
+        rec, make, host = self.record, self._client(), self._host
+
+        def work():
+            remote = upload_metadata(rec, make())
+            return (f"metadata swapped on draft {remote['deposition_id']}: the raw archive "
+                    "was not sent, " + ("; ".join(compare(rec, host)) or "md5 verified"))
+
+        self._run("swapping the draft's metadata", work)
+
+    def metadata_label(self) -> str:
+        """The metadata-swap button says what it will do."""
+        if self.record is None:
+            return "Swap metadata"
+        plan = metadata_plan(self.record, self._host)
+        work = plan["metadata"] == "push" or any(
+            o["action"] in ("upload", "replace") for o in plan["ops"])
+        return "Swap metadata" if work else "Metadata is current"
+
+    @property
+    def metadata_only_text(self) -> str:
+        """The metadata-only swap in one line: what it sends, why it refuses."""
+        if self.record is None or not self.record.package.get("md5"):
+            return ""
+        plan = metadata_plan(self.record, self._host)
+        if plan["refused"]:
+            return "**No metadata-only swap:** " + "; ".join(plan["refused"]) + "."
+        sent = [o["file"] for o in plan["ops"] if o["action"] in ("upload", "replace")]
+        parts = [f"replace {', '.join(sent)}" if sent else "no file changed"]
+        parts.append("push the Zenodo metadata" if plan["metadata"] == "push"
+                     else "metadata unchanged")
+        pkg = self.record.package
+        return (f"**Metadata-only swap** ({_size(plan['bytes'])} to transfer): " + ", ".join(parts)
+                + f". The raw archive stays as it is (`{Path(pkg['path']).name}`, "
+                  f"md5 `{pkg['md5'][:12]}…`).")
 
     def upload_draft(self) -> None:
         rec, make = self.record, self._client()
