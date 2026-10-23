@@ -340,9 +340,12 @@ class AlexAlternationGui(TourTarget):
 
     The panel (:class:`~.alternation.AlexAlternationPanel`) keeps the workflow
     logic — detection, conversion, publishing the setup — and this GUI renders
-    its state: the channel assignment, the period, the two editable laser
-    gates (numbers here, draggable bands on the plot — one edit, as before)
-    and the folded phase histogram that says whether the answer is right.
+    its state. The conversion itself belongs to the ALEX Creator plugin (one
+    implementation, :mod:`chisurf.plugins.tttr.ptu_alex_creator`, also behind
+    the Tools → Photon data window): this step runs it on arrival, then tunes
+    the two laser gates (numbers here, draggable bands on the plot — one edit,
+    as before) and publishes the detector setup. No channel, period or format
+    controls live here; the Creator's window has them.
     """
 
     def __init__(
@@ -416,21 +419,14 @@ class AlexAlternationGui(TourTarget):
                 "step already has your detector definition."
             )
         )
+        im.text_wrapped(
+            tr(
+                "The ALEX Creator (Tools → Photon data) is the converter; this step "
+                "runs it on arrival and publishes the detector setup."
+            )
+        )
         im.separator()
 
-        _, panel.donor_text = im.input_text_with_hint("Donor channels", panel.donor_text, "auto")
-        im.set_item_tooltip(
-            tr("Routing channels of the donor; leave 'auto' to detect them from the data.")
-        )
-        _, panel.acceptor_text = im.input_text_with_hint(
-            "Acceptor channels", panel.acceptor_text, "auto"
-        )
-        im.set_item_tooltip(
-            tr("Routing channels of the acceptor; leave 'auto' to detect them from the data.")
-        )
-        self.remember("channels")
-
-        im.spacing()
         if im.button(tr("🚦 Detect alternation and convert"), role="primary"):
             panel.run(convert=True)
         im.set_item_tooltip(
@@ -440,11 +436,6 @@ class AlexAlternationGui(TourTarget):
         )
         self.remember("run")
 
-        im.same_line()
-        if im.button(tr("🔎 Detect only")):
-            panel.run(convert=False)
-        im.set_item_tooltip(tr("Detect the alternation period without converting the data."))
-        self.remember("detect_only")
         im.same_line()
         if action_button("help"):
             self.show_help()
@@ -461,22 +452,15 @@ class AlexAlternationGui(TourTarget):
         im.spacing()
         enabled = panel.period > 0
         if enabled:
-            # Ranges of the Qt spin boxes: the period up to 1e8, each gate edge inside the period.
-            panel.period = _typed_number(
-                self, "period", "Period (units)", panel.period, 0, 100_000_000
-            )
-            im.set_item_tooltip(
-                tr(
-                    "ALEX alternation period in macro-time units; leave 0 to measure it from the data."
-                )
-            )
+            # The period is measured from the data (manual override: the ALEX Creator's window).
             windows = panel.windows or {}
             for name, label in (("green", "Donor excitation"), ("red", "Acceptor excitation")):
                 bounds = windows.get(name, [0, 0])
                 old_lo, old_hi = int(bounds[0]), int(bounds[1])
                 # A full-row first field would push the "to" field off the dock's right edge.
                 im.set_next_item_width(120)
-                lo = _typed_number(self, f"{name}_from", f"{label} from", old_lo, 0, panel.period)
+                hi_limit = panel.period or 100_000_000
+                lo = _typed_number(self, f"{name}_from", f"{label} from", old_lo, 0, hi_limit)
                 im.set_item_tooltip(f"Start of the {label.lower()} gate in macro-time units.")
                 im.same_line()
                 im.set_next_item_width(120)

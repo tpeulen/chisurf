@@ -78,9 +78,6 @@ def alex_to_pto(
     ValueError
         If no path was given.
     """
-    from chisurf.plugins.core.tttr_to_pto.api import convert as pack_container
-    from chisurf.plugins.tttr.ptu_alex_creator import core
-
     if isinstance(paths, (str, pathlib.Path)):
         paths = [paths]
     sources = sorted((pathlib.Path(p) for p in paths), key=lambda p: p.name)
@@ -88,38 +85,11 @@ def alex_to_pto(
         raise ValueError("no files to convert")
 
     target_dir = pathlib.Path(out_dir) if out_dir is not None else sources[0].parent
-    target_dir.mkdir(parents=True, exist_ok=True)
-
-    # The folding is written as PTU rather than straight into the container
-    # because `.pto` embeds an instrument file **verbatim** and never rewrites
-    # it — that byte-for-byte copy is what makes its provenance checkable — so a
-    # *derived* stream has to be a file before it can be embedded.
-    #
-    # In a temporary directory, though, not beside the measurement. These are
-    # scaffolding: one per source file, each the size of the source, deleted as
-    # soon as the container verifies. Writing them into the data folder meant a
-    # conversion briefly littered it with files that look like results, and a
-    # crash or a cancel left them there for good. A temp directory also gets
-    # cleaned up on the failure path, which the old code did not.
-    with tempfile.TemporaryDirectory(prefix="alex_convert_") as scratch:
-        staging = pathlib.Path(scratch)
-        intermediates = []
-        for source in sources:
-            intermediate = staging / f"{source.stem}{suffix}.ptu"
-            core.convert_file(
-                str(source),
-                str(intermediate),
-                alex_period=int(alex_period),
-                period_shift=int(period_shift),
-                output_format="PTU",
-                input_format="Auto",
-            )
-            intermediates.append(intermediate)
-
-        # One container for the whole list. keep_original=False deletes the
-        # intermediates, but only after the container has verified its own
-        # checksum, so a failed write costs nothing.
-        return pack_container(intermediates, keep_original=False, out_dir=target_dir)
+    from chisurf.plugins.tttr.ptu_alex_creator.api.container import (  # noqa: PLC0415
+        convert_to_container)
+    return convert_to_container(sources, alex_period=int(alex_period),
+                                period_shift=int(period_shift), out_dir=target_dir,
+                                suffix=suffix)
 
 
 def detect_and_convert(

@@ -58,9 +58,10 @@ def within(gate, planted):
     )
 
 
-def test_detect_only_button_measures_the_planted_alternation_and_writes_nothing(drv, stream):
-    assert drv.app.model.period == 0 and "period" not in drv.app.item_rects  # auto until measured
-    drv.click_name("detect_only")
+def test_a_dry_run_measures_the_planted_alternation_and_writes_nothing(drv, stream):
+    """Detect-only is a model action now; the converter window is the ALEX Creator's."""
+    assert drv.app.model.period == 0  # auto until measured
+    assert drv.app.model.run(convert=False)
     settle(drv)
     model = drv.app.model
     assert model.period == demo.PERIOD, model.status_text
@@ -72,8 +73,8 @@ def test_detect_only_button_measures_the_planted_alternation_and_writes_nothing(
     assert within(model.windows["red"], demo.ACCEPTOR_GATE)
     assert not model.converted
     assert sorted(p.name for p in stream.parent.iterdir()) == ["alex_demo.json", "alex_demo.spc"]
-    # The measured period and the two gates are now editable fields on the panel.
-    for name in ("period", "green_from", "green_to", "red_from", "red_to"):
+    # The two gates are editable fields on the panel (the period is measured, not typed).
+    for name in ("green_from", "green_to", "red_from", "red_to"):
         assert drv.rect(name)[2] > 0, name
 
 
@@ -104,7 +105,7 @@ def test_the_phase_tag_names_the_position_it_marks(drv, monkeypatch):
     """The x tag sits at half the period; it said "period 8000" at x = 4000."""
     from chisurf.plugins.burst.alex_suite.gui import app as app_module
 
-    drv.click_name("detect_only")
+    assert drv.app.model.run(convert=False)
     settle(drv)
     tags = []
     real = app_module.implot.tag_x

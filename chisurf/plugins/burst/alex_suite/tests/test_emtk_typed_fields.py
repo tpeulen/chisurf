@@ -52,18 +52,15 @@ def test_titration_integer_fields_step_and_float_fields_take_typing(drv):
     assert model.beta == 0.25, "text that is not a number leaves the value"
 
 
-def test_alternation_period_and_gates_step_with_the_arrows(drv):
+def test_alternation_gates_step_with_the_arrows(drv):
+    """The period is measured, not typed; only the gate edges step (clamped to [0, period])."""
     state = drv.app.suite_gui.alternation_state
     state.period = 1000
     state.windows = {"green": [0, 400], "red": [500, 1000]}
-    step_name(drv, "period", keys.KEY_UP)
-    assert state.period == 1001
     step_name(drv, "green_from", keys.KEY_UP)
     assert state.windows["green"] == [1, 400]
     step_name(drv, "red_to", keys.KEY_UP)
-    assert state.windows["red"] == [500, 1001], "a gate edge steps up to the period"
-    step_name(drv, "red_to", keys.KEY_UP)
-    assert state.windows["red"] == [500, 1001], "a gate edge is clamped to the period"
+    assert state.windows["red"] == [500, 1000], "a gate edge is clamped to the measured period"
     state.windows["red"] = [0, 1001]
     step_name(drv, "red_from", keys.KEY_DOWN)
     assert state.windows["red"] == [0, 1001], "a gate edge is clamped to zero"

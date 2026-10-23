@@ -49,7 +49,7 @@
     },
     {
       "title": "3 — measured, not typed",
-      "text": "Arriving with µs-ALEX data, this step found the period, the two laser gates and which detector is the donor, folded the alternation into the micro-time (one <code>.pto</code> container beside your file) and wrote the setup. PIE data is left alone.<br/><br/><b>Check the plot</b>: two plateaus, the donor detector brighter in one, the acceptor in the other. That crossover is what the old channel-flip checkbox was guessing at. The gates are editable here and as bands on the plot.",
+      "text": "Arriving with µs-ALEX data, this step ran the <b>ALEX Creator</b>'s conversion: it found the period, the two laser gates and which detector is the donor, folded the alternation into the micro-time (one <code>.pto</code> container beside your file) and wrote the setup. PIE data is left alone.<br/><br/><b>Check the plot</b>: two plateaus, the donor detector brighter in one, the acceptor in the other. That crossover is what the old channel-flip checkbox was guessing at. The gates are editable here and as bands on the plot. The Creator's window (Tools → Photon data) converts files by hand, in any format.",
       "target": {
         "name": "phase_plot"
       }

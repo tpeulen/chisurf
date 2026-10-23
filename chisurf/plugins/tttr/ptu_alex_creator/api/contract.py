@@ -11,6 +11,7 @@ import pathlib
 from typing import Any
 
 from .. import core
+from .container import CONTAINER_FORMAT
 from .models import AlexRequest, AlexResult
 
 PLUGIN_ID = "ptu_alex_creator"
@@ -53,6 +54,20 @@ def run(request: AlexRequest) -> AlexResult:
     """Execute *request* through :mod:`..core` and return the produced paths."""
     if not request.files:
         raise ValueError("No input files specified.")
+
+    if request.output_format == CONTAINER_FORMAT:
+        # One .pto for the whole list: the container is the analysis format,
+        # and packing many streams into one is its point.
+        from .container import convert_to_container  # noqa: PLC0415
+
+        container = convert_to_container(
+            request.files,
+            request.alex_period,
+            request.period_shift,
+            out_dir=request.output_dir or None,
+            input_format=request.input_format,
+        )
+        return AlexResult(output_paths=[str(container)], mode="convert")
 
     if request.mode == "merge":
         out_path = request.output_path

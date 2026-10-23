@@ -78,8 +78,15 @@ class AlexViewModel:
         return core.input_format_options()
 
     def output_format_options(self) -> list[str]:
-        """Output container choices (every supported tttrlib container name)."""
-        return core.supported_containers()
+        """Output choices: every tttrlib container, plus the photon-container output.
+
+        The PTO choice packs the folded stream into a photon container beside
+        the source -- the format the burst pipeline reads -- instead of
+        writing a TTTR file.
+        """
+        from ..api.container import CONTAINER_FORMAT  # noqa: PLC0415
+
+        return [*core.supported_containers(), CONTAINER_FORMAT]
 
     @property
     def has_data(self) -> bool:

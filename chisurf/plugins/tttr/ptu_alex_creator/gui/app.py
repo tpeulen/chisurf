@@ -41,6 +41,7 @@ from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from .. import core
 from ..api import AlexRequest, run
+from ..api.container import CONTAINER_FORMAT
 from .translations import HELP, install_translations
 from .view_model import AlexViewModel
 
@@ -435,6 +436,16 @@ class AlexApp(TourTarget, ImApp):
         if Path(args[0]).resolve() == Path(args[1]).resolve():
             self.error(ValueError(tr("Choose a different output file to preserve the source.")))
             return False
+        if m.output_format == CONTAINER_FORMAT:
+            from ..api.container import convert_to_container  # noqa: PLC0415
+
+            return self.job.start(
+                lambda: [convert_to_container(
+                    [m.input_file], int(m.alex_period), int(m.period_shift),
+                    out_dir=Path(path).parent, input_format=m.input_format)],
+                self.completed,
+                self.error,
+            )
         return self.job.start(lambda: core.convert_file(*args), self.completed, self.error)
 
     def completed(self, paths):

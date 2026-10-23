@@ -94,3 +94,41 @@ def test_api_batch_convert_and_merge(tmp_path):
     assert len(merged.output_paths) == 1
     # merge concatenates every photon from both files
     assert len(tttrlib.TTTR(merged.output_paths[0])) == 2 * n
+
+
+def test_view_model_offers_the_pto_container_output():
+    """PTO is an output choice like the TTTR containers: one converter, both worlds."""
+    from chisurf.plugins.tttr.ptu_alex_creator.gui.view_model import AlexViewModel
+
+    options = AlexViewModel().output_format_options()
+    assert "PTU" in options and "PTO" in options
+
+
+@pytest.mark.skipif(not _PTU.exists(), reason="sample PTU not available")
+def test_pto_output_packs_one_container_of_every_source(tmp_path):
+    """Output "PTO": every input folded, packed into one .pto beside the source."""
+    import shutil
+
+    import tttrlib
+
+    from chisurf.plugins.tttr.ptu_alex_creator.api import AlexRequest, run
+
+    n = len(tttrlib.TTTR(str(_PTU)))
+    f1 = tmp_path / "a.ptu"
+    f2 = tmp_path / "b.ptu"
+    shutil.copy(_PTU, f1)
+    shutil.copy(_PTU, f2)
+
+    result = run(
+        AlexRequest(
+            files=[str(f1), str(f2)],
+            alex_period=8000,
+            period_shift=0,
+            output_format="PTO",
+            output_dir=str(tmp_path / "out"),
+        )
+    )
+    assert len(result.output_paths) == 1, "one container for the whole list"
+    container = pathlib.Path(result.output_paths[0])
+    assert container.suffix == ".pto" and container.exists()
+    assert len(tttrlib.TTTR(str(container))) == 2 * n, "every photon of both sources"

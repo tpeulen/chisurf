@@ -40,7 +40,9 @@ micro-time histogram with the regions shaded.
 **Period** and **Shift** are in macro-time units, not seconds. Type a value and press Enter, press the arrows at the
 field's right edge, or turn the mouse wheel over the field (one notch is one step: 100 for the period, 1 for the shift).
 The histogram folds again at once and the window stays usable while it does. **Input** forces the container type
-(**Auto** detects it); **Output** is the container written.
+(**Auto** detects it); **Output** is the container written — a TTTR container, or **PTO**: a photon container
+(`.pto`) packed beside the source, the format the burst pipeline reads (the [ALEX
+Suite](66_alex_suite.md)'s alternation step writes exactly this).
 
 **Detect period** (grey until a file is loaded) measures the period from the photons instead: the two busiest
 detector groups (the **Detectors** field, or the two busiest routing channels when it is blank) alternate with the

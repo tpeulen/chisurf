@@ -105,10 +105,12 @@ file. The conversion this workflow needs is step 3's.
 
 This replaces the microscope dialog: alternation period, phase shift, four laser
 on/off edges, channel flip. Arriving here with µs-ALEX data (an empty micro-time)
-detects and converts it straight away; look at the plot. The channel fields say
-`auto` and fill themselves in, and the detected setup lands in step 1.
-**Detect alternation and convert** runs it again after you changed a field;
-**Detect only** measures without writing anything.
+detects and converts it straight away; look at the plot. The channel assignment
+is detected, and the detected setup lands in step 1. **Detect alternation and
+convert** runs it again. The conversion itself is the *ALEX Creator*'s (see
+[the ALEX Creator guide](100_alex_creator.md)) — one implementation, also
+available on its own in *Tools → Photon data* (now writing `.pto` containers
+too); this step only drives it and publishes the detector setup.
 
 ```{figure} figures/alex_suite_alternation.png
 :name: fig-alex-suite-alternation

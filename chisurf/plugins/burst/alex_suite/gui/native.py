@@ -54,8 +54,9 @@ STEPS: list[dict[str, Any]] = [
         "role": "alternation",
         "optional": True,
         "help": str(HERE / "help.md"),
-        "description": "µs-ALEX only: finds the laser alternation and folds it into the micro-time on arrival, "
-        "which turns the measurement into ordinary PIE data and writes the setup. PIE / ns-ALEX: nothing to do.",
+        "description": "µs-ALEX only: the ALEX Creator's conversion folds the alternation into the micro-time on arrival, "
+        "turning the measurement into ordinary PIE data; this step publishes the setup and tunes the gates. "
+        "PIE / ns-ALEX: nothing to do.",
     },
     {
         "name": "4. Burst search",

@@ -72,19 +72,6 @@ def test_the_legacy_export_tab_is_gone(app, drv):
     assert not drv.drawn("💾 Write ALEX-Suite CSVs")
 
 
-def test_alternation_fields_take_typing(app, drv):
-    state = app.suite_gui.alternation_state
-    drv.draw(2)
-    # Label-right layout: the input spans the row left of its label. Click the
-    # field body (a fifth of the row width in), select-all, type, commit.
-    x, y, w, h = drv.text_rect(drv.draw(2), "Donor channels")
-    drv.type_into((10.0, y - 2, 640.0, h + 4), "0", fx=0.2)
-    assert state.donor_text == "0"
-    x, y, w, h = drv.text_rect(drv.draw(2), "Acceptor channels")
-    drv.type_into((10.0, y - 2, 640.0, h + 4), "1", fx=0.2)
-    assert state.acceptor_text == "1"
-
-
 def test_help_button_opens_the_help_window(app, drv):
     app.suite_gui.selected_tab = "titration"
     drv.draw(2)
