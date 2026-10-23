@@ -4,6 +4,19 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+---
+
+
+## ndX ranking panel: "Islands" header has no catalogue entry (found 2026-10-20)
+
+status: open — owner: the queued i18n catalogue job. The clean-room view ranking (ndxplorer a78db6d) marks the
+population table's "Islands" header for translation, as the spec's clarification 10 requires. The de/fr
+catalogues (`modules/ndxplorer/ndxplorer/locale/ndxplorer_{de,fr}.ts`) lack it, so
+`ndxplorer/tests/test_i18n.py::test_every_string_is_translated[de|fr]` names exactly that one string until the
+entries land: **de "Inseln", fr "Îlots"**. Until then the header falls back to English. No other string is missing.
+
+---
+
 ## Licence audit leftovers: IMP.swarm provenance, Photonscore attribution, LGPL source offer (found 2026-10-20, branch `mcts-native-baseline`)
 
 status: open
@@ -3366,7 +3379,7 @@ defines an equivalent, the declaration should point at theirs instead.
 
 ## The ALEX period spectrum runs at 2.6 samples per period
 
-status: resolved
+status: resolved 2026-10-20
 
 **Measured 2026-09-08.** `detect_alex_period` bins the signed donor−acceptor
 stream and takes the peak of its power spectrum. `bin_width` is chosen to make
@@ -8620,13 +8633,3 @@ Not fixed in the change that found it because the fix changes the size of every
 point glyph in the application at once, and the render fixtures would all need
 re-inspecting; that is its own change, with its own before/after images.
 
----
-
-
-## ndX ranking panel: "Islands" header has no catalogue entry (found 2026-10-20)
-
-status: open — owner: the queued i18n catalogue job. The clean-room view ranking (ndxplorer a78db6d) marks the
-population table's "Islands" header for translation, as the spec's clarification 10 requires. The de/fr
-catalogues (`modules/ndxplorer/ndxplorer/locale/ndxplorer_{de,fr}.ts`) lack it, so
-`ndxplorer/tests/test_i18n.py::test_every_string_is_translated[de|fr]` names exactly that one string until the
-entries land: **de "Inseln", fr "Îlots"**. Until then the header falls back to English. No other string is missing.

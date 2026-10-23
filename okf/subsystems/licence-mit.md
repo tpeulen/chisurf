@@ -10,7 +10,7 @@ timestamp: 2026-10-20T23:00:00+02:00
 
 ## Where to pick this up
 
-1. Done: **IMP.swarm is MIT, part of imp-tricks (owner, 2026-10-20); the CeCILL note was wrong.**
+1. Measure: **IMP.swarm is MIT, part of imp-tricks (owner, 2026-10-20); the CeCILL note was wrong.**
    Owner: "self developed, but inspired by the biodyn thingi (iDynoMiCS), no copy." IMP.swarm is an
    independent implementation inspired by the iDynoMiCS-2 biofilm model (Cockx et al. 2024); no
    iDynoMiCS code was taken, parity checks compare behaviour only. A same-day split into a CeCILL
