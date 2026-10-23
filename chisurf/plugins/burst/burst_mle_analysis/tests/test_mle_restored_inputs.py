@@ -44,11 +44,19 @@ def write_ptu(path: Path, micro: np.ndarray, seed_ticks: int = 100) -> Path:
 def inputs(tmp_path_factory, hermetic_env):
     """The demo burst table plus a measured IRF file and a measured background file beside its raw data."""
     folder = tmp_path_factory.mktemp("mle_inputs")
-    bur = demo.make_demo(folder / "demo")
+    bur = Path(demo.make_demo(folder / "demo"))
+    # pto-first: pack the demo's photons and its burst table as one container --
+    # the .bur stays on disk for parity checks, the app gets the container.
+    from chisurf.core.fio.fluorescence.burst import read_bur_file
+    from chisurf.plugins.burst.burst_selection.api.io import write_container
+
+    bur = Path(write_container(
+        bur.parents[2] / "synthetic_mle.ptu", read_bur_file(bur), run="demo"
+    ))
     rng = np.random.default_rng(7)
     irf = np.clip(np.rint(rng.normal(20.0, 2.0, 40000)), 0, demo.CHANNELS - 1)
     bg = rng.integers(0, demo.CHANNELS, 20000)
-    raw = bur.parents[2]
+    raw = bur.parent  # beside the container: the dialog folder stays small
     return {
         "bur": bur,
         "irf": write_ptu(raw / "measured_irf.ptu", irf),

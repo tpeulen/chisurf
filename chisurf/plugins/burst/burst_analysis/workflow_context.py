@@ -75,7 +75,8 @@ def folder_from_result(result: object) -> Path | None:
 
 
 def materialize_handoff(
-    context: BurstWorkflowContext, frames_by_file: Mapping[Any, Any]
+    context: BurstWorkflowContext, frames_by_file: Mapping[Any, Any],
+    run_name: str | None = None,
 ) -> list[Path] | None:
     """Give the later steps something to read the bursts from when the search wrote no folder.
 
@@ -116,10 +117,30 @@ def materialize_handoff(
         if frame is None:
             continue
         try:
-            written.append(Path(write_container(raw_path, frame, parameters=context.to_payload())))
+            written.append(Path(write_container(
+                raw_path, frame, parameters=context.to_payload(), run=run_name or None,
+            )))
         except Exception as exc:  # noqa: BLE001 - a container that will not write leaves no hand-off
             logger.warning(f"Could not write the container for {raw_path}: {exc}")
     return written or None
+
+
+def _usable_run(container: Path, runs: list[str]) -> list[Path]:
+    """The newest *usable* run: a search made before the detector definitions reached the
+    step writes a table with no per-detector split at all, so the newest run whose
+    columns map wins; only if none of them do, the newest run there is."""
+    from chisurf.core.fluorescence.burst.table import maps_fret_channels
+
+    for run in reversed(runs):
+        candidate = container / run
+        if maps_fret_channels(candidate):
+            if run != runs[-1]:
+                logger.info(
+                    f"burst analysis: using the run '{run}' — the newer '{runs[-1]}' has no per-detector "
+                    "columns (it was searched without detector definitions)."
+                )
+            return [candidate]
+    return [container / runs[-1]]
 
 
 def burst_sources(context: BurstWorkflowContext) -> list[Path]:
@@ -130,13 +151,28 @@ def burst_sources(context: BurstWorkflowContext) -> list[Path]:
     paths: a loose ``.bur``, or a container run addressed like a folder (``m000.pto/sliding_window_All 0.1500#60``),
     which every burst reader in ChiSurf understands.
     """
+    from chisurf.core.fio.fluorescence import burst_tree
+
+    def _runs(container: Path) -> list[Path]:
+        """The newest usable run of *container* (the whole container when it has none)."""
+        try:
+            runs = burst_tree.list_runs(container)
+        except Exception as exc:  # noqa: BLE001 - an unreadable container has no runs
+            logger.warning(f"burst analysis: could not list the runs of {container} — {exc}")
+            return [container]
+        return _usable_run(container, runs) if runs else [container]
+
     if context.bur_files:
-        return list(context.bur_files)
+        # Loose .bur tables pass through as they are; a container resolves to its
+        # newest usable run -- that run path is what a folder-taking step reads.
+        out: list[Path] = []
+        for path in context.bur_files:
+            path = Path(path)
+            out.extend(_runs(path) if path.suffix.lower() == burst_tree.SUFFIX else [path])
+        return out
     folder = context.burst_folder
     if folder is None:
         return []
-    from chisurf.core.fio.fluorescence import burst_tree
-
     if not burst_tree.is_container_path(folder):
         return []
     if folder.suffix.lower() != burst_tree.SUFFIX:
@@ -146,27 +182,18 @@ def burst_sources(context: BurstWorkflowContext) -> list[Path]:
     except Exception as exc:  # noqa: BLE001 - an unreadable container has no sources
         logger.warning(f"burst analysis: could not list the runs of {folder} — {exc}")
         return []
-    if not runs:
-        return []
-    # Newest last -- but newest is not automatically *usable*: a search made before the detector definitions
-    # reached the step writes a table with no per-detector split at all. So: the newest run whose columns *map*,
-    # and only if none of them do, the newest run there is.
-    from chisurf.core.fluorescence.burst.table import maps_fret_channels
-
-    for run in reversed(runs):
-        candidate = folder / run
-        if maps_fret_channels(candidate):
-            if run != runs[-1]:
-                logger.info(
-                    f"burst analysis: using the run '{run}' — the newer '{runs[-1]}' has no per-detector "
-                    "columns (it was searched without detector definitions)."
-                )
-            return [candidate]
-    return [folder / runs[-1]]
+    return _usable_run(folder, runs) if runs else []
 
 
 def analysis_path(context: BurstWorkflowContext) -> Path | None:
-    """The burst analysis a folder-taking tool should read: the folder, or the newest usable run of a container."""
+    """The burst analysis a folder-taking tool should read: the folder, or the newest usable run of a container.
+
+    While the folder-reading steps are moved onto containers, a search that also wrote
+    a legacy ``.bur`` tree keeps those steps fed: they read ``legacy_burst_folder``.
+    """
+    legacy = getattr(context, "legacy_burst_folder", None)
+    if legacy is not None and Path(legacy).is_dir():
+        return Path(legacy)
     folder = context.burst_folder
     if folder is None:
         return None

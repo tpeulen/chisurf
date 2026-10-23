@@ -51,7 +51,7 @@ class MleNativeApp(TourTarget, ImApp):
     """Immediate-mode burst-MLE app: files, detector editor, settings, fit, batch, plots."""
 
     DIALOGS = {
-        "add_files": ("Open burst tables", "open", [("BUR / PTO", ["*.bur", "*.pto"])]),
+        "add_files": ("Open burst tables", "open", [("PTO", ["*.pto"])]),
         "add_folder": ("Add burst folder", "folder", None),
         "save_settings": ("Save burst-MLE settings", "save", [("JSON", ["*.json"])]),
         "load_settings": ("Load burst-MLE settings", "open", [("JSON", ["*.json"])]),
@@ -287,7 +287,7 @@ class MleNativeApp(TourTarget, ImApp):
                     "label": "Add files",
                     "key": "add_files",
                     "enabled": not running,
-                    "tip": "Choose burst (.bur) tables; the analysis folder they belong to is read whole.",
+                    "tip": "Choose burst tables in .pto containers; the analysis folder they belong to is read whole.",
                 },
                 {
                     "label": "Add folder",

@@ -40,8 +40,8 @@ def wait(drv, timeout=240.0):
 
 
 @pytest.fixture(scope="module")
-def burst_table(sample_copy):
-    return sample_copy / BURST_TABLE
+def burst_table(pto_bursts):
+    return pto_bursts
 
 
 @pytest.fixture
@@ -58,7 +58,7 @@ def fitted(hermetic_env, burst_table):
     drv = Driver(window)
     window.editor.model.data["detectors"] = json.loads(json.dumps(CHANNEL_SETTINGS["detectors"]))
     window.model.set_setup(CHANNEL_SETTINGS)
-    assert drv.drop(burst_table)
+    assert drv.drop(burst_table / "m000.pto")
     drv.draw()
     drv.click_name("auto")
     wait(drv)
@@ -83,7 +83,7 @@ def test_empty_state_draws_no_data_at_both_sizes(monkeypatch, app):
         "No burst lifetimes yet",
         "No bursts loaded",
         "No lifetime table yet",
-        "Add burst (.bur) files to begin",
+        "Add burst tables (.pto) to begin",
     ):
         assert message in text, message
 
@@ -92,10 +92,10 @@ def test_a_dropped_burst_table_loads_the_analysis_and_lists_the_file(app, burst_
     drv = Driver(app)
     assert drv.drop(burst_table)
     assert app.model.n_bursts == 2980 and [p.name for p in app.model.session.bur_files] == [
-        "m000.bur"
+        f"m{i:03d}.pto" for i in range(10)
     ]
     shown = texts(drv.draw(2))
-    assert "m000.bur" in shown
+    assert "m000.pto" in shown
     assert not drv.drop(burst_table), "a table already listed is not added twice"
     assert not drv.drop("/no/such/file.txt")
 
@@ -241,15 +241,21 @@ def test_the_batch_rows_equal_the_engines_batch(batch):
     np.testing.assert_allclose(mine, theirs, rtol=1e-12)
 
 
-def test_save_results_click_writes_the_b4_tables(batch, burst_table):
+def test_save_results_click_writes_the_fits_into_the_containers(batch, burst_table):
+    """Save results writes each fit as a run of its measurement's container; the b4
+    companions are the Legacy Export plugin's business (it maps burst_lifetime_fitting)."""
+    from chisurf.core.fio.fluorescence.legacy_export import COMPANIONS, plan_legacy
+
     window, drv = batch
     drv.click_name("save_results")
     drv.draw(2)
     assert "file(s) written" in window.model.status_text, window.model.status_text
-    folder = burst_table.parent.parent
-    assert (folder / "bg4" / "m000.bg4").is_file() and (folder / "br4" / "m000.br4").is_file()
-    text = (folder / "bg4" / "m000.bg4").read_text().splitlines()
-    assert text[0].startswith("Ng-p-all") and "Tau (green)" in text[0]
+    run_name = window.model.session.bur_files[0].name  # e.g. m000.pto
+    plan = {row["run"]: row for row in plan_legacy(burst_table / run_name)}
+    fits = [r for r in plan.values() if r["operation"] == "burst_lifetime_fitting"]
+    assert fits and {r["run"] for r in fits} == {"mle green", "mle red"}
+    ending = "/".join(sorted(COMPANIONS["burst_lifetime_fitting"].values()))
+    assert all(r["ending"] == ending for r in fits)
 
 
 def test_the_inspected_burst_follows_the_burst_field(monkeypatch, batch):
@@ -304,10 +310,10 @@ def test_add_files_dialog_adds_a_table(app, burst_table):
     drv.click_name("add_files")
     drv.draw(3)
     assert app.dialog is not None
-    app.dialog.directory = str(burst_table.parent)
-    drv.click_text("m000.bur")
+    app.dialog.directory = str(burst_table)
+    drv.click_text("m000.pto")
     drv.click_text("Open")
-    assert app.model.n_bursts == 2980
+    assert app.model.n_bursts == 203  # this container's own search
 
 
 def test_guide_targets_are_drawn_and_the_awaited_steps_are_released_by_presses(app, burst_table):
@@ -372,13 +378,13 @@ def test_the_fit_step_of_the_guide_waits_for_the_real_press_of_fit_bursts(monkey
     assert calls == [1] and not window.tour.awaiting
 
 
-def test_a_dropped_folder_adds_the_burst_tables_under_it(app, sample_copy):
-    """A folder is expanded to the ``.bur`` tables below it (and only those); other files are ignored."""
-    (sample_copy / "note.txt").write_text("ignored")
-    assert app.model.add_files([sample_copy]) >= 1
+def test_a_dropped_folder_adds_the_burst_tables_under_it(app, pto_bursts):
+    """A folder is expanded to the ``.pto`` containers below it (and only those); other files are ignored."""
+    (pto_bursts / "note.txt").write_text("ignored")
+    assert app.model.add_files([pto_bursts]) >= 1
     names = {p.name for p in app.model.session.bur_files}
-    assert "m000.bur" in names and all(p.suffix == ".bur" for p in app.model.session.bur_files)
-    assert app.model.add_files([sample_copy]) == 0, "tables already listed are not added twice"
+    assert "m000.pto" in names and all(p.suffix == ".pto" for p in app.model.session.bur_files)
+    assert app.model.add_files([pto_bursts]) == 0, "tables already listed are not added twice"
 
 
 def test_the_database_buttons_open_their_pickers(monkeypatch, app):
@@ -426,7 +432,7 @@ def test_the_current_file_and_the_inspected_bursts_file_are_named(fitted):
     window, drv = fitted
     drv.click_text("Decay and fit")
     shown = texts(drv.draw(3))
-    assert "Current file: m000.bur (1 of 1)" in shown
+    assert "Current file: m000.pto (1 of 1)" in shown
     assert window.model.inspected_file_name() == "m000.spc"
     drv.click_text("Inspected burst")
     assert any(t.startswith("burst ") and t.endswith("- m000.spc") for t in texts(drv.draw(3)))

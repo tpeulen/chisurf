@@ -136,8 +136,8 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
     ctx = hub.context
     assert ctx.setup_name == "probe"
     assert [p.name for p in ctx.raw_files] == ["m000.spc", "m001.spc"]
-    assert ctx.burst_folder is not None and ctx.burst_folder.name == "sliding_window_All 0.1500#60"
-    assert [p.name for p in ctx.bur_files] == ["m000.bur", "m001.bur"]
+    assert ctx.burst_folder is not None and ctx.burst_folder.name == "m000.pto"
+    assert [p.name for p in ctx.bur_files] == ["m000.pto", "m001.pto"]
     assert "2. Burst Selection (2)" in [p["name"] for p in hub.tools]  # the rail's badge
 
     for role in (
@@ -157,12 +157,15 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
         settle(drv)
         assert hub.errors.get(role) is None, (role, hub.errors.get(role))
     c = hub.children
-    assert c["bva"].model.analysis_folder == ctx.burst_folder
+    legacy = ctx.legacy_burst_folder
+    assert legacy is not None and legacy.name == "sliding_window_All 0.1500#60"
+    # The folder-reading steps (still on the legacy tree) ...
+    assert c["bva"].model.analysis_folder == legacy
     assert (c["bva"].model.donor_channels_text, c["bva"].model.acceptor_channels_text) == (
         "0,1",
         "8,9",
     )
-    assert c["two_cde"].model.folder == str(ctx.burst_folder)
+    assert c["two_cde"].model.folder == str(legacy)
     assert (c["two_cde"].model.donor_channels_text, c["two_cde"].model.file_type) == (
         "0,1",
         "SPC-130",
@@ -171,9 +174,12 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
         assert c[role].model.n_bursts == 198
         assert c[role].model.detector_names() == ["green", "red"]
         assert c[role].model.split_by_state is split
-    assert Path(c["h2mm"].model.data_folder) == ctx.burst_folder
+    assert Path(c["h2mm"].model.data_folder) == legacy
     assert c["browser"].model.table is not None
-    assert Path(c["accurate_fret"].model.filename).name == "m000.bur"
+    # ... and the container readers: accurate FRET reads the newest run of m000.pto
+    # ... and accurate FRET reads the named run of the container
+    assert Path(c["accurate_fret"].model.filename).parts[-2].endswith(".pto")
+    assert Path(c["accurate_fret"].model.filename).parts[-1] == "sliding_window_All 0.1500#60"
     assert c["accurate_fret"].model.setup_name == "probe"
     # the setup's detector names pick the photon counts, not "First Photon (green)"
     assert (c["accurate_fret"].model.column_i_dd, c["accurate_fret"].model.column_i_da) == (
@@ -193,7 +199,7 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
     assert [Path(p).name for p in c["background"].model.files] == ["m000.spc", "m001.spc"]
     assert c["background"].model.diagnostics  # estimated on arrival, as the Qt step does
     assert [Path(p).name for p in c["irf_bg"].model.files] == ["m000.spc", "m001.spc"]
-    assert "bursts: sliding_window_All 0.1500#60" in hub.status
+    assert "bursts: m000.pto" in hub.status
 
 
 def test_a_fused_folder_redirects_the_later_steps(hub, files, tmp_path):
@@ -201,7 +207,7 @@ def test_a_fused_folder_redirects_the_later_steps(hub, files, tmp_path):
     hub.select("bva")
     settle(drv)
     fused = tmp_path / "fused"
-    shutil.copytree(hub.context.burst_folder, fused)
+    shutil.copytree(hub.context.legacy_burst_folder, fused)
     hub.select("fusion")
     drv.draw(2)
     fusion = hub.children["fusion"]
@@ -213,7 +219,7 @@ def test_a_fused_folder_redirects_the_later_steps(hub, files, tmp_path):
     assert hub.children["bva"].model.analysis_folder == fused  # an open step follows at once
     # a new search supersedes the fusion
     hub._selection_done(hub.children["selection"].model)
-    assert hub.context.burst_folder.name == "sliding_window_All 0.1500#60"
+    assert hub.context.burst_folder.name == "m000.pto"
 
 
 def test_send_to_mle_reaches_both_mle_steps(hub, files):

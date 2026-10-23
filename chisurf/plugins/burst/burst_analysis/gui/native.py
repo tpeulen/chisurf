@@ -279,19 +279,28 @@ class BurstAnalysisHubApp(ToolHubApp):
         artifacts = result.get("mmfdb_artifacts") or {}
         if artifacts:
             self.context.mmfdb_artifacts = dict(artifacts)
-        folder = folder_from_result(result)
-        sources = (
-            None if folder is not None else materialize_handoff(self.context, model.frames_by_file)
+        legacy_folder = folder_from_result(result)
+        # The workflow stores bursts in .pto containers, end to end: materialize them
+        # whether or not the search also wrote a legacy folder (that folder stays in the
+        # context for the steps that still read it; the exporter is its way out).
+        sources = materialize_handoff(
+            self.context, model.frames_by_file,
+            run_name=legacy_folder.name if legacy_folder is not None else None,
         )
         # A fresh burst search supersedes any fusion of the previous one.
         self._fusion_source = self._fused_folder = None
-        if folder is not None:
-            self.context.set_burst_folder(folder)
-        elif sources:
-            # The hand-off wrote the containers themselves: the first is what the later steps
-            # name, and they read the rest the same way (one measurement, one container).
+        if sources:
+            # One measurement, one container: the first is what the status line names,
+            # and every step reads the rest the same way. The legacy tree (when the
+            # search wrote one) keeps the still folder-reading steps fed.
             self.context.set_burst_folder(sources[0])
+            self.context.bur_files = sources
+            self.context.legacy_burst_folder = legacy_folder
             folder = sources[0]
+        elif legacy_folder is not None:
+            self.context.set_burst_folder(legacy_folder)
+            self.context.legacy_burst_folder = legacy_folder
+            folder = legacy_folder
         if folder is not None:
             self.status = f"Bursts for the later steps: {folder}"
         self._apply_downstream(skip=("data", "selection"))
@@ -305,6 +314,8 @@ class BurstAnalysisHubApp(ToolHubApp):
         self._fusion_source = self.context.burst_folder
         self._fused_folder = path
         self.context.set_burst_folder(path)
+        # The fused folder is what the folder-reading steps read from now.
+        self.context.legacy_burst_folder = path
         self._apply_downstream(skip=("data", "selection", "fusion"))
         self.status = f"Fused bursts adopted by the later steps: {path}"
         self.wants_frame = True
@@ -401,6 +412,11 @@ class BurstAnalysisHubApp(ToolHubApp):
         role = child_role(self, child)
         if self.context.bur_files and not child.model.session.bur_files:
             child.model.add_files(self.context.bur_files)
+        # The workflow's setup is the authority: a container may carry the setup of
+        # the search that wrote it, so this goes to the session AFTER the files.
+        settings = self.context.channel_settings
+        if settings and self._changed(role, "setup", settings):
+            child.model.set_setup(settings)
         patterns = self.context.irf_background_patterns
         if patterns and self._changed(role, "patterns", id(patterns)):
             self._patterns_to_mle(child, patterns)
@@ -455,15 +471,23 @@ class BurstAnalysisHubApp(ToolHubApp):
         settings = self.context.channel_settings
         if settings and self._changed("burst_gs", "setup", settings):
             child.model.apply_channel_settings(settings)
-        if self.context.bur_files and child.controller is not None and not child.model.bur_files:
-            child.controller.add_files([str(p) for p in self.context.bur_files])
+        # burst_gs still reads loose .bur tables: the legacy tree keeps it fed until
+        # its own container conversion (the workflow's .bur_files are containers).
+        legacy = getattr(self.context, "legacy_burst_folder", None)
+        tables = sorted(Path(legacy).glob("**/*.bur")) if legacy else []
+        if tables and child.controller is not None and not child.model.bur_files:
+            child.controller.add_files([str(p) for p in tables])
 
     def _to_accurate_fret(self, child) -> None:
+        from chisurf.core.fio.fluorescence import burst_tree
+
         sources = burst_sources(self.context)
         if not sources or getattr(child.model, "filename", None) or child.controller.running:
             return
-        if Path(sources[0]).is_file() and self._changed("accurate_fret", "table", str(sources[0])):
-            child.controller.load(str(sources[0]))
+        first = Path(sources[0])
+        readable = first.is_file() or burst_tree.is_container_path(first)
+        if readable and self._changed("accurate_fret", "table", str(first)):
+            child.controller.load(str(first))
 
     def _to_background(self, child) -> None:
         controller = child.controller

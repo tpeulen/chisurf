@@ -118,6 +118,31 @@ def sample_copy(tmp_path_factory, hermetic_env):
     return target
 
 
+#: The container twin of the legacy burst tree: one ``.pto`` per measurement
+#: (its photons embedded), each with its part of the burst search as one run.
+#: pto-first: the tests' burst input -- 2980 bursts over the three measurements,
+#: exactly what the legacy ``.bur`` tree held.
+PTO_RUN = "runBursts#1"
+
+
+@pytest.fixture(scope="module")
+def pto_bursts(sample_copy):
+    """Convert the sample's legacy burst tree into per-measurement containers; return the folder.
+
+    One ``.pto`` per measurement (its photons embedded) with its ``.bur`` table as
+    one run -- the pto-first twin of ``bi4_bur/*.bur``. The engine merges the runs
+    of every container exactly as it merged the ``.bur`` files: 2980 bursts total.
+    """
+    from chisurf.core.fio.fluorescence.burst import read_bur_file
+    from chisurf.plugins.burst.burst_selection.api.io import write_container
+
+    for bur in sorted((sample_copy / BURST_TABLE).parent.glob("*.bur")):
+        raw = sample_copy / f"{bur.stem}.spc"
+        if raw.is_file():
+            write_container(raw, read_bur_file(bur), parameters={"run": 1}, run=PTO_RUN)
+    return sample_copy
+
+
 REFERENCE = Path(__file__).with_name("qt_reference.json")
 
 

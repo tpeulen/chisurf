@@ -146,7 +146,12 @@ class BurstBvaGui:
         self.help_window.show()
 
     def _on_model_event(self, event: str) -> None:
+        hosted = self.editor is not None and getattr(self.editor, "hosted", False)
         if event == "detector_settings" and self.editor is not None and not self._syncing:
+            if hosted:
+                # In a pipeline the editor is the hub's: the workflow's setup is the
+                # authority, this step never writes its own definition back into it.
+                return
             self._syncing = True  # a workflow hand-off: the editor shows what the model now holds
             try:
                 self.editor.load_definition(self._editor_settings())

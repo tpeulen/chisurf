@@ -111,12 +111,13 @@ def test_the_view_spec_has_the_run_picker_once(model):
     assert with_run_picker(spec) == spec
 
 
-def test_legacy_burst_files_still_load(hermetic_env, sample_copy):
+def test_legacy_burst_files_are_refused(hermetic_env, sample_copy):
+    """Q1 hard: the legacy .bur tree is not an input; only .pto containers are."""
     m = MleViewModel()
     m.set_setup(CHANNEL_SETTINGS)
-    assert m.add_files([sample_copy / BURST_TABLE]) == 1
-    assert m.run_container == "" and m.run_rows() == []
-    assert not engine._is_container(m.session.bur_files[0])
+    assert m.add_files([sample_copy / BURST_TABLE]) == 0
+    assert m.session.bur_files == []
+    assert "No new .pto" in m.status_text
 
 
 def test_clicking_a_run_in_the_app_fits_that_run(hermetic_env, container):

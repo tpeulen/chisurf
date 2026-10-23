@@ -103,7 +103,7 @@ class MleViewModel(RunPickerMixin):
         self._observers: list[Callable[[str], None]] = []
         self._cancel = threading.Event()
         self._snapshot_running = threading.Event()
-        self.status_text = "Add burst (.bur) files to begin."
+        self.status_text = "Add burst tables (.pto) to begin."
         self.burst_results: list[dict] = []
         #: Fingerprint of the request :attr:`burst_results` answers (``None``: nothing held, or stopped/failed).
         self.held_fingerprint: str | None = None
@@ -376,19 +376,21 @@ class MleViewModel(RunPickerMixin):
         self.notify("files")
 
     def add_files(self, paths) -> int:
-        """Add ``.bur`` tables, ``.pto`` containers (a folder adds the tables under it); returns how many were new."""
+        """Add ``.pto`` containers (a folder adds the containers under it); returns how many were new.
+
+        Legacy ``.bur`` trees are no longer an input: the File:Data:Legacy Export plugin
+        is the door between them and the container world.
+        """
         self._ensure_editable()
         found: list[Path] = []
         for value in map(Path, paths):
             if engine._is_container(value):
                 found.append(value)
             elif value.is_dir():
-                found.extend(sorted(value.rglob("*.bur")))
-            elif value.suffix.lower() == ".bur":
-                found.append(value)
+                found.extend(sorted(value.rglob("*.pto")))
         new = [p for p in found if p not in self.session.bur_files]
         if not new:
-            self.status_text = "No new .bur burst table or .pto container among the given paths."
+            self.status_text = "No new .pto container among the given paths."
             return 0
         self.session.add_burst_files(new)
         self.session.build_decay()
@@ -418,7 +420,7 @@ class MleViewModel(RunPickerMixin):
         self.held_fingerprint = None
         self.restart_attention = False
         self.session.burst_results = []
-        self.status_text = "Add burst (.bur) files to begin."
+        self.status_text = "Add burst tables (.pto) to begin."
         self.notify("files")
 
     def load_example(self) -> None:
