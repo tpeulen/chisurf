@@ -7,6 +7,63 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 ---
 
 
+## The ALEX period spectrum runs at 2.6 samples per period
+
+status: resolved 2026-10-20
+
+**Measured 2026-09-08.** `detect_alex_period` bins the signed donor−acceptor
+stream and takes the peak of its power spectrum. `bin_width` is chosen to make
+the FFT fit in `max_bins`, so it grows with the **length** of the measurement
+while the period it is looking for is a fixed hardware setting. On the 159 s
+analysed span of the cal1 file that is `bin_width = 3027` against a period of
+`8000` — **2.64 samples per period**, a hair above Nyquist. A longer recording,
+or a shorter alternation period, crosses it: the line aliases and the detector
+returns a confident wrong number.
+
+**Tried and reverted:** binning finely over a short leading slice instead
+(`coarse_span = max_bins × min_period//16`, ~524 cycles). It fixes the sampling
+and makes the FFT 16× cheaper, and it **returns 78400 for a period of 8000** —
+the spectral line's power grows with the number of cycles seen, so over half a
+thousand cycles it loses to low-frequency drift. The long span is doing real
+work; do not shorten it without replacing what it provides.
+
+**The shape of a real fix** is two passes: a short fine-binned window to get the
+order of magnitude, then a second spectrum binned at `P0/8` over a long span —
+properly sampled *and* many cycles, both FFTs small. Not done here because a
+first pass that is off by 10× (as the reverted attempt was) would pick a
+`bin_width` that aliases the second, so it needs its own guard rather than a
+straight substitution.
+
+Not urgent: the integer scan that follows is what sets the final answer, and it
+is now measured over the full record (see the log entry for 2026-09-08), so the
+FFT only has to land within 2 %.
+
+**Resolved 2026-10-20.** It crossed: the owner's 300 s BmrA ALEX `.sm`
+(1.25 M photons, 12.5 ns clock, span 2.4e10) binned at **5722** — 1.4 samples per
+period — the line aliased to 20107, the ±2 % integer scan returned 20189, the
+channel assignment then found no alternation and the ALEX Suite refused the
+file ("the detector ratio does not alternate ... spread 0.015"). Fix in
+`detect_alex_period`: the alias is unfolded instead of avoided — every
+`|n/bin_width ± 1/coarse|` inside the band is a candidate, each known to
+`P²/record`, screened on a fifth of the survey photons by the fold modulation,
+the best four scanned and the winner refined on every photon. The long span (and
+so the line's strength) is kept. Real file: 8000, contrast 11805, 3.6 s (old
+code: 4.1 s, wrong). Guard:
+`alex_suite/tests/test_alternation.py::test_period_is_recovered_when_the_record_is_long_enough_to_alias`
+(periods 8000 and 7993 over 3·10⁶ cycles; old code returns ~20000).
+
+**Null edge closed 2026-10-20.** A boxcar bin that is a whole number of periods
+wide integrates every cycle alike, so the line and all harmonics cancel exactly
+(with `bin_width = 2·8000` the 8f2677d64 code returned **80**, contrast 20). The
+spectrum is now taken at two widths, `w` and `round(w·φ)` (golden ratio), each
+offers its aliases, the photons judge the union, and the reported contrast is
+the larger of the two. Guard:
+`test_period_is_recovered_when_the_bin_width_is_a_whole_number_of_periods`
+(`max_bins` chosen so `bin_width == 2·PERIOD` exactly). Real file still 8000 /
+11805, 3.9–4.2 s (screen window tightened to ±ceil(P²/record + ½)).
+
+---
+
 ## ndX ranking panel: "Islands" header has no catalogue entry (found 2026-10-20)
 
 status: open — owner: the queued i18n catalogue job. The clean-room view ranking (ndxplorer a78db6d) marks the
@@ -8580,58 +8637,3 @@ point glyph in the application at once, and the render fixtures would all need
 re-inspecting; that is its own change, with its own before/after images.
 
 ---
-
-## The ALEX period spectrum runs at 2.6 samples per period
-
-status: resolved 2026-10-20
-
-**Measured 2026-09-08.** `detect_alex_period` bins the signed donor−acceptor
-stream and takes the peak of its power spectrum. `bin_width` is chosen to make
-the FFT fit in `max_bins`, so it grows with the **length** of the measurement
-while the period it is looking for is a fixed hardware setting. On the 159 s
-analysed span of the cal1 file that is `bin_width = 3027` against a period of
-`8000` — **2.64 samples per period**, a hair above Nyquist. A longer recording,
-or a shorter alternation period, crosses it: the line aliases and the detector
-returns a confident wrong number.
-
-**Tried and reverted:** binning finely over a short leading slice instead
-(`coarse_span = max_bins × min_period//16`, ~524 cycles). It fixes the sampling
-and makes the FFT 16× cheaper, and it **returns 78400 for a period of 8000** —
-the spectral line's power grows with the number of cycles seen, so over half a
-thousand cycles it loses to low-frequency drift. The long span is doing real
-work; do not shorten it without replacing what it provides.
-
-**The shape of a real fix** is two passes: a short fine-binned window to get the
-order of magnitude, then a second spectrum binned at `P0/8` over a long span —
-properly sampled *and* many cycles, both FFTs small. Not done here because a
-first pass that is off by 10× (as the reverted attempt was) would pick a
-`bin_width` that aliases the second, so it needs its own guard rather than a
-straight substitution.
-
-Not urgent: the integer scan that follows is what sets the final answer, and it
-is now measured over the full record (see the log entry for 2026-09-08), so the
-FFT only has to land within 2 %.
-
-**Resolved 2026-10-20.** It crossed: the owner's 300 s BmrA ALEX `.sm`
-(1.25 M photons, 12.5 ns clock, span 2.4e10) binned at **5722** — 1.4 samples per
-period — the line aliased to 20107, the ±2 % integer scan returned 20189, the
-channel assignment then found no alternation and the ALEX Suite refused the
-file ("the detector ratio does not alternate ... spread 0.015"). Fix in
-`detect_alex_period`: the alias is unfolded instead of avoided — every
-`|n/bin_width ± 1/coarse|` inside the band is a candidate, each known to
-`P²/record`, screened on a fifth of the survey photons by the fold modulation,
-the best four scanned and the winner refined on every photon. The long span (and
-so the line's strength) is kept. Real file: 8000, contrast 11805, 3.6 s (old
-code: 4.1 s, wrong). Guard:
-`alex_suite/tests/test_alternation.py::test_period_is_recovered_when_the_record_is_long_enough_to_alias`
-(periods 8000 and 7993 over 3·10⁶ cycles; old code returns ~20000).
-
-**Null edge closed 2026-10-20.** A boxcar bin that is a whole number of periods
-wide integrates every cycle alike, so the line and all harmonics cancel exactly
-(with `bin_width = 2·8000` the 8f2677d64 code returned **80**, contrast 20). The
-spectrum is now taken at two widths, `w` and `round(w·φ)` (golden ratio), each
-offers its aliases, the photons judge the union, and the reported contrast is
-the larger of the two. Guard:
-`test_period_is_recovered_when_the_bin_width_is_a_whole_number_of_periods`
-(`max_bins` chosen so `bin_width == 2·PERIOD` exactly). Real file still 8000 /
-11805, 3.9–4.2 s (screen window tightened to ±ceil(P²/record + ½)).
