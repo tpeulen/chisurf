@@ -68,18 +68,18 @@ def test_the_bid_file_travels_with_the_bursts(measurement: Path):
         assert m.get_blob("m000.bid") == measurement.read_bytes()
 
 
-@pytest.mark.parametrize("types", [{"pto"}, {"pto", "bur"}])
-def test_the_padding_never_reaches_the_container(measurement: Path, types: set):
-    """Whether the `.bur` was asked for changes the table in memory, not in here.
+def test_the_padding_never_reaches_the_container(measurement: Path):
+    """The table in the container is the bursts, never `.bur` padding rows.
 
-    The padding is stated by the caller rather than detected: the BID columns
-    are constant over every row, padding included, so a heuristic looking for
-    all-zero even rows would conclude — correctly — that the table is not
-    padded, and write three placeholder rows as if they were bursts.
+    The padding was a `.bur`-file concern; the frame that generates the table
+    would interleave placeholder rows by default, and a heuristic looking for
+    all-zero even rows could not detect them here — the BID columns are constant
+    over every row, padding included. The importer states there is no padding,
+    and this pins that three placeholder rows never become bursts.
     """
     from chisurf.plugins.burst.bid_to_analysis import convert_bid_file
 
-    convert_bid_file(measurement, output_types=types)
+    convert_bid_file(measurement)
     with Measurement.open(measurement.with_suffix(".pto")) as m:
         table = m.get_store("bursts")
         assert row_count(table) == len(INTERVALS)

@@ -14,13 +14,11 @@ Configure detector channels and PIE windows in **Detector setup** before
 **Process**: the per-detector photon counts and windowed columns of every burst
 come from it.
 
-## Outputs
-- **PTO** — the measurement's `.pto` container gains a `bursts` table derived
-  from the original BID bytes, which are stored beside it as provenance.
-- **BUR** — legacy `.bur` table (bursts appended to an existing table) and an
-  MTI summary with the measurement duration.
-- **SL5** — compressed photon-selection mask.
-- **HDF5** — columnar burst table with its source file.
+## Output
+The measurement's `.pto` container gains a `bursts` table derived from the
+original BID bytes, which are stored beside it as provenance. The legacy
+`.bur` table, the SL5 photon mask and the combined HDF5 this dialog used to
+offer are exports of that container -- the legacy export plugin writes them.
 
 Raw TTTR and BID files are never modified. **Cancel** finishes the current file
 and stops the rest of the queue.

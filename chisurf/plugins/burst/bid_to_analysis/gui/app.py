@@ -25,6 +25,7 @@ class BidToAnalysisApp(ImApp, TourTarget):
         self.messages = []
         self.running = False
         self.status = tr("Add BID files or drop them here, or press Load example.")
+        #: The one output: the measurement container (kept as state for settings parity).
         self.output_types = {"pto"}
         self.unique_folder = False
         self.zip_output = False
@@ -118,14 +119,10 @@ class BidToAnalysisApp(ImApp, TourTarget):
     def process(self):
         if self.running or not self.rows:
             return
-        if not self.output_types:
-            self.status = tr("Choose at least one output format.")
-            return
         self.running = True
         self.cancel.clear()
         settings = copy.deepcopy(self.setup.model.get_settings())
         options = dict(
-            output_types=set(self.output_types),
             windows=settings.get("windows") or None,
             detectors=settings.get("detectors") or None,
             selected_setup=self.setup.model.current_name or None,
@@ -150,21 +147,22 @@ class BidToAnalysisApp(ImApp, TourTarget):
                 output = convert_bid_file(
                     row["bid"], analysis_folder=folder, bid_index=index, **options
                 )
-                if "pto" in options["output_types"]:
-                    from chisurf.core.datastore import row_count
-                    from chisurf.core.fio.pto import Measurement
+                # The container is the one output: prove it holds what the
+                # import promised before the row is called Done.
+                from chisurf.core.datastore import row_count
+                from chisurf.core.fio.pto import Measurement
 
-                    with Measurement.open(Path(row["tttr"]).with_suffix(".pto")) as measurement:
-                        if not row_count(measurement.get_store("bursts")):
-                            raise RuntimeError("PTO output contains no burst table")
-                        if (
-                            measurement.get_blob(Path(row["bid"]).name)
-                            != Path(row["bid"]).read_bytes()
-                        ):
-                            raise RuntimeError(
-                                "PTO output does not contain the original BID selection"
-                            )
-                row["output"] = str(output.parent.parent if output.suffix == ".bur" else output)
+                with Measurement.open(Path(row["tttr"]).with_suffix(".pto")) as measurement:
+                    if not row_count(measurement.get_store("bursts")):
+                        raise RuntimeError("PTO output contains no burst table")
+                    if (
+                        measurement.get_blob(Path(row["bid"]).name)
+                        != Path(row["bid"]).read_bytes()
+                    ):
+                        raise RuntimeError(
+                            "PTO output does not contain the original BID selection"
+                        )
+                row["output"] = str(output)
                 row["status"] = "Done"
                 messages.append(f"Processed {row['bid']} → {output}")
             except Exception as error:
@@ -247,26 +245,14 @@ class BidToAnalysisApp(ImApp, TourTarget):
             "process",
             role="primary",
         )
-        for kind in ("pto", "bur", "sl5", "hdf5"):
-            changed, enabled = im.checkbox(kind.upper(), kind in self.output_types)
-            im.set_item_tooltip(
-                {
-                    "pto": tr(
-                        "Measurement container with embedded original BID and derived burst table."
-                    ),
-                    "bur": tr("Legacy BUR burst table and MTI measurement summary."),
-                    "sl5": tr("Compressed photon-selection mask."),
-                    "hdf5": tr("Columnar burst table with source file provenance."),
-                }[kind]
+        im.text_wrapped(
+            tr(
+                "Output: the measurement's own .pto container -- the original BID "
+                "and its burst table, with provenance. Legacy formats are exported "
+                "from it by the legacy export plugin."
             )
-            if kind == "pto":
-                self.remember("formats")
-            if changed:
-                if enabled:
-                    self.output_types.add(kind)
-                else:
-                    self.output_types.discard(kind)
-            im.same_line()
+        )
+        self.remember("formats")
         im.separator()
         changed, self.unique_folder = im.checkbox(tr("Unique output folder"), self.unique_folder)
         im.set_item_tooltip(
@@ -371,12 +357,8 @@ class BidToAnalysisApp(ImApp, TourTarget):
         )
 
     def restore_settings(self, settings):
-        self.output_types = set(settings.get("output_types", ["pto"])) & {
-            "pto",
-            "bur",
-            "sl5",
-            "hdf5",
-        }
+        # The container is the only output; older saved legacy formats are dropped.
+        self.output_types = {"pto"}
         for key in ("unique_folder", "zip_output", "analysis_folder"):
             if key in settings:
                 setattr(self, key, settings[key])

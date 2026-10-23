@@ -2,14 +2,18 @@
 BID → Analysis Converter
 
 This plugin reads burst ID (BID) files containing start/stop photon indices
-and generates a burstwise analysis folder next to the corresponding TTTR data.
+and imports them as provenance into the measurement's own `.pto` container.
 
 Workflow per BID file:
 - Infer the TTTR file from the BID file name (same stem, common TTTR extensions)
 - Load TTTR via tttrlib
 - Compute burst summary using cs.core.fio.fluorescence.burst.generate_burst_dataframe
-- Write a BUR file to analysis/bi4_bur/<stem>.bur
-- Update/create analysis/Info/*.mti with total measurement time
+- Write the burst table, and the `.bid` it was made from, into <stem>.pto
+- Write analysis/Info photon-selection metadata beside it
+
+The legacy side outputs this used to offer -- a `.bur` table, an SL5 photon
+mask, a combined HDF5 -- belong to the legacy export plugin; the container
+holds everything they carried.
 
 The plugin exposes a simple GUI file dialog when launched from the Plugins menu.
 It can also be called programmatically via convert_bid_file(pathlike).
@@ -23,35 +27,18 @@ import pathlib
 import time
 import zipfile
 from collections.abc import Iterable
-from typing import Dict, List, Optional, Set, Tuple
 
 import numpy as np
 
-import chisurf as cs
-import chisurf.core.fio as io
 from chisurf import logging
-from chisurf.core.datastore import (
-    concat_stores,
-    read_csv_table,
-    row_count,
-    take_rows,
-    write_csv_table,
-)
-from chisurf.core.datastore import (
-    set_constant as _set_constant,
-)
+from chisurf.core.datastore import set_constant as _set_constant
 
 try:
     import tttrlib
 except Exception:  # pragma: no cover
     tttrlib = None
 
-from chisurf.core.fio.fluorescence.burst import (
-    generate_burst_dataframe,
-    write_dataframe_to_bur,
-    write_mti_summary,
-)
-from chisurf.core.fluorescence.burst.utils import create_array_with_ones
+from chisurf.core.fio.fluorescence.burst import generate_burst_dataframe
 
 # Plugin name in menu
 name = "File:Data:BID→Analysis"
@@ -270,50 +257,6 @@ def _write_info_files(
                 f.write(f"{p.name}\n")
 
 
-def _write_sl5(
-    output_dir: pathlib.Path, tttr_path: pathlib.Path, filetype: str, selected_mask: np.ndarray
-) -> None:
-    sl5_dir = output_dir / "sl5"
-    sl5_dir.mkdir(parents=True, exist_ok=True)
-    data = {
-        "filename": os.path.relpath(tttr_path, output_dir),
-        "filetype": filetype,
-        "count_rate_filter": {},
-        "delta_macro_time_filter": {},
-        "filter": io.compress_numpy_array(selected_mask.astype(np.uint8)),
-    }
-    out_file = sl5_dir / f"{tttr_path.stem}.json.gz"
-    with io.open_maybe_zipped(out_file, "w") as f:
-        f.write(json.dumps(data))
-
-
-def _write_hdf5_combined(output_dir: pathlib.Path, dataframes: list) -> None:
-    """Write the combined burst tables to one columnar HDF5 file.
-
-    The encoding this used to build by hand -- integers downcast, floats
-    narrowed, every text column replaced by ``int32`` codes with the labels in a
-    JSON attribute -- lives in
-    :func:`chisurf.core.fio.fluorescence.burst.write_burst_hdf5`, which is also
-    what the burst-selection API and the photon-filter wizard call. There were
-    three copies of it.
-
-    Parameters
-    ----------
-    output_dir : pathlib.Path
-        Analysis output folder; the file goes in its ``hdf5`` subfolder.
-    dataframes : list of tttrlib.DataStore
-        Per-measurement burst tables.
-    """
-    from chisurf.core.fio.fluorescence.burst import write_burst_hdf5
-
-    if not dataframes:
-        return
-    hdf5_dir = output_dir / "hdf5"
-    hdf5_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = time.strftime("%Y%m%d-%H%M%S")
-    write_burst_hdf5(dataframes, hdf5_dir / f"burst_data_{timestamp}.h5")
-
-
 def zip_output_folder(output_folder: pathlib.Path) -> pathlib.Path | None:
     """Zip the output folder to a unique .zip next to it; return zip path."""
 
@@ -345,11 +288,9 @@ def _per_file_process(
     output_dir: pathlib.Path,
     windows: dict | None,
     detectors: dict | None,
-    output_types: set[str],
     bid_index: int = 1,
-) -> tuple[
-    pathlib.Path | None, tttrlib.TTTR, dict, dict, tttrlib.DataStore | None, np.ndarray | None
-]:
+) -> tuple[tttrlib.TTTR, dict, dict]:
+    """Import one BID selection: read it, tabulate its bursts, write the container."""
     bid_path = pathlib.Path(bid_path)
     stem = bid_path.stem
     tttr_path = _find_tttr_by_stem(bid_path.parent, stem)
@@ -368,7 +309,7 @@ def _per_file_process(
         tttr=tttr,
         windows=windows,
         detectors=detectors,
-        include_interleaved_zeros=("bur" in output_types),
+        include_interleaved_zeros=False,  # the .bur padding is a legacy-file concern
     )
 
     # Tag bursts with BID origin information.
@@ -382,66 +323,9 @@ def _per_file_process(
     _set_constant(df, "BID File", bid_path.name)
     _set_constant(df, "BID Index", int(bid_index))
 
-    # BUR output
-    bur_path = None
-    if "bur" in output_types:
-        bur_dir = output_dir / "bi4_bur"
-        bur_dir.mkdir(parents=True, exist_ok=True)
-        bur_path = bur_dir / f"{tttr_path.stem}.bur"
-        # If a BUR for this TTTR already exists, append new bursts instead of overwriting
-        try:
-            include_zeros = True  # we used include_interleaved_zeros when creating df
-            if bur_path.exists():
-                existing_store = read_csv_table(bur_path, delimiter="\t")
-                # Avoid duplicate leading zero-row when appending: drop first row of the new df
-                df_to_append = (
-                    take_rows(df, np.arange(1, row_count(df)))
-                    if include_zeros and row_count(df) > 0
-                    else df
-                )
-                if existing_store is not None:
-                    combined = concat_stores([existing_store, df_to_append])
-                    write_csv_table(bur_path, combined)
-                else:
-                    write_dataframe_to_bur(df_to_append, str(bur_path))
-            else:
-                write_dataframe_to_bur(df, str(bur_path))
-        except Exception as _append_exc:
-            # Fallback to simple write if anything went wrong during append logic
-            write_dataframe_to_bur(df, str(bur_path))
-        # MTI summary
-        try:
-            max_macro_time_s = float(tttr.macro_times[-1]) * float(
-                tttr.header.macro_time_resolution
-            )
-        except Exception:
-            max_macro_time_s = 0.0
-        write_mti_summary(tttr_path, output_dir, max_macro_time_s, append=True)
+    _write_container(tttr_path, bid_path, df, bid_index)
 
-    if "pto" in output_types:
-        _write_container(
-            tttr_path,
-            bid_path,
-            df,
-            bid_index,
-            interleaved=("bur" in output_types),
-        )
-
-    # SL5 output
-    selected = None
-    if "sl5" in output_types:
-        n = len(tttr)
-        selected = create_array_with_ones(np.array(start_stop, dtype=int), n).astype(np.uint8)
-        _write_sl5(output_dir, tttr_path, tttr_path.suffix.lower().lstrip("."), selected)
-
-    # For HDF5 collection
-    if df is not None:
-        df_copy = df.copy()
-        _set_constant(df_copy, "Source File", str(tttr_path))
-    else:
-        df_copy = df
-
-    return bur_path, tttr, detectors, windows, df_copy, selected
+    return tttr, detectors, windows
 
 
 def _write_container(
@@ -449,8 +333,6 @@ def _write_container(
     bid_path: pathlib.Path,
     df,
     bid_index: int,
-    *,
-    interleaved: bool = False,
 ) -> None:
     """Write the imported bursts, and the `.bid` they were imported from.
 
@@ -488,7 +370,7 @@ def _write_container(
 
     if df is None or not row_count(df):
         return
-    table = take_rows(df, np.arange(1, row_count(df), 2)) if interleaved else df
+    table = df
     try:
         with open_measurement(tttr_path) as m:
             source = m.put_blob(
@@ -511,6 +393,23 @@ def _write_container(
         logging.warning(f"Could not write the container for {tttr_path}: {exc}")
 
 
+#: The output this importer produces: the measurement's own container.
+output_types = {"pto"}
+
+
+def _check_output_types(requested: set[str] | None) -> set[str]:
+    """Accept the container output; name the new home of every legacy format."""
+    if requested is None:
+        return {"pto"}
+    legacy = set(requested) - {"pto"}
+    if legacy:
+        raise ValueError(
+            f"legacy outputs {sorted(legacy)} are exported by the legacy export "
+            "plugin from the .pto this importer writes"
+        )
+    return {"pto"}
+
+
 def convert_bid_file(
     bid_path: os.PathLike | str,
     analysis_folder: os.PathLike | str | None = None,
@@ -525,11 +424,11 @@ def convert_bid_file(
     selected_setup: str | None = None,
     bid_index: int = 1,
 ) -> pathlib.Path:
-    """Convert a single BID file into an analysis folder.
+    """Import a single BID file into its measurement's `.pto` container.
 
-    By default writes BUR + MTI. Optional outputs: SL5 and combined HDF5.
-
-    Returns the path to the produced BUR file (if BUR was requested), else the output directory.
+    Writes the burst table -- and the `.bid` it was derived from -- into the
+    container beside the TTTR, and the analysis ``Info`` metadata into
+    *output_dir*. Returns the output directory.
     """
     bid_path = pathlib.Path(bid_path)
     if not bid_path.exists():
@@ -557,21 +456,15 @@ def convert_bid_file(
         )
     )
 
-    # Default outputs
-    if output_types is None:
-        output_types = {"pto"}
+    _check_output_types(output_types)
 
     # Process this single file
-    bur_path, tttr, dets, wins, df, selected = _per_file_process(
-        bid_path, output_dir, windows, detectors, output_types, bid_index=bid_index
+    tttr, dets, wins = _per_file_process(
+        bid_path, output_dir, windows, detectors, bid_index=bid_index
     )
 
     # Info files
     _write_info_files(output_dir, [tttr_path], dets, wins, selected_setup=selected_setup)
-
-    # Combined HDF5: for single file, just write immediately
-    if "hdf5" in output_types and df is not None:
-        _write_hdf5_combined(output_dir, [df])
 
     # Zip handling
     if zip_output:
@@ -581,7 +474,7 @@ def convert_bid_file(
 
             shutil.rmtree(output_dir, ignore_errors=True)
 
-    return bur_path if ("bur" in output_types and bur_path is not None) else output_dir
+    return output_dir
 
 
 def convert_many(
@@ -601,6 +494,8 @@ def convert_many(
     if not bid_paths:
         return []
 
+    _check_output_types(output_types)
+
     # Resolve output directory using first file's TTTR
     first_tttr = _find_tttr_by_stem(bid_paths[0].parent, bid_paths[0].stem)
     if first_tttr is None:
@@ -613,22 +508,13 @@ def convert_many(
         else _prepare_output_dir(first_tttr.parent, target_path, unique_folder)
     )
 
-    if output_types is None:
-        output_types = {"pto"}
-
-    bur_paths: list[pathlib.Path] = []
-    dfs_for_hdf5: list = []
+    converted: list[pathlib.Path] = []
     tttr_paths_for_info: list[pathlib.Path] = []
 
     for i, p in enumerate(bid_paths, start=1):
         try:
-            bur_path, tttr, dets, wins, df, selected = _per_file_process(
-                p, output_dir, windows, detectors, output_types, bid_index=i
-            )
-            if bur_path is not None:
-                bur_paths.append(bur_path)
-            if df is not None:
-                dfs_for_hdf5.append(df)
+            _per_file_process(p, output_dir, windows, detectors, bid_index=i)
+            converted.append(p)
             # track tttr path for info listing (found: the file was just converted)
             tttr_path = _find_tttr_by_stem(p.parent, p.stem)
             if tttr_path is not None:
@@ -652,9 +538,6 @@ def convert_many(
             selected_setup=selected_setup,
         )
 
-    if "hdf5" in output_types and dfs_for_hdf5:
-        _write_hdf5_combined(output_dir, dfs_for_hdf5)
-
     if zip_output:
         zip_name = zip_output_folder(output_dir)
         if remove_folder and zip_name:
@@ -662,4 +545,4 @@ def convert_many(
 
             shutil.rmtree(output_dir, ignore_errors=True)
 
-    return bur_paths
+    return converted

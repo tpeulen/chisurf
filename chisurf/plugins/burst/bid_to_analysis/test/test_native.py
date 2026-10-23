@@ -15,6 +15,7 @@ def selection(tmp_path):
 
 
 def test_native_conversion_outputs_and_original_provenance(tmp_path, caplog):
+    """The container is the one output: original BID in, burst table out."""
     from chisurf.core.datastore import row_count
     from chisurf.core.fio.pto import Measurement
 
@@ -24,14 +25,13 @@ def test_native_conversion_outputs_and_original_provenance(tmp_path, caplog):
     try:
         app.on_paths_dropped([path, path])
         assert len(app.rows) == 1
-        app.output_types = {"pto", "bur", "sl5", "hdf5"}
         app.process()
         app.future.result(timeout=30)
         app.poll()
         assert app.rows[0]["status"] == "Done"
         folder = tmp_path / "m000"
-        assert (folder / "bi4_bur" / "m000.bur").exists()
-        assert list((folder / "sl5").glob("*.gz")) and list((folder / "hdf5").iterdir())
+        assert (folder / "Info" / "photon_selection_parameters.json").exists()
+        assert not (folder / "bi4_bur").exists()  # no legacy side outputs any more
         with Measurement.open(path.with_suffix(".pto")) as measurement:
             assert row_count(measurement.get_store("bursts")) == len(INTERVALS)
             assert measurement.get_blob("m000.bid") == path.read_bytes()
@@ -63,7 +63,6 @@ def test_native_errors_dialogs_preferences_and_help(tmp_path):
         app.dialog = None
         app.analysis_folder = str(tmp_path / "output")
         app.unique_folder = True
-        app.output_types = {"bur", "pto"}
         preferences = app.export_settings()
         restored = create_app()
         try:
@@ -71,6 +70,10 @@ def test_native_errors_dialogs_preferences_and_help(tmp_path):
             assert restored.export_settings() == preferences
         finally:
             restored.close()
+        # a saved legacy format from an older session is dropped, not honoured
+        legacy = dict(preferences, output_types=["bur", "pto"])
+        restored.restore_settings(legacy)
+        assert restored.output_types == {"pto"}
         app.io.wall_clock = False
         app.io.delta_time = 0.01
         painter = RecordingPainter()
@@ -89,16 +92,24 @@ def test_native_errors_dialogs_preferences_and_help(tmp_path):
 
 
 def test_output_destination_and_batch_backend(tmp_path):
+    from chisurf.core.datastore import row_count
+    from chisurf.core.fio.pto import Measurement
+
     from .. import convert_bid_file, convert_many
 
     path = selection(tmp_path)
     output = tmp_path / "explicit"
-    assert (
-        convert_bid_file(path, analysis_folder=output, output_types={"bur"})
-        == output / "bi4_bur" / "m000.bur"
-    )
-    results = convert_many([path], analysis_folder=tmp_path / "batch", output_types={"bur"})
-    assert len(results) == 1 and results[0].exists()
+    assert convert_bid_file(path, analysis_folder=output) == output
+    assert (output / "Info" / "photon_selection_parameters.json").exists()
+    with Measurement.open(path.with_suffix(".pto")) as measurement:
+        assert row_count(measurement.get_store("bursts")) == len(INTERVALS)
+    results = convert_many([path], analysis_folder=tmp_path / "batch")
+    assert len(results) == 1 and results[0] == path
+    # a legacy format name is refused with its new home named
+    import pytest
+
+    with pytest.raises(ValueError, match="legacy export"):
+        convert_bid_file(path, output_types={"bur"})
 
 
 def test_cancel_finishes_current_conversion_and_skips_remaining(tmp_path, monkeypatch):
