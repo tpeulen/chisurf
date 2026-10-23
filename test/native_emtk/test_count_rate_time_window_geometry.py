@@ -135,15 +135,31 @@ def test_real_calculate_process_and_resize_preserve_science_and_output(tools, tm
         if windows.tool.job.future is not None:
             windows.tool.job.future.result(timeout=30)
         windows.tool.job.poll()
-        output = next((tmp_path / "output").rglob("*.bst"))
-        data = output.read_bytes()
-        assert len(data) == 246 and len(data.splitlines()) == 16
-        assert (
-            hashlib.sha256(data).hexdigest()
-            == "4e4d0add2e46ce4f0623bb98a2d5f6bda9a872a33af9eae9b0ccb984d6a7a2ad"
-        )
+        # the splitter's output is the container holding the time_window run:
+        # sixteen inclusive windows, consecutive ones tiling without overlap
+        import numpy as np
+
+        from chisurf.core.datastore import row_count
+        from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
+
+        container = next((tmp_path / "output").rglob("*.pto"))
+        table = read_burst_table(container)
+        assert table is not None and row_count(table) == 16
+        rows = np.asarray(
+            [tuple(r) for r in zip(table["first photon"], table["last photon"])],
+            dtype=np.int64,
+        ).reshape(-1, 2)
+        assert (rows[1:, 0] == rows[:-1, 1] + 1).all()
+        assert not list((tmp_path / "output").rglob("*.bst"))
         driver.draw(3, size=(1390, 910))
-        assert output.read_bytes() == data
+        again = read_burst_table(container)
+        assert row_count(again) == 16 and (
+            np.asarray(
+                [tuple(r) for r in zip(again["first photon"], again["last photon"])],
+                dtype=np.int64,
+            ).reshape(-1, 2)
+            == rows
+        ).all()
         assert hashlib.sha256(sample.read_bytes()).hexdigest() == source_hash
     finally:
         windows.close()
