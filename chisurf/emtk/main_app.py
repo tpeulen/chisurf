@@ -590,6 +590,10 @@ class EmtkShellApp(ImApp):
         )
         self._console_session: Any = None
         self._console_channel: Any = None
+        from chisurf.emtk.macro_recorder import MacroRecorder
+
+        #: Records what the user does (dispatched actions) as editable code.
+        self.macro_recorder = MacroRecorder()
         self._console_names: dict[str, Any] = {"gui": self}
         self._push_console_namespace()
         self.console.install()
@@ -1450,7 +1454,7 @@ class EmtkShellApp(ImApp):
                 self.toggle_macro_recording,
                 "",
                 "",
-                tr("Record what runs in the console; click again to stop and save it as a macro."),
+                tr("Record what you click and type; click again to stop -- the macro opens in the console's editor as code."),
                 checked=lambda: self.console.recording,
             ),
             MenuAction(
@@ -1460,6 +1464,18 @@ class EmtkShellApp(ImApp):
                 "",
                 "",
                 tr("Run a saved macro (.cm.py) in the console's namespace."),
+            ),
+            MenuAction(
+                "copy_macro",
+                tr("Last recording → editor"),
+                self.edit_last_macro,
+                "",
+                "",
+                tr(
+                    "Put the last recording (clicks as cs_dispatch calls, plus the console) "
+                    "into the console's editor to edit and run."
+                ),
+                enabled=lambda: bool(self.macro_recorder.entries or self.console.macro.strip()),
             ),
         ]
         return [
@@ -1524,31 +1540,76 @@ class EmtkShellApp(ImApp):
         if channel is not None:
             channel.close()
 
+    def _macro_script(self) -> str:
+        """Everything recorded: the user's actions as code, then the console's code."""
+        recorder = self.macro_recorder
+        action_part = recorder.script
+        console_part = self.console.macro.strip()
+        parts = []
+        if action_part:
+            parts.append(action_part.rstrip("\n"))
+        if console_part:
+            parts.append("# -- code run in the console " + "-" * 33 + "\n\n" + console_part)
+        return "\n\n".join(parts).rstrip() + "\n" if parts else ""
+
     def toggle_macro_recording(self) -> None:
-        """*Macro ▸ Record*: start recording the console; the second click stops and offers to save."""
+        """*Macro ▸ Record*: record what the user clicks and types; the second click stops,
+        puts the macro in the console's editor and offers to save it."""
         console = self.console
         if not console.recording:
             console.start_recording()
+            self.macro_recorder.clear()
+            dispatcher = getattr(__import__("chisurf"), "action_dispatcher", None)
+            if dispatcher is not None:
+                self.macro_recorder.attach(dispatcher)
             self.docks.show("console")
             self.docks.focus("console")
             self._focus = "console"
             console.focus_input()
-            self.status = tr("Recording macro…")
+            self.status = tr("Recording macro… (clicks and console)")
             return
         console.stop_recording()
+        self.macro_recorder.detach()
         self.status = tr("Ready")
-        if not console.macro.strip():
+        script = self._macro_script()
+        if not script.strip():
             self.project.dialogs.message(tr("Record macro"), tr("Nothing was recorded."))
             return
+        # The macro is code for the user to edit: it lands in the console's editor,
+        # ready to change and run -- and can be saved as a .cm.py on top.
+        self.docks.show("console")
+        self.docks.focus("console")
+        console.focus_input()
+        console.set_input(script)
         from chisurf.emtk.console import MACRO_FILTER
 
         self.project.open_file_dialog(
             tr("Save macro"),
             "save",
-            console.save_macro,
+            self._save_recorded_macro,
             filters=MACRO_FILTER,
             filename="macro.cm.py",
         )
+
+    def _save_recorded_macro(self, filename: str) -> None:
+        """Write what the last recording produced (actions and console) to *filename*."""
+        import chisurf.core.fio as io
+
+        script = self._macro_script()
+        with io.zipped.open_maybe_zipped(filename=str(filename), mode="w") as handle:
+            handle.write(script)
+        self.status = tr(f"Macro saved: {filename}")
+
+    def edit_last_macro(self) -> None:
+        """*Macro ▸ Last recording → editor*: the last recording as editable code."""
+        script = self._macro_script()
+        if not script.strip():
+            self.project.dialogs.message(tr("Record macro"), tr("Nothing was recorded."))
+            return
+        self.docks.show("console")
+        self.docks.focus("console")
+        self.console.focus_input()
+        self.console.set_input(script)
 
     def run_macro(self) -> None:
         """*Macro ▸ Run Macro…*: choose a macro file and run it in the console."""

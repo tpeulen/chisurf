@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 from emtk.testing import Driver, RecordingPainter
 
+from chisurf.emtk.advanced import set_advanced_mode
 from chisurf.emtk.state import attach_native_state
 
 
@@ -25,6 +26,9 @@ def test_host_only_primary_reaches_real_factory(tmp_path, monkeypatch):
     path = Path(owner.__file__).with_name("window.view.json")
     original = path.read_bytes()
     spec = json.loads(original)
+    # Channel Definitions and Detectors are Advanced-mode controls since the
+    # pipeline owns the setup: the contract holds with Advanced switched on.
+    set_advanced_mode(True)
     app = attach_native_state("bva_primary", owner.create_app())
     try:
         assert spec["window"] == {"width": 1100, "height": 720}
@@ -35,6 +39,7 @@ def test_host_only_primary_reaches_real_factory(tmp_path, monkeypatch):
         assert {"run", "BVA Settings", "Channel Definitions", "bva_plot"} <= app.item_rects.keys()
     finally:
         app.close()
+        set_advanced_mode(False)
 
 
 def test_authored_primary_dimensions_reach_constructor(tmp_path, monkeypatch):
@@ -103,6 +108,7 @@ def test_actual_worker_rows_static_line_and_photons_survive_host_views(tmp_path,
     from chisurf.plugins.burst.burst_bva.gui.app import create_app
 
     folder = build(tmp_path / "measurement", n_bursts=60, photons=120, seed=3)
+    set_advanced_mode(True)  # the Channel Definitions tab is an Advanced control
     app = create_app()
     try:
         app.model.auto_update = False
@@ -139,6 +145,7 @@ def test_actual_worker_rows_static_line_and_photons_survive_host_views(tmp_path,
         assert sd[np.arange(60) % 4 == 3].mean() > sd[np.arange(60) % 4 != 3].mean() + 0.1
     finally:
         app.close()
+        set_advanced_mode(False)
 
 
 def test_custom_callback_host_shares_target_rectangles_without_controller(tmp_path, monkeypatch):
