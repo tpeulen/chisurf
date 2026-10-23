@@ -21,6 +21,9 @@ from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
 from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_sections
+
+from chisurf.plugins.core.metadata_editor.core import flrcif_schema
+from chisurf.plugins.core.metadata_editor.gui.widget import MetadataEditorWidget
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
@@ -108,7 +111,8 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self.burst_table = _sections(spec, "Bursts")
         self.summary_table = _sections(spec, "Summary")
         self.gmm_settings_sections = _sections(spec, "GMM settings")
-        self.metadata_sections = _sections(spec, "Metadata")
+        #: The one metadata editor (core plugin): typed flrCIF fields + extras.
+        self.metadata_editor = MetadataEditorWidget(on_apply=self._apply_metadata)
         self.labels = LabelColumn()
         self.dialog: FileDialog | None = None
         self.dialog_action = ""
@@ -750,13 +754,26 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         )
         draw_sections(self.burst_table, m, self.form)
 
+    def _apply_metadata(self, entries: dict[str, str]) -> None:
+        """The shared editor applied: every entry set, every dropped key removed."""
+        for key in [k for k in self.model.metadata if k not in entries]:
+            self.model.delete_metadata(key)
+        for key, value in entries.items():
+            self.model.set_metadata(key, value)
+        self.model.status_text = f"Metadata updated. {len(entries)} entries."
+
     def _panel(self, frame) -> None:
         window = self._panel_window
         if not self.panel_dialog or window is None:
             return
         pressed = window.begin(frame)
         if self.panel_dialog == "metadata":
-            draw_sections(self.metadata_sections, self.model, self.form)
+            # The common experiment fields as typed inputs; anything else (the
+            # PDBx keys among them -- thousands) joins as a free-form entry.
+            if not self.metadata_editor.visible:
+                self.metadata_editor.open(flrcif_schema(), dict(self.model.metadata))
+            self.metadata_editor.draw()
+            self.item_rects.update(self.metadata_editor.item_rects)
         else:
             draw_sections(self.gmm_settings_sections, self.model.gmm, self.form)
             if im.button(tr("Fit GMM with these settings"), role="primary"):
@@ -766,7 +783,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                     self.model.status_text = f"GMM fitting failed: {exc}"
             im.set_item_tooltip(tr("Refit the histogram with the settings above."))
         window.end()
-        if pressed == "close":
+        if pressed == "close" or (self.panel_dialog == "metadata" and not self.metadata_editor.visible):
             self.panel_dialog = ""
 
     # -- the frame ------------------------------------------------------------------------------------------- #

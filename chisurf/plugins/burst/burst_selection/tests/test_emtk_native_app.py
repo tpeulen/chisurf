@@ -165,18 +165,40 @@ def test_algorithm_switch_regenerates_the_parameter_form(app):
 
 
 def test_metadata_dialog_and_flrcif_export(app, files, tmp_path):
+    """The shared metadata editor (core plugin) behind the Metadata button."""
     drv = Driver(app, (1200, 800))
     drv.click_name("metadata")
     drv.draw(2)
     assert app.panel_dialog == "metadata"
-    drv.type_into_name("metadata_value", "7.4")
-    drv.click_name("add_metadata")
+    # pH is a typed field of the flrCIF schema: type it and apply
+    assert "pH" in app.metadata_editor.editor.values
+    drv.type_into_name("pH", "7.4")
+    drv.click_name("apply")
     drv.draw(1)
-    assert app.model.metadata[app.model.metadata_key] == "7.4"
+    assert app.model.metadata["pH"] == "7.4" and app.panel_dialog == ""
+    # a free-form entry beyond the schema joins the same way
+    drv.click_name("metadata")
+    drv.draw(2)
+    drv.type_into_name("extra_key", "note")
+    drv.type_into_name("extra_value", "hello")
+    drv.click_name("add_extra")
+    drv.click_name("apply")
+    drv.draw(1)
+    assert app.model.metadata["note"] == "hello"
+    # a dropped key is removed on apply
+    drv.click_name("metadata")
+    drv.draw(2)
+    editor = app.metadata_editor.editor
+    editor.values["pH"] = ""
+    editor.extras = [r for r in editor.extras if r[0] != "note"]
+    drv.click_name("apply")
+    drv.draw(1)
+    assert "pH" not in app.model.metadata and "note" not in app.model.metadata
     app.model.add_paths(files[:1])
     app.model.load_diagnostics()
+    app.model.set_metadata("pH", "7.4")
     out = app.model.export_flr_cif(tmp_path / "x.cif")
-    assert f"_{app.model.metadata_key} 7.4" in out.read_text()
+    assert "_pH 7.4" in out.read_text()
 
 
 def test_every_control_has_a_tooltip(app, files):
