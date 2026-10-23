@@ -22,8 +22,11 @@ def _token_sections() -> list:
     spec = json.loads((HERE / "zenodo_deposit_emtk.view.json").read_text(encoding="utf-8"))
 
     def find(x):
+        # The token panel: titled "Token" since the deposit tabs were de-cluttered
+        # (06a936f2e), "Zenodo token" before -- both spellings stay recognised so
+        # the settings page does not depend on the deposit tab's caption.
         if isinstance(x, dict):
-            if x.get("title") == "Zenodo token":
+            if x.get("title") in ("Zenodo token", "Token") and x.get("sections"):
                 return x
             return next((r for v in x.values() if (r := find(v))), None)
         if isinstance(x, list):

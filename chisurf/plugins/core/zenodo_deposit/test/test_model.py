@@ -638,6 +638,31 @@ def test_the_record_table_says_what_is_uploaded_and_uploads_the_checked(model, f
     assert model.records[0]["upload"] == "✓ uploaded, current"
 
 
+def test_the_shared_metadata_editor_fills_a_record_and_opens_the_gate(model, fake):
+    """The one metadata editor (core plugin) drives step 3 of Create."""
+    from chisurf.plugins.core.metadata_editor.core import EditorModel, zenodo_schema
+
+    model.select_record(model.records[0])
+    editor = EditorModel(zenodo_schema(), model.metadata_values())
+    editor.values["title"] = "T4L demo"
+    editor.values["description"] = "Demo record."
+    editor.values["creators"] = "Peulen, Thomas-Otavio; Stanford University"
+    editor.values["keywords"] = "smFRET, demo"
+    editor.values["upload_type"] = "dataset"
+    model.apply_metadata(editor.entries())
+    m = model.record.metadata
+    assert m["title"] == "T4L demo" and m["upload_type"] == "dataset"
+    assert m["keywords"] == ["smFRET", "demo"]
+    assert m["creators"] == [{"name": "Peulen, Thomas-Otavio", "affiliation": "Stanford University"}]
+    model.build_package()
+    _wait(model)
+    for row in model.items:
+        model.select_item(row)
+        model.note = "checked"
+        model.approve_item()
+    assert model.enabled("upload_draft"), model.gate_text
+
+
 def _sandbox_trial(model: ZenodoDepositModel) -> None:
     """A verified draft on the sandbox, exactly as the plugin's flow builds it."""
     model.select_record(model.records[0])

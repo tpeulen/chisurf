@@ -536,6 +536,30 @@ class ZenodoDepositModel:
         return property(lambda self: str(self._meta().get(key, "")),
                         lambda self, v: self._set_meta(key, str(v).strip()))
 
+    _META_EDITOR_KEYS = ("title", "upload_type", "publication_date", "version",
+                         "access_right", "license", "embargo_date")
+
+    def metadata_values(self) -> dict:
+        """The record's metadata as the shared editor shows it (string fields)."""
+        if self.record is None:
+            return {}
+        return {k: str(getattr(self, f"meta_{k}") or "") for k in self._META_EDITOR_KEYS} | {
+            "description": self.meta_description,
+            "creators": self.meta_creators,
+            "keywords": self.meta_keywords,
+            "related": self.meta_related,
+        }
+
+    def apply_metadata(self, entries: dict) -> None:
+        """Apply the shared editor's entries to the selected record's metadata."""
+        if self.record is None:
+            return
+        for key, value in entries.items():
+            if key in self._META_EDITOR_KEYS or key in ("description", "creators", "keywords", "related"):
+                setattr(self, f"meta_{key}", str(value).strip())
+            else:
+                self._set_meta(key, value)
+
     meta_title = _text_field("title")
     meta_upload_type = _text_field("upload_type")
     meta_publication_date = _text_field("publication_date")

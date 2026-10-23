@@ -20,6 +20,9 @@ from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
+from chisurf.plugins.core.metadata_editor.core import zenodo_schema
+from chisurf.plugins.core.metadata_editor.gui.widget import MetadataEditorWidget
+
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button, window_size
 
@@ -36,7 +39,9 @@ class ZenodoDepositApp(ImApp):
         spec = json.loads((HERE / "zenodo_deposit_emtk.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (1280, 900))
         self.sections = spec["sections"]
+        self.metadata_editor = MetadataEditorWidget(on_apply=self.model.apply_metadata)
         self.form = FormState()
+        self.form.custom["metadata_editor"] = self._draw_metadata_editor
         self.item_rects: dict[str, tuple] = {}
         self.help_window = EmTkHelpWindow(
             title="Zenodo deposit — Help", resource=HERE / "help.md", owner=self
@@ -246,6 +251,15 @@ class ZenodoDepositApp(ImApp):
         if self.dialog is None and self.model.enabled("add_files"):
             self.model.add_paths([str(p) for p in paths])
         return True
+
+    def _draw_metadata_editor(self, section, model, state, width: float) -> None:
+        """The deposit metadata through the one shared editor (core plugin)."""
+        if model.record is None or model.job.running:
+            return  # nothing to edit while a job owns the record
+        if not self.metadata_editor.visible:
+            self.metadata_editor.open(zenodo_schema(), model.metadata_values())
+        self.metadata_editor.draw()
+        self.item_rects.update(self.metadata_editor.item_rects)
 
     def draw_deposit(self, box: Any) -> None:
         """Help / Guide, then the records, the items, the selected item and the upload."""
