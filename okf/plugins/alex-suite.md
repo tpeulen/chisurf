@@ -23,7 +23,7 @@ timestamp: '2026-09-08T17:01:52+02:00'
 
 ## Where to pick this up
 
-00. Done 2026-10-20 — **period detection on long records.** A 300 s µs-ALEX `.sm`
+00. Measure: 2026-10-20 — **period detection on long records.** A 300 s µs-ALEX `.sm`
    aliased the period spectrum (bin 5722 > T/2), returned 20189 and the Suite
    refused the file. Now unfolded (see *period* below; known-issues "ALEX period
    spectrum" resolved). Re-derive: `detect_alex_period` on any ≥ 300 s 12.5 ns

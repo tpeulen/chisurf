@@ -27,7 +27,7 @@ Every work package has landed (record below); WP4's science is the open front.
   unchanged: no single joint interior optimum. Next decision (owner): a prior tying κ and ℓ (e.g. the
   free-amino-acid contact volume ∫κ f 4πr²dr fixed by the titrations) is what removes this trade-off; the kernel
   alone does not.
-- Verify: the slow gate `-m slow test_male_reproduction.py -k refit` has no completed run in the kept guard
+- Blocked: the slow gate `-m slow test_male_reproduction.py -k refit` has no completed run in the kept guard
   records, and the guard killed it three times on 2026-10-21: twice via the swap-growth heuristic — foreign
   swap charged to the run once the 7-worker tree passes 1 GB while the desktop sat at 8 GB swap from other
   apps — and once, 1 h 45 m in at the second parallel phase, via the RSS cap: the run's own legitimate peak
