@@ -1,5 +1,10 @@
 # Update Log
 
+## 2026-10-24
+
+- Owner consolidation directive: the FRET tools come home. smfret-web becomes the chisurf plugin **fret_check** (Spectroscopy:Single-Molecule:FRET check) -- a single-button drop-a-file-get-a-verdict app, MIT inside chisurf; after the full migration the standalone is marked integrated. The Labelizer (the better dye-placement/FRET-network method, already an emtk app) becomes a plugin the same way. FRETNet-Designer is NOT integrated (owner: wrong call, the Labelizer supersedes it). The shared metadata editor joined the tree (97f573086). PRD-155 carries the two waves; the one open call is the Labelizer id (`labelizer` vs `labelizer_ng`).
+- Gate-1 re-run (PRD-154 item 6): stopped by resource_guard at 31 % (machine swap); the 5 reds before the stop root-caused and fixed -- shift-dialog test follows the spinbox double-click-to-type contract, 23602c466 reverted (one declaring manifest per RPC method), js/pyodide OPTIONAL, flr dictionary re-aligned (mmfdb ba24631). emtk 0.1.32 pinned (58cddc679, lock v7 kept).
+
 ## 2026-10-23
 
 - Web plugin sweep (PRD-154 pickup 10): every plugin the served page offers was driven in a real browser through the page's pyodide handle -- open, build, draw, close: 78 tools ok, 1 command action. Four mmfdb plugins and burst_selection cannot live on the page (their import/registration chain reaches the database layer the bundle never ships; the RPC ones need sockets a tab cannot bind) and are desktop-only now: PLUGIN_EXCLUDE, not packed, not offered. The closure walker learned to fail on a real import of a keep-limited submodule that does not ship (spectra_downloader's package __init__ had imported mmfdb.repository and passed the old root-only check); two new guards pin the exclusion and replay the page's import reality with the database layer blocked. Renderer death around 56 plugins is reproducible resource accumulation, not a killer plugin: reload and resume. Serialized docs-release re-run green (sphinx 0 warnings, 31 web tests). Spinbox lane (emtk 0.1.32, pyqtgraph stepping) landed the same day.
