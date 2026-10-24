@@ -1,0 +1,17 @@
+{
+  "id": "metadata_editor",
+  "version": "1.0.0",
+  "display_name": "File:Data:Metadata Editor",
+  "description": "The one metadata editor: a schema of typed fields plus free-form extras, validated, shared by every plugin that has metadata (burst selection's flrCIF metadata, the Zenodo deposit, ...). Standalone it edits a JSON metadata file.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "File",
+    "Data"
+  ],
+  "icon": "\ud83c\udff7\ufe0f",
+  "entrypoints": {
+    "emtk": "chisurf.plugins.core.metadata_editor.gui.app:make_app"
+  }
+}
