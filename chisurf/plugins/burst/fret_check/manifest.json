@@ -1,0 +1,32 @@
+{
+  "id": "fret_check",
+  "version": "1.0.0",
+  "display_name": "Spectroscopy:Single-Molecule:FRET check",
+  "description": "The single-button measurement check: drop a TTTR file, get a verdict. Is the measurement usable (burst density, multi-molecule events, stability, background)? Which bursts are suspicious? Works with or without ALEX/PIE; cw two-colour is a full citizen. Simple mode is one drop-zone and the verdict; advanced mode exposes editable detection, burst search and corrections, and hands off to ndX and burst analysis. Ported from smfret-web (peulen.xyz/smfret), now at home in ChiSurf.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Single-Molecule"
+  ],
+  "icon": "✅",
+  "entrypoints": {
+    "emtk": "chisurf.plugins.burst.fret_check.entry:make_app",
+    "services": "chisurf.plugins.burst.fret_check.entry:register_services"
+  },
+  "rpc_methods": [
+    {
+      "name": "fret_check.detect",
+      "summary": "Detect the experiment configuration and routing channels from a TTTR file or a seeded scenario."
+    },
+    {
+      "name": "fret_check.analyse",
+      "summary": "Burst detection, corrections and quality control; the job JSON the app runs."
+    },
+    {
+      "name": "fret_check.qc",
+      "summary": "The quality verdict alone (burst density, multi-molecule, stability, background)."
+    }
+  ]
+}
