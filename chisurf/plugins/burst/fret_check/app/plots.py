@@ -171,11 +171,29 @@ def draw_bursts(s, p) -> None:
         heatmap("FRET-2CDE vs E", p.cde, "E", "FRET-2CDE", ((-0.1, 1.1), (0, 100)), size)
 
 
-STREAM_LABEL = {"DD": "DD (green)", "DA": "DA (red)", "AA": "AA (acceptor exc.)"}
+#: Stream colours of the example trace: donor-detector green, the acceptor
+#: detector under donor excitation yellow, the acceptor-excitation stream red.
+STREAM_COLOUR = {"DD": (40, 160, 60, 255), "DA": (235, 190, 30, 255),
+                 "AA": (210, 55, 45, 255)}
+STREAM_LABEL = {"DD": "DD (green)", "DA": "DA (yellow)", "AA": "AA (red)"}
+
+
+def _trace_sides(rates) -> tuple[list[str], list[str]]:
+    """Which streams go up, which down.
+
+    Two detectors, one excitation (cw FRET): the donor detector (DD) up, the
+    acceptor detector (DA) down -- green above, red below. With a second,
+    acceptor excitation (ALEX/PIE) the acceptor-excitation stream (AA) takes
+    the red-down role and the FRET stream (DA) goes up in yellow: the upper
+    half is the donor-laser period, the lower half the acceptor-laser period.
+    """
+    if "AA" in rates:
+        return [k for k in ("DD", "DA") if k in rates], [k for k in ("AA",) if k in rates]
+    return [k for k in ("DD",) if k in rates], [k for k in ("DA", "AA") if k in rates]
 
 
 def draw_trace(s, width: float) -> None:
-    """The count-rate trace of each stream in 1 ms bins, bursts shaded."""
+    """The example photon trace: donor streams up, acceptor down, bursts shaded."""
     rates = getattr(s, "trace_rates", None)
     if not rates:
         empty("No data yet.")
@@ -185,24 +203,31 @@ def draw_trace(s, width: float) -> None:
     i0 = int(max(0.0, min(float(s.trace_start_s), n * bin_s - TRACE_SPAN_S)) / bin_s)
     i1 = min(n, i0 + int(TRACE_SPAN_S / bin_s))
     t = np.arange(i0, i1) * bin_s
+    up, down = _trace_sides(rates)
+    top = max((float(rates[k][i0:i1].max(initial=1.0)) for k in up), default=1.0)
+    bottom = max((float(rates[k][i0:i1].max(initial=1.0)) for k in down), default=1.0)
     _, avail_h = im.get_content_region_avail()
-    if ip.begin_plot("Count rate (1 ms bins)", (width, max(avail_h - 8.0, MIN_PLOT_H))):
+    if ip.begin_plot("Photon trace (1 ms bins): donor up, acceptor down",
+                     (width, max(avail_h - 8.0, MIN_PLOT_H))):
         ip.setup_axes("time (s)", "count rate (kHz)")
         ip.setup_axes_limits(float(t[0]) if t.size else 0.0, float(t[-1]) if t.size else 1.0,
-                             0.0, float(max((r[i0:i1].max(initial=1.0) for r in rates.values()))) * 1.05,
+                             -bottom * 1.08, top * 1.08,
                              ip.COND_ALWAYS if hasattr(ip, "COND_ALWAYS") else 1)
-        top = max(float(r[i0:i1].max(initial=1.0)) for r in rates.values())
         spans = s.trace_bursts
-        if spans.size:
-            sel = (spans[:, 1] >= t[0]) & (spans[:, 0] <= t[-1]) if t.size else np.zeros(len(spans), bool)
+        if spans.size and t.size:
+            sel = (spans[:, 1] >= t[0]) & (spans[:, 0] <= t[-1])
             xs, ys = [], []
             for a, b in spans[sel]:
                 xs += [a, a, b, b]
-                ys += [0.0, top, top, 0.0]
+                ys += [-bottom * 1.08, top * 1.08, top * 1.08, -bottom * 1.08]
             if xs:
                 ip.plot_shaded("bursts", np.asarray(xs), np.asarray(ys))
-        for k, r in rates.items():
-            ip.plot_line(STREAM_LABEL.get(k, k), t, r[i0:i1])
+        for k in up:
+            ip.plot_line(STREAM_LABEL.get(k, k), t, rates[k][i0:i1],
+                         line_color=STREAM_COLOUR.get(k))
+        for k in down:
+            ip.plot_line(STREAM_LABEL.get(k, k), t, -rates[k][i0:i1],
+                         line_color=STREAM_COLOUR.get(k))
         ip.end_plot()
 
 
