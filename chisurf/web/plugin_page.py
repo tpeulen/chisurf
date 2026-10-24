@@ -1,11 +1,11 @@
-"""Start the ChiSurf shell with one plugin's tool already open: ``?app=<plugin id>``.
+"""Start one plugin's tool as the page itself: ``?app=<plugin id>``.
 
 The page is multi-app: the build names the apps its archive can mount, and
-``?app=`` picks one. ndX and ChiMOL are whole standalone apps; chisurf's own
-tools are plugins of the shell -- ``?app=hmm`` boots the shell the way it
-always boots and then opens the HMM tool, focused, exactly as the ribbon
-would. Every service the tool expects is there, because the shell is; the
-URL is simply a shortcut that lands in the tool.
+``?app=`` picks one. ndX and ChiMOL are whole standalone apps with their own
+factories; chisurf's own tools are plugins of the shell -- ``?app=hmm``
+presents the HMM tool as the whole window, standalone: no ChiSurf chrome, no
+menu bar, no ribbon, only the tool. Every service the tool expects is still
+there, because the shell is -- running underneath, out of sight.
 
 The name is read from the page's own URL, so the apps map can point every
 plugin at this one factory; the build decides which plugin ids exist
@@ -58,11 +58,11 @@ def _resolve(app: Any, name: str) -> str | None:
 
 
 def make_app() -> Any:
-    """The chisurf shell, the plugin the URL asks for already open and focused."""
+    """The chisurf shell presenting one plugin's tool as the whole window."""
     from chisurf.web import make_app as shell_app  # noqa: PLC0415 - breaks the cycle
 
-    app = shell_app()
     name = requested_app_name()
+    app = shell_app()
     if name and name != "chisurf":
         plugin_id = _resolve(app, name)
         if plugin_id is None:
@@ -71,5 +71,7 @@ def make_app() -> Any:
                 tr("No such plugin on this page; ChiSurf started instead.",
                    domain="chisurf"))
         else:
-            app.open_plugin(plugin_id, focus=True)
+            # Standalone: the tool fills the window and the shell chrome stays
+            # away (EmtkShellApp.present_tool). The URL means the app.
+            app.present_tool(plugin_id)
     return app

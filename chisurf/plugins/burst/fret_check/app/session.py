@@ -136,7 +136,7 @@ class Session:
         return dropped_by_reference(self.path) if self.path else None
 
     def enabled(self, name: str) -> bool:
-        if name in ("export_csv", "export_report"):
+        if name in ("export_csv", "export_report", "export_pdf"):
             return self.bursts is not None
         if name in ("run", "redetect"):
             return self.exp is not None and not self.busy
@@ -388,3 +388,11 @@ class Session:
         if self.qc is not None and self.download:
             self.download(f"{self._stem()}.qc.json", json.dumps(self.report(), indent=1).encode(),
                           "application/json")
+
+    def export_pdf(self) -> None:
+        """The one-page PDF report: histograms, background, every report value."""
+        if self.qc is not None and self.bursts is not None and self.download:
+            from chisurf.plugins.burst.fret_check.report import build_pdf_report
+
+            self.download(f"{self._stem()}.report.pdf", build_pdf_report(self),
+                          "application/pdf")

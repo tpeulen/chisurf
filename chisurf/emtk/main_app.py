@@ -467,6 +467,10 @@ class EmtkShellApp(ImApp):
         self._settings_sink = settings_sink
         self.window_size = (1400, 900)
         self.item_rects: dict[str, tuple] = {}
+        #: Tool-only presentation (``present_tool``): the plugin id that fills the window,
+        #: ``""`` for the ordinary shell with its chrome. The session and the services keep
+        #: running underneath -- only the drawing narrows to the tool.
+        self._tool_only = ""
         self.hosted: dict[str, HostedPlugin] = {}
         self.filter = ""
         self.status = tr("Ready")
@@ -967,8 +971,52 @@ class EmtkShellApp(ImApp):
         self.data.focused_window()
         self.feed_status_strip()
 
+    def present_tool(self, plugin_id: str, focus: bool = True) -> "HostedPlugin | None":
+        """Open *plugin_id* as the whole window: the tool alone, no shell chrome.
+
+        The shell keeps running underneath -- the session, the services and the
+        background build are the tool's -- but the menu bar, the ribbon, the
+        docks and the status strip stay away and the tool fills the viewport.
+        ``?app=<plugin>`` pages present their tool this way: the URL means the
+        app, standalone, not ChiSurf with a tool open (PRD-155).
+        """
+        self._tool_only = str(plugin_id)
+        return self.open_plugin(plugin_id, focus=focus)
+
+    def _tool_only_hosted(self) -> "HostedPlugin | None":
+        """The hosted tool a tool-only frame draws, ``None`` for the ordinary shell."""
+        if not self._tool_only:
+            return None
+        return self.hosted.get(self._tool_only)
+
+    def _draw_tool_only(self, hosted: "HostedPlugin | None", width: float, height: float) -> None:
+        """One frame of the standalone presentation: the tool and the overlays it needs."""
+        box = (0.0, 0.0, max(1.0, float(width)), max(1.0, float(height)))
+        if hosted is not None:
+            # The same bookkeeping _draw_plugin does, so capture, screenshots and
+            # hosted.box readers see the presented tool exactly as a docked one.
+            hosted.box = box
+        if hosted is None or hosted.app is None:
+            if hosted is not None and hosted.error:
+                im.text_wrapped(tr("The tool could not be opened."))
+                im.text_wrapped(hosted.error)
+            else:
+                im.text(tr("Opening {name}…").format(
+                    name=hosted.title() if hosted is not None else self._tool_only))
+        else:
+            self.host_child("__tool_only__", hosted.instance_id, hosted.app, box)
+        # What a standalone tool still needs over its canvas: the file dialog,
+        # the console's errors, the project's own dialogs.
+        self.data.draw_file_dialog((0.0, 0.0, width, height))
+        self.console.draw_overlays((0.0, 0.0, width, height))
+        self.project.draw((0.0, 0.0, width, height))
+
     def render(self) -> None:
         width, height = im.get_main_viewport().size
+        hosted = self._tool_only_hosted()
+        if hosted is not None or self._tool_only:
+            self._draw_tool_only(hosted, width, height)
+            return
         self._draw_menu_bar(width)
         top = MENU_BAR + self._draw_ribbon(width)
         self._colour_docks()

@@ -48,6 +48,11 @@
           "type": "button_row",
           "buttons": [
             {
+              "action": "export_pdf",
+              "label": "Report (.pdf)",
+              "description": "One page: the FRET and stoichiometry histograms, the count-rate trace, the inter-burst gaps, the background and every report value."
+            },
+            {
               "action": "export_csv",
               "label": "Bursts (.csv)",
               "description": "Download the burst table (ChiSurf .bur column names, QC flags included). ndX and ChiSurf open it."

@@ -133,6 +133,9 @@ def test_exports(app, tmp_path, monkeypatch):
     got = {}
     app.session.download = lambda name, data, mime: got.setdefault(name, data)
     app.session.export_csv()
+    app.session.export_pdf()
+    pdf = next((v for k, v in got.items() if k.endswith(".report.pdf")), None)
+    assert pdf is not None and pdf[:4] == b"%PDF" and b"%%EOF" in pdf[-32:] and len(pdf) > 2_000
     app.session.export_report()
     csv_name = next(n for n in got if n.endswith(".csv"))
     header = got[csv_name].decode().splitlines()[0]
