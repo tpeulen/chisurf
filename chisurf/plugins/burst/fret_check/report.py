@@ -1,4 +1,6 @@
 """The PDF report: one page that says what the measurement is.
+import re
+import re
 
 The FRET panel is ndX's -- :func:`ndxplorer.export.publication_figure.
 draw_density_with_marginals` draws the same density-with-marginals picture
@@ -20,6 +22,25 @@ except ImportError:  # pragma: no cover - the bundle guarantees ndxplorer
 _LEVEL_COLOR = {"ok": "#1b5e20", "warn": "#6b4300", "bad": "#b71c1c", "": "#333333"}
 
 
+#: What a flagged check means for the measurement, in one breath.
+_ISSUE_ACTION = {
+    "bursts": "too few bursts: measure longer or raise concentration",
+    "burst density": "occupancy near the comfort-zone edge: dilute if high, measure longer if low",
+    "multi-molecule events": "bursts overlap in focus: dilute the sample",
+    "short gaps": "fragmented bursts: blinking or a strict burst search",
+    "dilution": "dilute as stated",
+    "time in bursts": "too much time in bursts: too concentrated (or bulk data)",
+    "signal / background": "background high: check detector dark count and scatter",
+    "signal stability": "rate drifts or spikes: focus, evaporation, aggregates",
+    "bright bursts": "aggregates or coincident molecules: check the outliers",
+    "long bursts": "sticking molecules or aggregates",
+    "donor-only / acceptor-only": "labelling or bleaching skews the species",
+    "low-E / donor-only": "donor-only and low FRET mix: use ALEX to tell them apart",
+    "FRET-2CDE > 30": "FRET changes within bursts: dynamics or two molecules",
+    "ALEX-2CDE > 30": "stoichiometry changes within bursts: blinking or two molecules",
+}
+
+
 def _fmt(x: Any, digits: int = 3) -> str:
     try:
         f = float(x)
@@ -28,6 +49,26 @@ def _fmt(x: Any, digits: int = 3) -> str:
     if f == int(f) and abs(f) < 1e6:
         return str(int(f))
     return f"{f:.{digits}g}"
+
+
+def _wrap(parts: list[str], width: int = 96) -> list[str]:
+    """Join issue texts into page-width lines; one over-long part breaks too."""
+    words: list[str] = []
+    for k, p in enumerate(parts):  # split every part so one can hard-wrap
+        if k:
+            words.append("\u00b7")  # issues stay separated across lines
+        words.extend(p.split(" "))
+    lines, cur = [], ""
+    for w in words:
+        piece = ("" if not cur else " ") + w
+        if cur and len(cur) + len(piece) > width:
+            lines.append(cur)
+            cur = w
+        else:
+            cur += piece
+    if cur:
+        lines.append(cur)
+    return lines
 
 
 def _bare(ax):
@@ -52,21 +93,35 @@ def _draw_es_panel(fig, session, row_marginal: int, row_density: int) -> bool:
     y_cnt, _ = np.histogram(b.S[inside], bins=y_s)
     draw_density_with_marginals(
         fig, fig.ax(row_density, 0, span=3), fig.ax(row_marginal, 0, span=3),
-        fig.ax(row_density, 3, span=2),
+        fig.ax(row_density, 3),
         H.T, x_e, y_s,  # (n_y, n_x) like Histogram2D stores
         x_marginal=(x_e, x_cnt), y_marginal=(y_s, y_cnt),
         x_label="FRET efficiency E", y_label="Stoichiometry S",
         z_log=True, count_labels=False,
+        colorbar_axes=_bare(fig.ax(row_density, 4)),
     )
+    # flush: no padding on the sides that meet inside the joint plot
+    fig.ax(row_marginal, 0).set_pad(bottom=0, right=0)
     density = fig.ax(row_density, 0)
+    density.set_pad(top=0, right=0)
+    # leave the column's shared datum group: the S marginal keeps its own
+    # (hidden-label) gutter and stays flush whatever the panels below show
+    fig.ax(row_density, 3).set_aligned(False)
+    fig.ax(row_density, 3).set_pad(left=0.0, top=0.0)
+    fig.ax(row_density, 4).set_pad(left=0)
     density.set_grid(False)
     density.set_xticks([0.0, 0.25, 0.5, 0.75, 1.0])
     density.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
-    fig.ax(row_marginal, 0).set_ylim(0.0, 1.2 * float(x_cnt.max()))
+    fig.ax(row_marginal, 0).set_ylim(0.0, 1.3 * float(x_cnt.max()))
+    top = int(round(1.3 * float(x_cnt.max())))
+    step = 10 if top > 25 else 5
+    fig.ax(row_marginal, 0).set_yticks(list(range(step, top + 1, step)))
     fig.ax(row_density, 3).set_xlim(0.0, 1.2 * float(y_cnt.max()))
-    fig.ax(row_density, 3).set_xticks(
-        [0.0, float(int(round(1.2 * float(y_cnt.max()))))])
-    fig.ax(row_density, 3).set_labels(x=" ")
+    fig.ax(row_density, 3).set_ylim(*fig.ax(row_density, 0).ylim)
+    top_cnt = float(int(round(1.2 * float(y_cnt.max()))))
+    tens = [float(v) for v in range(10, int(top_cnt) + 1, 10)] or [top_cnt]
+    fig.ax(row_density, 3).set_xticks(tens[-3:])
+    fig.ax(row_density, 3).set_labels(x="count")
     return True
 
 
@@ -157,6 +212,7 @@ def _scatter(fig, r: int, c: int, x, y, title: str, x_label: str, y_label: str,
     ax.scatter(x, y, size=1.2, color=color, alpha=0.45)
     ax.set_title(title)
     ax.set_labels(x=x_label, y=y_label)
+    scaled = False
     if "static FRET" in title:  # tau_D(E) = tau_D0 (1 - E), the MFD reference
         donor_only = x[y < 0.2]  # x is tau_D, y is E here
         tau0 = float(np.nanmedian(donor_only)) if donor_only.size >= 5 \
@@ -164,17 +220,18 @@ def _scatter(fig, r: int, c: int, x, y, title: str, x_label: str, y_label: str,
         e_grid = np.linspace(0.0, 1.0, 64)
         ax.line(np.clip(tau0 * (1.0 - e_grid), 0.0, None), e_grid,
                 color="#888888", width=1.2)
-        ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+        ax.set_yticks([0.0, 0.5, 1.0])
     elif title.startswith("Tg-Tr"):
         lo, hi = np.percentile(y, [1.0, 99.0])  # outliers stay, scale does not stretch
         pad = 0.1 * (hi - lo)
         ax.set_ylim(lo - pad, hi + pad)
         step = (hi - lo) / 2.0
-        ax.set_yticks([round(lo, 2), round(lo + step, 2), round(hi, 2)])
+        ax.set_yticks([round(v, 1) for v in (lo, lo + step, hi)])
     elif title.startswith("r vs"):
-        lo, hi = float(y.min()), float(y.max())
+        lo, hi = np.percentile(y, [5.0, 95.0])  # one outlier must not squash r
         step = (hi - lo) / 2.0
-        ax.set_yticks([round(lo, 2), round(lo + step, 2), round(hi, 2)])
+        ax.set_ylim(lo - 0.05 * (hi - lo), hi + 0.05 * (hi - lo))
+        ax.set_yticks([round(v, 1) for v in (lo, lo + step, hi)])
     x0, x1 = float(x.min()), float(x.max())
     y0, y1 = float(y.min()), float(y.max())
     ax.set_xlim(x0 - 0.06 * max(x1 - x0, 1e-6), x1 + 0.06 * max(x1 - x0, 1e-6))
@@ -194,6 +251,7 @@ def build_pdf_report(session) -> bytes:
     inter-burst gaps, and the checks/values table.
     """
     import datetime
+    import re
 
     import numpy as np
     from emtk.figure import Figure, colorbar_space
@@ -229,26 +287,30 @@ def build_pdf_report(session) -> bytes:
         scatters.append((e, tg, "Tg-Tr vs E", "E", "Tg-Tr (ms)", "#1f4e8c"))
     if tau_g is not None:
         scatters.append((tau_g, e, "E vs tau_D (static FRET)",
-                         "Tau green (ns)", "E", "#7a1f1f"))
+                         "Tau green (ns)", "E (frac.)", "#7a1f1f"))
     if r_g is not None and tau_g is not None:
-        scatters.append((tau_g, r_g, "r vs tau_D", "Tau green (ns)", "r green", "#1f6e4a"))
+        scatters.append((tau_g, r_g, "r vs tau_D", "Tau green (ns)", "anisotropy", "#1f6e4a"))
     if has_bursts:  # the half-width cell beside the density carries the sizes
         hists = hists  # size drawn in the block below
     n_diag = len(scatters) + len(hists)
 
-    rows: list[tuple[float, str]] = [(2.4, "marginal"), (5.6, "density")]
+    rows: list[tuple[float, str]] = [(2.0, "marginal"), (5.4, "density")]
     if has_trace:
-        rows.append((3.2, "trace"))
-        rows.append((3.2, "log_cr"))
+        rows.append((3.0, "trace"))
+        rows.append((2.8, "log_cr"))
     if n_diag:
-        rows.append((3.6, "diag_a"))
+        rows.append((3.2, "diag_a"))
     if n_diag > 3:
-        rows.append((3.6, "diag_b"))
-    rows.append((4.0, "table"))
+        rows.append((3.2, "diag_b"))
+    rows.append((5.6, "table"))
     fig = Figure(rows=len(rows), cols=6, size=(width, height), margin=40.0,
-                 width_ratios=[sixth] * 6, height_ratios=[r for r, _ in rows])
+                 width_ratios=[sixth] * 6, height_ratios=[r for r, _ in rows],
+                 hgap=[8.0, 8.0, 0.0, 0.0, 8.0],
+                 vgap=[0.0] + [8.0] * (len(rows) - 2))
     at = {name: i for i, (_, name) in enumerate(rows)}
     at["header"] = at["marginal"]  # header text lives beside the E marginal
+    grid_total = sum(r for r, _ in rows)
+    grid_table = {n: r for r, n in rows}.get("table", 0.0)
 
     # -- header: file, date, the verdict in its colour -----------------------
     head = _bare(fig.ax(at["header"], 3, span=3))
@@ -326,6 +388,14 @@ def build_pdf_report(session) -> bytes:
                 ax_h.hist(values, 40)
                 ax_h.set_title(title)
                 ax_h.set_labels(x=unit, y="count")
+            # a panel under the density block would push the S marginal off
+            # its density (the column shares the widest y gutter) -- a single
+            # short tick keeps the scale readable without widening the gutter
+            if starts[slot] == 3 and len(spec) != 6:
+                _c, _ = np.histogram(np.asarray(spec[1], float), 40)
+                hi = float(_c.max()) if _c.size else 1.0  # the count scale
+                fig.ax(r, starts[slot]).set_yticks(
+                    [0.0, round(hi / 2.0), round(hi)])
 
     # -- the values: every check, the background, the key numbers -------------
     table = _bare(fig.ax(at["table"], 0, span=6))
@@ -335,35 +405,62 @@ def build_pdf_report(session) -> bytes:
         # The checks flow through both columns (half each), the values
         # continue in the second below them -- balanced, one line per pitch.
         checks = list(qc.checks)
-        half = (len(checks) + 1) // 2
         y0 = 0.955
-        y_end = {0.06: y0, 0.56: y0}
-        for x, group in ((0.06, checks[:half]), (0.56, checks[half:])):
+        # line pitch as a fraction of THIS cell's height: 11 pt between lines
+        avail_h_pt = 792.0 - 2 * 30.0 - (len(rows_list) - 1) * 6.0 if False else \
+            792.0 - 2 * 30.0 - 6.0 * max(0, len(at) - 2)
+        cell_h_pt = grid_table / max(grid_total, 1e-9) * avail_h_pt
+        pitch = 11.0 / max(cell_h_pt, 1e-9)
+        cols_x = (0.02, 0.35, 0.68)
+        per_col = -(-len(checks) // 3)
+        for x, group in zip(cols_x, (checks[0:per_col], checks[per_col:2 * per_col],
+                                     checks[2 * per_col:])):
             y = y0
-            table.text(x, y, "Checks" if x < 0.5 else "Checks (cont.)", color="#111111", align="left")
-            y -= 0.078
+            if x == cols_x[0]:
+                table.text(x, y, "Checks", color="#111111", align="left")
+            y -= pitch
             for c in group:
                 mark = {"ok": "+", "warn": "!", "bad": "x", "": "·"}.get(c.level, "·")
                 color = _LEVEL_COLOR.get(c.level, "#333333")
                 line = f"{mark} {c.name}: {c.value}"
-                if len(line) > 40:  # a value that outruns the column: two rows
-                    table.text(x, y, f"{mark} {c.name}", color=color, align="left")
-                    y -= 0.078
-                    if y < 0.04:
+                if len(line) > 30:  # a value that outruns the column: two rows
+                    if y - 2 * pitch < 0.40:  # room for name AND value, or skip
                         break
-                    line = f"    {c.value}"
+                    table.text(x, y, f"{mark} {c.name}", color=color, align="left")
+                    y -= pitch
+                    sv = re.sub(r"\s*\([^)]{1,20}\)", "", str(c.value))
+                    value_rows = [sv] if len(sv) <= 30 else sv.split(" \u00b7 ")
+                    for vr in value_rows:
+                        table.text(x, y, f"    {vr[:30]}", color=color, align="left")
+                        y -= pitch
+                    continue
                 table.text(x, y, line, color=color, align="left")
-                y -= 0.078
-                if y < 0.28:
+                y -= pitch
+                if y < 0.40:
                     break
-            y_end[x] = y
+        # Issues: the flagged checks in plain words -- what is wrong and
+        # what to do about it, in lines the full page width can hold.
+        flagged = [c for c in qc.checks if c.level in ("warn", "bad")]
+        y = 0.385
+        table.text(0.02, y, "Issues", color="#111111", align="left")
+        if flagged:
+            parts = [f"{c.name}: {_ISSUE_ACTION.get(c.name, c.detail)}"
+                     for c in flagged]
+            for chunk in _wrap(parts, width=84):
+                if y - pitch < 0.10:  # the values line keeps its baseline
+                    break
+                y -= pitch
+                table.text(0.02, y, chunk, color="#b71c1c" if any(
+                    c.level == "bad" for c in flagged) else "#6b4300", align="left")
+        else:
+            y -= pitch
+            table.text(0.02, y, "none: every check passes", color="#1b5e20", align="left")
         # Values: a reserved baseline of its own, so a long checks column
         # can never push the concentration metrics off the page.
         joined = (f"Flagged: {int((qc.flags != 0).sum())} of {qc.flags.size}"
                   f" \u00b7 Arrival (corr.): {_fmt(qc.arrival_rate)} /s"
                   f" \u00b7 Volume: {_fmt(qc.metrics.get('v_eff_fL', ''))} fL")
-        table.text(0.06, 0.19, "Values", color="#111111", align="left")
-        table.text(0.06, 0.07, joined, color="#333333", align="left")
+        table.text(0.02, 0.078, joined, color="#333333", align="left")
     from emtk import implot as _eimpl
     _gp = _eimpl.gp
     _saved = (_gp.style.plot_padding, _gp.style.label_padding)
