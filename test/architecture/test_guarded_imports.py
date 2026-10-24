@@ -28,6 +28,10 @@ OPTIONAL = {
     # hardware / vendor SDKs
     "mcculw": "Measurement Computing DAQ SDK, Windows-only",
     "quest": "optional QuEsT accessible-volume extension",
+    # the pyodide runtime the web page runs on: js and pyodide.ffi exist
+    # only inside the browser (the ?app= plugin pages import them guarded)
+    "js": "pyodide's JavaScript bridge, browser page only",
+    "pyodide": "the page's own runtime, browser only",
     # platform
     "ctypes": "ctypes.wintypes exists on Windows only",
         # heavy or niche third-party extras

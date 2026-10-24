@@ -268,6 +268,9 @@ def test_shift_dialog_loads_lut_corrected_and_round_trips(tmp_path):
         ui.click("Adjust shifts...")
         assert page.editor.shift_window.open and len(page.model.preview) > 1
         assert page.editor._shift_draft[0] == 5
+        # The shift is a spinbox field: a double click opens it for typing
+        # (the reference's ctrl-click), the way its tooltip promises.
+        ui.click("shift_1")
         ui.click("shift_1")
         ui.key(0x41, "a", CONTROL_MODIFIER)
         ui.type("10")
