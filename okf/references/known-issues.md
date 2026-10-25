@@ -1,3 +1,11 @@
+## kappa2_dist's kappasq returns negative kappa-squared for reachable anisotropies (found 2026-10-25)
+status: open — found while porting the anisotropy-to-kappa script to a real test (the old script only printed).
+`chisurf/plugins/calculator/kappa2_dist/k2dfun.kappasq` with beta1 = beta2 = 0 returns negative kappa-squared
+(-0.67 at r_donor 0.10 / r_acceptor 0.15 / r_sensitized 0.02, r0 0.38; -1.62 at 0.25/0.10/0.05). The
+AnisotropyToKappaModel matches the closed form exactly, so this is the reference's domain, not a model bug.
+Question for the owner: are these inputs outside k2dfun's valid domain, or is the beta-zero branch of the
+closed form wrong? The ported test pins model == reference; the sign is not pinned.
+
 ---
 type: Reference
 title: Known issues

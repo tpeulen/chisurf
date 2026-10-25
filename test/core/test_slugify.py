@@ -1,55 +1,22 @@
-import re
-import unicodedata
+"""Ported from the script-style test_slugify.py: chisurf.core.base's slugify,
+pinned as real tests (the old file carried a copy of the function and only
+printed). The cases pin the actual contract: lowercase, NFKD accent folding,
+the default keep-class ``[^-a-z0-9_]+`` (hyphens are kept)."""
+
+from __future__ import annotations
+
+from chisurf.core.base import slugify
 
 
-def slugify(text, separator="_", regex_pattern=r"[^-a-z0-9_]+"):
-    """
-    Convert a string to a slug.
-
-    Parameters
-    ----------
-    text : str
-        The string to convert
-    separator : str
-        The separator to use (default is '_')
-    regex_pattern : str
-        The regex pattern used to identify characters to replace
-
-    Returns
-    -------
-    str
-        A slugified string
-    """
-    # Convert to lowercase
-    text = str(text).lower()
-
-    # Convert accented characters to their ASCII equivalents
-    text = unicodedata.normalize("NFKD", text)
-    text = "".join([c for c in text if not unicodedata.combining(c)])
-
-    # Replace characters matching the regex pattern with the separator
-    text = re.sub(regex_pattern, separator, text)
-
-    # Replace multiple consecutive separators with a single one
-    text = re.sub(f"{separator}+", separator, text)
-
-    # Remove leading/trailing separators
-    text = text.strip(separator)
-
-    return text
+def test_slugify_strips_accents_and_joins():
+    # The original script's case, the only one it actually checked.
+    assert slugify("ldldöö_ddd   dd**") == "ldldoo_ddd_dd"
 
 
-def clean_string(s, regex_pattern=r"[^-a-z0-9_]+"):
-    """Get a slugified a string."""
-    r = slugify(s, separator="_", regex_pattern=regex_pattern)
-    return r
+def test_slugify_lowercases_but_keeps_hyphens():
+    assert slugify("A -- B__c") == "a_--_b_c"
+    assert slugify("2-state model") == "2-state_model"
 
 
-# Test case from test_base.py
-s1 = "ldldöö_ddd   dd**"
-s2 = "ldldoo_ddd_dd"
-result = clean_string(s1)
-print(f"Input: {s1}")
-print(f"Expected: {s2}")
-print(f"Result: {result}")
-print(f"Test passed: {result == s2}")
+def test_slugify_collapses_repeated_separators_and_trims():
+    assert slugify("  spacing   out  ") == "spacing_out"
