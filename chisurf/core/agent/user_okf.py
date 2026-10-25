@@ -94,6 +94,30 @@ def as_context(root: Path | None = None, limit: int = 20) -> str:
     return "Recent work from the user's knowledge bundle:\n" + "\n".join(bullets)
 
 
+def save_skill(title: str, body: str, triggers: str = "", *, directory=None) -> Path:
+    """Write a learned procedure as a user skill; return the SKILL.md path.
+
+    Skills live beside the built-ins in the user's ``agent_skills``
+    directory and are picked up by every later session (user entries
+    override built-ins of the same name) — this is how the agent learns
+    what this user wants and keeps it. The file is a standard ``SKILL.md``
+    (frontmatter ``name``/``description``/``triggers`` + markdown body), so
+    it reads the same for any client.
+    """
+    from chisurf.core.agent import skills as agent_skills
+
+    slug = "".join(c if c.isalnum() else "-" for c in title.lower()).strip("-")[:64]
+    if not slug:
+        raise ValueError("a skill needs a title")
+    target = (directory or agent_skills.user_skill_directory()) / slug / "SKILL.md"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    frontmatter = f"name: {slug}\ndescription: {title.strip()}\n"
+    if triggers.strip():
+        frontmatter += f"triggers: [{', '.join(t.strip() for t in triggers.split(',') if t.strip())}]\n"
+    target.write_text(f"---\n{frontmatter}---\n\n{body.strip()}\n")
+    return target
+
+
 def build_tool_handler(registry: Any) -> None:
     """Register ``record_finding`` — the agent's own pen in the bundle."""
     from chisurf.core.agent.spec import ToolError
@@ -122,3 +146,30 @@ def build_tool_handler(registry: Any) -> None:
         path = write_concept(title, body or title)
         record_task(f"recorded finding: {title.strip()}")
         return {"recorded": str(path)}
+
+    @registry.add(
+        name="save_skill",
+        description=(
+            "Save a learned procedure or preference as the user's own skill "
+            "so every later session keeps it: how this user likes analyses "
+            "run, which settings they choose, a pipeline recipe that worked. "
+            "Skills load automatically when a future request matches."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "What the skill is, e.g. 'Alice prefers E gating before fitting'."},
+                "body": {"type": "string", "description": "The procedure or preference, as concrete steps."},
+                "triggers": {"type": "string", "description": "Comma-separated words that should load it, e.g. 'burst, gate, smFRET'."},
+            },
+            "required": ["title", "body"],
+        },
+    )
+    def save_skill_tool(context, title: str, body: str, triggers: str = "") -> dict:
+        """Persist a learned procedure as the user's skill."""
+        try:
+            path = save_skill(title, body, triggers)
+        except ValueError as err:
+            raise ToolError(str(err)) from err
+        record_task(f"learned skill: {title.strip()}")
+        return {"saved": str(path)}

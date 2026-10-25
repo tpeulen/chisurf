@@ -71,3 +71,35 @@ def test_context_injection_is_empty_until_there_is_history(tmp_path):
     user_okf.record_task("first finding", root=tmp_path)
     text = user_okf.as_context(root=tmp_path)
     assert "Recent work" in text and "first finding" in text
+
+
+def test_save_skill_writes_a_skill_the_library_loads(tmp_path):
+    """The self-improvement loop closes: saved skill is discoverable next session."""
+    from chisurf.core.agent import skills as agent_skills
+
+    directory = tmp_path / "agent_skills"
+    path = user_okf.save_skill(
+        "E gate before fitting",
+        "Always gate bursts on S in [0.3, 0.8] before the distance fit.",
+        triggers="burst, smFRET",
+        directory=directory,
+    )
+    skill = agent_skills.parse_skill(path.read_text(), source=str(path))
+    assert skill is not None
+    assert skill.score("burstwise smFRET analysis") > 0.0
+    library = agent_skills.SkillLibrary()
+    assert library.load_directory(directory) == 1
+
+
+def test_save_skill_tool_registers_and_requires_a_body(tmp_path):
+    from chisurf.core.agent.spec import ToolRegistry, ToolError, call_handler
+
+    registry = ToolRegistry()
+    user_okf.build_tool_handler(registry)
+    spec = registry.get("save_skill")
+    assert spec is not None and spec.parameters["required"] == ["title", "body"]
+    try:
+        call_handler(spec, None, {"title": "x"})  # body missing
+        raise AssertionError("missing body must raise")
+    except ToolError:
+        pass
