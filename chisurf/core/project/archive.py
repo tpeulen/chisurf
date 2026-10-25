@@ -6,13 +6,18 @@ from pathlib import PurePosixPath
 from types import SimpleNamespace
 from typing import Any
 
-from .pto import PROJECT_SUFFIX, ProjectPtoError, read_entries, write_entries
+from .pto import (
+    PROJECT_SUFFIX,
+    SESSION_FILENAME,
+    ProjectPtoError,
+    read_entries,
+    write_entries,
+)
 
 PathLike = str | pathlib.Path
 
 PROJECT_JSON = "project.json"
 HISTORY_FILENAME = "history.jsonl"
-SESSION_FILENAME = "session.jsonl"
 DATA_DIR = "data"
 PROJECT_ARCHIVE_SUFFIX = PROJECT_SUFFIX
 

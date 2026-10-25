@@ -17,7 +17,10 @@ copy of an analysis.
 
 A project saves the scientific session, not just the selected fit: imported
 curves and groups, masks, fits and fit ranges, model settings, parameters and
-links, supporting curves such as IRFs, and the supported window state.
+links, supporting curves such as IRFs, and the supported window state. The
+live IMP.bff node graph travels with the file: nodes and free ports that no
+fit owns are restored when the project is reopened (the stored graph replaces
+whatever the session holds at load time).
 
 ## Choose the destination
 

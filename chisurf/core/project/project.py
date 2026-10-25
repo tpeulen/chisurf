@@ -11,7 +11,7 @@ from types import MappingProxyType
 from typing import Any, Union
 
 from .archive import ProjectArchive
-from .pto import PROJECT_SUFFIX
+from .pto import PROJECT_SUFFIX, SESSION_FILENAME
 
 PathLike = Union[str, pathlib.Path]
 _RESOURCE_CONTEXT_ALIAS = "urn:chisurf:project:resource-context"
@@ -309,17 +309,28 @@ class Project:
         uids = [str(fit["uid"]) for fit in self.fits if fit.get("uid")]
         return sorted(uids)
 
-    def save_to_archive(self, archive) -> None:
+    def save_to_archive(self, archive, graph_session_bytes: bytes | None = None) -> None:
         """Add the portable project record to an assembled PTO project.
 
         Macro/server callers may add history, BFF state and embedded data to
         the same container before it is published.  The method keeps that
         assembly path aligned with :meth:`save` without reintroducing ZIP.
+
+        The live bff graph session travels as the typed ``session.jsonl``
+        entry: captured from the running session unless *graph_session_bytes*
+        is given, and left out entirely when there is nothing to persist (no
+        IMP.bff, or an empty session).
         """
+        if graph_session_bytes is None:
+            from .graph import capture_graph_session
+
+            graph_session_bytes = capture_graph_session()
         archive.write_text("project.json", json.dumps(self.to_dict(), indent=2, sort_keys=True))
         self.resources.write_to_archive(archive)
+        if graph_session_bytes is not None:
+            archive.write_bytes(SESSION_FILENAME, graph_session_bytes)
 
-    def save(self, target_path: PathLike) -> pathlib.Path:
+    def save(self, target_path: PathLike, *, graph_session_bytes: bytes | None = None) -> pathlib.Path:
         """Save this project as a validated ``.cs.pto`` container.
 
         Parameters
@@ -327,6 +338,9 @@ class Project:
         target_path : str or pathlib.Path
             Destination archive path. If a directory is provided, the project is
             saved as ``project.cs.pto`` inside that directory.
+        graph_session_bytes : bytes, optional
+            Pre-captured bff graph session; captured from the live session when
+            omitted (see :meth:`save_to_archive`).
 
         Returns
         -------
@@ -335,7 +349,7 @@ class Project:
         """
         project_path = _project_output_path(target_path)
         archive = ProjectArchive()
-        self.save_to_archive(archive)
+        self.save_to_archive(archive, graph_session_bytes)
         return archive.save(project_path)
 
     @classmethod
@@ -364,9 +378,16 @@ class Project:
             {
                 name: archive.read_bytes(name)
                 for name in archive.list_entries()
-                if name != "project.json"
+                if name != "project.json" and name != SESSION_FILENAME
             }
         )
+        if archive.has_entry(SESSION_FILENAME):
+            # The live graph travels with the file again (owner 2026-10-24):
+            # keep the bytes on the project and install them as the session.
+            project.graph_session_bytes = archive.read_bytes(SESSION_FILENAME)
+            from .graph import restore_graph_session
+
+            restore_graph_session(project.graph_session_bytes)
         return project
 
 

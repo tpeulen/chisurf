@@ -25,6 +25,10 @@ _PROJECT_NAME = "project"
 _SESSION_KIND = "chisurf.graph-session"
 _SESSION_ENCODING = "jsonl"
 _SESSION_NAME = "session"
+#: The archive-entry name of the live bff graph session.  Written as the
+#: typed ``chisurf.graph-session`` object on both save routes (``write_project``
+#: and ``write_entries``) so every reader sees one identity.
+SESSION_FILENAME = "session.jsonl"
 _ARCHIVE_ENTRY_KIND = "chisurf.project-entry"
 
 
@@ -270,6 +274,8 @@ def write_entries(path: str | pathlib.Path, entries: Mapping[str, bytes]) -> pat
         raise ProjectPtoError("project.json must contain a JSON object")
     project_payload = _validate_project_payload(project_payload)
     resources = {name: bytes(data) for name, data in entries.items() if name != "project.json"}
+    # The graph session is a first-class typed object, not a raw entry.
+    session_data = resources.pop(SESSION_FILENAME, None)
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = _temporary_path(target)
     tttrlib = _tttrlib()
@@ -292,6 +298,9 @@ def write_entries(path: str | pathlib.Path, entries: Mapping[str, bytes]) -> pat
                 raise ProjectPtoError(f"Unsafe project entry name: {name!r}")
             if not handle.add(_ARCHIVE_ENTRY_KIND, "raw", name, bytes(data)):
                 raise ProjectPtoError(f"Could not add {name!r}: {handle.error()}")
+        if session_data is not None:
+            if not handle.add(_SESSION_KIND, _SESSION_ENCODING, _SESSION_NAME, session_data):
+                raise ProjectPtoError(f"Could not add native graph session: {handle.error()}")
         if not handle.commit():
             raise ProjectPtoError(f"Could not commit {temporary}: {handle.error()}")
         handle.close()
@@ -299,7 +308,12 @@ def write_entries(path: str | pathlib.Path, entries: Mapping[str, bytes]) -> pat
         actual = read_entries(temporary)
         actual_project = json.loads(actual.pop("project.json").decode("utf-8"))
         _validate_project_payload(actual_project)
-        if actual_project != project_payload or actual != resources:
+        actual_session = actual.pop(SESSION_FILENAME, None)
+        if (
+            actual_project != project_payload
+            or actual != resources
+            or actual_session != session_data
+        ):
             raise ProjectPtoError("Candidate PTO project did not read back exactly")
         os.replace(temporary, target)
         return target
@@ -351,6 +365,14 @@ def read_entries(path: str | pathlib.Path) -> dict[str, bytes]:
             if obj.name in entries:
                 raise ProjectPtoError(f"Project contains duplicate entry {obj.name!r}")
             entries[obj.name] = bytes(handle.read(obj.uid))
+        session_matches = [
+            obj.uid for obj in handle.objects()
+            if obj.kind == _SESSION_KIND and obj.name == _SESSION_NAME
+        ]
+        if len(session_matches) > 1:
+            raise ProjectPtoError("Project contains more than one native graph session")
+        if session_matches:
+            entries[SESSION_FILENAME] = bytes(handle.read(session_matches[0]))
         return entries
     finally:
         handle.close()

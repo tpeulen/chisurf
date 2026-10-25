@@ -70,11 +70,14 @@ def save_file(project: Project, path: str | Path) -> Path:
     """Atomically save and exactly read back a portable ``.cs.pto`` project."""
     target = _canonical_path(path)
     payload = project.to_dict()
+    from .graph import capture_graph_session
+
+    graph = capture_graph_session()
     try:
         _validate_project_payload(payload)
         if not project.resources.entries and not project.resources.sources:
-            return write_project(target, payload)
-        return project.save(target)
+            return write_project(target, payload, session_bytes=graph)
+        return project.save(target, graph_session_bytes=graph)
     except Exception as exc:
         raise ProjectStorageError(f"Could not save project file {target}: {exc}") from exc
 

@@ -7,6 +7,20 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 ---
 
 
+## A project no longer stores the live bff node graph (found 2026-10-10)
+
+status: resolved 2026-10-24 — owner decision (PRD-154 item 5, option a): persist the live graph. `Project.save`
+captures `IMP.bff.get_session()` into the typed `chisurf.graph-session` container entry (`session.jsonl`) on both
+storage routes (`write_project(session_bytes=...)` and the archive route via `write_entries`); `Project.load`
+installs the stored graph as the live session, replacing it. IMP.bff stays optional (no bff or an empty session
+writes no entry); the bytes also ride on `Project.graph_session_bytes`. Guards:
+`test/core/test_bff_session.py` (`test_live_graph_is_embedded_and_restored`, `test_storage_routes_carry_the_graph`,
+`test_empty_session_writes_no_entry`, `test_restore_replaces_rather_than_merges`).
+
+Since projects became `.cs.pto` containers holding the scientific snapshot, `Project.save` wrote `project.json`
+plus resources and `Project.load` never read a graph session; nodes and free ports that no fit owns were lost on
+save/load (the old `.csp` kept them in `session.jsonl`).
+
 ## The ALEX period spectrum runs at 2.6 samples per period
 
 status: resolved 2026-10-20
@@ -1814,17 +1828,6 @@ the older shape and die with `KeyError: 'uid'`. Measure: `pytest test/fio -q --d
 for a minimal valid one); do not loosen the archiver.
 Five `test/fio/test_container_cross_writer.py` tests also fail here only because `/Users/tpeulen/dev/tttrlib/build/bin/tttr`
 cannot load `libhdf5.200.dylib` (environment, see the IDE-roots note); the Python writer is unaffected.
-
-## A project no longer stores the live bff node graph (found 2026-10-10)
-
-status: open — owner: project persistence (`chisurf/core/project/`, `chisurf/core/fio/pto.py`); needs a product decision.
-
-Since projects became `.cs.pto` containers holding the scientific snapshot, `Project.save` writes `project.json`
-plus resources and `Project.load` never reads a graph session; nothing calls `write_project(session_bytes=...)`.
-Nodes and free ports that no fit owns are therefore lost on save/load (the old `.csp` kept them in
-`session.jsonl`). `test/core/test_bff_session.py` now pins the current behaviour
-(`test_live_graph_is_not_embedded_in_the_project_file`). Decide: persist the live graph again through
-`session_bytes`, or declare fit-owned state the only persisted state and say so in the docs.
 
 ## A linked parameter edited in one fit does not refresh the fits that follow it (found 2026-10-10)
 
