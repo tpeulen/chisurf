@@ -4,6 +4,8 @@
   "display_name": "Tools:Views:Acquisition",
   "description": "Single-molecule fluorescence acquisition: stream photons from real TCSPC hardware or the built-in tttrlib Sim* photon simulator (confocal diffusion with FRET, anisotropy and photophysics).",
   "authors": ["Thomas-Otavio Peulen"],
+  "experimental": true,
+  "experimental_message": "Development status: the hardware-streaming path (live TCSPC devices) is untested on real hardware for now -- no device was available. The built-in tttrlib Sim* photon simulator is the supported path.",
   "categories": ["Tools", "Views", "Acquisition"],
   "icon": "📷",
   "state_namespace": "acq",
