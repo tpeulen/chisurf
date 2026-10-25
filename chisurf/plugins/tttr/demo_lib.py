@@ -126,6 +126,9 @@ def photon_stream(c: dict | None = None) -> tuple[np.ndarray, np.ndarray, np.nda
     centres = rng.uniform(edge, span - edge, n_bursts)
     widths = np.full(n_bursts, float(c["burst_width_ms"]) * 1e-3 / macro_res)
     sizes = rng.integers(int(c["photons_per_burst"][0]), int(c["photons_per_burst"][1]), n_bursts)
+    # intp repeats: numpy 2 on wasm32 refuses a safe int64->int32 cast here,
+    # which breaks every Load-example built on this generator in the browser.
+    sizes = sizes.astype(np.intp, copy=False)
     ticks = rng.normal(np.repeat(centres, sizes), np.repeat(widths, sizes))
     u = rng.random(ticks.size)
     burst_channel = np.where(u < float(c["fret_efficiency"]), acceptor_ch, donor_ch)

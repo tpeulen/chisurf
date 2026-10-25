@@ -2,6 +2,13 @@
 
 ## 2026-10-24
 
+- **Web item 8 closed (browser-verified).** `python -m chisurf.web --isolate` sends COOP/COEP and the page still
+  boots ready (jsdelivr Pyodide passes CORP). Demo data now loads in-page under isolation: PCH `make_demo()` ran
+  end to end in the browser (1.0 MB PTU + sidecar), the shared µs-ALEX generator made 295,106 photons and wrote
+  `alex_demo.ptu` (1.8 MB). Real find: numpy 2 on wasm32 rejects the int64->int32 `np.repeat` cast in
+  `tttr/demo_lib.photon_stream` — every browser Load-example on that generator was broken; fixed with `intp`
+  repeats, verified in the served archive and in-page, desktop demo tests green. A stale dev server from an
+  earlier lane was holding ports 8793/8794 and serving the pre-fix archive; killed and re-served fresh.
 - **PRD-154 item 12: the natural-language workflow agent** (owner directive). The release ships an agent that
   drives ChiSurf in plain words — chaining burst selection, species gating, sub-ensemble TCSPC and
   distance-distribution fits — and grills the user when the prompt is ambiguous. Built on `chisurf/core/agent/`
