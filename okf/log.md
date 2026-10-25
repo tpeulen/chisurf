@@ -2,6 +2,13 @@
 
 ## 2026-10-24
 
+- **PRD-154 item 12: the natural-language workflow agent** (owner directive). The release ships an agent that
+  drives ChiSurf in plain words — chaining burst selection, species gating, sub-ensemble TCSPC and
+  distance-distribution fits — and grills the user when the prompt is ambiguous. Built on `chisurf/core/agent/`
+  (runtime, tools, skills, ACP server; test/agent 549 green), Z.ai glm-5.3-flash as the dev model (token in the
+  auth settings), tttrlib Sim* / fret_check simulations as ground truth. Verdict-sweep batches 1-4 ran as the
+  same wave: 114 known-issue suite files re-derived, 5 sweep-red guard families fixed (plugin dependency edges
+  declared, help/guide shipped and drawn for fret_check/legacy_export/metadata_editor, no PRD names in source).
 - **Release triage (owner).** Vehicle: desktop + web. Licensing re-confirmed and the "licence audit leftovers" entry
   resolved: IMP.swarm is MIT (self-developed, different domain from Cecil — nothing derived), the Photonscore reader
   is a reverse-engineered file format with upstream attribution in tttrlib, the LGPL source offer ships the sdist
