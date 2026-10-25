@@ -223,7 +223,7 @@ def test_store_graph_session_rolls_back_on_parameter_failure(tmp_path, monkeypat
 
 
 def test_store_graph_session_accepts_explicit_parameter_uuid_for_link_mapping(tmp_path) -> None:
-    db_path = tmp_path / "chinet_explicit.db"
+    db_path = tmp_path / "graph_explicit.db"
     session = _connected_session()
     follower_port = session.nodes["follower"].inputs["in"]
 
@@ -270,37 +270,6 @@ def test_store_graph_session_fast_mode_skips_node_artifacts(tmp_path) -> None:
         assert len(db.list_parameters(operation_id="op_graph_fast")) == 2
 
 
-
-
-def test_load_accepts_the_legacy_chinet_era_kind(tmp_path) -> None:
-    """Old rows carry artifact_kind 'chinet_session'; the loader accepts them."""
-    with MFDatabase(tmp_path / "legacy.db") as db:
-        db.record_operation(operation_id="op_legacy", operation_type="model_fitting")
-        payload = {"schema_name": "mmfdb.graph_session.v1", "session": _connected_session().to_dict()}
-        db.register_artifact(
-            artifact_id="chinet_session:legacy-oid",
-            artifact_kind="graph_session",
-            storage_mode="embedded_json",
-            data_format="json",
-            metadata={"schema_name": payload["schema_name"]},
-            data_json=json.dumps(payload),
-            validation_status="valid",
-        )
-        # the current enum no longer accepts the chinet-era kind; a legacy
-        # database row carries it, so flip the stored row the way old data is
-        db.conn.execute(
-            "UPDATE mmfdb_artifact SET artifact_kind = 'chinet_session' "
-            "WHERE artifact_id = ?",
-            ("chinet_session:legacy-oid",),
-        )
-        db.record_operation_link(
-            operation_id="op_legacy",
-            artifact_id="chinet_session:legacy-oid",
-            direction="output",
-            role="chinet_session",
-        )
-        restored = load_graph_session(db, "chinet_session:legacy-oid")
-        assert set(restored.nodes) == {"source", "follower"}
 
 
 def test_graph_session_artifact_constant_is_the_new_kind() -> None:

@@ -312,9 +312,8 @@ def mmfdb_graph_sessions_to_node_editor_graph(
         a for a in artifacts if a.get("artifact_kind") in ("raw_measurement", "raw_data")
     ]
     dataset_arts = [a for a in artifacts if a.get("artifact_kind") == "processed_data"]
-    # accept the legacy chinet-era kinds so old archives still draw
-    session_arts = [a for a in artifacts if a.get("artifact_kind") in ("graph_session", "chinet_session")]
-    node_arts = [a for a in artifacts if a.get("artifact_kind") in ("graph_node", "chinet_node")]
+    session_arts = [a for a in artifacts if a.get("artifact_kind") == "graph_session"]
+    node_arts = [a for a in artifacts if a.get("artifact_kind") == "graph_node"]
     fit_arts = [a for a in artifacts if a.get("artifact_kind") == "fit_result"]
 
     # Add source file nodes
@@ -364,7 +363,7 @@ def mmfdb_graph_sessions_to_node_editor_graph(
         _add_node(
             nid,
             f"Session: {aid[:30]}",
-            "chinet_session",
+            "graph_session",
             inputs=[{"name": "in", "type": "mmfdb"}],
             outputs=[{"name": "nodes", "type": "mmfdb"}],
             config={"artifact_id": aid},
@@ -379,7 +378,7 @@ def mmfdb_graph_sessions_to_node_editor_graph(
         _add_node(
             nid,
             f"Node: {node_name}",
-            "chinet_node",
+            "graph_node",
             inputs=[{"name": "params", "type": "mmfdb"}],
             outputs=[{"name": "out", "type": "mmfdb"}],
             config={"artifact_id": aid, "session_id": meta.get("session_id")},
