@@ -119,7 +119,8 @@ class MetadataEditorApp(ImApp):
         im.text(tr("Schema:"))
         im.same_line()
         im.set_next_item_width(220.0)
-        changed, index = im.combo("##schema", names.index(self.schema_name), names, tooltip=tr("Which metadata schema to edit.")):
+        changed, index = im.combo("##schema", names.index(self.schema_name), names)
+        im.set_item_tooltip(tr("Which metadata schema to edit."))
         if changed:
             self.pick_schema(names[index])
         self.remember("schema")
