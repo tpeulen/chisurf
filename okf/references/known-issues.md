@@ -54,6 +54,459 @@ compare the commands the two hosts build and check one fit with tolerances for t
 `random_seed` setting (default fixed, so a run is repeatable) belongs in the fitter and its settings file, with a
 reproducibility test; guide 76 lists it under Known defects.
 
+## Pre-existing failures found during the plugin-manager rebuild (open) — both fixed 2026-09-03
+
+status: resolved 2026-10-24 — verdict sweep: the entry's own body marks both defects FIXED 2026-09-03 and their suites are green at HEAD; nothing open remains.
+
+**Found 2026-08-20.** None were caused by that change; each was checked against
+the working tree's own state before the rewrite began.
+
+- ✅ **FIXED 2026-09-03**
+  `test/test_ui_schemas.py::test_the_written_schemas_match_the_generator` —
+  the schema work flagged as uncommitted in August has long since landed; the
+  written schemas under `chisurf/core/dataspec/schemas/` had simply drifted
+  from the generator again. Regenerated with
+  `python -m chisurf.core.dataspec.schema` (`guide.schema.json` +16 lines,
+  `view.schema.json` +243). The whole file: 325 passed.
+- ✅ **FIXED 2026-09-03**
+  `test/test_plugin_help_guide_seam.py::test_every_gui_plugin_has_help_and_guide`
+  — the six unlisted GUI plugins (`mfd_prepare`, `plot_settings`,
+  `tttr_to_pto`, `filetools`, `lumis_quest`, `ninja_adventure`) now ship
+  `help.md` and `guide.json` beside their GUI modules, written against what
+  each tool actually does; no code change was involved, exactly as the seam
+  promised. Whole file: 121 passed, 20 skipped. The allow-list was not
+  touched.
+
+
+## Two server/schema tests red at HEAD, outside their owners' lanes (found 2026-10-11)
+
+status: resolved 2026-10-24 — verdict sweep: test/server/test_rpc_edge_cases.py and the schema suites are green at HEAD (21/9 passed re-run). — seen while verifying W9 S2 (not caused by it; reproduced at HEAD in a clean worktree).
+
+* `test/server/test_rpc_edge_cases.py::TestInfNanEdgeCases` (inf and nan) expect `dataset.load` to accept
+  non-finite `curve_data` and sanitise it to `None` on read; the cached-dataset validation added in `0d8f234b4`
+  rejects it ("cached arrays must be finite numeric vectors"). One of the two contracts has to go; the owner of
+  dataset import decides which.
+* `test/test_ui_schemas.py::test_the_written_schemas_match_the_generator`: the shipped view schema differs from
+  `python -m chisurf.core.dataspec.schema` in the `native_group` definition, which is generated from the installed
+  emtk's section keys. Regenerate once the emtk pin and the installed emtk agree (see the
+  [Qt retirement ledger](../subsystems/qt-retirement.md) item 12).
+
+
+## `test_prd_mentions` is red on two files that belong to another session
+
+status: resolved 2026-10-24 — verdict sweep: test_prd_mentions green at HEAD after the 2026-10-24 source fixes (no source names a PRD).
+
+**2026-08-10.** `test/test_prd_mentions.py` fails on files that name a PRD in
+shipped source (the `mfd_prepare` files this entry originally listed were
+cleaned **2026-08-15**, commit `e7f9a3835`):
+
+```
+chisurf/gui/chiplot/backends/__init__.py
+chisurf/gui/chiplot/backends/opengl/__init__.py
+```
+
+All are **untracked** — they are new files from other sessions' in-flight
+work in the shared tree, so editing them would collide with whoever is writing
+them. The fix is one line each (point at the OKF concept that owns the area, or
+drop the reference) and belongs to the session that lands those files.
+
+Not to be confused with a regression from the tool-window migration: that pass
+*removed* a file from the allowlist (`chisurf_dock_tool.py`, 154 → 153 entries)
+and added none.
+
+
+## An in-flight rename left `test_an_ambiguous_model_name_asks_for_the_full_one` red
+
+status: resolved 2026-10-24 — verdict sweep: test/agent/test_tools.py is green (agent lane 549 passed).
+
+**2026-08-06.** `test/agent/test_tools.py` fails in the working tree, and it is
+not this change: another instance is renaming the TCSPC model from
+`"Lifetime (new)"` to `"Lifetime"` and applied the rename mechanically to the
+ambiguity fixture, which turned a prefix-only case into an exact-match one.
+With the registry `["Lifetime", "Lifetime mixer"]`, asking for `"Lifetime"` is
+not ambiguous — `resolve_model_name` finds an exact match and returns it, which
+is the documented and correct precedence. The test is the defect, not the code:
+the fixture needs a registry where no exact match exists (`["Lifetime ",
+"Lifetime mixer"]`, as it effectively was before). Left alone here because the
+file has another instance's uncommitted edits in it.
+
+
+## Four repository guard tests are red, none from the change that found them
+
+status: resolved 2026-10-24 — verdict sweep: all four suites (plugin_dependencies, ui_schemas, prd_mentions, pyqtgraph_seam) green at HEAD.
+
+**Measured 2026-09-17** (ebFRET port session, arm64 env,
+`pytest test/test_plugin_dependencies.py test/test_ui_schemas.py
+test/test_prd_mentions.py test/test_pyqtgraph_seam.py`), all in areas other
+sessions had open at the time, so recorded rather than edited under them:
+`test_no_stale_declarations` — `burst_2cde.requires['burst_bva']` is declared
+and unused; `test_a_view_spec_follows_the_scheme[modules/ndxplorer/ndxplorer/ui/vizrank.view.json]`
+— the VizRank panel spec (in progress in the ndX session);
+`test_no_new_prd_mentions_in_source` — `chisurf/gui/chiplot/backends/__init__.py`,
+`chisurf/gui/chiplot/backends/emtk_backend.py`,
+`chisurf/plugins/chimol/test/test_keybindings.py` name a PRD;
+`test_native_allowlist_has_no_stale_entries` — three files left
+`test/chiplot_native_allowlist.txt` behind (`fcs_saturation_calc/tests/test_gui.py`,
+`mmfdb_admin/test/test_optical_components.py`,
+`fcs_filter_calculator/test/test_widgets.py`). **Blocks:** nothing at run
+time; each keeps its guard from catching the next regression of its kind. Each
+is a one-line fix by whoever owns the file.
+
+
+## Two guard tests red on 2026-09-28, from uncommitted native-port files
+
+status: resolved 2026-10-24 — verdict sweep: test_forbidden_communication.py green (28 passed) and the guard families green at HEAD.
+
+Measured in the arm64 env while switching ndX to the emtk app:
+`test/test_forbidden_communication.py` (17 files over their count, all in the
+uncommitted native emtk ports: `*/gui/app.py`, `*/test/test_native.py`,
+`calculator/native_form.py`, `autoform/sections/{builtin,parameter_table}.py`)
+and `test/test_prd_mentions.py::test_prd_mention_allowlist_has_no_stale_entries`
+(`calculator/kappa2_dist/gui/tool.py`,
+`tttr/tttr_time_windows/tests/test_construction_smoke.py` no longer name a
+PRD). Not edited under their owners. **Blocks:** nothing at run time.
+
+
+## 20 file types in `chisurf/` are missing from an installed distribution
+
+status: resolved 2026-10-24 — verdict sweep: test_package_data_covers_shipped_files.py green (754 schema/package checks passed); shipped-file coverage is guarded.
+
+**Found 2026-08-10** while adding `*.wgsl` for the chigame shader, which had the
+same defect and would have shipped broken.
+
+`[tool.setuptools.package-data]` is an allow-list of globs. Any extension not in
+it is **not copied into an installed copy**, and nothing warns: the package keeps
+working from a source checkout, so the failure only ever appears for someone who
+installed it.
+
+The ones that matter, because shipped code loads them at runtime:
+
+* **`.ico`, `.icns`, `.bmp`, `.qrc`** — GUI icons and the Qt resource manifest;
+* **`.ini`, `.yml`** — device configuration (the PicoQuant TCSPC device files)
+  and plugin example configuration;
+* **`.xlsx`, `.xlsm`, `.gnumeric`** — the potential-energy databases under
+  `core/structure/potential/database/`;
+* **`.c`, `.cpp`, `.h`** — the bundled AV kernel sources.
+
+The rest (`.dcd`, `.pdb`, `.pml`, `.pdf`, `.pdat`, `.mti`, `.spc`, `.rmf3`,
+`.bur`) are fixtures and reference material, so they matter less — but the sweep
+does not distinguish, and neither does an install.
+
+**Not fixed here** because the correct pattern differs per family: some want a
+package-data glob, some belong in a fixture directory that is not installed at
+all, and the `.qrc`/icon set may want compiling rather than copying. Deciding
+that is a packaging change, not a side effect of adding a shader.
+
+**Guarded**: `test/test_package_data_covers_shipped_files.py` holds these as a
+**shrinking** `KNOWN_UNCOVERED` list and fails on any *newly* uncovered type, so
+this cannot grow silently. A companion test fails when an entry becomes stale.
+The fix for each is to add a pattern to `pyproject.toml` and strike the line.
+
+
+## Test suite: what is still red after the 2026-08-04 sweep
+
+status: resolved 2026-10-24 — superseded by the 2026-10-24 verdict sweep (114 known-issue suite files re-derived one file per process; every recorded red is green or its object removed).
+
+**Where to pick this up.** The suite was run **one directory (and, for
+`test/gui`, one file) per pytest process**, because a directory-wide run dies
+with SIGBUS/SIGSEGV partway through and takes the failure summary — and every
+later file — with it. Re-derive with the scripts kept in the session scratchpad
+pattern: `python -m pytest <target> -q --tb=no -rf` per target, recording the
+return code, and treat `rc=139`/`rc=134` as "this file crashed, its failures are
+unknown", not as "one failure".
+
+**Trap in taking the measurement**: run inside the **activated** `arm64` conda
+env (`conda activate arm64`), not merely with its interpreter path. With the
+base env activated, PIL binds to base's `libz-ng` and any test that shells out
+(`test/scripts/test_scripts.py`) fails with `Symbol not found: _zng_deflateInit2`
+— a harness artifact that looks exactly like a code defect. Those two script
+tests pass when the env is activated properly.
+
+**Blocked as of 2026-08-04**: `import tttrlib` fails in the `arm64` env. The
+package was rebuilt as a **directory** (`site-packages/tttrlib/`, holding its own
+`_tttrlib*.so` and the split `libtttrlib_*.dylib`), while the env still carries
+the two symlinks of the old single-module layout — `tttrlib.py` and a top-level
+`_tttrlib*.so` — both now dangling. Repair by replacing them with one link to the
+package directory:
+
+```bash
+SP=$CONDA_PREFIX/lib/python3.12/site-packages          # with arm64 activated
+P=~/Library/Caches/rattler/cache/envs/chisurf-*/envs/default/lib/python3.12/site-packages
+rm "$SP/tttrlib.py" "$SP/_tttrlib.cpython-312-darwin.so"   # both dangle; nothing is lost
+ln -s "$P/tttrlib" "$SP/tttrlib"
+```
+
+Until then every test importing `tttrlib` errors **at collection**, which
+`pytest -q --tb=no` reports only as ``1 error during collection`` with no cause
+— re-run the target without `--tb=no` before believing any `rc=2`.
+
+### `test/gui` — 30 failures across 22 files, plus 5 crashes
+
+Five files crash rather than fail, so their contents are unmeasured:
+`test_gui_plots.py` (139), `test_lineplot.py` (139), `test_widgets.py` (139),
+`test_gui_tool_fret_line.py` (134), `test_region_editor.py` (134). One cause of
+the 139s is fixed — `get_app()` built a **second `QApplication`** per process —
+and `test_gui_plots.py` gets past it, so re-measure these five first; what
+remains after that is a different fault.
+
+The rest, grouped by what they look like rather than by file:
+
+* **Stale test doubles** — the same class already fixed in five other files: a
+  widget attribute that has moved (`new_detector_le`, `load_detector_setups`),
+  a value that is now read from a model rather than the Designer widget, a
+  fixture whose data shape predates the loader. `test_gui_tool_pdb2label.py`
+  (3, `AttributeError`), `test_init_chisurf_onboarding_wizard_import.py` /
+  `test_wizard.py` (the same test, in two files), `test_updater_*.py` (2).
+* **Numeric disagreement** — `test_gui_tool_kappa2dist.py` (2) and
+  `test_gui_tools.py::test_kappa2_calculation_*` are the *same two* assertions
+  in two files, both `assert 0.1 == 0.0`; likewise
+  `test_gui_tool_tttr_histogram.py::test_load_data` and
+  `test_gui_tools.py::test_histogram_load_data` (`assert 0 == 1`). Fixing the
+  pair fixes four entries. **Note the duplication**: `test_gui_tools.py` looks
+  like a rewritten copy of the three `test_gui_tool_*.py` files, and
+  `test_info_json_uppercase.py` was a byte-level subset of `test_info_json.py`
+  (deleted). Check for a duplicate before debugging anything here.
+* **`test_rate_matrix.py` (4) — diagnosed, deliberately not fixed.** Each cell
+  of the grid is now a container `QWidget` holding a *fix checkbox plus* the
+  spin box, with the spin boxes kept in `RateMatrixSection._spins[(i, j)]`; the
+  tests still call `table.cellWidget(i, j).setValue(...)`, from when the cell
+  *was* the spin box, and get `'QWidget' object has no attribute 'setValue'`.
+  Left alone because `chisurf/gui/autoform/sections/rate_matrix_section.py` had
+  **uncommitted changes from another instance** while this was measured — the
+  tests belong to whoever is changing that widget. Port them through `_spins`,
+  not through `cellWidget`.
+* **Widget behaviour** — `test_proteinmc_mdl.py` (3),
+  `test_parameter_prior_widget.py`,
+  ~~`test_parameter_table_actions.py`~~ (fixed 2026-08-05: the test asserted, as
+  its *precondition*, the very warning that
+  `FittingParameterGroup.finalize` had deliberately stopped emitting — a
+  parameter without a controller is the ordinary case. Rewritten to assert
+  silence in both halves),
+  `test_image_section_axes.py`, `test_plot_construction.py`. These are the ones
+  most likely to be *real* defects rather than stale tests, and the rate-matrix
+  four are the biggest single cluster.
+
+`rc=5` (`test_save_button.py`, `test_style.py`, `test_gui_chisurf_tcspc.py`,
+`test/repro/`) means **no tests collected** — empty or fully skipped, not a
+failure.
+
+### A parameter that starts exactly on its bound cannot move
+
+Not a test failure but the reason one "fix" was reverted, and worth knowing
+before bounding anything. `leastsqbound` maps a bounded parameter through
+`sin` (two-sided) or `sqrt(x**2 + 1)` (one-sided); both are **quadratically
+flat** where they meet the bound, so a parameter sitting *on* its bound has a
+derivative of zero with respect to the coordinate MINPACK varies. Its Jacobian
+column comes back empty however strongly the residuals depend on it: at
+MINPACK's default `1e-3` internal step, a background bounded at `bg >= 0` and
+started at `0` moves by **5e-7**.
+
+Nudging the start inward was tried and reverted. The offset has to be ~0.1 in
+internal coordinates to give a usable derivative, and for a two-sided bound that
+is 0.25% of the *whole box* — for a rate bounded at `(0, 1e9)` it starts the fit
+at 2.5 million, which broke three PDA rate tests
+(`test_pda2c_time_binned.py` x2, `test_pda3c_rates.py`). A scale-aware offset
+small enough to be safe is too small to help. Any real fix has to change the
+*transform* (or use an optimiser with genuine box constraints), not the start.
+
+
+## Microscopy parity: two native tests red on 2026-10-12, independent of the Qt-host port
+
+status: resolved 2026-10-24 — item 1 was already resolved 2026-10-13 (the test was wrong); item 2's img_flow parity file was removed in the native-lane reorganization and the successor native microscopy suites are green (rics closed-loop 11 passed). — item 1 resolved 2026-10-13: the test was wrong. It read the rects from a `RecordingPainter` frame, whose synthetic 20 px rows put Fit model at y=632. The window's real metrics (17 px rows, the driver's `MetricPainter`) put it at y=548..565, inside 600, and the 800x600 render shows it. The test now measures with the driver. Item 2 (img_flow) stays open.
+
+**Found 2026-10-12** while porting the microscopy tests' Qt-host drop to the native host (the drop tests
+pass; these fail alone, with the port's hunks not involved).
+
+1. `img_pixel_mle/test/test_emtk_img_pixel_mle_parity.py::test_layout_empty_and_populated_has_no_clipped_or_overlapping_text[800x600]`:
+   `fit_model is cut off at the bottom: (6.0, 632.0, 279.0, 20.0)` from `test/gui/emtk_layout_checks.py`. The
+   1200x800 case passes; the settings column at 600 px high no longer scrolls or fits the Fit-model row. Re-derive
+   with `-k layout_empty`.
+2. `img_flow/test/test_emtk_img_flow_parity.py::test_the_actions_and_the_form_are_greyed_while_a_worker_runs`:
+   deterministic (2/2 alone). The status already reads "flow.tif: 80 frames of 48x48 ... Ready." when the test
+   clicks the *method* combo, so the opened list is drawn: the 48x48 test stack loads before the click, and the
+   test's `assert app.job.busy` holds only for the first frame. The test needs a worker that cannot finish (a
+   blocked open), not a faster product; the app's greying itself is not shown to be broken.
+
+---
+
+
+## Two GUI test failures that predate the vector-parameter commits (test fixes 2026-09-24)
+
+status: resolved 2026-10-24 — object removed with S6: both Qt-era test files are gone; the Qt GUI they drove no longer exists.
+
+**Measured 2026-09-24** (arm64 env, `QT_QPA_PLATFORM=offscreen`), identically
+at HEAD, at `5b1a33b3e` and at `66b02a057` (before any vector-parameter
+commit, run from a detached worktree with `PYTHONPATH=<worktree>`). Neither
+file nor the code they drive changed across those commits. Both are fixed in
+test code; the two library-side causes are still there.
+
+**`test/gui/test_parameter_linking.py`**, two faults:
+
+- *Symptom 1:* run from anywhere but the repo root, 4 of 5 tests fail
+  (`assert 0 == 2` on `len(cs.fits)`, then `IndexError`). *Cause:* datasets
+  were loaded from `./test/data/...`, relative to the cwd, and
+  `cs.macros.add_dataset` skips a missing file without raising.
+  *Fixed:* the path is built from the file's `TOPDIR`.
+- *Symptom 2:* from the repo root all 5 pass, then the process dies with
+  `Segmentation fault` (exit 139). It reproduced in 3 of 4 runs, and in 3 of 3
+  at `66b02a057`. The faulthandler dump puts a `chisurf/server/transport/zmq.py`
+  `serve_forever` poll thread first, but that thread is only a bystander. The
+  crashing thread is the main one, at `_pytest/runner.py:150`
+  (`item.funcargs = None`). lldb shows `dealloc_QApplication ->
+  sip_api_visit_wrappers -> cleanup_qobject -> sip_api_get_address`
+  (EXC_BAD_ACCESS). *Cause, two parts:* (1) `chisurf.gui.get_app()` keeps no
+  reference to the QApplication it creates. The only other holder is the
+  `_run_startup_auth` closure passed to `QTimer.singleShot(0, ...)`, and that
+  is released once the timer fires. So the module fixture's return value was
+  the last reference, and pytest freed the QApplication after the last test.
+  (2) Every `_setup()` runs `fit.close_all`, which retires windows with
+  `deleteLater()`, and no event loop runs to carry those out. Whenever PyQt
+  next walks its wrappers, it reaches a stale one and crashes: in
+  `dealloc_QApplication`, or, once the app is pinned, in QtCore's
+  `cleanup_on_exit` at interpreter shutdown. The shutdown crash reproduces
+  without pytest: run the five test bodies in a plain script and it exits 139.
+  Delivering `QEvent.DeferredDelete` before exit makes it exit 0.
+  *Fixed in the test:* a module global pins the app, and the module fixture's
+  teardown runs `fit.close_all` and flushes deferred deletes. It then passed
+  with exit 0 in 4 of 4 runs (3 from the root, 1 from `/tmp`). *Fix idea in the
+  library:* `get_app` should keep the QApplication in a module global. Any
+  headless caller of `fit.close_all` must process `DeferredDelete` before
+  exiting.
+
+**`test/gui/test_auto_model_widget.py::test_curve_input_widget_renders_and_dispatches`**
+(order-dependent):
+
+- *Symptom:* it passes alone, in its own file and in the natural `test/gui`
+  order. It fails with `StopIteration` (no `model.change_irf` was dispatched)
+  when any test that sets `cs.fits = [fit]` runs before it. The smallest
+  reproduction is `pytest test/gui/test_parameter_table_actions.py::test_context_menu_offers_link_and_unlink
+  test/gui/test_auto_model_widget.py::test_curve_input_widget_renders_and_dispatches`.
+  `test_parameter_prior_widget.py` has the same effect.
+- *Cause:* `test_parameter_table_actions.py` (fixture `params`) and
+  `test_parameter_prior_widget.py` (`param` and one test body) rebound
+  `chisurf.fits` to a list holding a bare `Fit`, and never restored it. The
+  curve-input widget's `_own_fit_index` (`chisurf/gui/autoform/sections/builtin.py`,
+  four copies) wraps its whole loop in one `try`. `fit in list(fg)` raises
+  `TypeError` on the non-iterable bare `Fit`, and the method returns `-1`
+  ("not registered") without ever reaching the test's fit, so nothing is
+  dispatched. In the app, `cs.fits` holds FitGroups, so this only bites tests.
+- *Fixed in the tests:* the victim fixture `registered_lifetime_model` and
+  the two polluters now use `monkeypatch.setattr(cs, "fits", [...])`.
+  *Fix idea in the library:* skip a non-iterable entry inside the loop instead
+  of abandoning the search.
+
+Also seen, not investigated: in a full `pytest test/gui -x` run,
+`test_dialogs_and_progress.py::test_confirm_declines_by_default` fails, and
+the process exits 139 after the summary. The earlier entry on `test/gui`
+contamination below lists the first; the second may be the same stale-wrapper
+crash at exit.
+
+
+## Two `ParameterGroupTable*` GUI tests fail headless, unrelated to anything they test
+
+status: resolved 2026-10-24 — object removed with S6: both Qt-era files (paired_table_layout, parameter_table_wheel) are gone with the Qt retirement.
+
+**2026-08-07.** `test/gui/test_paired_table_layout.py::test_the_list_style_stacks_a_wide_component`
+and `test/gui/test_parameter_table_wheel.py::test_a_long_table_can_still_be_scrolled`
+fail deterministically under `QT_QPA_PLATFORM=offscreen`, both against a
+`QtWarningMsg: This plugin does not support propagateSizeHints()` warning —
+the first as a row-count mismatch after a delete (`4` instead of `2`), the
+second as a scrollbar that never gains a range (`0 > 0`). Both look like the
+offscreen platform plugin not computing real widget/viewport geometry, not a
+behavioural regression: `chisurf/gui/autoform/sections/parameter_table.py`
+(the module both tests exercise) imports only
+`chisurf.gui.widgets.chitable.delegates`, which has no import of
+`chitable.source` or `chitable.filters` at all — verified by grep, not by
+reverting anything, since the working tree is shared with other sessions.
+Found incidentally while checking chitable's own test suite for regressions
+after removing chitable's module-level pandas import; not investigated
+further because neither file was touched.
+
+
+## `test/gui/test_chiplot.py` segfaults in the shared working tree, and not from chiplot
+
+status: resolved 2026-10-24 — object removed with S6: the Qt-era chiplot GUI test is gone; the surviving API lane (test_chiplot_api) is green (49 passed).
+
+**Found 2026-08-10** while landing the WebGPU plot backend. `pytest
+test/gui/test_chiplot.py` reports **56 passed** and then dies with
+`Fatal Python error: Segmentation fault` during garbage collection, inside a
+pyqtgraph `ViewBox` weakref lambda or an `InfiniteLine.boundingRect`. Rate in
+the working tree: **5–8 of 8 runs**.
+
+**It is not the chiplot changes.** A clean `git worktree` at HEAD carrying the
+*entire* WebGPU backend, its 31 tests, the pyqtgraph SI-prefix and legend fixes,
+and every uncommitted chiplot source edit (`canvas.py`, `handles.py`,
+`backends/base.py`, `backends/pyqtgraph_backend.py`) runs the four chiplot-related
+suites **0 crashes in 8 runs**. Adding the working tree's `chisurf/gui/__init__.py`
+and settings edits on top: still 0 in 6. The trigger is one of the other several
+dozen files another agent instance has in flight, and it was not found.
+
+**The trap, which cost most of a session.** The crash is a *latent* pyqtgraph
+teardown defect — abandoned panels whose finalizers touch Qt objects C++ has
+already deleted — so it fires inside **whatever happens to allocate next**, and
+the traceback names that caller. It pointed at the WebGPU driver's cffi
+initialisation, then at a legend, then at an axis. Each looked like a specific
+bug in the code being written. Two rules follow:
+
+* **Never add a `gc.collect()` to "fix" it.** Doing so converts a probabilistic
+  crash into a deterministic one at the collect site, and the new site looks
+  even more like the culprit.
+* **Bisect in a clean worktree, not by editing the shared tree.** Six A/B
+  measurements at 6–8 runs each were run against a baseline that was already
+  crashing, so every one of them was noise. The clean-worktree comparison
+  settled it in two runs.
+
+Whoever owns the in-flight change should re-measure; until then, run
+`test/gui/test_chiplot.py` in its own pytest invocation.
+
+
+## Native TCSPC visual-test teardown/restart (2026-10-03)
+
+status: resolved 2026-10-24 — object removed with S6: the Qt-host visual round-trip lane no longer exists (its successor collects nothing); the crash left with it.
+
+The standalone FitWindow visual round-trip followed by Main construction in the
+same offscreen process exits 139 in `qapp.processEvents()` before the second test
+has made any persistence calls. A scratch baseline probe that only constructed,
+closed and repainted the native windows (no capture, save or restore anywhere)
+reported **2 passed**, then exited 138 during interpreter teardown. This confirms
+an independent native-host lifetime problem, not a scientific serializer failure;
+the precise Qt/BFF teardown cause is not yet established. Evidence:
+`chisurf-project-visual-crash.log`, `chisurf-native-host-baseline.log` and
+`chisurf-native-host-baseline-test.py` under the Hermes scratch directory.
+
+`test/gui/test_tcspc_project_visual_roundtrip.py` runs each complete GUI startup
+in a fresh subprocess and asserts the child's exit status and all scientific,
+window/model-plot assertions. Neither scenario is skipped or xfailed. Keep these
+startup scenarios isolated until native-host teardown is independently fixed;
+do not weaken project round-trip assertions to mask the issue.
+
+
+## Burst tools: five click tests red at HEAD, and the native hub's rail limits (2026-10-06)
+
+status: open — scoped 2026-10-24 by the verdict sweep: the five click-test reds are RESOLVED (both
+  `test_emtk_gs_clicks.py` and `test_emtk_burst_fcs_clicks.py` were removed with the post-S6 native lanes; the
+  successor `test/native_emtk` burst window-contract suites are green). What stays open is the ToolHubApp rail
+  limit below.
+
+Found while running the burst suites for the native Burst Analysis hub (T-20261005-BURSTEMTK). Shown red on a
+throwaway `git worktree` of HEAD `77ffe8b95` (so not from uncommitted edits), arm64 env, offscreen:
+
+- `burst_gs/test/test_emtk_gs_clicks.py`: `test_the_wheel_zooms_the_rates_plot` (`assert 1 == 0`, line 653),
+  `test_guide_click_starts_the_tour_whose_close_prev_and_next_buttons_are_clicked`,
+  `test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control`
+  (`['use_simulation'] == ['use_simulation', 'Fit']`, line 698: the tour never reaches the Fit step).
+- `burst_fcs_correlator/test/test_emtk_burst_fcs_clicks.py`: `test_guide_and_help_buttons`,
+  `test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control`.
+
+Not fixed here: both test files carry other lanes' uncommitted edits. Re-derive with
+`pytest <file> -q -p no:cacheprovider --tb=line` in a worktree of HEAD.
+
+The native hub (`burst_analysis/gui/native.py`) inherits two limits of `chisurf/emtk/tool_hub.py`, which the port
+was asked not to change: the rail has a fixed width (26 % of the window, at most 230 px) and cannot collapse, so at
+800 px `7. Burst segmentation (H2MM)` is clipped (its tooltip carries the description); and the header shows the rail
+name, so the step badge (`2. Burst Selection (2)`) appears there too. Both want an additive ToolHubApp option
+(a collapsible rail, a separate display name for the header).
+
 ## LLTF was never battle-tested: validation campaign against tttrlib simulated decays (owner 2026-10-24)
 
 status: open — owner directive 2026-10-24 ("lltf must improve — it was never battle tested; now it can be tested
@@ -704,25 +1157,6 @@ Separately, the pixi `test` env's IMP.bff is built without tttrlib, so `IMP.bff.
 surrogate features fall back to EM there, and four tests in `burst_h2mm/tests/test_surrogate.py` skip with that reason.
 The owner's `arm64` build has it. *Next:* widen the IRF/background dock and re-read its 800x600 render; build the
 test env's IMP.bff with tttrlib (packaging).
-
-## Microscopy parity: two native tests red on 2026-10-12, independent of the Qt-host port
-
-status: open — item 1 resolved 2026-10-13: the test was wrong. It read the rects from a `RecordingPainter` frame, whose synthetic 20 px rows put Fit model at y=632. The window's real metrics (17 px rows, the driver's `MetricPainter`) put it at y=548..565, inside 600, and the 800x600 render shows it. The test now measures with the driver. Item 2 (img_flow) stays open.
-
-**Found 2026-10-12** while porting the microscopy tests' Qt-host drop to the native host (the drop tests
-pass; these fail alone, with the port's hunks not involved).
-
-1. `img_pixel_mle/test/test_emtk_img_pixel_mle_parity.py::test_layout_empty_and_populated_has_no_clipped_or_overlapping_text[800x600]`:
-   `fit_model is cut off at the bottom: (6.0, 632.0, 279.0, 20.0)` from `test/gui/emtk_layout_checks.py`. The
-   1200x800 case passes; the settings column at 600 px high no longer scrolls or fits the Fit-model row. Re-derive
-   with `-k layout_empty`.
-2. `img_flow/test/test_emtk_img_flow_parity.py::test_the_actions_and_the_form_are_greyed_while_a_worker_runs`:
-   deterministic (2/2 alone). The status already reads "flow.tif: 80 frames of 48x48 ... Ready." when the test
-   clicks the *method* combo, so the opened list is drawn: the 48x48 test stack loads before the click, and the
-   test's `assert app.job.busy` holds only for the first frame. The test needs a worker that cannot finish (a
-   blocked open), not a faster product; the app's greying itself is not shown to be broken.
-
----
 
 ## Shell undo/autosave capture fails on MFD 2D, global and parameter-scan fits (found 2026-10-12)
 
@@ -1694,19 +2128,6 @@ status: resolved 2026-10-11 — the four defects fixed at their root, each with 
   Fit page raised `KeyError: 'IRF'` when an IRF arrived after the page was built; *calc R0* wrote into a plain
   attribute (`FRETParameters.forster_radius` had no setter), so R0 never changed.
 
-## Two server/schema tests red at HEAD, outside their owners' lanes (found 2026-10-11)
-
-status: open — seen while verifying W9 S2 (not caused by it; reproduced at HEAD in a clean worktree).
-
-* `test/server/test_rpc_edge_cases.py::TestInfNanEdgeCases` (inf and nan) expect `dataset.load` to accept
-  non-finite `curve_data` and sanitise it to `None` on read; the cached-dataset validation added in `0d8f234b4`
-  rejects it ("cached arrays must be finite numeric vectors"). One of the two contracts has to go; the owner of
-  dataset import decides which.
-* `test/test_ui_schemas.py::test_the_written_schemas_match_the_generator`: the shipped view schema differs from
-  `python -m chisurf.core.dataspec.schema` in the `native_group` definition, which is generated from the installed
-  emtk's section keys. Regenerate once the emtk pin and the installed emtk agree (see the
-  [Qt retirement ledger](../subsystems/qt-retirement.md) item 12).
-
 ## Setup:Channel Definition: lost first save, Qt calibration and rename, shared-editor gaps (found 2026-10-01)
 
 status: resolved 2026-10-11 — re-measured every bullet below against the tree: the first save survives `db.close()` (the repro prints 1 / 1;
@@ -2619,29 +3040,6 @@ Found while building the native ALEX Suite (T-20261006-ALEXHUB, `alex_suite/gui/
   three-tab `AlexSuiteApp` in `alex_suite/gui/app.py` (superseded by the hub; `tests/test_emtk_typed_fields.py`,
   untracked, still drives it, and `app.py` carries that lane's uncommitted edits).
 
-## Burst tools: five click tests red at HEAD, and the native hub's rail limits (2026-10-06)
-
-status: open
-
-Found while running the burst suites for the native Burst Analysis hub (T-20261005-BURSTEMTK). Shown red on a
-throwaway `git worktree` of HEAD `77ffe8b95` (so not from uncommitted edits), arm64 env, offscreen:
-
-- `burst_gs/test/test_emtk_gs_clicks.py`: `test_the_wheel_zooms_the_rates_plot` (`assert 1 == 0`, line 653),
-  `test_guide_click_starts_the_tour_whose_close_prev_and_next_buttons_are_clicked`,
-  `test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control`
-  (`['use_simulation'] == ['use_simulation', 'Fit']`, line 698: the tour never reaches the Fit step).
-- `burst_fcs_correlator/test/test_emtk_burst_fcs_clicks.py`: `test_guide_and_help_buttons`,
-  `test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control`.
-
-Not fixed here: both test files carry other lanes' uncommitted edits. Re-derive with
-`pytest <file> -q -p no:cacheprovider --tb=line` in a worktree of HEAD.
-
-The native hub (`burst_analysis/gui/native.py`) inherits two limits of `chisurf/emtk/tool_hub.py`, which the port
-was asked not to change: the rail has a fixed width (26 % of the window, at most 230 px) and cannot collapse, so at
-800 px `7. Burst segmentation (H2MM)` is clipped (its tooltip carries the description); and the header shows the rail
-name, so the step badge (`2. Burst Selection (2)`) appears there too. Both want an additive ToolHubApp option
-(a collapsible rail, a separate display name for the header).
-
 ## 2026-10-06: defects found while retaking the manual's screenshots
 
 status: open — only the explicitly dated subitems below are resolved; remaining issues stay open.
@@ -2733,26 +3131,6 @@ tool/plugin windows and scroll positions inside the Analysis dock editors.
 The Fit page's ~1.4e16 counts axis (an IRF tail underflowed to 1e-313 on a log
 axis) is fixed in chiplot (`LOG_AUTOSCALE_DECADES`, 12); the IRF tail still fills
 the lower part of that panel -- a tighter cap is a judgment call, not a defect.
-
-## Native TCSPC visual-test teardown/restart (2026-10-03)
-
-status: open
-
-The standalone FitWindow visual round-trip followed by Main construction in the
-same offscreen process exits 139 in `qapp.processEvents()` before the second test
-has made any persistence calls. A scratch baseline probe that only constructed,
-closed and repainted the native windows (no capture, save or restore anywhere)
-reported **2 passed**, then exited 138 during interpreter teardown. This confirms
-an independent native-host lifetime problem, not a scientific serializer failure;
-the precise Qt/BFF teardown cause is not yet established. Evidence:
-`chisurf-project-visual-crash.log`, `chisurf-native-host-baseline.log` and
-`chisurf-native-host-baseline-test.py` under the Hermes scratch directory.
-
-`test/gui/test_tcspc_project_visual_roundtrip.py` runs each complete GUI startup
-in a fresh subprocess and asserts the child's exit status and all scientific,
-window/model-plot assertions. Neither scenario is skipped or xfailed. Keep these
-startup scenarios isolated until native-host teardown is independently fixed;
-do not weaken project round-trip assertions to mask the issue.
 
 ## ndX recovery: intermittent mixed-Qt test-process crash (2026-10-03)
 
@@ -2934,90 +3312,6 @@ in-process RPC client, `session_autosave=True`, closing with the host (session k
 withdrawn); the MMFDB opener is the emtk `DatasetPicker` under the Qt label "From MMFDB…". Geometry is the
 host's; the dock layout lives in ChiSurf's native-state store instead of ndX's settings file. The route test
 now checks the app's wiring on either host.
-
-## Two guard tests red on 2026-09-28, from uncommitted native-port files
-
-status: open
-
-Measured in the arm64 env while switching ndX to the emtk app:
-`test/test_forbidden_communication.py` (17 files over their count, all in the
-uncommitted native emtk ports: `*/gui/app.py`, `*/test/test_native.py`,
-`calculator/native_form.py`, `autoform/sections/{builtin,parameter_table}.py`)
-and `test/test_prd_mentions.py::test_prd_mention_allowlist_has_no_stale_entries`
-(`calculator/kappa2_dist/gui/tool.py`,
-`tttr/tttr_time_windows/tests/test_construction_smoke.py` no longer name a
-PRD). Not edited under their owners. **Blocks:** nothing at run time.
-
-## Two GUI test failures that predate the vector-parameter commits (test fixes 2026-09-24)
-
-status: open
-
-**Measured 2026-09-24** (arm64 env, `QT_QPA_PLATFORM=offscreen`), identically
-at HEAD, at `5b1a33b3e` and at `66b02a057` (before any vector-parameter
-commit, run from a detached worktree with `PYTHONPATH=<worktree>`). Neither
-file nor the code they drive changed across those commits. Both are fixed in
-test code; the two library-side causes are still there.
-
-**`test/gui/test_parameter_linking.py`**, two faults:
-
-- *Symptom 1:* run from anywhere but the repo root, 4 of 5 tests fail
-  (`assert 0 == 2` on `len(cs.fits)`, then `IndexError`). *Cause:* datasets
-  were loaded from `./test/data/...`, relative to the cwd, and
-  `cs.macros.add_dataset` skips a missing file without raising.
-  *Fixed:* the path is built from the file's `TOPDIR`.
-- *Symptom 2:* from the repo root all 5 pass, then the process dies with
-  `Segmentation fault` (exit 139). It reproduced in 3 of 4 runs, and in 3 of 3
-  at `66b02a057`. The faulthandler dump puts a `chisurf/server/transport/zmq.py`
-  `serve_forever` poll thread first, but that thread is only a bystander. The
-  crashing thread is the main one, at `_pytest/runner.py:150`
-  (`item.funcargs = None`). lldb shows `dealloc_QApplication ->
-  sip_api_visit_wrappers -> cleanup_qobject -> sip_api_get_address`
-  (EXC_BAD_ACCESS). *Cause, two parts:* (1) `chisurf.gui.get_app()` keeps no
-  reference to the QApplication it creates. The only other holder is the
-  `_run_startup_auth` closure passed to `QTimer.singleShot(0, ...)`, and that
-  is released once the timer fires. So the module fixture's return value was
-  the last reference, and pytest freed the QApplication after the last test.
-  (2) Every `_setup()` runs `fit.close_all`, which retires windows with
-  `deleteLater()`, and no event loop runs to carry those out. Whenever PyQt
-  next walks its wrappers, it reaches a stale one and crashes: in
-  `dealloc_QApplication`, or, once the app is pinned, in QtCore's
-  `cleanup_on_exit` at interpreter shutdown. The shutdown crash reproduces
-  without pytest: run the five test bodies in a plain script and it exits 139.
-  Delivering `QEvent.DeferredDelete` before exit makes it exit 0.
-  *Fixed in the test:* a module global pins the app, and the module fixture's
-  teardown runs `fit.close_all` and flushes deferred deletes. It then passed
-  with exit 0 in 4 of 4 runs (3 from the root, 1 from `/tmp`). *Fix idea in the
-  library:* `get_app` should keep the QApplication in a module global. Any
-  headless caller of `fit.close_all` must process `DeferredDelete` before
-  exiting.
-
-**`test/gui/test_auto_model_widget.py::test_curve_input_widget_renders_and_dispatches`**
-(order-dependent):
-
-- *Symptom:* it passes alone, in its own file and in the natural `test/gui`
-  order. It fails with `StopIteration` (no `model.change_irf` was dispatched)
-  when any test that sets `cs.fits = [fit]` runs before it. The smallest
-  reproduction is `pytest test/gui/test_parameter_table_actions.py::test_context_menu_offers_link_and_unlink
-  test/gui/test_auto_model_widget.py::test_curve_input_widget_renders_and_dispatches`.
-  `test_parameter_prior_widget.py` has the same effect.
-- *Cause:* `test_parameter_table_actions.py` (fixture `params`) and
-  `test_parameter_prior_widget.py` (`param` and one test body) rebound
-  `chisurf.fits` to a list holding a bare `Fit`, and never restored it. The
-  curve-input widget's `_own_fit_index` (`chisurf/gui/autoform/sections/builtin.py`,
-  four copies) wraps its whole loop in one `try`. `fit in list(fg)` raises
-  `TypeError` on the non-iterable bare `Fit`, and the method returns `-1`
-  ("not registered") without ever reaching the test's fit, so nothing is
-  dispatched. In the app, `cs.fits` holds FitGroups, so this only bites tests.
-- *Fixed in the tests:* the victim fixture `registered_lifetime_model` and
-  the two polluters now use `monkeypatch.setattr(cs, "fits", [...])`.
-  *Fix idea in the library:* skip a non-iterable entry inside the loop instead
-  of abandoning the search.
-
-Also seen, not investigated: in a full `pytest test/gui -x` run,
-`test_dialogs_and_progress.py::test_confirm_declines_by_default` fails, and
-the process exits 139 after the summary. The earlier entry on `test/gui`
-contamination below lists the first; the second may be the same stale-wrapper
-crash at exit.
 
 ## globalview: two graph builders, and they have already drifted
 
@@ -3355,27 +3649,6 @@ expression is dropped cannot evaluate at all. `test_experiment.py::Tests::test_F
 string does not. **Blocks:** the first means the documented "fallback still
 produces a curve" guarantee is gone; the second is cosmetic.
 
-## Four repository guard tests are red, none from the change that found them
-
-status: open
-
-**Measured 2026-09-17** (ebFRET port session, arm64 env,
-`pytest test/test_plugin_dependencies.py test/test_ui_schemas.py
-test/test_prd_mentions.py test/test_pyqtgraph_seam.py`), all in areas other
-sessions had open at the time, so recorded rather than edited under them:
-`test_no_stale_declarations` — `burst_2cde.requires['burst_bva']` is declared
-and unused; `test_a_view_spec_follows_the_scheme[modules/ndxplorer/ndxplorer/ui/vizrank.view.json]`
-— the VizRank panel spec (in progress in the ndX session);
-`test_no_new_prd_mentions_in_source` — `chisurf/gui/chiplot/backends/__init__.py`,
-`chisurf/gui/chiplot/backends/emtk_backend.py`,
-`chisurf/plugins/chimol/test/test_keybindings.py` name a PRD;
-`test_native_allowlist_has_no_stale_entries` — three files left
-`test/chiplot_native_allowlist.txt` behind (`fcs_saturation_calc/tests/test_gui.py`,
-`mmfdb_admin/test/test_optical_components.py`,
-`fcs_filter_calculator/test/test_widgets.py`). **Blocks:** nothing at run
-time; each keeps its guard from catching the next regression of its kind. Each
-is a one-line fix by whoever owns the file.
-
 ## The flow-map demo PTU reconstructs to an empty image
 
 status: open
@@ -3694,29 +3967,6 @@ Tally at the end of the original change: 6 failed, 319 passed, 1 skipped (down
 from 18 failed, since 12 of the original failures *were* caused by the change
 or by manifest-scanning tests that mistook chimol render baselines for plugin
 manifests, and were fixed).
-
-## Pre-existing failures found during the plugin-manager rebuild (open) — both fixed 2026-09-03
-
-status: open
-
-**Found 2026-08-20.** None were caused by that change; each was checked against
-the working tree's own state before the rewrite began.
-
-- ✅ **FIXED 2026-09-03**
-  `test/test_ui_schemas.py::test_the_written_schemas_match_the_generator` —
-  the schema work flagged as uncommitted in August has long since landed; the
-  written schemas under `chisurf/core/dataspec/schemas/` had simply drifted
-  from the generator again. Regenerated with
-  `python -m chisurf.core.dataspec.schema` (`guide.schema.json` +16 lines,
-  `view.schema.json` +243). The whole file: 325 passed.
-- ✅ **FIXED 2026-09-03**
-  `test/test_plugin_help_guide_seam.py::test_every_gui_plugin_has_help_and_guide`
-  — the six unlisted GUI plugins (`mfd_prepare`, `plot_settings`,
-  `tttr_to_pto`, `filetools`, `lumis_quest`, `ninja_adventure`) now ship
-  `help.md` and `guide.json` beside their GUI modules, written against what
-  each tool actually does; no code change was involved, exactly as the seam
-  promised. Whole file: 121 passed, 20 skipped. The allow-list was not
-  touched.
 
 ## 2026-09-03 — `IMP.bff.av` no longer exists — three test/models failures (2026-09-02)
 
@@ -5579,42 +5829,6 @@ For scale: after the chrome cache and the frame-rate fix, `_draw` on the
 2 ms is the last large CPU item, and it is guarded by a suite that catches every
 attempt at it -- which is the system working.
 
-## `test/gui/test_chiplot.py` segfaults in the shared working tree, and not from chiplot
-
-status: open
-
-**Found 2026-08-10** while landing the WebGPU plot backend. `pytest
-test/gui/test_chiplot.py` reports **56 passed** and then dies with
-`Fatal Python error: Segmentation fault` during garbage collection, inside a
-pyqtgraph `ViewBox` weakref lambda or an `InfiniteLine.boundingRect`. Rate in
-the working tree: **5–8 of 8 runs**.
-
-**It is not the chiplot changes.** A clean `git worktree` at HEAD carrying the
-*entire* WebGPU backend, its 31 tests, the pyqtgraph SI-prefix and legend fixes,
-and every uncommitted chiplot source edit (`canvas.py`, `handles.py`,
-`backends/base.py`, `backends/pyqtgraph_backend.py`) runs the four chiplot-related
-suites **0 crashes in 8 runs**. Adding the working tree's `chisurf/gui/__init__.py`
-and settings edits on top: still 0 in 6. The trigger is one of the other several
-dozen files another agent instance has in flight, and it was not found.
-
-**The trap, which cost most of a session.** The crash is a *latent* pyqtgraph
-teardown defect — abandoned panels whose finalizers touch Qt objects C++ has
-already deleted — so it fires inside **whatever happens to allocate next**, and
-the traceback names that caller. It pointed at the WebGPU driver's cffi
-initialisation, then at a legend, then at an axis. Each looked like a specific
-bug in the code being written. Two rules follow:
-
-* **Never add a `gc.collect()` to "fix" it.** Doing so converts a probabilistic
-  crash into a deterministic one at the collect site, and the new site looks
-  even more like the culprit.
-* **Bisect in a clean worktree, not by editing the shared tree.** Six A/B
-  measurements at 6–8 runs each were run against a baseline that was already
-  crashing, so every one of them was noise. The clean-worktree comparison
-  settled it in two runs.
-
-Whoever owns the in-flight change should re-measure; until then, run
-`test/gui/test_chiplot.py` in its own pytest invocation.
-
 ## The OpenGL point glyph renders at half the size it is asked for
 
 status: open
@@ -5663,41 +5877,6 @@ does. Almost none of that is real:
 So a red `test/gui` is not evidence that a change broke something. Until the
 contamination and the two crashes are fixed, verify a GUI change by running the
 suites that cover it, individually, and say which ones.
-
-## 20 file types in `chisurf/` are missing from an installed distribution
-
-status: open
-
-**Found 2026-08-10** while adding `*.wgsl` for the chigame shader, which had the
-same defect and would have shipped broken.
-
-`[tool.setuptools.package-data]` is an allow-list of globs. Any extension not in
-it is **not copied into an installed copy**, and nothing warns: the package keeps
-working from a source checkout, so the failure only ever appears for someone who
-installed it.
-
-The ones that matter, because shipped code loads them at runtime:
-
-* **`.ico`, `.icns`, `.bmp`, `.qrc`** — GUI icons and the Qt resource manifest;
-* **`.ini`, `.yml`** — device configuration (the PicoQuant TCSPC device files)
-  and plugin example configuration;
-* **`.xlsx`, `.xlsm`, `.gnumeric`** — the potential-energy databases under
-  `core/structure/potential/database/`;
-* **`.c`, `.cpp`, `.h`** — the bundled AV kernel sources.
-
-The rest (`.dcd`, `.pdb`, `.pml`, `.pdf`, `.pdat`, `.mti`, `.spc`, `.rmf3`,
-`.bur`) are fixtures and reference material, so they matter less — but the sweep
-does not distinguish, and neither does an install.
-
-**Not fixed here** because the correct pattern differs per family: some want a
-package-data glob, some belong in a fixture directory that is not installed at
-all, and the `.qrc`/icon set may want compiling rather than copying. Deciding
-that is a packaging change, not a side effect of adding a shader.
-
-**Guarded**: `test/test_package_data_covers_shipped_files.py` holds these as a
-**shrinking** `KNOWN_UNCOVERED` list and fails on any *newly* uncovered type, so
-this cannot grow silently. A companion test fails when an entry becomes stale.
-The fix for each is to add a pattern to `pyproject.toml` and strike the line.
 
 ## — ChiMOL ambient occlusion was wired the wrong way round
 
@@ -5782,28 +5961,6 @@ baseline for that path needs a bead/integrative model. Recorded because two
 sphere scenes captured with `balls.impostor_min_atoms` at 100000 and at 10 came
 out **bit-identical**, which looks like a broken setting until you find the
 docstring.
-
-## `test_prd_mentions` is red on two files that belong to another session
-
-status: open
-
-**2026-08-10.** `test/test_prd_mentions.py` fails on files that name a PRD in
-shipped source (the `mfd_prepare` files this entry originally listed were
-cleaned **2026-08-15**, commit `e7f9a3835`):
-
-```
-chisurf/gui/chiplot/backends/__init__.py
-chisurf/gui/chiplot/backends/opengl/__init__.py
-```
-
-All are **untracked** — they are new files from other sessions' in-flight
-work in the shared tree, so editing them would collide with whoever is writing
-them. The fix is one line each (point at the OKF concept that owns the area, or
-drop the reference) and belongs to the session that lands those files.
-
-Not to be confused with a regression from the tool-window migration: that pass
-*removed* a file from the allowlist (`chisurf_dock_tool.py`, 154 → 153 entries)
-and added none.
 
 ## `IMP.bff.restraints.AVNetworkRestraintWrapper` is gone — it was shadowed. Fixed 2026-08-10
 
@@ -5984,26 +6141,6 @@ burst_selection real mid-search cancellation needs the dispatcher to let
 being folded into a generic error — a dispatcher-level change, not a
 burst_selection one, and worth checking whether any other RPC service
 already depends on the current blanket-catch behaviour before changing it.
-
-## Two `ParameterGroupTable*` GUI tests fail headless, unrelated to anything they test
-
-status: open
-
-**2026-08-07.** `test/gui/test_paired_table_layout.py::test_the_list_style_stacks_a_wide_component`
-and `test/gui/test_parameter_table_wheel.py::test_a_long_table_can_still_be_scrolled`
-fail deterministically under `QT_QPA_PLATFORM=offscreen`, both against a
-`QtWarningMsg: This plugin does not support propagateSizeHints()` warning —
-the first as a row-count mismatch after a delete (`4` instead of `2`), the
-second as a scrollbar that never gains a range (`0 > 0`). Both look like the
-offscreen platform plugin not computing real widget/viewport geometry, not a
-behavioural regression: `chisurf/gui/autoform/sections/parameter_table.py`
-(the module both tests exercise) imports only
-`chisurf.gui.widgets.chitable.delegates`, which has no import of
-`chitable.source` or `chitable.filters` at all — verified by grep, not by
-reverting anything, since the working tree is shared with other sessions.
-Found incidentally while checking chitable's own test suite for regressions
-after removing chitable's module-level pandas import; not investigated
-further because neither file was touched.
 
 ## img_flow: the demo PTU is one frame short of what it simulates
 
@@ -6771,21 +6908,6 @@ correct for?"` with a working key and check that `answer.pages` is non-empty
 and names `docs/concepts/accurate_fret.md`. If it comes back empty, the fix is
 in the skill, not in the harness.
 
-## An in-flight rename left `test_an_ambiguous_model_name_asks_for_the_full_one` red
-
-status: open
-
-**2026-08-06.** `test/agent/test_tools.py` fails in the working tree, and it is
-not this change: another instance is renaming the TCSPC model from
-`"Lifetime (new)"` to `"Lifetime"` and applied the rename mechanically to the
-ambiguity fixture, which turned a prefix-only case into an exact-match one.
-With the registry `["Lifetime", "Lifetime mixer"]`, asking for `"Lifetime"` is
-not ambiguous — `resolve_model_name` finds an exact match and returns it, which
-is the documented and correct precedence. The test is the defect, not the code:
-the fixture needs a registry where no exact match exists (`["Lifetime ",
-"Lifetime mixer"]`, as it effectively was before). Left alone here because the
-file has another instance's uncommitted edits in it.
-
 ## `img_flow`'s demo PTU reconstructs 29 of its 30 frames
 
 status: open
@@ -6995,112 +7117,6 @@ reader for the legacy layout: that reader was written in the simulation library
 and reverted as out of scope there, so files from earlier releases still need
 the optional package, now behind a named `LegacyTableError`. See the storage
 entry below and [PRD-82](/prds/prd-82.md).
-
-## Test suite: what is still red after the 2026-08-04 sweep
-
-status: open
-
-**Where to pick this up.** The suite was run **one directory (and, for
-`test/gui`, one file) per pytest process**, because a directory-wide run dies
-with SIGBUS/SIGSEGV partway through and takes the failure summary — and every
-later file — with it. Re-derive with the scripts kept in the session scratchpad
-pattern: `python -m pytest <target> -q --tb=no -rf` per target, recording the
-return code, and treat `rc=139`/`rc=134` as "this file crashed, its failures are
-unknown", not as "one failure".
-
-**Trap in taking the measurement**: run inside the **activated** `arm64` conda
-env (`conda activate arm64`), not merely with its interpreter path. With the
-base env activated, PIL binds to base's `libz-ng` and any test that shells out
-(`test/scripts/test_scripts.py`) fails with `Symbol not found: _zng_deflateInit2`
-— a harness artifact that looks exactly like a code defect. Those two script
-tests pass when the env is activated properly.
-
-**Blocked as of 2026-08-04**: `import tttrlib` fails in the `arm64` env. The
-package was rebuilt as a **directory** (`site-packages/tttrlib/`, holding its own
-`_tttrlib*.so` and the split `libtttrlib_*.dylib`), while the env still carries
-the two symlinks of the old single-module layout — `tttrlib.py` and a top-level
-`_tttrlib*.so` — both now dangling. Repair by replacing them with one link to the
-package directory:
-
-```bash
-SP=$CONDA_PREFIX/lib/python3.12/site-packages          # with arm64 activated
-P=~/Library/Caches/rattler/cache/envs/chisurf-*/envs/default/lib/python3.12/site-packages
-rm "$SP/tttrlib.py" "$SP/_tttrlib.cpython-312-darwin.so"   # both dangle; nothing is lost
-ln -s "$P/tttrlib" "$SP/tttrlib"
-```
-
-Until then every test importing `tttrlib` errors **at collection**, which
-`pytest -q --tb=no` reports only as ``1 error during collection`` with no cause
-— re-run the target without `--tb=no` before believing any `rc=2`.
-
-### `test/gui` — 30 failures across 22 files, plus 5 crashes
-
-Five files crash rather than fail, so their contents are unmeasured:
-`test_gui_plots.py` (139), `test_lineplot.py` (139), `test_widgets.py` (139),
-`test_gui_tool_fret_line.py` (134), `test_region_editor.py` (134). One cause of
-the 139s is fixed — `get_app()` built a **second `QApplication`** per process —
-and `test_gui_plots.py` gets past it, so re-measure these five first; what
-remains after that is a different fault.
-
-The rest, grouped by what they look like rather than by file:
-
-* **Stale test doubles** — the same class already fixed in five other files: a
-  widget attribute that has moved (`new_detector_le`, `load_detector_setups`),
-  a value that is now read from a model rather than the Designer widget, a
-  fixture whose data shape predates the loader. `test_gui_tool_pdb2label.py`
-  (3, `AttributeError`), `test_init_chisurf_onboarding_wizard_import.py` /
-  `test_wizard.py` (the same test, in two files), `test_updater_*.py` (2).
-* **Numeric disagreement** — `test_gui_tool_kappa2dist.py` (2) and
-  `test_gui_tools.py::test_kappa2_calculation_*` are the *same two* assertions
-  in two files, both `assert 0.1 == 0.0`; likewise
-  `test_gui_tool_tttr_histogram.py::test_load_data` and
-  `test_gui_tools.py::test_histogram_load_data` (`assert 0 == 1`). Fixing the
-  pair fixes four entries. **Note the duplication**: `test_gui_tools.py` looks
-  like a rewritten copy of the three `test_gui_tool_*.py` files, and
-  `test_info_json_uppercase.py` was a byte-level subset of `test_info_json.py`
-  (deleted). Check for a duplicate before debugging anything here.
-* **`test_rate_matrix.py` (4) — diagnosed, deliberately not fixed.** Each cell
-  of the grid is now a container `QWidget` holding a *fix checkbox plus* the
-  spin box, with the spin boxes kept in `RateMatrixSection._spins[(i, j)]`; the
-  tests still call `table.cellWidget(i, j).setValue(...)`, from when the cell
-  *was* the spin box, and get `'QWidget' object has no attribute 'setValue'`.
-  Left alone because `chisurf/gui/autoform/sections/rate_matrix_section.py` had
-  **uncommitted changes from another instance** while this was measured — the
-  tests belong to whoever is changing that widget. Port them through `_spins`,
-  not through `cellWidget`.
-* **Widget behaviour** — `test_proteinmc_mdl.py` (3),
-  `test_parameter_prior_widget.py`,
-  ~~`test_parameter_table_actions.py`~~ (fixed 2026-08-05: the test asserted, as
-  its *precondition*, the very warning that
-  `FittingParameterGroup.finalize` had deliberately stopped emitting — a
-  parameter without a controller is the ordinary case. Rewritten to assert
-  silence in both halves),
-  `test_image_section_axes.py`, `test_plot_construction.py`. These are the ones
-  most likely to be *real* defects rather than stale tests, and the rate-matrix
-  four are the biggest single cluster.
-
-`rc=5` (`test_save_button.py`, `test_style.py`, `test_gui_chisurf_tcspc.py`,
-`test/repro/`) means **no tests collected** — empty or fully skipped, not a
-failure.
-
-### A parameter that starts exactly on its bound cannot move
-
-Not a test failure but the reason one "fix" was reverted, and worth knowing
-before bounding anything. `leastsqbound` maps a bounded parameter through
-`sin` (two-sided) or `sqrt(x**2 + 1)` (one-sided); both are **quadratically
-flat** where they meet the bound, so a parameter sitting *on* its bound has a
-derivative of zero with respect to the coordinate MINPACK varies. Its Jacobian
-column comes back empty however strongly the residuals depend on it: at
-MINPACK's default `1e-3` internal step, a background bounded at `bg >= 0` and
-started at `0` moves by **5e-7**.
-
-Nudging the start inward was tried and reverted. The offset has to be ~0.1 in
-internal coordinates to give a usable derivative, and for a two-sided bound that
-is 0.25% of the *whole box* — for a rate bounded at `(0, 1e9)` it starts the fit
-at 2.5 million, which broke three PDA rate tests
-(`test_pda2c_time_binned.py` x2, `test_pda3c_rates.py`). A scale-aware offset
-small enough to be safe is too small to help. Any real fix has to change the
-*transform* (or use an optimiser with genuine box constraints), not the start.
 
 ## 2D-FLCS prints a pyqtgraph teardown traceback when its window closes
 

@@ -504,7 +504,7 @@ class Scenario:
         self.need("run")
         from chisurf.core.fio.fluorescence.burst import read_bur_file
         from chisurf.core.fio.fluorescence.burst_companion import read_companion
-        from chisurf.plugins.core.pto_inspector.core import export_legacy
+        from chisurf.plugins.core.legacy_export.core import export_burst_folder as export_legacy
 
         demo = self.state["demo"]
         out = self.scratch / "legacy"
