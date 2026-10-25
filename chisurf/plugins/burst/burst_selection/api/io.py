@@ -304,13 +304,6 @@ def _register_decay(store, name: str) -> int | None:
     # nothing sets one, so asking only for that registered nothing in the real
     # app. A local facade adds to the live session's dataset list through the
     # same macro route a file load takes (the acquisition demo does the same).
-    if getattr(cs, "cs", None) is None:
-        return None
-    api = getattr(cs, "api", None)
-    if api is None:
-        from chisurf.core.api import ChiSurfAPI
-
-        api = ChiSurfAPI(mode="local")
     axis = "Time (ns)" if "Time (ns)" in column_names(store) else "Channel"
     y = numeric_column(store, "Counts")
     curve = DataCurve(
@@ -326,6 +319,17 @@ def _register_decay(store, name: str) -> int | None:
         curve.experiment = experiment_types["tcspc"]
     except Exception:  # noqa: BLE001 - a session without experiments still keeps the curve
         pass
+    if getattr(cs, "cs", None) is None:
+        # No live GUI session (headless scripts, the agent runtime): the
+        # session-less dataset list is the registry, the same place a plain
+        # data load appends to.
+        cs.imported_datasets.append(curve)
+        return len(cs.imported_datasets) - 1
+    api = getattr(cs, "api", None)
+    if api is None:
+        from chisurf.core.api import ChiSurfAPI
+
+        api = ChiSurfAPI(mode="local")
     from chisurf.core.api import dataset_objects
 
     before = len(dataset_objects())

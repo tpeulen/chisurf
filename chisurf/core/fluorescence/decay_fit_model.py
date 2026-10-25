@@ -396,6 +396,8 @@ def build_fret_fit(
     forster_radius: float = 52.0,
     initial_distances=None,
     sigma: float = 6.0,
+    fit_sigma: bool = False,
+    sigma_bounds: tuple[float, float] = (0.5, 30.0),
     distance_bounds: tuple[float, float] = (10.0, 120.0),
     x_donor_only: float = 0.0,
     fit_donor_only: bool = True,
@@ -436,7 +438,14 @@ def build_fret_fit(
         Starting mean distances (Å). Defaults to a spread across
         ``distance_bounds`` centred on R₀, which keeps the states distinct.
     sigma : float
-        Starting width of each Gaussian (Å).
+        Starting width of each Gaussian (Å). Held fixed unless ``fit_sigma``.
+    fit_sigma : bool
+        Free the distributions' width. Holding it biases the mean distance:
+        the decay sees the rate averaged over the distribution, which is
+        steeper than the rate at the mean, so a narrow held width pulls E up
+        and the mean distance short.
+    sigma_bounds : tuple of float
+        ``(lower, upper)`` in Å for a fitted width.
     x_donor_only : float
         Starting donor-only fraction.
     fit_donor_only : bool
@@ -505,6 +514,10 @@ def build_fret_fit(
             "donor.tau.0": bool(fit_donor_lifetime),
             "fret.forster_radius": False,
             "fret.tau0": False,
+            **{
+                f"distance.sigma.{k}": bool(fit_sigma)
+                for k in range(n)
+            },
         },
     )
     model.find_parameters()
@@ -516,7 +529,9 @@ def build_fret_fit(
 def fit_fret_model(decay, **kwargs) -> dict:
     """Fit ``decay`` as ``n_states`` Gaussian FRET distances and report the result.
 
-    Arguments are as for :func:`build_fret_fit`.
+    Arguments are as for :func:`build_fret_fit` — including ``fit_sigma`` to
+    free the distributions' width (then ``sigma`` is its starting value and
+    ``sigma_bounds`` its bounds).
 
     Returns
     -------

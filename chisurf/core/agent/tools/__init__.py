@@ -4,6 +4,9 @@ The catalogue is assembled from three groups:
 
 ``data``
     finding files on disk, loading them, describing experiments/readers/models
+``burst``
+    the single-molecule chain: burst analysis, species gating, the
+    sub-ensemble decay, the Gaussian distance-distribution fit
 ``clarify``
     asking the user focused questions before acting on an ambiguous request
 ``fitting``
@@ -36,6 +39,7 @@ from __future__ import annotations
 
 from chisurf.core.agent.spec import ToolRegistry
 from chisurf.core.agent.tools import (
+    burst,
     clarify,
     codebase,
     data,
@@ -50,6 +54,7 @@ from chisurf.core.agent.tools import (
 
 __all__ = [
     "build_default_registry",
+    "burst",
     "clarify",
     "codebase",
     "data",
@@ -81,6 +86,7 @@ def build_default_registry() -> ToolRegistry:
     registry = ToolRegistry()
     for group in (
         data.registry,
+        burst.registry,
         clarify.registry,
         codebase.registry,
         documentation.registry,
