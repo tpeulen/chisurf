@@ -4,6 +4,15 @@
 
 - code editor: remove LLM Wiki from the chat GUI — user OKF bundle replaces it; retired wiki.py, wiki_indexer.py, and context_retriever.py
 
+## 2026-10-25
+
+- **PRD-154 item 13 opened (owner): .pto-only must be proven in the real UI.** The workflow matrix
+  (`okf/specs/pto-workflow-matrix.md`) names six user journeys (burst search + histograms, sub-ensemble decay →
+  fit, burstwise FCS → fit, ndX project analysis, import-then-analyze, project round-trip), the container
+  invariants (one substrate; nothing forced into it; filesystem paths keep working), and the click-all contract:
+  each journey becomes a W7 scenario driven with the real emtk Driver, asserting the affordances exist — the
+  scenario fails on a dead end, not just on an assert.
+
 ## 2026-10-24
 
 - **Web item 8 closed (browser-verified).** `python -m chisurf.web --isolate` sends COOP/COEP and the page still
