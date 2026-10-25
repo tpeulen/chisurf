@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
-from mmfdb.adapters.chinet import _lookup_flrcif_name
+from mmfdb.adapters.graph_session import _lookup_flrcif_name
 from mmfdb.schema.pdbx_metadata import MmcifDictionary
 
 from build_tools.dev_utils import align_flrcif_parameters as align

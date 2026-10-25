@@ -219,16 +219,16 @@ def mmfdb_graph_to_node_editor_graph(graph: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def mmfdb_chinet_to_node_editor_graph(
+def mmfdb_graph_sessions_to_node_editor_graph(
     operation_id: str,
     artifacts: list[dict[str, Any]],
     parameters: list[dict[str, Any]],
     edges: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Convert MMFDB chinet artifacts to node editor graph format.
+    """Convert MMFDB node-graph session artifacts to node editor graph format.
 
     Creates a unified dependency graph showing source files, datasets,
-    chinet sessions, nodes, fits, and parameter links.
+    graph sessions, nodes, fits, and parameter links.
 
     Parameters
     ----------
@@ -312,8 +312,9 @@ def mmfdb_chinet_to_node_editor_graph(
         a for a in artifacts if a.get("artifact_kind") in ("raw_measurement", "raw_data")
     ]
     dataset_arts = [a for a in artifacts if a.get("artifact_kind") == "processed_data"]
-    session_arts = [a for a in artifacts if a.get("artifact_kind") == "chinet_session"]
-    node_arts = [a for a in artifacts if a.get("artifact_kind") == "chinet_node"]
+    # accept the legacy chinet-era kinds so old archives still draw
+    session_arts = [a for a in artifacts if a.get("artifact_kind") in ("graph_session", "chinet_session")]
+    node_arts = [a for a in artifacts if a.get("artifact_kind") in ("graph_node", "chinet_node")]
     fit_arts = [a for a in artifacts if a.get("artifact_kind") == "fit_result"]
 
     # Add source file nodes
@@ -354,7 +355,7 @@ def mmfdb_chinet_to_node_editor_graph(
         # Link to project
         _add_edge(project_node_id, nid, "project_contains", source_port=0, target_port=0)
 
-    # Add chinet session nodes
+    # Add graph session nodes
     session_node_map: dict[str, str] = {}
     for art in session_arts:
         aid = art.get("artifact_id", "")
@@ -369,7 +370,7 @@ def mmfdb_chinet_to_node_editor_graph(
             config={"artifact_id": aid},
         )
 
-    # Add chinet node artifacts
+    # Add graph node artifacts
     for art in node_arts:
         aid = art.get("artifact_id", "")
         nid = f"artifact:{aid}"
@@ -457,8 +458,8 @@ def mmfdb_chinet_to_node_editor_graph(
     return {
         "version": 1,
         "meta": {
-            "purpose": "chinet_dependency_view",
-            "schema_name": "mmfdb.chinet.node_editor.v1",
+            "purpose": "graph_dependency_view",
+            "schema_name": "mmfdb.graph.node_editor.v1",
             "operation_id": operation_id,
         },
         "nodes": out_nodes,

@@ -5,12 +5,12 @@ import numpy as np
 
 from chisurf.core import nodes
 
-cn = nodes._bff  # the bff GraphPort/GraphNode runtime that replaced chinet
+cn = nodes._bff  # the bff GraphPort/GraphNode port runtime
 
 
 class TestPortNodeStability(unittest.TestCase):
     """
-    Stress test for the port/node runtime (IMP.bff, chinet's successor) to
+    Stress test for the port/node runtime (IMP.bff) to
     verify it is free of access violations and handles heavy node/port
     allocation gracefully.
     """

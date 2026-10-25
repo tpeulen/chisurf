@@ -502,20 +502,20 @@
       "summary": "List parameters with optional filters."
     },
     {
-      "name": "mmfdb.v1.chinet.sessions.save",
-      "summary": "Save a canonical chinet session schema payload to MMFDB."
+      "name": "mmfdb.v1.graph.sessions.save",
+      "summary": "Store a canonical node-graph session payload in MMFDB."
     },
     {
-      "name": "mmfdb.v1.chinet.sessions.get",
-      "summary": "Load a chinet session artifact from MMFDB."
+      "name": "mmfdb.v1.graph.sessions.get",
+      "summary": "Load a node-graph session artifact from MMFDB."
     },
     {
-      "name": "mmfdb.v1.chinet.sessions.list",
-      "summary": "List chinet session artifacts in MMFDB."
+      "name": "mmfdb.v1.graph.sessions.list",
+      "summary": "List node-graph session artifacts in MMFDB."
     },
     {
-      "name": "mmfdb.v1.chinet.sessions.restore",
-      "summary": "Restore a chinet session artifact from MMFDB."
+      "name": "mmfdb.v1.graph.sessions.restore",
+      "summary": "Restore a node-graph session artifact from MMFDB."
     },
     {
       "name": "mmfdb.v1.setups.save",

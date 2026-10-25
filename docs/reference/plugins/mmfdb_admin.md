@@ -359,10 +359,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `mmfdb.v1.parameters.record` | no | Record or update a semantic parameter. |
 | `mmfdb.v1.parameters.get` | no | Retrieve a parameter by its UUID. |
 | `mmfdb.v1.parameters.list` | no | List parameters with optional filters. |
-| `mmfdb.v1.chinet.sessions.save` | no | Save a canonical chinet session schema payload to MMFDB. |
-| `mmfdb.v1.chinet.sessions.get` | no | Load a chinet session artifact from MMFDB. |
-| `mmfdb.v1.chinet.sessions.list` | no | List chinet session artifacts in MMFDB. |
-| `mmfdb.v1.chinet.sessions.restore` | no | Restore a chinet session artifact from MMFDB. |
+| `mmfdb.v1.graph.sessions.save` | no | Store a canonical node-graph session payload in MMFDB. |
+| `mmfdb.v1.graph.sessions.get` | no | Load a node-graph session artifact from MMFDB. |
+| `mmfdb.v1.graph.sessions.list` | no | List node-graph session artifacts in MMFDB. |
+| `mmfdb.v1.graph.sessions.restore` | no | Restore a node-graph session artifact from MMFDB. |
 | `mmfdb.v1.setups.save` | no | Save or update an instrument/calibration setup configuration. |
 | `mmfdb.v1.setups.get` | no | Retrieve a setup configuration by its identifier. |
 | `mmfdb.v1.setups.list` | no | List setup snapshots. |

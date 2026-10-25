@@ -66,7 +66,7 @@ def test_archive_fit_to_mmfdb_does_not_mutate_live_parameter_ports(tmp_path) -> 
     assert p1_port.get_node() is p1_owner
 
 
-def test_archive_fit_to_mmfdb_stores_fit_state_chinet_session_and_parameters(tmp_path) -> None:
+def test_archive_fit_to_mmfdb_stores_fit_state_graph_session_and_parameters(tmp_path) -> None:
     fit = _make_dummy_fit()
     params = fit.model.parameters_all_dict
     params["p0"].value = 2.0
@@ -99,8 +99,8 @@ def test_archive_fit_to_mmfdb_stores_fit_state_chinet_session_and_parameters(tmp
         artifacts = db.list_artifacts(experiment_id="exp_fit")
         artifact_kinds = {row["artifact_kind"] for row in artifacts}
         assert {
-            "chinet_session",
-            "chinet_node",
+            "graph_session",
+            "graph_node",
             "fit_result",
             "processed_data",
         }.issubset(artifact_kinds)
@@ -111,7 +111,7 @@ def test_archive_fit_to_mmfdb_stores_fit_state_chinet_session_and_parameters(tmp
             ("op_fit",),
         ).fetchall()
         roles = {row["role"] for row in op_links}
-        assert {"chinet_session", "fit_state"}.issubset(roles)
+        assert {"graph_session", "fit_state"}.issubset(roles)
         assert any(
             row["direction"] == "input" and row["artifact_id"] == "dataset-1" for row in op_links
         )
