@@ -96,7 +96,7 @@ Last reviewed: 2026-07-06.
 Full plugin-local suite:
 
 ```bash
-PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest chisurf/plugins/core/mmfdb_admin/test
+PYTHONPATH="modules/mmfdb/src:modules/imp-tricks/src:." python3 -m pytest chisurf/plugins/core/mmfdb_admin/test
 ```
 
 Last run on 2026-07-06 with the arm64 Qt environment: 111 passed, 2 warnings.
@@ -104,13 +104,13 @@ Last run on 2026-07-06 with the arm64 Qt environment: 111 passed, 2 warnings.
 AutoForm-focused checks:
 
 ```bash
-PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest test/gui/test_autoform_table_section.py chisurf/plugins/core/mmfdb_admin/test/test_autoform_entity_form.py chisurf/plugins/core/mmfdb_admin/test/test_connection_dialog.py
+PYTHONPATH="modules/mmfdb/src:modules/imp-tricks/src:." python3 -m pytest test/gui/test_autoform_table_section.py chisurf/plugins/core/mmfdb_admin/test/test_autoform_entity_form.py chisurf/plugins/core/mmfdb_admin/test/test_connection_dialog.py
 ```
 
 Current focused smoke set:
 
 ```bash
-PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest \
+PYTHONPATH="modules/mmfdb/src:modules/imp-tricks/src:." python3 -m pytest \
   test/core/test_mmfdb_vendor_package.py \
   test/gui/test_autoform_table_section.py \
   chisurf/plugins/core/mmfdb_admin/test/test_admin_navigation.py \
@@ -127,7 +127,7 @@ Last run on 2026-07-06 with the arm64 Qt environment: 58 passed, 2 warnings.
 MMFDB Admin plus adjacent database surfaces:
 
 ```bash
-PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest \
+PYTHONPATH="modules/mmfdb/src:modules/imp-tricks/src:." python3 -m pytest \
   test/core/test_mmfdb_vendor_package.py \
   chisurf/plugins/core/mmfdb_admin/test \
   chisurf/plugins/core/database_connector/test \
@@ -139,7 +139,7 @@ Last run on 2026-07-06 with the arm64 Qt environment: 133 passed, 2 warnings.
 GUI-oriented plugin-local subset excluding `test_admin_handlers.py`:
 
 ```bash
-PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest \
+PYTHONPATH="modules/mmfdb/src:modules/imp-tricks/src:." python3 -m pytest \
   chisurf/plugins/core/mmfdb_admin/test \
   --ignore=chisurf/plugins/core/mmfdb_admin/test/test_admin_handlers.py
 ```

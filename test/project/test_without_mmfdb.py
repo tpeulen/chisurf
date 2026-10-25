@@ -127,7 +127,6 @@ def test_real_session_roundtrip_when_mmfdb_is_unavailable(tmp_path):
     )
     paths = [
         repo / "modules/mmfdb/src",
-        repo / "modules/chinet",
         repo / "modules/imp-tricks/src",
         repo / "modules/chimol",
         repo,

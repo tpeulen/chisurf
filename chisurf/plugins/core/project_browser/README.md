@@ -53,7 +53,7 @@ python -m chisurf.emtk --plugin project_browser
 ## Verification
 
 ```bash
-PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest \
+PYTHONPATH="modules/mmfdb/src:modules/imp-tricks/src:." python3 -m pytest \
   chisurf/plugins/core/project_browser/test
 ```
 

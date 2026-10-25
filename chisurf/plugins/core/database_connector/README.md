@@ -33,7 +33,7 @@ MMFDB services (`mmfdb.*` / `mmfdb.v1.*`) rather than `sample_database.*`.
 ## Verification
 
 ```bash
-PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest \
+PYTHONPATH="modules/mmfdb/src:modules/imp-tricks/src:." python3 -m pytest \
   chisurf/plugins/core/database_connector/test
 ```
 

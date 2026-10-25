@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import pytest
 
-pytest.importorskip("chinet")
 
 from chisurf.core.fitting.parameter import FittingParameter  # noqa: E402
 from chisurf.core.project.fit_state import _apply_state_to_model  # noqa: E402

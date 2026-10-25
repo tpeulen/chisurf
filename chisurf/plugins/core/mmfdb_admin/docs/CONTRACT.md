@@ -140,8 +140,8 @@ should not depend on object-store MD5 paths.
 Keep these checks green when editing service registration or the manifest:
 
 ```bash
-PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest chisurf/plugins/core/mmfdb_admin/test/test_admin_handlers.py
-PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest chisurf/plugins/core/mmfdb_admin/test/test_session_sso.py
+PYTHONPATH="modules/mmfdb/src:modules/imp-tricks/src:." python3 -m pytest chisurf/plugins/core/mmfdb_admin/test/test_admin_handlers.py
+PYTHONPATH="modules/mmfdb/src:modules/imp-tricks/src:." python3 -m pytest chisurf/plugins/core/mmfdb_admin/test/test_session_sso.py
 ```
 
 When changing method registration, also compare registered static method names with

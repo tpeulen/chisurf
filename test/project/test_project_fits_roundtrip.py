@@ -5,7 +5,6 @@ import json
 import numpy as np
 import pytest
 
-pytest.importorskip("chinet")
 
 from chisurf.core.data import DataCurve
 from chisurf.core.fitting.fit import Fit
