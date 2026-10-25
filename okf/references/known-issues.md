@@ -7,6 +7,21 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 ---
 
 
+## LLTF fits are not reproducible: random starting values are unseeded (found 2026-10-02)
+
+status: resolved 2026-10-24 — the fitter derives a per-fit RNG from `randomize_initial_values.seed` (default 0,
+fixed = repeatable; `None` = fresh), the setting is declared in `lifetime_settings.yml`, and
+`test/core/test_lltf_reproducible_starts.py` pins it: the same seed repeats the fit exactly (lifetimes and
+chi-square to 1e-12), a different seed changes the start.
+
+**Measured** in the lltf upgrade: two runs of the same command on the shipped example (`5-44_D0.dat`, `IRF_D0.dat`,
+`config.yml`) gave τ = 3.9659 / 1.4465 / 0.1449 ns and 3.9673 / 1.4585 / 0.1477 ns. With
+`lifetime_fit_parameter.randomize_initial_values.enabled` (on in the example config, always on in the component scan)
+`lltf/core/fitter.py` draws starting lifetimes and amplitudes from Python's `random` without a seed. The parity tests
+compare the commands the two hosts build and check one fit with tolerances for this reason. *Not fixed here:* a
+`random_seed` setting (default fixed, so a run is repeatable) belongs in the fitter and its settings file, with a
+reproducibility test; guide 76 lists it under Known defects.
+
 ## LLTF was never battle-tested: validation campaign against tttrlib simulated decays (owner 2026-10-24)
 
 status: open — owner directive 2026-10-24 ("lltf must improve — it was never battle tested; now it can be tested
@@ -2772,21 +2787,6 @@ structure file is "read as a single frame" (`Topology.from_file` reads the first
 writes cannot be read back by ChiSurf as a trajectory; the converter's parity test reads the models from the PDB columns
 instead. *Not fixed here:* reading every `MODEL` block into the frame axis belongs in core (`trajectory_data.load` /
 `chisurf/core/fio/structure`), with a round-trip test; guide 81 lists it under Known defects.
-
-## LLTF fits are not reproducible: random starting values are unseeded (found 2026-10-02)
-
-status: resolved 2026-10-24 — the fitter derives a per-fit RNG from `randomize_initial_values.seed` (default 0,
-fixed = repeatable; `None` = fresh), the setting is declared in `lifetime_settings.yml`, and
-`test/core/test_lltf_reproducible_starts.py` pins it: the same seed repeats the fit exactly (lifetimes and
-chi-square to 1e-12), a different seed changes the start.
-
-**Measured** in the lltf upgrade: two runs of the same command on the shipped example (`5-44_D0.dat`, `IRF_D0.dat`,
-`config.yml`) gave τ = 3.9659 / 1.4465 / 0.1449 ns and 3.9673 / 1.4585 / 0.1477 ns. With
-`lifetime_fit_parameter.randomize_initial_values.enabled` (on in the example config, always on in the component scan)
-`lltf/core/fitter.py` draws starting lifetimes and amplitudes from Python's `random` without a seed. The parity tests
-compare the commands the two hosts build and check one fit with tolerances for this reason. *Not fixed here:* a
-`random_seed` setting (default fixed, so a run is repeatable) belongs in the fitter and its settings file, with a
-reproducibility test; guide 76 lists it under Known defects.
 
 ## Ported burst apps draw invented data (found 2026-10-01)
 
