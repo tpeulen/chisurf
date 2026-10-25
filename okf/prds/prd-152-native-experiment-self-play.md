@@ -139,7 +139,10 @@ tttrlib source by relative path or invoke its Python binding from BFF.
 ## Implementation status (2026-09-23)
 
 Landed in bff (see `imp.bff/okf/validation/model-search-strategy.md`, "One
-action policy for every game"):
+action policy for every game"). Owner triage 2026-10-24: this PRD absorbs tttrlib board ticket
+`T-20260923-02b` (family-agnostic action policy, photons from tttrlib) — the ticket is closed as a duplicate of
+this deliverable; the board tracks it here:
+
 
 - The first boundary above is done: bff's optional `dependency/tttrlib`
   links `tttrlib::tttrlib`, and `IMP.bff.PhotonExperiment` runs `SimEngine`

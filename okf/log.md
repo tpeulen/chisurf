@@ -2,6 +2,16 @@
 
 ## 2026-10-24
 
+- **Release triage (owner).** Vehicle: desktop + web. Licensing re-confirmed and the "licence audit leftovers" entry
+  resolved: IMP.swarm is MIT (self-developed, different domain from Cecil — nothing derived), the Photonscore reader
+  is a reverse-engineered file format with upstream attribution in tttrlib, the LGPL source offer ships the sdist
+  beside the installer. `saving_projects.md` warning kept (its gaps are real until the persistence gates close).
+  Board: "finish" — ALEX-PERIOD-ALIAS ✅ archived, T-20260923-02b folded into PRD-152 (duplicate),
+  T-20260918-01 finish-before-release. Convention: `pixi.lock` pins only at release time; locally always newest
+  (local emtk ahead is intended — relock at the release cut, not before). LLTF is a release item: it was never
+  battle-tested; now it can be — seed the unseeded random starting values (reproducibility) and test against
+  tttrlib's improved simulation capability. Pushes: emtk goes to the single upstream emtk repo (no fork), same for
+  ndxplorer and the chisurf branch.
 - **PRD-154 owner calls landed.** Item 2 dropped ("raus"): no native-host click-all run, no e2e-timeout raise. Item 9 closed: no hardware for now — the acquisition plugin is marked `experimental` (dev) in its manifest ("hardware-streaming path untested on real hardware; the built-in tttrlib Sim* simulator is the supported path"), surfaced by the maturity system (⚠️ marker + banner); the hardware run and the game-music check are deferred; W6 closed. Item 5 decided (option a) and BUILT: a `.cs.pto` project keeps the live IMP.bff node graph again — `Project.save` captures `get_session()` into the typed `chisurf.graph-session` entry (`session.jsonl`) on both storage routes (`write_project(session_bytes=)` and the archive `write_entries` route, now symmetric), `Project.load` installs it as the live session (replace, never merge); IMP.bff stays optional (no bff/empty session → no entry, old projects unchanged); new `chisurf/core/project/graph.py` (capture/restore/load, guarded import). Guards: `test/core/test_bff_session.py` rewritten (embed+restore with link/value assertions, both storage routes, empty-writes-none, replace-not-merges); test/project 562 green. Known issue flipped to resolved; PRD-154 items 2/5/9 and the W6 section closed.
 - Owner consolidation directive: the FRET tools come home. smfret-web becomes the chisurf plugin **fret_check** (Spectroscopy:Single-Molecule:FRET check) -- a single-button drop-a-file-get-a-verdict app, MIT inside chisurf; after the full migration the standalone is marked integrated. The Labelizer (the better dye-placement/FRET-network method, already an emtk app) becomes a plugin the same way. FRETNet-Designer is NOT integrated (owner: wrong call, the Labelizer supersedes it). The shared metadata editor joined the tree (97f573086). PRD-155 carries the two waves; the one open call is the Labelizer id (`labelizer` vs `labelizer_ng`).
 - Gate-1 re-run (PRD-154 item 6): stopped by resource_guard at 31 % (machine swap); the 5 reds before the stop root-caused and fixed -- shift-dialog test follows the spinbox double-click-to-type contract, 23602c466 reverted (one declaring manifest per RPC method), js/pyodide OPTIONAL, flr dictionary re-aligned (mmfdb ba24631). emtk 0.1.32 pinned (58cddc679, lock v7 kept).

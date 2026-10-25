@@ -7,6 +7,38 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 ---
 
 
+## Licence audit leftovers: IMP.swarm provenance, Photonscore attribution, LGPL source offer (found 2026-10-20, branch `mcts-native-baseline`)
+
+status: resolved 2026-10-24 — owner re-confirmed all three: IMP.swarm is MIT (self-developed, different domain from Cecil;
+nothing derived), the Photonscore reader is a reverse-engineered file format with upstream attribution in tttrlib, the
+LGPL source offer ships the sdist beside the installer. No open item remains.
+
+- **Measure.** `pytest test/test_stack_licences.py` holds every stack repository's pyproject and recipe
+  to the table in `docs/licensing.md` (green 2026-10-20); the items below are what the audit found and
+  did not settle because each needs an owner decision, not an edit. Re-sweep a repository with
+  `git ls-files | xargs grep -IlE 'GPL|General Public|MPL-2|Mozilla Public|CeCILL'` (skip `junk/`,
+  lock files, `.ipynb`).
+- **IMP.swarm licence — withdrawn 2026-10-20 (owner).** IMP.swarm is MIT and part of imp-tricks; the
+  "licensed under CeCILL v2" line in its docs was wrong. It is self-developed, inspired by the iDynoMiCS-2
+  model, with no code copied. The CeCILL split was reverted (imp-tricks `7d8ed87`); guard
+  `tests/test_licence.py` in imp-tricks. [Licence concept](../subsystems/licence-mit.md) item 1.
+- **tttrlib: Apache-2.0 attribution — resolved 2026-10-20, tttrlib `c43d77919`.** `PhotonscoreD7.h/.cpp`
+  port photonscore/d7 (Apache-2.0, Copyright 2026 Photonscore GmbH) and alex1075/photonsfile (MIT,
+  Copyright (c) 2026 Alex Hunt). Both files now carry the upstream notices and a "MODIFIED by the
+  tttrlib developers" statement; tttrlib gains `NOTICE` and `licenses/{Apache-2.0,photonsfile-MIT}.txt`,
+  shipped by `wheel.license-files` and the py/cli/r recipes' `license_file`. Guard:
+  `test/python/misc/test_third_party_notices.py` (tttrlib).
+- **LGPL source offer for the installer — resolved 2026-10-20.** Owner decision: "sdist beside
+  installer". The installer build makes the sdist of the exact imp-bff version it bundles
+  (`build_imp_bff_sdist`, `build_tools/build_installer.py`), NOTICE.txt names that file and says it is
+  on the same release page, and `.github/workflows/pixi-ci.yml` uploads it with every installer.
+  Guard: `test/test_release_workflow_contracts.py`. First tagged release still to be checked by eye —
+  [licence concept](../subsystems/licence-mit.md) "Where to pick this up".
+- **Rebuild artefacts carrying the old licence.** labelizer's `site/wheels/imp_bff-0.15.0a2…whl` (built
+  2026-09-24) says `License: MPL-2.0` in METADATA; imp.bff `5bb2bf267` fixed the declaration, so the next
+  wheel build is right. QuEst's web frontend pulls `sharp` with `@img/sharp-libvips-*` (LGPL-3.0-or-later)
+  through Next.js; if the Next standalone build is ever distributed, it needs libvips' LGPL text beside it.
+
 ## A project no longer stores the live bff node graph (found 2026-10-10)
 
 status: resolved 2026-10-24 — owner decision (PRD-154 item 5, option a): persist the live graph. `Project.save`
@@ -87,36 +119,6 @@ catalogues (`modules/ndxplorer/ndxplorer/locale/ndxplorer_{de,fr}.ts`) lack it, 
 entries land: **de "Inseln", fr "Îlots"**. Until then the header falls back to English. No other string is missing.
 
 ---
-
-## Licence audit leftovers: IMP.swarm provenance, Photonscore attribution, LGPL source offer (found 2026-10-20, branch `mcts-native-baseline`)
-
-status: open
-
-- **Measure.** `pytest test/test_stack_licences.py` holds every stack repository's pyproject and recipe
-  to the table in `docs/licensing.md` (green 2026-10-20); the items below are what the audit found and
-  did not settle because each needs an owner decision, not an edit. Re-sweep a repository with
-  `git ls-files | xargs grep -IlE 'GPL|General Public|MPL-2|Mozilla Public|CeCILL'` (skip `junk/`,
-  lock files, `.ipynb`).
-- **IMP.swarm licence — withdrawn 2026-10-20 (owner).** IMP.swarm is MIT and part of imp-tricks; the
-  "licensed under CeCILL v2" line in its docs was wrong. It is self-developed, inspired by the iDynoMiCS-2
-  model, with no code copied. The CeCILL split was reverted (imp-tricks `7d8ed87`); guard
-  `tests/test_licence.py` in imp-tricks. [Licence concept](../subsystems/licence-mit.md) item 1.
-- **tttrlib: Apache-2.0 attribution — resolved 2026-10-20, tttrlib `c43d77919`.** `PhotonscoreD7.h/.cpp`
-  port photonscore/d7 (Apache-2.0, Copyright 2026 Photonscore GmbH) and alex1075/photonsfile (MIT,
-  Copyright (c) 2026 Alex Hunt). Both files now carry the upstream notices and a "MODIFIED by the
-  tttrlib developers" statement; tttrlib gains `NOTICE` and `licenses/{Apache-2.0,photonsfile-MIT}.txt`,
-  shipped by `wheel.license-files` and the py/cli/r recipes' `license_file`. Guard:
-  `test/python/misc/test_third_party_notices.py` (tttrlib).
-- **LGPL source offer for the installer — resolved 2026-10-20.** Owner decision: "sdist beside
-  installer". The installer build makes the sdist of the exact imp-bff version it bundles
-  (`build_imp_bff_sdist`, `build_tools/build_installer.py`), NOTICE.txt names that file and says it is
-  on the same release page, and `.github/workflows/pixi-ci.yml` uploads it with every installer.
-  Guard: `test/test_release_workflow_contracts.py`. First tagged release still to be checked by eye —
-  [licence concept](../subsystems/licence-mit.md) "Where to pick this up".
-- **Rebuild artefacts carrying the old licence.** labelizer's `site/wheels/imp_bff-0.15.0a2…whl` (built
-  2026-09-24) says `License: MPL-2.0` in METADATA; imp.bff `5bb2bf267` fixed the declaration, so the next
-  wheel build is right. QuEst's web frontend pulls `sharp` with `@img/sharp-libvips-*` (LGPL-3.0-or-later)
-  through Next.js; if the Next standalone build is ever distributed, it needs libvips' LGPL text beside it.
 
 ## Docs release gate: seven pages still block review-check (found 2026-10-20, branch `mcts-native-baseline`)
 
