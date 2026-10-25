@@ -99,4 +99,9 @@ def build_default_registry() -> ToolRegistry:
     ):
         for spec in group.tools.values():
             registry.register(spec)
+    # The agent's own pen: findings land in the user's OKF bundle
+    # (~/.chisurf/okf), which grows as the user works.
+    from chisurf.core.agent import user_okf
+
+    user_okf.build_tool_handler(registry)
     return registry
