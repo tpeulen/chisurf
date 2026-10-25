@@ -9,13 +9,17 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## Agent's distance-distribution fit is only validated on cw data: PIE window truncation unmeasured (found 2026-10-25)
 
-status: open — the burstwise agent chain (burst analysis → species gate → sub-ensemble decay →
-`fit_distance_distribution`) recovers the simulation truth on cw-simulated data (E = 0.75, τ_D0 = 4 ns,
-R0 = 52 A: fitted mean distance 42.9–44.7 A over seeds/starts, truth 43.29 A, `test/agent/test_smfret_agent.py`).
-For PIE the donor stream is gated to the donor micro-time window, which truncates the decay an
-un-convolved amplitude model cannot represent; the recipe's recovery on window-truncated data is not
-yet measured against simulation truth. Validate the PIE path the same way (simulated PIE scenario,
-known E) before trusting agent-fit distances on alternating-laser measurements.
+status: resolved 2026-10-25 — validated on simulated PIE (`test/agent/test_pie_chain.py`): detection with
+alternation roles, the S gate (which measurably removes the acceptor-only molecules an E-only gate
+wrongly keeps: 90 → 77 bursts on the suite scenario), the S-selected sub-ensemble decay, and the
+distance-distribution fit recover the simulation truth within the test's ±20 % band (fitted
+40.8 A vs 43.29 A at E = 0.75, R0 = 52 A; cw reaches 42.9–44.7 A). The remaining ~6 % PIE bias is the
+donor micro-time window truncating the decay under an un-convolved amplitude model — small, understood,
+and now measured; tightening it (window-aware or IRF-convolved fit on the gated stream) is a modelling
+refinement, not an open defect. Correction factors are exercised too: partial factor dicts default to
+neutrals with all four reported (`factors_used`), and PIE auto-calibration fills them from the
+measurement. The pipeline-scripting leg (`run_python` over the plugin/core APIs) is pinned by the same
+suite; an MCP exposure of the plugin APIs is a candidate follow-up sharing the agent's tool registry.
 
 ## Fitting a distance distribution with the width held biases the mean distance (found 2026-10-25)
 

@@ -254,8 +254,15 @@ def detect_smfret(context: AgentContext, path: str) -> dict[str, Any]:
             "factors": {
                 "type": "object",
                 "description": "Correction factors for accurate E/S: gamma, alpha "
-                "(leakage), delta (direct excitation), beta. Missing ones stay "
-                "uncorrected.",
+                "(leakage), delta (direct excitation), beta. Missing ones default "
+                "to the neutral values (gamma=beta=1, alpha=delta=0) — which is "
+                "no correction — and the factors actually used are reported.",
+            },
+            "auto_calibrate": {
+                "type": "boolean",
+                "description": "Fill the factors from the measurement itself "
+                "(ALEX/PIE: all of them; cw: leakage from the donor-only "
+                "bursts). The user's explicit factors win.",
             },
         },
         "required": ["path"],
@@ -269,6 +276,7 @@ def run_burst_analysis(
     window_ms: float = 0.5,
     correct: bool = False,
     factors: dict[str, Any] | None = None,
+    auto_calibrate: bool = False,
 ) -> dict[str, Any]:
     """Burst search + E/S + QC over *path*, cached for the following tools."""
     from chisurf.plugins.burst.burst_selection.api.io import write_container
@@ -282,12 +290,23 @@ def run_burst_analysis(
         "min_photons": int(min_photons_burst),
         "T": float(window_ms) * 1e-3,
     }
+    # The correction machinery needs all four factors; whatever the user did
+    # not give defaults to the neutral value (no correction for it), and what
+    # was actually used comes back in the result.
+    merged_factors: dict[str, float] = {
+        "gamma": 1.0,
+        "beta": 1.0,
+        "alpha": 0.0,
+        "delta": 0.0,
+        **{k: float(v) for k, v in (factors or {}).items() if v is not None},
+    }
     result = fret_check.analyse(
         path=str(resolved),
         key=str(resolved),
         settings=settings,
         correct=bool(correct),
-        factors=dict(factors or {}),
+        factors=merged_factors,
+        auto_calibrate=bool(auto_calibrate),
     )
     bursts = fret_jobs.bursts_from_dict(result["bursts"])
     experiment = fret_jobs.experiment_from_dict(result["experiment"])
@@ -304,8 +323,8 @@ def run_burst_analysis(
     n = bursts.n
     table = {**bursts.columns(), "First File": [resolved.name] * n}
     parameters = {"min_photons": int(min_photons_burst), "T_s": float(window_ms) * 1e-3}
-    if factors:
-        parameters["factors"] = {k: float(v) for k, v in factors.items() if v is not None}
+    if correct:
+        parameters["factors"] = {k: float(v) for k, v in merged_factors.items()}
     container = write_container(resolved, table, parameters=parameters, run="burstwise")
     run_path = f"{container}/burstwise"
 
@@ -330,6 +349,16 @@ def run_burst_analysis(
         "n_bursts": n,
         "E": _quantiles(bursts.E),
         "S": _quantiles(bursts.S) if bursts.S is not None else None,
+        "corrected": {
+            "E": _quantiles(corrected["E"]),
+            "S": _quantiles(corrected["S"]),
+        }
+        if corrected is not None and corrected.get("E") is not None and corrected.get("S") is not None
+        else None,
+        "factors_used": {
+            k: _round(float(v), 4) for k, v in (result.get("factors") or {}).items()
+        },
+        "auto_calibrated": bool(auto_calibrate),
         "n_flagged_by_qc": int(np.count_nonzero(flags)) if flags is not None else None,
         "container": str(container),
         "next": (
