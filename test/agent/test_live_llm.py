@@ -17,7 +17,8 @@ the cheapest way to find a dialect problem::
 
 The key is taken from the provider's environment variable (see
 :func:`chisurf.core.settings.ai_settings.provider_key_env_names`), and the
-suite skips when none is set.
+suite also requires the explicit CHISURF_AGENT_TEST_LIVE=1 opt-in; an
+ambient key alone never arms it (no billable traffic from a plain pytest run).
 """
 
 from __future__ import annotations
@@ -29,6 +30,12 @@ import pytest
 from chisurf.core.agent import AgentConfig, AgentSession, LLMClient, LLMSettings
 
 pytestmark = pytest.mark.live_llm
+
+#: Paid endpoints only run on explicit opt-in (a second factor beside the
+#: key), never because an ambient environment happens to export one — a
+#: developer shell with ``ZAI_API_KEY`` set must not turn ``pytest`` into
+#: billable traffic. Set ``CHISURF_AGENT_TEST_LIVE=1`` to arm the suite.
+LIVE_OPT_IN = os.environ.get("CHISURF_AGENT_TEST_LIVE", "") == "1"
 
 #: Provider and model under test; override to exercise another provider.
 PROVIDER = os.environ.get("CHISURF_AGENT_TEST_PROVIDER", "openrouter")
@@ -44,9 +51,19 @@ TCSPC = "tcspc/EasyTau300"
 
 @pytest.fixture()
 def live_session(context):
-    """Return an agent session wired to the configured provider, or skip."""
+    """Return an agent session wired to the configured provider, or skip.
+
+    Two factors are required: the provider's API key *and* the explicit
+    ``CHISURF_AGENT_TEST_LIVE=1`` opt-in — an ambient key alone never arms
+    the paid suite.
+    """
     from chisurf.core.settings.ai_settings import provider_key_env_names
 
+    if not LIVE_OPT_IN:
+        pytest.skip(
+            "live LLM tests are opt-in: set CHISURF_AGENT_TEST_LIVE=1 "
+            "(an ambient API key alone does not arm them)"
+        )
     settings = LLMSettings.from_provider(PROVIDER, model=MODEL or None)
     if not settings.api_key:
         pytest.skip(
