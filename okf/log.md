@@ -4,8 +4,6 @@
 
 - code editor: remove LLM Wiki from the chat GUI — user OKF bundle replaces it; retired wiki.py, wiki_indexer.py, and context_retriever.py
 
-## 2026-10-25
-
 - **PRD-154 item 13 opened (owner): .pto-only must be proven in the real UI.** The workflow matrix
   (`okf/specs/pto-workflow-matrix.md`) names six user journeys (burst search + histograms, sub-ensemble decay →
   fit, burstwise FCS → fit, ndX project analysis, import-then-analyze, project round-trip), the container
