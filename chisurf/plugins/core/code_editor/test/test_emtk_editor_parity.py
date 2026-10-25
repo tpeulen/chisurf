@@ -222,8 +222,9 @@ def test_the_assistant_offers_the_qt_agent_controls(app, driver):
         driver.click("🤖 Agent")
     app.editor_gui.docks.focus("agent")
     drawn = " ".join(_drawn(driver))
-    for label in ("Things to ask", "Wiki", "Send"):
+    for label in ("Things to ask", "Send"):
         assert label in drawn, label
+    assert "Wiki" not in drawn
     # Qt's mode combo: the three modes.
     from chisurf.plugins.core.code_editor.gui.chat_app import MODE_LABELS
 

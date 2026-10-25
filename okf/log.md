@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-25
+
+- code editor: remove LLM Wiki from the chat GUI — user OKF bundle replaces it; retired wiki.py, wiki_indexer.py, and context_retriever.py
+
 ## 2026-10-24
 
 - **Web item 8 closed (browser-verified).** `python -m chisurf.web --isolate` sends COOP/COEP and the page still

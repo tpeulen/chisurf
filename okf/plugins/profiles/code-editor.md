@@ -29,7 +29,7 @@ symbols, diagnostics, and optional Python LSP integration.
 | Notebooks | `notebook_editor.py` — `.ipynb` tabs: a one-row toolbar over a stack of `NotebookCell` widgets (code/markdown/raw) run in a single in-process `Shell`. Every surface is sized to its content; the `[n]` prompt lives in a left gutter, not a header row. |
 | Panels | Every dock of `CodeEditorWindow` is a `ChisurfDock` (`chisurf/gui/widgets/tools/chisurf_dock.py`): Project, Symbols, Diagnostics, Output, **Kernel**, Agent. The Kernel dock holds the *current* notebook tab's `Chinsole`, which shares that notebook's shell. |
 | Tooling | `lsp_client.py`, `ruff_runner.py`, `symbols.py`, `validation.py`. |
-| State/docs | `document_store.py`, `context_retriever.py`, `wiki_indexer.py`, `settings.py`. |
+| State/docs | `document_store.py`, `settings.py`. |
 | Backend services | `backend/services.py`. |
 | Tests | Agent runtime, document store, RPC, ruff runner, services, widgets, `test/test_notebook_editor.py`. |
 

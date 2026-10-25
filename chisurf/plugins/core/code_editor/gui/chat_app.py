@@ -37,7 +37,6 @@ from chisurf.plugins.core.code_editor.agent_modes import (
 if TYPE_CHECKING:
     from chisurf.core.agent import AgentSession
     from chisurf.plugins.ai_settings.gui.app import AISettingsApp
-    from chisurf.plugins.core.code_editor.wiki import WikiIndex
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -650,114 +649,6 @@ class ChatModel:
         self.pending_permission = None
 
 
-class WikiWindow:
-    """The LLM Wiki the assistant reads: search the pages, read one, feed the codebase in.
-
-    The emtk twin of the Qt agent panel's *Wiki* dialog (``code_editor/wiki.py`` holds the logic).
-    """
-
-    def __init__(self) -> None:
-        from emtk.dialog_window import DialogWindow
-
-        self.window = DialogWindow("LLM Wiki", size=(700.0, 500.0), key="code_editor_wiki")
-        self.window.open = False
-        self.index: WikiIndex | None = None
-        self.search = ""
-        self.selected = ""
-        self.page_text = ""
-        self.status = ""
-        self.populating = False
-        self._events: queue.Queue = queue.Queue()
-
-    def show(self) -> None:
-        from chisurf.plugins.core.code_editor.wiki import WikiIndex
-
-        if self.index is None:
-            self.index = WikiIndex()
-            self.page_text = self.index.index_text or self.index.message
-        self.window.show()
-
-    def refresh(self) -> None:
-        if self.index is not None:
-            self.index.reload()
-            self.page_text = self.index.index_text or self.index.message
-
-    def select(self, entry: str) -> None:
-        self.selected = entry
-        if self.index is not None:
-            self.page_text = self.index.read(entry)
-
-    def populate(self) -> None:
-        """Feed the codebase into the wiki on a worker; progress shows under the page."""
-        if self.populating:
-            return
-        from chisurf.plugins.core.code_editor import wiki
-
-        self.populating = True
-        self.status = "Populating LLM Wiki from codebase..."
-
-        def work() -> None:
-            try:
-                count = wiki.populate_from_codebase(progress=lambda text: self._events.put(text))
-                self._events.put(f"LLM Wiki populated with {count} codebase files.")
-            except Exception as error:  # a failure is said, not raised on the worker
-                self._events.put(f"Failed to populate wiki: {error}")
-            self._events.put(None)
-
-        threading.Thread(target=work, daemon=True).start()
-
-    def draw(self, frame: tuple[float, float, float, float]) -> None:
-        while not self._events.empty():
-            event = self._events.get_nowait()
-            if event is None:
-                self.populating = False
-                self.refresh()
-            else:
-                self.status = event
-        if not self.window.open:
-            return
-        closed = self.window.begin(frame) == "close"
-        box = self.window.content_box
-        im.set_next_item_width(max(120.0, box[2] - 230.0))
-        # Outside the page list's scrolling region, so it stays in sight (emtk >= 0.1.25).
-        _, self.search = im.filter_field(
-            "##wiki_search",
-            self.search,
-            tr("Search wiki..."),
-            tooltip=tr("Show only the pages whose section or title contains this text"),
-        )
-        im.same_line()
-        if im.small_button(tr("🔄 Refresh") + "##wiki_refresh"):
-            self.refresh()
-        im.set_item_tooltip(tr("Re-read the wiki's index and pages"))
-        im.same_line()
-        im.begin_disabled(self.populating)
-        if im.small_button(tr("📡 Populate Wiki") + "##wiki_populate"):
-            self.populate()
-        im.set_item_tooltip(tr("Feed the current codebase into the LLM Wiki"))
-        im.end_disabled()
-        x, y = im.get_cursor_screen_pos()
-        list_h = max(60.0, (box[1] + box[3] - y) * 0.35)
-        im.begin_child((x, y, box[2], list_h), child_id="wiki_pages")
-        for entry in self.index.entries(self.search) if self.index is not None else []:
-            if im.selectable(f"{entry}##wiki_{entry}", entry == self.selected):
-                self.select(entry)
-            im.set_item_tooltip(tr("Show this page"))
-        im.end_child()
-        x, y = im.get_cursor_screen_pos()
-        status_h = 22.0 if self.status else 0.0
-        im.begin_child(
-            (x, y, box[2], max(40.0, box[1] + box[3] - y - status_h)), child_id="wiki_page"
-        )
-        im.text_wrapped(self.page_text)
-        im.end_child()
-        if self.status:
-            im.text_disabled(self.status)
-        self.window.end()
-        if closed:
-            self.window.hide()
-
-
 class ChatGui:
     """Immediate-mode rendering and interaction for the chat assistant."""
 
@@ -765,7 +656,6 @@ class ChatGui:
         self.model = model or ChatModel(editor_ref=editor_ref)
         self.provider_settings: AISettingsApp | None = None
         self.provider_settings_open = False
-        self.wiki = WikiWindow()
 
     def use_example(self, prompt: str) -> None:
         """Put an example prompt in the input box for the user to edit or send (Things to ask)."""
@@ -846,8 +736,8 @@ class ChatGui:
         self.draw_provider_settings()
 
     def draw_overlays(self, width: float, height: float) -> None:
-        """Windows drawn over the whole frame, outside the pane the chat sits in (the Wiki)."""
-        self.wiki.draw((0.0, 0.0, width, height))
+        """Windows drawn over the whole frame, outside the pane the chat sits in."""
+        del width, height
 
     def _draw_toolbar(self, width: float) -> None:
         avail_w = im.get_content_region_avail()[0]
@@ -909,18 +799,6 @@ class ChatGui:
                     self.use_example(example.prompt)
                 im.set_item_tooltip(" ".join(example.explanation.split()))
             im.end_popup()
-        # Wrap rather than run off a narrow dock: small_button passes an explicit size,
-        # so button()'s own clamp-to-room does not apply and the Wiki button was drawn
-        # 56 px past the agent dock's right clip (e2e: 'chat_wiki has no scroll/reveal route').
-        wiki_label = tr("📚 Wiki") + "##chat_wiki"
-        pad = 2 * im.get_style().frame_padding[0]
-        if im.get_line_avail() >= im.calc_text_size(tr("📚 Wiki"))[0] + pad:
-            im.same_line()
-        if im.small_button(wiki_label):
-            self.wiki.show()
-        im.set_item_tooltip(
-            tr("Browse the LLM Wiki the assistant reads, or feed the codebase into it")
-        )
         im.separator()
 
     def _draw_permission_banner(self) -> None:

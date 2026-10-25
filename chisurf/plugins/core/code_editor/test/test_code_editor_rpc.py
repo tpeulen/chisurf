@@ -1,8 +1,7 @@
 """The editor's document store, Ruff, assistant file writes and close guard, on the emtk app.
 
 Ported from the retired Qt ``CodeEditor`` tests: the same behaviours, on ``gui/editor_app.py``
-(model and emtk ``Driver``) and the Qt-free helpers (``file_writes``, ``validation``,
-``context_retriever``, ``wiki_indexer``).
+(model and emtk ``Driver``) and the Qt-free helpers (``file_writes``, ``validation``).
 """
 
 from __future__ import annotations
@@ -13,12 +12,10 @@ import pytest
 from emtk.events import CONTROL_MODIFIER
 from emtk.testing import Driver
 
-from chisurf.plugins.core.code_editor.context_retriever import retrieve_context
 from chisurf.plugins.core.code_editor.file_writes import parse_file_writes
 from chisurf.plugins.core.code_editor.gui.editor_app import make_editor_app
 from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
 from chisurf.plugins.core.code_editor.validation import validate_writes
-from chisurf.plugins.core.code_editor.wiki_indexer import build_api_index
 from chisurf.plugins.emtk_layout import action_caption
 
 F401 = {
@@ -174,22 +171,3 @@ def test_validate_writes_uses_ruff_diagnostics(app, monkeypatch) -> None:
     issues = validate_writes([("sample.py", "import os\n")], editor=app.model)
     assert issues
     assert issues[0][1][0]["code"] == "F401"
-
-
-def test_api_retriever_builds_context_from_source_index(tmp_path) -> None:
-    """The retriever indexes real source symbols and returns them as context."""
-    package = tmp_path / "chisurf" / "demo"
-    package.mkdir(parents=True)
-    (package / "__init__.py").write_text("", encoding="utf-8")
-    (package / "api.py").write_text(
-        "class Runner:\n"
-        '    """Runs a demo analysis."""\n'
-        "    def run(self, name):\n"
-        "        return name\n",
-        encoding="utf-8",
-    )
-    build_api_index(tmp_path)
-    context = retrieve_context("run demo runner", repo_root=tmp_path)
-    assert "Verified ChiSurf API Context" in context
-    assert "demo.api.Runner.run" in context
-    assert "Runs a demo analysis" in context
