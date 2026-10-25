@@ -1,932 +1,934 @@
 {
-  "window": {
-    "width": 1280,
-    "height": 900
-  },
-  "_comment": "Zenodo deposit: pick a record, review it item by item, then upload it as a draft. Drawn by emtk.view_form over ZenodoDepositModel (gui/model.py); the gate is mmfdb.deposit.blockers, the same one the CLI uses. The banner on top always names the one next step. Help and Guide are drawn by gui/app.py.",
-  "title": "Zenodo deposit",
-  "sections": [
-    {
-      "type": "info",
-      "key": "next_step",
-      "source": "next_step",
-      "is_markdown": true,
-      "description": "The one thing to do next. Follow it from top to bottom and nothing can be skipped: upload unlocks only after every item is approved."
+    "window": {
+        "width": 1280,
+        "height": 900
     },
-    {
-      "type": "custom",
-      "key": "data_table",
-      "title": "",
-      "description": "One row per record (one future Zenodo entry). Click a record to review it; a folder that was never scanned is scanned when you open it.",
-      "options": {
-        "source": "records",
-        "row_key": "name",
-        "selected_call": "select_record",
-        "editable": false,
-        "height": 140,
-        "min_column_width": 80,
-        "columns": [
-          {
-            "key": "pick",
-            "title": "\u2713",
-            "editable": true,
-            "width": 30,
-            "tooltip": "Check records to upload or update together (Upload / update checked)."
-          },
-          {
-            "key": "name",
-            "title": "Record",
-            "tooltip": "The record folder: one Zenodo entry, uploaded as one archive."
-          },
-          {
-            "key": "review",
-            "title": "Review",
-            "tooltip": "How many items are approved."
-          },
-          {
-            "key": "state",
-            "title": "Gate",
-            "tooltip": "Cleared for upload, or how many things still block it."
-          },
-          {
-            "key": "upload",
-            "title": "Upload",
-            "background": {
-              "\u2713 uploaded, current": "#2e6b3a",
-              "changed since upload": "#7a5a12"
-            },
-            "tooltip": "Is it on Zenodo: not uploaded, \u2713 uploaded and current (this package and metadata), changed since upload (an update is due), or published."
-          },
-          {
-            "key": "remote",
-            "title": "Zenodo",
-            "tooltip": "The draft (or published record) it went to."
-          },
-          {
-            "key": "doi",
-            "title": "DOI",
-            "tooltip": "The published DOI, or the one reserved before publishing."
-          },
-          {
-            "key": "last",
-            "title": "Last upload",
-            "tooltip": "When it was last uploaded (and how often)."
-          }
-        ],
-        "fit_rows": true,
-        "edited_call": "pick_record",
-        "tooltip_key": "detail",
-        "fit_columns": true
-      }
-    },
-    {
-      "type": "button_row",
-      "key": "upload_checked_row",
-      "description": "Upload the checked records that are cleared and not current: each as a new draft, an update, or a new version.",
-      "buttons": [
+    "_comment": "Zenodo deposit: pick a record, review it item by item, then upload it as a draft. Drawn by emtk.view_form over ZenodoDepositModel (gui/model.py); the gate is mmfdb.deposit.blockers, the same one the CLI uses. The banner on top always names the one next step. Help and Guide are drawn by gui/app.py.",
+    "title": "Zenodo deposit",
+    "sections": [
         {
-          "action": "upload_checked",
-          "label": "Upload / update checked",
-          "label_source": "upload_checked_label",
-          "role": "primary",
-          "description": "Upload every checked record that is cleared and changed since its last upload (or never uploaded), one after another. Nothing is published."
-        }
-      ]
-    },
-    {
-      "type": "tabs",
-      "description": "Review first, then upload. The token is needed only for uploading.",
-      "sections": [
+            "type": "info",
+            "key": "next_step",
+            "source": "next_step",
+            "is_markdown": true,
+            "description": "The one thing to do next. Follow it from top to bottom and nothing can be skipped: upload unlocks only after every item is approved."
+        },
         {
-          "type": "panel",
-          "title": "1 \u00b7 Create",
-          "description": "Make a record by hand in four steps -- name it, put its data in, fill in what Zenodo shows, scan it -- then review it in 1 \u00b7 Review. A record built by a project script is under Advanced.",
-          "n_col": 1,
-          "sections": [
-            {
-              "type": "panel",
-              "title": "New record",
-              "n_col": 1,
-              "collapsible": true,
-              "description": "An empty record folder under the data root. Skip this step to work on a record picked in the list above.",
-              "sections": [
-                {
-                  "type": "row",
-                  "sections": [
+            "type": "custom",
+            "key": "data_table",
+            "title": "",
+            "description": "One row per record (one future Zenodo entry). Click a record to review it; a folder that was never scanned is scanned when you open it.",
+            "options": {
+                "source": "records",
+                "row_key": "name",
+                "selected_call": "select_record",
+                "editable": false,
+                "height": 140,
+                "min_column_width": 80,
+                "columns": [
                     {
-                      "type": "value",
-                      "attr": "new_name",
-                      "kind": "str",
-                      "label": "Name",
-                      "weight": 1,
-                      "live": true,
-                      "description": "Folder and archive name: lower case, digits, '.', '_' or '-', e.g. t4l-unfolding-smfret-k60-n132c."
+                        "key": "pick",
+                        "title": "\u2713",
+                        "editable": true,
+                        "width": 30,
+                        "tooltip": "Check records to upload or update together (Upload / update checked)."
                     },
                     {
-                      "type": "value",
-                      "attr": "new_title",
-                      "kind": "str",
-                      "label": "Title",
-                      "weight": 2,
-                      "description": "The Zenodo title (you can change it in step 3)."
-                    },
-                    {
-                      "type": "button_row",
-                      "weight": 0,
-                      "buttons": [
-                        {
-                          "action": "create_record",
-                          "label": "Create record",
-                          "role": "primary",
-                          "description": "Make the empty record and open it. Grey until the name is valid and not taken."
-                        }
-                      ]
-                    }
-                  ],
-                  "n_col": 3
-                },
-                {
-                  "type": "info",
-                  "key": "new_name_problem",
-                  "source": "new_name_problem",
-                  "is_markdown": true,
-                  "description": "Whether the name can be used, and what will be created."
-                }
-              ],
-              "collapsed": true
-            },
-            {
-              "type": "info",
-              "key": "no_record_hint",
-              "source": "no_record_hint",
-              "is_markdown": true,
-              "hidden_when": {
-                "attr": "has_record",
-                "equals": "yes"
-              },
-              "description": "Steps 2-4 work on the open record."
-            },
-            {
-              "type": "panel",
-              "title": "Add data",
-              "n_col": 1,
-              "collapsible": true,
-              "description": "Put files or folders into the open record. Each addition is one item a reviewer judges: a measurement, or a calibration of a setup-and-day group.",
-              "sections": [
-                {
-                  "type": "choice",
-                  "attr": "add_role",
-                  "label": "Add as",
-                  "options": [
-                    "measurement",
-                    "calibration"
-                  ],
-                  "labels": [
-                    "Measurement",
-                    "Calibration"
-                  ],
-                  "style": "radio",
-                  "description": "A measurement (sample data) or a calibration (IRF/scatter, buffer, dyes, DNA references).",
-                  "descriptions": [
-                    "Sample data: the files land under measurements/<item>.",
-                    "A reference the measurements need (IRF/scatter, buffer, dyes, DNA): the files land under calibrations/<group>/<item>."
-                  ]
-                },
-                {
-                  "type": "row",
-                  "sections": [
-                    {
-                      "type": "value",
-                      "attr": "add_name",
-                      "kind": "str",
-                      "label": "Item",
-                      "weight": 1,
-                      "live": true,
-                      "description": "The item's folder name, e.g. 2014-08-12_0M-urea or h2o-scatter."
-                    },
-                    {
-                      "type": "value",
-                      "attr": "add_group",
-                      "kind": "str",
-                      "label": "Group",
-                      "weight": 1,
-                      "live": true,
-                      "hidden_when": {
-                        "attr": "add_role",
-                        "equals": "measurement"
-                      },
-                      "description": "The calibration group: the setup and day it calibrates, e.g. 2014-08-12_pq-hydraharp."
-                    }
-                  ],
-                  "n_col": 2
-                },
-                {
-                  "type": "info",
-                  "key": "add_target",
-                  "source": "add_target",
-                  "is_markdown": true,
-                  "description": "Where the chosen files will land."
-                },
-                {
-                  "type": "button_row",
-                  "buttons": [
-                    {
-                      "action": "add_files",
-                      "label": "Add files\u2026",
-                      "role": "primary",
-                      "description": "Choose one or more files to add as this item."
-                    },
-                    {
-                      "action": "add_folder",
-                      "label": "Add folder\u2026",
-                      "description": "Choose a folder; it is added with its inner layout."
-                    },
-                    {
-                      "action": "show_folder",
-                      "label": "Show in Finder",
-                      "description": "Open the record folder. Files you put there yourself are picked up by Scan for review."
-                    }
-                  ]
-                },
-                {
-                  "type": "panel",
-                  "title": "From mmfdb",
-                  "n_col": 1,
-                  "collapsible": true,
-                  "collapsed": true,
-                  "description": "Add an experiment of the local mmfdb: its data files go into the record as the item above (its id names it when Item is empty), as Measurement or Calibration.",
-                  "sections": [
-                    {
-                      "type": "button_row",
-                      "buttons": [
-                        {
-                          "action": "load_mmfdb",
-                          "label": "Load experiments",
-                          "description": "List the experiments of the local mmfdb (its server must run: MMFDB Admin)."
-                        },
-                        {
-                          "action": "add_from_mmfdb",
-                          "label": "Add experiment",
-                          "role": "primary",
-                          "description": "Put the selected experiment's data files into the record, hard-linked where they are on this disk. Data held inside the database (not as files) is not added."
-                        }
-                      ]
-                    },
-                    {
-                      "type": "custom",
-                      "key": "data_table",
-                      "description": "The experiments of the local mmfdb. Click one, then Add experiment.",
-                      "options": {
-                        "source": "mmfdb_experiments",
-                        "row_key": "id",
-                        "selected_call": "select_mmfdb_experiment",
-                        "editable": false,
-                        "fit_rows": true,
-                        "height": 200,
-                        "filter": true,
-                        "tooltip_key": "detail",
-                        "fit_columns": true,
-                        "min_column_width": 60,
-                        "columns": [
-                          {
-                            "key": "id",
-                            "title": "Experiment",
-                            "description": "The mmfdb experiment id."
-                          },
-                          {
-                            "key": "sample",
-                            "title": "Sample",
-                            "description": "The sample the experiment measured."
-                          },
-                          {
-                            "key": "project",
-                            "title": "Project",
-                            "description": "The project the experiment belongs to."
-                          },
-                          {
-                            "key": "started",
-                            "title": "Started",
-                            "description": "When the experiment started."
-                          },
-                          {
-                            "key": "by",
-                            "title": "By",
-                            "description": "Who recorded the experiment."
-                          },
-                          {
-                            "key": "device",
-                            "title": "Device",
-                            "description": "The instrument the experiment was measured on."
-                          }
-                        ]
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "custom",
-                  "key": "code_editor",
-                  "target": "record_tree",
-                  "options": {
-                    "language": "none",
-                    "read_only": true,
-                    "height": 110
-                  },
-                  "description": "What the record holds now: every item with its file count and size."
-                }
-              ],
-              "hidden_when": {
-                "attr": "has_record",
-                "equals": "no"
-              },
-              "collapsed": true
-            },
-            {
-              "type": "panel",
-              "title": "Zenodo metadata",
-              "n_col": 1,
-              "collapsible": true,
-              "description": "What Zenodo shows about the record. Checked as you type; it is reviewed and approved like any item.",
-              "sections": [
-                {
-                  "type": "custom",
-                  "key": "metadata_editor",
-                  "description": "The one metadata editor (core plugin): the deposit fields, validated."
-                },
-                {
-                  "type": "info",
-                  "key": "metadata_status",
-                  "source": "metadata_status",
-                  "is_markdown": true,
-                  "description": "What is still missing, or that the metadata is complete."
-                },
-                {
-                  "type": "panel",
-                  "title": "Sent to Zenodo (JSON)",
-                  "collapsible": true,
-                  "collapsed": true,
-                  "n_col": 1,
-                  "sections": [
-                    {
-                      "type": "custom",
-                      "key": "code_editor",
-                      "target": "metadata_json",
-                      "options": {
-                        "language": "json",
-                        "read_only": true,
-                        "height": 180
-                      },
-                      "description": "Exactly the deposition metadata the upload sends."
-                    }
-                  ],
-                  "description": "The deposition metadata exactly as the upload sends it to Zenodo, read-only."
-                }
-              ],
-              "hidden_when": {
-                "attr": "has_record",
-                "equals": "no"
-              },
-              "collapsed": false
-            },
-            {
-              "type": "panel",
-              "title": "Scan for review",
-              "n_col": 1,
-              "collapsible": true,
-              "description": "Read the record folder into the items you review in 1 \u00b7 Review.",
-              "sections": [
-                {
-                  "type": "button_row",
-                  "buttons": [
-                    {
-                      "action": "scan_for_review",
-                      "label": "Scan for review",
-                      "role": "primary",
-                      "description": "List every measurement, calibration and metadata item with its digest; approvals of unchanged items are kept."
-                    }
-                  ]
-                }
-              ],
-              "hidden_when": {
-                "attr": "has_record",
-                "equals": "no"
-              },
-              "collapsed": true
-            },
-            {
-              "type": "panel",
-              "title": "Build from a project script",
-              "n_col": 1,
-              "collapsible": true,
-              "collapsed": true,
-              "description": "For a project whose records are generated by a build script from a config (e.g. T4L): pick the config, Build record.",
-              "sections": [
-                {
-                  "type": "value",
-                  "attr": "configs_dir",
-                  "kind": "str",
-                  "label": "Configs",
-                  "elide": "start",
-                  "description": "The folder of record build configs (one JSON per record: its measurements, calibrations, sources, construct, setups and Zenodo metadata)."
-                },
-                {
-                  "type": "custom",
-                  "key": "data_table",
-                  "title": "",
-                  "description": "One row per build config. Click one to see it; Build record creates (or rebuilds) the record folder under the data root.",
-                  "options": {
-                    "source": "configs",
-                    "row_key": "name",
-                    "selected_call": "select_config",
-                    "editable": false,
-                    "fit_rows": true,
-                    "height": 160,
-                    "min_column_width": 80,
-                    "tooltip_key": "config",
-                    "columns": [
-                      {
                         "key": "name",
                         "title": "Record",
-                        "width": 360,
-                        "tooltip": "The record the config builds."
-                      },
-                      {
+                        "tooltip": "The record folder: one Zenodo entry, uploaded as one archive."
+                    },
+                    {
+                        "key": "review",
+                        "title": "Review",
+                        "tooltip": "How many items are approved."
+                    },
+                    {
                         "key": "state",
-                        "title": "State",
-                        "width": 160,
-                        "tooltip": "Not built, built but not scanned, or built and scanned (ready for review)."
-                      },
-                      {
-                        "key": "built",
-                        "title": "Built",
-                        "width": 150,
-                        "tooltip": "When the record folder was last written."
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "button_row",
-                  "description": "Build the selected record; rebuilding keeps every approval whose item did not change.",
-                  "buttons": [
-                    {
-                      "action": "build_record",
-                      "label": "Build record",
-                      "role": "primary",
-                      "description": "Run the build (link raws, write containers, generate and validate metadata.cif, verify) and then the review scan, on a worker. Grey until a config is selected and saved."
+                        "title": "Gate",
+                        "tooltip": "Cleared for upload, or how many things still block it."
                     },
                     {
-                      "action": "show_example",
-                      "label": "Load example",
-                      "icon": "\ud83e\uddea",
-                      "description": "Put an example config in the editor -- a real one, trimmed: one measurement, its setup and calibrations, the construct and the Zenodo block, each part with a _help note. Adapt it and Save config."
+                        "key": "upload",
+                        "title": "Upload",
+                        "background": {
+                            "\u2713 uploaded, current": "#2e6b3a",
+                            "changed since upload": "#7a5a12"
+                        },
+                        "tooltip": "Is it on Zenodo: not uploaded, \u2713 uploaded and current (this package and metadata), changed since upload (an update is due), or published."
                     },
                     {
-                      "action": "save_config",
-                      "label": "Save config",
-                      "description": "Write the edited config to the configs folder as <record>.json. Grey while the text is not valid JSON, its \"record\" is not a record name, or another config has that name."
+                        "key": "remote",
+                        "title": "Zenodo",
+                        "tooltip": "The draft (or published record) it went to."
                     },
                     {
-                      "action": "discard_config_edit",
-                      "label": "Discard edits",
-                      "role": "danger",
-                      "description": "Drop the edits; the editor shows the selected config again."
+                        "key": "doi",
+                        "title": "DOI",
+                        "tooltip": "The published DOI, or the one reserved before publishing."
+                    },
+                    {
+                        "key": "last",
+                        "title": "Last upload",
+                        "tooltip": "When it was last uploaded (and how often)."
                     }
-                  ]
-                },
-                {
-                  "type": "info",
-                  "key": "config_status",
-                  "source": "config_status",
-                  "is_markdown": true,
-                  "description": "Whether the edited config can be saved, and under which name."
-                },
-                {
-                  "type": "custom",
-                  "key": "code_editor",
-                  "target": "config_edit",
-                  "options": {
-                    "language": "json",
-                    "read_only": false,
-                    "stretch": 1,
-                    "min_height": 120,
-                    "height": 200
-                  },
-                  "description": "The selected build config, or the example: edit it here and Save config (keys starting with _ are notes, ignored by the build)."
-                },
-                {
-                  "type": "custom",
-                  "key": "code_editor",
-                  "target": "build_log",
-                  "options": {
-                    "language": "none",
-                    "read_only": true,
-                    "height": 160
-                  },
-                  "description": "What the last build printed: per container the burst tables, sidecars, encodings and checks, and VERIFY_OK or what failed."
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "panel",
-          "title": "2 \u00b7 Review",
-          "description": "Check every item of the record and decide on it.",
-          "n_col": 1,
-          "sections": [
-            {
-              "type": "button_row",
-              "buttons": [
-                {
-                  "action": "approve_all",
-                  "label": "Approve all",
-                  "label_source": "approve_all_label",
-                  "role": "primary",
-                  "description": "Approve every item not decided yet, \u26a0 flagged ones included, at its current content. Rejected items and items failing the machine check are left as they are. The Note, if any, is stored with each approval."
-                }
-              ]
-            },
-            {
-              "type": "custom",
-              "key": "data_table",
-              "title": "",
-              "description": "Every item of the record, its files under it: each measurement with the calibrations it uses nested under it (one calibration, stored once, can serve several), and every folder's files under their item -- a numbered series (one acquisition over rollover files) as one foldable row. Approve a row with its button; right-click for Reject, Undo decision or Open in ndX. Double click opens a file in the modal viewer, an item in ndX. \u26a0 = check first; hover a row for why, its content and origin.",
-              "options": {
-                "source": "items",
-                "row_key": "key",
-                "selected_call": "select_item",
-                "editable": false,
-                "height": 470,
-                "tooltip_key": "detail",
-                "min_column_width": 50,
-                "columns": [
-                  {
-                    "key": "item",
-                    "title": "Item",
-                    "width": 430,
-                    "tooltip": "The folder or file in the record; a measurement's calibrations are nested under it (\u25b8 folds them)."
-                  },
-                  {
-                    "key": "status",
-                    "title": "Review",
-                    "width": 140,
-                    "tooltip": "Pending, Approved or Rejected; (changed) when the content changed after approval."
-                  },
-                  {
-                    "key": "flags",
-                    "title": "Check",
-                    "width": 56,
-                    "tooltip": "How many reasons this item needs a closer look; hover the row to read them."
-                  },
-                  {
-                    "key": "role",
-                    "title": "Role",
-                    "width": 160,
-                    "tooltip": "Measurement, calibration or metadata; shared \u00d7n: a calibration used by n measurements, stored once."
-                  },
-                  {
-                    "key": "holds",
-                    "title": "Holds",
-                    "width": 150,
-                    "align": "right",
-                    "tooltip": "Number of files and total size of the item."
-                  },
-                  {
-                    "key": "act",
-                    "title": "Decide",
-                    "width": 84,
-                    "display": "button",
-                    "call": "approve_item",
-                    "tooltip": "Approve the item as it is now; bound to its content."
-                  }
                 ],
                 "fit_rows": true,
-                "selection_note": false,
-                "activated_call": "open_tree_row",
-                "context_menu": [
-                  {
-                    "label": "Approve",
-                    "call": "approve_item",
-                    "enabled_when": "can_approve",
-                    "description": "Approve the item as it is now: if it changes later, it is pending again."
-                  },
-                  {
-                    "label": "Approve all",
-                    "call": "approve_all",
-                    "enabled_when": "can_approve_all",
-                    "description": "Approve every item not decided yet (not rejected ones, not ones failing the check)."
-                  },
-                  {
-                    "label": "Reject",
-                    "call": "reject_item",
-                    "enabled_when": "can_decide",
-                    "description": "Block the record until the item is fixed and approved; the Note says why."
-                  },
-                  {
-                    "label": "Undo decision",
-                    "call": "reset_item",
-                    "enabled_when": "can_decide",
-                    "description": "The item is pending again."
-                  },
-                  {
-                    "separator": true
-                  },
-                  {
-                    "label": "Open in ndX",
-                    "call": "open_in_ndx",
-                    "enabled_when": "has_ndx",
-                    "description": "Look at the bursts of the item's .mmfdb.pto before approving."
-                  }
-                ],
-                "tree_key": "parent",
-                "expanded_attr": "expanded"
-              }
-            },
-            {
-              "type": "info",
-              "key": "item_text",
-              "source": "item_text",
-              "is_markdown": true,
-              "description": "The selected item: what to check first. Hover its row for where it came from."
-            },
-            {
-              "type": "row",
-              "n_col": 1,
-              "sections": [
-                {
-                  "type": "value",
-                  "attr": "note",
-                  "kind": "str",
-                  "label": "Note",
-                  "placeholder": "optional, stored with your next decision",
-                  "description": "Stored with your decision, e.g. which file you looked at or why you rejected the item."
-                }
-              ]
+                "edited_call": "pick_record",
+                "tooltip_key": "detail",
+                "fit_columns": true
             }
-          ]
         },
         {
-          "type": "panel",
-          "title": "3 \u00b7 Upload",
-          "description": "Build the archive and upload it into a Zenodo draft. Locked until every item is approved.",
-          "n_col": 1,
-          "sections": [
-            {
-              "type": "panel",
-              "title": "Before upload",
-              "description": "The plan of the upload this tab would run now, file by file: what is sent, what is replaced, what is identical already on the draft, and what would be deleted from it. Press Check (DOI & publish panel) to compare against the live draft.",
-              "sections": [
+            "type": "button_row",
+            "key": "upload_checked_row",
+            "description": "Upload the checked records that are cleared and not current: each as a new draft, an update, or a new version.",
+            "buttons": [
                 {
-                  "type": "toggle",
-                  "attr": "separate_metadata",
-                  "label": "Build the metadata separate",
-                  "description": "Keep every metadata file out of the raw archive: the editable README.md and metadata.cif AND the provenance (origins.json, manifest_sha256.csv) are uploaded beside it as sidecars, so correcting or regenerating any of them later is a metadata-only swap and never re-sends the raw data."
-                },
+                    "action": "upload_checked",
+                    "label": "Upload / update checked",
+                    "label_source": "upload_checked_label",
+                    "role": "primary",
+                    "description": "Upload every checked record that is cleared and changed since its last upload (or never uploaded), one after another. Nothing is published."
+                }
+            ]
+        },
+        {
+            "type": "tabs",
+            "description": "Review first, then upload. The token is needed only for uploading.",
+            "sections": [
                 {
-                  "type": "info",
-                  "key": "preflight_text",
-                  "source": "preflight_text",
-                  "is_markdown": true,
-                  "description": "The plan in one line, before anything leaves the machine."
-                },
-                {
-                  "type": "info",
-                  "key": "metadata_only_text",
-                  "source": "metadata_only_text",
-                  "is_markdown": true,
-                  "description": "The metadata-only swap: the changed sidecars and the Zenodo metadata, never the raw archive -- and why it refuses, if it does."
-                },
-                {
-                  "type": "custom",
-                  "key": "data_table",
-                  "description": "Every file operation of the planned upload. = identical rows transfer nothing; \u00d7 delete rows are files on the draft that the package does not have.",
-                  "options": {
-                    "source": "preflight_rows",
-                    "row_key": "file",
-                    "editable": false,
-                    "height": 120,
-                    "min_height": 80,
-                    "min_column_width": 50,
-                    "fit_columns": true,
-                    "columns": [
-                      {
-                        "key": "file",
-                        "title": "File",
-                        "tooltip": "The file of the planned operation: the package zip, one of its sidecar metadata files (README.md and metadata.cif; with the metadata-separate build also origins.json and manifest_sha256.csv), or a remote file."
-                      },
-                      {
-                        "key": "action",
-                        "title": "Action",
-                        "tooltip": "\u2192 upload: not on the draft yet. \u2192 replace: the draft holds a different md5. = identical: nothing to send. \u00d7 delete: on the draft, not in the package."
-                      },
-                      {
-                        "key": "size",
-                        "title": "Size",
-                        "align": "right",
-                        "tooltip": "Bytes to transfer; for a delete, the remote file's size."
-                      },
-                      {
-                        "key": "state",
-                        "title": "Why",
-                        "tooltip": "new / changed / same / extra on remote."
-                      }
+                    "type": "panel",
+                    "title": "1 \u00b7 Create",
+                    "description": "Make a record by hand in four steps -- name it, put its data in, fill in what Zenodo shows, scan it -- then review it in 1 \u00b7 Review. A record built by a project script is under Advanced.",
+                    "n_col": 1,
+                    "sections": [
+                        {
+                            "type": "panel",
+                            "title": "New record",
+                            "n_col": 1,
+                            "collapsible": true,
+                            "description": "An empty record folder under the data root. Skip this step to work on a record picked in the list above.",
+                            "sections": [
+                                {
+                                    "type": "row",
+                                    "sections": [
+                                        {
+                                            "type": "value",
+                                            "attr": "new_name",
+                                            "kind": "str",
+                                            "label": "Name",
+                                            "weight": 1,
+                                            "live": true,
+                                            "description": "Folder and archive name: lower case, digits, '.', '_' or '-', e.g. t4l-unfolding-smfret-k60-n132c."
+                                        },
+                                        {
+                                            "type": "value",
+                                            "attr": "new_title",
+                                            "kind": "str",
+                                            "label": "Title",
+                                            "weight": 2,
+                                            "description": "The Zenodo title (you can change it in step 3)."
+                                        },
+                                        {
+                                            "type": "button_row",
+                                            "weight": 0,
+                                            "buttons": [
+                                                {
+                                                    "action": "create_record",
+                                                    "label": "Create record",
+                                                    "role": "primary",
+                                                    "description": "Make the empty record and open it. Grey until the name is valid and not taken."
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "n_col": 3
+                                },
+                                {
+                                    "type": "info",
+                                    "key": "new_name_problem",
+                                    "source": "new_name_problem",
+                                    "is_markdown": true,
+                                    "description": "Whether the name can be used, and what will be created."
+                                }
+                            ],
+                            "collapsed": true
+                        },
+                        {
+                            "type": "info",
+                            "key": "no_record_hint",
+                            "source": "no_record_hint",
+                            "is_markdown": true,
+                            "hidden_when": {
+                                "attr": "has_record",
+                                "equals": "yes"
+                            },
+                            "description": "Steps 2-4 work on the open record."
+                        },
+                        {
+                            "type": "panel",
+                            "title": "Add data",
+                            "n_col": 1,
+                            "collapsible": true,
+                            "description": "Put files or folders into the open record. Each addition is one item a reviewer judges: a measurement, or a calibration of a setup-and-day group.",
+                            "sections": [
+                                {
+                                    "type": "choice",
+                                    "attr": "add_role",
+                                    "label": "Add as",
+                                    "options": [
+                                        "measurement",
+                                        "calibration"
+                                    ],
+                                    "labels": [
+                                        "Measurement",
+                                        "Calibration"
+                                    ],
+                                    "style": "radio",
+                                    "description": "A measurement (sample data) or a calibration (IRF/scatter, buffer, dyes, DNA references).",
+                                    "descriptions": [
+                                        "Sample data: the files land under measurements/<item>.",
+                                        "A reference the measurements need (IRF/scatter, buffer, dyes, DNA): the files land under calibrations/<group>/<item>."
+                                    ]
+                                },
+                                {
+                                    "type": "row",
+                                    "sections": [
+                                        {
+                                            "type": "value",
+                                            "attr": "add_name",
+                                            "kind": "str",
+                                            "label": "Item",
+                                            "weight": 1,
+                                            "live": true,
+                                            "description": "The item's folder name, e.g. 2014-08-12_0M-urea or h2o-scatter."
+                                        },
+                                        {
+                                            "type": "value",
+                                            "attr": "add_group",
+                                            "kind": "str",
+                                            "label": "Group",
+                                            "weight": 1,
+                                            "live": true,
+                                            "hidden_when": {
+                                                "attr": "add_role",
+                                                "equals": "measurement"
+                                            },
+                                            "description": "The calibration group: the setup and day it calibrates, e.g. 2014-08-12_pq-hydraharp."
+                                        }
+                                    ],
+                                    "n_col": 2
+                                },
+                                {
+                                    "type": "info",
+                                    "key": "add_target",
+                                    "source": "add_target",
+                                    "is_markdown": true,
+                                    "description": "Where the chosen files will land."
+                                },
+                                {
+                                    "type": "button_row",
+                                    "buttons": [
+                                        {
+                                            "action": "add_files",
+                                            "label": "Add files\u2026",
+                                            "role": "primary",
+                                            "description": "Choose one or more files to add as this item."
+                                        },
+                                        {
+                                            "action": "add_folder",
+                                            "label": "Add folder\u2026",
+                                            "description": "Choose a folder; it is added with its inner layout."
+                                        },
+                                        {
+                                            "action": "show_folder",
+                                            "label": "Show in Finder",
+                                            "description": "Open the record folder. Files you put there yourself are picked up by Scan for review."
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "panel",
+                                    "title": "From mmfdb",
+                                    "n_col": 1,
+                                    "collapsible": true,
+                                    "collapsed": true,
+                                    "description": "Add an experiment of the local mmfdb: its data files go into the record as the item above (its id names it when Item is empty), as Measurement or Calibration.",
+                                    "sections": [
+                                        {
+                                            "type": "button_row",
+                                            "buttons": [
+                                                {
+                                                    "action": "load_mmfdb",
+                                                    "label": "Load experiments",
+                                                    "description": "List the experiments of the local mmfdb (its server must run: MMFDB Admin)."
+                                                },
+                                                {
+                                                    "action": "add_from_mmfdb",
+                                                    "label": "Add experiment",
+                                                    "role": "primary",
+                                                    "description": "Put the selected experiment's data files into the record, hard-linked where they are on this disk. Data held inside the database (not as files) is not added."
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "type": "custom",
+                                            "key": "data_table",
+                                            "description": "The experiments of the local mmfdb. Click one, then Add experiment.",
+                                            "options": {
+                                                "source": "mmfdb_experiments",
+                                                "row_key": "id",
+                                                "selected_call": "select_mmfdb_experiment",
+                                                "editable": false,
+                                                "fit_rows": true,
+                                                "height": 200,
+                                                "filter": true,
+                                                "tooltip_key": "detail",
+                                                "fit_columns": true,
+                                                "min_column_width": 60,
+                                                "columns": [
+                                                    {
+                                                        "key": "id",
+                                                        "title": "Experiment",
+                                                        "description": "The mmfdb experiment id."
+                                                    },
+                                                    {
+                                                        "key": "sample",
+                                                        "title": "Sample",
+                                                        "description": "The sample the experiment measured."
+                                                    },
+                                                    {
+                                                        "key": "project",
+                                                        "title": "Project",
+                                                        "description": "The project the experiment belongs to."
+                                                    },
+                                                    {
+                                                        "key": "started",
+                                                        "title": "Started",
+                                                        "description": "When the experiment started."
+                                                    },
+                                                    {
+                                                        "key": "by",
+                                                        "title": "By",
+                                                        "description": "Who recorded the experiment."
+                                                    },
+                                                    {
+                                                        "key": "device",
+                                                        "title": "Device",
+                                                        "description": "The instrument the experiment was measured on."
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "custom",
+                                    "key": "code_editor",
+                                    "target": "record_tree",
+                                    "options": {
+                                        "language": "none",
+                                        "read_only": true,
+                                        "height": 110
+                                    },
+                                    "description": "What the record holds now: every item with its file count and size."
+                                }
+                            ],
+                            "hidden_when": {
+                                "attr": "has_record",
+                                "equals": "no"
+                            },
+                            "collapsed": true
+                        },
+                        {
+                            "type": "panel",
+                            "title": "Zenodo metadata",
+                            "n_col": 1,
+                            "collapsible": true,
+                            "description": "What Zenodo shows about the record. Checked as you type; it is reviewed and approved like any item.",
+                            "sections": [
+                                {
+                                    "type": "custom",
+                                    "key": "metadata_editor",
+                                    "description": "The one metadata editor (core plugin): the deposit fields, validated."
+                                },
+                                {
+                                    "type": "info",
+                                    "key": "metadata_status",
+                                    "source": "metadata_status",
+                                    "is_markdown": true,
+                                    "description": "What is still missing, or that the metadata is complete."
+                                },
+                                {
+                                    "type": "panel",
+                                    "title": "Sent to Zenodo (JSON)",
+                                    "collapsible": true,
+                                    "collapsed": true,
+                                    "n_col": 1,
+                                    "sections": [
+                                        {
+                                            "type": "custom",
+                                            "key": "code_editor",
+                                            "target": "metadata_json",
+                                            "options": {
+                                                "language": "json",
+                                                "read_only": true,
+                                                "height": 180
+                                            },
+                                            "description": "Exactly the deposition metadata the upload sends."
+                                        }
+                                    ],
+                                    "description": "The deposition metadata exactly as the upload sends it to Zenodo, read-only."
+                                }
+                            ],
+                            "hidden_when": {
+                                "attr": "has_record",
+                                "equals": "no"
+                            },
+                            "collapsed": false
+                        },
+                        {
+                            "type": "panel",
+                            "title": "Scan for review",
+                            "n_col": 1,
+                            "collapsible": true,
+                            "description": "Read the record folder into the items you review in 1 \u00b7 Review.",
+                            "sections": [
+                                {
+                                    "type": "button_row",
+                                    "buttons": [
+                                        {
+                                            "action": "scan_for_review",
+                                            "label": "Scan for review",
+                                            "role": "primary",
+                                            "description": "List every measurement, calibration and metadata item with its digest; approvals of unchanged items are kept."
+                                        }
+                                    ]
+                                }
+                            ],
+                            "hidden_when": {
+                                "attr": "has_record",
+                                "equals": "no"
+                            },
+                            "collapsed": true
+                        },
+                        {
+                            "type": "panel",
+                            "title": "Build from a project script",
+                            "n_col": 1,
+                            "collapsible": true,
+                            "collapsed": true,
+                            "description": "For a project whose records are generated by a build script from a config (e.g. T4L): pick the config, Build record.",
+                            "sections": [
+                                {
+                                    "type": "value",
+                                    "attr": "configs_dir",
+                                    "kind": "str",
+                                    "label": "Configs",
+                                    "elide": "start",
+                                    "description": "The folder of record build configs (one JSON per record: its measurements, calibrations, sources, construct, setups and Zenodo metadata)."
+                                },
+                                {
+                                    "type": "custom",
+                                    "key": "data_table",
+                                    "title": "",
+                                    "description": "One row per build config. Click one to see it; Build record creates (or rebuilds) the record folder under the data root.",
+                                    "options": {
+                                        "source": "configs",
+                                        "row_key": "name",
+                                        "selected_call": "select_config",
+                                        "editable": false,
+                                        "fit_rows": true,
+                                        "height": 160,
+                                        "min_column_width": 80,
+                                        "tooltip_key": "config",
+                                        "columns": [
+                                            {
+                                                "key": "name",
+                                                "title": "Record",
+                                                "width": 360,
+                                                "tooltip": "The record the config builds."
+                                            },
+                                            {
+                                                "key": "state",
+                                                "title": "State",
+                                                "width": 160,
+                                                "tooltip": "Not built, built but not scanned, or built and scanned (ready for review)."
+                                            },
+                                            {
+                                                "key": "built",
+                                                "title": "Built",
+                                                "width": 150,
+                                                "tooltip": "When the record folder was last written."
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "type": "button_row",
+                                    "description": "Build the selected record; rebuilding keeps every approval whose item did not change.",
+                                    "buttons": [
+                                        {
+                                            "action": "build_record",
+                                            "label": "Build record",
+                                            "role": "primary",
+                                            "description": "Run the build (link raws, write containers, generate and validate metadata.cif, verify) and then the review scan, on a worker. Grey until a config is selected and saved."
+                                        },
+                                        {
+                                            "action": "show_example",
+                                            "label": "Load example",
+                                            "icon": "\ud83e\uddea",
+                                            "description": "Put an example config in the editor -- a real one, trimmed: one measurement, its setup and calibrations, the construct and the Zenodo block, each part with a _help note. Adapt it and Save config."
+                                        },
+                                        {
+                                            "action": "save_config",
+                                            "label": "Save config",
+                                            "description": "Write the edited config to the configs folder as <record>.json. Grey while the text is not valid JSON, its \"record\" is not a record name, or another config has that name."
+                                        },
+                                        {
+                                            "action": "discard_config_edit",
+                                            "label": "Discard edits",
+                                            "role": "danger",
+                                            "description": "Drop the edits; the editor shows the selected config again."
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "info",
+                                    "key": "config_status",
+                                    "source": "config_status",
+                                    "is_markdown": true,
+                                    "description": "Whether the edited config can be saved, and under which name."
+                                },
+                                {
+                                    "type": "custom",
+                                    "key": "code_editor",
+                                    "target": "config_edit",
+                                    "options": {
+                                        "language": "json",
+                                        "read_only": false,
+                                        "stretch": 1,
+                                        "min_height": 120,
+                                        "height": 200
+                                    },
+                                    "description": "The selected build config, or the example: edit it here and Save config (keys starting with _ are notes, ignored by the build)."
+                                },
+                                {
+                                    "type": "custom",
+                                    "key": "code_editor",
+                                    "target": "build_log",
+                                    "options": {
+                                        "language": "none",
+                                        "read_only": true,
+                                        "height": 160
+                                    },
+                                    "description": "What the last build printed: per container the burst tables, sidecars, encodings and checks, and VERIFY_OK or what failed."
+                                }
+                            ]
+                        }
                     ]
-                  }
+                },
+                {
+                    "type": "panel",
+                    "title": "2 \u00b7 Review",
+                    "description": "Check every item of the record and decide on it.",
+                    "n_col": 1,
+                    "sections": [
+                        {
+                            "type": "button_row",
+                            "buttons": [
+                                {
+                                    "action": "approve_all",
+                                    "label": "Approve all",
+                                    "label_source": "approve_all_label",
+                                    "role": "primary",
+                                    "description": "Approve every item not decided yet, \u26a0 flagged ones included, at its current content. Rejected items and items failing the machine check are left as they are. The Note, if any, is stored with each approval."
+                                }
+                            ]
+                        },
+                        {
+                            "type": "custom",
+                            "key": "data_table",
+                            "title": "",
+                            "description": "Every item of the record, its files under it: each measurement with the calibrations it uses nested under it (one calibration, stored once, can serve several), and every folder's files under their item -- a numbered series (one acquisition over rollover files) as one foldable row. Approve a row with its button; right-click for Reject, Undo decision or Open in ndX. Double click opens a file in the modal viewer, an item in ndX. \u26a0 = check first; hover a row for why, its content and origin.",
+                            "options": {
+                                "source": "items",
+                                "row_key": "key",
+                                "selected_call": "select_item",
+                                "editable": false,
+                                "height": 470,
+                                "tooltip_key": "detail",
+                                "min_column_width": 50,
+                                "columns": [
+                                    {
+                                        "key": "item",
+                                        "title": "Item",
+                                        "width": 430,
+                                        "tooltip": "The folder or file in the record; a measurement's calibrations are nested under it (\u25b8 folds them)."
+                                    },
+                                    {
+                                        "key": "status",
+                                        "title": "Review",
+                                        "width": 140,
+                                        "tooltip": "Pending, Approved or Rejected; (changed) when the content changed after approval."
+                                    },
+                                    {
+                                        "key": "flags",
+                                        "title": "Check",
+                                        "width": 56,
+                                        "tooltip": "How many reasons this item needs a closer look; hover the row to read them."
+                                    },
+                                    {
+                                        "key": "role",
+                                        "title": "Role",
+                                        "width": 160,
+                                        "tooltip": "Measurement, calibration or metadata; shared \u00d7n: a calibration used by n measurements, stored once."
+                                    },
+                                    {
+                                        "key": "holds",
+                                        "title": "Holds",
+                                        "width": 150,
+                                        "align": "right",
+                                        "tooltip": "Number of files and total size of the item."
+                                    },
+                                    {
+                                        "key": "act",
+                                        "title": "Decide",
+                                        "width": 84,
+                                        "display": "button",
+                                        "call": "approve_item",
+                                        "tooltip": "Approve the item as it is now; bound to its content."
+                                    }
+                                ],
+                                "fit_rows": true,
+                                "selection_note": false,
+                                "activated_call": "open_tree_row",
+                                "context_menu": [
+                                    {
+                                        "label": "Approve",
+                                        "call": "approve_item",
+                                        "enabled_when": "can_approve",
+                                        "description": "Approve the item as it is now: if it changes later, it is pending again."
+                                    },
+                                    {
+                                        "label": "Approve all",
+                                        "call": "approve_all",
+                                        "enabled_when": "can_approve_all",
+                                        "description": "Approve every item not decided yet (not rejected ones, not ones failing the check)."
+                                    },
+                                    {
+                                        "label": "Reject",
+                                        "call": "reject_item",
+                                        "enabled_when": "can_decide",
+                                        "description": "Block the record until the item is fixed and approved; the Note says why."
+                                    },
+                                    {
+                                        "label": "Undo decision",
+                                        "call": "reset_item",
+                                        "enabled_when": "can_decide",
+                                        "description": "The item is pending again."
+                                    },
+                                    {
+                                        "separator": true
+                                    },
+                                    {
+                                        "label": "Open in ndX",
+                                        "call": "open_in_ndx",
+                                        "enabled_when": "has_ndx",
+                                        "description": "Look at the bursts of the item's .mmfdb.pto before approving."
+                                    }
+                                ],
+                                "tree_key": "parent",
+                                "expanded_attr": "expanded"
+                            }
+                        },
+                        {
+                            "type": "info",
+                            "key": "item_text",
+                            "source": "item_text",
+                            "is_markdown": true,
+                            "description": "The selected item: what to check first. Hover its row for where it came from."
+                        },
+                        {
+                            "type": "row",
+                            "n_col": 1,
+                            "sections": [
+                                {
+                                    "type": "value",
+                                    "attr": "note",
+                                    "kind": "str",
+                                    "label": "Note",
+                                    "placeholder": "optional, stored with your next decision",
+                                    "description": "Stored with your decision, e.g. which file you looked at or why you rejected the item."
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "type": "panel",
+                    "title": "3 \u00b7 Upload",
+                    "description": "Build the archive and upload it into a Zenodo draft. Locked until every item is approved.",
+                    "n_col": 1,
+                    "sections": [
+                        {
+                            "type": "panel",
+                            "title": "Before upload",
+                            "description": "The plan of the upload this tab would run now, file by file: what is sent, what is replaced, what is identical already on the draft, and what would be deleted from it. Press Check (DOI & publish panel) to compare against the live draft.",
+                            "sections": [
+                                {
+                                    "type": "toggle",
+                                    "attr": "separate_metadata",
+                                    "label": "Build the metadata separate",
+                                    "description": "Keep every metadata file out of the raw archive: the editable README.md and metadata.cif AND the provenance (origins.json, manifest_sha256.csv) are uploaded beside it as sidecars, so correcting or regenerating any of them later is a metadata-only swap and never re-sends the raw data."
+                                },
+                                {
+                                    "type": "info",
+                                    "key": "preflight_text",
+                                    "source": "preflight_text",
+                                    "is_markdown": true,
+                                    "description": "The plan in one line, before anything leaves the machine."
+                                },
+                                {
+                                    "type": "info",
+                                    "key": "metadata_only_text",
+                                    "source": "metadata_only_text",
+                                    "is_markdown": true,
+                                    "description": "The metadata-only swap: the changed sidecars and the Zenodo metadata, never the raw archive -- and why it refuses, if it does."
+                                },
+                                {
+                                    "type": "custom",
+                                    "key": "data_table",
+                                    "description": "Every file operation of the planned upload. = identical rows transfer nothing; \u00d7 delete rows are files on the draft that the package does not have.",
+                                    "options": {
+                                        "source": "preflight_rows",
+                                        "row_key": "file",
+                                        "editable": false,
+                                        "height": 120,
+                                        "min_height": 80,
+                                        "min_column_width": 50,
+                                        "fit_columns": true,
+                                        "columns": [
+                                            {
+                                                "key": "file",
+                                                "title": "File",
+                                                "tooltip": "The file of the planned operation: the package zip, one of its sidecar metadata files (README.md and metadata.cif; with the metadata-separate build also origins.json and manifest_sha256.csv), or a remote file."
+                                            },
+                                            {
+                                                "key": "action",
+                                                "title": "Action",
+                                                "tooltip": "\u2192 upload: not on the draft yet. \u2192 replace: the draft holds a different md5. = identical: nothing to send. \u00d7 delete: on the draft, not in the package."
+                                            },
+                                            {
+                                                "key": "size",
+                                                "title": "Size",
+                                                "align": "right",
+                                                "tooltip": "Bytes to transfer; for a delete, the remote file's size."
+                                            },
+                                            {
+                                                "key": "state",
+                                                "title": "Why",
+                                                "tooltip": "new / changed / same / extra on remote."
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "type": "panel",
+                            "title": "Draft",
+                            "n_col": 1,
+                            "collapsible": true,
+                            "sections": [
+                                {
+                                    "type": "info",
+                                    "key": "zenodo_text",
+                                    "source": "zenodo_text",
+                                    "is_markdown": true,
+                                    "description": "The deposition metadata that is submitted with the draft: title, creators with affiliations, license, keywords. It comes from the record's build config."
+                                },
+                                {
+                                    "type": "custom",
+                                    "key": "code_editor",
+                                    "target": "zenodo_description",
+                                    "options": {
+                                        "language": "none",
+                                        "read_only": true,
+                                        "height": 90
+                                    },
+                                    "description": "The record description as it will appear on Zenodo (HTML)."
+                                },
+                                {
+                                    "type": "info",
+                                    "key": "gate_text",
+                                    "source": "gate_text",
+                                    "is_markdown": true,
+                                    "description": "The package (size, md5) and what still blocks the upload."
+                                },
+                                {
+                                    "type": "button_row",
+                                    "description": "In this order: build the archive from the approved content, then upload it into a draft.",
+                                    "buttons": [
+                                        {
+                                            "action": "build_package",
+                                            "label": "Build package",
+                                            "description": "Write the upload archive from the record as it is now (stored ZIP, every member CRC-checked)."
+                                        },
+                                        {
+                                            "action": "upload_draft",
+                                            "label": "Upload draft",
+                                            "label_source": "upload_label",
+                                            "role": "primary",
+                                            "description": "Upload the package into a Zenodo DRAFT and check its md5 there: a new draft, an update of the draft (its package replaced), or -- once published -- a new version. Nothing is published. Grey until every item is approved, the package matches, a token is set, and the draft does not already hold this package."
+                                        },
+                                        {
+                                            "action": "upload_metadata_only",
+                                            "label": "Swap metadata",
+                                            "label_source": "metadata_label",
+                                            "description": "Swap the metadata of the unpublished draft without sending the raw archive: the changed sidecars -- the editable README.md and metadata.cif and, when the build keeps them beside the zip, the provenance origins.json and manifest_sha256.csv -- and the reviewed Zenodo metadata only. Grey while anything blocks (the edited metadata must be reviewed again), before the first upload, once published (immutable), and when the draft does not hold the raw archive unchanged."
+                                        },
+                                        {
+                                            "action": "rescan",
+                                            "label": "Rescan folder",
+                                            "description": "Re-read the record folder after you changed something in it. Reviews are kept; a changed item is pending again."
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "info",
+                                    "key": "upload_hint",
+                                    "source": "upload_hint",
+                                    "description": "Why Upload draft is grey, if it is."
+                                }
+                            ],
+                            "tooltip": "The Zenodo record files: what will be deposited."
+                        },
+                        {
+                            "type": "panel",
+                            "title": "DOI & publish",
+                            "n_col": 1,
+                            "collapsible": true,
+                            "collapsed": true,
+                            "sections": [
+                                {
+                                    "type": "toggle",
+                                    "attr": "sandbox",
+                                    "label": "Trial run on the Zenodo sandbox",
+                                    "description": "Upload to sandbox.zenodo.org instead of zenodo.org. The sandbox needs its own token (Zenodo token tab)."
+                                },
+                                {
+                                    "type": "info",
+                                    "key": "remote_text",
+                                    "source": "remote_text",
+                                    "description": "The Zenodo draft and whether its file matches the local package."
+                                },
+                                {
+                                    "type": "info",
+                                    "key": "reserved_doi_text",
+                                    "source": "reserved_doi_text",
+                                    "is_markdown": true,
+                                    "description": "The record's DOI: reserved before publishing, or the published one."
+                                },
+                                {
+                                    "type": "info",
+                                    "key": "uploads_text",
+                                    "source": "uploads_text",
+                                    "is_markdown": true,
+                                    "description": "Every upload of this record (new draft, update, new version) and every published version, newest first -- kept in the record's review state."
+                                },
+                                {
+                                    "type": "button_row",
+                                    "description": "After the upload: compare the draft, approve publishing this exact package, publish.",
+                                    "buttons": [
+                                        {
+                                            "action": "reserve_doi_action",
+                                            "label": "Reserve DOI",
+                                            "description": "Get the record's final DOI now, before publishing -- to write into a manuscript. It sends the approved Zenodo metadata into a draft (made if there is none, no files needed). The DOI resolves once the record is published. Grey until the Zenodo metadata is approved, or when a DOI is reserved already."
+                                        },
+                                        {
+                                            "action": "check_remote",
+                                            "label": "Check Zenodo",
+                                            "description": "Read the draft back from Zenodo and compare it with the local package."
+                                        },
+                                        {
+                                            "action": "approve_publish",
+                                            "label": "Approve publish",
+                                            "description": "Approve publishing exactly this package (its md5). A rebuilt package needs a new approval."
+                                        },
+                                        {
+                                            "action": "publish_record",
+                                            "label": "Publish (irreversible)",
+                                            "role": "danger",
+                                            "description": "Publish the draft: it gets a DOI and can no longer be changed. You are asked three times. Grey until the draft matches the package and publishing is approved."
+                                        }
+                                    ]
+                                }
+                            ],
+                            "tooltip": "Deposit settings: access right, licence and community curation."
+                        }
+                    ]
+                },
+                {
+                    "type": "panel",
+                    "title": "Token",
+                    "description": "The personal access token used to upload. Kept in the system keychain only.",
+                    "n_col": 1,
+                    "sections": [
+                        {
+                            "type": "info",
+                            "key": "token_text",
+                            "source": "token_text",
+                            "is_markdown": true,
+                            "description": "Whether a token is set for the selected Zenodo (production or sandbox), and how to create one."
+                        },
+                        {
+                            "type": "row",
+                            "n_col": 1,
+                            "sections": [
+                                {
+                                    "type": "value",
+                                    "attr": "token_entry",
+                                    "kind": "password",
+                                    "label": "Token",
+                                    "placeholder": "paste the token here",
+                                    "description": "Paste the token and press Save. The field is cleared once it is stored; the token goes to the system keychain, never into a file or ChiSurf's settings."
+                                }
+                            ]
+                        },
+                        {
+                            "type": "button_row",
+                            "description": "Store, test or remove the token.",
+                            "buttons": [
+                                {
+                                    "action": "save_token",
+                                    "label": "Save to keychain",
+                                    "role": "primary",
+                                    "description": "Store the pasted token in the system keychain. Grey while the field is empty."
+                                },
+                                {
+                                    "action": "test_token",
+                                    "label": "Test token",
+                                    "description": "Ask Zenodo whether the token may create depositions."
+                                },
+                                {
+                                    "action": "forget_token",
+                                    "label": "Remove token",
+                                    "role": "danger",
+                                    "description": "Delete the stored token from the keychain."
+                                }
+                            ]
+                        }
+                    ]
                 }
-              ]
-            },
-            {
-              "type": "panel",
-              "title": "Draft",
-              "n_col": 1,
-              "collapsible": true,
-              "sections": [
-                {
-                  "type": "info",
-                  "key": "zenodo_text",
-                  "source": "zenodo_text",
-                  "is_markdown": true,
-                  "description": "The deposition metadata that is submitted with the draft: title, creators with affiliations, license, keywords. It comes from the record's build config."
-                },
-                {
-                  "type": "custom",
-                  "key": "code_editor",
-                  "target": "zenodo_description",
-                  "options": {
-                    "language": "none",
-                    "read_only": true,
-                    "height": 90
-                  },
-                  "description": "The record description as it will appear on Zenodo (HTML)."
-                },
-                {
-                  "type": "info",
-                  "key": "gate_text",
-                  "source": "gate_text",
-                  "is_markdown": true,
-                  "description": "The package (size, md5) and what still blocks the upload."
-                },
-                {
-                  "type": "button_row",
-                  "description": "In this order: build the archive from the approved content, then upload it into a draft.",
-                  "buttons": [
-                    {
-                      "action": "build_package",
-                      "label": "Build package",
-                      "description": "Write the upload archive from the record as it is now (stored ZIP, every member CRC-checked)."
-                    },
-                    {
-                      "action": "upload_draft",
-                      "label": "Upload draft",
-                      "label_source": "upload_label",
-                      "role": "primary",
-                      "description": "Upload the package into a Zenodo DRAFT and check its md5 there: a new draft, an update of the draft (its package replaced), or -- once published -- a new version. Nothing is published. Grey until every item is approved, the package matches, a token is set, and the draft does not already hold this package."
-                    },
-                    {
-                      "action": "upload_metadata_only",
-                      "label": "Swap metadata",
-                      "label_source": "metadata_label",
-                      "description": "Swap the metadata of the unpublished draft without sending the raw archive: the changed sidecars -- the editable README.md and metadata.cif and, when the build keeps them beside the zip, the provenance origins.json and manifest_sha256.csv -- and the reviewed Zenodo metadata only. Grey while anything blocks (the edited metadata must be reviewed again), before the first upload, once published (immutable), and when the draft does not hold the raw archive unchanged."
-                    },
-                    {
-                      "action": "rescan",
-                      "label": "Rescan folder",
-                      "description": "Re-read the record folder after you changed something in it. Reviews are kept; a changed item is pending again."
-                    }
-                  ]
-                },
-                {
-                  "type": "info",
-                  "key": "upload_hint",
-                  "source": "upload_hint",
-                  "description": "Why Upload draft is grey, if it is."
-                }
-              ]
-            },
-            {
-              "type": "panel",
-              "title": "DOI & publish",
-              "n_col": 1,
-              "collapsible": true,
-              "collapsed": true,
-              "sections": [
-                {
-                  "type": "toggle",
-                  "attr": "sandbox",
-                  "label": "Trial run on the Zenodo sandbox",
-                  "description": "Upload to sandbox.zenodo.org instead of zenodo.org. The sandbox needs its own token (Zenodo token tab)."
-                },
-                {
-                  "type": "info",
-                  "key": "remote_text",
-                  "source": "remote_text",
-                  "description": "The Zenodo draft and whether its file matches the local package."
-                },
-                {
-                  "type": "info",
-                  "key": "reserved_doi_text",
-                  "source": "reserved_doi_text",
-                  "is_markdown": true,
-                  "description": "The record's DOI: reserved before publishing, or the published one."
-                },
-                {
-                  "type": "info",
-                  "key": "uploads_text",
-                  "source": "uploads_text",
-                  "is_markdown": true,
-                  "description": "Every upload of this record (new draft, update, new version) and every published version, newest first -- kept in the record's review state."
-                },
-                {
-                  "type": "button_row",
-                  "description": "After the upload: compare the draft, approve publishing this exact package, publish.",
-                  "buttons": [
-                    {
-                      "action": "reserve_doi_action",
-                      "label": "Reserve DOI",
-                      "description": "Get the record's final DOI now, before publishing -- to write into a manuscript. It sends the approved Zenodo metadata into a draft (made if there is none, no files needed). The DOI resolves once the record is published. Grey until the Zenodo metadata is approved, or when a DOI is reserved already."
-                    },
-                    {
-                      "action": "check_remote",
-                      "label": "Check Zenodo",
-                      "description": "Read the draft back from Zenodo and compare it with the local package."
-                    },
-                    {
-                      "action": "approve_publish",
-                      "label": "Approve publish",
-                      "description": "Approve publishing exactly this package (its md5). A rebuilt package needs a new approval."
-                    },
-                    {
-                      "action": "publish_record",
-                      "label": "Publish (irreversible)",
-                      "role": "danger",
-                      "description": "Publish the draft: it gets a DOI and can no longer be changed. You are asked three times. Grey until the draft matches the package and publishing is approved."
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
+            ]
         },
         {
-          "type": "panel",
-          "title": "Token",
-          "description": "The personal access token used to upload. Kept in the system keychain only.",
-          "n_col": 1,
-          "sections": [
-            {
-              "type": "info",
-              "key": "token_text",
-              "source": "token_text",
-              "is_markdown": true,
-              "description": "Whether a token is set for the selected Zenodo (production or sandbox), and how to create one."
-            },
-            {
-              "type": "row",
-              "n_col": 1,
-              "sections": [
-                {
-                  "type": "value",
-                  "attr": "token_entry",
-                  "kind": "password",
-                  "label": "Token",
-                  "placeholder": "paste the token here",
-                  "description": "Paste the token and press Save. The field is cleared once it is stored; the token goes to the system keychain, never into a file or ChiSurf's settings."
-                }
-              ]
-            },
-            {
-              "type": "button_row",
-              "description": "Store, test or remove the token.",
-              "buttons": [
-                {
-                  "action": "save_token",
-                  "label": "Save to keychain",
-                  "role": "primary",
-                  "description": "Store the pasted token in the system keychain. Grey while the field is empty."
-                },
-                {
-                  "action": "test_token",
-                  "label": "Test token",
-                  "description": "Ask Zenodo whether the token may create depositions."
-                },
-                {
-                  "action": "forget_token",
-                  "label": "Remove token",
-                  "role": "danger",
-                  "description": "Delete the stored token from the keychain."
-                }
-              ]
-            }
-          ]
+            "type": "info",
+            "key": "status_text",
+            "source": "status_text",
+            "description": "What was just done, or what is running."
         }
-      ]
-    },
-    {
-      "type": "info",
-      "key": "status_text",
-      "source": "status_text",
-      "description": "What was just done, or what is running."
-    }
-  ]
+    ]
 }

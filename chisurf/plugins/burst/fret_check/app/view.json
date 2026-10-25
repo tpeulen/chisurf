@@ -1,353 +1,368 @@
 {
-  "_comment": "smFRET: one panel per window. frame.py draws each panel (found by title) in its own docked window with emtk.view_form; the model is smfretweb.app.session.Session. Every field and button has a description: it is the control's tooltip (tests/test_app.py checks).",
-  "sections": [
-    {
-      "type": "panel",
-      "title": "Measurement",
-      "sections": [
+    "_comment": "smFRET: one panel per window. frame.py draws each panel (found by title) in its own docked window with emtk.view_form; the model is smfretweb.app.session.Session. Every field and button has a description: it is the control's tooltip (tests/test_app.py checks).",
+    "sections": [
         {
-          "type": "info",
-          "source": "file_info"
-        },
-        {
-          "type": "choice",
-          "attr": "mode",
-          "label": "Mode",
-          "options": [
-            "simple",
-            "advanced"
-          ],
-          "labels": [
-            "Simple",
-            "Advanced"
-          ],
-          "style": "radio",
-          "description": "Simple: detection, burst search and the quality check with defaults. Advanced: also the channel, burst-search and correction settings, the time trace and the burst table in ndX."
-        },
-        {
-          "type": "button_row",
-          "buttons": [
-            {
-              "action": "run",
-              "label": "Analyse",
-              "description": "Run the burst search and the quality check again with the current settings."
-            },
-            {
-              "action": "show_help",
-              "label": "Help",
-              "description": "What the page does, every check and setting, and how to read the plots."
-            },
-            {
-              "action": "start_guide",
-              "label": "Guide",
-              "description": "A step-by-step tour: open data, read the quality verdict, look at E/S, go further in advanced mode."
-            }
-          ]
-        },
-        {
-          "type": "button_row",
-          "buttons": [
-            {
-              "action": "export_pdf",
-              "label": "Report (.pdf)",
-              "description": "One page: the FRET and stoichiometry histograms, the count-rate trace, the inter-burst gaps, the background and every report value."
-            },
-            {
-              "action": "export_csv",
-              "label": "Bursts (.csv)",
-              "description": "Download the burst table (ChiSurf .bur column names, QC flags included). ndX and ChiSurf open it."
-            },
-            {
-              "action": "export_report",
-              "label": "QC report (.json)",
-              "description": "Download the detected experiment, the settings and every quality check as JSON."
-            }
-          ]
-        },
-        {
-          "type": "panel",
-          "title": "Try it without a file",
-          "collapsible": true,
-          "sections": [
-            {
-              "type": "choice",
-              "attr": "demo",
-              "label": "Example",
-              "options_source": "demo_names",
-              "description": "A simulated measurement (tttrlib's photon simulator): cw, PIE or µsALEX, with or without polarization, noise channels, one colour."
-            },
-            {
-              "type": "button_row",
-              "buttons": [
+            "type": "panel",
+            "title": "Measurement",
+            "sections": [
                 {
-                  "action": "simulate",
-                  "label": "Simulate",
-                  "description": "Simulate the chosen example (5 s of data, a second or two) and analyse it like a file."
+                    "type": "info",
+                    "source": "file_info"
+                },
+                {
+                    "type": "choice",
+                    "attr": "mode",
+                    "label": "Mode",
+                    "options": [
+                        "simple",
+                        "advanced"
+                    ],
+                    "labels": [
+                        "Simple",
+                        "Advanced"
+                    ],
+                    "style": "radio",
+                    "description": "Simple: detection, burst search and the quality check with defaults. Advanced: also the channel, burst-search and correction settings, the time trace and the burst table in ndX.",
+                    "tooltip": "What to analyse: the shipped example, your own file, or a fresh simulation.",
+                    "descriptions": [
+                        "Detection, burst search and the quality check with defaults.",
+                        "Also the channel, burst-search and correction settings, the time trace and the burst table in ndX."
+                    ]
+                },
+                {
+                    "type": "button_row",
+                    "buttons": [
+                        {
+                            "action": "run",
+                            "label": "Analyse",
+                            "description": "Run the burst search and the quality check again with the current settings.",
+                            "role": "primary"
+                        },
+                        {
+                            "action": "show_help",
+                            "label": "Help",
+                            "description": "What the page does, every check and setting, and how to read the plots."
+                        },
+                        {
+                            "action": "start_guide",
+                            "label": "Guide",
+                            "description": "A step-by-step tour: open data, read the quality verdict, look at E/S, go further in advanced mode."
+                        }
+                    ]
+                },
+                {
+                    "type": "button_row",
+                    "buttons": [
+                        {
+                            "action": "export_pdf",
+                            "label": "Report (.pdf)",
+                            "description": "One page: the FRET and stoichiometry histograms, the count-rate trace, the inter-burst gaps, the background and every report value."
+                        },
+                        {
+                            "action": "export_csv",
+                            "label": "Bursts (.csv)",
+                            "description": "Download the burst table (ChiSurf .bur column names, QC flags included). ndX and ChiSurf open it."
+                        },
+                        {
+                            "action": "export_report",
+                            "label": "QC report (.json)",
+                            "description": "Download the detected experiment, the settings and every quality check as JSON."
+                        }
+                    ]
+                },
+                {
+                    "type": "panel",
+                    "title": "Try it without a file",
+                    "collapsible": true,
+                    "sections": [
+                        {
+                            "type": "choice",
+                            "attr": "demo",
+                            "label": "Example",
+                            "options_source": "demo_names",
+                            "description": "A simulated measurement (tttrlib's photon simulator): cw, PIE or \u00b5sALEX, with or without polarization, noise channels, one colour."
+                        },
+                        {
+                            "type": "button_row",
+                            "buttons": [
+                                {
+                                    "action": "simulate",
+                                    "label": "Simulate",
+                                    "description": "Simulate the chosen example (5 s of data, a second or two) and analyse it like a file.",
+                                    "role": "primary"
+                                }
+                            ]
+                        }
+                    ],
+                    "tooltip": "Simulate a measurement with a known answer: species, background and rates."
+                },
+                {
+                    "type": "progress",
+                    "attr": "progress",
+                    "label": "Progress",
+                    "hidden_when": {
+                        "attr": "busy",
+                        "equals": false
+                    },
+                    "description": "How far the analysis has come. It runs in the background: the page stays responsive."
+                },
+                {
+                    "type": "button_row",
+                    "hidden_when": {
+                        "attr": "busy",
+                        "equals": false
+                    },
+                    "buttons": [
+                        {
+                            "action": "cancel",
+                            "label": "Cancel",
+                            "description": "Stop the running analysis. The results shown before stay."
+                        }
+                    ]
+                },
+                {
+                    "type": "info",
+                    "source": "status"
                 }
-              ]
-            }
-          ]
+            ],
+            "tooltip": "Everything about the photon stream: where it comes from and how it was detected."
         },
         {
-          "type": "progress",
-          "attr": "progress",
-          "label": "Progress",
-          "hidden_when": {
-            "attr": "busy",
-            "equals": false
-          },
-          "description": "How far the analysis has come. It runs in the background: the page stays responsive."
+            "type": "panel",
+            "title": "Channels",
+            "sections": [
+                {
+                    "type": "choice",
+                    "attr": "excitation",
+                    "label": "Excitation",
+                    "options": [
+                        "cw",
+                        "alternating"
+                    ],
+                    "labels": [
+                        "cw",
+                        "ALEX / PIE"
+                    ],
+                    "description": "Detected from the data: alternating when a micro-time (PIE) or macro-time (\u00b5sALEX) window leaves the donor detectors dark."
+                },
+                {
+                    "type": "value",
+                    "attr": "donor_channels",
+                    "label": "Donor",
+                    "kind": "str",
+                    "description": "Routing channels of the donor detectors, comma separated; with polarization: parallel first, then perpendicular."
+                },
+                {
+                    "type": "value",
+                    "attr": "acceptor_channels",
+                    "label": "Acceptor",
+                    "kind": "str",
+                    "description": "Routing channels of the acceptor detectors, comma separated; with polarization: parallel first, then perpendicular."
+                },
+                {
+                    "type": "value",
+                    "attr": "donor_window",
+                    "label": "Dex window",
+                    "kind": "str",
+                    "hidden_when": {
+                        "attr": "excitation",
+                        "equals": "cw"
+                    },
+                    "description": "Donor-excitation window, 'start-stop' in micro-time channels (for \u00b5sALEX: in alternation-phase ticks)."
+                },
+                {
+                    "type": "value",
+                    "attr": "acceptor_window",
+                    "label": "Aex window",
+                    "kind": "str",
+                    "hidden_when": {
+                        "attr": "excitation",
+                        "equals": "cw"
+                    },
+                    "description": "Acceptor-excitation window, 'start-stop' in micro-time channels (for \u00b5sALEX: in alternation-phase ticks)."
+                },
+                {
+                    "type": "button_row",
+                    "buttons": [
+                        {
+                            "action": "run",
+                            "label": "Apply",
+                            "description": "Analyse again with these channels and windows."
+                        },
+                        {
+                            "action": "redetect",
+                            "label": "Re-detect",
+                            "description": "Forget the edits and detect channels and excitation again from the photons."
+                        }
+                    ]
+                },
+                {
+                    "type": "custom",
+                    "key": "micro_histograms",
+                    "tooltip": "The issue list: what is wrong, in plain words, each with its fix."
+                }
+            ],
+            "tooltip": "The QC verdict: every check of the measurement with its flag."
         },
         {
-          "type": "button_row",
-          "hidden_when": {
-            "attr": "busy",
-            "equals": false
-          },
-          "buttons": [
-            {
-              "action": "cancel",
-              "label": "Cancel",
-              "description": "Stop the running analysis. The results shown before stay."
-            }
-          ]
+            "type": "panel",
+            "title": "Burst search",
+            "sections": [
+                {
+                    "type": "value",
+                    "attr": "min_photons",
+                    "label": "Min photons",
+                    "kind": "int",
+                    "minimum": 5,
+                    "maximum": 10000,
+                    "description": "Bursts with fewer photons are dropped."
+                },
+                {
+                    "type": "value",
+                    "attr": "m",
+                    "label": "m photons",
+                    "kind": "int",
+                    "minimum": 2,
+                    "maximum": 1000,
+                    "description": "All-photon sliding window: m consecutive photons ..."
+                },
+                {
+                    "type": "value",
+                    "attr": "T_us",
+                    "label": "within T",
+                    "kind": "float",
+                    "minimum": 1.0,
+                    "maximum": 100000.0,
+                    "decimals": 1,
+                    "suffix": " \u00b5s",
+                    "description": "... arriving within T microseconds belong to a burst."
+                },
+                {
+                    "type": "value",
+                    "attr": "cde_tau_us",
+                    "label": "2CDE \u03c4",
+                    "kind": "float",
+                    "minimum": 1.0,
+                    "maximum": 10000.0,
+                    "decimals": 1,
+                    "suffix": " \u00b5s",
+                    "description": "Kernel width of FRET-2CDE and ALEX-2CDE."
+                },
+                {
+                    "type": "value",
+                    "attr": "v_eff_fl",
+                    "label": "V_eff",
+                    "kind": "float",
+                    "minimum": 0.01,
+                    "maximum": 100.0,
+                    "decimals": 2,
+                    "suffix": " fL",
+                    "description": "Effective observation volume, for the concentration estimate only (from FCS or a dye standard)."
+                },
+                {
+                    "type": "button_row",
+                    "buttons": [
+                        {
+                            "action": "run",
+                            "label": "Apply",
+                            "description": "Search bursts again with these settings."
+                        }
+                    ]
+                }
+            ],
+            "tooltip": "The joint burst histogram (E/S) with its marginals."
         },
         {
-          "type": "info",
-          "source": "status"
+            "type": "panel",
+            "title": "Corrections",
+            "sections": [
+                {
+                    "type": "toggle",
+                    "attr": "auto_calibrate",
+                    "label": "Auto-calibrate",
+                    "description": "ALEX/PIE: all factors from the measurement (tttrlib.auto_calibrate). cw: the leakage \u03b1 from the donor-only bursts; \u03b3, \u03b2 and \u03b4 need a reference and stay as typed."
+                },
+                {
+                    "type": "value",
+                    "attr": "gamma",
+                    "label": "\u03b3",
+                    "kind": "float",
+                    "minimum": 0.01,
+                    "maximum": 20.0,
+                    "decimals": 3,
+                    "description": "Detection-efficiency and quantum-yield ratio of acceptor to donor."
+                },
+                {
+                    "type": "value",
+                    "attr": "alpha",
+                    "label": "\u03b1 (leakage)",
+                    "kind": "float",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "decimals": 3,
+                    "description": "Donor emission leaking into the acceptor detectors."
+                },
+                {
+                    "type": "value",
+                    "attr": "delta",
+                    "label": "\u03b4 (dir. exc.)",
+                    "kind": "float",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "decimals": 3,
+                    "description": "Direct excitation of the acceptor by the donor laser."
+                },
+                {
+                    "type": "value",
+                    "attr": "beta",
+                    "label": "\u03b2",
+                    "kind": "float",
+                    "minimum": 0.01,
+                    "maximum": 20.0,
+                    "decimals": 3,
+                    "description": "Excitation-intensity and cross-section ratio of the two lasers (ALEX/PIE)."
+                },
+                {
+                    "type": "toggle",
+                    "attr": "drop_flagged",
+                    "label": "Drop QC-flagged bursts",
+                    "description": "Leave bursts flagged bright, long or by 2CDE out of the E/S plots and of ndX."
+                },
+                {
+                    "type": "button_row",
+                    "buttons": [
+                        {
+                            "action": "run",
+                            "label": "Apply",
+                            "description": "Correct E and S again with these factors."
+                        }
+                    ]
+                }
+            ],
+            "tooltip": "Photon counts and rates over the measurement."
+        },
+        {
+            "type": "panel",
+            "title": "Time trace",
+            "sections": [
+                {
+                    "type": "value",
+                    "attr": "trace_start_s",
+                    "label": "From",
+                    "kind": "float",
+                    "minimum": 0.0,
+                    "maximum": 100000.0,
+                    "decimals": 1,
+                    "suffix": " s",
+                    "description": "Start of the 10 s stretch of the trace shown below; drag or zoom the plot itself for detail."
+                },
+                {
+                    "type": "custom",
+                    "key": "trace_plot",
+                    "tooltip": "Write the diagnostics report as an A4 PDF."
+                }
+            ],
+            "tooltip": "Report and export: the A4 PDF and the burst table for ndX."
         }
-      ]
-    },
-    {
-      "type": "panel",
-      "title": "Channels",
-      "sections": [
-        {
-          "type": "choice",
-          "attr": "excitation",
-          "label": "Excitation",
-          "options": [
-            "cw",
-            "alternating"
-          ],
-          "labels": [
-            "cw",
-            "ALEX / PIE"
-          ],
-          "description": "Detected from the data: alternating when a micro-time (PIE) or macro-time (µsALEX) window leaves the donor detectors dark."
-        },
-        {
-          "type": "value",
-          "attr": "donor_channels",
-          "label": "Donor",
-          "kind": "str",
-          "description": "Routing channels of the donor detectors, comma separated; with polarization: parallel first, then perpendicular."
-        },
-        {
-          "type": "value",
-          "attr": "acceptor_channels",
-          "label": "Acceptor",
-          "kind": "str",
-          "description": "Routing channels of the acceptor detectors, comma separated; with polarization: parallel first, then perpendicular."
-        },
-        {
-          "type": "value",
-          "attr": "donor_window",
-          "label": "Dex window",
-          "kind": "str",
-          "hidden_when": {
-            "attr": "excitation",
-            "equals": "cw"
-          },
-          "description": "Donor-excitation window, 'start-stop' in micro-time channels (for µsALEX: in alternation-phase ticks)."
-        },
-        {
-          "type": "value",
-          "attr": "acceptor_window",
-          "label": "Aex window",
-          "kind": "str",
-          "hidden_when": {
-            "attr": "excitation",
-            "equals": "cw"
-          },
-          "description": "Acceptor-excitation window, 'start-stop' in micro-time channels (for µsALEX: in alternation-phase ticks)."
-        },
-        {
-          "type": "button_row",
-          "buttons": [
-            {
-              "action": "run",
-              "label": "Apply",
-              "description": "Analyse again with these channels and windows."
-            },
-            {
-              "action": "redetect",
-              "label": "Re-detect",
-              "description": "Forget the edits and detect channels and excitation again from the photons."
-            }
-          ]
-        },
-        {
-          "type": "custom",
-          "key": "micro_histograms"
-        }
-      ]
-    },
-    {
-      "type": "panel",
-      "title": "Burst search",
-      "sections": [
-        {
-          "type": "value",
-          "attr": "min_photons",
-          "label": "Min photons",
-          "kind": "int",
-          "minimum": 5,
-          "maximum": 10000,
-          "description": "Bursts with fewer photons are dropped."
-        },
-        {
-          "type": "value",
-          "attr": "m",
-          "label": "m photons",
-          "kind": "int",
-          "minimum": 2,
-          "maximum": 1000,
-          "description": "All-photon sliding window: m consecutive photons ..."
-        },
-        {
-          "type": "value",
-          "attr": "T_us",
-          "label": "within T",
-          "kind": "float",
-          "minimum": 1.0,
-          "maximum": 100000.0,
-          "decimals": 1,
-          "suffix": " µs",
-          "description": "... arriving within T microseconds belong to a burst."
-        },
-        {
-          "type": "value",
-          "attr": "cde_tau_us",
-          "label": "2CDE τ",
-          "kind": "float",
-          "minimum": 1.0,
-          "maximum": 10000.0,
-          "decimals": 1,
-          "suffix": " µs",
-          "description": "Kernel width of FRET-2CDE and ALEX-2CDE."
-        },
-        {
-          "type": "value",
-          "attr": "v_eff_fl",
-          "label": "V_eff",
-          "kind": "float",
-          "minimum": 0.01,
-          "maximum": 100.0,
-          "decimals": 2,
-          "suffix": " fL",
-          "description": "Effective observation volume, for the concentration estimate only (from FCS or a dye standard)."
-        },
-        {
-          "type": "button_row",
-          "buttons": [
-            {
-              "action": "run",
-              "label": "Apply",
-              "description": "Search bursts again with these settings."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "panel",
-      "title": "Corrections",
-      "sections": [
-        {
-          "type": "toggle",
-          "attr": "auto_calibrate",
-          "label": "Auto-calibrate",
-          "description": "ALEX/PIE: all factors from the measurement (tttrlib.auto_calibrate). cw: the leakage α from the donor-only bursts; γ, β and δ need a reference and stay as typed."
-        },
-        {
-          "type": "value",
-          "attr": "gamma",
-          "label": "γ",
-          "kind": "float",
-          "minimum": 0.01,
-          "maximum": 20.0,
-          "decimals": 3,
-          "description": "Detection-efficiency and quantum-yield ratio of acceptor to donor."
-        },
-        {
-          "type": "value",
-          "attr": "alpha",
-          "label": "α (leakage)",
-          "kind": "float",
-          "minimum": 0.0,
-          "maximum": 1.0,
-          "decimals": 3,
-          "description": "Donor emission leaking into the acceptor detectors."
-        },
-        {
-          "type": "value",
-          "attr": "delta",
-          "label": "δ (dir. exc.)",
-          "kind": "float",
-          "minimum": 0.0,
-          "maximum": 1.0,
-          "decimals": 3,
-          "description": "Direct excitation of the acceptor by the donor laser."
-        },
-        {
-          "type": "value",
-          "attr": "beta",
-          "label": "β",
-          "kind": "float",
-          "minimum": 0.01,
-          "maximum": 20.0,
-          "decimals": 3,
-          "description": "Excitation-intensity and cross-section ratio of the two lasers (ALEX/PIE)."
-        },
-        {
-          "type": "toggle",
-          "attr": "drop_flagged",
-          "label": "Drop QC-flagged bursts",
-          "description": "Leave bursts flagged bright, long or by 2CDE out of the E/S plots and of ndX."
-        },
-        {
-          "type": "button_row",
-          "buttons": [
-            {
-              "action": "run",
-              "label": "Apply",
-              "description": "Correct E and S again with these factors."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "panel",
-      "title": "Time trace",
-      "sections": [
-        {
-          "type": "value",
-          "attr": "trace_start_s",
-          "label": "From",
-          "kind": "float",
-          "minimum": 0.0,
-          "maximum": 100000.0,
-          "decimals": 1,
-          "suffix": " s",
-          "description": "Start of the 10 s stretch of the trace shown below; drag or zoom the plot itself for detail."
-        },
-        {
-          "type": "custom",
-          "key": "trace_plot"
-        }
-      ]
-    }
-  ]
+    ]
 }

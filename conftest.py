@@ -180,6 +180,14 @@ def _restore_mmfdb_runtime_config():
     yield
     if module is not None:
         for name, value in saved.items():
+            current = getattr(module, name, None)
+            # A snapshot taken before ``chisurf.core.settings`` was imported
+            # holds ``None``; restoring it would wipe the host registration the
+            # application installed in the meantime. Keep a registration that
+            # appeared after the snapshot; only undo values a test changed
+            # away from a non-``None`` snapshot.
+            if value is None and current is not None:
+                continue
             setattr(module, name, value)
 
 

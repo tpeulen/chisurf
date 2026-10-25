@@ -12,7 +12,8 @@ from __future__ import annotations
 import json
 import pathlib
 
-from emtk import im
+from emtk import im, style
+from chisurf.plugins.emtk_layout import action_button
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
@@ -122,7 +123,7 @@ class MetadataEditorApp(ImApp):
         if changed:
             self.pick_schema(names[index])
         self.remember("schema")
-        if im.button(tr("Open…")):
+        if action_button("open", tooltip=tr("Open a metadata record.")):
             self.choose_open()
         self.remember("open")
         im.same_line()
@@ -132,7 +133,7 @@ class MetadataEditorApp(ImApp):
         name = self.path.name if self.path else tr("no file")
         im.text(tr("File: {}").format(name))
         if self._error:
-            im.text_colored((1.0, 0.5, 0.5, 1.0), tr(self._error))
+            im.text_colored(style.TEXT_DANGER, tr(self._error))
         im.separator()
 
         if self.dialog is not None:

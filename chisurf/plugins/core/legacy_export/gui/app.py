@@ -16,6 +16,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
+from chisurf.plugins.emtk_layout import action_button
 
 from .. import core
 
@@ -153,7 +154,7 @@ class LegacyExportApp(ImApp):
         im.separator()
         im.text(m.filename or tr("no container"))
         im.same_line()
-        if im.button(tr("Open…")):
+        if action_button("open", tooltip=tr("Choose a .pto container to export from.")):
             self.choose_file()
         im.same_line()
         if im.button(tr("Refresh")):

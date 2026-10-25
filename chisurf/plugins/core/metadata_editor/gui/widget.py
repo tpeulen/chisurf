@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from emtk import im
+from emtk import im, style
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
@@ -158,15 +158,15 @@ class MetadataEditorWidget:
         if editor.schema:
             draw_sections(self._sections, self._values, self.form)
             im.spacing()
-        im.text_colored((1.0, 0.8, 0.4, 1.0), tr("Further entries"))
+        im.text_colored(style.TEXT_WARNING, tr("Further entries"))
         im.text_wrapped(tr("Anything beyond the typed fields: add it as key/value."))
         draw_sections(_ADD_SECTIONS, safe, self.form)
         self.item_rects.update(self.form.rects)
         problems = editor.errors()
         if self._message[0]:
-            im.text_colored((1.0, 0.5, 0.5, 1.0), tr(self._message[0]))
+            im.text_colored(style.TEXT_DANGER, tr(self._message[0]))
         for text in problems.values():
-            im.text_colored((1.0, 0.5, 0.5, 1.0), tr(text))
+            im.text_colored(style.TEXT_DANGER, tr(text))
         im.spacing()
         im.begin_disabled(bool(problems))
         pressed_apply = im.button(tr("Apply"), role="primary")
@@ -176,8 +176,9 @@ class MetadataEditorWidget:
         )
         self.remember("apply")
         im.same_line()
-        pressed_cancel = im.button(tr("Cancel"))
-        im.set_item_tooltip(tr("Leave the metadata as it was."))
+        from chisurf.plugins.emtk_layout import action_button
+
+        pressed_cancel = action_button("cancel", tooltip=tr("Leave the metadata as it was."))
         self.remember("cancel")
         if pressed_apply:
             entries = editor.entries()

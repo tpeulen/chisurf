@@ -506,11 +506,10 @@ class TrajToolApp(TourTarget, ImApp):
 
     def _draw_action(self) -> None:
         im.spacing()
-        if im.button(tr("Load example")):
-            self.load_example()
-        im.set_item_tooltip(tr(
+        if action_button("example", tooltip=tr(
             "Load the example trajectory this tool ships with and run the action on it."
-        ))
+        )):
+            self.load_example()
         self.remember("example")
         im.same_line()
         if im.button(self.action.label):

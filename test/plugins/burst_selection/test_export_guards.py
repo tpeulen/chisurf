@@ -1,14 +1,17 @@
-"""Headless tests for the Burst Selection export entries (`.bur` / flrCIF).
+"""Headless tests for the Burst Selection export entries (flrCIF).
 
-Pins the guards of :meth:`BurstSelectionModel.export_bur` and :meth:`BurstSelectionModel.export_flr_cif`: a table with
-no rows reports "No burst data to export." and writes nothing, and a table with rows exports. The tool's tables are
+Pins the guards of :meth:`BurstSelectionModel.export_flr_cif`: a table with no rows reports
+"No burst data to export." and writes nothing, and a table with rows exports. The tool's tables are
 ``tttrlib.DataStore`` values, which have no truth value and no ``.empty`` -- the pandas spellings here are exactly what
-the guards used to trip over. (The Qt tool's export methods, which these tests pinned first, are retired.)
+the guards used to trip over.
+
+The ``.bur``/``.bg4`` exports are no longer the model's: the legacy formats moved to the legacy
+export plugin (``chisurf.plugins.core.legacy_export``), and the model must not grow them back --
+``test_export_bur_is_not_part_of_the_tool_anymore`` pins that.
 """
 
 from __future__ import annotations
 
-import pandas as pd
 import pytest
 
 from chisurf.core.datastore import store_from_rows
@@ -39,17 +42,10 @@ def frame():
     )
 
 
-def test_export_bur_writes_non_empty_frame(model, frame, tmp_path):
-    target = tmp_path / "bursts.bur"
-    model.display_frame = frame
-
-    model.export_bur(target)
-
-    assert target.exists()
-    assert "Exported to" in model.status_text
-    written = pd.read_csv(target, sep="\t")
-    assert list(written.columns) == list(frame.names)
-    assert len(written) == len(frame)
+def test_export_bur_is_not_part_of_the_tool_anymore(model):
+    """The Seidel/Margarita formats belong to the legacy export plugin."""
+    assert not hasattr(model, "export_bur")
+    assert not hasattr(model, "export_bg4")
 
 
 def test_export_flr_cif_writes_non_empty_frame(model, frame, tmp_path):
@@ -67,12 +63,11 @@ def test_export_flr_cif_writes_non_empty_frame(model, frame, tmp_path):
 
 
 @pytest.mark.parametrize("empty", [None, store_from_rows([])], ids=["none", "empty-store"])
-@pytest.mark.parametrize("method", ["export_bur", "export_flr_cif"])
-def test_export_without_data_reports_instead_of_writing(model, tmp_path, empty, method):
+def test_export_without_data_reports_instead_of_writing(model, tmp_path, empty):
     target = tmp_path / "should-not-appear"
     model.display_frame = empty
 
     with pytest.raises(ValueError, match="No burst data to export."):
-        getattr(model, method)(target)
+        model.export_flr_cif(target)
 
     assert not target.exists()
