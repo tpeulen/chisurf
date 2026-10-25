@@ -1,0 +1,41 @@
+{
+    "_comment": "Guided tour for the metadata editor.",
+    "steps": [
+        {
+            "title": "What this does",
+            "text": "The metadata editor fills the structured fields of a measurement — sample, dyes, buffer, instrument — the values every downstream tool (BURST, QuEst, MMFDB) reads.",
+            "target": {}
+        },
+        {
+            "title": "Sample",
+            "text": "Sample name, construct, concentration and buffer describe <b>what</b> was measured.",
+            "target": {
+                "name": "sample"
+            }
+        },
+        {
+            "title": "Dyes",
+            "text": "Donor and acceptor names must match the dye repository's spelling exactly — a typo silently disables per-dye corrections.",
+            "target": {
+                "name": "dyes"
+            }
+        },
+        {
+            "title": "Instrument",
+            "text": "Instrument, detectors and excitation details record <b>how</b> it was measured.",
+            "target": {
+                "name": "instrument"
+            }
+        },
+        {
+            "title": "Save",
+            "text": "Press <b>Save</b>: the metadata is written to the measurement's record and travels with the .pto project and any MMFDB deposit.",
+            "target": {
+                "name": "save"
+            },
+            "await": {
+                "hint": "Press <b>Save</b>."
+            }
+        }
+    ]
+}

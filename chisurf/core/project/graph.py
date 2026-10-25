@@ -1,6 +1,6 @@
 """The live IMP.bff graph session as portable project state.
 
-Owner decision 2026-10-24 (PRD-154 item 5, option a): a ``.cs.pto`` project
+Owner decision 2026-10-24: a ``.cs.pto`` project
 keeps the live node graph again.  Nodes and free ports that no fit owns are
 serialized by IMP.bff's own ``GraphSession`` codec and travel as one typed
 container entry (``session.jsonl``); loading a project installs the stored

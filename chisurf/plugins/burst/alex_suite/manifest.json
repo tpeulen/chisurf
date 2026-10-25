@@ -33,8 +33,7 @@
     "burst_browser": "*",
     "burst_bva": "*",
     "burst_selection": "*",
-    "ptu_alex_creator": "*",
-    "tttr_to_pto": "*"
+    "ptu_alex_creator": "*"
   },
   "menu_hidden": false
 }

@@ -110,6 +110,18 @@ class LegacyExportApp(ImApp):
         self.file_window = DialogWindow(
             "Legacy export — choose container", size=(640.0, 460.0), key="legacy-export-file"
         )
+        from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+
+        here = pathlib.Path(__file__).resolve().parent
+        self.help_window = EmTkHelpWindow(
+            title="Legacy export — Help", resource=here / "help.md", owner=self
+        )
+        self.tour = EmTkGuidedTour(
+            steps=here / "guide.json",
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=lambda key: None,
+        )
         super().__init__(gui=self._render, continuous=False)
 
     # -- host hooks -------------------------------------------------------------- #
@@ -203,6 +215,10 @@ class LegacyExportApp(ImApp):
                 m.export_alex_csvs()
         else:
             im.text_disabled(tr("Open a container with runs to write the ALEX CSVs."))
+
+        vp = im.get_main_viewport()
+        self.help_window.draw((*vp.pos, *vp.size))
+        self.tour.draw(*vp.size)
 
         if m.status:
             im.spacing()

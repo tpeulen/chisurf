@@ -16,7 +16,7 @@
   },
   "deprecated": true,
   "deprecation_message": "VV/VH Anisotropy Decay is deprecated/obsolete. Use the VV/VH G-Factor plugin and reader-integrated anisotropy workflow instead.",
-  "optional_requires": {
+  "requires": {
     "vv_vh_g_factor": "*"
   }
 }

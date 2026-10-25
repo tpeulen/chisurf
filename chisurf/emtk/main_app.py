@@ -978,7 +978,7 @@ class EmtkShellApp(ImApp):
         background build are the tool's -- but the menu bar, the ribbon, the
         docks and the status strip stay away and the tool fills the viewport.
         ``?app=<plugin>`` pages present their tool this way: the URL means the
-        app, standalone, not ChiSurf with a tool open (PRD-155).
+        app, standalone, not ChiSurf with a tool open.
         """
         self._tool_only = str(plugin_id)
         return self.open_plugin(plugin_id, focus=focus)

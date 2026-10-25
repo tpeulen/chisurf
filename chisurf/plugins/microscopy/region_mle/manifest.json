@@ -78,10 +78,9 @@
     "molecule_localization"
   ],
   "requires": {
+    "spot_finder": "*",
     "mle_common": "*"
   },
-  "optional_requires": {
-    "spot_finder": "*"
-  },
+  "optional_requires": {},
   "menu_hidden": true
 }

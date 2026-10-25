@@ -44,6 +44,18 @@ class MetadataEditorApp(ImApp):
         self._dialog_save = False
         self._error = ""
         self.editor.open(freeform_schema(), {})
+        from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+
+        here = pathlib.Path(__file__).resolve().parent
+        self.help_window = EmTkHelpWindow(
+            title="Metadata editor — Help", resource=here / "help.md", owner=self
+        )
+        self.tour = EmTkGuidedTour(
+            steps=here / "guide.json",
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=lambda key: self.item_rects.get(key),
+        )
         super().__init__(gui=self._render)
 
     # -- schema ----------------------------------------------------------------------- #
@@ -149,6 +161,9 @@ class MetadataEditorApp(ImApp):
 
         self.editor.draw()
         self.item_rects.update(self.editor.item_rects)
+        vp = im.get_main_viewport()
+        self.help_window.draw((*vp.pos, *vp.size))
+        self.tour.draw(*vp.size)
 
 
 def make_app() -> "MetadataEditorApp":

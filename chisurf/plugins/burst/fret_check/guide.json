@@ -1,0 +1,51 @@
+{
+    "_comment": "Guided tour for the FRET check tool. Targets are the app's panels; steps with an await wait for the user.",
+    "steps": [
+        {
+            "title": "What this checks",
+            "text": "FRET check walks a single-molecule FRET measurement in one pass: the experiment is detected, the bursts are found, and a QC verdict says what is wrong in plain words. Everything runs locally.",
+            "target": {}
+        },
+        {
+            "title": "Start from an example",
+            "text": "The example button loads a simulated measurement with a known answer, so every panel that follows can be judged against what should be there.",
+            "target": {
+                "name": "data_loaded"
+            },
+            "await": {
+                "hint": "Press <b>Example</b> for a simulated measurement."
+            }
+        },
+        {
+            "title": "Channels and windows",
+            "text": "<b>Channels</b> shows the micro-time histogram of every detector with the excitation windows marked. A wrong window guess breaks everything downstream \u2014 fix it here and press <b>Apply</b>.",
+            "target": {
+                "name": "channels"
+            }
+        },
+        {
+            "title": "The time trace",
+            "text": "<b>Time trace</b> shows the count rate of each stream in 1 ms bins with the bursts shaded. Judge the burst search here: a good run shows clean bursts over a flat background.",
+            "target": {
+                "name": "trace"
+            }
+        },
+        {
+            "title": "E/S and the burst table",
+            "text": "<b>E/S</b> is the joint burst histogram. <b>ndX</b> holds the full burst table \u2014 lifetimes, anisotropies, TGX\u2212TRR, 2CDE, QC flags \u2014 choose any two columns and gate populations through the other dimensions.",
+            "target": {
+                "name": "ndx"
+            }
+        },
+        {
+            "title": "The verdict",
+            "text": "The checks table flags occupancy, stoichiometry, background and burst density; <b>Issues</b> names the cause and the fix for every red. <b>Report</b> writes the A4 PDF.",
+            "target": {
+                "name": "quality"
+            },
+            "await": {
+                "hint": "Read the QC verdict, then press <b>Report</b> for the PDF."
+            }
+        }
+    ]
+}

@@ -14,5 +14,8 @@
   "entrypoints": {
     "cli": "csc_legacy_export=chisurf.plugins.core.legacy_export.cli.main:cli",
     "emtk": "chisurf.plugins.core.legacy_export.gui.app:make_app"
+  },
+  "optional_requires": {
+    "alex_suite": "*"
   }
 }

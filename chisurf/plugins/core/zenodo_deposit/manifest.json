@@ -22,9 +22,11 @@
     "emtk": "chisurf.plugins.core.zenodo_deposit.gui.app:create_app"
   },
   "requires": {
+    "metadata_editor": "*",
     "tttr_splitter": "*"
   },
   "optional_requires": {
+    "tttr_header_edit": "*",
     "ndxplorer": "*",
     "user_editor": "*"
   }

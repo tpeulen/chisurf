@@ -98,5 +98,8 @@
   "deprecated": false,
   "requires": {
     "pto_inspector": "*"
+  },
+  "optional_requires": {
+    "burst_selection": "*"
   }
 }

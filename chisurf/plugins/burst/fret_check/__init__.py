@@ -6,7 +6,7 @@ Simple mode is one drop-zone and the verdict; advanced mode exposes the
 editable detection, burst search and corrections, with the burst table and the
 ndX hand-off. Works with or without ALEX/PIE; cw two-colour is a full citizen.
 
-Ported from smfret-web (peulen.xyz/smfret) into ChiSurf -- PRD-155 wave A.
+Ported from smfret-web (peulen.xyz/smfret) into ChiSurf.
 """
 from __future__ import annotations
 

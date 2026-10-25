@@ -1,100 +1,96 @@
 {
-  "_comment": "Guided tour. Targets are view.json actions/attrs (their form rects) or window keys; 'await' steps wait for the outcome (data_loaded, analysed) the app reports, not for a button press. 'mode' and 'window' put the right mode and window in front.",
-  "steps": [
-    {
-      "title": "Welcome",
-      "text": "This page checks a confocal smFRET measurement and finds its bursts. All processing happens in your browser: the file is analysed on this computer and no data ends up on any server. The tour takes about two minutes.",
-      "target": {},
-      "mode": "simple"
-    },
-    {
-      "title": "Open data",
-      "text": "Drop a TTTR file (PTU, HT3, SPC, SM, PTO, ...) on the window. No file at hand? Open <b>Try it without a file</b>, choose an example and press <b>Simulate</b>.",
-      "target": {
-        "name": "data_loaded"
-      },
-      "window": "measurement",
-      "await": {
-        "hint": "Drop a file, or press <b>Simulate</b> under <b>Try it without a file</b>."
-      }
-    },
-    {
-      "title": "What was detected",
-      "text": "The page has read the photons: the excitation (cw, PIE or µsALEX), which detectors are donor and acceptor, and polarization. Lines starting with <b>!</b> are guesses the data could not settle; check them.",
-      "target": {
-        "name": "measurement"
-      },
-      "window": "measurement"
-    },
-    {
-      "title": "The verdict",
-      "text": "<b>Quality</b> rates the measurement. The basic checks need no ALEX: burst density, the share of bursts with more than one molecule, stability, background. Hover a check for what it means.",
-      "target": {
-        "name": "quality"
-      },
-      "window": "quality"
-    },
-    {
-      "title": "Multi-molecule events",
-      "text": "The gap histogram (right) shows how bursts follow each other. Random arrivals give the orange curve. A big excess of short gaps means fragmented bursts or molecules coming back. If <b>multi-molecule events</b> is above about 5 %, dilute by the factor under <b>dilution</b>.",
-      "target": {
-        "name": "quality"
-      },
-      "window": "quality"
-    },
-    {
-      "title": "E and S",
-      "text": "<b>E / S</b> shows the proximity ratio against the stoichiometry. With cw excitation only E is shown, because S needs alternating lasers.",
-      "target": {
-        "name": "es"
-      },
-      "window": "es"
-    },
-    {
-      "title": "Advanced mode",
-      "text": "Switch <b>Mode</b> to <b>Advanced</b> to check and edit the channels, the burst search and the corrections.",
-      "target": {
-        "attr": "mode"
-      },
-      "window": "measurement",
-      "await": {
-        "hint": "Choose <b>Advanced</b>."
-      }
-    },
-    {
-      "title": "Channels and windows",
-      "text": "<b>Channels</b> shows the micro-time histogram of every detector, with the excitation windows marked. Fix a wrong guess here and press <b>Apply</b>.",
-      "target": {
-        "name": "channels"
-      },
-      "window": "channels",
-      "mode": "advanced"
-    },
-    {
-      "title": "The time trace",
-      "text": "<b>Time trace</b> shows the count rate of each stream in 1 ms bins, with the bursts shaded. Use it to judge the burst search.",
-      "target": {
-        "name": "trace"
-      },
-      "window": "trace",
-      "mode": "advanced"
-    },
-    {
-      "title": "Explore the bursts in ndX",
-      "text": "<b>ndX</b> holds the full burst table: lifetimes, anisotropies, TGX−TRR, 2CDE, the QC flags. Choose any two columns, gate populations and follow them through the other dimensions.",
-      "target": {
-        "name": "ndx"
-      },
-      "window": "ndx",
-      "mode": "advanced"
-    },
-    {
-      "title": "Take it with you",
-      "text": "<b>Bursts (.csv)</b> downloads the burst table (ChiSurf names; ndX and ChiSurf open it). <b>QC report (.json)</b> downloads the verdict. <b>Help</b> explains every check and setting.",
-      "target": {
-        "action": "export_csv"
-      },
-      "window": "measurement"
-    }
-  ]
+    "_comment": "Guided tour. Targets are view.json actions/attrs (their form rects) or window keys; 'await' steps wait for the outcome (data_loaded, analysed) the app reports, not for a button press. 'mode' and 'window' put the right mode and window in front.",
+    "steps": [
+        {
+            "title": "Welcome",
+            "text": "This page checks a confocal smFRET measurement and finds its bursts. All processing happens in your browser: the file is analysed on this computer and no data ends up on any server. The tour takes about two minutes.",
+            "target": {}
+        },
+        {
+            "title": "Open data",
+            "text": "Drop a TTTR file (PTU, HT3, SPC, SM, PTO, ...) on the window. No file at hand? Open <b>Try it without a file</b>, choose an example and press <b>Simulate</b>.",
+            "target": {
+                "name": "data_loaded"
+            },
+            "window": "measurement",
+            "await": {
+                "hint": "Drop a file, or press <b>Simulate</b> under <b>Try it without a file</b>."
+            }
+        },
+        {
+            "title": "What was detected",
+            "text": "The page has read the photons: the excitation (cw, PIE or \u00b5sALEX), which detectors are donor and acceptor, and polarization. Lines starting with <b>!</b> are guesses the data could not settle; check them.",
+            "target": {
+                "name": "measurement"
+            },
+            "window": "measurement"
+        },
+        {
+            "title": "The verdict",
+            "text": "<b>Quality</b> rates the measurement. The basic checks need no ALEX: burst density, the share of bursts with more than one molecule, stability, background. Hover a check for what it means.",
+            "target": {
+                "name": "quality"
+            },
+            "window": "quality"
+        },
+        {
+            "title": "Multi-molecule events",
+            "text": "The gap histogram (right) shows how bursts follow each other. Random arrivals give the orange curve. A big excess of short gaps means fragmented bursts or molecules coming back. If <b>multi-molecule events</b> is above about 5 %, dilute by the factor under <b>dilution</b>.",
+            "target": {
+                "name": "quality"
+            },
+            "window": "quality"
+        },
+        {
+            "title": "E and S",
+            "text": "<b>E / S</b> shows the proximity ratio against the stoichiometry. With cw excitation only E is shown, because S needs alternating lasers.",
+            "target": {
+                "name": "es"
+            },
+            "window": "es"
+        },
+        {
+            "title": "Advanced mode",
+            "text": "Switch <b>Mode</b> to <b>Advanced</b> to check and edit the channels, the burst search and the corrections.",
+            "target": {
+                "attr": "mode"
+            },
+            "window": "measurement",
+            "await": {
+                "hint": "Choose <b>Advanced</b>."
+            }
+        },
+        {
+            "title": "Channels and windows",
+            "text": "<b>Channels</b> shows the micro-time histogram of every detector, with the excitation windows marked. Fix a wrong guess here and press <b>Apply</b>.",
+            "target": {
+                "name": "channels"
+            },
+            "window": "channels"
+        },
+        {
+            "title": "The time trace",
+            "text": "<b>Time trace</b> shows the count rate of each stream in 1 ms bins, with the bursts shaded. Use it to judge the burst search.",
+            "target": {
+                "name": "trace"
+            },
+            "window": "trace"
+        },
+        {
+            "title": "Explore the bursts in ndX",
+            "text": "<b>ndX</b> holds the full burst table: lifetimes, anisotropies, TGX\u2212TRR, 2CDE, the QC flags. Choose any two columns, gate populations and follow them through the other dimensions.",
+            "target": {
+                "name": "ndx"
+            },
+            "window": "ndx"
+        },
+        {
+            "title": "Take it with you",
+            "text": "<b>Bursts (.csv)</b> downloads the burst table (ChiSurf names; ndX and ChiSurf open it). <b>QC report (.json)</b> downloads the verdict. <b>Help</b> explains every check and setting.",
+            "target": {
+                "action": "export_csv"
+            },
+            "window": "measurement"
+        }
+    ]
 }

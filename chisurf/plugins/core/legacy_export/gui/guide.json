@@ -1,0 +1,34 @@
+{
+    "_comment": "Guided tour for the legacy export tool.",
+    "steps": [
+        {
+            "title": "What this does",
+            "text": "Legacy export writes the old formats (Seidel/Margarita .bur/.bg4, burst-wise CSV) out of a .pto project or a burst result — the bridge colleagues without ChiSurf still need.",
+            "target": {}
+        },
+        {
+            "title": "Choose the source",
+            "text": "The list shows what the running session holds: the open project and its burst-selection results. Pick the one to export.",
+            "target": {
+                "name": "source"
+            }
+        },
+        {
+            "title": "Choose the format",
+            "text": "<b>Format</b> picks the target: .bur/.bg4 for the Seidel/Margarita tools, CSV for spreadsheets.",
+            "target": {
+                "name": "format"
+            }
+        },
+        {
+            "title": "Export",
+            "text": "Press <b>Export</b> and choose where to write. The .pto project stays the record — the export is a view for one colleague, not a backup.",
+            "target": {
+                "name": "export"
+            },
+            "await": {
+                "hint": "Press <b>Export</b>."
+            }
+        }
+    ]
+}
