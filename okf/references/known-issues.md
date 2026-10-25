@@ -7,6 +7,14 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 ---
 
 
+## LLTF was never battle-tested: validation campaign against tttrlib simulated decays (owner 2026-10-24)
+
+status: open — owner directive 2026-10-24 ("lltf must improve — it was never battle tested; now it can be tested
+with tttrlib improved sim capability"). Build a validation campaign: tttrlib Sim* generates decays with known
+ground truth (lifetimes, anisotropy, noise seeds) across the model families LLTF ships; LLTF must recover the
+parameters within declared tolerances, reproducibly (seeded starts, see below), with the recovery table landing
+in `okf/validation/` and a guard test. This replaces the old "never battle tested" caveat in guide 76 when done.
+
 ## Licence audit leftovers: IMP.swarm provenance, Photonscore attribution, LGPL source offer (found 2026-10-20, branch `mcts-native-baseline`)
 
 status: resolved 2026-10-24 — owner re-confirmed all three: IMP.swarm is MIT (self-developed, different domain from Cecil;
@@ -2767,7 +2775,10 @@ instead. *Not fixed here:* reading every `MODEL` block into the frame axis belon
 
 ## LLTF fits are not reproducible: random starting values are unseeded (found 2026-10-02)
 
-status: open
+status: resolved 2026-10-24 — the fitter derives a per-fit RNG from `randomize_initial_values.seed` (default 0,
+fixed = repeatable; `None` = fresh), the setting is declared in `lifetime_settings.yml`, and
+`test/core/test_lltf_reproducible_starts.py` pins it: the same seed repeats the fit exactly (lifetimes and
+chi-square to 1e-12), a different seed changes the start.
 
 **Measured** in the lltf upgrade: two runs of the same command on the shipped example (`5-44_D0.dat`, `IRF_D0.dat`,
 `config.yml`) gave τ = 3.9659 / 1.4465 / 0.1449 ns and 3.9673 / 1.4585 / 0.1477 ns. With

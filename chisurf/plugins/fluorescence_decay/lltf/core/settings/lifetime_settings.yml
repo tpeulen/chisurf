@@ -37,6 +37,9 @@ lifetime_fit_parameter:
     min_lifetime: 0.2
     max_lifetime: 5.0
     amplitude_variation: 0.5
+    # Fixed local seed per run (default 0): the same command fits the same
+    # twice. null draws fresh starting values every fit.
+    seed: 0
 
 # VV/VH (polarization-resolved) fit: the anisotropy calibration used when the
 # data do not carry it (a vv_vh footer or the TTTR reader's g_factor/l1/l2),
