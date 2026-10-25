@@ -279,12 +279,19 @@ def test_load_accepts_the_legacy_chinet_era_kind(tmp_path) -> None:
         payload = {"schema_name": "mmfdb.graph_session.v1", "session": _connected_session().to_dict()}
         db.register_artifact(
             artifact_id="chinet_session:legacy-oid",
-            artifact_kind="chinet_session",
+            artifact_kind="graph_session",
             storage_mode="embedded_json",
             data_format="json",
             metadata={"schema_name": payload["schema_name"]},
             data_json=json.dumps(payload),
             validation_status="valid",
+        )
+        # the current enum no longer accepts the chinet-era kind; a legacy
+        # database row carries it, so flip the stored row the way old data is
+        db.conn.execute(
+            "UPDATE mmfdb_artifact SET artifact_kind = 'chinet_session' "
+            "WHERE artifact_id = ?",
+            ("chinet_session:legacy-oid",),
         )
         db.record_operation_link(
             operation_id="op_legacy",
