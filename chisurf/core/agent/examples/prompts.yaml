@@ -26,6 +26,27 @@
 # safety        highest tool tier the example needs
 
 examples:
+  - id: burstwise-distance-distribution
+    title: Burstwise analysis to the distance distribution
+    prompt: >-
+      do a burstwise analysis of the data located in xy. select the fret
+      active species and do a fluorescence decay analysis using gaussians to
+      get the distance distribution.
+    explanation: >-
+      The owner's example of driving a multi-plugin chain in plain words.
+      The assistant finds the bursts, reports their E/S distributions, and —
+      because R0, the donor-only lifetime and the number of Gaussian
+      components are the spectroscopist's choices, not its own — asks one
+      round of focused questions before fitting. With the answers it gates
+      the FRET-active species, pools their photons into a sub-ensemble decay,
+      fits the Gaussian distance-distribution model and reports the
+      parameters with the assumptions used.
+    data: burst/simulated-smfret
+    must_call: [ask_user, run_burst_analysis, fit_distance_distribution]
+    should_call: [detect_smfret, inspect_bursts, select_species, extract_subensemble_decay]
+    expect_skills: []
+    safety: write
+
   - id: what-is-here
     title: See what data you have
     prompt: What is in this folder?

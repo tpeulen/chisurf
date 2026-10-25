@@ -7,6 +7,34 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 ---
 
 
+## Agent's distance-distribution fit is only validated on cw data: PIE window truncation unmeasured (found 2026-10-25)
+
+status: open — the burstwise agent chain (burst analysis → species gate → sub-ensemble decay →
+`fit_distance_distribution`) recovers the simulation truth on cw-simulated data (E = 0.75, τ_D0 = 4 ns,
+R0 = 52 A: fitted mean distance 42.9–44.7 A over seeds/starts, truth 43.29 A, `test/agent/test_smfret_agent.py`).
+For PIE the donor stream is gated to the donor micro-time window, which truncates the decay an
+un-convolved amplitude model cannot represent; the recipe's recovery on window-truncated data is not
+yet measured against simulation truth. Validate the PIE path the same way (simulated PIE scenario,
+known E) before trusting agent-fit distances on alternating-laser measurements.
+
+## Fitting a distance distribution with the width held biases the mean distance (found 2026-10-25)
+
+status: resolved 2026-10-25 — `build_fret_fit`/`fit_fret_model` accept `fit_sigma` (and
+`sigma_bounds`), and the agent tool `fit_distance_distribution` defaults to the fitted width and
+reports `width_mode`. The model sees the FRET rate averaged over the distance distribution, which is
+steeper than the rate at the mean: with the width held at 5 A the simulated E = 0.75 species came
+out as E_fit = 0.836 / R = 39.7 A; freeing the width puts the mean at 42.9–44.7 A (truth 43.29).
+Held-width fits remain available and are what the GUI's current default does — the bias belongs to
+that mode, not to the model.
+
+## `test/plugins/burst_selection/test_export_guards.py` fails on this branch, before the agent changes (found 2026-10-25)
+
+status: open — `test_export_bur_writes_non_empty_frame`,
+`test_export_without_data_reports_instead_of_writing[export_bur-none]` and `[export_bur-empty-store]`
+fail at the agent base and at `ef50a477f` with the agent work stashed, so they are pre-existing and
+unrelated to the burst tool group; 3 failed / 28 passed alongside it. Diagnose the guard's
+expectation (empty-frame reporting) against the current export code before the release cut.
+
 ## LLTF fits are not reproducible: random starting values are unseeded (found 2026-10-02)
 
 status: resolved 2026-10-24 — the fitter derives a per-fit RNG from `randomize_initial_values.seed` (default 0,

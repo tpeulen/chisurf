@@ -144,6 +144,23 @@ def _scenario(example: ExamplePrompt, root: pathlib.Path) -> pathlib.Path:
     if data == "tcspc/single-decay":
         shutil.copy(SOURCE_DECAY, workspace)
         shutil.copy(SOURCE_IRF, workspace)
+    elif data == "burst/simulated-smfret":
+        # Simulated, not committed: a burst-rich smFRET measurement with a
+        # known FRET population, generated where the example runs.
+        (workspace / "xy").mkdir(exist_ok=True)
+        pytest.importorskip("tttrlib")
+        from chisurf.plugins.burst.fret_check.sim import Scenario, simulate
+
+        measurement = simulate(
+            Scenario(
+                "example",
+                populations=((0.75, 0.8),),
+                donor_only=0.2,
+                duration_s=2.0,
+                seed=3,
+            )
+        )
+        measurement.write(str(workspace / "xy" / "smfret.ht3"))
     elif data == "tcspc/repeats":
         # Two repeat measurements of one sample: the case where a shared
         # lifetime is physically justified, which is what linking is for.
