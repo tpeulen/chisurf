@@ -31,6 +31,11 @@ class McpServer:
         self._output = output or sys.stdout.buffer
         self.registry = registry or build_default_registry()
         self.context = context or AgentContext(working_directory=".")
+        # The plugin manifests' declared RPC methods, as tools — born in the
+        # destructive tier, so only the allowlisted ones appear below.
+        from chisurf.core.agent.mcp_server import register_manifest_rpc_tools
+
+        register_manifest_rpc_tools(self.registry)
         self._tools = {
             spec.name: spec for spec in self.registry.filtered(max_safety=SAFETY_WRITE)
         }
@@ -131,6 +136,83 @@ class McpServer:
         line = json.dumps(payload, separators=(",", ":")).encode("utf-8") + b"\n"
         self._output.write(line)
         self._output.flush()
+
+
+def register_manifest_rpc_tools(registry: Any) -> int:
+    """Register one tool per RPC method declared in a plugin manifest.
+
+    The plugin manifests are the contract: ``rpc_methods`` entries carry the
+    method's dotted name and summary, so the whole backend surface becomes
+    MCP-visible without hand-written wrappers — a new plugin's services show
+    up the next time an MCP client connects. Invocation goes through the
+    action dispatcher (the same seam the Qt-free server drives). Every
+    generated tool is born in the destructive tier: raw backend calls are
+    the full API surface, so nothing is served to chat clients until it is
+    explicitly allowlisted via ``CHISURF_MCP_RPC_SERVED`` (comma-separated
+    method names or ``*``).
+    """
+    import os
+    import re
+    from pathlib import Path
+
+    import chisurf
+    from chisurf.core.agent.spec import SAFETY_DANGEROUS, SAFETY_WRITE
+
+    served = {
+        part.strip()
+        for part in os.environ.get("CHISURF_MCP_RPC_SERVED", "").split(",")
+        if part.strip()
+    }
+    serve_all = "*" in served
+
+    def _invoke(context, arguments=None, _method=""):
+        from chisurf.core.actions import dispatch
+
+        return dispatch(_method, dict(arguments or {}))
+
+    count = 0
+    for manifest_path in sorted((Path(chisurf.__file__).parent / "plugins").rglob("manifest.json")):
+        try:
+            manifest = json.loads(manifest_path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        plugin = manifest.get("id") or manifest_path.parent.name
+        for method in manifest.get("rpc_methods") or []:
+            name = str(method.get("name", "")).strip()
+            if not name:
+                continue
+            tool_name = re.sub(r"[^a-zA-Z0-9_-]", "_", f"rpc_{name}")
+            summary = str(method.get("summary", name))
+            long_running = bool(method.get("long_running"))
+            description = (
+                f"[{plugin}] {summary}"
+                + (" (long-running; the call blocks until it finishes)" if long_running else "")
+                + f" — backend RPC method {name}."
+            )
+
+            @registry.add(
+                name=tool_name,
+                description=description,
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "arguments": {
+                            "type": "object",
+                            "description": "Keyword arguments for the backend method, as declared by the plugin.",
+                        }
+                    },
+                },
+                safety=SAFETY_DANGEROUS,
+            )
+            def _rpc_tool(context, arguments=None, _method=name):  # default binds per method
+                return _invoke(context, arguments, _method)
+
+            # The allowlist, applied per method: served tools are moved into
+            # the write tier so the MCP surface picks them up.
+            if serve_all or name in served:
+                registry.tools[tool_name].safety = SAFETY_WRITE
+            count += 1
+    return count
 
 
 def main() -> None:
