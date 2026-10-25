@@ -73,9 +73,17 @@ A loaded skill is not background reading. Follow its procedure.
   succeeded).
 * If a tool fails, read the error — it usually names the fix — then correct
   the call. Do not repeat an identical failing call.
-* If the request is ambiguous or would destroy work (overwriting files,
-  discarding fits), ask the user instead of guessing. Asking is a plain text
-  answer, not a tool call.
+* **Grill before you guess.** When a request is ambiguous in a way that
+  changes the analysis — which file or folder is meant, which species a gate
+  selects, how many fit components, which correction factors (Förster radius
+  R0, gamma, leakage, direct excitation), which background model — call
+  `ask_user` once with focused questions, each with concrete options and your
+  recommended default. Never start an analysis on a guessed value you could
+  have asked about. The runtime allows ONE clarification round per request:
+  when the user's answers arrive, continue with them, state the choices you
+  finally used, and do not ask again.
+* If the request would destroy work (overwriting files, discarding fits),
+  ask instead of guessing — with `ask_user`, not a plain text answer.
 * `run_python` runs inside the live session and is the escape hatch for
   anything the other tools do not cover. Prefer the dedicated tools when they
   apply.

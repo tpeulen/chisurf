@@ -4,6 +4,8 @@ The catalogue is assembled from three groups:
 
 ``data``
     finding files on disk, loading them, describing experiments/readers/models
+``clarify``
+    asking the user focused questions before acting on an ambiguous request
 ``fitting``
     creating fits, running them, editing parameters, exporting results
 ``decay``
@@ -34,6 +36,7 @@ from __future__ import annotations
 
 from chisurf.core.agent.spec import ToolRegistry
 from chisurf.core.agent.tools import (
+    clarify,
     codebase,
     data,
     decay,
@@ -47,6 +50,7 @@ from chisurf.core.agent.tools import (
 
 __all__ = [
     "build_default_registry",
+    "clarify",
     "codebase",
     "data",
     "decay",
@@ -77,6 +81,7 @@ def build_default_registry() -> ToolRegistry:
     registry = ToolRegistry()
     for group in (
         data.registry,
+        clarify.registry,
         codebase.registry,
         documentation.registry,
         fitting.registry,

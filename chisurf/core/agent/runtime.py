@@ -15,6 +15,13 @@ Design decisions that matter for how well it behaves:
   short.
 * **Budgets, not guesses.**  Steps, wall-clock time, and consecutive-failure
   counts are explicit and reported in the result.
+* **One clarification round, then act.**  When a request is ambiguous in a
+  way that changes the analysis, the model asks through the ``ask_user``
+  tool; the run stops with ``stop_reason="needs_input"`` and the questions
+  come back structured (``AgentResult.clarifications``).  The user's next
+  message answers them and the plan resumes.  A second ``ask_user`` in the
+  same thread is refused — an assistant that keeps asking instead of
+  analysing is its own failure mode.
 * **The conversation survives across questions**, so follow-ups like "now fix
   the lifetime and refit" work without repeating context.
 * **Skills are loaded from the request itself.**  Before the model sees a
@@ -49,6 +56,7 @@ from chisurf.core.agent.spec import (
     call_handler,
 )
 from chisurf.core.agent.tools import build_default_registry
+from chisurf.core.agent.tools.clarify import ASK_USER, render_questions
 
 logger = logging.getLogger(__name__)
 
@@ -200,11 +208,16 @@ class AgentResult:
         The assistant's final answer.
     invocations : list of ToolInvocation
         Every tool executed while answering, in order.
+    clarifications : list of dict
+        The questions of the clarification round, when the run stopped with
+        ``stop_reason="needs_input"`` — each ``{"id", "question", "options",
+        "default"}``. The user's answers resume the run in the same session.
     steps : int
         Number of model turns used.
     stop_reason : str
-        ``"answer"``, ``"step_budget"``, ``"time_budget"``, ``"tool_budget"``,
-        ``"repeated_failures"``, ``"cancelled"`` or ``"error"``.
+        ``"answer"``, ``"needs_input"``, ``"step_budget"``, ``"time_budget"``,
+        ``"tool_budget"``, ``"repeated_failures"``, ``"cancelled"`` or
+        ``"error"``.
     error : str, optional
         Set when ``stop_reason`` is ``"error"``.
     usage : dict
@@ -213,6 +226,7 @@ class AgentResult:
 
     text: str = ""
     invocations: list[ToolInvocation] = field(default_factory=list)
+    clarifications: list[dict[str, Any]] = field(default_factory=list)
     steps: int = 0
     stop_reason: str = "answer"
     error: str | None = None
@@ -267,6 +281,9 @@ class AgentSession:
         self.skills = SkillLibrary.discover() if skills is None else skills
         self.messages: list[dict[str, Any]] = []
         self._cancelled = False
+        # A clarification round is open from the moment the model asks until
+        # the thread it belongs to ends with a real answer (see ``ask``).
+        self._clarification_pending = False
         # The skill tools read the library through the context, so a tool
         # handler needs no back-reference to the session.
         self.context.extras["skill_library"] = self.skills
@@ -287,6 +304,7 @@ class AgentSession:
         """Forget the conversation and the loaded skills."""
         self.messages = []
         self._cancelled = False
+        self._clarification_pending = False
         self.context.extras["active_skills"] = []
 
     def ask(self, question: str) -> AgentResult:
@@ -351,6 +369,44 @@ class AgentSession:
                     result.stop_reason = "tool_budget"
                     break
 
+                if call.name == ASK_USER:
+                    if self._clarification_pending:
+                        # One round per request: the questions were asked and
+                        # answered; grilling again would keep the analysis
+                        # from ever starting. The refusal tells the model what
+                        # to do instead.
+                        invocation = self._failure(
+                            call,
+                            time.perf_counter(),
+                            "a clarification was already asked in this request — "
+                            "proceed with the best-supported choice and state it "
+                            "in your answer",
+                            event="tool.refused",
+                        )
+                        result.invocations.append(invocation)
+                        self._append_tool_result(call, invocation)
+                        answered += 1
+                        continue
+                    invocation = self._execute(call)
+                    result.invocations.append(invocation)
+                    self._append_tool_result(call, invocation)
+                    answered += 1
+                    questions = (
+                        invocation.result.get("questions") if invocation.ok else None
+                    )
+                    if questions:
+                        # The run waits here: the questions leave as the
+                        # result, the user's next message answers them, and
+                        # the plan resumes in the same conversation.
+                        self._clarification_pending = True
+                        result.clarifications = questions
+                        result.stop_reason = "needs_input"
+                        self.context.emit(
+                            "agent.needs_input", {"questions": questions}
+                        )
+                        break
+                    continue
+
                 invocation = self._execute(call)
                 result.invocations.append(invocation)
                 self._append_tool_result(call, invocation)
@@ -375,7 +431,13 @@ class AgentSession:
             if result.stop_reason != "answer":
                 break
 
-        if result.stop_reason != "answer" and not result.text:
+        if result.stop_reason == "answer":
+            # A thread that ended in an answer is closed: the next request may
+            # earn its own clarification round.
+            self._clarification_pending = False
+        if result.stop_reason == "needs_input" and result.clarifications:
+            result.text = render_questions(result.clarifications)
+        elif result.stop_reason != "answer" and not result.text:
             result.text = self._explain_stop(result)
         self.context.emit(
             "agent.completed",
@@ -802,6 +864,7 @@ class AgentSession:
                 if result.invocations
                 else "I stopped because an operation kept failing."
             ),
+            "needs_input": "I stopped to ask the user for the missing details.",
             "cancelled": "Cancelled.",
             "error": f"I could not reach the language model: {result.error}",
         }
