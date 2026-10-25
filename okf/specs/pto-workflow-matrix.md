@@ -77,3 +77,24 @@ Missing, and the reason this item exists:
 - Filesystem parity check ships with the matrix: W5 runs the same journey on
   the raw vendor files without ever writing a container first (except where
   the operation itself defines one).
+
+## Outcome (2026-10-25, item 13 closed)
+
+The walk ships as `test/e2e/test_pto_journeys.py`: one test, eleven legs in
+user order, every leg asserting the affordance it needs before exercising it,
+file dialogs fed (never bypassed), a JSON verdict + PNG per leg under
+`test/e2e/pto_journeys/`, and blocked legs named by the leg that starved them
+(the walk never stops early). Green run: 11/11 legs, RC 0.
+
+- The shell hosts the Burst Selection **hub**; its Selection step is the full
+  tool (`nav.selection`), so the journey enters through the hub, not a
+  standalone window.
+- Entry points proven: Add-files (dialog) → Run → Runs table row → fit_gmm →
+  Decay-from-bursts → Datasets panel → + Analysis → Run (Analysis dock,
+  chi2r) → FCS tool "Files..." → Run FCS → container stores → ndX →
+  Save/Open Project (shell dialogs).
+- Filesystem parity holds: the identical search on the raw `.spc` folder finds
+  the same 12 bursts, and no legacy `*#*` folder appears beside a `.pto`
+  input.
+- The journey is the click-all-program-compatible substrate: same Driver, same
+  offscreen discipline; adding a matrix row means adding a leg method.
