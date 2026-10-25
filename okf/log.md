@@ -32552,3 +32552,13 @@ front, not this).
   [burst companions](subsystems/burst-companions.md),
   [photon container](subsystems/photon-container.md).
 
+
+### 2026-10-25 — PRD-154 item 13: the .pto-only journeys are green
+- `test/e2e/test_pto_journeys.py` (commit f8e121f85): 11-leg walk through the real
+  emtk UI, dialogs fed, affordances asserted before use; verdict JSON + PNG per leg.
+  Green run: 11/11, RC 0 — container → search (12/12 bursts) → GMM (2 populations) →
+  sub-ensemble decay (registered dataset) → Analysis-dock fit (Lifetime, chi2r 0.6352)
+  → burstwise FCS (12 curves, tables stored in the container) → ndX opens the stores →
+  raw .spc folder parity (12/12, no legacy folder) → project round-trip.
+- PRD-154 item 13 closed with Measure line (commit d05067c09); the workflow matrix
+  spec records the outcome and the entry-point chain.
