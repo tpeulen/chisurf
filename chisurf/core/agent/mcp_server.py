@@ -134,8 +134,17 @@ class McpServer:
 
 
 def main() -> None:
-    """Run the server on stdio (the entrypoint an MCP client launches)."""
-    McpServer().serve()
+    """Run the server on stdio (the entrypoint an MCP client launches).
+
+    fd 1 carries the protocol and nothing else: chisurf's import-time
+    warnings are moved to stderr before the first import, so a chatty
+    startup can never corrupt the JSON-RPC stream.
+    """
+    import os
+
+    protocol_out = os.fdopen(os.dup(1), "wb")
+    sys.stdout = sys.stderr  # chatty imports must not reach the client
+    McpServer(output=protocol_out).serve()
 
 
 if __name__ == "__main__":  # pragma: no cover - manual launch
