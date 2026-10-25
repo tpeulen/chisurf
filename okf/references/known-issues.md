@@ -510,10 +510,10 @@ name, so the step badge (`2. Burst Selection (2)`) appears there too. Both want 
 ## LLTF was never battle-tested: validation campaign against tttrlib simulated decays (owner 2026-10-24)
 
 status: open — owner directive 2026-10-24 ("lltf must improve — it was never battle tested; now it can be tested
-with tttrlib improved sim capability"). Build a validation campaign: tttrlib Sim* generates decays with known
-ground truth (lifetimes, anisotropy, noise seeds) across the model families LLTF ships; LLTF must recover the
-parameters within declared tolerances, reproducibly (seeded starts, see below), with the recovery table landing
-in `okf/validation/` and a guard test. This replaces the old "never battle tested" caveat in guide 76 when done.
+with tttrlib improved sim capability"). Campaign slice 1 LANDED 2026-10-24: parameter recovery on the fitter's own
+forward model — mono/bi/tri spectra over three noise seeds, worst rel-τ 0.3 % (separated) to 5.5 % (τ 1.0 vs 2.0 ns),
+guard `test/core/test_lltf_recovery.py`, record `okf/references/lltf-recovery.md`. Still open: photon-level truth from
+tttrlib Sim*, fret_check SCENARIOS, VV/VH anisotropy recovery, IRF-mismatch bias, low-count regimes.
 
 ## Licence audit leftovers: IMP.swarm provenance, Photonscore attribution, LGPL source offer (found 2026-10-20, branch `mcts-native-baseline`)
 
