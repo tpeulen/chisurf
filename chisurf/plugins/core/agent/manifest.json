@@ -1,0 +1,22 @@
+{
+  "id": "agent",
+  "version": "1.0.0",
+  "display_name": "Agent",
+  "single_instance": true,
+  "description": "Drive ChiSurf in plain words: the agent runs the analysis tools of the loaded session, asks when a request is ambiguous, and scripts pipelines over the plugin and core APIs.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools",
+    "AI"
+  ],
+  "icon": "🤖",
+  "state_namespace": "agent",
+  "entrypoints": {
+    "emtk": "chisurf.plugins.core.agent.gui.panel:make_app"
+  },
+  "optional_requires": {
+    "ai_settings": "*"
+  }
+}
