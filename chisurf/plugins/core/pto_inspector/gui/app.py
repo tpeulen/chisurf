@@ -460,12 +460,12 @@ class PtoInspectorApp(TourTarget, ImApp):
                 self._node_popup = {"node": node.id, "kind": str(node.config.get("kind", ""))}
         if self._node_popup:
             if im.begin_popup("pto_node_menu"):
-                if im.selectable(tr("Open this step's tool")):
+                if im.selectable(tr("Open this step's tool"), tooltip=tr("Open the tool that produced this step.")):
                     self.safe(self.open_tool)
                     self._node_popup = None
                 photon_kinds = ("tttr_photon_stream", "photon_stream")
                 if self._node_popup["kind"] in photon_kinds or self._node_popup["kind"] == "":
-                    if im.selectable(tr("Compute micro-time histogram")):
+                    if im.selectable(tr("Compute micro-time histogram"), tooltip=tr("Compute the micro-time histogram of the selected run.")):
                         self.safe(self.compute_histogram)
                         self._node_popup = None
                 im.end_popup()

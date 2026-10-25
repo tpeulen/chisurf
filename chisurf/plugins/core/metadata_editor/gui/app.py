@@ -119,7 +119,7 @@ class MetadataEditorApp(ImApp):
         im.text(tr("Schema:"))
         im.same_line()
         im.set_next_item_width(220.0)
-        changed, index = im.combo("##schema", names.index(self.schema_name), names)
+        changed, index = im.combo("##schema", names.index(self.schema_name), names, tooltip=tr("Which metadata schema to edit.")):
         if changed:
             self.pick_schema(names[index])
         self.remember("schema")
@@ -127,7 +127,7 @@ class MetadataEditorApp(ImApp):
             self.choose_open()
         self.remember("open")
         im.same_line()
-        if im.button(tr("Save as…")):
+        if im.button(tr("Save as…"), tooltip=tr("Write the metadata record to a file.")):
             self.choose_save()
         self.remember("save_as")
         name = self.path.name if self.path else tr("no file")

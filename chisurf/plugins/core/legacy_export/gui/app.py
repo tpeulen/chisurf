@@ -157,7 +157,7 @@ class LegacyExportApp(ImApp):
         if action_button("open", tooltip=tr("Choose a .pto container to export from.")):
             self.choose_file()
         im.same_line()
-        if im.button(tr("Refresh")):
+        if im.button(tr("Refresh"), tooltip=tr("Re-read the container from disk.")):
             if m.filename:
                 m.set_file(m.filename)
         im.spacing()
@@ -192,7 +192,7 @@ class LegacyExportApp(ImApp):
         _, m.out_folder = im.input_text_with_hint(
             tr("Output folder"), m.out_folder, str(pathlib.Path.home())
         )
-        if im.button(tr("📤 Export burst folder"), role="primary"):
+        if im.button(tr("📤 Export burst folder"), role="primary", tooltip=tr("Unpack the container into the Seidel/Margarita burst folder (.bur/.bg4).")):
             m.export_burst_folder()
         im.spacing()
         im.separator()
@@ -201,18 +201,18 @@ class LegacyExportApp(ImApp):
         runs = [r["run"] for r in m.plan]
         if runs:
             current = m.alex_run if m.alex_run in runs else runs[0]
-            changed, value = im.combo(tr("Run"), runs.index(current) if current in runs else 0, runs)
+            changed, value = im.combo(tr("Run"), runs.index(current) if current in runs else 0, runs, tooltip=tr("Which run's CSVs to write."))
             if changed:
                 m.alex_run = runs[int(value)]
             _, m.sample = im.input_text_with_hint(tr("Sample"), m.sample, tr("free text"))
             _, m.buffer = im.input_text_with_hint(tr("Buffer"), m.buffer, tr("free text"))
             for part in _PARTS:
-                _, on = im.checkbox(tr(part), part in m.parts)
+                _, on = im.checkbox(tr(part), part in m.parts, tooltip=tr("Include this table in the export."))
                 if on:
                     m.parts.add(part)
                 else:
                     m.parts.discard(part)
-            if im.button(tr("Write ALEX-Suite CSVs")):
+            if im.button(tr("Write ALEX-Suite CSVs"), tooltip=tr("Write the ALEX-Suite CSV tables of the selected run.")):
                 m.export_alex_csvs()
         else:
             im.text_disabled(tr("Open a container with runs to write the ALEX CSVs."))
