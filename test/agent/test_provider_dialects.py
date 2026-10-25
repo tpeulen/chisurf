@@ -65,6 +65,13 @@ PROVIDER_REPLIES = {
         "tool_calls": [_tool_call(call_id="Xy9aBc123")],
         "prefix": False,
     },
+    # Z.ai (GLM): OpenAI's shape, plus a reasoning field of its own naming.
+    "zai": {
+        "role": "assistant",
+        "content": None,
+        "tool_calls": [_tool_call()],
+        "reasoning_content": "the user wants the fits listed",
+    },
     # A provider that returns an empty string instead of null.
     "empty-string": {"role": "assistant", "content": "", "tool_calls": [_tool_call()]},
 }

@@ -36,6 +36,7 @@ DEFAULT_MODELS = {
     "openrouter": "openai/gpt-4o-mini",
     "openai": "gpt-4o-mini",
     "mistral": "mistral-small-latest",
+    "zai": "glm-5.3-flash",
 }
 MODEL = os.environ.get("CHISURF_AGENT_TEST_MODEL") or DEFAULT_MODELS.get(PROVIDER, "")
 TCSPC = "tcspc/EasyTau300"

@@ -18,12 +18,12 @@ from chisurf.core.settings.ai_settings import (
 
 def _clear_provider_keys(monkeypatch):
     """Remove every candidate key variable so a test starts from nothing."""
-    for provider in ("openai", "openrouter", "mistral"):
+    for provider in ("openai", "openrouter", "mistral", "zai"):
         for name in provider_key_env_names(provider):
             monkeypatch.delenv(name, raising=False)
 
 
-@pytest.mark.parametrize("provider", ["openai", "openrouter", "mistral"])
+@pytest.mark.parametrize("provider", ["openai", "openrouter", "mistral", "zai"])
 def test_the_declared_variable_comes_first(provider):
     declared = next(env for key, _url, _api, env in PROVIDERS.values() if key == provider)
     assert provider_key_env_names(provider)[0] == declared
@@ -80,6 +80,33 @@ def test_settings_pick_up_an_aliased_key(monkeypatch):
     assert settings.api_key == "from-alias"
     assert settings.base_url == "https://api.mistral.ai/v1"
     settings.validate()
+
+
+def test_the_zai_provider_reaches_the_glm_endpoint(monkeypatch):
+    """Z.ai is selectable first-class: endpoint, default model, key by any name."""
+    _clear_provider_keys(monkeypatch)
+    monkeypatch.setenv("ZAI_API_KEY", "from-zai")
+
+    defaults = LLMSettings.from_provider("zai")
+    assert defaults.base_url == "https://api.z.ai/api/paas/v4"
+    assert defaults.model == "glm-5.3-flash"
+    assert defaults.api_key == "from-zai"
+    defaults.validate()
+
+    monkeypatch.delenv("ZAI_API_KEY")
+    monkeypatch.setenv("ZAI_KEY", "from-alias")
+    aliased = LLMSettings.from_provider("zai")
+    assert aliased.api_key == "from-alias"
+    assert aliased.model == "glm-5.3-flash"
+
+
+def test_the_zai_default_settings_carry_a_development_model():
+    """The shipped default is the dev tier; the owner's token comes from the environment."""
+    from chisurf.core.settings.ai_settings import DEFAULT_PROVIDER_SETTINGS
+
+    defaults = DEFAULT_PROVIDER_SETTINGS["zai"]
+    assert defaults["text_model"] == "glm-5.3-flash"
+    assert defaults["api_key"] == "", "a key must never ship in the defaults"
 
 
 def test_a_fresh_install_starts_on_an_eu_hosted_provider(monkeypatch, tmp_path):

@@ -37,6 +37,12 @@ PROVIDERS: dict[str, tuple[str, str, str, str]] = {
         "https://openrouter.ai/keys",
         "OPENROUTER_API_KEY",
     ),
+    "Z.ai (GLM)": (
+        "zai",
+        "https://api.z.ai/api/paas/v4",
+        "https://z.ai/manage-apikey/apikey-list",
+        "ZAI_API_KEY",
+    ),
     "ACP Agent (stdio)": ("acp", "", "", ""),
     "Custom (OpenAI-compatible)": ("custom", "", "", ""),
 }
@@ -79,6 +85,18 @@ DEFAULT_PROVIDER_SETTINGS = {
         "text_model": "mistral-large-latest",
         "model": "mistral-large-latest",
         "image_model": "mistral-medium-latest",
+        "api_key": "",
+        "temperature": 0.3,
+        "top_p": 0.9,
+        "max_tokens": 4096,
+    },
+    "zai": {
+        "base_url": "https://api.z.ai/api/paas/v4",
+        # The development tier: fast and cheap for driving the agent through
+        # tool chains; a production session points text_model at a larger GLM.
+        "text_model": "glm-5.3-flash",
+        "model": "glm-5.3-flash",
+        "image_model": "",
         "api_key": "",
         "temperature": 0.3,
         "top_p": 0.9,
