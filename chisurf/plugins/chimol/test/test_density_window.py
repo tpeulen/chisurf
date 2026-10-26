@@ -610,6 +610,7 @@ def _shell():
     """Build a viewer plus command shell, mirroring test_volume's fixture."""
     from chimol.commands.command import Cmd
     from native_window import native_viewer
+
     view = native_viewer()
     messages: list[str] = []
     errors: list[str] = []

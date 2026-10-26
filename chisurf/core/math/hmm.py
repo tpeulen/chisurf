@@ -1173,11 +1173,7 @@ class GaussianHMM:
         matrices = np.empty((self.n_components, nf, nf))
         for c in range(self.n_components):
             members = X[labels == c]
-            matrices[c] = (
-                np.atleast_2d(np.cov(members.T)) + ridge
-                if len(members) > nf
-                else pooled
-            )
+            matrices[c] = np.atleast_2d(np.cov(members.T)) + ridge if len(members) > nf else pooled
         if self.covariance_type == "full":
             return matrices
         if self.covariance_type == "tied":

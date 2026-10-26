@@ -35,7 +35,9 @@ def bur_table(tmp_path):
     cols = _columns()
     path = tmp_path / "sample.bur"
     lines = ["\t".join(cols)]
-    lines += ["\t".join(f"{v:.10g}" for v in row) for row in np.column_stack(list(cols.values()))[1:]]
+    lines += [
+        "\t".join(f"{v:.10g}" for v in row) for row in np.column_stack(list(cols.values()))[1:]
+    ]
     path.write_text("\n".join(lines) + "\n")
     return path
 

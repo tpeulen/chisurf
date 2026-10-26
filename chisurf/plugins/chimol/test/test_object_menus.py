@@ -333,13 +333,13 @@ def test_every_command_is_a_registered_chimol_command():
 # object name selected nothing at all.
 
 
-
 @pytest.fixture
 def window(tmp_path):
     import pathlib
     import shutil
 
     from native_window import NativeWindow
+
     src = (
         pathlib.Path(__file__).resolve().parents[4]
         / "test"

@@ -10,6 +10,7 @@ the checks are fret_check's own content: header with the verdict, the
 count-rate trace, the inter-burst gaps, the values table. Everything is
 :class:`emtk.figure` vector drawing, so the page writes it as ``application/pdf``.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -85,19 +86,26 @@ def _draw_es_panel(fig, session, row_marginal: int, row_density: int) -> bool:
     b = session.bursts
     if b.S is None or not b.n:
         return False
-    inside = ((b.E >= 0.0) & (b.E <= 1.0) & (b.S >= 0.0) & (b.S <= 1.0))
+    inside = (b.E >= 0.0) & (b.E <= 1.0) & (b.S >= 0.0) & (b.S <= 1.0)
     x_e = np.linspace(0.0, 1.0, 51)
     y_s = np.linspace(0.0, 1.0, 51)
     H, _, _ = np.histogram2d(b.E[inside], b.S[inside], bins=[x_e, y_s])
     x_cnt, _ = np.histogram(b.E[inside], bins=x_e)
     y_cnt, _ = np.histogram(b.S[inside], bins=y_s)
     draw_density_with_marginals(
-        fig, fig.ax(row_density, 0, span=3), fig.ax(row_marginal, 0, span=3),
+        fig,
+        fig.ax(row_density, 0, span=3),
+        fig.ax(row_marginal, 0, span=3),
         fig.ax(row_density, 3),
-        H.T, x_e, y_s,  # (n_y, n_x) like Histogram2D stores
-        x_marginal=(x_e, x_cnt), y_marginal=(y_s, y_cnt),
-        x_label="FRET efficiency E", y_label="Stoichiometry S",
-        z_log=True, count_labels=False,
+        H.T,
+        x_e,
+        y_s,  # (n_y, n_x) like Histogram2D stores
+        x_marginal=(x_e, x_cnt),
+        y_marginal=(y_s, y_cnt),
+        x_label="FRET efficiency E",
+        y_label="Stoichiometry S",
+        z_log=True,
+        count_labels=False,
         colorbar_axes=_bare(fig.ax(row_density, 4)),
     )
     # flush: no padding on the sides that meet inside the joint plot
@@ -164,8 +172,13 @@ def _draw_example_trace(fig, r: int, session) -> None:
     spans = getattr(session, "trace_bursts", None)
     if spans is not None and spans.size and t.size:
         for a, b in spans[(spans[:, 1] >= t[0]) & (spans[:, 0] <= t[-1])]:
-            ax.fill_between([a, b], [-bottom * 1.08, -bottom * 1.08],
-                            [top * 1.08, top * 1.08], color="#9ec5e8", alpha=0.35)
+            ax.fill_between(
+                [a, b],
+                [-bottom * 1.08, -bottom * 1.08],
+                [top * 1.08, top * 1.08],
+                color="#9ec5e8",
+                alpha=0.35,
+            )
     ax.hline(0.0, color="#666666", dash=":")
     ax.set_title("Photon trace, 10 ms bins (t in s): DD green, DA yellow up; AA red down")
     ax.set_labels(x="", y="kHz")
@@ -197,8 +210,18 @@ def _draw_log_cr(fig, r: int, session) -> None:
     ax.set_xlim(0.0, float(t[-1] + bin_s * f1))
 
 
-def _scatter(fig, r: int, c: int, x, y, title: str, x_label: str, y_label: str,
-             color: str = "#1f4e8c", span: int = 1) -> bool:
+def _scatter(
+    fig,
+    r: int,
+    c: int,
+    x,
+    y,
+    title: str,
+    x_label: str,
+    y_label: str,
+    color: str = "#1f4e8c",
+    span: int = 1,
+) -> bool:
     """A burst-wise scatter panel; False (and the cell stays empty) without data."""
     x, y = np.asarray(x, float), np.asarray(y, float)
     ok = np.isfinite(x) & np.isfinite(y)
@@ -214,11 +237,13 @@ def _scatter(fig, r: int, c: int, x, y, title: str, x_label: str, y_label: str,
     ax.set_labels(x=x_label, y=y_label)
     if "static FRET" in title:  # tau_D(E) = tau_D0 (1 - E), the MFD reference
         donor_only = x[y < 0.2]  # x is tau_D, y is E here
-        tau0 = float(np.nanmedian(donor_only)) if donor_only.size >= 5 \
+        tau0 = (
+            float(np.nanmedian(donor_only))
+            if donor_only.size >= 5
             else float(np.nanpercentile(x, 95))
+        )
         e_grid = np.linspace(0.0, 1.0, 64)
-        ax.line(np.clip(tau0 * (1.0 - e_grid), 0.0, None), e_grid,
-                color="#888888", width=1.2)
+        ax.line(np.clip(tau0 * (1.0 - e_grid), 0.0, None), e_grid, color="#888888", width=1.2)
         ax.set_yticks([0.0, 0.5, 1.0])
     elif title.startswith("Tg-Tr"):
         lo, hi = np.percentile(y, [1.0, 99.0])  # outliers stay, scale does not stretch
@@ -278,15 +303,22 @@ def build_pdf_report(session) -> bytes:
     if qc is not None and len(qc.gaps) and np.any(qc.gaps > 0):
         hists.append(("gaps", np.log10(qc.gaps[qc.gaps > 0]), "Inter-burst gaps", "log10 s"))
     if has_bursts:
-        hists.append(("duration", np.log10(np.maximum(bursts.duration * 1e3, 1e-2)),
-                      "Burst duration", "log10 ms"))
+        hists.append(
+            (
+                "duration",
+                np.log10(np.maximum(bursts.duration * 1e3, 1e-2)),
+                "Burst duration",
+                "log10 ms",
+            )
+        )
 
     scatters: list[tuple] = []
     if tg is not None:
         scatters.append((e, tg, "Tg-Tr vs E", "E", "Tg-Tr (ms)", "#1f4e8c"))
     if tau_g is not None:
-        scatters.append((tau_g, e, "E vs tau_D (static FRET)",
-                         "Tau green (ns)", "E (frac.)", "#7a1f1f"))
+        scatters.append(
+            (tau_g, e, "E vs tau_D (static FRET)", "Tau green (ns)", "E (frac.)", "#7a1f1f")
+        )
     if r_g is not None and tau_g is not None:
         scatters.append((tau_g, r_g, "r vs tau_D", "Tau green (ns)", "anisotropy", "#1f6e4a"))
     if has_bursts:  # the half-width cell beside the density carries the sizes
@@ -302,10 +334,16 @@ def build_pdf_report(session) -> bytes:
     if n_diag > 3:
         rows.append((3.2, "diag_b"))
     rows.append((5.6, "table"))
-    fig = Figure(rows=len(rows), cols=6, size=(width, height), margin=40.0,
-                 width_ratios=[sixth] * 6, height_ratios=[r for r, _ in rows],
-                 hgap=[8.0, 8.0, 0.0, 0.0, 8.0],
-                 vgap=[0.0] + [8.0] * (len(rows) - 2))
+    fig = Figure(
+        rows=len(rows),
+        cols=6,
+        size=(width, height),
+        margin=40.0,
+        width_ratios=[sixth] * 6,
+        height_ratios=[r for r, _ in rows],
+        hgap=[8.0, 8.0, 0.0, 0.0, 8.0],
+        vgap=[0.0] + [8.0] * (len(rows) - 2),
+    )
     at = {name: i for i, (_, name) in enumerate(rows)}
     at["header"] = at["marginal"]  # header text lives beside the E marginal
     grid_total = sum(r for r, _ in rows)
@@ -325,8 +363,13 @@ def build_pdf_report(session) -> bytes:
     head.text(0.06, 0.88, title, color="#111111", align="left")
     head.text(0.06, 0.58, name, color="#444444", align="left")
     head.text(0.06, 0.30, now, color="#333333", align="left")
-    head.text(0.55, 0.30, f"QC: {verdict}" if verdict else "QC: --",
-              color=_LEVEL_COLOR.get(level, "#333333"), align="left")
+    head.text(
+        0.55,
+        0.30,
+        f"QC: {verdict}" if verdict else "QC: --",
+        color=_LEVEL_COLOR.get(level, "#333333"),
+        align="left",
+    )
 
     # -- the FRET panel: ndX's density with marginals -------------------------
     r_m, r_d = at["marginal"], at["density"]
@@ -359,7 +402,7 @@ def build_pdf_report(session) -> bytes:
     # -- MFD diagnostics the data supports: half-width slots, three to a row --
     diag_rows = [at[k] for k in ("diag_a", "diag_b") if k in at]
     packed = scatters + hists
-    packed = packed[:len(diag_rows) * 3]
+    packed = packed[: len(diag_rows) * 3]
     row_size = [min(3, max(0, len(packed) - 3 * j)) for j in range(len(diag_rows))]
 
     def slot_starts(n: int) -> list[int]:
@@ -378,8 +421,9 @@ def build_pdf_report(session) -> bytes:
             spec = packed[i]
             if len(spec) == 6:
                 xs, ys, title, xl, yl, color = spec
-                if not _scatter(fig, r, starts[slot], xs, ys, title, xl, yl,
-                                color=color, span=span):
+                if not _scatter(
+                    fig, r, starts[slot], xs, ys, title, xl, yl, color=color, span=span
+                ):
                     fig.ax(r, starts[slot], span=span).hide()
             else:
                 _, values, title, unit = spec
@@ -393,8 +437,7 @@ def build_pdf_report(session) -> bytes:
             if starts[slot] == 3 and len(spec) != 6:
                 _c, _ = np.histogram(np.asarray(spec[1], float), 40)
                 hi = float(_c.max()) if _c.size else 1.0  # the count scale
-                fig.ax(r, starts[slot]).set_yticks(
-                    [0.0, round(hi / 2.0), round(hi)])
+                fig.ax(r, starts[slot]).set_yticks([0.0, round(hi / 2.0), round(hi)])
 
     # -- the values: every check, the background, the key numbers -------------
     table = _bare(fig.ax(at["table"], 0, span=6))
@@ -411,8 +454,9 @@ def build_pdf_report(session) -> bytes:
         pitch = 11.0 / max(cell_h_pt, 1e-9)
         cols_x = (0.02, 0.35, 0.68)
         per_col = -(-len(checks) // 3)
-        for x, group in zip(cols_x, (checks[0:per_col], checks[per_col:2 * per_col],
-                                     checks[2 * per_col:])):
+        for x, group in zip(
+            cols_x, (checks[0:per_col], checks[per_col : 2 * per_col], checks[2 * per_col :])
+        ):
             y = y0
             if x == cols_x[0]:
                 table.text(x, y, "Checks", color="#111111", align="left")
@@ -442,24 +486,31 @@ def build_pdf_report(session) -> bytes:
         y = 0.385
         table.text(0.02, y, "Issues", color="#111111", align="left")
         if flagged:
-            parts = [f"{c.name}: {_ISSUE_ACTION.get(c.name, c.detail)}"
-                     for c in flagged]
+            parts = [f"{c.name}: {_ISSUE_ACTION.get(c.name, c.detail)}" for c in flagged]
             for chunk in _wrap(parts, width=84):
                 if y - pitch < 0.10:  # the values line keeps its baseline
                     break
                 y -= pitch
-                table.text(0.02, y, chunk, color="#b71c1c" if any(
-                    c.level == "bad" for c in flagged) else "#6b4300", align="left")
+                table.text(
+                    0.02,
+                    y,
+                    chunk,
+                    color="#b71c1c" if any(c.level == "bad" for c in flagged) else "#6b4300",
+                    align="left",
+                )
         else:
             y -= pitch
             table.text(0.02, y, "none: every check passes", color="#1b5e20", align="left")
         # Values: a reserved baseline of its own, so a long checks column
         # can never push the concentration metrics off the page.
-        joined = (f"Flagged: {int((qc.flags != 0).sum())} of {qc.flags.size}"
-                  f" \u00b7 Arrival (corr.): {_fmt(qc.arrival_rate)} /s"
-                  f" \u00b7 Volume: {_fmt(qc.metrics.get('v_eff_fL', ''))} fL")
+        joined = (
+            f"Flagged: {int((qc.flags != 0).sum())} of {qc.flags.size}"
+            f" \u00b7 Arrival (corr.): {_fmt(qc.arrival_rate)} /s"
+            f" \u00b7 Volume: {_fmt(qc.metrics.get('v_eff_fL', ''))} fL"
+        )
         table.text(0.02, 0.078, joined, color="#333333", align="left")
     from emtk import implot as _eimpl
+
     _gp = _eimpl.gp
     _saved = (_gp.style.plot_padding, _gp.style.label_padding)
     _gp.style.plot_padding = (5.0, 5.0)

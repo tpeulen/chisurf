@@ -321,8 +321,9 @@ def run_kind(path: Path | str) -> str:
     return "simulation"
 
 
-def new_run_directory(project_dir: Optional[Path | str] = None,
-                      run_id: Optional[str] = None) -> tuple[str, Path]:
+def new_run_directory(
+    project_dir: Optional[Path | str] = None, run_id: Optional[str] = None
+) -> tuple[str, Path]:
     """Create (or reuse) the directory of a run.
 
     Parameters
@@ -440,7 +441,8 @@ def read_run_table(job_id: str, table: str, project_dir: Optional[Path | str] = 
     record = read_analysis_run(job_id, project_dir)["run"]
     if table not in record.get("tables", []):
         raise FileNotFoundError(
-            f"Run {job_id} has no table {table!r}; it has {', '.join(record.get('tables', []))}")
+            f"Run {job_id} has no table {table!r}; it has {', '.join(record.get('tables', []))}"
+        )
     return runs_directory(project_dir) / str(job_id) / f"{table}.csv"
 
 
@@ -571,8 +573,11 @@ def analyse(
     from .inference import stages as _stages
 
     info = dict(
-        stages=stages, preset=preset, fit_overrides=dict(fit_overrides or {}),
-        workers=workers, profile=bool(profile),
+        stages=stages,
+        preset=preset,
+        fit_overrides=dict(fit_overrides or {}),
+        workers=workers,
+        profile=bool(profile),
         data=None if data is None else str(data),
         structures=dict(structures or {}) or None,
         tables=None if not tables else {str(k): str(v) for k, v in tables.items()},
@@ -582,8 +587,13 @@ def analyse(
     if analysis is None:
         if analysis_data is None:
             analysis_data = analysis_inputs(data, structures, tables, cache_dir)
-        analysis = _stages.Analysis(analysis_data, preset=preset, fit_overrides=fit_overrides,
-                                    workers=workers, profile=profile)
+        analysis = _stages.Analysis(
+            analysis_data,
+            preset=preset,
+            fit_overrides=fit_overrides,
+            workers=workers,
+            profile=profile,
+        )
     else:
         info.update(preset=analysis.preset, continued=True)
     result = analysis.run(stages, progress=progress, cancel=cancel)

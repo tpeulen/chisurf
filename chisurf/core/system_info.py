@@ -70,10 +70,17 @@ def system_info_lines() -> list[str]:
         if version:
             lines.append(f"{package}: {version}")
     for title, names in (
-        ("Env(tttr)", ("TTTRLIB_VERBOSE", "TTTRLIB_DATA", "TTTRLIB_USE_OPENMP", "TTTRLIB_NUM_THREADS")),
+        (
+            "Env(tttr)",
+            ("TTTRLIB_VERBOSE", "TTTRLIB_DATA", "TTTRLIB_USE_OPENMP", "TTTRLIB_NUM_THREADS"),
+        ),
         ("Threads", ("MKL_NUM_THREADS", "OMP_NUM_THREADS", "MKL_THREADING_LAYER")),
     ):
-        short = {"MKL_NUM_THREADS": "MKL", "OMP_NUM_THREADS": "OMP", "MKL_THREADING_LAYER": "MKL_LAYER"}
+        short = {
+            "MKL_NUM_THREADS": "MKL",
+            "OMP_NUM_THREADS": "OMP",
+            "MKL_THREADING_LAYER": "MKL_LAYER",
+        }
         parts = [f"{short.get(n, n)}={os.environ[n]}" for n in names if os.environ.get(n)]
         if parts:
             lines.append(f"{title}: " + ", ".join(parts))

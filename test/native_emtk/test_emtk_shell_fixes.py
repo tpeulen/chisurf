@@ -42,7 +42,9 @@ def test_the_link_menu_lists_the_equations_parameters_not_the_catalogue(shell): 
     record = next(p for p in shell.data.analysis.parameters if p["name"] == "N")
     menu = LinkMenu(shell.data.editor.sections, record, fits, None)
     top = menu.panel.entries[0]
-    target = next(e for e in top.entries if e.label == next(f["name"] for f in fits if f["uid"] == first))
+    target = next(
+        e for e in top.entries if e.label == next(f["name"] for f in fits if f["uid"] == first)
+    )
     offered = [e.label for e in target.entries]
     assert offered and set(offered) <= set(active) | {record["name"]}
     assert sorted(offered) == sorted(n for n in active if n != record["name"] or first != second)
@@ -261,7 +263,9 @@ def test_tile_windows_minimizes_what_does_not_fit(shell):  # noqa: F811
     windows = [shell.docks.window(w.key) for w in shell.data.windows.values()]
     drawn = [w.frame for w in windows if w.frame is not None]
     assert 1 <= len(drawn) < 6
-    assert all(w.minimized for w in windows if w.frame is None), "the rest wait on the workspace's strip"
+    assert all(w.minimized for w in windows if w.frame is None), (
+        "the rest wait on the workspace's strip"
+    )
     assert min(b[2] for b in drawn) >= MIN_TILE[0] and min(b[3] for b in drawn) >= MIN_TILE[1]
     driver.screenshot(SHOTS / "emtk_fix_tile_tabs.png")
 

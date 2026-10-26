@@ -268,8 +268,9 @@ class TerminalApp(ImApp):
         self.item_rects["split_down"] = im.get_item_rect()
         im.set_item_tooltip(tr("Split the active pane stacked"))
         im.same_line()
-        if action_button("close", tooltip=tr("Close the active pane"), shortcut="Ctrl+W",
-                         id="term_close"):
+        if action_button(
+            "close", tooltip=tr("Close the active pane"), shortcut="Ctrl+W", id="term_close"
+        ):
             self.close_pane()
             self.tour.notify_used("close")
         self.item_rects["close"] = im.get_item_rect()
@@ -289,10 +290,7 @@ class TerminalApp(ImApp):
     def _draw_unavailable(self, box) -> None:
         im.begin("##terminal unavailable", box, im.WindowFlags.NO_TITLE_BAR)
         im.text_wrapped(
-            tr(
-                "Terminal sessions need a POSIX pseudo-terminal; "
-                "this platform has none."
-            )
+            tr("Terminal sessions need a POSIX pseudo-terminal; this platform has none.")
         )
         im.end()
 

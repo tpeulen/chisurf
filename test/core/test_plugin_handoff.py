@@ -53,7 +53,12 @@ def hooks(monkeypatch):
 
 
 CATALOG = {
-    "sender": {"id": "sender", "version": "1", "display_name": "Tools:Sender", "entrypoints": {"emtk": "x:y"}},
+    "sender": {
+        "id": "sender",
+        "version": "1",
+        "display_name": "Tools:Sender",
+        "entrypoints": {"emtk": "x:y"},
+    },
     "target": {
         "id": "target",
         "version": "1",
@@ -68,7 +73,9 @@ CATALOG = {
         "id": "command",
         "version": "1",
         "display_name": "Tools:Command",
-        "entrypoints": {"action": {"target": "x:y", "description": "d", "requires_main_window": False}},
+        "entrypoints": {
+            "action": {"target": "x:y", "description": "d", "requires_main_window": False}
+        },
         "accepts": [{"name": "trace", "receive": f"{HOOKS}:receive"}],
     },
 }

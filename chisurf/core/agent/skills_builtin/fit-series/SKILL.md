@@ -108,7 +108,7 @@ Fit the series, then look at the parameters *together*. Run this with
 ```python
 import numpy as np
 
-names = ["N", "D", "w_r"]          # the parameters you care about
+names = ["N", "D", "w_r"]  # the parameters you care about
 header = ["fit", "dataset", "chi2r", *names]
 print(" | ".join(f"{h:>10}" for h in header))
 for index, fit in enumerate(fits):
@@ -118,8 +118,11 @@ for index, fit in enumerate(fits):
     print(" | ".join(f"{str(v):>10}" for v in row))
 
 for n in names:
-    values = [float(f.model.parameters_all_dict[n].value)
-              for f in fits if n in f.model.parameters_all_dict]
+    values = [
+        float(f.model.parameters_all_dict[n].value)
+        for f in fits
+        if n in f.model.parameters_all_dict
+    ]
     if values:
         spread = (max(values) - min(values)) / abs(np.mean(values))
         print(f"{n}: mean {np.mean(values):.4g}, spread {spread:.1%}")

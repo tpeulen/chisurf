@@ -3,6 +3,7 @@
 Drawn headless (emtk's RecordingPainter): no window, no GPU -- the same code
 the page and the desktop run.
 """
+
 import json
 import pathlib
 

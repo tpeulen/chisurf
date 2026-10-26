@@ -51,7 +51,9 @@ FOREIGN_RECIPES = {"imp.bff/conda-recipe/imp/recipe.yaml"}
 def stack_table() -> dict[str, str]:
     """The package -> SPDX table between the stack-licences markers."""
     text = LICENSING.read_text(encoding="utf-8")
-    block = text.split("<!-- stack-licences:start -->", 1)[1].split("<!-- stack-licences:end -->", 1)[0]
+    block = text.split("<!-- stack-licences:start -->", 1)[1].split(
+        "<!-- stack-licences:end -->", 1
+    )[0]
     rows = {}
     for line in block.splitlines():
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
@@ -92,7 +94,6 @@ def test_the_owner_decision_is_what_the_table_says():
     assert {table[p] for p in REPOSITORY if p not in ("tttrlib", "imp-bff")} == {"MIT"}
 
 
-
 @pytest.mark.parametrize("package", sorted(REPOSITORY))
 def test_pyproject_declares_the_table_licence(package):
     repo = repository(package)
@@ -106,11 +107,19 @@ def test_recipes_declare_the_table_licence(package):
     repo = repository(package)
     if repo is None:
         pytest.skip(f"{package} is not checked out here")
-    recipes = [p for pattern in ("rattler-recipe/*.yaml", "conda-recipe/*.yaml", "recipes/*/recipe.yaml")
-               for p in repo.glob(pattern) if p.name in ("recipe.yaml", "recipe-core.yaml", "meta.yaml")]
-    recipes = [p for p in recipes if f"{repo.name}/{p.relative_to(repo).as_posix()}" not in FOREIGN_RECIPES]
+    recipes = [
+        p
+        for pattern in ("rattler-recipe/*.yaml", "conda-recipe/*.yaml", "recipes/*/recipe.yaml")
+        for p in repo.glob(pattern)
+        if p.name in ("recipe.yaml", "recipe-core.yaml", "meta.yaml")
+    ]
+    recipes = [
+        p for p in recipes if f"{repo.name}/{p.relative_to(repo).as_posix()}" not in FOREIGN_RECIPES
+    ]
     for recipe in recipes:
-        for value in re.findall(r"^\s*license:\s*(.+?)\s*$", recipe.read_text(encoding="utf-8"), re.M):
+        for value in re.findall(
+            r"^\s*license:\s*(.+?)\s*$", recipe.read_text(encoding="utf-8"), re.M
+        ):
             if "{{" in value:  # read from pyproject at build time (ndxplorer)
                 continue
             assert value == stack_table()[package], f"{recipe}: {value}"
@@ -131,7 +140,9 @@ def test_the_about_window_names_the_companion_licences():
 
 
 def test_the_splash_art_states_mit_not_gpl():
-    svg = (ROOT / "chisurf" / "gui" / "resources" / "icons" / "splashscreen.svg").read_text(encoding="utf-8")
+    svg = (ROOT / "chisurf" / "gui" / "resources" / "icons" / "splashscreen.svg").read_text(
+        encoding="utf-8"
+    )
     assert "MIT License" in svg
     assert "General Public License" not in svg
 
@@ -163,11 +174,15 @@ def test_the_installer_writes_the_licence_folder(tmp_path):
     from build_tools import build_installer
 
     sdist = "imp_bff-0.15.0a2.dev248+g127e1b104.tar.gz"
-    out = build_installer.install_licence_texts(tmp_path, Path(sys.executable),
-                                                imp_bff_sdist=sdist)
+    out = build_installer.install_licence_texts(tmp_path, Path(sys.executable), imp_bff_sdist=sdist)
     names = {p.name for p in out.iterdir()}
-    assert names == {"LICENSE-ChiSurf.txt", "LICENSE-docs.txt", "LGPL-2.1.txt",
-                     "tttrlib-BSD-3-Clause.txt", "NOTICE.txt"}
+    assert names == {
+        "LICENSE-ChiSurf.txt",
+        "LICENSE-docs.txt",
+        "LGPL-2.1.txt",
+        "tttrlib-BSD-3-Clause.txt",
+        "NOTICE.txt",
+    }
     notice = (out / "NOTICE.txt").read_text(encoding="utf-8")
     assert "{" not in notice, "an unfilled placeholder"
     assert "LGPL-2.1-or-later" in notice

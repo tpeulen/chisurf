@@ -33,7 +33,6 @@ from rmf_fixture import COARSE_RESOLUTION, FINE_RESOLUTION, write_multiresolutio
 RMF = pytest.importorskip("RMF", reason="reading an RMF needs the RMF package")
 
 
-
 #: Force the impostor branch, whose geometry carries one position per bead --
 #: which is what lets a test count what is *drawn* rather than inspect a mesh.
 _POINTS = {"impostor_min_atoms": 1}

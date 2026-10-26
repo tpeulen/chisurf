@@ -61,8 +61,7 @@ def test_styles_submenu_in_settings_menu(shell):
     driver.frame(2)
 
     menu_strokes = [
-        call for call in driver.painter.calls
-        if call[0] == "stroke_rect" and call[2] == 16.0
+        call for call in driver.painter.calls if call[0] == "stroke_rect" and call[2] == 16.0
     ]
     assert len(menu_strokes) > 0
     # Last stroke_rect for popup background must use dark_green POPUP_BG
@@ -79,8 +78,7 @@ def test_styles_submenu_in_settings_menu(shell):
     driver.frame(2)
 
     menu_strokes = [
-        call for call in driver.painter.calls
-        if call[0] == "stroke_rect" and call[2] == 16.0
+        call for call in driver.painter.calls if call[0] == "stroke_rect" and call[2] == 16.0
     ]
     assert len(menu_strokes) > 0
     # Popup background must immediately use light POPUP_BG without restart

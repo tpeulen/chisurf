@@ -36,12 +36,19 @@ def _token_sections() -> list:
     panel = find(spec)
     if panel is None:
         raise LookupError("the deposit spec has no 'Zenodo token' panel")
-    sandbox = {"type": "toggle", "attr": "sandbox", "label": "Sandbox (sandbox.zenodo.org)",
-               "description": "Show and set the token of the Zenodo sandbox instead of zenodo.org; "
-                              "each has its own token."}
+    sandbox = {
+        "type": "toggle",
+        "attr": "sandbox",
+        "label": "Sandbox (sandbox.zenodo.org)",
+        "description": "Show and set the token of the Zenodo sandbox instead of zenodo.org; "
+        "each has its own token.",
+    }
     sandbox = {"type": "row", "n_col": 1, "sections": [sandbox]}
-    return [sandbox, *panel["sections"], {"type": "info", "source": "status_text",
-                                          "description": "What the last action did."}]
+    return [
+        sandbox,
+        *panel["sections"],
+        {"type": "info", "source": "status_text", "description": "What the last action did."},
+    ]
 
 
 class ZenodoTokenApp(ImApp):

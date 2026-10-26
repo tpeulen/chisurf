@@ -18,6 +18,7 @@ docked back; in one region they are tabs.
 Help (``help.md``) and the guided tour (``guide.json``) are emtk's help
 window and tour (:mod:`emtk.help_guide`).
 """
+
 from __future__ import annotations
 
 import json
@@ -51,8 +52,13 @@ WINDOWS = {
     "ndx": ("ndX", "main", ("advanced",)),
 }
 #: The view.json panel each settings window draws.
-PANELS = {"measurement": "Measurement", "channels": "Channels", "search": "Burst search",
-          "corrections": "Corrections", "trace": "Time trace"}
+PANELS = {
+    "measurement": "Measurement",
+    "channels": "Channels",
+    "search": "Burst search",
+    "corrections": "Corrections",
+    "trace": "Time trace",
+}
 
 WELCOME = (
     "Confocal single-molecule FRET, analysed locally on this machine.\n\n"
@@ -61,7 +67,8 @@ WELCOME = (
     "Drop a TTTR file on the window (PicoQuant PTU/HT3/T3R, Becker & Hickl SPC, SM, PTO, ...), "
     "or simulate an example under Measurement > Try it without a file. The experiment -- cw, PIE "
     "or µsALEX, which detector is donor or acceptor, polarization -- is detected from the photons.\n\n"
-    "New here? Press Guide.")
+    "New here? Press Guide."
+)
 
 
 def _help_guide():
@@ -81,7 +88,9 @@ class SmFretApp(ImApp):
         s.on_help = self.show_help
         s.on_guide = self.start_guide
         self.forms = {key: FormState() for key in PANELS}
-        self.forms["channels"].custom["micro_histograms"] = lambda sec, m, st, w: plots.draw_micro(m, w)
+        self.forms["channels"].custom["micro_histograms"] = lambda sec, m, st, w: plots.draw_micro(
+            m, w
+        )
         self.forms["trace"].custom["trace_plot"] = lambda sec, m, st, w: plots.draw_trace(m, w)
         self.item_rects: dict = {}
         self._painter = None
@@ -98,10 +107,23 @@ class SmFretApp(ImApp):
         for key, (title, region, _modes) in WINDOWS.items():
             self.docks.add_window(key, title, self._drawer(key), dock=region, closable=False)
         help_cls, tour_cls = _help_guide()
-        self.help = help_cls(title="smFRET help", resource=HERE / "help.md",
-                             on_start_guide=self.start_guide) if help_cls else None
-        self.tour = tour_cls(HERE / "guide.json", get_target_rect=self._target_rect,
-                             on_step_change=self._tour_step, wait_for_controls=True) if tour_cls else None
+        self.help = (
+            help_cls(
+                title="smFRET help", resource=HERE / "help.md", on_start_guide=self.start_guide
+            )
+            if help_cls
+            else None
+        )
+        self.tour = (
+            tour_cls(
+                HERE / "guide.json",
+                get_target_rect=self._target_rect,
+                on_step_change=self._tour_step,
+                wait_for_controls=True,
+            )
+            if tour_cls
+            else None
+        )
         for form in self.forms.values():
             form.on_used = self._used
         self._apply_mode()
@@ -181,13 +203,13 @@ class SmFretApp(ImApp):
     # -- host hooks ----------------------------------------------------------- #
     def draw(self, painter, x, y, w, h) -> None:
         self._painter = painter
-        busy = self.session.poll()      # the analysis runs as a job: take its results in
+        busy = self.session.poll()  # the analysis runs as a job: take its results in
         try:
             super().draw(painter, x, y, w, h)
         finally:
             self._painter = None
         if busy:
-            self.request_frame()        # keep the progress moving
+            self.request_frame()  # keep the progress moving
         if self._pending is not None:
             # Show "loading" for one frame, then do the work.
             self._pending_frames += 1
@@ -302,10 +324,14 @@ class SmFretApp(ImApp):
                 if key == "measurement" and self._plots is None and self._pending is None:
                     im.text_wrapped(WELCOME)
                     im.separator()
-                draw_form(find_section(VIEW, PANELS[key]), self.session, self.forms[key], titles=False)
+                draw_form(
+                    find_section(VIEW, PANELS[key]), self.session, self.forms[key], titles=False
+                )
                 return
             if self._plots is None:
-                plots.empty("Open a file or simulate an example (Measurement window) to see results here.")
+                plots.empty(
+                    "Open a file or simulate an example (Measurement window) to see results here."
+                )
                 return
             if key == "quality":
                 plots.draw_quality(self.session, self._plots)
@@ -315,6 +341,7 @@ class SmFretApp(ImApp):
                 plots.draw_bursts(self.session, self._plots)
             elif key == "ndx":
                 self._draw_ndx(win_box)
+
         return draw
 
     def _draw_ndx(self, win_box) -> None:

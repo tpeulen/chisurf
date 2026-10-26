@@ -193,7 +193,9 @@ class HistogramModel:
         p = ",".join(map(str, self.parallel)) or "all"
         s = ",".join(map(str, self.perpendicular)) or "all"
         directory = (
-            Path(self.selected_bursts()[0]).parent if self.selected_bursts() else Path(files[0]).parent
+            Path(self.selected_bursts()[0]).parent
+            if self.selected_bursts()
+            else Path(files[0]).parent
         )
         self.output = str(
             directory / f"{stem}{'_' + self.detector if self.detector else ''}_({p})-({s}).dat"

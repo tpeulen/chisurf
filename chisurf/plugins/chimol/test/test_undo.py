@@ -162,6 +162,7 @@ def test_a_state_without_coordinates_cannot_be_pushed():
 # Through the commands
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def session():
     """Build a viewer with 148L loaded and a command interpreter over it."""

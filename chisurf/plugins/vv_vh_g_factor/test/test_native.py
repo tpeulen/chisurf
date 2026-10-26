@@ -124,8 +124,14 @@ def test_load_example_recovers_the_simulated_g_and_mixing(tmp_path):
     assert model.fast_file == str(files["fast"]) and model.slow_file == str(files["slow"])
     assert model.g_factor == pytest.approx(DEMO["g_factor"], rel=0.05)
     assert model.result["g_factor_stddev_corrected"] > abs(model.g_factor - DEMO["g_factor"])
-    assert model.fp_result["l1"] is not None and abs(model.fp_result["l1"] - DEMO.get("l1", 0.0)) < 0.05
-    assert model.fp_result["l2"] is not None and abs(model.fp_result["l2"] - DEMO.get("l2", 0.0)) < 0.05
+    assert (
+        model.fp_result["l1"] is not None
+        and abs(model.fp_result["l1"] - DEMO.get("l1", 0.0)) < 0.05
+    )
+    assert (
+        model.fp_result["l2"] is not None
+        and abs(model.fp_result["l2"] - DEMO.get("l2", 0.0)) < 0.05
+    )
     assert len(model.batch_files) == 2
     model.compute_batch()
     r_fast_rotor, r_slow_rotor = (row["r_inf"] for row in model.batch_results)

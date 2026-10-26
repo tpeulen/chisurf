@@ -18,9 +18,7 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
-EXAMPLE_DIR = (
-    Path(__file__).resolve().parents[1] / "modelling" / "fret" / "examples" / "olga_t4l"
-)
+EXAMPLE_DIR = Path(__file__).resolve().parents[1] / "modelling" / "fret" / "examples" / "olga_t4l"
 TRAJECTORY = EXAMPLE_DIR / "3GUN_NMSim_cl-rep_894.dcd"
 TOPOLOGY = EXAMPLE_DIR / "3GUN_NMSim_cl-rep-001.pdb"
 

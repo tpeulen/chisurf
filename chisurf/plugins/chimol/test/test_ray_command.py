@@ -23,6 +23,7 @@ from native_window import process_events
 @pytest.fixture
 def window(tmp_path):
     from native_window import NativeWindow
+
     src = (
         pathlib.Path(__file__).resolve().parents[4]
         / "test"
@@ -74,7 +75,6 @@ def _ray(cmd, out: pathlib.Path, size: str = "120, 100", timeout: float = 180.0)
     """
     import time
 
-
     cmd._test_messages.clear()
     cmd._test_errors.clear()
     cmd.do(f"ray {out}, {size}")
@@ -85,8 +85,7 @@ def _ray(cmd, out: pathlib.Path, size: str = "120, 100", timeout: float = 180.0)
         if out.exists() or cmd._test_errors:
             break
         if any(  # a refusal, which never starts a thread
-            "nothing to trace" in m or "does not draw" in m
-            for m in cmd._test_messages
+            "nothing to trace" in m or "does not draw" in m for m in cmd._test_messages
         ):
             break
         time.sleep(0.02)

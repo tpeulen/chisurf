@@ -79,7 +79,6 @@ def load_vector(
             cs.logging.error(f"tttrlib failed to load {path}: {e}")
             return np.fromfile(path, dtype=np.float64).ravel().astype(float)
 
-
     else:
         # Default text loading
         try:

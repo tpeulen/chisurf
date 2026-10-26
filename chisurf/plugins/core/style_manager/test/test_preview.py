@@ -6,6 +6,7 @@ widgets is drawn under the parsed colours -- without touching the theme the
 rest of the process is using, which is what separates a *preview* from
 Apply.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -74,10 +75,9 @@ def test_preview_draws_sample_widgets_in_the_parsed_colours(model):
         preview.draw()
     # the preview surface itself is the parsed window colour
     fills = [c for c in painter.calls if c[0] == "fill_rect"]
-    assert any(
-        c[5] == (0x10, 0x08, 0x20, 255)
-        for c in fills
-    ), "preview background must use the buffer's window colour"
+    assert any(c[5] == (0x10, 0x08, 0x20, 255) for c in fills), (
+        "preview background must use the buffer's window colour"
+    )
     # and the samples are there: text drawn in this frame
     assert painter.strings
 

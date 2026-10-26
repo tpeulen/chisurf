@@ -782,7 +782,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                     self.model.status_text = f"GMM fitting failed: {exc}"
             im.set_item_tooltip(tr("Refit the histogram with the settings above."))
         window.end()
-        if pressed == "close" or (self.panel_dialog == "metadata" and not self.metadata_editor.visible):
+        if pressed == "close" or (
+            self.panel_dialog == "metadata" and not self.metadata_editor.visible
+        ):
             self.panel_dialog = ""
 
     # -- the frame ------------------------------------------------------------------------------------------- #

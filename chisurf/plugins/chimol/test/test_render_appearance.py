@@ -39,6 +39,7 @@ _SOLVATED = _DATA / "atomic_coordinates" / "pdb_files" / "solvated_fragment.pdb"
 
 def _window(path):
     from native_window import NativeWindow
+
     win = NativeWindow()
     shared = win.cmd
     win.resize(1200, 800)

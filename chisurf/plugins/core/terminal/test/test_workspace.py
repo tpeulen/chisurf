@@ -229,4 +229,3 @@ def test_close_top_pane_snaps_bottom_pane_up():
     assert ws.docks.region_of(p3.key) == "root"
     layout_reopen, _ = ws.docks.compute_layout((0.0, 0.0, 800.0, 600.0))
     assert layout_reopen == {"root": (0.0, 0.0, 800.0, 600.0)}
-

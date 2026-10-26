@@ -103,8 +103,15 @@ def test_the_pde_stationary_state_is_the_equilibrium_ensemble(fields, slow):
     import IMP.bff as bff
 
     still = bff.GridDiffusionSolver(
-        f.diffusion, f.bounds, f.occupancy, np.zeros_like(f.rate), f.dg, 1.0e4,
-        "detailed_balance", False, f.weight,
+        f.diffusion,
+        f.bounds,
+        f.occupancy,
+        np.zeros_like(f.rate),
+        f.dg,
+        1.0e4,
+        "detailed_balance",
+        False,
+        f.weight,
     )
     final = np.asarray(still.run_krylov(1, 1, 64).get_density())
     assert np.abs(final - f.occupancy).max() / f.occupancy.max() < 1e-8
@@ -128,8 +135,15 @@ def _walk(slow, seeds=(1, 2, 3)):
     taus = []
     for seed in seeds:
         r = simulate_project(
-            _project(slow, "walk", seed, t_max=4000.0, t_step=0.01, n_photons=400_000,
-                     parallel_trajectories=4),
+            _project(
+                slow,
+                "walk",
+                seed,
+                t_max=4000.0,
+                t_step=0.01,
+                n_photons=400_000,
+                parallel_trajectories=4,
+            ),
             render_data=False,
         )
         assert r.ensemble == "walk"

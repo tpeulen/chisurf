@@ -38,6 +38,7 @@ def session():
     """A window with three derived objects to group in various ways."""
     pytest.importorskip("chisurf.core.structure")
     from native_window import NativeWindow
+
     win = NativeWindow()
     shared = win.cmd
     win.resize(1000, 700)

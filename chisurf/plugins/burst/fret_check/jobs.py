@@ -9,6 +9,7 @@ The measurement stays in the worker (:data:`_CACHE`, keyed by the file path or
 the simulated example): changing a setting and pressing *Apply* re-analyses it
 without sending the file again. One measurement is kept at a time.
 """
+
 from __future__ import annotations
 
 import base64
@@ -32,7 +33,11 @@ _CACHE: dict = {}
 # --------------------------------------------------------------------------- #
 def pack(a) -> dict:
     a = np.ascontiguousarray(a)
-    return {"dtype": str(a.dtype), "shape": list(a.shape), "b64": base64.b64encode(a.tobytes()).decode()}
+    return {
+        "dtype": str(a.dtype),
+        "shape": list(a.shape),
+        "b64": base64.b64encode(a.tobytes()).decode(),
+    }
 
 
 def unpack(d):
@@ -58,9 +63,13 @@ def experiment_from_dict(d: dict) -> Experiment:
 
 def bursts_to_dict(b: Bursts) -> dict:
     return {
-        "start": pack(b.start), "stop": pack(b.stop), "t_start": pack(b.t_start),
-        "duration": pack(b.duration), "counts": {k: pack(v) for k, v in b.counts.items()},
-        "background": dict(b.background), "E": pack(b.E),
+        "start": pack(b.start),
+        "stop": pack(b.stop),
+        "t_start": pack(b.t_start),
+        "duration": pack(b.duration),
+        "counts": {k: pack(v) for k, v in b.counts.items()},
+        "background": dict(b.background),
+        "E": pack(b.E),
         "S": None if b.S is None else pack(b.S),
         "fret_2cde": None if b.fret_2cde is None else pack(b.fret_2cde),
         "alex_2cde": None if b.alex_2cde is None else pack(b.alex_2cde),
@@ -70,10 +79,16 @@ def bursts_to_dict(b: Bursts) -> dict:
 
 def bursts_from_dict(d: dict) -> Bursts:
     return Bursts(
-        start=unpack(d["start"]), stop=unpack(d["stop"]), t_start=unpack(d["t_start"]),
-        duration=unpack(d["duration"]), counts={k: unpack(v) for k, v in d["counts"].items()},
-        background=dict(d["background"]), E=unpack(d["E"]), S=unpack(d["S"]),
-        fret_2cde=unpack(d["fret_2cde"]), alex_2cde=unpack(d["alex_2cde"]),
+        start=unpack(d["start"]),
+        stop=unpack(d["stop"]),
+        t_start=unpack(d["t_start"]),
+        duration=unpack(d["duration"]),
+        counts={k: unpack(v) for k, v in d["counts"].items()},
+        background=dict(d["background"]),
+        E=unpack(d["E"]),
+        S=unpack(d["S"]),
+        fret_2cde=unpack(d["fret_2cde"]),
+        alex_2cde=unpack(d["alex_2cde"]),
         extra={k: unpack(v) for k, v in d["extra"].items()},
     )
 
@@ -82,20 +97,33 @@ def qc_to_dict(q: QCReport) -> dict:
     """The report as JSON; ``level`` is the overall verdict (``ok``/``warn``/``bad``)."""
     return {
         "level": q.level,
-        "checks": [dataclasses.asdict(c) for c in q.checks], "flags": pack(q.flags),
-        "burst_rate": q.burst_rate, "occupancy": q.occupancy, "p_multi": q.p_multi,
-        "p_multi_gaps": q.p_multi_gaps, "arrival_rate": q.arrival_rate, "gaps": pack(q.gaps),
-        "trace_t": pack(q.trace_t), "trace_rate": pack(q.trace_rate),
+        "checks": [dataclasses.asdict(c) for c in q.checks],
+        "flags": pack(q.flags),
+        "burst_rate": q.burst_rate,
+        "occupancy": q.occupancy,
+        "p_multi": q.p_multi,
+        "p_multi_gaps": q.p_multi_gaps,
+        "arrival_rate": q.arrival_rate,
+        "gaps": pack(q.gaps),
+        "trace_t": pack(q.trace_t),
+        "trace_rate": pack(q.trace_rate),
         "metrics": _jsonable(q.metrics),
     }
 
 
 def qc_from_dict(d: dict) -> QCReport:
     return QCReport(
-        checks=[Check(**c) for c in d["checks"]], flags=unpack(d["flags"]),
-        burst_rate=d["burst_rate"], occupancy=d["occupancy"], p_multi=d["p_multi"],
-        p_multi_gaps=d["p_multi_gaps"], arrival_rate=d["arrival_rate"], gaps=unpack(d["gaps"]),
-        trace_t=unpack(d["trace_t"]), trace_rate=unpack(d["trace_rate"]), metrics=d["metrics"],
+        checks=[Check(**c) for c in d["checks"]],
+        flags=unpack(d["flags"]),
+        burst_rate=d["burst_rate"],
+        occupancy=d["occupancy"],
+        p_multi=d["p_multi"],
+        p_multi_gaps=d["p_multi_gaps"],
+        arrival_rate=d["arrival_rate"],
+        gaps=unpack(d["gaps"]),
+        trace_t=unpack(d["trace_t"]),
+        trace_rate=unpack(d["trace_rate"]),
+        metrics=d["metrics"],
     )
 
 
@@ -138,10 +166,16 @@ def trace(data, exp: Experiment, bursts: Bursts, bin_s: float = 1e-3) -> dict:
     t -= t[0] if t.size else 0.0
     n = max(1, int(np.ceil((t[-1] if t.size else 0.0) / bin_s)))
     idx = np.minimum((t / bin_s).astype(np.int64), n - 1)
-    rates = {k: pack((np.bincount(idx[stream == i], minlength=n) / bin_s * 1e-3).astype(np.float32))
-             for i, k in enumerate(STREAMS) if (stream == i).any()}
-    spans = (np.stack([bursts.t_start, bursts.t_start + bursts.duration], axis=1)
-             if bursts.n else np.zeros((0, 2)))
+    rates = {
+        k: pack((np.bincount(idx[stream == i], minlength=n) / bin_s * 1e-3).astype(np.float32))
+        for i, k in enumerate(STREAMS)
+        if (stream == i).any()
+    }
+    spans = (
+        np.stack([bursts.t_start, bursts.t_start + bursts.duration], axis=1)
+        if bursts.n
+        else np.zeros((0, 2))
+    )
     return {"bin_s": bin_s, "rates": rates, "bursts": pack(spans)}
 
 
@@ -174,8 +208,10 @@ def corrections(b: Bursts, factors: dict, auto: bool, subtract_background: bool 
     # per-burst background is taken off the counts here instead.
     factors.update(bg_dd=0.0, bg_da=0.0, bg_aa=0.0)
     bg = background_counts(b) if subtract_background else {}
-    cols = {"i_dd": np.asarray(b.counts["DD"], float) - bg.get("DD", 0.0),
-            "i_da": np.asarray(b.counts["DA"], float) - bg.get("DA", 0.0)}
+    cols = {
+        "i_dd": np.asarray(b.counts["DD"], float) - bg.get("DD", 0.0),
+        "i_da": np.asarray(b.counts["DA"], float) - bg.get("DA", 0.0),
+    }
     if "AA" in b.counts:
         cols["i_aa"] = np.asarray(b.counts["AA"], float) - bg.get("AA", 0.0)
     if auto and "i_aa" in cols:
@@ -188,13 +224,18 @@ def corrections(b: Bursts, factors: dict, auto: bool, subtract_background: bool 
         do = b.E < 0.15
         if do.sum() >= 20:
             # cols are background-free already (or raw on request).
-            alpha = float(tttrlib.leakage_from_donor_only(
-                cols["i_dd"][do], cols["i_da"][do], bg_dd=0.0, bg_da=0.0))
+            alpha = float(
+                tttrlib.leakage_from_donor_only(
+                    cols["i_dd"][do], cols["i_da"][do], bg_dd=0.0, bg_da=0.0
+                )
+            )
             if np.isfinite(alpha):
                 factors["alpha"] = alpha
     res = tttrlib.accurate_fret(cols["i_dd"], cols["i_da"], cols.get("i_aa"), factors=factors)
-    corrected = {"E": pack(np.asarray(res["E"], float)),
-                 "S": None if res.get("S") is None else pack(np.asarray(res["S"], float))}
+    corrected = {
+        "E": pack(np.asarray(res["E"], float)),
+        "S": None if res.get("S") is None else pack(np.asarray(res["S"], float)),
+    }
     return corrected, {k: factors[k] for k in ("gamma", "alpha", "delta", "beta")}
 
 
@@ -231,10 +272,20 @@ def _measurement(report, key, path, scenario, redetect):
 # --------------------------------------------------------------------------- #
 # the job
 # --------------------------------------------------------------------------- #
-def analyse(report, key: str, path: str = "", scenario: str = "", redetect: bool = False,
-            experiment: dict | None = None, settings: dict | None = None, v_eff_fl: float = 1.0,
-            correct: bool = False, factors: dict | None = None, auto_calibrate: bool = False,
-            subtract_background: bool = True) -> dict:
+def analyse(
+    report,
+    key: str,
+    path: str = "",
+    scenario: str = "",
+    redetect: bool = False,
+    experiment: dict | None = None,
+    settings: dict | None = None,
+    v_eff_fl: float = 1.0,
+    correct: bool = False,
+    factors: dict | None = None,
+    auto_calibrate: bool = False,
+    subtract_background: bool = True,
+) -> dict:
     """Load (once), detect, find the bursts, check, correct: one measurement.
 
     Parameters
@@ -274,14 +325,24 @@ def analyse(report, key: str, path: str = "", scenario: str = "", redetect: bool
     # read-only (a page's worker), or a copy / the file itself.
     mounted = bool(path) and os.path.islink(path)
     if entry.get("large"):
-        out = _analyse_large(report, path, burst_settings, experiment, v_eff_fl, correct, factors,
-                             auto_calibrate, subtract_background)
+        out = _analyse_large(
+            report,
+            path,
+            burst_settings,
+            experiment,
+            v_eff_fl,
+            correct,
+            factors,
+            auto_calibrate,
+            subtract_background,
+        )
         out["file_mounted"] = mounted
         return out
     exp = experiment_from_dict(experiment) if experiment else entry["exp"]
     data = entry["data"]
-    bursts = analyse_bursts(data, exp, burst_settings,
-                            progress=lambda f, m: report(0.2 + 0.55 * f, m))
+    bursts = analyse_bursts(
+        data, exp, burst_settings, progress=lambda f, m: report(0.2 + 0.55 * f, m)
+    )
     report(0.78, "quality checks")
     qc = run_qc(data, exp, bursts, v_eff_fl=float(v_eff_fl))
     corrected, used = None, dict(factors or {})
@@ -292,14 +353,29 @@ def analyse(report, key: str, path: str = "", scenario: str = "", redetect: bool
     tr = trace(data, exp, bursts)
     report(1.0, "done")
     return {
-        "detected": experiment_to_dict(entry["exp"]), "experiment": experiment_to_dict(exp),
-        "bursts": bursts_to_dict(bursts), "qc": qc_to_dict(qc), "corrected": corrected,
-        "factors": used, "trace": tr, "micro": entry["micro"], "file_mounted": mounted,
+        "detected": experiment_to_dict(entry["exp"]),
+        "experiment": experiment_to_dict(exp),
+        "bursts": bursts_to_dict(bursts),
+        "qc": qc_to_dict(qc),
+        "corrected": corrected,
+        "factors": used,
+        "trace": tr,
+        "micro": entry["micro"],
+        "file_mounted": mounted,
     }
 
 
-def _analyse_large(report, path, burst_settings, experiment, v_eff_fl, correct, factors,
-                   auto_calibrate, subtract_background=True) -> dict:
+def _analyse_large(
+    report,
+    path,
+    burst_settings,
+    experiment,
+    v_eff_fl,
+    correct,
+    factors,
+    auto_calibrate,
+    subtract_background=True,
+) -> dict:
     """:func:`analyse` for a file too large to decode whole (:mod:`.chunked`)."""
     from .chunked import analyse_chunked, one_second_trace  # noqa: PLC0415
 
@@ -311,15 +387,25 @@ def _analyse_large(report, path, burst_settings, experiment, v_eff_fl, correct, 
     if correct:
         report(0.95, "FRET corrections")
         corrected, used = corrections(bursts, factors or {}, auto_calibrate, subtract_background)
-    spans = (np.stack([bursts.t_start, bursts.t_start + bursts.duration], axis=1)
-             if bursts.n else np.zeros((0, 2)))
-    tr = {"bin_s": fine["bin_s"], "bursts": pack(spans),
-          "rates": {k: pack(np.asarray(v, np.float32)) for k, v in fine["rates"].items()}}
+    spans = (
+        np.stack([bursts.t_start, bursts.t_start + bursts.duration], axis=1)
+        if bursts.n
+        else np.zeros((0, 2))
+    )
+    tr = {
+        "bin_s": fine["bin_s"],
+        "bursts": pack(spans),
+        "rates": {k: pack(np.asarray(v, np.float32)) for k, v in fine["rates"].items()},
+    }
     report(1.0, "done")
     return {
-        "detected": experiment_to_dict(detected), "experiment": experiment_to_dict(exp),
-        "bursts": bursts_to_dict(bursts), "qc": qc_to_dict(qc), "corrected": corrected,
-        "factors": used, "trace": tr,
+        "detected": experiment_to_dict(detected),
+        "experiment": experiment_to_dict(exp),
+        "bursts": bursts_to_dict(bursts),
+        "qc": qc_to_dict(qc),
+        "corrected": corrected,
+        "factors": used,
+        "trace": tr,
         "micro": {str(c): {"edges": pack(e), "counts": pack(h)} for c, (e, h) in micro.items()},
         "chunked": True,
     }

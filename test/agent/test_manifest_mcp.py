@@ -30,18 +30,24 @@ def test_manifest_rpc_methods_become_registry_tools():
 def test_rpc_tools_are_not_served_by_default(tmp_path, monkeypatch):
     monkeypatch.delenv("CHISURF_MCP_RPC_SERVED", raising=False)
     server = McpServer(context=_context(tmp_path))
-    tools = {t["name"] for t in server.handle_message(
-        {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
-    )["result"]["tools"]}
+    tools = {
+        t["name"]
+        for t in server.handle_message(
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+        )["result"]["tools"]
+    }
     assert not [n for n in tools if n.startswith("rpc_")]
 
 
 def test_the_allowlist_serves_named_methods(tmp_path, monkeypatch):
     monkeypatch.setenv("CHISURF_MCP_RPC_SERVED", "burst_2cde.jobs.compute")
     server = McpServer(context=_context(tmp_path))
-    tools = {t["name"] for t in server.handle_message(
-        {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
-    )["result"]["tools"]}
+    tools = {
+        t["name"]
+        for t in server.handle_message(
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+        )["result"]["tools"]
+    }
     assert "rpc_burst_2cde_jobs_compute" in tools
     assert not [n for n in tools if n.startswith("rpc_") and n != "rpc_burst_2cde_jobs_compute"]
 

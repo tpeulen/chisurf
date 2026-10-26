@@ -26,6 +26,7 @@ from chimol.io.mesh_export import (
 def shell():
     from chimol.commands.command import Cmd
     from native_window import native_viewer
+
     view = native_viewer()
     z, y, x = np.mgrid[-10:10, -10:10, -10:10]
     grid = VolumeGrid(

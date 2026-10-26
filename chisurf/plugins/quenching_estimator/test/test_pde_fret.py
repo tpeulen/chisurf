@@ -83,8 +83,12 @@ class TestFretRateGrid:
 
     def test_an_empty_volume_is_a_zero_map(self):
         grid = fret_rate_grid(
-            np.zeros((3, 3, 3)), np.zeros(3), 1.0,
-            np.array([[10.0, 0.0, 0.0]]), R0=52.0, tau0=4.0,
+            np.zeros((3, 3, 3)),
+            np.zeros(3),
+            1.0,
+            np.array([[10.0, 0.0, 0.0]]),
+            R0=52.0,
+            tau0=4.0,
         )
         assert not grid.any()
 
@@ -118,8 +122,13 @@ def test_fret_enters_only_as_the_sink_addition(pde_fret_model):
     np.testing.assert_array_equal(f_da.diffusion, f.diffusion)
     k_quench = getattr(model.av, "k_quench_grid", None)
     k_fret = fret_rate_grid(
-        model.av.density_fast, model.av.x0, model.av.dg, model.acceptor_av.points,
-        R0=model.fret_R0_angstrom, tau0=model.tau0, r_min=model.fret_r_min,
+        model.av.density_fast,
+        model.av.x0,
+        model.av.dg,
+        model.acceptor_av.points,
+        R0=model.fret_R0_angstrom,
+        tau0=model.tau0,
+        r_min=model.fret_r_min,
         kappa2=model.fret_kappa2,
     )
     total = k_fret if k_quench is None else k_quench + k_fret

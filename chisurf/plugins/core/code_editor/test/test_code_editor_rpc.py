@@ -95,7 +95,9 @@ def test_the_write_target_is_only_the_header_line(app) -> None:
         '```python\n# WRITE_FILE: untitled document\nprint("written")\n```'
     )
     assert doc.text == 'print("written")'
-    assert parse_file_writes('<write_file filename="a.py">x = 1</write_file>') == [("a.py", "x = 1")]
+    assert parse_file_writes('<write_file filename="a.py">x = 1</write_file>') == [
+        ("a.py", "x = 1")
+    ]
 
 
 def test_closing_a_modified_document_asks_and_cancel_keeps_it_open(app, tmp_path) -> None:
@@ -134,7 +136,9 @@ def test_an_answer_without_a_write_runs_no_validation(app, monkeypatch) -> None:
     def fail_validate(*_args, **_kwargs):
         raise AssertionError("validate_writes should not be called")
 
-    monkeypatch.setattr("chisurf.plugins.core.code_editor.validation.validate_writes", fail_validate)
+    monkeypatch.setattr(
+        "chisurf.plugins.core.code_editor.validation.validate_writes", fail_validate
+    )
     chat = app.editor_gui.chat_model
     chat.history.add_message("assistant", "This is just an explanation.")
     assert chat.apply_file_writes("This is just an explanation.") == []
@@ -143,7 +147,9 @@ def test_an_answer_without_a_write_runs_no_validation(app, monkeypatch) -> None:
 
 def test_a_written_file_is_validated_and_the_issues_are_reported(app, monkeypatch) -> None:
     monkeypatch.setattr(
-        RuffRunner, "check", lambda self, path, content, extra_args, timeout_ms: {**F401, "path": path}
+        RuffRunner,
+        "check",
+        lambda self, path, content, extra_args, timeout_ms: {**F401, "path": path},
     )
     chat = app.editor_gui.chat_model
     chat.apply_file_writes("```python\n# WRITE_FILE: current\nimport os\n```")

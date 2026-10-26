@@ -15,4 +15,3 @@ if str(_topdir) not in sys.path:
     sys.path.insert(0, str(_topdir))
 
 # No Qt here: plugins are emtk apps and import no Qt binding.
-

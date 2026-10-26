@@ -51,4 +51,3 @@ def test_both_detectors_are_reported(example):
     _, rates, _, _ = example
     assert len(rates) == 2
     assert all(rate > 0 for rate in rates.values())
-

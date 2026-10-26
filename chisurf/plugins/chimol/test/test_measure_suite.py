@@ -31,7 +31,6 @@ PDB = (
 )
 
 
-
 @pytest.fixture(scope="module")
 def cmd():
     """A window with 148L loaded, and a runner that returns what was said.
@@ -42,6 +41,7 @@ def cmd():
     it in a ``finally``.
     """
     from native_window import NativeWindow
+
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
     win = NativeWindow()

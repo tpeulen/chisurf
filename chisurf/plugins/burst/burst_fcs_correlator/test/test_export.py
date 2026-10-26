@@ -42,7 +42,9 @@ def test_native_run_writes_the_frozen_real_grid_and_indexed_container(source):
     ctrl = app.controller
     from .driving import make_input_container
 
-    source, container = make_input_container(source.parent, [(0, 5000), (6000, 11000), (12000, 17000)])
+    source, container = make_input_container(
+        source.parent, [(0, 5000), (6000, 11000), (12000, 17000)]
+    )
     ctrl.add_files([container])
     ctrl.apply_pairs('[{"pair_name":"green_ACF","chs_a":[0,1],"chs_b":[0,1]}]')
     ctrl._model.padding_ms = 0
@@ -60,9 +62,7 @@ def test_native_run_writes_the_frozen_real_grid_and_indexed_container(source):
         assert series[0]["x"] == [selected["td_mean"]]
         assert series[0]["y"] == [1.0] and series[0]["marker"]
         assert series[0]["name"] == "Simple fit"
-        facts = json.loads(
-            (Path(__file__).with_name("data") / "burst-facts.json").read_text()
-        )
+        facts = json.loads((Path(__file__).with_name("data") / "burst-facts.json").read_text())
         expected = next(iter(facts["td4_files"].values()))
         assert not (source.parent / "td4").exists()  # a companion is an explicit export
         # The frozen real grid (what the legacy writer put on disk) is reproduced

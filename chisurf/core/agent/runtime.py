@@ -391,9 +391,7 @@ class AgentSession:
                     result.invocations.append(invocation)
                     self._append_tool_result(call, invocation)
                     answered += 1
-                    questions = (
-                        invocation.result.get("questions") if invocation.ok else None
-                    )
+                    questions = invocation.result.get("questions") if invocation.ok else None
                     if questions:
                         # The run waits here: the questions leave as the
                         # result, the user's next message answers them, and
@@ -401,9 +399,7 @@ class AgentSession:
                         self._clarification_pending = True
                         result.clarifications = questions
                         result.stop_reason = "needs_input"
-                        self.context.emit(
-                            "agent.needs_input", {"questions": questions}
-                        )
+                        self.context.emit("agent.needs_input", {"questions": questions})
                         break
                     continue
 

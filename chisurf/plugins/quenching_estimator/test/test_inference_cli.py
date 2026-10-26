@@ -28,8 +28,18 @@ from chisurf.plugins.quenching_estimator.core.inference import graph_fit as gf
 from .test_inference_graph_fit import FakeLibrary
 
 REPO = Path(__file__).resolve().parents[4]
-TINY = ["--quick", "--set", "n_starts=1", "--set", "search_maxiter=2", "--set",
-        "joint_max_nfev=1", "--no-profile", "--workers", "1"]
+TINY = [
+    "--quick",
+    "--set",
+    "n_starts=1",
+    "--set",
+    "search_maxiter=2",
+    "--set",
+    "joint_max_nfev=1",
+    "--no-profile",
+    "--workers",
+    "1",
+]
 ESTIMATE_COLUMNS = [c["column"] for c in columns.columns("fit_estimates", gf.RESULT_COLUMNS)]
 
 
@@ -67,8 +77,21 @@ def test_json_output_is_the_rpc_payload(fake_sites):
 
 
 def test_csv_output_is_the_declared_table(fake_sites, tmp_path):
-    text = _invoke(["--stage", "B", "--stage", "naive_h2o", *TINY, "--format", "csv",
-                    "--table", "B.estimates", "--project-dir", str(tmp_path)])
+    text = _invoke(
+        [
+            "--stage",
+            "B",
+            "--stage",
+            "naive_h2o",
+            *TINY,
+            "--format",
+            "csv",
+            "--table",
+            "B.estimates",
+            "--project-dir",
+            str(tmp_path),
+        ]
+    )
     rows = list(csv.reader(io.StringIO(text)))
     assert rows[0] == ESTIMATE_COLUMNS and len(rows) > 5
     (run,) = runs.list_runs(tmp_path)["runs"]
@@ -79,18 +102,32 @@ def test_csv_output_is_the_declared_table(fake_sites, tmp_path):
 
 
 def test_a_nested_fit_setting_edits_only_its_key(fake_sites):
-    payload = json.loads(_invoke(["--stage", "B", *TINY, "--set",
-                                  "profile_likelihood.points=3", "--format", "json",
-                                  "--no-save"]))
+    payload = json.loads(
+        _invoke(
+            [
+                "--stage",
+                "B",
+                *TINY,
+                "--set",
+                "profile_likelihood.points=3",
+                "--format",
+                "json",
+                "--no-save",
+            ]
+        )
+    )
     assert payload["stages"]["B"]
 
 
-@pytest.mark.parametrize("args, needle", [
-    (["--stage", "Z"], "declared"),
-    (["--preset", "slow"], "declared"),
-    (["--set", "no_such=1"], "not a declared fit setting"),
-    (["--set", "n_starts"], "KEY=VALUE"),
-])
+@pytest.mark.parametrize(
+    "args, needle",
+    [
+        (["--stage", "Z"], "declared"),
+        (["--preset", "slow"], "declared"),
+        (["--set", "no_such=1"], "not a declared fit setting"),
+        (["--set", "n_starts"], "KEY=VALUE"),
+    ],
+)
 def test_bad_arguments_are_usage_errors(fake_sites, args, needle):
     result = CliRunner().invoke(cli, ["analyse", "-q", *args])
     assert result.exit_code == 2 and needle in result.output
@@ -99,16 +136,34 @@ def test_bad_arguments_are_usage_errors(fake_sites, args, needle):
 def test_csc_quest_analyse_on_the_shipped_male_data(tmp_path):
     """The real command on the real data: stage B, a one-search fit, the declared tables."""
     out = tmp_path / "out"
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen",
-               QUEST_RUNS_DIR=str(tmp_path / "runs"))
+    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", QUEST_RUNS_DIR=str(tmp_path / "runs"))
     env["PYTHONPATH"] = os.pathsep.join(
-        [str(REPO / p) for p in ("modules/mmfdb/src", "modules/chinet",
-                                 "modules/imp-tricks/src", ".")]
-        + [env.get("PYTHONPATH", "")])
+        [
+            str(REPO / p)
+            for p in ("modules/mmfdb/src", "modules/chinet", "modules/imp-tricks/src", ".")
+        ]
+        + [env.get("PYTHONPATH", "")]
+    )
     proc = subprocess.run(
-        [sys.executable, "-c", "import sys; from chisurf.core.cli import cli; sys.exit(cli())",
-         "quest", "analyse", "--stage", "B", *TINY, "-o", str(out), "--format", "json"],
-        cwd=REPO, env=env, capture_output=True, text=True, timeout=1800,
+        [
+            sys.executable,
+            "-c",
+            "import sys; from chisurf.core.cli import cli; sys.exit(cli())",
+            "quest",
+            "analyse",
+            "--stage",
+            "B",
+            *TINY,
+            "-o",
+            str(out),
+            "--format",
+            "json",
+        ],
+        cwd=REPO,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=1800,
     )
     assert proc.returncode == 0, proc.stderr[-4000:]
     payload = json.loads(proc.stdout)

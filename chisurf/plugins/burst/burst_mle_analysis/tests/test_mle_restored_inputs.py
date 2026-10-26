@@ -50,9 +50,9 @@ def inputs(tmp_path_factory, hermetic_env):
     from chisurf.core.fio.fluorescence.burst import read_bur_file
     from chisurf.plugins.burst.burst_selection.api.io import write_container
 
-    bur = Path(write_container(
-        bur.parents[2] / "synthetic_mle.ptu", read_bur_file(bur), run="demo"
-    ))
+    bur = Path(
+        write_container(bur.parents[2] / "synthetic_mle.ptu", read_bur_file(bur), run="demo")
+    )
     rng = np.random.default_rng(7)
     irf = np.clip(np.rint(rng.normal(20.0, 2.0, 40000)), 0, demo.CHANNELS - 1)
     bg = rng.integers(0, demo.CHANNELS, 20000)

@@ -17,8 +17,11 @@ from chisurf.emtk.main_app import EmtkShellApp
 
 CATALOG = {
     "ndxplorer": {"display_name": "Tools:Views:ndX", "entrypoints": {"emtk": "x:y"}},
-    "setup": {"display_name": "Setup:Settings", "entrypoints": {"emtk": "x:y"},
-              "single_instance": True},
+    "setup": {
+        "display_name": "Setup:Settings",
+        "entrypoints": {"emtk": "x:y"},
+        "single_instance": True,
+    },
 }
 
 
@@ -63,9 +66,15 @@ def test_opening_a_tool_again_numbers_a_new_window():
         third = shell.open_plugin("ndxplorer", new=True)
         _settle(shell, driver)
         assert [h.instance_id for h in shell.instances("ndxplorer")] == [
-            "ndxplorer", "ndxplorer#2", "ndxplorer#3"]
+            "ndxplorer",
+            "ndxplorer#2",
+            "ndxplorer#3",
+        ]
         assert [shell.docks.window(h.key).title for h in (first, second, third)] == [
-            "ndX", "ndX #2", "ndX #3"]
+            "ndX",
+            "ndX #2",
+            "ndX #3",
+        ]
         apps = [app for pid, app in built if pid == "ndxplorer"]
         assert len(apps) == 3 and len({id(a) for a in apps}) == 3, "each opening is its own app"
         # A programmatic open (hand-off, host_in_shell) reaches an open one, not a fourth.

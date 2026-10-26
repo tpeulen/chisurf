@@ -49,8 +49,6 @@ def test_style_new_creates_the_css_file(style_app):
     app, styles_dir = style_app
     ok = app.model.new("session", discard=True)
     assert ok is not False
-    assert (styles_dir / "session.css").exists(), (
-        "new() must create the .css file"
-    )
+    assert (styles_dir / "session.css").exists(), "new() must create the .css file"
     # Recreating over an existing file is refused.
     assert app.model.new("session", discard=False) is False

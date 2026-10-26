@@ -139,7 +139,10 @@ class PhotonTableViewModel:
     def rows(self) -> list[dict]:
         """The visible page as table records (rebuilt only when the page changes)."""
         key = (
-            id(self.table), self.first_index, self.rows_per_page, self.channel_filter,
+            id(self.table),
+            self.first_index,
+            self.rows_per_page,
+            self.channel_filter,
             self.kind_filter,
         )
         if key != self._rows_key:
@@ -190,9 +193,7 @@ class PhotonTableViewModel:
         self.kind_filter = KIND_ALL
         self.input_file = path
         if table.n_markers:
-            self.notice = (
-                f"{table.n_records:,} records ({table.n_photons:,} photons) from {path}"
-            )
+            self.notice = f"{table.n_records:,} records ({table.n_photons:,} photons) from {path}"
         else:
             self.notice = f"{table.n_photons:,} photons from {path}"
         self.notify("loaded")

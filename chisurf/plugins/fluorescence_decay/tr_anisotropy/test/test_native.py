@@ -354,7 +354,9 @@ def test_poor_starts_of_the_8ps_recording_do_not_slide_the_irf_away(
     monkeypatch.setattr(chisurf, "imported_datasets", [])
     vv, vh, global_fit = _bundled(tmp_path, "8", 80.0, lifetimes, rotation)
     for fit in (vv, vh):
-        shift = next(p for p in fit.model.parameters_all if p.canonical_id == "instrument.timeshift")
+        shift = next(
+            p for p in fit.model.parameters_all if p.canonical_id == "instrument.timeshift"
+        )
         assert shift.bounds[1] < 300
     global_fit.run(local_first=False)
     assert global_fit.chi2r < 2.0, global_fit.chi2r
@@ -369,7 +371,9 @@ def test_default_range_of_the_9ps_recording_stays_inside_the_gate(tmp_path, monk
     monkeypatch.setattr(chisurf, "imported_datasets", [])
     vv, vh, global_fit = _bundled(tmp_path, "9", 71.0)
     assert vv.fit_range[1] < 1650 and vh.fit_range[1] < 1650
-    assert vv.model.get_scalar("response_stop") < 14.0  # the IRF's gate edge is not part of the response
+    assert (
+        vv.model.get_scalar("response_stop") < 14.0
+    )  # the IRF's gate edge is not part of the response
     global_fit.run()
     assert global_fit.chi2r < 7.0, global_fit.chi2r
 

@@ -81,7 +81,9 @@ def test_every_domain_overlay_is_listed_here():
 
 
 def test_no_overlay_row_changes_a_translation_the_catalogue_already_gives():
-    env = dict(os.environ, PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")]))
+    env = dict(
+        os.environ, PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")])
+    )
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
     specs = [f"{m}:{n}" for m, n in OVERLAYS.items()]
     run = subprocess.run(
@@ -102,7 +104,9 @@ def test_no_overlay_row_changes_a_translation_the_catalogue_already_gives():
             for index, code in enumerate(LOCALES):
                 before = data["baseline"][row[0]][code]
                 if before != row[0] and row[offset + index] != before:
-                    conflicts.append(f"{spec} [{code}] {row[0]!r}: {row[offset + index]!r} != {before!r}")
-    assert not conflicts, f"{len(conflicts)} overlay rows re-translate catalogue text:\n" + "\n".join(
-        conflicts[:40]
+                    conflicts.append(
+                        f"{spec} [{code}] {row[0]!r}: {row[offset + index]!r} != {before!r}"
+                    )
+    assert not conflicts, (
+        f"{len(conflicts)} overlay rows re-translate catalogue text:\n" + "\n".join(conflicts[:40])
     )

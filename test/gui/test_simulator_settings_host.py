@@ -134,5 +134,3 @@ def test_simulator_project_reader_identity_stays_core_without_alias():
     restored = _restore_reader(snapshot, Experiment(name="TCSPC"), {})
     assert type(restored) is TCSPCSimulatorSetup and restored.controller is None
     np.testing.assert_array_equal(restored.lifetime_spectrum, reader.lifetime_spectrum)
-
-

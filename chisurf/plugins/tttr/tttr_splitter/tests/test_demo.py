@@ -41,4 +41,3 @@ def test_splitting_preserves_every_photon_across_chunks(example):
 def test_can_split_demands_a_loaded_file():
     """The guard still refuses to run without a source."""
     assert SplitterViewModel().can_split() is not None
-

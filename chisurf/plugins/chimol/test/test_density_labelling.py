@@ -26,10 +26,10 @@ PDB = (
 )
 
 
-
 @pytest.fixture(scope="module")
 def session(tmp_path_factory):
     from native_window import NativeWindow
+
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
     win = NativeWindow()

@@ -128,11 +128,19 @@ maximum-entropy objective minimized along a regulator ramp, and an IRF placed by
 "rise point" that is scanned rather than known. The three drivers:
 
 ```python
-mats = sep.total()                                    # from separate_data_2d_fdc
-kw = dict(irf=irf, xdata_ns=irf_t, estimates=[0, 1, 1, 0.3, 1, 3, 0.3],
-          t_min_ns=0.5, t_max_ns=12.2, t_step_ns=0.004, lint_bin_factor=4, logt_imax=100)
-scan = api.search_irf_rise_2d(mats, center=310, n_points=20, **kw)   # chi2 per rise point
-avg = api.average_2d_mem(mats, center=scan.best, n_points=5, **kw)   # A, G, maps, models
+mats = sep.total()  # from separate_data_2d_fdc
+kw = dict(
+    irf=irf,
+    xdata_ns=irf_t,
+    estimates=[0, 1, 1, 0.3, 1, 3, 0.3],
+    t_min_ns=0.5,
+    t_max_ns=12.2,
+    t_step_ns=0.004,
+    lint_bin_factor=4,
+    logt_imax=100,
+)
+scan = api.search_irf_rise_2d(mats, center=310, n_points=20, **kw)  # chi2 per rise point
+avg = api.average_2d_mem(mats, center=scan.best, n_points=5, **kw)  # A, G, maps, models
 ```
 
 `flc-2d rise-search-2d` and `flc-2d average-2d` run the same from TTTR files.

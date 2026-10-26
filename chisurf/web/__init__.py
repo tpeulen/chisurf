@@ -118,8 +118,16 @@ APP = "chisurf.web:make_app"
 DEFAULT_PORT = 8790
 
 #: Loaded from the Pyodide distribution (numpy and Pillow come anyway).
-PYODIDE_PACKAGES = ("numpy", "scipy", "pyyaml", "Pillow", "lzma", "fonttools",
-                    "requests", "pyodide-http")
+PYODIDE_PACKAGES = (
+    "numpy",
+    "scipy",
+    "pyyaml",
+    "Pillow",
+    "lzma",
+    "fonttools",
+    "requests",
+    "pyodide-http",
+)
 
 #: Entries of the ``chisurf`` package that stay behind: the Qt GUI shell this
 #: page replaces, and the cookiecutter template (no plugin). Everything else
@@ -169,11 +177,19 @@ MMFDB_KEEP = ("__init__.py", "config.py", "deposit", "security")
 #: web-release test fails on anything missing but undeclared, which is how a
 #: stale wheel (no ``FitResidualFunction`` -> PSF fits dead) gets caught.
 IMPBFF_STANDALONE_ABSENT = (
-    "read_structure_table", "RmfStructureWriter",
-    "HmmSurrogate", "hmm_surrogate",
-    "DockingAssembly", "DockingParameters", "DockingResult", "DockingStop",
-    "LoadedStructure", "create_docking_assembly", "dock_minimize",
-    "estimate_docking_errors", "score_assembly",
+    "read_structure_table",
+    "RmfStructureWriter",
+    "HmmSurrogate",
+    "hmm_surrogate",
+    "DockingAssembly",
+    "DockingParameters",
+    "DockingResult",
+    "DockingStop",
+    "LoadedStructure",
+    "create_docking_assembly",
+    "dock_minimize",
+    "estimate_docking_errors",
+    "score_assembly",
     "load_structure_with_particles",
 )
 
@@ -186,14 +202,22 @@ CHIMOL_KEEP = ("__init__.py", "io")
 #: globs (a checkout's ``dist/pyodide``, where ``pyodide build`` puts it) wins.
 #: A missing required wheel stops the build; a missing optional one is said.
 WHEELS = {
-    "tttrlib": ("CHISURF_WEB_TTTRLIB_WHEEL", (
-        "~/dev/worktrees/tttrlib-pyodide/dist/pyodide/tttrlib-*-pyodide_*_wasm32.whl",
-        "~/dev/tttrlib/dist/pyodide/tttrlib-*-pyodide_*_wasm32.whl",
-    ), True),
-    "IMP.bff": ("CHISURF_WEB_IMPBFF_WHEEL", (
-        "~/dev/worktrees/imp.bff-pyodide/dist/pyodide/imp_bff-*-pyodide_*_wasm32.whl",
-        "~/dev/imp.bff/dist/pyodide/imp_bff-*-pyodide_*_wasm32.whl",
-    ), False),
+    "tttrlib": (
+        "CHISURF_WEB_TTTRLIB_WHEEL",
+        (
+            "~/dev/worktrees/tttrlib-pyodide/dist/pyodide/tttrlib-*-pyodide_*_wasm32.whl",
+            "~/dev/tttrlib/dist/pyodide/tttrlib-*-pyodide_*_wasm32.whl",
+        ),
+        True,
+    ),
+    "IMP.bff": (
+        "CHISURF_WEB_IMPBFF_WHEEL",
+        (
+            "~/dev/worktrees/imp.bff-pyodide/dist/pyodide/imp_bff-*-pyodide_*_wasm32.whl",
+            "~/dev/imp.bff/dist/pyodide/imp_bff-*-pyodide_*_wasm32.whl",
+        ),
+        False,
+    ),
 }
 
 
@@ -222,7 +246,8 @@ def find_wheel(name: str) -> Optional[pathlib.Path]:
         raise FileNotFoundError(
             f"no {name} wheel for Pyodide found; build one (pyodide build in a {name} "
             f"checkout) and point ${variable} at it, or pass --no-{name.lower().replace('.', '')}-wheel "
-            "with --wheels PATH")
+            "with --wheels PATH"
+        )
     return None
 
 
@@ -246,7 +271,8 @@ def _package_dir(name: str) -> Optional[pathlib.Path]:
         where = ", ".join(map(str, spec.submodule_search_locations or []))
         raise FileNotFoundError(
             f"{name!r} resolves to a namespace package ({where}), a directory that "
-            f"shadows the installed {name}; run from another directory")
+            f"shadows the installed {name}; run from another directory"
+        )
     return pathlib.Path(spec.origin).resolve().parent
 
 
@@ -295,8 +321,10 @@ def plugin_apps() -> dict:
     specs = {}
     for manifest in sorted((root / "plugins").rglob("manifest.json")):
         rel = "chisurf/" + manifest.relative_to(root).as_posix()
-        if any(rel.startswith(prefix) for prefix in
-               (f"chisurf/plugins/{name}/" for name in PLUGIN_EXCLUDE)):
+        if any(
+            rel.startswith(prefix)
+            for prefix in (f"chisurf/plugins/{name}/" for name in PLUGIN_EXCLUDE)
+        ):
             continue
         data = json.loads(manifest.read_text())
         plugin_id = str(data.get("id") or manifest.parent.name)
@@ -347,6 +375,7 @@ def bundle(tttrlib_wheel: bool = True, impbff_wheel: bool = True):
         # its own page builds with -- beside the readers the other apps share.
         from chimol.hosts.web.serve import CHIMOL_SUFFIXES  # noqa: PLC0415 - build-time import
         from chimol.hosts.web.serve import EXCLUDE_PREFIXES as CHIMOL_EXCLUDE
+
         extra += ["chimol", "ihm"]
         exclude_built += list(CHIMOL_EXCLUDE)
         exclude_built.append("chimol/test/")
@@ -360,22 +389,24 @@ def bundle(tttrlib_wheel: bool = True, impbff_wheel: bool = True):
         if wheel is not None:
             wheels.append(wheel)
         elif wanted:
-            print(f"no {name} wheel for Pyodide found (${WHEELS[name][0]}); "
-                  "the page boots without it")
+            print(
+                f"no {name} wheel for Pyodide found (${WHEELS[name][0]}); the page boots without it"
+            )
     # The wheel's missing pure-Python submodules ride in the archive under our
     # own namespace; make_app() installs them into the wheel's package at boot.
     compat = _tttrlib_compat_files()
     if not compat:
-        print("warning: no tttrlib python submodules found to ship "
-              "(ndimage/signal/interpolate/matfile)")
+        print(
+            "warning: no tttrlib python submodules found to ship "
+            "(ndimage/signal/interpolate/matfile)"
+        )
     # The help plugin's documentation: without it the page's help browser has
     # nothing to list (the checkout's docs/ does not exist in a browser tab).
     from chisurf.web.docs import doc_files
 
     docs = doc_files()
     if not docs:
-        print("warning: no documentation found to ship; the page's help "
-              "browser will be empty")
+        print("warning: no documentation found to ship; the page's help browser will be empty")
     kwargs = {}
     if chimol_full:
         # ChiMOL ships its data files (.pdb, .cif, .dcd, .npz, .pto, .cml)
@@ -587,8 +618,15 @@ def start_web_session(
     stage = on_stage or (lambda payload: None)
 
     def _stage(stage_id: str, label: str, progress: float) -> None:
-        stage({"id": stage_id, "label": label, "progress": progress,
-               "surface": "emtk", "phase": "web"})
+        stage(
+            {
+                "id": stage_id,
+                "label": label,
+                "progress": progress,
+                "surface": "emtk",
+                "phase": "web",
+            }
+        )
 
     started = _time.monotonic()
     _stage("experiments", "Registering the experiments", 0.05)
@@ -624,8 +662,9 @@ def start_web_session(
     except Exception:  # noqa: BLE001 - local fits still work without it; the shell retries on adopt
         _log.exception("adding the global-fit dataset failed")
     _stage("done", "Ready", 1.0)
-    _log.info("web session ready in %.2fs (local API mode, no sockets)",
-              _time.monotonic() - started)
+    _log.info(
+        "web session ready in %.2fs (local API mode, no sockets)", _time.monotonic() - started
+    )
     return session
 
 
@@ -739,8 +778,10 @@ class WebSettingsStore:
         if not self._warned:
             self._warned = True
             _log.warning(
-                "settings are not persisted (%s: %s); they last for this "
-                "session only", type(exc).__name__, exc)
+                "settings are not persisted (%s: %s); they last for this session only",
+                type(exc).__name__,
+                exc,
+            )
 
 
 def capture_settings(app: Any) -> dict:
@@ -751,8 +792,7 @@ def capture_settings(app: Any) -> dict:
         "saved_at": round(time.time(), 3),
         "shell": app.export_settings(),
         "docks": {
-            name: docks.state()
-            for name, docks in dict(getattr(app, "native_layouts", {})).items()
+            name: docks.state() for name, docks in dict(getattr(app, "native_layouts", {})).items()
         },
     }
 
@@ -797,8 +837,9 @@ class WebSettingsSaver:
     last debounce window.
     """
 
-    def __init__(self, app: Any, store: WebSettingsStore,
-                 debounce: float = SETTINGS_DEBOUNCE_S) -> None:
+    def __init__(
+        self, app: Any, store: WebSettingsStore, debounce: float = SETTINGS_DEBOUNCE_S
+    ) -> None:
         self.app = app
         self.store = store
         self.debounce = float(debounce)
@@ -931,9 +972,7 @@ def make_app() -> Any:
     store = WebSettingsStore()
     saved = store.get(SETTINGS_KEY) or {}
     saver = WebSettingsSaver(None, store)
-    app = EmtkShellApp(
-        session_factory=start_web_session, post_show=False, settings_sink=saver
-    )
+    app = EmtkShellApp(session_factory=start_web_session, post_show=False, settings_sink=saver)
     saver.app = app
     if saved:
         apply_settings(app, saved)
@@ -965,8 +1004,7 @@ def _tttrlib_compat_files() -> dict:
         with zipfile.ZipFile(wheel) as archive:
             for name in TTTRLIB_PYTHON_MODULES:
                 try:
-                    files[f"chisurf/web/_tttrlib_compat/{name}"] = archive.read(
-                        f"tttrlib/{name}")
+                    files[f"chisurf/web/_tttrlib_compat/{name}"] = archive.read(f"tttrlib/{name}")
                 except KeyError:
                     pass
     if not files:
@@ -1025,8 +1063,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     argv = [a for a in argv if a not in flags.values()]
     if not any(a == "--port" or a.startswith("--port=") for a in argv):
         argv += ["--port", str(DEFAULT_PORT)]
-    return serve.main(argv, base=bundle(tttrlib_wheel="tttrlib" not in off,
-                                        impbff_wheel="impbff" not in off))
+    return serve.main(
+        argv, base=bundle(tttrlib_wheel="tttrlib" not in off, impbff_wheel="impbff" not in off)
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover - a dev server

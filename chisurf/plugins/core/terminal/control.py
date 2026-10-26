@@ -42,16 +42,40 @@ __all__ = ["TerminalControl"]
 
 #: The 16 ANSI colours, dim then bright, for dark and light themes.
 _ANSI_DARK = (
-    (208, 208, 208), (244, 108, 118), (152, 195, 121), (240, 198, 116),
-    (110, 168, 245), (215, 137, 240), (95, 203, 216), (171, 178, 191),
-    (120, 126, 140), (255, 122, 132), (170, 213, 140), (255, 220, 150),
-    (130, 190, 255), (235, 165, 255), (115, 225, 240), (230, 234, 242),
+    (208, 208, 208),
+    (244, 108, 118),
+    (152, 195, 121),
+    (240, 198, 116),
+    (110, 168, 245),
+    (215, 137, 240),
+    (95, 203, 216),
+    (171, 178, 191),
+    (120, 126, 140),
+    (255, 122, 132),
+    (170, 213, 140),
+    (255, 220, 150),
+    (130, 190, 255),
+    (235, 165, 255),
+    (115, 225, 240),
+    (230, 234, 242),
 )
 _ANSI_LIGHT = (
-    (44, 48, 58), (196, 74, 74), (98, 148, 66), (178, 128, 18),
-    (46, 100, 197), (140, 62, 170), (24, 118, 138), (92, 99, 112),
-    (60, 62, 76), (186, 39, 45), (98, 148, 66), (176, 118, 8),
-    (26, 82, 182), (120, 44, 152), (12, 102, 124), (28, 30, 40),
+    (44, 48, 58),
+    (196, 74, 74),
+    (98, 148, 66),
+    (178, 128, 18),
+    (46, 100, 197),
+    (140, 62, 170),
+    (24, 118, 138),
+    (92, 99, 112),
+    (60, 62, 76),
+    (186, 39, 45),
+    (98, 148, 66),
+    (176, 118, 8),
+    (26, 82, 182),
+    (120, 44, 152),
+    (12, 102, 124),
+    (28, 30, 40),
 )
 
 
@@ -134,8 +158,9 @@ class TerminalControl:
                 for run in self.screen.line_runs(index):
                     colour = self._colour_of(run.state, light, base_fg)
                     px = x + self._pad_x + run.start * self._glyph_w
-                    p.text(px, line_y, len(run.text) * self._glyph_w, self._line_h,
-                           0, run.text, colour)
+                    p.text(
+                        px, line_y, len(run.text) * self._glyph_w, self._line_h, 0, run.text, colour
+                    )
                 self._draw_selection(p, x, y, index, row)
             self._draw_caret(p, x, y, first, cursor_row, cursor_col, base_fg)
         finally:
@@ -143,8 +168,15 @@ class TerminalControl:
         if not self._alive():
             from emtk.style import TEXT_DISABLED
 
-            p.text(x + 6.0, y + h - self._line_h, w - 12.0, self._line_h, 0,
-                   "— process exited —", TEXT_DISABLED)
+            p.text(
+                x + 6.0,
+                y + h - self._line_h,
+                w - 12.0,
+                self._line_h,
+                0,
+                "— process exited —",
+                TEXT_DISABLED,
+            )
 
     def _fit_grid(self, w: float, h: float) -> None:
         columns = max(2, int((w - 2 * self._pad_x) // self._glyph_w))
@@ -186,11 +218,13 @@ class TerminalControl:
         start_col, end_col = sorted(span)
         px = x + self._pad_x + start_col * self._glyph_w
         width = (end_col - start_col + 1) * self._glyph_w
-        p.fill_rect(px, y + self._pad_y + row * self._line_h, width, self._line_h,
-                    _style.TEXT_SELECTED_BG)
+        p.fill_rect(
+            px, y + self._pad_y + row * self._line_h, width, self._line_h, _style.TEXT_SELECTED_BG
+        )
 
-    def _draw_caret(self, p, x: float, y: float, first: int,
-                    row: int, col: int, base_fg: tuple) -> None:
+    def _draw_caret(
+        self, p, x: float, y: float, first: int, row: int, col: int, base_fg: tuple
+    ) -> None:
         """A steady block caret at the cursor, when focused and in view.
 
         *row* is grid-relative; on screen it sits at ``row + scroll_offset``
@@ -222,8 +256,9 @@ class TerminalControl:
 
     # ── input: pointer ────────────────────────────────────────────────────
 
-    def press(self, px: float, py: float, x=0.0, y=0.0, w=0.0, h=0.0,
-              modifiers=0, clicks=1) -> bool:
+    def press(
+        self, px: float, py: float, x=0.0, y=0.0, w=0.0, h=0.0, modifiers=0, clicks=1
+    ) -> bool:
         self.has_focus = True
         if clicks >= 3:
             self._select_line_at(px, py)
@@ -252,8 +287,9 @@ class TerminalControl:
         ``ControlSurface.on_wheel`` already converts notches to rows
         (``-WHEEL_ROWS * steps``), so *rows* is used as-is.
         """
-        self.scroll_offset = max(0, min(self.scroll_offset - int(rows),
-                                        self.screen.max_scroll_offset))
+        self.scroll_offset = max(
+            0, min(self.scroll_offset - int(rows), self.screen.max_scroll_offset)
+        )
         return self.scroll_offset
 
     # ── selection ─────────────────────────────────────────────────────────
@@ -261,8 +297,10 @@ class TerminalControl:
     def _select_word_at(self, px: float, py: float) -> None:
         line, col = self._cell_at(px, py)
         cells = self.screen._cells(line)
+
         def is_word(ch: str) -> bool:
             return ch.isalnum() or ch in "_-./"
+
         start = col
         while start > 0 and is_word(cells[start][0]):
             start -= 1
@@ -317,13 +355,23 @@ class TerminalControl:
     # ── input: keys ───────────────────────────────────────────────────────
 
     _NAV = {
-        KEY_UP: b"\x1b[A", KEY_DOWN: b"\x1b[B", KEY_RIGHT: b"\x1b[C", KEY_LEFT: b"\x1b[D",
-        KEY_HOME: b"\x1b[H", KEY_END: b"\x1b[F",
-        KEY_DELETE: b"\x1b[3~", KEY_PAGE_UP: b"\x1b[5~", KEY_PAGE_DOWN: b"\x1b[6~",
+        KEY_UP: b"\x1b[A",
+        KEY_DOWN: b"\x1b[B",
+        KEY_RIGHT: b"\x1b[C",
+        KEY_LEFT: b"\x1b[D",
+        KEY_HOME: b"\x1b[H",
+        KEY_END: b"\x1b[F",
+        KEY_DELETE: b"\x1b[3~",
+        KEY_PAGE_UP: b"\x1b[5~",
+        KEY_PAGE_DOWN: b"\x1b[6~",
     }
     _NAV_CTRL = {
-        KEY_UP: b"\x1b[1;5A", KEY_DOWN: b"\x1b[1;5B", KEY_RIGHT: b"\x1b[1;5C",
-        KEY_LEFT: b"\x1b[1;5D", KEY_HOME: b"\x1b[1;5H", KEY_END: b"\x1b[1;5F",
+        KEY_UP: b"\x1b[1;5A",
+        KEY_DOWN: b"\x1b[1;5B",
+        KEY_RIGHT: b"\x1b[1;5C",
+        KEY_LEFT: b"\x1b[1;5D",
+        KEY_HOME: b"\x1b[1;5H",
+        KEY_END: b"\x1b[1;5F",
     }
 
     def key(self, key: int, text: str = "", modifiers: int = 0) -> bool:
@@ -386,9 +434,11 @@ class TerminalControl:
         viewport_row = row + self.scroll_offset
         if not 0 <= viewport_row < self.screen.rows:
             return None
-        return (x + self._pad_x + col * self._glyph_w,
-                y + self._pad_y + viewport_row * self._line_h,
-                self._line_h)
+        return (
+            x + self._pad_x + col * self._glyph_w,
+            y + self._pad_y + viewport_row * self._line_h,
+            self._line_h,
+        )
 
     def close(self) -> None:
         if self._closed:

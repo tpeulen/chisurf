@@ -77,8 +77,6 @@ def _resolve(path):
     return getattr(importlib.import_module(mod), name)
 
 
-
-
 def test_deer_distance_accessor_returns_distribution():
     from chisurf.core.models.deer.common import get_deer_distance_distribution
 

@@ -103,7 +103,9 @@ def detach_curve(fit, unload_action: str, **fixed) -> None:
 
 
 def set_linearization(
-    idx: int | None = None, curve_name: str | None = None, fit: cs.core.fitting.fit.FitGroup | None = None
+    idx: int | None = None,
+    curve_name: str | None = None,
+    fit: cs.core.fitting.fit.FitGroup | None = None,
 ) -> None:
     if fit is None:
         fit = _current_fit()
@@ -164,7 +166,9 @@ def set_correction(
 
 
 def normalize_amplitudes(
-    normalize: bool = True, name: str = "amplitudes", fit: cs.core.fitting.fit.FitGroup | None = None
+    normalize: bool = True,
+    name: str = "amplitudes",
+    fit: cs.core.fitting.fit.FitGroup | None = None,
 ) -> None:
     if fit is None:
         fit = _current_fit()
@@ -469,7 +473,9 @@ def clear_local_fits(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
         pass
 
 
-def append_global_parameter(parameter_name: str, fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
+def append_global_parameter(
+    parameter_name: str, fit: cs.core.fitting.fit.FitGroup | None = None
+) -> None:
     if fit is None:
         fit = _current_fit()
     if fit is None:

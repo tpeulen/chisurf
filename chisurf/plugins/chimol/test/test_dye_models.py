@@ -87,7 +87,6 @@ def test_a_library_loads_and_conformers_are_placed_and_clash_filtered(tmp_path):
     assert w.tolist() == [lib.weights[i] for i in kept]
 
 
-
 def test_add_dye_with_a_rotamer_library_makes_an_av_object(tmp_path):
     from chimol.commands.command import Cmd
     from chimol.hosts.base import ViewerHost

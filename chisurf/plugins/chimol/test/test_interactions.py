@@ -484,6 +484,7 @@ def test_rebuilding_a_residue_as_itself_reproduces_it(tmp_path):
 # The wizard panel
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def wizard_cmd(tmp_path):
     """A loaded window with the command layer wired to it."""
@@ -491,6 +492,7 @@ def wizard_cmd(tmp_path):
 
     from chimol.commands.command import Cmd
     from native_window import NativeWindow
+
     src = _PDB / "148l.pdb"
     if not src.is_file():
         pytest.skip("no 148l fixture")

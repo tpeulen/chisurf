@@ -30,7 +30,9 @@ def _literal_colour(node: ast.AST) -> bool:
     return (
         isinstance(node, ast.Tuple)
         and len(node.elts) in (3, 4)
-        and all(isinstance(e, ast.Constant) and isinstance(e.value, (int, float)) for e in node.elts)
+        and all(
+            isinstance(e, ast.Constant) and isinstance(e.value, (int, float)) for e in node.elts
+        )
     )
 
 
@@ -46,8 +48,11 @@ def literal_colour_findings(path: pathlib.Path, root: pathlib.Path = _ROOT) -> l
             continue
         if node.func.attr not in _CALLS:
             continue
-        colour = node.args[0] if node.func.attr == "text_colored" and node.args else (
-            node.args[1] if len(node.args) > 1 else None)
+        colour = (
+            node.args[0]
+            if node.func.attr == "text_colored" and node.args
+            else (node.args[1] if len(node.args) > 1 else None)
+        )
         # a conditional between two literals is still a literal
         candidates = [colour.body, colour.orelse] if isinstance(colour, ast.IfExp) else [colour]
         if any(c is not None and _literal_colour(c) for c in candidates):
@@ -75,8 +80,17 @@ def test_no_window_hands_emtk_a_literal_colour():
 # --------------------------------------------------------------------------------------------
 #: Painter and draw-list calls that take a colour.
 _DRAW_CALLS = {
-    "fill_rect", "stroke_rect", "add_rect", "add_rect_filled", "add_line", "add_polyline",
-    "add_text", "add_circle", "add_circle_filled", "add_triangle_filled", "add_bezier_cubic",
+    "fill_rect",
+    "stroke_rect",
+    "add_rect",
+    "add_rect_filled",
+    "add_line",
+    "add_polyline",
+    "add_text",
+    "add_circle",
+    "add_circle_filled",
+    "add_triangle_filled",
+    "add_bezier_cubic",
 }
 #: Games draw boards in a palette of their own (a game is its own world, as a photo is);
 #: the splash is artwork drawn before any theme is applied.
@@ -140,8 +154,9 @@ def qt_host_only_constants(path: pathlib.Path) -> list[str]:
         tree = ast.parse(path.read_text(encoding="utf-8"))
     except (SyntaxError, UnicodeDecodeError):
         return []
-    return [name for name, _ in _surface_constants(tree)
-            if (uses := _uses(tree, name)) and all(uses)]
+    return [
+        name for name, _ in _surface_constants(tree) if (uses := _uses(tree, name)) and all(uses)
+    ]
 
 
 def _colour_constant(node: ast.AST) -> bool:
@@ -149,16 +164,22 @@ def _colour_constant(node: ast.AST) -> bool:
     return (
         isinstance(node, ast.Tuple)
         and len(node.elts) in (3, 4)
-        and all(isinstance(e, ast.Constant) and type(e.value) is int and 0 <= e.value <= 255
-                for e in node.elts)
+        and all(
+            isinstance(e, ast.Constant) and type(e.value) is int and 0 <= e.value <= 255
+            for e in node.elts
+        )
     )
 
 
 def _surface_constants(tree: ast.Module):
     for node in tree.body:
-        if (isinstance(node, ast.Assign) and len(node.targets) == 1
-                and isinstance(node.targets[0], ast.Name) and _colour_constant(node.value)
-                and _SURFACE_NAME.search(node.targets[0].id)):
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and _colour_constant(node.value)
+            and _SURFACE_NAME.search(node.targets[0].id)
+        ):
             yield node.targets[0].id, node.lineno
 
 
@@ -174,8 +195,11 @@ def _uses(tree: ast.Module, name: str) -> list[bool]:
                         for sub in ast.walk(keyword.value):
                             if isinstance(sub, ast.Name) and sub.id == name:
                                 qt_reads.add(id(sub))
-    return [id(node) in qt_reads for node in ast.walk(tree)
-            if isinstance(node, ast.Name) and node.id == name and isinstance(node.ctx, ast.Load)]
+    return [
+        id(node) in qt_reads
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Name) and node.id == name and isinstance(node.ctx, ast.Load)
+    ]
 
 
 def test_no_emtk_window_draws_a_literal_colour():
@@ -184,8 +208,9 @@ def test_no_emtk_window_draws_a_literal_colour():
 
 
 def test_no_emtk_window_draws_a_dark_only_surface_constant():
-    drift = [hit for path in _shipped() if _emtk_file(path)
-             for hit in surface_constant_findings(path)]
+    drift = [
+        hit for path in _shipped() if _emtk_file(path) for hit in surface_constant_findings(path)
+    ]
     assert not drift, "\n".join(drift)
 
 

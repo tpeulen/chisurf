@@ -148,14 +148,36 @@ ACTIONS: dict[str, Action] = {
 }
 #: Leading verbs of a window's main action: a button whose caption starts with one is drawn ``primary``
 #: (the first such button of a panel only -- one primary per panel).
-PRIMARY_VERBS = frozenset({
-    "run", "fit", "compute", "calculate", "simulate", "start", "search", "analyse", "analyze",
-    "process", "optimise", "optimize",
-})
+PRIMARY_VERBS = frozenset(
+    {
+        "run",
+        "fit",
+        "compute",
+        "calculate",
+        "simulate",
+        "start",
+        "search",
+        "analyse",
+        "analyze",
+        "process",
+        "optimise",
+        "optimize",
+    }
+)
 #: Leading verbs of a destructive action: a button whose caption starts with one is drawn ``danger``.
-DANGER_VERBS = frozenset({
-    "delete", "remove", "clear", "stop", "abort", "discard", "purge", "erase", "wipe",
-})
+DANGER_VERBS = frozenset(
+    {
+        "delete",
+        "remove",
+        "clear",
+        "stop",
+        "abort",
+        "discard",
+        "purge",
+        "erase",
+        "wipe",
+    }
+)
 #: Captions whose verb reads as a role but whose action is not one: framing a view ("Fit view"),
 #: dropping a selection. A declared row spells the exception as ``"role": "default"``.
 NEUTRAL_CAPTIONS = frozenset({"fit view", "clear selection"})

@@ -88,9 +88,14 @@ def alex_to_pto(
     from chisurf.plugins.tttr.ptu_alex_creator.api.container import (  # noqa: PLC0415
         convert_to_container,
     )
-    return convert_to_container(sources, alex_period=int(alex_period),
-                                period_shift=int(period_shift), out_dir=target_dir,
-                                suffix=suffix)
+
+    return convert_to_container(
+        sources,
+        alex_period=int(alex_period),
+        period_shift=int(period_shift),
+        out_dir=target_dir,
+        suffix=suffix,
+    )
 
 
 def detect_and_convert(

@@ -156,7 +156,9 @@ class TimeWindowGui(TourTarget):
             self.load_example()
             self._used("load_example")
         im.set_item_tooltip(
-            tr("Generate the deterministic demonstration stream in the settings cache and queue it.")
+            tr(
+                "Generate the deterministic demonstration stream in the settings cache and queue it."
+            )
         )
         self.remember("load_example")
         im.same_line()

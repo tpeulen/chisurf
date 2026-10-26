@@ -194,7 +194,9 @@ def choose(name: str, styles=()) -> bool:
             applied = name
             sheet_name = f"{name}.css"
         else:
-            raise KeyError(f"{name!r} is not a theme or stylesheet ({', '.join(sorted(theme.THEMES))})")
+            raise KeyError(
+                f"{name!r} is not a theme or stylesheet ({', '.join(sorted(theme.THEMES))})"
+            )
 
     base_theme = "light" if theme.is_light() else "dark"
     try:

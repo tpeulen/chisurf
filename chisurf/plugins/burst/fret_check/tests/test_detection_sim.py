@@ -7,6 +7,7 @@ detected as what it is: excitation, donor and acceptor channels, unassigned
 channels, the PIE windows around their pulses, and a warning where the data
 cannot settle a guess.
 """
+
 import numpy as np
 import pytest
 
@@ -44,8 +45,11 @@ def test_channels_and_excitation(sc):
     assert e.polarization == (len(sc.donor) == 2)
 
 
-@pytest.mark.parametrize("sc", [s for s in SCENARIOS if s.excitation == "pie"],
-                         ids=[s.name for s in SCENARIOS if s.excitation == "pie"])
+@pytest.mark.parametrize(
+    "sc",
+    [s for s in SCENARIOS if s.excitation == "pie"],
+    ids=[s.name for s in SCENARIOS if s.excitation == "pie"],
+)
 def test_pie_windows_hold_their_pulses(sc):
     _, e = _detected(sc)
     win = {w.name: w for w in e.windows}
@@ -62,8 +66,11 @@ def test_guesses_are_warnings():
     assert any("one-colour" in w for w in e.warnings)
 
 
-@pytest.mark.parametrize("sc", [s for s in SCENARIOS if s.excitation != "cw"],
-                         ids=[s.name for s in SCENARIOS if s.excitation != "cw"])
+@pytest.mark.parametrize(
+    "sc",
+    [s for s in SCENARIOS if s.excitation != "cw"],
+    ids=[s.name for s in SCENARIOS if s.excitation != "cw"],
+)
 def test_alternating_gives_stoichiometry(sc):
     data, e = _detected(sc)
     if e.alex_period:

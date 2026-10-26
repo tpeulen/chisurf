@@ -32,9 +32,7 @@ SAMPLE = (
     / "burstwise_samples"
     / "burstwise_All 0.1066#60"
 )
-pytestmark = pytest.mark.skipif(
-    not SAMPLE.is_dir(), reason="pulled burstwise sample not present"
-)
+pytestmark = pytest.mark.skipif(not SAMPLE.is_dir(), reason="pulled burstwise sample not present")
 
 
 # -- the legacy layout is read correctly ----------------------------------------
@@ -130,12 +128,7 @@ def test_convert_one_measurement_writes_container(tmp_path):
     tmp_path first.
     """
     pytest.importorskip("tttrlib")
-    raw_src = (
-        pathlib.Path(__file__).resolve().parents[1]
-        / "data"
-        / "clsm"
-        / "Leica_SP5.ptu"
-    )
+    raw_src = pathlib.Path(__file__).resolve().parents[1] / "data" / "clsm" / "Leica_SP5.ptu"
     if not raw_src.exists():
         pytest.skip("no instrument fixture")
     raw = tmp_path / "Split_44_132_75murea_sm-0000.ptu"

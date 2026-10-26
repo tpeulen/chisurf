@@ -90,7 +90,7 @@ _HASH_MASK = np.uint64(0xFFFFFFFFFFFFFFFF)
 def _mix(x, seed):
     """SplitMix64 of uint64 values (vectorised, wrapping)."""
     with np.errstate(over="ignore"):
-        z = (np.asarray(x, np.uint64) + np.uint64(seed) * np.uint64(0x9E3779B97F4A7C15))
+        z = np.asarray(x, np.uint64) + np.uint64(seed) * np.uint64(0x9E3779B97F4A7C15)
         z = (z ^ (z >> np.uint64(30))) * np.uint64(0xBF58476D1CE4E5B9)
         z = (z ^ (z >> np.uint64(27))) * np.uint64(0x94D049BB133111EB)
         return z ^ (z >> np.uint64(31))
@@ -121,7 +121,8 @@ def unique_sparse_rows(dense, rows, columns, weights):
     n = len(dense)
     bits = dense.view(np.uint64)
     entry = (np.asarray(columns, np.uint64) << np.uint64(32)) | np.asarray(
-        np.asarray(weights, np.float32).view(np.uint32), np.uint64)
+        np.asarray(weights, np.float32).view(np.uint32), np.uint64
+    )
     hashes = []
     for seed in (1, 2):
         h = np.zeros(n, np.uint64)
@@ -178,30 +179,32 @@ class Site:
         residues = _site_table.residue_types(s)
         n = np.asarray(table.neighbours).astype(float)
         if n.shape[1] != len(residues):
-            raise ValueError(f"site table has {n.shape[1]} residue columns, settings {len(residues)}")
+            raise ValueError(
+                f"site table has {n.shape[1]} residue columns, settings {len(residues)}"
+            )
         index = {r: i for i, r in enumerate(residues)}
-        n_group = np.stack(
-            [n[:, [index[r] for r in rs]].sum(1) for rs in s["groups"].values()], 1
-        )
+        n_group = np.stack([n[:, [index[r] for r in rs]].sum(1) for rs in s["groups"].values()], 1)
         exposure = np.clip(np.asarray(table.exposure).astype(float), 0, 1)
         self.rate_model = str(s["rate_model"])
         if self.rate_model == "contact_shell":
             contacts = np.asarray(table.contacts).astype(np.float32)
-            features = np.concatenate([n_group, contacts.reshape(len(n), -1), exposure[:, None]],
-                                      1)
+            features = np.concatenate([n_group, contacts.reshape(len(n), -1), exposure[:, None]], 1)
             first, count = unique_rows(features)
             self.C = contacts[first]
         elif self.rate_model == "kernel":
             d = table.distances
             if d is None:
-                raise ValueError("the kernel rate model needs a site table with quencher distances "
-                                 f"(schema {_site_table.SCHEMA}); {getattr(table, 'path', None)} "
-                                 "has none (a prototype table: declare rate_model contact_shell)")
+                raise ValueError(
+                    "the kernel rate model needs a site table with quencher distances "
+                    f"(schema {_site_table.SCHEMA}); {getattr(table, 'path', None)} "
+                    "has none (a prototype table: declare rate_model contact_shell)"
+                )
             first, count, keep, new_row = unique_sparse_rows(
-                np.concatenate([n_group, exposure[:, None]], 1), d.rows, d.columns, d.weights)
+                np.concatenate([n_group, exposure[:, None]], 1), d.rows, d.columns, d.weights
+            )
             n_sources = 2
             n_qs = len(s["quenchers"]) * n_sources
-            qs = d.columns[keep].astype(np.int64) // d.n_bins          # quencher * 2 + source
+            qs = d.columns[keep].astype(np.int64) // d.n_bins  # quencher * 2 + source
             bins = (d.columns[keep] % d.n_bins).astype(np.int64)
             weight = d.weights[keep].astype(np.float64)
             lo, hi = d.edges()
@@ -212,8 +215,11 @@ class Site:
             # row and by (bin, quencher, source), so one gather of a (bin x quencher-source)
             # table and one bincount over the rows give a channel.
             inner = hi[bins] <= 0.0
-            self._inner_sum = np.bincount(new_row[inner] * n_qs + qs[inner], weights=weight[inner],
-                                          minlength=len(first) * n_qs).reshape(len(first), n_qs)
+            self._inner_sum = np.bincount(
+                new_row[inner] * n_qs + qs[inner],
+                weights=weight[inner],
+                minlength=len(first) * n_qs,
+            ).reshape(len(first), n_qs)
             self._inner = (new_row[inner], bins[inner] * n_qs + qs[inner], weight[inner])
             self._tail = (new_row[~inner], bins[~inner] * n_qs + qs[~inner], weight[~inner])
             if np.any(bins[~inner] == 0):
@@ -224,11 +230,16 @@ class Site:
             self.C = None
         else:
             raise ValueError(f"rate_model must be kernel or contact_shell, not {self.rate_model!r}")
-        self.n_group, self.exposure, self.count = n_group[first], exposure[first], count.astype(float)
+        self.n_group, self.exposure, self.count = (
+            n_group[first],
+            exposure[first],
+            count.astype(float),
+        )
         self.delta_interpolation = str(s["delta_interpolation"])
         if self.delta_interpolation not in ("linear", "bspline"):
-            raise ValueError(f"delta_interpolation must be linear or bspline, not "
-                             f"{self.delta_interpolation!r}")
+            raise ValueError(
+                f"delta_interpolation must be linear or bspline, not {self.delta_interpolation!r}"
+            )
         steps = np.diff(self.radius_offsets)
         if self.delta_interpolation == "bspline" and not np.allclose(steps, steps[0]):
             raise ValueError("the bspline delta interpolation needs evenly spaced radius_offsets")
@@ -255,19 +266,31 @@ class Site:
         """
         kq = np.asarray(theta["kq"], float)
         if self.rate_model == "contact_shell":
-            key = ("shell", float(theta["delta_static"] if static else theta["delta"]),
-                   float(theta["lam"]), kq.tobytes())
+            key = (
+                "shell",
+                float(theta["delta_static"] if static else theta["delta"]),
+                float(theta["lam"]),
+                kq.tobytes(),
+            )
         else:
-            key = ("kernel", float(theta["delta_static"]), float(theta["ln_decay_length"]),
-                   float(theta["lam"]), kq.tobytes())
+            key = (
+                "kernel",
+                float(theta["delta_static"]),
+                float(theta["ln_decay_length"]),
+                float(theta["lam"]),
+                kq.tobytes(),
+            )
         cache = self.__dict__.setdefault("_rate_cache", {})
         if key not in cache:
             if self.rate_model == "contact_shell":
                 cache[key] = self._contacts(key[1], theta["lam"], theta["kq"])
             else:
-                cache[key] = self._kernel_contacts(float(theta["delta_static"]),
-                                                   float(np.exp(theta["ln_decay_length"])),
-                                                   theta["lam"], kq)
+                cache[key] = self._kernel_contacts(
+                    float(theta["delta_static"]),
+                    float(np.exp(theta["ln_decay_length"])),
+                    theta["lam"],
+                    kq,
+                )
             while len(cache) > 4:
                 cache.pop(next(iter(cache)))
         out = cache[key]
@@ -297,11 +320,15 @@ class Site:
         a = np.where(np.isfinite(lo), lo, hi - h)
         out = np.ones(len(lo))
         beyond = a >= offset
-        out[beyond] = length * (np.exp(-(a[beyond] - offset) / length)
-                                - np.exp(-(hi[beyond] - offset) / length)) / h
+        out[beyond] = (
+            length
+            * (np.exp(-(a[beyond] - offset) / length) - np.exp(-(hi[beyond] - offset) / length))
+            / h
+        )
         mixed = (a < offset) & (hi > offset)
-        out[mixed] = ((offset - a[mixed])
-                      + length * (1.0 - np.exp(-(hi[mixed] - offset) / length))) / h
+        out[mixed] = (
+            (offset - a[mixed]) + length * (1.0 - np.exp(-(hi[mixed] - offset) / length))
+        ) / h
         out[0] = 1.0
         return out
 
@@ -326,7 +353,7 @@ class Site:
             ``(rows, 2)``: dynamic, static.
         """
         kq = np.asarray(kq, float)
-        coef = np.stack([(1 - lam) * kq, lam * kq], 1).ravel()          # per quencher, source
+        coef = np.stack([(1 - lam) * kq, lam * kq], 1).ravel()  # per quencher, source
         n = len(self.count)
         row, index, weight = self._tail
         table = np.outer(self.kernel_weights(0.0, decay_length), coef).ravel()
@@ -336,8 +363,9 @@ class Site:
         if static_offset > 0.0:
             # beyond the declared range (a finite-difference step past delta_static's upper
             # bound): inside bins count in full, the tail is read with its own weights
-            static = self._inner_sum @ coef + np.bincount(row, weights=weight * table_s[index],
-                                                         minlength=n)
+            static = self._inner_sum @ coef + np.bincount(
+                row, weights=weight * table_s[index], minlength=n
+            )
         else:
             row_s, index_s, weight_s = self._inner
             static = np.bincount(row_s, weights=weight_s * table_s[index_s], minlength=n)
@@ -372,11 +400,16 @@ class Site:
             # repeated beyond the range): twice continuously differentiable, a weighted mean
             # of four neighbouring offsets, so contacts stay >= 0 and grow with delta
             t = np.float32(w)
-            weights = ((1 - t) ** 3 / 6, (3 * t**3 - 6 * t**2 + 4) / 6,
-                       (-3 * t**3 + 3 * t**2 + 3 * t + 1) / 6, t**3 / 6)
+            weights = (
+                (1 - t) ** 3 / 6,
+                (3 * t**3 - 6 * t**2 + 4) / 6,
+                (-3 * t**3 + 3 * t**2 + 3 * t + 1) / 6,
+                t**3 / 6,
+            )
             last = len(offsets) - 1
-            c = sum(wk * self.C[:, :, min(max(i - 1 + k, 0), last), :]
-                    for k, wk in enumerate(weights))
+            c = sum(
+                wk * self.C[:, :, min(max(i - 1 + k, 0), last), :] for k, wk in enumerate(weights)
+            )
         c = (1 - lam) * c[:, :, 0] + lam * c[:, :, 1]
         return c @ np.asarray(kq, np.float32)
 
@@ -421,9 +454,7 @@ class Site:
         tau0 = tau0 + theta.get("dtau_shield", 0.0) * (1.0 - self.exposure)
         tau = 1.0 / (1.0 / tau0 + k)
         seen = 1.0 / (1.0 + (self.tau_min / tau) ** self.visibility_power)
-        seen = seen * np.exp(
-            -np.exp(theta["ln_static"]) * self._rates(theta, static=True)
-        )
+        seen = seen * np.exp(-np.exp(theta["ln_static"]) * self._rates(theta, static=True))
         return tau, seen
 
     def lifetime(self, theta, tau0, water=0.0):
@@ -568,8 +599,11 @@ class SiteLibrary:
         SiteTable
         """
         return _site_table.site_table(
-            self.structures[state], int(site), float(linker_length),
-            settings_=self.settings, cache_dir=self.cache_dir,
+            self.structures[state],
+            int(site),
+            float(linker_length),
+            settings_=self.settings,
+            cache_dir=self.cache_dir,
         )
 
     def site(self, state, site, linker_length):

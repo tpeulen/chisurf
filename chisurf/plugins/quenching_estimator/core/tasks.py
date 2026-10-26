@@ -278,8 +278,7 @@ class JobManager:
             finally:
                 job._done_event.set()
 
-        job._thread = threading.Thread(target=run, name=f"quest-job-{job.job_id[:8]}",
-                                       daemon=True)
+        job._thread = threading.Thread(target=run, name=f"quest-job-{job.job_id[:8]}", daemon=True)
         job._thread.start()
         return job
 

@@ -607,9 +607,7 @@ class Measurement:
         use_sidecar = (raw_data == "sidecar") or bool(as_sidecar)
         if use_sidecar:
             self._record_sidecar_raw(raw_paths, artifact_kind)
-        self._instrument_uid = self._add_instrument(
-            first, artifact_kind, as_sidecar=use_sidecar
-        )
+        self._instrument_uid = self._add_instrument(first, artifact_kind, as_sidecar=use_sidecar)
         for raw in raw_paths[1:]:
             self._add_instrument(raw, artifact_kind, as_sidecar=use_sidecar)
         return self
@@ -1492,9 +1490,7 @@ class Measurement:
             if self.is_sidecar(obj.uid):
                 ext = self.external_path(obj.uid)
                 if ext is None or not ext.exists():
-                    problems.append(
-                        f"{obj.name or obj.uid}: missing external sidecar file {ext}"
-                    )
+                    problems.append(f"{obj.name or obj.uid}: missing external sidecar file {ext}")
                     continue
                 actual, _ = _sha256_of_path(ext)
             else:
@@ -2000,8 +1996,9 @@ class Measurement:
             self._uint(0, prefix + "size_bytes", size)
             self._text(0, prefix + "path", self._sidecar_link(raw))
 
-    def link_calibration(self, folder: str | Path, root: str | Path, *, name: str = "",
-                         content: str = "") -> int:
+    def link_calibration(
+        self, folder: str | Path, root: str | Path, *, name: str = "", content: str = ""
+    ) -> int:
         """Record that the calibration in *folder* belongs to this measurement.
 
         A calibration (a scatter, a buffer, a dye or DNA standard) is measured
@@ -2047,8 +2044,11 @@ class Measurement:
 
         index = len(self.calibrations())
         prefix = f"_mmfdb_calibration.{index}."
-        files = sorted(f for f in folder.rglob("*") if f.is_file()
-                       and not f.name.startswith(".") and not f.name.endswith(".mmfdb.pto"))
+        files = sorted(
+            f
+            for f in folder.rglob("*")
+            if f.is_file() and not f.name.startswith(".") and not f.name.endswith(".mmfdb.pto")
+        )
         if not files:
             raise PtoMfdbError(f"{folder} holds no calibration files")
         own = sorted(folder.glob("*.mmfdb.pto"))
@@ -2087,10 +2087,17 @@ class Measurement:
                 break
             path = str(self.tag(0, prefix + "path"))
             container = str(self.tag(0, prefix + "container") or "")
-            out.append({"name": str(name), "content": str(self.tag(0, prefix + "content") or ""),
-                        "path": path, "resolved": (here / path).resolve(),
-                        "container": container,
-                        "files": int(self.tag(0, prefix + "files", 0) or 0), "file_list": []})
+            out.append(
+                {
+                    "name": str(name),
+                    "content": str(self.tag(0, prefix + "content") or ""),
+                    "path": path,
+                    "resolved": (here / path).resolve(),
+                    "container": container,
+                    "files": int(self.tag(0, prefix + "files", 0) or 0),
+                    "file_list": [],
+                }
+            )
         j = 0
         while True:
             fp = f"_mmfdb_calibration_file.{j}."
@@ -2100,11 +2107,16 @@ class Measurement:
             k = int(self.tag(0, fp + "calibration", 0) or 0)
             if 0 <= k < len(out):
                 path = str(self.tag(0, fp + "path"))
-                out[k]["file_list"].append({
-                    "name": str(name), "path": path, "resolved": (here / path).resolve(),
-                    "data_format": str(self.tag(0, fp + "data_format") or ""),
-                    "checksum": str(self.tag(0, fp + "checksum") or ""),
-                    "size_bytes": int(self.tag(0, fp + "size_bytes", 0) or 0)})
+                out[k]["file_list"].append(
+                    {
+                        "name": str(name),
+                        "path": path,
+                        "resolved": (here / path).resolve(),
+                        "data_format": str(self.tag(0, fp + "data_format") or ""),
+                        "checksum": str(self.tag(0, fp + "checksum") or ""),
+                        "size_bytes": int(self.tag(0, fp + "size_bytes", 0) or 0),
+                    }
+                )
             j += 1
         return out
 

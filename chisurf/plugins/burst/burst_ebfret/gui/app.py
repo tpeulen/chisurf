@@ -784,8 +784,9 @@ class App:
             self._draw_dialog(painter, x, y, w, h)
         g.dialogs = [d for d in g.dialogs if not d.done]
         if g.error:
-            painter.text(x + w - 520.0, y + 3.0, 510.0, MENU_H - 6.0, 2, g.error[:90],
-                         style.TEXT_DANGER)
+            painter.text(
+                x + w - 520.0, y + 3.0, 510.0, MENU_H - 6.0, 2, g.error[:90], style.TEXT_DANGER
+            )
         self.menubar.draw(painter, x, y, w, MENU_H)
         self._remember_menu_rects()
 

@@ -103,6 +103,7 @@ def homo_state(m):
 
 # ── 1. numbers equal the frozen Qt values and the backend ----------------------------------------------- #
 
+
 def test_the_numbers_the_qt_tool_showed_are_pinned(app):
     """Values read off the Qt window before it was deleted."""
     m = app.model.hetero

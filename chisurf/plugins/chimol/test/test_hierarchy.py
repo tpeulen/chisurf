@@ -153,6 +153,7 @@ def test_a_plain_pdb_has_no_hierarchy(tmp_path):
 # Showing it
 # --------------------------------------------------------------------------- #
 
+
 def _three_level_tree():
     root = HierarchyNode(name="entry", node_type="ROOT")
     for m in range(3):
@@ -175,6 +176,7 @@ def _three_level_tree():
 def test_hidden_rows_are_not_drawn():
     """The point of the check box: fewer particles in the picture."""
     from native_window import native_viewer
+
     n = 40
     rng = np.random.default_rng(1)
     xyz = rng.normal(scale=20.0, size=(n, 3))
@@ -217,6 +219,7 @@ def test_hidden_rows_are_not_drawn():
 
 def test_hiding_everything_draws_nothing():
     from native_window import native_viewer
+
     n = 12
     xyz = np.arange(n * 3, dtype=float).reshape(n, 3)
     dtype = np.dtype(
@@ -267,6 +270,7 @@ def test_hiding_follows_the_atoms_when_they_are_reordered():
 def test_the_viewer_keeps_the_hierarchy_it_is_given():
     """One field, whichever reader filled it."""
     from native_window import native_viewer
+
     tree = _three_level_tree()
     view = native_viewer()
     view.set_coordinates(

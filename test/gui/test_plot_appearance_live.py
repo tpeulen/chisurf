@@ -42,7 +42,9 @@ def test_curves_take_the_colours_and_width_set_after_import(plot):
 def test_the_band_switched_off_builds_a_plot_with_the_band_hidden(plot):
     plot["enable_region_selector"] = False
     page = _lineplot()  # raised AttributeError: 'LinePlot' object has no attribute 'region'
-    assert page.region is not None and not page.region.visible  # kept, hidden: switching it on restyles
+    assert (
+        page.region is not None and not page.region.visible
+    )  # kept, hidden: switching it on restyles
 
 
 def test_grid_off_turns_every_panel_grid_off(plot):

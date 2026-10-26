@@ -45,12 +45,12 @@ CASES = (
 )
 
 
-
 @pytest.fixture
 def viewer():
     """A window with 148L shown as cartoon, sticks and surface at once."""
     from chimol.core.settings.registry import set_setting
     from native_window import NativeWindow
+
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
     win = NativeWindow()

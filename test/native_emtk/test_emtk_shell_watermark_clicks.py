@@ -58,6 +58,8 @@ def test_a_press_on_a_tool_over_the_watermark_reaches_the_tool():
         shell.pointer_press(x, y, LEFT_BUTTON)
         shell.pointer_release(x, y, LEFT_BUTTON)
         assert presses, "the press reached the tool"
-        assert getattr(shell, "_watermark_folded", False) == folded, "the hidden watermark did not fold"
+        assert getattr(shell, "_watermark_folded", False) == folded, (
+            "the hidden watermark did not fold"
+        )
     finally:
         shell.close()

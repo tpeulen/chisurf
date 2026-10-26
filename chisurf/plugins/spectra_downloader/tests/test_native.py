@@ -300,9 +300,11 @@ def staged(tmp_path):
 def _probes(path):
     import sqlite3
 
-    return sqlite3.connect(path).execute(
-        "SELECT chromophore_name, category, source FROM probes WHERE deleted_at IS NULL"
-    ).fetchall()
+    return (
+        sqlite3.connect(path)
+        .execute("SELECT chromophore_name, category, source FROM probes WHERE deleted_at IS NULL")
+        .fetchall()
+    )
 
 
 def test_browser_lists_and_shows_detail_on_selection(staged):
@@ -372,9 +374,7 @@ def test_source_filter_and_push(staged, tmp_path):
     assert [r["chromophore_name"] for r in m.filtered()] == ["FB340-10"]
     m.pick(m.filtered()[0]["probe_id"])
     mmfdb = str(tmp_path / "push.mmfdb")
-    summary = push_staging_to_mmfdb(
-        str(db.db_path), probe_ids=sorted(m.selected), mmfdb_path=mmfdb
-    )
+    summary = push_staging_to_mmfdb(str(db.db_path), probe_ids=sorted(m.selected), mmfdb_path=mmfdb)
     assert summary["merged"] == 1
     assert _probes(mmfdb) == [("FB340-10", "filter", "thorlabs")]
     push_staging_to_mmfdb(str(db.db_path), mmfdb_path=mmfdb)

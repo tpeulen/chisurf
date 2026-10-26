@@ -24,4 +24,3 @@ single-molecule or imaging experiments, making them more manageable for subseque
 icon = "✂️"
 
 name = "File:Data:Split/Convert"
-

@@ -46,7 +46,9 @@ def _menu_labels(shell) -> dict[str, bool]:  # noqa: F811
     """``{label: enabled}`` of the open menu."""
     panel = _table(shell).menu_panel
     assert panel is not None, "the context menu is not open"
-    return {e.label: bool(e.enabled) for e in panel.entries if e is not None and hasattr(e, "label")}
+    return {
+        e.label: bool(e.enabled) for e in panel.entries if e is not None and hasattr(e, "label")
+    }
 
 
 def _pick(driver, shell, label: str) -> None:  # noqa: F811
@@ -88,7 +90,11 @@ def test_group_unfolds_into_members_and_ungroup_restores_them(shell):  # noqa: F
     _click(driver, _row_point(shell, "dataset_rows", second), CONTROL_MODIFIER)
     _right_click(driver, _row_point(shell, "dataset_rows", second))
     _pick(driver, shell, "Group")
-    _settle(driver, lambda: _idle(shell) and any(r.get("group") for r in data.datasets.datasets), "the group")
+    _settle(
+        driver,
+        lambda: _idle(shell) and any(r.get("group") for r in data.datasets.datasets),
+        "the group",
+    )
     rows = data.datasets.datasets
     group = next(r for r in rows if r.get("group"))
     members = [r for r in rows if r.get("parent") == group["uid"]]
@@ -114,7 +120,11 @@ def test_group_unfolds_into_members_and_ungroup_restores_them(shell):  # noqa: F
     _right_click(driver, _row_point(shell, "dataset_rows", position))
     assert _menu_labels(shell)["Ungroup"]
     _pick(driver, shell, "Ungroup")
-    _settle(driver, lambda: _idle(shell) and not any(r.get("group") for r in data.datasets.datasets), "ungrouped")
+    _settle(
+        driver,
+        lambda: _idle(shell) and not any(r.get("group") for r in data.datasets.datasets),
+        "ungrouped",
+    )
     assert sorted(_names(shell)) == sorted(n for n in names if n != "Global Dataset")
 
 
@@ -180,7 +190,9 @@ def _editor_row(shell, name: str) -> dict:  # noqa: F811
     info = data.session.api.get_fit_info(fit_uid=data.current_uid)
     info = info.get("fit", info)
     uid = next(p["uid"] for p in info["model"]["parameters_all"] if p["name"] == name)
-    return next(r for source in data.editor._sources.values() for r in source if r.get("uid") == uid)
+    return next(
+        r for source in data.editor._sources.values() for r in source if r.get("uid") == uid
+    )
 
 
 def _prior_of(shell, uid: str, name: str):  # noqa: F811
@@ -199,14 +211,20 @@ def test_a_typed_prior_reaches_the_parameter_and_box_clears_it(shell):  # noqa: 
     data = shell.data
     assert _editor_row(shell, "N")["prior"] == "Box"
     data.editor.edit_cell(_editor_row(shell, "N"), "prior", "Gaussian(3, 0.5)")
-    _settle(driver, lambda: _idle(shell) and _editor_row(shell, "N")["prior"] != "Box", "the prior set")
+    _settle(
+        driver, lambda: _idle(shell) and _editor_row(shell, "N")["prior"] != "Box", "the prior set"
+    )
     assert _editor_row(shell, "N")["prior"] == "Gaussian(3, 0.5)"
     state = _prior_of(shell, uid, "N")
     assert state["kind"] == "normal" and state["mu"] == 3.0 and state["sigma"] == 0.5
     driver.frame(3)
     driver.screenshot(SHOTS / "emtk_parameter_prior.png")
     data.editor.edit_cell(_editor_row(shell, "N"), "prior", "Box")
-    _settle(driver, lambda: _idle(shell) and _editor_row(shell, "N")["prior"] == "Box", "the prior cleared")
+    _settle(
+        driver,
+        lambda: _idle(shell) and _editor_row(shell, "N")["prior"] == "Box",
+        "the prior cleared",
+    )
     assert _prior_of(shell, uid, "N") is None
     # Text that names no family changes nothing and says what is accepted.
     data.editor.edit_cell(_editor_row(shell, "N"), "prior", "Cauchy")
@@ -223,7 +241,11 @@ def test_the_row_menu_picks_a_prior_family_seeded_at_the_value(shell):  # noqa: 
     record = _editor_row(shell, "N")
     menu = LinkMenu(shell.data.editor.sections, record, [], None)
     prior = next(e for e in menu.panel.entries if getattr(e, "label", "") == "Prior")
-    assert [e.label for e in prior.entries][:3] == ["Box (bounds only)", "Gaussian", "Truncated Gaussian"]
+    assert [e.label for e in prior.entries][:3] == [
+        "Box (bounds only)",
+        "Gaussian",
+        "Truncated Gaussian",
+    ]
     assert [e.label for e in prior.entries if e.checked] == ["Box (bounds only)"]
     gaussian = next(e for e in prior.entries if e.label == "Gaussian")
     menu.pick(gaussian)
@@ -245,28 +267,39 @@ def test_a_linked_parameter_is_drawn_in_the_linked_ink_and_names_its_master(shel
     master = _editor_row(shell, "N")
     shell.data.current_uid = second
     shell.data._dirty |= {"current"}
-    _settle(driver, lambda: _idle(shell) and shell.data.analysis.info.get("uid") == second, "the second fit current")
+    _settle(
+        driver,
+        lambda: _idle(shell) and shell.data.analysis.info.get("uid") == second,
+        "the second fit current",
+    )
     follower = _editor_row(shell, "N")
     assert follower["uid"] != master["uid"] and not follower["linked"]
     api.link_parameter(follower["uid"], master["uid"], fit_uid=second)
     shell.data._dirty |= {"current"}
-    _settle(driver, lambda: _idle(shell) and _editor_row(shell, "N")["linked"], "the link read back")
+    _settle(
+        driver, lambda: _idle(shell) and _editor_row(shell, "N")["linked"], "the link read back"
+    )
     follower = _editor_row(shell, "N")
     assert follower["master"] == "N"
     driver.frame(3)
     editor = shell.data.editor
     bound = next(
-        b for b in editor.form.tables.values()
+        b
+        for b in editor.form.tables.values()
         if any(b.record(i).get("uid") == follower["uid"] for i in range(b.control.row_count()))
     )
     control = bound.control
-    index = next(i for i in range(control.row_count()) if bound.record(i).get("uid") == follower["uid"])
+    index = next(
+        i for i in range(control.row_count()) if bound.record(i).get("uid") == follower["uid"]
+    )
     assert control.linked(index) == "N"
     texts = [t for t in driver.painter.texts if t[6] == style.LINKED]
     assert texts, "no text was drawn in the linked ink"
     position = control.order().index(index)
     bx, by, bw, _bh = control._body_box
-    tip, _part = control.tooltip_at(bx + bw / 4, by + control._row_h * (position + 0.5) - control.bar.top * control._row_h)
+    tip, _part = control.tooltip_at(
+        bx + bw / 4, by + control._row_h * (position + 0.5) - control.bar.top * control._row_h
+    )
     # The first line names the master. A narrow table also folds the cells of
     # its dropped columns (Lo/Hi/Bounds/Prior) into the tooltip below it --
     # emtk 9bdd67a, wired in e20cb4c6e -- so it need not be the only line.

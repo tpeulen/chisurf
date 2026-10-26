@@ -190,9 +190,7 @@ def test_pto_startup_uses_saved_setup_real_photons_and_transfers_once(
     container = Path(
         write_container(
             source,
-            pd.DataFrame(
-                {"first photon": [0], "last photon": [len(stream.micro_times) - 1]}
-            ),
+            pd.DataFrame({"first photon": [0], "last photon": [len(stream.micro_times) - 1]}),
             parameters={"run": 1},
             run="all photons",
         )

@@ -344,6 +344,10 @@ def test_path_fields_are_declared_as_text():
             for value in node:
                 yield from walk(value)
 
-    paths = [s for s in walk(json.loads(spec.read_text())) if str(s.get("attr", "")).endswith("_path")]
+    paths = [
+        s for s in walk(json.loads(spec.read_text())) if str(s.get("attr", "")).endswith("_path")
+    ]
     assert paths, "no *_path control found"
-    assert all(s.get("kind") == "str" for s in paths), [s["attr"] for s in paths if s.get("kind") != "str"]
+    assert all(s.get("kind") == "str" for s in paths), [
+        s["attr"] for s in paths if s.get("kind") != "str"
+    ]

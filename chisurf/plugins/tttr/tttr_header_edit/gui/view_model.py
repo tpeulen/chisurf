@@ -187,8 +187,12 @@ class HeaderEditorViewModel:
             n = int(tttr.n_valid_events) or int(tttr.n_records_in_file)
             k = min(n, self._PHOTON_ROWS)
             self.photon_rows = [
-                {"i": i + 1, "rch": str(int(rch[i])),
-                 "macro": f"{int(mt[i]):,}", "micro": str(int(ut[i]))}
+                {
+                    "i": i + 1,
+                    "rch": str(int(rch[i])),
+                    "macro": f"{int(mt[i]):,}",
+                    "micro": str(int(ut[i])),
+                }
                 for i in range(k)
             ]
             used = sorted(int(c) for c in tttr.get_used_routing_channels())

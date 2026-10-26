@@ -42,4 +42,3 @@ def test_the_linear_region_is_detected_inside_the_decay(example):
     micro, lut = example
     assert len(micro) > 100_000
     assert 0 < int(lut["linear_start"]) < int(lut["linear_stop"]) <= 4096
-

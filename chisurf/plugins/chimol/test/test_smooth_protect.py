@@ -258,10 +258,12 @@ def test_the_wrong_shape_is_refused():
 # protect / deprotect, through the commands that must honour them
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def session():
     pytest.importorskip("chisurf.core.structure")
     from native_window import NativeWindow
+
     win = NativeWindow()
     shared = win.cmd
     win.resize(900, 650)

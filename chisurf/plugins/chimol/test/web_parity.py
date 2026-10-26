@@ -76,7 +76,10 @@ _PLUGIN_DIR = pathlib.Path(__file__).resolve().parents[1]
 def _demo_pdb() -> str:
     """The structure both halves open, so they compare the same molecule."""
     return str(
-        pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent / "data" / "demos" / "148l.pdb"
+        pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent
+        / "data"
+        / "demos"
+        / "148l.pdb"
     )
 
 

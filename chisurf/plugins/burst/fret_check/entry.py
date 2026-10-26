@@ -4,6 +4,7 @@ The desktop plugin runs the analysis inline (the sync runner): no Web Worker
 inside ChiSurf. The RPC methods are the job JSON schemas from the app -- one
 API for the plugin, the RPC and the page.
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable

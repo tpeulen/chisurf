@@ -39,11 +39,11 @@ _FRAGMENT = (
 )
 
 
-
 @pytest.fixture
 def session():
     pytest.importorskip("chisurf.core.structure")
     from native_window import NativeWindow
+
     win = NativeWindow()
     shared = win.cmd
     win.resize(900, 650)

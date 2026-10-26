@@ -36,7 +36,6 @@ _N_POLYMER = 30  # six alanines, five atoms each
 _N_TOTAL = _N_POLYMER + 1 + _N_WATERS  # + the zinc
 
 
-
 @pytest.fixture
 def session():
     """Build a viewer with the solvated fragment loaded, plus a command runner."""

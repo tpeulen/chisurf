@@ -195,7 +195,9 @@ def test_a_scan_lists_its_markers_coloured_and_filterable():
     app = loaded(SCAN)
     m = app.model
     assert m.table.n_markers > 0
-    assert m.summary_text.startswith(f"{m.table.n_photons:,} photons + {m.table.n_markers:,} markers")
+    assert m.summary_text.startswith(
+        f"{m.table.n_photons:,} photons + {m.table.n_markers:,} markers"
+    )
     assert m.kinds_text.startswith("Records: photon ") and "line start" in m.kinds_text
     values = [v for v, _ in m.kind_labels()]
     assert values[:3] == ["all", "photon", "markers"]
@@ -211,7 +213,15 @@ def test_a_scan_lists_its_markers_coloured_and_filterable():
     for label in ("pixel", "line start", "line stop", "frame", "other marker"):
         assert label in kind.background and label in colours
     assert "photon" not in kind.background  # photons keep the plain row
-    assert len({kind.background[k] for k in ("pixel", "line start", "line stop", "frame", "other marker")}) == 5
+    assert (
+        len(
+            {
+                kind.background[k]
+                for k in ("pixel", "line start", "line stop", "frame", "other marker")
+            }
+        )
+        == 5
+    )
 
 
 # ── 2. every action ─────────────────────────────────────────────────────

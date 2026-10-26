@@ -275,9 +275,7 @@ def _read_with_imp_bff(path):
         )
     # Every atom IMP's default selector keeps, every residue (ligands too),
     # and the radius as IMP gives the particle -- R_min, not the zero-crossing.
-    table = parse(
-        path, keep_water=False, only_standard_residues=False, radius_no_interaction=False
-    )
+    table = parse(path, keep_water=False, only_standard_residues=False, radius_no_interaction=False)
     n = int(table.n_atoms)
     atoms = np.zeros(n, dtype={"names": keys, "formats": formats})
     if n == 0:

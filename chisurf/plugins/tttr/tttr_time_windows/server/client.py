@@ -28,7 +28,9 @@ class TimeWindowClient:
         timeout_ms : int, default=5000
             Request timeout in milliseconds.
         """
-        from chisurf.server.transport.zmq import ZmqClient  # noqa: PLC0415 - lazy: pyzmq is optional
+        from chisurf.server.transport.zmq import (
+            ZmqClient,  # noqa: PLC0415 - lazy: pyzmq is optional
+        )
 
         self._client = ZmqClient(
             cmd_port=cmd_port,

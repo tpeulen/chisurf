@@ -37,9 +37,7 @@ def _synthetic(spectrum: list[float], seed: int, peak: float = 20000.0):
     irf = np.exp(-0.5 * ((channels - 60.0) / 4.0) ** 2)
     irf /= irf.sum()
     model = np.zeros(n_channels)
-    convolve_lifetime_spectrum(
-        model, np.asarray(spectrum, dtype=float), irf, time_axis=time
-    )
+    convolve_lifetime_spectrum(model, np.asarray(spectrum, dtype=float), irf, time_axis=time)
     model = model / model.max() * peak
     counts = np.random.default_rng(seed).poisson(model).astype(np.float64)
     return counts, irf, time

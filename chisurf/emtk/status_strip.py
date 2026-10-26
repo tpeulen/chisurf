@@ -207,7 +207,9 @@ class StatusStrip:
             return self._message
 
     # -- operations ---------------------------------------------------------- #
-    def begin_task(self, message: str, maximum: int = 0, cancel: Callable | None = None) -> StripTask:
+    def begin_task(
+        self, message: str, maximum: int = 0, cancel: Callable | None = None
+    ) -> StripTask:
         """Start showing an operation; returns its handle. The newest one is shown."""
         task = StripTask(self, message, maximum, cancel)
         self._tasks.append(task)

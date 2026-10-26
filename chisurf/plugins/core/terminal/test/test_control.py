@@ -117,8 +117,12 @@ def test_typing_writes_utf8_to_the_session():
 def test_arrow_keys_encode_vt_sequences():
     session, control, driver = make()
     driver.click((10, 10))
-    for key, escape in ((KEY_UP, b"\x1b[A"), (KEY_DOWN, b"\x1b[B"),
-                        (KEY_RIGHT, b"\x1b[C"), (KEY_LEFT, b"\x1b[D")):
+    for key, escape in (
+        (KEY_UP, b"\x1b[A"),
+        (KEY_DOWN, b"\x1b[B"),
+        (KEY_RIGHT, b"\x1b[C"),
+        (KEY_LEFT, b"\x1b[D"),
+    ):
         driver.press(key)
         assert typed(session).endswith(escape)
 
@@ -188,12 +192,11 @@ def test_selection_drag_takes_the_pointer_path():
 
     glyph, line, pad = control._glyph_w, control._line_h, control._pad_x
     surface = driver.surface
-    surface.on_pointer_press(pad + 0.5 * glyph, control._pad_y + 0.5 * line,
-                             LEFT_BUTTON, 0)
-    surface.on_pointer_move(pad + 6.5 * glyph, control._pad_y + 0.5 * line,
-                            LEFT_BUTTON, 0)  # buttons held: a drag
-    surface.on_pointer_release(pad + 6.5 * glyph, control._pad_y + 0.5 * line,
-                               LEFT_BUTTON, 0)
+    surface.on_pointer_press(pad + 0.5 * glyph, control._pad_y + 0.5 * line, LEFT_BUTTON, 0)
+    surface.on_pointer_move(
+        pad + 6.5 * glyph, control._pad_y + 0.5 * line, LEFT_BUTTON, 0
+    )  # buttons held: a drag
+    surface.on_pointer_release(pad + 6.5 * glyph, control._pad_y + 0.5 * line, LEFT_BUTTON, 0)
     driver.draw(1)
     assert control.copy_selection() == "alpha b"
 

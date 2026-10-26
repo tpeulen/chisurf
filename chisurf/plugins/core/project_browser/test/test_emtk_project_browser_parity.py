@@ -153,6 +153,7 @@ def _normalised_rows(projects, owner):
     -------
     list of dict
     """
+
     def who(user):
         return "<user>" if user == owner else user
 

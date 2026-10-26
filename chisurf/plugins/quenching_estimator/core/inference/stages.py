@@ -111,8 +111,9 @@ class TableFiles:
 
     def __init__(self, files, settings_=None):
         self.settings = settings_ or _site_table.settings()
-        self.files = {(str(k[0]), int(k[1]), round(float(k[2]), 6)): Path(v)
-                      for k, v in files.items()}
+        self.files = {
+            (str(k[0]), int(k[1]), round(float(k[2]), 6)): Path(v) for k, v in files.items()
+        }
         self._sites = {}
 
     def site(self, state, site, linker_length):
@@ -228,8 +229,9 @@ class AnalysisData:
         list of (Site, float)
         """
         length = float(self.site_settings["linker_lengths"][dye])
-        return [(self.library.site(str(r["state"]), int(r["site"]), length), float(water))
-                for r in rows]
+        return [
+            (self.library.site(str(r["state"]), int(r["site"]), length), float(water)) for r in rows
+        ]
 
 
 def load_analysis_data(folder=None, library=None, structures=None, cache_dir=None):
@@ -256,11 +258,16 @@ def load_analysis_data(folder=None, library=None, structures=None, cache_dir=Non
     errors = _lifetime_errors.analyse_lifetimes(m.lifetimes, m.titration_summary)
     site_settings = _site_table.settings()
     if library is None:
-        library = _site_model.SiteLibrary(structures=structures, settings_=site_settings,
-                                          cache_dir=cache_dir)
+        library = _site_model.SiteLibrary(
+            structures=structures, settings_=site_settings, cache_dir=cache_dir
+        )
     return AnalysisData(
-        measurements=m, per_day=per_day, posterior=posterior, errors=errors,
-        context=_gf.TitrationContext.from_posterior(posterior), library=library,
+        measurements=m,
+        per_day=per_day,
+        posterior=posterior,
+        errors=errors,
+        context=_gf.TitrationContext.from_posterior(posterior),
+        library=library,
         site_settings=site_settings,
     )
 
@@ -356,15 +363,19 @@ class AnalysisResult:
         out = dict(preset=self.preset, stages={}, graphs={})
         for name, r in self.stages.items():
             out["stages"][name] = dict(
-                title=r.title, numbers=_jsonable(r.numbers), text=r.text,
+                title=r.title,
+                numbers=_jsonable(r.numbers),
+                text=r.text,
                 tables={k: table_rows(t) for k, t in r.tables.items()},
             )
         for name, g in self.graphs.items():
             s = dict(g.structure or {})
             s.pop("factor_graph", None)
             out["graphs"][name] = dict(
-                blocks=[v.label for v in g.views], n_parameters=g.graph.n_parameters,
-                n_slopes=len(g.graph.k_keys), structure=_jsonable(s),
+                blocks=[v.label for v in g.views],
+                n_parameters=g.graph.n_parameters,
+                n_slopes=len(g.graph.k_keys),
+                structure=_jsonable(s),
             )
         return out
 
@@ -391,8 +402,9 @@ class AnalysisResult:
         path.write_text(json.dumps(self.to_dict(), indent=1), encoding="utf-8")
         written.append(path)
         path = folder / "report.md"
-        path.write_text("\n\n".join(f"## {r.title}\n\n{r.text}" for r in self.stages.values()),
-                        encoding="utf-8")
+        path.write_text(
+            "\n\n".join(f"## {r.title}\n\n{r.text}" for r in self.stages.values()), encoding="utf-8"
+        )
         written.append(path)
         return written
 
@@ -408,8 +420,10 @@ def table_rows(table):
     -------
     list of dict
     """
-    return [{n: _jsonable(r[n].item() if hasattr(r[n], "item") else r[n])
-             for n in table.dtype.names} for r in table]
+    return [
+        {n: _jsonable(r[n].item() if hasattr(r[n], "item") else r[n]) for n in table.dtype.names}
+        for r in table
+    ]
 
 
 def write_csv(table, path):
@@ -424,8 +438,9 @@ def write_csv(table, path):
         w = csv.writer(fh)
         w.writerow(table.dtype.names)
         for r in table:
-            w.writerow([repr(float(v)) if isinstance(v, (float, np.floating)) else v
-                        for v in r.tolist()])
+            w.writerow(
+                [repr(float(v)) if isinstance(v, (float, np.floating)) else v for v in r.tolist()]
+            )
 
 
 def _jsonable(value):
@@ -491,19 +506,31 @@ class Analysis:
         Everything run so far.
     """
 
-    def __init__(self, data=None, preset=None, fit_overrides=None, workers=None, profile=True,
-                 sampler_check=None, stage_path=STAGES):
+    def __init__(
+        self,
+        data=None,
+        preset=None,
+        fit_overrides=None,
+        workers=None,
+        profile=True,
+        sampler_check=None,
+        stage_path=STAGES,
+    ):
         self.data = data if data is not None else load_analysis_data()
         self.preset = preset
         self.fit_settings = _gf.settings(preset, fit_overrides)
         self.workers = workers
         self.profile = bool(profile)
-        self.sampler_check = _sampler_check.resolve(sampler_check,
-                                                    self.fit_settings.get("sampler_check"))
+        self.sampler_check = _sampler_check.resolve(
+            sampler_check, self.fit_settings.get("sampler_check")
+        )
         self.declaration = stage_settings(stage_path)
         groups = list(self.data.site_settings["groups"])
-        declared = [p.label[2:] for p in _gf.parameter_specs(self.fit_settings)
-                    if p.label.startswith("s_") and p.label != "s_common"]
+        declared = [
+            p.label[2:]
+            for p in _gf.parameter_specs(self.fit_settings)
+            if p.label.startswith("s_") and p.label != "s_common"
+        ]
         if declared != groups:
             raise ValueError(f"fit parameters declare groups {declared}, site model {groups}")
         self.groups = groups
@@ -544,8 +571,11 @@ class Analysis:
             _gf._check(cancel)
             self.data.library.site(*key)
             if progress:
-                progress(k + 1, len(keys), f"site table {key[0]} {key[1]} L {key[2]:g} "
-                                           f"({k + 1}/{len(keys)})")
+                progress(
+                    k + 1,
+                    len(keys),
+                    f"site table {key[0]} {key[1]} L {key[2]:g} ({k + 1}/{len(keys)})",
+                )
         out = []
         for entry in spec["blocks"]:
             dye = entry["dye"]
@@ -556,9 +586,16 @@ class Analysis:
                 parts.append(rows)
                 points += self.data.points(dye, rows, self.data.water_rate(water.get(solvent)))
             rows = np.concatenate(parts) if len(parts) > 1 else parts[0]
-            block = _gf.Block(entry["label"], dye, rows, points,
-                              self.data.tau0(dye, entry["tau0"]), self.data.context,
-                              self.fit_settings, self.groups)
+            block = _gf.Block(
+                entry["label"],
+                dye,
+                rows,
+                points,
+                self.data.tau0(dye, entry["tau0"]),
+                self.data.context,
+                self.fit_settings,
+                self.groups,
+            )
             if self.fit_settings.get("use_declared_starts", True):
                 for start in entry.get("starts") or []:
                     block.add_start(start)
@@ -593,8 +630,13 @@ class Analysis:
 
             blocks = self.blocks(name, progress=loading, cancel=cancel)
             self.result.graphs[name] = _gf.fit_graph(
-                blocks, fit_settings=self.fit_settings, workers=self.workers,
-                progress=fitting, cancel=cancel, name=name, titrated=self.data.titrated,
+                blocks,
+                fit_settings=self.fit_settings,
+                workers=self.workers,
+                progress=fitting,
+                cancel=cancel,
+                name=name,
+                titrated=self.data.titrated,
             )
         return self.result.graphs[name]
 
@@ -625,12 +667,16 @@ class Analysis:
             _gf.adopt(block, values[block.label], self.fit_settings)
         graph = _gf.Graph(blocks, self.fit_settings)
         v = [slopes[key] if b is None else blocks[b].best_x[i] for b, key, i in graph.layout]
-        _gf.joint_fit(graph, workers=self.workers, cancel=cancel, start=graph.to_u(np.array(v)),
-                      minpack=False)
+        _gf.joint_fit(
+            graph, workers=self.workers, cancel=cancel, start=graph.to_u(np.array(v)), minpack=False
+        )
         self.result.graphs[name] = _gf.GraphResult(
-            name=name, graph=graph, views=_gf.block_views(graph, name),
+            name=name,
+            graph=graph,
+            views=_gf.block_views(graph, name),
             k_table=_gf.k_table(graph, name),
-            structure=_gf.describe_graph(graph, self.data.titrated))
+            structure=_gf.describe_graph(graph, self.data.titrated),
+        )
         if progress:
             progress(1.0, f"{name} replayed")
         return self.result.graphs[name]
@@ -659,8 +705,13 @@ class Analysis:
             if block.label in values:
                 _gf.adopt(block, values[block.label], self.fit_settings)
         self.result.graphs[name] = _gf.fit_graph(
-            blocks, fit_settings=self.fit_settings, workers=self.workers, progress=progress,
-            cancel=cancel, name=name, titrated=self.data.titrated,
+            blocks,
+            fit_settings=self.fit_settings,
+            workers=self.workers,
+            progress=progress,
+            cancel=cancel,
+            name=name,
+            titrated=self.data.titrated,
         )
         return self.result.graphs[name]
 
@@ -682,8 +733,9 @@ class Analysis:
         key = (graph_name, label)
         if key not in self._profiles:
             view = self.graph(graph_name).view(label)
-            self._profiles[key] = _gf.profile_likelihood(view, "ln_scale", cancel=cancel,
-                                                         progress=progress, workers=self.workers)
+            self._profiles[key] = _gf.profile_likelihood(
+                view, "ln_scale", cancel=cancel, progress=progress, workers=self.workers
+            )
         return self._profiles[key]
 
     def sampler_check_of(self, graph_name, label, progress=None, cancel=None):
@@ -705,16 +757,24 @@ class Analysis:
             :func:`sampler_check.sampler_check`.
         """
         if self.sampler_check is None:
-            raise ValueError("the sampler check is off (enable it with sampler_check=True, "
-                             "a dict of options, or the declared sampler_check setting)")
+            raise ValueError(
+                "the sampler check is off (enable it with sampler_check=True, "
+                "a dict of options, or the declared sampler_check setting)"
+            )
         key = (graph_name, label)
         if key not in self._sampler_checks:
             view = self.graph(graph_name).view(label)
             o = self.sampler_check
             self._sampler_checks[key] = _sampler_check.sampler_check(
-                view, steps=o.get("steps"), runs=o.get("runs"), walkers=o.get("walkers"),
-                start_spread=o.get("start_spread"), first_seed=o.get("first_seed"),
-                cancel=cancel, progress=progress)
+                view,
+                steps=o.get("steps"),
+                runs=o.get("runs"),
+                walkers=o.get("walkers"),
+                start_spread=o.get("start_spread"),
+                first_seed=o.get("first_seed"),
+                cancel=cancel,
+                progress=progress,
+            )
         return self._sampler_checks[key]
 
     # ---- running
@@ -749,8 +809,9 @@ class Analysis:
                     key = (graph, label)
                     if key not in self._sampler_checks and ("sampler", key) not in seen:
                         seen.add(("sampler", key))
-                        steps.append(("sampler", key,
-                                      float(weights.get("sampler_check", weights["other"]))))
+                        steps.append(
+                            ("sampler", key, float(weights.get("sampler_check", weights["other"])))
+                        )
 
         def need(name):
             spec = stages[name]
@@ -763,8 +824,7 @@ class Analysis:
                 other = spec["compare_scale"]["with"]
                 need_graph(other["graph"], [other["block"]])
             if spec.get("graph"):
-                need_graph(spec["graph"], spec.get("profile", []),
-                           spec.get("sampler_check", []))
+                need_graph(spec["graph"], spec.get("profile", []), spec.get("sampler_check", []))
             if name not in self.result.stages and ("stage", name) not in seen:
                 seen.add(("stage", name))
                 steps.append(("stage", name, float(weights["other"])))
@@ -805,8 +865,11 @@ class Analysis:
         also carries ``sampler_check:<label>`` (``rows``, ``n_samples``, ``acceptance``,
         ``verdict``) and the comparison in ``numbers`` and ``text``.
         """
-        names = self.declaration["order"] if stages == "all" else (
-            [stages] if isinstance(stages, str) else list(stages))
+        names = (
+            self.declaration["order"]
+            if stages == "all"
+            else ([stages] if isinstance(stages, str) else list(stages))
+        )
         for name in names:
             if name not in self.declaration["stages"]:
                 raise KeyError(f"no stage {name!r}; declared {self.declaration['order']}")
@@ -823,11 +886,13 @@ class Analysis:
             if kind == "graph":
                 self.graph(what, progress=lambda f, m, w=weight: say(f, m, w), cancel=cancel)
             elif kind == "profile":
-                self.profile_of(*what, cancel=cancel,
-                                progress=lambda d, t, m, w=weight: say(d / t, m, w))
+                self.profile_of(
+                    *what, cancel=cancel, progress=lambda d, t, m, w=weight: say(d / t, m, w)
+                )
             elif kind == "sampler":
-                self.sampler_check_of(*what, cancel=cancel,
-                                      progress=lambda d, t, m, w=weight: say(d / t, m, w))
+                self.sampler_check_of(
+                    *what, cancel=cancel, progress=lambda d, t, m, w=weight: say(d / t, m, w)
+                )
             else:
                 self.result.stages[what] = self._stage(what)
             done += weight
@@ -886,48 +951,94 @@ class Analysis:
         for v in views:
             samples = _gf.laplace_samples(v)
             laplace = _gf.sample_summary(samples)
-            intervals.append(dict(graph=g.name, block=v.label, parameter="scale",
-                                  method="laplace", value=laplace["median"],
-                                  low_68=laplace["low"], high_68=laplace["high"]))
+            intervals.append(
+                dict(
+                    graph=g.name,
+                    block=v.label,
+                    parameter="scale",
+                    method="laplace",
+                    value=laplace["median"],
+                    low_68=laplace["low"],
+                    high_68=laplace["high"],
+                )
+            )
             prof = None
             if self.profile and v.label in spec.get("profile", []):
                 prof = self.profile_of(g.name, v.label)
-                intervals.append(dict(graph=g.name, block=v.label, parameter="scale",
-                                      method="profile", value=prof["best"], low_68=prof["low"],
-                                      high_68=prof["high"]))
-                profile_rows += [dict(graph=g.name, block=v.label, parameter="scale",
-                                      value=float(x), deviance=float(d))
-                                 for x, d in zip(prof["values"], prof["deviance"])]
+                intervals.append(
+                    dict(
+                        graph=g.name,
+                        block=v.label,
+                        parameter="scale",
+                        method="profile",
+                        value=prof["best"],
+                        low_68=prof["low"],
+                        high_68=prof["high"],
+                    )
+                )
+                profile_rows += [
+                    dict(
+                        graph=g.name,
+                        block=v.label,
+                        parameter="scale",
+                        value=float(x),
+                        deviance=float(d),
+                    )
+                    for x, d in zip(prof["values"], prof["deviance"])
+                ]
             t = v.table
             plots[f"parity:{v.label}"] = dict(
-                measured=t["tau_x"].tolist(), predicted=t["tau_pred"].tolist(),
-                sigma_total=t["sigma_total"].tolist(), pred_sd=t["pred_sd"].tolist(),
-                state=t["state"].tolist(), site=t["site"].tolist(),
-                solvent=t["solvent"].tolist(), outlier=t["outlier"].tolist(),
-                tau0={s: self.data.tau0(v.dye, s) for s in sorted(set(t["solvent"].tolist()))
-                      if (v.dye, s) in self.data.errors.tau0},
+                measured=t["tau_x"].tolist(),
+                predicted=t["tau_pred"].tolist(),
+                sigma_total=t["sigma_total"].tolist(),
+                pred_sd=t["pred_sd"].tolist(),
+                state=t["state"].tolist(),
+                site=t["site"].tolist(),
+                solvent=t["solvent"].tolist(),
+                outlier=t["outlier"].tolist(),
+                tau0={
+                    s: self.data.tau0(v.dye, s)
+                    for s in sorted(set(t["solvent"].tolist()))
+                    if (v.dye, s) in self.data.errors.tau0
+                },
             )
             plots[f"estimates:{v.label}"] = table_rows(v.estimates)
-            plots[f"loo:{v.label}"] = dict(site=[s for s, _ in v.worst],
-                                           max_abs_z=[z for _, z in v.worst],
-                                           limit=float(self.fit_settings["outlier_limit"]))
+            plots[f"loo:{v.label}"] = dict(
+                site=[s for s, _ in v.worst],
+                max_abs_z=[z for _, z in v.worst],
+                limit=float(self.fit_settings["outlier_limit"]),
+            )
             plots[f"profile:{v.label}"] = dict(
-                laplace=samples.tolist(), laplace_summary=laplace,
-                profile=None if prof is None else dict(
+                laplace=samples.tolist(),
+                laplace_summary=laplace,
+                profile=None
+                if prof is None
+                else dict(
                     values=np.asarray(prof["values"]).tolist(),
                     deviance=np.asarray(prof["deviance"]).tolist(),
-                    best=prof["best"], low=prof["low"], high=prof["high"]),
+                    best=prof["best"],
+                    low=prof["low"],
+                    high=prof["high"],
+                ),
             )
             numbers["blocks"][v.label] = dict(
-                dye=v.dye, model_error=v.model_error, stats=v.stats,
+                dye=v.dye,
+                model_error=v.model_error,
+                stats=v.stats,
                 worst=[[int(s), float(z)] for s, z in v.worst],
-                estimates={r["parameter"]: dict(value=float(r["value"]),
-                                                low=float(r["low_68"]),
-                                                high=float(r["high_68"]), note=str(r["note"]))
-                           for r in v.estimates},
+                estimates={
+                    r["parameter"]: dict(
+                        value=float(r["value"]),
+                        low=float(r["low_68"]),
+                        high=float(r["high_68"]),
+                        note=str(r["note"]),
+                    )
+                    for r in v.estimates
+                },
                 scale_laplace=laplace,
-                scale_profile=None if prof is None else dict(best=prof["best"], low=prof["low"],
-                                                             high=prof["high"]),
+                scale_profile=None
+                if prof is None
+                else dict(best=prof["best"], low=prof["low"], high=prof["high"]),
             )
         tables["intervals"] = _gf.make_result_table("interval_summary", intervals)
         if profile_rows:
@@ -937,8 +1048,9 @@ class Analysis:
             s = dict(g.structure)
             s.pop("factor_graph", None)
             numbers["graph_structure"] = s
-        numbers["graph_size"] = dict(blocks=len(g.views), parameters=g.graph.n_parameters,
-                                     slopes=len(g.graph.k_keys))
+        numbers["graph_size"] = dict(
+            blocks=len(g.views), parameters=g.graph.n_parameters, slopes=len(g.graph.k_keys)
+        )
         text = [_report.explain(v, self.groups) for v in views]
         if "water_access" in spec:
             access, extra = self._water_access(g, spec["water_access"])
@@ -952,7 +1064,7 @@ class Analysis:
             numbers["exposure"] = table_rows(exposure)
             plots["exposure"] = hist
         for v in views:
-            if (v.label in spec.get("profile", []) and self.profile):
+            if v.label in spec.get("profile", []) and self.profile:
                 text.append(_report.profile_text(v.label, numbers["blocks"][v.label]))
         check_labels = spec.get("sampler_check", [])
         if self.sampler_check is not None and check_labels:
@@ -964,8 +1076,11 @@ class Analysis:
                 numbers["sampler_check"][v.label] = check
                 numbers["blocks"][v.label]["sampler_check"] = check
                 plots[f"sampler_check:{v.label}"] = dict(
-                    rows=check["parameters"], n_samples=check["n_samples"],
-                    acceptance=check["acceptance"], verdict=check["verdict"])
+                    rows=check["parameters"],
+                    n_samples=check["n_samples"],
+                    acceptance=check["acceptance"],
+                    verdict=check["verdict"],
+                )
                 text.append(_sampler_check.text(check))
         if "compare_scale" in spec:
             cmp = spec["compare_scale"]
@@ -973,20 +1088,37 @@ class Analysis:
             here = numbers["blocks"][cmp["block"]]
             there = _gf.sample_summary(_gf.laplace_samples(other))
             comparison = dict(laplace=dict(first=there, second=here["scale_laplace"]))
-            text.append("Laplace: " + _report.compare_profiles(
-                there, here["scale_laplace"], (other.label, cmp["block"])))
+            text.append(
+                "Laplace: "
+                + _report.compare_profiles(
+                    there, here["scale_laplace"], (other.label, cmp["block"])
+                )
+            )
             key = (cmp["with"]["graph"], cmp["with"]["block"])
             if self.profile and here.get("scale_profile") and key in self._profiles:
                 p = self._profiles[key]
-                comparison["profile"] = dict(first=dict(low=p["low"], high=p["high"]),
-                                             second=here["scale_profile"])
-                text.append("Profile likelihood: " + _report.compare_profiles(
-                    comparison["profile"]["first"], here["scale_profile"],
-                    (other.label, cmp["block"])))
+                comparison["profile"] = dict(
+                    first=dict(low=p["low"], high=p["high"]), second=here["scale_profile"]
+                )
+                text.append(
+                    "Profile likelihood: "
+                    + _report.compare_profiles(
+                        comparison["profile"]["first"],
+                        here["scale_profile"],
+                        (other.label, cmp["block"]),
+                    )
+                )
             numbers["compare_scale"] = comparison
             plots["profiles"] = {other.label: there, cmp["block"]: here["scale_laplace"]}
-        return StageResult(name=name, title=spec["title"], views=views, tables=tables,
-                           plots=plots, numbers=_jsonable(numbers), text="\n\n".join(text))
+        return StageResult(
+            name=name,
+            title=spec["title"],
+            views=views,
+            tables=tables,
+            plots=plots,
+            numbers=_jsonable(numbers),
+            text="\n\n".join(text),
+        )
 
     def _water_access(self, g, spec):
         """Measured against model water access per site (Stage C).
@@ -1008,8 +1140,11 @@ class Analysis:
         h2o = np.flatnonzero(solvent == "H2O")
         pairs = []
         for j_h in h2o:
-            match = [j for j in d2o if rows["site"][j] == rows["site"][j_h]
-                     and rows["state"][j] == rows["state"][j_h]]
+            match = [
+                j
+                for j in d2o
+                if rows["site"][j] == rows["site"][j_h] and rows["state"][j] == rows["state"][j_h]
+            ]
             if match:
                 pairs.append((int(j_h), int(match[0])))
         kqw = float(self.data.errors.kqw_free)
@@ -1025,9 +1160,16 @@ class Analysis:
         for (j_h, _), m, e in zip(pairs, model, model_err):
             key = (int(rows["site"][j_h]), str(rows["state"][j_h]))
             r = measured[key]
-            out.append(dict(site=key[0], state=key[1], measured=float(r["measured"]),
-                            measured_err=float(r["measured_err"]), model=float(m),
-                            model_err=float(e)))
+            out.append(
+                dict(
+                    site=key[0],
+                    state=key[1],
+                    measured=float(r["measured"]),
+                    measured_err=float(r["measured_err"]),
+                    model=float(m),
+                    model_err=float(e),
+                )
+            )
         table = _gf.make_result_table("water_access_model", out)
         without = [int(s) for s in spec.get("also_without", [])]
         keep = ~np.isin(table["site"], without)
@@ -1053,16 +1195,31 @@ class Analysis:
         tau0 = self.data.tau0(view.dye, spec["solvent"])
         out, hist = [], {}
         for site in spec["sites"]:
-            j = [k for k in range(len(rows)) if int(rows["site"][k]) == int(site)
-                 and str(rows["state"][k]) == spec["state"]
-                 and str(rows["solvent"][k]) == spec["solvent"]][0]
+            j = [
+                k
+                for k in range(len(rows))
+                if int(rows["site"][k]) == int(site)
+                and str(rows["state"][k]) == spec["state"]
+                and str(rows["solvent"][k]) == spec["solvent"]
+            ][0]
             here = view.block.points[j][0]
             e = here.exposure_profile(view.theta, tau0)
-            out.append(dict(site=int(site), state=spec["state"], reachable=e["reachable"],
-                            visible=e["visible"], dark_fraction=e["dark_fraction"]))
-            hist[str(site)] = dict(exposure=e["exposure"].tolist(), weight=e["weight"].tolist(),
-                                   visible=e["visible"], reachable=e["reachable"],
-                                   dark_fraction=e["dark_fraction"])
+            out.append(
+                dict(
+                    site=int(site),
+                    state=spec["state"],
+                    reachable=e["reachable"],
+                    visible=e["visible"],
+                    dark_fraction=e["dark_fraction"],
+                )
+            )
+            hist[str(site)] = dict(
+                exposure=e["exposure"].tolist(),
+                weight=e["weight"].tolist(),
+                visible=e["visible"],
+                reachable=e["reachable"],
+                dark_fraction=e["dark_fraction"],
+            )
         return _site_model.exposure_table(out), hist
 
     def _transfer_stage(self, name, spec):
@@ -1085,32 +1242,63 @@ class Analysis:
         points = self.data.points(dye, rows)
         tau0 = self.data.tau0(dye, spec["tau0"])
         value, error = _gf.propagate(
-            view, lambda th: [site.lifetime(th, tau0)[0] for site, _ in points])
+            view, lambda th: [site.lifetime(th, tau0)[0] for site, _ in points]
+        )
         tau_x = np.asarray(rows["tau_x"], float)
         label = f"{dye} in {solvent} from {view.label}"
-        table = _gf.make_result_table("fit_predictions", [
-            dict(graph=g.name, block=label, dye=dye, solvent=solvent, state=str(r["state"]),
-                 site=int(r["site"]), tau_x=float(r["tau_x"]),
-                 sigma_meas=float(r["sigma_meas"]), sigma_total=float(r["sigma_meas"]),
-                 tau_pred=float(v), pred_sd=float(e), pred_low=float(v - e),
-                 pred_high=float(v + e), dark_fraction=float(site.lifetime(view.theta, tau0)[1]),
-                 loo_z=float("nan"), outlier=False, used=False)
-            for r, v, e, (site, _) in zip(rows, value, error, points)
-        ])
+        table = _gf.make_result_table(
+            "fit_predictions",
+            [
+                dict(
+                    graph=g.name,
+                    block=label,
+                    dye=dye,
+                    solvent=solvent,
+                    state=str(r["state"]),
+                    site=int(r["site"]),
+                    tau_x=float(r["tau_x"]),
+                    sigma_meas=float(r["sigma_meas"]),
+                    sigma_total=float(r["sigma_meas"]),
+                    tau_pred=float(v),
+                    pred_sd=float(e),
+                    pred_low=float(v - e),
+                    pred_high=float(v + e),
+                    dark_fraction=float(site.lifetime(view.theta, tau0)[1]),
+                    loo_z=float("nan"),
+                    outlier=False,
+                    used=False,
+                )
+                for r, v, e, (site, _) in zip(rows, value, error, points)
+            ],
+        )
         numbers = dict(
-            source=view.label, tau0=tau0, n=int(len(rows)),
+            source=view.label,
+            tau0=tau0,
+            n=int(len(rows)),
             median_abs_dev=float(np.median(np.abs(value - tau_x))),
             sites_above_free_tau0=int((tau_x > tau0).sum()),
         )
-        plots = {f"parity:{label}": dict(
-            measured=tau_x.tolist(), predicted=value.tolist(),
-            sigma_total=table["sigma_total"].tolist(), pred_sd=error.tolist(),
-            state=table["state"].tolist(), site=table["site"].tolist(),
-            solvent=table["solvent"].tolist(), outlier=[False] * len(rows),
-            tau0={solvent: tau0})}
-        return StageResult(name=name, title=spec["title"], tables=dict(predictions=table),
-                           plots=plots, numbers=numbers,
-                           text=_report.transfer_text(numbers, dye, solvent))
+        plots = {
+            f"parity:{label}": dict(
+                measured=tau_x.tolist(),
+                predicted=value.tolist(),
+                sigma_total=table["sigma_total"].tolist(),
+                pred_sd=error.tolist(),
+                state=table["state"].tolist(),
+                site=table["site"].tolist(),
+                solvent=table["solvent"].tolist(),
+                outlier=[False] * len(rows),
+                tau0={solvent: tau0},
+            )
+        }
+        return StageResult(
+            name=name,
+            title=spec["title"],
+            tables=dict(predictions=table),
+            plots=plots,
+            numbers=numbers,
+            text=_report.transfer_text(numbers, dye, solvent),
+        )
 
     def _summary_stage(self, name, spec):
         """One line per dye and the estimates of every stage.
@@ -1129,29 +1317,54 @@ class Analysis:
             v = self.result.view(label)
             final[dye] = v
             lines.append(_report.dye_line(v, self.groups))
-        table = _gf.make_result_table("dye_summary", [
-            dict(dye=dye, block=v.label, scale=line["scale"], scale_low=line["scale_low"],
-                 scale_high=line["scale_high"], scale_note=line["scale_note"],
-                 stickiest_group=line["stickiest_group"],
-                 outlier_sites=" ".join(str(s) for s in line["outliers"]))
-            for (dye, v), line in zip(final.items(), lines)
-        ])
-        estimates = np.concatenate([self.result.stages[s].tables["estimates"]
-                                    for s in spec["estimates"]])
+        table = _gf.make_result_table(
+            "dye_summary",
+            [
+                dict(
+                    dye=dye,
+                    block=v.label,
+                    scale=line["scale"],
+                    scale_low=line["scale_low"],
+                    scale_high=line["scale_high"],
+                    scale_note=line["scale_note"],
+                    stickiest_group=line["stickiest_group"],
+                    outlier_sites=" ".join(str(s) for s in line["outliers"]),
+                )
+                for (dye, v), line in zip(final.items(), lines)
+            ],
+        )
+        estimates = np.concatenate(
+            [self.result.stages[s].tables["estimates"] for s in spec["estimates"]]
+        )
         slopes = np.concatenate([self.graph(g).k_table for g in self.result.graphs])
         plots = dict(
             scale={dye: v.estimate("scale") for dye, v in final.items()},
-            stickiness={dye: {g: v.estimate(f"s_{g}") for g in self.groups}
-                        for dye, v in final.items()},
+            stickiness={
+                dye: {g: v.estimate(f"s_{g}") for g in self.groups} for dye, v in final.items()
+            },
         )
-        return StageResult(name=name, title=spec["title"],
-                           tables=dict(dyes=table, estimates=estimates, titration_slopes=slopes),
-                           plots=plots, numbers=dict(dyes=_jsonable(lines)),
-                           text=_report.summary_text(lines))
+        return StageResult(
+            name=name,
+            title=spec["title"],
+            tables=dict(dyes=table, estimates=estimates, titration_slopes=slopes),
+            plots=plots,
+            numbers=dict(dyes=_jsonable(lines)),
+            text=_report.summary_text(lines),
+        )
 
 
-def run_stage(stage, data=None, preset=None, fit_overrides=None, workers=None, progress=None,
-              cancel=None, profile=True, sampler_check=None, analysis=None):
+def run_stage(
+    stage,
+    data=None,
+    preset=None,
+    fit_overrides=None,
+    workers=None,
+    progress=None,
+    cancel=None,
+    profile=True,
+    sampler_check=None,
+    analysis=None,
+):
     """Run one stage (and what it needs) headless.
 
     Parameters
@@ -1180,9 +1393,14 @@ def run_stage(stage, data=None, preset=None, fit_overrides=None, workers=None, p
     -------
     AnalysisResult
     """
-    analysis = analysis or Analysis(data, preset=preset, fit_overrides=fit_overrides,
-                                    workers=workers, profile=profile,
-                                    sampler_check=sampler_check)
+    analysis = analysis or Analysis(
+        data,
+        preset=preset,
+        fit_overrides=fit_overrides,
+        workers=workers,
+        profile=profile,
+        sampler_check=sampler_check,
+    )
     return analysis.run(stage, progress=progress, cancel=cancel)
 
 

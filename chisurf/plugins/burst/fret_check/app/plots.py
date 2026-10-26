@@ -4,6 +4,7 @@
 ``draw_*`` functions put them in the current window with :mod:`emtk.implot`.
 Nothing here keeps state between frames.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -14,8 +15,12 @@ from ..qc import BAD, INFO, OK, WARN
 
 #: Smallest plot height: below it a window scrolls instead of squeezing the plot.
 MIN_PLOT_H = 220.0
-LEVEL_COLOUR = {OK: (0.40, 0.80, 0.45, 1.0), WARN: (0.95, 0.75, 0.25, 1.0), BAD: (0.95, 0.35, 0.30, 1.0),
-                INFO: (0.60, 0.60, 0.60, 1.0)}
+LEVEL_COLOUR = {
+    OK: (0.40, 0.80, 0.45, 1.0),
+    WARN: (0.95, 0.75, 0.25, 1.0),
+    BAD: (0.95, 0.35, 0.30, 1.0),
+    INFO: (0.60, 0.60, 0.60, 1.0),
+}
 #: The time-trace window shows this many seconds at a time.
 TRACE_SPAN_S = 10.0
 
@@ -44,17 +49,24 @@ class Plots:
         self.es = None if st is None else _hist2d(e, st, (60, 60), ((-0.1, 1.1), (-0.1, 1.1)))
         self.s_hist = None if st is None else _hist(st, 50, (-0.1, 1.1))
         size = np.log10(np.maximum(b.size, 1))
-        self.size_hist = _hist(size, 50, (np.log10(max(1, s.min_photons)), max(size.max(initial=1), 2.0)))
+        self.size_hist = _hist(
+            size, 50, (np.log10(max(1, s.min_photons)), max(size.max(initial=1), 2.0))
+        )
         dur = np.log10(np.maximum(b.duration * 1e3, 1e-3))
         self.dur_hist = _hist(dur, 50, (-1.0, max(dur.max(initial=1), 1.0)))
         rate = np.log10(np.maximum(b.count_rate * 1e-3, 1e-3))
         self.rate_hist = _hist(rate, 50, (rate.min(initial=0), rate.max(initial=1) + 1e-6))
-        self.cde = None if b.fret_2cde is None else _hist2d(b.E, np.clip(b.fret_2cde, 0, 100), (50, 50),
-                                                            ((-0.1, 1.1), (0, 100)))
+        self.cde = (
+            None
+            if b.fret_2cde is None
+            else _hist2d(b.E, np.clip(b.fret_2cde, 0, 100), (50, 50), ((-0.1, 1.1), (0, 100)))
+        )
         cols = b.extra
         self.tau = None
         if "Tau (green)" in cols:
-            self.tau = _hist2d(cols["Tau (green)"], e if len(e) == b.n else b.E, (50, 50), ((0, 6), (-0.1, 1.1)))
+            self.tau = _hist2d(
+                cols["Tau (green)"], e if len(e) == b.n else b.E, (50, 50), ((0, 6), (-0.1, 1.1))
+            )
         q = s.qc
         self.trace = (q.trace_t, q.trace_rate)
         # Inter-burst gaps on a log axis, with the fitted Poisson arrivals:
@@ -92,8 +104,15 @@ def heatmap(title, h, xlabel, ylabel, bounds, size) -> None:
         ip.setup_axes(xlabel, ylabel)
         ip.setup_axes_limits(x0, x1, y0, y1)
         rows, cols = h.shape
-        ip.plot_heatmap("bursts", np.log1p(h).ravel(), rows, cols, label_fmt=None,
-                        bounds_min=(x0, y0), bounds_max=(x1, y1))
+        ip.plot_heatmap(
+            "bursts",
+            np.log1p(h).ravel(),
+            rows,
+            cols,
+            label_fmt=None,
+            bounds_min=(x0, y0),
+            bounds_max=(x1, y1),
+        )
         ip.end_plot()
 
 
@@ -106,7 +125,9 @@ def draw_quality(s, p) -> None:
     im.text_colored(LEVEL_COLOUR[q.level], f"Overall: {q.level.upper()}")
     im.same_line()
     e = s.exp
-    im.text_disabled(f"  {e.kind}" + (" · no ALEX/PIE: stoichiometry checks n/a" if e.excitation == "cw" else ""))
+    im.text_disabled(
+        f"  {e.kind}" + (" · no ALEX/PIE: stoichiometry checks n/a" if e.excitation == "cw" else "")
+    )
     for group, title in (("basic", "Basic quality"), ("two-colour", "Two-colour")):
         rows = [c for c in q.checks if c.group == group]
         if not rows:
@@ -172,8 +193,7 @@ def draw_bursts(s, p) -> None:
 
 #: Stream colours of the example trace: donor-detector green, the acceptor
 #: detector under donor excitation yellow, the acceptor-excitation stream red.
-STREAM_COLOUR = {"DD": (40, 160, 60, 255), "DA": (235, 190, 30, 255),
-                 "AA": (210, 55, 45, 255)}
+STREAM_COLOUR = {"DD": (40, 160, 60, 255), "DA": (235, 190, 30, 255), "AA": (210, 55, 45, 255)}
 STREAM_LABEL = {"DD": "DD (green)", "DA": "DA (yellow)", "AA": "AA (red)"}
 
 
@@ -206,12 +226,17 @@ def draw_trace(s, width: float) -> None:
     top = max((float(rates[k][i0:i1].max(initial=1.0)) for k in up), default=1.0)
     bottom = max((float(rates[k][i0:i1].max(initial=1.0)) for k in down), default=1.0)
     _, avail_h = im.get_content_region_avail()
-    if ip.begin_plot("Photon trace (1 ms bins): donor up, acceptor down",
-                     (width, max(avail_h - 8.0, MIN_PLOT_H))):
+    if ip.begin_plot(
+        "Photon trace (1 ms bins): donor up, acceptor down", (width, max(avail_h - 8.0, MIN_PLOT_H))
+    ):
         ip.setup_axes("time (s)", "count rate (kHz)")
-        ip.setup_axes_limits(float(t[0]) if t.size else 0.0, float(t[-1]) if t.size else 1.0,
-                             -bottom * 1.08, top * 1.08,
-                             ip.COND_ALWAYS if hasattr(ip, "COND_ALWAYS") else 1)
+        ip.setup_axes_limits(
+            float(t[0]) if t.size else 0.0,
+            float(t[-1]) if t.size else 1.0,
+            -bottom * 1.08,
+            top * 1.08,
+            ip.COND_ALWAYS if hasattr(ip, "COND_ALWAYS") else 1,
+        )
         spans = s.trace_bursts
         if spans.size and t.size:
             # One band per burst, between the two plot edges: a single polyline
@@ -222,11 +247,13 @@ def draw_trace(s, width: float) -> None:
             for a, b in spans[sel]:
                 ip.plot_shaded("bursts", np.asarray([a, b], float), hi, lo)
         for k in up:
-            ip.plot_line(STREAM_LABEL.get(k, k), t, rates[k][i0:i1],
-                         line_color=STREAM_COLOUR.get(k))
+            ip.plot_line(
+                STREAM_LABEL.get(k, k), t, rates[k][i0:i1], line_color=STREAM_COLOUR.get(k)
+            )
         for k in down:
-            ip.plot_line(STREAM_LABEL.get(k, k), t, -rates[k][i0:i1],
-                         line_color=STREAM_COLOUR.get(k))
+            ip.plot_line(
+                STREAM_LABEL.get(k, k), t, -rates[k][i0:i1], line_color=STREAM_COLOUR.get(k)
+            )
         ip.end_plot()
 
 
@@ -243,8 +270,13 @@ def draw_micro(s, width: float) -> None:
         if hasattr(ip, "setup_axis_scale") and hasattr(ip, "SCALE_LOG10"):
             ip.setup_axis_scale(ip.AXIS_Y1, ip.SCALE_LOG10)
         for c, (edges, counts) in hists.items():
-            role = ("donor" if c in exp.donor_channels else "acceptor" if c in exp.acceptor_channels
-                    else "unassigned")
+            role = (
+                "donor"
+                if c in exp.donor_channels
+                else "acceptor"
+                if c in exp.acceptor_channels
+                else "unassigned"
+            )
             ip.plot_stairs(f"ch {c} ({role})", edges[:-1], np.maximum(counts, 0.5))
         for w in exp.windows:
             ip.plot_inf_lines(f"{w.name} window", np.asarray([w.start, w.stop], float))

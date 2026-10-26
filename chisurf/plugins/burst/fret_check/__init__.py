@@ -8,6 +8,7 @@ ndX hand-off. Works with or without ALEX/PIE; cw two-colour is a full citizen.
 
 Ported from smfret-web (peulen.xyz/smfret) into ChiSurf.
 """
+
 from __future__ import annotations
 
 __version__ = "1.0.0"

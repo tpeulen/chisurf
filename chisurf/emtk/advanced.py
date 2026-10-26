@@ -36,8 +36,11 @@ def draw_toggle(label: str = "Advanced") -> bool:
 
     changed, on = im.checkbox(tr(label), advanced_mode())
     im.set_item_tooltip(
-        tr("Show the rarely needed controls: routing channels, file types, raw "
-           "detector settings. Off, only what an analysis needs is visible.", domain="emtk")
+        tr(
+            "Show the rarely needed controls: routing channels, file types, raw "
+            "detector settings. Off, only what an analysis needs is visible.",
+            domain="emtk",
+        )
     )
     if changed:
         set_advanced_mode(on)

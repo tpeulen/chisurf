@@ -57,8 +57,9 @@ def spawn(
     max_scrollback : int
         Lines kept above the grid.
     """
-    return PtySession(argv, columns=columns, rows=rows, cwd=cwd, env=env,
-                      max_scrollback=max_scrollback)
+    return PtySession(
+        argv, columns=columns, rows=rows, cwd=cwd, env=env, max_scrollback=max_scrollback
+    )
 
 
 class PtySession:

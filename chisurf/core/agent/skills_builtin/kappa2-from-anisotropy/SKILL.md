@@ -60,7 +60,7 @@ A polarised measurement gives two decays, parallel (VV) and perpendicular
 ```python
 import numpy as np
 
-total = vv + 2.0 * G * vh                       # the isotropic sum
+total = vv + 2.0 * G * vh  # the isotropic sum
 r = np.full(total.shape, np.nan)
 signal = total > 0
 r[signal] = (vv[signal] - G * vh[signal]) / total[signal]
@@ -88,8 +88,13 @@ fraction of it** — a few hundred channels, not the whole axis — and weight b
 ```python
 peak = int(np.nanargmax(total))
 window = signal & (np.arange(total.size) > peak) & (total > 0.01 * total[peak])
-popt, _ = curve_fit(model, time[window] - time[peak], r[window],
-                    p0=[0.35, 0.05, 1.0], sigma=1.0 / np.sqrt(total[window]))
+popt, _ = curve_fit(
+    model,
+    time[window] - time[peak],
+    r[window],
+    p0=[0.35, 0.05, 1.0],
+    sigma=1.0 / np.sqrt(total[window]),
+)
 ```
 
 `G` is a property of the detection path, not of the sample. Take it from a
@@ -127,12 +132,12 @@ ChiSurf ships this as a plugin; find it with
 from chisurf.plugins.calculator.kappa2_dist.core.algorithms import compute_kappa2_dist
 
 k2 = compute_kappa2_dist(
-    model_type="cone",        # wobbling-in-a-cone; "diffusion" and "isotropic" also exist
+    model_type="cone",  # wobbling-in-a-cone; "diffusion" and "isotropic" also exist
     r_0=0.38,
-    r_Dinf=0.045,             # from the donor anisotropy fit
-    r_Ainf=0.10,              # from the acceptor anisotropy fit
-    r_ADinf=0.005,            # from the sensitised-emission anisotropy
-    kappa2_true=2.0 / 3.0,    # what the distance you are correcting assumed
+    r_Dinf=0.045,  # from the donor anisotropy fit
+    r_Ainf=0.10,  # from the acceptor anisotropy fit
+    r_ADinf=0.005,  # from the sensitised-emission anisotropy
+    kappa2_true=2.0 / 3.0,  # what the distance you are correcting assumed
 )
 print(k2["k2_mean"], k2["k2_sd"], k2["Rapp_mean"], k2["RappSD"])
 ```
@@ -152,8 +157,8 @@ saving grace: even a factor-of-two error in kappa^2 moves the distance by only
 12 %. Report it as a range:
 
 ```python
-R = 51.0                                   # the distance you fitted assuming 2/3
-low  = R * (np.percentile(k2["k2_values"], 2.5) / (2 / 3)) ** (1 / 6)
+R = 51.0  # the distance you fitted assuming 2/3
+low = R * (np.percentile(k2["k2_values"], 2.5) / (2 / 3)) ** (1 / 6)
 high = R * (np.percentile(k2["k2_values"], 97.5) / (2 / 3)) ** (1 / 6)
 ```
 

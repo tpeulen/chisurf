@@ -230,9 +230,10 @@ def _fixed_cell(widget, child, key):
     lx, ly = form.rects["parameter_rows"][:2]
     px, py = widget.item_rects["reference.parameter_rows"][:2]
     dx, dy = px - lx, py - ly
-    position = next(
-        p for p, index in enumerate(table.order()) if table.value(index, "key") == key
-    ) - table.bar.top
+    position = (
+        next(p for p, index in enumerate(table.order()) if table.value(index, "key") == key)
+        - table.bar.top
+    )
     x, y, _w, _h = table._body_box
     for column, width in zip(table._shown, table._widths):
         if column.key == "fixed":

@@ -136,8 +136,6 @@ def _decoded_channels(params, tmp_path):
     return set(int(c) for c in np.unique(tttr.routing_channels))
 
 
-
-
 @pytest.mark.parametrize(
     "red,yellow,expected",
     [(False, False, {8, 9}), (True, False, {8, 9, 10, 11}), (True, True, set(range(8, 14)))],

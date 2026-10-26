@@ -93,8 +93,8 @@ def test_open_plugin_python_terminal_shows_in_prompt():
         assert pane.kind == "python", f"expected python pane, got {pane.kind!r}"
 
         # The pane's screen must contain the In [ prompt — not >>>.
-        assert "In [" in _pane_text(app), (
-            "expected 'In [' in pane screen; got: " + repr(_pane_text(app)[:200])
+        assert "In [" in _pane_text(app), "expected 'In [' in pane screen; got: " + repr(
+            _pane_text(app)[:200]
         )
     finally:
         if shell is not None:
@@ -199,7 +199,9 @@ def test_python_pane_output_drawn_on_screen():
 
     painter2 = RecordingPainter()
     app.draw(painter2, 0, 0, 800, 600)
-    assert any("computed:" in s for s in painter2.strings), f"'computed:' not found in {painter2.strings}"
+    assert any("computed:" in s for s in painter2.strings), (
+        f"'computed:' not found in {painter2.strings}"
+    )
     assert any("57" in s for s in painter2.strings), f"'57' not found in {painter2.strings}"
 
 
@@ -228,7 +230,6 @@ def test_chisurf_console_dock_is_cmux_python_terminal():
         assert len(shell.console_terminal.workspace.panes) == 2
     finally:
         shell.close()
-
 
 
 def test_a_second_console_dock_pane_has_the_first_panes_names():

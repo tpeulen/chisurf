@@ -43,8 +43,8 @@ BUR = Path(WORKDIR) / "burstwise_All 0.1000#15" / "bi4_bur"
 frames = []
 for path in sorted(BUR.glob("*.bur")):
     table = pd.read_csv(path, sep="\t")
-    table = table[table["Number of Photons"] > 0].copy()   # first row is a zero header
-    table["file"] = path.stem + ".spc"                     # the stream it indexes
+    table = table[table["Number of Photons"] > 0].copy()  # first row is a zero header
+    table["file"] = path.stem + ".spc"  # the stream it indexes
     frames.append(table)
 bursts = pd.concat(frames, ignore_index=True)
 ```

@@ -29,7 +29,7 @@ class _StreamArrays(TypedDict, total=False):
     event_types: np.ndarray
 
 
-logger =logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "generator.view.json"
 

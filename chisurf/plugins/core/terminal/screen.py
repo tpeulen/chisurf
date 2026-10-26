@@ -297,7 +297,9 @@ class TerminalScreen:
         start = 0
         for position, (ch, state) in enumerate(line):
             if position > start and state != line[start][1]:
-                runs.append(Run(start, "".join(c for c, _s in line[start:position]), line[start][1]))
+                runs.append(
+                    Run(start, "".join(c for c, _s in line[start:position]), line[start][1])
+                )
                 start = position
         runs.append(Run(start, "".join(c for c, _s in line[start:]), line[start][1]))
         return runs
@@ -366,7 +368,9 @@ class TerminalScreen:
             elif isinstance(event, _Scroll):
                 self._scroll(event.count)
             elif isinstance(event, _SetScrollRegion):
-                bottom = (self.rows - 1) if event.bottom is None else self._clamp_row(event.bottom - 1)
+                bottom = (
+                    (self.rows - 1) if event.bottom is None else self._clamp_row(event.bottom - 1)
+                )
                 self._top = min(self._clamp_row(event.top - 1), bottom)
                 self._bottom = bottom
                 self._row, self._col = 0, 0  # DECSTBM homes the cursor

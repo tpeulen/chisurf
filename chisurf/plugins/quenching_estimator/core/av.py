@@ -698,7 +698,11 @@ def fret_rate_grid(
         The acceptor's accessible-volume cloud, as for :func:`fret_rate_trace`.
     """
     density = np.asarray(density)
-    if density.ndim != 3 or density.shape[0] != density.shape[1] or density.shape[0] != density.shape[2]:
+    if (
+        density.ndim != 3
+        or density.shape[0] != density.shape[1]
+        or density.shape[0] != density.shape[2]
+    ):
         raise ValueError(f"expected a cubic density grid, got shape {density.shape}")
     ng = density.shape[0]
     origin = np.asarray(x0, dtype=np.float64) - ((ng - 1) // 2) * float(dg)

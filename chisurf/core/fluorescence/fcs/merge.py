@@ -85,7 +85,9 @@ def parse_correlation_folder(folder: pathlib.Path) -> list[dict[str, Any]]:
     return [curve for curve, _path in parse_correlation_folder_with_paths(folder)]
 
 
-def parse_correlation_folder_with_paths(folder: pathlib.Path) -> list[tuple[dict[str, Any], pathlib.Path]]:
+def parse_correlation_folder_with_paths(
+    folder: pathlib.Path,
+) -> list[tuple[dict[str, Any], pathlib.Path]]:
     """``(correlation, path)`` of every readable ``.json.gz`` then ``.cor`` chunk in a folder."""
     folder = pathlib.Path(folder)
     out: list[tuple[dict[str, Any], pathlib.Path]] = []
@@ -157,8 +159,12 @@ def save_mean_correlation(
     np.savetxt(str(filename), c.T, delimiter="\t", fmt="%.5g")
     from .provenance import new_record, write_settings
 
-    record = provenance if provenance is not None else new_record(
-        "unknown", note="Written without the settings that computed it: not reproducible."
+    record = (
+        provenance
+        if provenance is not None
+        else new_record(
+            "unknown", note="Written without the settings that computed it: not reproducible."
+        )
     )
     return write_settings(filename, record)
 

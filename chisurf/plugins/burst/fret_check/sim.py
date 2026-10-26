@@ -18,6 +18,7 @@ How each excitation is made with ``tttrlib.SimEngine``:
   latter are shifted in micro time by the pulse delay and folded back onto
   their detector, so both pulses see the very same molecule.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -77,11 +78,25 @@ def _species(sc: Scenario):
         red = [0.0] * nd + [b_aa * f for f in sa]
         out.append((frac, green, red, max(4.0 * (1 - e), 0.3), 3.0))
     if sc.donor_only > 0:
-        out.append((sc.donor_only, [b * f for f in sd] + [leak * b * f for f in sa], [0.0] * nd + [0.0] * na,
-                    4.0, 3.0))
+        out.append(
+            (
+                sc.donor_only,
+                [b * f for f in sd] + [leak * b * f for f in sa],
+                [0.0] * nd + [0.0] * na,
+                4.0,
+                3.0,
+            )
+        )
     if sc.acceptor_only > 0:
-        out.append((sc.acceptor_only, [0.0] * nd + [direct * b_aa * f for f in sa],
-                    [0.0] * nd + [b_aa * f for f in sa], 3.0, 3.0))
+        out.append(
+            (
+                sc.acceptor_only,
+                [0.0] * nd + [direct * b_aa * f for f in sa],
+                [0.0] * nd + [b_aa * f for f in sa],
+                3.0,
+                3.0,
+            )
+        )
     return out
 
 
@@ -90,23 +105,44 @@ def _config(sc: Scenario, species, alex=False, pie=False):
     total = sum(s[0] for s in species)
     cfg = {
         "settings": {
-            "dt": DT_MS, "n_channels": n, "n_microtime_channels": 4096,
-            "microtime_resolution": sc.laser_period_ns / 4096, "laser_period": sc.laser_period_ns,
-            "max_windows": int(round(sc.duration_s / (DT_MS * 1e-3))), "per_molecule_skip": True,
-            "active_margin": 1.0, "fast_grid_bbox": True,
-            "seed_diffusion": 1000 + sc.seed, "seed_emission": 5000 + sc.seed,
+            "dt": DT_MS,
+            "n_channels": n,
+            "n_microtime_channels": 4096,
+            "microtime_resolution": sc.laser_period_ns / 4096,
+            "laser_period": sc.laser_period_ns,
+            "max_windows": int(round(sc.duration_s / (DT_MS * 1e-3))),
+            "per_molecule_skip": True,
+            "active_margin": 1.0,
+            "fast_grid_bbox": True,
+            "seed_diffusion": 1000 + sc.seed,
+            "seed_emission": 5000 + sc.seed,
         },
         "box": {"xy": 2.0, "z": 4.0},
-        "k_rad": [0, 0, 0, 0], "k_nrad": [0, 0, 0, 0],
+        "k_rad": [0, 0, 0, 0],
+        "k_nrad": [0, 0, 0, 0],
         "background": [sc.background / (2 if pie else 1)] * n,
         "background_decay": {"pattern": [1.0], "dt": sc.laser_period_ns},
         "population": [sc.molecules * s[0] / total for s in species],
         "species": [],
     }
-    grid = {"type": "gaussian3d", "w0": 0.3, "z0": 2.0, "extent_xy": 2.0, "extent_z": 4.0, "spacing": 0.1}
+    grid = {
+        "type": "gaussian3d",
+        "w0": 0.3,
+        "z0": 2.0,
+        "extent_xy": 2.0,
+        "extent_z": 4.0,
+        "spacing": 0.1,
+    }
     for frac, green, red, tau_g, tau_r in species:
-        sp = {"D": 0.05, "decay": {"lifetimes": [tau_g], "amplitudes": [1.0], "dt": 0.008,
-                                    "t0": sc.donor_pulse_ns}}
+        sp = {
+            "D": 0.05,
+            "decay": {
+                "lifetimes": [tau_g],
+                "amplitudes": [1.0],
+                "dt": 0.008,
+                "t0": sc.donor_pulse_ns,
+            },
+        }
         if alex:
             sp["q_alex"] = [green, red]
         elif pie:
@@ -166,8 +202,12 @@ def simulate(sc: Scenario):
         micro = np.zeros_like(micro)
     order = np.argsort(t, kind="stable")
     macro = np.floor(t[order] / MACRO_RES).astype(np.uint64)
-    data = tttrlib.TTTR(macro, micro[order].astype(np.uint16), routing[order].astype(np.int8),
-                        np.zeros(macro.size, np.int8))
+    data = tttrlib.TTTR(
+        macro,
+        micro[order].astype(np.uint16),
+        routing[order].astype(np.int8),
+        np.zeros(macro.size, np.int8),
+    )
     data.header.set_macro_time_resolution(MACRO_RES)
     data.header.set_micro_time_resolution(sc.laser_period_ns * 1e-9 / 4096)
     return data
@@ -180,19 +220,48 @@ SCENARIOS = [
     Scenario("cw 2c, no donor-only", donor_only=0.0),
     Scenario("cw 2c + dark-count channel", extra={3: 300.0}),
     Scenario("cw MFD (BH 0/8, 1/9)", donor=(0, 8), acceptor=(1, 9)),
-    Scenario("cw MFD + two noise channels", donor=(0, 1), acceptor=(2, 3), extra={4: 500.0, 5: 200.0}),
+    Scenario(
+        "cw MFD + two noise channels", donor=(0, 1), acceptor=(2, 3), extra={4: 500.0, 5: 200.0}
+    ),
     Scenario("PIE 2c", excitation="pie", acceptor_only=0.15),
-    Scenario("PIE, acceptor pulse first", excitation="pie", donor_pulse_ns=20.0, acceptor_pulse_ns=4.0,
-             acceptor_only=0.15),
-    Scenario("PIE, pulses 8 ns apart", excitation="pie", donor_pulse_ns=6.0, acceptor_pulse_ns=14.0,
-             acceptor_only=0.15),
-    Scenario("PIE, 50 ns period", excitation="pie", laser_period_ns=50.0, donor_pulse_ns=5.0,
-             acceptor_pulse_ns=30.0, acceptor_only=0.15),
-    Scenario("PIE MFD (0/8, 1/9)", excitation="pie", donor=(0, 8), acceptor=(1, 9), acceptor_only=0.15),
+    Scenario(
+        "PIE, acceptor pulse first",
+        excitation="pie",
+        donor_pulse_ns=20.0,
+        acceptor_pulse_ns=4.0,
+        acceptor_only=0.15,
+    ),
+    Scenario(
+        "PIE, pulses 8 ns apart",
+        excitation="pie",
+        donor_pulse_ns=6.0,
+        acceptor_pulse_ns=14.0,
+        acceptor_only=0.15,
+    ),
+    Scenario(
+        "PIE, 50 ns period",
+        excitation="pie",
+        laser_period_ns=50.0,
+        donor_pulse_ns=5.0,
+        acceptor_pulse_ns=30.0,
+        acceptor_only=0.15,
+    ),
+    Scenario(
+        "PIE MFD (0/8, 1/9)", excitation="pie", donor=(0, 8), acceptor=(1, 9), acceptor_only=0.15
+    ),
     Scenario("PIE + dark-count channel", excitation="pie", extra={5: 400.0}, acceptor_only=0.15),
     Scenario("µsALEX with micro time", excitation="usalex", acceptor_only=0.15),
-    Scenario("µsALEX, no micro time (.sm)", excitation="usalex", keep_micro=False, acceptor_only=0.15),
-    Scenario("µsALEX, 50 µs period, donor on ch 1", excitation="usalex", keep_micro=False,
-             alex_period_us=50.0, donor=(1,), acceptor=(0,), acceptor_only=0.15),
+    Scenario(
+        "µsALEX, no micro time (.sm)", excitation="usalex", keep_micro=False, acceptor_only=0.15
+    ),
+    Scenario(
+        "µsALEX, 50 µs period, donor on ch 1",
+        excitation="usalex",
+        keep_micro=False,
+        alex_period_us=50.0,
+        donor=(1,),
+        acceptor=(0,),
+        acceptor_only=0.15,
+    ),
     Scenario("1c (donor only)", populations=(), donor_only=1.0, acceptor=()),
 ]

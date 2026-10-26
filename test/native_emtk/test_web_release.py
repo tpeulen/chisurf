@@ -48,6 +48,7 @@ def _config(site: Path) -> dict:
 
 # -- the wheels --------------------------------------------------------------- #
 
+
 def test_required_tttrlib_wheel_is_found():
     from chisurf.web import find_wheel
 
@@ -80,17 +81,13 @@ def test_the_tttrlib_wheel_covers_the_compat_modules_fast_paths(tmp_path):
         for name in archive.namelist()
         if name.startswith("chisurf/web/_tttrlib_compat/") and name.endswith(".py")
     }
-    assert compat, (
-        "the bundle ships no tttrlib compat modules; the page cannot filter an image"
-    )
+    assert compat, "the bundle ships no tttrlib compat modules; the page cannot filter an image"
 
     wheel_path = find_wheel("tttrlib")
     assert wheel_path is not None and wheel_path.is_file()
     wheel = zipfile.ZipFile(io.BytesIO(wheel_path.read_bytes()))
     init = wheel.read("tttrlib/__init__.py").decode("utf-8", "replace")
-    ext = b"".join(
-        wheel.read(n) for n in wheel.namelist() if n.endswith(".so")
-    )
+    ext = b"".join(wheel.read(n) for n in wheel.namelist() if n.endswith(".so"))
     defined = set(re.findall(r"^def (\w+)", init, re.M))
     defined |= set(re.findall(r"^(\w+)\s*=\s*_tttrlib", init, re.M))
     defined |= set(re.findall(r"^class (\w+)", init, re.M))
@@ -109,8 +106,9 @@ def test_the_tttrlib_wheel_covers_the_compat_modules_fast_paths(tmp_path):
     # the pure-Python submodules the bundle installs beside it.
     submodules = {name.rsplit("/", 1)[-1][:-3] for name in compat} | {"pipeline"}
     allowed = defined | submodules
-    for src in sorted(n for n in archive.namelist()
-                     if n.startswith("chisurf/") and n.endswith(".py")):
+    for src in sorted(
+        n for n in archive.namelist() if n.startswith("chisurf/") and n.endswith(".py")
+    ):
         text = archive.read(src).decode("utf-8", "replace")
         for attr in sorted(set(re.findall(r"\btttrlib\.(\w+)", text))):
             if attr.startswith("_") or attr.endswith("_"):
@@ -174,8 +172,9 @@ def test_the_impbff_wheel_covers_the_attributes_the_page_uses(tmp_path):
     archive = zipfile.ZipFile(pack_zip(_bundle(), tmp_path / "app.zip"))
     absent = set(IMPBFF_STANDALONE_ABSENT)  # IMP-bound, absent by design
     missing = []
-    for src in sorted(n for n in archive.namelist()
-                      if n.startswith("chisurf/") and n.endswith(".py")):
+    for src in sorted(
+        n for n in archive.namelist() if n.startswith("chisurf/") and n.endswith(".py")
+    ):
         text = archive.read(src).decode("utf-8", "replace")
         # docstrings quote attribute paths in prose (``bff.distance_metrics``
         # in quenching docs) -- strip them; code references survive
@@ -204,6 +203,7 @@ def test_the_impbff_wheel_covers_the_attributes_the_page_uses(tmp_path):
 
 # -- the bundle --------------------------------------------------------------- #
 
+
 def test_bundle_ships_shell_emtk_and_wheels_without_qt_or_test_trees(tmp_path):
     from emtk.web.serve import pack_zip
 
@@ -221,9 +221,12 @@ def test_bundle_ships_shell_emtk_and_wheels_without_qt_or_test_trees(tmp_path):
     # ...without the Qt GUI package, the template, or the plugins' test trees.
     assert not [n for n in names if n.startswith("chisurf/gui/")]
     assert not [n for n in names if "cookiecutter" in n]
-    tests = [n for n in names
-             if re.match(r"chisurf/plugins/[^/]+/.*/(test|tests)/", n)
-             or re.match(r"chisurf/plugins/[^/]+/(test|tests)/", n)]
+    tests = [
+        n
+        for n in names
+        if re.match(r"chisurf/plugins/[^/]+/.*/(test|tests)/", n)
+        or re.match(r"chisurf/plugins/[^/]+/(test|tests)/", n)
+    ]
     assert not tests, f"{len(tests)} plugin test files shipped (e.g. {tests[:3]})"
 
     # The runtime dependencies ndX pages also carry, plus emtk's draw data.
@@ -284,7 +287,9 @@ def test_the_glyph_vocabulary_and_the_split_buttons_are_baked(tmp_path):
     wanted: set[str] = set()
     for node in _ast.walk(_ast.parse(_inspect.getsource(glyphs_mod))):
         if isinstance(node, _ast.Assign):
-            values = node.value.elts if isinstance(node.value, (_ast.Tuple, _ast.List)) else [node.value]
+            values = (
+                node.value.elts if isinstance(node.value, (_ast.Tuple, _ast.List)) else [node.value]
+            )
             for v in values:
                 if isinstance(v, _ast.Constant) and isinstance(v.value, str):
                     wanted |= {c for c in v.value if ord(c) > 127}
@@ -295,8 +300,7 @@ def test_the_glyph_vocabulary_and_the_split_buttons_are_baked(tmp_path):
     wanted -= {"\ufe0f", "\u200d"}
 
     missing = sorted(
-        f"{c!r} (U+{ord(c):04X})" for c in wanted
-        if c not in charset and c not in colour_cells
+        f"{c!r} (U+{ord(c):04X})" for c in wanted if c not in charset and c not in colour_cells
     )
     assert not missing, (
         f"shell glyphs the shipped atlas cannot draw -- re-bake "
@@ -334,8 +338,7 @@ def test_every_plugin_manifest_icon_is_a_baked_glyph(tmp_path):
     charset = set(meta["charset"])
     tables = meta["glyphs"]
     colour_cells = meta.get("icons") or {}
-    assert len(colour_cells) >= 100, \
-        f"only {len(colour_cells)} colour pictographs baked"
+    assert len(colour_cells) >= 100, f"only {len(colour_cells)} colour pictographs baked"
     width, height, rgba = png_decode(archive.read("emtk/atlas/chrome.png"))
     atlas_rgba = np.frombuffer(bytes(rgba), dtype=np.uint8).reshape(height, width, 4)
 
@@ -344,8 +347,12 @@ def test_every_plugin_manifest_icon_is_a_baked_glyph(tmp_path):
     mono_only = []
     for name in archive.namelist():
         parts = name.split("/")
-        if len(parts) < 4 or parts[0] != "chisurf" or parts[1] != "plugins" \
-                or parts[-1] != "manifest.json":
+        if (
+            len(parts) < 4
+            or parts[0] != "chisurf"
+            or parts[1] != "plugins"
+            or parts[-1] != "manifest.json"
+        ):
             continue
         icon = json.loads(archive.read(name).decode("utf-8")).get("icon", "")
         if not icon or icon.endswith((".png", ".svg")):
@@ -366,21 +373,23 @@ def test_every_plugin_manifest_icon_is_a_baked_glyph(tmp_path):
             mono_only.append(f"{'/'.join(parts[2:-1])}: {icon!r}")
             continue
         x, y, w, h = colour_cells[base]
-        cell = atlas_rgba[y:y + h, x:x + w]
+        cell = atlas_rgba[y : y + h, x : x + w]
         opaque = cell[..., 3] > 64
         assert opaque.any(), f"{name}: {icon!r}'s colour cell is blank in the PNG"
         r, g, b = (cell[..., i][opaque].astype(int) for i in range(3))
-        assert ((r != g) | (g != b)).any(), \
-            f"{name}: {icon!r}'s colour cell carries no chroma"
+        assert ((r != g) | (g != b)).any(), f"{name}: {icon!r}'s colour cell carries no chroma"
     assert checked >= 9, f"only {checked} manifest icons found -- enumeration broke"
     assert not missing, f"manifest icons the shipped atlas cannot draw: {missing}"
-    assert len(mono_only) <= 6, \
+    assert len(mono_only) <= 6, (
         f"manifest icons that lost their colour cell (re-bake the atlas): {mono_only}"
-    assert checked - len(mono_only) >= 100, \
+    )
+    assert checked - len(mono_only) >= 100, (
         f"only {checked - len(mono_only)} of {checked} manifest icons draw in colour"
+    )
 
 
 # -- the site, and its boot under node ---------------------------------------- #
+
 
 @pytest.mark.slow
 def test_build_only_site_boots_under_node(tmp_path):
@@ -401,8 +410,14 @@ def test_build_only_site_boots_under_node(tmp_path):
     # requests + pyodide-http: the Zenodo deposit client's transport, routed
     # over fetch (a tab has no sockets).
     assert config["pyodide_packages"] == [
-        "numpy", "Pillow", "scipy", "pyyaml", "lzma", "fonttools",
-        "requests", "pyodide-http",
+        "numpy",
+        "Pillow",
+        "scipy",
+        "pyyaml",
+        "lzma",
+        "fonttools",
+        "requests",
+        "pyodide-http",
     ]
     joined = " ".join(config["wheels"])
     assert "tttrlib" in joined, "the required tttrlib wheel is not on the page"
@@ -600,6 +615,7 @@ def test_page_factory_boots_without_qt_or_sockets():
 
 # -- the bus subscriber, on its own ------------------------------------------- #
 
+
 def test_bus_event_subscriber_mirrors_the_socket_subscriber():
     from chisurf.server.eventbus import InProcessEventBus
     from chisurf.web import BusEventSubscriber
@@ -634,6 +650,7 @@ def test_bus_event_subscriber_mirrors_the_socket_subscriber():
 
 
 # -- the batch, on a host with no threads -------------------------------------- #
+
 
 def test_background_build_falls_back_to_the_calling_thread(monkeypatch):
     """Pyodide without cross-origin isolation cannot start a worker: the batch
@@ -680,8 +697,10 @@ def test_the_desktop_only_database_tools_are_not_packed(tmp_path):
             f"chisurf/plugins/{name} is desktop-only and must not ship on the page"
         )
     # the exclusion is surgical: working web plugins still pack
-    for still_ships in ("chisurf/plugins/core/zenodo_deposit/manifest.json",
-                        "chisurf/plugins/tttr/tttr_time_windows/manifest.json"):
+    for still_ships in (
+        "chisurf/plugins/core/zenodo_deposit/manifest.json",
+        "chisurf/plugins/tttr/tttr_time_windows/manifest.json",
+    ):
         assert still_ships in names, f"{still_ships} must still pack"
 
 
@@ -711,8 +730,14 @@ def test_the_packed_plugin_set_imports_without_the_database_layer(tmp_path):
     assert len(entrypoints) > 60, "the packed plugin set looks truncated"
 
     database_layer = (
-        "mmfdb.repository", "mmfdb.schema", "mmfdb.client", "mmfdb.provenance",
-        "mmfdb.admin", "mmfdb.samples", "mmfdb.models", "mmfdb.users",
+        "mmfdb.repository",
+        "mmfdb.schema",
+        "mmfdb.client",
+        "mmfdb.provenance",
+        "mmfdb.admin",
+        "mmfdb.samples",
+        "mmfdb.models",
+        "mmfdb.users",
     )
     real_import = builtins.__import__
 
@@ -785,8 +810,12 @@ def test_the_packed_page_imports_only_what_it_ships(tmp_path):
 
     # Pyodide distribution packages, by the names they import as (the
     # distribution name and the import name are not always the same word).
-    _IMPORT_NAME = {"Pillow": "PIL", "pyyaml": "yaml", "pyodide-http": "pyodide_http",
-                    "fonttools": "fontTools"}
+    _IMPORT_NAME = {
+        "Pillow": "PIL",
+        "pyyaml": "yaml",
+        "pyodide-http": "pyodide_http",
+        "fonttools": "fontTools",
+    }
     pyodide_roots = {p for p in (*DEFAULT_PYODIDE_PACKAGES, *bundle.pyodide_packages)}
     pyodide_roots = {_IMPORT_NAME.get(name, name) for name in pyodide_roots}
     pyodide_roots |= set(_IMPORT_NAME.values())
@@ -805,8 +834,11 @@ def test_the_packed_page_imports_only_what_it_ships(tmp_path):
         module = entry.split(":", 1)[0] if entry else ""
         if module and module in packed:
             roots.append(module)
-    roots += [name for name in packed  # a manifest-less plugin still ships a GUI
-              if re.fullmatch(r"chisurf\.plugins(?:\.[^.]+){1,2}\.gui\.app", name)]
+    roots += [
+        name
+        for name in packed  # a manifest-less plugin still ships a GUI
+        if re.fullmatch(r"chisurf\.plugins(?:\.[^.]+){1,2}\.gui\.app", name)
+    ]
     # A multi-app page mounts more than one entry: every app the build
     # names is a root, exactly like the default one.
     for spec in dict(getattr(bundle, "apps", {}) or {}).values():
@@ -827,17 +859,27 @@ def test_the_packed_page_imports_only_what_it_ships(tmp_path):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 continue  # runs only when called, not when the module opens
             if isinstance(node, ast.Import):
-                found.extend((0, alias.name, alias.name.split(".")[0], False)
-                             for alias in node.names)
+                found.extend(
+                    (0, alias.name, alias.name.split(".")[0], False) for alias in node.names
+                )
             elif isinstance(node, ast.ImportFrom):
                 level = node.level or 0
                 base = node.module or ""
                 found.append((level, base, base.split(".")[0], False))
                 for alias in node.names:  # from X import name: X.name may be a module
-                    found.append((level, f"{base}.{alias.name}" if base else alias.name,
-                                  base.split(".")[0], True))
-            elif isinstance(node, ast.If) and isinstance(node.test, ast.Name) \
-                    and node.test.id == "TYPE_CHECKING":
+                    found.append(
+                        (
+                            level,
+                            f"{base}.{alias.name}" if base else alias.name,
+                            base.split(".")[0],
+                            True,
+                        )
+                    )
+            elif (
+                isinstance(node, ast.If)
+                and isinstance(node.test, ast.Name)
+                and node.test.id == "TYPE_CHECKING"
+            ):
                 pass  # never executes: typing-only imports
             elif isinstance(node, ast.Try):
                 optional = any(
@@ -873,8 +915,10 @@ def test_the_packed_page_imports_only_what_it_ships(tmp_path):
             absolute = resolve(dotted, level, target)
             resolved_root = root if not level else (absolute or root).split(".")[0]
             if resolved_root not in allowed and absolute not in packed:
-                missing.append(f"{packed[dotted]}: import {'.' * level}{target}"
-                               f" (needs {resolved_root!r}, not shipped)")
+                missing.append(
+                    f"{packed[dotted]}: import {'.' * level}{target}"
+                    f" (needs {resolved_root!r}, not shipped)"
+                )
                 continue
             # A keep-limited package ships only some of its submodules (mmfdb
             # keeps config, deposit and security; chimol its viewer core).
@@ -892,9 +936,11 @@ def test_the_packed_page_imports_only_what_it_ships(tmp_path):
                 and resolved_root in keep_limited
                 and absolute not in packed
             ):
-                missing.append(f"{packed[dotted]}: import {'.' * level}{target}"
-                               f" ({absolute!r}: its package ships, this submodule"
-                               f" does not)")
+                missing.append(
+                    f"{packed[dotted]}: import {'.' * level}{target}"
+                    f" ({absolute!r}: its package ships, this submodule"
+                    f" does not)"
+                )
                 continue
             # visit the target and the packages it executes
             if absolute:

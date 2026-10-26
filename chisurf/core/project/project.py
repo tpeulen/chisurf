@@ -330,7 +330,9 @@ class Project:
         if graph_session_bytes is not None:
             archive.write_bytes(SESSION_FILENAME, graph_session_bytes)
 
-    def save(self, target_path: PathLike, *, graph_session_bytes: bytes | None = None) -> pathlib.Path:
+    def save(
+        self, target_path: PathLike, *, graph_session_bytes: bytes | None = None
+    ) -> pathlib.Path:
         """Save this project as a validated ``.cs.pto`` container.
 
         Parameters

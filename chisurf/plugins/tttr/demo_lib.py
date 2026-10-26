@@ -155,7 +155,9 @@ def photon_stream(c: dict | None = None) -> tuple[np.ndarray, np.ndarray, np.nda
     in_acceptor = (phase >= acceptor_gate[0]) & (phase < acceptor_gate[1])
     donor_emission = channel == donor_ch
     acceptor_emission = channel == acceptor_ch
-    donor_seen = (in_donor & donor_emission) | (in_acceptor & acceptor_emission & (rng.random(ticks.size) < 0.02))
+    donor_seen = (in_donor & donor_emission) | (
+        in_acceptor & acceptor_emission & (rng.random(ticks.size) < 0.02)
+    )
     acceptor_seen = (in_donor & acceptor_emission) | (in_acceptor & acceptor_emission)
     seen = donor_seen | acceptor_seen
     channel = np.where(donor_seen, donor_ch, acceptor_ch).astype(np.int8)
@@ -202,9 +204,7 @@ def _write(
     import tttrlib
 
     stream = tttrlib.TTTR()
-    stream.append_events(
-        macro, micro, routing.astype(np.int8), np.zeros(macro.size, dtype=np.int8)
-    )
+    stream.append_events(macro, micro, routing.astype(np.int8), np.zeros(macro.size, dtype=np.int8))
     header = stream.header
     header.set_macro_time_resolution(float(c["macro_resolution_s"]))
     header.set_micro_time_resolution(float(c["micro_resolution_s"]))

@@ -266,7 +266,9 @@ def draw_legend(document: GraphDocument, box: tuple) -> None:
     x, y = box[0] + 8.0, box[1] + 8.0
     from emtk import style
 
-    draw.add_rect_filled((x, y), (x + width, y + row * len(present) + 8.0), style.PLOT_LEGEND_BG, 4.0)
+    draw.add_rect_filled(
+        (x, y), (x + width, y + row * len(present) + 8.0), style.PLOT_LEGEND_BG, 4.0
+    )
     draw.add_rect((x, y), (x + width, y + row * len(present) + 8.0), style.BORDER, 4.0)
     for index, kind in enumerate(present):
         centre_y = y + 4.0 + row * index + row * 0.5

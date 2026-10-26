@@ -54,26 +54,34 @@ class ZenodoDepositApp(ImApp):
         self.form.on_used = self.tour.notify_used
         #: The file dialog of step 2 (Add files / Add folder), open while the model asks.
         self.dialog: FileDialog | None = None
-        self.dialog_window = DialogWindow("Add to the record", size=(720.0, 460.0),
-                                          key="zenodo-deposit-add")
+        self.dialog_window = DialogWindow(
+            "Add to the record", size=(720.0, 460.0), key="zenodo-deposit-add"
+        )
         #: Modal while a build, scan, upload or check runs: the record must not change under it.
-        self.progress_window = DialogWindow("Working", size=(520.0, 170.0), close_button=False,
-                                            key="zenodo-deposit-progress", escape_closes=False,
-                                            fit_height=True)
-        self.file_window = DialogWindow("File", size=(900.0, 620.0),
-                                        key="file-view")
-        self.file_editor = None          # TextEditor, rebuilt when the file changes
+        self.progress_window = DialogWindow(
+            "Working",
+            size=(520.0, 170.0),
+            close_button=False,
+            key="zenodo-deposit-progress",
+            escape_closes=False,
+            fit_height=True,
+        )
+        self.file_window = DialogWindow("File", size=(900.0, 620.0), key="file-view")
+        self.file_editor = None  # TextEditor, rebuilt when the file changes
         self.file_editor_path = None
-        self.tttr_window = DialogWindow("TTTR Inspector", size=(1100.0, 760.0),
-                                        key="tttr-inspector")
-        self.inspector = None            # NativeHeaderEditor of the open TTTR file
+        self.tttr_window = DialogWindow(
+            "TTTR Inspector", size=(1100.0, 760.0), key="tttr-inspector"
+        )
+        self.inspector = None  # NativeHeaderEditor of the open TTTR file
         self.inspector_path = None
-        self.publish_window = DialogWindow("Publish", size=(560.0, 190.0),
-                                           key="zenodo-deposit-publish", fit_height=True)
+        self.publish_window = DialogWindow(
+            "Publish", size=(560.0, 190.0), key="zenodo-deposit-publish", fit_height=True
+        )
         self.docks = DockManager(Region("deposit"))
         # The tool's only panel: it cannot be closed, or the tool would stay empty.
-        self.docks.add_window("deposit", "Zenodo deposit", self.draw_deposit, dock="deposit",
-                              closable=False)
+        self.docks.add_window(
+            "deposit", "Zenodo deposit", self.draw_deposit, dock="deposit", closable=False
+        )
         super().__init__(self.render, continuous=True)
 
     def render(self) -> None:
@@ -114,7 +122,9 @@ class ZenodoDepositApp(ImApp):
             tr("Answer yes. The third yes publishes the record, which cannot be undone.")
         )
         im.same_line()
-        no = action_button("cancel", tooltip=tr("Stop here: nothing is published."), id="publish-no")
+        no = action_button(
+            "cancel", tooltip=tr("Stop here: nothing is published."), id="publish-no"
+        )
         self.publish_window.end()
         if yes:
             self.model.confirm_publish()
@@ -143,8 +153,9 @@ class ZenodoDepositApp(ImApp):
             if self.file_editor is None or self.file_editor_path != path:
                 langs = {k.lower(): v for k, v in shipped_languages().items()}
                 language = langs.get(str(m.file_view.get("language") or "").lower())
-                self.file_editor = TextEditor(m.file_view["text"], language=language,
-                                              read_only=True)
+                self.file_editor = TextEditor(
+                    m.file_view["text"], language=language, read_only=True
+                )
                 self.file_editor_path = path
             editor = self.file_editor
             cb = self.file_window.content_box
@@ -166,7 +177,7 @@ class ZenodoDepositApp(ImApp):
         fv = m.file_view
         if not fv or fv.get("kind") != "tttr":
             self.tttr_window.hide()
-            if self.inspector is not None:      # released with the view
+            if self.inspector is not None:  # released with the view
                 self.inspector.close()
                 self.inspector, self.inspector_path = None, None
             return
@@ -180,7 +191,7 @@ class ZenodoDepositApp(ImApp):
 
             self.inspector = NativeHeaderEditor()
             self.inspector_path = path
-            self.inspector.load(path)          # background job
+            self.inspector.load(path)  # background job
         self.tttr_window.title = f"TTTR Inspector — {fv['title']}"
         self.tttr_window.show()
         pressed = self.tttr_window.begin(box)
@@ -190,7 +201,7 @@ class ZenodoDepositApp(ImApp):
             x, y = im.get_cursor_screen_pos()
             width, height = im.get_content_region_avail()[:2]
             inspector.docks.draw((x, y, max(100.0, width), max(120.0, height)))
-            if inspector.dialog is not None:   # its Open / Save-as-PTU chooser
+            if inspector.dialog is not None:  # its Open / Save-as-PTU chooser
                 if im.begin("Header file chooser"):
                     result = inspector.dialog.draw()
                     if result is not None:
@@ -228,8 +239,11 @@ class ZenodoDepositApp(ImApp):
             folder = self.model.pick == "folder"
             self.dialog = FileDialog(
                 "Add a folder to the record" if folder else "Add files to the record",
-                mode="folder" if folder else "open", multiselect=not folder,
-                directory=self.model.pick_directory, action="Add")
+                mode="folder" if folder else "open",
+                multiselect=not folder,
+                directory=self.model.pick_directory,
+                action="Add",
+            )
             self.dialog_window.title = self.dialog.title
             self.dialog_window.show()
         if self.dialog is None:

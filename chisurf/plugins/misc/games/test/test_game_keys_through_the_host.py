@@ -98,7 +98,9 @@ def test_a_game_takes_keys_the_moment_it_opens(game):
     app = drv.app
     seen = []
     original = app.key
-    app.key = lambda key, text="", modifiers=0: (seen.append(key), original(key, text, modifiers))[1]
+    app.key = lambda key, text="", modifiers=0: (seen.append(key), original(key, text, modifiers))[
+        1
+    ]
     _press(drv, KEY_LEFT)
     _release(drv, KEY_LEFT)
     assert seen == [KEY_LEFT]

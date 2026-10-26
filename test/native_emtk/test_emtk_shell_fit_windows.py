@@ -42,8 +42,9 @@ def shell(isolated):
     from chisurf.server.session import SessionState
 
     session = start_session(state=SessionState())
-    app = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
-                       console_session_file=False)
+    app = EmtkShellApp(
+        {}, loader=lambda plugin_id: None, console_history=False, console_session_file=False
+    )
     app.data.adopt(session)
     yield app
     app.close()

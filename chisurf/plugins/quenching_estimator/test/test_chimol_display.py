@@ -52,7 +52,10 @@ def test_quest_uses_chimol_for_3d_biomolecule_and_labeling_sites(app, pdb):
     # Verify ChiMOL loaded the PDB structure
     objs = viewer.list_objects()
     assert len(objs) >= 1
-    assert any("148l" in str(obj.get("source_path", "")) or "148l" in str(obj.get("name", "")) for obj in objs)
+    assert any(
+        "148l" in str(obj.get("source_path", "")) or "148l" in str(obj.get("name", ""))
+        for obj in objs
+    )
 
     # Verify donor sphere overlay is placed in ChiMOL
     overlays = getattr(viewer, "_point_overlays", {})

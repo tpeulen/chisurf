@@ -118,7 +118,9 @@ class DatasetPicker:
         self.on_pick = on_pick
         items = [
             MenuItem(
-                row["name"] if not row.get("experiment") else f"{row['name']}  ({row['experiment']})"
+                row["name"]
+                if not row.get("experiment")
+                else f"{row['name']}  ({row['experiment']})"
             )
             for row in self.rows
         ]

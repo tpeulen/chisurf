@@ -1,4 +1,5 @@
 """The photon-counting stacks the captures and tests use: a structured object, independent Poisson noise in every frame."""
+
 import numpy as np
 
 
@@ -7,7 +8,12 @@ def object_image(size=96, seed=5):
     yy, xx = np.mgrid[:size, :size]
     base = np.zeros((size, size))
     for _ in range(40):
-        cy, cx, s, a = rng.uniform(6, size - 6), rng.uniform(6, size - 6), rng.uniform(1.2, 3.0), rng.uniform(0.3, 1.0)
+        cy, cx, s, a = (
+            rng.uniform(6, size - 6),
+            rng.uniform(6, size - 6),
+            rng.uniform(1.2, 3.0),
+            rng.uniform(0.3, 1.0),
+        )
         base += a * np.exp(-((yy - cy) ** 2 + (xx - cx) ** 2) / (2 * s * s))
     return base / base.max()
 

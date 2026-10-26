@@ -440,9 +440,15 @@ class AlexApp(TourTarget, ImApp):
             from ..api.container import convert_to_container  # noqa: PLC0415
 
             return self.job.start(
-                lambda: [convert_to_container(
-                    [m.input_file], int(m.alex_period), int(m.period_shift),
-                    out_dir=Path(path).parent, input_format=m.input_format)],
+                lambda: [
+                    convert_to_container(
+                        [m.input_file],
+                        int(m.alex_period),
+                        int(m.period_shift),
+                        out_dir=Path(path).parent,
+                        input_format=m.input_format,
+                    )
+                ],
                 self.completed,
                 self.error,
             )

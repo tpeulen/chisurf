@@ -808,9 +808,7 @@ def test_ctrl_click_toggles_and_keeps_the_rest(sequences):
     origin = sequences._seq_origin
 
     sequences.mouse_press(origin + char_w * 2.5, row.y + 4)  # {2}
-    sequences.mouse_press(
-        origin + char_w * 5.5, row.y + 4, modifiers=CONTROL_MODIFIER
-    )  # +{5}
+    sequences.mouse_press(origin + char_w * 5.5, row.y + 4, modifiers=CONTROL_MODIFIER)  # +{5}
 
     assert sequences.sequences[0].selected == {2, 5}
     assert picked[-1] == [2, 5]
@@ -825,9 +823,7 @@ def test_ctrl_drag_merges_into_the_selection(sequences):
     origin = sequences._seq_origin
 
     sequences.mouse_press(origin + char_w * 2.5, row.y + 4)  # {2}
-    sequences.mouse_press(
-        origin + char_w * 4.5, row.y + 4, modifiers=CONTROL_MODIFIER
-    )  # {2,4}
+    sequences.mouse_press(origin + char_w * 4.5, row.y + 4, modifiers=CONTROL_MODIFIER)  # {2,4}
     sequences.drag(origin + char_w * 8.5, row.y + 4)
 
     assert sequences.sequences[0].selected == {2, 4, 5, 6, 7, 8}

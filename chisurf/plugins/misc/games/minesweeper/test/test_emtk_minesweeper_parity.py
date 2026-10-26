@@ -38,6 +38,7 @@ QT_BINDINGS = {
     "e": "SHOULDER_R",
 }
 
+
 def _core_trail():
     """The retired view's trail: the core rules, one press at a time, as the view forwarded them."""
     game = MinesweeperGame()

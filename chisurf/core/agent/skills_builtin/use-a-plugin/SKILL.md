@@ -38,7 +38,7 @@ user's colleagues use, and it has been checked against real data.
 ## 1. Find it
 
 ```python
-list_plugins(query="kappa")      # matches names, descriptions and RPC methods
+list_plugins(query="kappa")  # matches names, descriptions and RPC methods
 ```
 
 Search the **word the user used**. Method names are searched too, which
@@ -59,8 +59,8 @@ frequently empty), so do not guess them. The implementation has them, with a
 docstring:
 
 ```python
-search_api(query="compute_kappa2_dist")      # find the function
-read_api_source(qualname="...")              # read its parameters
+search_api(query="compute_kappa2_dist")  # find the function
+read_api_source(qualname="...")  # read its parameters
 ```
 
 A plugin's RPC handler is nearly always a thin wrapper: `<name>.compute` →

@@ -366,7 +366,8 @@ def read_entries(path: str | pathlib.Path) -> dict[str, bytes]:
                 raise ProjectPtoError(f"Project contains duplicate entry {obj.name!r}")
             entries[obj.name] = bytes(handle.read(obj.uid))
         session_matches = [
-            obj.uid for obj in handle.objects()
+            obj.uid
+            for obj in handle.objects()
             if obj.kind == _SESSION_KIND and obj.name == _SESSION_NAME
         ]
         if len(session_matches) > 1:

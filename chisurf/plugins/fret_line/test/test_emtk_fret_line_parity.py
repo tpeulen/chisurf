@@ -273,7 +273,9 @@ def test_visibility_remove_and_clear_follow_the_qt_rules(model):
     assert all(l["visible"] for l in model.lines)
     model.line_index = 1
     model.remove_line()
-    assert [l["name"] for l in model.lines] == qt["names_after_remove_second"] == ["Line 1", "Line 3"]
+    assert (
+        [l["name"] for l in model.lines] == qt["names_after_remove_second"] == ["Line 1", "Line 3"]
+    )
     model.remove_line()  # nothing selected any more: the last one goes, as in the Qt tool
     model.line_index = -1
     model.clear_lines()
@@ -283,7 +285,9 @@ def test_visibility_remove_and_clear_follow_the_qt_rules(model):
         for a in ("save_csv", "push", "show_all", "hide_all", "remove_line", "clear_lines")
     )
     model.add_line()
-    assert qt["next_name_after_clear"] == "Line 4" == model.lines[0]["name"]  # the numbering continues
+    assert (
+        qt["next_name_after_clear"] == "Line 4" == model.lines[0]["name"]
+    )  # the numbering continues
 
 
 def test_the_csv_is_byte_equal_to_the_qt_writer(model, tmp_path):

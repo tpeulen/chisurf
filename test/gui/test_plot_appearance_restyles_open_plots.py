@@ -81,7 +81,12 @@ OBSERVE = {
     "region_alpha": (200, lambda p: p.region.state["brush"][3]),
     "label_axis": (False, lambda p: _canvas(p, "main_plot")._labels.get("left", "")),
     "show_legend": (False, lambda p: _canvas(p, "main_plot")._legend),
-    "font_size": (17, lambda p: __import__("chisurf.core.plotting.appearance").core.plotting.appearance.font_size()),
+    "font_size": (
+        17,
+        lambda p: __import__(
+            "chisurf.core.plotting.appearance"
+        ).core.plotting.appearance.font_size(),
+    ),
     "enable_grid": (False, lambda p: _canvas(p, "main_plot")._grid),
     "grid_alpha_pct": (90, lambda p: _canvas(p, "main_plot")._grid_strength),
     "show_data_grid": (False, lambda p: _canvas(p, "main_plot")._grid),
@@ -115,9 +120,11 @@ def test_the_colour_is_the_one_that_was_set(model, page):
 
 def test_the_selected_fit_opacity_reaches_the_open_group_plot(model, page):
     """Active and inactive fit opacity restyle the lines of a grouped plot."""
-    line = next(
-        line for line, look in page._looks.values() if look["group_index"] is not None
-    ) if any(look["group_index"] is not None for _l, look in page._looks.values()) else None
+    line = (
+        next(line for line, look in page._looks.values() if look["group_index"] is not None)
+        if any(look["group_index"] is not None for _l, look in page._looks.values())
+        else None
+    )
     if line is None:
         page.settings.display_group = True
         page.update()

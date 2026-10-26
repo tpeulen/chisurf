@@ -124,9 +124,7 @@ app.close()
 def test_apply_restyles_the_running_application_with_the_shared_widget_fragments(tmp_path):
     m = model(tmp_path)
     (m.package_dir / "widgets").mkdir()
-    (m.package_dir / "widgets" / "buttons.css").write_text(
-        "/* shared */ button { padding: 3px; }"
-    )
+    (m.package_dir / "widgets" / "buttons.css").write_text("/* shared */ button { padding: 3px; }")
     m.editor.set_text("window { background-color: #abcdef; }")
     seen = []
     m.application_callback = lambda text: seen.append(text) or True
@@ -135,7 +133,6 @@ def test_apply_restyles_the_running_application_with_the_shared_widget_fragments
     assert m.status.endswith("The running application was restyled.")
     m.application_callback = lambda text: False
     assert m.apply() and m.status.endswith("at the next launch.")
-
 
 
 def test_apply_restyles_emtk_live_and_supports_css(tmp_path):
@@ -149,7 +146,9 @@ def test_apply_restyles_emtk_live_and_supports_css(tmp_path):
     # Test creating a .css file
     assert m.new("modern.css")
     assert m.current_file.name == "modern.css"
-    m.editor.set_text("window { background-color: #112233; color: #ffffff; } button { background-color: #445566; }")
+    m.editor.set_text(
+        "window { background-color: #112233; color: #ffffff; } button { background-color: #445566; }"
+    )
     app = StyleManagerApp(m)
     try:
         pressed = []

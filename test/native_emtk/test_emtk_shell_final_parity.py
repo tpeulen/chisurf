@@ -28,8 +28,9 @@ def test_the_watermark_is_drawn_in_the_workspace_background_under_the_fits():
     top-right of the workspace body, not in the Start document, and under a floating window."""
     from emtk import im
 
-    shell = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
-                         console_session_file=False)
+    shell = EmtkShellApp(
+        {}, loader=lambda plugin_id: None, console_history=False, console_session_file=False
+    )
     try:
         driver = Driver(shell, (1440, 900))
         driver.frame(3)
@@ -44,8 +45,11 @@ def test_the_watermark_is_drawn_in_the_workspace_background_under_the_fits():
         assert len(shell._usage_history) >= 1
         # A window floating in the workspace is drawn after (over) the watermark.
         shell.docks.add_window(
-            "fit.x", "Fit X", lambda box: im.text_unformatted("FIT BODY"),
-            box=(wx + 20.0, wy + 30.0, 500.0, 300.0), workspace=True,
+            "fit.x",
+            "Fit X",
+            lambda box: im.text_unformatted("FIT BODY"),
+            box=(wx + 20.0, wy + 30.0, 500.0, 300.0),
+            workspace=True,
         )
         driver.frame(3)
         order = [str(s) for s in driver.painter.strings]
@@ -58,8 +62,9 @@ def test_watermark_live_usage_accumulates_and_advances():
     """Live process usage (CPU %, resident memory) is measured and history accumulates across frames."""
     import time
 
-    shell = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
-                         console_session_file=False)
+    shell = EmtkShellApp(
+        {}, loader=lambda plugin_id: None, console_history=False, console_session_file=False
+    )
     try:
         driver = Driver(shell, (1440, 900))
         driver.frame(1)
@@ -189,8 +194,9 @@ def test_a_wide_tool_the_user_docked_stays_docked():
 
 def test_watermark_folding_toggle_on_click():
     """Clicking the watermark toggles between folded compact badge and expanded view."""
-    shell = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
-                         console_session_file=False)
+    shell = EmtkShellApp(
+        {}, loader=lambda plugin_id: None, console_history=False, console_session_file=False
+    )
     try:
         driver = Driver(shell, (1440, 900))
         driver.frame(2)
@@ -230,8 +236,10 @@ def test_watermark_folding_toggle_on_click():
 def test_watermark_fps_does_not_stall_or_pollute_on_idle_gap():
     """An idle sleep gap (> 0.25s) is not treated as a frame duration in FPS calculation."""
     import time
-    shell = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
-                         console_session_file=False)
+
+    shell = EmtkShellApp(
+        {}, loader=lambda plugin_id: None, console_history=False, console_session_file=False
+    )
     try:
         driver = Driver(shell, (1440, 900))
         driver.frame(5)
@@ -245,7 +253,9 @@ def test_watermark_fps_does_not_stall_or_pollute_on_idle_gap():
         # The 1.05s gap must NOT be appended to frame durations
         if hasattr(shell, "_frame_durations"):
             for duration in shell._frame_durations:
-                assert duration <= 0.25, f"Duration {duration}s was wrongly recorded as a frame time"
+                assert duration <= 0.25, (
+                    f"Duration {duration}s was wrongly recorded as a frame time"
+                )
     finally:
         shell.close()
 
@@ -263,8 +273,9 @@ def test_tooltip_dismiss_on_pointer_leave_and_dock_exit():
             self.drawn = True
             super().draw(painter, x, y, w, h)
 
-    shell = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
-                         console_session_file=False)
+    shell = EmtkShellApp(
+        {}, loader=lambda plugin_id: None, console_history=False, console_session_file=False
+    )
     try:
         child = MockChild()
         shell._drawn["test_child"] = ("test_win", child, (100.0, 100.0, 200.0, 200.0))
@@ -285,4 +296,3 @@ def test_tooltip_dismiss_on_pointer_leave_and_dock_exit():
         assert child.io.mouse_pos == (-1.0, -1.0)
     finally:
         shell.close()
-

@@ -26,7 +26,6 @@ _PDB_148L = (
 )
 
 
-
 @pytest.fixture
 def displaced():
     """A structure and a rigidly displaced copy of it, with a command runner."""

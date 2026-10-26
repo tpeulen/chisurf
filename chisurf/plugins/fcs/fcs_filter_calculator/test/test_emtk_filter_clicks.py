@@ -181,9 +181,7 @@ def test_stop_is_clickable_while_a_compute_runs_and_discards_it(drv, monkeypatch
 def test_guide_help_buttons_and_the_tour(drv):
     drv.click("help")
     window = drv.app.help
-    assert window.open and {"Start Guided Tour", help_close_caption()} <= set(
-        drv.draw(2).strings
-    )
+    assert window.open and {"Start Guided Tour", help_close_caption()} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()

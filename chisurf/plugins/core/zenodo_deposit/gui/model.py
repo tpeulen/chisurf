@@ -65,8 +65,8 @@ HERE = Path(__file__).resolve().parent
 DEFAULT_ROOT = "/Volumes/SD1TB/T4L_Unfolded/records"
 #: Record build configs and the commands that build and scan one (T4L defaults).
 DEFAULT_CONFIGS = "/Users/tpeulen/projects/T4L_Unfolded/scripts/records"
-DEFAULT_BUILD = ("{python} /Users/tpeulen/projects/T4L_Unfolded/scripts/build_record.py {config}")
-DEFAULT_SCAN = ("{python} /Users/tpeulen/projects/T4L_Unfolded/scripts/review_record.py {record}")
+DEFAULT_BUILD = "{python} /Users/tpeulen/projects/T4L_Unfolded/scripts/build_record.py {config}"
+DEFAULT_SCAN = "{python} /Users/tpeulen/projects/T4L_Unfolded/scripts/review_record.py {record}"
 #: Where packages are written: beside the records folder.
 ZIPS = "zips"
 
@@ -98,12 +98,24 @@ def _size(n: int) -> str:
 _NUMBERED = re.compile(r"\d+(?=(?:_\d+)?\.[^./]+$)")
 
 #: What a file is, by extension -- the Type column of the file list.
-_KINDS = {".ht3": "PicoQuant HT3 photons", ".ptu": "PicoQuant PTU photons",
-          ".spc": "B&H SPC photons", ".set": "B&H settings", ".sdt": "B&H SDT",
-          ".pto": "analysis container (PTO.MFDB)", ".dat": "analysis table (Paris)",
-          ".bur": "burst table (Paris)", ".bg4": "burst table (Paris)", ".txt": "text",
-          ".json": "JSON", ".cif": "mmCIF", ".md": "Markdown", ".csv": "CSV",
-          ".doc": "protocol (Word)", ".docx": "protocol (Word)"}
+_KINDS = {
+    ".ht3": "PicoQuant HT3 photons",
+    ".ptu": "PicoQuant PTU photons",
+    ".spc": "B&H SPC photons",
+    ".set": "B&H settings",
+    ".sdt": "B&H SDT",
+    ".pto": "analysis container (PTO.MFDB)",
+    ".dat": "analysis table (Paris)",
+    ".bur": "burst table (Paris)",
+    ".bg4": "burst table (Paris)",
+    ".txt": "text",
+    ".json": "JSON",
+    ".cif": "mmCIF",
+    ".md": "Markdown",
+    ".csv": "CSV",
+    ".doc": "protocol (Word)",
+    ".docx": "protocol (Word)",
+}
 
 
 def _file_kind(name: str) -> str:
@@ -114,8 +126,9 @@ def _file_kind(name: str) -> str:
 class ZenodoDepositModel:
     """The records under a folder, the selected record's items and its gate."""
 
-    def __init__(self, client_factory=None, ndx_opener=None, runner=None,
-                 mmfdb_factory=None) -> None:
+    def __init__(
+        self, client_factory=None, ndx_opener=None, runner=None, mmfdb_factory=None
+    ) -> None:
         self.data_root = os.environ.get("MMFDB_DEPOSIT_ROOT", DEFAULT_ROOT)
         #: Where record build configs live (one JSON per record) and the commands
         #: that turn one into a record and then scan it. ``{config}`` and
@@ -193,42 +206,68 @@ class ZenodoDepositModel:
             try:
                 rec = DepositRecord.load(p)
             except (ValueError, OSError) as exc:
-                self._records.append({"name": p.name, "state": f"unreadable: {exc}",
-                                      "review": "", "remote": "", "pick": False})
+                self._records.append(
+                    {
+                        "name": p.name,
+                        "state": f"unreadable: {exc}",
+                        "review": "",
+                        "remote": "",
+                        "pick": False,
+                    }
+                )
                 continue
             self._records.append(self._record_row(rec, host_of(self._base)))
-        unscanned = [d for d in sorted(root.iterdir()) if d.is_dir()
-                     and not (root / f"{d.name}.deposit.json").exists()] if root.is_dir() else []
+        unscanned = (
+            [
+                d
+                for d in sorted(root.iterdir())
+                if d.is_dir() and not (root / f"{d.name}.deposit.json").exists()
+            ]
+            if root.is_dir()
+            else []
+        )
         for d in unscanned:
-            self._records.append({"name": d.name, "state": "not scanned", "review": "",
-                                  "remote": "", "pick": False})
+            self._records.append(
+                {"name": d.name, "state": "not scanned", "review": "", "remote": "", "pick": False}
+            )
         for row in self._records:
             row["pick"] = row["name"] in self.picked
 
     #: What the Upload column says for each upload_kind: is it on Zenodo, and as what.
-    UPLOAD_STATUS = {"new": "not uploaded", "update": "changed since upload",
-                     "current": "✓ uploaded, current", "new version": "published",
-                     "no package": "no package yet"}
+    UPLOAD_STATUS = {
+        "new": "not uploaded",
+        "update": "changed since upload",
+        "current": "✓ uploaded, current",
+        "new version": "published",
+        "no package": "no package yet",
+    }
 
     @staticmethod
     def _record_row(rec: DepositRecord, host: str) -> dict:
         st = record_status(rec, host)
         c = rec.counts()
-        return {"name": rec.name, "pick": False,
-                "state": "cleared for upload" if st["gate"] == "cleared" else st["gate"],
-                "review": f"{c['approved']}/{len(rec.items)} approved"
-                          + (f", {c['rejected']} rejected" if c["rejected"] else ""),
-                "remote": (f"draft {st['deposition']}" if st["state"] == "draft" else
-                           f"published {st['deposition']}" if st["state"] == "published"
-                           else "legacy remote (migrate)" if st.get("legacy")
-                           else "not uploaded"),
-                "upload": ZenodoDepositModel.UPLOAD_STATUS.get(st["upload"], st["upload"]),
-                "kind": st["upload"],
-                "doi": st["doi"] or (f"{st['reserved_doi']} (reserved)" if st["reserved_doi"]
-                                     else ""),
-                "last": st["last_upload"] + (f" ({st['uploads']}×)" if st["uploads"] > 1 else ""),
-                "detail": (f"md5 {st['md5']}" if st["md5"] else "no package built")
-                          + (f"; last upload {st['last_upload']}" if st["last_upload"] else "")}
+        return {
+            "name": rec.name,
+            "pick": False,
+            "state": "cleared for upload" if st["gate"] == "cleared" else st["gate"],
+            "review": f"{c['approved']}/{len(rec.items)} approved"
+            + (f", {c['rejected']} rejected" if c["rejected"] else ""),
+            "remote": (
+                f"draft {st['deposition']}"
+                if st["state"] == "draft"
+                else f"published {st['deposition']}"
+                if st["state"] == "published"
+                else "legacy remote (migrate)"
+                if st.get("legacy")
+                else "not uploaded"
+            ),
+            "upload": ZenodoDepositModel.UPLOAD_STATUS.get(st["upload"], st["upload"]),
+            "kind": st["upload"],
+            "doi": st["doi"] or (f"{st['reserved_doi']} (reserved)" if st["reserved_doi"] else ""),
+            "last": st["last_upload"] + (f" ({st['uploads']}×)" if st["uploads"] > 1 else ""),
+            "detail": (f"md5 {st['md5']}" if st["md5"] else "no package built")
+            + (f"; last upload {st['last_upload']}" if st["last_upload"] else ""),
+        }
 
     # ── several records at once ──────────────────────────────────────────
     def pick_record(self, row: dict, key: str, value) -> None:
@@ -238,9 +277,13 @@ class ZenodoDepositModel:
 
     def _picked_uploads(self) -> list[str]:
         """The checked records an upload would change: cleared, and not current."""
-        return [r["name"] for r in self._records
-                if r["name"] in self.picked and r.get("state") == "cleared for upload"
-                and r.get("kind") in ("new", "update", "new version")]
+        return [
+            r["name"]
+            for r in self._records
+            if r["name"] in self.picked
+            and r.get("state") == "cleared for upload"
+            and r.get("kind") in ("new", "update", "new version")
+        ]
 
     def upload_checked_label(self) -> str:
         n, m = len(self._picked_uploads()), len(self.picked)
@@ -277,8 +320,10 @@ class ZenodoDepositModel:
             self.refresh_records()
             if self.record is not None:
                 self.record = DepositRecord.load(self.record.folder)
-            self.message = "; ".join(lines + ([f"left: {', '.join(skipped)} (current or not "
-                                                "cleared)"] if skipped else []))
+            self.message = "; ".join(
+                lines
+                + ([f"left: {', '.join(skipped)} (current or not cleared)"] if skipped else [])
+            )
 
         self._busy(f"uploading {len(names)} record(s) to Zenodo")
         self.job.start(work, finish, lambda exc: setattr(self, "message", f"upload failed: {exc}"))
@@ -294,8 +339,9 @@ class ZenodoDepositModel:
             return
         folder = Path(self.data_root) / row["name"]
         try:
-            self.record = (DepositRecord.load(folder) if row["state"] != "not scanned"
-                           else scan(folder))
+            self.record = (
+                DepositRecord.load(folder) if row["state"] != "not scanned" else scan(folder)
+            )
             if not self.record.metadata:
                 # The form shows what is stored: an empty record gets the template
                 # (dataset, open, cc-by-4.0, today), not choices that only look set.
@@ -320,20 +366,29 @@ class ZenodoDepositModel:
         """``"yes"`` while a record is open: steps 2-4 are shown only then."""
         return "yes" if self.record is not None else "no"
 
-    no_record_hint = ("The panels below (add data, Zenodo metadata, scan) appear once a record is "
-                      "open: create one above, or click one in the list at the top.")
+    no_record_hint = (
+        "The panels below (add data, Zenodo metadata, scan) appear once a record is "
+        "open: create one above, or click one in the list at the top."
+    )
 
     @property
     def new_name_problem(self) -> str:
         name = self.new_name.strip()
         if not name:
-            return ("Type a name: lower case, no spaces, e.g. `t4l-unfolding-smfret-k60-n132c`. "
-                    "It becomes the folder and the archive name.")
+            return (
+                "Type a name: lower case, no spaces, e.g. `t4l-unfolding-smfret-k60-n132c`. "
+                "It becomes the folder and the archive name."
+            )
         if (Path(self.data_root) / name).exists():
             return f"**{name}** exists already -- pick it in the list above instead."
         problem = valid_name(name)
-        return f"**Not a valid name:** {problem}." if problem else (
-            f"Creates `{Path(self.data_root) / name}` with empty measurements/ and calibrations/.")
+        return (
+            f"**Not a valid name:** {problem}."
+            if problem
+            else (
+                f"Creates `{Path(self.data_root) / name}` with empty measurements/ and calibrations/."
+            )
+        )
 
     def create_record(self) -> None:
         """Make the empty record, open it, and fill the metadata template with the title."""
@@ -347,8 +402,10 @@ class ZenodoDepositModel:
         self.item_id = ""
         self.new_name = self.new_title = ""
         self.refresh_records()
-        self.message = (f"created {rec.name} -- now add its data (step 2) and fill in the "
-                        "Zenodo metadata (step 3)")
+        self.message = (
+            f"created {rec.name} -- now add its data (step 2) and fill in the "
+            "Zenodo metadata (step 3)"
+        )
 
     # ── step 2: data into the record ─────────────────────────────────────
     ADD_ROLES = ("measurement", "calibration")
@@ -360,21 +417,30 @@ class ZenodoDepositModel:
             return "Create or pick a record first."
         name = self.add_name.strip()
         if not name:
-            return ("Name the item first: one folder, e.g. `2014-08-12_0M-urea` for a "
-                    "measurement or `h2o-scatter` for a calibration.")
+            return (
+                "Name the item first: one folder, e.g. `2014-08-12_0M-urea` for a "
+                "measurement or `h2o-scatter` for a calibration."
+            )
         if self.add_role == "calibration":
             if not self.add_group.strip():
-                return ("A calibration belongs to a group: the setup and day it calibrates, "
-                        "e.g. `2014-08-12_pq-hydraharp`.")
+                return (
+                    "A calibration belongs to a group: the setup and day it calibrates, "
+                    "e.g. `2014-08-12_pq-hydraharp`."
+                )
             rel = f"calibrations/{self.add_group.strip()}/{name}"
         else:
             rel = f"measurements/{name}"
-        return (f"Files and folders you choose go to `{rel}/` -- hard-linked when on the same "
-                "disk, copied otherwise. Nothing is overwritten.")
+        return (
+            f"Files and folders you choose go to `{rel}/` -- hard-linked when on the same "
+            "disk, copied otherwise. Nothing is overwritten."
+        )
 
     def _can_add(self) -> bool:
-        return (self.record is not None and bool(self.add_name.strip())
-                and (self.add_role != "calibration" or bool(self.add_group.strip())))
+        return (
+            self.record is not None
+            and bool(self.add_name.strip())
+            and (self.add_role != "calibration" or bool(self.add_group.strip()))
+        )
 
     def add_files(self) -> None:
         self.pick = "files"
@@ -388,16 +454,18 @@ class ZenodoDepositModel:
         if not paths or self.record is None:
             return
         try:
-            r = add_data(self.record, paths, self.add_role, self.add_name.strip(),
-                         self.add_group.strip())
+            r = add_data(
+                self.record, paths, self.add_role, self.add_name.strip(), self.add_group.strip()
+            )
         except (ValueError, FileExistsError, FileNotFoundError, OSError) as exc:
             self.message = f"nothing added: {exc}"
             return
         self.record = scan(self.record.folder)
         self.record.save()
         self.refresh_records()
-        self.message = (f"{r['item']}: {r['linked']} linked, {r['copied']} copied"
-                        + (f", {r['present']} already there" if r["present"] else ""))
+        self.message = f"{r['item']}: {r['linked']} linked, {r['copied']} copied" + (
+            f", {r['present']} already there" if r["present"] else ""
+        )
 
     # ── step 2 from the local mmfdb ──────────────────────────────────────
     def _mmfdb_client(self):
@@ -409,6 +477,7 @@ class ZenodoDepositModel:
 
     def load_mmfdb(self) -> None:
         """List the experiments of the local mmfdb (on the worker: it is a server call)."""
+
         def work():
             client = self._mmfdb_client()
             try:
@@ -418,19 +487,25 @@ class ZenodoDepositModel:
 
         def done(rows):
             self.mmfdb_experiments = [
-                {"id": str(e.get("experiment_id", "")), "sample": str(e.get("sample_id") or ""),
-                 "project": str(e.get("project_id") or ""),
-                 "started": str(e.get("started_at") or "")[:16].replace("T", " "),
-                 "by": str(e.get("measured_by_user_id") or ""),
-                 "device": str(e.get("measured_by_device_id") or ""),
-                 "detail": str(e.get("description") or e.get("details") or "")}
-                for e in rows or []]
+                {
+                    "id": str(e.get("experiment_id", "")),
+                    "sample": str(e.get("sample_id") or ""),
+                    "project": str(e.get("project_id") or ""),
+                    "started": str(e.get("started_at") or "")[:16].replace("T", " "),
+                    "by": str(e.get("measured_by_user_id") or ""),
+                    "device": str(e.get("measured_by_device_id") or ""),
+                    "detail": str(e.get("description") or e.get("details") or ""),
+                }
+                for e in rows or []
+            ]
             self.message = f"{len(self.mmfdb_experiments)} experiment(s) in the local mmfdb"
 
         def fail(exc):
             self.mmfdb_experiments = []
-            self.message = (f"the local mmfdb did not answer ({exc}) -- start its server "
-                            "(MMFDB Admin) and load again")
+            self.message = (
+                f"the local mmfdb did not answer ({exc}) -- start its server "
+                "(MMFDB Admin) and load again"
+            )
 
         self._busy("reading the local mmfdb")
         self.job.start(work, done, fail)
@@ -479,10 +554,15 @@ class ZenodoDepositModel:
             missing = [str(p) for p in paths if p is not None and not p.exists()]
             found = [str(p) for p in paths if p is not None and p.exists()]
             if missing or not found:
-                self.message = (f"{exp_id}: nothing added -- "
-                                + (f"not on this machine: {', '.join(missing[:3])}" if missing
-                                   else "no data files")
-                                + (f"; {held} entry(ies) held in the database" if held else ""))
+                self.message = (
+                    f"{exp_id}: nothing added -- "
+                    + (
+                        f"not on this machine: {', '.join(missing[:3])}"
+                        if missing
+                        else "no data files"
+                    )
+                    + (f"; {held} entry(ies) held in the database" if held else "")
+                )
                 return
             if not self.add_name.strip():
                 self.add_name = re.sub(r"[^A-Za-z0-9._+-]", "_", exp_id)[:100]
@@ -542,11 +622,20 @@ class ZenodoDepositModel:
         self.refresh_records()
 
     def _text_field(key):  # noqa: N805 - a property factory used in the class body
-        return property(lambda self: str(self._meta().get(key, "")),
-                        lambda self, v: self._set_meta(key, str(v).strip()))
+        return property(
+            lambda self: str(self._meta().get(key, "")),
+            lambda self, v: self._set_meta(key, str(v).strip()),
+        )
 
-    _META_EDITOR_KEYS = ("title", "upload_type", "publication_date", "version",
-                         "access_right", "license", "embargo_date")
+    _META_EDITOR_KEYS = (
+        "title",
+        "upload_type",
+        "publication_date",
+        "version",
+        "access_right",
+        "license",
+        "embargo_date",
+    )
 
     def metadata_values(self) -> dict:
         """The record's metadata as the shared editor shows it (string fields)."""
@@ -564,7 +653,12 @@ class ZenodoDepositModel:
         if self.record is None:
             return
         for key, value in entries.items():
-            if key in self._META_EDITOR_KEYS or key in ("description", "creators", "keywords", "related"):
+            if key in self._META_EDITOR_KEYS or key in (
+                "description",
+                "creators",
+                "keywords",
+                "related",
+            ):
                 setattr(self, f"meta_{key}", str(value).strip())
             else:
                 self._set_meta(key, value)
@@ -623,8 +717,10 @@ class ZenodoDepositModel:
     @property
     def meta_related(self) -> str:
         """One related identifier per line: ``relation identifier`` (e.g. a paper DOI)."""
-        return "\n".join(f"{r.get('relation', '')} {r.get('identifier', '')}"
-                         for r in self._meta().get("related_identifiers", []))
+        return "\n".join(
+            f"{r.get('relation', '')} {r.get('identifier', '')}"
+            for r in self._meta().get("related_identifiers", [])
+        )
 
     @meta_related.setter
     def meta_related(self, text: str) -> None:
@@ -648,13 +744,22 @@ class ZenodoDepositModel:
             return "Create or pick a record first."
         problems = zenodo_problems(self.record.metadata)
         built = (Path(self.configs_dir) / f"{self.record.name}.json").is_file()
-        head = ("**This record is built from a config:** edits here are replaced the next time "
-                "it is built -- change the config's \"zenodo\" block instead.\n\n" if built else "")
+        head = (
+            "**This record is built from a config:** edits here are replaced the next time "
+            'it is built -- change the config\'s "zenodo" block instead.\n\n'
+            if built
+            else ""
+        )
         if problems:
-            return head + f"**{len(problems)} to fix before upload:**\n" + "\n".join(
-                f"- {_md(p)}" for p in problems)
-        return head + ("**Complete.** It is reviewed like any item: approve *Zenodo metadata* in "
-                       "*2 · Review*. Any later edit voids that approval.")
+            return (
+                head
+                + f"**{len(problems)} to fix before upload:**\n"
+                + "\n".join(f"- {_md(p)}" for p in problems)
+            )
+        return head + (
+            "**Complete.** It is reviewed like any item: approve *Zenodo metadata* in "
+            "*2 · Review*. Any later edit voids that approval."
+        )
 
     @property
     def metadata_json(self) -> str:
@@ -668,7 +773,7 @@ class ZenodoDepositModel:
         """Re-read the record after adding data: the items a reviewer then judges."""
         self.rescan()
         if self.record is not None:
-            self.message = (f"{len(self.record.items)} items to review -- open *2 · Review*")
+            self.message = f"{len(self.record.items)} items to review -- open *2 · Review*"
 
     # ── creating a record from its build config ──────────────────────────
     @property
@@ -680,10 +785,18 @@ class ZenodoDepositModel:
             name = p.stem
             folder = Path(self.data_root) / name
             review = Path(self.data_root) / f"{name}.deposit.json"
-            state = ("not built" if not folder.is_dir() else
-                     "built, not scanned" if not review.is_file() else "built and scanned")
-            built = (time.strftime("%Y-%m-%d %H:%M", time.localtime(folder.stat().st_mtime))
-                     if folder.is_dir() else "")
+            state = (
+                "not built"
+                if not folder.is_dir()
+                else "built, not scanned"
+                if not review.is_file()
+                else "built and scanned"
+            )
+            built = (
+                time.strftime("%Y-%m-%d %H:%M", time.localtime(folder.stat().st_mtime))
+                if folder.is_dir()
+                else ""
+            )
             rows.append({"name": name, "state": state, "built": built, "config": str(p)})
         return rows
 
@@ -711,8 +824,9 @@ class ZenodoDepositModel:
         editor, to adapt and save under its own record name."""
         self.config_draft = (HERE / "example_config.json").read_text(encoding="utf-8")
         self.config_name = ""
-        self.message = ("example config in the editor: change \"record\" and the units, "
-                        "then Save config")
+        self.message = (
+            'example config in the editor: change "record" and the units, then Save config'
+        )
 
     @property
     def config_status(self) -> str:
@@ -724,7 +838,7 @@ class ZenodoDepositModel:
             return f"**Not valid JSON:** {exc}"
         problem = valid_name(str(name))
         if problem:
-            return f"**\"record\" is not a record name:** {problem}"
+            return f'**"record" is not a record name:** {problem}'
         target = Path(self.configs_dir) / f"{name}.json"
         if target.is_file() and name != self.config_name:
             return f"**{name}.json exists already** -- give the record another name"
@@ -737,8 +851,10 @@ class ZenodoDepositModel:
         name = json.loads(self.config_draft)["record"]
         target = Path(self.configs_dir) / f"{name}.json"
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(self.config_draft if self.config_draft.endswith("\n")
-                          else self.config_draft + "\n", encoding="utf-8")
+        target.write_text(
+            self.config_draft if self.config_draft.endswith("\n") else self.config_draft + "\n",
+            encoding="utf-8",
+        )
         self.config_name, self.config_draft = name, None
         self.message = f"saved {target.name}: Build record builds it"
 
@@ -759,8 +875,12 @@ class ZenodoDepositModel:
 
         cfg = str(Path(self.configs_dir) / f"{self.config_name}.json")
         rec = str(Path(self.data_root) / self.config_name)
-        cmds = [c.format(python=shlex.quote(sys.executable), config=shlex.quote(cfg),
-                         record=shlex.quote(rec)) for c in (self.build_command, self.scan_command)]
+        cmds = [
+            c.format(
+                python=shlex.quote(sys.executable), config=shlex.quote(cfg), record=shlex.quote(rec)
+            )
+            for c in (self.build_command, self.scan_command)
+        ]
         run = self._runner or self._stream
         self._busy(f"building {self.config_name}")
         self.build_log = ""
@@ -770,8 +890,10 @@ class ZenodoDepositModel:
             for cmd in cmds:
                 r = run(cmd)
                 out = (r.stdout or "") + (r.stderr or "")
-                log.append(f"$ {cmd}\n" + "\n".join(
-                    ln for ln in out.splitlines() if "Removed 1 path" not in ln)[-6000:])
+                log.append(
+                    f"$ {cmd}\n"
+                    + "\n".join(ln for ln in out.splitlines() if "Removed 1 path" not in ln)[-6000:]
+                )
                 if r.returncode != 0:
                     raise RuntimeError("\n\n".join(log))
             return "\n\n".join(log)
@@ -779,13 +901,17 @@ class ZenodoDepositModel:
         def done(log):
             self.build_log = log
             self.message = f"built {self.config_name}" + (
-                " -- VERIFY_OK" if "VERIFY_OK" in log else " -- check the log")
+                " -- VERIFY_OK" if "VERIFY_OK" in log else " -- check the log"
+            )
             self.refresh_records()
 
         def fail(exc):
             self.build_log = str(exc)
-            self.message = (f"building {self.config_name} cancelled" if self.job.cancelled.is_set()
-                            else f"building {self.config_name} failed (see the log)")
+            self.message = (
+                f"building {self.config_name} cancelled"
+                if self.job.cancelled.is_set()
+                else f"building {self.config_name} failed (see the log)"
+            )
 
         self.job.start(work, done, fail)
 
@@ -798,11 +924,17 @@ class ZenodoDepositModel:
         m = self.record.metadata or {}
         if not m:
             return "**No Zenodo metadata** -- complete it in *1 · Create*."
-        lines = [f"**Title:** {_md(m.get('title', ''))}", "", "**Creators:**", ""] + [
-            f"- {c.get('name')} -- {c.get('affiliation', '')}" for c in m.get("creators", [])
-        ] + ["", f"**License:** {m.get('license', '')} · **Type:** {m.get('upload_type', '')} · "
-                 f"**Access:** {m.get('access_right', '')}", "",
-                 "**Keywords:** " + ", ".join(m.get("keywords", []))]
+        lines = (
+            [f"**Title:** {_md(m.get('title', ''))}", "", "**Creators:**", ""]
+            + [f"- {c.get('name')} -- {c.get('affiliation', '')}" for c in m.get("creators", [])]
+            + [
+                "",
+                f"**License:** {m.get('license', '')} · **Type:** {m.get('upload_type', '')} · "
+                f"**Access:** {m.get('access_right', '')}",
+                "",
+                "**Keywords:** " + ", ".join(m.get("keywords", [])),
+            ]
+        )
         if m.get("notes"):
             lines += ["", f"**Notes:** {_md(m['notes'])}"]
         return "\n".join(lines)
@@ -819,24 +951,31 @@ class ZenodoDepositModel:
         if it.uses:
             return list(it.uses)
         if it.role == "measurement" and it.group and self.record is not None:
-            return [c.id for c in self.record.items
-                    if c.role == "calibration" and c.group == it.group]
+            return [
+                c.id for c in self.record.items if c.role == "calibration" and c.group == it.group
+            ]
         return []
 
     def _row(self, i, key: str, parent: str = "", shown: str = "", shared: int = 0) -> dict:
-        return {"key": key, "parent": parent, "id": i.id, "item": shown or i.id,
-                "status": STATUS_LABELS.get(i.status, i.status)
-                + (" (changed)" if i.review.status == "approved" and i.status != "approved"
-                   else ""),
-                "role": i.role + (f" · shared ×{shared}" if shared > 1 else ""),
-                "group": i.group, "files": i.files, "size": _size(i.bytes),
-                "holds": (f"{i.files} file{'s' if i.files != 1 else ''} · " if i.files
-                          else "JSON · ") + _size(i.bytes),
-                # an approval answers the flags: the ⚠ goes, the reasons stay in the tooltip
-                "flags": ("✖ " if i.errors else "")
-                + (f"⚠ {len(i.flags)}" if i.flags and i.status != "approved" else ""),
-                "act": "" if i.status == "approved" or self.job.running else "Approve",
-                "detail": self._item_tooltip(i)}
+        return {
+            "key": key,
+            "parent": parent,
+            "id": i.id,
+            "item": shown or i.id,
+            "status": STATUS_LABELS.get(i.status, i.status)
+            + (" (changed)" if i.review.status == "approved" and i.status != "approved" else ""),
+            "role": i.role + (f" · shared ×{shared}" if shared > 1 else ""),
+            "group": i.group,
+            "files": i.files,
+            "size": _size(i.bytes),
+            "holds": (f"{i.files} file{'s' if i.files != 1 else ''} · " if i.files else "JSON · ")
+            + _size(i.bytes),
+            # an approval answers the flags: the ⚠ goes, the reasons stay in the tooltip
+            "flags": ("✖ " if i.errors else "")
+            + (f"⚠ {len(i.flags)}" if i.flags and i.status != "approved" else ""),
+            "act": "" if i.status == "approved" or self.job.running else "Approve",
+            "detail": self._item_tooltip(i),
+        }
 
     @property
     def items(self) -> list[dict]:
@@ -862,15 +1001,21 @@ class ZenodoDepositModel:
             rows.append(self._row(m, m.id))
             rows += self._file_rows(m, m.id)
             for c in uses[m.id]:
-                label = (c.removeprefix("calibrations/") if c.startswith("calibrations/")
-                         else "ref: " + c.removeprefix("measurements/"))
+                label = (
+                    c.removeprefix("calibrations/")
+                    if c.startswith("calibrations/")
+                    else "ref: " + c.removeprefix("measurements/")
+                )
                 key = f"{m.id}>{c}"
                 rows.append(self._row(by_id[c], key, m.id, label, count[c]))
                 rows += self._file_rows(by_id[c], key)
-        rows += [self._row(i, i.id) for i in items
-                 if i.role == "calibration" and i.id not in count]
-        rows += [r for i in items if i.role == "calibration" and i.id not in count
-                 for r in self._file_rows(i, i.id)]
+        rows += [self._row(i, i.id) for i in items if i.role == "calibration" and i.id not in count]
+        rows += [
+            r
+            for i in items
+            if i.role == "calibration" and i.id not in count
+            for r in self._file_rows(i, i.id)
+        ]
         # the other items (the metadata files, the Zenodo metadata, stray
         # files): a file item keeps its one file row, so it stays viewable
         tail = [i for i in items if i.role not in ("measurement", "calibration")]
@@ -895,8 +1040,16 @@ class ZenodoDepositModel:
             return cached
         p = self.open_record.folder / item.id
         if p.is_file():
-            rows = [self._file_row(item.id, item.id, parent_key, _file_kind(item.id),
-                                   _size(p.stat().st_size), item.id)]
+            rows = [
+                self._file_row(
+                    item.id,
+                    item.id,
+                    parent_key,
+                    _file_kind(item.id),
+                    _size(p.stat().st_size),
+                    item.id,
+                )
+            ]
             self._files_of[parent_key] = rows
             return rows
         rows: list[dict] = []
@@ -908,7 +1061,7 @@ class ZenodoDepositModel:
             for f in content_files(folder):
                 rel = f.relative_to(folder).as_posix()
                 m = _NUMBERED.search(rel)
-                key = (rel[:m.start()], rel[m.end():]) if m else (rel, "")
+                key = (rel[: m.start()], rel[m.end() :]) if m else (rel, "")
                 series.setdefault(key, []).append((rel, m.group(0) if m else "", f.stat().st_size))
             for (head, tail), files in series.items():
                 kind = _file_kind(files[0][0])
@@ -919,20 +1072,42 @@ class ZenodoDepositModel:
                 nums = sorted(n for _, n, _ in files)
                 name = f"{head}{{{nums[0]}…{nums[-1]}}}{tail}"
                 skey = f"{parent_key}|{name}"
-                rows.append(self._file_row(name, name, parent_key, kind,
-                                           f"{len(files)} files · " + _size(sum(s for *_, s in files)),
-                                           item.id, count=len(files)))
-                rows += [self._file_row(rel.rsplit("/", 1)[-1], rel, skey, kind, _size(sz), item.id)
-                         for rel, _, sz in sorted(files)]
+                rows.append(
+                    self._file_row(
+                        name,
+                        name,
+                        parent_key,
+                        kind,
+                        f"{len(files)} files · " + _size(sum(s for *_, s in files)),
+                        item.id,
+                        count=len(files),
+                    )
+                )
+                rows += [
+                    self._file_row(rel.rsplit("/", 1)[-1], rel, skey, kind, _size(sz), item.id)
+                    for rel, _, sz in sorted(files)
+                ]
         self._files_of[parent_key] = rows
         return rows
 
     @staticmethod
-    def _file_row(shown: str, rel: str, parent: str, kind: str, size: str,
-                  item_id: str, count: int = 1) -> dict:
-        return {"key": f"{parent}|{rel}", "parent": parent, "id": item_id,
-                "item": "\u2003" + shown, "status": "", "flags": "", "role": kind,
-                "holds": size, "act": "", "detail": rel, "file": rel, "count": count}
+    def _file_row(
+        shown: str, rel: str, parent: str, kind: str, size: str, item_id: str, count: int = 1
+    ) -> dict:
+        return {
+            "key": f"{parent}|{rel}",
+            "parent": parent,
+            "id": item_id,
+            "item": "\u2003" + shown,
+            "status": "",
+            "flags": "",
+            "role": kind,
+            "holds": size,
+            "act": "",
+            "detail": rel,
+            "file": rel,
+            "count": count,
+        }
 
     @staticmethod
     def _item_tooltip(it) -> str:
@@ -970,8 +1145,9 @@ class ZenodoDepositModel:
         it = self.item
         if it is None:
             return "Select a row; approve it with its button or right-click it for more."
-        lines = [f"✖ blocks the upload: {_md(e)}" for e in it.errors[:12]] \
-            + [f"{'✓ checked:' if it.status == 'approved' else '⚠'} {_md(f)}" for f in it.flags]
+        lines = [f"✖ blocks the upload: {_md(e)}" for e in it.errors[:12]] + [
+            f"{'✓ checked:' if it.status == 'approved' else '⚠'} {_md(f)}" for f in it.flags
+        ]
         about = [_md(it.id), f"{it.files} file{'s' if it.files != 1 else ''}, {_size(it.bytes)}"]
         if it.description:
             about.append(_md(it.description))
@@ -1023,8 +1199,10 @@ class ZenodoDepositModel:
 
             files = content_files(p)
             width = max((len(f.relative_to(p).as_posix()) for f in files), default=0)
-            return "\n".join(f"{f.relative_to(p).as_posix():<{width}}  {_size(f.stat().st_size):>10}"
-                             for f in files)
+            return "\n".join(
+                f"{f.relative_to(p).as_posix():<{width}}  {_size(f.stat().st_size):>10}"
+                for f in files
+            )
         text = p.read_text(errors="replace")
         return text if len(text) < 2_000_000 else text[:2_000_000] + "\n… (truncated)"
 
@@ -1090,13 +1268,24 @@ class ZenodoDepositModel:
         return self.preview_text if self.preview_kind in ("text", "listing") else ""
 
     # ── the file viewer (double click in the file listing) ────────────────
-    _VIEW_LANGUAGES = {".json": "JSON", ".yaml": "YAML", ".yml": "YAML",
-                       ".py": "Python", ".md": "Markdown", ".cif": "mmCIF",
-                       ".sql": "SQL", ".txt": None, ".csv": None, ".log": None,
-                       ".ini": None, ".dat": None, ".set": None}
+    _VIEW_LANGUAGES = {
+        ".json": "JSON",
+        ".yaml": "YAML",
+        ".yml": "YAML",
+        ".py": "Python",
+        ".md": "Markdown",
+        ".cif": "mmCIF",
+        ".sql": "SQL",
+        ".txt": None,
+        ".csv": None,
+        ".log": None,
+        ".ini": None,
+        ".dat": None,
+        ".set": None,
+    }
     _VIEW_TEXT_CAP = 2_000_000  # bytes read as text at most
     _VIEW_TTTR = {".ht3", ".ptu", ".pt3", ".spc", ".sdt"}  # read as photon tables
-    _VIEW_PHOTON_ROWS = 400    # events shown in the table
+    _VIEW_PHOTON_ROWS = 400  # events shown in the table
 
     @property
     def file_view_photons(self) -> list[dict]:
@@ -1120,8 +1309,11 @@ class ZenodoDepositModel:
         else:
             if self.item is None:
                 return
-            folder = (self.open_record.folder / self.item.id
-                      if self.preview_kind == "listing" else self.open_record.folder)
+            folder = (
+                self.open_record.folder / self.item.id
+                if self.preview_kind == "listing"
+                else self.open_record.folder
+            )
             key = str(row.get("key") or row.get("name") or "")
         path = folder / key
         part, of = "", ""
@@ -1131,8 +1323,8 @@ class ZenodoDepositModel:
             if not head or not rest:
                 return
             import glob as _glob
-            cand = sorted(Path(p) for p in
-                          _glob.glob(str(folder / (_glob.escape(head) + "*"))))
+
+            cand = sorted(Path(p) for p in _glob.glob(str(folder / (_glob.escape(head) + "*"))))
             cand = [c for c in cand if c.is_file()]
             if not cand:
                 return
@@ -1151,22 +1343,32 @@ class ZenodoDepositModel:
             text, binary = "", True
         if suffix in self._VIEW_TTTR:
             title = rel + (f"  ({of}, series {part})" if of else "")
-            self.file_view = {"kind": "tttr", "path": str(path), "title": title,
-                              "series": of}
+            self.file_view = {"kind": "tttr", "path": str(path), "title": title, "series": of}
             return
         if binary:
-            info = (f"**{rel}** -- {_file_kind(rel)}, {path.stat().st_size:,} bytes.\n\n"
-                    "Binary raw data: not shown as text. The measurement's sidecar "
-                    "JSON and the protocol carry its parameters; the manifest holds its "
-                    "sha256.")
-            self.file_view = {"path": str(path), "title": rel, "language": "Markdown",
-                              "text": info, "markdown": True}
+            info = (
+                f"**{rel}** -- {_file_kind(rel)}, {path.stat().st_size:,} bytes.\n\n"
+                "Binary raw data: not shown as text. The measurement's sidecar "
+                "JSON and the protocol carry its parameters; the manifest holds its "
+                "sha256."
+            )
+            self.file_view = {
+                "path": str(path),
+                "title": rel,
+                "language": "Markdown",
+                "text": info,
+                "markdown": True,
+            }
         else:
             if truncated:
                 text += "\n… (truncated)"
-            self.file_view = {"path": str(path), "title": rel if not of else f"{rel}  ({of}, series {part})",
-                              "language": language or None, "text": text,
-                              "markdown": suffix == ".md"}
+            self.file_view = {
+                "path": str(path),
+                "title": rel if not of else f"{rel}  ({of}, series {part})",
+                "language": language or None,
+                "text": text,
+                "markdown": suffix == ".md",
+            }
 
     def open_tree_row(self, row: dict | None) -> None:
         """Double click in the review tree: a file row opens the file in the
@@ -1192,9 +1394,16 @@ class ZenodoDepositModel:
             # click opens it in the modal viewer like any listed file.
             if self.preview_kind in ("markdown", "json", "mmcif", "text"):
                 path = self.open_record.folder / self.item.id
-                return [{"key": self.item.id, "parent": "", "name": self.item.id,
-                         "count": "", "size": _size(path.stat().st_size),
-                         "kind": _file_kind(self.item.id)}]
+                return [
+                    {
+                        "key": self.item.id,
+                        "parent": "",
+                        "name": self.item.id,
+                        "count": "",
+                        "size": _size(path.stat().st_size),
+                        "kind": _file_kind(self.item.id),
+                    }
+                ]
             return []
         from mmfdb.deposit.record import content_files
 
@@ -1203,22 +1412,47 @@ class ZenodoDepositModel:
         for f in content_files(folder):
             rel = f.relative_to(folder).as_posix()
             m = _NUMBERED.search(rel)
-            key = (rel[:m.start()], rel[m.end():]) if m else (rel, "")
+            key = (rel[: m.start()], rel[m.end() :]) if m else (rel, "")
             series.setdefault(key, []).append((rel, m.group(0) if m else "", f.stat().st_size))
         rows = []
         for (head, tail), files in series.items():
             kind = _file_kind(files[0][0])
             if len(files) == 1:
                 rel, _, size = files[0]
-                rows.append({"key": rel, "parent": "", "name": rel, "count": "",
-                             "size": _size(size), "kind": kind})
+                rows.append(
+                    {
+                        "key": rel,
+                        "parent": "",
+                        "name": rel,
+                        "count": "",
+                        "size": _size(size),
+                        "kind": kind,
+                    }
+                )
                 continue
             nums = sorted(n for _, n, _ in files)
             name = f"{head}{{{nums[0]}…{nums[-1]}}}{tail}"
-            rows.append({"key": name, "parent": "", "name": name, "count": f"{len(files)} files",
-                         "size": _size(sum(sz for *_, sz in files)), "kind": kind})
-            rows += [{"key": rel, "parent": name, "name": rel.rsplit("/", 1)[-1], "count": "",
-                      "size": _size(sz), "kind": kind} for rel, _, sz in sorted(files)]
+            rows.append(
+                {
+                    "key": name,
+                    "parent": "",
+                    "name": name,
+                    "count": f"{len(files)} files",
+                    "size": _size(sum(sz for *_, sz in files)),
+                    "kind": kind,
+                }
+            )
+            rows += [
+                {
+                    "key": rel,
+                    "parent": name,
+                    "name": rel.rsplit("/", 1)[-1],
+                    "count": "",
+                    "size": _size(sz),
+                    "kind": kind,
+                }
+                for rel, _, sz in sorted(files)
+            ]
         return rows
 
     # ── review ───────────────────────────────────────────────────────────
@@ -1262,8 +1496,11 @@ class ZenodoDepositModel:
         """
         if self.record is None:
             return []
-        return [i for i in self.record.items
-                if i.status != "approved" and i.review.status != "rejected" and not i.errors]
+        return [
+            i
+            for i in self.record.items
+            if i.status != "approved" and i.review.status != "rejected" and not i.errors
+        ]
 
     def approve_all_label(self) -> str:
         n = len(self._approvable())
@@ -1279,8 +1516,9 @@ class ZenodoDepositModel:
             self.record.set_review(it.id, "approved", "approve all" + (f": {note}" if note else ""))
         self.record.save()
         flagged = sum(1 for it in todo if it.flags)
-        self.message = (f"approved {len(todo)} item(s)"
-                        + (f", {flagged} of them flagged" if flagged else ""))
+        self.message = f"approved {len(todo)} item(s)" + (
+            f", {flagged} of them flagged" if flagged else ""
+        )
         self.note = ""
         self.refresh_records()
 
@@ -1310,13 +1548,13 @@ class ZenodoDepositModel:
         head = f"Package: `{Path(pkg['path']).name}`, {pkg['bytes']:,} B, md5 `{pkg['md5']}`"
         if pkg.get("mode") == "metadata-separate":
             names = ", ".join(sc["name"] for sc in pkg.get("sidecars", []))
-            head += (f" -- metadata separate: {names or 'the metadata files'} "
-                     "ride beside the zip")
+            head += f" -- metadata separate: {names or 'the metadata files'} ride beside the zip"
         head = head if pkg.get("path") else "Package: not built"
         if not b:
             return f"{head}\n\n**Cleared for upload.**"
-        shown = "\n".join(f"- {_md(x)}" for x in b[:8]) + (f"\n- … {len(b) - 8} more" if len(b) > 8
-                                                      else "")
+        shown = "\n".join(f"- {_md(x)}" for x in b[:8]) + (
+            f"\n- … {len(b) - 8} more" if len(b) > 8 else ""
+        )
         return f"{head}\n\n**{len(b)} blocking:**\n{shown}"
 
     @property
@@ -1326,27 +1564,37 @@ class ZenodoDepositModel:
         r = self._r()
         if not r.get("deposition_id"):
             if "_legacy" in self.record.remote:
-                return ("This record has a **legacy remote state** (deposition ids from "
-                        "before the two repositories were tracked separately) whose host "
-                        "is not recorded. Nothing uploads to it or publishes it. Attach it "
-                        "to the repository it belongs to: `python -m mmfdb.deposit "
-                        "migrate-remote <record-folder> --sandbox|--production`.")
+                return (
+                    "This record has a **legacy remote state** (deposition ids from "
+                    "before the two repositories were tracked separately) whose host "
+                    "is not recorded. Nothing uploads to it or publishes it. Attach it "
+                    "to the repository it belongs to: `python -m mmfdb.deposit "
+                    "migrate-remote <record-folder> --sandbox|--production`."
+                )
             return "Zenodo: not uploaded."
         diff = compare(self.record, self._host)
-        return (f"Zenodo draft {r['deposition_id']} ({r.get('state', '?')}), checked "
-                f"{r.get('checked_at', 'never')}: "
-                + ("matches the package." if not diff else "; ".join(diff))
-                + (f" DOI {r['doi']}" if r.get("doi") else "")
-                + (f" Reserved DOI {r['reserved_doi']} (registered when published)."
-                   if r.get("reserved_doi") and not r.get("doi") else ""))
+        return (
+            f"Zenodo draft {r['deposition_id']} ({r.get('state', '?')}), checked "
+            f"{r.get('checked_at', 'never')}: "
+            + ("matches the package." if not diff else "; ".join(diff))
+            + (f" DOI {r['doi']}" if r.get("doi") else "")
+            + (
+                f" Reserved DOI {r['reserved_doi']} (registered when published)."
+                if r.get("reserved_doi") and not r.get("doi")
+                else ""
+            )
+        )
 
     def upload_label(self) -> str:
         """The upload button says what it will do."""
         if self.record is None:
             return "Upload draft"
-        return {"new": "Upload draft", "update": "Update draft",
-                "new version": "Upload new version", "current": "Draft is up to date"
-                }[upload_kind(self.record, self._host)]
+        return {
+            "new": "Upload draft",
+            "update": "Update draft",
+            "new version": "Upload new version",
+            "current": "Draft is up to date",
+        }[upload_kind(self.record, self._host)]
 
     @property
     def uploads_text(self) -> str:
@@ -1356,34 +1604,48 @@ class ZenodoDepositModel:
         r = self._r()
         ups, pubs = upload_history(self.record, self._host), list(r.get("published", []))
         if r.get("doi"):
-            pubs.append({"deposition_id": r["deposition_id"], "doi": r["doi"],
-                         "published_at": r.get("published_at", "")})
+            pubs.append(
+                {
+                    "deposition_id": r["deposition_id"],
+                    "doi": r["doi"],
+                    "published_at": r.get("published_at", ""),
+                }
+            )
         if not ups and not pubs:
             return "*Nothing uploaded yet.*"
-        lines = ["| When | What | Deposition | Package | md5 | Verified |", "|---|---|---|---|---|---|"]
+        lines = [
+            "| When | What | Deposition | Package | md5 | Verified |",
+            "|---|---|---|---|---|---|",
+        ]
         for u in reversed(ups):
-            lines.append(f"| {u['at'][:16].replace('T', ' ')} | {u['kind']} | {u['deposition_id']} | "
-                         f"{_md(u['name']) + ', ' + _size(u['bytes']) if u['name'] else '(before tracking)'} | "
-                         f"`{u['md5'][:12]}…` | "
-                         f"{'yes' if u.get('verified') else '**no**'} |")
+            lines.append(
+                f"| {u['at'][:16].replace('T', ' ')} | {u['kind']} | {u['deposition_id']} | "
+                f"{_md(u['name']) + ', ' + _size(u['bytes']) if u['name'] else '(before tracking)'} | "
+                f"`{u['md5'][:12]}…` | "
+                f"{'yes' if u.get('verified') else '**no**'} |"
+            )
         for v in reversed(pubs):
-            lines.append(f"| {str(v.get('published_at', ''))[:16].replace('T', ' ')} | **published** | "
-                         f"{v['deposition_id']} | DOI {v['doi']} | | |")
+            lines.append(
+                f"| {str(v.get('published_at', ''))[:16].replace('T', ' ')} | **published** | "
+                f"{v['deposition_id']} | DOI {v['doi']} | | |"
+            )
         return "\n".join(lines)
 
     # ── publishing: asked three times ───────────────────────────────────
     #: The three questions before publishing, each with its button; Cancel is the default.
     PUBLISH_QUESTIONS = (
-        ("Publish {name} on {host}?",
-         "Publishing is **irreversible**: the record gets a DOI and can never be deleted.",
-         "Yes, publish (1/3)"),
-        ("Are you sure?",
-         "The published files ({size}, md5 `{md5}`) can never be changed or removed -- a "
-         "correction is only possible as a new version beside them.",
-         "Yes, I am sure (2/3)"),
-        ("Last question: publish now?",
-         "This cannot be undone.",
-         "Publish now (3/3)"),
+        (
+            "Publish {name} on {host}?",
+            "Publishing is **irreversible**: the record gets a DOI and can never be deleted.",
+            "Yes, publish (1/3)",
+        ),
+        (
+            "Are you sure?",
+            "The published files ({size}, md5 `{md5}`) can never be changed or removed -- a "
+            "correction is only possible as a new version beside them.",
+            "Yes, I am sure (2/3)",
+        ),
+        ("Last question: publish now?", "This cannot be undone.", "Publish now (3/3)"),
     )
 
     def publish_question(self) -> tuple[str, str, str]:
@@ -1392,9 +1654,12 @@ class ZenodoDepositModel:
             return "", "", ""
         title, text, button = self.PUBLISH_QUESTIONS[self.publish_stage - 1]
         pkg = self.record.package
-        fill = {"name": self.record.name, "host": "sandbox.zenodo.org" if self.sandbox else
-                "zenodo.org", "size": _size(int(pkg.get("bytes", 0) or 0)),
-                "md5": pkg.get("md5", "")}
+        fill = {
+            "name": self.record.name,
+            "host": "sandbox.zenodo.org" if self.sandbox else "zenodo.org",
+            "size": _size(int(pkg.get("bytes", 0) or 0)),
+            "md5": pkg.get("md5", ""),
+        }
         return title.format(**fill), text.format(**fill), button
 
     def confirm_publish(self) -> None:
@@ -1435,8 +1700,12 @@ class ZenodoDepositModel:
             return idle
         if name == "add_from_mmfdb":
             # the item name may be left empty: the experiment's id names it
-            return (idle and bool(self.mmfdb_selected) and self.record is not None
-                    and (self.add_role != "calibration" or bool(self.add_group.strip())))
+            return (
+                idle
+                and bool(self.mmfdb_selected)
+                and self.record is not None
+                and (self.add_role != "calibration" or bool(self.add_group.strip()))
+            )
         if name in ("add_files", "add_folder"):
             return idle and self._can_add()
         if name in ("show_folder", "scan_for_review"):
@@ -1453,20 +1722,30 @@ class ZenodoDepositModel:
             if not (has_rec and idle and bool(self.token_source)):
                 return False
             r, meta = self._r(), self.open_record.item(METADATA_ITEM)
-            return (not r.get("reserved_doi") and not r.get("doi")
-                    and meta.status == "approved" and not meta.errors)
+            return (
+                not r.get("reserved_doi")
+                and not r.get("doi")
+                and meta.status == "approved"
+                and not meta.errors
+            )
         if name == "upload_checked":
             return idle and bool(self.token_source) and bool(self._picked_uploads())
         if name == "upload_draft":
-            return (has_rec and idle and bool(self.token_source) and not blockers(self.record)
-                    and upload_kind(self.record, self._host) != "current")
+            return (
+                has_rec
+                and idle
+                and bool(self.token_source)
+                and not blockers(self.record)
+                and upload_kind(self.record, self._host) != "current"
+            )
         if name == "upload_metadata_only":
             if not (has_rec and idle and bool(self.token_source)):
                 return False
             plan = metadata_plan(self.record, self._host)
-            return (not plan["refused"]
-                    and (plan["metadata"] == "push"
-                         or any(o["action"] in ("upload", "replace") for o in plan["ops"])))
+            return not plan["refused"] and (
+                plan["metadata"] == "push"
+                or any(o["action"] in ("upload", "replace") for o in plan["ops"])
+            )
         if name in ("save_token",):
             return idle and bool(self.token_entry.strip())
         if name == "test_token":
@@ -1474,12 +1753,21 @@ class ZenodoDepositModel:
         if name == "forget_token":
             return idle and self.token_source in ("keychain", credentials.UNCHECKED)
         if name == "approve_publish":
-            return has_rec and idle and bool(self._r().get("deposition_id")) \
-                and not compare(self.record, self._host) and not self._r().get("doi")
-        if name == "publish_record":
-            return has_rec and idle and bool(self.token_source) \
-                and not blockers(self.record, for_publish=True, host=self._host) \
+            return (
+                has_rec
+                and idle
+                and bool(self._r().get("deposition_id"))
+                and not compare(self.record, self._host)
                 and not self._r().get("doi")
+            )
+        if name == "publish_record":
+            return (
+                has_rec
+                and idle
+                and bool(self.token_source)
+                and not blockers(self.record, for_publish=True, host=self._host)
+                and not self._r().get("doi")
+            )
         return True
 
     # ── the one line that says what to do next ───────────────────────────
@@ -1489,45 +1777,62 @@ class ZenodoDepositModel:
         if self.job.running:
             return f"**Working:** {self.busy_what}…"
         if self.token_source == "":
-            return ("**Enter your Zenodo token** in the *Token* tab. "
-                    "Reviewing works without it; uploading does not.")
+            return (
+                "**Enter your Zenodo token** in the *Token* tab. "
+                "Reviewing works without it; uploading does not."
+            )
         if self.record is None:
-            return ("**Pick a record** in the list above, or make a new one in *1 · Create*.")
+            return "**Pick a record** in the list above, or make a new one in *1 · Create*."
         rec = self.record
         r = self._r()
         if r.get("doi"):
             return f"**Done:** {rec.name} is published, DOI {r['doi']}."
         if not any(i.role in ("measurement", "calibration") for i in rec.items):
-            return ("**Add data** (*1 · Create*): name an item, then *Add files…* or "
-                    "*Add folder…*.")
+            return "**Add data** (*1 · Create*): name an item, then *Add files…* or *Add folder…*."
         if zenodo_problems(rec.metadata):
-            return ("**Complete the Zenodo metadata** (*1 · Create*): "
-                    f"{len(zenodo_problems(rec.metadata))} field(s) missing or wrong, listed "
-                    "under the form.")
+            return (
+                "**Complete the Zenodo metadata** (*1 · Create*): "
+                f"{len(zenodo_problems(rec.metadata))} field(s) missing or wrong, listed "
+                "under the form."
+            )
         c = rec.counts()
         open_items = [i for i in rec.items if i.status != "approved"]
         if c["rejected"]:
-            return (f"**Fix {c['rejected']} rejected item(s)** in the record folder, then "
-                    "*Rescan* (*3 · Upload*) and review them again.")
+            return (
+                f"**Fix {c['rejected']} rejected item(s)** in the record folder, then "
+                "*Rescan* (*3 · Upload*) and review them again."
+            )
         if open_items:
             flagged = sum(1 for i in open_items if i.flags)
-            return (f"**Review** (*2 · Review*): {len(open_items)} of {len(rec.items)} items still "
-                    "to check" + (f", {flagged} of them flagged (Check column) -- start with those" if flagged
-                       else "")
-                    + ". Approve a row with its button; right-click it to reject.")
+            return (
+                f"**Review** (*2 · Review*): {len(open_items)} of {len(rec.items)} items still "
+                "to check"
+                + (
+                    f", {flagged} of them flagged (Check column) -- start with those"
+                    if flagged
+                    else ""
+                )
+                + ". Approve a row with its button; right-click it to reject."
+            )
         b = blockers(rec)
         if b:
-            return ("**Build the package** (*3 · Upload*): everything is approved, the "
-                    "archive must be built from exactly this content.")
+            return (
+                "**Build the package** (*3 · Upload*): everything is approved, the "
+                "archive must be built from exactly this content."
+            )
         if not self._r().get("deposition_id"):
-            return ("**Upload the draft** (*3 · Upload*). Nothing is published; you can "
-                    "still look at the draft on Zenodo afterwards.")
+            return (
+                "**Upload the draft** (*3 · Upload*). Nothing is published; you can "
+                "still look at the draft on Zenodo afterwards."
+            )
         diff = compare(rec, self._host)
         if diff:
             return f"**Check the draft:** {'; '.join(diff)}. Upload again or *Check Zenodo*."
         if rec.publish.status != "approved" or rec.publish.digest != rec.package.get("md5"):
-            return ("**Draft uploaded and verified.** Look at it on Zenodo; when it is right, "
-                    "*Approve publish*, then *Publish* (irreversible).")
+            return (
+                "**Draft uploaded and verified.** Look at it on Zenodo; when it is right, "
+                "*Approve publish*, then *Publish* (irreversible)."
+            )
         return "**Ready to publish.** *Publish* is irreversible."
 
     # ── the Zenodo token ─────────────────────────────────────────────────
@@ -1577,23 +1882,30 @@ class ZenodoDepositModel:
     def token_text(self) -> str:
         where = "sandbox.zenodo.org" if self.sandbox else "zenodo.org"
         src = self.token_source
-        state = {"keychain": "stored in the system keychain",
-                 "environment": f"taken from the {'ZENODO_SANDBOX_TOKEN' if self.sandbox else 'ZENODO_TOKEN'} environment variable",
-                 credentials.UNCHECKED: "not looked up yet -- the system keychain is read "
-                                        "when you press *Test token* or upload",
-                 "": "**not set** -- uploading is impossible until you enter one"}[src]
+        state = {
+            "keychain": "stored in the system keychain",
+            "environment": f"taken from the {'ZENODO_SANDBOX_TOKEN' if self.sandbox else 'ZENODO_TOKEN'} environment variable",
+            credentials.UNCHECKED: "not looked up yet -- the system keychain is read "
+            "when you press *Test token* or upload",
+            "": "**not set** -- uploading is impossible until you enter one",
+        }[src]
         check = f"\n\nLast test: {self.token_check}" if self.token_check else ""
-        return (f"Token for **{where}**: {state}.\n\nCreate one on Zenodo under *Account → "
-                "Applications → Personal access tokens* with the scopes **deposit:write** and "
-                "**deposit:actions**. It is kept in the system keychain only -- never in a file "
-                "or in ChiSurf's settings." + check)
+        return (
+            f"Token for **{where}**: {state}.\n\nCreate one on Zenodo under *Account → "
+            "Applications → Personal access tokens* with the scopes **deposit:write** and "
+            "**deposit:actions**. It is kept in the system keychain only -- never in a file "
+            "or in ChiSurf's settings." + check
+        )
 
     def lookup_token(self) -> None:
         """Read the keychain once, in the background, so :attr:`token_source` is known."""
         base = self._base
         self._busy("looking up the token")
-        self.job.start(lambda: credentials.stored_token(base), lambda _tok: None,
-                       lambda exc: setattr(self, "message", f"keychain: {exc}"))
+        self.job.start(
+            lambda: credentials.stored_token(base),
+            lambda _tok: None,
+            lambda exc: setattr(self, "message", f"keychain: {exc}"),
+        )
 
     def save_token(self) -> None:
         tok = self.token_entry.strip()
@@ -1602,9 +1914,14 @@ class ZenodoDepositModel:
             self.message = "the token field is empty"
             return
         ok = credentials.store_token(self._base, tok)
-        self.message = "token stored in the system keychain" if ok else (
-            f"no system keychain available: set "
-            f"{'ZENODO_SANDBOX_TOKEN' if self.sandbox else 'ZENODO_TOKEN'} instead")
+        self.message = (
+            "token stored in the system keychain"
+            if ok
+            else (
+                f"no system keychain available: set "
+                f"{'ZENODO_SANDBOX_TOKEN' if self.sandbox else 'ZENODO_TOKEN'} instead"
+            )
+        )
         self.token_check = ""
 
     def forget_token(self) -> None:
@@ -1625,8 +1942,9 @@ class ZenodoDepositModel:
             self.message = self.token_check
 
         def fail(exc):
-            self.token_check = (str(exc) if isinstance(exc, RuntimeError)
-                                else f"could not reach Zenodo: {exc}")
+            self.token_check = (
+                str(exc) if isinstance(exc, RuntimeError) else f"could not reach Zenodo: {exc}"
+            )
 
         self.job.start(work, done, fail)
 
@@ -1642,14 +1960,28 @@ class ZenodoDepositModel:
             return []
         rows = []
         for op in upload_plan(self.record, self._host)["ops"]:
-            act = {"upload": "→ upload", "replace": "→ replace",
-                   "keep": "= identical", "delete": "× delete"}[op["action"]]
-            rows.append({"file": op["file"], "action": act,
-                         "size": _size(op["bytes"]) if op["bytes"] else
-                         ("" if op["action"] != "delete" else _size(op["remote_bytes"])),
-                         "md5": (op["md5"] or op["remote_md5"] or "")[:12],
-                         "state": {"upload": "new", "replace": "changed",
-                                   "keep": "same", "delete": "extra on remote"}[op["action"]]})
+            act = {
+                "upload": "→ upload",
+                "replace": "→ replace",
+                "keep": "= identical",
+                "delete": "× delete",
+            }[op["action"]]
+            rows.append(
+                {
+                    "file": op["file"],
+                    "action": act,
+                    "size": _size(op["bytes"])
+                    if op["bytes"]
+                    else ("" if op["action"] != "delete" else _size(op["remote_bytes"])),
+                    "md5": (op["md5"] or op["remote_md5"] or "")[:12],
+                    "state": {
+                        "upload": "new",
+                        "replace": "changed",
+                        "keep": "same",
+                        "delete": "extra on remote",
+                    }[op["action"]],
+                }
+            )
         return rows
 
     @property
@@ -1662,10 +1994,12 @@ class ZenodoDepositModel:
         plan = upload_plan(self.record, self._host)
         c, where = plan["counts"], plan["deposition"]
         if plan["kind"] == "current":
-            return ("Draft is up to date -- nothing to send. "
-                    + (f"Draft {where}." if where else ""))
-        head = {"new": "First upload", "update": "Update of draft",
-                "new version": "New version of"}[plan["kind"]]
+            return "Draft is up to date -- nothing to send. " + (f"Draft {where}." if where else "")
+        head = {
+            "new": "First upload",
+            "update": "Update of draft",
+            "new version": "New version of",
+        }[plan["kind"]]
         parts = []
         if c["upload"]:
             parts.append(f"send {c['upload']} new file(s)")
@@ -1673,12 +2007,19 @@ class ZenodoDepositModel:
             parts.append(f"replace {c['replace']}")
         if c["delete"]:
             parts.append(f"delete {c['delete']} remote file(s)")
-        parts.append("push the Zenodo metadata" if plan["metadata"] == "push"
-                     else "metadata unchanged")
-        return (f"**{head}** ({_size(plan['bytes'])} to transfer): "
-                + ", ".join(parts) + "."
-                + (f" Checked against draft {where} as of its last *Check*."
-                   if where else " Nothing is on Zenodo yet."))
+        parts.append(
+            "push the Zenodo metadata" if plan["metadata"] == "push" else "metadata unchanged"
+        )
+        return (
+            f"**{head}** ({_size(plan['bytes'])} to transfer): "
+            + ", ".join(parts)
+            + "."
+            + (
+                f" Checked against draft {where} as of its last *Check*."
+                if where
+                else " Nothing is on Zenodo yet."
+            )
+        )
 
     # ── why a button is grey ─────────────────────────────────────────────
     @property
@@ -1717,8 +2058,15 @@ class ZenodoDepositModel:
     def _stream(self, cmd: str):
         """Run *cmd*, its output line by line into :attr:`busy_step`; like ``subprocess.run``."""
         env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONHOME")}
-        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                text=True, env=env, bufsize=1)
+        proc = subprocess.Popen(
+            cmd,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            env=env,
+            bufsize=1,
+        )
         self._proc = proc
         lines = []
         try:
@@ -1743,8 +2091,9 @@ class ZenodoDepositModel:
 
         def fail(exc):
             rec.save()
-            self.message = (f"{what} refused: " if isinstance(exc, GateError)
-                            else f"{what} failed: ") + str(exc)
+            self.message = (
+                f"{what} refused: " if isinstance(exc, GateError) else f"{what} failed: "
+            ) + str(exc)
 
         self.job.start(work, done, fail)
 
@@ -1767,8 +2116,7 @@ class ZenodoDepositModel:
             msg = f"package built: {p.name}, md5 {rec.package['md5']}"
             if separate:
                 names = ", ".join(sc["name"] for sc in rec.package.get("sidecars", []))
-                msg += (f" -- metadata separate: {names or 'the metadata files'} "
-                        "ride beside the zip")
+                msg += f" -- metadata separate: {names or 'the metadata files'} ride beside the zip"
             return msg
 
         self._run("building the package", work)
@@ -1784,8 +2132,10 @@ class ZenodoDepositModel:
 
         def work():
             remote = upload_metadata(rec, make())
-            return (f"metadata swapped on draft {remote['deposition_id']}: the raw archive "
-                    "was not sent, " + ("; ".join(compare(rec, host)) or "md5 verified"))
+            return (
+                f"metadata swapped on draft {remote['deposition_id']}: the raw archive "
+                "was not sent, " + ("; ".join(compare(rec, host)) or "md5 verified")
+            )
 
         self._run("swapping the draft's metadata", work)
 
@@ -1795,7 +2145,8 @@ class ZenodoDepositModel:
             return "Swap metadata"
         plan = metadata_plan(self.record, self._host)
         work = plan["metadata"] == "push" or any(
-            o["action"] in ("upload", "replace") for o in plan["ops"])
+            o["action"] in ("upload", "replace") for o in plan["ops"]
+        )
         return "Swap metadata" if work else "Metadata is current"
 
     @property
@@ -1808,25 +2159,32 @@ class ZenodoDepositModel:
             return "**No metadata-only swap:** " + "; ".join(plan["refused"]) + "."
         sent = [o["file"] for o in plan["ops"] if o["action"] in ("upload", "replace")]
         parts = [f"replace {', '.join(sent)}" if sent else "no file changed"]
-        parts.append("push the Zenodo metadata" if plan["metadata"] == "push"
-                     else "metadata unchanged")
+        parts.append(
+            "push the Zenodo metadata" if plan["metadata"] == "push" else "metadata unchanged"
+        )
         pkg = self.record.package
-        return (f"**Metadata-only swap** ({_size(plan['bytes'])} to transfer): " + ", ".join(parts)
-                + f". The raw archive stays as it is (`{Path(pkg['path']).name}`, "
-                  f"md5 `{pkg['md5'][:12]}…`).")
+        return (
+            f"**Metadata-only swap** ({_size(plan['bytes'])} to transfer): "
+            + ", ".join(parts)
+            + f". The raw archive stays as it is (`{Path(pkg['path']).name}`, "
+            f"md5 `{pkg['md5'][:12]}…`)."
+        )
 
     def upload_draft(self) -> None:
         rec, make = self.record, self._client()
         host = self._host
         kind = upload_kind(rec, host)
-        what = {"new": "uploading to a new Zenodo draft",
-                "update": "updating the Zenodo draft",
-                "new version": "uploading a new version to Zenodo"}.get(kind, "uploading")
+        what = {
+            "new": "uploading to a new Zenodo draft",
+            "update": "updating the Zenodo draft",
+            "new version": "uploading a new version to Zenodo",
+        }.get(kind, "uploading")
 
         def work():
             remote = upload(rec, make())
             return f"{kind}: draft {remote['deposition_id']}, " + (
-                "; ".join(compare(rec, host)) or "md5 verified")
+                "; ".join(compare(rec, host)) or "md5 verified"
+            )
 
         self._run(what, work)
 
@@ -1848,10 +2206,14 @@ class ZenodoDepositModel:
         if r.get("doi"):
             return f"**DOI:** {r['doi']} (published)"
         if r.get("reserved_doi"):
-            return (f"**Reserved DOI:** `{r['reserved_doi']}` -- final, usable in a manuscript now; "
-                    "it resolves once the record is published.")
-        return ("No DOI reserved. *Reserve DOI* gets the record's final DOI before publishing "
-                "(it sends the approved Zenodo metadata into a draft; no files needed).")
+            return (
+                f"**Reserved DOI:** `{r['reserved_doi']}` -- final, usable in a manuscript now; "
+                "it resolves once the record is published."
+            )
+        return (
+            "No DOI reserved. *Reserve DOI* gets the record's final DOI before publishing "
+            "(it sends the approved Zenodo metadata into a draft; no files needed)."
+        )
 
     def check_remote(self) -> None:
         rec, make, host = self.record, self._client(), self._host
@@ -1886,9 +2248,13 @@ class ZenodoDepositModel:
 
     # ── persistence ──────────────────────────────────────────────────────
     def export_settings(self) -> dict:
-        return {"data_root": self.data_root, "sandbox": self.sandbox,
-                "configs_dir": self.configs_dir, "build_command": self.build_command,
-                "scan_command": self.scan_command}
+        return {
+            "data_root": self.data_root,
+            "sandbox": self.sandbox,
+            "configs_dir": self.configs_dir,
+            "build_command": self.build_command,
+            "scan_command": self.scan_command,
+        }
 
     def restore_settings(self, state: dict) -> None:
         self.data_root = str(state.get("data_root") or self.data_root)

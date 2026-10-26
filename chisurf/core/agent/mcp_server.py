@@ -36,9 +36,7 @@ class McpServer:
         from chisurf.core.agent.mcp_server import register_manifest_rpc_tools
 
         register_manifest_rpc_tools(self.registry)
-        self._tools = {
-            spec.name: spec for spec in self.registry.filtered(max_safety=SAFETY_WRITE)
-        }
+        self._tools = {spec.name: spec for spec in self.registry.filtered(max_safety=SAFETY_WRITE)}
 
     # ── the MCP surface ───────────────────────────────────────────────────
 

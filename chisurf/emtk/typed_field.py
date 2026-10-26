@@ -72,7 +72,8 @@ def typed_number_field(
     tooltip = _number_tooltip(
         description,
         tr(f"Enter a {kind}. Press Enter or click elsewhere to commit."),
-        minimum, maximum,
+        minimum,
+        maximum,
     )
     im.set_item_tooltip(tooltip)
     ctx = get_current_context()
@@ -109,33 +110,21 @@ def typed_number_field(
     elif down:
         steps = -1
     else:
-        focused = (
-            ctx.state(("focus",)).get("id") == input_id
-            or ctx.is_nav_focused(input_id)
-        )
+        focused = ctx.state(("focus",)).get("id") == input_id or ctx.is_nav_focused(input_id)
         if focused and ctx.io.key in (KEY_UP, KEY_DOWN):
             steps = 1 if ctx.io.key == KEY_UP else -1
             pressed = ctx.io.key
             ctx.io.key = 0
-            ctx.io.key_events[:] = [
-                event for event in ctx.io.key_events if event[0] != pressed
-            ]
+            ctx.io.key_events[:] = [event for event in ctx.io.key_events if event[0] != pressed]
             ctx.request_frame()
     if steps:
         # A step replaces text in progress: the field shows the stepped value.
         buffers.pop(key, None)
-        candidate = spin_step_by(
-            value, steps, integer=integer, bounds=(minimum, maximum)
-        )
+        candidate = spin_step_by(value, steps, integer=integer, bounds=(minimum, maximum))
         if candidate != value:
             return candidate, ""
         return None, ""
-    clicked_away = (
-        im.get_io().mouse_clicked[0]
-        and not input_hovered
-        and not up
-        and not down
-    )
+    clicked_away = im.get_io().mouse_clicked[0] and not input_hovered and not up and not down
     if key not in buffers or not (entered or clicked_away):
         return None, ""
     text = buffers.pop(key)

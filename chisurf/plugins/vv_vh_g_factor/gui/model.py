@@ -68,9 +68,7 @@ class GFactorClient(Protocol):
         """Return the Perrin steady-state anisotropy."""
         ...
 
-    def solve_linked_l(
-        self, *, sp: float, ss: float, g_factor: float, r_target: float
-    ) -> float:
+    def solve_linked_l(self, *, sp: float, ss: float, g_factor: float, r_target: float) -> float:
         """Return the linked l1 = l2 mixing that makes the sample match *r_target*."""
         ...
 
@@ -197,7 +195,9 @@ class GFactorModel:
             self.param_g.value = float(self.g_factor) if self.g_factor is not None else 1.0
             self.param_g.fixed = False
             g_std = self.g_factor_std
-            self.param_g.error_estimate = float(g_std) if (g_std is not None and np.isfinite(g_std)) else float("nan")
+            self.param_g.error_estimate = (
+                float(g_std) if (g_std is not None and np.isfinite(g_std)) else float("nan")
+            )
 
         # Polarization mixing l1, l2
         l1_val = self.l1
@@ -205,11 +205,19 @@ class GFactorModel:
         l_sd = self.fp_result.get("l_sd") if self.fp_result else None
         self.param_l1.value = float(l1_val) if (l1_val is not None and np.isfinite(l1_val)) else 0.0
         self.param_l1.fixed = bool(self.manual_l)
-        self.param_l1.error_estimate = float(l_sd) if (l_sd is not None and np.isfinite(l_sd) and not self.manual_l) else float("nan")
+        self.param_l1.error_estimate = (
+            float(l_sd)
+            if (l_sd is not None and np.isfinite(l_sd) and not self.manual_l)
+            else float("nan")
+        )
 
         self.param_l2.value = float(l2_val) if (l2_val is not None and np.isfinite(l2_val)) else 0.0
         self.param_l2.fixed = bool(self.manual_l)
-        self.param_l2.error_estimate = float(l_sd) if (l_sd is not None and np.isfinite(l_sd) and not self.manual_l) else float("nan")
+        self.param_l2.error_estimate = (
+            float(l_sd)
+            if (l_sd is not None and np.isfinite(l_sd) and not self.manual_l)
+            else float("nan")
+        )
 
         # Lifetime tau
         if self.manual_tau:
@@ -483,7 +491,8 @@ class GFactorModel:
                     if Path(f).name == path or f == path:
                         self.batch_files.remove(f)
             self.batch_results = [
-                r for r in self.batch_results
+                r
+                for r in self.batch_results
                 if r.get("file") != path and Path(r.get("file", "")).name != Path(path).name
             ]
 
@@ -586,19 +595,25 @@ class GFactorModel:
             bg_vv = d.get("bg_vv", 0.0)
             bg_vh = d.get("bg_vh", 0.0)
             is_g = d.get("use_for_g", False) or (self.fast_file == d.get("path"))
-            rows.append({
-                "index": i,
-                "file": Path(d.get("path", d.get("name", ""))).name,
-                "path": str(d.get("path", "")),
-                "rho_ns": round(float(rho), 2) if rho is not None else 0.2,
-                "tau_ns": round(float(tau), 2) if tau is not None else 4.0,
-                "r0": round(float(r0), 3) if r0 is not None else 0.38,
-                "bg_vv": round(float(bg_vv), 2) if bg_vv is not None else 0.0,
-                "bg_vh": round(float(bg_vh), 2) if bg_vh is not None else 0.0,
-                "tail_match": bool(is_g),
-                "r_expected": f"{float(target_rs):.4f}" if target_rs is not None and np.isfinite(target_rs) else "",
-                "l_estimate": f"{float(l_est):.4f}" if l_est is not None and np.isfinite(l_est) else "",
-            })
+            rows.append(
+                {
+                    "index": i,
+                    "file": Path(d.get("path", d.get("name", ""))).name,
+                    "path": str(d.get("path", "")),
+                    "rho_ns": round(float(rho), 2) if rho is not None else 0.2,
+                    "tau_ns": round(float(tau), 2) if tau is not None else 4.0,
+                    "r0": round(float(r0), 3) if r0 is not None else 0.38,
+                    "bg_vv": round(float(bg_vv), 2) if bg_vv is not None else 0.0,
+                    "bg_vh": round(float(bg_vh), 2) if bg_vh is not None else 0.0,
+                    "tail_match": bool(is_g),
+                    "r_expected": f"{float(target_rs):.4f}"
+                    if target_rs is not None and np.isfinite(target_rs)
+                    else "",
+                    "l_estimate": f"{float(l_est):.4f}"
+                    if l_est is not None and np.isfinite(l_est)
+                    else "",
+                }
+            )
         return rows
 
     def set_reference_tail_match(self, index: int) -> None:
@@ -609,7 +624,7 @@ class GFactorModel:
         target = ref_decays[index]
         for d in self.decays:
             if d.get("role") != "sample":
-                d["use_for_g"] = (d == target)
+                d["use_for_g"] = d == target
                 if d == target:
                     d["role"] = "fast"
                 elif d["role"] == "fast":
@@ -675,7 +690,9 @@ class GFactorModel:
             for r in self._selected_batch_records:
                 p = r.get("path") or r.get("file")
                 if p:
-                    full = next((f for f in self.batch_files if f == p or Path(f).name == Path(p).name), p)
+                    full = next(
+                        (f for f in self.batch_files if f == p or Path(f).name == Path(p).name), p
+                    )
                     paths.append(str(full))
             self.selected_batch_files = paths
             if paths:
@@ -689,7 +706,9 @@ class GFactorModel:
         path = record.get("path") or record.get("file")
         if not path:
             return
-        full_path = next((f for f in self.batch_files if f == path or Path(f).name == Path(path).name), path)
+        full_path = next(
+            (f for f in self.batch_files if f == path or Path(f).name == Path(path).name), path
+        )
         self.selected_batch_file = str(full_path)
         if str(full_path) not in self.selected_batch_files:
             self.selected_batch_files = [str(full_path)]
@@ -705,7 +724,6 @@ class GFactorModel:
                 self.compute_sample()
             except Exception:
                 pass
-
 
     def edit_reference(self, record: dict | None, key: str, value: Any) -> None:
         """Handle in-place editing of reference standard table cells."""
@@ -752,7 +770,11 @@ class GFactorModel:
                 if self.fast is not None:
                     self.compute()
             elif key == "tail_match":
-                bool_val = bool(value) if isinstance(value, bool) else (str(value).strip().lower() in ("true", "1", "yes", "★ yes"))
+                bool_val = (
+                    bool(value)
+                    if isinstance(value, bool)
+                    else (str(value).strip().lower() in ("true", "1", "yes", "★ yes"))
+                )
                 if bool_val:
                     ref_decays = [x for x in self.decays if x.get("role") != "sample"]
                     idx = next((i for i, x in enumerate(ref_decays) if x.get("path") == path), None)
@@ -771,7 +793,12 @@ class GFactorModel:
                 "name": "G",
                 "value": float(self.param_g.value),
                 "fixed": bool(self.param_g.fixed),
-                "error": f"± {self.param_g.error_estimate:.4g}" if (self.param_g.error_estimate is not None and np.isfinite(self.param_g.error_estimate)) else "",
+                "error": f"± {self.param_g.error_estimate:.4g}"
+                if (
+                    self.param_g.error_estimate is not None
+                    and np.isfinite(self.param_g.error_estimate)
+                )
+                else "",
                 "_parameter": self.param_g,
             },
             {
@@ -780,7 +807,12 @@ class GFactorModel:
                 "name": "l1",
                 "value": float(self.param_l1.value),
                 "fixed": bool(self.param_l1.fixed),
-                "error": f"± {self.param_l1.error_estimate:.4g}" if (self.param_l1.error_estimate is not None and np.isfinite(self.param_l1.error_estimate)) else "",
+                "error": f"± {self.param_l1.error_estimate:.4g}"
+                if (
+                    self.param_l1.error_estimate is not None
+                    and np.isfinite(self.param_l1.error_estimate)
+                )
+                else "",
                 "_parameter": self.param_l1,
             },
             {
@@ -789,7 +821,12 @@ class GFactorModel:
                 "name": "l2",
                 "value": float(self.param_l2.value),
                 "fixed": bool(self.param_l2.fixed),
-                "error": f"± {self.param_l2.error_estimate:.4g}" if (self.param_l2.error_estimate is not None and np.isfinite(self.param_l2.error_estimate)) else "",
+                "error": f"± {self.param_l2.error_estimate:.4g}"
+                if (
+                    self.param_l2.error_estimate is not None
+                    and np.isfinite(self.param_l2.error_estimate)
+                )
+                else "",
                 "_parameter": self.param_l2,
             },
             {
@@ -876,7 +913,11 @@ class GFactorModel:
             return
         try:
             if key == "fixed":
-                val = bool(value) if isinstance(value, bool) else (str(value).strip().lower() in ("true", "1", "yes", "t"))
+                val = (
+                    bool(value)
+                    if isinstance(value, bool)
+                    else (str(value).strip().lower() in ("true", "1", "yes", "t"))
+                )
                 if param_key in ("g", "g_override"):
                     self.manual_g = val
                 elif param_key in ("l1", "l2", "l_override", "manual_l"):
@@ -906,8 +947,20 @@ class GFactorModel:
             elif param_key == "l2":
                 self.manual_l = True
                 self.l2_override = max(0.0, float(value))
-            elif param_key in ("background", "flip", "manual_g", "manual_tau", "manual_rs", "manual_l", "link_l1_l2"):
-                bool_val = bool(value) if isinstance(value, bool) else (str(value).strip().lower() in ("true", "1", "yes", "t"))
+            elif param_key in (
+                "background",
+                "flip",
+                "manual_g",
+                "manual_tau",
+                "manual_rs",
+                "manual_l",
+                "link_l1_l2",
+            ):
+                bool_val = (
+                    bool(value)
+                    if isinstance(value, bool)
+                    else (str(value).strip().lower() in ("true", "1", "yes", "t"))
+                )
                 setattr(self, param_key, bool_val)
             else:
                 float_val = float(value)
@@ -947,11 +1000,13 @@ class GFactorModel:
             raw_val = f"{float(g_raw):.5f}"
             if g_raw_sd is not None and np.isfinite(g_raw_sd):
                 raw_val += f" ± {float(g_raw_sd):.5f}"
-            rows.append({
-                "quantity": "G raw",
-                "value": raw_val,
-                "tooltip": "Detector sensitivity ratio VV/VH without background subtraction (mean ± SD).",
-            })
+            rows.append(
+                {
+                    "quantity": "G raw",
+                    "value": raw_val,
+                    "tooltip": "Detector sensitivity ratio VV/VH without background subtraction (mean ± SD).",
+                }
+            )
         if self.background:
             g_corr = self.result.get("g_factor_corrected")
             g_corr_sd = self.result.get("g_factor_stddev_corrected")
@@ -959,27 +1014,35 @@ class GFactorModel:
                 corr_val = f"{float(g_corr):.5f}"
                 if g_corr_sd is not None and np.isfinite(g_corr_sd):
                     corr_val += f" ± {float(g_corr_sd):.5f}"
-                rows.append({
-                    "quantity": "G corrected",
-                    "value": corr_val,
-                    "tooltip": "Detector sensitivity ratio VV/VH after subtracting pre-pulse background (mean ± SD).",
-                })
-            rows.append({
-                "quantity": "Background VV",
-                "value": f"{float(self.result.get('bg_parallel_avg', 0.0)):.5g}",
-                "tooltip": "Mean background counts per bin in parallel channel.",
-            })
-            rows.append({
-                "quantity": "Background VH",
-                "value": f"{float(self.result.get('bg_perpendicular_avg', 0.0)):.5g}",
-                "tooltip": "Mean background counts per bin in perpendicular channel.",
-            })
+                rows.append(
+                    {
+                        "quantity": "G corrected",
+                        "value": corr_val,
+                        "tooltip": "Detector sensitivity ratio VV/VH after subtracting pre-pulse background (mean ± SD).",
+                    }
+                )
+            rows.append(
+                {
+                    "quantity": "Background VV",
+                    "value": f"{float(self.result.get('bg_parallel_avg', 0.0)):.5g}",
+                    "tooltip": "Mean background counts per bin in parallel channel.",
+                }
+            )
+            rows.append(
+                {
+                    "quantity": "Background VH",
+                    "value": f"{float(self.result.get('bg_perpendicular_avg', 0.0)):.5g}",
+                    "tooltip": "Mean background counts per bin in perpendicular channel.",
+                }
+            )
         if self.manual_g:
-            rows.append({
-                "quantity": "G used (manual)",
-                "value": f"{float(self.g_override):.5f}",
-                "tooltip": "Manual override of the detector G-factor.",
-            })
+            rows.append(
+                {
+                    "quantity": "G used (manual)",
+                    "value": f"{float(self.g_override):.5f}",
+                    "tooltip": "Manual override of the detector G-factor.",
+                }
+            )
         if self.l1 is not None and np.isfinite(self.l1):
             l_sd = self.fp_result.get("l_sd") if self.fp_result else None
             l1_val = f"{float(self.l1):.5f}"
@@ -995,16 +1058,20 @@ class GFactorModel:
                 if self.fp_result
                 else "Polarization mixing factor (objective depolarization correction)."
             )
-            rows.append({
-                "quantity": "l1",
-                "value": l1_val,
-                "tooltip": mix_tip,
-            })
-            rows.append({
-                "quantity": "l2",
-                "value": l2_val,
-                "tooltip": mix_tip,
-            })
+            rows.append(
+                {
+                    "quantity": "l1",
+                    "value": l1_val,
+                    "tooltip": mix_tip,
+                }
+            )
+            rows.append(
+                {
+                    "quantity": "l2",
+                    "value": l2_val,
+                    "tooltip": mix_tip,
+                }
+            )
         return rows
 
     def mixing_rows(self) -> list[dict[str, str]]:
@@ -1044,8 +1111,12 @@ class GFactorModel:
                     "file": Path(path).name,
                     "filename": Path(path).name,
                     "path": path,
-                    "r_ss": f"{r_ss:.5f}" if (r_ss is not None and np.isfinite(r_ss)) else ("" if not r else "failed"),
-                    "r_inf": f"{r_inf:.5g}" if (r_inf is not None and np.isfinite(r_inf)) else ("" if not r else "failed"),
+                    "r_ss": f"{r_ss:.5f}"
+                    if (r_ss is not None and np.isfinite(r_ss))
+                    else ("" if not r else "failed"),
+                    "r_inf": f"{r_inf:.5g}"
+                    if (r_inf is not None and np.isfinite(r_inf))
+                    else ("" if not r else "failed"),
                     "region": reg,
                     "region_min": r.get("region_start", r.get("region_min", 0.0)),
                     "region_max": r.get("region_stop", r.get("region_max", 0.0)),
@@ -1079,8 +1150,12 @@ class GFactorModel:
         if role is None:
             role = "sample" if sample else ("slow" if slow else "fast")
 
-        decay_rho = float(rho_ns) if rho_ns is not None else (self.fp_rho_ns if role == "slow" else 0.2)
-        decay_tau = float(tau_ns) if tau_ns is not None else (self.tau_override if self.manual_tau else 4.0)
+        decay_rho = (
+            float(rho_ns) if rho_ns is not None else (self.fp_rho_ns if role == "slow" else 0.2)
+        )
+        decay_tau = (
+            float(tau_ns) if tau_ns is not None else (self.tau_override if self.manual_tau else 4.0)
+        )
 
         entry = next((d for d in self.decays if d["path"] == str(path)), None)
         is_first_ref = not any(d.get("role") != "sample" for d in self.decays)
@@ -1164,7 +1239,9 @@ class GFactorModel:
             rho_val = float(rho_ns)
 
         if use_for_g is None:
-            use_for_g = not existing_refs or rho_val < min(d.get("rho_ns", 1e9) for d in existing_refs)
+            use_for_g = not existing_refs or rho_val < min(
+                d.get("rho_ns", 1e9) for d in existing_refs
+            )
 
         role = "fast" if use_for_g else "slow"
         self.load(path, role=role, rho_ns=rho_val, tau_ns=tau_ns)
@@ -1178,7 +1255,9 @@ class GFactorModel:
             self.fast = entry["data"]
             self.compute()
 
-    def load_example(self, folder: str | Path | None = None, client: GFactorClient | None = None) -> None:
+    def load_example(
+        self, folder: str | Path | None = None, client: GFactorClient | None = None
+    ) -> None:
         """Load simulated references (known G = 1.2) for demonstrations and testing."""
         from ..demo import DEMO, make_demo
 
@@ -1192,9 +1271,24 @@ class GFactorModel:
         self.load(files["fast"], role="fast", rho_ns=0.2, tau_ns=float(DEMO["tau_ns"]))
         self.region = [200.0, 350.0]
         self.compute()
-        self.load(files["batch1"], role="slow", rho_ns=float(DEMO["decays"][2][1]), tau_ns=float(DEMO["tau_ns"]))
-        self.load(files["batch2"], role="slow", rho_ns=float(DEMO["decays"][3][1]), tau_ns=float(DEMO["tau_ns"]))
-        self.load(files["slow"], role="slow", rho_ns=float(DEMO["decays"][1][1]), tau_ns=float(DEMO["tau_ns"]))
+        self.load(
+            files["batch1"],
+            role="slow",
+            rho_ns=float(DEMO["decays"][2][1]),
+            tau_ns=float(DEMO["tau_ns"]),
+        )
+        self.load(
+            files["batch2"],
+            role="slow",
+            rho_ns=float(DEMO["decays"][3][1]),
+            tau_ns=float(DEMO["tau_ns"]),
+        )
+        self.load(
+            files["slow"],
+            role="slow",
+            rho_ns=float(DEMO["decays"][1][1]),
+            tau_ns=float(DEMO["tau_ns"]),
+        )
         if "batch1" in files:
             self.load(files["batch1"], role="sample")
         else:
@@ -1284,12 +1378,14 @@ class GFactorModel:
 
         slow_entries = [d for d in self.decays if d.get("role") == "slow"]
         if not slow_entries and self.slow is not None:
-            slow_entries = [{
-                "data": self.slow,
-                "rho_ns": float(self.fp_rho_ns),
-                "tau_ns": float(self.tau_override) if self.manual_tau else None,
-                "name": Path(self.slow_file).name if self.slow_file else "slow",
-            }]
+            slow_entries = [
+                {
+                    "data": self.slow,
+                    "rho_ns": float(self.fp_rho_ns),
+                    "tau_ns": float(self.tau_override) if self.manual_tau else None,
+                    "name": Path(self.slow_file).name if self.slow_file else "slow",
+                }
+            ]
         if not slow_entries:
             return
 
@@ -1309,7 +1405,9 @@ class GFactorModel:
             time_e = np.arange(n_e, dtype=float)
             shifted_e = time_e + self.shift
             interp_e = np.interp(time_e, shifted_e, perp_e, left=0.0, right=0.0)
-            bp_e, bs_e = compute_background_levels(par_e, perp_e, time_e, shifted_e, self.background_region)
+            bp_e, bs_e = compute_background_levels(
+                par_e, perp_e, time_e, shifted_e, self.background_region
+            )
             entry["bg_vv"] = float(bp_e)
             entry["bg_vh"] = float(bs_e)
             if not self.background:
@@ -1368,7 +1466,9 @@ class GFactorModel:
                 time_d = np.arange(n_d, dtype=float)
                 shifted_d = time_d + self.shift
                 interp_d = np.interp(time_d, shifted_d, perp_d, left=0.0, right=0.0)
-                bp_d, bs_d = compute_background_levels(par_d, perp_d, time_d, shifted_d, self.background_region)
+                bp_d, bs_d = compute_background_levels(
+                    par_d, perp_d, time_d, shifted_d, self.background_region
+                )
                 d["bg_vv"] = float(bp_d)
                 d["bg_vh"] = float(bs_d)
                 if not self.background:
@@ -1426,7 +1526,9 @@ class GFactorModel:
                 shifted_e = time_e + self.shift
                 interp_e = np.interp(time_e, shifted_e, perp_e, left=0.0, right=0.0)
                 bp_e, bs_e = (
-                    compute_background_levels(par_e, perp_e, time_e, shifted_e, self.background_region)
+                    compute_background_levels(
+                        par_e, perp_e, time_e, shifted_e, self.background_region
+                    )
                     if self.background
                     else (0.0, 0.0)
                 )
@@ -1463,9 +1565,7 @@ class GFactorModel:
             warning = "Manual linked l1/l2 override is active."
         elif l1_val is None or l2_val is None:
             if not np.isfinite(l) or not 0 <= l <= 0.5:
-                warning = (
-                    f"Linked mixing estimate {l:g} is outside the physical [0, 0.5] range; not applied."
-                )
+                warning = f"Linked mixing estimate {l:g} is outside the physical [0, 0.5] range; not applied."
                 l = np.nan
                 l1_val = None
                 l2_val = None
@@ -1488,7 +1588,7 @@ class GFactorModel:
                     scale = (1.0 + 2.0 / expected) / denom
                     dl_du = -v * scale
                     dl_dv = u * scale
-                    var_l = (dl_du ** 2) * sp_val + (dl_dv ** 2) * (g ** 2) * ss_val
+                    var_l = (dl_du**2) * sp_val + (dl_dv**2) * (g**2) * ss_val
                     l_sd = float(np.sqrt(max(var_l, 0.0)))
 
         self.fp_result = {
@@ -1560,7 +1660,9 @@ class GFactorModel:
         l2 = self.l2
         corrected = shift_interp_on_axis(time, s, self.shift)
         with np.errstate(divide="ignore", invalid="ignore"):
-            raw_shifted_vh = shift_interp_on_axis(time, perp, self.shift) if len(perp) == len(time) else perp
+            raw_shifted_vh = (
+                shift_interp_on_axis(time, perp, self.shift) if len(perp) == len(time) else perp
+            )
             ratio_raw = np.where(raw_shifted_vh > 0, par / raw_shifted_vh, np.nan)
             ratio_corr = np.where(corrected > 0, p / corrected, np.nan)
         return {
@@ -1586,7 +1688,9 @@ class GFactorModel:
         par, perp = self.channels()
         if par is not None and perp is not None:
             time = np.arange(len(par), dtype=float)
-            bp, bs = compute_background_levels(par, perp, time, time + self.shift, self.background_region)
+            bp, bs = compute_background_levels(
+                par, perp, time, time + self.shift, self.background_region
+            )
         region = list(self.sample_region if self.sample is not None else self.region)
         return {
             "g_factor": float(g),
@@ -1717,8 +1821,7 @@ class GFactorModel:
             for row in self.batch_results:
                 stream.write(
                     ",".join(
-                        str(row.get(key, "") if row.get(key) is not None else "")
-                        for key in columns
+                        str(row.get(key, "") if row.get(key) is not None else "") for key in columns
                     )
                     + "\n"
                 )
@@ -1728,7 +1831,11 @@ class GFactorModel:
 
     def get_decay_series(self, file_path: str | Path | None = None) -> dict[str, np.ndarray]:
         """Compute plotted vectors for a specific file or active sample."""
-        target = str(file_path) if file_path else (self.selected_batch_file or (self.batch_files[0] if self.batch_files else None))
+        target = (
+            str(file_path)
+            if file_path
+            else (self.selected_batch_file or (self.batch_files[0] if self.batch_files else None))
+        )
         if target and Path(target).is_file():
             par, perp = read_vv_vh(target, split=True)
             par = np.asarray(par, dtype=float)
@@ -1749,7 +1856,9 @@ class GFactorModel:
             g_val = float(g) if g is not None and np.isfinite(g) and g > 0 else np.nan
             corrected = shift_interp_on_axis(time, s, self.shift)
             with np.errstate(divide="ignore", invalid="ignore"):
-                raw_shifted_vh = shift_interp_on_axis(time, perp[:n], self.shift) if len(perp) >= n else perp[:n]
+                raw_shifted_vh = (
+                    shift_interp_on_axis(time, perp[:n], self.shift) if len(perp) >= n else perp[:n]
+                )
                 ratio_raw = np.where(raw_shifted_vh > 0, par[:n] / raw_shifted_vh, np.nan)
                 ratio_corr = np.where(corrected > 0, p / corrected, np.nan)
             return {
@@ -1766,11 +1875,15 @@ class GFactorModel:
                     -0.5,
                     1.5,
                 ),
-                "r_corrected": np.clip(compute_rt(p, corrected, g_val, l1=self.l1, l2=self.l2), -0.5, 1.5),
+                "r_corrected": np.clip(
+                    compute_rt(p, corrected, g_val, l1=self.l1, l2=self.l2), -0.5, 1.5
+                ),
             }
         return self.decay_series()
 
-    def export_active_decay(self, target_path: str | Path, file_path: str | Path | None = None) -> None:
+    def export_active_decay(
+        self, target_path: str | Path, file_path: str | Path | None = None
+    ) -> None:
         """Export time, raw VV, raw VH, corrected VV, and corrected VH to a CSV file."""
         series = self.get_decay_series(file_path=file_path)
         if not series or "time" not in series:
@@ -1788,7 +1901,9 @@ class GFactorModel:
                 f.write(f"{t:.4f},{vr:.2f},{hr:.2f},{vc:.2f},{hc:.2f}\n")
         self.message = f"Exported decays to {Path(target_path).name}"
 
-    def export_active_rt(self, target_path: str | Path, file_path: str | Path | None = None) -> None:
+    def export_active_rt(
+        self, target_path: str | Path, file_path: str | Path | None = None
+    ) -> None:
         """Export time, raw r(t), and corrected r(t) to a CSV file."""
         series = self.get_decay_series(file_path=file_path)
         if not series or "time" not in series:
@@ -1800,7 +1915,9 @@ class GFactorModel:
                 f.write(f"{t:.4f},{rr:.6f},{rc:.6f}\n")
         self.message = f"Exported anisotropy r(t) to {Path(target_path).name}"
 
-    def export_active_ratio(self, target_path: str | Path, file_path: str | Path | None = None) -> None:
+    def export_active_ratio(
+        self, target_path: str | Path, file_path: str | Path | None = None
+    ) -> None:
         """Export time, raw VV/VH ratio, and corrected VV/VH ratio to a CSV file."""
         series = self.get_decay_series(file_path=file_path)
         if not series or "time" not in series:
@@ -1808,7 +1925,9 @@ class GFactorModel:
         columns = ["time", "ratio_raw", "ratio_corrected"]
         with Path(target_path).open("w") as f:
             f.write(",".join(columns) + "\n")
-            for t, rr, rc in zip(series["time"], series.get("ratio_raw", []), series.get("ratio_corrected", [])):
+            for t, rr, rc in zip(
+                series["time"], series.get("ratio_raw", []), series.get("ratio_corrected", [])
+            ):
                 f.write(f"{t:.4f},{rr:.6f},{rc:.6f}\n")
         self.message = f"Exported VV/VH ratio to {Path(target_path).name}"
 
@@ -1831,7 +1950,9 @@ class GFactorModel:
                 n = min(len(par), len(perp))
                 time = np.arange(n, dtype=float)
                 bp, bs = (
-                    compute_background_levels(par, perp, time, time + self.shift, self.background_region)
+                    compute_background_levels(
+                        par, perp, time, time + self.shift, self.background_region
+                    )
                     if self.background
                     else (0.0, 0.0)
                 )
@@ -1918,7 +2039,11 @@ class GFactorModel:
         write_vv_vh(decay_file, vv=p, vh=vh_shifted)
         r_t = self.sample_r_t
         r_inf = self.sample_r_infty
-        corrected = r_t - r_inf if (r_t is not None and np.isfinite(r_inf)) else (r_t.copy() if r_t is not None else np.zeros_like(time))
+        corrected = (
+            r_t - r_inf
+            if (r_t is not None and np.isfinite(r_inf))
+            else (r_t.copy() if r_t is not None else np.zeros_like(time))
+        )
         np.savetxt(
             trace_file,
             np.column_stack((time, r_t if r_t is not None else np.zeros_like(time), corrected)),
@@ -1930,7 +2055,18 @@ class GFactorModel:
         with info_file.open("w", newline="", encoding="utf-8") as stream:
             writer = csv.writer(stream, lineterminator="\n")
             writer.writerow(
-                ("filename", "r_ss", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor", "l1", "l2")
+                (
+                    "filename",
+                    "r_ss",
+                    "r_inf",
+                    "region_min",
+                    "region_max",
+                    "bg_vv",
+                    "bg_vh",
+                    "g_factor",
+                    "l1",
+                    "l2",
+                )
             )
             writer.writerow(
                 (
@@ -1977,7 +2113,10 @@ class GFactorModel:
         }
 
     def detector_parameters(
-        self, prior_l1: float = 0.0, prior_l2: float = 0.0, micro_time_resolution: float | None = None
+        self,
+        prior_l1: float = 0.0,
+        prior_l2: float = 0.0,
+        micro_time_resolution: float | None = None,
     ) -> dict[str, object]:
         """Return the measured calibration plus detector-context mixing fallbacks.
 
@@ -1995,7 +2134,9 @@ class GFactorModel:
             for key, prior in (("l1", prior_l1), ("l2", prior_l2)):
                 estimated = estimates.get(key)
                 parameters[key] = (
-                    float(estimated) if estimated is not None and np.isfinite(estimated) else float(prior)
+                    float(estimated)
+                    if estimated is not None and np.isfinite(estimated)
+                    else float(prior)
                 )
         parameters.update(
             g_factor_uncorrected=self.result.get("g_factor_uncorrected"),

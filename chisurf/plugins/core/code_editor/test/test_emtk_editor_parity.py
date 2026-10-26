@@ -123,8 +123,21 @@ def test_the_shipped_notebooks_submenu_has_the_qt_groups_and_notebooks(app, driv
 
 def test_every_qt_toolbar_button_is_on_the_emtk_toolbar(driver):
     drawn = " ".join(_drawn(driver))
-    for label in ("New", "Open", "Folder", "Save", "Back", "Fwd", "Def", "Hint", "Run", "Lint",
-                  "¶", "Settings", "Agent"):
+    for label in (
+        "New",
+        "Open",
+        "Folder",
+        "Save",
+        "Back",
+        "Fwd",
+        "Def",
+        "Hint",
+        "Run",
+        "Lint",
+        "¶",
+        "Settings",
+        "Agent",
+    ):
         assert label in drawn, label
     # The Qt run-target combo: both targets offered.
     assert "Separate process" in drawn or "In ChiSurf console" in drawn
@@ -235,7 +248,9 @@ def test_the_status_line_has_the_position_and_the_lsp_state(app, driver):
     assert QT["status"][1] == "Ln 1, Col 0" and QT["status"][3] == "LSP idle"
     drawn = " ".join(_drawn(driver))
     assert "Ln 1, Col 1" in drawn  # emtk counts columns from 1, as the line
-    assert app.model.lsp_status.split(":", 1)[0] in drawn  # the short state; the Python dock says why
+    assert (
+        app.model.lsp_status.split(":", 1)[0] in drawn
+    )  # the short state; the Python dock says why
 
 
 def test_the_settings_menu_toggles_line_numbers_and_whitespace(app, driver):

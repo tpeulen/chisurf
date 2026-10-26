@@ -10,6 +10,7 @@ Streams (Dex/Aex = donor/acceptor excitation, Dem/Aem = emission)::
 
 Without alternation every photon is under donor excitation and AA is empty.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -85,7 +86,9 @@ class Bursts:
         }
         if "AA" in self.counts:
             cols["Number of Photons (yellow)"] = self.counts["AA"]
-            cols["Yellow Count Rate (KHz)"] = self.counts["AA"] / np.maximum(self.duration, 1e-9) * 1e-3
+            cols["Yellow Count Rate (KHz)"] = (
+                self.counts["AA"] / np.maximum(self.duration, 1e-9) * 1e-3
+            )
         if self.S is not None:
             cols["Stoichiometry"] = self.S
         if self.fret_2cde is not None:
@@ -141,7 +144,9 @@ def _merge(intervals: np.ndarray) -> np.ndarray:
 def find_bursts(data, settings: BurstSettings) -> np.ndarray:
     """Burst photon ranges ``(n, 2)``, inclusive, merged and size-filtered."""
     raw = np.asarray(
-        data.burst_search(L=settings.min_photons, m=settings.m, T=settings.T, mode=settings.algorithm)
+        data.burst_search(
+            L=settings.min_photons, m=settings.m, T=settings.T, mode=settings.algorithm
+        )
     ).reshape(-1, 2)
     merged = _merge(raw.astype(np.int64))
     keep = (merged[:, 1] - merged[:, 0] + 1) >= settings.min_photons
@@ -185,13 +190,17 @@ def _near_bursts(data, bursts, tau):
     idx = np.flatnonzero(np.cumsum(marks)[:-1] > 0)
     if idx.size > 0.7 * macro.size:
         return data, bursts
-    subset = tttrlib.TTTR(np.ascontiguousarray(macro[idx], np.uint64),
-                          np.ascontiguousarray(np.asarray(data.micro_times)[idx], np.uint16),
-                          np.ascontiguousarray(np.asarray(data.routing_channels)[idx], np.int8),
-                          np.ascontiguousarray(np.asarray(data.event_types)[idx], np.int8))
+    subset = tttrlib.TTTR(
+        np.ascontiguousarray(macro[idx], np.uint64),
+        np.ascontiguousarray(np.asarray(data.micro_times)[idx], np.uint16),
+        np.ascontiguousarray(np.asarray(data.routing_channels)[idx], np.int8),
+        np.ascontiguousarray(np.asarray(data.event_types)[idx], np.int8),
+    )
     subset.header.set_macro_time_resolution(res)
     subset.header.set_micro_time_resolution(float(data.header.micro_time_resolution))
-    remapped = np.stack([np.searchsorted(idx, bursts[:, 0]), np.searchsorted(idx, bursts[:, 1])], axis=1)
+    remapped = np.stack(
+        [np.searchsorted(idx, bursts[:, 0]), np.searchsorted(idx, bursts[:, 1])], axis=1
+    )
     return subset, remapped.astype(np.int64)
 
 
@@ -219,7 +228,9 @@ def _two_cde(data, exp, bursts, tau):
             win = {w.name: w for w in exp.windows}
             chans = exp.donor_channels + exp.acceptor_channels
             two.set_donor_excitation(chans, [[win["donor"].start, win["donor"].stop]])
-            two.set_acceptor_excitation(exp.acceptor_channels, [[win["acceptor"].start, win["acceptor"].stop]])
+            two.set_acceptor_excitation(
+                exp.acceptor_channels, [[win["acceptor"].start, win["acceptor"].stop]]
+            )
             two.compute(bursts, tau, tttrlib.TwoCDE.ALEX_2CDE, tttrlib.TwoCDE.LAPLACE)
             alex = np.asarray(two.get_two_cde(), float).copy()
     except (TypeError, ValueError, RuntimeError, NotImplementedError):
@@ -264,16 +275,23 @@ def burst_details(data, exp: Experiment, stream, bursts, macro_s, g_factor=1.0, 
         extra[f"Number of Photons (ch {c})"] = _burst_sum(on & (stream >= 0), bursts)
     # Anisotropies (G factor, no l1/l2 or background correction).
     if exp.polarization:
-        for label, (par, perp), stream_ids in (("green", exp.donor_pol, (0,)),
-                                               ("red", exp.acceptor_pol, (2,) if exp.excitation == "alternating" else (1,))):
+        for label, (par, perp), stream_ids in (
+            ("green", exp.donor_pol, (0,)),
+            ("red", exp.acceptor_pol, (2,) if exp.excitation == "alternating" else (1,)),
+        ):
             sel = np.isin(stream, stream_ids)
             i_par = _burst_sum(sel & (routing == par), bursts)
             i_perp = _burst_sum(sel & (routing == perp), bursts)
             den = i_par + 2.0 * g_factor * i_perp
-            extra[f"r Experimental ({label})"] = np.divide(i_par - g_factor * i_perp, den,
-                                                           out=np.full(den.shape, np.nan), where=den > 0)
+            extra[f"r Experimental ({label})"] = np.divide(
+                i_par - g_factor * i_perp, den, out=np.full(den.shape, np.nan), where=den > 0
+            )
     # Lifetimes from the mean arrival time.
-    tcspc = exp.micro_time_resolution_s > 0 and exp.micro_time_resolution_s < 1e-9 and not exp.alex_period
+    tcspc = (
+        exp.micro_time_resolution_s > 0
+        and exp.micro_time_resolution_s < 1e-9
+        and not exp.alex_period
+    )
     if tcspc:
         dt_ns = exp.micro_time_resolution_s * 1e9
         for label, sid in (("green", 0), ("yellow", 2)):
@@ -289,8 +307,12 @@ def burst_details(data, exp: Experiment, stream, bursts, macro_s, g_factor=1.0, 
                 if irf_offsets is not None:
                     irf_offsets[label] = offset
             n = _burst_sum(sel, bursts)
-            mean = np.divide(_burst_sum(np.where(sel, micro, 0.0), bursts), n, out=np.full(n.shape, np.nan),
-                             where=n > 0)
+            mean = np.divide(
+                _burst_sum(np.where(sel, micro, 0.0), bursts),
+                n,
+                out=np.full(n.shape, np.nan),
+                where=n > 0,
+            )
             extra[f"Tau ({label})"] = (mean - offset) * dt_ns
     # TGX-TRR: mean macro time of donor-excited minus acceptor-excited photons
     # (bleaching/blinking of one dye shifts it away from 0).
@@ -298,15 +320,30 @@ def burst_details(data, exp: Experiment, stream, bursts, macro_s, g_factor=1.0, 
         g = (stream == 0) | (stream == 1)
         r = stream == 2
         ng, nr = _burst_sum(g, bursts), _burst_sum(r, bursts)
-        tg = np.divide(_burst_sum(np.where(g, macro_s, 0.0), bursts), ng, out=np.full(ng.shape, np.nan), where=ng > 0)
-        tr = np.divide(_burst_sum(np.where(r, macro_s, 0.0), bursts), nr, out=np.full(nr.shape, np.nan), where=nr > 0)
+        tg = np.divide(
+            _burst_sum(np.where(g, macro_s, 0.0), bursts),
+            ng,
+            out=np.full(ng.shape, np.nan),
+            where=ng > 0,
+        )
+        tr = np.divide(
+            _burst_sum(np.where(r, macro_s, 0.0), bursts),
+            nr,
+            out=np.full(nr.shape, np.nan),
+            where=nr > 0,
+        )
         extra["TGX-TRR"] = (tg - tr) * 1e3  # ms
         extra["|TGX-TRR| / Duration"] = np.abs(tg - tr) / dur
     return extra
 
 
-def analyse(data, exp: Experiment, settings: BurstSettings | None = None, progress=None,
-            irf_offsets: dict | None = None) -> Bursts:
+def analyse(
+    data,
+    exp: Experiment,
+    settings: BurstSettings | None = None,
+    progress=None,
+    irf_offsets: dict | None = None,
+) -> Bursts:
     """Burst search and the per-burst table for one measurement.
 
     ``progress(fraction, message)``, when given, hears each stage.

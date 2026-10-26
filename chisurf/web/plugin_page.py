@@ -11,6 +11,7 @@ The name is read from the page's own URL, so the apps map can point every
 plugin at this one factory; the build decides which plugin ids exist
 (:func:`chisurf.web.plugin_apps`).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -69,8 +70,8 @@ def make_app() -> Any:
         if plugin_id is None:
             app.project.dialogs.message(  # the URL named something this page lacks
                 tr("?app={name}", domain="chisurf").format(name=name),
-                tr("No such plugin on this page; ChiSurf started instead.",
-                   domain="chisurf"))
+                tr("No such plugin on this page; ChiSurf started instead.", domain="chisurf"),
+            )
         else:
             # Standalone: the tool fills the window and the shell chrome stays
             # away (EmtkShellApp.present_tool). The URL means the app.

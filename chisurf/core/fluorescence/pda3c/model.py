@@ -104,9 +104,7 @@ class BurstCounts:
         self.green = np.atleast_2d(np.asarray(self.green, dtype=float))
         if self.blue.shape[0] != self.green.shape[0]:
             raise ValueError("blue and green count tables must have the same burst count")
-        weights = np.asarray(
-            [] if self.multiplicity is None else self.multiplicity, dtype=float
-        )
+        weights = np.asarray([] if self.multiplicity is None else self.multiplicity, dtype=float)
         self.multiplicity = weights if weights.size else np.ones(self.blue.shape[0], dtype=float)
 
     def collapsed(self) -> BurstCounts:

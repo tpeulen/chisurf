@@ -227,6 +227,7 @@ def test_write_structure_dispatches_on_extension(tmp_path):
 # The command, end to end
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def loaded():
     import pathlib

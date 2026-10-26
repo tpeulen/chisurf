@@ -81,6 +81,7 @@ Author: Your Name <your.email@example.com>
 Year: 2023
 """
 
+
 class MyPluginWidget(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -95,6 +96,7 @@ class MyPluginWidget(QMainWindow):
         # Add your plugin UI components here
 
     # Add your plugin methods here
+
 
 # When the plugin is loaded as a module with __name__ == "plugin",
 # this code will be executed

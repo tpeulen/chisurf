@@ -55,7 +55,13 @@ def test_merge_joins_overlaps_orders_and_drops_empty():
 def test_interval_mask_is_start_inclusive_stop_exclusive():
     t = np.array([0.0, 0.5, 0.99, 1.0, 2.0, 2.5, 3.0])
     assert interval_mask(t, [(0.5, 1.0), (2.0, 3.0)]).tolist() == [
-        False, True, True, False, True, True, False,
+        False,
+        True,
+        True,
+        False,
+        True,
+        True,
+        False,
     ]
     assert interval_mask(t, []).all(), "no regions: the whole file"
 
@@ -111,7 +117,9 @@ def test_filtered_path_cuts_after_invert_and_gap_fill(two_files):
     ta = times_s(model._tttr_objects[file_key(a)])
     keep = model.compute_selection(model._tttr_objects[file_key(a)], str(a))
     assert keep.any(), "the inverted burst filter keeps background photons in the region"
-    assert ((ta[keep] >= 0.25) & (ta[keep] < 0.75)).all(), "neither invert nor gap filling leaves the region"
+    assert ((ta[keep] >= 0.25) & (ta[keep] < 0.75)).all(), (
+        "neither invert nor gap filling leaves the region"
+    )
     # the step-3 view (first file) counts the same photons
     assert int(model.selected().sum()) == int(keep.sum())
     combined = wf.filtered_tttr(model)
@@ -162,7 +170,9 @@ def test_dragging_on_the_trace_draws_a_region_that_reaches_the_correlator(two_fi
     assert len(regions) == 1, regions
     start, stop = regions[0]
     lo, hi = hub.child._view[:2]
-    np.testing.assert_allclose([start, stop], [lo + 0.2 * (hi - lo), lo + 0.6 * (hi - lo)], atol=0.02)
+    np.testing.assert_allclose(
+        [start, stop], [lo + 0.2 * (hi - lo), lo + 0.6 * (hi - lo)], atol=0.02
+    )
     row = next(r for r in files.file_rows() if r["key"] == file_key(a))
     assert row["regions"] == 1, "the file table counts a file's regions"
     # the correlator gets only those photons of a (and all of b)

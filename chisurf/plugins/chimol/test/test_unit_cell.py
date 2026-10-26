@@ -34,11 +34,11 @@ PDB = (
 CELL = "61.2, 61.2, 96.8, 90, 90, 120, P 32 2 1"
 
 
-
 @pytest.fixture
 def window():
     from chimol.core.settings.registry import set_setting
     from native_window import NativeWindow
+
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
     win = NativeWindow()

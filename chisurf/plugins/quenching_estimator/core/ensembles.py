@@ -89,6 +89,7 @@ def walk_segment(tau0: float, t_max: float, n_blocks: int = 1) -> float:
     total = float(t_max) * max(1, int(n_blocks))
     return min(float(t_max), max(lo, min(hi, total / WALK_TARGET_WALKERS)))
 
+
 #: Report spacing (ns) and span (in tau0) of the PDE decay the photons are drawn from.
 PDE_DECAY_DT = 0.004
 PDE_DECAY_SPAN_TAU0 = 15.0
@@ -173,8 +174,12 @@ def ensemble_fields(density, mobility, rate_map, dg, diffusion_coefficient) -> E
     m = np.asarray(mobility, dtype=np.float64).reshape(b.shape)
     k = np.zeros_like(b) if rate_map is None else np.asarray(rate_map, np.float64).reshape(b.shape)
     shell = (
-        b[0].any() or b[-1].any() or b[:, 0].any() or b[:, -1].any()
-        or b[:, :, 0].any() or b[:, :, -1].any()
+        b[0].any()
+        or b[-1].any()
+        or b[:, 0].any()
+        or b[:, -1].any()
+        or b[:, :, 0].any()
+        or b[:, :, -1].any()
     )
     pad = 1 if shell else 0
     if pad:
@@ -265,8 +270,15 @@ def pde_solver(f: EnsembleFields, t_step: float = PDE_DECAY_DT):
     import IMP.bff as bff
 
     return bff.GridDiffusionSolver(
-        f.diffusion, f.bounds, f.occupancy, f.rate, f.dg, float(t_step),
-        "detailed_balance", False, f.weight,
+        f.diffusion,
+        f.bounds,
+        f.occupancy,
+        f.rate,
+        f.dg,
+        float(t_step),
+        "detailed_balance",
+        False,
+        f.weight,
     )
 
 

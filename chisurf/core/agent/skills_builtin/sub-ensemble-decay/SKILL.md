@@ -38,7 +38,7 @@ The decay of a population is the micro-time histogram of its
 import numpy as np, tttrlib
 from pathlib import Path
 
-N_BINS, GREEN = 4096, [0, 8]          # verified in burst-search, not assumed
+N_BINS, GREEN = 4096, [0, 8]  # verified in burst-search, not assumed
 decays = {name: np.zeros(N_BINS, np.int64) for name in populations}
 for name in sorted(bursts["file"].unique()):
     stream = tttrlib.TTTR(str(Path(WORKDIR) / name), "SPC-130")
@@ -76,7 +76,9 @@ measurement** — the scatter and dark counts between molecules:
 ```python
 from chisurf.core.fluorescence.burst.irf_bg import extract_irf_background
 
-estimate = extract_irf_background(stream, {"green": {"chs": GREEN, "micro_time_ranges": []}})["green"]
+estimate = extract_irf_background(stream, {"green": {"chs": GREEN, "micro_time_ranges": []}})[
+    "green"
+]
 irf, axis, background_khz = estimate.irf, estimate.time_ns, estimate.background_khz
 ```
 
@@ -102,8 +104,11 @@ TCSPC data:
 ```python
 for label, counts in decays.items():
     np.savetxt(Path(WORKDIR) / f"{label}.dat", np.column_stack([axis, counts]), fmt="%.6f\t%d")
-np.savetxt(Path(WORKDIR) / "irf.dat",
-           np.column_stack([axis, np.round(irf / irf.sum() * 1e6)]), fmt="%.6f\t%d")
+np.savetxt(
+    Path(WORKDIR) / "irf.dat",
+    np.column_stack([axis, np.round(irf / irf.sum() * 1e6)]),
+    fmt="%.6f\t%d",
+)
 ```
 
 From here it is a normal decay analysis — `load_data(experiment="TCSPC")`,

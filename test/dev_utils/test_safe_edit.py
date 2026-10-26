@@ -153,7 +153,7 @@ def test_ts_empty_translation_adds_an_unfinished_source_and_never_clears(tmp_pat
 def test_ts_empty_translation_revives_an_obsolete_message(tmp_path):
     f = tmp_path / "chisurf_de.ts"
     f.write_text(
-        '<TS><context><name>A</name><message><source>Old</source>'
+        "<TS><context><name>A</name><message><source>Old</source>"
         '<translation type="obsolete">Alt</translation></message>\n    </context></TS>',
         encoding="utf-8",
     )

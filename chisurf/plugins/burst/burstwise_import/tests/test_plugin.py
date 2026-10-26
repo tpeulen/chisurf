@@ -20,9 +20,7 @@ from chisurf.plugins.burst.burstwise_import.gui.view_model import BurstwiseImpor
 
 #: Synthetic stand-in for a legacy burstwise analysis tree (3 stems, the real
 #: layout and file contract); regenerate with ``data/make_burstwise_sample.py``.
-SAMPLE = (
-    pathlib.Path(__file__).resolve().parent / "data" / "burstwise" / "burstwise_All 0.1066#60"
-)
+SAMPLE = pathlib.Path(__file__).resolve().parent / "data" / "burstwise" / "burstwise_All 0.1066#60"
 N_STEMS = 3
 
 

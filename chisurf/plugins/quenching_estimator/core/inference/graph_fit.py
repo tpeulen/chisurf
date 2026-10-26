@@ -231,8 +231,9 @@ def inactive_values(rate_model, fit_settings=None):
     for p in parameter_specs(fit_settings):
         if p.rate_models is not None and rate_model not in p.rate_models:
             if p.inactive is None:
-                raise ValueError(f"fit parameter {p.label!r} declares rate_models but no inactive "
-                                 "value")
+                raise ValueError(
+                    f"fit parameter {p.label!r} declares rate_models but no inactive value"
+                )
             out[p.name] = p.inactive
     return out
 
@@ -480,8 +481,9 @@ class TitrationContext:
         -------
         numpy.ndarray
         """
-        return _kq.kq_vector(dye, self.K_mean if K is None else K, self.tau0, self.textbook,
-                             self.kq_settings)
+        return _kq.kq_vector(
+            dye, self.K_mean if K is None else K, self.tau0, self.textbook, self.kq_settings
+        )
 
 
 # --------------------------------------------------------------------------------------------
@@ -541,8 +543,9 @@ class Block:
         self.nu = float(fit_settings["student_t_nu"])
         self.rate_model = rate_model_of(points)
         self.inactive = inactive_values(self.rate_model, fit_settings)
-        self.fixed = {k: v for k, v in fixed_values(dye, fit_settings).items()
-                      if k not in self.inactive}
+        self.fixed = {
+            k: v for k, v in fixed_values(dye, fit_settings).items() if k not in self.inactive
+        }
         self.free = free_names(dye, {**self.fixed, **self.inactive}, fit_settings)
         specs = _spec_map(fit_settings)
         self.lo = np.array([specs[n].lower for n in self.free])
@@ -834,8 +837,10 @@ class WorkerPool:
         """
         if self._pool is None:
             self._pool = _futures.ProcessPoolExecutor(
-                max_workers=self.workers, mp_context=_mp.get_context("spawn"),
-                initializer=_worker_init, initargs=(self.payload,),
+                max_workers=self.workers,
+                mp_context=_mp.get_context("spawn"),
+                initializer=_worker_init,
+                initargs=(self.payload,),
             )
         return self._pool
 
@@ -846,8 +851,17 @@ class WorkerPool:
             self._pool = None
 
 
-def _map(function, worker_function, payload, items, workers, progress=None, cancel=None,
-         label="", pool=None):
+def _map(
+    function,
+    worker_function,
+    payload,
+    items,
+    workers,
+    progress=None,
+    cancel=None,
+    label="",
+    pool=None,
+):
     """``[function(item) for item in items]``, in worker processes when ``workers > 1``.
 
     Parameters
@@ -896,8 +910,9 @@ def _map(function, worker_function, payload, items, workers, progress=None, canc
         done = 0
         pending = set(index)
         while pending:
-            finished, pending = _futures.wait(pending, timeout=0.5,
-                                              return_when=_futures.FIRST_COMPLETED)
+            finished, pending = _futures.wait(
+                pending, timeout=0.5, return_when=_futures.FIRST_COMPLETED
+            )
             for fut in finished:
                 out[index[fut]] = fut.result()
                 done += 1
@@ -939,8 +954,13 @@ def search(block, seed, fit_settings=None, workers=None, progress=None, cancel=N
     seeds = [int(seed) + k for k in range(int(fs["n_starts"]))]
     seeds += [np.asarray(x, float) for x in block.starts]
     found = _map(
-        lambda k: find_most_probable(block, k, maxiter), _worker_search,
-        dict(block=block.lean(), maxiter=maxiter), seeds, workers, progress, cancel,
+        lambda k: find_most_probable(block, k, maxiter),
+        _worker_search,
+        dict(block=block.lean(), maxiter=maxiter),
+        seeds,
+        workers,
+        progress,
+        cancel,
         label=f"{block.label}: search",
     )
     return settle(block, found, fs)
@@ -1139,8 +1159,10 @@ class Graph:
         for block, th in zip(self.blocks, ths):
             p = block.predictions(th)
             sigma = np.sqrt(block.sigma_meas**2 + block.s**2)
-            residuals += [((p - block.tau_x) / sigma)[block.use],
-                          ridge(th, block.groups, block.ridge_sd)]
+            residuals += [
+                ((p - block.tau_x) / sigma)[block.use],
+                ridge(th, block.groups, block.ridge_sd),
+            ]
             predictions.append(p)
         K_mean, K_sd = self.context.K_mean, self.context.K_sd
         residuals.append(np.array([(K[k] - K_mean[k]) / K_sd[k] for k in self.k_keys]))
@@ -1172,12 +1194,18 @@ class Graph:
                 v[i] += sign * step
                 shifted.append(v)
         payload = None if pool is not None else dict(graph=self.lean())
-        out = _map(self.evaluate, _worker_evaluate, payload, shifted, workers, cancel=cancel,
-                   label="jacobian", pool=pool)
-        Jr = np.array([(out[2 * i][0] - out[2 * i + 1][0]) / (2 * step)
-                       for i in range(len(u))]).T
-        Jp = np.array([(out[2 * i][1] - out[2 * i + 1][1]) / (2 * step)
-                       for i in range(len(u))]).T
+        out = _map(
+            self.evaluate,
+            _worker_evaluate,
+            payload,
+            shifted,
+            workers,
+            cancel=cancel,
+            label="jacobian",
+            pool=pool,
+        )
+        Jr = np.array([(out[2 * i][0] - out[2 * i + 1][0]) / (2 * step) for i in range(len(u))]).T
+        Jp = np.array([(out[2 * i][1] - out[2 * i + 1][1]) / (2 * step) for i in range(len(u))]).T
         return Jr, Jp
 
     def lean(self):
@@ -1357,17 +1385,39 @@ def joint_fit(graph, workers=None, cancel=None, max_nfev=None, start=None, minpa
         minpack = bool(fs["joint_minpack"])
     if minpack:
         tol = float(fs["joint_tolerance"])
-        sol = _numerics.least_squares(residuals, u, bounds=(0.0, 1.0), ftol=tol, xtol=tol,
-                                      gtol=tol, diff_step=float(fs["joint_diff_step"]),
-                                      max_nfev=budget)
-        u, status, nfev, first = np.asarray(sol.x, float), int(sol.status), int(sol.nfev), \
-            float(sol.cost)
+        sol = _numerics.least_squares(
+            residuals,
+            u,
+            bounds=(0.0, 1.0),
+            ftol=tol,
+            xtol=tol,
+            gtol=tol,
+            diff_step=float(fs["joint_diff_step"]),
+            max_nfev=budget,
+        )
+        u, status, nfev, first = (
+            np.asarray(sol.x, float),
+            int(sol.status),
+            int(sol.nfev),
+            float(sol.cost),
+        )
     u = np.clip(u, graph.u_clip, 1 - graph.u_clip)
     with WorkerPool(dict(graph=graph.lean()), workers) as pool:
-        graph.polish = polish(graph, u, int(fs["joint_polish_iterations"]),
-                              float(fs["joint_polish_rtol"]), cancel=cancel, pool=pool)
-        sol = OptimizeSummary(x=graph.polish["u"], cost=graph.polish["cost"], status=status,
-                              nfev=nfev, minpack_cost=first)
+        graph.polish = polish(
+            graph,
+            u,
+            int(fs["joint_polish_iterations"]),
+            float(fs["joint_polish_rtol"]),
+            cancel=cancel,
+            pool=pool,
+        )
+        sol = OptimizeSummary(
+            x=graph.polish["u"],
+            cost=graph.polish["cost"],
+            status=status,
+            nfev=nfev,
+            minpack_cost=first,
+        )
         graph.fit = sol
         graph.u = np.asarray(sol.x, float)
         graph.residual, graph.prediction = graph.evaluate(graph.u)
@@ -1450,8 +1500,12 @@ class BlockResult:
         if not len(row):
             raise KeyError(f"{self.label}: no estimate {label!r}")
         r = row[0]
-        return dict(value=float(r["value"]), low=float(r["low_68"]),
-                    high=float(r["high_68"]), note=str(r["note"]))
+        return dict(
+            value=float(r["value"]),
+            low=float(r["low_68"]),
+            high=float(r["high_68"]),
+            note=str(r["note"]),
+        )
 
 
 @dataclass
@@ -1542,8 +1596,15 @@ def leave_one_out(graph, b, rows_p, rows_r):
             jp = graph.Jp[rows_p[j]]
             without = graph.prediction[rows_p[j]] + jp @ step
             sigma = np.sqrt(block.sigma_meas[j] ** 2 + block.s**2 + jp @ cov @ jp)
-            out.append(dict(row=int(j), site=int(site), state=str(rows["state"][j]),
-                            solvent=str(solvent[j]), z=float((without - block.tau_x[j]) / sigma)))
+            out.append(
+                dict(
+                    row=int(j),
+                    site=int(site),
+                    state=str(rows["state"][j]),
+                    solvent=str(solvent[j]),
+                    z=float((without - block.tau_x[j]) / sigma),
+                )
+            )
     out.sort(key=lambda d: d["row"])
     return out
 
@@ -1602,63 +1663,131 @@ def block_views(graph, graph_name=""):
         outlier = np.abs(z) > limit
         rows = block.rows
         solvent = rows["solvent"] if "solvent" in rows.dtype.names else [""] * len(rows)
-        table = make_result_table("fit_predictions", [
-            dict(graph=graph_name, block=block.label, dye=block.dye, solvent=str(solvent[j]),
-                 state=str(rows["state"][j]), site=int(rows["site"][j]),
-                 tau_x=float(block.tau_x[j]), sigma_meas=float(block.sigma_meas[j]),
-                 sigma_total=float(sigma_total[j]), tau_pred=float(pred[j]),
-                 pred_sd=float(psd[j]), pred_low=float(pred[j] - psd[j]),
-                 pred_high=float(pred[j] + psd[j]), dark_fraction=float(dark[j]),
-                 loo_z=float(z[j]), outlier=bool(outlier[j]), used=bool(block.use[j]))
-            for j in range(len(rows))
-        ])
+        table = make_result_table(
+            "fit_predictions",
+            [
+                dict(
+                    graph=graph_name,
+                    block=block.label,
+                    dye=block.dye,
+                    solvent=str(solvent[j]),
+                    state=str(rows["state"][j]),
+                    site=int(rows["site"][j]),
+                    tau_x=float(block.tau_x[j]),
+                    sigma_meas=float(block.sigma_meas[j]),
+                    sigma_total=float(sigma_total[j]),
+                    tau_pred=float(pred[j]),
+                    pred_sd=float(psd[j]),
+                    pred_low=float(pred[j] - psd[j]),
+                    pred_high=float(pred[j] + psd[j]),
+                    dark_fraction=float(dark[j]),
+                    loo_z=float(z[j]),
+                    outlier=bool(outlier[j]),
+                    used=bool(block.use[j]),
+                )
+                for j in range(len(rows))
+            ],
+        )
         estimates = []
-        others = [x for x, lp in block.searches[1:]
-                  if lp > block.searches[0][1] - float(fs["note_other_regions_logp"])]
+        others = [
+            x
+            for x, lp in block.searches[1:]
+            if lp > block.searches[0][1] - float(fs["note_other_regions_logp"])
+        ]
         for j, (bb, name, i) in enumerate(graph.layout):
             if bb != b:
                 continue
             spec = specs[name]
             width = (v_hi[j] - v_lo[j]) / (graph.hi[j] - graph.lo[j])
             edge = min(v[j] - graph.lo[j], graph.hi[j] - v[j]) < (
-                float(fs["note_edge"]) * (graph.hi[j] - graph.lo[j]))
-            note = "not determined" if width > float(fs["note_not_determined_width"]) else (
-                "at the edge of its range" if edge else "")
+                float(fs["note_edge"]) * (graph.hi[j] - graph.lo[j])
+            )
+            note = (
+                "not determined"
+                if width > float(fs["note_not_determined_width"])
+                else ("at the edge of its range" if edge else "")
+            )
             if any(not (v_lo[j] <= x[i] <= v_hi[j]) for x in others):
                 note = (note + "; " if note else "") + "other regions possible"
-            estimates.append(dict(
-                graph=graph_name, block=block.label, dye=block.dye, parameter=spec.label,
-                value=float(spec.to_natural(v[j])), low_68=float(spec.to_natural(v_lo[j])),
-                high_68=float(spec.to_natural(v_hi[j])), note=note))
-        estimates.append(dict(graph=graph_name, block=block.label, dye=block.dye,
-                              parameter="model_error", value=block.s, low_68=block.s,
-                              high_68=block.s, note="from the residuals of the best fit"))
+            estimates.append(
+                dict(
+                    graph=graph_name,
+                    block=block.label,
+                    dye=block.dye,
+                    parameter=spec.label,
+                    value=float(spec.to_natural(v[j])),
+                    low_68=float(spec.to_natural(v_lo[j])),
+                    high_68=float(spec.to_natural(v_hi[j])),
+                    note=note,
+                )
+            )
+        estimates.append(
+            dict(
+                graph=graph_name,
+                block=block.label,
+                dye=block.dye,
+                parameter="model_error",
+                value=block.s,
+                low_68=block.s,
+                high_68=block.s,
+                note="from the residuals of the best fit",
+            )
+        )
         for name, value in block.fixed.items():
             spec = specs[name]
             nat = float(spec.to_natural(value))
-            estimates.append(dict(graph=graph_name, block=block.label, dye=block.dye,
-                                  parameter=spec.label, value=nat, low_68=nat, high_68=nat,
-                                  note="fixed (not determined by these data)"))
+            estimates.append(
+                dict(
+                    graph=graph_name,
+                    block=block.label,
+                    dye=block.dye,
+                    parameter=spec.label,
+                    value=nat,
+                    low_68=nat,
+                    high_68=nat,
+                    note="fixed (not determined by these data)",
+                )
+            )
         d = pred - block.tau_x
-        loo_table = make_result_table("leave_one_out", [
-            dict(graph=graph_name, block=block.label, site=r["site"],
-                 state=r["state"], solvent=r["solvent"], z=r["z"]) for r in loo
-        ])
-        views.append(BlockResult(
-            label=block.label, dye=block.dye, theta=th, tau0=tau0, model_error=block.s,
-            table=table, estimates=make_result_table("fit_estimates", estimates),
-            loo=loo_table, worst=_worst(loo),
-            stats=dict(
-                rms=float(np.sqrt((d**2).mean())),
-                median_abs_dev=float(np.median(np.abs(d))),
-                median_pred_sd=float(np.median(psd)),
-                mean_dark_fraction=float(dark.mean()),
-                outliers=sorted({int(s) for s in np.asarray(rows["site"])[outlier]}),
-                n_outlier_lifetimes=int((~block.use).sum()),
-                n_rows=int(len(rows)),
-            ),
-            graph=graph, block=block, index=b,
-        ))
+        loo_table = make_result_table(
+            "leave_one_out",
+            [
+                dict(
+                    graph=graph_name,
+                    block=block.label,
+                    site=r["site"],
+                    state=r["state"],
+                    solvent=r["solvent"],
+                    z=r["z"],
+                )
+                for r in loo
+            ],
+        )
+        views.append(
+            BlockResult(
+                label=block.label,
+                dye=block.dye,
+                theta=th,
+                tau0=tau0,
+                model_error=block.s,
+                table=table,
+                estimates=make_result_table("fit_estimates", estimates),
+                loo=loo_table,
+                worst=_worst(loo),
+                stats=dict(
+                    rms=float(np.sqrt((d**2).mean())),
+                    median_abs_dev=float(np.median(np.abs(d))),
+                    median_pred_sd=float(np.median(psd)),
+                    mean_dark_fraction=float(dark.mean()),
+                    outliers=sorted({int(s) for s in np.asarray(rows["site"])[outlier]}),
+                    n_outlier_lifetimes=int((~block.use).sum()),
+                    n_rows=int(len(rows)),
+                ),
+                graph=graph,
+                block=block,
+                index=b,
+            )
+        )
     return views
 
 
@@ -1675,10 +1804,13 @@ def site_ranking_table(view, graph_name=""):
     numpy.ndarray
         Declared ``site_ranking``.
     """
-    return make_result_table("site_ranking", [
-        dict(graph=graph_name, block=view.label, site=int(s), max_abs_z=float(z))
-        for s, z in view.worst
-    ])
+    return make_result_table(
+        "site_ranking",
+        [
+            dict(graph=graph_name, block=view.label, site=int(s), max_abs_z=float(z))
+            for s, z in view.worst
+        ],
+    )
 
 
 def searches_table(view, graph_name=""):
@@ -1696,11 +1828,19 @@ def searches_table(view, graph_name=""):
     """
     block = view.block
     i = block.free.index("ln_scale") if "ln_scale" in block.free else None
-    return make_result_table("searches", [
-        dict(graph=graph_name, block=view.label, rank=k + 1, log_posterior=float(lp),
-             scale=float(np.exp(x[i])) if i is not None else float("nan"))
-        for k, (x, lp) in enumerate(block.searches)
-    ])
+    return make_result_table(
+        "searches",
+        [
+            dict(
+                graph=graph_name,
+                block=view.label,
+                rank=k + 1,
+                log_posterior=float(lp),
+                scale=float(np.exp(x[i])) if i is not None else float("nan"),
+            )
+            for k, (x, lp) in enumerate(block.searches)
+        ],
+    )
 
 
 def k_table(graph, graph_name=""):
@@ -1725,15 +1865,31 @@ def k_table(graph, graph_name=""):
     for j, (b, key, _) in enumerate(graph.layout):
         if b is not None:
             continue
-        rows.append(dict(graph=graph_name, dye=key[0], amino_acid=key[1],
-                         ksv_titration=graph.context.K_mean[key],
-                         ksv_titration_sd=graph.context.K_sd[key],
-                         ksv_graph=float(v[j]), low_68=float(v_lo[j]), high_68=float(v_hi[j])))
+        rows.append(
+            dict(
+                graph=graph_name,
+                dye=key[0],
+                amino_acid=key[1],
+                ksv_titration=graph.context.K_mean[key],
+                ksv_titration_sd=graph.context.K_sd[key],
+                ksv_graph=float(v[j]),
+                low_68=float(v_lo[j]),
+                high_68=float(v_hi[j]),
+            )
+        )
     return make_result_table("graph_titration_slopes", rows)
 
 
-def fit_graph(blocks, seed=None, fit_settings=None, workers=None, progress=None, cancel=None,
-              name="", titrated=None):
+def fit_graph(
+    blocks,
+    seed=None,
+    fit_settings=None,
+    workers=None,
+    progress=None,
+    cancel=None,
+    name="",
+    titrated=None,
+):
     """Search every block, fit the graph jointly, take the Laplace approximation.
 
     Parameters
@@ -1772,22 +1928,30 @@ def fit_graph(blocks, seed=None, fit_settings=None, workers=None, progress=None,
             progress(min(max(fraction, 0.0), 1.0), message)
 
     for b, block in enumerate(blocks):
+
         def inner(done, total, label, b=b):
             report((b + done / total) / n_steps, f"{label} {done}/{total}")
+
         if block.best_x is None:
             search(block, seed + stride * b, fs, workers, inner, cancel)
-        report((b + 1) / n_steps,
-               f"{block.label}: model error {block.s:.3f} ns, "
-               f"{int((~block.use).sum())} outlier lifetime(s)")
+        report(
+            (b + 1) / n_steps,
+            f"{block.label}: model error {block.s:.3f} ns, "
+            f"{int((~block.use).sum())} outlier lifetime(s)",
+        )
     graph = Graph(blocks, fs)
     report(len(blocks) / n_steps, "joint fit")
     joint_fit(graph, workers=workers, cancel=cancel)
     views = block_views(graph, name)
     structure = describe_graph(graph, titrated) if titrated is not None else None
-    report(1.0, f"graph solved: {len(blocks)} data set(s), {graph.n_parameters} parameters, "
-                f"{len(graph.k_keys)} titration slopes")
-    return GraphResult(name=name, graph=graph, views=views, k_table=k_table(graph, name),
-                       structure=structure)
+    report(
+        1.0,
+        f"graph solved: {len(blocks)} data set(s), {graph.n_parameters} parameters, "
+        f"{len(graph.k_keys)} titration slopes",
+    )
+    return GraphResult(
+        name=name, graph=graph, views=views, k_table=k_table(graph, name), structure=structure
+    )
 
 
 # --------------------------------------------------------------------------------------------
@@ -1818,8 +1982,13 @@ def propagate(view, function, step=None):
         up, down = graph.u.copy(), graph.u.copy()
         up[i] += step
         down[i] -= step
-        J.append((np.asarray(function(graph.thetas(up)[0][b]), float)
-                  - np.asarray(function(graph.thetas(down)[0][b]), float)) / (2 * step))
+        J.append(
+            (
+                np.asarray(function(graph.thetas(up)[0][b]), float)
+                - np.asarray(function(graph.thetas(down)[0][b]), float)
+            )
+            / (2 * step)
+        )
     J = np.array(J).T
     return value, np.sqrt(np.einsum("ij,jk,ik->i", J, graph.cov, J))
 
@@ -1892,8 +2061,9 @@ def sample_summary(values):
     return dict(median=float(med), low=float(lo), high=float(hi), factor=float(hi / lo))
 
 
-def profile_likelihood(view, name="ln_scale", values=None, max_nfev=None, cancel=None,
-                       progress=None, workers=None):
+def profile_likelihood(
+    view, name="ln_scale", values=None, max_nfev=None, cancel=None, progress=None, workers=None
+):
     """A real profile likelihood of one block parameter.
 
     At each fixed value the block's sub-graph (the block and the titration slopes it reads,
@@ -1945,8 +2115,9 @@ def profile_likelihood(view, name="ln_scale", values=None, max_nfev=None, cancel
     sd = np.sqrt(view.graph.cov[j_full, j_full]) * (sub.hi[j] - sub.lo[j])
     if values is None:
         span = float(opts["span_sd"]) * max(sd, 1e-3 * (sub.hi[j] - sub.lo[j]))
-        values = np.linspace(max(sub.lo[j], v0[j] - span), min(sub.hi[j], v0[j] + span),
-                             int(opts["points"]))
+        values = np.linspace(
+            max(sub.lo[j], v0[j] - span), min(sub.hi[j], v0[j] + span), int(opts["points"])
+        )
     values = np.asarray(values, float)
     budget = int(opts["max_nfev"] if max_nfev is None else max_nfev)
     free = np.array([k != j for k in range(len(v0))])
@@ -1964,8 +2135,15 @@ def profile_likelihood(view, name="ln_scale", values=None, max_nfev=None, cancel
             u[free] = start_free
             u[j] = (value - sub.lo[j]) / (sub.hi[j] - sub.lo[j])
             u = np.clip(u, sub.u_clip, 1 - sub.u_clip)
-            out = polish(sub, u, int(opts["polish_iterations"]), float(fs["joint_polish_rtol"]),
-                         cancel=cancel, hold=[j], pool=pool)
+            out = polish(
+                sub,
+                u,
+                int(opts["polish_iterations"]),
+                float(fs["joint_polish_rtol"]),
+                cancel=cancel,
+                hold=[j],
+                pool=pool,
+            )
             return float(out["cost"]), np.asarray(out["u"], float)[free]
 
         def residuals(w):
@@ -1975,8 +2153,13 @@ def profile_likelihood(view, name="ln_scale", values=None, max_nfev=None, cancel
             v[j] = value
             return sub.evaluate(sub.to_u(v))[0]
 
-        sol = _numerics.least_squares(residuals, start_free, bounds=(0.0, 1.0),
-                                      diff_step=float(fs["joint_diff_step"]), max_nfev=budget)
+        sol = _numerics.least_squares(
+            residuals,
+            start_free,
+            bounds=(0.0, 1.0),
+            diff_step=float(fs["joint_diff_step"]),
+            max_nfev=budget,
+        )
         return float(sol.cost), np.asarray(sol.x, float)
 
     w0 = np.clip((v0[free] - lo) / (hi - lo), sub.u_clip, 1 - sub.u_clip)
@@ -2012,8 +2195,11 @@ def _walk_profile(values, centre, w_best, cost_at, progress, label):
     starts = {}
     for count, k in enumerate(order):
         neighbour = [m for m in starts if (values[m] - centre) * (values[k] - centre) >= 0]
-        start = starts[min(neighbour, key=lambda m: abs(values[m] - values[k]))] if neighbour \
+        start = (
+            starts[min(neighbour, key=lambda m: abs(values[m] - values[k]))]
+            if neighbour
             else w_best
+        )
         costs[k], starts[k] = cost_at(values[k], start)
         if progress:
             progress(count + 1, len(values), f"{label}: profile")
@@ -2053,9 +2239,14 @@ def _profile_summary(fs, name, values, costs, best_cost):
 
     low = crossing(list(range(i_min - 1, -1, -1)))
     high = crossing(list(range(i_min + 1, len(values))))
-    return dict(name=spec.label, values=spec.to_natural(values), deviance=deviance,
-                best=float(spec.to_natural(values[i_min])), low=float(spec.to_natural(low)),
-                high=float(spec.to_natural(high)))
+    return dict(
+        name=spec.label,
+        values=spec.to_natural(values),
+        deviance=deviance,
+        best=float(spec.to_natural(values[i_min])),
+        low=float(spec.to_natural(low)),
+        high=float(spec.to_natural(high)),
+    )
 
 
 def describe_graph(graph, titrated):
@@ -2089,17 +2280,32 @@ def describe_graph(graph, titrated):
     for key in ["day_abs", "day_rel"] + [f"K:{d}:{a}" for d, a in titrated]:
         var(key)
     for d, a in titrated:
-        g.add_factor(f"titration:{d}:{a}", bff.INFERENCE_FACTOR_LIKELIHOOD,
-                     [f"K:{d}:{a}", "day_abs", "day_rel"], -1, 0)
+        g.add_factor(
+            f"titration:{d}:{a}",
+            bff.INFERENCE_FACTOR_LIKELIHOOD,
+            [f"K:{d}:{a}", "day_abs", "day_rel"],
+            -1,
+            0,
+        )
     specs = _spec_map(graph.settings)
     for b, block in enumerate(graph.blocks):
         names = [f"{block.dye}:{specs[n].label}" for n in block.free if n != "ln_model_error"]
         for key in names:
             var(key)
-        g.add_factor(f"lifetimes:{block.label}", bff.INFERENCE_FACTOR_LIKELIHOOD,
-                     names + [f"K:{d}:{a}" for d, a in block.k_keys], b, 0)
-        g.add_factor(f"stickiness prior:{block.dye}", bff.INFERENCE_FACTOR_PRIOR,
-                     [k for k in names if ":s_" in k], b, 0)
+        g.add_factor(
+            f"lifetimes:{block.label}",
+            bff.INFERENCE_FACTOR_LIKELIHOOD,
+            names + [f"K:{d}:{a}" for d, a in block.k_keys],
+            b,
+            0,
+        )
+        g.add_factor(
+            f"stickiness prior:{block.dye}",
+            bff.INFERENCE_FACTOR_PRIOR,
+            [k for k in names if ":s_" in k],
+            b,
+            0,
+        )
     components = []
     for part in g.connected_components():
         dyes = sorted({k.split(":")[0] for k in part if ":" in k and not k.startswith("K:")})

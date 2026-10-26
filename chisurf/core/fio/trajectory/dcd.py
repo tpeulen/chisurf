@@ -399,9 +399,7 @@ class DCDWriter:
         self._path = pathlib.Path(path)
         handle = open(path, "wb")
         self._handle: typing.BinaryIO | None = handle
-        handle.write(
-            _header_bytes(self.n_atoms, 0, first_step, step_interval, delta, title, False)
-        )
+        handle.write(_header_bytes(self.n_atoms, 0, first_step, step_interval, delta, title, False))
 
     def write(self, xyz) -> None:
         """Append one frame or a block of frames.
@@ -421,9 +419,7 @@ class DCDWriter:
             raise ValueError("this DCD writer is closed")
         for frame in frames:
             for axis in range(3):
-                handle.write(
-                    _record(np.ascontiguousarray(frame[:, axis], dtype="<f4").tobytes())
-                )
+                handle.write(_record(np.ascontiguousarray(frame[:, axis], dtype="<f4").tobytes()))
         self.n_frames += len(frames)
 
     def write_times(self, times) -> None:

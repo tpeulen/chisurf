@@ -109,9 +109,7 @@ def test_an_object_without_chains_has_no_markers():
     """No chain column is not a reason to invent one."""
     from chimol.hosts.base import sequence_rows_for_object
 
-    rows = sequence_rows_for_object(
-        "o1", "beads", list("ACDEF"), [1, 2, 3, 4, 5], [], None
-    )
+    rows = sequence_rows_for_object("o1", "beads", list("ACDEF"), [1, 2, 3, 4, 5], [], None)
     assert len(rows) == 1
     assert rows[0].name == "beads"
     assert rows[0].codes == "ACDEF"

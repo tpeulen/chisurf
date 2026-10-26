@@ -75,7 +75,8 @@ def folder_from_result(result: object) -> Path | None:
 
 
 def materialize_handoff(
-    context: BurstWorkflowContext, frames_by_file: Mapping[Any, Any],
+    context: BurstWorkflowContext,
+    frames_by_file: Mapping[Any, Any],
     run_name: str | None = None,
 ) -> list[Path] | None:
     """Give the later steps something to read the bursts from when the search wrote no folder.
@@ -117,9 +118,16 @@ def materialize_handoff(
         if frame is None:
             continue
         try:
-            written.append(Path(write_container(
-                raw_path, frame, parameters=context.to_payload(), run=run_name or None,
-            )))
+            written.append(
+                Path(
+                    write_container(
+                        raw_path,
+                        frame,
+                        parameters=context.to_payload(),
+                        run=run_name or None,
+                    )
+                )
+            )
         except Exception as exc:  # noqa: BLE001 - a container that will not write leaves no hand-off
             logger.warning(f"Could not write the container for {raw_path}: {exc}")
     return written or None

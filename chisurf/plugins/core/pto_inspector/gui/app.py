@@ -263,7 +263,6 @@ class PtoInspectorApp(TourTarget, ImApp):
         )
         self.file_window = DialogWindow(tr("Legacy folder"), size=(780, 560))
 
-
     def choose_pack_directory(self):
         self.file_action = "pack"
         self.dialog = FileDialog(
@@ -327,9 +326,11 @@ class PtoInspectorApp(TourTarget, ImApp):
         child = self.tool_loader("microtime_histogram")
         target = getattr(child, "model", child)
         container = self.model.filename
-        node = self.graph.document.node_for_number(
-            self.graph.editor.get_selected_node()
-        ) if hasattr(self.graph.editor, "get_selected_node") else None
+        node = (
+            self.graph.document.node_for_number(self.graph.editor.get_selected_node())
+            if hasattr(self.graph.editor, "get_selected_node")
+            else None
+        )
         payload = container
         if node is not None and node.id and container:
             payload = f"{container}/{node.id}"

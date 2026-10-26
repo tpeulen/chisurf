@@ -51,7 +51,9 @@ print(f"  accessible volume  {result.av_volume:.0f} A^3")
 # Quenching is resolved per residue type. Site E:5 sits next to a tryptophan.
 print("\n--- what quenches the dye ---")
 for entry in quest.top_quenchers(result.aa_residence, limit=5):
-    print(f"  {entry['residue_name']:>4s}  {entry['quench_rate_fraction'] * 100:5.1f} % of the quenching")
+    print(
+        f"  {entry['residue_name']:>4s}  {entry['quench_rate_fraction'] * 100:5.1f} % of the quenching"
+    )
 
 # A second site with no quencher in reach, for comparison.
 far = dict(project)
@@ -65,7 +67,9 @@ assert result.quantum_yield_donor < unquenched.quantum_yield_donor
 # A dye in contact with the tryptophan decays within a few hundred ps and emits
 # few photons, so the light comes mostly from dyes away from it: the decay
 # loses amplitude in a fast component more than it shortens.
-print(f"QY x tau0                {result.quantum_yield_donor * project['tau0']:.2f} ns  (species-averaged)")
+print(
+    f"QY x tau0                {result.quantum_yield_donor * project['tau0']:.2f} ns  (species-averaged)"
+)
 print(f"mean photon arrival time {result.lifetime_donor:.2f} ns  (intensity-averaged)")
 assert result.quantum_yield_donor * project["tau0"] < result.lifetime_donor
 

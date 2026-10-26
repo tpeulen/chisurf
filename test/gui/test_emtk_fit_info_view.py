@@ -46,6 +46,7 @@ def test_text_view_round_trips_text():
 def test_text_view_draws_with_emtk():
     """The view is emtk's read-only TextEditor, and no Qt widget."""
     from emtk.widgets.text_editor import TextEditor
+
     view = EmtkTextView()
     view.setPlainText("drawn by emtk")
     assert isinstance(view.editor, TextEditor)

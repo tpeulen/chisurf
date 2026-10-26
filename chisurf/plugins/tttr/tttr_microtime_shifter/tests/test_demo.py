@@ -50,4 +50,3 @@ def test_shifting_aligns_the_channels_without_losing_photons(example):
     assert applied[1] % 4096 == (4096 - offset) % 4096
     assert len(fixed) == n_source
     assert int(micro[routing == 1].min()) - int(micro[routing == 0].min()) <= 1
-

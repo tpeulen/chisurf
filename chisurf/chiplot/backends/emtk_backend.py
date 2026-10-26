@@ -1151,9 +1151,7 @@ class EmtkCanvas(base.Canvas):
                 exact.append(placed)
         spans: list[tuple[float, float]] = []
         if series:
-            padded = self._padded(
-                (min(a for a, _ in series), max(b for _, b in series)), fraction
-            )
+            padded = self._padded((min(a for a, _ in series), max(b for _, b in series)), fraction)
             if padded is not None:
                 spans.append(padded)
         spans.extend(exact)

@@ -58,4 +58,3 @@ def test_both_detectors_are_mapped_to_their_own_voice(example):
     per_channel = counts.sum(axis=0)
     assert (per_channel > 0).all()
     assert np.isclose(per_channel.sum(), counts.sum())
-

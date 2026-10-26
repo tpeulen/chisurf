@@ -55,9 +55,9 @@ def test_the_allowlist_only_shrinks():
     assert not found, f"commands/plugins reach viewer privates: {sorted(found)}"
 
 
-
 def test_the_public_doors_exist():
     from native_window import native_viewer
+
     view = native_viewer()
     try:
         for name in (

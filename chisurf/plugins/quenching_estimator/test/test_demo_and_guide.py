@@ -118,4 +118,6 @@ def test_make_demo_stages_the_male_measurements_for_the_analysis_page(tmp_path):
     # an edited staged file is noticed by the stamp and written again
     (folder / ANALYSIS_FILES[0]).write_text("edited", encoding="utf-8")
     analysis_demo()
-    assert (folder / ANALYSIS_FILES[0]).read_bytes() == (ANALYSIS_DATA / ANALYSIS_FILES[0]).read_bytes()
+    assert (folder / ANALYSIS_FILES[0]).read_bytes() == (
+        ANALYSIS_DATA / ANALYSIS_FILES[0]
+    ).read_bytes()

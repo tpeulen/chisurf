@@ -516,9 +516,7 @@ class Curve(NCurve):
         d = np.vstack([x, y])
         self.d = d
 
-    def __init__(
-        self, x: np.ndarray | None = None, y: np.ndarray | None = None, *args, **kwargs
-    ):
+    def __init__(self, x: np.ndarray | None = None, y: np.ndarray | None = None, *args, **kwargs):
         """Create a curve from x/y arrays.
 
         Parameters

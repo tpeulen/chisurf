@@ -212,14 +212,6 @@ def _declared_display_binding(editor, parameter):
     return binding
 
 
-
-
-
-
-
-
-
-
 def _structural_coordinates(state):
     """Extract structure coordinates from a ProteinMC-style adapter payload."""
     payload = state.get("proteinmc") or {}
@@ -384,10 +376,6 @@ def _assert_structural_snapshot(reference_fits, reference_datasets, datasets, fi
     assert _observables_close(captured.fits, reference_fits), list(
         _differences(reference_fits, captured.fits, "fits")
     )[:10]
-
-
-
-
 
 
 def _exit_after_report(report):

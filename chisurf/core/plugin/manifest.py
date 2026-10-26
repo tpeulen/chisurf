@@ -1012,9 +1012,7 @@ def _validate_field_shapes(data: dict[str, Any]) -> list[str]:
             )
         ):
             errors.append(f"field {key!r} must be an object mapping names to strings")
-    for key in (
-        "library", "experimental", "menu_hidden", "single_instance", "deprecated", "demo"
-    ):
+    for key in ("library", "experimental", "menu_hidden", "single_instance", "deprecated", "demo"):
         value = data.get(key)
         if value is not None and not isinstance(value, bool):
             errors.append(f"field {key!r} must be a boolean")

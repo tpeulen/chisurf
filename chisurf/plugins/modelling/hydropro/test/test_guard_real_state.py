@@ -48,4 +48,3 @@ def test_the_native_settings_land_in_the_isolated_settings_folder(tmp_path):
     name = Path(done.stdout.strip().splitlines()[-1])
     assert tmp_path in name.parents and name.exists() and "4.8" in name.read_text()
     assert state.changes() == []
-

@@ -136,13 +136,25 @@ def test_the_kinds_are_declared_once_with_vocabulary_colours():
     if not hasattr(tttrlib, "CLSM_RECORD_PHOTON"):
         pytest.skip("tttrlib predates CLSMRecordKind: rebuild tttrlib")
     kinds = record_kinds()
-    assert [k.key for k in kinds] == ["photon", "pixel", "line_start", "line_stop", "frame", "other"]
+    assert [k.key for k in kinds] == [
+        "photon",
+        "pixel",
+        "line_start",
+        "line_stop",
+        "frame",
+        "other",
+    ]
     codes = sorted(c for k in kinds for c in k.codes)
-    assert codes == sorted([
-        tttrlib.CLSM_RECORD_PHOTON, tttrlib.CLSM_RECORD_PIXEL_MARKER,
-        tttrlib.CLSM_RECORD_LINE_START_MARKER, tttrlib.CLSM_RECORD_LINE_STOP_MARKER,
-        tttrlib.CLSM_RECORD_FRAME_MARKER, tttrlib.CLSM_RECORD_OTHER_MARKER,
-    ])
+    assert codes == sorted(
+        [
+            tttrlib.CLSM_RECORD_PHOTON,
+            tttrlib.CLSM_RECORD_PIXEL_MARKER,
+            tttrlib.CLSM_RECORD_LINE_START_MARKER,
+            tttrlib.CLSM_RECORD_LINE_STOP_MARKER,
+            tttrlib.CLSM_RECORD_FRAME_MARKER,
+            tttrlib.CLSM_RECORD_OTHER_MARKER,
+        ]
+    )
     palette = categories()
     fills = [palette[k.colour]["dark"]["fill"] for k in kinds if k.is_marker]
     assert len(set(fills)) == len(fills), "every marker kind has its own colour"

@@ -86,9 +86,11 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> Path:
         The primary (slow protein) VV/VH decay; the batch queue takes all four.
     """
     folder = demo_folder() if folder is None else Path(folder)
-    if not overwrite and all(
-        (folder / name).is_file() for name in DEMO["files"]
-    ) and _cache_is_good(folder):
+    if (
+        not overwrite
+        and all((folder / name).is_file() for name in DEMO["files"])
+        and _cache_is_good(folder)
+    ):
         return paths(folder)[PRIMARY]
     folder.mkdir(parents=True, exist_ok=True)
     gfactor_demo.make_demo(folder, overwrite=True)

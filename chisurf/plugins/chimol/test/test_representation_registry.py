@@ -25,7 +25,6 @@ from chimol.render.scene import Geometry, Material, SceneObject
 _PDB = str(pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos" / "148l.pdb")
 
 
-
 def _atom_stars(ctx: BuildContext):
     """A star (point) at every atom in scope: the simplest possible representation."""
     xyz = ctx.all_atom_coords

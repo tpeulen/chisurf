@@ -99,11 +99,11 @@ def _disabled():
     return out
 
 
-
 def _open(path, *, second_object=False):
     """Open a real plugin window on ``path``, with error capture wired in."""
     pytest.importorskip("chisurf.core.structure")
     from native_window import NativeWindow
+
     win = NativeWindow()
     shared = win.cmd
     win.resize(700, 500)
@@ -202,7 +202,6 @@ def test_a_menu_entry_runs(window, template):
     """
     win, errors = window
     win.run_menu_command(_fill(template))
-
 
     for _ in range(5):
         process_events()

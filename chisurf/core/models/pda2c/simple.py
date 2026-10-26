@@ -401,9 +401,7 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
         self.pda = tttrlib.Pda(**kw_pda)
         self.residual_mode = "1D"
 
-    def _update_model(
-        self, pch0: np.ndarray | None = None, verbose: bool | None = None, **kwargs
-    ):
+    def _update_model(self, pch0: np.ndarray | None = None, verbose: bool | None = None, **kwargs):
         """Update the model curve from current background and species parameters.
 
         Parameters

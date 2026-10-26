@@ -101,9 +101,7 @@ def _give_chimol_chisurfs_structure_reader() -> None:
 
         set_structure_factory(_chisurf_structure)
     except Exception:  # noqa: BLE001 - a chimol without the hook reads with its own parser
-        logging.getLogger(__name__).debug(
-            "chimol keeps its own structure reader", exc_info=True
-        )
+        logging.getLogger(__name__).debug("chimol keeps its own structure reader", exc_info=True)
 
 
 _give_chimol_chisurfs_structure_reader()

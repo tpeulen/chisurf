@@ -43,8 +43,7 @@ IDS_EMTK = sorted(i for i, m in CATALOG.items() if m.get("entrypoints", {}).get(
 IDS_ACTION = sorted(
     i
     for i, m in CATALOG.items()
-    if m.get("entrypoints", {}).get("action")
-    and not m["entrypoints"].get("emtk")
+    if m.get("entrypoints", {}).get("action") and not m["entrypoints"].get("emtk")
 )
 SIZE = (1100, 720)
 #: The real-use QA matrix (okf/workflows/testing.md, "Real-use QA matrix"). The base sweep above

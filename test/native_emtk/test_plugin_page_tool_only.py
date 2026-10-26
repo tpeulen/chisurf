@@ -6,6 +6,7 @@ ribbon, no docks, no status strip. This pins that contract on the desktop
 driver, where the boxes are measurable: a presented tool starts at the very
 top of the canvas and spans it; a shell-opened one sits under the chrome.
 """
+
 from emtk.testing import Driver
 
 from chisurf.emtk.background_build import join_all

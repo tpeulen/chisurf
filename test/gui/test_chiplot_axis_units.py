@@ -144,9 +144,7 @@ def test_plain_labels_and_unit_only_bottom(plot: cp.Panel) -> None:
     assert _metadata(plot, "bottom") == ("", "ms")
 
 
-def test_real_bottom_si_prefix_preserves_seconds(
-    plot: cp.Panel, monkeypatch: Any
-) -> None:
+def test_real_bottom_si_prefix_preserves_seconds(plot: cp.Panel, monkeypatch: Any) -> None:
     """Millisecond tick display keeps original second-valued samples."""
     canvas: Any = plot._canvas
     texts: list[str] = []
@@ -193,9 +191,7 @@ def test_unit_only_title_and_boundary_tick_are_actually_visible(
     assert all(0 <= left and left + width <= 800 for left, width in boundary)
 
 
-def test_raw_samples_survive_log_downsampling_update_and_empty(
-    plot: cp.Panel
-) -> None:
+def test_raw_samples_survive_log_downsampling_update_and_empty(plot: cp.Panel) -> None:
     """The public curve handle returns source samples, including after edits/clear."""
     x = np.arange(1.0, 1001.0)
     y = x * 100.0

@@ -106,6 +106,7 @@ def test_a_factory_that_raises_is_not_swallowed():
 @pytest.fixture
 def loaded_view(structure_factory):
     from native_window import native_viewer
+
     view = native_viewer()
     view.add_structure(
         _read_full_model(structure_factory, _PDB_148L),
@@ -113,7 +114,6 @@ def loaded_view(structure_factory):
         source_path=str(_PDB_148L),
     )
     return view
-
 
 
 def test_hetero_atoms_are_marked_for_display(loaded_view):

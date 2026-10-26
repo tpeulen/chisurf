@@ -54,9 +54,7 @@ class GlobalFitSetup(ExperimentReader):
         chisurf.core.data.DataCurve
             A singleton data curve with zero-valued x/y.
         """
-        return chisurf.core.data.DataCurve(
-            x=np.zeros(1), y=np.zeros(1), setup=self, name=name
-        )
+        return chisurf.core.data.DataCurve(x=np.zeros(1), y=np.zeros(1), setup=self, name=name)
 
     def __str__(self):
         """Human-readable string representation."""

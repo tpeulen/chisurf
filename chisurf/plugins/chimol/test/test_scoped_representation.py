@@ -38,10 +38,10 @@ PDB = (
 NUCLEOTIDES = {"DA", "DC", "DG", "DT", "A", "C", "G", "U", "2DA"}
 
 
-
 @pytest.fixture(scope="module")
 def window():
     from native_window import NativeWindow
+
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
 

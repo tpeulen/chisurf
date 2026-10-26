@@ -124,10 +124,12 @@ def test_the_extra_entries_explain_themselves():
 # The representations themselves
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def session():
     pytest.importorskip("chisurf.core.structure")
     from native_window import NativeWindow
+
     win = NativeWindow()
     shared = win.cmd
     win.resize(800, 600)

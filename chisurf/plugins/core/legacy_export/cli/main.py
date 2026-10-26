@@ -32,7 +32,9 @@ def burst_folder(container: str, out_dir: str | None) -> None:
 @click.argument("burst_table", type=BurstTableParam(exists=True))
 @click.argument("stem", type=click.Path())
 @click.option("--sample", default="", help="Sample description written into the _meta file.")
-@click.option("--buffer", "buffer_", default="", help="Buffer description written into the _meta file.")
+@click.option(
+    "--buffer", "buffer_", default="", help="Buffer description written into the _meta file."
+)
 @click.option(
     "--parts",
     default="meta,hist_E,hist_S,hist_2D",
@@ -68,6 +70,4 @@ def plan(container: str) -> None:
         click.echo("no analysis runs")
         return
     for row in rows:
-        click.echo(
-            f"{row['run']:40s} {row['operation']:28s} -> {row['ending'] or '(skipped)'}"
-        )
+        click.echo(f"{row['run']:40s} {row['operation']:28s} -> {row['ending'] or '(skipped)'}")

@@ -654,8 +654,7 @@ class HistogramApp(TourTarget, ImApp):
             (
                 "find",
                 "🔍  Find TTTR",
-                "Search the containers' folders for the photon files the bursts "
-                "were made on.",
+                "Search the containers' folders for the photon files the bursts were made on.",
                 self.find_sources,
             ),
         ]

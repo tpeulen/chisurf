@@ -113,7 +113,9 @@ def main(argv) -> int:
         # Swap grows for reasons that are not this run (other suites, a just-booted
         # machine): count it only once the run itself is a large share of the memory.
         elif max_swap and swap > max_swap and rss > min(max_tree or 1024 * _MB, 1024 * _MB):
-            reason = f"swap grew by {swap / _MB:.0f} MB since the run started > {max_swap / _MB:.0f} MB"
+            reason = (
+                f"swap grew by {swap / _MB:.0f} MB since the run started > {max_swap / _MB:.0f} MB"
+            )
         elif min_disk and disk < min_disk:
             reason = f"disk has {disk / _MB:.0f} MB free < floor {min_disk / _MB:.0f} MB"
         if reason is None:

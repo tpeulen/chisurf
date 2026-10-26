@@ -60,7 +60,9 @@ def test_every_shipped_plugin_resolves_to_a_task_colour():
         f"plugins without a task colour (add their group to task_colors.yaml): {missing}"
     )
     assert known["help"] == "documentation"
-    assert known["batch_analysis"] == known["tr_anisotropy"] == "wizards"  # the Tools › Wizards group
+    assert (
+        known["batch_analysis"] == known["tr_anisotropy"] == "wizards"
+    )  # the Tools › Wizards group
     assert known["imaging_tools"] == "imaging"
     assert known["hmm"] == "kinetics" and known["lltf"] == "decay"
 

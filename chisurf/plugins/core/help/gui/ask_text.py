@@ -33,9 +33,7 @@ NO_PAGE_READ = (
 #: A documentation path as a model writes it in prose, when it has not used the link syntax.
 #: Only paths that resolve are linked -- a fabricated one has already been struck by
 #: ``ask.verify_citations`` before it gets here.
-_BARE_PATH = re.compile(
-    r"(?<!\()(?<!/)\b((?:docs|okf)/[\w./-]+\.md)(?:#([\w -]+))?\b(?!\))"
-)
+_BARE_PATH = re.compile(r"(?<!\()(?<!/)\b((?:docs|okf)/[\w./-]+\.md)(?:#([\w -]+))?\b(?!\))")
 
 
 def linkify_pages(text: str) -> str:
@@ -109,7 +107,9 @@ def compose_answer(answer: Any) -> tuple[str, str]:
         text += "\n\n*" + NO_PAGE_READ + "*"
     fabricated = [str(name) for name in (_field(answer, "fabricated", None) or [])]
     if fabricated:
-        what = "a page that does not exist: " if len(fabricated) == 1 else "pages that do not exist: "
+        what = (
+            "a page that does not exist: " if len(fabricated) == 1 else "pages that do not exist: "
+        )
         text += (
             "\n\n**It also named "
             + what

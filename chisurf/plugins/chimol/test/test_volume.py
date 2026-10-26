@@ -362,11 +362,13 @@ def test_agrees_with_imps_reader(tmp_path, blob):
 # A map in the scene
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def shell():
     """A blob map, in a viewer, reachable from the command line."""
     from chimol.commands.command import Cmd
     from native_window import native_viewer
+
     view = native_viewer()
     zz, yy, xx = np.mgrid[0:24, 0:24, 0:24]
     values = np.exp(-(((xx - 12) ** 2 + (yy - 12) ** 2 + (zz - 12) ** 2) / 40.0)).astype(np.float32)

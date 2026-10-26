@@ -466,4 +466,3 @@ def receive_reader_calibration(app: Any, payload: Mapping) -> None:
     """
     app.model.fp_dt_ns = float(payload["dt_ns"])
     app.model.shift = float(payload.get("shift", 0.0))
-

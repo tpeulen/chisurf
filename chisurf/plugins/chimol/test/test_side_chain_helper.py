@@ -30,12 +30,12 @@ _PDB = (
 )
 
 
-
 @pytest.fixture
 def session():
     pytest.importorskip("chisurf.core.structure")
     from chimol.core.settings.config import _DISPLAY_CONFIG
     from native_window import NativeWindow
+
     win = NativeWindow()
     shared = win.cmd
     win.resize(800, 640)

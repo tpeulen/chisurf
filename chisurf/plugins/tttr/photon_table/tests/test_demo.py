@@ -37,4 +37,3 @@ def test_filtering_by_channel_partitions_the_photons(example):
     acceptor = example.filtered_count(channel=1)
     assert donor + acceptor == example.n_photons
     assert donor > 50_000 and acceptor > 50_000
-

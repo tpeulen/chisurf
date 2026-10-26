@@ -689,7 +689,7 @@ class TestGraphService:
 
 
 def test_fit_create_resolves_a_shared_model_name_through_the_datasets_experiment():
-    """"Parse-Model" names a TCSPC, an FCS and a PCF model: the dataset's experiment picks the FCS one."""
+    """ "Parse-Model" names a TCSPC, an FCS and a PCF model: the dataset's experiment picks the FCS one."""
     import numpy as np
 
     import chisurf as cs

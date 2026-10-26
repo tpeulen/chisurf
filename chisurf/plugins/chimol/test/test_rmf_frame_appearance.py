@@ -85,7 +85,6 @@ def constant(tmp_path_factory):
     return path
 
 
-
 def _view(path):
     _reader, payload = load_structure_payload(str(path))
     view = native_viewer()

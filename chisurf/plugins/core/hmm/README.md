@@ -33,8 +33,8 @@ from chisurf.plugins.core.hmm.api import HmmSettings
 from chisurf.plugins.core.hmm.core import fit_traces
 
 fit = fit_traces(counts, HmmSettings(n_states=3, time_step=1e-3))
-fit.summaries[0].mean_dwell     # seconds
-fit.transition_rates            # 1/s
+fit.summaries[0].mean_dwell  # seconds
+fit.transition_rates  # 1/s
 ```
 
 The GUI tool takes the same shortcut through `HmmTool.set_traces(...)`.

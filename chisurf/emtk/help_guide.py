@@ -220,7 +220,6 @@ class EmTkHelpWindow:
                 self.on_start_guide()
             im.set_item_tooltip(tr("Walk through the tool controls and workflow step by step."))
 
-
         im.separator()
 
         # Category pills / filters if more than 1 section
@@ -536,9 +535,7 @@ class EmTkGuidedTour:
         ctx.draw.add_rect_filled(
             (cx + 1.0, cy + 1.0), (cx + card_w - 1.0, cy + 7.0), GRIP_STRIP, rounding=3.0
         )
-        ctx.draw.add_text(
-            (cx + card_w - 128.0, cy + 8.0), _style.DIM, tr("drag here to move")
-        )
+        ctx.draw.add_text((cx + card_w - 128.0, cy + 8.0), _style.DIM, tr("drag here to move"))
 
         # 4. Content Area with Native Word Wrapping
         content_margin = 14.0

@@ -1331,9 +1331,7 @@ class BurstWorkflow:
             if "pto" in roles
         ]
         if not stores:
-            raise RuntimeError(
-                "the burst search wrote no container to read the bursts from"
-            )
+            raise RuntimeError("the burst search wrote no container to read the bursts from")
         table = stores[0] if len(stores) == 1 else concat_stores(stores)
         tttrs = {p.name: load_tttr(p, filetype=setup.file_type) for p in local_paths}
         return Bursts(

@@ -165,6 +165,7 @@ def bound_the_time_shift(model, data, role):
     irf = np.asarray(data[f"irf_{role}_bg_norm"].y, dtype=float)
     if not decay.size or not irf.size or irf.max() <= 0:
         return
+
     def pulse(y):
         # the pulse is in the first half of what was recorded; the gate edge can be higher
         nz = np.flatnonzero(y > 0)
@@ -218,7 +219,9 @@ def create_linked_fits(data, lifetimes, rotations, corrections, irf_window=None)
         # The laser's repetition rate the wizard was given is the model's excitation period;
         # without it the model keeps its own default period, a systematically wrong periodic
         # convolution for any other laser.
-        rate = float(getattr(getattr(data[f"data_{role}"], "data_reader", None), "rep_rate", 0) or 0)
+        rate = float(
+            getattr(getattr(data[f"data_{role}"], "data_reader", None), "rep_rate", 0) or 0
+        )
         if rate > 0:
             dataset.meta_data["excitation_period_ns"] = 1000.0 / rate
             data[f"data_{role}"].meta_data["excitation_period_ns"] = 1000.0 / rate

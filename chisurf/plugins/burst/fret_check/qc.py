@@ -45,6 +45,7 @@ Two colours
 :func:`burst_flags` returns the per-burst flags so the plots can mark
 suspicious bursts and the table can filter them out.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -204,59 +205,109 @@ def run_qc(data, exp: Experiment, b: Bursts, v_eff_fl: float = 1.0, trace=None) 
     lam = burst_rate * mean_dur
     p_occ = _p_multi(lam)
     gaps, arrivals, p_gaps, excess = _gap_analysis(b)
-    checks.append(Check("bursts", OK if b.n >= 500 else WARN if b.n >= 100 else BAD,
-                        f"{b.n} ({burst_rate:.1f}/s)", "bursts after the size filter, and their rate"))
-    checks.append(Check("burst density", _level(lam, 0.05, 0.2), f"{lam:.3f} molecules in focus",
-                        f"occupancy = {burst_rate:.1f} bursts/s x {1e3 * mean_dur:.2f} ms mean duration"))
+    checks.append(
+        Check(
+            "bursts",
+            OK if b.n >= 500 else WARN if b.n >= 100 else BAD,
+            f"{b.n} ({burst_rate:.1f}/s)",
+            "bursts after the size filter, and their rate",
+        )
+    )
+    checks.append(
+        Check(
+            "burst density",
+            _level(lam, 0.05, 0.2),
+            f"{lam:.3f} molecules in focus",
+            f"occupancy = {burst_rate:.1f} bursts/s x {1e3 * mean_dur:.2f} ms mean duration",
+        )
+    )
 
     # -- multi-molecule events ----------------------------------------------
     p_worst = max(p_occ, p_gaps if np.isfinite(p_gaps) else 0.0)
     gap_text = f"{100 * p_gaps:.1f} % (gaps)" if np.isfinite(p_gaps) else "n/a (gaps)"
-    checks.append(Check(
-        "multi-molecule events", _level(p_worst, 0.05, 0.15),
-        f"{100 * p_occ:.1f} % (occupancy) · {gap_text}",
-        "P(>=2 molecules | burst): Poisson from the occupancy, and from the molecule arrival "
-        f"rate fitted to the inter-burst gaps ({arrivals:.1f}/s). Keep below ~5 %.",
-    ))
+    checks.append(
+        Check(
+            "multi-molecule events",
+            _level(p_worst, 0.05, 0.15),
+            f"{100 * p_occ:.1f} % (occupancy) · {gap_text}",
+            "P(>=2 molecules | burst): Poisson from the occupancy, and from the molecule arrival "
+            f"rate fitted to the inter-burst gaps ({arrivals:.1f}/s). Keep below ~5 %.",
+        )
+    )
     if np.isfinite(excess):
-        checks.append(Check(
-            "short gaps", _level(excess, 2.0, 5.0) if b.n >= 300 else INFO, f"{excess:.1f}x expected",
-            "gaps < 2 median burst durations, observed / expected from Poisson arrivals: "
-            "high means fragmented bursts (blinking, strict burst search) or revisiting molecules",
-        ))
+        checks.append(
+            Check(
+                "short gaps",
+                _level(excess, 2.0, 5.0) if b.n >= 300 else INFO,
+                f"{excess:.1f}x expected",
+                "gaps < 2 median burst durations, observed / expected from Poisson arrivals: "
+                "high means fragmented bursts (blinking, strict burst search) or revisiting molecules",
+            )
+        )
 
     # -- concentration and dilution -----------------------------------------
     conc_pm = lam / (AVOGADRO * v_eff_fl * 1e-15) * 1e12
     lam_target = _lambda_for(TARGET_P_MULTI)
     dilution = lam / lam_target if lam_target > 0 else float("nan")
-    checks.append(Check(
-        "concentration", INFO, f"~{conc_pm:.0f} pM",
-        f"occupancy / (N_A x V_eff), V_eff = {v_eff_fl:g} fL assumed; scale by your volume",
-    ))
-    checks.append(Check(
-        "dilution", INFO if dilution <= 1 else WARN if dilution < 3 else BAD,
-        "none needed" if dilution <= 1 else f"{dilution:.1f}x",
-        f"to bring multi-molecule events to {100 * TARGET_P_MULTI:.0f} % "
-        f"(occupancy {lam_target:.3f})",
-    ))
+    checks.append(
+        Check(
+            "concentration",
+            INFO,
+            f"~{conc_pm:.0f} pM",
+            f"occupancy / (N_A x V_eff), V_eff = {v_eff_fl:g} fL assumed; scale by your volume",
+        )
+    )
+    checks.append(
+        Check(
+            "dilution",
+            INFO if dilution <= 1 else WARN if dilution < 3 else BAD,
+            "none needed" if dilution <= 1 else f"{dilution:.1f}x",
+            f"to bring multi-molecule events to {100 * TARGET_P_MULTI:.0f} % "
+            f"(occupancy {lam_target:.3f})",
+        )
+    )
 
     # -- time, brightness, background ----------------------------------------
     busy = float(np.sum(b.duration)) / duration
-    checks.append(Check("time in bursts", _level(busy, 0.1, 0.3), f"{100 * busy:.1f} %",
-                        "fraction of the measurement inside bursts; high means too concentrated (or bulk data)"))
+    checks.append(
+        Check(
+            "time in bursts",
+            _level(busy, 0.1, 0.3),
+            f"{100 * busy:.1f} %",
+            "fraction of the measurement inside bursts; high means too concentrated (or bulk data)",
+        )
+    )
     bg_total = float(sum(b.background.values()))
     brightness = float(np.median(b.count_rate)) - bg_total if b.n else 0.0
     sbr = brightness / bg_total if bg_total > 0 else float("inf")
-    checks.append(Check("brightness", INFO, f"{brightness * 1e-3:.1f} kHz",
-                        "median in-burst count rate above background, all streams"))
+    checks.append(
+        Check(
+            "brightness",
+            INFO,
+            f"{brightness * 1e-3:.1f} kHz",
+            "median in-burst count rate above background, all streams",
+        )
+    )
     if np.isfinite(sbr):
-        checks.append(Check("signal / background", OK if sbr > 10 else WARN if sbr > 3 else BAD,
-                            f"{sbr:.1f}", "brightness over the out-of-burst count rate"))
+        checks.append(
+            Check(
+                "signal / background",
+                OK if sbr > 10 else WARN if sbr > 3 else BAD,
+                f"{sbr:.1f}",
+                "brightness over the out-of-burst count rate",
+            )
+        )
     else:
         # Nothing outside bursts to measure the background in (bulk data):
         # no verdict, rather than an "infinite" one rated OK.
-        checks.append(Check("signal / background", INFO, "n/a",
-                            "no time outside bursts to measure the background in"))
+        checks.append(
+            Check(
+                "signal / background",
+                INFO,
+                "n/a",
+                "no time outside bursts to measure the background in",
+            )
+        )
     bg = ", ".join(f"{k} {v * 1e-3:.2f}" for k, v in b.background.items())
     checks.append(Check("background (kHz)", INFO, bg, "count rate outside bursts per stream"))
 
@@ -270,44 +321,96 @@ def run_qc(data, exp: Experiment, b: Bursts, v_eff_fl: float = 1.0, trace=None) 
         med = np.median(full)
         mad = np.median(np.abs(full - med)) * 1.4826 + 1e-9
         spikes = int(np.sum(full > med + 8 * mad))
-        level = OK if abs(drift) < 0.15 and spikes == 0 else WARN if abs(drift) < 0.4 and spikes < 3 else BAD
-        checks.append(Check("signal stability", level, f"{100 * drift:+.0f} % drift, {spikes} spikes",
-                            "1 s count-rate trace: drift from evaporation/bleaching/focus, spikes from aggregates"))
+        level = (
+            OK
+            if abs(drift) < 0.15 and spikes == 0
+            else WARN
+            if abs(drift) < 0.4 and spikes < 3
+            else BAD
+        )
+        checks.append(
+            Check(
+                "signal stability",
+                level,
+                f"{100 * drift:+.0f} % drift, {spikes} spikes",
+                "1 s count-rate trace: drift from evaporation/bleaching/focus, spikes from aggregates",
+            )
+        )
 
     # -- outliers -------------------------------------------------------------
     flags = burst_flags(b)
     for bit, what in ((FLAG_BRIGHT, "count rate"), (FLAG_LONG, "duration")):
         frac = float(((flags & bit) != 0).sum()) / n
-        checks.append(Check(f"{FLAG_NAMES[bit]} bursts", _level(frac, 0.02, 0.05), f"{100 * frac:.1f} %",
-                            f"bursts with {what} > Q3 + 3 IQR (log): aggregates, sticking or coincident molecules"))
+        checks.append(
+            Check(
+                f"{FLAG_NAMES[bit]} bursts",
+                _level(frac, 0.02, 0.05),
+                f"{100 * frac:.1f} %",
+                f"bursts with {what} > Q3 + 3 IQR (log): aggregates, sticking or coincident molecules",
+            )
+        )
 
     # -- two colours ----------------------------------------------------------
     if exp.acceptor_channels and b.n:
         if b.S is not None:
             do = float(np.mean(b.S > 0.8))
             ao = float(np.mean(b.S < 0.25))
-            checks.append(Check("donor-only / acceptor-only", _level(max(do, ao), 0.4, 0.7),
-                                f"{100 * do:.0f} % / {100 * ao:.0f} %",
-                                "from S (> 0.8 / < 0.25): labelling, bleaching", "two-colour"))
+            checks.append(
+                Check(
+                    "donor-only / acceptor-only",
+                    _level(max(do, ao), 0.4, 0.7),
+                    f"{100 * do:.0f} % / {100 * ao:.0f} %",
+                    "from S (> 0.8 / < 0.25): labelling, bleaching",
+                    "two-colour",
+                )
+            )
         else:
             low = float(np.mean(b.E < 0.15))
-            checks.append(Check("low-E / donor-only", _level(low, 0.4, 0.7), f"{100 * low:.0f} %",
-                                "E < 0.15 without ALEX: donor-only (no or bleached acceptor) and very low FRET "
-                                "cannot be told apart", "two-colour"))
+            checks.append(
+                Check(
+                    "low-E / donor-only",
+                    _level(low, 0.4, 0.7),
+                    f"{100 * low:.0f} %",
+                    "E < 0.15 without ALEX: donor-only (no or bleached acceptor) and very low FRET "
+                    "cannot be told apart",
+                    "two-colour",
+                )
+            )
         for bit, arr in ((FLAG_FRET_2CDE, b.fret_2cde), (FLAG_ALEX_2CDE, b.alex_2cde)):
             if arr is None:
                 continue
             frac = float(((flags & bit) != 0).sum()) / n
-            detail = ("FRET changes within bursts (dynamics or two molecules)" if bit == FLAG_FRET_2CDE
-                      else "acceptor blinking/bleaching or donor-only + acceptor-only coincidence")
-            checks.append(Check(f"{FLAG_NAMES[bit]} > {CDE_LIMIT:.0f}", _level(frac, 0.15, 0.35),
-                                f"{100 * frac:.1f} %", detail, "two-colour"))
+            detail = (
+                "FRET changes within bursts (dynamics or two molecules)"
+                if bit == FLAG_FRET_2CDE
+                else "acceptor blinking/bleaching or donor-only + acceptor-only coincidence"
+            )
+            checks.append(
+                Check(
+                    f"{FLAG_NAMES[bit]} > {CDE_LIMIT:.0f}",
+                    _level(frac, 0.15, 0.35),
+                    f"{100 * frac:.1f} %",
+                    detail,
+                    "two-colour",
+                )
+            )
 
     metrics = {
-        "bursts": b.n, "burst_rate_per_s": burst_rate, "occupancy": lam,
-        "p_multi_occupancy": p_occ, "p_multi_gaps": p_gaps, "arrival_rate_per_s": arrivals,
-        "short_gap_excess": excess, "concentration_pM": conc_pm, "v_eff_fL": v_eff_fl,
-        "dilution": dilution, "time_in_bursts": busy, "brightness_kHz": brightness * 1e-3,
-        "signal_to_background": sbr, "background_kHz": {k: v * 1e-3 for k, v in b.background.items()},
+        "bursts": b.n,
+        "burst_rate_per_s": burst_rate,
+        "occupancy": lam,
+        "p_multi_occupancy": p_occ,
+        "p_multi_gaps": p_gaps,
+        "arrival_rate_per_s": arrivals,
+        "short_gap_excess": excess,
+        "concentration_pM": conc_pm,
+        "v_eff_fL": v_eff_fl,
+        "dilution": dilution,
+        "time_in_bursts": busy,
+        "brightness_kHz": brightness * 1e-3,
+        "signal_to_background": sbr,
+        "background_kHz": {k: v * 1e-3 for k, v in b.background.items()},
     }
-    return QCReport(checks, flags, burst_rate, lam, p_occ, p_gaps, arrivals, gaps, tt, rate, metrics)
+    return QCReport(
+        checks, flags, burst_rate, lam, p_occ, p_gaps, arrivals, gaps, tt, rate, metrics
+    )

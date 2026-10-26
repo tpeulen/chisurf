@@ -243,7 +243,9 @@ class BurstwiseImportApp(ImApp, TourTarget):
         ):
             self.model.resolver_mode = "mti"
         im.set_item_tooltip(
-            tr("Look up each raw TTTR path by re-mapping the original drive prefix recorded in the folder's .mti file.")
+            tr(
+                "Look up each raw TTTR path by re-mapping the original drive prefix recorded in the folder's .mti file."
+            )
         )
 
         if im.get_line_avail() >= im.calc_text_size(tr("Stems beside folder"))[0] + 40.0:

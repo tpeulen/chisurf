@@ -128,7 +128,9 @@ class BurstIrfBackgroundGui:
         from emtk.docking import DockManager, Region, Split
 
         self.docks = DockManager(
-            Split("h", 0.42, Region("controls"), Split("v", 0.6, Region("plot"), Region("results"))),
+            Split(
+                "h", 0.42, Region("controls"), Split("v", 0.6, Region("plot"), Region("results"))
+            ),
             name="burst_irf_bg",
         )
         self.docks.add_window(

@@ -96,8 +96,12 @@ mean_sticky = float((p_sticky * r_axis).sum())
 
 print(f"donor E:{DONOR}, acceptor E:{ACCEPTOR}, R0 = {R0} A")
 print(f"  from the accessible volumes   <R_DA>_E = {rda_e:.1f} A")
-print(f"  from E(t), no stickiness      <R>      = {mean_free:.1f} A   (E = {free_result.fret_efficiency:.3f})")
-print(f"  from E(t), slow factor 0.1    <R>      = {mean_sticky:.1f} A   (E = {sticky_result.fret_efficiency:.3f})")
+print(
+    f"  from E(t), no stickiness      <R>      = {mean_free:.1f} A   (E = {free_result.fret_efficiency:.3f})"
+)
+print(
+    f"  from E(t), slow factor 0.1    <R>      = {mean_sticky:.1f} A   (E = {sticky_result.fret_efficiency:.3f})"
+)
 print("Without stickiness the decay and the volumes agree. With it, the walk does")
 print("not sample the volume within t_max and the decay reports where it got stuck.")
 assert abs(mean_free - rda_e) < 3.0

@@ -419,7 +419,13 @@ def contact_map(av, quenchers, name, delta, source, settings_=None):
     o.atom_names = ["X"] * len(centres)
     o.coords = [float(v) for c in centres for v in c]
     m = bff.QuenchedDonorDecay(
-        av, o, tau0=4.0, quenching_table=table, n_trajectories=1, random_seed=1, t_max=1.0,
+        av,
+        o,
+        tau0=4.0,
+        quenching_table=table,
+        n_trajectories=1,
+        random_seed=1,
+        t_max=1.0,
         **_grid_options(s),
     )
     m.update_grids()
@@ -525,7 +531,7 @@ def distance_histogram(centres, quenchers, settings_=None, chunk=20000):
             points, w = np.asarray(points, float), np.asarray(w, float)
             base = (q * 2 + m) * n_bins
             for start in range(0, len(centres), chunk):
-                block = centres[start:start + chunk]
+                block = centres[start : start + chunk]
                 u = np.sqrt(((block[:, None, :] - points[None]) ** 2).sum(-1)) - radius
                 b = np.floor((u - lower) / step).astype(np.int64) + 1
                 b[u < lower] = 0
@@ -542,9 +548,14 @@ def distance_histogram(centres, quenchers, settings_=None, chunk=20000):
     else:
         rows, cols, weights = np.zeros(0, int), np.zeros(0, int), np.zeros(0)
     order = np.lexsort((cols, rows))
-    return DistanceHistogram(rows=rows[order].astype(np.int32), columns=cols[order].astype(np.int16),
-                             weights=weights[order].astype(np.float32), lower=lower, step=step,
-                             n_bins=n_bins)
+    return DistanceHistogram(
+        rows=rows[order].astype(np.int32),
+        columns=cols[order].astype(np.int16),
+        weights=weights[order].astype(np.float32),
+        lower=lower,
+        step=step,
+        n_bins=n_bins,
+    )
 
 
 def water_radii(atoms, settings_=None):
@@ -639,9 +650,12 @@ class SiteTable:
         extra = {} if self.voxel_indices is None else {"voxel_indices": self.voxel_indices}
         if self.distances is not None:
             d = self.distances
-            extra.update(distance_rows=d.rows, distance_columns=d.columns,
-                         distance_weights=d.weights,
-                         distance_bins=np.array([d.lower, d.step, d.n_bins], float))
+            extra.update(
+                distance_rows=d.rows,
+                distance_columns=d.columns,
+                distance_weights=d.weights,
+                distance_bins=np.array([d.lower, d.step, d.n_bins], float),
+            )
         tmp = path.with_name(path.name + ".part.npz")
         np.savez_compressed(
             tmp,
@@ -672,9 +686,14 @@ def load_site_table(path):
         distances = None
         if "distance_rows" in f:
             lower, step, n_bins = (float(v) for v in f["distance_bins"])
-            distances = DistanceHistogram(rows=f["distance_rows"], columns=f["distance_columns"],
-                                          weights=f["distance_weights"], lower=lower, step=step,
-                                          n_bins=int(n_bins))
+            distances = DistanceHistogram(
+                rows=f["distance_rows"],
+                columns=f["distance_columns"],
+                weights=f["distance_weights"],
+                lower=lower,
+                step=step,
+                n_bins=int(n_bins),
+            )
         return SiteTable(
             distances=distances,
             neighbours=f["neighbours"],
@@ -737,8 +756,12 @@ def table_from_volume(av, atoms, site, chain=None, settings_=None, library=None)
     xyz = np.asarray(atoms["coord"], dtype=float)
     exposure = np.asarray(
         bff.probe_solvent_exposure(
-            centres.ravel(), xyz.ravel(), water_radii(atoms, s), float(s["dye_radius"]),
-            float(s["water_radius"]), int(s["exposure_points"]),
+            centres.ravel(),
+            xyz.ravel(),
+            water_radii(atoms, s),
+            float(s["dye_radius"]),
+            float(s["water_radius"]),
+            int(s["exposure_points"]),
         ),
         dtype=float,
     )
@@ -799,10 +822,25 @@ def site_key(structure_path, site, linker_length, chain=None, settings_=None):
     used = {
         k: s[k]
         for k in (
-            "chain", "attachment_atom", "site_atoms", "dropped_elements", "linker_width",
-            "dye_radius", "grid", "av", "quenchers", "groups", "slow_radius", "radius_offsets",
-            "clash", "water_radius", "exposure_points", "water_vdw_radii", "water_vdw_default",
-            "grid_options", "distance_histogram",
+            "chain",
+            "attachment_atom",
+            "site_atoms",
+            "dropped_elements",
+            "linker_width",
+            "dye_radius",
+            "grid",
+            "av",
+            "quenchers",
+            "groups",
+            "slow_radius",
+            "radius_offsets",
+            "clash",
+            "water_radius",
+            "exposure_points",
+            "water_vdw_radii",
+            "water_vdw_default",
+            "grid_options",
+            "distance_histogram",
         )
     }
     blob = json.dumps(
@@ -845,14 +883,17 @@ def build_site_table(structure_path, site, linker_length, chain=None, settings_=
     av = accessible_volume(atoms, site, linker_length, chain, s)
     table = table_from_volume(av, atoms, site, chain, s)
     table.meta.update(
-        structure=Path(structure_path).name, site=int(site), linker_length=float(linker_length),
+        structure=Path(structure_path).name,
+        site=int(site),
+        linker_length=float(linker_length),
         chain=s["chain"] if chain is None else chain,
     )
     return table
 
 
-def site_table(structure_path, site, linker_length, chain=None, settings_=None, cache_dir=None,
-               use_cache=True):
+def site_table(
+    structure_path, site, linker_length, chain=None, settings_=None, cache_dir=None, use_cache=True
+):
     """The site table of (structure, site, linker), read from the cache or built and stored.
 
     Parameters
@@ -936,11 +977,20 @@ def direct_lifetime(av, atoms, slow_factor, tau0, settings_=None):
     bff = _bff()
     table = bff.amino_acid_quenching_defaults(1.0, float(slow_factor), float(s["dye_radius"]))
     m = bff.QuenchedDonorDecay(
-        av, obstacles(atoms), tau0=float(tau0), quenching_table=table,
-        critical_distance=float(v["critical_distance"]), slow_radius=float(s["slow_radius"]),
-        probe_radius=float(s["dye_radius"]), diffusion_coefficient=float(v["diffusion_coefficient"]),
-        slow_fact=float(slow_factor), t_step=float(v["t_step"]), t_max=1.0, n_photons=1,
-        n_trajectories=1, random_seed=1,
+        av,
+        obstacles(atoms),
+        tau0=float(tau0),
+        quenching_table=table,
+        critical_distance=float(v["critical_distance"]),
+        slow_radius=float(s["slow_radius"]),
+        probe_radius=float(s["dye_radius"]),
+        diffusion_coefficient=float(v["diffusion_coefficient"]),
+        slow_fact=float(slow_factor),
+        t_step=float(v["t_step"]),
+        t_max=1.0,
+        n_photons=1,
+        n_trajectories=1,
+        random_seed=1,
     )
     m.update_grids()
     return equilibrium_lifetime(
@@ -1000,12 +1050,20 @@ def walk_lifetimes(av, atoms, slow_factor, tau0, settings_=None):
     out = []
     for seed in v["seeds"]:
         m = bff.QuenchedDonorDecay(
-            av, obstacles(atoms), tau0=float(tau0), quenching_table=table,
-            critical_distance=float(v["critical_distance"]), slow_radius=float(s["slow_radius"]),
+            av,
+            obstacles(atoms),
+            tau0=float(tau0),
+            quenching_table=table,
+            critical_distance=float(v["critical_distance"]),
+            slow_radius=float(s["slow_radius"]),
             probe_radius=float(s["dye_radius"]),
-            diffusion_coefficient=float(v["diffusion_coefficient"]), slow_fact=float(slow_factor),
-            t_step=float(v["t_step"]), t_max=float(v["t_max"]), n_photons=int(v["n_photons"]),
-            n_trajectories=int(v["n_trajectories"]), random_seed=int(seed),
+            diffusion_coefficient=float(v["diffusion_coefficient"]),
+            slow_fact=float(slow_factor),
+            t_step=float(v["t_step"]),
+            t_max=float(v["t_max"]),
+            n_photons=int(v["n_photons"]),
+            n_trajectories=int(v["n_trajectories"]),
+            random_seed=int(seed),
         )
         m.simulate_diffusion()
         m.simulate_photons()

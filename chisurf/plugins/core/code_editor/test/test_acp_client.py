@@ -288,12 +288,19 @@ class TestAssistantAcpFlow:
             method = payload.get("method")
             if method == "initialize":
                 chat.acp_client.handle_incoming_message(
-                    {"jsonrpc": "2.0", "id": req_id,
-                     "result": {"protocolVersion": 1, "agentInfo": {}, "agentCapabilities": {}}}
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": {"protocolVersion": 1, "agentInfo": {}, "agentCapabilities": {}},
+                    }
                 )
             elif method == "session/new":
                 chat.acp_client.handle_incoming_message(
-                    {"jsonrpc": "2.0", "id": req_id, "result": {"sessionId": "s_acp_1", "modes": {}}}
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": {"sessionId": "s_acp_1", "modes": {}},
+                    }
                 )
             elif method == "session/prompt":
                 sent_prompts.append(payload)

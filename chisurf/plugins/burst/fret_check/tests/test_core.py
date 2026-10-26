@@ -1,4 +1,5 @@
 """detect -> analyse -> qc on synthetic photons and, when present, tttr-data."""
+
 import pathlib
 
 import numpy as np
@@ -24,8 +25,9 @@ DATA = pathlib.Path(__file__).resolve().parents[5].parent / "tttr-data"
 RES = 12.5e-9
 
 
-def synthetic(alternating: bool, n_bursts=1000, seed=1, donor=0, acceptor=1, donor_only=0.0,
-              macro_period=0):
+def synthetic(
+    alternating: bool, n_bursts=1000, seed=1, donor=0, acceptor=1, donor_only=0.0, macro_period=0
+):
     """Poisson background plus bursts of a single E=0.5 species (S=0.5 with ALEX)."""
     rng = np.random.default_rng(seed)
     t, ch, micro = [], [], []

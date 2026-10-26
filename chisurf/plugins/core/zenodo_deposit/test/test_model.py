@@ -36,9 +36,13 @@ class FakeZenodo:
 
     def _dep(self):
         meta = {"prereserve_doi": {"doi": "10.5281/zenodo.9", "recid": 9}} if self.reserved else {}
-        return {"id": 9, "state": "done" if self.published else "unsubmitted", "metadata": meta,
-                "doi": "10.5281/zenodo.9" if self.published else "",
-                "links": {"bucket": "https://z/bucket/9"}}
+        return {
+            "id": 9,
+            "state": "done" if self.published else "unsubmitted",
+            "metadata": meta,
+            "doi": "10.5281/zenodo.9" if self.published else "",
+            "links": {"bucket": "https://z/bucket/9"},
+        }
 
     def post(self, url, json=None, headers=None):
         self.calls.append(("POST", url))
@@ -57,8 +61,18 @@ class FakeZenodo:
     def get(self, url, headers=None, params=None):
         self.calls.append(("GET", url))
         if url.endswith("/files"):
-            return self.R(200, [{"filename": n, "checksum": hashlib.md5(b).hexdigest(),
-                                 "filesize": len(b), "id": n} for n, b in self.files.items()])
+            return self.R(
+                200,
+                [
+                    {
+                        "filename": n,
+                        "checksum": hashlib.md5(b).hexdigest(),
+                        "filesize": len(b),
+                        "id": n,
+                    }
+                    for n, b in self.files.items()
+                ],
+            )
         return self.R(200, self._dep())
 
     def delete(self, url, headers=None):
@@ -88,7 +102,9 @@ def model(tmp_path: Path, monkeypatch, fake: FakeZenodo) -> ZenodoDepositModel:
         (rec / rel).parent.mkdir(parents=True, exist_ok=True)
         (rec / rel).write_bytes(data)
     monkeypatch.setenv("MMFDB_DEPOSIT_ROOT", str(root))
-    m = ZenodoDepositModel(client_factory=lambda base: ZenodoClient(base=base, token="t", session=fake))
+    m = ZenodoDepositModel(
+        client_factory=lambda base: ZenodoClient(base=base, token="t", session=fake)
+    )
     return m
 
 
@@ -103,13 +119,15 @@ def _wait(m: ZenodoDepositModel) -> None:
 
 
 def test_an_unscanned_folder_is_listed_and_scanned_on_open(model):
-    assert model.records == [{"name": "t4l-demo", "state": "not scanned", "review": "",
-                              "remote": "", "pick": False}]
+    assert model.records == [
+        {"name": "t4l-demo", "state": "not scanned", "review": "", "remote": "", "pick": False}
+    ]
     model.select_record(model.records[0])
     # the item ids, with the files interleaved as their children in the tree
     assert [r["id"] for r in model.items if not r.get("file")][:2] == [
         "measurements/2014-08-12_7.5M-urea",
-        "calibrations/2014-08-12_pq-hydraharp/h2o-scatter-irf"]
+        "calibrations/2014-08-12_pq-hydraharp/h2o-scatter-irf",
+    ]
     assert (model.record.folder.parent / "t4l-demo.deposit.json").is_file()
 
 
@@ -157,8 +175,11 @@ def test_the_upload_tab_shows_the_plan_before_anything_is_sent(model, fake):
     # before the first upload: every file is named as to-be-sent (a bundled
     # draft carries the zip plus its readable sidecars README.md, metadata.cif)
     rows = {(r["file"], r["action"]) for r in model.preflight_rows}
-    assert rows == {("t4l-demo.zip", "→ upload"), ("README.md", "→ upload"),
-                    ("metadata.cif", "→ upload")}
+    assert rows == {
+        ("t4l-demo.zip", "→ upload"),
+        ("README.md", "→ upload"),
+        ("metadata.cif", "→ upload"),
+    }
     assert "First upload" in model.preflight_text and "3 new file(s)" in model.preflight_text
     assert "Nothing is on Zenodo yet." in model.preflight_text
 
@@ -266,7 +287,9 @@ def test_a_folder_lists_a_numbered_series_as_one_row(model):
     assert model.editor_kind == "listing" and model.preview_cif == ""
     rows = {r["key"]: r for r in model.item_files}
     top = rows["Split-{0000…0002}.ht3"]
-    assert top["parent"] == "" and top["count"] == "3 files" and top["kind"] == "PicoQuant HT3 photons"
+    assert (
+        top["parent"] == "" and top["count"] == "3 files" and top["kind"] == "PicoQuant HT3 photons"
+    )
     assert rows["Split-0001.ht3"]["parent"] == "Split-{0000…0002}.ht3"
     assert rows["Split-0001_10.dat"]["parent"] == ""  # a series of one is a row of its own
 
@@ -369,7 +392,10 @@ def test_flipping_the_sandbox_switch_keeps_the_states_apart(model, fake):
 
     # trial run on the sandbox
     model.sandbox = True
-    assert model.upload_label() == "Upload draft" and "Nothing is on Zenodo yet." in model.preflight_text
+    assert (
+        model.upload_label() == "Upload draft"
+        and "Nothing is on Zenodo yet." in model.preflight_text
+    )
     model.upload_draft()
     _wait(model)
     assert "md5 verified" in model.message
@@ -431,8 +457,9 @@ def test_approve_all_leaves_rejections_and_failed_checks(model):
     rec.set_review("README.md", "rejected", "wrong title")
     failing = rec.items[0]
     failing.errors = ["checksum mismatch"]
-    open_ = [i.id for i in rec.items if i.id != "README.md" and not i.errors
-             and i.status != "approved"]
+    open_ = [
+        i.id for i in rec.items if i.id != "README.md" and not i.errors and i.status != "approved"
+    ]
     assert model.approve_all_label() == f"Approve all ({len(open_)})"
     model.approve_all()
     assert all(rec.item(i).status == "approved" for i in open_)
@@ -511,8 +538,9 @@ def test_drawing_the_window_never_reads_the_keychain(model, monkeypatch):
 
     reads = []
     monkeypatch.setattr(credentials, "_KNOWN", {})
-    monkeypatch.setattr(credentials._store, "load_session_token",
-                        lambda h, p, u: reads.append(h) or "kept")
+    monkeypatch.setattr(
+        credentials._store, "load_session_token", lambda h, p, u: reads.append(h) or "kept"
+    )
     monkeypatch.delenv("ZENODO_TOKEN", raising=False)
     model.select_record(model.records[0])
     for _ in range(20):
@@ -593,13 +621,23 @@ def test_an_experiment_of_the_local_mmfdb_is_added_as_a_measurement(model, tmp_p
 
     class Client:
         def list_experiments(self):
-            return [{"experiment_id": "148L tcspc/001", "sample_id": "148L_65_141",
-                     "project_id": "demo", "started_at": "2026-06-11T09:15:00"}]
+            return [
+                {
+                    "experiment_id": "148L tcspc/001",
+                    "sample_id": "148L_65_141",
+                    "project_id": "demo",
+                    "started_at": "2026-06-11T09:15:00",
+                }
+            ]
 
         def get_experiment(self, exp_id):
-            return {"experiment_id": exp_id, "data": [
-                {"data_type": "tcspc", "storage_mode": "link", "file_path": str(raw)},
-                {"data_type": "spectra", "storage_mode": "embedded"}]}
+            return {
+                "experiment_id": exp_id,
+                "data": [
+                    {"data_type": "tcspc", "storage_mode": "link", "file_path": str(raw)},
+                    {"data_type": "spectra", "storage_mode": "embedded"},
+                ],
+            }
 
     model._mmfdb_factory = Client
     model.select_record(model.records[0])
@@ -611,8 +649,9 @@ def test_an_experiment_of_the_local_mmfdb_is_added_as_a_measurement(model, tmp_p
     model.add_from_mmfdb()
     _wait(model)
     assert "measurements/148L_tcspc_001" in [i.id for i in model.record.items], model.message
-    assert (model.record.folder / "measurements/148L_tcspc_001/148L_tcspc_001.ptu").read_bytes() \
-        == b"photons"
+    assert (
+        model.record.folder / "measurements/148L_tcspc_001/148L_tcspc_001.ptu"
+    ).read_bytes() == b"photons"
     assert "from mmfdb experiment 148L tcspc/001" in model.message
 
 
@@ -666,7 +705,9 @@ def test_the_shared_metadata_editor_fills_a_record_and_opens_the_gate(model, fak
     m = model.record.metadata
     assert m["title"] == "T4L demo" and m["upload_type"] == "dataset"
     assert m["keywords"] == ["smFRET", "demo"]
-    assert m["creators"] == [{"name": "Peulen, Thomas-Otavio", "affiliation": "Stanford University"}]
+    assert m["creators"] == [
+        {"name": "Peulen, Thomas-Otavio", "affiliation": "Stanford University"}
+    ]
     model.build_package()
     _wait(model)
     for row in model.items:
@@ -720,9 +761,20 @@ def test_a_record_with_a_quarantined_legacy_remote_says_so(model, fake):
     model.select_record(model.records[0])
     state = model.record.folder.parent / "t4l-demo.deposit.json"
     d = json.loads(state.read_text())
-    d["remote"] = {"deposition_id": 624694, "state": "unsubmitted", "files": [],
-                   "uploads": [{"at": "2026-10-22T10:00:00", "kind": "new",
-                                "deposition_id": 624694, "md5": "x", "verified": True}]}
+    d["remote"] = {
+        "deposition_id": 624694,
+        "state": "unsubmitted",
+        "files": [],
+        "uploads": [
+            {
+                "at": "2026-10-22T10:00:00",
+                "kind": "new",
+                "deposition_id": 624694,
+                "md5": "x",
+                "verified": True,
+            }
+        ],
+    }
     state.write_text(json.dumps(d))
     model.refresh_records()
     row = next(r for r in model.records if r["name"] == "t4l-demo")
@@ -733,6 +785,7 @@ def test_a_record_with_a_quarantined_legacy_remote_says_so(model, fake):
 
 
 # -- metadata-separate packages: a metadata edit never re-sends the raw archive --
+
 
 def _separate_upload(model: ZenodoDepositModel, fake: FakeZenodo) -> bytes:
     """A verified draft built with the metadata separate; returns the zip's bytes."""
@@ -767,7 +820,9 @@ def test_a_metadata_edit_swaps_without_resending_the_raw_archive(model, fake):
     model.upload_metadata_only()
     _wait(model)
     assert "md5 verified" in model.message, model.message
-    assert [c for c in fake.calls if c[0] == "PUT"] == puts + [("PUT", "https://z/bucket/9/README.md")]
+    assert [c for c in fake.calls if c[0] == "PUT"] == puts + [
+        ("PUT", "https://z/bucket/9/README.md")
+    ]
     assert fake.files["t4l-demo.zip"] == zip_on_zenodo  # byte-identical raw archive
     assert "| metadata-only | 9 |" in model.uploads_text
     assert model.upload_label() == "Draft is up to date"
@@ -854,6 +909,7 @@ def test_the_upload_tab_draws_the_metadata_swap_and_its_toggle(model):
 
 # -- the actual 5-file metadata-separate draft: the zip plus FOUR sidecars ----
 
+
 def test_a_five_file_separate_draft_swaps_the_changed_sidecars_without_the_raw_zip(model, fake):
     """A real metadata-separate draft holds the raw zip AND README.md,
     metadata.cif, origins.json and manifest_sha256.csv. A metadata correction
@@ -862,8 +918,13 @@ def test_a_five_file_separate_draft_swaps_the_changed_sidecars_without_the_raw_z
     (untouched) and metadata.cif stay 'keep', and the raw zip is never PUT."""
     zip_on_zenodo = _separate_upload(model, fake)
     puts = [c for c in fake.calls if c[0] == "PUT" and "/bucket/" in c[1]]
-    assert set(fake.files) == {"t4l-demo.zip", "README.md", "metadata.cif",
-                               "origins.json", "manifest_sha256.csv"}
+    assert set(fake.files) == {
+        "t4l-demo.zip",
+        "README.md",
+        "metadata.cif",
+        "origins.json",
+        "manifest_sha256.csv",
+    }
     assert {r["action"] for r in model.preflight_rows} == {"= identical"}
 
     (model.record.folder / "README.md").write_text("# demo, corrected\n")
@@ -888,7 +949,8 @@ def test_a_five_file_separate_draft_swaps_the_changed_sidecars_without_the_raw_z
     assert "md5 verified" in model.message, model.message
     assert [c for c in fake.calls if c[0] == "PUT" and "/bucket/" in c[1]] == puts + [
         ("PUT", "https://z/bucket/9/README.md"),
-        ("PUT", "https://z/bucket/9/manifest_sha256.csv")]
+        ("PUT", "https://z/bucket/9/manifest_sha256.csv"),
+    ]
     assert fake.files["t4l-demo.zip"] == zip_on_zenodo  # byte-identical raw archive
 
 
@@ -899,7 +961,8 @@ def test_an_origins_only_edit_swaps_only_the_provenance(model, fake):
     zip_on_zenodo = _separate_upload(model, fake)
     puts = [c for c in fake.calls if c[0] == "PUT" and "/bucket/" in c[1]]
     (model.record.folder / "origins.json").write_text(
-        '{"original_locations": {"m": {"server": "s"}}}\n')
+        '{"original_locations": {"m": {"server": "s"}}}\n'
+    )
     model.rescan()
     model.approve_item({"id": "origins.json"})
     assert model.enabled("upload_metadata_only"), model.metadata_only_text
@@ -907,7 +970,8 @@ def test_an_origins_only_edit_swaps_only_the_provenance(model, fake):
     _wait(model)
     assert "md5 verified" in model.message, model.message
     assert [c for c in fake.calls if c[0] == "PUT" and "/bucket/" in c[1]] == puts + [
-        ("PUT", "https://z/bucket/9/origins.json")]
+        ("PUT", "https://z/bucket/9/origins.json")
+    ]
     assert fake.files["t4l-demo.zip"] == zip_on_zenodo
 
 
@@ -956,8 +1020,13 @@ def test_the_upload_tab_draws_all_five_files_of_a_separate_draft(model, fake):
     ui.click("3 · Upload")
     ui.frame(2)
     texts = [t[5] for t in ui.painter.texts]
-    for name in ("t4l-demo.zip", "README.md", "metadata.cif",
-                 "origins.json", "manifest_sha256.csv"):
+    for name in (
+        "t4l-demo.zip",
+        "README.md",
+        "metadata.cif",
+        "origins.json",
+        "manifest_sha256.csv",
+    ):
         assert any(t.startswith(name) for t in texts), f"{name} is not drawn in the plan"
     assert "ride beside the zip" in " ".join(texts), model.gate_text
     assert "Swap metadata" in texts
@@ -987,12 +1056,13 @@ def test_the_swap_button_clicks_through_the_real_gui_binding(model, fake):
     ui.click("3 · Upload")
     ui.frame(2)
     assert "Swap metadata" in [t[5] for t in ui.painter.texts]
-    ui.click("Swap metadata")          # the real binding: view button -> model action
+    ui.click("Swap metadata")  # the real binding: view button -> model action
     _wait(model)
     assert "md5 verified" in model.message, model.message
     assert [c for c in fake.calls if c[0] == "PUT" and "/bucket/" in c[1]] == puts + [
         ("PUT", "https://z/bucket/9/README.md"),
-        ("PUT", "https://z/bucket/9/manifest_sha256.csv")]
+        ("PUT", "https://z/bucket/9/manifest_sha256.csv"),
+    ]
     assert fake.files["t4l-demo.zip"] == zip_on_zenodo
 
     # the same click on the greyed button sends nothing: the README changed again

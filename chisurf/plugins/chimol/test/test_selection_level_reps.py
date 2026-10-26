@@ -20,6 +20,7 @@ from native_window import process_events
 def shell():
     pytest.importorskip("chisurf.core.structure")
     from native_window import NativeWindow
+
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
         / "test"

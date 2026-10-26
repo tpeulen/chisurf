@@ -645,7 +645,13 @@ class SimulateDiffusion:
         start = time.process_time()
         mobility = walk_mobility(density, slow_density, slow_fact)
         traj, n_steps, n_accepted, n_rejected = simulate_walkers(
-            density, mobility, dg, t_walk, t_step, D, n_walkers=n_walkers,
+            density,
+            mobility,
+            dg,
+            t_walk,
+            t_step,
+            D,
+            n_walkers=n_walkers,
             random_seed=random_seed,
         )
         if traj.shape[0] == 0:
@@ -921,7 +927,10 @@ class DonorDecay:
             self.ensemble_lifetimes = pde_lifetimes(f, self.tau0, solver)
             t, intensity = pde_decay(f, self.tau0, solver)
             self._photon_trace = decay_photons(
-                t, intensity, self.ensemble_lifetimes.quantum_yield, self.n_photons,
+                t,
+                intensity,
+                self.ensemble_lifetimes.quantum_yield,
+                self.n_photons,
                 self._photon_seed(),
             )
         if verbose or self.verbose:
@@ -937,7 +946,13 @@ class DonorDecay:
         av = self.av
         mobility = self._walk_mobility(av, self.slow_fact)
         xyz, _, _, _ = simulate_walkers(
-            av.density_fast, mobility, av.dg, 1.0, 1.0, 0.0, n_walkers=int(n),
+            av.density_fast,
+            mobility,
+            av.dg,
+            1.0,
+            1.0,
+            0.0,
+            n_walkers=int(n),
             random_seed=self.random_seed,
         )
         return xyz + av.x0
@@ -1615,7 +1630,10 @@ class DonorDecay:
         self.fret_ensemble_lifetimes = pde_lifetimes(f_da, self.tau0, solver)
         t, intensity = pde_decay(f_da, self.tau0, solver)
         self._photon_trace_fret = decay_photons(
-            t, intensity, self.fret_ensemble_lifetimes.quantum_yield, self.n_photons,
+            t,
+            intensity,
+            self.fret_ensemble_lifetimes.quantum_yield,
+            self.n_photons,
             self._photon_seed(),
         )
         if verbose or self.verbose:

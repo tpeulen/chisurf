@@ -117,12 +117,16 @@ class UI(Driver):
 
     def click_name(self, name: str, **kw):
         if name == "background":
-            bg_row = next((r for r in self.app.model.parameter_rows() if r["key"] == "background"), None)
+            bg_row = next(
+                (r for r in self.app.model.parameter_rows() if r["key"] == "background"), None
+            )
             if bg_row:
                 self.app.model.edit_parameter(bg_row, "value", not self.app.model.background)
                 return
         elif name == "flip":
-            flip_row = next((r for r in self.app.model.parameter_rows() if r["key"] == "flip"), None)
+            flip_row = next(
+                (r for r in self.app.model.parameter_rows() if r["key"] == "flip"), None
+            )
             if flip_row:
                 self.app.model.edit_parameter(flip_row, "value", not self.app.model.flip)
                 return
@@ -132,8 +136,18 @@ class UI(Driver):
         try:
             return super().rect(name)
         except AssertionError:
-            if name in ("tail_start", "tail_stop", "background_start", "background_stop", "shift", "manual_tau", "manual_rs"):
-                return self.app.forms["parameters"].rects.get("parameters", (10.0, 10.0, 100.0, 100.0))
+            if name in (
+                "tail_start",
+                "tail_stop",
+                "background_start",
+                "background_stop",
+                "shift",
+                "manual_tau",
+                "manual_rs",
+            ):
+                return self.app.forms["parameters"].rects.get(
+                    "parameters", (10.0, 10.0, 100.0, 100.0)
+                )
             raise
 
 
@@ -199,21 +213,27 @@ def type_value(ui, name, text):
         m.edit_parameter(row, "value", text)
         return ui.settle()
     if name in ("fp_rho_ns", "rho_ns", "rho"):
-        slow_d = next((d for d in m.decays if d.get("role") == "slow" or d.get("path") == m.slow_file), None)
+        slow_d = next(
+            (d for d in m.decays if d.get("role") == "slow" or d.get("path") == m.slow_file), None
+        )
         if slow_d:
             ref_row = next((r for r in m.reference_rows() if r["path"] == slow_d.get("path")), None)
             if ref_row:
                 m.edit_reference(ref_row, "rho_ns", text)
                 return ui.settle()
     if name in ("fp_r0", "r0"):
-        slow_d = next((d for d in m.decays if d.get("role") == "slow" or d.get("path") == m.slow_file), None)
+        slow_d = next(
+            (d for d in m.decays if d.get("role") == "slow" or d.get("path") == m.slow_file), None
+        )
         if slow_d:
             ref_row = next((r for r in m.reference_rows() if r["path"] == slow_d.get("path")), None)
             if ref_row:
                 m.edit_reference(ref_row, "r0", text)
                 return ui.settle()
     if name in ("tau_override", "tau_ns", "tau"):
-        slow_d = next((d for d in m.decays if d.get("role") == "slow" or d.get("path") == m.slow_file), None)
+        slow_d = next(
+            (d for d in m.decays if d.get("role") == "slow" or d.get("path") == m.slow_file), None
+        )
         if slow_d:
             ref_row = next((r for r in m.reference_rows() if r["path"] == slow_d.get("path")), None)
             if ref_row:
@@ -687,6 +707,7 @@ def test_parameter_table_and_in_place_editing(ui, files):
 
     # Standard FittingParameter schema: Parameter, Value, Fixed, Error
     from chisurf.core.fitting.parameter import FittingParameter
+
     g_row = next(r for r in param_rows if r["key"] == "g")
     assert isinstance(g_row["_parameter"], FittingParameter)
     assert "parameter" in g_row and "value" in g_row and "fixed" in g_row and "error" in g_row
@@ -742,7 +763,6 @@ def test_context_menu_actions_remove_and_clear_samples(ui, files):
     m.clear_batch()
     assert len(m.batch_files) == 0
     assert m.has_batch_rows is False
-
 
 
 # ───────────────────────────────── export, archive, batch ───────────────────────────────── #
@@ -950,13 +970,35 @@ def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_p
     lines = (tmp_path / "table.tsv").read_text().splitlines()
     assert (
         lines[0].split("\t")
-        == ["file", "r_ss", "r_inf", "region_start", "region_stop", "bg_vv", "bg_vh", "g_factor", "l1", "l2", "error"]
+        == [
+            "file",
+            "r_ss",
+            "r_inf",
+            "region_start",
+            "region_stop",
+            "bg_vv",
+            "bg_vh",
+            "g_factor",
+            "l1",
+            "l2",
+            "error",
+        ]
         and len(lines) == 3
     )
     rows = list(csv.DictReader(lines, delimiter="\t"))
     for row, result in zip(rows, m.batch_results):
         assert row["file"] == result["file"]
-        for quantity in ("r_ss", "r_inf", "region_start", "region_stop", "bg_vv", "bg_vh", "g_factor", "l1", "l2"):
+        for quantity in (
+            "r_ss",
+            "r_inf",
+            "region_start",
+            "region_stop",
+            "bg_vv",
+            "bg_vh",
+            "g_factor",
+            "l1",
+            "l2",
+        ):
             assert float(row[quantity]) == pytest.approx(result[quantity])
     # The filename is elided in this narrow seven-column table; select its real numeric cell.
     ui.click_text(f"{m.batch_results[0]['r_inf']:.5g}")

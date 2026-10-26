@@ -136,7 +136,6 @@ def test_a_plain_mesh_still_takes_the_plain_pipeline():
     ) not in renderer._pipelines or True  # built lazily only when used
 
 
-
 def test_an_object_with_an_instance_set_builds_instanced_meshes():
     """The scene builder attaches the block to every mesh the object produced; the tracer expands."""
     import pathlib

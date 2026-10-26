@@ -397,14 +397,19 @@ def contract_describe_handler() -> dict[str, Any]:
 # -- the quenching analysis ---------------------------------------------------------------
 
 
-def _analysis_problem(stages: Any, preset: Optional[str], fit_overrides: Any,
-                      data: Optional[str]) -> Optional[str]:
+def _analysis_problem(
+    stages: Any, preset: Optional[str], fit_overrides: Any, data: Optional[str]
+) -> Optional[str]:
     """Why these analysis inputs cannot run, or None. Checked before any work starts."""
     from chisurf.plugins.quenching_estimator.core.inference import graph_fit
     from chisurf.plugins.quenching_estimator.core.inference import stages as st
 
     names = st.stage_names()
-    asked = names if stages in (None, "all") else ([stages] if isinstance(stages, str) else list(stages))
+    asked = (
+        names
+        if stages in (None, "all")
+        else ([stages] if isinstance(stages, str) else list(stages))
+    )
     unknown = [name for name in asked if name not in names]
     if unknown:
         return f"Unknown stage(s) {unknown}; declared: {names}."
@@ -434,28 +439,45 @@ def analysis_template_handler() -> dict[str, Any]:
 
     declaration = st.stage_settings()
     full = graph_fit.settings()
-    presets = {name: {k: v for k, v in graph_fit.settings(name).items() if full.get(k) != v}
-               for name in graph_fit.preset_names()}
+    presets = {
+        name: {k: v for k, v in graph_fit.settings(name).items() if full.get(k) != v}
+        for name in graph_fit.preset_names()
+    }
     return ok(
         {
             "stages": [
-                {"name": name, "title": declaration["stages"][name]["title"],
-                 "kind": declaration["stages"][name]["kind"],
-                 "graph": declaration["stages"][name].get("graph")}
+                {
+                    "name": name,
+                    "title": declaration["stages"][name]["title"],
+                    "kind": declaration["stages"][name]["kind"],
+                    "graph": declaration["stages"][name].get("graph"),
+                }
                 for name in declaration["order"]
             ],
             "order": list(declaration["order"]),
-            "graphs": {name: {"description": g.get("description", ""),
-                              "blocks": [b["label"] for b in g["blocks"]]}
-                       for name, g in declaration["graphs"].items()},
+            "graphs": {
+                name: {
+                    "description": g.get("description", ""),
+                    "blocks": [b["label"] for b in g["blocks"]],
+                }
+                for name, g in declaration["graphs"].items()
+            },
             "presets": presets,
             "fit_settings": full,
             "data": str(measurements.EXAMPLE_FOLDER),
             "result_tables": sorted(
-                name for name, spec in columns.declaration(graph_fit.RESULT_COLUMNS).items()
-                if isinstance(spec, dict) and "columns" in spec),
-            "defaults": {"stages": "all", "preset": None, "profile": True, "workers": None,
-                         "save_outputs": True, "background": False},
+                name
+                for name, spec in columns.declaration(graph_fit.RESULT_COLUMNS).items()
+                if isinstance(spec, dict) and "columns" in spec
+            ),
+            "defaults": {
+                "stages": "all",
+                "preset": None,
+                "profile": True,
+                "workers": None,
+                "save_outputs": True,
+                "background": False,
+            },
         }
     )
 
@@ -504,20 +526,31 @@ def analysis_run_handler(
     if continue_from:
         entry = _job_entry(manager, continue_from)
         if entry is None:
-            return service_error(f"No finished analysis job {continue_from} on this server.",
-                                 "invalid_analysis")
+            return service_error(
+                f"No finished analysis job {continue_from} on this server.", "invalid_analysis"
+            )
         previous = entry["analysis"]
 
     job = manager.create("quest.analysis.run", {"stages": stages, "preset": preset})
 
     def work(progress, cancel):
         return _runs.analyse(
-            stages, data=data, structures=dict(structures) if structures else None,
-            tables=dict(tables) if tables else None, cache_dir=cache_dir, preset=preset,
-            fit_overrides=dict(fit_overrides) if fit_overrides else None, workers=workers,
-            profile=bool(profile), output=output, project_dir=project_dir,
-            save_outputs=bool(save_outputs), run_id=job.job_id, progress=progress,
-            cancel=cancel, analysis=previous,
+            stages,
+            data=data,
+            structures=dict(structures) if structures else None,
+            tables=dict(tables) if tables else None,
+            cache_dir=cache_dir,
+            preset=preset,
+            fit_overrides=dict(fit_overrides) if fit_overrides else None,
+            workers=workers,
+            profile=bool(profile),
+            output=output,
+            project_dir=project_dir,
+            save_outputs=bool(save_outputs),
+            run_id=job.job_id,
+            progress=progress,
+            cancel=cancel,
+            analysis=previous,
         )
 
     if background:
@@ -529,12 +562,20 @@ def analysis_run_handler(
         entry = work(manager.reporter(job.job_id), manager.canceller(job.job_id))
     except CancelledError:
         manager.finish(job.job_id)
-        return service_error("The analysis was cancelled.", "operation_cancelled",
-                             "CancelledError", {"job_id": job.job_id})
+        return service_error(
+            "The analysis was cancelled.",
+            "operation_cancelled",
+            "CancelledError",
+            {"job_id": job.job_id},
+        )
     except Exception as exc:
         manager.fail(job.job_id, str(exc), error_code_for(exc))
-        return service_error(f"Analysis failed: {exc}", error_code_for(exc), type(exc).__name__,
-                             {"job_id": job.job_id})
+        return service_error(
+            f"Analysis failed: {exc}",
+            error_code_for(exc),
+            type(exc).__name__,
+            {"job_id": job.job_id},
+        )
     manager.finish(job.job_id, entry)
     return ok(_analysis_reply(job.job_id, "completed", entry))
 
@@ -566,20 +607,36 @@ def analysis_result_handler(job_id: str, project_dir: Optional[str] = None) -> d
         if status == "completed":
             return ok(_analysis_reply(job_id, status, job.result))
         if status == "cancelled":
-            return service_error(f"Analysis job {job_id} was cancelled.", "operation_cancelled",
-                                 details={"job_id": job_id})
+            return service_error(
+                f"Analysis job {job_id} was cancelled.",
+                "operation_cancelled",
+                details={"job_id": job_id},
+            )
         if status == "failed":
-            return service_error(job.error or "failed", job.error_code or "operation_failed",
-                                 details={"job_id": job_id})
-        return service_error(f"Analysis job {job_id} is {status} ({job.progress} %).",
-                             "job_not_finished", details=job.to_dict())
+            return service_error(
+                job.error or "failed",
+                job.error_code or "operation_failed",
+                details={"job_id": job_id},
+            )
+        return service_error(
+            f"Analysis job {job_id} is {status} ({job.progress} %).",
+            "job_not_finished",
+            details=job.to_dict(),
+        )
     try:
         stored = _runs.read_analysis_run(job_id, project_dir)
     except (ValueError, FileNotFoundError) as exc:
         return service_error(str(exc), "operation_failed", type(exc).__name__)
-    return ok({"job_id": job_id, "status": "completed", "run_id": job_id,
-               "directory": stored.pop("directory"), "files": stored["run"].get("files", []),
-               "result": stored})
+    return ok(
+        {
+            "job_id": job_id,
+            "status": "completed",
+            "run_id": job_id,
+            "directory": stored.pop("directory"),
+            "files": stored["run"].get("files", []),
+            "result": stored,
+        }
+    )
 
 
 def analysis_site_table_handler(
@@ -601,17 +658,26 @@ def analysis_site_table_handler(
     if linker_length is None:
         lengths = settings_["linker_lengths"]
         if dye not in lengths:
-            return service_error(f"Give linker_length or a dye of {sorted(lengths)}.",
-                                 "invalid_analysis")
+            return service_error(
+                f"Give linker_length or a dye of {sorted(lengths)}.", "invalid_analysis"
+            )
         linker_length = lengths[dye]
     if structure is None:
         if state not in settings_["structures"]:
-            return service_error(f"Give structure or a state of {sorted(settings_['structures'])}.",
-                                 "invalid_analysis")
+            return service_error(
+                f"Give structure or a state of {sorted(settings_['structures'])}.",
+                "invalid_analysis",
+            )
         structure = str(_st.male_structure(state, settings_))
     try:
-        table = _st.site_table(structure, int(site), float(linker_length), chain=chain,
-                               settings_=settings_, cache_dir=cache_dir)
+        table = _st.site_table(
+            structure,
+            int(site),
+            float(linker_length),
+            chain=chain,
+            settings_=settings_,
+            cache_dir=cache_dir,
+        )
     except Exception as exc:
         return service_error(f"Site table failed: {exc}", error_code_for(exc), type(exc).__name__)
     exposure = np.asarray(table.exposure, dtype=float)
@@ -625,9 +691,11 @@ def analysis_site_table_handler(
             "n_voxels": table.n_voxels,
             "residue_types": list(_st.residue_types(settings_)),
             "neighbour_totals": table.neighbours.sum(axis=0).astype(int).tolist(),
-            "exposure": {"mean": float(exposure.mean()) if exposure.size else None,
-                         "min": float(exposure.min()) if exposure.size else None,
-                         "max": float(exposure.max()) if exposure.size else None},
+            "exposure": {
+                "mean": float(exposure.mean()) if exposure.size else None,
+                "min": float(exposure.min()) if exposure.size else None,
+                "max": float(exposure.max()) if exposure.size else None,
+            },
             "meta": to_payload(table.meta),
         }
     )

@@ -92,7 +92,9 @@ class GFactorApp(TourTarget, ImApp):
         self.dialog_window: DialogWindow | None = None
         self.dialog_callback: Callable[[list[str]], object] | None = None
         self.last_dir = ""
-        self.show_fast = self.show_slow = self.show_sample = self.show_raw = self.show_corrected = True
+        self.show_fast = self.show_slow = self.show_sample = self.show_raw = self.show_corrected = (
+            True
+        )
         self.log_y = True
         self.plot_signature = None
         self.plot_info = {}
@@ -107,7 +109,11 @@ class GFactorApp(TourTarget, ImApp):
             name="vv_vh_g_factor",
         )
         self.docks.add_window(
-            "controls", "Calibration (References)", self.draw_controls, dock="controls", closable=False
+            "controls",
+            "Calibration (References)",
+            self.draw_controls,
+            dock="controls",
+            closable=False,
         )
         self.docks.add_window(
             "batch", "Unknown Samples (Batch)", self.draw_batch, dock="controls", closable=False
@@ -520,19 +526,22 @@ class GFactorApp(TourTarget, ImApp):
                 {
                     "label": "Export active decay...",
                     "key": "export_active_decay",
-                    "enabled": not busy and (bool(m.batch_files) or m.sample is not None or m.fast is not None),
+                    "enabled": not busy
+                    and (bool(m.batch_files) or m.sample is not None or m.fast is not None),
                     "tip": "Export the currently selected file's raw and corrected VV and VH decays to a CSV file.",
                 },
                 {
                     "label": "Export active r(t)...",
                     "key": "export_active_rt",
-                    "enabled": not busy and (bool(m.batch_files) or m.sample is not None or m.fast is not None),
+                    "enabled": not busy
+                    and (bool(m.batch_files) or m.sample is not None or m.fast is not None),
                     "tip": "Export the currently selected file's time-resolved anisotropy r(t) curve to a CSV file.",
                 },
                 {
                     "label": "Export active ratio...",
                     "key": "export_active_ratio",
-                    "enabled": not busy and (bool(m.batch_files) or m.sample is not None or m.fast is not None),
+                    "enabled": not busy
+                    and (bool(m.batch_files) or m.sample is not None or m.fast is not None),
                     "tip": "Export the currently selected file's raw and corrected VV/VH intensity ratio to a CSV file.",
                 },
                 {
@@ -664,9 +673,13 @@ class GFactorApp(TourTarget, ImApp):
                 selected_label = opts[idx]
                 if selected_label.startswith("[Sample] "):
                     name = selected_label[9:]
-                    match_path = next((p for p in self.model.batch_files if Path(p).name == name), None)
+                    match_path = next(
+                        (p for p in self.model.batch_files if Path(p).name == name), None
+                    )
                     if match_path:
-                        return [(f"Sample {name}", self.model.get_decay_series(file_path=match_path))]
+                        return [
+                            (f"Sample {name}", self.model.get_decay_series(file_path=match_path))
+                        ]
             selected_files = self.get_active_batch_files()
             return [
                 (f"Sample {Path(p).name}", self.model.get_decay_series(file_path=p))
@@ -695,7 +708,11 @@ class GFactorApp(TourTarget, ImApp):
             seen_roles: dict[str, int] = {}
             for d in self.model.decays:
                 role = d["role"]
-                if (role == "fast" and not self.show_fast) or (role == "slow" and not self.show_slow) or (role == "sample" and not self.show_sample):
+                if (
+                    (role == "fast" and not self.show_fast)
+                    or (role == "slow" and not self.show_slow)
+                    or (role == "sample" and not self.show_sample)
+                ):
                     continue
                 count = seen_roles.get(role, 0)
                 seen_roles[role] = count + 1
@@ -707,7 +724,11 @@ class GFactorApp(TourTarget, ImApp):
                 ("Slow", True, False, self.show_slow),
                 ("Sample", False, True, self.show_sample),
             ]:
-                if enabled and ((not slow and not sample and self.model.fast is not None) or (slow and self.model.slow is not None) or (sample and self.model.sample is not None)):
+                if enabled and (
+                    (not slow and not sample and self.model.fast is not None)
+                    or (slow and self.model.slow is not None)
+                    or (sample and self.model.sample is not None)
+                ):
                     res.append((label, self.model.decay_series(slow=slow, sample=sample)))
         return res
 
@@ -718,7 +739,9 @@ class GFactorApp(TourTarget, ImApp):
         im.set_next_item_width(170.0)
         idx = min(self.plot_decay_idx, len(opts) - 1)
         changed, self.plot_decay_idx = im.combo("##vvvh_decay_select", idx, opts)
-        im.set_item_tooltip(tr("Select which decay to display in the VV/VH plot, or display all overlaid."))
+        im.set_item_tooltip(
+            tr("Select which decay to display in the VV/VH plot, or display all overlaid.")
+        )
         im.same_line()
         used, avail = im.get_cursor_pos()[0], im.get_content_region_avail()[0]
         spacing = im.get_style().item_spacing[0]
@@ -750,7 +773,13 @@ class GFactorApp(TourTarget, ImApp):
             im.set_item_tooltip(tr("Show or hide this trace group, or change the intensity scale."))
             used += width
         im.new_line()
-        if self.model.fast is None and self.model.slow is None and self.model.sample is None and not self.model.decays and not self.model.batch_files:
+        if (
+            self.model.fast is None
+            and self.model.slow is None
+            and self.model.sample is None
+            and not self.model.decays
+            and not self.model.batch_files
+        ):
             im.text_wrapped(tr("Load a VV/VH decay (button, or drop a file on the window)."))
             return
         if implot.begin_plot("##vvvh", (-1, -1)):
@@ -769,7 +798,14 @@ class GFactorApp(TourTarget, ImApp):
             if vectors:
                 peak = max(float(np.nanmax(v)) for v in vectors)
                 length = max(map(len, vectors))
-                sig = (id(self.model.fast), id(self.model.slow), id(self.model.sample), self.log_y, peak, self.plot_decay_idx)
+                sig = (
+                    id(self.model.fast),
+                    id(self.model.slow),
+                    id(self.model.sample),
+                    self.log_y,
+                    peak,
+                    self.plot_decay_idx,
+                )
                 implot.setup_axes_limits(
                     0,
                     length,
@@ -812,7 +848,13 @@ class GFactorApp(TourTarget, ImApp):
             implot.end_plot()
 
     def draw_anisotropy(self, box):
-        if self.model.fast is None and self.model.slow is None and self.model.sample is None and not self.model.decays and not self.model.batch_files:
+        if (
+            self.model.fast is None
+            and self.model.slow is None
+            and self.model.sample is None
+            and not self.model.decays
+            and not self.model.batch_files
+        ):
             im.text_wrapped(tr("The anisotropy r(t) of the loaded decays appears here."))
             return
         opts = self.get_decay_options()
@@ -821,7 +863,9 @@ class GFactorApp(TourTarget, ImApp):
         im.set_next_item_width(170.0)
         idx = min(self.plot_aniso_decay_idx, len(opts) - 1)
         changed, self.plot_aniso_decay_idx = im.combo("##aniso_decay_select", idx, opts)
-        im.set_item_tooltip(tr("Select which decay to display in the anisotropy plot, or display all overlaid."))
+        im.set_item_tooltip(
+            tr("Select which decay to display in the anisotropy plot, or display all overlaid.")
+        )
         im.same_line()
         _, self.show_raw = im.checkbox(tr("Raw r(t)"), self.show_raw)
         im.set_item_tooltip(tr("Show or hide raw anisotropy trace."))
@@ -852,7 +896,11 @@ class GFactorApp(TourTarget, ImApp):
                 if self.show_corrected and "r_corrected" in data:
                     implot.plot_line(label + " corrected", data["time"], data["r_corrected"])
 
-            bounds = self.model.sample_region if (self.model.sample is not None or self.model.batch_files) else self.model.region
+            bounds = (
+                self.model.sample_region
+                if (self.model.sample is not None or self.model.batch_files)
+                else self.model.region
+            )
             implot.set_next_fill_style((60, 205, 100, 255), 0.2)
             implot.plot_shaded(
                 "##rinf_region",
@@ -889,12 +937,16 @@ class GFactorApp(TourTarget, ImApp):
         im.set_next_item_width(170.0)
         idx = min(self.plot_ratio_decay_idx, len(opts) - 1)
         changed, self.plot_ratio_decay_idx = im.combo("##ratio_decay_select", idx, opts)
-        im.set_item_tooltip(tr("Select which decay's VV/VH ratio to display, or display all overlaid."))
+        im.set_item_tooltip(
+            tr("Select which decay's VV/VH ratio to display, or display all overlaid.")
+        )
         im.same_line()
         _, self.show_ratio_raw = im.checkbox(tr("Raw ratio") + "##chk", self.show_ratio_raw)
         im.set_item_tooltip(tr("Show or hide raw intensity ratio VV(t) / VH(t)."))
         im.same_line()
-        _, self.show_ratio_corrected = im.checkbox(tr("Corrected ratio") + "##chk", self.show_ratio_corrected)
+        _, self.show_ratio_corrected = im.checkbox(
+            tr("Corrected ratio") + "##chk", self.show_ratio_corrected
+        )
         im.set_item_tooltip(tr("Show or hide background-subtracted & shifted ratio."))
         im.same_line()
         _, self.show_g_line = im.checkbox(tr("G baseline") + "##chk", self.show_g_line)
@@ -928,7 +980,9 @@ class GFactorApp(TourTarget, ImApp):
                 if self.show_ratio_raw and "ratio_raw" in data:
                     implot.plot_line(label + " ratio raw", data["time"], data["ratio_raw"])
                 if self.show_ratio_corrected and "ratio_corrected" in data:
-                    implot.plot_line(label + " ratio corrected", data["time"], data["ratio_corrected"])
+                    implot.plot_line(
+                        label + " ratio corrected", data["time"], data["ratio_corrected"]
+                    )
 
             # Horizontal baseline at calibrated G
             if self.show_g_line and g is not None and np.isfinite(g) and g > 0:

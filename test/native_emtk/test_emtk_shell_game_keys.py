@@ -122,7 +122,9 @@ def test_a_release_goes_to_the_tool_that_took_the_press_after_a_focus_change():
             return True
 
     first, second = Tool("first"), Tool("second")
-    hub = SimpleNamespace(child=first, _child_focus=True, _child_keys={}, _overlay_open=lambda: False)
+    hub = SimpleNamespace(
+        child=first, _child_focus=True, _child_keys={}, _overlay_open=lambda: False
+    )
     ToolHubApp.key(hub, KEY_LEFT)
     hub.child = second  # the hub switched tools while the key was held
     ToolHubApp.key_release(hub, KEY_LEFT)

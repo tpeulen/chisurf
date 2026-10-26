@@ -163,9 +163,7 @@ def container_setup(path: Path) -> dict:
                 if detectors:
                     return _setup_from_detectors(detectors)
     except Exception as exc:  # noqa: BLE001 - unreadable: there is simply nothing to adopt
-        logger.warning(
-            f"ALEX Suite: could not read a stored setup from {Path(path).name} - {exc}"
-        )
+        logger.warning(f"ALEX Suite: could not read a stored setup from {Path(path).name} - {exc}")
     return {}
 
 

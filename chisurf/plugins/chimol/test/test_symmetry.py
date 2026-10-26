@@ -606,6 +606,7 @@ def test_the_origin_shifts_the_whole_box():
 # `cell` resolves the same way `symexp` does
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def crystal_cmd(tmp_path):
     """A window with 1RTD -- a file that carries its own CRYST1 record."""
@@ -613,6 +614,7 @@ def crystal_cmd(tmp_path):
 
     from chimol.commands.command import Cmd
     from native_window import NativeWindow
+
     if not _CRYSTAL.is_file():
         pytest.skip("no crystal fixture")
     pdb = tmp_path / "1rtd.pdb"

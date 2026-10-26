@@ -97,7 +97,9 @@ def test_detect_and_convert_button_then_a_typed_gate_republishes_the_setup(
     drv.press(keys.KEY_DOWN)
     drv.draw(3)
     assert model.windows["green"] == [low0 + 1, high0 - 1]
-    assert handed[-1][0]["windows"]["prompt"] == model.windows["green"], "a gate edit republishes the setup"
+    assert handed[-1][0]["windows"]["prompt"] == model.windows["green"], (
+        "a gate edit republishes the setup"
+    )
     assert handed[-1][1] == files, "a gate edit republishes the setup and reconverts nothing"
 
 

@@ -31,14 +31,29 @@ STEMS = [f"Split_44_132_75murea_sm-{i:04d}" for i in range(3)]
 N_BURSTS = (6, 5, 7)
 
 BUR_COLUMNS = [
-    "First Photon", "Last Photon", "Duration (ms)", "Mean Macrotime (ms)",
-    "Number of Photons", "Number of Photons (green)", "Number of Photons (red)",
-    "Count Rate (KHz)", "Green Count Rate (KHz)", "Red Count Rate (KHz)",
-    "Proximity Ratio", "First File", "Last File",
+    "First Photon",
+    "Last Photon",
+    "Duration (ms)",
+    "Mean Macrotime (ms)",
+    "Number of Photons",
+    "Number of Photons (green)",
+    "Number of Photons (red)",
+    "Count Rate (KHz)",
+    "Green Count Rate (KHz)",
+    "Red Count Rate (KHz)",
+    "Proximity Ratio",
+    "First File",
+    "Last File",
 ]
 BG4_COLUMNS = [
-    "Tau (green)", "2I*  (green)", "gamma (green)", "r0 (green)", "rho (green)",
-    "MLE Fitted (green)", "r Scatter (green)", "r Experimental (green)",
+    "Tau (green)",
+    "2I*  (green)",
+    "gamma (green)",
+    "r0 (green)",
+    "rho (green)",
+    "MLE Fitted (green)",
+    "r Scatter (green)",
+    "r Experimental (green)",
 ]
 BR4_COLUMNS = [c.replace("green", "red") for c in BG4_COLUMNS]
 
@@ -75,18 +90,36 @@ def main() -> None:
         bur, bg4, br4, bst = [], [], [], []
         for i in range(n):
             first, last = int(start[i]), int(start[i] + n_ph[i] - 1)
-            bur.append([
-                first, last, dur[i], first * 1.25e-5 + dur[i] / 2,
-                int(n_ph[i]), int(n_g[i]), int(n_r[i]),
-                n_ph[i] / dur[i], n_g[i] / dur[i], n_r[i] / dur[i],
-                n_r[i] / n_ph[i], raw, raw,
-            ])
+            bur.append(
+                [
+                    first,
+                    last,
+                    dur[i],
+                    first * 1.25e-5 + dur[i] / 2,
+                    int(n_ph[i]),
+                    int(n_g[i]),
+                    int(n_r[i]),
+                    n_ph[i] / dur[i],
+                    n_g[i] / dur[i],
+                    n_r[i] / dur[i],
+                    n_r[i] / n_ph[i],
+                    raw,
+                    raw,
+                ]
+            )
             for table, tau in ((bg4, rng.uniform(1.5, 4.0)), (br4, rng.uniform(0.8, 3.5))):
-                table.append([
-                    tau, rng.uniform(0.5, 3.0), rng.uniform(0.0, 0.1),
-                    0.38, rng.uniform(0.5, 3.0), 1,
-                    rng.uniform(0.0, 0.05), rng.uniform(0.0, 0.4),
-                ])
+                table.append(
+                    [
+                        tau,
+                        rng.uniform(0.5, 3.0),
+                        rng.uniform(0.0, 0.1),
+                        0.38,
+                        rng.uniform(0.5, 3.0),
+                        1,
+                        rng.uniform(0.0, 0.05),
+                        rng.uniform(0.0, 0.4),
+                    ]
+                )
             bst.append(f"{first}\t{last}")
         _write_table(SAMPLE / "bi4_bur" / f"{stem}_0.bur", BUR_COLUMNS, bur)
         _write_table(SAMPLE / "bg4" / f"{stem}_0.bg4", BG4_COLUMNS, bg4)

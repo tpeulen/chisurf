@@ -49,9 +49,7 @@ icon = "#FF5722"  # Red color
 For more control, you can use the icon utilities directly:
 
 ```python
-from chisurf.gui.plugin_icons import (
-    create_emoji_icon, create_text_icon, create_analysis_icon
-)
+from chisurf.gui.plugin_icons import create_emoji_icon, create_text_icon, create_analysis_icon
 
 # Create a custom emoji icon with background
 icon = create_emoji_icon("🎵", size=64, bg_color="#2196F3")
@@ -167,6 +165,7 @@ icon = "🎵"  # Simple emoji
 **Before:**
 ```python
 from qtpy.QtGui import QIcon, QPixmap, QPainter
+
 # Complex painting code...
 icon = my_custom_icon
 ```
@@ -174,6 +173,7 @@ icon = my_custom_icon
 **After:**
 ```python
 from chisurf.gui.plugin_icons import create_emoji_icon
+
 icon = create_emoji_icon("🎵", size=64, bg_color="#2196F3")
 ```
 

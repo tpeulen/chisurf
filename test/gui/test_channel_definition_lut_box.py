@@ -38,6 +38,7 @@ def native_driver(page):
 
     return Driver(page.app, (1200, 900))
 
+
 _SPC = (
     pathlib.Path(__file__).resolve().parents[2]
     / "test"

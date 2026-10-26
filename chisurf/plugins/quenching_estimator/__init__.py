@@ -29,4 +29,3 @@ from __future__ import annotations
 icon = "💧"
 
 name = "Structure:Computation:QuEst"
-

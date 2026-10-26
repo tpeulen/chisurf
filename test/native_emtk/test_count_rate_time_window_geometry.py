@@ -153,13 +153,16 @@ def test_real_calculate_process_and_resize_preserve_science_and_output(tools, tm
         assert not list((tmp_path / "output").rglob("*.bst"))
         driver.draw(3, size=(1390, 910))
         again = read_burst_table(container)
-        assert row_count(again) == 16 and (
-            np.asarray(
-                [tuple(r) for r in zip(again["first photon"], again["last photon"])],
-                dtype=np.int64,
-            ).reshape(-1, 2)
-            == rows
-        ).all()
+        assert (
+            row_count(again) == 16
+            and (
+                np.asarray(
+                    [tuple(r) for r in zip(again["first photon"], again["last photon"])],
+                    dtype=np.int64,
+                ).reshape(-1, 2)
+                == rows
+            ).all()
+        )
         assert hashlib.sha256(sample.read_bytes()).hexdigest() == source_hash
     finally:
         windows.close()

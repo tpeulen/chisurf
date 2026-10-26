@@ -104,12 +104,6 @@ def test_every_shipped_track_is_long_enough_to_be_a_piece():
         assert any(entry is None or isinstance(entry, (list, tuple)) for entry in notes), name
 
 
-
-
-
-
-
-
 def test_a_blip_bends_and_fades_to_nothing():
     """A flat tone with hard edges is a beep; an effect is an event."""
     pcm = (
@@ -126,8 +120,6 @@ def test_a_blip_bends_and_fades_to_nothing():
         np.abs(np.fft.rfft(pcm[half : half * 2] * np.hanning(half))).argmax()
     ]
     assert second > first * 1.2, "the bend has to be audible"
-
-
 
 
 def test_the_synthesiser_is_fast_enough_to_run_at_load_time():

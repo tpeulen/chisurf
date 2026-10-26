@@ -1,4 +1,5 @@
 """Large files, chunk by chunk: the same bursts as a whole-file analysis."""
+
 import pathlib
 
 import numpy as np
@@ -48,8 +49,11 @@ def test_chunked_analysis_finds_the_same_bursts(tmp_path):
         exp = detect_experiment(data)
         whole = analyse(data, exp, BurstSettings())
         _, _, parts, trace, micro = chunked.analyse_chunked(
-            lambda *a: None, str(path), BurstSettings(), experiment=exp, records=20_000)
-        assert np.array_equal(whole.start, parts.start) and np.array_equal(whole.stop, parts.stop), path
+            lambda *a: None, str(path), BurstSettings(), experiment=exp, records=20_000
+        )
+        assert np.array_equal(whole.start, parts.start) and np.array_equal(
+            whole.stop, parts.stop
+        ), path
         assert np.allclose(whole.E, parts.E)
         assert np.allclose(whole.t_start, parts.t_start)
         for stream, rate in whole.background.items():
@@ -77,15 +81,18 @@ def test_a_burst_that_never_ends_is_closed_not_carried(monkeypatch, tmp_path):
     import tttrlib as t
 
     n = 60_000
-    macro = np.arange(n, dtype=np.uint64) * 10          # 125 ns apart: always in a burst
-    data = t.TTTR(macro, np.zeros(n, np.uint16), (np.arange(n) % 2).astype(np.int8), np.zeros(n, np.int8))
+    macro = np.arange(n, dtype=np.uint64) * 10  # 125 ns apart: always in a burst
+    data = t.TTTR(
+        macro, np.zeros(n, np.uint16), (np.arange(n) % 2).astype(np.int8), np.zeros(n, np.int8)
+    )
     data.header.set_macro_time_resolution(12.5e-9)
     path = tmp_path / "bulk.ptu"
     data.write(str(path))
     monkeypatch.setattr(chunked, "MAX_CARRY", 5_000)
     exp = detect_experiment(load(path))
-    _, used, bursts, _, _ = chunked.analyse_chunked(lambda *a: None, str(path), BurstSettings(),
-                                                    experiment=exp, records=10_000)
-    assert bursts.n >= 2                                  # split at chunk ends
+    _, used, bursts, _, _ = chunked.analyse_chunked(
+        lambda *a: None, str(path), BurstSettings(), experiment=exp, records=10_000
+    )
+    assert bursts.n >= 2  # split at chunk ends
     assert int(bursts.size.sum()) <= n
     assert any("never ended" in w for w in used.warnings)

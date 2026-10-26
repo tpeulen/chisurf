@@ -236,7 +236,9 @@ class CountRateGui(TourTarget):
             self.load_example()
             self._used("load_example")
         im.set_item_tooltip(
-            tr("Generate the deterministic demonstration stream in the settings cache and queue it.")
+            tr(
+                "Generate the deterministic demonstration stream in the settings cache and queue it."
+            )
         )
         self.remember("load_example")
         if im.get_line_avail() >= im.calc_text_size(tr("Add files"))[0] + 24:

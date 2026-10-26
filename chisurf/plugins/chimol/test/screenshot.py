@@ -229,7 +229,9 @@ def save_png(image, path: str | pathlib.Path) -> pathlib.Path:
 
     rgb = _rgb(image)
     if int(rgb.max()) == int(rgb.min()):
-        raise RuntimeError(f"refusing to write a uniform {rgb.shape[1]}x{rgb.shape[0]} image to {path}")
+        raise RuntimeError(
+            f"refusing to write a uniform {rgb.shape[1]}x{rgb.shape[0]} image to {path}"
+        )
     path = pathlib.Path(path)
     Image.fromarray(rgb, "RGB").save(path)
     if not path.exists() or path.stat().st_size < 1024:

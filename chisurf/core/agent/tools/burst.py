@@ -58,18 +58,13 @@ def _cached(context: AgentContext, what: str = "the burst analysis") -> dict:
     return cached
 
 
-def _quantiles(
-    values: np.ndarray, probabilities=(5, 25, 50, 75, 95)
-) -> dict[str, float | None]:
+def _quantiles(values: np.ndarray, probabilities=(5, 25, 50, 75, 95)) -> dict[str, float | None]:
     """Return rounded percentiles of *values*, tolerating empties."""
     values = np.asarray(values, dtype=float)
     values = values[np.isfinite(values)]
     if values.size == 0:
         return {}
-    return {
-        f"p{p}": _round(float(np.percentile(values, p)))
-        for p in probabilities
-    }
+    return {f"p{p}": _round(float(np.percentile(values, p))) for p in probabilities}
 
 
 def _column_for(context: AgentContext, name: str) -> tuple[np.ndarray, str]:
@@ -116,9 +111,7 @@ def _column_for(context: AgentContext, name: str) -> tuple[np.ndarray, str]:
     matches = [candidate for candidate in columns if wanted in candidate.lower()]
     if len(matches) == 1:
         return np.asarray(columns[matches[0]], dtype=float), matches[0]
-    raise ToolError(
-        f"no burst column matches {name!r}. Available: {sorted(columns)}"
-    )
+    raise ToolError(f"no burst column matches {name!r}. Available: {sorted(columns)}")
 
 
 def corrected_requested(name: str) -> bool:
@@ -211,8 +204,7 @@ def detect_smfret(context: AgentContext, path: str) -> dict[str, Any]:
         "path": str(resolved),
         "detected": _experiment_summary(experiment),
         "channel_counts": {
-            str(ch): int(count)
-            for ch, count in (detected.get("channel_counts") or {}).items()
+            str(ch): int(count) for ch, count in (detected.get("channel_counts") or {}).items()
         },
     }
 
@@ -353,11 +345,11 @@ def run_burst_analysis(
             "E": _quantiles(corrected["E"]),
             "S": _quantiles(corrected["S"]),
         }
-        if corrected is not None and corrected.get("E") is not None and corrected.get("S") is not None
+        if corrected is not None
+        and corrected.get("E") is not None
+        and corrected.get("S") is not None
         else None,
-        "factors_used": {
-            k: _round(float(v), 4) for k, v in (result.get("factors") or {}).items()
-        },
+        "factors_used": {k: _round(float(v), 4) for k, v in (result.get("factors") or {}).items()},
         "auto_calibrated": bool(auto_calibrate),
         "n_flagged_by_qc": int(np.count_nonzero(flags)) if flags is not None else None,
         "container": str(container),
@@ -515,9 +507,7 @@ def extract_subensemble_decay(context: AgentContext, n_bins: int = 0) -> dict[st
             "as a dataset for fitting"
         )
     cached["decay"] = outcome
-    selection_note = (
-        f"{outcome['bursts']} selected bursts" if mask is not None else "all bursts"
-    )
+    selection_note = f"{outcome['bursts']} selected bursts" if mask is not None else "all bursts"
     return {
         "ok": True,
         "photons": outcome["photons"],

@@ -41,10 +41,16 @@ SHELL = {**st.settings(), "rate_model": "contact_shell"}
 #: 3.59844, 2.20740).
 REPIN_APO72 = {
     ("Atto655 in D2O", "D2O"): (3.384481773743211, 0.0031199602638887214, 0.61680883579832),
-    ("Atto655 in D2O and H2O", "D2O"): (3.589296153828212, 0.0013942334897742992,
-                                        0.6508147752891014),
-    ("Atto655 in D2O and H2O", "H2O"): (2.2035139334554157, 0.0013984184220964258,
-                                        0.6508146451392677),
+    ("Atto655 in D2O and H2O", "D2O"): (
+        3.589296153828212,
+        0.0013942334897742992,
+        0.6508147752891014,
+    ),
+    ("Atto655 in D2O and H2O", "H2O"): (
+        2.2035139334554157,
+        0.0013984184220964258,
+        0.6508146451392677,
+    ),
 }
 #: Per stage (rms, median |dev|, mean dark fraction) on today's geometry; the prototype's (old
 #: tables) and today's with linear delta in comments. The printed parameters are not today's
@@ -105,8 +111,12 @@ def test_unique_rows_and_the_time_weighted_exposure(golden, shipped):
 def test_model_limits(shipped):
     theta = {
         **{f"ln_s_{g}": 0.0 for g in shipped.groups},
-        "ln_scale": np.log(1e-12), "delta": 0.0, "lam": 0.0, "ln_static": np.log(1e-12),
-        "delta_static": 0.0, "kq": [3.5, 2.0, 1.67, 1.0, 2.0],
+        "ln_scale": np.log(1e-12),
+        "delta": 0.0,
+        "lam": 0.0,
+        "ln_static": np.log(1e-12),
+        "delta_static": 0.0,
+        "kq": [3.5, 2.0, 1.67, 1.0, 2.0],
     }
     # no stickiness: every position by its count; no quenching: the free dye
     assert np.allclose(shipped.weights(theta), shipped.count / shipped.count.sum())
@@ -130,8 +140,9 @@ def test_todays_geometry_is_pinned(golden, tmp_path):
         assert np.allclose(out, REPIN_APO72[(stage, row["solvent"])], rtol=0, atol=1e-12)
     theta = golden["site_lifetimes"]["Atto655 in D2O and H2O"]["theta"]
     e = site.exposure_profile(theta, golden["TAU0"]["Atto655 D2O"])
-    assert np.allclose((e["visible"], e["reachable"], e["dark_fraction"]), REPIN_EXPOSURE_72,
-                       rtol=0, atol=1e-12)
+    assert np.allclose(
+        (e["visible"], e["reachable"], e["dark_fraction"]), REPIN_EXPOSURE_72, rtol=0, atol=1e-12
+    )
     # points and predict: one Site per (state, site, linker), water per row
     rows = [dict(dye="Atto655", state="APO", site=72)] * 2
     points = lib.points(rows, water=[0.0, golden["KQW_FREE"]])
@@ -140,12 +151,29 @@ def test_todays_geometry_is_pinned(golden, tmp_path):
 
 
 def test_declared_tables_carry_resolvable_terms():
-    table = sm.predictions_table([dict(
-        dye="Atto655", solvent="D2O", state="APO", site=72, linker_length=20.12, water=0.0,
-        tau0=3.69, lifetime=3.47, dark_fraction=0.003, visible_exposure=0.62)])
+    table = sm.predictions_table(
+        [
+            dict(
+                dye="Atto655",
+                solvent="D2O",
+                state="APO",
+                site=72,
+                linker_length=20.12,
+                water=0.0,
+                tau0=3.69,
+                lifetime=3.47,
+                dark_fraction=0.003,
+                visible_exposure=0.62,
+            )
+        ]
+    )
     assert table["site"][0] == 72 and table.dtype.names[-1] == "visible_exposure"
-    assert sm.exposure_table([dict(site=72, state="APO", reachable=0.96, visible=0.65,
-                                   dark_fraction=0.001)]).size == 1
+    assert (
+        sm.exposure_table(
+            [dict(site=72, state="APO", reachable=0.96, visible=0.65, dark_fraction=0.001)]
+        ).size
+        == 1
+    )
     with pytest.raises(KeyError):
         sm.predictions_table([dict(dye="x")])
     mmfdb = pytest.importorskip("mmfdb.schema.pdbx_metadata")
@@ -182,7 +210,9 @@ def test_every_golden_row_on_the_prototype_tables(golden):
                 sites[key] = sm.Site(paths[key], PROTOTYPE)
             out = sites[key].lifetime(v["theta"], row["tau0"], row["water"])
             assert out == (row["lifetime"], row["dark_fraction"], row["visible_exposure"]), (
-                stage, key)
+                stage,
+                key,
+            )
 
 
 @pytest.mark.slow
@@ -194,7 +224,8 @@ def test_every_stage_on_todays_geometry(golden, tmp_path):
         dev, dark = [], []
         for row in v["rows"]:
             out = lib.site(row["state"], row["site"], row["linker_length"]).lifetime(
-                v["theta"], row["tau0"], row["water"])
+                v["theta"], row["tau0"], row["water"]
+            )
             dev.append(out[0] - row["tauX"])
             dark.append(out[1])
         dev = np.asarray(dev)
@@ -205,8 +236,14 @@ def test_every_stage_on_todays_geometry(golden, tmp_path):
 def test_unique_rows_equals_numpy_unique(shipped):
     table = shipped.table
     n = np.asarray(table.neighbours).astype(float)
-    features = np.concatenate([n, np.asarray(table.contacts).astype(np.float32).reshape(len(n), -1),
-                               np.asarray(table.exposure, float)[:, None]], 1)
+    features = np.concatenate(
+        [
+            n,
+            np.asarray(table.contacts).astype(np.float32).reshape(len(n), -1),
+            np.asarray(table.exposure, float)[:, None],
+        ],
+        1,
+    )
     _, first, count = np.unique(features, axis=0, return_index=True, return_counts=True)
     got_first, got_count = sm.unique_rows(features)
     assert np.array_equal(got_first, first) and np.array_equal(got_count, count)
@@ -227,10 +264,10 @@ def test_the_declared_delta_interpolation_is_smooth(golden, shipped):
 
     def slopes(site, delta):
         """Second-order one-sided slopes left and right of *delta*."""
-        f = {d: site.lifetime({**theta, "delta": delta + d * h}, tau0)[0]
-             for d in (-2, -1, 0, 1, 2)}
-        return ((3 * f[0] - 4 * f[-1] + f[-2]) / (2 * h),
-                (-3 * f[0] + 4 * f[1] - f[2]) / (2 * h))
+        f = {
+            d: site.lifetime({**theta, "delta": delta + d * h}, tau0)[0] for d in (-2, -1, 0, 1, 2)
+        }
+        return ((3 * f[0] - 4 * f[-1] + f[-2]) / (2 * h), (-3 * f[0] + 4 * f[1] - f[2]) / (2 * h))
 
     for node in (-3.0, -2.0, -1.0, 0.0, 1.0, 2.0):
         left, right = slopes(smooth, node)
@@ -252,8 +289,9 @@ def test_the_declared_delta_interpolation_is_smooth(golden, shipped):
 @pytest.fixture(scope="module")
 def apo72_v2(tmp_path_factory):
     """Today's APO 72 / L 20.12 table with its quencher distances."""
-    return st.site_table(st.male_structure("APO"), 72, 20.12,
-                         cache_dir=tmp_path_factory.mktemp("site_tables"))
+    return st.site_table(
+        st.male_structure("APO"), 72, 20.12, cache_dir=tmp_path_factory.mktemp("site_tables")
+    )
 
 
 def _direct_kernel(table, theta, settings_):
@@ -269,8 +307,11 @@ def _direct_kernel(table, theta, settings_):
             if j == 0 or hi[j] <= offset:
                 out[j] = 1.0
             elif a[j] >= offset:
-                out[j] = length * (np.exp(-(a[j] - offset) / length)
-                                   - np.exp(-(hi[j] - offset) / length)) / h
+                out[j] = (
+                    length
+                    * (np.exp(-(a[j] - offset) / length) - np.exp(-(hi[j] - offset) / length))
+                    / h
+                )
             else:
                 out[j] = ((offset - a[j]) + length * (1 - np.exp(-(hi[j] - offset) / length))) / h
         return out
@@ -284,7 +325,9 @@ def _direct_kernel(table, theta, settings_):
     residues = st.residue_types(settings_)
     idx = {r: i for i, r in enumerate(residues)}
     nb = np.asarray(table.neighbours, float)
-    n_group = np.stack([nb[:, [idx[r] for r in rs]].sum(1) for rs in settings_["groups"].values()], 1)
+    n_group = np.stack(
+        [nb[:, [idx[r] for r in rs]].sum(1) for rs in settings_["groups"].values()], 1
+    )
     log_p = -n_group @ np.array([theta[f"ln_s_{g}"] for g in settings_["groups"]])
     p = np.exp(log_p - log_p.max())
     p /= p.sum()
@@ -304,10 +347,19 @@ def test_the_kernel_equals_a_voxel_by_voxel_sum(golden, apo72_v2):
     assert site.rate_model == "kernel" and site.n_positions == apo72_v2.n_voxels
     assert len(site.count) < apo72_v2.n_voxels / 2
     theta = dict(golden["site_lifetimes"]["Atto655 in D2O"]["theta"])
-    for length, scale, static, delta_s in ((0.3, 1.0, 0.001, 0.0), (1.0, 3.0, 2.0, -1.3),
-                                           (1.7, 0.2, 20.0, -3.6), (0.8, 1.0, 5.0, 0.4)):
-        th = {**theta, "ln_decay_length": np.log(length), "ln_scale": np.log(scale),
-              "ln_static": np.log(static), "delta_static": delta_s}
+    for length, scale, static, delta_s in (
+        (0.3, 1.0, 0.001, 0.0),
+        (1.0, 3.0, 2.0, -1.3),
+        (1.7, 0.2, 20.0, -3.6),
+        (0.8, 1.0, 5.0, 0.4),
+    ):
+        th = {
+            **theta,
+            "ln_decay_length": np.log(length),
+            "ln_scale": np.log(scale),
+            "ln_static": np.log(static),
+            "delta_static": delta_s,
+        }
         assert abs(site.lifetime(th, 3.69)[0] - _direct_kernel(apo72_v2, th, s)) < 1e-10
 
 
@@ -315,9 +367,10 @@ def test_the_kernel_is_smooth_and_the_prototype_tables_refuse_it(golden, apo72_v
     site = sm.Site(apo72_v2)
     theta = {**golden["site_lifetimes"]["Atto655 in D2O"]["theta"], "ln_scale": 0.0}
     lengths = np.linspace(0.1, 2.0, 77)
-    tau = np.array([site.lifetime({**theta, "ln_decay_length": np.log(v)}, 3.69)[0]
-                    for v in lengths])
-    assert np.all(np.diff(tau) < 0)                 # a longer range quenches more
+    tau = np.array(
+        [site.lifetime({**theta, "ln_decay_length": np.log(v)}, 3.69)[0] for v in lengths]
+    )
+    assert np.all(np.diff(tau) < 0)  # a longer range quenches more
     # no kinks: the curvature itself changes smoothly from one step to the next
     second = np.abs(np.diff(tau, 2))
     assert np.abs(np.diff(tau, 3)).max() < 0.3 * second.max()

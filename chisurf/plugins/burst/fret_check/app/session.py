@@ -11,6 +11,7 @@ and takes the results in (:meth:`Session.poll`, once a frame). With
 inline. The measurement itself stays with the job (the worker's cache): the
 page holds the results, not the photons.
 """
+
 from __future__ import annotations
 
 import csv
@@ -41,6 +42,7 @@ def default_runner() -> str:
     except ImportError:
         return "sync"
     return "jobs" if emtk_jobs.in_browser() or _threads_available() else "sync"
+
 
 __all__ = ["Session"]
 
@@ -110,18 +112,27 @@ class Session:
     def file_info(self) -> str:
         if self.exp is None:
             if self.busy and self.path:
-                name = self.path if self.path.startswith("simulated") else pathlib.Path(self.path).name
+                name = (
+                    self.path if self.path.startswith("simulated") else pathlib.Path(self.path).name
+                )
                 size = self._dropped_size()
                 note = f" ({size / 2**20:,.0f} MB, read from disk in chunks)" if size else ""
                 return f"{name}{note}\nanalysing in the background -- the page stays usable"
             return "No file loaded."
         e = self.exp
-        name = (self.path if self.path and self.path.startswith("simulated") else
-                pathlib.Path(self.path).name if self.path else "")
+        name = (
+            self.path
+            if self.path and self.path.startswith("simulated")
+            else pathlib.Path(self.path).name
+            if self.path
+            else ""
+        )
         lines = [
             f"{name}",
             # A simulated measurement has no container format: no leading "·".
-            " · ".join(p for p in (e.container, f"{e.n_photons:,} photons", f"{e.duration_s:.1f} s") if p),
+            " · ".join(
+                p for p in (e.container, f"{e.n_photons:,} photons", f"{e.duration_s:.1f} s") if p
+            ),
             f"Detected: {e.kind}",
         ]
         if e.unassigned_channels:
@@ -164,13 +175,22 @@ class Session:
             self.key, self._source = key, dict(source)
             self.exp = None
             self.trace_start_s = 0.0
-        params = {"key": self.key, **self._source, "redetect": bool(redetect),
-                  "settings": dict(self.burst_settings().__dict__), "v_eff_fl": float(self.v_eff_fl),
-                  "correct": self.mode == "advanced",
-                  "factors": {"gamma": float(self.gamma), "alpha": float(self.alpha),
-                              "delta": float(self.delta), "beta": float(self.beta)},
-                  "auto_calibrate": bool(self.auto_calibrate),
-                  "subtract_background": bool(self.subtract_background)}
+        params = {
+            "key": self.key,
+            **self._source,
+            "redetect": bool(redetect),
+            "settings": dict(self.burst_settings().__dict__),
+            "v_eff_fl": float(self.v_eff_fl),
+            "correct": self.mode == "advanced",
+            "factors": {
+                "gamma": float(self.gamma),
+                "alpha": float(self.alpha),
+                "delta": float(self.delta),
+                "beta": float(self.beta),
+            },
+            "auto_calibrate": bool(self.auto_calibrate),
+            "subtract_background": bool(self.subtract_background),
+        }
         if self.mode == "advanced" and self.exp is not None and not fresh and not redetect:
             params["experiment"] = jobs.experiment_to_dict(self._experiment_from_settings())
         self.busy, self.progress = True, None
@@ -186,7 +206,7 @@ class Session:
         files = []
         path = self._source.get("path")
         if path and self._worker_has != self.key:
-            files = [path]          # the file goes to the worker once
+            files = [path]  # the file goes to the worker once
         self.job = emtk_jobs.start(JOB, params, files=files)
         self._job_detects = fresh or redetect
         self._worker_has = self.key
@@ -247,8 +267,11 @@ class Session:
         self.bursts = jobs.bursts_from_dict(result["bursts"])
         self.qc = jobs.qc_from_dict(result["qc"])
         corrected = result.get("corrected")
-        self.corrected = None if not corrected else {
-            "E": jobs.unpack(corrected["E"]), "S": jobs.unpack(corrected["S"])}
+        self.corrected = (
+            None
+            if not corrected
+            else {"E": jobs.unpack(corrected["E"]), "S": jobs.unpack(corrected["S"])}
+        )
         if self.auto_calibrate and result.get("factors"):
             for k, v in result["factors"].items():
                 setattr(self, k, float(v))
@@ -256,8 +279,10 @@ class Session:
         self.trace_bin_s = float(tr["bin_s"])
         self.trace_rates = {k: jobs.unpack(v).astype(float) for k, v in tr["rates"].items()}
         self.trace_bursts = jobs.unpack(tr["bursts"])
-        self.micro_hist = {int(c): (jobs.unpack(h["edges"]), jobs.unpack(h["counts"]))
-                           for c, h in result["micro"].items()}
+        self.micro_hist = {
+            int(c): (jobs.unpack(h["edges"]), jobs.unpack(h["counts"]))
+            for c, h in result["micro"].items()
+        }
         #: Whether the job read the file through a read-only mount of the
         #: user's File (a page's worker) rather than a copy.
         self.file_mounted = bool(result.get("file_mounted"))
@@ -295,7 +320,9 @@ class Session:
         self.acceptor_channels = ", ".join(map(str, e.acceptor_channels))
         win = {w.name: w for w in e.windows}
         self.donor_window = f"{win['donor'].start}-{win['donor'].stop}" if "donor" in win else ""
-        self.acceptor_window = f"{win['acceptor'].start}-{win['acceptor'].stop}" if "acceptor" in win else ""
+        self.acceptor_window = (
+            f"{win['acceptor'].start}-{win['acceptor'].stop}" if "acceptor" in win else ""
+        )
 
     def _experiment_from_settings(self) -> Experiment:
         """The experiment with the Channels window's edits applied."""
@@ -321,8 +348,12 @@ class Session:
             self._start(self.key, self._source, redetect=True)
 
     def burst_settings(self) -> BurstSettings:
-        return BurstSettings(min_photons=int(self.min_photons), m=int(self.m),
-                             T=float(self.T_us) * 1e-6, cde_tau=float(self.cde_tau_us) * 1e-6)
+        return BurstSettings(
+            min_photons=int(self.min_photons),
+            m=int(self.m),
+            T=float(self.T_us) * 1e-6,
+            cde_tau=float(self.cde_tau_us) * 1e-6,
+        )
 
     def run(self) -> None:
         """Analyse again with the current settings (the measurement stays with the job)."""
@@ -368,20 +399,29 @@ class Session:
         w.writerow(names)
         arrays = [np.asarray(cols[n]) for n in names]
         for i in range(len(arrays[0]) if arrays else 0):
-            w.writerow([f"{a[i]:.6g}" if np.issubdtype(a.dtype, np.floating) else int(a[i]) for a in arrays])
+            w.writerow(
+                [
+                    f"{a[i]:.6g}" if np.issubdtype(a.dtype, np.floating) else int(a[i])
+                    for a in arrays
+                ]
+            )
         return buf.getvalue().encode()
 
     def report(self) -> dict:
-        return {"file": pathlib.Path(self.path).name if self.path else None,
-                "experiment": self.exp.as_dict(),
-                "burst_settings": self.burst_settings().__dict__,
-                "qc": self.qc.as_dict()}
+        return {
+            "file": pathlib.Path(self.path).name if self.path else None,
+            "experiment": self.exp.as_dict(),
+            "burst_settings": self.burst_settings().__dict__,
+            "qc": self.qc.as_dict(),
+        }
 
     def _stem(self) -> str:
         if not self.path:
             return "bursts"
         if self.path.startswith("simulated: "):
-            return "simulated_" + "".join(ch if ch.isalnum() else "_" for ch in self.path[11:]).strip("_")
+            return "simulated_" + "".join(
+                ch if ch.isalnum() else "_" for ch in self.path[11:]
+            ).strip("_")
         return pathlib.Path(self.path).stem
 
     def export_csv(self) -> None:
@@ -390,13 +430,15 @@ class Session:
 
     def export_report(self) -> None:
         if self.qc is not None and self.download:
-            self.download(f"{self._stem()}.qc.json", json.dumps(self.report(), indent=1).encode(),
-                          "application/json")
+            self.download(
+                f"{self._stem()}.qc.json",
+                json.dumps(self.report(), indent=1).encode(),
+                "application/json",
+            )
 
     def export_pdf(self) -> None:
         """The one-page PDF report: histograms, background, every report value."""
         if self.qc is not None and self.bursts is not None and self.download:
             from chisurf.plugins.burst.fret_check.report import build_pdf_report
 
-            self.download(f"{self._stem()}.report.pdf", build_pdf_report(self),
-                          "application/pdf")
+            self.download(f"{self._stem()}.report.pdf", build_pdf_report(self), "application/pdf")

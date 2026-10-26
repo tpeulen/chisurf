@@ -35,11 +35,11 @@ _PDB = (
 )
 
 
-
 @pytest.fixture
 def session():
     pytest.importorskip("chisurf.core.structure")
     from native_window import NativeWindow
+
     win = NativeWindow()
     shared = win.cmd
     win.load_structure_from_path(_PDB / "148l.pdb")

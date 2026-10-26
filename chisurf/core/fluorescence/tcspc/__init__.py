@@ -120,9 +120,7 @@ def combined_counting_noise_parallel_perpendicular(
 counting_noise_combined_parallel_perpendicular = combined_counting_noise_parallel_perpendicular
 
 
-def _trim_rising_tail(
-    decay: np.ndarray, start: int, stop: int, rise: float = 1.25
-) -> int:
+def _trim_rising_tail(decay: np.ndarray, start: int, stop: int, rise: float = 1.25) -> int:
     """Return *stop*, moved in front of a rise at the end of the decay.
 
     A fluorescence decay only falls between two excitation pulses. A gated or

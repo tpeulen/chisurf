@@ -108,6 +108,7 @@ def test_a_zero_size_cross_draws_nothing():
 # In the viewer
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def view(bond_family):
     import pathlib

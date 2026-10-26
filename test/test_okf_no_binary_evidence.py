@@ -20,9 +20,28 @@ ROOT = Path(__file__).resolve().parents[1]
 
 #: Extensions that are never knowledge: images, archives, arrays, raw data.
 BINARY = {
-    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".tif", ".tiff", ".pdf",
-    ".zip", ".gz", ".tgz", ".xz", ".7z",
-    ".npy", ".npz", ".dat", ".h5", ".hdf5", ".ptu", ".spc", ".sqlite",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".bmp",
+    ".webp",
+    ".tif",
+    ".tiff",
+    ".pdf",
+    ".zip",
+    ".gz",
+    ".tgz",
+    ".xz",
+    ".7z",
+    ".npy",
+    ".npz",
+    ".dat",
+    ".h5",
+    ".hdf5",
+    ".ptu",
+    ".spc",
+    ".sqlite",
 }
 #: Trees that held migration evidence; nothing may be tracked there again.
 RETIRED_TREES = ("okf/validation/", "okf/plugins/emtk-ports/")
@@ -47,7 +66,9 @@ def test_no_binary_is_tracked_under_okf():
     found = sorted(
         p for p in _tracked_okf_files() if Path(p).suffix.lower() in BINARY and p not in ALLOWED
     )
-    assert not found, f"binary files tracked under okf/ (keep evidence out of the bundle): {found[:20]}"
+    assert not found, (
+        f"binary files tracked under okf/ (keep evidence out of the bundle): {found[:20]}"
+    )
 
 
 def test_the_retired_evidence_trees_stay_empty():

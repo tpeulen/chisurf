@@ -45,9 +45,7 @@ def test_example_explains_itself(script: Path) -> None:
 @pytest.mark.parametrize("script", _examples(), ids=lambda p: p.stem)
 def test_example_runs(script: Path, tmp_path: Path) -> None:
     env = dict(os.environ)
-    env["PYTHONPATH"] = os.pathsep.join(
-        p for p in (str(REPO_ROOT), env.get("PYTHONPATH", "")) if p
-    )
+    env["PYTHONPATH"] = os.pathsep.join(p for p in (str(REPO_ROOT), env.get("PYTHONPATH", "")) if p)
     result = subprocess.run(
         [sys.executable, str(script)],
         cwd=tmp_path,

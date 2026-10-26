@@ -33,7 +33,6 @@ _PDB_148L = (
 )
 
 
-
 @pytest.fixture
 def session():
     """Build a viewer with 148L loaded and a command interpreter over it."""

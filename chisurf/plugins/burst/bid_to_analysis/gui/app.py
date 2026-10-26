@@ -155,13 +155,8 @@ class BidToAnalysisApp(ImApp, TourTarget):
                 with Measurement.open(Path(row["tttr"]).with_suffix(".pto")) as measurement:
                     if not row_count(measurement.get_store("bursts")):
                         raise RuntimeError("PTO output contains no burst table")
-                    if (
-                        measurement.get_blob(Path(row["bid"]).name)
-                        != Path(row["bid"]).read_bytes()
-                    ):
-                        raise RuntimeError(
-                            "PTO output does not contain the original BID selection"
-                        )
+                    if measurement.get_blob(Path(row["bid"]).name) != Path(row["bid"]).read_bytes():
+                        raise RuntimeError("PTO output does not contain the original BID selection")
                 row["output"] = str(output)
                 row["status"] = "Done"
                 messages.append(f"Processed {row['bid']} → {output}")

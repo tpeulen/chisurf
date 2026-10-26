@@ -520,7 +520,8 @@ def _fit_overrides(preset: str | None, assignments: Sequence[str]) -> dict[str, 
         if top not in base:
             raise click.BadParameter(
                 f"{top!r} is not a declared fit setting ({', '.join(sorted(base))})",
-                param_hint="--set")
+                param_hint="--set",
+            )
         if rest:
             value = overrides.get(top, deepcopy(base[top]))
             if not isinstance(value, dict):
@@ -576,7 +577,12 @@ def _format_rows(table: Any) -> str:
     metavar="KEY=VALUE",
     help="Replace a declared fit setting (repeatable), e.g. --set n_starts=4 --set profile_likelihood.points=3.",
 )
-@click.option("--workers", type=int, default=None, help="Worker processes (1 = in process). Default: the CPU count.")
+@click.option(
+    "--workers",
+    type=int,
+    default=None,
+    help="Worker processes (1 = in process). Default: the CPU count.",
+)
 @click.option("--no-profile", is_flag=True, default=False, help="Skip the profile likelihoods.")
 @click.option(
     "--structure",
@@ -665,7 +671,8 @@ def analyse(
         preset = "quick"
     if preset is not None and preset not in graph_fit.preset_names():
         raise click.BadParameter(
-            f"{preset!r}; declared: {', '.join(graph_fit.preset_names())}", param_hint="--preset")
+            f"{preset!r}; declared: {', '.join(graph_fit.preset_names())}", param_hint="--preset"
+        )
     declared = _stages.stage_names()
     names = [n for n in stage_names if n != "all"]
     if not names or "all" in stage_names:
@@ -674,7 +681,8 @@ def analyse(
         unknown = [n for n in names if n not in declared]
         if unknown:
             raise click.BadParameter(
-                f"{unknown}; declared: {', '.join(declared)}", param_hint="--stage")
+                f"{unknown}; declared: {', '.join(declared)}", param_hint="--stage"
+            )
         stages = names
     overrides = _fit_overrides(preset, assignments)
     structures = {}
@@ -693,10 +701,19 @@ def analyse(
 
     try:
         entry = _runs.analyse(
-            stages, data=data, structures=structures or None, tables=tables,
-            cache_dir=cache_dir, preset=preset, fit_overrides=overrides or None,
-            workers=workers, profile=not no_profile, output=output_dir,
-            project_dir=project_dir, save_outputs=not no_save, progress=progress,
+            stages,
+            data=data,
+            structures=structures or None,
+            tables=tables,
+            cache_dir=cache_dir,
+            preset=preset,
+            fit_overrides=overrides or None,
+            workers=workers,
+            profile=not no_profile,
+            output=output_dir,
+            project_dir=project_dir,
+            save_outputs=not no_save,
+            progress=progress,
         )
     except (KeyError, ValueError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc))
@@ -713,7 +730,8 @@ def analyse(
         name = table_name or f"{list(result.stages)[-1]}.estimates"
         if name not in tables_out:
             raise click.ClickException(
-                f"No table {name!r}; this run has {', '.join(sorted(tables_out))}")
+                f"No table {name!r}; this run has {', '.join(sorted(tables_out))}"
+            )
         # The declared writer, so stdout carries exactly the file format.
         if entry["directory"]:
             path = Path(entry["directory"]) / f"{name}.csv"

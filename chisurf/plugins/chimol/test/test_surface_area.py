@@ -220,6 +220,7 @@ def test_an_isolated_subset_would_have_a_larger_area(cluster):
 # Through the command
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def session():
     """Build a viewer with 148L loaded and a command interpreter over it."""

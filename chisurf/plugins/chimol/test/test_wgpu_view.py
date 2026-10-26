@@ -25,9 +25,7 @@ def renderer():
     if not native_canvas.is_available():
         pytest.skip("no WebGPU adapter")
     try:
-        view = native_canvas.renderer_factory(backend="offscreen", size=(640, 480))(
-            controller=None
-        )
+        view = native_canvas.renderer_factory(backend="offscreen", size=(640, 480))(controller=None)
     except Exception as exc:  # pragma: no cover - environment dependent
         pytest.skip(f"WebGPU renderer unavailable: {exc!r}")
     view.draw_frame()

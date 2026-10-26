@@ -407,9 +407,10 @@ class ShellProject:
     def _attach(self, session: Any) -> None:
         """Connect to *session*, follow its events and take the undo baseline."""
         self._session = session
-        if getattr(session, "server", None) is None or getattr(
-            session.server, "cmd_port", None
-        ) is None:
+        if (
+            getattr(session, "server", None) is None
+            or getattr(session.server, "cmd_port", None) is None
+        ):
             # No server (an adopted session) or a port-less one (the web page's
             # in-process host): there is nothing to open a socket channel to.
             self.status = tr(
@@ -539,7 +540,9 @@ class ShellProject:
             from chisurf.core.project.lifecycle import snapshot_fingerprint
 
             result = self.history.navigate(int(index))
-            self._last_fingerprint = snapshot_fingerprint(self._live_channel.capture(self.document.name))
+            self._last_fingerprint = snapshot_fingerprint(
+                self._live_channel.capture(self.document.name)
+            )
             return result
 
         return self._run(
@@ -569,7 +572,9 @@ class ShellProject:
             if target is None:
                 return None
             result = self.history.navigate(target)
-            self._last_fingerprint = snapshot_fingerprint(self._live_channel.capture(self.document.name))
+            self._last_fingerprint = snapshot_fingerprint(
+                self._live_channel.capture(self.document.name)
+            )
             return result
 
         label = tr("Undo…") if direction < 0 else tr("Redo…")

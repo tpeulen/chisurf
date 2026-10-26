@@ -25,7 +25,9 @@ _QT_RE = re.compile(
     re.MULTILINE,
 )
 #: ``from emtk import qt_host`` names the Qt host without the dotted module.
-_QT_FROM_RE = re.compile(r"^[ \t]*from[ \t]+(?:emtk|rendercanvas)[ \t]+import[ \t]+[^\n]*\bqt", re.MULTILINE)
+_QT_FROM_RE = re.compile(
+    r"^[ \t]*from[ \t]+(?:emtk|rendercanvas)[ \t]+import[ \t]+[^\n]*\bqt", re.MULTILINE
+)
 
 
 def _imports_qt(path: pathlib.Path) -> list[int]:
@@ -44,7 +46,9 @@ def _imports_qt(path: pathlib.Path) -> list[int]:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return []
-    hits = [m.start() for m in _QT_RE.finditer(text)] + [m.start() for m in _QT_FROM_RE.finditer(text)]
+    hits = [m.start() for m in _QT_RE.finditer(text)] + [
+        m.start() for m in _QT_FROM_RE.finditer(text)
+    ]
     return sorted(text.count("\n", 0, at) + 1 for at in hits)
 
 

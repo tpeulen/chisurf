@@ -492,7 +492,11 @@ class EditorModel:
                         break
                 if target is None:
                     target = next(
-                        (d for d in self.documents if pathlib.Path(d.name).name == pathlib.Path(name).name),
+                        (
+                            d
+                            for d in self.documents
+                            if pathlib.Path(d.name).name == pathlib.Path(name).name
+                        ),
                         None,
                     )
             if target is None:
@@ -2028,16 +2032,34 @@ class CodeEditorGui:
                     add(entry, key, depth + 1)
                 else:
                     rows.append(
-                        {"key": key + os.sep + "\0", "parent": key, "name": "…", "size": "",
-                         "kind": "", "modified": "", "path": key, "is_dir": False,
-                         "placeholder": True}
+                        {
+                            "key": key + os.sep + "\0",
+                            "parent": key,
+                            "name": "…",
+                            "size": "",
+                            "kind": "",
+                            "modified": "",
+                            "path": key,
+                            "is_dir": False,
+                            "placeholder": True,
+                        }
                     )
 
         try:
             add(self.model.project_root, "", 0)
         except Exception as error:  # an unreadable folder must not take the window down
-            rows.append({"key": "error", "parent": "", "name": f"Error listing files: {error}",
-                         "size": "", "kind": "", "modified": "", "path": "", "is_dir": False})
+            rows.append(
+                {
+                    "key": "error",
+                    "parent": "",
+                    "name": f"Error listing files: {error}",
+                    "size": "",
+                    "kind": "",
+                    "modified": "",
+                    "path": "",
+                    "is_dir": False,
+                }
+            )
         token = (str(self.model.project_root), frozenset(self.project_expanded), query)
         self._project_cache = (token, rows)
         return rows
@@ -2215,7 +2237,6 @@ class CodeEditorGui:
         self.notebook_window.end()
         if closed:
             self.notebook_window.hide()
-
 
     def _draw_file_tree(self, box: tuple[float, float, float, float]) -> None:
         """The project folder as a table: Name, Size, Kind, Date Modified (``editor_app.view.json``)."""
@@ -2478,7 +2499,9 @@ class CodeEditorGui:
         if im.button(tr("◀ Back") + "##toolbar_back"):
             self.model.nav_back()
         im.set_item_tooltip(
-            _with_shortcut(tr("Back — return to the caret position before the last jump"), nav_shortcuts()[0])
+            _with_shortcut(
+                tr("Back — return to the caret position before the last jump"), nav_shortcuts()[0]
+            )
         )
         im.end_disabled()
         im.begin_disabled(not self.model.can_nav_forward)
@@ -2494,13 +2517,17 @@ class CodeEditorGui:
         if im.button(tr("🔍 Def") + "##toolbar_definition"):
             self.model.request_lsp("definition")
         im.set_item_tooltip(
-            _with_shortcut(tr("Def — go to the definition of the name at the caret (Python LSP)"), "F12")
+            _with_shortcut(
+                tr("Def — go to the definition of the name at the caret (Python LSP)"), "F12"
+            )
         )
         self._same_line_or_wrap(box, im.calc_text_size("✨ Hint")[0] + 14.0)
         if im.button(tr("✨ Hint") + "##toolbar_hint"):
             self.model.request_lsp("completion")
         im.set_item_tooltip(
-            _with_shortcut(tr("Hint — completions for the caret position (Python LSP)"), "Ctrl/Cmd+Space")
+            _with_shortcut(
+                tr("Hint — completions for the caret position (Python LSP)"), "Ctrl/Cmd+Space"
+            )
         )
         im.end_disabled()
         self._same_line_or_wrap(box, im.calc_text_size("🧹 Lint")[0] + 14.0)

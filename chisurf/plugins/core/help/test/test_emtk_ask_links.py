@@ -57,7 +57,9 @@ def test_clicking_a_cited_page_opens_it_in_the_documentation_browser(ask_app):
 def test_clicking_an_inline_heading_link_opens_the_section(ask_app):
     app, driver = ask_app
     # the narrow pane wraps the link, so click the piece that holds "four"
-    piece = next(t[5] for t in driver.frame(2).texts if "four" in t[5] and t[5].startswith(("The", "four")))
+    piece = next(
+        t[5] for t in driver.frame(2).texts if "four" in t[5] and t[5].startswith(("The", "four"))
+    )
     driver.click(piece)
     driver.frame(3)
     assert app.model.current_path.name == "accurate_fret.md"

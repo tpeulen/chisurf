@@ -142,7 +142,6 @@ def test_select_state_frame_updates_ca_trace_for_same_shape_all_atom_frame() -> 
     np.testing.assert_array_equal(state.all_atom_coords, frame1)
 
 
-
 def test_a_trajectory_payload_scales_frames_and_radii_consistently() -> None:
     """Trajectory coordinates (Angstrom) are scaled like set_frames/add_structure.
 

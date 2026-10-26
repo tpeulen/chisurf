@@ -46,7 +46,7 @@ All potential widgets now use the `chisurf.settings.path_utils.get_path('chisurf
 
 ```python
 # Example from CEPotentialWidget
-potential = str(get_path('chisurf') / 'structure/potential/database/unres.npy')
+potential = str(get_path("chisurf") / "structure/potential/database/unres.npy")
 ```
 
 This ensures:

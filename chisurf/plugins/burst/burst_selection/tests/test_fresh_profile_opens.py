@@ -49,7 +49,12 @@ def test_burst_selection_opens_on_a_fresh_profile_with_legacy_setups(tmp_path):
     for key in ("MMFDB_DATABASE_PATH", "MMFDB_SETTINGS_DIR"):
         env.pop(key, None)
     done = subprocess.run(
-        [sys.executable, "-c", SCRIPT], cwd=REPO, env=env, capture_output=True, text=True, timeout=600
+        [sys.executable, "-c", SCRIPT],
+        cwd=REPO,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=600,
     )
     assert done.returncode == 0, done.stderr[-3000:]
     result = json.loads(done.stdout.strip().splitlines()[-1])

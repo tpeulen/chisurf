@@ -60,8 +60,7 @@ def test_sampler_and_laplace_agree_on_a_near_gaussian_posterior(view):
     # the well-determined, strictly interior parameters: both methods must see the same
     # 68 % interval (dtau_shield rides its declared upper bound here, so the check rightly
     # calls it a mismatch -- see test_a_boundary_parameter_is_called_a_mismatch)
-    for label, log in (("scale", True), ("delta", False), ("s_basic", True),
-                       ("s_common", True)):
+    for label, log in (("scale", True), ("delta", False), ("s_basic", True), ("s_common", True)):
         r = rows[label]
         assert r["verdict"] == "agree", (label, r)
         assert r["overlap"] >= 0.5, (label, r)
@@ -70,7 +69,7 @@ def test_sampler_and_laplace_agree_on_a_near_gaussian_posterior(view):
         sam = bend([r["sampler_low_68"], r["sampler_high_68"]])
         assert 0.5 < (sam[1] - sam[0]) / (lap[1] - lap[0]) < 2.0, (label, r)
         assert r["laplace_low_68"] < r["best_fit"] < r["laplace_high_68"]
-    assert result["mismatches"] == ["dtau_shield"]      # the one boundary parameter
+    assert result["mismatches"] == ["dtau_shield"]  # the one boundary parameter
     assert result["verdict"] == "mismatch: dtau_shield"
 
 
@@ -78,7 +77,7 @@ def test_a_boundary_parameter_is_called_a_mismatch(view):
     """A parameter at the edge of its range is no smooth valley: the check says so."""
     result = sc.sampler_check(view, **CHECK)
     r = {row["parameter"]: row for row in result["parameters"]}["dtau_shield"]
-    assert view.estimate("dtau_shield")["high"] == pytest.approx(2.0)   # the declared bound
+    assert view.estimate("dtau_shield")["high"] == pytest.approx(2.0)  # the declared bound
     assert r["verdict"] == "mismatch" and r["overlap"] < sc.AGREE_ABOVE
     assert result["verdict"] == "mismatch: dtau_shield"
 
@@ -87,11 +86,12 @@ def test_every_free_block_parameter_is_compared(view):
     result = sc.sampler_check(view, **CHECK)
     rows = {r["parameter"] for r in result["parameters"]}
     block = view.block
-    expected = {gf._spec_map(view.graph.settings)[n].label
-                for n in block.free if n != "ln_model_error"}
+    expected = {
+        gf._spec_map(view.graph.settings)[n].label for n in block.free if n != "ln_model_error"
+    }
     assert rows == expected
-    assert "model_error" not in rows          # held at the best fit, like the prototype's
-    assert "lam" not in rows                  # fixed for Cy3B, not a fit parameter there
+    assert "model_error" not in rows  # held at the best fit, like the prototype's
+    assert "lam" not in rows  # fixed for Cy3B, not a fit parameter there
 
 
 def test_the_laplace_columns_are_the_view_estimates(view):
@@ -113,7 +113,7 @@ def test_interval_overlap_and_verdict():
     assert sc.interval_overlap((0.0, 1.0), (0.5, 1.5)) == pytest.approx(0.5)
     assert sc.interval_overlap((0.0, 1.0), (2.0, 3.0)) == 0.0
     assert sc.interval_overlap((0.0, 1.0), (0.0, 1.0)) == pytest.approx(1.0)
-    assert sc.interval_overlap((1.0, 1.0), (0.0, 1.0)) == 0.0   # an empty interval shares nothing
+    assert sc.interval_overlap((1.0, 1.0), (0.0, 1.0)) == 0.0  # an empty interval shares nothing
     assert sc.interval_verdict(0.5) == "agree" and sc.interval_verdict(0.49) == "mismatch"
 
 
@@ -139,36 +139,49 @@ def test_the_setting_is_declared_and_off_by_default():
 
 def test_resolve_follows_the_flag():
     declared = gf.settings()["sampler_check"]
-    assert sc.resolve(None, declared) is None              # the declaration is off
+    assert sc.resolve(None, declared) is None  # the declaration is off
     assert sc.resolve(False, declared) is None
     on = sc.resolve(True, declared)
     assert on["enabled"] is True and on["steps"] == 1500
     small = sc.resolve(dict(steps=50, walkers=16), declared)
     assert small["enabled"] is True and small["steps"] == 50 and small["walkers"] == 16
-    assert small["runs"] == declared["runs"]               # undeclared keys stay declared
+    assert small["runs"] == declared["runs"]  # undeclared keys stay declared
     assert sc.resolve(dict(enabled=False), declared) is None
     assert sc.resolve(None, dict(declared, enabled=True))["enabled"] is True
 
 
 def test_the_analysis_runs_the_check_only_when_enabled(data):
-    off = st.Analysis(data, preset="quick", workers=1, profile=False,
-                      fit_overrides=TINY_FIT)
+    off = st.Analysis(data, preset="quick", workers=1, profile=False, fit_overrides=TINY_FIT)
     assert off.sampler_check is None
-    on = st.Analysis(data, preset="quick", workers=1, profile=False,
-                     sampler_check=dict(steps=100, runs=1, walkers=16),
-                     fit_overrides=TINY_FIT)
+    on = st.Analysis(
+        data,
+        preset="quick",
+        workers=1,
+        profile=False,
+        sampler_check=dict(steps=100, runs=1, walkers=16),
+        fit_overrides=TINY_FIT,
+    )
     assert on.sampler_check["steps"] == 100 and on.sampler_check["enabled"] is True
     # enabled through the declared setting itself (the fit_overrides path, e.g. over the RPC)
-    via_settings = st.Analysis(data, preset="quick", workers=1, profile=False,
-                               fit_overrides=dict(TINY_FIT,
-                                                  sampler_check=dict(enabled=True, steps=100)))
+    via_settings = st.Analysis(
+        data,
+        preset="quick",
+        workers=1,
+        profile=False,
+        fit_overrides=dict(TINY_FIT, sampler_check=dict(enabled=True, steps=100)),
+    )
     assert via_settings.sampler_check["enabled"] is True
 
 
 def test_a_stage_reports_the_check(data):
-    a = st.Analysis(data, preset="quick", workers=1, profile=False,
-                    sampler_check=dict(steps=100, runs=1, walkers=24),
-                    fit_overrides=TINY_FIT)
+    a = st.Analysis(
+        data,
+        preset="quick",
+        workers=1,
+        profile=False,
+        sampler_check=dict(steps=100, runs=1, walkers=24),
+        fit_overrides=TINY_FIT,
+    )
     result = a.run("A")
     stage = result.stages["A"]
     check = stage.numbers["sampler_check"]["AF488 in H2O"]
@@ -178,8 +191,8 @@ def test_a_stage_reports_the_check(data):
     assert stage.numbers["blocks"]["AF488 in H2O"]["sampler_check"] == check
     assert "sampler_check:AF488 in H2O" in stage.plots
     assert "MCMC" in stage.text or "sampler" in stage.text
-    assert "sampler_check" not in stage.tables             # no declared table: numbers only
-    json.dumps(result.to_dict())                           # the JSON summary stays JSON-able
+    assert "sampler_check" not in stage.tables  # no declared table: numbers only
+    json.dumps(result.to_dict())  # the JSON summary stays JSON-able
 
 
 def test_a_default_stage_has_no_check(data):

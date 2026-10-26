@@ -81,9 +81,7 @@ def test_store_graph_session_writes_session_node_parameter_and_dependency_rows(t
         assert len(parameters) == 2
         metadata = [_json(row["metadata_json"]) for row in parameters]
         assert {item["graph_port_id"] for item in metadata} == {source_out.oid, follower_in.oid}
-        follower_param = next(
-            item for item in metadata if item["graph_port_id"] == follower_in.oid
-        )
+        follower_param = next(item for item in metadata if item["graph_port_id"] == follower_in.oid)
         assert follower_param["port_direction"] == "input"
         assert follower_param["schema_name"] == "mmfdb.parameter_ref.v1"
 
@@ -268,8 +266,6 @@ def test_store_graph_session_fast_mode_skips_node_artifacts(tmp_path) -> None:
         assert len([row for row in artifacts if row["artifact_kind"] == "graph_session"]) == 1
         assert len([row for row in artifacts if row["artifact_kind"] == "graph_node"]) == 0
         assert len(db.list_parameters(operation_id="op_graph_fast")) == 2
-
-
 
 
 def test_graph_session_artifact_constant_is_the_new_kind() -> None:

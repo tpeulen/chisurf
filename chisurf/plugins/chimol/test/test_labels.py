@@ -176,6 +176,7 @@ def test_the_property_names_are_pymols():
 # In the viewer, and through the command
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def loaded():
     import pathlib

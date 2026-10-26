@@ -225,7 +225,9 @@ class ImagingToolsApp(ImApp):
         """The "Opening" placeholder in the tool area, while the shown step is made."""
         if self.building and self.child is None:
             entry = next((e for e in self.entries if e.id == self.selected), None)
-            draw_opening(entry.label if entry else str(self.selected), self.child_box, "Hub opening")
+            draw_opening(
+                entry.label if entry else str(self.selected), self.child_box, "Hub opening"
+            )
 
     def next_frame_in(self):
         """The sooner of this window's and the shown step's next due frame."""
@@ -794,7 +796,6 @@ class ImagingToolsApp(ImApp):
         self._fast_forward_tick()
         self._precompute_tick()
 
-
     # -- events: the shown step gets the pointer inside its box, every key, the wheel and file drops ------------- #
     def _inside(self, x, y):
         bx, by, bw, bh = self.child_box
@@ -810,12 +811,16 @@ class ImagingToolsApp(ImApp):
     def pointer_release(self, x, y, button, modifiers=0):
         super().pointer_release(x, y, button, modifiers)
         if self.child:
-            self.child.pointer_release(x - self.child_box[0], y - self.child_box[1], button, modifiers)
+            self.child.pointer_release(
+                x - self.child_box[0], y - self.child_box[1], button, modifiers
+            )
 
     def pointer_move(self, x, y, buttons=0, modifiers=0):
         super().pointer_move(x, y, buttons, modifiers)
         if self.child:
-            self.child.pointer_move(x - self.child_box[0], y - self.child_box[1], buttons, modifiers)
+            self.child.pointer_move(
+                x - self.child_box[0], y - self.child_box[1], buttons, modifiers
+            )
 
     def wheel(self, x, y, steps, modifiers=0):
         super().wheel(x, y, steps, modifiers)
@@ -823,7 +828,9 @@ class ImagingToolsApp(ImApp):
             self.child.wheel(x - self.child_box[0], y - self.child_box[1], steps, modifiers)
 
     def key(self, key, text="", modifiers=0):
-        own = super().key(key, text, modifiers)  # the window's own help and tour read Escape from its io
+        own = super().key(
+            key, text, modifiers
+        )  # the window's own help and tour read Escape from its io
         taken = self.child.key(key, text, modifiers) if self.child else own
         if not taken and key in (keys.KEY_UP, keys.KEY_DOWN):
             # Up and Down step the list while no field of the shown step wants them

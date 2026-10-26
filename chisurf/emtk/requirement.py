@@ -25,8 +25,11 @@ def installed_emtk() -> dict:
     import emtk
 
     info_fn = getattr(emtk, "version_info", None)
-    info = dict(info_fn()) if callable(info_fn) else {
-        "version": getattr(emtk, "__version__", "unknown"), "commit": None}
+    info = (
+        dict(info_fn())
+        if callable(info_fn)
+        else {"version": getattr(emtk, "__version__", "unknown"), "commit": None}
+    )
     info["path"] = getattr(emtk, "__file__", None)
     return info
 

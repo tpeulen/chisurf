@@ -52,6 +52,7 @@ def _front_matter_title(markdown: str) -> str:
 
 # -- the bundle --------------------------------------------------------------- #
 
+
 def test_bundle_ships_the_user_facing_documentation(tmp_path):
     from emtk.web.serve import pack_zip
 
@@ -71,9 +72,7 @@ def test_bundle_ships_the_user_facing_documentation(tmp_path):
     assert len(md) >= 400, f"only {len(md)} documentation pages shipped"
 
     # Maintainer material and what a page cannot show stay behind.
-    assert not [n for n in docs if n.startswith("docs/development/")], (
-        "maintainer docs shipped"
-    )
+    assert not [n for n in docs if n.startswith("docs/development/")], "maintainer docs shipped"
     assert not [n for n in docs if "_old_manual" in n or "_build" in n]
     binaries = [n for n in docs if n.endswith((".png", ".jpg", ".pdf", ".py", ".yaml"))]
     assert not binaries, f"non-page files shipped: {binaries[:5]}"
@@ -175,6 +174,7 @@ def test_page_help_lists_a_shipped_guide(tmp_path):
 
 
 # -- the surface: the help plugin's model ------------------------------------- #
+
 
 def test_help_surface_lists_and_opens_a_shipped_guide_title():
     """The help plugin's model (what the page's Help menu opens) lists the

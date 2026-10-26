@@ -3,6 +3,7 @@ each cross-correlated (routing channels 0+1 against 8+9) with tttrlib and writte
 
 usage: python -m chisurf.plugins.fcs.fcs_merger.test.make_chunks <out_dir>; importable as build(out_dir) -> out_dir
 """
+
 import pathlib
 import sys
 
@@ -28,7 +29,7 @@ def build(out_dir, n_chunks=6, seconds=10.0, *, legacy_seconds=False):
     times = np.asarray(tttr.macro_times, dtype=np.float64) * resolution
     for k in range(n_chunks):
         idx = np.flatnonzero((times >= k * seconds) & (times < (k + 1) * seconds))
-        chunk = tttr[int(idx[0]):int(idx[-1]) + 1]
+        chunk = tttr[int(idx[0]) : int(idx[-1]) + 1]
         correlator = tttrlib.Correlator(tttr=chunk, channels=([0, 1], [8, 9]), n_bins=7, n_casc=25)
         x, y = np.asarray(correlator.x_axis), np.asarray(correlator.correlation)
         # The TTTR-aware constructor returns seconds; ChiSurf FCS/Kristine uses ms.
@@ -37,10 +38,20 @@ def build(out_dir, n_chunks=6, seconds=10.0, *, legacy_seconds=False):
             x = x * 1000.0
         keep = (x > 0) & np.isfinite(y)
         channels = np.asarray(chunk.routing_channels)
-        counts_a, counts_b = int(np.isin(channels, (0, 1)).sum()), int(np.isin(channels, (8, 9)).sum())
-        save_mean_correlation({"x": x[keep], "y": y[keep], "ey": np.zeros(keep.sum()), "duration": seconds,
-                               "count_rate": (counts_a + counts_b) / 2.0 / seconds / 1000.0},
-                              out_dir / f"chnk-{k:04}.cor")
+        counts_a, counts_b = (
+            int(np.isin(channels, (0, 1)).sum()),
+            int(np.isin(channels, (8, 9)).sum()),
+        )
+        save_mean_correlation(
+            {
+                "x": x[keep],
+                "y": y[keep],
+                "ey": np.zeros(keep.sum()),
+                "duration": seconds,
+                "count_rate": (counts_a + counts_b) / 2.0 / seconds / 1000.0,
+            },
+            out_dir / f"chnk-{k:04}.cor",
+        )
     return out_dir
 
 

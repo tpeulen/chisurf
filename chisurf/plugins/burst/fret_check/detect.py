@@ -17,6 +17,7 @@ the *experiment*:
 
 Every guess is a starting point shown in the UI and editable there.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -24,8 +25,16 @@ import pathlib
 
 import numpy as np
 
-__all__ = ["Experiment", "Window", "assign_cw", "detect_experiment", "find_alex_period", "load",
-           "open_measurement", "with_phase"]
+__all__ = [
+    "Experiment",
+    "Window",
+    "assign_cw",
+    "detect_experiment",
+    "find_alex_period",
+    "load",
+    "open_measurement",
+    "with_phase",
+]
 
 #: Coarse micro-time bins used for the window search.
 _N_BINS = 64
@@ -181,7 +190,8 @@ def _find_alternation(hist, n_bins):
         else:
             acceptor_bins, donor_bins = (bins >= a_on) & (bins < d_on), bins >= d_on
         donor_channels = [
-            c for c in channels
+            c
+            for c in channels
             if hist[c][acceptor_bins].mean() < _DARK * hist[c][donor_bins].mean()
         ]
         if donor_channels and len(donor_channels) < len(channels):
@@ -257,7 +267,9 @@ def with_phase(data, period: int):
     phase = (macro % np.uint64(period)).astype(np.uint16) if period < 65536 else None
     if phase is None:
         raise ValueError(f"alternation period {period} ticks too long for a 16 bit micro time")
-    out = tttrlib.TTTR(macro, phase, np.asarray(data.routing_channels), np.asarray(data.event_types))
+    out = tttrlib.TTTR(
+        macro, phase, np.asarray(data.routing_channels), np.asarray(data.event_types)
+    )
     out.header.set_macro_time_resolution(float(data.header.macro_time_resolution))
     out.header.set_micro_time_resolution(float(data.header.macro_time_resolution))
     return out
@@ -296,7 +308,9 @@ def assign_cw(data, channels, notes):
     counts = _burst_channel_counts(data, channels)
     if counts.shape[0] < 50:
         half = max(1, len(channels) // 2)
-        notes.append("too few bursts to assign colours; donor/acceptor guessed from channel order, check them")
+        notes.append(
+            "too few bursts to assign colours; donor/acceptor guessed from channel order, check them"
+        )
         return channels[:half], channels[half:]
     share = counts / np.maximum(counts.sum(axis=1, keepdims=True), 1.0)
     totals = counts.sum(axis=0)
@@ -321,15 +335,21 @@ def assign_cw(data, channels, notes):
     photons_b = float(totals[[channels.index(c) for c in group_b]].sum() / max(totals.sum(), 1.0))
     if min(photons_b, 1 - photons_b) < 0.02:
         donor, acceptor = (group_a, group_b) if photons_b < 0.5 else (group_b, group_a)
-        notes.append(f"second colour has {100 * min(photons_b, 1 - photons_b):.1f} % of the burst photons: "
-                     "one-colour data, or no FRET and no acceptor")
+        notes.append(
+            f"second colour has {100 * min(photons_b, 1 - photons_b):.1f} % of the burst photons: "
+            "one-colour data, or no FRET and no acceptor"
+        )
     elif max(alone_a, alone_b) < 0.02 or abs(alone_a - alone_b) < 0.01:
         donor, acceptor = sorted([group_a, group_b], key=min)
-        notes.append("no donor-only population to tell donor from acceptor; guessed from channel order, check them")
+        notes.append(
+            "no donor-only population to tell donor from acceptor; guessed from channel order, check them"
+        )
     else:
         donor, acceptor = (group_a, group_b) if alone_a > alone_b else (group_b, group_a)
-        notes.append(f"donor = colour with single-colour (donor-only) bursts "
-                     f"({100 * max(alone_a, alone_b):.0f} % vs {100 * min(alone_a, alone_b):.0f} %)")
+        notes.append(
+            f"donor = colour with single-colour (donor-only) bursts "
+            f"({100 * max(alone_a, alone_b):.0f} % vs {100 * min(alone_a, alone_b):.0f} %)"
+        )
     return sorted(donor), sorted(acceptor)
 
 
@@ -369,7 +389,8 @@ def signal_channels(data, channels, exp=None):
                 exp.warnings.append(
                     f"channel {c} not assigned: no single-molecule signal "
                     f"({100 * share:.1f} % of burst photons, {enrichment:.1f}x enriched in bursts) -- "
-                    "dark counts, scatter, a marker line or an unused detector")
+                    "dark counts, scatter, a marker line or an unused detector"
+                )
         else:
             signal.append(c)
     if not signal:  # nothing stands out: keep everything rather than nothing
@@ -442,7 +463,7 @@ def detect_experiment(data) -> Experiment:
     if alternation is None and len(channels) >= 2:
         period = find_alex_period(data, channels)
         if period:
-            phase = (macro[sel].astype(np.int64) % period)
+            phase = macro[sel].astype(np.int64) % period
             step = max(1, phase.size // 2_000_000)
             hist, scale = _micro_histograms(phase[::step], routing[sel][::step], channels, period)
             alternation = _find_alternation(hist, len(next(iter(hist.values()))))
@@ -450,7 +471,9 @@ def detect_experiment(data) -> Experiment:
                 exp.alex_period = int(period)
                 exp.n_micro_channels = int(period)
                 exp.micro_time_resolution_s = mres
-                exp.notes.append(f"µsALEX in the macro time: {1e-3 / (period * mres):.2f} kHz alternation")
+                exp.notes.append(
+                    f"µsALEX in the macro time: {1e-3 / (period * mres):.2f} kHz alternation"
+                )
 
     if alternation is not None:
         donor_bins, acceptor_bins, dark_channels = alternation
@@ -468,16 +491,22 @@ def detect_experiment(data) -> Experiment:
         notes: list[str] = []
         exp.donor_channels, exp.acceptor_channels = assign_cw(data, channels, notes)
         for n in notes:  # guesses are warnings, findings are notes
-            (exp.warnings if ("guess" in n or "check" in n or "one-colour" in n) else exp.notes).append(n)
+            (
+                exp.warnings if ("guess" in n or "check" in n or "one-colour" in n) else exp.notes
+            ).append(n)
     exp.polarization = len(exp.donor_channels) == 2 and len(exp.acceptor_channels) == 2
     if exp.polarization:
         exp.donor_pol = _pol_order(data, exp.donor_channels)
         exp.acceptor_pol = _pol_order(data, exp.acceptor_channels)
-        exp.warnings.append(f"polarization guessed: donor par/perp {exp.donor_pol}, acceptor par/perp "
-                            f"{exp.acceptor_pol} (brighter = parallel; a G factor far from 1 can swap them)")
+        exp.warnings.append(
+            f"polarization guessed: donor par/perp {exp.donor_pol}, acceptor par/perp "
+            f"{exp.acceptor_pol} (brighter = parallel; a G factor far from 1 can swap them)"
+        )
     elif len(exp.donor_channels) > 2 or len(exp.acceptor_channels) > 2:
-        exp.warnings.append(f"{len(exp.donor_channels)} donor / {len(exp.acceptor_channels)} acceptor channels: "
-                            "more than two per colour, polarization not assigned; check them")
+        exp.warnings.append(
+            f"{len(exp.donor_channels)} donor / {len(exp.acceptor_channels)} acceptor channels: "
+            "more than two per colour, polarization not assigned; check them"
+        )
     if not exp.acceptor_channels:
         exp.warnings.append("no acceptor channel: one-colour data, FRET checks are off")
     return exp

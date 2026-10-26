@@ -26,7 +26,11 @@ def test_load_example_reconstructs():
     model.load_example()
     assert model.result is not None
     result = model.result
-    pick = (lambda key: result[key]) if isinstance(result, dict) else (lambda key: getattr(result, key))
+    pick = (
+        (lambda key: result[key])
+        if isinstance(result, dict)
+        else (lambda key: getattr(result, key))
+    )
     amplitudes = np.asarray(pick("p"), dtype=float)
     assert amplitudes.sum() > 0
     taus = np.asarray(pick("tau"), dtype=float)

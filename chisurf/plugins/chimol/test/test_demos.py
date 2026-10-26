@@ -114,10 +114,12 @@ def test_the_structures_the_demos_name_can_be_found():
 # Running them
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def window():
     pytest.importorskip("chisurf.core.structure")
     from native_window import NativeWindow
+
     win = NativeWindow()
     shared = win.cmd
     win.resize(900, 650)

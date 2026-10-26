@@ -1041,9 +1041,7 @@ class ParameterGroup(chisurf.core.base.Base):
     3.0
     """
 
-    def __init__(
-        self, parameters: typing.Optional[typing.List[Parameter]] = None, *args, **kwargs
-    ):
+    def __init__(self, parameters: typing.Optional[typing.List[Parameter]] = None, *args, **kwargs):
         """Initialize a ParameterGroup with an optional list of parameters."""
         super().__init__(*args, **kwargs)
         if parameters is None:

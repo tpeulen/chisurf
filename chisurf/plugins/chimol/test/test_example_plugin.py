@@ -25,7 +25,6 @@ def stars_module(monkeypatch):
     return importlib.import_module("chimol_stars")
 
 
-
 def test_the_example_plugin_does_everything_it_says(stars_module, tmp_path):
     from chimol.commands.command import Cmd
     from chimol.core.services.representations import REPRESENTATIONS

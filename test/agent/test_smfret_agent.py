@@ -74,9 +74,7 @@ class RecordedLLM(LLMClient):
             # The recorded path argument stands for the per-run data dir.
             if arguments.get("path") == "xy/smfret.ht3":
                 arguments["path"] = str(self.data_dir / "smfret.ht3")
-            calls.append(
-                ToolCall(id=entry["id"], name=entry["name"], arguments=arguments)
-            )
+            calls.append(ToolCall(id=entry["id"], name=entry["name"], arguments=arguments))
         return LLMResponse(
             text=turn.get("text", ""),
             tool_calls=calls,

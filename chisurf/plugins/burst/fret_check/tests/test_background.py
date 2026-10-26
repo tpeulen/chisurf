@@ -6,6 +6,7 @@ E = 0.5. The simulator's ground truth (one population at E = 0.2, leakage
 0.06, no direct excitation, equal detection) pins that the subtraction
 removes that bias.
 """
+
 import numpy as np
 import pytest
 
@@ -26,8 +27,16 @@ FACTORS = {"gamma": 1.0, "alpha": 0.06, "delta": 0.0, "beta": 1.0}
 
 @pytest.fixture(scope="module")
 def bursts():
-    sc = Scenario("high background", excitation="cw", populations=((TRUE_E, 1.0),),
-                  donor_only=0.0, background=2.0, brightness=300.0, duration_s=5.0, seed=7)
+    sc = Scenario(
+        "high background",
+        excitation="cw",
+        populations=((TRUE_E, 1.0),),
+        donor_only=0.0,
+        background=2.0,
+        brightness=300.0,
+        duration_s=5.0,
+        seed=7,
+    )
     data = simulate(sc)
     return analyse(data, detect_experiment(data), BurstSettings())
 

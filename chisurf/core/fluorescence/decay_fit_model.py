@@ -514,10 +514,7 @@ def build_fret_fit(
             "donor.tau.0": bool(fit_donor_lifetime),
             "fret.forster_radius": False,
             "fret.tau0": False,
-            **{
-                f"distance.sigma.{k}": bool(fit_sigma)
-                for k in range(n)
-            },
+            **{f"distance.sigma.{k}": bool(fit_sigma) for k in range(n)},
         },
     )
     model.find_parameters()

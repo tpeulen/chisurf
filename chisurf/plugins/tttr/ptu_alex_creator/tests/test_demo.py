@@ -47,4 +47,3 @@ def test_the_two_excitation_gates_are_recovered(example):
     donor_centered = any(abs(s - DONOR_GATE[0]) < 500 for s in starts)
     acceptor_centered = any(abs(s - ACCEPTOR_GATE[0]) < 500 for s in starts)
     assert donor_centered and acceptor_centered
-

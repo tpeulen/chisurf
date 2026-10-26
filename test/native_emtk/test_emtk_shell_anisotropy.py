@@ -87,7 +87,9 @@ def test_wizard_fits_are_listed_windowed_and_fitted(shell, tmp_path):
     assert datasets["anis_decay_vv.dat"] == datasets["anis_decay_vh.dat"] == "TCSPC"
     # The Datasets dock offers the TCSPC models for a wizard curve, polarisation ones included.
     shell.docks.focus(DATASETS_KEY)
-    data.datasets.select_dataset(next(r for r in data.datasets.datasets if r["name"] == "anis_decay_vv.dat"))
+    data.datasets.select_dataset(
+        next(r for r in data.datasets.datasets if r["name"] == "anis_decay_vv.dat")
+    )
     assert "Lifetime" in data.datasets.model_names()
     assert "PDA2c-anisotropy" not in data.datasets.model_names()
 
@@ -145,7 +147,9 @@ def test_dataset_picker_attaches_a_wizard_dataset(shell, tmp_path):
     picker = data.dataset_picker
     assert picker is not None
     names = [row["name"] for row in picker.rows]
-    assert "Global Dataset" not in names and {"anis_decay_vv.dat", "anis_decay_vh.dat"} <= set(names)
+    assert "Global Dataset" not in names and {"anis_decay_vv.dat", "anis_decay_vh.dat"} <= set(
+        names
+    )
     picker.pick(names.index("anis_decay_vv.dat"))
     _settle(
         driver,

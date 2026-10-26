@@ -357,7 +357,11 @@ class ShellDockManager(DockManager):
         return data
 
     def restore(self, state: dict) -> None:
-        if hasattr(self._app, "workspace_docks") and isinstance(state, dict) and "_workspace" in state:
+        if (
+            hasattr(self._app, "workspace_docks")
+            and isinstance(state, dict)
+            and "_workspace" in state
+        ):
             self._app.workspace_docks.restore(state["_workspace"])
         super().restore(state)
 
@@ -376,11 +380,16 @@ class ShellDockManager(DockManager):
                 mine.append(by_name[n])
                 if n == f"##{self.name}.region.center":
                     mine.extend(ws_windows)
+
         def is_ws(w) -> bool:
             return bool(ws_prefix and w.name.startswith(ws_prefix))
 
-        earlier = [w for w in ctx.windows if w.name not in wanted and not is_ws(w) and id(w) in before]
-        later = [w for w in ctx.windows if w.name not in wanted and not is_ws(w) and id(w) not in before]
+        earlier = [
+            w for w in ctx.windows if w.name not in wanted and not is_ws(w) and id(w) in before
+        ]
+        later = [
+            w for w in ctx.windows if w.name not in wanted and not is_ws(w) and id(w) not in before
+        ]
         ctx.windows[:] = earlier + mine + later
 
 
@@ -435,6 +444,7 @@ class EmtkShellApp(ImApp):
         import chisurf.emtk.help_guide
         import chisurf.emtk.i18n
         import chisurf.emtk.shared_i18n  # noqa: F401
+
         if catalog is None:
             from chisurf.emtk.plugins import manifests
 
@@ -574,9 +584,7 @@ class EmtkShellApp(ImApp):
 
         #: The ``post_show`` startup stages (``None``: not run by this shell).
         self.post_show = (
-            PostShow(self, runner=post_show if callable(post_show) else None)
-            if post_show
-            else None
+            PostShow(self, runner=post_show if callable(post_show) else None) if post_show else None
         )
         from chisurf.emtk.shell_log import ShellLog
 
@@ -1001,8 +1009,11 @@ class EmtkShellApp(ImApp):
                 im.text_wrapped(tr("The tool could not be opened."))
                 im.text_wrapped(hosted.error)
             else:
-                im.text(tr("Opening {name}…").format(
-                    name=hosted.title() if hosted is not None else self._tool_only))
+                im.text(
+                    tr("Opening {name}…").format(
+                        name=hosted.title() if hosted is not None else self._tool_only
+                    )
+                )
         else:
             self.host_child("__tool_only__", hosted.instance_id, hosted.app, box)
         # What a standalone tool still needs over its canvas: the file dialog,
@@ -1233,8 +1244,10 @@ class EmtkShellApp(ImApp):
             toggle_blur,
             "",
             "",
-            tr("While a dialog is open, everything behind it is blurred, so the dialog is "
-               "the only thing in focus. Kept for the next start."),
+            tr(
+                "While a dialog is open, everything behind it is blurred, so the dialog is "
+                "the only thing in focus. Kept for the next start."
+            ),
             checked=blur_on,
         )
         # The shell's session menus are flat: one checked entry per theme
@@ -1502,7 +1515,9 @@ class EmtkShellApp(ImApp):
                 self.toggle_macro_recording,
                 "",
                 "",
-                tr("Record what you click and type; click again to stop -- the macro opens in the console's editor as code."),
+                tr(
+                    "Record what you click and type; click again to stop -- the macro opens in the console's editor as code."
+                ),
                 checked=lambda: self.console.recording,
             ),
             MenuAction(
@@ -2040,7 +2055,11 @@ class EmtkShellApp(ImApp):
                     draw.add_rect_filled((gx, gy), (gx + spark_w, gy + gh), track_fill, 2.0)
                     draw.add_rect((gx, gy), (gx + spark_w, gy + gh), track_border, 2.0)
                     if history:
-                        top = max(100.0, max(history)) if spark == 0 else max(max(history) * 1.15, 50.0)
+                        top = (
+                            max(100.0, max(history))
+                            if spark == 0
+                            else max(max(history) * 1.15, 50.0)
+                        )
                         step = spark_w / max(self.WATERMARK_SAMPLES - 1, 1)
                         if len(history) < 2:
                             y_val = gy + gh - 1.0 - (history[0] / top) * (gh - 2.0)
@@ -2140,7 +2159,9 @@ class EmtkShellApp(ImApp):
                 continue
             if key == "workspace" and hasattr(self, "workspace_docks"):
                 ws_order = list(reversed(self.workspace_docks.floating()))
-                ws_order += [self.workspace_docks.active_tab(r) for r in self.workspace_docks.regions]
+                ws_order += [
+                    self.workspace_docks.active_tab(r) for r in self.workspace_docks.regions
+                ]
                 for ws_key in ws_order:
                     if not ws_key or not self.workspace_docks.is_shown(ws_key):
                         continue
@@ -2165,7 +2186,11 @@ class EmtkShellApp(ImApp):
         return None
 
     def _hidden_busy(self, hosted: HostedPlugin) -> bool:
-        if hosted.app is None or hosted.key in self._drawn or not callable(getattr(hosted.app, "poll", None)):
+        if (
+            hosted.app is None
+            or hosted.key in self._drawn
+            or not callable(getattr(hosted.app, "poll", None))
+        ):
             return False
         try:
             return bool(hosted.app.animating())
@@ -2216,8 +2241,9 @@ class EmtkShellApp(ImApp):
         child, (ox, oy) = self._child(target)
         from emtk.native import input_trace
 
-        input_trace.debug("shell press (%.1f, %.1f) -> %s at (%.1f, %.1f)", x, y, target,
-                          x - ox, y - oy)
+        input_trace.debug(
+            "shell press (%.1f, %.1f) -> %s at (%.1f, %.1f)", x, y, target, x - ox, y - oy
+        )
         if child is not None:
             child.pointer_press(x - ox, y - oy, button, modifiers, clicks)
 
@@ -2232,7 +2258,11 @@ class EmtkShellApp(ImApp):
         super().pointer_move(x, y, buttons, modifiers)
         target = self._capture or self._plugin_at(x, y)
         for child_id, (_window_key, other_child, _box) in self._drawn.items():
-            if child_id != target and other_child is not None and getattr(other_child, "io", None) is not None:
+            if (
+                child_id != target
+                and other_child is not None
+                and getattr(other_child, "io", None) is not None
+            ):
                 if other_child.io.mouse_pos != (-1.0, -1.0):
                     other_child.pointer_move(-1.0, -1.0, 0, 0)
                     self.request_frame()
@@ -2266,7 +2296,9 @@ class EmtkShellApp(ImApp):
         if self.docks.handle_key(key, modifiers):
             self.request_frame()
             return True  # Ctrl+Tab cycles the workspace's windows, whoever has the keys
-        focus_id = self._focus or (self.docks.focused if self.docks.focused in self._drawn else None)
+        focus_id = self._focus or (
+            self.docks.focused if self.docks.focused in self._drawn else None
+        )
         child, _origin = self._child(focus_id)
         if self._shortcut(key, modifiers, child):
             return True
@@ -2285,7 +2317,9 @@ class EmtkShellApp(ImApp):
         """
         child = self._key_owners.pop(int(key), None)
         if child is None:
-            focus_id = self._focus or (self.docks.focused if self.docks.focused in self._drawn else None)
+            focus_id = self._focus or (
+                self.docks.focused if self.docks.focused in self._drawn else None
+            )
             child, _origin = self._child(focus_id)
         release = getattr(child, "key_release", None) if child is not None else None
         if callable(release):
@@ -2306,7 +2340,9 @@ class EmtkShellApp(ImApp):
     def compose(self, text, cursor=None):
         """The input method's composition goes where the keys go: the focused child, else the shell."""
         if not self.project.modal:
-            focus_id = self._focus or (self.docks.focused if self.docks.focused in self._drawn else None)
+            focus_id = self._focus or (
+                self.docks.focused if self.docks.focused in self._drawn else None
+            )
             child, _origin = self._child(focus_id)
             if child is not None and callable(getattr(child, "compose", None)):
                 return child.compose(text, cursor)
@@ -2314,7 +2350,9 @@ class EmtkShellApp(ImApp):
 
     def ime_caret(self):
         """The caret of the focused text, in the shell's coordinates (a child's is offset by its box)."""
-        focus_id = self._focus or (self.docks.focused if self.docks.focused in self._drawn else None)
+        focus_id = self._focus or (
+            self.docks.focused if self.docks.focused in self._drawn else None
+        )
         child, (ox, oy) = self._child(focus_id)
         caret = getattr(child, "ime_caret", None) if child is not None else None
         caret = caret() if callable(caret) else caret

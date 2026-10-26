@@ -67,7 +67,9 @@ def solve(D, t_end=T_END, every=5):
 
 
 print(f"uniform p(R): {r[0]:.1f}-{r[-1]:.1f} A, R0 = {R0} A, tau0 = {TAU0} ns")
-print(f"{'D / A^2/ns':>11s}  {'E':>6s}  {'|f - static|':>12s}  {'|f - fast|':>10s}  <R> at {T_END:.0f} ns")
+print(
+    f"{'D / A^2/ns':>11s}  {'E':>6s}  {'|f - static|':>12s}  {'|f - fast|':>10s}  <R> at {T_END:.0f} ns"
+)
 decays = {}
 for D in (0.0, 1.0, 10.0, 100.0, 1000.0):
     time, f, n_end = solve(D)
@@ -81,7 +83,9 @@ for D in (0.0, 1.0, 10.0, 100.0, 1000.0):
     )
 
 # The static limit is exact, and E grows monotonically with D.
-assert np.abs(decays[0.0][1] - np.exp(-k[None, :] * decays[0.0][0][:, None]).mean(axis=1)).max() < 1e-6
+assert (
+    np.abs(decays[0.0][1] - np.exp(-k[None, :] * decays[0.0][0][:, None]).mean(axis=1)).max() < 1e-6
+)
 E_values = [decays[D][2] for D in sorted(decays)]
 assert all(a < b for a, b in zip(E_values, E_values[1:]))
 

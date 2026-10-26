@@ -327,7 +327,9 @@ class ChimolHostApp(ImApp):
             try:
                 self._chimol_app.cmd.do(self._guide_command)
             except Exception:  # noqa: BLE001 - fall back to the general tour rather than a dead button
-                logging.getLogger(__name__).exception("chimol guide command failed: %s", self._guide_command)
+                logging.getLogger(__name__).exception(
+                    "chimol guide command failed: %s", self._guide_command
+                )
             else:
                 self.request_frame()
                 return
@@ -335,7 +337,9 @@ class ChimolHostApp(ImApp):
 
     def load_example(self) -> bool:
         """Load the bundled T4 lysozyme (148l) into the viewer; whether a command ran."""
-        if not self._ensure_chimol() or self._chimol_app is None:  # joins a start under way: a press is never dropped
+        if (
+            not self._ensure_chimol() or self._chimol_app is None
+        ):  # joins a start under way: a press is never dropped
             return False
         from chimol.plugins.demos.catalog import DEMO_DIR  # noqa: PLC0415
 

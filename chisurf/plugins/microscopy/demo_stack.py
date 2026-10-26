@@ -45,14 +45,19 @@ def drift_stack(n_frames: int = 6, seed: int = 7, **frame_kwargs) -> np.ndarray:
     rng = np.random.default_rng(seed)
     base = beads_frame(**frame_kwargs)
     frames = [
-        np.roll(base, (k * DRIFT_STEP[0], k * DRIFT_STEP[1]), axis=(0, 1))
-        for k in range(n_frames)
+        np.roll(base, (k * DRIFT_STEP[0], k * DRIFT_STEP[1]), axis=(0, 1)) for k in range(n_frames)
     ]
     return rng.poisson(np.stack(frames)).astype(np.float32)
 
 
-def frc_stack(n_frames: int = 8, size: int = 128, cutoff: float = 0.15,
-              noise: float = 1.0, seed: int = 3, object_seed: int = 1) -> np.ndarray:
+def frc_stack(
+    n_frames: int = 8,
+    size: int = 128,
+    cutoff: float = 0.15,
+    noise: float = 1.0,
+    seed: int = 3,
+    object_seed: int = 1,
+) -> np.ndarray:
     """One band-limited object seen through independent noise (the FRC demo)."""
     rng = np.random.default_rng(seed)
     field = np.random.default_rng(object_seed).normal(size=(size, size))
@@ -63,8 +68,13 @@ def frc_stack(n_frames: int = 8, size: int = 128, cutoff: float = 0.15,
     return np.stack([truth + noise * rng.normal(size=truth.shape) for _ in range(n_frames)])
 
 
-def tracking_stack(n_frames: int = 40, shape: tuple[int, int] = (160, 160),
-                   n_particles: int = 6, diffusion: float = 0.5, seed: int = 1) -> np.ndarray:
+def tracking_stack(
+    n_frames: int = 40,
+    shape: tuple[int, int] = (160, 160),
+    n_particles: int = 6,
+    diffusion: float = 0.5,
+    seed: int = 1,
+) -> np.ndarray:
     """A movie of particles diffusing with a known coefficient (the tracking demo)."""
     from chisurf.core.fluorescence.imaging import tracking as tk
 

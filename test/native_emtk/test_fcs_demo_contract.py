@@ -33,8 +33,10 @@ def test_demo_primary_path_cache_and_explicit_overwrite(module_name, tmp_path, m
     assert isinstance(path, Path) and path.is_file()
     # the burst demo's primary member is the .pto container (photons inside)
     assert path.name == (
-        module.CONTAINER_NAME if hasattr(module, "CONTAINER_NAME")
-        else module.TABLE_NAME if hasattr(module, "TABLE_NAME")
+        module.CONTAINER_NAME
+        if hasattr(module, "CONTAINER_NAME")
+        else module.TABLE_NAME
+        if hasattr(module, "TABLE_NAME")
         else module.SPC_FILENAME
     )
     directory = path.parent

@@ -32,6 +32,7 @@ from chimol.commands.builtin.selection import _NOTHING_LOADED
 def session():
     """A plugin window with the shared command object attached to it."""
     from native_window import NativeWindow
+
     win = NativeWindow()
     shared = win.cmd
     win.resize(600, 400)

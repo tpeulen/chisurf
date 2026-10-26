@@ -163,4 +163,3 @@ class DriftModel(EmtkModelMixin, DriftViewModel):
             }
             for i in range(len(shifts))
         ]
-

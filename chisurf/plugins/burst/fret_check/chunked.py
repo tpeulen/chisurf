@@ -17,6 +17,7 @@ never decoded whole:
   table rows, the out-of-burst counts and time (background), the 1 ms trace
   and the micro-time histograms -- never the photons.
 """
+
 from __future__ import annotations
 
 import os
@@ -88,23 +89,34 @@ def iter_chunks(path: str, records: int | None = None):
 def _tttr(macro, micro, routing, events, like):
     import tttrlib  # noqa: PLC0415
 
-    out = tttrlib.TTTR(np.ascontiguousarray(macro, np.uint64), np.ascontiguousarray(micro, np.uint16),
-                       np.ascontiguousarray(routing, np.int8), np.ascontiguousarray(events, np.int8))
+    out = tttrlib.TTTR(
+        np.ascontiguousarray(macro, np.uint64),
+        np.ascontiguousarray(micro, np.uint16),
+        np.ascontiguousarray(routing, np.int8),
+        np.ascontiguousarray(events, np.int8),
+    )
     out.header.set_macro_time_resolution(float(like.header.macro_time_resolution))
     out.header.set_micro_time_resolution(float(like.header.micro_time_resolution))
     return out
 
 
 def _arrays(d):
-    return (np.asarray(d.macro_times), np.asarray(d.micro_times), np.asarray(d.routing_channels),
-            np.asarray(d.event_types))
+    return (
+        np.asarray(d.macro_times),
+        np.asarray(d.micro_times),
+        np.asarray(d.routing_channels),
+        np.asarray(d.event_types),
+    )
 
 
 def _take(b: Bursts, keep: np.ndarray) -> dict:
     """The rows *keep* of a burst table, as plain arrays."""
     return {
-        "start": b.start[keep], "stop": b.stop[keep], "t_start": b.t_start[keep],
-        "duration": b.duration[keep], "E": b.E[keep],
+        "start": b.start[keep],
+        "stop": b.stop[keep],
+        "t_start": b.t_start[keep],
+        "duration": b.duration[keep],
+        "E": b.E[keep],
         "S": None if b.S is None else b.S[keep],
         "fret_2cde": None if b.fret_2cde is None else b.fret_2cde[keep],
         "alex_2cde": None if b.alex_2cde is None else b.alex_2cde[keep],
@@ -118,7 +130,10 @@ def _concat(parts: list) -> dict:
         arrays = [p[key] for p in parts]
         return None if arrays[0] is None else np.concatenate(arrays)
 
-    out = {k: cat(k) for k in ("start", "stop", "t_start", "duration", "E", "S", "fret_2cde", "alex_2cde")}
+    out = {
+        k: cat(k)
+        for k in ("start", "stop", "t_start", "duration", "E", "S", "fret_2cde", "alex_2cde")
+    }
     for group in ("counts", "extra"):
         names = parts[0][group].keys()
         out[group] = {n: np.concatenate([p[group][n] for p in parts]) for n in names}
@@ -151,8 +166,14 @@ class _Acc:
                 self.trace[k] = have
 
 
-def analyse_chunked(report, path: str, settings: BurstSettings, experiment: Experiment | None = None,
-                    records: int | None = None, bin_s: float = 1e-3):
+def analyse_chunked(
+    report,
+    path: str,
+    settings: BurstSettings,
+    experiment: Experiment | None = None,
+    records: int | None = None,
+    bin_s: float = 1e-3,
+):
     """Detect and analyse *path* chunk by chunk.
 
     Returns ``(experiment_detected, experiment_used, bursts, trace, micro)``:
@@ -167,15 +188,15 @@ def analyse_chunked(report, path: str, settings: BurstSettings, experiment: Expe
     acc = _Acc(bin_s)
     parts = []
     detected = exp = None
-    carry = None             # (macro, micro, routing, events) of photons not yet searched
+    carry = None  # (macro, micro, routing, events) of photons not yet searched
     first_macro = None
-    done_photons = 0         # photons before the current working set, in the file
+    done_photons = 0  # photons before the current working set, in the file
     n_total = 0
     micro_edges = None
     micro_counts: dict = {}
     total_records = None
     t_end = 0.0
-    irf_offsets: dict = {}   # each decay's half-rise, from the first chunk, for all
+    irf_offsets: dict = {}  # each decay's half-rise, from the first chunk, for all
     split_bursts = 0
     for chunk, at, total_records in iter_chunks(path, records):
         n_total += len(chunk)
@@ -205,7 +226,7 @@ def analyse_chunked(report, path: str, settings: BurstSettings, experiment: Expe
             cut = int(b.start[unfinished].min()) if unfinished.size else n - GUARD
             cut = max(cut, 0)
             if n - cut > MAX_CARRY:
-                cut = n          # a burst that does not end: closed here, nothing carried
+                cut = n  # a burst that does not end: closed here, nothing carried
                 split_bursts += 1
         keep = b.stop < cut
         rows = _take(b, keep)
@@ -250,15 +271,26 @@ def analyse_chunked(report, path: str, settings: BurstSettings, experiment: Expe
         if split_bursts:
             e.warnings.append(
                 f"{split_bursts} burst(s) never ended within a chunk and were closed at its end: "
-                "the signal hardly drops to background (bulk data, or far too concentrated)")
+                "the signal hardly drops to background (bulk data, or far too concentrated)"
+            )
     rows = _concat(parts)
     bursts = Bursts(
-        start=rows["start"], stop=rows["stop"], t_start=rows["t_start"], duration=rows["duration"],
-        counts=rows["counts"], background={k: v / max(acc.bg_time, 1e-9) for k, v in acc.bg_counts.items()},
-        E=rows["E"], S=rows["S"], fret_2cde=rows["fret_2cde"], alex_2cde=rows["alex_2cde"],
-        extra=rows["extra"])
+        start=rows["start"],
+        stop=rows["stop"],
+        t_start=rows["t_start"],
+        duration=rows["duration"],
+        counts=rows["counts"],
+        background={k: v / max(acc.bg_time, 1e-9) for k, v in acc.bg_counts.items()},
+        E=rows["E"],
+        S=rows["S"],
+        fret_2cde=rows["fret_2cde"],
+        alex_2cde=rows["alex_2cde"],
+        extra=rows["extra"],
+    )
     rates = {k: v / bin_s * 1e-3 for k, v in acc.trace.items()}
-    micro = {c: (micro_edges, h) for c, h in micro_counts.items()} if micro_edges is not None else {}
+    micro = (
+        {c: (micro_edges, h) for c, h in micro_counts.items()} if micro_edges is not None else {}
+    )
     return detected, exp, bursts, {"bin_s": bin_s, "rates": rates}, micro
 
 

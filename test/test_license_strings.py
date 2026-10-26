@@ -49,7 +49,9 @@ _GPL_ID_RE = re.compile(r"(?<![A-Za-z])GPL(?:-?\d+(?:\.\d+)?|v\d+(?:\.\d+)?|\+)"
 #: A line that *declares* a licence: SPDX headers (they live in comments),
 #: ``__license__`` and ``license`` keys (TOML ``license = "..."`` /
 #: ``license = { text = "..." }``, YAML ``license:``).
-_LICENCE_DECL_RE = re.compile(r"^\s*#?\s*(?:SPDX-License-Identifier\s*:|__license__\s*=|license\s*[:=])")
+_LICENCE_DECL_RE = re.compile(
+    r"^\s*#?\s*(?:SPDX-License-Identifier\s*:|__license__\s*=|license\s*[:=])"
+)
 #: The GPL licence-block boilerplate, banned outright wherever it is pasted back.
 _GPL_BOILERPLATE_RE = re.compile(
     r"GNU General Public License|Free Software Foundation"
@@ -80,9 +82,7 @@ def _scan_files() -> list[pathlib.Path]:
         for tree in _TREES
         if tree.is_dir()
         for path in tree.rglob("*")
-        if path.suffix in _SUFFIXES
-        and path.is_file()
-        and not (_SKIP_PARTS & set(path.parts))
+        if path.suffix in _SUFFIXES and path.is_file() and not (_SKIP_PARTS & set(path.parts))
     )
 
 
@@ -147,7 +147,10 @@ def _sample_violations(directory: pathlib.Path) -> list[str]:
         ("pyproject.toml", '[project]\nlicense = "GPL-3.0-or-later"\n'),
         ("legacy.toml", 'license = { text = "GPL-2.1" }\n'),
         ("recipe.yaml", "license: GPL-2\n"),
-        ("boilerplate.py", "# GNU General Public License as published by the Free Software Foundation.\n"),
+        (
+            "boilerplate.py",
+            "# GNU General Public License as published by the Free Software Foundation.\n",
+        ),
         ("orange3.py", "# transcribed from Orange3's VizRankDialog.\n"),
         ("orange_path.py", "# (Orange/widgets/visualize/utils/vizrank.py, GPL-3.0)\n"),
         ("ljubljana.py", "# Bioinformatics Lab, University of Ljubljana\n"),
@@ -172,8 +175,14 @@ def _sample_clean(directory: pathlib.Path) -> list[str]:
     hits: list[str] = []
     for name, text in (
         ("companion.py", 'COMPANION = "IMP.bff LGPL-2.1-or-later"\n'),
-        ("attribution.py", '# Comments that credit a GPL reference implementation are attribution.\n'),
-        ("guard_quote.py", '"""The About box kept saying "GPL-2.1" because the text was hand-written."""\n'),
+        (
+            "attribution.py",
+            "# Comments that credit a GPL reference implementation are attribution.\n",
+        ),
+        (
+            "guard_quote.py",
+            '"""The About box kept saying "GPL-2.1" because the text was hand-written."""\n',
+        ),
         ("colour.py", 'COLORS = {"dark_orange": "Dark Orange"}\n'),
         ("citation.py", "# follows VizRank (Leban et al. 2006, doi:10.1007/s10618-005-0031-5).\n"),
         ("mit.toml", 'license = "MIT"\n'),
@@ -196,8 +205,17 @@ def test_no_gpl_strings_or_orange_provenance_in_source():
 def test_the_guard_sees_the_banned_text(tmp_path):
     """The patterns catch every banned context, spelling and phrase."""
     hits = _sample_violations(tmp_path)
-    banned_files = {"spdx.py", "dunder.py", "pyproject.toml", "legacy.toml", "recipe.yaml",
-                    "boilerplate.py", "orange3.py", "orange_path.py", "ljubljana.py"}
+    banned_files = {
+        "spdx.py",
+        "dunder.py",
+        "pyproject.toml",
+        "legacy.toml",
+        "recipe.yaml",
+        "boilerplate.py",
+        "orange3.py",
+        "orange_path.py",
+        "ljubljana.py",
+    }
     seen_files = {hit.split(":", 1)[0] for hit in hits}
     assert seen_files == banned_files, f"missed: {sorted(banned_files - seen_files)}"
 
@@ -220,8 +238,17 @@ if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp_a, tempfile.TemporaryDirectory() as tmp_b:
         banned_hits = _sample_violations(pathlib.Path(tmp_a))
         clean_hits = _sample_clean(pathlib.Path(tmp_b))
-    expected = {"spdx.py", "dunder.py", "pyproject.toml", "legacy.toml", "recipe.yaml",
-                "boilerplate.py", "orange3.py", "orange_path.py", "ljubljana.py"}
+    expected = {
+        "spdx.py",
+        "dunder.py",
+        "pyproject.toml",
+        "legacy.toml",
+        "recipe.yaml",
+        "boilerplate.py",
+        "orange3.py",
+        "orange_path.py",
+        "ljubljana.py",
+    }
     if {hit.split(":", 1)[0] for hit in banned_hits} != expected:
         failures += 1
         print(f"FAIL detection self-check: {banned_hits}")

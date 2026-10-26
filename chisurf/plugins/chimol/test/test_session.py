@@ -39,7 +39,6 @@ _PDB = (
 )
 
 
-
 def _new_window():
     """A window on 148L, with the shared command layer pointed at it.
 
@@ -48,6 +47,7 @@ def _new_window():
     that set them earlier would silently stop hearing anything.
     """
     from native_window import NativeWindow
+
     win = NativeWindow()
     shared = win.cmd
     win.resize(1000, 700)

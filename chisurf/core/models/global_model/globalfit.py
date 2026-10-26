@@ -225,7 +225,9 @@ class GlobalFitModel(Model, Curve):
     def local_fit_rows(self) -> typing.List[dict]:
         """The local-fit table's rows (a method: a table ``source`` is called)."""
         labels = self._fit_labels()
-        return [{"name": labels.get(id(f), str(f.name)), "index": i} for i, f in enumerate(self.fits)]
+        return [
+            {"name": labels.get(id(f), str(f.name)), "index": i} for i, f in enumerate(self.fits)
+        ]
 
     @property
     def fit_names(self) -> typing.List[str]:

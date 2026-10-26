@@ -25,7 +25,16 @@ CATALOG = {
 }
 #: The core docks of the shell's outer dock manager. Start is not among them: it lives in the
 #: workspace (``shell.workspace_docks``), which is itself the core ``workspace`` dock.
-CORE = {"tools", "workspace", "log", "console", "data.read", "data.sets", "fit.analysis", "fit.plot"}
+CORE = {
+    "tools",
+    "workspace",
+    "log",
+    "console",
+    "data.read",
+    "data.sets",
+    "fit.analysis",
+    "fit.plot",
+}
 
 
 @pytest.fixture(autouse=True)

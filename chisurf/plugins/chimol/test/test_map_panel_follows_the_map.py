@@ -18,6 +18,7 @@ from native_window import process_events
 @pytest.fixture
 def window():
     from native_window import NativeWindow
+
     win = NativeWindow()
     win.resize(800, 600)
     for _ in range(4):

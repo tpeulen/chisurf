@@ -154,7 +154,9 @@ _PART_FIELDS = {
 @click.argument("burst_table", type=BurstTableParam(exists=True))
 @click.argument("stem", type=click.Path())
 @click.option("--sample", default="", help="Sample description written into the _meta file.")
-@click.option("--buffer", "buffer_", default="", help="Buffer description written into the _meta file.")
+@click.option(
+    "--buffer", "buffer_", default="", help="Buffer description written into the _meta file."
+)
 @click.option(
     "--parts",
     default="meta,hist_E,hist_S,hist_2D",

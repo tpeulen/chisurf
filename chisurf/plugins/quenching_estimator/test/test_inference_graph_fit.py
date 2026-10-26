@@ -39,7 +39,8 @@ class FakeSite:
         c = (1 - th["lam"]) * self.c[:, 0] + th["lam"] * self.c[:, 1]
         stick = np.exp(-0.3 * sum(n * th[f"ln_s_{g}"] for n, g in zip(self.n, GROUPS)))
         return np.exp(th["ln_scale"]) * (c @ np.asarray(th["kq"])) * stick * np.exp(
-            -0.3 * self.a * th["delta"]), c
+            -0.3 * self.a * th["delta"]
+        ), c
 
     def lifetime(self, th, tau0, water=0.0):
         k, c = self._rate(th)
@@ -49,8 +50,13 @@ class FakeSite:
         return float(tau), float(dark), self.e
 
     def exposure_profile(self, th, tau0, water=0.0):
-        return dict(exposure=self.exposure, weight=np.ones(1), visible=self.e,
-                    reachable=self.e, dark_fraction=self.lifetime(th, tau0, water)[1])
+        return dict(
+            exposure=self.exposure,
+            weight=np.ones(1),
+            visible=self.e,
+            reachable=self.e,
+            dark_fraction=self.lifetime(th, tau0, water)[1],
+        )
 
 
 class FakeLibrary:
@@ -66,12 +72,21 @@ class FakeLibrary:
         return self.sites[key]
 
 
-ROW = np.dtype([("site", "i8"), ("state", "U4"), ("solvent", "U3"), ("tau_x", "f8"),
-                ("sigma_meas", "f8")])
+ROW = np.dtype(
+    [("site", "i8"), ("state", "U4"), ("solvent", "U3"), ("tau_x", "f8"), ("sigma_meas", "f8")]
+)
 
-TRUTH = {"ln_s_common": -1.0, "ln_s_aromatic": -0.5, "ln_s_hydrophobic": -1.0,
-         "ln_s_basic": -2.0, "ln_s_acidic": -0.3, "ln_s_polar": -1.5,
-         "ln_scale": np.log(0.5), "delta": 0.5, "dtau_shield": 0.8}
+TRUTH = {
+    "ln_s_common": -1.0,
+    "ln_s_aromatic": -0.5,
+    "ln_s_hydrophobic": -1.0,
+    "ln_s_basic": -2.0,
+    "ln_s_acidic": -0.3,
+    "ln_s_polar": -1.5,
+    "ln_scale": np.log(0.5),
+    "delta": 0.5,
+    "dtau_shield": 0.8,
+}
 
 
 @pytest.fixture(scope="module")
@@ -86,8 +101,16 @@ def fit_settings():
 
 def _block(data, fit_settings, outlier_row=3, n=30, label="Cy3B synthetic"):
     sites = [FakeSite(1000 + k) for k in range(n)]
-    probe = gf.Block(label, "Cy3B", np.zeros(n, ROW), [(s, 0.0) for s in sites], 2.39,
-                     data.context, fit_settings, GROUPS)
+    probe = gf.Block(
+        label,
+        "Cy3B",
+        np.zeros(n, ROW),
+        [(s, 0.0) for s in sites],
+        2.39,
+        data.context,
+        fit_settings,
+        GROUPS,
+    )
     th = dict(probe.fixed, **TRUTH, ln_tau0=np.log(2.39), kq=data.context.kq("Cy3B"))
     rows = np.zeros(n, ROW)
     rows["site"] = np.arange(n) + 1
@@ -97,19 +120,27 @@ def _block(data, fit_settings, outlier_row=3, n=30, label="Cy3B synthetic"):
     rows["sigma_meas"] = 0.01
     if outlier_row is not None:
         rows["tau_x"][outlier_row] += 0.8
-    return gf.Block(label, "Cy3B", rows, [(s, 0.0) for s in sites], 2.39, data.context,
-                    fit_settings, GROUPS)
+    return gf.Block(
+        label, "Cy3B", rows, [(s, 0.0) for s in sites], 2.39, data.context, fit_settings, GROUPS
+    )
 
 
 def test_parameters_follow_the_declaration():
     fs = gf.settings()
     assert [p.name for p in gf.parameter_specs(fs)][:7] == [
-        "ln_s_common", "ln_s_aromatic", "ln_s_hydrophobic", "ln_s_basic", "ln_s_acidic",
-        "ln_s_polar", "ln_scale"]
+        "ln_s_common",
+        "ln_s_aromatic",
+        "ln_s_hydrophobic",
+        "ln_s_basic",
+        "ln_s_acidic",
+        "ln_s_polar",
+        "ln_scale",
+    ]
     assert gf.fixed_values("AF488", fs) == {"ln_static": np.log(1e-3), "delta_static": 0.0}
-    counts = {d: len(gf.free_names(
-        d, {**gf.fixed_values(d, fs), **gf.inactive_values("kernel", fs)}, fs))
-        for d in ("AF488", "Cy3B", "Atto655")}
+    counts = {
+        d: len(gf.free_names(d, {**gf.fixed_values(d, fs), **gf.inactive_values("kernel", fs)}, fs))
+        for d in ("AF488", "Cy3B", "Atto655")
+    }
     assert counts == {"AF488": 10, "Cy3B": 10, "Atto655": 12}
     assert "dtau_shield" not in gf.free_names("AF488", (), fs)
     quick = gf.settings("quick")
@@ -133,11 +164,20 @@ def test_every_parameter_has_a_term_and_one_rate_model_s_set():
         rate_model = "kernel"
 
     for model, site in (("kernel", KernelSite(1)), ("contact_shell", FakeSite(1))):
-        block = gf.Block("x", "Atto655", np.zeros(1, ROW), [(site, 0.0)], 3.69,
-                         st.load_analysis_data(library=FakeLibrary()).context, fs, GROUPS)
+        block = gf.Block(
+            "x",
+            "Atto655",
+            np.zeros(1, ROW),
+            [(site, 0.0)],
+            3.69,
+            st.load_analysis_data(library=FakeLibrary()).context,
+            fs,
+            GROUPS,
+        )
         assert block.rate_model == model
-        used, unused = (("ln_decay_length", "delta") if model == "kernel"
-                        else ("delta", "ln_decay_length"))
+        used, unused = (
+            ("ln_decay_length", "delta") if model == "kernel" else ("delta", "ln_decay_length")
+        )
         assert used in block.free and unused not in block.free
         assert unused in block.theta(np.zeros(len(block.free))) and unused not in block.fixed
     with pytest.raises(ValueError):
@@ -168,20 +208,25 @@ def test_search_joint_fit_and_laplace_recover_the_truth(data, fit_settings):
     assert graph.n_parameters == 9 + 8 and len(graph.k_keys) == 8
     gf.joint_fit(graph, workers=1)
     (view,) = gf.block_views(graph, "synthetic")
-    for label, truth, log in (("scale", 0.5, True), ("delta", 0.5, False),
-                              ("dtau_shield", 0.8, False), ("s_basic", np.exp(-2.0), True)):
+    for label, truth, log in (
+        ("scale", 0.5, True),
+        ("delta", 0.5, False),
+        ("dtau_shield", 0.8, False),
+        ("s_basic", np.exp(-2.0), True),
+    ):
         e = view.estimate(label)
         f = np.log if log else (lambda x: x)
         assert e["low"] < e["value"] < e["high"], (label, e)
         # the truth lies within three Laplace sds of the best fit
         sd = (f(e["high"]) - f(e["low"])) / 2
         assert abs(f(e["value"]) - f(truth)) < 3 * sd, (label, e)
-    assert view.stats["outliers"] == [4]          # row 3 is site 4
+    assert view.stats["outliers"] == [4]  # row 3 is site 4
     assert view.worst[0][0] == 4 and view.worst[0][1] > 10
     assert view.table["outlier"].sum() == 1 and not view.table["used"][3]
     assert view.estimate("lam")["note"].startswith("fixed")
-    assert set(view.table.dtype.names) == {c["column"] for c in
-                                           columns.columns("fit_predictions", gf.RESULT_COLUMNS)}
+    assert set(view.table.dtype.names) == {
+        c["column"] for c in columns.columns("fit_predictions", gf.RESULT_COLUMNS)
+    }
     # propagation: d scale = scale * d ln_scale
     value, sd = gf.propagate(view, lambda th: [np.exp(th["ln_scale"])])
     j = gf._layout_index(view, "ln_scale")
@@ -221,7 +266,7 @@ def test_one_pool_for_many_jacobians_and_the_polished_profile(data, fit_settings
         first = graph.jacobian(graph.u, pool=pool)[0]
         executor = pool.executor()
         second = graph.jacobian(graph.u, pool=pool)[0]
-        assert pool.executor() is executor          # the same processes
+        assert pool.executor() is executor  # the same processes
     assert pool._pool is None
     assert np.array_equal(one, first) and np.array_equal(first, second)
     # a held coordinate stays where it is
@@ -229,13 +274,15 @@ def test_one_pool_for_many_jacobians_and_the_polished_profile(data, fit_settings
     u = graph.u.copy()
     u[j] = 0.3
     held = gf.polish(graph, u, 5, 1e-12, workers=1, hold=[j])
-    assert held["u"][j] == 0.3 and held["cost"] <= 0.5 * float(graph.evaluate(u)[0] @
-                                                              graph.evaluate(u)[0])
+    assert held["u"][j] == 0.3 and held["cost"] <= 0.5 * float(
+        graph.evaluate(u)[0] @ graph.evaluate(u)[0]
+    )
     # the polished profile agrees with MINPACK's on this near-Gaussian posterior
     (view,) = gf.block_views(graph, "synthetic")
     polished = gf.profile_likelihood(view, workers=2)
-    graph.settings = dict(fit_settings, profile_likelihood=dict(
-        fit_settings["profile_likelihood"], method="minpack"))
+    graph.settings = dict(
+        fit_settings, profile_likelihood=dict(fit_settings["profile_likelihood"], method="minpack")
+    )
     minpack = gf.profile_likelihood(view, max_nfev=50)
     assert 0.0 <= polished["deviance"].min() < 0.05
     for key in ("low", "high"):
@@ -253,14 +300,24 @@ def test_factor_graph_of_the_male_layout(data):
     s = gf.describe_graph(graph, data.titrated)
     assert (s["variables"], s["likelihoods"], s["priors"], s["treewidth"]) == (48, 20, 3, 18)
     assert sorted((c["dyes"], c["slopes"]) for c in s["components"]) == [
-        (["AF488"], 0), (["Atto655", "Cy3B"], 17)]
+        (["AF488"], 0),
+        (["Atto655", "Cy3B"], 17),
+    ]
     assert gf.Graph(a.blocks("heavy_water"), a.fit_settings).n_parameters == 19
 
 
 def test_stages_build_every_declared_table(data, tmp_path):
-    a = st.Analysis(data, preset="quick", workers=1, fit_overrides=dict(
-        n_starts=2, search_maxiter=4, joint_max_nfev=2,
-        profile_likelihood=dict(points=3, span_sd=1.0, max_nfev=2)))
+    a = st.Analysis(
+        data,
+        preset="quick",
+        workers=1,
+        fit_overrides=dict(
+            n_starts=2,
+            search_maxiter=4,
+            joint_max_nfev=2,
+            profile_likelihood=dict(points=3, span_sd=1.0, max_nfev=2),
+        ),
+    )
     seen = []
     result = a.run("all", progress=lambda p, m: seen.append(p))
     assert list(result.stages) == st.stage_names() == ["A", "B", "naive_h2o", "C", "summary"]
@@ -271,8 +328,9 @@ def test_stages_build_every_declared_table(data, tmp_path):
     assert "compare_scale" in c.numbers and "profile" in c.numbers["compare_scale"]
     assert result.stages["naive_h2o"].numbers["n"] == 18
     assert len(result.stages["summary"].tables["dyes"]) == 3
-    assert {"parity:AF488 in H2O", "loo:Cy3B in H2O", "profile:AF488 in H2O",
-            "k_graph"} <= set(result.stages["A"].plots)
+    assert {"parity:AF488 in H2O", "loo:Cy3B in H2O", "profile:AF488 in H2O", "k_graph"} <= set(
+        result.stages["A"].plots
+    )
     json.dumps(result.to_dict())
     files = result.write(tmp_path)
     assert (tmp_path / "A.estimates.csv").exists() and (tmp_path / "report.md").exists()
@@ -283,8 +341,13 @@ def test_stages_build_every_declared_table(data, tmp_path):
 
 
 def test_cancel_stops_at_the_next_checkpoint(data):
-    a = st.Analysis(data, preset="quick", workers=1, profile=False,
-                    fit_overrides=dict(n_starts=3, search_maxiter=3))
+    a = st.Analysis(
+        data,
+        preset="quick",
+        workers=1,
+        profile=False,
+        fit_overrides=dict(n_starts=3, search_maxiter=3),
+    )
     calls = []
 
     def cancel():
@@ -313,8 +376,13 @@ def test_worker_processes_from_a_script_without_main_guard(tmp_path):
 
     script = tmp_path / "unguarded.py"
     script.write_text(UNGUARDED)
-    out = subprocess.run([sys.executable, str(script)], capture_output=True, text=True,
-                         timeout=600, cwd=str(tmp_path))
+    out = subprocess.run(
+        [sys.executable, str(script)],
+        capture_output=True,
+        text=True,
+        timeout=600,
+        cwd=str(tmp_path),
+    )
     assert out.returncode == 0, out.stderr[-3000:]
     assert "OK 18" in out.stdout
-    assert out.stdout.count("OK") == 1          # the workers did not re-run the script
+    assert out.stdout.count("OK") == 1  # the workers did not re-run the script

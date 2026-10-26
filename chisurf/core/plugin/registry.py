@@ -412,5 +412,3 @@ def resolve_plugin_statefulness(
     if mode in {"disabled", "force_disabled", "false"}:
         return False
     return manifest.statefulness.enabled
-
-

@@ -97,7 +97,11 @@ def _inside(frame, bounds) -> bool:
 
 def _float_fits(shell, driver):
     """Float the three fits, one asked for over the Tools dock, one past the window's edge."""
-    boxes = [(20.0, 150.0, 460.0, 320.0), (700.0, 350.0, 460.0, 320.0), (1300.0, 800.0, 460.0, 320.0)]
+    boxes = [
+        (20.0, 150.0, 460.0, 320.0),
+        (700.0, 350.0, 460.0, 320.0),
+        (1300.0, 800.0, 460.0, 320.0),
+    ]
     for key, box in zip(FITS, boxes):
         shell.docks.undock(key, box)
     driver.frame(3)
@@ -250,7 +254,10 @@ def test_tile_cascade_and_tabbed_arrange_the_fits_and_leave_the_tools_docked():
     assert ys == sorted(ys) and len(set(ys)) == 3 and docks.floating()[-1] == FITS[-1]
     _run_view(shell, "tab_windows")
     driver.frame(3)
-    assert set(FITS) <= set(shell.workspace_docks.docked("center")) and not shell.workspace_docks.floating()
+    assert (
+        set(FITS) <= set(shell.workspace_docks.docked("center"))
+        and not shell.workspace_docks.floating()
+    )
     assert all(docks.region_of(k) == TOOL_REGION for k in TOOLS)
 
 
@@ -342,10 +349,16 @@ def test_the_workspace_cannot_be_closed():
     docks = shell.docks
     docks.close_panels()
     driver.frame(4)
-    assert "center" in docks.region_boxes and docks.window("workspace").visible and not docks.window("workspace").closable
+    assert (
+        "center" in docks.region_boxes
+        and docks.window("workspace").visible
+        and not docks.window("workspace").closable
+    )
     assert shell.workspace_docks.workspace == "center"
     assert "Workspace" in {t[5].strip() for t in driver.painter.texts}
-    toggles = [a for _m, actions in shell.session_menus() for a in actions if a.key.startswith("dock.")]
+    toggles = [
+        a for _m, actions in shell.session_menus() for a in actions if a.key.startswith("dock.")
+    ]
     assert all("workspace" not in a.key and a.label != "Workspace" for a in toggles)
 
 

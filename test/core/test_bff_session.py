@@ -81,7 +81,9 @@ class TestBffSession(unittest.TestCase):
         self.assertEqual(len(bff.get_session().nodes), 2)
         restored_b = bff.get_session().get_node("NodeB")
         self.assertEqual(restored_b.get_input_port("in").get_link().name, "out")
-        self.assertAlmostEqual(restored_b.get_input_port("in").value, node_a.get_output_port("out").value)
+        self.assertAlmostEqual(
+            restored_b.get_input_port("in").value, node_a.get_output_port("out").value
+        )
         self.assertTrue(bytes(loaded.graph_session_bytes).startswith(b"{"))
 
     def test_storage_routes_carry_the_graph(self):

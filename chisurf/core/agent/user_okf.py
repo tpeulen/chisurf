@@ -113,7 +113,9 @@ def save_skill(title: str, body: str, triggers: str = "", *, directory=None) -> 
     target.parent.mkdir(parents=True, exist_ok=True)
     frontmatter = f"name: {slug}\ndescription: {title.strip()}\n"
     if triggers.strip():
-        frontmatter += f"triggers: [{', '.join(t.strip() for t in triggers.split(',') if t.strip())}]\n"
+        frontmatter += (
+            f"triggers: [{', '.join(t.strip() for t in triggers.split(',') if t.strip())}]\n"
+        )
     target.write_text(f"---\n{frontmatter}---\n\n{body.strip()}\n")
     return target
 
@@ -158,9 +160,18 @@ def build_tool_handler(registry: Any) -> None:
         parameters={
             "type": "object",
             "properties": {
-                "title": {"type": "string", "description": "What the skill is, e.g. 'Alice prefers E gating before fitting'."},
-                "body": {"type": "string", "description": "The procedure or preference, as concrete steps."},
-                "triggers": {"type": "string", "description": "Comma-separated words that should load it, e.g. 'burst, gate, smFRET'."},
+                "title": {
+                    "type": "string",
+                    "description": "What the skill is, e.g. 'Alice prefers E gating before fitting'.",
+                },
+                "body": {
+                    "type": "string",
+                    "description": "The procedure or preference, as concrete steps.",
+                },
+                "triggers": {
+                    "type": "string",
+                    "description": "Comma-separated words that should load it, e.g. 'burst, gate, smFRET'.",
+                },
             },
             "required": ["title", "body"],
         },

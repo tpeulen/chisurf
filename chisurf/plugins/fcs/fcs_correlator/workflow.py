@@ -98,7 +98,9 @@ class FcsWorkflow:
             setup_name, setups
         )
 
-    def set_files(self, checked: list, use_filter: bool, use_merger: bool, per_file: bool = False) -> None:
+    def set_files(
+        self, checked: list, use_filter: bool, use_merger: bool, per_file: bool = False
+    ) -> None:
         self.context.file_paths = [pathlib.Path(p) for p in checked]
         self.context.use_photon_filter = bool(use_filter) and filter_step_allowed(checked)
         self.context.use_fcs_merger = bool(use_merger)

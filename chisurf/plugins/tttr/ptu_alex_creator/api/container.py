@@ -8,6 +8,7 @@ intermediates in a temporary directory, deleted as soon as the container
 verifies. The ALEX Suite's alternation step and this plugin share this
 function; the suite does not keep its own copy.
 """
+
 from __future__ import annotations
 
 import pathlib

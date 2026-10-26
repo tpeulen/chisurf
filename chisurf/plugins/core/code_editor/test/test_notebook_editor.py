@@ -102,8 +102,11 @@ def test_plot_embeds_image_output(app, notebook_path):
     _, nb = _open(app, notebook_path)
     _run_all(nb)
     images = [
-        o for cell in nb.cells for o in cell.outputs
-        if o.get("output_type") in ("display_data", "execute_result") and "image/png" in o.get("data", {})
+        o
+        for cell in nb.cells
+        for o in cell.outputs
+        if o.get("output_type") in ("display_data", "execute_result")
+        and "image/png" in o.get("data", {})
     ]
     assert images
 

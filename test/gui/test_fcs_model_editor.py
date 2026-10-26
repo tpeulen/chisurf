@@ -27,10 +27,6 @@ def _make_fcs_fit(model_class):
     return fit_mod.Fit(model_class=model_class, data=_make_fcs_data())
 
 
-
-
-
-
 def test_mdf_bunching_terms_change_the_curve():
     from chisurf.core.models.fcs.mdf import MdfFCSModel
 
@@ -66,8 +62,6 @@ def test_mdf_wem_parameter_is_not_labeled_as_foerster_radius():
     assert "orster" not in (wem.description or "")
 
 
-
-
 def test_general_model_gauss_two_focus_suppresses_g0():
     """A known inter-focus separation (diam > 0) suppresses G(0) (Dertinger two-focus)."""
     from chisurf.core.models.fcs.general import GeneralFCSModel
@@ -84,10 +78,6 @@ def test_general_model_gauss_two_focus_suppresses_g0():
     g0_two_focus = float(np.asarray(model.y)[0])
 
     assert g0_two_focus < g0_single
-
-
-
-
 
 
 def test_general_model_two_focus_preset_is_suppressed_by_default():
@@ -180,8 +170,6 @@ def test_general_model_gauss_reports_shape_and_brightness_outputs():
     assert np.isnan(model.gauss._brightness.value)
 
 
-
-
 def test_general_model_equation_html_reflects_mode_and_terms():
     from chisurf.core.models.fcs.general import GeneralFCSModel
 
@@ -221,12 +209,6 @@ def test_mdf_model_equation_html_reflects_bunching_terms():
     with_term_eq = model.equation_html()
     assert with_term_eq != baseline_eq
     assert "a<sub>b1</sub>" in with_term_eq
-
-
-
-
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -325,5 +307,3 @@ def test_maxent_l_curve_is_finite_with_an_unset_fit_range(class_name):
     model.use_l_curve_corner()
     expected = np.log10(float(l_curve.reg[l_curve.corner_index]))
     assert float(model._reg.value) == pytest.approx(expected)
-
-

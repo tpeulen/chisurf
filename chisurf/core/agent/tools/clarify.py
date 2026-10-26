@@ -69,9 +69,7 @@ def _clean_questions(raw: Any) -> list[dict[str, Any]]:
         if isinstance(entry, str):
             entry = {"question": entry}
         if not isinstance(entry, dict) or not str(entry.get("question", "")).strip():
-            raise ToolError(
-                f"question {position} has no text — every entry needs a 'question'"
-            )
+            raise ToolError(f"question {position} has no text — every entry needs a 'question'")
         options = entry.get("options") or []
         if not isinstance(options, (list, tuple)):
             raise ToolError(f"question {position}: 'options' must be a list of strings")

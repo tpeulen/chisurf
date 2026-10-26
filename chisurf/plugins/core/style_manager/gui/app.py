@@ -61,6 +61,7 @@ class StyleManagerModel:
                 palette_for,
                 rgba,
             )
+
             scheme_name = concrete_scheme(THEME_SCHEME)
             scheme = COLOR_SCHEMES.get(scheme_name, COLOR_SCHEMES["Dark"])
             self.editor.config.background_color = rgba(scheme["paper_color"])
@@ -149,7 +150,9 @@ class StyleManagerModel:
         destination = self.styles_dir / name
         try:
             with destination.open("x", encoding="utf-8") as stream:
-                stream.write("/* EMTK Native Style Sheet */\n\n:root {\n    --window-bg: #242424;\n    --frame-bg: #2c2c2c;\n    --text: #f0f0f0;\n}\n\nwindow {\n    background-color: #242424;\n    color: #f0f0f0;\n}\n")
+                stream.write(
+                    "/* EMTK Native Style Sheet */\n\n:root {\n    --window-bg: #242424;\n    --frame-bg: #2c2c2c;\n    --text: #f0f0f0;\n}\n\nwindow {\n    background-color: #242424;\n    color: #f0f0f0;\n}\n"
+                )
             self.refresh()
             return self.load(destination, discard=True)
         except OSError as error:
@@ -229,14 +232,13 @@ class StyleManagerModel:
 
             from chisurf.core.settings.settings_utils import update_settings_section
 
-            persisted = update_settings_section("gui", {"style_sheet": self.current_file.name, "theme": theme_name})
-            self.status = (
-                f"Applied {self.current_file.name} to EMTK."
-                + (
-                    " The running application was restyled."
-                    if restyled
-                    else " Takes effect in the main window at the next launch."
-                )
+            persisted = update_settings_section(
+                "gui", {"style_sheet": self.current_file.name, "theme": theme_name}
+            )
+            self.status = f"Applied {self.current_file.name} to EMTK." + (
+                " The running application was restyled."
+                if restyled
+                else " Takes effect in the main window at the next launch."
             )
             if not persisted:
                 self.status += " Preference could not be saved."
@@ -313,12 +315,27 @@ class StylePreview:
             return []
         pushed = []
         for role in (
-            Col.WINDOW_BG, Col.TEXT, Col.BORDER, Col.FRAME_BG,
-            Col.BUTTON, Col.BUTTON_HOVERED, Col.BUTTON_ACTIVE,
-            Col.HEADER, Col.HEADER_HOVERED, Col.HEADER_ACTIVE,
-            Col.TAB, Col.TAB_SELECTED, Col.TITLE_BG, Col.TITLE_BG_ACTIVE,
-            Col.POPUP_BG, Col.MENU_BAR_BG, Col.SCROLLBAR_BG, Col.SCROLLBAR_GRAB,
-            Col.CHECK_MARK, Col.SLIDER_GRAB, Col.SLIDER_GRAB_ACTIVE,
+            Col.WINDOW_BG,
+            Col.TEXT,
+            Col.BORDER,
+            Col.FRAME_BG,
+            Col.BUTTON,
+            Col.BUTTON_HOVERED,
+            Col.BUTTON_ACTIVE,
+            Col.HEADER,
+            Col.HEADER_HOVERED,
+            Col.HEADER_ACTIVE,
+            Col.TAB,
+            Col.TAB_SELECTED,
+            Col.TITLE_BG,
+            Col.TITLE_BG_ACTIVE,
+            Col.POPUP_BG,
+            Col.MENU_BAR_BG,
+            Col.SCROLLBAR_BG,
+            Col.SCROLLBAR_GRAB,
+            Col.CHECK_MARK,
+            Col.SLIDER_GRAB,
+            Col.SLIDER_GRAB_ACTIVE,
             Col.TEXT_DISABLED,
         ):
             colour = style.colors.get(role)
@@ -380,7 +397,9 @@ class StylePreview:
         im.set_item_tooltip(note)
         changed, value = im.slider_float(tr("Slider") + "##preview", 0.4, 0.0, 1.0)
         im.set_item_tooltip(note)
-        changed, index = im.combo(tr("Combo") + "##preview", 0, [tr("First"), tr("Second"), tr("Third")])
+        changed, index = im.combo(
+            tr("Combo") + "##preview", 0, [tr("First"), tr("Second"), tr("Third")]
+        )
         im.set_item_tooltip(note)
         changed, text = im.input_text("##preview_field", tr("Input field"))
         im.set_item_tooltip(note)
@@ -490,7 +509,9 @@ class StyleManagerApp(ImApp):
         selected = m.files.index(m.current_file) if m.current_file in m.files else -1
         im.set_next_item_width(max(160, min(320, im.get_content_region_avail()[0] - 120)))
         changed, index = im.combo("Style File", selected, choices)
-        im.set_item_tooltip(tr("Browse the editable style sheets copied to your user settings directory"))
+        im.set_item_tooltip(
+            tr("Browse the editable style sheets copied to your user settings directory")
+        )
         self._remember("style_file")
         if changed:
             self.request_load(m.files[index])
@@ -535,7 +556,9 @@ class StyleManagerApp(ImApp):
         im.same_line()
         if im.button(tr("Reset styles")):
             self.pending = ("reset", None)
-        im.set_item_tooltip(tr("Confirm deletion of user custom style files and restore packaged defaults"))
+        im.set_item_tooltip(
+            tr("Confirm deletion of user custom style files and restore packaged defaults")
+        )
         self._remember("reset_styles")
         im.same_line()
         if action_button("guide"):
@@ -550,9 +573,7 @@ class StyleManagerApp(ImApp):
         avail = im.get_content_region_avail()
         preview_w = max(200.0, min(340.0, avail[0] * 0.38)) if avail[0] >= 560 else 0.0
         editor_w = avail[0] - preview_w - (8.0 if preview_w else 0.0)
-        im.text_editor(
-            "##style_source", m.editor, (max(120.0, editor_w), max(100, avail[1] - 8))
-        )
+        im.text_editor("##style_source", m.editor, (max(120.0, editor_w), max(100, avail[1] - 8)))
         self._remember("style_source")
         im.set_item_tooltip(
             tr(

@@ -148,7 +148,9 @@ def test_browse_rows_filters_detail_and_push_equal_the_qt_browser(ui, db, monkey
     ui.app.model.show(pid)
     detail = ui.app.model.detail
     assert detail["probe"]["chromophore_name"] == ref["detail_name"]
-    assert {k: v for k, v in detail["probe"].items() if not k.endswith("_at")} == ref["detail_probe"]
+    assert {k: v for k, v in detail["probe"].items() if not k.endswith("_at")} == ref[
+        "detail_probe"
+    ]
     assert detail["optical_properties"] == ref["detail_props"]
     for a, b in zip(detail["spectra"], ref["detail_spectra"]):
         assert a["spectrum_type"] == b["spectrum_type"]

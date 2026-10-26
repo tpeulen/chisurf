@@ -27,8 +27,14 @@ import numpy as np
 
 from . import graph_fit as _gf
 
-__all__ = ["block_posterior", "interval_overlap", "interval_verdict", "resolve",
-           "sampler_check", "text"]
+__all__ = [
+    "block_posterior",
+    "interval_overlap",
+    "interval_verdict",
+    "resolve",
+    "sampler_check",
+    "text",
+]
 
 #: Share of the narrower 68 % interval the two methods must share to agree.
 AGREE_ABOVE = 0.5
@@ -53,11 +59,11 @@ def block_posterior(view):
     index = [block.free.index(n) for n in names]
     lo, hi = block.lo[index], block.hi[index]
     best = block.best_x[index]
-    K = view.graph.thetas(view.graph.u)[1]          # the slopes at the joint fit's best
+    K = view.graph.thetas(view.graph.u)[1]  # the slopes at the joint fit's best
     s = block.s
     use = block.use
     tau_x = block.tau_x
-    sigma = np.sqrt(block.sigma_meas ** 2 + s ** 2)
+    sigma = np.sqrt(block.sigma_meas**2 + s**2)
     groups, ridge_sd = block.groups, block.ridge_sd
 
     def log_prob(x):
@@ -126,8 +132,16 @@ def resolve(flag=None, declared=None):
     return {**declared, "enabled": True} if flag and declared else None
 
 
-def sampler_check(view, steps=None, runs=None, walkers=None, start_spread=None,
-                  first_seed=None, cancel=None, progress=None):
+def sampler_check(
+    view,
+    steps=None,
+    runs=None,
+    walkers=None,
+    start_spread=None,
+    first_seed=None,
+    cancel=None,
+    progress=None,
+):
     """The cell-40-style comparison of one data set's MCMC and Laplace 68 % intervals.
 
     Parameters
@@ -176,11 +190,17 @@ def sampler_check(view, steps=None, runs=None, walkers=None, start_spread=None,
     for k in range(runs):
         _gf._check(cancel)
         seed = first_seed + k
-        start = np.clip(best + start_spread * (hi - lo)
-                        * np.random.default_rng(seed).standard_normal((walkers, len(names))),
-                        lo + 1e-9 * (hi - lo), hi - 1e-9 * (hi - lo))
-        sampler = EnsembleSampler(nwalkers=walkers, ndim=len(names), log_prob_fn=log_prob,
-                                  seed=seed)
+        start = np.clip(
+            best
+            + start_spread
+            * (hi - lo)
+            * np.random.default_rng(seed).standard_normal((walkers, len(names))),
+            lo + 1e-9 * (hi - lo),
+            hi - 1e-9 * (hi - lo),
+        )
+        sampler = EnsembleSampler(
+            nwalkers=walkers, ndim=len(names), log_prob_fn=log_prob, seed=seed
+        )
         sampler.run_mcmc(start, steps)
         chains.append(sampler.get_chain(discard=steps // 2, flat=True))
         acceptances.append(float(np.mean(sampler.acceptance_fraction)))
@@ -199,16 +219,31 @@ def sampler_check(view, steps=None, runs=None, walkers=None, start_spread=None,
         laplace = (to_internal(e["low_68"]), to_internal(e["high_68"]))
         sampler_interval = (to_internal(s_low), to_internal(s_high))
         overlap = interval_overlap(laplace, sampler_interval)
-        rows.append(dict(parameter=spec.label, best_fit=float(e["value"]),
-                         laplace_low_68=float(e["low_68"]), laplace_high_68=float(e["high_68"]),
-                         sampler_low_68=s_low, sampler_high_68=s_high,
-                         overlap=overlap, verdict=interval_verdict(overlap)))
+        rows.append(
+            dict(
+                parameter=spec.label,
+                best_fit=float(e["value"]),
+                laplace_low_68=float(e["low_68"]),
+                laplace_high_68=float(e["high_68"]),
+                sampler_low_68=s_low,
+                sampler_high_68=s_high,
+                overlap=overlap,
+                verdict=interval_verdict(overlap),
+            )
+        )
     mismatches = [r["parameter"] for r in rows if r["verdict"] != "agree"]
     return dict(
-        block=view.label, dye=view.dye, sampler="ensemble (stretch move)",
-        steps=steps, runs=runs, walkers=walkers, burn_in=steps // 2,
-        n_samples=int(len(samples)), acceptance=float(np.mean(acceptances)),
-        parameters=rows, mismatches=mismatches,
+        block=view.label,
+        dye=view.dye,
+        sampler="ensemble (stretch move)",
+        steps=steps,
+        runs=runs,
+        walkers=walkers,
+        burn_in=steps // 2,
+        n_samples=int(len(samples)),
+        acceptance=float(np.mean(acceptances)),
+        parameters=rows,
+        mismatches=mismatches,
         verdict="agree" if not mismatches else "mismatch: " + ", ".join(mismatches),
     )
 
@@ -225,15 +260,22 @@ def text(result):
     -------
     str
     """
-    head = (f"MCMC check of {result['block']}: {result['n_samples']} samples "
-            f"({result['runs']} run(s) x {result['walkers']} walkers x {result['steps']} steps, "
-            f"first half discarded, acceptance {100 * result['acceptance']:.0f} %) against the "
-            f"Laplace error bars.")
+    head = (
+        f"MCMC check of {result['block']}: {result['n_samples']} samples "
+        f"({result['runs']} run(s) x {result['walkers']} walkers x {result['steps']} steps, "
+        f"first half discarded, acceptance {100 * result['acceptance']:.0f} %) against the "
+        f"Laplace error bars."
+    )
     if result["verdict"] == "agree":
-        return (head + f" Verdict: {result['verdict']} -- the 68 % intervals share at least "
-                f"{100 * AGREE_ABOVE:.0f} % of the narrower interval for every fitted "
-                f"parameter, so the valley is as smooth as Laplace assumes.")
-    return (head + f" Verdict: {result['verdict']}: "
-            + ", ".join(result["mismatches"])
-            + " -- there the posterior is not the one smooth valley the Laplace approximation "
-              "assumes (the estimates' notes say how well the data determine each parameter).")
+        return (
+            head + f" Verdict: {result['verdict']} -- the 68 % intervals share at least "
+            f"{100 * AGREE_ABOVE:.0f} % of the narrower interval for every fitted "
+            f"parameter, so the valley is as smooth as Laplace assumes."
+        )
+    return (
+        head
+        + f" Verdict: {result['verdict']}: "
+        + ", ".join(result["mismatches"])
+        + " -- there the posterior is not the one smooth valley the Laplace approximation "
+        "assumes (the estimates' notes say how well the data determine each parameter)."
+    )

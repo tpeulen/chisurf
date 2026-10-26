@@ -195,8 +195,6 @@ def test_the_threshold_is_the_measured_one():
     assert adpcm.MIN_BLOCKS_FOR_GPU == 0
 
 
-
-
 # -- what is shipped ------------------------------------------------------
 
 
@@ -287,8 +285,6 @@ def test_every_game_event_maps_onto_a_clip_that_exists():
         pytest.skip("audio assets are not installed in this checkout")
     missing = {event: name for event, name in SOUNDS.items() if name not in names}
     assert missing == {}, missing
-
-
 
 
 def test_a_recorded_track_is_rendered_at_the_clip_rate_not_the_synth_rate():

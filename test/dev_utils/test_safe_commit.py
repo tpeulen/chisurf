@@ -13,8 +13,9 @@ from build_tools.dev_utils import safe_edit as se
 
 def _git(repo, *args):
     env = {k: v for k, v in os.environ.items() if k != "GIT_INDEX_FILE"}
-    return subprocess.run(["git", *args], cwd=repo, env=env, check=True,
-                          capture_output=True, text=True).stdout
+    return subprocess.run(
+        ["git", *args], cwd=repo, env=env, check=True, capture_output=True, text=True
+    ).stdout
 
 
 def _show(repo, rev, path):
@@ -137,8 +138,19 @@ def test_cli_paths_with_spaces(repo, capsys):
     d.mkdir()
     (d / "a b.txt").write_text("1\n")
     (d / "c.txt").write_text("2\n")
-    rc = se.main(["commit", "-m", "Spaces", "-m", "Body.",
-                  "--file", "dir with space/a b.txt", "--file", str(d / "c.txt")])
+    rc = se.main(
+        [
+            "commit",
+            "-m",
+            "Spaces",
+            "-m",
+            "Body.",
+            "--file",
+            "dir with space/a b.txt",
+            "--file",
+            str(d / "c.txt"),
+        ]
+    )
     assert rc == 0
     names = _git(repo, "show", "--name-only", "--format=", "HEAD").splitlines()
     assert sorted(names) == ["dir with space/a b.txt", "dir with space/c.txt"]

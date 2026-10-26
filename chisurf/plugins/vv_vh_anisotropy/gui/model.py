@@ -219,6 +219,7 @@ class AnisotropyModel:
             return
         shifted = self.shifted(vh, self.shift)
         from chisurf.plugins.vv_vh_g_factor.core.calculations import compute_rt
+
         r = compute_rt(
             vv,
             shifted,

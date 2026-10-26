@@ -80,7 +80,7 @@ Then take the **donor-only population** as well, whether or not it was asked
 for, because almost every downstream quantity needs a reference:
 
 ```python
-donor_only = bursts.PR < 0.2      # read the threshold off the histogram
+donor_only = bursts.PR < 0.2  # read the threshold off the histogram
 ```
 
 The low-PR peak is molecules whose acceptor is missing, bleached or dark.
@@ -91,7 +91,12 @@ separately prepared donor-only sample, and free.
 ## Say how many you kept
 
 ```python
-print(len(bursts[fret]), "bursts,", int(bursts[fret]["Number of Photons (green)"].sum()), "donor photons")
+print(
+    len(bursts[fret]),
+    "bursts,",
+    int(bursts[fret]["Number of Photons (green)"].sum()),
+    "donor photons",
+)
 ```
 
 Both numbers matter, and the photon count matters more. A narrow window on a

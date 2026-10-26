@@ -51,8 +51,16 @@ _MB = 1024 * 1024
 _PROC = psutil.Process() if psutil is not None else None
 _STATE = {"current": "<collection>", "rows": [], "last_rss": 0, "start_rss": 0}
 _FIELDS = (
-    "nodeid", "rss_mb", "tree_mb", "delta_mb", "threads", "thread_delta",
-    "children", "child_delta", "disk_mb", "tmp_mb",
+    "nodeid",
+    "rss_mb",
+    "tree_mb",
+    "delta_mb",
+    "threads",
+    "thread_delta",
+    "children",
+    "child_delta",
+    "disk_mb",
+    "tmp_mb",
 )
 _KEEP_LOGS = 50
 
@@ -126,7 +134,11 @@ def _log_path() -> Path:
     named = os.environ.get("CHISURF_TEST_RESOURCE_LOG")
     if named:
         return Path(named)
-    folder = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "chisurf" / "test-resources"
+    folder = (
+        Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+        / "chisurf"
+        / "test-resources"
+    )
     folder.mkdir(parents=True, exist_ok=True)
     # Many short runs (an agent's single test file) must not push a long run's record out
     # while it is still being read: keep the newest _KEEP_LOGS and anything under a day old.

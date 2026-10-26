@@ -41,9 +41,7 @@ EMTK_SPEC = json.loads((PLUGIN / "gui" / "frc_emtk.view.json").read_text(encodin
 HT3 = REPO / "test/data/clsm/PQ_Olympus_MFIS.ht3"
 BIG = (1200, 800)
 
-_make = importlib.util.spec_from_file_location(
-    "frc_make_data", DATA / "make_data.py"
-)
+_make = importlib.util.spec_from_file_location("frc_make_data", DATA / "make_data.py")
 assert _make is not None and _make.loader is not None, "data/make_data.py missing"
 _data = importlib.util.module_from_spec(_make)
 _make.loader.exec_module(_data)

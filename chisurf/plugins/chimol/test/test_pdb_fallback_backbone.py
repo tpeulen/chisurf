@@ -214,6 +214,7 @@ def test_hetero_records_survive_the_parser(parsed):
 def test_the_fallback_assigns_secondary_structure():
     """Without this the cartoon has nothing to shape and draws a loop tube."""
     from native_window import native_viewer
+
     structure, backbone = load_structure_payload(_FALLBACK_PDB, structure_factory=None)
     assert structure is None
 
@@ -236,5 +237,3 @@ def test_the_fallback_assigns_secondary_structure():
     # And the ribbon needs an up-vector per residue, or it twists arbitrarily.
     assert view._trace_ups is not None
     assert view._trace_ups.shape[0] == view._coords.shape[0]
-
-

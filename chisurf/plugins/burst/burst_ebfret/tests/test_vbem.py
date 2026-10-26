@@ -143,9 +143,7 @@ def test_an_h_step_without_traces_stays_nan_and_does_not_spin(monkeypatch):
     alone = dist.dirichlet_h_step(filled)
     calls.clear()
     with np.errstate(invalid="ignore"):
-        mixed = dist.dirichlet_h_step(
-            np.concatenate([filled, np.full((1, 3, 20), np.nan)], axis=0)
-        )
+        mixed = dist.dirichlet_h_step(np.concatenate([filled, np.full((1, 3, 20), np.nan)], axis=0))
     assert len(calls) < 200  # two per iteration; 2000 when the NaN row spun to max_iter
     np.testing.assert_allclose(mixed[:2], alone, rtol=1e-6)
     assert np.isnan(mixed[2]).all()

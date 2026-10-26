@@ -142,4 +142,3 @@ class TrackingModel(EmtkModelMixin, ImgTrackingViewModel):
             }
             for r in self.result.tracks_table()[:500]
         ]
-

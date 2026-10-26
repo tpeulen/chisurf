@@ -135,6 +135,7 @@ def read_legacy_table(path: str | Path) -> dict[str, np.ndarray]:
         data_rows.append(parts)
     if not data_rows:
         return {c: np.zeros(0) for c in header}
+
     # de-interleave: drop the all-zero filler rows that precede each data row
     def _is_zero_row(parts: list[str]) -> bool:
         try:
@@ -207,9 +208,7 @@ def dictionary_columns() -> dict[str, dict]:
     import re as _re
 
     text = path.read_text(errors="replace")
-    frame_pat = _re.compile(
-        r"save__mmfdb_burst_column\.([a-z0-9_]+)(.*?)save_", _re.DOTALL
-    )
+    frame_pat = _re.compile(r"save__mmfdb_burst_column\.([a-z0-9_]+)(.*?)save_", _re.DOTALL)
     terms: dict[str, dict] = {}
     for m in frame_pat.finditer(text):
         term, body = m.group(1), m.group(2)
@@ -271,9 +270,10 @@ class ImportReport:
             f"measurements: {len(self.stems)}",
         ]
         if self.unmapped_columns:
-            lines.append("unmapped columns: " + ", ".join(
-                f"{k}: {v}" for k, v in self.unmapped_columns.items() if v
-            ))
+            lines.append(
+                "unmapped columns: "
+                + ", ".join(f"{k}: {v}" for k, v in self.unmapped_columns.items() if v)
+            )
         return "\n".join(lines)
 
 
@@ -319,9 +319,9 @@ def convert_folder(
     """
     folder = Path(folder)
     if any(p.is_dir() for p in folder.glob("burstwise_*")):
-        measurement = folder          # given the measurement itself
+        measurement = folder  # given the measurement itself
     elif folder.name.startswith("burstwise_"):
-        measurement = folder.parent   # given one of its trees
+        measurement = folder.parent  # given one of its trees
     else:
         # a lone tree without the naming convention: its parent is the
         # measurement, the folder the only tree
@@ -353,7 +353,8 @@ def convert_measurement(
 
     folder = Path(folder)
     trees = sorted(
-        p for p in folder.iterdir()
+        p
+        for p in folder.iterdir()
         # a tree is a folder that holds the legacy subfolders; the deposition
         # tree names them `burstwise_*`, fixtures and local copies may not
         if p.is_dir() and (p / "bi4_bur").is_dir()
@@ -382,15 +383,14 @@ def convert_measurement(
     report = ImportReport()
     container = out_dir / f"{folder.name}.mmfdb.pto"
     if not dry_run and raw_by_stem:
-        _create_container(container, sorted(raw_by_stem.values(), key=lambda p: p.name),
-                          folder.name, raw_data)
+        _create_container(
+            container, sorted(raw_by_stem.values(), key=lambda p: p.name), folder.name, raw_data
+        )
         report.containers.append(str(container))
     elif dry_run:
         report.containers.append(str(container))
     # keep per-tree folder parameters reachable for callers (GUI summary)
-    report.parameters = {
-        tree.name: inventory["parameters"] for tree, inventory, _i, _m in per_tree
-    }
+    report.parameters = {tree.name: inventory["parameters"] for tree, inventory, _i, _m in per_tree}
 
     # all rollover files of one acquisition are ONE measurement: per tree
     # (threshold setting) the stems' tables concatenate into ONE bursts table
@@ -410,8 +410,14 @@ def convert_measurement(
         if not stems_here or dry_run:
             continue
         _write_concatenated(
-            container, stems_here, dictionary, info_params,
-            inventory["parameters"], report, write_burst_artifact, raw_data,
+            container,
+            stems_here,
+            dictionary,
+            info_params,
+            inventory["parameters"],
+            report,
+            write_burst_artifact,
+            raw_data,
         )
         wrote_any = True
     if wrote_any:
@@ -431,9 +437,7 @@ def _create_container(container, raws, title, raw_data):
     container = Path(container)
     if is_measurement(container):
         return
-    with Measurement.create(
-        raws, out_dir=container.parent, title=title, raw_data=raw_data
-    ) as m:
+    with Measurement.create(raws, out_dir=container.parent, title=title, raw_data=raw_data) as m:
         created = Path(m.path)
     if created != container:
         created.replace(container)
@@ -455,11 +459,10 @@ def _compact_container(container):
     target = container.with_name(container.name + ".compact")
     with Measurement.open(container, writable=True) as m:
         if not m._f.compact(str(target), False, 0.25):
-            raise BurstwiseImportError(
-                f"could not compact {container}: {m._f.error()}"
-            )
+            raise BurstwiseImportError(f"could not compact {container}: {m._f.error()}")
     container.unlink()
     target.replace(container)
+
 
 def _concat(table_paths: list[Path], dictionary, report, label):
     """Read, rename, and concatenate one role's tables across all stems.
@@ -486,8 +489,14 @@ def _concat(table_paths: list[Path], dictionary, report, label):
 
 
 def _write_concatenated(
-    container, stems_here, dictionary, info_params, folder_params, report,
-    write_burst_artifact, raw_data,
+    container,
+    stems_here,
+    dictionary,
+    info_params,
+    folder_params,
+    report,
+    write_burst_artifact,
+    raw_data,
 ):
     """Write one tree's analysis of the WHOLE measurement into the container.
 
@@ -525,13 +534,13 @@ def _write_concatenated(
     # folder_parameters is in the identity: one measurement has several trees
     # (thresholds); without it every tree's companions share one settings
     # hash and the second tree would REPLACE the first's fits.
-    roles_present = sorted(
-        {r for _stem, roles in stems_here for r in roles if r != "bursts"}
-    )
+    roles_present = sorted({r for _stem, roles in stems_here for r in roles if r != "bursts"})
     for role in roles_present:
         table, _ren = _concat(
             [roles[role] for _stem, roles in stems_here if role in roles],
-            dictionary, report, f"{label}/{role}",
+            dictionary,
+            report,
+            f"{label}/{role}",
         )
         write_burst_artifact(
             Path(container),

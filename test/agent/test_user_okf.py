@@ -33,7 +33,8 @@ def test_the_bundle_is_a_standard_okf(tmp_path):
 
 def test_write_concept_slugs_and_frontmatter(tmp_path):
     path = user_okf.write_concept(
-        "Burst window choice (xy data)", "delta t = 0.5 ms keeps 90% of bursts",
+        "Burst window choice (xy data)",
+        "delta t = 0.5 ms keeps 90% of bursts",
         root=tmp_path,
     )
     text = path.read_text()

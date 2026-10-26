@@ -29,13 +29,7 @@ SAMPLE = (
     / "burstwise_samples"
     / "burstwise_All 0.1066#60"
 )
-TTTR = (
-    pathlib.Path(__file__).resolve().parents[2]
-    / "test"
-    / "data"
-    / "clsm"
-    / "Leica_SP5.ptu"
-)
+TTTR = pathlib.Path(__file__).resolve().parents[2] / "test" / "data" / "clsm" / "Leica_SP5.ptu"
 
 pytestmark = pytest.mark.skipif(
     not SAMPLE.is_dir() or not TTTR.is_file(), reason="sample folder or TTTR fixture missing"
@@ -196,14 +190,17 @@ def test_instrument_files_are_stored_under_the_reader_that_reads_them(tmp_path: 
     ht3 = tmp_path / "a.ht3"
     ht3.write_bytes(b"x")
     assert _encoding_for(ht3) == "ht3" and _FORMAT_BY_SUFFIX[".ht3"] == "ht3"
-    for module, adc, want in (("SPC-630", "8 bits ADC", "spc-600_256"),
-                              ("SPC-630", "12 bits ADC", "spc-600_4096"),
-                              ("SPC-830", "12 bits ADC", "spc-130")):
+    for module, adc, want in (
+        ("SPC-630", "8 bits ADC", "spc-600_256"),
+        ("SPC-630", "12 bits ADC", "spc-600_4096"),
+        ("SPC-830", "12 bits ADC", "spc-130"),
+    ):
         spc = tmp_path / f"{module}_{adc[:2].strip()}.spc"
         spc.write_bytes(b"x")
         spc.with_suffix(".set").write_text(
             f"*IDENTIFICATION\n  Revision  : {adc}\n  Contents  : Setup file made by system "
-            f"at the end of FIFO measurement\n with module {module} (Ser.No. 3A0132)\n")
+            f"at the end of FIFO measurement\n with module {module} (Ser.No. 3A0132)\n"
+        )
         assert _encoding_for(spc) == want, (module, adc)
         assert _format_term(spc) == want.replace("-", "_")  # the dictionary's spelling
     # one .set per acquisition: the rollover files without their own take it

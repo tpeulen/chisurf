@@ -56,9 +56,7 @@ def test_the_chain_ids_are_in_the_row(rows):
 
 def test_a_small_structure_reads_the_same_way():
     chains = np.array(["A"] * 3 + ["B"] * 2)
-    built = sequence_rows_for_object(
-        "o1", "148l", list("ACDEF"), [1, 2, 3, 10, 11], [], chains
-    )
+    built = sequence_rows_for_object("o1", "148l", list("ACDEF"), [1, 2, 3, 10, 11], [], chains)
     assert len(built) == 1
     assert built[0].codes == "A ACDB EF"
     assert built[0].residue_indices == [-1, -1, 0, 1, 2, -1, -1, 3, 4]

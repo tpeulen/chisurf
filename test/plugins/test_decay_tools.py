@@ -35,11 +35,7 @@ def test_each_decay_tool_is_a_visible_decay_group_tool(rel, title):
 
 
 def test_only_unvalidated_tools_are_experimental():
-    flagged = {
-        rel
-        for rel in TOOLS
-        if load_manifest(ROOT / rel / "manifest.json").experimental
-    }
+    flagged = {rel for rel in TOOLS if load_manifest(ROOT / rel / "manifest.json").experimental}
     assert flagged == {"fluorescence_decay/lltf"}
 
 

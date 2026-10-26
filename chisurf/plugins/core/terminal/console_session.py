@@ -311,9 +311,7 @@ class ConsoleSession:
         reset = "\x1b[0m" if colour else ""
         self._out(f"{colour}{text}{reset}")
 
-    def _display(
-        self, data: dict, metadata: dict, kind: str, execution_count: int | None
-    ) -> None:
+    def _display(self, data: dict, metadata: dict, kind: str, execution_count: int | None) -> None:
         text = (data or {}).get("text/plain")
         if text is None and "text/html" in (data or {}):
             from chisurf.emtk.console import _html_as_text

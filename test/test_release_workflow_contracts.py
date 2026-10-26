@@ -140,9 +140,7 @@ def test_the_imp_bff_sdist_is_released_beside_every_installer():
     assert "if" not in upload
     assert upload["with"]["if-no-files-found"] == "error"
     assert upload["with"]["name"].startswith("imp-bff-sdist-")
-    package = next(
-        i for i, step in enumerate(build) if "build-installer" in step.get("run", "")
-    )
+    package = next(i for i, step in enumerate(build) if "build-installer" in step.get("run", ""))
     assert build.index(upload) > package
 
     release = _workflow("pixi-ci.yml")["jobs"]["release"]["steps"]
@@ -157,8 +155,11 @@ def test_the_imp_bff_sdist_is_released_beside_every_installer():
     files = gh["with"]["files"].split()
     source = f"{download['with']['path']}/*.tar.gz"
     assert source in files
-    assert {"artifacts/linux/*.AppImage", "artifacts/macos/*.dmg",
-            "artifacts/windows/*.exe"} <= set(files)
+    assert {
+        "artifacts/linux/*.AppImage",
+        "artifacts/macos/*.dmg",
+        "artifacts/windows/*.exe",
+    } <= set(files)
     assert gh["with"]["fail_on_unmatched_files"] == "true"
 
 
@@ -182,10 +183,14 @@ def test_the_installer_builds_the_sdist_and_names_it_in_the_notice():
         ("0.15.0a2.dev248+g127e1b104.d20261020", None, "127e1b104"),
         ("0.15.0", None, "v0.15.0"),
         ("ab5de21", None, "ab5de21"),
-        ("0.15.0a2.dev248+g127e1b104",
-         {"url": "https://github.com/tpeulen/IMP.bff.git",
-          "vcs_info": {"vcs": "git", "commit_id": "127e1b104e659add434992d24bdfb606c8c4ce8b"}},
-         "127e1b104e659add434992d24bdfb606c8c4ce8b"),
+        (
+            "0.15.0a2.dev248+g127e1b104",
+            {
+                "url": "https://github.com/tpeulen/IMP.bff.git",
+                "vcs_info": {"vcs": "git", "commit_id": "127e1b104e659add434992d24bdfb606c8c4ce8b"},
+            },
+            "127e1b104e659add434992d24bdfb606c8c4ce8b",
+        ),
     ],
 )
 def test_the_sdist_source_revision_is_the_bundled_one(version, direct_url, rev):

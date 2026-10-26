@@ -34,9 +34,7 @@ def merge_intervals(intervals) -> list[tuple[float, float]]:
 
 def times_s(tttr) -> np.ndarray:
     """Photon macro times in seconds."""
-    return np.asarray(tttr.macro_times, dtype=np.float64) * float(
-        tttr.header.macro_time_resolution
-    )
+    return np.asarray(tttr.macro_times, dtype=np.float64) * float(tttr.header.macro_time_resolution)
 
 
 def interval_mask(t: np.ndarray, intervals) -> np.ndarray:

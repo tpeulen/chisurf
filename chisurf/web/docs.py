@@ -56,17 +56,19 @@ DOC_SIDECAR = "review_status.json"
 
 #: Directory names that never ship, at any depth: maintainer material, build
 #: output, and the binary figures the reader cannot draw.
-SKIP_DIR_NAMES = frozenset({
-    "__pycache__",
-    "_build",
-    "_old_manual",
-    "_ext",
-    "development",
-    "figures",
-    "screenshots",
-    "images",
-    "_images",
-})
+SKIP_DIR_NAMES = frozenset(
+    {
+        "__pycache__",
+        "_build",
+        "_old_manual",
+        "_ext",
+        "development",
+        "figures",
+        "screenshots",
+        "images",
+        "_images",
+    }
+)
 
 
 def docs_source() -> pathlib.Path | None:

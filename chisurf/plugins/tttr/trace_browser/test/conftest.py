@@ -13,9 +13,7 @@ import sys
 import pytest
 
 #: (module, attribute) pairs holding the setups file path, fixed when the module is imported.
-_SETUPS_FILE_CONSTANTS = (
-    ("chisurf.core.data_io.detector_setups", "DETECTOR_SETUPS_FILE"),
-)
+_SETUPS_FILE_CONSTANTS = (("chisurf.core.data_io.detector_setups", "DETECTOR_SETUPS_FILE"),)
 #: (module, attribute) pairs holding a SetupTypeConfig whose ``canonical_file`` is that path.
 _SETUP_CONFIGS = (
     ("chisurf.core.setup_channel_definition", "CONFIG"),

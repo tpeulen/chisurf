@@ -134,7 +134,12 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> dict[st
             {
                 "demo": DEMO,
                 "sha256": _digest(folder),
-                "truth": {"g_factor": DEMO["g_factor"], "l1": DEMO.get("l1", 0.0), "l2": DEMO.get("l2", 0.0), "r0": DEMO["r0"]},
+                "truth": {
+                    "g_factor": DEMO["g_factor"],
+                    "l1": DEMO.get("l1", 0.0),
+                    "l2": DEMO.get("l2", 0.0),
+                    "r0": DEMO["r0"],
+                },
             },
             indent=2,
             sort_keys=True,

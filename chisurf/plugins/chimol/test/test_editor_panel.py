@@ -18,7 +18,6 @@ from emtk.testing import RecordingPainter
 _PDB = pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos" / "148l.pdb"
 
 
-
 @pytest.fixture
 def app():
     """The toolkit-free host over an offscreen canvas: a chrome, no window."""

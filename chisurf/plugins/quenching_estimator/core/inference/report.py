@@ -72,6 +72,7 @@ def explain(view, groups):
     """
     t = view.table
     d = t["tau_pred"] - t["tau_x"]
+
     def rng(label):
         e = view.estimate(label)
         return f"{_g(e['low'])}–{_g(e['high'])}"
@@ -79,30 +80,38 @@ def explain(view, groups):
     text = [f"**What the analysis says about {view.label}:**", ""]
     text.append(
         f"* The **best fit** reproduces the {len(t)} measured lifetimes with a typical deviation "
-        f"of **{np.median(np.abs(d)):.2f} ns** (rms {np.sqrt((d ** 2).mean()):.2f} ns); the "
+        f"of **{np.median(np.abs(d)):.2f} ns** (rms {np.sqrt((d**2).mean()):.2f} ns); the "
         f"model's own error is {view.model_error:.2f} ns. The typical prediction error (from the "
         f"error bars of all parameters, including the titrations) is "
-        f"{np.median(t['pred_sd']):.2f} ns.")
+        f"{np.median(t['pred_sd']):.2f} ns."
+    )
     if _determined(view, "scale"):
         e = view.estimate("scale")
         text.append(
             f"* **Quench strength:** contact quenching on the protein is **{_g(e['value'])}×** "
-            f"the value measured with free amino acids (68 %: {rng('scale')}).")
+            f"the value measured with free amino acids (68 %: {rng('scale')})."
+        )
         if "other regions" in e["note"] and "ln_scale" in view.block.free:
             i = view.block.free.index("ln_scale")
             best = view.searches[0][1]
             others = [np.exp(x[i]) for x, lp in view.searches[1:] if lp > best - 2.0]
-            text.append("  *Careful:* other searches found almost equally good fits with a "
-                        "quench scale of " + ", ".join(f"{_g(v)}×" for v in sorted(others)) + ".")
+            text.append(
+                "  *Careful:* other searches found almost equally good fits with a "
+                "quench scale of " + ", ".join(f"{_g(v)}×" for v in sorted(others)) + "."
+            )
     else:
-        text.append(f"* **Quench strength:** *not determined*: anything between "
-                    f"{rng('scale')}× the titration value fits.")
+        text.append(
+            f"* **Quench strength:** *not determined*: anything between "
+            f"{rng('scale')}× the titration value fits."
+        )
     found = [(g, view.estimate(f"s_{g}")["value"]) for g in groups if _determined(view, f"s_{g}")]
     if found:
         ranked = sorted(found, key=lambda x: x[1])
-        text.append("* **Stickiness** (smaller = stickier): "
-                    + ", ".join(f"{g} {_g(v)}" for g, v in ranked)
-                    + f". The dye sticks most to **{ranked[0][0]}** residues.")
+        text.append(
+            "* **Stickiness** (smaller = stickier): "
+            + ", ".join(f"{g} {_g(v)}" for g, v in ranked)
+            + f". The dye sticks most to **{ranked[0][0]}** residues."
+        )
     missing = [g for g in groups if not _determined(view, f"s_{g}")]
     if missing:
         text.append(f"* Not determined by these data: stickiness of {', '.join(missing)}.")
@@ -110,25 +119,37 @@ def explain(view, groups):
         delta = view.estimate("delta")["value"]
         text.append(
             f"* **Contact distance:** shifted by **{delta:+.1f} Å** ({rng('delta')} Å): "
-            + ("the dye must come *closer* than the textbook distance to be quenched."
-               if delta < 0 else "quenching reaches a bit *further* than the textbook distance."))
+            + (
+                "the dye must come *closer* than the textbook distance to be quenched."
+                if delta < 0
+                else "quenching reaches a bit *further* than the textbook distance."
+            )
+        )
     if _determined(view, "decay_length"):
         e = view.estimate("decay_length")
         text.append(
             f"* **Quenching range:** beyond the contact distance the rate falls e-fold every "
-            f"**{e['value']:.2f} Å** ({rng('decay_length')} Å).")
+            f"**{e['value']:.2f} Å** ({rng('decay_length')} Å)."
+        )
     dark = float(np.mean(t["dark_fraction"]))
     if dark > 0.02:
-        text.append(f"* **Invisible dye:** on average {100 * dark:.0f} % of the dye is dark "
-                    "(quenched faster than the shortest measurable lifetime, or in a static "
-                    "complex).")
+        text.append(
+            f"* **Invisible dye:** on average {100 * dark:.0f} % of the dye is dark "
+            "(quenched faster than the shortest measurable lifetime, or in a static "
+            "complex)."
+        )
     if "dtau_shield" in view.block.free:
         e = view.estimate("dtau_shield")
-        text.append(f"* **Brighter when shielded:** a dye position fully covered by protein lives "
-                    f"**{e['value']:.2f} ns** longer ({rng('dtau_shield')} ns).")
+        text.append(
+            f"* **Brighter when shielded:** a dye position fully covered by protein lives "
+            f"**{e['value']:.2f} ns** longer ({rng('dtau_shield')} ns)."
+        )
     bad = view.stats["outliers"]
-    text.append("* **Outliers** (a left-out site predicted more than 3 error bars off): "
-                + (", ".join(map(str, bad)) if bad else "none") + ".")
+    text.append(
+        "* **Outliers** (a left-out site predicted more than 3 error bars off): "
+        + (", ".join(map(str, bad)) if bad else "none")
+        + "."
+    )
     return "\n".join(text)
 
 
@@ -149,9 +170,16 @@ def dye_line(view, groups):
     e = view.estimate("scale")
     found = [(g, view.estimate(f"s_{g}")["value"]) for g in groups if _determined(view, f"s_{g}")]
     sticky = min(found, key=lambda x: x[1])[0] if found else "no group (not determined)"
-    return dict(dye=view.dye, block=view.label, scale=e["value"], scale_low=e["low"],
-                scale_high=e["high"], scale_note=e["note"], stickiest_group=sticky,
-                outliers=list(view.stats["outliers"]))
+    return dict(
+        dye=view.dye,
+        block=view.label,
+        scale=e["value"],
+        scale_low=e["low"],
+        scale_high=e["high"],
+        scale_note=e["note"],
+        stickiest_group=sticky,
+        outliers=list(view.stats["outliers"]),
+    )
 
 
 def summary_text(lines):
@@ -171,11 +199,15 @@ def summary_text(lines):
         if line["scale_note"].startswith("not determined"):
             scale = "quench scale not determined"
         else:
-            scale = (f"quench scale {_g(line['scale'])} "
-                     f"({_g(line['scale_low'])}–{_g(line['scale_high'])})")
+            scale = (
+                f"quench scale {_g(line['scale'])} "
+                f"({_g(line['scale_low'])}–{_g(line['scale_high'])})"
+            )
         bad = ", ".join(map(str, line["outliers"])) or "none"
-        out.append(f"* **{line['dye']}:** {scale}; stickiest near **{line['stickiest_group']}** "
-                   f"residues; outlier sites: {bad}.")
+        out.append(
+            f"* **{line['dye']}:** {scale}; stickiest near **{line['stickiest_group']}** "
+            f"residues; outlier sites: {bad}."
+        )
     return "\n".join(out)
 
 
@@ -192,12 +224,14 @@ def transfer_text(numbers, dye, solvent):
     -------
     str
     """
-    return (f"{dye} in {solvent} predicted from {numbers['source']} with the free dye's "
-            f"lifetime {numbers['tau0']:.2f} ns and no water term: typical distance "
-            f"**{numbers['median_abs_dev']:.2f} ns**; {numbers['sites_above_free_tau0']} of "
-            f"{numbers['n']} sites live longer than the free dye in {solvent}. On the protein the "
-            f"dye is shielded from water, so the free dye's water quenching overestimates it; the "
-            f"joint fit of both solvents (water = kq_w,free × exposure) is the test that counts.")
+    return (
+        f"{dye} in {solvent} predicted from {numbers['source']} with the free dye's "
+        f"lifetime {numbers['tau0']:.2f} ns and no water term: typical distance "
+        f"**{numbers['median_abs_dev']:.2f} ns**; {numbers['sites_above_free_tau0']} of "
+        f"{numbers['n']} sites live longer than the free dye in {solvent}. On the protein the "
+        f"dye is shielded from water, so the free dye's water quenching overestimates it; the "
+        f"joint fit of both solvents (water = kq_w,free × exposure) is the test that counts."
+    )
 
 
 def water_access_text(numbers):
@@ -213,9 +247,11 @@ def water_access_text(numbers):
     str
     """
     without = ", ".join(map(str, numbers["without"])) or "none"
-    return (f"**Water access per site** (1 = like the free dye): the model's values agree with "
-            f"the measured ones with r = {numbers['r_all']:.2f} (without {without}: "
-            f"{numbers['r_without']:.2f}).")
+    return (
+        f"**Water access per site** (1 = like the free dye): the model's values agree with "
+        f"the measured ones with r = {numbers['r_all']:.2f} (without {without}: "
+        f"{numbers['r_without']:.2f})."
+    )
 
 
 def profile_text(label, numbers):
@@ -232,12 +268,16 @@ def profile_text(label, numbers):
     str
     """
     lap = numbers["scale_laplace"]
-    text = (f"{label}: quench scale {_g(lap['median'])}× (Laplace: 68 % between "
-            f"{_g(lap['low'])}× and {_g(lap['high'])}×, a factor {lap['factor']:.1f} wide)")
+    text = (
+        f"{label}: quench scale {_g(lap['median'])}× (Laplace: 68 % between "
+        f"{_g(lap['low'])}× and {_g(lap['high'])}×, a factor {lap['factor']:.1f} wide)"
+    )
     prof = numbers.get("scale_profile")
     if prof:
-        text += (f"; profile likelihood {_g(prof['best'])}× ({_g(prof['low'])}–"
-                 f"{_g(prof['high'])}×, a factor {prof['high'] / prof['low']:.1f} wide)")
+        text += (
+            f"; profile likelihood {_g(prof['best'])}× ({_g(prof['low'])}–"
+            f"{_g(prof['high'])}×, a factor {prof['high'] / prof['low']:.1f} wide)"
+        )
     return text + "."
 
 
@@ -258,9 +298,12 @@ def compare_profiles(first, second, labels):
     w1 = np.log(first["high"] / first["low"])
     w2 = np.log(second["high"] / second["low"])
     if abs(w2 - w1) <= 0.1 * w1:
-        return (f"{labels[1]} gives the quench scale the same width as {labels[0]} "
-                f"(factor {np.exp(w2):.1f} vs {np.exp(w1):.1f}): adding the second solvent does "
-                f"not narrow it.")
+        return (
+            f"{labels[1]} gives the quench scale the same width as {labels[0]} "
+            f"(factor {np.exp(w2):.1f} vs {np.exp(w1):.1f}): adding the second solvent does "
+            f"not narrow it."
+        )
     verb = "narrows" if w2 < w1 else "widens"
-    return (f"{labels[1]} {verb} the quench scale from a factor {np.exp(w1):.1f} to "
-            f"{np.exp(w2):.1f}.")
+    return (
+        f"{labels[1]} {verb} the quench scale from a factor {np.exp(w1):.1f} to {np.exp(w2):.1f}."
+    )

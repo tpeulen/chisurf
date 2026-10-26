@@ -10,6 +10,7 @@ the same rows the CSV export writes.
 ndX lives in ChiSurf (``chisurf/modules/ndxplorer``). Without it installed
 (or bundled into the page) the window says so; nothing else depends on it.
 """
+
 from __future__ import annotations
 
 __all__ = ["NdxView"]
@@ -62,7 +63,9 @@ class NdxView:
         import numpy as np  # noqa: PLC0415
         from ndxplorer.core.data_source import DataSource  # noqa: PLC0415
 
-        source = DataSource.from_columns({k: np.asarray(v, dtype=np.float64) for k, v in columns.items()})
+        source = DataSource.from_columns(
+            {k: np.asarray(v, dtype=np.float64) for k, v in columns.items()}
+        )
         self.app.model.path = "smFRET bursts"
         self.app.model.set_source(source)
         if hasattr(self.app, "data_changed"):

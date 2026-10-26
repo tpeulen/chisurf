@@ -144,5 +144,5 @@ def test_the_emtk_column_declarations_carry_the_qt_priorities():
 def test_at_the_shell_dock_width_the_table_shows_the_bounds(params):
     """460 px is a third of the emtk shell (474 px was the Qt dock it replaced):
     the table still shows Lo / Hi / Bounds there (final shell parity pass, 2026-10-14)."""
-    (name, seen), = (("emtk", _emtk_columns(params, [460])),)
+    ((name, seen),) = (("emtk", _emtk_columns(params, [460])),)
     assert "bounds_lo" in seen[0] and "bounds_on" in seen[0], (name, seen)

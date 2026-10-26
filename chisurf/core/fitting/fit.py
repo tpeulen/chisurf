@@ -1027,7 +1027,9 @@ class Fit(cs.core.base.Base):
             else:
                 interval = f"[{est['low']:.5g}, {est['high']:.5g}]"
             method = method_text.get(est["method"], est["method"])
-            lines.append(f"    {est['name']:<32s}  {est['value']:<11.5g}  {interval:<27s}  {method}")
+            lines.append(
+                f"    {est['name']:<32s}  {est['value']:<11.5g}  {interval:<27s}  {method}"
+            )
             if "skewed" in (est.get("warning") or ""):
                 skewed.append(est["name"])
         if skewed:

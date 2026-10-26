@@ -72,7 +72,10 @@ Context manager providing a temporary .ini file with the given text.
 ## Usage
 
 ```python
-from chisurf.plugins.core.acq.tcspc_devices.bh_spc.bh_spc_wrapper import TCSPCDevice, DLLOperationMode
+from chisurf.plugins.core.acq.tcspc_devices.bh_spc.bh_spc_wrapper import (
+    TCSPCDevice,
+    DLLOperationMode,
+)
 ```
 # Create a TCSPC device
 device = TCSPCDevice()

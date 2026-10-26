@@ -173,7 +173,9 @@ class TestVvVhAnisotropyDeprecation:
         manifest = load_manifest(self.manifest_path)
         assert manifest is not None
         assert manifest.deprecated is True
-        assert manifest.menu_hidden is False  # reachable from Spectroscopy > Decay, marked deprecated
+        assert (
+            manifest.menu_hidden is False
+        )  # reachable from Spectroscopy > Decay, marked deprecated
         assert "G-Factor" in manifest.deprecation_message
 
     def test_the_module_does_not_restate_the_manifest_wording(self):

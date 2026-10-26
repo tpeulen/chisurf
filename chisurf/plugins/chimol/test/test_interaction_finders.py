@@ -383,6 +383,7 @@ def test_a_protein_without_halogens_reports_none(protein):
 # Through the command layer -- the modes PyMOL's own menu sends
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def cmd(tmp_path):
     """A loaded window with the command layer wired to it."""
@@ -390,6 +391,7 @@ def cmd(tmp_path):
 
     from chimol.commands.command import Cmd
     from native_window import NativeWindow
+
     if not PDB.is_file():
         pytest.skip("no 148l fixture")
     pdb = tmp_path / "148l.pdb"

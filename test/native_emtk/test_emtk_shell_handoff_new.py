@@ -12,10 +12,19 @@ from emtk.testing_realistic import RealisticDriver
 
 from chisurf.emtk.main_app import EmtkShellApp
 
-CATALOG = {"ndxplorer": {
-    "display_name": "Tools:Views:ndX", "entrypoints": {"emtk": "x:y"},
-    "accepts": [{"name": "open_path", "required": ["path"],
-                 "receive": "test.native_emtk.test_emtk_shell_handoff_new:receive"}]}}
+CATALOG = {
+    "ndxplorer": {
+        "display_name": "Tools:Views:ndX",
+        "entrypoints": {"emtk": "x:y"},
+        "accepts": [
+            {
+                "name": "open_path",
+                "required": ["path"],
+                "receive": "test.native_emtk.test_emtk_shell_handoff_new:receive",
+            }
+        ],
+    }
+}
 RECEIVED: list = []
 
 

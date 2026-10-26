@@ -98,7 +98,11 @@ def make_app():
         pick_target = "donor"
         #: ``(key, caption, tooltip)`` of the window's pages.
         PAGES = (
-            ("forward", "Forward model", "Simulate the decay of a dye at one site from the structure."),
+            (
+                "forward",
+                "Forward model",
+                "Simulate the decay of a dye at one site from the structure.",
+            ),
             (
                 "analysis",
                 "Analysis",
@@ -153,7 +157,9 @@ def make_app():
             return super().animating() or self.analysis.animating()
 
         def next_frame_in(self):
-            times = [t for t in (super().next_frame_in(), self.analysis.next_frame_in()) if t is not None]
+            times = [
+                t for t in (super().next_frame_in(), self.analysis.next_frame_in()) if t is not None
+            ]
             return min(times) if times else None
 
         def on_files_dropped(self, paths) -> bool:
@@ -162,7 +168,11 @@ def make_app():
             return super().on_files_dropped(paths)
 
         def export_settings(self) -> dict:
-            return {**super().export_settings(), "page": self.page, "analysis": self.analysis.export_settings()}
+            return {
+                **super().export_settings(),
+                "page": self.page,
+                "analysis": self.analysis.export_settings(),
+            }
 
         def restore_settings(self, settings: dict) -> None:
             super().restore_settings(settings)

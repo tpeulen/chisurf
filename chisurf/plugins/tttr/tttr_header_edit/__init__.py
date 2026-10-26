@@ -32,4 +32,3 @@ that persists arbitrary edited header tags without loss.
 icon = "🏷️"
 
 name = "File:Data:TTTR Header editor"
-

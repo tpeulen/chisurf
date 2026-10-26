@@ -98,9 +98,7 @@ def test_the_chain_recovers_the_distance_on_pie(context, pie_file):
 
 def test_correction_factors_are_reported_and_applied(context, pie_file):
     """Partial factor dicts work (neutrals filled), and what was used is reported."""
-    result = _analyse(
-        context, pie_file, correct=True, factors={"gamma": 1.0, "alpha": 0.06}
-    )
+    result = _analyse(context, pie_file, correct=True, factors={"gamma": 1.0, "alpha": 0.06})
     assert result["corrected"] is not None
     assert 0.6 < result["corrected"]["E"]["p50"] < 0.9
     # The tool filled the missing factors with the neutral values and reports

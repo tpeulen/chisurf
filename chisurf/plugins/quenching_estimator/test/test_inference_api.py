@@ -86,12 +86,21 @@ def test_a_run_writes_the_declared_tables_and_a_run_record(tmp_path):
 
 
 def test_the_rpc_round_trip_returns_the_in_process_estimates():
-    native = api.analyse("B", preset="quick", fit_overrides=TINY, workers=1, profile=False,
-                         save_outputs=False)
+    native = api.analyse(
+        "B", preset="quick", fit_overrides=TINY, workers=1, profile=False, save_outputs=False
+    )
     client = local_client()
-    envelope = client.call("quest.analysis.run", dict(
-        stages=["B"], preset="quick", fit_overrides=TINY, workers=1, profile=False,
-        save_outputs=False))
+    envelope = client.call(
+        "quest.analysis.run",
+        dict(
+            stages=["B"],
+            preset="quick",
+            fit_overrides=TINY,
+            workers=1,
+            profile=False,
+            save_outputs=False,
+        ),
+    )
     assert envelope["ok"], envelope
     wire = _wire(envelope["result"])
     _validate(wire, _schema("quest.analysis.run", "result_schema"))
@@ -99,8 +108,9 @@ def test_the_rpc_round_trip_returns_the_in_process_estimates():
     remote = wire["result"]["stages"]["B"]
     local = native["result"].stages["B"].tables["estimates"]
     assert [r["parameter"] for r in remote["tables"]["estimates"]] == list(local["parameter"])
-    np.testing.assert_allclose([r["value"] for r in remote["tables"]["estimates"]],
-                               local["value"], rtol=1e-12)
+    np.testing.assert_allclose(
+        [r["value"] for r in remote["tables"]["estimates"]], local["value"], rtol=1e-12
+    )
     assert "parity:Atto655 in D2O" in remote["plots"] and remote["text"]
     # the finished job answers quest.analysis.result from memory, with the same numbers
     again = _wire(client.result("quest.analysis.result", {"job_id": wire["job_id"]}))
@@ -108,28 +118,38 @@ def test_the_rpc_round_trip_returns_the_in_process_estimates():
 
 
 def test_a_stored_run_is_read_back_from_disk(tmp_path):
-    reply = api.analyse("B", preset="quick", fit_overrides=TINY, workers=1, profile=False,
-                        project_dir=tmp_path)
+    reply = api.analyse(
+        "B", preset="quick", fit_overrides=TINY, workers=1, profile=False, project_dir=tmp_path
+    )
     tasks._DEFAULT = tasks.JobManager()  # a new server: the job is no longer in memory
     stored = api.analysis_result(reply["job_id"], project_dir=tmp_path)
     assert stored["status"] == "completed" and stored["directory"] == reply["directory"]
     table = stored["result"]["stages"]["B"]["tables"]["estimates"]
     assert [r["parameter"] for r in table] == list(
-        reply["result"].stages["B"].tables["estimates"]["parameter"])
+        reply["result"].stages["B"].tables["estimates"]["parameter"]
+    )
     assert stored["result"]["run"]["kind"] == "analysis"
 
 
 def test_a_continued_job_reuses_the_solved_graph():
-    first = api.analyse("B", preset="quick", fit_overrides=TINY, workers=1, profile=False,
-                        save_outputs=False)
+    first = api.analyse(
+        "B", preset="quick", fit_overrides=TINY, workers=1, profile=False, save_outputs=False
+    )
     second = api.analyse("naive_h2o", continue_from=first["job_id"], save_outputs=False)
     assert second["result"].graphs["heavy_water"] is first["result"].graphs["heavy_water"]
     assert list(second["result"].stages) == ["B", "naive_h2o"]
 
 
 def test_a_background_job_reports_progress_and_can_be_cancelled():
-    started = api.analyse("A", preset="quick", workers=1, profile=False, save_outputs=False,
-                          fit_overrides=dict(n_starts=64, search_maxiter=200), background=True)
+    started = api.analyse(
+        "A",
+        preset="quick",
+        workers=1,
+        profile=False,
+        save_outputs=False,
+        fit_overrides=dict(n_starts=64, search_maxiter=200),
+        background=True,
+    )
     job_id = started["job_id"]
     assert started["background"] and started["status"] in ("queued", "running")
     assert job_id in [j["job_id"] for j in api.client().result("quest.jobs.list")["jobs"]]
@@ -148,13 +168,16 @@ def test_a_background_job_reports_progress_and_can_be_cancelled():
     assert cancelled.value.error_code == "operation_cancelled"
 
 
-@pytest.mark.parametrize("params, needle", [
-    (dict(stages=["Z"]), "Unknown stage"),
-    (dict(preset="slow"), "Unknown fit preset"),
-    (dict(fit_overrides={"no_such": 1}), "Undeclared fit setting"),
-    (dict(data="/no/such/folder"), "not found"),
-    (dict(continue_from="00000000-0000-0000-0000-000000000000"), "No finished analysis job"),
-])
+@pytest.mark.parametrize(
+    "params, needle",
+    [
+        (dict(stages=["Z"]), "Unknown stage"),
+        (dict(preset="slow"), "Unknown fit preset"),
+        (dict(fit_overrides={"no_such": 1}), "Undeclared fit setting"),
+        (dict(data="/no/such/folder"), "not found"),
+        (dict(continue_from="00000000-0000-0000-0000-000000000000"), "No finished analysis job"),
+    ],
+)
 def test_malformed_inputs_fail_before_any_work(params, needle):
     with pytest.raises(RemoteError) as err:
         api.client().result("quest.analysis.run", params)
@@ -167,14 +190,16 @@ def test_the_site_table_summary(monkeypatch, tmp_path):
 
     seen = {}
 
-    def fake_site_table(structure, site, linker_length, chain=None, settings_=None,
-                        cache_dir=None):
+    def fake_site_table(structure, site, linker_length, chain=None, settings_=None, cache_dir=None):
         seen.update(structure=structure, site=site, linker_length=linker_length)
         n_types = len(st.residue_types(settings_))
-        return st.SiteTable(neighbours=np.ones((4, n_types), np.int8),
-                            contacts=np.zeros((4, 1, 1, 2), np.float16),
-                            exposure=np.array([0.1, 0.2, 0.3, 0.4], np.float32),
-                            meta={"dg": 0.5}, path=tmp_path / "t.npz")
+        return st.SiteTable(
+            neighbours=np.ones((4, n_types), np.int8),
+            contacts=np.zeros((4, 1, 1, 2), np.float16),
+            exposure=np.array([0.1, 0.2, 0.3, 0.4], np.float32),
+            meta={"dg": 0.5},
+            path=tmp_path / "t.npz",
+        )
 
     monkeypatch.setattr(st, "site_table", fake_site_table)
     summary = _wire(api.site_table("APO", 72, dye="Atto655"))

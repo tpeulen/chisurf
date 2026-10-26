@@ -90,7 +90,6 @@ def _scene_fingerprint(scene):
     return out
 
 
-
 @pytest.mark.parametrize("script", SCRIPTS, ids=lambda s: s[1].replace(" ", "_"))
 def test_headless_scene_matches_the_drawn_scene(script):
     """A windowless viewer and a windowed one must assemble identical geometry.

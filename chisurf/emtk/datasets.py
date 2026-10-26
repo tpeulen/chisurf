@@ -453,9 +453,7 @@ def publish_fit_group(group, dataset, model_name):
             "fit_group_name": name,
             "dataset_name": getattr(dataset, "name", ""),
             "model_name": model_name,
-            "dataset_indices": [
-                i for i, item in enumerate(datasets) if item is dataset
-            ],
+            "dataset_indices": [i for i, item in enumerate(datasets) if item is dataset],
         },
         source_uid=uid,
     )

@@ -110,6 +110,7 @@ def test_detaching_restores_execute_only_if_still_ours():
     rec = MacroRecorder()
     rec.attach(d)
     original = rec._original_execute
+
     def someone_elses(*a, **k):  # the point of the test: a foreign replacement
         return None
 

@@ -29,7 +29,6 @@ _PDB = (
 REPRESENTATIONS = ("cartoon", "sticks", "spheres", "surface", "lines")
 
 
-
 @pytest.fixture(scope="module")
 def scenes():
     """One assembled Scene per representation, built without a display."""

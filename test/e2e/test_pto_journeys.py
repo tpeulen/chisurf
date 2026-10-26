@@ -114,8 +114,7 @@ class Journeys:
         """Assert the affordance *key* is drawn, then click it."""
         rects = getattr(app, "item_rects", None) or {}
         assert key in rects, (
-            f"dead end: '{key}' is not drawn by {type(app).__name__} "
-            f"(drawn: {sorted(rects)[:24]})"
+            f"dead end: '{key}' is not drawn by {type(app).__name__} (drawn: {sorted(rects)[:24]})"
         )
         assert rects[key][2] > 0 and rects[key][3] > 0, f"'{key}' has no area"
         self.drive(app).click(key)
@@ -233,8 +232,10 @@ class Journeys:
         )
         assert "add_files" in selection.item_rects, "the Add-files affordance is missing"
         self.state.update(burst_tool=selection, burst_hosted=hosted, hub=tool)
-        return {"hub_children": sorted(tool.children),
-                "affordances": sorted(selection.item_rects)[:12]}
+        return {
+            "hub_children": sorted(tool.children),
+            "affordances": sorted(selection.item_rects)[:12],
+        }
 
     def container_open(self):
         """W1 leg 1: Add files -> the demo .pto -> the run appears; no sibling folder needed."""
@@ -314,7 +315,11 @@ class Journeys:
         populations = result.get("components") or []
         assert populations, f"the GMM fit produced no populations ({m.status_text})"
         self.grab("w1_gmm")
-        return {"populations": len(populations), "n": result.get("n"), "status": m.status_text[:120]}
+        return {
+            "populations": len(populations),
+            "n": result.get("n"),
+            "status": m.status_text[:120],
+        }
 
     def decay_from_bursts(self):
         """W2 leg 1: Decay from selected bursts -> decay beside the run AND a dataset."""
@@ -348,9 +353,7 @@ class Journeys:
         model_names = panel.model_names()
         assert model_names, "dead end: no fit model offered for a decay dataset"
         decay_models = [
-            n
-            for n in model_names
-            if any(w in n.lower() for w in ("lifetime", "decay", "expo"))
+            n for n in model_names if any(w in n.lower() for w in ("lifetime", "decay", "expo"))
         ]
         assert decay_models, f"dead end: no decay model among {model_names[:8]}"
         panel.model = decay_models[0]
@@ -393,9 +396,15 @@ class Journeys:
         ctrl.apply_pairs(_json.dumps([{"pair_name": "ACF_green", "chs_a": [0], "chs_b": [0]}]))
         self._dialog_feed = [str(self.state["pto"])]
         key = next((k for k in ("add_files", "open") if k in fcs.item_rects), None)
-        assert key, f"dead end: no add-files affordance in the FCS window ({sorted(fcs.item_rects)[:12]})"
+        assert key, (
+            f"dead end: no add-files affordance in the FCS window ({sorted(fcs.item_rects)[:12]})"
+        )
         self.click(fcs, key)
-        self.wait_for(lambda: len(getattr(ctrl, "files", []) or []) > 0, timeout=60, what="the container in the FCS input list")
+        self.wait_for(
+            lambda: len(getattr(ctrl, "files", []) or []) > 0,
+            timeout=60,
+            what="the container in the FCS input list",
+        )
         self.wait_for(lambda: ctrl.run_rows() or None, timeout=120, what="the FCS run picker")
         ctrl.select_run(ctrl.run_rows()[-1])
         ctrl._on_run()
@@ -466,7 +475,8 @@ class Journeys:
             "project": str(project_path),
             "datasets_before": before,
             "datasets_after": after,
-            "fits_before": n_fits_before, "fits_after": len(app.data.datasets.fit_rows()),
+            "fits_before": n_fits_before,
+            "fits_after": len(app.data.datasets.fit_rows()),
         }
 
 

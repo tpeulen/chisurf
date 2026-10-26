@@ -86,9 +86,7 @@ def test_typing_reaches_the_real_child():
 def test_close_kills_the_real_sessions():
     from chisurf.plugins.core.terminal.session import spawn
 
-    app, _driver = make_app(
-        _python_argv("import time; time.sleep(120)")
-    )
+    app, _driver = make_app(_python_argv("import time; time.sleep(120)"))
     sessions = [pane.session for pane in app.workspace.panes.values()]
     app.close()
     deadline = time.monotonic() + 5.0
@@ -131,8 +129,7 @@ def _make_shell(monkeypatch):
         made[plugin_id] = app
         return app
 
-    shell = EmtkShellApp(catalog, loader=loader, console_history=False,
-                         console_session_file=False)
+    shell = EmtkShellApp(catalog, loader=loader, console_history=False, console_session_file=False)
     return shell, made
 
 
@@ -203,9 +200,7 @@ def test_the_manifest_declares_the_entrypoint():
     import pathlib
 
     manifest = json.loads(
-        (
-            pathlib.Path(__file__).resolve().parents[1] / "manifest.json"
-        ).read_text(encoding="utf-8")
+        (pathlib.Path(__file__).resolve().parents[1] / "manifest.json").read_text(encoding="utf-8")
     )
     assert manifest["id"] == "terminal"
     assert manifest["entrypoints"]["emtk"].endswith(":make_app")
@@ -216,9 +211,7 @@ def test_the_manifest_declares_the_entrypoint():
 def test_the_native_factory_resolves():
     from chisurf.emtk.plugins import native_factory
 
-    assert native_factory("terminal") == (
-        "chisurf.plugins.core.terminal.app:make_app"
-    )
+    assert native_factory("terminal") == ("chisurf.plugins.core.terminal.app:make_app")
 
 
 def test_the_python_console_entrypoint_resolves_and_menus_list_it():

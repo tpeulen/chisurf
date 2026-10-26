@@ -202,8 +202,7 @@ def test_every_host_consumes_the_registry():
             return True
         parents = set(re.findall(r"^from \.\.(\w+)(?:\.\w+)* import", text, re.M))
         return any(
-            consumes(parent, seen | {name})
-            for parent in parents & set(sources) - seen - {name}
+            consumes(parent, seen | {name}) for parent in parents & set(sources) - seen - {name}
         )
 
     for name in sources:

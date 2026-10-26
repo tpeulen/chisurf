@@ -53,7 +53,9 @@ fd0 = result.donor_counts.astype(float)
 fda = result.fret_counts.astype(float)
 usable = (fd0 > 20.0) & (t > 0.5) & (t < 20.0)
 et = 1.0 - fda[usable] / fd0[usable]
-print(f"  E(t) early ({t[usable][0]:.1f} ns) {et[0]:.3f}, late ({t[usable][-1]:.1f} ns) {et[-1]:.3f}")
+print(
+    f"  E(t) early ({t[usable][0]:.1f} ns) {et[0]:.3f}, late ({t[usable][-1]:.1f} ns) {et[-1]:.3f}"
+)
 
 # A smaller Forster radius must transfer less: one more run catches a unit error.
 weak = quest.simulate(fret_project(35.0))

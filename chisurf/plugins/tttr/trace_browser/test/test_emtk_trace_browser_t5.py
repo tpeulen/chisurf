@@ -95,9 +95,7 @@ def unwrap(app):
 
 
 def idle(browser):
-    return not (
-        browser.job.busy or browser._queue or browser.load_job.busy or browser.pre_job.busy
-    )
+    return not (browser.job.busy or browser._queue or browser.load_job.busy or browser.pre_job.busy)
 
 
 def open_browser(shell, driver, folder):
@@ -116,9 +114,7 @@ def select(browser, driver, name):
     """Select row *name* the way a click on it does (the table's own selection path)."""
     control = table(browser)
     path = str(browser.model.current_folder / name)
-    position = next(
-        i for i, index in enumerate(control.order()) if control.key_of(index) == path
-    )
+    position = next(i for i, index in enumerate(control.order()) if control.key_of(index) == path)
     control._select_position(position)
     driver.frame(3)
 

@@ -1200,7 +1200,9 @@ class SectionViews:
             im.same_line()
             im.set_next_item_width(70.0)
             if i == 2:  # a point count is whole: the arrow-key spinbox, not a double field
-                changed, value = im.drag_int(f"##sweep-{ident}-{i}", int(round(window[i])), 1.0, 2, 256, "%d")
+                changed, value = im.drag_int(
+                    f"##sweep-{ident}-{i}", int(round(window[i])), 1.0, 2, 256, "%d"
+                )
             else:
                 changed, value = im.input_double(f"##sweep-{ident}-{i}", window[i], 0.0, 0.0, fmt)
             self._rect(state, f"lcurve.{ident}.{('min', 'max', 'n')[i]}")

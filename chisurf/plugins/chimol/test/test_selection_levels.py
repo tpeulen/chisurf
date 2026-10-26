@@ -33,10 +33,10 @@ PDB = (
 FALLBACK = PDB.with_name("148l.pdb")
 
 
-
 @pytest.fixture(scope="module")
 def session():
     from native_window import NativeWindow
+
     path = PDB if PDB.is_file() else FALLBACK
     if not path.is_file():
         pytest.skip(f"missing fixture {PDB}")

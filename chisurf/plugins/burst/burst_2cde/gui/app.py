@@ -287,14 +287,23 @@ class BurstTwoCdeGui:
 
         # tau: a spin field -- typed or stepped, commits on Enter, recomputes
         draw_sections(
-            [{
-                "type": "value", "attr": "tau_us", "label": "τ (window):",
-                "kind": "float", "style": "spin", "minimum": 1.0, "decimals": 1,
-                "call": "on_tau_edited", "suffix": " µs",
-                "description": "Averaging window τ in microseconds used when computing "
-                               "the 2CDE metric; the plot recomputes when it commits.",
-            }],
-            self.model, self.param_form,
+            [
+                {
+                    "type": "value",
+                    "attr": "tau_us",
+                    "label": "τ (window):",
+                    "kind": "float",
+                    "style": "spin",
+                    "minimum": 1.0,
+                    "decimals": 1,
+                    "call": "on_tau_edited",
+                    "suffix": " µs",
+                    "description": "Averaging window τ in microseconds used when computing "
+                    "the 2CDE metric; the plot recomputes when it commits.",
+                }
+            ],
+            self.model,
+            self.param_form,
         )
         self.item_rects.update(self.param_form.rects)
 
@@ -308,9 +317,9 @@ class BurstTwoCdeGui:
                 self.model.file_type,
             )
         )
-        im.set_item_tooltip(tr(
-            "The detector assignment the workflow's Setup Selection step hands over."
-        ))
+        im.set_item_tooltip(
+            tr("The detector assignment the workflow's Setup Selection step hands over.")
+        )
         if draw_toggle():
             pass  # the switch redraws; the fields below appear on the next frame
         if advanced_mode():

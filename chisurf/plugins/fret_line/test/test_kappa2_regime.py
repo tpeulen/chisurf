@@ -85,10 +85,19 @@ def test_show_kappa2_reports_the_distribution_the_model_uses():
     assert k2.kappa2_pairs(model) == [(1.0, k2.scalar_kappa2(model))]  # dynamic: one κ²
     k2.set_orientation_mode(model, "slow")
     isotropic = k2.kappa2_pairs(model)  # static, nothing computed: the isotropic grid
-    assert len(isotropic) == 128 and sum(w * v for w, v in isotropic) == pytest.approx(2 / 3, abs=5e-3)
+    assert len(isotropic) == 128 and sum(w * v for w, v in isotropic) == pytest.approx(
+        2 / 3, abs=5e-3
+    )
     k2.apply_kappa2_distribution(model, [0.09, 0.1, 0.11], [1, 2, 1])
     shown = k2.kappa2_distribution(model)
     assert shown["mode"] == "slow" and shown["k2"] == [0.09, 0.1, 0.11]
     np.testing.assert_allclose(shown["p_k2"], [0.25, 0.5, 0.25])
     # Held on the native port, so a saved model carries it.
-    assert model.get_state()["value_ports"]["kappa2_distribution"] == [0.25, 0.09, 0.5, 0.1, 0.25, 0.11]
+    assert model.get_state()["value_ports"]["kappa2_distribution"] == [
+        0.25,
+        0.09,
+        0.5,
+        0.1,
+        0.25,
+        0.11,
+    ]

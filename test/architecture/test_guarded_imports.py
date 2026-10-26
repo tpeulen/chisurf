@@ -34,7 +34,7 @@ OPTIONAL = {
     "pyodide": "the page's own runtime, browser only",
     # platform
     "ctypes": "ctypes.wintypes exists on Windows only",
-        # heavy or niche third-party extras
+    # heavy or niche third-party extras
     "OpenGL": "3-D viewers degrade without it",
     "pyopencl": "GPU acceleration is optional",
     "docx": "python-docx, report export only",

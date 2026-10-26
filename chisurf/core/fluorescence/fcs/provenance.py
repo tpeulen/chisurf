@@ -110,9 +110,13 @@ def read_settings(path) -> dict:
         path = settings_path(path)
     record = json.loads(path.read_text(encoding="utf-8"))
     if record.get("kind") != KIND:
-        raise ValueError(f"{path} is not a correlation settings file (kind {record.get('kind')!r}).")
+        raise ValueError(
+            f"{path} is not a correlation settings file (kind {record.get('kind')!r})."
+        )
     if int(record.get("version", 0)) > VERSION:
-        raise ValueError(f"{path} has layout version {record['version']}; this ChiSurf reads up to {VERSION}.")
+        raise ValueError(
+            f"{path} has layout version {record['version']}; this ChiSurf reads up to {VERSION}."
+        )
     return record
 
 

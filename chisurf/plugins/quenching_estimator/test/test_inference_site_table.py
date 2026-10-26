@@ -124,8 +124,9 @@ def test_every_feature_sits_in_the_volume_s_own_frame(apo72_atoms):
     origin, dg = np.asarray(av.get_grid_origin(), float), float(av.grid_step)
     ng = int(av.ng)
     attachment = np.asarray(av.get_attachment_point(), float)
-    old = attachment + (np.stack(np.unravel_index(indices, (ng,) * 3), 1) - (ng - 1) // 2
-                        + 0.5) * dg
+    old = (
+        attachment + (np.stack(np.unravel_index(indices, (ng,) * 3), 1) - (ng - 1) // 2 + 0.5) * dg
+    )
     assert np.linalg.norm(centres - attachment, axis=1).max() <= 20.12
     assert np.linalg.norm(old - attachment, axis=1).max() > 20.12
 
@@ -136,14 +137,19 @@ def test_every_feature_sits_in_the_volume_s_own_frame(apo72_atoms):
 
     quenchers = st.quencher_ensembles(apo72_atoms, 72)
     trp = np.array([q["crystal"] for q in quenchers if q["name"] == "TRP"])
-    radius = bff.amino_acid_quenching_defaults(1.0, 1.0, float(s["dye_radius"]))["TRP"].quench_radius
+    radius = bff.amino_acid_quenching_defaults(1.0, 1.0, float(s["dye_radius"]))[
+        "TRP"
+    ].quench_radius
     stamped = st.contact_map(av, quenchers, "TRP", 0.0, "crystal")[indices]
     assert np.array_equal(count(centres, trp, radius), stamped)
     assert not np.array_equal(count(centres, trp, radius, shift=0.25 * dg), stamped)
 
     types = st.residue_types(s)
-    counts = np.asarray(bff.residue_type_neighbour_counts(av, st.obstacles(apo72_atoms), types,
-                                                          float(s["slow_radius"])))
+    counts = np.asarray(
+        bff.residue_type_neighbour_counts(
+            av, st.obstacles(apo72_atoms), types, float(s["slow_radius"])
+        )
+    )
     slow = {}
     for a in apo72_atoms:
         key = (str(a["chain"]), int(a["res_id"]), str(a["res_name"]).strip())
@@ -151,8 +157,9 @@ def test_every_feature_sits_in_the_volume_s_own_frame(apo72_atoms):
         if name == "CB" or (name == "CA" and key not in slow):
             slow[key] = np.asarray(a["coord"], float)
     lys = np.array([x for (_, _, r), x in slow.items() if r == "LYS"])
-    assert np.array_equal(count(centres, lys, float(s["slow_radius"])),
-                          counts[:, types.index("LYS")])
+    assert np.array_equal(
+        count(centres, lys, float(s["slow_radius"])), counts[:, types.index("LYS")]
+    )
 
 
 def test_the_distance_histogram_is_every_quencher_centre_binned(apo72_atoms, tmp_path):
@@ -165,7 +172,7 @@ def test_the_distance_histogram_is_every_quencher_centre_binned(apo72_atoms, tmp
     assert st.SCHEMA == "site-table-v2" and d is not None
     assert (d.lower, d.step, d.n_bins) == (-4.0, 0.5, 29)
     assert table.path.stat().st_size < 3e6
-    assert 5 < len(d.rows) / table.n_voxels < 12          # sparse: ~6.5 entries per voxel
+    assert 5 < len(d.rows) / table.n_voxels < 12  # sparse: ~6.5 entries per voxel
     centres = table.voxel_centres()
     quenchers = st.quencher_ensembles(apo72_atoms, 72)
     defaults = bff.amino_acid_quenching_defaults(1.0, 1.0, float(s["dye_radius"]))
@@ -177,8 +184,9 @@ def test_the_distance_histogram_is_every_quencher_centre_binned(apo72_atoms, tmp
             for x in quenchers:
                 if x["name"] != name:
                     continue
-                for m, (pts, w) in enumerate(((x["crystal"][None], [1.0]),
-                                              (x["centres"], x["probabilities"]))):
+                for m, (pts, w) in enumerate(
+                    ((x["crystal"][None], [1.0]), (x["centres"], x["probabilities"]))
+                ):
                     for c, wi in zip(pts, w):
                         u = np.linalg.norm(centres[row] - c) - radius
                         b = 0 if u < d.lower else int(np.floor((u - d.lower) / d.step)) + 1

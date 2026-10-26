@@ -57,17 +57,31 @@ VIEWS = {
 
 #: search outlier lifetimes and model errors (cell 33/45 text; the error is given, the count
 #: follows from the inlier rule)
-SEARCH = {"AF488 in H2O": (4, 0.050), "Cy3B in H2O": (0, 0.050),
-          "Atto655 in D2O and H2O": (3, 0.108), "Atto655 in D2O": (2, 0.065)}
+SEARCH = {
+    "AF488 in H2O": (4, 0.050),
+    "Cy3B in H2O": (0, 0.050),
+    "Atto655 in D2O and H2O": (3, 0.108),
+    "Atto655 in D2O": (2, 0.065),
+}
 #: rms, median |dev| as printed
-STATS = {"AF488 in H2O": (0.62, 0.047), "Cy3B in H2O": (0.02, 0.010),
-         "Atto655 in D2O and H2O": (0.52, 0.094), "Atto655 in D2O": (0.63, 0.061)}
-OUTLIERS = {"AF488 in H2O": [92, 219, 233], "Cy3B in H2O": [],
-            "Atto655 in D2O and H2O": [322], "Atto655 in D2O": [211, 219, 322]}
+STATS = {
+    "AF488 in H2O": (0.62, 0.047),
+    "Cy3B in H2O": (0.02, 0.010),
+    "Atto655 in D2O and H2O": (0.52, 0.094),
+    "Atto655 in D2O": (0.63, 0.061),
+}
+OUTLIERS = {
+    "AF488 in H2O": [92, 219, 233],
+    "Cy3B in H2O": [],
+    "Atto655 in D2O and H2O": [322],
+    "Atto655 in D2O": [211, 219, 322],
+}
 #: Laplace scale summary (median, 16 %, 84 %, factor) as printed (cells 39, 46, 55)
-LAPLACE = {"AF488 in H2O": ("6.1", "4.6", "8.1", "1.8"),
-           "Atto655 in D2O": ("0.11", "0.08", "0.15", "1.9"),
-           "Atto655 in D2O and H2O": ("0.11", "0.08", "0.15", "1.9")}
+LAPLACE = {
+    "AF488 in H2O": ("6.1", "4.6", "8.1", "1.8"),
+    "Atto655 in D2O": ("0.11", "0.08", "0.15", "1.9"),
+    "Atto655 in D2O and H2O": ("0.11", "0.08", "0.15", "1.9"),
+}
 
 
 def _close(mine, printed, spec):
@@ -102,29 +116,41 @@ def printed_mismatches(summary, golden):
         est = numbers["estimates"]
         for row in printed["estimates"][label]:
             mine = est[row["parameter"]]
-            note = row["note"].replace("; other regions possible", "").replace(
-                "other regions possible", "")
+            note = (
+                row["note"]
+                .replace("; other regions possible", "")
+                .replace("other regions possible", "")
+            )
             if note.startswith("not determined") or row["parameter"] == "model_error":
                 continue
             if row["note"].startswith("fixed"):
-                ok = all(round(mine[k], 4) == row[f] for k, f in
-                         (("value", "value"), ("low", "low_68"), ("high", "high_68")))
+                ok = all(
+                    round(mine[k], 4) == row[f]
+                    for k, f in (("value", "value"), ("low", "low_68"), ("high", "high_68"))
+                )
             else:
-                ok = all(_close(mine[k], row[f], specs[row["parameter"]]) for k, f in
-                         (("value", "value"), ("low", "low_68"), ("high", "high_68")))
+                ok = all(
+                    _close(mine[k], row[f], specs[row["parameter"]])
+                    for k, f in (("value", "value"), ("low", "low_68"), ("high", "high_68"))
+                )
             if not ok:
                 bad.append(f"{label} {row['parameter']}: {mine} vs {row}")
             if mine["note"] != note:
                 bad.append(f"{label} {row['parameter']} note: {mine['note']!r} vs {note!r}")
         n_out, s = SEARCH[label]
         if numbers["stats"]["n_outlier_lifetimes"] != n_out:
-            bad.append(f"{label} search outliers {numbers['stats']['n_outlier_lifetimes']} vs "
-                       f"{n_out}")
+            bad.append(
+                f"{label} search outliers {numbers['stats']['n_outlier_lifetimes']} vs {n_out}"
+            )
         rms, med = STATS[label]
-        if abs(numbers["stats"]["rms"] - rms) > 0.01 or \
-                abs(numbers["stats"]["median_abs_dev"] - med) > 0.002:
-            bad.append(f"{label} rms/median {numbers['stats']['rms']:.4f}/"
-                       f"{numbers['stats']['median_abs_dev']:.4f} vs {rms}/{med}")
+        if (
+            abs(numbers["stats"]["rms"] - rms) > 0.01
+            or abs(numbers["stats"]["median_abs_dev"] - med) > 0.002
+        ):
+            bad.append(
+                f"{label} rms/median {numbers['stats']['rms']:.4f}/"
+                f"{numbers['stats']['median_abs_dev']:.4f} vs {rms}/{med}"
+            )
         if numbers["stats"]["outliers"] != OUTLIERS[label]:
             bad.append(f"{label} outliers {numbers['stats']['outliers']} vs {OUTLIERS[label]}")
         worst = {str(s): z for s, z in numbers["worst"]}
@@ -137,16 +163,18 @@ def printed_mismatches(summary, golden):
             lap = numbers["scale_laplace"]
             got = np.array([lap["median"], lap["low"], lap["high"]])
             want = np.array([float(v) for v in LAPLACE[label][:3]])
-            if np.any(np.abs(np.log(got / want)) > 0.05):     # printed to two digits
+            if np.any(np.abs(np.log(got / want)) > 0.05):  # printed to two digits
                 bad.append(f"{label} Laplace scale {got} vs {want}")
-    slopes = {(r["dye"], r["amino_acid"]): r
-              for r in summary["stages"]["A"]["tables"]["titration_slopes"]}
+    slopes = {
+        (r["dye"], r["amino_acid"]): r for r in summary["stages"]["A"]["tables"]["titration_slopes"]
+    }
     for row in printed["k_graph"]:
         mine = slopes[(row["dye"], row["amino_acid"])]
         for field, key in (("K_graph", "ksv_graph"), ("low_68", "low_68"), ("high_68", "high_68")):
             if abs(mine[key] - row[field]) > 0.002:
-                bad.append(f"K {row['dye']} {row['amino_acid']} {field}: {mine[key]:.5f} vs "
-                           f"{row[field]}")
+                bad.append(
+                    f"K {row['dye']} {row['amino_acid']} {field}: {mine[key]:.5f} vs {row[field]}"
+                )
     naive = summary["stages"]["naive_h2o"]["numbers"]
     if (round(naive["median_abs_dev"], 2), naive["sites_above_free_tau0"]) != (0.48, 16):
         bad.append(f"naive {naive['median_abs_dev']:.4f}, {naive['sites_above_free_tau0']}")
@@ -169,8 +197,10 @@ def _prototype_library(golden):
         state, site, linker = key.split()
         files[(state, int(site), float(linker))] = path
     # the prototype's contact-shell rate model, its contacts read linearly between offsets
-    return st.TableFiles(files, {**site_table.settings(), "delta_interpolation": "linear",
-                                 "rate_model": "contact_shell"})
+    return st.TableFiles(
+        files,
+        {**site_table.settings(), "delta_interpolation": "linear", "rate_model": "contact_shell"},
+    )
 
 
 def prototype_fit_overrides(golden):
@@ -184,12 +214,17 @@ def prototype_fit_overrides(golden):
     for p in gf.settings()["parameters"]:
         log = p["scale"] == "log"
         name = f"ln_{p['name']}" if log else p["name"]
-        if name not in bounds["lower"]:      # not a parameter of the prototype (decay_length)
+        if name not in bounds["lower"]:  # not a parameter of the prototype (decay_length)
             params.append(p)
             continue
         lo, hi = bounds["lower"][name], bounds["upper"][name]
-        params.append({**p, "lower": float(np.exp(lo) if log else lo),
-                       "upper": float(np.exp(hi) if log else hi)})
+        params.append(
+            {
+                **p,
+                "lower": float(np.exp(lo) if log else lo),
+                "upper": float(np.exp(hi) if log else hi),
+            }
+        )
     return {"parameters": params}
 
 
@@ -203,8 +238,11 @@ def test_the_stored_optimum_on_its_own_tables(golden):
         for block in a.declaration["graphs"][name]["blocks"]:
             label = block["label"]
             v = dict(golden["site_lifetimes"][label]["theta"])
-            v["model_error"] = [r["value"] for r in golden["printed"]["estimates"][label]
-                                if r["parameter"] == "model_error"][0]
+            v["model_error"] = [
+                r["value"]
+                for r in golden["printed"]["estimates"][label]
+                if r["parameter"] == "model_error"
+            ][0]
             values[label] = v
         a.replay(name, values, slopes)
     summary = a.run("all").to_dict()
@@ -226,14 +264,31 @@ def test_the_stored_optimum_on_its_own_tables(golden):
 #: Atto655 B 75 / δ 0.9, Stage C 27 / δ −1.1. Before the widening (scale <= 10, delta -3..2,
 #: linear delta): AF488 10.0, Cy3B 0.058, Atto655 B 10.0, C 10.0.
 REFIT = {
-    "AF488 in H2O": (0.018993707780214936, 0.015774486412262954, 0.02286990053506561,
-                     0.12313972015868524, [211, 233], 233),
-    "Cy3B in H2O": (0.20156847014563464, 0.11729262282158863, 0.34639730257079204, 0.05,
-                    [], 233),
-    "Atto655 in D2O": (0.2719287067917118, 0.015717317204356557, 4.704697412158641,
-                       0.23431961034596274, [], 322),
-    "Atto655 in D2O and H2O": (0.026359098603066483, 0.010000000000000005, 0.09919865546784587,
-                               0.15165744019337826, [92, 233, 322], 322),
+    "AF488 in H2O": (
+        0.018993707780214936,
+        0.015774486412262954,
+        0.02286990053506561,
+        0.12313972015868524,
+        [211, 233],
+        233,
+    ),
+    "Cy3B in H2O": (0.20156847014563464, 0.11729262282158863, 0.34639730257079204, 0.05, [], 233),
+    "Atto655 in D2O": (
+        0.2719287067917118,
+        0.015717317204356557,
+        4.704697412158641,
+        0.23431961034596274,
+        [],
+        322,
+    ),
+    "Atto655 in D2O and H2O": (
+        0.026359098603066483,
+        0.010000000000000005,
+        0.09919865546784587,
+        0.15165744019337826,
+        [92, 233, 322],
+        322,
+    ),
 }
 
 
@@ -243,8 +298,14 @@ def test_the_refit_on_todays_geometry(golden):
     for label, (stage, block) in VIEWS.items():
         numbers = result.to_dict()["stages"][stage]["numbers"]["blocks"][block]
         scale = numbers["estimates"]["scale"]
-        got = (scale["value"], scale["low"], scale["high"], numbers["model_error"],
-               numbers["stats"]["outliers"], numbers["worst"][0][0])
+        got = (
+            scale["value"],
+            scale["low"],
+            scale["high"],
+            numbers["model_error"],
+            numbers["stats"]["outliers"],
+            numbers["worst"][0][0],
+        )
         ref = REFIT[label]
         assert np.allclose(got[:4], ref[:4], rtol=1e-3), (label, got, ref)
         assert got[4:] == ref[4:], (label, got, ref)

@@ -165,7 +165,11 @@ def test_the_warnings_equal_the_qt_tool(world):
     qt = QT["warnings"]
     model = native(world)
     model.run()
-    assert list(model.notices[-1]) == qt["no_files"] == ["No files", "Please select one or more files first."]
+    assert (
+        list(model.notices[-1])
+        == qt["no_files"]
+        == ["No files", "Please select one or more files first."]
+    )
     # Invalid settings (NSIG 2 in a shell mode).
     model = native(world, struct_files=files(world, "148l"), nsig=2)
     model.run()
@@ -173,7 +177,10 @@ def test_the_warnings_equal_the_qt_tool(world):
     assert model.notices[-1][0] == "Invalid settings" and "NSIG must be > 2" in model.notices[-1][1]
     assert model.running is qt["nsig_2_running"] is False
     # QMAX / RMAX rules.
-    for key, fields in (("qmax_rule", {"nq": 5, "qmax": 0.0}), ("rmax_rule", {"ns": 5, "rmax": 0.0})):
+    for key, fields in (
+        ("qmax_rule", {"nq": 5, "qmax": 0.0}),
+        ("rmax_rule", {"ns": 5, "rmax": 0.0}),
+    ):
         model = native(world, struct_files=files(world, "148l"), **fields)
         model.run()
         assert list(model.notices[-1]) == qt[key]
@@ -187,10 +194,14 @@ def test_a_missing_executable_gives_the_qt_prompt_and_the_same_outcomes(world):
     model.run()
     assert model.exe_prompt and not model.running
     model.close_exe_prompt()
-    assert list(model.notices[-1]) == qt["closed_box"] == [
-        "Executable required",
-        "Configure the HYDRO executable before running.",
-    ]
+    assert (
+        list(model.notices[-1])
+        == qt["closed_box"]
+        == [
+            "Executable required",
+            "Configure the HYDRO executable before running.",
+        ]
+    )
     assert qt["closed_running"] is False
     # A prompt that picked an executable: the run continues with it and the field now holds it.
     model.run()
@@ -207,12 +218,16 @@ def test_clear_empties_what_the_qt_clear_empties(world):
     model.run()
     drain(model)
     model.clear()
-    assert (model.struct_files, model.status, model.results, model.result_rows()) == (
-        qt["struct_files"],
-        qt["status"],
-        qt["results"],
-        [],
-    ) == ("", "", [], [])
+    assert (
+        (model.struct_files, model.status, model.results, model.result_rows())
+        == (
+            qt["struct_files"],
+            qt["status"],
+            qt["results"],
+            [],
+        )
+        == ("", "", [], [])
+    )
     assert qt["row_count"] == 0 and qt["save_enabled"] is False and not model.enabled("save_csv")
 
 

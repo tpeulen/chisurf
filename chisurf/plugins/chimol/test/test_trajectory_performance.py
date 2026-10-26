@@ -251,6 +251,7 @@ def test_the_ribbons_facing_is_never_drafted():
 # ...and entering it is a decision about rate, not a mode the caller sets
 # --------------------------------------------------------------------------- #
 
+
 def test_one_frame_change_on_its_own_is_never_drafted():
     """A headless render or a single click gets the real thing.
 
@@ -260,6 +261,7 @@ def test_one_frame_change_on_its_own_is_never_drafted():
     Nothing here can downgrade an isolated frame.
     """
     from native_window import native_viewer
+
     view = native_viewer()
     try:
         view._note_frame_change()
@@ -270,6 +272,7 @@ def test_one_frame_change_on_its_own_is_never_drafted():
 
 def test_frames_arriving_back_to_back_are_drafted():
     from native_window import native_viewer
+
     view = native_viewer()
     try:
         view._note_frame_change()  # first: nothing to compare against
@@ -284,6 +287,7 @@ def test_a_pause_returns_to_full_quality(monkeypatch):
     import time as _time
 
     from native_window import native_viewer
+
     view = native_viewer()
     try:
         clock = [1000.0]
@@ -327,6 +331,7 @@ def test_interpolation_lands_between_the_two_frames():
     of them and every frame compares equal.
     """
     from native_window import native_viewer
+
     view = native_viewer()
     try:
         frames = np.zeros((3, 4, 3), dtype=float)
@@ -356,6 +361,7 @@ def test_interpolation_lands_between_the_two_frames():
 def test_the_whole_frame_setter_does_not_keep_its_own_position():
     """One position, or a spinbox and a picture will disagree about the frame."""
     from native_window import native_viewer
+
     view = native_viewer()
     try:
         frames = np.zeros((5, 4, 3), dtype=float)
@@ -381,6 +387,7 @@ def test_playback_reschedules_itself_instead_of_repeating():
     drawn, so the guarantee to keep is `setSingleShot`.
     """
     from native_window import native_viewer
+
     view = native_viewer()
     try:
         view.playback.play(33)

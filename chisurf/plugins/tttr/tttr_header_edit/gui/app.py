@@ -60,7 +60,9 @@ class HeaderEditorGui(TourTarget):
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
 
         layout = Split(
-            "h", 0.62, Region("tags"),
+            "h",
+            0.62,
+            Region("tags"),
             Split("v", 0.45, Region("json"), Region("photons")),
         )
         self.docks = DockManager(layout)
@@ -148,7 +150,9 @@ class HeaderEditorGui(TourTarget):
             self.load_example()
             self.tour.notify_used("load_example")
         im.set_item_tooltip(
-            tr("Generate a deterministic demonstration PTU in the settings cache and read its header.")
+            tr(
+                "Generate a deterministic demonstration PTU in the settings cache and read its header."
+            )
         )
         self.remember("load_example")
         im.same_line()
@@ -270,38 +274,47 @@ class HeaderEditorGui(TourTarget):
             im.text_wrapped(line)
         self.remember("json")
 
-
     # ── the photons dock ──────────────────────────────────────────────────
     def _draw_photons(self, box: tuple[float, float, float, float]) -> None:
         if not self.model.photon_rows:
             im.text_wrapped(
-                tr("Open a TTTR file — its first events appear here "
-                   "(routing channel, macro and micro time).")
+                tr(
+                    "Open a TTTR file — its first events appear here "
+                    "(routing channel, macro and micro time)."
+                )
             )
             self.remember("photons")
             return
         im.text_disabled(tr(self.model.photon_summary))
         im.set_item_tooltip(
-            tr("First {n} events; macro/micro times are the format's raw clock; "
-               "the header tags carry units and setup.").format(
-                n=len(self.model.photon_rows))
+            tr(
+                "First {n} events; macro/micro times are the format's raw clock; "
+                "the header tags carry units and setup."
+            ).format(n=len(self.model.photon_rows))
         )
         im.separator()
         from emtk.widgets.data_table import TableBinding, draw_table
 
         model = self.model
-        if (self._photon_binding is None
-                or self._photon_binding_model is not model):
-            section = {"type": "custom", "key": "data_table",
-                       "options": {"source": "photon_rows", "row_key": "i",
-                                   "editable": False, "height": 260.0,
-                                   "stretch": 1.0, "min_height": 100.0,
-                                   "columns": [
-                                       {"key": "i", "title": "#", "align": "right"},
-                                       {"key": "rch", "title": "Routing ch", "align": "right"},
-                                       {"key": "macro", "title": "Macro time (raw)", "align": "right"},
-                                       {"key": "micro", "title": "Micro time (raw)", "align": "right"},
-                                   ]}}
+        if self._photon_binding is None or self._photon_binding_model is not model:
+            section = {
+                "type": "custom",
+                "key": "data_table",
+                "options": {
+                    "source": "photon_rows",
+                    "row_key": "i",
+                    "editable": False,
+                    "height": 260.0,
+                    "stretch": 1.0,
+                    "min_height": 100.0,
+                    "columns": [
+                        {"key": "i", "title": "#", "align": "right"},
+                        {"key": "rch", "title": "Routing ch", "align": "right"},
+                        {"key": "macro", "title": "Macro time (raw)", "align": "right"},
+                        {"key": "micro", "title": "Micro time (raw)", "align": "right"},
+                    ],
+                },
+            }
             self._photon_binding = TableBinding(section, model)
             self._photon_binding_model = model
         draw_table(self._photon_binding, "photon_rows")

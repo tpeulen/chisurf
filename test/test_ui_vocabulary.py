@@ -381,15 +381,19 @@ def role_findings(path: pathlib.Path) -> list[str]:
                 found.append(f"{where}: role {role!r} is not one of {sorted(known)}")
             wanted = verb_role(label)
             if wanted == "danger" and role is None:
-                found.append(f"{where}: {label!r} is destructive; declare \"role\": \"danger\"")
+                found.append(f'{where}: {label!r} is destructive; declare "role": "danger"')
             if wanted == "primary" and role is None and not primaries:
-                found.append(f"{where}: {label!r} is the panel's main action; declare \"role\": \"primary\"")
+                found.append(
+                    f'{where}: {label!r} is the panel\'s main action; declare "role": "primary"'
+                )
     return found
 
 
 def test_the_fit_button_is_primary_and_remove_fit_danger():
     """The owner's report: the fit controller's Fit button had no colour."""
-    spec = json.loads((_SOURCE / "emtk" / "views" / "analysis.view.json").read_text(encoding="utf-8"))
+    spec = json.loads(
+        (_SOURCE / "emtk" / "views" / "analysis.view.json").read_text(encoding="utf-8")
+    )
     roles = {item.get("action"): item.get("role") for _pointer, item in _buttons(spec)}
     assert roles["run_fit"] == "primary"
     assert roles["remove_fit"] == "danger"
@@ -403,14 +407,21 @@ def test_declared_button_roles_follow_the_vocabulary():
 
 
 def test_role_scan_sees_missing_unknown_and_doubled_roles(tmp_path):
-    spec = {"sections": [{"type": "button_row", "buttons": [
-        {"label": "Run", "action": "run"},
-        {"label": "Compute", "action": "compute", "role": "primary"},
-        {"label": "▶ Fit", "action": "fit", "role": "primary"},
-        {"label": "Clear", "action": "clear"},
-        {"label": "Save", "action": "save", "role": "shiny"},
-        {"label": "Fit view", "action": "frame"},
-    ]}]}
+    spec = {
+        "sections": [
+            {
+                "type": "button_row",
+                "buttons": [
+                    {"label": "Run", "action": "run"},
+                    {"label": "Compute", "action": "compute", "role": "primary"},
+                    {"label": "▶ Fit", "action": "fit", "role": "primary"},
+                    {"label": "Clear", "action": "clear"},
+                    {"label": "Save", "action": "save", "role": "shiny"},
+                    {"label": "Fit view", "action": "frame"},
+                ],
+            }
+        ]
+    }
     probe = tmp_path / "probe.view.json"
     probe.write_text(json.dumps(spec), encoding="utf-8")
     hits = role_findings(probe)
@@ -430,7 +441,12 @@ def test_the_vocabulary_decides_roles():
     assert verb_role("▶  Fit") == verb_role("Compute PCH") == verb_role("Run##x") == "primary"
     assert verb_role("🗑 Clear") == verb_role("⏹ Stop") == verb_role("Delete row") == "danger"
     assert verb_role("Save") is verb_role("Fit view") is verb_role("Clear selection") is None
-    rows = [{"label": "Run"}, {"label": "Fit"}, {"label": "Stop"}, {"label": "Simulate", "role": "default"}]
+    rows = [
+        {"label": "Run"},
+        {"label": "Fit"},
+        {"label": "Stop"},
+        {"label": "Simulate", "role": "default"},
+    ]
     assert row_roles(rows) == ["primary", None, "danger", None]
     assert row_roles([{"label": "Run"}, {"label": "Go", "role": "primary"}]) == [None, "primary"]
 

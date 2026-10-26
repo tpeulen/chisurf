@@ -37,6 +37,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 # -- stand-ins ----------------------------------------------------------------- #
 
+
 class FakeLocalStorage:
     """The part of ``localStorage`` the store uses, as a dict."""
 
@@ -98,6 +99,7 @@ def _shell(settings_sink=None):
 
 # -- the store ----------------------------------------------------------------- #
 
+
 def test_store_roundtrips_and_a_fresh_store_reads_a_previous_page():
     from chisurf.web import SETTINGS_KEY, WebSettingsStore
 
@@ -151,7 +153,8 @@ def test_a_full_quota_degrades_to_the_session_and_says_so_once():
     finally:
         logging.getLogger("chisurf.web").removeHandler(handler)
     assert not [r for r in records if "not persisted" in r.getMessage()], (
-        "said once, not on every write")
+        "said once, not on every write"
+    )
 
 
 def test_no_local_storage_is_session_only():
@@ -166,6 +169,7 @@ def test_no_local_storage_is_session_only():
 
 
 # -- the shell's sink ------------------------------------------------------------ #
+
 
 def test_open_and_close_reach_the_sink_which_debounces_the_save():
     from chisurf.web import WebSettingsSaver, WebSettingsStore
@@ -185,7 +189,8 @@ def test_open_and_close_reach_the_sink_which_debounces_the_save():
         assert payload["version"] == 1
         assert payload["shell"]["open"] == ["probe"]
         assert set(payload["docks"]) == {"shell", "workspace"}, (
-            "both dock layouts ride in the payload")
+            "both dock layouts ride in the payload"
+        )
         assert payload["saved_at"] > 0
 
         shell.close_plugin("probe")
@@ -247,7 +252,8 @@ def test_a_page_without_threads_saves_right_away(monkeypatch):
     saver = WebSettingsSaver(StubShell(), store, debounce=5)
     saver({})
     assert saver.written == 1 and store.get() is not None, (
-        "no threads and no js timer: the save must not be lost")
+        "no threads and no js timer: the save must not be lost"
+    )
 
 
 def test_listening_to_the_page_needs_one():
@@ -258,6 +264,7 @@ def test_listening_to_the_page_needs_one():
 
 
 # -- the restore ----------------------------------------------------------------- #
+
 
 def test_a_stored_payload_reopens_its_plugins_on_a_fresh_shell():
     from chisurf.web import apply_settings, capture_settings
@@ -276,7 +283,8 @@ def test_a_stored_payload_reopens_its_plugins_on_a_fresh_shell():
         apply_settings(second, payload)
         assert list(second.hosted) == ["probe"]
         assert second.docks.window(second.hosted["probe"].key) is not None, (
-            "the payload's plugin is back as a dock window")
+            "the payload's plugin is back as a dock window"
+        )
     finally:
         second.close()
 
@@ -366,8 +374,7 @@ print(json.dumps(result))
 def test_page_factory_restores_a_stored_payload_and_writes_back():
     """The Pyodide shape of a return visit: no Qt, sockets raise, the stored
     payload reopens its plugin, and the next change is written back."""
-    seed = {"version": 1, "saved_at": 1.0,
-            "shell": {"open": ["pch"], "ribbon": None}, "docks": {}}
+    seed = {"version": 1, "saved_at": 1.0, "shell": {"open": ["pch"], "ribbon": None}, "docks": {}}
     probe = _PROBE.replace("SEED_JSON", json.dumps(json.dumps(seed)))
     result = subprocess.run(
         [sys.executable, "-c", probe],

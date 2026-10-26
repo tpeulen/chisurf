@@ -137,9 +137,7 @@ def test_the_answers_resume_the_plan(context):
     resumed_prompt = model.prompts[-1]
     kinds = [m.get("role") for m in resumed_prompt]
     assert "tool" in kinds
-    ask_user_result = next(
-        i for i, m in enumerate(resumed_prompt) if m.get("role") == "tool"
-    )
+    ask_user_result = next(i for i, m in enumerate(resumed_prompt) if m.get("role") == "tool")
     answers = next(
         i
         for i, m in enumerate(resumed_prompt)

@@ -41,7 +41,10 @@ PRESETS = load_reference_presets()
 KEYS = sorted(PRESETS)
 
 _FILE = (
-    pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent / "ui" / "data" / "presets.json"
+    pathlib.Path(inspect.getfile(__import__("chimol"))).resolve().parent
+    / "ui"
+    / "data"
+    / "presets.json"
 )
 
 

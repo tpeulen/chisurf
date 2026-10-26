@@ -208,10 +208,12 @@ def test_the_two_lists_do_not_overlap():
 # Through the commands
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def session():
     pytest.importorskip("chisurf.core.structure")
     from native_window import NativeWindow
+
     win = NativeWindow()
     shared = win.cmd
     win.resize(900, 650)

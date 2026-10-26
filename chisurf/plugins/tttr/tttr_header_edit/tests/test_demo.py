@@ -40,4 +40,3 @@ def test_a_saved_copy_reopens_with_the_same_tags(example, tmp_path):
     vm2 = HeaderEditorViewModel()
     vm2.load_file(str(copy))
     assert len(vm2.tags) == len(vm.tags)
-

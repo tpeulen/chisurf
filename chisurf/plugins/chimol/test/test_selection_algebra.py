@@ -37,7 +37,6 @@ _PDB_148L = (
 )
 
 
-
 @pytest.fixture(scope="module")
 def viewer():
     cs_struct = pytest.importorskip("chisurf.core.structure")

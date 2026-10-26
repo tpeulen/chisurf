@@ -332,10 +332,10 @@ def test_a_plugin_adds_a_setting_and_a_keybinding():
         settings.resolve("stars_size")
 
 
-
 def test_a_plugin_hears_the_viewer_through_the_bus():
     """objects.changed and command.executed reach a subscriber; unload cancels it."""
     from native_window import native_viewer
+
     viewer = native_viewer()
     heard: list[tuple[str, object]] = []
 

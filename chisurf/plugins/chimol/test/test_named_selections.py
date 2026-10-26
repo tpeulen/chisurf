@@ -28,6 +28,7 @@ import pytest
 @pytest.fixture
 def window(tmp_path):
     from native_window import NativeWindow
+
     src = (
         pathlib.Path(__file__).resolve().parents[4]
         / "test"

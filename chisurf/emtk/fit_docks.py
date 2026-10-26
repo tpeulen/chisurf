@@ -1179,7 +1179,9 @@ class DataDocks:
         """
         ok, state = prior_families.parse(str(text or ""), _number(record.get("value")) or 1.0)
         if not ok:
-            names = ", ".join(["Box"] + [label for label, _k, _p in prior_families.PRIOR_FAMILY_SPECS])
+            names = ", ".join(
+                ["Box"] + [label for label, _k, _p in prior_families.PRIOR_FAMILY_SPECS]
+            )
             self.status = tr("Unknown prior {text!r}; use one of: {names}").format(
                 text=str(text), names=names
             )
@@ -1530,9 +1532,15 @@ class DataDocks:
             workspace=True,
             title_buttons=[
                 (
-                    lambda u=uid: tr("Plots") if self.windows.get(u) and self.windows[u].code_shown() else tr("Code"),
+                    lambda u=uid: (
+                        tr("Plots")
+                        if self.windows.get(u) and self.windows[u].code_shown()
+                        else tr("Code")
+                    ),
                     lambda u=uid: self.toggle_code(u),
-                    lambda: tr("Show the model's source and view.json, editable; or the plots again."),
+                    lambda: tr(
+                        "Show the model's source and view.json, editable; or the plots again."
+                    ),
                 )
             ],
         )
@@ -1561,7 +1569,8 @@ class DataDocks:
         w, h = max(bw * 0.6, 240.0), max(bh * 0.6, 160.0)
         span = max(int(min(bw - w, bh - h) // step), 0) + 1
         floating = [
-            k for k in docks.workspace_children()
+            k
+            for k in docks.workspace_children()
             if k in docks.z and docks.window(k).visible and not docks.window(k).minimized
         ]
         offset = step * (len(floating) % span)

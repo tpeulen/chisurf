@@ -284,7 +284,8 @@ class BurstAnalysisHubApp(ToolHubApp):
         # whether or not the search also wrote a legacy folder (that folder stays in the
         # context for the steps that still read it; the exporter is its way out).
         sources = materialize_handoff(
-            self.context, model.frames_by_file,
+            self.context,
+            model.frames_by_file,
             run_name=legacy_folder.name if legacy_folder is not None else None,
         )
         # A fresh burst search supersedes any fusion of the previous one.

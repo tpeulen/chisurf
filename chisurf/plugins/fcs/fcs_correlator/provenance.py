@@ -56,7 +56,9 @@ def photon_record(workflow, files: list[str], filter_model=None) -> dict[str, An
     context = workflow.context
     return new_record(
         "photons",
-        inputs=[{"path": str(f), "regions": [list(r) for r in workflow.regions.get(f)]} for f in files],
+        inputs=[
+            {"path": str(f), "regions": [list(r) for r in workflow.regions.get(f)]} for f in files
+        ],
         reading={
             "file_type": workflow.file_type,
             "detector_settings": context.detector_settings,
@@ -112,7 +114,9 @@ def reproduce(settings, verify: bool = True) -> tuple[dict, list[dict]]:
         if not pathlib.Path(entry["path"]).is_file():
             raise FileNotFoundError(f"Raw photon file not found: {entry['path']}")
         if verify and entry.get("sha256") and sha256(entry["path"]) != entry["sha256"]:
-            raise ValueError(f"{entry['path']} is not the file the result was computed from (checksum differs).")
+            raise ValueError(
+                f"{entry['path']} is not the file the result was computed from (checksum differs)."
+            )
     workflow = FcsWorkflow()
     reading = record.get("reading", {})
     workflow.context.detector_settings = dict(reading.get("detector_settings") or {})
@@ -137,7 +141,9 @@ def reproduce(settings, verify: bool = True) -> tuple[dict, list[dict]]:
     apply_settings(correlator, settings_)
     if lifetime:
         if verify and lifetime.get("sha256") and sha256(lifetime["path"]) != lifetime["sha256"]:
-            raise ValueError(f"{lifetime['path']} is not the filter file the result used (checksum differs).")
+            raise ValueError(
+                f"{lifetime['path']} is not the filter file the result used (checksum differs)."
+            )
         correlator.load_lifetime_filter_file(lifetime["path"])
         correlator._species_a, correlator._species_b = lifetime["species_a"], lifetime["species_b"]
     message = correlator.correlate_data()
@@ -151,9 +157,15 @@ def reproduce(settings, verify: bool = True) -> tuple[dict, list[dict]]:
 def main(argv=None) -> int:
     """Reproduce a ``.cor`` from its settings file; optionally write it, and compare with the recorded one."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("settings", help="The settings file (<name>.cor.json) or the .cor beside it.")
-    parser.add_argument("-o", "--output", help="Write the reproduced correlation here (with its own settings file).")
-    parser.add_argument("--no-verify", action="store_true", help="Do not refuse raw files whose checksum differs.")
+    parser.add_argument(
+        "settings", help="The settings file (<name>.cor.json) or the .cor beside it."
+    )
+    parser.add_argument(
+        "-o", "--output", help="Write the reproduced correlation here (with its own settings file)."
+    )
+    parser.add_argument(
+        "--no-verify", action="store_true", help="Do not refuse raw files whose checksum differs."
+    )
     args = parser.parse_args(argv)
     from chisurf.core.fluorescence.fcs.merge import save_mean_correlation
     from chisurf.core.fluorescence.fcs.provenance import settings_path
@@ -161,8 +173,14 @@ def main(argv=None) -> int:
     path = pathlib.Path(args.settings)
     record = read_settings(path)
     merged, curves = reproduce(record, verify=not args.no_verify)
-    print(f"{len(curves)} piece(s) correlated, {len(_chosen(curves, record.get('merge', {}).get('chunks')))} merged.")
-    original = path if path.suffix.lower() == ".cor" else path.with_name(record.get("output", {}).get("file", ""))
+    print(
+        f"{len(curves)} piece(s) correlated, {len(_chosen(curves, record.get('merge', {}).get('chunks')))} merged."
+    )
+    original = (
+        path
+        if path.suffix.lower() == ".cor"
+        else path.with_name(record.get("output", {}).get("file", ""))
+    )
     if original.is_file() and original != settings_path(original):
         y_old = np.loadtxt(str(original), delimiter="\t")[:, 1]
         y_new = np.array([float(f"{v:.5g}") for v in merged["y"]])  # as the .cor writes it

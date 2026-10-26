@@ -35,12 +35,12 @@ _PDB = (
 )
 
 
-
 @pytest.fixture
 def session():
     """A window with three derived objects, two of them grouped."""
     pytest.importorskip("chisurf.core.structure")
     from native_window import NativeWindow
+
     win = NativeWindow()
     shared = win.cmd
     win.resize(900, 600)

@@ -20,13 +20,13 @@ import tomllib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SUITES = ("test", "test-gui", "test-slow", "test-e2e")
 
-_DUMP_PLUGIN = '''
+_DUMP_PLUGIN = """
 import json, os
 def pytest_collection_finish(session):
     rows = [[i.nodeid, sorted({m.name for m in i.iter_markers()})] for i in session.items]
     with open(os.environ["SUITE_DUMP"], "w") as fh:
         json.dump(rows, fh)
-'''
+"""
 
 
 def _task_args(name):
@@ -65,9 +65,22 @@ def collected(tmp_path_factory):
     out = work / "items.json"
     env = {**os.environ, "SUITE_DUMP": str(out), "PYTHONPATH": str(work)}
     proc = subprocess.run(
-        [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider",
-         "-p", "dump_plugin"],
-        cwd=ROOT, env=env, capture_output=True, text=True, timeout=900,
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--collect-only",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "-p",
+            "dump_plugin",
+        ],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=900,
     )
     assert out.exists(), proc.stdout[-3000:] + proc.stderr[-3000:]
     assert proc.returncode == 0, proc.stdout[-3000:]

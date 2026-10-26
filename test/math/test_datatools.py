@@ -36,7 +36,10 @@ def test_distance_between_gaussian_broadcasts_a_column_of_separations():
     assert table.shape == (3, distances.size)
     for row, separation in zip(table, separations[:, 0]):
         np.testing.assert_allclose(
-            row, distance_between_gaussian(distances, float(separation), 5.0), rtol=1e-12, atol=1e-300
+            row,
+            distance_between_gaussian(distances, float(separation), 5.0),
+            rtol=1e-12,
+            atol=1e-300,
         )
 
 
