@@ -23,6 +23,7 @@ good looks like. Read [overview](overview.md) first for the whole-system shape.
 * [MMFDB — Metadata & Provenance](mmfdb.md) - Provenance and metadata as the target sees it.
 * [Plugin System](plugins.md) - How features are packaged and integrated.
 * [ChiMOL — Target](chimol.md) - A PyMOL clone that is command-compatible with PyMOL and better than it, read from the PyMOL and ChimeraX sources.
+* [Data workspace — one way in, one place to pick data](data-workspace.md) - One file drop, a typed and filterable Datasets workspace, photon datasets in the project, plugins fed by a declared input; path-style container addresses.
 * [PTO.MFDB — the photon container profile](pto-mfdb.md) - One measurement as one file: the instrument data kept verbatim and restorable, every result an artifact beside it, every name taken from the mmCIF dictionaries.
 
 # Backlog
