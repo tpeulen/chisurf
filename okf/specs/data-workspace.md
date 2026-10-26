@@ -76,8 +76,9 @@ Autosave never re-hashes link targets or packed photon objects (immutable once r
 once, at import.
 
 **Remote link targets** (owner 2026-10-26): a link may point at a URI instead of a file — first
-`mmfdb://<server>/<artifact-uid>` (an object of an MMFDB server, fetched with the user's credentials the way
-the web pages fetch it), later `https://` (e.g. a deposited record). ptolib stays generic: a link target may
+`mmfdb://artifact/<id>[?server=<host>]` — mmfdb's existing node reference (`mmfdb://<node_type>/<node_id>`,
+`queries/artifacts.py`), resolved against the user's configured MMFDB connection unless `server` names
+another, fetched with the user's credentials the way the web pages fetch it, later `https://` (e.g. a deposited record). ptolib stays generic: a link target may
 be a URI, ptolib keeps a scheme → resolver registry (`register_link_resolver`), resolving fetches into a
 local cache and then checks the recorded size + sha256 like any file. Credentials are never stored in the
 container or the URI; the mmfdb resolver (mmfdb repo) takes them from the user's MMFDB client
