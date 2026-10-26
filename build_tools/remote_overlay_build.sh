@@ -24,7 +24,10 @@ if [[ ! -f "$cache/.done" ]]; then
     rm -rf "$cache"
     mkdir -p "$cache"
     echo "building overlay $name at $sha (log: $cache.build.log)" >&2
-    (cd "$HOME/dev/chisurf" && pixi run -e test python -m pip install --no-deps \
+    # pip's build backend compiles serially unless told otherwise; use half the box.
+    jobs=$(( $(nproc 2>/dev/null || echo 4) / 2 ))
+    (cd "$HOME/dev/chisurf" && CMAKE_BUILD_PARALLEL_LEVEL=$jobs MAKEFLAGS=-j$jobs \
+        pixi run -e test python -m pip install --no-deps \
         --target "$cache/site" "$HOME/dev/$name") >"$cache.build.log" 2>&1 || {
         echo "overlay build of $name failed; see $cache.build.log" >&2
         tail -n 30 "$cache.build.log" >&2
