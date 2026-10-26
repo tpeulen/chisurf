@@ -24,6 +24,7 @@ from typing import Any
 
 import numpy as np
 from emtk import im
+from emtk import style as _style
 from emtk.app import ImApp
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
@@ -32,9 +33,15 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.core.acq.gui.record_settings import SETTINGS_SETUP, LaserSettingsMixin
 from chisurf.plugins.core.acq.live import devices
 from chisurf.plugins.core.acq.live.analyzer import PRESETS
+from chisurf.plugins.core.acq.live.imaging import (
+    ImageRecordSession,
+    image_replay_source,
+    scan_of_file,
+)
 from chisurf.plugins.core.acq.live.project import recording_dir, workspace_datasets
 from chisurf.plugins.core.acq.live.realism import PRESETS as REALISM_PRESETS
 from chisurf.plugins.core.acq.live.realism import REALISTIC, Realism
+from chisurf.plugins.core.acq.live.scanner import ImageSimDevice, ImagingSample, ScanSettings
 from chisurf.plugins.core.acq.live.session import RecordSession
 from chisurf.plugins.core.acq.live.setups import (
     PRESET_LABELS,
@@ -98,6 +105,19 @@ class RecordModel(LaserSettingsMixin):
         self.preset = AUTO_PRESET
         self.alex_period_us = 100.0
         self.plot_choice = ""
+        # -- Point (smFRET) or Image (a scan) -------------------------------------------------
+        self.mode = "point"
+        self.set_scan(ScanSettings())
+        self.img_beads = 24
+        self.img_tau_1_ns = 1.0
+        self.img_tau_2_ns = 3.5
+        self.img_brightness = 40.0
+        self.image_map = "Intensity"
+        #: the scan of the image file a replay plays (read from its header)
+        self.replay_scan: ScanSettings | None = None
+        # -- the running smFRET trace: the last trace_window_s seconds in trace_bin_ms bins
+        self.trace_window_s = 1.0
+        self.trace_bin_ms = 1.0
         # -- realism of the simulated measurement (live.realism): Realistic unless chosen otherwise
         self.realism_preset = "realistic"
         self._set_realism(REALISTIC)
@@ -136,8 +156,84 @@ class RecordModel(LaserSettingsMixin):
         # -- the laser and the acquisition settings file (record_settings) --------------------
         self._init_laser_settings()
 
+    # -- point or image ---------------------------------------------------------------------------
+    _SCAN_FIELDS = ("pixels_x", "pixels_y", "area_x_um", "area_y_um", "dwell_ms", "frames",
+                    "bidirectional", "z_planes", "z_step_um")
+
+    def mode_options(self) -> list:
+        return [("point", tr("Point (smFRET)")), ("image", tr("Image (scan)"))]
+
+    def mode_changed(self, _value=None) -> None:
+        """A mode's sources differ: a replay must pick a file of the new kind again."""
+        self.replay_address = ""
+        self.replay_scan = None
+        self.status_text = tr("Ready")
+        self.status_detail = (
+            tr("Press Load example, then Start: a simulated scan builds up line by line.")
+            if self.mode == "image"
+            else tr("Press Load example, then Start.")
+        )
+
+    def set_scan(self, scan) -> None:
+        """Put a scan (ScanSettings or its document) into the form."""
+        scan = scan if isinstance(scan, ScanSettings) else ScanSettings.from_dict(scan)
+        for name in self._SCAN_FIELDS:
+            setattr(self, f"scan_{name}", getattr(scan, name))
+
+    def scan_settings(self) -> ScanSettings:
+        """The scan: the replayed file's, else the form's."""
+        if self.source_kind == "replay" and self.replay_scan is not None:
+            return self.replay_scan
+        return ScanSettings(**{name: getattr(self, f"scan_{name}") for name in self._SCAN_FIELDS})
+
+    def replay_changed(self, _value=None) -> None:
+        """Another file to replay: its scan is read again when needed."""
+        self.replay_scan = None
+
+    def scan_summary(self) -> tuple[str, str]:
+        """A few words on the scan, details for the tooltip."""
+        if self.source_kind == "replay":
+            if not self.replay_address:
+                return tr("Pick an image to replay"), ""
+            if self.replay_scan is None:
+                scan, missing = scan_of_file(self.replay_address)
+                if scan is None:
+                    return tr("Not an image"), "; ".join(missing)
+                self.replay_scan = scan
+        scan = self.scan_settings()
+        text = tr("{nx} × {ny} px · {t:.2f} s per frame").format(
+            nx=scan.nx, ny=scan.ny, t=scan.frame_s
+        )
+        detail = tr(
+            "{w:.1f} × {h:.1f} µm, dwell {dwell:.3f} ms, {frames} frame(s), {planes} plane(s), "
+            "{direction}; markers: line start {ls}, line stop {le}, frame {fr}"
+        ).format(
+            w=scan.area_x_um, h=scan.area_y_um, dwell=scan.dwell_ms, frames=scan.frames,
+            planes=scan.z_planes, direction=tr("bidirectional") if scan.bidirectional else
+            tr("one direction"), ls=scan.line_start_marker, le=scan.line_stop_marker,
+            fr=scan.frame_marker or tr("none"),
+        )
+        return text, detail
+
+    def image_map_options(self) -> list:
+        names = list(((self.snapshot or {}).get("images") or {}).keys()) or [
+            "Intensity", "Mean arrival time (ns)"
+        ]
+        return [(n, tr(n)) for n in names]
+
+    def trace_changed(self, _value=None) -> None:
+        """The running trace's span or bin changed: a running session starts its trace over."""
+        if self.session is not None and self.mode == "point":
+            self.session.set_trace(float(self.trace_window_s), float(self.trace_bin_ms) / 1e3)
+
     # -- options ---------------------------------------------------------------------------------
     def source_options(self) -> list:
+        if self.mode == "image":
+            return [
+                ("simulator", tr("Simulator (scan)")),
+                ("replay", tr("Replay an image")),
+                ("device", tr("Scanner (needs CMC rustytime — not available yet)")),
+            ]
         return [
             ("simulator", tr("Simulator (smFRET)")),
             ("replay", tr("Replay a photon stream")),
@@ -288,11 +384,14 @@ class RecordModel(LaserSettingsMixin):
         )
 
     def photon_options(self) -> list:
+        kind = "image" if self.mode == "image" else "photons"
         rows = [
-            (str(d.address), str(getattr(d, "name", "") or d.address))
-            for d in _workspace("photons")
+            (str(d.address), str(getattr(d, "name", "") or d.address)) for d in _workspace(kind)
         ]
-        return rows or [("", tr("No photon stream in the workspace"))]
+        empty = tr("No image in the workspace") if kind == "image" else tr(
+            "No photon stream in the workspace"
+        )
+        return rows or [("", empty)]
 
     def setup_options(self) -> list:
         rows = [
@@ -315,7 +414,46 @@ class RecordModel(LaserSettingsMixin):
         )
 
     # -- what the run uses -----------------------------------------------------------------------
+    def make_image_source(self):
+        """The photons and markers of a scan: a simulated scan (a simulated MultiHarp with a
+        simulated scanner), or an image file of the workspace replayed."""
+        if self.source_kind == "replay":
+            if not self.replay_address:
+                raise SourceUnavailable(tr("Choose an image of the workspace first."))
+            source, scan = image_replay_source(
+                self.replay_address, speed=float(self.speed), realtime=self.realtime
+            )
+            self.replay_scan = scan
+            return source
+        if self.source_kind == "device":
+            raise SourceUnavailable(
+                tr("Scanning hardware comes with CMC's rustytime; use the simulator meanwhile.")
+            )
+        if not devices.PQUSB or ImageSimDevice is None:
+            raise SourceUnavailable(tr("The scan simulator needs pqusb (CMC), not installed."))
+        import pqusb
+
+        scan = self.scan_settings()
+        problems = scan.validate()
+        if problems:
+            raise SourceUnavailable("; ".join(problems))
+        sample = ImagingSample(
+            n_beads=int(self.img_beads),
+            tau_ns=(float(self.img_tau_1_ns), float(self.img_tau_2_ns)),
+            bead_brightness=float(self.img_brightness),
+            seed=int(self.sim_seed),
+        )
+        dev = ImageSimDevice(
+            scan, sample, realism=self.realism(),
+            speed=float(self.speed) if self.realtime else 1000.0,
+        )
+        dev.initialize(pqusb.MODE_T3)
+        dev.set_sync_div(1)
+        return devices.DeviceSource(dev)
+
     def make_source(self):
+        if self.mode == "image":
+            return self.make_image_source()
         if self.source_kind == "simulator":
             pops = (
                 Population(self.sim_e_low, self.sim_s, self.sim_concentration),
@@ -419,6 +557,8 @@ class RecordModel(LaserSettingsMixin):
         if mine is not None:
             return mine
         if action == "start":
+            if self.mode == "image" and self.source_kind == "device":
+                return False  # scanners come with CMC's rustytime
             return not self.running and (self.source_kind != "device" or self.device is not None)
         if action == "connect_device":
             return devices.PQUSB and self.device is None and bool(self.attached())
@@ -431,6 +571,20 @@ class RecordModel(LaserSettingsMixin):
         return True
 
     def load_example(self) -> None:
+        if self.mode == "image":
+            self.source_kind = "simulator"
+            self.set_scan(ScanSettings(pixels_x=64, pixels_y=64, area_x_um=16.0, area_y_um=16.0,
+                                       dwell_ms=0.1, frames=3))
+            self.img_beads, self.img_tau_1_ns, self.img_tau_2_ns = 24, 1.0, 3.5
+            self.img_brightness = 40.0
+            self.realism_preset = "realistic"
+            self._set_realism(REALISTIC)
+            self.status_text = tr("Example ready")
+            self.status_detail = tr(
+                "A simulated scan: beads of two lifetimes (1.0 and 3.5 ns) on a dim cell outline, "
+                "64 × 64 pixels, 3 frames. Press Start."
+            )
+            return
         self.source_kind = "simulator"
         self.sim_e_low, self.sim_e_high, self.sim_s = 0.2, 0.8, 0.5
         self.sim_concentration = 1.0
@@ -460,6 +614,8 @@ class RecordModel(LaserSettingsMixin):
             return False
         name = self.run_name.strip().replace("{date}", time.strftime("%Y%m%d_%H%M%S"))
         name = name or time.strftime("record_%Y%m%d_%H%M%S")
+        if self.mode == "image":
+            return self._start_image(source, experiment, name)
         self.saved_path = recording_dir(self.output_dir) / f"{name}.ptu"
         self.session = RecordSession(
             source,
@@ -469,6 +625,8 @@ class RecordModel(LaserSettingsMixin):
             name=name,
             embed=self.recording_store == "embed",
             settings=self._run_settings(),
+            trace_window_s=float(self.trace_window_s),
+            trace_bin_s=float(self.trace_bin_ms) / 1e3,
         )
         try:
             self.session.start()
@@ -482,6 +640,42 @@ class RecordModel(LaserSettingsMixin):
         self.plot_choice = ""
         self.status_text = tr("Recording…")
         self.status_detail = str(self.saved_path)
+        return True
+
+    def _start_image(self, source, experiment, name: str) -> bool:
+        """Start a scan: a new recording for a simulated (or real) scan; a replay analyses an
+        existing image and records nothing."""
+        scan = self.scan_settings()
+        replay = self.source_kind == "replay"
+        self.saved_path = None if replay else recording_dir(self.output_dir) / f"{name}.ptu"
+        windows = (
+            dict(experiment.setup.get("windows") or {})
+            if self.setup_address not in ("", DEFAULT_SETUP)
+            else {}
+        )
+        duration = None if replay else (scan.total_s + 2 * scan.line_s)
+        self.session = ImageRecordSession(
+            source,
+            scan,
+            windows=windows,
+            duration_s=duration,
+            ptu_path=self.saved_path,
+            name=name,
+            embed=self.recording_store == "embed",
+            settings=None if replay else self._run_settings(),
+        )
+        try:
+            self.session.start()
+        except OSError as exc:
+            self.status_text = tr("Cannot start")
+            self.status_detail = str(exc)
+            self.session = None
+            return False
+        self._registered = False
+        self.snapshot = None
+        self.image_map = "Intensity"
+        self.status_text = tr("Replaying…") if replay else tr("Scanning…")
+        self.status_detail = str(self.saved_path or self.replay_address)
         return True
 
     def _run_settings(self) -> dict | None:
@@ -533,6 +727,9 @@ class RecordModel(LaserSettingsMixin):
             self.disconnect_laser()  # a run's end closes the laser (outputs off first)
             self.snapshot = session.snapshot()
             result = session.result
+            if isinstance(session, ImageRecordSession):
+                self._finish_image(session, result)
+                return
             try:
                 session.register()
                 self.status_detail = (
@@ -547,6 +744,30 @@ class RecordModel(LaserSettingsMixin):
             self.status_text = tr("{reason}: {bursts} bursts, {t:.0f} s").format(
                 reason=result.stop_reason.capitalize(), bursts=result.bursts, t=result.elapsed_s
             )
+
+    def _finish_image(self, session, result) -> None:
+        snap = self.snapshot or {}
+        frames = len(snap.get("lines_in_frame") or []) + (1 if snap.get("line") else 0)
+        if result.ptu is None:  # a replay: analysis of an existing image, nothing recorded
+            self.status_text = tr("{reason}: {frames} frame(s), {photons:,} photons").format(
+                reason=result.stop_reason.capitalize(), frames=frames, photons=result.photons
+            )
+            self.status_detail = tr("Replayed; nothing new was recorded.")
+            return
+        try:
+            session.register()
+            self.status_detail = (
+                tr("In Datasets as an image, {how}.").format(
+                    how=tr("embedded in the project") if session.embed else tr("linked")
+                )
+                if result.dataset_uid
+                else tr("On disk only (no project open).")
+            )
+        except Exception as exc:  # noqa: BLE001 - the file is written either way
+            self.status_detail = tr("On disk; not added to Datasets: {e}").format(e=exc)
+        self.status_text = tr("{reason}: {frames} frame(s), {photons:,} photons").format(
+            reason=result.stop_reason.capitalize(), frames=frames, photons=result.photons
+        )
 
     def close(self) -> None:
         if self.running:
@@ -708,23 +929,117 @@ def _short_line(text: str, tooltip: str, colour=None) -> None:
         im.set_item_tooltip(tooltip)
 
 
+#: The Record tool's docks: key, title, the region it starts in.
+DOCKS = (
+    ("acquisition", "Acquisition", "settings"),
+    ("laser", "Laser", "settings"),
+    ("analysis", "Analysis", "settings"),
+    ("plot_hist", "Histogram", "main"),
+    ("plot_image", "Image", "main"),
+    ("quality", "Quality", "side"),
+    ("plot_trace", "Trace", "bottom_left"),
+    ("plot_decays", "Decays", "bottom_right"),
+)
+#: Height of the run bar above the docks.
+RUN_BAR_H = 30.0
+
+
+def _layout():
+    from emtk.docking import Region, Split
+
+    return Split(
+        "h", 0.30, Region("settings"),
+        Split("v", 0.62,
+              Split("h", 0.70, Region("main"), Region("side")),
+              Split("h", 0.5, Region("bottom_left"), Region("bottom_right"))),
+    )  # fmt: skip
+
+
+def _plot_mirrored_trace(trace: dict, size) -> None:
+    """The running smFRET trace: donor up, acceptor signals down, the last *window* seconds."""
+    from emtk import implot
+
+    if implot.begin_plot("##mirrored_trace", size, implot.FLAGS_NO_TITLE):
+        implot.setup_axes(tr("time (s)"), tr("photons per bin"))
+        t = np.asarray(trace["t"], dtype=float)
+        implot.setup_axis_limits(
+            implot.AXIS_X1, float(t[0]) - trace["bin_s"], float(t[-1]) + trace["bin_s"],
+            implot.COND_ALWAYS,
+        )
+        # acceptor curves first (AA under DA), the donor last: each sign's main signal on top
+        ordered = sorted(trace["streams"], key=lambda st: (st["sign"], ))
+        ordered = [st for st in reversed(ordered) if st["sign"] < 0] + [
+            st for st in ordered if st["sign"] > 0
+        ]
+        for stream in ordered:
+            y = np.asarray(stream["counts"], dtype=float)
+            implot.set_next_line_style(stream["colour"])
+            implot.set_next_fill_style(stream["colour"], 0.35)
+            implot.plot_shaded(tr(stream["name"]), t, y, yref=0.0)
+            implot.set_next_line_style(stream["colour"])
+            implot.plot_stairs(f"##{stream['name']}", t, y)
+        implot.set_next_line_style((0.6, 0.6, 0.6, 1.0))
+        implot.plot_line("##zero", np.asarray([t[0], t[-1]]), np.zeros(2))
+        implot.end_plot()
+
+
+def _plot_image(image: np.ndarray, name: str, size) -> None:
+    """One map of the live image, with its colour scale."""
+    from emtk import implot
+
+    img = np.asarray(image, dtype=float)
+    finite = img[np.isfinite(img)]
+    lo = float(finite.min()) if finite.size else 0.0
+    hi = float(finite.max()) if finite.size else 1.0
+    if hi <= lo:
+        hi = lo + 1.0
+    flim = "arrival" in name
+    cmap = implot.COLORMAP_JET if flim else implot.COLORMAP_HOT
+    shown = np.where(np.isfinite(img), img, lo)
+    scale_w = 70.0
+    implot.push_colormap(cmap)
+    plot_w = max(120.0, size[0] - scale_w - 8.0)
+    if implot.begin_plot("##live_image", (plot_w, size[1]),
+                         implot.FLAGS_NO_TITLE | implot.FLAGS_EQUAL):
+        implot.setup_axes(tr("x (pixel)"), tr("y (line)"), 0, implot.AXIS_FLAGS_INVERT)
+        rows, cols = shown.shape
+        implot.plot_heatmap("##map", np.ascontiguousarray(shown), rows, cols, lo, hi, None,
+                            (0.0, float(rows)), (float(cols), 0.0))
+        implot.end_plot()
+    im.same_line()
+    implot.colormap_scale(tr("ns") if flim else tr("photons"), lo, hi, (scale_w, size[1]),
+                          cmap=cmap)
+    implot.pop_colormap()
+
+
 class RecordApp(ImApp):
-    """The Record tool's window (``record.view.json`` plus the live plots)."""
+    """The Record tool: settings, laser, analysis, quality and every plot in its own dock, with a
+    run bar above them that always shows Start, Stop and Laser off."""
 
     window_title = "ChiSurf Record"
 
     def __init__(self, model: RecordModel | None = None) -> None:
+        from emtk.docking import DockManager
+
         self.model = model or RecordModel()
         self.sections = json.loads((HERE / "record.view.json").read_text(encoding="utf-8"))[
             "sections"
         ]
         self.form = FormState()
-        self.form.custom["live_view"] = self._draw_live
-        self.form.custom["setup_summary"] = self._draw_setup_summary
-        self.form.custom["run_status"] = self._draw_run_status
-        self.form.custom["laser_status"] = self._draw_laser_status
-        self.form.custom["laser_rate"] = self._draw_laser_rate
-        self.form.custom["settings_status"] = self._draw_settings_status
+        for key, draw in (
+            ("live_view", self._draw_hist),
+            ("live_image", self._draw_image),
+            ("live_trace", self._draw_trace),
+            ("live_decays", self._draw_decays),
+            ("live_qc", self._draw_quality),
+            ("setup_summary", self._draw_setup_summary),
+            ("scan_summary", self._draw_scan_summary),
+            ("run_status", self._draw_run_status),
+            ("laser_status", self._draw_laser_status),
+            ("laser_rate", self._draw_laser_rate),
+            ("settings_status", self._draw_settings_status),
+        ):
+            self.form.custom[key] = draw
         self.save_dialog = None
         self.save_window = None
         self.help_window = EmTkHelpWindow(
@@ -738,15 +1053,137 @@ class RecordApp(ImApp):
         )
         self.form.on_used = self.tour.notify_used
         self.classic = None
+        self.docks = DockManager(_layout())
+        for key, title, region in DOCKS:
+            self.docks.add_window(key, tr(title), self._dock_drawer(key), dock=region)
+        self._mode_shown = None
+        #: which dock draws each control (attr, action, custom key): a tour step on a control
+        #: of a tab in the back brings that tab forward
+        self.control_dock = self._map_controls()
+        self._tour_focus: tuple | None = None
         super().__init__(self.render, continuous=True)
 
-    def _toolbar(self) -> None:
-        if im.small_button(f"📖 {tr('Guide')}"):
-            self.tour.start()
-        im.same_line()
-        if im.small_button(f"❓ {tr('Help')}"):
-            self.help_window.open()
+    def _map_controls(self) -> dict[str, str]:
+        out: dict[str, str] = {}
 
+        def walk(sections, dock):
+            for sec in sections:
+                for key in (sec.get("attr"), sec.get("action"), sec.get("key")):
+                    if key:
+                        out.setdefault(str(key), dock)
+                for button in sec.get("buttons") or ():
+                    if button.get("action"):
+                        out.setdefault(str(button["action"]), dock)
+                walk(sec.get("sections") or (), dock)
+
+        for panel in self.sections:
+            if panel.get("dock"):
+                walk([panel], panel["dock"])
+        out["live_view"] = "plot_hist"
+        out["live_image"] = "plot_image"
+        return out
+
+    def focus_dock(self, key: str) -> None:
+        """Show the dock *key* and bring it in front of the tabs it shares its region with."""
+        self.docks.show(key)
+        self.docks.focus(key)
+
+    def _follow_tour(self) -> None:
+        """The tour's step points at a control in a dock in the back: bring the dock forward."""
+        tour = self.tour
+        if not tour.active or not tour.steps:
+            self._tour_focus = None
+            return
+        target = (tour.steps[tour.step_idx].get("target") or {}).get("name")
+        dock = self.control_dock.get(str(target)) if target else None
+        if dock and self._tour_focus != (tour.step_idx, dock):
+            self._tour_focus = (tour.step_idx, dock)
+            self.focus_dock(dock)
+
+    # -- docks -------------------------------------------------------------------------------------
+    def _panels(self, dock: str) -> list:
+        return [s for s in self.sections if s.get("dock") == dock]
+
+    def _dock_drawer(self, dock: str):
+        def draw(box) -> None:
+            panels = self._panels(dock)
+            single = len(panels) == 1 and dock.startswith(("plot_", "quality"))
+            if single:
+                draw_sections(panels[0]["sections"], self.model, self.form, titles=False)
+            else:
+                draw_sections(panels, self.model, self.form, titles=True)
+
+        return draw
+
+    def _sync_docks_to_mode(self) -> None:
+        """Point shows the histogram dock, Image the image dock (the user may re-open either)."""
+        mode = self.model.mode
+        if mode == self._mode_shown:
+            return
+        self._mode_shown = mode
+        if mode == "image":
+            self.docks.show("plot_image")
+            self.docks.hide("plot_hist")
+        else:
+            self.docks.show("plot_hist")
+            self.docks.hide("plot_image")
+
+    def reset_layout(self) -> None:
+        """Every dock back where the tool puts it, the stored layout forgotten."""
+        self.docks.reset()
+        self._mode_shown = None
+
+    # -- the run bar -------------------------------------------------------------------------------
+    def _run_bar(self, box) -> None:
+        model = self.model
+        im.set_next_window_pos((box[0], box[1]), im.Cond.ALWAYS)
+        im.set_next_window_size((box[2], RUN_BAR_H), im.Cond.ALWAYS)
+        flags = (
+            im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_MOVE
+            | im.WindowFlags.NO_SCROLLBAR | im.WindowFlags.NO_SAVED_SETTINGS
+        )  # fmt: skip
+        if im.begin("##record_run_bar", None, flags):
+            for action, label, role, tip in (
+                ("start", f"▶ {tr('Start')}", "primary", tr("Start measuring.")),
+                ("stop", f"⏹ {tr('Stop')}", "danger", tr("Stop measuring.")),
+            ):
+                enabled = model.enabled(action)
+                if not enabled:
+                    im.begin_disabled()
+                if im.small_button(f"{label}##bar_{action}"):
+                    getattr(model, action)()
+                    self.tour.notify_used(action)
+                if not enabled:
+                    im.end_disabled()
+                im.set_item_tooltip(tip)
+                im.same_line()
+            snap = model.snapshot or {}
+            elapsed = float(snap.get("elapsed_s", 0.0))
+            im.text(f"{model.status_text} · {elapsed:.1f} s")
+            im.set_item_tooltip(model.status_detail)
+            im.same_line()
+            im.push_style_color(im.Col.BUTTON, _LIGHT_COLOURS["red"])
+            if im.small_button(f"⏻ {tr('Laser off')}##bar_laser_off"):
+                model.laser_off()
+                self.tour.notify_used("laser_off")
+            im.pop_style_color()
+            im.set_item_tooltip(tr("Switch every laser output off now (always available)."))
+            self.form.rects["laser_off"] = im.get_item_rect()
+            im.same_line()
+            if im.small_button(f"📖 {tr('Guide')}"):
+                self.tour.start()
+            im.same_line()
+            if im.small_button(f"❓ {tr('Help')}"):
+                self.help_window.open()
+            im.same_line()
+            if im.small_button(tr("Reset layout")):
+                self.reset_layout()
+                self.tour.notify_used("reset_layout")
+            self.form.rects["reset_layout"] = im.get_item_rect()
+            im.set_item_tooltip(tr("Put every window back where the Record tool puts it."))
+        im.end()
+
+    # -- custom sections ---------------------------------------------------------------------------
     def _draw_setup_summary(
         self, section, model: RecordModel, state: FormState, width: float
     ) -> None:
@@ -754,6 +1191,12 @@ class RecordApp(ImApp):
         label, detail = model.setup_summary()
         _short_line(label, detail, (0.7, 0.7, 0.7, 1.0))
         state.rects["setup_summary"] = (*top, width, 20.0)
+
+    def _draw_scan_summary(self, section, model: RecordModel, state: FormState, width: float):
+        top = im.get_cursor_screen_pos()
+        label, detail = model.scan_summary()
+        _short_line(label, detail, (0.7, 0.7, 0.7, 1.0))
+        state.rects["scan_summary"] = (*top, width, 20.0)
 
     def _draw_run_status(self, section, model: RecordModel, state: FormState, width: float) -> None:
         top = im.get_cursor_screen_pos()
@@ -786,6 +1229,109 @@ class RecordApp(ImApp):
         _short_line(model.settings_text, model.settings_detail, (0.7, 0.7, 0.7, 1.0))
         state.rects["settings_status"] = (*top, width, 20.0)
 
+    def _avail(self, minimum=(200.0, 120.0)) -> tuple[float, float]:
+        w, h = im.get_content_region_avail()[:2]
+        return max(minimum[0], w), max(minimum[1], h - 4.0)
+
+    def _placeholder(self, state: FormState, key: str, text: str, width: float) -> None:
+        top = im.get_cursor_screen_pos()
+        im.text_wrapped(text)
+        state.rects[key] = (*top, width, 28.0)
+
+    def _draw_hist(self, section, model: RecordModel, state: FormState, width: float) -> None:
+        snap = model.snapshot
+        if snap is None or model.mode == "image":
+            self._placeholder(state, "live_view", tr("Start a run: the bursts build up here."), width)
+            return
+        top = im.get_cursor_screen_pos()
+        _short_line(
+            f"{tr('Bursts')}: {snap['bursts']:,} · {snap['burst_rate_hz']:.1f} Hz",
+            tr("{photons:,} photons in {t:.1f} s").format(photons=snap["photons"],
+                                                         t=snap["elapsed_s"]),
+        )
+        hists = snap.get("histograms") or {}
+        if hists and model.plot_choice not in hists:
+            two_d = [n for n, h in hists.items() if "y" in h]
+            model.plot_choice = (two_d or list(hists))[0]
+        _w, h = self._avail()
+        if hists:
+            _plot_histogram(hists[model.plot_choice], h)
+        else:
+            im.text_wrapped(tr("This measurement type keeps no histogram."))
+        bottom = im.get_cursor_screen_pos()
+        state.rects["live_view"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
+
+    def _draw_image(self, section, model: RecordModel, state: FormState, width: float) -> None:
+        snap = model.snapshot
+        images = (snap or {}).get("images") or {}
+        if not images:
+            self._placeholder(state, "live_image", tr("Start a scan: the image builds up here."),
+                              width)
+            return
+        top = im.get_cursor_screen_pos()
+        if model.image_map not in images:
+            model.image_map = "Intensity"
+        _short_line(
+            tr("Frame {f} · line {l}/{n}").format(f=snap["frame"] + 1, l=snap["line"], n=snap["ny"]),
+            tr("{photons:,} photons, {lines} lines").format(photons=snap["photons"],
+                                                           lines=snap["lines_done"]),
+        )
+        _plot_image(images[model.image_map], model.image_map, self._avail())
+        bottom = im.get_cursor_screen_pos()
+        state.rects["live_image"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
+
+    def _draw_trace(self, section, model: RecordModel, state: FormState, width: float) -> None:
+        snap = model.snapshot
+        top = im.get_cursor_screen_pos()
+        if snap is None:
+            self._placeholder(state, "live_trace", tr("The running trace appears during a run."),
+                              width)
+            return
+        exp = model.session.experiment if model.session is not None else None
+        if snap.get("live_trace") is not None:
+            trace = snap["live_trace"]
+            _short_line(
+                tr("Last {w:g} s · {b:g} ms bins").format(w=trace["window_s"],
+                                                          b=trace["bin_s"] * 1e3),
+                tr("Donor up, acceptor down. Span and bin width: Analysis › Running trace."),
+                (0.7, 0.7, 0.7, 1.0),
+            )
+            _plot_mirrored_trace(trace, self._avail())
+        else:
+            _plot_rates(snap, exp, self._avail())
+        bottom = im.get_cursor_screen_pos()
+        state.rects["live_trace"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
+
+    def _draw_decays(self, section, model: RecordModel, state: FormState, width: float) -> None:
+        snap = model.snapshot
+        top = im.get_cursor_screen_pos()
+        if snap is None:
+            self._placeholder(state, "live_decays", tr("Decays appear during a run."), width)
+            return
+        exp = model.session.experiment if model.session is not None else None
+        _plot_decays(snap, exp, self._avail())
+        bottom = im.get_cursor_screen_pos()
+        state.rects["live_decays"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
+
+    def _draw_quality(self, section, model: RecordModel, state: FormState, width: float) -> None:
+        top = im.get_cursor_screen_pos()
+        snap = model.snapshot or {}
+        healthy = not snap.get("dropped") and not snap.get("source_error")
+        if snap:
+            _short_line(
+                tr("● healthy") if healthy else tr("● data lost"),
+                tr("{batches} batches, {dropped} dropped, {queued} buffered.").format(
+                    batches=snap.get("batches", 0), dropped=snap.get("dropped", 0),
+                    queued=snap.get("queued", 0)),
+                _LIGHT_COLOURS["green" if healthy else "red"],
+            )
+            if snap.get("source_error"):
+                im.text_colored(_style.TEXT_DANGER, str(snap["source_error"]))
+        _draw_qc(snap.get("qc"))
+        bottom = im.get_cursor_screen_pos()
+        state.rects["live_qc"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
+
+    # -- the settings file save dialog ---------------------------------------------------------------
     def _open_save_dialog(self) -> None:
         from emtk.dialog_window import DialogWindow
         from emtk.file_dialog import FileDialog
@@ -817,64 +1363,7 @@ class RecordApp(ImApp):
         elif result is False or pressed == "close":
             self.save_dialog = None
 
-    def _draw_live(self, section: dict, model: RecordModel, state: FormState, width: float) -> None:
-        top = im.get_cursor_screen_pos()
-        snap = model.snapshot
-        if snap is None:
-            im.text_wrapped(
-                tr("Nothing measured yet. Start a run to see its bursts build up here.")
-            )
-            state.rects["live_view"] = (*top, width, 28.0)
-            state.rects["live_qc"] = (*top, width, 28.0)
-            return
-        exp = model.session.experiment if model.session is not None else None
-        im.text(
-            f"{tr('Bursts')}: {snap['bursts']:,}   {tr('Burst rate')}: {snap['burst_rate_hz']:.1f} Hz   "
-            f"{tr('Photons')}: {snap['photons']:,}   {tr('Measured')}: {snap['elapsed_s']:.1f} s"
-        )
-        bg = ", ".join(
-            f"{name} {rate / 1e3:.2f}"
-            for name, rate in snap["background_cps"].items()
-            if name in _shown_streams(snap, exp)
-        )
-        healthy = not snap["dropped"] and not snap.get("source_error")
-        _short_line(
-            tr("● healthy") if healthy else tr("● data lost"),
-            tr(
-                "{batches} batches, {dropped} dropped, {queued} buffered.\nBackground (kHz): {bg}"
-            ).format(
-                batches=snap["batches"], dropped=snap["dropped"], queued=snap["queued"], bg=bg
-            ),
-            _LIGHT_COLOURS["green" if healthy else "red"],
-        )
-        if snap.get("source_error"):
-            im.text_colored((1.0, 0.45, 0.4, 1.0), str(snap["source_error"]))
-        hists = snap.get("histograms") or {}
-        if hists and model.plot_choice not in hists:
-            two_d = [n for n, h in hists.items() if "y" in h]
-            model.plot_choice = (two_d or list(hists))[0]
-        avail_h = max(320.0, im.get_content_region_avail()[1] - 8.0)
-        plot_w = max(320.0, width * 0.62)
-        if im.begin_child("##hist_block", (plot_w, avail_h * 0.62), scrollable=False):
-            if hists:
-                _plot_histogram(hists[model.plot_choice], avail_h * 0.62 - 6.0)
-            else:
-                im.text_wrapped(tr("This measurement type keeps no histogram."))
-        im.end_child()
-        im.same_line()
-        qc_top = im.get_cursor_screen_pos()
-        qc_w = width - plot_w - 8.0
-        if im.begin_child("##qc_block", (qc_w, avail_h * 0.62)):
-            _draw_qc(snap.get("qc"))
-        im.end_child()
-        state.rects["live_qc"] = (qc_top[0], qc_top[1], qc_w, avail_h * 0.62)
-        half = (width - 8.0) / 2
-        _plot_rates(snap, exp, (half, avail_h * 0.34))
-        im.same_line()
-        _plot_decays(snap, exp, (half, avail_h * 0.34))
-        bottom = im.get_cursor_screen_pos()
-        state.rects["live_view"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
-
+    # -- one frame ---------------------------------------------------------------------------------
     def render(self) -> None:
         self.model.poll()
         vp = im.get_main_viewport()
@@ -896,20 +1385,10 @@ class RecordApp(ImApp):
             im.end()
             return
         self.form.rects.clear()
-        im.set_next_window_pos(vp.pos, im.Cond.ALWAYS)
-        im.set_next_window_size(vp.size, im.Cond.ALWAYS)
-        if im.begin("ChiSurf Record", box):
-            self._toolbar()
-            avail = im.get_content_region_avail()
-            left = min(460.0, max(320.0, avail[0] * 0.34))
-            if im.begin_child("##record_controls", (left, avail[1])):
-                draw_sections(self.sections[:-1], self.model, self.form, titles=True)
-            im.end_child()
-            im.same_line()
-            if im.begin_child("##record_live", (avail[0] - left - 8.0, avail[1])):
-                draw_sections(self.sections[-1]["sections"], self.model, self.form, titles=False)
-            im.end_child()
-        im.end()
+        self._sync_docks_to_mode()
+        self._follow_tour()
+        self._run_bar(box)
+        self.docks.draw((box[0], box[1] + RUN_BAR_H, box[2], max(100.0, box[3] - RUN_BAR_H)))
         self._draw_save_dialog(box)
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
@@ -934,7 +1413,14 @@ class RecordApp(ImApp):
             "window_time_ms",
             "duration_s",
             "laser_kind",
-        )
+            "mode",
+            "trace_window_s",
+            "trace_bin_ms",
+            "img_beads",
+            "img_tau_1_ns",
+            "img_tau_2_ns",
+            "img_brightness",
+        ) + tuple(f"scan_{name}" for name in RecordModel._SCAN_FIELDS)
         return {k: getattr(self.model, k) for k in keys}
 
     def restore_settings(self, settings: dict[str, Any]) -> None:

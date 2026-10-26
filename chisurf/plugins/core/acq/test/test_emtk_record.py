@@ -89,10 +89,16 @@ def test_without_a_connected_device_neither_connect_nor_start_is_offered(app, mo
 
 
 def test_every_guide_step_points_at_a_drawn_control(app):
+    """The controls sit in several docks (some as tabs in the back): the tour brings each step's
+    dock forward, so every target is drawn while its step is shown."""
     ui = Driver(app, SIZE)
     ui.draw(3)
     steps = json.loads((HERE / "record_guide.json").read_text(encoding="utf-8"))["steps"]
-    for step in steps:
+    app.tour.start()
+    for k, step in enumerate(steps):
+        app.tour.step_idx = k
+        ui.draw(3)
         target = (step.get("target") or {}).get("name")
         if target:
             assert target in app.form.rects, target
+    app.tour.stop()

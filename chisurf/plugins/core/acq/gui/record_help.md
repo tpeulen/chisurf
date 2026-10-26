@@ -4,6 +4,34 @@ Measures single molecules and analyses every burst while the measurement runs: t
 the measurement type build up as you measure (E–S for PIE), a quality panel says whether to go on,
 and the run lands in the project with exactly the bursts you saw.
 
+## Windows
+
+The tool is a set of windows you arrange: **Acquisition** (settings files, source, simulated sample and
+instrument, TCSPC device, scan, run), **Laser**, **Analysis** (setup, measurement type, burst rule,
+running trace), **Quality** (traffic lights) and one window per plot -- **Histogram** (Point),
+**Image** (Image), **Trace** and **Decays**. Drag a title to float or dock a window, drop it on another
+to make tabs, resize from any edge, double-click a title to fold it. The bar on top always holds
+**Start**, **Stop**, the run's state, **Laser off**, **Guide**, **Help** and **Reset layout**. The
+arrangement is kept between sessions.
+
+## Point and Image
+
+**Point** measures single molecules at one spot: bursts are searched live, their histograms (E–S for
+PIE) and the quality lights of the FRET checker build up, and the **running trace** shows the last
+seconds -- donor up, acceptor (FRET and directly excited) down -- in bins you choose (**Analysis ›
+Running trace**: span, default 1 s; bin, default 1 ms).
+
+**Image** scans: the scanner's line and frame markers arrive in the photon stream, and the image
+builds up line by line (intensity, mean arrival time as fast FLIM, each detector, each micro-time
+window of a PIE setup). The **Scan** section sets pixels, area, dwell time, frames, bidirectional
+scanning and z planes. Sources: the **simulated scan** (beads of two lifetimes on a cell outline,
+scanned by tttrlib's simulator through a simulated MultiHarp), or **Replay an image** of the
+workspace -- its scan is read from the file's header, nothing is recorded, and the image equals the
+one the imaging tools build from the file. Real scanners come with CMC's device layer (rustytime).
+The imaging quality lights: pile-up (the brightest pixel against the laser rate), lines per frame and
+paired line markers (the markers are consistent), and the signal in the bright pixels. A recorded
+scan enters **Datasets** as an image (photons) that the imaging tools take from the workspace.
+
 ## Sources
 
 | Source | What it is |

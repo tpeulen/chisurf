@@ -2,7 +2,15 @@
   "steps": [
     {
       "title": "Measure and watch the bursts build up",
-      "text": "The Record tool measures single molecules and analyses every burst while the measurement runs. Until a device is connected it measures the <b>simulator</b>: a simulated MultiHarp measuring a smFRET sample whose answer is known."
+      "text": "The Record tool measures single molecules (Point) or scans an image (Image) and analyses the data while the measurement runs. Every part sits in its own window -- Acquisition, Laser, Analysis, Quality and one per plot -- which you can dock, tab, float, resize and fold; <b>Start</b>, <b>Stop</b> and <b>Laser off</b> stay in the bar on top. Until a device is connected it measures the <b>simulator</b>."
+    },
+    {
+      "title": "Point or Image",
+      "text": "<b>Mode</b> chooses a single-molecule measurement at one spot (Point: bursts, E–S, the running trace) or a scan (Image: the image builds up line by line). Keep <b>Point</b> for this tour.",
+      "target": {
+        "name": "mode",
+        "attr": "mode"
+      }
     },
     {
       "title": "Load the example",
@@ -39,9 +47,23 @@
     },
     {
       "title": "Watch the histogram",
-      "text": "Each finished burst lands in the type's histograms — for the PIE example two clusters at E 0.2 and 0.8, both at S 0.5; <b>Histogram</b> picks which is shown. Below, the count rates and the decays of each stream with the excitation windows marked — a window in the wrong place shows here first.",
+      "text": "Each finished burst lands in the type's histograms -- for the PIE example two clusters at E 0.2 and 0.8, both at S 0.5; <b>Histogram</b> picks which is shown.",
       "target": {
         "name": "live_view"
+      }
+    },
+    {
+      "title": "The running trace",
+      "text": "The last second of photons in 1 ms bins: the donor under donor excitation up (green), the acceptor down -- FRET (red) and directly excited acceptor (magenta). A FRET burst is a green spike over a red one. Span and bin width are in <b>Analysis › Running trace</b>.",
+      "target": {
+        "name": "live_trace"
+      }
+    },
+    {
+      "title": "Decays",
+      "text": "The micro-time decays of each detector with the excitation windows marked -- a window in the wrong place shows here first.",
+      "target": {
+        "name": "live_decays"
       }
     },
     {
@@ -68,6 +90,13 @@
       "target": {
         "name": "laser_off",
         "action": "Laser off"
+      }
+    },
+    {
+      "title": "Arrange the windows",
+      "text": "Drag a window's title to float it or dock it elsewhere (several in one place become tabs), resize it from any edge, double-click a title to fold it. <b>Reset layout</b> puts everything back.",
+      "target": {
+        "name": "reset_layout"
       }
     }
   ]

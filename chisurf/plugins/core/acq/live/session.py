@@ -60,9 +60,24 @@ class RunResult:
     qc: dict | None = None
 
 
-def _header(source_info, name: str, settings: dict | None = None):
+_TY_BOOL = 0x00000008
+
+
+def _tag_type(value) -> int:
+    """The PicoQuant tag type of a typed header value."""
+    if isinstance(value, bool):
+        return _TY_BOOL
+    if isinstance(value, (int, np.integer)):
+        return _TY_I8
+    if isinstance(value, float):
+        return _TY_F8
+    return _TY_ANSI
+
+
+def _header(source_info, name: str, settings: dict | None = None, tags: dict | None = None):
     """A PTU header for the source's clocks (T3, MultiHarp record layout), with the run's
-    acquisition settings document in the ``ChiSurf_AcquisitionSettings`` tag when given."""
+    acquisition settings document in the ``ChiSurf_AcquisitionSettings`` tag when given, and the
+    extra typed *tags* (a scan's ``ImgHdr_*``)."""
     probe = tttrlib.TTTR()
     probe.append_events(
         np.zeros(1, np.uint64), np.zeros(1, np.uint16), np.zeros(1, np.int8), np.zeros(1, np.int8)
@@ -75,6 +90,8 @@ def _header(source_info, name: str, settings: dict | None = None):
     h.set_tag("File_Comment", f"ChiSurf live recording: {name}", _TY_ANSI)
     if settings:
         h.set_tag(CHISURF_SETTINGS_TAG, settings_file.dumps(settings), _TY_ANSI)
+    for key, value in (tags or {}).items():
+        h.set_tag(key, value if not isinstance(value, np.integer) else int(value), _tag_type(value))
     return h
 
 
@@ -121,9 +138,14 @@ class RecordSession:
         name: str = "",
         embed: bool = True,
         settings: dict | None = None,
+        header_tags: dict | None = None,
+        trace_window_s: float = 1.0,
+        trace_bin_s: float = 1e-3,
     ):
         self.source = source
         info = source.info
+        #: typed tags the recording's header carries besides the settings (a scan's ImgHdr_*)
+        self.header_tags = dict(header_tags or {})
         self.experiment = experiment or Experiment(
             default_setup("pie", info.n_micro), "pie", name="default PIE"
         )
@@ -134,7 +156,9 @@ class RecordSession:
         self.embed = bool(embed)
         self.settings = settings
         self._dataset = None  # the photons dataset, built (hashed) by the worker at stop
-        self.analyzer = self.experiment.analyzer(info.macro_clock_s, info.micro_res_s, info.n_micro)
+        self.analyzer = self._make_analyzer()
+        #: the running mirrored trace (last ``trace_window_s`` s in ``trace_bin_s`` bins)
+        self.trace = self._make_trace(trace_window_s, trace_bin_s)
         #: total photons per whole second of the run (the checker's stability trace)
         self._per_second = np.zeros(0, dtype=np.int64)
         self._first_macro: int | None = None
@@ -157,6 +181,39 @@ class RecordSession:
         self.qc: dict | None = None
         self._qc_at = 0.0
 
+    #: what the recording becomes in the workspace (the linked reader of this kind reads it)
+    dataset_kind = "photons"
+
+    def _make_analyzer(self):
+        """The live analysis: the experiment's burst analyzer."""
+        info = self.source.info
+        return self.experiment.analyzer(info.macro_clock_s, info.micro_res_s, info.n_micro)
+
+    def _make_trace(self, window_s: float, bin_s: float):
+        """The running smFRET trace of the experiment's preset (donor up, acceptor down)."""
+        from .trace import LiveTrace, trace_streams
+
+        exp = self.experiment
+        streams = trace_streams(exp.setup, exp.preset, donor=exp.donor, acceptor=exp.acceptor,
+                                prompt=exp.prompt, delay=exp.delay)
+        return LiveTrace(streams, macro_clock_s=self.source.info.macro_clock_s,
+                         window_s=window_s, bin_s=bin_s,
+                         alex_period_s=exp.alex_period_s if exp.preset == "alex" else None)
+
+    def set_trace(self, window_s: float, bin_s: float) -> None:
+        """Change the running trace's span and bin width (it starts over)."""
+        if self.trace is not None:
+            with self._lock:
+                self.trace.configure(window_s, bin_s)
+
+    def _push(self, batch) -> None:
+        """Feed one batch to the live analysis (called under the lock): photons only."""
+        photons = batch.photons()
+        self.analyzer.push_np(photons.macro, photons.micro, photons.channel.astype(np.int32))
+        if self.trace is not None:
+            self.trace.push(photons.macro, photons.micro, photons.channel)
+        self._count_seconds(photons.macro, self.source.info.macro_clock_s)
+
     # -- control --------------------------------------------------------------------------------
     @property
     def running(self) -> bool:
@@ -169,17 +226,19 @@ class RecordSession:
         if self.ptu_path is not None and hasattr(self.source, "make_recorder"):
             # a device records its own raw records, header and all
             self.ptu_path.parent.mkdir(parents=True, exist_ok=True)
-            extra = (
-                {CHISURF_SETTINGS_TAG: settings_file.dumps(self.settings)}
-                if self.settings
-                else None
+            extra = dict(self.header_tags)
+            if self.settings:
+                extra[CHISURF_SETTINGS_TAG] = settings_file.dumps(self.settings)
+            self._recorder = self.source.make_recorder(
+                self.ptu_path, self.name, extra=extra or None
             )
-            self._recorder = self.source.make_recorder(self.ptu_path, self.name, extra=extra)
         elif self.ptu_path is not None:
             self.ptu_path.parent.mkdir(parents=True, exist_ok=True)
             writer = tttrlib.RecordStreamWriter(_PQ_PTU)
             if not writer.create(
-                str(self.ptu_path), _header(self.source.info, self.name, self.settings), self.name
+                str(self.ptu_path),
+                _header(self.source.info, self.name, self.settings, self.header_tags),
+                self.name,
             ):
                 raise OSError(f"cannot write {self.ptu_path}: {writer.error()}")
             writer.set_auto_checkpoint(200_000)
@@ -220,23 +279,19 @@ class RecordSession:
                     limit = t0 + int(self.duration_s / clock)
                     cut = int(np.searchsorted(batch.macro, np.uint64(limit)))
                     if cut < len(batch):
-                        batch.macro, batch.micro, batch.channel = (
-                            batch.macro[:cut],
-                            batch.micro[:cut],
-                            batch.channel[:cut],
-                        )
+                        batch.cut(cut)
                         self.stop_reason = "duration reached"
                         self._stop.set()
                 with self._lock:
-                    self.analyzer.push_np(batch.macro, batch.micro, batch.channel.astype(np.int32))
-                    self._count_seconds(batch.macro, clock)
+                    self._push(batch)
                     self.batches += 1
                 if self._recorder is not None:
                     self._recorder.write(batch)
                 if self._writer is not None and len(batch):
-                    ok = self._writer.submit_events(
-                        batch.macro, batch.micro, batch.channel, np.zeros(len(batch), np.int8)
+                    events = (
+                        batch.event if batch.event is not None else np.zeros(len(batch), np.int8)
                     )
+                    ok = self._writer.submit_events(batch.macro, batch.micro, batch.channel, events)
                     if not ok:
                         self.dropped += 1
                 if time.monotonic() - self._qc_at >= QC_INTERVAL_S:
@@ -282,7 +337,7 @@ class RecordSession:
             link = add_link(str(ptu))
             if self.embed:
                 link = {**link, "embedded": True}  # stored in the project at its next save
-            reader = reader_for_kind("photons")
+            reader = reader_for_kind(self.dataset_kind)
             dataset = reader.make_dataset(str(ptu), link=link)
             dataset.data_reader = reader
             dataset.name = ptu.name
@@ -350,6 +405,8 @@ class RecordSession:
         """The accumulators and health, copied under the lock (no photons)."""
         with self._lock:
             snap = self.analyzer.snapshot()
+            if self.trace is not None:
+                snap["live_trace"] = self.trace.snapshot()
         status = self.source.status()
         snap.update(
             running=self.running,
@@ -380,7 +437,7 @@ class RecordSession:
 
         photons = self._dataset
         if photons is None:  # hashing failed in the worker: link the file plainly
-            reader = reader_for_kind("photons")
+            reader = reader_for_kind(self.dataset_kind)
             photons = reader.make_dataset(str(result.ptu))
             photons.data_reader = reader
         photons.name = result.ptu.name

@@ -205,15 +205,40 @@ class DeviceSource(PhotonSource):
             np.asarray(data.micro_times).astype(np.uint16),
             np.asarray(data.routing_channels).astype(np.int8),
             raw=raw,
+            event=np.asarray(data.event_types).astype(np.int8),
         )
 
     # -- recording -----------------------------------------------------------------------------
     def make_recorder(self, path, name: str = "", extra: dict | None = None):
         """A PTU writer for the device's raw records (pqusb's, with the device's header and the
-        *extra* string tags -- the run's acquisition settings)."""
-        return _RawPtuRecorder(
-            pqusb.PtuWriter.for_device(str(path), self.device, extra=extra), self
-        )
+        *extra* tags -- the run's acquisition settings, and a scan's ``ImgHdr_*`` tags). String
+        values are string tags; bool, int and float values keep their PicoQuant type."""
+        typed = {k: v for k, v in (extra or {}).items() if not isinstance(v, str)}
+        cls = _typed_writer(typed) if typed else pqusb.PtuWriter
+        return _RawPtuRecorder(cls.for_device(str(path), self.device, extra=extra), self)
+
+
+_UNSET = object()
+
+
+def _typed_writer(typed: dict):
+    """pqusb's ``PtuWriter`` writing the named *extra* tags with their type (pqusb writes every
+    extra tag as a string; a scan's ImgHdr tags must be numbers and booleans for readers)."""
+
+    class _TypedPtuWriter(pqusb.PtuWriter):
+        _TYPED = dict(typed)
+
+        def _s(self, name, s, idx=-1):
+            value = self._TYPED.get(name, _UNSET)
+            if value is _UNSET:
+                return super()._s(name, s, idx)
+            if isinstance(value, bool):
+                return self._b(name, value, idx)
+            if isinstance(value, (int, np.integer)):
+                return self._i(name, int(value), idx)
+            return self._f(name, float(value), idx)
+
+    return _TypedPtuWriter
 
 
 class _RawPtuRecorder:

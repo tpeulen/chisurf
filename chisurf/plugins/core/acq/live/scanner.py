@@ -1,0 +1,761 @@
+"""Scanning: what a scan is, how its markers look in the photon stream, and a simulated one.
+
+An image is recorded the way SymPhoTime records one: a scanner moves the focus over the sample
+(a piezo stage first; galvo/LSM integrations work the same way through their markers) while the TCSPC
+device records photons **and markers**. A *line start* marker opens a line, a *line stop* marker
+closes it, a *frame* marker starts a new frame; a photon's pixel follows from where its arrival
+falls between the two line markers. The marker numbers are PicoQuant's (1-based, ``ImgHdr_LineStart``
+/ ``ImgHdr_LineStop`` / ``ImgHdr_Frame``); in the record stream marker *n* arrives as the routing
+channel ``1 << (n - 1)`` of an event of type 1 -- exactly what tttrlib's CLSM reader reads.
+
+* :class:`ScanSettings` -- the scan (area, pixels, dwell time, frames, z planes, points) and its
+  ``ImgHdr_*`` header tags, both ways.
+* :class:`ScannerBackend` -- what a scanner offers the Record tool. The real ones (piezo stages and
+  the rest SymPhoTime drives) come with CMC's device layer (rustytime); :class:`SimScanner` is the
+  simulated one.
+* :class:`ImagingSample` -- a simulated specimen (beads with two lifetimes on a dim cell outline,
+  two detectors, background, IRF), scanned by tttrlib's ``SimEngine`` (``run_scan``), which emits
+  the photons and the markers.
+* :class:`ImageSimDevice` -- a MultiHarp that measures that sample: generic-T3 records, markers
+  included, delivered through the same pqusb device path the smFRET simulator uses.
+"""
+
+from __future__ import annotations
+
+import time
+from dataclasses import asdict, dataclass, field
+from typing import Any
+
+import numpy as np
+import tttrlib
+
+from .realism import Realism
+
+__all__ = [
+    "IMGHDR_TYPES",
+    "ImageSimDevice",
+    "ImagingSample",
+    "ScanSettings",
+    "ScannerBackend",
+    "SimScanner",
+    "marker_bit",
+    "scan_from_tags",
+]
+
+#: PicoQuant tag types the ImgHdr tags use.
+TY_BOOL8 = 0x00000008
+TY_INT8 = 0x10000008
+TY_FLOAT8 = 0x20000008
+
+#: ImgHdr tags a recording carries, with their PicoQuant tag type.
+IMGHDR_TYPES = {
+    "ImgHdr_Dimensions": TY_INT8,
+    "ImgHdr_Ident": TY_INT8,
+    "ImgHdr_PixX": TY_INT8,
+    "ImgHdr_PixY": TY_INT8,
+    "ImgHdr_PixResol": TY_FLOAT8,
+    "ImgHdr_TimePerPixel": TY_FLOAT8,
+    "ImgHdr_X0": TY_FLOAT8,
+    "ImgHdr_Y0": TY_FLOAT8,
+    "ImgHdr_LineStart": TY_INT8,
+    "ImgHdr_LineStop": TY_INT8,
+    "ImgHdr_Frame": TY_INT8,
+    "ImgHdr_MaxFrames": TY_INT8,
+    "ImgHdr_BiDirect": TY_BOOL8,
+}
+
+#: ImgHdr_Ident of a piezo scan (SymPhoTime's code for a PI piezo stage).
+IDENT_PIEZO = 1
+
+
+def marker_bit(number: int) -> int:
+    """The routing channel PicoQuant's marker *number* (1-based) arrives on: ``1 << (number - 1)``."""
+    return 1 << (int(number) - 1)
+
+
+@dataclass
+class ScanSettings:
+    """One scan: a raster of ``pixels_x`` x ``pixels_y`` over ``area_x_um`` x ``area_y_um``.
+
+    Attributes
+    ----------
+    pixels_x, pixels_y : int
+        Pixels per line, lines per frame.
+    area_x_um, area_y_um : float
+        The scanned area; a pixel is ``area / pixels`` wide.
+    x0_um, y0_um : float
+        The scan's origin (the stage position of pixel 0, 0).
+    dwell_ms : float
+        Time on one pixel; a line takes ``pixels_x * dwell_ms``.
+    bidirectional : bool
+        Odd lines are scanned right to left.
+    frames : int
+        Frames per z plane.
+    z_planes : int
+        Planes of a z stack (1: one plane).
+    z_step_um : float
+        Distance between planes.
+    points : list of (x, y) in um
+        A point measurement instead of a raster: the focus parks on each point for ``point_ms``,
+        each point one "line" of one pixel. Empty for a raster.
+    point_ms : float
+        Time per point.
+    line_start_marker, line_stop_marker, frame_marker : int
+        PicoQuant marker numbers (1-based); ``frame_marker`` 0 means the scan emits none.
+    """
+
+    pixels_x: int = 64
+    pixels_y: int = 64
+    area_x_um: float = 16.0
+    area_y_um: float = 16.0
+    x0_um: float = 0.0
+    y0_um: float = 0.0
+    dwell_ms: float = 0.1
+    bidirectional: bool = False
+    frames: int = 1
+    z_planes: int = 1
+    z_step_um: float = 0.5
+    points: list = field(default_factory=list)
+    point_ms: float = 100.0
+    line_start_marker: int = 1
+    line_stop_marker: int = 2
+    frame_marker: int = 3
+
+    # -- geometry and timing -------------------------------------------------------------------
+    @property
+    def is_points(self) -> bool:
+        return bool(self.points)
+
+    @property
+    def nx(self) -> int:
+        """Pixels per line (1 for a point measurement)."""
+        return 1 if self.is_points else int(self.pixels_x)
+
+    @property
+    def ny(self) -> int:
+        """Lines per frame (the number of points for a point measurement)."""
+        return len(self.points) if self.is_points else int(self.pixels_y)
+
+    @property
+    def pixel_um(self) -> tuple[float, float]:
+        return float(self.area_x_um) / max(1, self.pixels_x), float(self.area_y_um) / max(
+            1, self.pixels_y
+        )
+
+    @property
+    def line_s(self) -> float:
+        return (self.point_ms if self.is_points else self.dwell_ms * self.pixels_x) * 1e-3
+
+    @property
+    def line_rate_hz(self) -> float:
+        return 1.0 / self.line_s if self.line_s > 0 else 0.0
+
+    @line_rate_hz.setter
+    def line_rate_hz(self, value: float) -> None:
+        """Set the dwell time from a line rate."""
+        if value > 0 and not self.is_points:
+            self.dwell_ms = 1e3 / (float(value) * max(1, self.pixels_x))
+
+    @property
+    def frame_s(self) -> float:
+        return self.line_s * self.ny
+
+    @property
+    def total_frames(self) -> int:
+        return max(1, int(self.frames)) * max(1, int(self.z_planes))
+
+    @property
+    def total_s(self) -> float:
+        return self.frame_s * self.total_frames
+
+    # -- checks and documents ------------------------------------------------------------------
+    def validate(self) -> list[str]:
+        """Every problem, each with its field; empty means the scan can run."""
+        p: list[str] = []
+
+        def rng(name, lo, hi, integer=False):
+            v = getattr(self, name)
+            if integer and int(v) != v:
+                p.append(f"{name}: {v!r} is not a whole number")
+            elif not lo <= float(v) <= hi:
+                p.append(f"{name}: {v!r} outside [{lo}, {hi}]")
+
+        rng("pixels_x", 1, 8192, True)
+        rng("pixels_y", 1, 8192, True)
+        rng("area_x_um", 1e-3, 1e5)
+        rng("area_y_um", 1e-3, 1e5)
+        rng("dwell_ms", 1e-4, 1e4)
+        rng("frames", 1, 1e6, True)
+        rng("z_planes", 1, 1e4, True)
+        rng("point_ms", 1e-3, 1e7)
+        for name in ("line_start_marker", "line_stop_marker"):
+            rng(name, 1, 4, True)
+        rng("frame_marker", 0, 4, True)
+        markers = [self.line_start_marker, self.line_stop_marker] + (
+            [self.frame_marker] if self.frame_marker else []
+        )
+        if len(set(markers)) != len(markers):
+            p.append("markers: line start, line stop and frame need different marker numbers")
+        for i, pt in enumerate(self.points or []):
+            if not (isinstance(pt, (list, tuple)) and len(pt) == 2):
+                p.append(f"points[{i}]: expected [x_um, y_um]")
+        return p
+
+    def to_dict(self) -> dict[str, Any]:
+        d = asdict(self)
+        d["points"] = [list(map(float, pt)) for pt in self.points]
+        return d
+
+    @classmethod
+    def from_dict(cls, data: dict | None) -> ScanSettings:
+        """A scan from its document; unknown keys are ignored, missing ones take the defaults."""
+        known = {f for f in cls.__dataclass_fields__}
+        kwargs = {k: v for k, v in (data or {}).items() if k in known}
+        if "points" in kwargs:
+            kwargs["points"] = [tuple(map(float, pt)) for pt in kwargs["points"] or []]
+        return cls(**kwargs)
+
+    def imghdr_tags(self) -> dict[str, Any]:
+        """The ``ImgHdr_*`` header tags SymPhoTime writes for this scan (typed values)."""
+        tags: dict[str, Any] = {
+            "ImgHdr_Dimensions": 3,
+            "ImgHdr_Ident": IDENT_PIEZO,
+            "ImgHdr_PixX": int(self.nx),
+            "ImgHdr_PixY": int(self.ny),
+            "ImgHdr_PixResol": float(self.pixel_um[0]),
+            "ImgHdr_TimePerPixel": float(self.point_ms if self.is_points else self.dwell_ms),
+            "ImgHdr_X0": float(self.x0_um),
+            "ImgHdr_Y0": float(self.y0_um),
+            "ImgHdr_LineStart": int(self.line_start_marker),
+            "ImgHdr_LineStop": int(self.line_stop_marker),
+            "ImgHdr_MaxFrames": int(self.total_frames),
+            "ImgHdr_BiDirect": bool(self.bidirectional),
+        }
+        if self.frame_marker:
+            tags["ImgHdr_Frame"] = int(self.frame_marker)
+        return tags
+
+
+def scan_from_tags(tags: dict) -> tuple[ScanSettings | None, list[str]]:
+    """The scan a file's ``ImgHdr_*`` tags describe (``None`` without them), and what was missing.
+
+    *tags* maps tag names to values (index -1). ``ImgHdr_PixResol`` is square pixels in um; a file
+    without ``ImgHdr_Frame`` carries no frame markers (its lines fill frames of ``PixY`` lines).
+    """
+    if not any(str(k).startswith("ImgHdr_") for k in tags):
+        return None, ["scan (the file has no ImgHdr tags: not an image)"]
+    missing: list[str] = []
+
+    def get(name, default, cast):
+        if name in tags and tags[name] is not None:
+            try:
+                return cast(tags[name])
+            except (TypeError, ValueError):
+                pass
+        missing.append(f"scan: {name}")
+        return default
+
+    nx = get("ImgHdr_PixX", 0, int)
+    ny = get("ImgHdr_PixY", 0, int)
+    resol = get("ImgHdr_PixResol", 0.0, float)
+    scan = ScanSettings(
+        pixels_x=max(1, nx),
+        pixels_y=max(1, ny),
+        area_x_um=max(1e-3, resol * max(1, nx)),
+        area_y_um=max(1e-3, resol * max(1, ny)),
+        x0_um=get("ImgHdr_X0", 0.0, float),
+        y0_um=get("ImgHdr_Y0", 0.0, float),
+        dwell_ms=max(1e-4, get("ImgHdr_TimePerPixel", 0.0, float) or 1e-4),
+        bidirectional=bool(tags.get("ImgHdr_BiDirect", False)),
+        frames=max(1, int(tags.get("ImgHdr_MaxFrames", 1) or 1)),
+        line_start_marker=get("ImgHdr_LineStart", 1, int),
+        line_stop_marker=get("ImgHdr_LineStop", 2, int),
+        frame_marker=int(tags.get("ImgHdr_Frame", 0) or 0),
+    )
+    if "ImgHdr_BiDirect" not in tags:
+        missing.append("scan: ImgHdr_BiDirect")
+    return scan, missing
+
+
+class ScannerBackend:
+    """What a scanner offers the Record tool. One per scanner; the device layer drives the hardware.
+
+    A scanner is configured with a :class:`ScanSettings`, started and stopped with the TCSPC
+    device's measurement, and reports where it is. The markers it emits arrive in the TCSPC device's
+    record stream, so the image is built from the photon stream alone.
+    """
+
+    name = "scanner"
+
+    def configure(self, scan: ScanSettings) -> list[str]:
+        """Take *scan*; returns notes on what was adjusted (empty when taken as is)."""
+        raise NotImplementedError
+
+    def start(self) -> None:
+        raise NotImplementedError
+
+    def stop(self) -> None:
+        raise NotImplementedError
+
+    def status(self) -> dict[str, Any]:
+        """``{"running", "frame", "line", "plane"}`` -- where the scan is now."""
+        raise NotImplementedError
+
+
+class SimScanner(ScannerBackend):
+    """The simulated scanner: a raster (or point list) at the configured pace, no hardware.
+
+    It knows where the focus is at any time of the run (:meth:`position_at`); the simulated device
+    asks it which frame and plane to simulate next.
+    """
+
+    name = "Simulated scanner"
+
+    def __init__(self, scan: ScanSettings | None = None):
+        self.scan = scan or ScanSettings()
+        self._t0: float | None = None
+
+    def configure(self, scan: ScanSettings) -> list[str]:
+        problems = scan.validate()
+        if problems:
+            raise ValueError("; ".join(problems))
+        self.scan = scan
+        return []
+
+    def start(self) -> None:
+        self._t0 = time.monotonic()
+
+    def stop(self) -> None:
+        self._t0 = None
+
+    def position_at(self, t_s: float) -> dict[str, int]:
+        """The frame, plane and line the scan is in at run time *t_s* (seconds)."""
+        s = self.scan
+        frame_index = int(t_s // s.frame_s) if s.frame_s > 0 else 0
+        frame_index = min(frame_index, s.total_frames - 1)
+        line = int((t_s - frame_index * s.frame_s) // s.line_s) if s.line_s > 0 else 0
+        return {
+            "frame": frame_index % max(1, s.frames),
+            "plane": frame_index // max(1, s.frames),
+            "line": min(line, s.ny - 1),
+        }
+
+    def status(self) -> dict[str, Any]:
+        running = self._t0 is not None
+        where = self.position_at(time.monotonic() - self._t0) if running else {}
+        return {"running": running, **where}
+
+
+def _vd(x) -> Any:
+    return tttrlib.VectorDouble([float(v) for v in x])
+
+
+@dataclass
+class ImagingSample:
+    """A simulated specimen: beads of two lifetimes on a dim cell outline, seen by two detectors.
+
+    Attributes
+    ----------
+    n_beads : int
+        Bright beads, half with each lifetime.
+    tau_ns : (float, float)
+        The two bead lifetimes; the cell outline has their mean.
+    bead_brightness : float
+        Photon rate of one emitter at the focus centre (tttrlib's ``q``, kHz-like); a bead is a few
+        emitters.
+    cell_brightness : float
+        The outline's emitters (many, dim).
+    green_fraction : (float, float)
+        Share of each bead kind's photons on detector 0 (the rest on detector 1).
+    focus_um : float
+        The focus radius (1/e^2) in the plane.
+    seed : int
+    """
+
+    n_beads: int = 24
+    tau_ns: tuple = (1.0, 3.5)
+    bead_brightness: float = 40.0
+    cell_brightness: float = 4.0
+    green_fraction: tuple = (0.8, 0.2)
+    focus_um: float = 0.25
+    seed: int = 1
+
+    def emitters(self, scan: ScanSettings) -> list[tuple[float, float, int]]:
+        """Emitter positions (um) and species: beads in clusters, an elliptical cell outline."""
+        rng = np.random.default_rng(self.seed)
+        ax, ay = scan.area_x_um, scan.area_y_um
+        x0, y0 = scan.x0_um, scan.y0_um
+        out: list[tuple[float, float, int]] = []
+        for k in range(int(self.n_beads)):
+            cx, cy = x0 + rng.uniform(0.08, 0.92) * ax, y0 + rng.uniform(0.08, 0.92) * ay
+            for _ in range(int(rng.integers(3, 8))):
+                out.append((cx + rng.normal(0, 0.06), cy + rng.normal(0, 0.06), k % 2))
+        # the cell: an ellipse of dim emitters (species 2)
+        n_cell = int(4 * (ax + ay) / max(self.focus_um, 0.05))
+        phi = np.linspace(0, 2 * np.pi, n_cell, endpoint=False)
+        for p in phi:
+            r = 1.0 + 0.04 * np.sin(5 * p)
+            out.append(
+                (x0 + ax * (0.5 + 0.36 * r * np.cos(p)), y0 + ay * (0.5 + 0.3 * r * np.sin(p)), 2)
+            )
+        return out
+
+    def system(
+        self,
+        scan: ScanSettings,
+        realism: Realism,
+        *,
+        n_micro: int,
+        micro_res_ns: float,
+        z_um: float = 0.0,
+    ):
+        """The tttrlib ``SimSystem`` of this sample at focal plane *z_um*."""
+        t = np.arange(n_micro) * micro_res_ns
+        fwhm = max(float(getattr(realism, "irf_fwhm_ns", 0.0) or 0.0), 2 * micro_res_ns)
+        sigma = fwhm / 2.3548
+        irf = np.exp(-0.5 * ((t - 1.0) / sigma) ** 2)
+
+        def decay(tau):
+            pattern = tttrlib.SimDecay.convolve(_vd(np.exp(-t / tau)), _vd(irf))
+            return tttrlib.SimDecay.from_pattern(_vd(pattern), micro_res_ns, 0.0)
+
+        s = tttrlib.SimSystem()
+        taus = (float(self.tau_ns[0]), float(self.tau_ns[1]), float(np.mean(self.tau_ns)))
+        brightness = (self.bead_brightness, self.bead_brightness, self.cell_brightness)
+        green = (self.green_fraction[0], self.green_fraction[1], 0.5)
+        for tau, q, g in zip(taus, brightness, green):
+            sp = tttrlib.SimSpecies()
+            sp.D = 0.0
+            sp.q = _vd([q * g, q * (1.0 - g)])
+            sp.decay = decay(tau)
+            s.add_species(sp)
+        zeros = _vd([0.0] * 3)
+        s.set_rate_matrices(zeros, zeros)
+        # background per detector: kHz -> per ms (tttrlib's rate unit is per window of dt ms)
+        bg = (
+            float(getattr(realism, "background_donor_khz", 0.0) or 0.0),
+            float(getattr(realism, "background_acceptor_khz", 0.0) or 0.0),
+        )
+        s.set_background(_vd([b * 1e-3 for b in bg]))
+        for x, y, sp_index in self.emitters(scan):
+            s.add_fluorophore(float(x), float(y), float(z_um), int(sp_index), False)
+        return s
+
+
+class _Scan:
+    """One simulated frame: photons and markers, times in seconds from the frame's start."""
+
+    def __init__(self, t: np.ndarray, channel: np.ndarray, micro: np.ndarray, event: np.ndarray):
+        self.t, self.channel, self.micro, self.event = t, channel, micro, event
+
+
+def simulate_frame(
+    sample: ImagingSample,
+    scan: ScanSettings,
+    realism: Realism,
+    *,
+    frame: int,
+    plane: int,
+    n_micro: int,
+    micro_res_ns: float,
+) -> _Scan:
+    """Scan the sample once with tttrlib's ``SimEngine`` (photons, line and frame markers)."""
+    sim = tttrlib.SimIntegrator()
+    sim.dt = 0.01  # ms per simulation window
+    sim.n_channels = 2
+    sim.n_ph_max = 10**9
+    sim.n_microtime_channels = int(n_micro)
+    sim.microtime_resolution = float(micro_res_ns)
+    sim.laser_period = float(n_micro * micro_res_ns)
+    seed = int(sample.seed) * 100003 + frame * 101 + plane
+    sim.seed_emission = seed
+    sim.seed_diffusion = seed + 1
+    focus = tttrlib.SimGrid.gaussian3d(sample.focus_um, 1.0, 0.8, 1.0, 0.04, 1.0)
+    system = sample.system(
+        scan, realism, n_micro=n_micro, micro_res_ns=micro_res_ns, z_um=-plane * scan.z_step_um
+    )
+    eng = tttrlib.SimEngine(system, focus, tttrlib.VectorSimGrid([]), sim)
+    markers = tttrlib.SimMarkerConfig()
+    markers.emit_pixel_markers = False
+    markers.marker_line_start = marker_bit(scan.line_start_marker)
+    markers.marker_line_stop = marker_bit(scan.line_stop_marker)
+    markers.marker_frame = tttrlib.VectorInt32(
+        [marker_bit(scan.frame_marker)] if scan.frame_marker else []
+    )
+    px, py = scan.pixel_um
+    if scan.is_points:
+        parts = []
+        for k, (x, y) in enumerate(scan.points):
+            e = tttrlib.SimEngine(system, focus, tttrlib.VectorSimGrid([]), sim)
+            point_markers = tttrlib.SimMarkerConfig()
+            point_markers.emit_pixel_markers = False
+            point_markers.marker_line_start = markers.marker_line_start
+            point_markers.marker_line_stop = markers.marker_line_stop
+            point_markers.marker_frame = tttrlib.VectorInt32(
+                [marker_bit(scan.frame_marker)] if (scan.frame_marker and k == 0) else []
+            )
+            e.run_scan(
+                tttrlib.SimScanner.uniform(
+                    1, 1, float(scan.point_ms), px, py, float(x), float(y), point_markers, False
+                )
+            )
+            part = _frame_arrays(e)
+            part.t = part.t + k * scan.line_s
+            parts.append(part)
+        return _Scan(
+            *(
+                np.concatenate([getattr(p, a) for p in parts])
+                for a in ("t", "channel", "micro", "event")
+            )
+        )
+    eng.run_scan(
+        tttrlib.SimScanner.uniform(
+            int(scan.pixels_x),
+            int(scan.pixels_y),
+            float(scan.dwell_ms),
+            px,
+            py,
+            float(scan.x0_um),
+            float(scan.y0_um),
+            markers,
+            bool(scan.bidirectional),
+        )
+    )
+    return _frame_arrays(eng)
+
+
+def _frame_arrays(eng) -> _Scan:
+    window = np.asarray(eng.macro_window(), dtype=np.float64)
+    arrival = np.asarray(eng.arrival_time(), dtype=np.float64)  # ms within the window
+    t = (window * 0.01 + arrival) * 1e-3
+    event = np.asarray(eng.event_type(), dtype=np.int8)
+    channel = np.asarray(eng.channel(), dtype=np.int64)
+    micro = np.asarray(eng.micro_time(), dtype=np.int64)
+    order = np.argsort(t, kind="stable")
+    return _Scan(t[order], channel[order], micro[order], event[order])
+
+
+# -- the simulated imaging device ------------------------------------------------------------------
+try:
+    from pqusb.device import MODE_T3, DeviceError, Identity, InputSettings, TcspcDevice
+    from pqusb.records import RT_GENERIC_T3
+
+    _PQUSB = True
+except Exception:  # noqa: BLE001 - optional dependency
+    _PQUSB = False
+    TcspcDevice = object  # type: ignore[misc,assignment]
+
+#: Measurement time synthesised per FIFO read at most (memory at high replay speeds).
+_MAX_READ_S = 0.05
+
+if _PQUSB:
+
+    class ImageSimDevice(TcspcDevice):
+        """A MultiHarp whose scanner scans a simulated sample: generic-T3 photon **and marker**
+        records, frame by frame, at measurement pace (``speed`` times real time).
+
+        Parameters
+        ----------
+        scan : ScanSettings
+        sample : ImagingSample
+        realism : Realism
+            The instrument's IRF and background (the smFRET-specific settings are not used).
+        speed : float
+        """
+
+        hw_type = "MultiHarp"
+        record_types = {MODE_T3: RT_GENERIC_T3}
+        base_res_ps = 80
+        #: the simulation's micro-time grid (ns per channel, channels per laser period)
+        MICRO_RES_NS = 0.02
+        N_MICRO = 1600
+
+        def __init__(
+            self,
+            scan: ScanSettings,
+            sample: ImagingSample | None = None,
+            *,
+            realism: Realism | None = None,
+            speed: float = 1.0,
+        ):
+            super().__init__()
+            from .realism import IDEAL
+
+            self.scanner = SimScanner(scan)
+            self.scan = scan
+            self.sample = sample or ImagingSample()
+            self.realism = realism or IDEAL
+            self.speed = float(speed)
+            self.period_s = self.N_MICRO * self.MICRO_RES_NS * 1e-9
+            self.sync_rate_hz = 1.0 / self.period_s
+            self._t0: float | None = None
+            self._tacq_s = 0.0
+            self._sent_s = 0.0
+            self._frames_done = 0
+            self._held: list = []  # simulated, not yet delivered: (t, channel, dtime, special)
+            self._wrap = 0
+            self._pending = np.zeros(0, np.uint32)
+            self._recent = np.zeros(2, np.int64)
+
+        def initialize(self, mode: int = MODE_T3, refsource: int = 0) -> Identity:
+            if mode != MODE_T3:
+                raise DeviceError("the imaging simulator measures in T3 mode")
+            self.mode, self.nchan = mode, 2
+            self.settings.inputs = [InputSettings() for _ in range(self.nchan)]
+            self.identity = Identity(
+                model="MultiHarp (simulated scan)", serial="SIMIMG01", partno="sim"
+            )
+            return self.identity
+
+        def set_sync_div(self, div):
+            self.settings.sync_div = int(div)
+
+        def set_sync_edge_trg(self, level_mv, edge):
+            self.settings.sync.level_mv, self.settings.sync.edge = level_mv, edge
+
+        def set_sync_channel_offset(self, ps):
+            self.settings.sync.offset_ps = ps
+
+        def set_input_edge_trg(self, ch, level_mv, edge):
+            s = self.settings.inputs[ch]
+            s.level_mv, s.edge = level_mv, edge
+
+        def set_input_channel_offset(self, ch, ps):
+            self.settings.inputs[ch].offset_ps = ps
+
+        def set_input_channel_enable(self, ch, en):
+            self.settings.inputs[ch].enabled = bool(en)
+
+        def set_binning(self, code):
+            self.settings.binning = int(code)
+
+        def set_offset(self, ns):
+            self.settings.offset_ns = int(ns)
+
+        def count_rates(self) -> tuple[int, list[int]]:
+            return int(round(self.sync_rate_hz)), [int(r) for r in self._recent]
+
+        # -- measurement hooks ------------------------------------------------------------------
+        def start(self, tacq_ms: int) -> None:
+            if int(self.settings.sync_div) != 1:
+                raise DeviceError("the imaging simulator runs with sync divider 1")
+            self.scanner.configure(self.scan)
+            self.scanner.start()
+            self._t0 = time.monotonic()
+            # the scan ends the measurement: at most the time all frames take
+            self._tacq_s = min(tacq_ms / 1000.0, self.scan.total_s + self.scan.line_s)
+            self._sent_s, self._frames_done, self._wrap = 0.0, 0, 0
+            self._held = []
+            self._pending = np.zeros(0, np.uint32)
+
+        def stop(self) -> None:
+            self._t0 = None
+            self.scanner.stop()
+
+        def close(self) -> None:
+            self.stop()
+
+        def _poll(self, st) -> bool:
+            st.sync_rate = int(round(self.sync_rate_hz))
+            return self._t0 is not None and self._elapsed() < self._tacq_s
+
+        def _elapsed(self) -> float:
+            return (time.monotonic() - self._t0) * self.speed if self._t0 is not None else 0.0
+
+        def _fifo_read(self, buf, timeout_ms: int) -> int:
+            if self._t0 is not None:
+                upto = min(self._elapsed(), self._tacq_s, self._sent_s + _MAX_READ_S)
+                if upto - self._sent_s >= 0.002 or upto >= self._tacq_s:
+                    words = self._records_until(upto)
+                    self._pending = np.concatenate([self._pending, words])
+                    self._sent_s = upto
+            if self._pending.size == 0:
+                time.sleep(min(0.005, timeout_ms / 1000.0))
+                return 0
+            n = min(self._pending.size, len(buf) // 4)
+            memoryview(buf)[: 4 * n] = memoryview(self._pending[:n].tobytes())
+            self._pending = self._pending[n:]
+            return 4 * n
+
+        # -- record synthesis -------------------------------------------------------------------
+        def _simulate_until(self, upto_s: float) -> None:
+            scan = self.scan
+            while (
+                self._frames_done < scan.total_frames and self._frames_done * scan.frame_s <= upto_s
+            ):
+                k = self._frames_done
+                frame = simulate_frame(
+                    self.sample,
+                    scan,
+                    self.realism,
+                    frame=k % max(1, scan.frames),
+                    plane=k // max(1, scan.frames),
+                    n_micro=self.N_MICRO,
+                    micro_res_ns=self.MICRO_RES_NS,
+                )
+                self._held.append(
+                    (frame.t + k * scan.frame_s, frame.channel, frame.micro, frame.event)
+                )
+                self._frames_done += 1
+
+        def _records_until(self, upto_s: float) -> np.ndarray:
+            self._simulate_until(upto_s)
+            take_t, take_c, take_m, take_e = [], [], [], []
+            keep = []
+            for t, c, m, e in self._held:
+                cut = int(np.searchsorted(t, upto_s, side="right"))
+                take_t.append(t[:cut])
+                take_c.append(c[:cut])
+                take_m.append(m[:cut])
+                take_e.append(e[:cut])
+                if cut < len(t):
+                    keep.append((t[cut:], c[cut:], m[cut:], e[cut:]))
+            self._held = keep
+            t = np.concatenate(take_t) if take_t else np.zeros(0)
+            channel = np.concatenate(take_c).astype(np.int64) if take_c else np.zeros(0, np.int64)
+            micro = np.concatenate(take_m).astype(np.int64) if take_m else np.zeros(0, np.int64)
+            event = np.concatenate(take_e).astype(np.int64) if take_e else np.zeros(0, np.int64)
+            res = self.resolution_s()
+            nbins = max(1, int(round(self.period_s / res)))
+            dtime = np.minimum((micro * self.MICRO_RES_NS * 1e-9 / res).astype(np.int64), nbins - 1)
+            nsync = np.floor(t / self.period_s).astype(np.int64)
+            photons = event == 0
+            span = max(upto_s - self._sent_s, 1e-9)
+            for k in range(2):
+                self._recent[k] = int(np.sum(photons & (channel == k)) / span)
+            words = np.where(
+                photons,
+                ((channel & 0x3F) << 25) | ((dtime & 0x7FFF) << 10) | (nsync & 0x3FF),
+                (1 << 31) | ((channel & 0x3F) << 25) | (nsync & 0x3FF),
+            )
+            return self._with_overflows(words, nsync, upto_s)
+
+        def _with_overflows(self, words, nsync, upto_s: float) -> np.ndarray:
+            """Interleave an overflow record before each word whose 1024-sync block is new."""
+            wrap = nsync // 1024
+            out: list[int] = []
+            last = self._wrap
+            change = np.flatnonzero(np.diff(np.concatenate([[last], wrap])) > 0)
+            start = 0
+            for i in change:
+                out.extend(words[start:i].tolist())
+                _emit_overflow(out, int(wrap[i]) - last)
+                last = int(wrap[i])
+                start = i
+            out.extend(words[start:].tolist())
+            end_wrap = int(np.floor(upto_s / self.period_s)) // 1024
+            if end_wrap > last:
+                _emit_overflow(out, end_wrap - last)
+                last = end_wrap
+            self._wrap = last
+            return np.asarray(out, dtype=np.uint32)
+
+else:
+    ImageSimDevice = None  # type: ignore[assignment]
+
+
+def _emit_overflow(out: list, n: int) -> None:
+    while n > 0:
+        k = min(n, 1023)
+        out.append(0xFE000000 | k)
+        n -= k

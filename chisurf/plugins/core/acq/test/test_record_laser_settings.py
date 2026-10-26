@@ -200,6 +200,7 @@ def test_the_laser_section_renders(tmp_path):
     model.laser_kind = "simulated"
     app = RecordApp(model)
     try:
+        app.focus_dock("laser")  # the Laser window is a tab beside Acquisition by default
         ui = Driver(app, SIZE)
         ui.draw(3)
         ui.click("connect_laser")

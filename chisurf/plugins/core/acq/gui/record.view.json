@@ -44,12 +44,21 @@
           "type": "custom",
           "key": "settings_status"
         }
-      ]
+      ],
+      "dock": "acquisition"
     },
     {
       "type": "panel",
       "title": "Source",
       "sections": [
+        {
+          "type": "choice",
+          "attr": "mode",
+          "label": "Mode",
+          "options_source": "mode_options",
+          "call": "mode_changed",
+          "description": "Point: a single-molecule measurement at one spot (smFRET, FCS) -- bursts, E-S and the running trace. Image: a scan -- the image builds up line by line from the scanner's markers, with fast-FLIM maps."
+        },
         {
           "type": "choice",
           "attr": "source_kind",
@@ -58,79 +67,89 @@
           "description": "Where the photons come from: the simulator (a MultiHarp measuring a PIE smFRET sample with a known answer — its records go through the same device path as a real measurement), a photon stream from the Datasets workspace played back at measurement speed, or a PicoQuant device connected over USB."
         },
         {
-          "type": "choice",
-          "attr": "sim_scheme",
-          "label": "Excitation",
-          "options_source": "scheme_options",
+          "type": "panel",
+          "title": "Simulated molecules",
           "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "simulator"
+            "attr": "mode",
+            "equals": "image"
           },
-          "description": "How the simulated sample is excited: PIE (a green and a red pulse per period, so stoichiometry is measured) or two colour (the green laser only)."
-        },
-        {
-          "type": "value",
-          "attr": "sim_e_low",
-          "label": "Population 1: E",
-          "kind": "float",
-          "minimum": 0.0,
-          "maximum": 1.0,
-          "step": 0.05,
-          "decimals": 2,
-          "style": "spin",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "simulator"
-          },
-          "description": "FRET efficiency of the first simulated population. Each molecule carries donor and acceptor; its photons are split into donor and acceptor channel by this E."
-        },
-        {
-          "type": "value",
-          "attr": "sim_e_high",
-          "label": "Population 2: E",
-          "kind": "float",
-          "minimum": 0.0,
-          "maximum": 1.0,
-          "step": 0.05,
-          "decimals": 2,
-          "style": "spin",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "simulator"
-          },
-          "description": "FRET efficiency of the second simulated population."
-        },
-        {
-          "type": "value",
-          "attr": "sim_s",
-          "label": "Stoichiometry S",
-          "kind": "float",
-          "minimum": 0.1,
-          "maximum": 0.9,
-          "step": 0.05,
-          "decimals": 2,
-          "style": "spin",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "simulator"
-          },
-          "description": "Stoichiometry of both populations: the share of donor-excited photons in all photons of a molecule (0.5 = equally bright under both lasers)."
-        },
-        {
-          "type": "value",
-          "attr": "sim_concentration",
-          "label": "Concentration",
-          "kind": "float",
-          "minimum": 0.1,
-          "maximum": 20.0,
-          "step": 0.5,
-          "decimals": 1,
-          "style": "spin",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "simulator"
-          },
-          "description": "Molecules of each population in the simulation box. Higher means more bursts per second, and more coincident molecules."
+          "sections": [
+            {
+              "type": "choice",
+              "attr": "sim_scheme",
+              "label": "Excitation",
+              "options_source": "scheme_options",
+              "hidden_when": {
+                "attr": "source_kind",
+                "not_equals": "simulator"
+              },
+              "description": "How the simulated sample is excited: PIE (a green and a red pulse per period, so stoichiometry is measured) or two colour (the green laser only)."
+            },
+            {
+              "type": "value",
+              "attr": "sim_e_low",
+              "label": "Population 1: E",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "step": 0.05,
+              "decimals": 2,
+              "style": "spin",
+              "hidden_when": {
+                "attr": "source_kind",
+                "not_equals": "simulator"
+              },
+              "description": "FRET efficiency of the first simulated population. Each molecule carries donor and acceptor; its photons are split into donor and acceptor channel by this E."
+            },
+            {
+              "type": "value",
+              "attr": "sim_e_high",
+              "label": "Population 2: E",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "step": 0.05,
+              "decimals": 2,
+              "style": "spin",
+              "hidden_when": {
+                "attr": "source_kind",
+                "not_equals": "simulator"
+              },
+              "description": "FRET efficiency of the second simulated population."
+            },
+            {
+              "type": "value",
+              "attr": "sim_s",
+              "label": "Stoichiometry S",
+              "kind": "float",
+              "minimum": 0.1,
+              "maximum": 0.9,
+              "step": 0.05,
+              "decimals": 2,
+              "style": "spin",
+              "hidden_when": {
+                "attr": "source_kind",
+                "not_equals": "simulator"
+              },
+              "description": "Stoichiometry of both populations: the share of donor-excited photons in all photons of a molecule (0.5 = equally bright under both lasers)."
+            },
+            {
+              "type": "value",
+              "attr": "sim_concentration",
+              "label": "Concentration",
+              "kind": "float",
+              "minimum": 0.1,
+              "maximum": 20.0,
+              "step": 0.5,
+              "decimals": 1,
+              "style": "spin",
+              "hidden_when": {
+                "attr": "source_kind",
+                "not_equals": "simulator"
+              },
+              "description": "Molecules of each population in the simulation box. Higher means more bursts per second, and more coincident molecules."
+            }
+          ]
         },
         {
           "type": "value",
@@ -156,7 +175,8 @@
             "attr": "source_kind",
             "not_equals": "replay"
           },
-          "description": "A photons dataset of the Datasets workspace, played back at measurement speed. Drop the file on the ChiSurf window to add it."
+          "description": "A photons dataset of the Datasets workspace, played back at measurement speed. Drop the file on the ChiSurf window to add it.",
+          "call": "replay_changed"
         },
         {
           "type": "value",
@@ -174,7 +194,8 @@
           },
           "description": "How fast simulated or replayed photons arrive: 1 is the pace of the real measurement, 10 ten times faster."
         }
-      ]
+      ],
+      "dock": "acquisition"
     },
     {
       "type": "panel",
@@ -454,7 +475,8 @@
           "call": "realism_edited",
           "description": "Slow relative intensity change per minute (focus, laser power, evaporation)."
         }
-      ]
+      ],
+      "dock": "acquisition"
     },
     {
       "type": "panel",
@@ -658,7 +680,8 @@
       "hidden_when": {
         "attr": "source_kind",
         "not_equals": "device"
-      }
+      },
+      "dock": "acquisition"
     },
     {
       "type": "panel",
@@ -831,7 +854,8 @@
             }
           ]
         }
-      ]
+      ],
+      "dock": "laser"
     },
     {
       "type": "panel",
@@ -849,7 +873,11 @@
           "attr": "preset",
           "label": "Measurement type",
           "options_source": "preset_options",
-          "description": "How the setup is read: single colour, two colour, PIE, µs-ALEX, MFD or three-colour PIE. 'From the setup' takes the type the setup describes. The type decides the quantities (proximity ratio, stoichiometry, anisotropy), the live histograms and which quality checks apply."
+          "description": "How the setup is read: single colour, two colour, PIE, µs-ALEX, MFD or three-colour PIE. 'From the setup' takes the type the setup describes. The type decides the quantities (proximity ratio, stoichiometry, anisotropy), the live histograms and which quality checks apply.",
+          "hidden_when": {
+            "attr": "mode",
+            "equals": "image"
+          }
         },
         {
           "type": "custom",
@@ -881,7 +909,11 @@
           "maximum": 10000,
           "step": 5,
           "style": "spin",
-          "description": "A burst needs at least this many photons (L)."
+          "description": "A burst needs at least this many photons (L).",
+          "hidden_when": {
+            "attr": "mode",
+            "equals": "image"
+          }
         },
         {
           "type": "value",
@@ -892,7 +924,11 @@
           "maximum": 1000,
           "step": 1,
           "style": "spin",
-          "description": "The sliding window: this many consecutive photons (m) ..."
+          "description": "The sliding window: this many consecutive photons (m) ...",
+          "hidden_when": {
+            "attr": "mode",
+            "equals": "image"
+          }
         },
         {
           "type": "value",
@@ -904,7 +940,215 @@
           "step": 0.05,
           "decimals": 3,
           "style": "spin",
-          "description": "... arriving within this time (T) belong to a burst. The same criterion as Burst Selection's sliding-window search, so the run can be re-analysed offline with identical bursts."
+          "description": "... arriving within this time (T) belong to a burst. The same criterion as Burst Selection's sliding-window search, so the run can be re-analysed offline with identical bursts.",
+          "hidden_when": {
+            "attr": "mode",
+            "equals": "image"
+          }
+        },
+        {
+          "type": "panel",
+          "title": "Running trace",
+          "hidden_when": {
+            "attr": "mode",
+            "equals": "image"
+          },
+          "sections": [
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "trace_window_s",
+              "label": "Span (s)",
+              "minimum": 0.01,
+              "maximum": 600.0,
+              "step": 0.5,
+              "decimals": 2,
+              "call": "trace_changed",
+              "description": "How many seconds the running trace shows: the most recent ones, scrolling. Default 1 s."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "trace_bin_ms",
+              "label": "Bin (ms)",
+              "minimum": 0.01,
+              "maximum": 1000.0,
+              "step": 0.5,
+              "decimals": 2,
+              "call": "trace_changed",
+              "description": "Bin width of the running trace. Default 1 ms (bursts last a few ms)."
+            }
+          ]
+        }
+      ],
+      "dock": "analysis"
+    },
+    {
+      "type": "panel",
+      "title": "Scan",
+      "dock": "acquisition",
+      "hidden_when": {
+        "attr": "mode",
+        "not_equals": "image"
+      },
+      "sections": [
+        {
+          "type": "custom",
+          "key": "scan_summary",
+          "description": "The scan of the replayed file, read from its header (ImgHdr tags)."
+        },
+        {
+          "type": "panel",
+          "title": "Raster",
+          "hidden_when": {
+            "attr": "source_kind",
+            "equals": "replay"
+          },
+          "sections": [
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "scan_pixels_x",
+              "label": "Pixels x",
+              "minimum": 1,
+              "maximum": 4096,
+              "step": 8,
+              "description": "Pixels per line."
+            },
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "scan_pixels_y",
+              "label": "Pixels y",
+              "minimum": 1,
+              "maximum": 4096,
+              "step": 8,
+              "description": "Lines per frame."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "scan_area_x_um",
+              "label": "Width (µm)",
+              "minimum": 0.01,
+              "maximum": 1000.0,
+              "step": 1.0,
+              "decimals": 2,
+              "description": "The scanned width; a pixel is width / pixels wide."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "scan_area_y_um",
+              "label": "Height (µm)",
+              "minimum": 0.01,
+              "maximum": 1000.0,
+              "step": 1.0,
+              "decimals": 2,
+              "description": "The scanned height."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "scan_dwell_ms",
+              "label": "Dwell (ms)",
+              "minimum": 0.001,
+              "maximum": 100.0,
+              "step": 0.01,
+              "decimals": 3,
+              "description": "Time on one pixel. A line takes pixels x dwell; the line rate follows."
+            },
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "scan_frames",
+              "label": "Frames",
+              "minimum": 1,
+              "maximum": 10000,
+              "step": 1,
+              "description": "Frames per plane; their photons add up in the live image."
+            },
+            {
+              "type": "toggle",
+              "attr": "scan_bidirectional",
+              "label": "Bidirectional",
+              "description": "Odd lines are scanned right to left (faster; needs a well-aligned scanner)."
+            },
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "scan_z_planes",
+              "label": "Z planes",
+              "minimum": 1,
+              "maximum": 1000,
+              "step": 1,
+              "description": "Planes of a z stack (1: one plane)."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "scan_z_step_um",
+              "label": "Z step (µm)",
+              "minimum": 0.01,
+              "maximum": 100.0,
+              "step": 0.1,
+              "decimals": 2,
+              "description": "Distance between the planes of a z stack."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Simulated sample",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "simulator"
+          },
+          "sections": [
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "img_beads",
+              "label": "Beads",
+              "minimum": 0,
+              "maximum": 500,
+              "step": 1,
+              "description": "Bright beads on the dim outline of a cell; half of them with each lifetime."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "img_tau_1_ns",
+              "label": "τ₁ (ns)",
+              "minimum": 0.05,
+              "maximum": 20.0,
+              "step": 0.1,
+              "decimals": 2,
+              "description": "Lifetime of the first bead kind (mostly on detector 0)."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "img_tau_2_ns",
+              "label": "τ₂ (ns)",
+              "minimum": 0.05,
+              "maximum": 20.0,
+              "step": 0.1,
+              "decimals": 2,
+              "description": "Lifetime of the second bead kind (mostly on detector 1)."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "img_brightness",
+              "label": "Brightness",
+              "minimum": 0.1,
+              "maximum": 10000.0,
+              "step": 5.0,
+              "decimals": 1,
+              "description": "Photon rate of one emitter at the focus centre (a bead is a few emitters). Too bright piles up: watch the Pile-up light."
+            }
+          ]
         }
       ]
     },
@@ -973,23 +1217,84 @@
           "key": "run_status",
           "description": "What the run is doing, and where it was saved (hover for the full path)."
         }
-      ]
+      ],
+      "dock": "acquisition"
     },
     {
       "type": "panel",
-      "title": "Live",
+      "title": "Histogram",
+      "dock": "plot_hist",
       "sections": [
         {
           "type": "choice",
           "attr": "plot_choice",
           "label": "Histogram",
           "options_source": "plot_options",
-          "description": "Which of the measurement type's histograms to show: E–S (with its marginals) for PIE and ALEX, the proximity ratio for two colour, anisotropy and proximity ratio for MFD, burst size and duration for a single colour."
+          "description": "Which of the measurement type's histograms to show: E–S (with its marginals) for PIE and ALEX, the proximity ratio for two colour, anisotropy and proximity ratio for MFD, burst size and duration for a single colour.",
+          "hidden_when": {
+            "attr": "mode",
+            "equals": "image"
+          }
         },
         {
           "type": "custom",
           "key": "live_view",
-          "description": "The measurement as it builds up: the E–S histogram of the bursts with its two marginals, count rates per photon class (DD, DA, AA), the micro-time decays of both detectors with the prompt and delay windows, and the run's health."
+          "description": "The selected histogram of the bursts, building up live (2-D with both marginals)."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Image",
+      "dock": "plot_image",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "image_map",
+          "label": "Map",
+          "options_source": "image_map_options",
+          "description": "Which map: intensity (all detectors), mean arrival time (fast FLIM), a single detector, or a micro-time window (PIE)."
+        },
+        {
+          "type": "custom",
+          "key": "live_image",
+          "description": "The image building up line by line from the scan's markers."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Trace",
+      "dock": "plot_trace",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "live_trace",
+          "description": "Point: the running smFRET trace of the last seconds -- donor up, acceptor (FRET and directly excited) down. Image: count rate per detector."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Decays",
+      "dock": "plot_decays",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "live_decays",
+          "description": "Micro-time histograms per detector, with the windows of the setup."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Quality",
+      "dock": "quality",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "live_qc",
+          "description": "Traffic lights: the quality checks of the measurement type, the worst one overall. Hover a line for what it means and what to do."
         }
       ]
     }

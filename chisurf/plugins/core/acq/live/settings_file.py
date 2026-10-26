@@ -19,6 +19,8 @@ simulator -- in plain JSON that a person can read and edit::
       "experiment": {"preset": "pie", "setup": {"detectors": {...}, "windows": {...}},
                      "burst": {"min_photons": 30, "window_photons": 10, "window_time_ms": 1.0}},
       "run": {"duration_s": 600, "name": "sample_{date}", "project_data": "link"},
+      "scan": {"pixels_x": 64, "pixels_y": 64, "area_x_um": 16, "area_y_um": 16, "dwell_ms": 0.1,
+               "frames": 1, "bidirectional": false, "z_planes": 1},
       "simulator": {}
     }
 
@@ -141,7 +143,7 @@ def validate(doc: Any) -> list[str]:
         p.append(f"schema: {schema!r} is not an acquisition settings file")
     elif str(schema).split("/", 1)[1].split(".")[0] != SCHEMA.split("/", 1)[1]:
         p.append(f"schema: version {schema!r} is newer than this ChiSurf reads ({SCHEMA!r})")
-    for key in ("device", "laser", "experiment", "run", "simulator"):
+    for key in ("device", "laser", "experiment", "run", "simulator", "scan"):
         if key in doc and not isinstance(doc[key], dict):
             p.append(f"{key}: expected an object")
     dev = doc.get("device") if isinstance(doc.get("device"), dict) else {}
@@ -209,6 +211,20 @@ def validate(doc: Any) -> list[str]:
         _num(p, "experiment.burst.window_photons", burst["window_photons"], 1, 1e6, integer=True)
     if "window_time_ms" in burst:
         _num(p, "experiment.burst.window_time_ms", burst["window_time_ms"], 1e-6, 1e6)
+    trace = exp.get("trace") if isinstance(exp.get("trace"), dict) else {}
+    if "window_s" in trace:
+        _num(p, "experiment.trace.window_s", trace["window_s"], 1e-3, 3600)
+    if "bin_ms" in trace:
+        _num(p, "experiment.trace.bin_ms", trace["bin_ms"], 1e-4, 1e5)
+    if isinstance(doc.get("scan"), dict):
+        from .scanner import ScanSettings
+
+        try:
+            scan = ScanSettings.from_dict(doc["scan"])
+        except (TypeError, ValueError) as exc:
+            p.append(f"scan: {exc}")
+        else:
+            p += [f"scan.{problem}" for problem in scan.validate()]
     run = doc.get("run") if isinstance(doc.get("run"), dict) else {}
     if "duration_s" in run and run["duration_s"] is not None:
         _num(p, "run.duration_s", run["duration_s"], 0, 360_000)
@@ -543,6 +559,15 @@ def from_ptu_tags(tags: dict | list) -> tuple[dict, list[str]]:
     if isinstance(acq, (int, float)) and acq > 0:
         doc["run"] = {"duration_s": float(acq) / 1e3}
     missing += ["experiment.preset", "experiment.setup", "experiment.burst"]
+    if any(str(k).startswith("ImgHdr_") for k in tags):
+        from .scanner import scan_from_tags
+
+        scan, scan_missing = scan_from_tags(
+            {k: v for k, v in tags.items() if "(" not in str(k)}
+        )
+        if scan is not None:
+            doc["scan"] = scan.to_dict()
+        missing += scan_missing
     if doc.get("laser") and "MeasDesc_Resolution" in tags:
         from chisurf.plugins.core.acq.live.laser import propose_pie_windows
 

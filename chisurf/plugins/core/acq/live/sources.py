@@ -75,7 +75,9 @@ class PhotonBatch:
 
     ``truth`` is the simulator's population index per photon (background is the index after the
     last population); real sources leave it ``None``. ``raw`` is the device's undecoded records the
-    batch came from, when there were any (what a device recording writes).
+    batch came from, when there were any (what a device recording writes). ``event`` is the event
+    type per entry (0 a photon, 1 a marker -- a scan's line and frame markers, whose ``channel`` is
+    the marker bit); ``None`` means every entry is a photon.
     """
 
     macro: np.ndarray
@@ -83,6 +85,23 @@ class PhotonBatch:
     channel: np.ndarray
     truth: np.ndarray | None = None
     raw: np.ndarray | None = None
+    event: np.ndarray | None = None
+
+    def photons(self) -> PhotonBatch:
+        """The photons only (markers dropped) -- what a burst analysis takes."""
+        if self.event is None or not np.any(self.event):
+            return self
+        keep = self.event == 0
+        truth = self.truth[keep] if self.truth is not None else None
+        return PhotonBatch(self.macro[keep], self.micro[keep], self.channel[keep], truth)
+
+    def cut(self, n: int) -> None:
+        """Keep the first *n* entries (the run's duration ended inside the batch)."""
+        self.macro, self.micro, self.channel = self.macro[:n], self.micro[:n], self.channel[:n]
+        if self.truth is not None:
+            self.truth = self.truth[:n]
+        if self.event is not None:
+            self.event = self.event[:n]
 
     def __len__(self) -> int:
         return len(self.macro)
@@ -672,6 +691,9 @@ class FileReplaySource(PhotonSource):
         self._macro = np.asarray(self._tttr.macro_times).astype(np.uint64)
         self._micro = np.asarray(self._tttr.micro_times).astype(np.uint16)
         self._channel = np.asarray(self._tttr.routing_channels).astype(np.int8)
+        #: event type per entry: a scan's markers (type 1) replay with the photons
+        self._event = np.asarray(self._tttr.event_types).astype(np.int8)
+        self.has_markers = bool(np.any(self._event != 0))
         self._t0 = int(self._macro[0])
         self._clock = _Clock(speed=float(speed), realtime=bool(realtime))
         self.batch_s = float(batch_s)
@@ -703,7 +725,9 @@ class FileReplaySource(PhotonSource):
             if end > self._pos:
                 s = slice(self._pos, end)
                 self._pos = end
-                return PhotonBatch(self._macro[s], self._micro[s], self._channel[s])
+                return PhotonBatch(
+                    self._macro[s], self._micro[s], self._channel[s], event=self._event[s]
+                )
             if time.monotonic() >= deadline:
                 return None
             time.sleep(0.02)

@@ -429,7 +429,17 @@ class LaserSettingsMixin:
         self.window_time_ms = float(burst.get("window_time_ms", self.window_time_ms))
         if exp.get("alex_period_us"):
             self.alex_period_us = float(exp["alex_period_us"])
+        trace = exp.get("trace") or {}
+        if trace.get("window_s"):
+            self.trace_window_s = float(trace["window_s"])
+        if trace.get("bin_ms"):
+            self.trace_bin_ms = float(trace["bin_ms"])
+        if isinstance(doc.get("scan"), dict):
+            self.set_scan(doc["scan"])
+            self.mode = "image"
         run = doc.get("run") or {}
+        if run.get("mode") in ("point", "image"):
+            self.mode = run["mode"]
         if run.get("duration_s") is not None:
             self.duration_s = float(run["duration_s"])
         if run.get("name"):
@@ -492,6 +502,10 @@ class LaserSettingsMixin:
         }
         if setup is not None:
             experiment["setup"] = setup
+        experiment["trace"] = {
+            "window_s": float(self.trace_window_s),
+            "bin_ms": float(self.trace_bin_ms),
+        }
         if preset == "alex":
             experiment["alex_period_us"] = float(self.alex_period_us)
         doc = settings_file.new_settings(
@@ -522,8 +536,11 @@ class LaserSettingsMixin:
                 "duration_s": float(self.duration_s),
                 "name": self.run_name,
                 "project_data": self.recording_store,
+                "mode": self.mode,
             },
         )
+        if self.mode == "image":
+            doc["scan"] = self.scan_settings().to_dict()
         if self.laser_program:
             doc["laser"] = dict(self.laser_program)
         if self.source_kind == "simulator":
@@ -537,6 +554,12 @@ class LaserSettingsMixin:
                 "realism_preset": self.realism_preset,
                 "realism": self.realism().as_dict(),
             }
+            if self.mode == "image":
+                doc["simulator"]["imaging_sample"] = {
+                    "beads": int(self.img_beads),
+                    "tau_ns": [float(self.img_tau_1_ns), float(self.img_tau_2_ns)],
+                    "brightness": float(self.img_brightness),
+                }
         return doc
 
     def _input_offsets(self, setup: dict | None) -> dict[int, int]:
