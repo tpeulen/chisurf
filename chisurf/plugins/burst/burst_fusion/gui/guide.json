@@ -2,17 +2,24 @@
   "steps": [
     {
       "title": "What this step is for",
-      "text": "One molecule crossing the confocal spot does not always leave one burst. It dims for a few hundred microseconds — to the edge of the volume and back, an acceptor blink — and the burst search, which sees only a count rate, ends one burst and starts another. Downstream, each fragment counts as its own molecule.<br/><br/>This tool merges the fragments back together and writes a <b>new</b> burst folder. The folder you start from is never modified, so a threshold can be tried, looked at, and thrown away.<br/><br/>You do not need your own data to follow this. Press <b>🧪 Load example</b> among the actions: it simulates a measurement in which <i>300 molecules</i> crossed the focus and about 60 % of those crossings were interrupted, then runs the ordinary burst search over it. Everything below is checked against that known 300.",
+      "text": "One molecule crossing the confocal spot does not always leave one burst. It dims for a few hundred microseconds — to the edge of the volume and back, an acceptor blink — and the burst search, which sees only a count rate, ends one burst and starts another. Downstream, each fragment counts as its own molecule.<br/><br/>This tool merges the fragments back together and writes a <b>new</b> burst run of the same measurement. The run you start from is never modified, so a threshold can be tried, looked at, and thrown away.<br/><br/>You do not need your own data to follow this. Press <b>🧪 Load example</b> among the actions: it simulates a measurement in which <i>300 molecules</i> crossed the focus and about 60 % of those crossings were interrupted, then runs the ordinary burst search over it. Everything below is checked against that known 300.",
       "target": {}
     },
     {
       "title": "Start with data whose answer you know",
-      "text": "<b>Load example</b> generates a physical photon measurement and runs the ordinary burst search. It declares 300 molecule crossings and records the search settings and truth beside the analysis folder. Loading queues this folder; press Estimate separately to inspect recurrence before fusing.",
+      "text": "<b>Load example</b> generates a physical photon measurement and runs the ordinary burst search. It declares 300 molecule crossings and puts it into the workspace: the photons a dataset, the search a burst run of it in the project. Loading picks that run; press Estimate separately to inspect recurrence before fusing.",
       "target": {
         "name": "load_example"
       },
       "await": {
         "hint": "Press <b>Load example</b> to load the known measurement."
+      }
+    },
+    {
+      "title": "where the bursts come from",
+      "text": "The <b>Input</b> section lists the burst runs in the workspace — every burst search of your photon data, under its photon stream. Clicking one picks it; the demo's run is already picked.<br/><br/>Nothing here opens a file: data enters ChiSurf once, by dropping it on the window, and every tool takes it from the workspace.",
+      "target": {
+        "name": "workspace_input_rows"
       }
     },
     {
@@ -57,7 +64,7 @@
     },
     {
       "title": "write the fused folder",
-      "text": "Press <b>🚀 Run (Fuse)</b> (the green button) — on this step, running <i>is</i> fusing.<br/><br/>This is the slow half: the photon streams are reopened and every column is re-derived over the real span, so the result is an ordinary burst folder — BVA, 2CDE, the MLE, H2MM and the browser read it with no idea that fusion happened.<br/><br/>The plots then switch from the preview to <b>what was actually written</b> (the legend says which). The two differ by the photons the bridged gaps brought in, and the <code>fu4</code> companion records that number for every burst — worth a look before you build on the folder.",
+      "text": "Press <b>🚀 Run (Fuse)</b> (the green button) — on this step, running <i>is</i> fusing.<br/><br/>This is the slow half: the photon streams are reopened and every column is re-derived over the real span, so the result is an ordinary burst run, written beside its source in the same container — BVA, 2CDE, the MLE, H2MM and the browser read it with no idea that fusion happened.<br/><br/>The plots then switch from the preview to <b>what was actually written</b> (the legend says which). The two differ by the photons the bridged gaps brought in, and the run's <b>assembly</b> table records that number for every burst — worth a look before you build on the run. In the Datasets workspace the fused run appears under the same photon stream.",
       "target": {
         "name": "toolAction_run"
       },
@@ -65,7 +72,7 @@
     },
     {
       "title": "and then carry on down the pipeline",
-      "text": "In the Burst Analysis window the later steps now point at the fused folder; running the burst search again supersedes that and takes you back.<br/><br/>One thing to know: results already computed on the <i>original</i> folder — BVA, 2CDE, per-burst MLE lifetimes — are <b>not</b> carried over. They have one row per original burst and a burst folder is merged by <i>position</i>, so they would line up one burst's lifetime against another's efficiency. Recompute them here, which is exactly why fusion sits before them.<br/><br/>Your own data goes in the same box the demo used.<br/><br/>Finally, the method: the same-molecule probability comes from <b>recurrence analysis of single particles</b> (Hoffmann et al., <i>PCCP</i> <b>13</b>, 1857, 2011). The <b>?</b> button has the full citation and a live DOI link, and explains where that paper uses the curve to <i>correlate</i> recurring bursts rather than merge them — which is the analysis you want if your interest is slow dynamics rather than split bursts.",
+      "text": "In the Burst Analysis window the later steps now point at the fused run; running the burst search again supersedes that and takes you back.<br/><br/>One thing to know: results already computed on the <i>original</i> run — BVA, 2CDE, per-burst MLE lifetimes — are <b>not</b> carried over. They have one row per original burst and they are tables of that run, one row per burst, so they would line up one burst's lifetime against another's efficiency. Recompute them here, which is exactly why fusion sits before them.<br/><br/>Your own data comes the same way: pick a burst run of your photon data in the <b>Input</b> section, or use <i>Open in…</i> on a run in the Datasets view.<br/><br/>Finally, the method: the same-molecule probability comes from <b>recurrence analysis of single particles</b> (Hoffmann et al., <i>PCCP</i> <b>13</b>, 1857, 2011). The <b>?</b> button has the full citation and a live DOI link, and explains where that paper uses the curve to <i>correlate</i> recurring bursts rather than merge them — which is the analysis you want if your interest is slow dynamics rather than split bursts.",
       "target": {
         "attr": "folder"
       },

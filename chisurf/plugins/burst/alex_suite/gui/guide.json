@@ -8,7 +8,7 @@
     },
     {
       "title": "2 — the files",
-      "text": "Drop files or a folder here. <b><code>.sm</code> files work directly</b>, no conversion, no cache files beside them.<br/><br/>No measurement at hand: <b>Load example</b> writes a simulated µs-ALEX stream (100 µs alternation, donor on channel 0, acceptor on channel 1; low-FRET, high-FRET, donor-only and acceptor-only molecules) into a plugin’s generated-data folder and adds it.",
+      "text": "Pick your measurements in the <b>Input</b> section: the photon streams of the Datasets workspace (data enters ChiSurf by dropping it on the ChiSurf window). <b><code>.sm</code> files work directly</b>, no conversion, no cache files beside them.<br/><br/>No measurement at hand: <b>Load example</b> writes a simulated µs-ALEX stream (100 µs alternation, donor on channel 0, acceptor on channel 1; low-FRET, high-FRET, donor-only and acceptor-only molecules) into a plugin’s generated-data folder and adds it.",
       "target": {
         "name": "load_example",
         "panel": "2. Files"

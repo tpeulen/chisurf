@@ -72,7 +72,6 @@ class TitrationViewModel:
         self._observers: list[Callable[[str], None]] = []
         #: Set by the Qt panel to a callable returning chosen paths. The model
         #: never opens a dialog itself, so the same object drives a script.
-        self.request_files: Callable[[], list[str]] | None = None
 
     # ── observer plumbing (the AutoForm convention) ─────────────────────
 
@@ -126,12 +125,6 @@ class TitrationViewModel:
             )
         self.notify("changed")
 
-    def browse_files(self) -> None:
-        """Ask the host for files and append a row for each."""
-        if self.request_files is None:
-            return
-        self.add_files(self.request_files() or [])
-
     def remove_last_row(self) -> None:
         """Drop the last row."""
         if self.rows:
@@ -152,7 +145,7 @@ class TitrationViewModel:
             return "A titration needs at least two concentrations."
         if len({r["concentration"] for r in self.rows}) < len(self.rows):
             return "Two rows have the same concentration — check the table."
-        missing = [r["file"] for r in self.rows if not pathlib.Path(r["file"]).exists()]
+        missing = [r["file"] for r in self.rows if not _exists(r["file"])]
         if missing:
             return f"Missing file: {pathlib.Path(missing[0]).name}"
         return None
@@ -365,3 +358,13 @@ class TitrationViewModel:
                 ):
                     writer.writerow([name, value])
         return path
+
+
+def _exists(source) -> bool:
+    """Whether a titration point's burst table is there: a file, or a run of an existing container."""
+    from chisurf.core.fio.analysis_path import is_container_path, split_container_path
+
+    if is_container_path(source):
+        container, _run = split_container_path(source)
+        return container is not None and container.is_file()
+    return pathlib.Path(source).exists()

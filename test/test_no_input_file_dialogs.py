@@ -43,6 +43,10 @@ INPUT_MODES = {"open", "folder"}
 PRAGMA = "# not-input:"
 #: Files whose ``# not-input:`` dialogs are allowed for good, with the reason. Not a worklist.
 NOT_INPUT = {
+    "chisurf/plugins/burst/alex_suite/gui/step_apps.py": (
+        "Titration export: the CSV the fitted series is written to, an output (the titration's "
+        "burst runs come from the workspace)."
+    ),
     "chisurf/plugins/core/project_data/gui/app.py": (
         "Locate missing data: 'Search in folder…' / 'Use this file' find the moved original of a "
         "linked dataset -- a repair of the project, not data entering it."

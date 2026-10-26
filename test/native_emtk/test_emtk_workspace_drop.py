@@ -114,10 +114,33 @@ def test_a_dropped_decay_curve_is_read_with_the_file_type_it_names_and_feeds_llt
     assert row["name"] == decay.name and shell.data.read.experiment == "TCSPC"
     reader = shell.data.read.reader()
     assert (reader.dt, reader.x_on, reader.is_vv_vh) == (0.008, False, True)
-    assert "lltf" in [plugin for plugin, _ in shell.tools_for_rows([row])]
+    # Open in… offers what the catalogue's manifests accept (this shell carries no plugins, so the
+    # catalogue is asked directly, through the same function its menu uses).
+    from chisurf.core.plugin.workspace_input import plugins_accepting
+    from chisurf.emtk.plugins import manifests
+
+    assert "lltf" in [plugin for plugin, _ in plugins_accepting(manifests(), [row])]
     driver.frame(2)
     driver.screenshot(SHOTS / "workspace_decay_drop.png")
 
 
 def _decay_rows(shell):  # noqa: F811
     return [r for r in shell.data.datasets.datasets if r.get("kind") == "decay"]
+
+
+def test_a_dropped_legacy_burst_folder_goes_to_burstwise_import(shell, tmp_path):  # noqa: F811
+    """A legacy burstwise folder is not a curve: the drop hands it to Burstwise import (its
+    ``legacy_folder`` hand-off), which brings its runs into the project's analysis containers."""
+    data = REPO / "chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna"
+    folder = tmp_path / "burstwise_All 0.1000#15"
+    shutil.copytree(data / "burstwise_All 0.1000#15", folder)
+    handed = []
+    # This shell carries no plugins, so the hand-off is recorded rather than opened (Burstwise
+    # import's receive hook has its own tests).
+    shell.hand_off = lambda plugin_id, kind, payload, **kw: handed.append(
+        (plugin_id, kind, payload)
+    )
+    Driver(shell, (1300, 900)).draw(2)
+    assert shell.on_files_dropped([str(folder)]), shell.data.status
+    assert handed == [("burstwise_import", "legacy_folder", {"folder": str(folder)})]
+    assert not [r for r in shell.data.datasets.datasets if r.get("kind") == "curve"]

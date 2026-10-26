@@ -72093,6 +72093,14 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
             <source>Remove loaded files and analysis results.</source>
             <translation>Retirer les fichiers chargés et les résultats d’analyse.</translation>
         </message>
+        <message>
+            <source>Burst fusion reads a burst run; {name} is not one.</source>
+            <translation>La fusion de bursts lit une série de bursts ; {name} n’en est pas une.</translation>
+        </message>
+        <message>
+            <source>Cannot import the burst folder {path}: {why}</source>
+            <translation>Impossible d’importer le dossier de bursts {path} : {why}</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

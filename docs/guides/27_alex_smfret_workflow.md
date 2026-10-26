@@ -103,7 +103,7 @@ Guide/Proceed/Next yourself when following the shipped tour.
 
 1. On **0. Setup Selection** choose the stored detector setup (or define one and
    **Save** it).
-2. **Next**, then drop the measurements on **1. Data Selection** (or **Add files**).
+2. **Next**, then pick the measurements in **1. Data Selection**'s **Input** section (the photon streams of the Datasets workspace).
 3. **Next** to **2. Burst Selection**; check the search settings, then **Next**
    again: it searches every file and moves on to the later steps.
 

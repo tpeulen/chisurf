@@ -22,9 +22,9 @@ scripts and the agent need them); in the UI they degrade the UX and go.
    a legacy burst *folder* cannot be a workspace row: links refuse a directory, so consumers must take
    `m000.pto/<run>`), curve tools, images, structures. Recipe: [plugin architecture
    §3.1.5](../../docs/development/plugin_architecture.md).
-2. **Hubs.** alex_suite / burst_analysis step apps still take files per step; feed steps from the hub's
-   context by declared kind (the `with_run_picker` pattern is generalised by `with_workspace_input`, but
-   the hubs still call their own `_to_<role>` adapters).
+2. **Hubs.** alex_suite / burst_analysis take their photons and setup from the workspace and hand the
+   later steps a container run (no legacy folder); the hubs still call their own `_to_<role>` adapters
+   rather than each step's declared input.
 3. **Setups as input.** `with_setup` is implemented (a `setup` row's address travels as `setup`) but no
    plugin declares it yet; intensity_trace still picks detector setups from its own setups store — the
    next photon tool should take its setup from the workspace.
@@ -33,20 +33,26 @@ scripts and the agent need them); in the UI they degrade the UX and go.
    the sniffed settings (`skiprows`, `x_on`, `dt`, `is_vv_vh`). A PyCorrFit CSV sniffs as FCS-CSV.
 5. **Journeys** (`test/e2e/test_workspace_journeys.py`) are the acceptance proof; run on `ssh home`
    (`build_tools/remote_test.sh`), never on the laptop.
-6. **Burst family, on the project model** (§ Burst results live in the project). Migrated: BVA, 2CDE,
-   GS, H2MM, MLE, burst browser, burst FCS correlator, burst_selection (photons in, runs into the
-   dataset's analysis container); accurate_fret has the Input section but keeps its CSV/NPZ table
-   routes (no workspace kind for a plain table). Open: burst_fusion (its engine reads and writes
-   folders only: port `core/fusion.py` to read a run via `read_run` and write the fused bursts as a run
-   of the same container), burst_irf_bg and burst_background (photon files, like burst_selection),
-   alex_suite, bid_to_analysis, mfd_prepare, fret_check, the burst_analysis hub, burst_ebfret (trace
-   files: no kind). burstwise_import needs the shell drop to route a legacy burstwise folder to it,
-   and its containers to land as analysis containers of the photon datasets it registers. Blocks:
-   no workspace kind for a plain or result table; tool presets (settings JSON) are not classified as
-   `setup`, so "Load settings" dialogs remain; H2MM's per-photon side files (`h2mm/`) sit in the
-   session folder and are not carried by the project (move them into the container or make them an
-   explicit export); the Datasets view cannot yet show a run's companion tables as view-only
-   children.
+6. **Burst family, on the project model** (§ Burst results live in the project). Migrated (2026-10-26):
+   BVA, 2CDE, GS, H2MM (per-photon tables into the run's container), MLE, burst browser, burst FCS
+   correlator, burst_selection, burst_background, burst_irf_bg, fret_check, bid_to_analysis,
+   burstwise_import (a dropped legacy burstwise folder is classified `burst_folder` and handed to its
+   `legacy_folder` hand-off), the burst_analysis hub, **burst_fusion** (a run is fused into a new run
+   `<run> fused p<thr>` of the same container -- stored as a burst selection, algorithm
+   `recurrence_probability`, with `assembly`/`membership` tables and a `fusion groups` companion on
+   the source run; legacy folders still fuse to a folder headless), **mfd_prepare**
+   (`prepare_burst_folder` reads a run through the shared run reader; it writes nothing) and
+   **alex_suite** (Files step names `alex_suite`'s own `accepts`; titration takes burst runs, many).
+   accurate_fret keeps its CSV/NPZ table routes (no workspace kind for a plain table); burst_ebfret
+   (trace files: no kind) is open. Container runs written by an import (`import` operation, BID) are
+   listed as runs (`classify.BURST_RUN_OPERATIONS`), so they come back after a project reopen. The hub's
+   materialized hand-off names its run after the search settings (`_search_run`): an unnamed run lands
+   at the container's top level, where ndX lists it as `bi4_bur` while `resolve_run` says `""`, and
+   every later step then found no burst table. `.bid`/`.bst` get no data kind on purpose: a BID holds
+   photon indices into one TTTR, so it is that stream's companion, found beside it by stem. Blocks: no
+   workspace kind for a plain or result table; tool presets (settings JSON) are not classified as
+   `setup`, so "Load settings" dialogs remain (fusion, h2mm, MLE, correlator, burst_selection); the
+   Datasets view cannot yet show a run's companion tables as view-only children.
 
 ## Where it stands (recon 2026-10-26)
 

@@ -45,11 +45,16 @@ class BurstWorkflowContext:
 
     def set_burst_folder(self, folder: Path) -> None:
         """Adopt *folder* (a burst-analysis folder or a ``.pto`` container) as the bursts the later steps read."""
+        from chisurf.core.fio.analysis_path import is_container_path
+
         folder = Path(folder)
         self.burst_folder = folder
-        # A container *is* the burst source, so it has no `.bur` files to list — and `glob` on a file returns
-        # nothing rather than raising, which would have left this silently empty either way.
-        self.bur_files = sorted(folder.glob("**/*.bur")) if folder.is_dir() else []
+        # A container, or a run in one (a fused search), *is* the burst source the steps read: it
+        # has no `.bur` files to list, and `glob` on a file returns nothing rather than raising.
+        if is_container_path(folder):
+            self.bur_files = [folder]
+        else:
+            self.bur_files = sorted(folder.glob("**/*.bur")) if folder.is_dir() else []
 
 
 def folder_from_result(result: object) -> Path | None:

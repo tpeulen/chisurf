@@ -11,15 +11,22 @@ logger = logging.getLogger(__name__)
 
 
 def prepare_folder(request: PrepareRequest) -> PrepareResult:
-    """Prepare a burst folder and return a JSON-serializable result.
+    """Prepare a burst run (``m000.pto/<run>``) or a legacy burst folder; return a JSON-serializable
+    result.
 
     Calls :func:`~chisurf.core.fluorescence.mfd.prepare.prepare_burst_folder`
     and extracts the key diagnostics. No Qt, no DB.
     """
     if not request.folder:
         return PrepareResult(error="No folder specified")
+    from chisurf.core.fio.analysis_path import is_container_path, split_container_path
+
     folder = Path(request.folder)
-    if not folder.is_dir():
+    if is_container_path(folder):
+        container, _run = split_container_path(folder)
+        if container is None or not container.is_file():
+            return PrepareResult(folder=str(folder), error=f"Burst run not found: {folder}")
+    elif not folder.is_dir():
         return PrepareResult(
             folder=str(folder),
             error=f"Folder does not exist: {folder}",

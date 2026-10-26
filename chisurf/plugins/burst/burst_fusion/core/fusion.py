@@ -163,6 +163,68 @@ def proximity_ratios(frame) -> np.ndarray | None:
     return proximity_ratio(frame)
 
 
+# ── reading container runs ──────────────────────────────────────────────────
+
+
+def is_run_source(source) -> bool:
+    """Whether *source* names a measurement container or a burst run in one (``m000.pto/<run>``)
+    rather than a legacy burst-analysis folder."""
+    from chisurf.core.fio.analysis_path import is_container_path
+
+    return is_container_path(source)
+
+
+def read_runs(sources) -> tuple[OrderedDict, dict[str, str]]:
+    """Read burst runs as ``({stem: burst rows}, {stem: run address})``.
+
+    Each source is a container or a run in one; the rows are read the way every burst analysis
+    reads a run (ndX's reader, companions joined), and the address returned is the run actually
+    read, so the result is written beside exactly that search.
+    """
+    from chisurf.core.fio.analysis_path import split_container_path
+    from chisurf.core.fio.fluorescence.burst import _read_burst_analysis_from_container
+    from chisurf.core.fio.fluorescence.burst_tree import RUN_COLUMN
+
+    frames: OrderedDict = OrderedDict()
+    addresses: dict[str, str] = {}
+    for source in sources:
+        try:
+            store, _tttrs = _read_burst_analysis_from_container(pathlib.Path(str(source)))
+        except FileNotFoundError as exc:
+            raise FusionError(str(exc)) from exc
+        container, _run = split_container_path(source)
+        address = str(np.asarray(store[RUN_COLUMN])[0]) if row_count(store) else str(source)
+        stem = container.stem
+        if stem in frames:
+            stem = f"{stem} ({_run_name(address)})"
+        frames[stem] = data_rows(store)
+        addresses[stem] = address
+    return frames, addresses
+
+
+def _run_name(address) -> str:
+    from chisurf.core.fio.analysis_path import split_container_path
+
+    return split_container_path(address)[1]
+
+
+def analyze_runs(
+    sources, settings: FusionSettings | None = None, cancel_check=None
+) -> FusionAnalysis:
+    """Decide which bursts of one or more container runs fuse, without writing anything."""
+    from chisurf.core.fio.analysis_path import split_container_path
+
+    settings = settings or FusionSettings()
+    sources = [str(s) for s in sources]
+    if not sources:
+        raise FusionError("no burst run to fuse")
+    frames, addresses = read_runs(sources)
+    container, _run = split_container_path(sources[0])
+    analysis = _analyze_frames(frames, container, settings, cancel_check)
+    analysis.sources = addresses
+    return analysis
+
+
 # ── the analysis ────────────────────────────────────────────────────────────
 
 
@@ -186,10 +248,17 @@ def analyze(
         statistics.
     """
     settings = settings or FusionSettings()
+    if is_run_source(analysis_folder):
+        return analyze_runs([analysis_folder], settings, cancel_check)
     root = analysis_root(analysis_folder)
     if callable(cancel_check):
         cancel_check()
     frames = read_measurements(analysis_folder)
+    return _analyze_frames(frames, root, settings, cancel_check)
+
+
+def _analyze_frames(frames, root, settings: FusionSettings, cancel_check=None) -> FusionAnalysis:
+    """The analysis itself, over ``{stem: burst rows}`` however they were read."""
     if callable(cancel_check):
         cancel_check()
     if not frames:
@@ -729,12 +798,204 @@ def fuse_folder(
         The :func:`write_fused_analysis` payload plus the run statistics.
     """
     analysis = analyze(analysis_folder, settings)
-    result = write_fused_analysis(
-        analysis,
-        output_folder=output_folder,
-        detectors=detectors,
-        windows=windows,
-        data_folder=data_folder,
-    )
+    if analysis.sources:
+        result = write_fused_runs(analysis, detectors=detectors, windows=windows)
+    else:
+        result = write_fused_analysis(
+            analysis,
+            output_folder=output_folder,
+            detectors=detectors,
+            windows=windows,
+            data_folder=data_folder,
+        )
     result["statistics"] = analysis.statistics
     return result
+
+
+def fused_run_name(source_run: str, settings: FusionSettings) -> str:
+    """The run the fused bursts of *source_run* are written as.
+
+    The threshold is in the name, as it was in the legacy folder's, because it is the only choice
+    that changes the result: a fusion at a second threshold is a second run, not a replacement.
+    """
+    return f"{source_run} fused p{settings.threshold:.2f}".strip()
+
+
+def write_fused_runs(
+    analysis: FusionAnalysis,
+    detectors: dict[str, Any] | None = None,
+    windows: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Write a fusion of container runs as a new run of each container.
+
+    The fused bursts are regenerated from the photons over each fused span -- the same writer the
+    burst search uses -- and stored as ``<source run> fused p<threshold>/bursts``, with how each was
+    assembled (``assembly``) and which source burst went into which fused burst (``membership``)
+    as tables of that run. The source run gains a per-burst ``fusion groups`` companion. Nothing is
+    written outside the container: it is the photon dataset's analysis container in a project.
+
+    Returns
+    -------
+    dict
+        ``runs`` (the fused run addresses), per-measurement burst counts and the recurrence window.
+    """
+    from chisurf.core.fio.analysis_path import artifact_name, run_path, split_container_path
+    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+    from chisurf.core.fio.fluorescence.burst_tree import TABLE
+    from chisurf.core.fio.staging import open_tttr
+
+    if not detectors:
+        raise FusionError(
+            "no detector definition: the fused bursts are regenerated from the photons, so the "
+            "detector setup must be given (the workflow's channel definition supplies it)."
+        )
+    parameters = analysis.settings.to_dict()
+    runs: list[str] = []
+    per_measurement: dict[str, dict[str, int]] = {}
+    for measurement in analysis.measurements:
+        frame = measurement.source
+        address = analysis.sources.get(measurement.stem)
+        if not address or row_count(frame) == 0:
+            continue
+        container, source_run = split_container_path(address)
+        tttr = open_tttr(str(container))
+        intervals, kept = _merged_intervals(frame, measurement.labels, len(tttr))
+        first_file = (
+            str(np.asarray(frame["First File"])[0])
+            if "First File" in _column_names(frame)
+            else container.name
+        )
+        fused = generate_burst_dataframe(
+            intervals,
+            first_file,
+            tttr,
+            windows=dict(windows or {}),
+            detectors=dict(detectors),
+            include_interleaved_zeros=False,
+            macro_time_resolution=None,
+        )
+        run = fused_run_name(source_run, analysis.settings)
+        source_table = f"{container}/{source_run}" if source_run else str(container)
+        # The fused bursts are a burst selection -- new burst boundaries, found by fusing a
+        # search -- so they are stored as one: every reader (ndX, the burst tools, the workspace)
+        # takes them as a run. The algorithm, the fusion settings and the parent edge to the
+        # source search say how they were made.
+        write_burst_artifact(
+            source_table,
+            fused,
+            name=artifact_name(run, TABLE),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            algorithm="recurrence_probability",
+            parameters={"burst_fusion": parameters, "fused_from": source_run},
+            derived_from="bursts",
+            deinterleave=True,
+        )
+        fused_address = run_path(container, run)
+        labels = np.asarray(measurement.labels, dtype=int)
+        write_burst_artifact(
+            fused_address,
+            store_from_arrays(
+                {
+                    "source_row": np.arange(labels.size, dtype=np.int64),
+                    "fused_row": labels.astype(np.int64),
+                }
+            ),
+            name=artifact_name(run, "membership"),
+            artifact_kind="row_mapping",
+            operation_type="burst_fusion",
+            row_grain="pair",
+            algorithm="recurrence_probability",
+            parameters=parameters,
+            derived_from="bursts",
+            source_row_column="source_row",
+            target_row_column="fused_row",
+            deinterleave=False,
+        )
+        _write_run_assembly(fused_address, run, frame, kept, fused, parameters)
+        if analysis.settings.write_source_companion:
+            _write_run_groups(source_table, source_run, measurement, frame, parameters)
+        runs.append(fused_address)
+        per_measurement[measurement.stem] = {
+            "bursts_before": int(row_count(frame)),
+            "bursts_after": int(len(intervals)),
+        }
+    logger.info(
+        "Burst fusion: %d -> %d bursts (P_same >= %.2f) -> %s",
+        analysis.statistics["n_bursts_before"],
+        sum(v["bursts_after"] for v in per_measurement.values()),
+        analysis.settings.threshold,
+        ", ".join(runs),
+    )
+    return {
+        "runs": runs,
+        "output_folder": runs[0] if runs else "",
+        "per_measurement": per_measurement,
+        "tau_max_s": float(analysis.window.tau_max_s),
+        "tau_used_s": float(analysis.tau_used_s),
+        "resolved": bool(analysis.window.resolved),
+    }
+
+
+def _write_run_assembly(fused_address, run: str, frame, kept, fused, parameters) -> None:
+    """How each fused burst was assembled, a table of the fused run (one row per fused burst)."""
+    from chisurf.core.fio.analysis_path import artifact_name
+    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+
+    if not kept:
+        return
+    counts = numeric_column(frame, "Number of Photons")
+    span_photons = numeric_column(data_rows(fused), "Number of Photons")
+    rows = []
+    for i, group in enumerate(kept):
+        signal = float(np.nansum(counts[group]))
+        span = float(span_photons[i]) if i < span_photons.size else signal
+        rows.append([float(len(group)), max(span - signal, 0.0)])
+    table = np.asarray(rows, dtype=float)
+    write_burst_artifact(
+        fused_address,
+        store_from_arrays({"Fused Bursts": table[:, 0], "Fused Gap Photons": table[:, 1]}),
+        name=artifact_name(run, "assembly"),
+        artifact_kind="burst_table",
+        operation_type="burst_fusion",
+        row_grain="burst",
+        algorithm="recurrence_probability",
+        parameters=parameters,
+        derived_from="bursts",
+        units={"Fused Gap Photons": "photons", "Fused Bursts": "counts"},
+        deinterleave=False,
+    )
+
+
+def _write_run_groups(source_table, source_run: str, measurement, frame, parameters) -> None:
+    """Each source burst's fused-burst membership, a per-burst companion of the source run."""
+    from chisurf.core.fio.analysis_path import artifact_name
+    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+
+    labels = np.asarray(measurement.labels, dtype=int)
+    if labels.size == 0:
+        return
+    sizes = np.bincount(labels)
+    times = burst_times_s(frame)
+    lag = np.zeros(labels.size)
+    lag[1:] = np.diff(times) * 1e3
+    write_burst_artifact(
+        source_table,
+        store_from_arrays(
+            {
+                "Fusion Group": labels.astype(float),
+                "Fusion Group Size": sizes[labels].astype(float),
+                "Fusion Lag (ms)": lag,
+            }
+        ),
+        name=artifact_name(source_run, "fusion groups") if source_run else "fusion groups",
+        artifact_kind="burst_table",
+        operation_type="burst_fusion",
+        row_grain="burst",
+        algorithm="recurrence_probability",
+        parameters=parameters,
+        derived_from="bursts",
+        units={"Fusion Lag (ms)": "milliseconds"},
+        deinterleave=False,
+    )

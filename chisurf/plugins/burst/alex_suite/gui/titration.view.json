@@ -31,18 +31,13 @@
               "key": "name",
               "label": "Burst file",
               "width": 260,
-              "description": "The .bur/.pto burst table this concentration was measured in."
+              "description": "The burst run this concentration was measured in (picked in the Input section above)."
             }
           ]
         },
         {
           "type": "button_row",
           "buttons": [
-            {
-              "label": "➕ Add burst files…",
-              "action": "browse_files",
-              "description": "Add one row per burst file; then type each concentration."
-            },
             {
               "label": "➖",
               "action": "remove_last_row",

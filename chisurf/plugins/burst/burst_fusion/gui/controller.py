@@ -18,30 +18,24 @@ class FusionController:
         self._cancel = Event()
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="burst-fusion")
         self._future = None
-        self.action = "folder"
+        self.action = "load"
         self.dialog = None
         self.channel_text = json.dumps(
             {"detectors": model.detectors, "windows": model.windows}, indent=2
         )
-        from chisurf.emtk.dataset_picker import DatasetPicker
 
-        self.datasets = DatasetPicker(
-            kinds=["analysis_result", "burst_data"], on_paths=self.on_paths_dropped
-        )
+    def adopt_run(self, address) -> bool:
+        """Take the burst run *address* (from the workspace) as the bursts to fuse."""
+        from chisurf.plugins.burst.workspace_io import is_burst_source
 
-    def on_paths_dropped(self, paths):
-        """Adopt the first dropped burst folder or container; report anything else."""
-        from chisurf.core.fio.fluorescence import burst_tree
-
-        for path in map(Path, paths):
-            if path.is_dir() or burst_tree.is_container_path(path):
-                self.model.set_folder(str(path))
-                self.status = ""
-                return
-        if paths:
-            self.status = (
-                f"Burst fusion reads a burst-analysis folder; {Path(paths[0]).name} is not one."
+        if not is_burst_source(address):
+            self.status = tr("Burst fusion reads a burst run; {name} is not one.").format(
+                name=Path(str(address)).name
             )
+            return False
+        self.model.set_folder(str(address))
+        self.status = ""
+        return True
 
     def progress(self, fraction=0, message=""):
         if self._cancel.is_set():
@@ -200,14 +194,13 @@ class FusionController:
 
     #: Per action: the dialog's title, mode and file filters.
     DIALOGS = {
-        "folder": ("Select burst folder", "folder", None),
         "load": ("Load fusion settings", "open", [("JSON", ["*.json"])]),
         "save": ("Save fusion settings", "save", [("JSON", ["*.json"])]),
         "export": ("Export fusion report", "save", [("JSON", ["*.json"])]),
     }
 
-    def browse(self, action="folder"):
-        """Open the file dialog for *action* (folder, load, save, export)."""
+    def browse(self, action="load"):
+        """Open the file dialog for *action* (load, save, export)."""
         from emtk.dialog_window import DialogWindow
         from emtk.file_dialog import FileDialog
 
@@ -219,30 +212,16 @@ class FusionController:
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-fusion-file")
         self._dialog_window.show()
 
-    def draw_controls(self, remember=None):
-        """The source row (open a folder, an MMFDB dataset), the TTTR file type and the detector definitions."""
+    def draw_controls(self, remember=None, draw_input=None):
+        """The Input section (the workspace's burst runs), the TTTR file type and the detector
+        definitions."""
         from emtk import im
 
-        from chisurf.plugins.emtk_layout import TEXT_WIDTH, button_row
+        from chisurf.plugins.emtk_layout import TEXT_WIDTH
 
         im.begin_disabled(self.running)
-        pressed = button_row(
-            [
-                {
-                    "label": "Open burst folder",
-                    "tip": "Select the burst-analysis folder containing bi4_bur.",
-                },
-                {
-                    "label": "MMFDB datasets",
-                    "tip": "Resolve an existing burst analysis from the database.",
-                },
-            ],
-            remember=remember,
-        )
-        if pressed == "Open burst folder":
-            self.browse()
-        elif pressed == "MMFDB datasets":
-            self.datasets.open()
+        if callable(draw_input):
+            draw_input()
         im.text(tr("TTTR file type"))
         im.same_line()
         im.set_next_item_width(TEXT_WIDTH / 2)
@@ -287,16 +266,14 @@ class FusionController:
             im.text_wrapped(self.status)
 
     def draw_dialogs(self, frame):
-        """The file dialog in a sized window over *frame*, and the MMFDB picker."""
+        """The file dialog in a sized window over *frame*."""
         if self.dialog is not None:
             pressed = self._dialog_window.begin(frame)
             result = self.dialog.draw()
             self._dialog_window.end()
             if result:
                 try:
-                    if self.action == "folder":
-                        self.on_paths_dropped([result[0]])
-                    elif self.action == "load":
+                    if self.action == "load":
                         self.load_settings(result[0])
                     elif self.action == "save":
                         self.save_settings(result[0])
@@ -307,7 +284,6 @@ class FusionController:
                 self.dialog = None
             elif result is False or pressed == "close":
                 self.dialog = None
-        self.datasets.render(frame)
 
     def close(self):
         self.stop()

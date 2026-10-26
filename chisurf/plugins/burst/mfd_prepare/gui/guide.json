@@ -7,13 +7,13 @@
       "target": {}
     },
     {
-      "title": "Choose the folder",
-      "text": "<b>Browse...</b> to the analysis folder burst search wrote (the one holding <code>bi4_bur</code> and <code>Info</code>), or to <code>bi4_bur</code> itself. Dropping the folder on the window does the same.",
+      "title": "Pick the burst run",
+      "text": "The <b>Input</b> section lists the burst runs in the workspace — every burst search of your photon data, under its photon stream. Click the run to prepare (or use <i>Open in…</i> on it in the Datasets view). Nothing here opens a file: data enters ChiSurf by dropping it on the window.",
       "target": {
-        "action": "browse"
+        "name": "workspace_input_rows"
       },
       "await": {
-        "hint": "Press <b>Browse...</b> and pick a burst folder."
+        "hint": "Click a burst run in the <b>Input</b> section."
       }
     },
     {

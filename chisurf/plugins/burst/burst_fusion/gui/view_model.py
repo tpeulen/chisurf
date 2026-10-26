@@ -200,20 +200,22 @@ class FusionViewModel:
         Returns
         -------
         str
-            The demo's burst-analysis folder.
+            The demo's burst run (``<analysis container>/<run>``).
         """
         from ..demo import demo_detectors, make_demo, read_demo
 
         result = read_demo(make_demo(progress=progress))
-        self._demo = result
-        # The demo folder carries its own reading manifest, so these are only a
-        # fallback — set anyway, so the step still works if a folder ever arrives
-        # without one.
+        # The demo enters the workspace as real data does: its photons a dataset, its burst search
+        # a run of that dataset's analysis container -- and the tool fuses that run.
+        run = demo_run(result)
+        self._demo = dict(result, folder=run)
+        # A run carries no detector setup (the workflow's channel definition supplies it): the
+        # demo's own is set, so the fused bursts can be regenerated from its photons.
         self.detectors = dict(demo_detectors())
         self.windows = {}
-        self.set_folder(str(result["folder"]))
+        self.set_folder(run)
         self.notify("demo")
-        return str(result["folder"])
+        return run
 
     @property
     def demo(self) -> dict | None:
@@ -252,8 +254,19 @@ class FusionViewModel:
     # ── actions ────────────────────────────────────────────────────────
     def can_run(self) -> str | None:
         """Return ``None`` when a run is possible, else the reason it is not."""
+        from ..core.fusion import is_run_source
+
         if not self.folder:
-            return "Select a burst-analysis folder first."
+            return "Pick a burst run in the Input section first."
+        if is_run_source(self.folder):
+            from chisurf.core.fio.analysis_path import split_container_path
+
+            container, _run = split_container_path(self.folder)
+            return (
+                None
+                if container is not None and container.is_file()
+                else (f"Not found: {self.folder}")
+            )
         if not pathlib.Path(self.folder).is_dir():
             return f"Not a folder: {self.folder}"
         return None
@@ -294,17 +307,27 @@ class FusionViewModel:
         return self.write()
 
     def write(self) -> str:
-        """Write the fused bursts as a new burst folder and return its path."""
+        """Write the fused bursts (a new run of the container, or a legacy folder) and return
+        its address."""
         analysis = self._analysis if self._analysis is not None else self.analyze()
-        from ..core.fusion import write_fused_analysis
+        from ..core.fusion import write_fused_analysis, write_fused_runs
 
-        result = write_fused_analysis(
-            analysis,
-            detectors=self.detectors or None,
-            windows=self.windows or None,
-        )
-        self._written = str(result["output_folder"])
-        self._emitted = self._read_written(result.get("bur_files") or [])
+        if analysis.sources:
+            # A run of the project's analysis container: the fused bursts are a new run of it.
+            result = write_fused_runs(
+                analysis, detectors=self.detectors or None, windows=self.windows or None
+            )
+            self._written = str(result["output_folder"])
+            self._emitted = self._read_runs(result.get("runs") or [])
+            self._register_runs(result.get("runs") or [])
+        else:
+            result = write_fused_analysis(
+                analysis,
+                detectors=self.detectors or None,
+                windows=self.windows or None,
+            )
+            self._written = str(result["output_folder"])
+            self._emitted = self._read_written(result.get("bur_files") or [])
         self._status = f"Fused bursts written to {self._written}"
         logger.info("Burst fusion: %s", self._status)
         if callable(self.folder_written):
@@ -314,6 +337,37 @@ class FusionViewModel:
                 logger.warning("burst fusion: folder handoff failed", exc_info=True)
         self.notify("written")
         return self._written
+
+    def _read_runs(self, runs) -> list | None:
+        """Read the fused runs back the way every burst tool reads a run (the plots show them)."""
+        from chisurf.core.fio.fluorescence.burst import _read_burst_analysis_from_container
+
+        frames = []
+        for run in runs:
+            try:
+                frames.append(_read_burst_analysis_from_container(pathlib.Path(run))[0])
+            except Exception:
+                logger.warning("burst fusion: could not read back %s", run, exc_info=True)
+                return None
+        return frames or None
+
+    @staticmethod
+    def _register_runs(runs) -> None:
+        """The fused runs enter the workspace as children of the photon dataset they belong to
+        (whose analysis container they are in); outside a session nothing is registered."""
+        from chisurf.core.fio.analysis_path import split_container_path
+        from chisurf.core.plugin.workspace_input import register_result
+        from chisurf.core.project.analysis import is_derived
+
+        for run in runs:
+            container, _name = split_container_path(run)
+            owner = container.parent.name if container is not None and is_derived(container) else ""
+            try:
+                register_result(run, kind="bursts", result_of="" if owner == "_" else owner)
+            except Exception:  # noqa: BLE001 - the run is written; only its row is missing
+                logger.warning(
+                    "burst fusion: could not add %s to the workspace", run, exc_info=True
+                )
 
     def _read_written(self, paths) -> list | None:
         """Read the emitted burst tables back, so the plots show what was written."""
@@ -615,3 +669,44 @@ class FusionViewModel:
 
 
 __all__ = ["FusionViewModel"]
+
+
+def demo_run(demo: dict) -> str:
+    """Put the demo into the workspace and return its burst run's address.
+
+    The photons (the demo's ``.ht3``) become a dataset; the burst search the demo ran becomes a run
+    of that dataset's analysis container (photons linked), the run row its child. Outside a session
+    the container is still written -- in this process's analysis folder -- and its run returned.
+    """
+    from chisurf.core.fio.classify import container_entries
+    from chisurf.core.fio.fluorescence.burst import read_bur_file
+    from chisurf.core.fio.fluorescence.burst_container import deinterleave_bursts
+    from chisurf.core.plugin.workspace_input import register_result
+    from chisurf.core.project.analysis import container_dir
+    from chisurf.plugins.burst.burst_selection.api.io import write_container
+
+    folder = pathlib.Path(str(demo["folder"]))
+    photons = pathlib.Path(str(demo["source"]))
+    uid = ""
+    try:
+        stream = register_result(str(photons), kind="photons", name=photons.name)
+        uid = str(getattr(stream, "unique_identifier", "") or "")
+    except Exception:  # noqa: BLE001 - no session: the run is still written and fused
+        logger.debug("burst fusion: demo photons not added to the workspace", exc_info=True)
+    bur = sorted((folder / "bi4_bur").glob("*.bur"))[0]
+    container = write_container(
+        photons,
+        deinterleave_bursts(read_bur_file(bur)),
+        parameters={"demo": folder.name},
+        out_dir=container_dir(uid),
+        run=folder.name,
+        raw_data="sidecar",
+    )
+    runs = [address for kind, address in container_entries(container) if kind == "bursts"]
+    run = next((r for r in runs if r.endswith(folder.name)), runs[-1])
+    if uid:
+        try:
+            register_result(run, kind="bursts", result_of=uid)
+        except Exception:  # noqa: BLE001 - the run exists; only its row is missing
+            logger.debug("burst fusion: demo run not added to the workspace", exc_info=True)
+    return run

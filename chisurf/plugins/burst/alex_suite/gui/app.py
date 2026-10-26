@@ -101,6 +101,20 @@ class TitrationGui(TourTarget):
 
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
+        # The Input section: burst runs of the workspace, one row per concentration.
+        from emtk.view_form import FormState
+
+        from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput, input_spec
+
+        self.input = NamedWorkspaceInput("alex_suite", "titration", app=panel)
+        self.input_spec = input_spec(
+            Path(__file__).resolve().parents[1] / "manifest.json", "titration", title="Input"
+        )
+        for section in self.input_spec.get("sections", []):  # a few rows: the series stays visible
+            for part in section.get("sections", []):
+                if (part.get("options") or {}).get("source") == "workspace_input_rows":
+                    part["options"]["height"] = 72
+        self.input_form = FormState()
 
         layout = Split(
             "h",
@@ -157,12 +171,12 @@ class TitrationGui(TourTarget):
 
     def _draw_series(self, box: tuple[float, float, float, float]) -> None:
         model = self.model
+        from emtk.view_form import draw_form
 
-        if im.button(tr("➕ Add burst files…")):
-            model.browse_files()
-        im.set_item_tooltip(tr("Add burst files as titration points (one concentration each)."))
-        self.remember("add_files")
-        same_line_or_wrap("➖")
+        self.input_form.rects.clear()
+        draw_form(self.input_spec, self.input, self.input_form)
+        for name, rect in self.input_form.rects.items():
+            self.remember(name, tuple(rect))
         if im.button("➖"):
             model.remove_last_row()
         im.set_item_tooltip(tr("Remove the last row of the titration series."))
@@ -746,25 +760,6 @@ class AlexSuiteApp(ImApp):
 
     def show_help(self) -> None:
         self.suite_gui.show_help()
-
-    def on_files_dropped(self, paths: list[str]) -> bool:
-        paths = [str(p) for p in paths]
-        if not paths:
-            return False
-        tttr_exts = {".sm", ".ptu", ".spc", ".ht3", ".t3r"}
-        burst_exts = {".bur", ".pto", ".csv", ".txt"}
-        for p in paths:
-            ext = Path(p).suffix.lower()
-            if ext in tttr_exts:
-                self.suite_gui.alternation_state.set_files([p])
-                self.suite_gui.selected_tab = "alternation"
-            elif ext in burst_exts:
-                self.suite_gui.titration_state.set_burst_files([p])
-                if self.suite_gui.selected_tab == "alternation":
-                    self.suite_gui.selected_tab = "titration"
-        return True
-
-    files_dropped = on_files_dropped
 
     def _render(self) -> None:
         vp = im.get_main_viewport()

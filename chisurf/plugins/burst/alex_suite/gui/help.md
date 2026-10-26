@@ -8,7 +8,8 @@ analysis that every other tool can read.
 ## The simple workflow
 
 1. **Setup** — PIE / ns-ALEX: pick your detector setup. µs-ALEX: leave it.
-2. **Files** — drop your measurements, or press **Load example** for a
+2. **Files** — pick your measurements in the **Input** section (the photon streams of the
+   Datasets workspace), or press **Load example** for a
    simulated µs-ALEX measurement whose answer is known.
 3. **Alternation (optional)** — µs-ALEX data is converted *on arrival*: the
    period, the laser gates and the channel assignment are measured, the file is
@@ -32,7 +33,7 @@ click. Generated photons and their parameter sidecar live in
 | ALEX-Suite | here |
 |---|---|
 | the channel table inside *Burst Search Settings* | **1. Setup** — the detector setup, chosen or edited |
-| *Select Directory* + file list | **2. Files** — drop files or folders; also reads MMFDB; **Load example** |
+| *Select Directory* + file list | **2. Files** — the workspace's photon streams (Input section); **Load example** |
 | *Burst Search Settings → Microscope* (period, shift, 4 laser edges, flip) | **3. Alternation (optional)** — measured from the data on arrival |
 | *Burst Search → APBS / DCBS* | **4. Burst search** |
 | the `bkg_DD` / `bkg_DA` / `bkg_AA` fields | **5. Background** — measured, not typed |
@@ -106,8 +107,10 @@ plausible analysis with *E* reflected about ½.
 
 ## Titration
 
-The one analysis with no equivalent elsewhere in ChiSurf. Give it one burst file
-per ligand concentration; it histograms all of them, fits them **together** with
+The one analysis with no equivalent elsewhere in ChiSurf. Give it one burst run
+per ligand concentration -- pick them in its **Input** section (the burst runs of
+the Datasets workspace; *Use selected* adds one row each), then type each row's
+concentration. It histograms all of them, fits them **together** with
 the population positions and widths shared, and fits a binding isotherm to the
 amount of the population that changes.
 

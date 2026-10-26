@@ -31,7 +31,7 @@ Symptoms that a burst search has been splitting passages:
   timescale.
 
 Fusion is **optional** and it is not automatic: walking the burst pipeline past
-it changes nothing until you write the fused folder.
+it changes nothing until you write the fused run.
 
 ## 0. Learn it on a measurement whose answer is known
 
@@ -51,15 +51,18 @@ the code, not about a molecule.
 ## 1. Open the step
 
 In **Burst Analysis** it is step **3. Burst Fusion (optional)**, directly after
-burst selection, and it inherits that step's output folder and detector
-definition. Standalone, run the tool and pick the folder yourself.
+burst selection, and it inherits that step's burst run and detector
+definition. Standalone, pick the burst run in the window's **Input** section (the
+burst runs of the Datasets workspace), or use *Open in…* on a run in the Datasets
+view.
 
 The detector definition matters: the fused burst table is regenerated from the
 photons, which needs to know which routing channels are "green" and "red". A
-folder written by the current burst selection records this in
-`Info/analysis.json` and nothing is asked of you. For an older folder, supply it
-— the workflow's channel page does, and the CLI takes `--detectors` or
-`--setup`.
+run records no detector definition beside it: in Burst Analysis the workflow's
+channel page supplies it, and standalone you fill **Detector definitions**
+(**Load example** sets the demo's). A legacy folder written by the current burst
+selection records it in `Info/analysis.json`; for an older folder the CLI takes
+`--detectors` or `--setup`.
 
 ```{figure} figures/burst_fusion_native_primary_window.png
 :width: 100%
@@ -170,30 +173,38 @@ The **Fragments per fused burst** plot shows how far chains ran; fusion is
 transitive (A–B and B–C makes one burst of three), and a long tail there is the
 signal to cap it with **Max fragments**.
 
-## 5. Write the fused folder
+## 5. Write the fused run
 
 Press **🚀 Run (Fuse)** — on this step, running *is* fusing. This is the slow half: the photon streams are reopened and
 every column is re-derived over the real span, so the result is an ordinary
-burst folder — BVA, 2CDE, the MLE, H2MM and the browser read it with no idea
+burst run — BVA, 2CDE, the MLE, H2MM and the browser read it with no idea
 that fusion happened.
 
+The fused bursts are written as a **new run of the same container** — in a
+project, the photon dataset's analysis container — named after the source run
+and the threshold, and they appear in the Datasets workspace under the same
+photon stream:
+
 ```
-<source>_fused_p0.70/      (a _0, _1 … suffix when that folder exists)
-  bi4_bur/<stem>.bur     the fused bursts, regenerated from the photons
-  fu4/<stem>.fu4         per fused burst: fragments merged, background gained
-  Info/analysis.json     how the raw data was read
-  Info/fusion.json       the settings, the window, the curve, the statistics
+<source run> fused p0.70/
+  bursts        the fused bursts, regenerated from the photons
+  assembly      per fused burst: fragments merged, background gained
+  membership    which source burst went into which fused burst
 ```
+
+They are stored as a burst selection (found by fusing a search), with the
+algorithm `recurrence_probability`, the fusion settings and a parent edge to the
+source search, so every reader — ndX included — opens them as a run.
 
 Two things to know about the output:
 
 * The plots switch from the preview to **what was actually written** (the legend
   says which). They differ by the background the bridged gaps brought in —
-  `Fused Gap Photons` in the `fu4` companion is that number per burst,
-  and it is worth a look before you build on the folder.
-* The source folder is untouched, except for an optional `fg4` companion giving
-  each original burst its fused-burst number — so you can colour the original
-  bursts by their group in the browser or in ndX.
+  `Fused Gap Photons` in the run's `assembly` table is that number per burst,
+  and it is worth a look before you build on the run.
+* The source run is untouched, except for an optional `fusion groups` table
+  giving each original burst its fused-burst number — so you can colour the
+  original bursts by their group in the browser or in ndX.
 
 In the workflow, running the step is also what redirects the later steps: from
 that point the pipeline analyses the fused bursts. Re-running burst selection
@@ -202,16 +213,15 @@ supersedes that and takes you back to un-fused bursts.
 ```{note}
 Because fusion is optional, **Next** and the **>>** fast-forward pass over this step
 without running it. Walk past it and every later step keeps analysing the folder
-burst selection produced; run it and they analyse the fused folder. Nothing
+burst selection produced; run it and they analyse the fused run. Nothing
 changes the bursts under your analysis unless you press the button.
 ```
 
 ```{warning}
-Per-burst results already computed on the un-fused folder — BVA, 2CDE, MLE
-lifetimes — are **not** carried over. They have one row per un-fused burst, and
-a burst folder is merged column-wise *by position*, so copying them would
-silently report one burst's lifetime against another's efficiency. Recompute
-them on the fused folder; that is why fusion sits before those steps.
+Per-burst results already computed on the un-fused run — BVA, 2CDE, MLE
+lifetimes — are **not** carried over. They have one row per un-fused burst, so
+copying them would report one burst's lifetime against another's efficiency.
+Recompute them on the fused run; that is why fusion sits before those steps.
 ```
 
 ## Headless
@@ -220,7 +230,7 @@ them on the fused folder; that is why fusion sits before those steps.
 # What would this threshold do? (writes nothing)
 csc burst-fusion curve "burstwise_All 0.1000#15" --threshold 0.5
 
-# Write the fused folder
+# Write the fused folder (a legacy burst-analysis folder, fused into a new folder beside it)
 csc burst-fusion fuse "burstwise_All 0.1000#15" --threshold 0.5 --max-gap 10 -o fused
 ```
 
@@ -240,6 +250,12 @@ print(result.statistics["n_bursts_before"], "->", result.statistics["n_bursts_af
 print("fused gaps up to", result.tau_used_s * 1e3, "ms")
 
 fuse_folder("burstwise_All 0.1000#15", FusionSettings(threshold=0.5))
+
+# A run of a measurement container: the fused bursts become a run of the same container.
+# A run carries no detector setup, so pass it (the workflow's channel definition).
+run = "analysis/m000.pto/burstwise_All 0.1000#15"
+result = fuse_folder(run, FusionSettings(threshold=0.5), detectors=detectors, windows=windows)
+print(result["runs"])        # ['analysis/m000.pto/burstwise_All 0.1000#15 fused p0.50']
 ```
 
 The demo is available headlessly too, which makes it a convenient fixture for
@@ -255,7 +271,9 @@ analyze(folder, FusionSettings(threshold=0.7))
 ```
 
 The source photons, searched folder and parameter/truth sidecar live in
-`demos/burst_fusion` under the ChiSurf settings folder. Pass a dedicated folder
+`demos/burst_fusion` under the ChiSurf settings folder. In the window, **Load
+example** puts the demo into the Datasets workspace: its photons a dataset, the
+search a run of that dataset's analysis container, which is picked. Pass a dedicated folder
 to `make_demo(folder)` to choose another location, or `overwrite=True` to
 regenerate it. **Guide** waits for your **Load example** click; estimating and writing
 fused bursts remain separate actions.
@@ -280,7 +298,7 @@ If slow dynamics are what you are after, use
 [recurrence analysis](02_recurrence_rasp.md) and leave fusion alone.
 
 Cite the paper for the method, and report the threshold and gap ceiling you used
-— both are in the fused folder's `Info/fusion.json`.
+— both are recorded with the fused run's burst table (its settings).
 
 ## Related
 

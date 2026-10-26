@@ -1721,6 +1721,8 @@ class DataDocks:
         ]
         if linked:
             handled = self.import_paths(linked) or handled
+        for path in groups.get("burst_folder", []):
+            handled = self._import_burst_folder(path) or handled
         for path in groups.get("structure", []):
             reader = self._structure_reader()
             if reader is not None:
@@ -1731,6 +1733,20 @@ class DataDocks:
                 self.shell.docks.focus(READ_KEY)
             handled = self.load(self._curve_reader(path), path) or handled
         return handled
+
+    def _import_burst_folder(self, path: str) -> bool:
+        """A legacy burstwise folder goes to Burstwise import, which brings its runs into the
+        project's analysis containers as children of their photon streams."""
+        from chisurf.core.plugin.handoff import HandoffError
+
+        try:
+            self.shell.hand_off("burstwise_import", "legacy_folder", {"folder": str(path)})
+        except HandoffError as exc:
+            self.status = tr("Cannot import the burst folder {path}: {why}").format(
+                path=path, why=exc
+            )
+            return False
+        return True
 
     def _curve_reader(self, path: str) -> Any:
         """The reader of a dropped curve: the one the file names

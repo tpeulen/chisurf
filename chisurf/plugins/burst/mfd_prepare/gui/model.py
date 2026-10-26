@@ -35,20 +35,23 @@ class MfdPrepareModel:
 
     # -- the actions ------------------------------------------------------------------------------------ #
     def set_folder(self, path: str) -> bool:
-        """Take *path* (a folder, or a ``.bur`` file inside one) as the folder to prepare; False if it does not exist."""
+        """Take *path* -- a burst run (``m000.pto/<run>``, from the workspace), or a legacy folder or
+        ``.bur`` table -- as what to prepare; False if it is none of them."""
+        from chisurf.plugins.burst.workspace_io import is_burst_source
+
         p = Path(str(path))
-        if not (p.is_dir() or p.is_file()):
-            self.status_text = f"Error: not a folder or burst table: {path}"
+        if not (is_burst_source(p) or p.is_file()):
+            self.status_text = f"Error: not a burst run: {path}"
             return False
         self.folder = str(p)
-        self.status_text = f"Folder: {p}. Press Prepare."
+        self.status_text = f"Burst run: {p.name}. Press Prepare."
         return True
 
     def prepare(self) -> None:
         """Run the preparation (blocking; the app runs it through a ``SnapshotJob``) and fill the report and result."""
         self.error = ""
         if not self.folder:
-            self.report = "Select a folder first."
+            self.report = "Pick a burst run in the Input section first."
             self.result = {}
             return
         self.status_text = "Preparing..."
@@ -90,7 +93,7 @@ class MfdPrepareModel:
     # -- what the window shows ------------------------------------------------------------------------- #
     @property
     def folder_line(self) -> str:
-        return self.folder or "No folder selected"
+        return self.folder or "No burst run picked"
 
     def detector_names(self) -> list[str]:
         return [str(c) for c in self.result.get("channels", [])]

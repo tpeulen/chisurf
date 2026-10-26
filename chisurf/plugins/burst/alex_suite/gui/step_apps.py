@@ -2,7 +2,7 @@
 
 Each app reuses the view of :mod:`.app` (``AlexAlternationGui``, ``TitrationGui``) over a
 Qt-free model (:mod:`.alternation_model`, :mod:`.titration_view_model`), and adds what the
-native hub needs: file choosers drawn in the app (``emtk.file_dialog.FileDialog``), the background job's ``running``
+native hub needs: the export chooser drawn in the app (``emtk.file_dialog.FileDialog``), the background job's ``running``
 flag (Next waits for it), and frames while it runs. The files step is Burst Analysis's data step with the ALEX
 Suite's demo measurement under its proceed button.
 """
@@ -30,11 +30,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("chisurf.plugins.burst")
 
-#: Burst tables the titration file chooser offers: the container (the pipeline's
-#: own format) and the plain-text tables. Legacy .bur folders are reached through
-#: the legacy-export/import plugins, never opened directly here.
-BURST_PATTERNS = ["*.pto", "*.csv", "*.txt"]
-
 
 class _Dialog:
     """One in-app file chooser at a time: open it, draw it over the app, hand the chosen paths to a callback."""
@@ -53,6 +48,7 @@ class _Dialog:
             options["filters"] = filters
         if filename:
             options["filename"] = filename
+        # not-input: only the titration export (a save dialog) opens here; the data comes from the workspace
         self.dialog = FileDialog(title, mode=mode, multiselect=mode == "open", **options)
         window = DialogWindow(title, size=(640.0, 460.0), key="alex-suite-file")
         window.show()
@@ -88,6 +84,8 @@ class AlexSetupSelectionApp(BurstSetupSelectionApp):
 class AlexDataSelectionApp(BurstDataSelectionApp):
     """Burst Analysis's data step, proceeding to the alternation step, with the demo measurement below."""
 
+    #: The ALEX Suite's own manifest ``accepts`` ``photons`` (its Files step).
+    WORKSPACE_PLUGIN = "alex_suite"
     PROCEED_LABEL = "Proceed to 3. Alternation"
     PROCEED_TIP = (
         "Go on to 3. Alternation with these files (µs-ALEX data is converted there on arrival)."
@@ -147,15 +145,6 @@ class AlternationStepApp(AlexAlternationApp):
         self.model.poll()
         super()._render()
 
-    def files_dropped(self, paths) -> bool:
-        paths = [Path(p) for p in paths or ()]
-        if not paths:
-            return False
-        self.model.set_files(paths)
-        return True
-
-    on_files_dropped = files_dropped
-
 
 # -- Titration ---------------------------------------------------------------------------------------------- #
 class TitrationStep:
@@ -163,19 +152,10 @@ class TitrationStep:
 
     def __init__(self, model: TitrationViewModel | None = None) -> None:
         self.model = model if model is not None else TitrationViewModel()
+        # Only the export (save) chooser is drawn here; the burst runs come from the workspace
+        # (the Input section, :func:`.native.receive_titration`).
         self.dialog = _Dialog()
-        self.model.request_files = self._choose_files
         self.message = ""
-
-    def _choose_files(self) -> list[str]:
-        """Open the burst-file chooser; the chosen files are added when it closes (nothing to return now)."""
-        self.dialog.open(
-            "Add burst files (one per concentration)",
-            "open",
-            self.model.add_files,
-            filters=[("Burst tables", BURST_PATTERNS), ("All files", ["*"])],
-        )
-        return []
 
     def export_csv(self, path: str | None = None) -> Path | None:
         """Write the result to *path*; without one, ask where (the file chooser in save mode)."""
@@ -228,14 +208,6 @@ class TitrationStepApp(TitrationApp):
         super()._render()
         w, h = im.get_main_viewport().size
         self.step.dialog.draw((0.0, 0.0, float(w), float(h)))
-
-    def files_dropped(self, paths) -> bool:
-        paths = [str(p) for p in paths or ()]
-        if paths:
-            self.model.add_files(paths)
-        return bool(paths)
-
-    on_files_dropped = files_dropped
 
 
 __all__ = [

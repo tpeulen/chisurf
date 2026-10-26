@@ -197,8 +197,12 @@ def test_reapplying_the_same_folder_keeps_the_analysis(tool):
     assert tool.model.has_analysis()
 
 
-def test_loading_the_demo_selects_a_folder_with_a_known_answer(monkeypatch, tmp_path):
+def test_loading_the_demo_selects_a_run_with_a_known_answer(monkeypatch, tmp_path):
+    from chisurf.core.project import analysis
     from chisurf.plugins.burst.burst_fusion.gui.view_model import FusionViewModel
+
+    monkeypatch.setenv("CHISURF_ANALYSIS_DIR", str(tmp_path / "analysis"))
+    monkeypatch.setattr(analysis, "_SESSION", None)
 
     widget = _Tool.__new__(_Tool)
     widget.model = FusionViewModel()
@@ -208,7 +212,9 @@ def test_loading_the_demo_selects_a_folder_with_a_known_answer(monkeypatch, tmp_
     )
     widget.model.load_demo()
 
-    assert pathlib.Path(widget.model.folder).is_dir()
+    # The demo is a burst run of its photon dataset's analysis container.
+    container = pathlib.Path(widget.model.folder).parent
+    assert container.suffix == ".pto" and container.is_file()
     assert widget.model.demo is not None
     assert widget.model.demo["truth"]["n_molecules"] > 0
     # The declared truth is on screen beside the result, which is the point.
@@ -225,6 +231,6 @@ def test_running_without_a_folder_reports_instead_of_raising():
     from chisurf.plugins.burst.burst_fusion.gui.view_model import FusionViewModel
 
     model = FusionViewModel()
-    assert model.can_run() == "Select a burst-analysis folder first."
+    assert model.can_run() == "Pick a burst run in the Input section first."
     with pytest.raises(ValueError):
         model.analyze()

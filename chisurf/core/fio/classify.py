@@ -15,6 +15,8 @@ sorted here by what it holds, not by which reader happens to be selected:
   detector/channel setup, a kinetic scheme or an IRF/background pattern (:data:`SETUP_JSON_KEYS`);
 * ``"companion"`` — a file that only exists beside a primary one (an SPC's ``.set``): taken with
   its primary, never on its own;
+* ``"burst_folder"`` — a legacy burstwise analysis folder (``bi4_bur/*.bur``): handed to
+  burstwise import, which brings its runs into the project's analysis containers.
 * ``"curve"`` — anything else: read by the selected reader, as before.
 """
 
@@ -27,8 +29,10 @@ __all__ = [
     "SETUP_EXTENSIONS",
     "SETUP_JSON_KEYS",
     "STRUCTURE_EXTENSIONS",
+    "BURST_RUN_OPERATIONS",
     "classify",
     "container_entries",
+    "is_burst_folder",
     "curve_reader",
     "is_photon_image",
 ]
@@ -49,6 +53,10 @@ SETUP_JSON_KEYS: frozenset[str] = frozenset(
      "transitions", "irf", "background", "patterns", "lut", "luts", "shifts"}
 )
 
+
+#: Operations whose burst-grain ``<run>/bursts`` table is a burst run of the workspace: the
+#: search itself (a fusion of a search is stored as one), and an imported burst selection (BID).
+BURST_RUN_OPERATIONS: frozenset[str] = frozenset({"burst_selection", "import"})
 
 #: Photon formats whose header can name an image: PicoQuant's tagged files.
 PHOTON_IMAGE_EXTENSIONS: tuple[str, ...] = (".ptu", ".phu")
@@ -97,12 +105,27 @@ def _suffix(path: Path) -> str:
     return path.suffix.lower()
 
 
+def is_burst_folder(path: str | Path) -> bool:
+    """Whether *path* is a legacy burstwise analysis folder: one holding ``.bur`` burst tables
+    (in ``bi4_bur/``, ``bur/`` or itself, the layouts the old burst search wrote)."""
+    folder = Path(path)
+    if not folder.is_dir():
+        return False
+    return any(
+        next(candidate.glob("*.bur"), None) is not None
+        for candidate in (folder / "bi4_bur", folder / "bur", folder)
+        if candidate.is_dir()
+    )
+
+
 def classify(path: str | Path) -> str:
     """Return what *path* holds — one of the kinds in the module docstring."""
     from chisurf.core.fio.pto import SIDECAR_ONLY_EXTENSIONS
     from chisurf.core.fio.staging import VENDOR_EXTENSIONS
     from chisurf.core.project.pto import PROJECT_SUFFIX
 
+    if is_burst_folder(path):
+        return "burst_folder"
     suffix = _suffix(Path(path))
     if suffix == PROJECT_SUFFIX:
         return "project"
@@ -208,10 +231,12 @@ def container_entries(path: str | Path) -> list[tuple[str, str]]:
     """The datasets a measurement container contributes: ``[(kind, address), ...]``.
 
     One ``("photons", "<path>/<stream>")`` per photon stream, then one ``("bursts",
-    "<path>/<run>")`` per burst run (the runs a burst search wrote), oldest first.
+    "<path>/<run>")`` per burst run, oldest first: the runs a burst search (or a fusion of one)
+    wrote, then the burst tables an import wrote (:data:`BURST_RUN_OPERATIONS`).
     """
     from chisurf.core.fio.address import join_address
-    from chisurf.core.fio.analysis_path import list_runs
+    from chisurf.core.fio.analysis_path import list_runs, split_artifact_name
+    from chisurf.core.fio.fluorescence.burst_tree import TABLE
     from chisurf.core.fio.pto import Measurement
 
     path = Path(path)
@@ -219,6 +244,18 @@ def container_entries(path: str | Path) -> list[tuple[str, str]]:
     with Measurement.open(path, writable=False) as measurement:
         for name in measurement.photon_member_names():
             entries.append(("photons", join_address(path, name)))
-    for run in list_runs(path, operation="burst_selection"):
+        runs = list_runs(path, operation="burst_selection")
+        # A burst table an import wrote (a BID selection) is a run too: the burst grain under the
+        # burst table's name (``<run>/bursts``).
+        for obj in measurement.artifacts():
+            operation = measurement.tag(obj.uid, "_mmfdb_operation.operation_type")
+            if operation not in BURST_RUN_OPERATIONS or operation == "burst_selection":
+                continue
+            if measurement.tag(obj.uid, "_mmfdb_artifact.row_grain") != "burst":
+                continue
+            run, table = split_artifact_name(str(obj.name))
+            if table == TABLE and run not in runs:
+                runs.append(run)
+    for run in runs:
         entries.append(("bursts", join_address(path, run) if run else str(path)))
     return entries

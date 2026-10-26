@@ -475,3 +475,29 @@ def create_app(**kwargs) -> AlexHubApp:
 make_app = create_app
 
 __all__ = ["NEEDS", "STEPS", "AlexHubApp", "create_app", "make_app"]
+
+
+def receive_titration(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``titration``): the burst runs ``payload["files"]`` of
+    the Datasets workspace become titration points (one row each; type the concentrations).
+
+    *app* is the hub (*Open in…*) or the titration step's panel (its own Input section)."""
+    from chisurf.core.plugin.workspace_input import read_address
+    from chisurf.plugins.burst.workspace_io import is_burst_source
+
+    files = payload.get("files") or []
+    files = files if isinstance(files, list) else [files]
+    runs = [read_address(str(f)) for f in files]
+    refused = [r for r in runs if not is_burst_source(r)]
+    if refused:
+        raise ValueError(f"{refused[0]} is not a burst run")
+    panel = app
+    if hasattr(app, "children") and hasattr(app, "select"):
+        app.select("titration")
+        child = app.children.get("titration")
+        panel = getattr(child, "step", None) or getattr(child, "panel", None)
+    model = getattr(panel, "model", None)
+    if model is None:
+        raise RuntimeError("the ALEX Suite has no titration step to take burst runs")
+    known = {str(row["file"]) for row in model.rows}
+    model.add_files([r for r in runs if str(r) not in known])

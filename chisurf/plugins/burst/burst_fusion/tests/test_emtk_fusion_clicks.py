@@ -44,6 +44,16 @@ def hermetic(tmp_path, monkeypatch):
         functools.partial(demo_module.make_demo, folder=tmp_path / "own"),
     )
     monkeypatch.chdir(tmp_path)
+    # The demo's run goes into a photon dataset's analysis container: this test's own, and the
+    # workspace rows it adds are put back afterwards.
+    from chisurf.core.project import analysis
+
+    monkeypatch.setenv("CHISURF_ANALYSIS_DIR", str(tmp_path / "analysis"))
+    monkeypatch.setattr(analysis, "_SESSION", None)
+    from test.gui.burst_workspace import restore_workspace
+
+    with restore_workspace():
+        yield
 
 
 @pytest.fixture
@@ -153,8 +163,10 @@ def test_demo_click_generates_and_loads_the_demo_with_its_declared_truth(app, tm
         app.controller.running and status and "…" in status
     )  # "Generating demo …", then the generator's progress text
     settle(app)
+    # The demo is a run of its photon dataset's analysis container (the workspace's child row).
     assert (
-        app.model.folder.startswith(str(tmp_path / "own"))
+        app.model.folder.startswith(str(tmp_path / "analysis"))
+        and app.model.folder.endswith(".pto/burstwise_demo")
         and app.model.demo["truth"]["n_molecules"] == 300
     )
     assert "Demo: 300 molecules" in shown(app) and "Press Estimate to compute" in shown(app)
@@ -186,11 +198,14 @@ def test_run_click_fuses_writes_the_folder_as_the_qt_tool_did_and_reports_it(app
     truth = app.model.demo["truth"]
     press(app, "toolAction_run")
     settle(app)
-    out = Path(app.model.written_folder)
-    assert (
-        out.name == qt["out"]
-        and sorted(p.name for p in out.rglob("*") if p.is_file()) == qt["files"]
-    )
+    # The Qt tool wrote a threshold-named folder; the fused bursts are now a run of that name in
+    # the same analysis container, with the same numbers.
+    from chisurf.core.fio.classify import container_entries
+
+    written = app.model.written_folder
+    assert written == f"{app.model.folder} fused p0.50"
+    assert qt["out"] == "burstwise_demo_fused_p0.50"
+    assert written in [a for k, a in container_entries(Path(written).parent) if k == "bursts"]
     assert json.loads(json.dumps(app.model.summary_rows(), default=str)) == qt["summary"]
     stats = app.model.analysis.statistics
     assert abs(stats["n_bursts_after"] - truth["n_molecules"]) < abs(
@@ -201,15 +216,14 @@ def test_run_click_fuses_writes_the_folder_as_the_qt_tool_did_and_reports_it(app
 
 def test_run_without_a_folder_and_with_a_missing_folder_say_why(app, tmp_path):
     press(app, "toolAction_run")
-    assert "Select a burst-analysis folder first." in shown(app) and not app.controller.running
+    assert "Pick a burst run in the Input section first." in shown(app)
+    assert not app.controller.running
     press(app, "toolAction_refresh")
-    assert "Select a burst-analysis folder first." in shown(app)
-    type_into(app, "folder", str(tmp_path / "nowhere"))
+    assert "Pick a burst run in the Input section first." in shown(app)
+    gone = tmp_path / "gone.pto" / "run"
+    app.model.set_folder(str(gone))  # a run whose container was deleted meanwhile
     press(app, "toolAction_run")
-    assert (
-        "Not a folder:" in shown(app)
-        and app.controller.status == f"Not a folder: {tmp_path / 'nowhere'}"
-    )
+    assert "Not found:" in shown(app) and app.controller.status == f"Not found: {gone}"
 
 
 def test_stop_click_cancels_before_writing_and_keeps_the_previous_results(app, monkeypatch):
@@ -273,133 +287,24 @@ def test_stop_does_nothing_when_idle(app):
 # -- the folder: typed, dialog, drop, MMFDB ------------------------------------------------------------------------- #
 
 
-def test_the_folder_field_takes_a_typed_path_and_enter_selects_it(app, tmp_path):
-    folder = tmp_path / "somewhere"
-    folder.mkdir()
-    type_into(app, "folder", str(folder))
-    assert app.model.folder == str(folder)
-    assert str(folder) in draw(app).strings
-    assert "Press Estimate to compute" in shown(app)
+def test_the_input_section_lists_the_workspace_runs_and_a_click_picks_one(app):
+    from test.gui.burst_workspace import pick_row
+
+    load_demo(app)
+    run = app.model.folder
+    app.model.set_folder("")
+    assert "Input" in draw(app).strings and "burstwise_demo" in draw(app).strings
+    pick_row(app, "burstwise_demo", SIZE)
+    assert app.model.folder == run and "Press Estimate to compute" in shown(app)
 
 
-def test_open_burst_folder_dialog_choose_by_clicks_cancel_and_close(app, tmp_path):
-    root = tmp_path / "bursts"
-    (root / "inner").mkdir(parents=True)
-    import os
-
-    os.chdir(root)
-    press_text(app, "Open burst folder")
+def test_no_input_file_ui_is_left(app):
+    """The bursts come from the workspace: no folder field to type into, no browse button, no
+    drop hook, no database picker."""
     strings = draw(app).strings
-    assert "Select burst folder" in strings and "Choose" in strings and "Cancel" in strings
-    click(app, text_rect(draw(app), "[inner]"))
-    click(app, text_rect(draw(app), "Choose"))
-    assert app.model.folder == str(root / "inner") and "Choose" not in draw(app).strings
-    press_text(app, "Open burst folder")
-    click(app, text_rect(draw(app), "Cancel"))
-    assert "Choose" not in draw(app).strings and app.model.folder == str(root / "inner")
-    press_text(app, "Open burst folder")
-    click(app, text_rect(draw(app), "×", last=True))
-    assert "Choose" not in draw(app).strings
-
-
-def test_a_dropped_folder_is_taken_and_a_stray_file_is_reported(app, tmp_path):
-    stray = tmp_path / "notes.txt"
-    stray.write_text("x")
-    assert app.files_dropped([str(stray)])
-    assert "Burst fusion reads a burst-analysis folder; notes.txt is not one." in shown(app)
-    folder = tmp_path / "dropped"
-    folder.mkdir()
-    assert app.files_dropped([str(folder)]) and app.model.folder == str(folder)
-    assert "reads a burst-analysis folder" not in shown(app)
-    assert app.files_dropped([]) is False  # an empty drop is not taken
-
-
-def test_a_dropped_demo_folder_is_what_the_estimate_runs_on(app):
-    folder = demo_module.make_demo()
-    assert app.files_dropped([str(folder)])
-    press(app, "toolAction_refresh")
-    settle(app)
-    assert app.model.analysis is not None
-
-
-def test_mmfdb_datasets_picker_lists_a_dataset_selects_it_and_the_window_closes(app):
-    folder = demo_module.make_demo()
-
-    class Client:
-        def call(self, name, args=None):
-            if name == "mmfdb.datasets.browse":
-                return {
-                    "datasets": [
-                        {
-                            "artifact_id": "a1",
-                            "original_filename": "demo_bursts",
-                            "artifact_kind": "burst_data",
-                            "data_format": "bur",
-                        }
-                    ],
-                    "total": 1,
-                }
-            return {"local_path": str(folder)}
-
-    app.controller.datasets.client = Client()
-    press_text(app, "MMFDB datasets")
-    settle_picker(app)
-    strings = draw(app).strings
-    assert "Select MMFDB dataset" in strings and "1 datasets" in strings
-    click(
-        app, text_rect(draw(app), "demo_bursts [burst_data] (bur)")
-    )  # the row is selected by a click
-    assert app.controller.datasets.selection.artifact_id == "a1"
-    click(app, text_rect(draw(app), "×"))  # the window's close button
-    assert "Select MMFDB dataset" not in draw(app).strings and app.model.folder == ""
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk/picker gap: after its first click the MMFDB picker's buttons (Open selected, Cancel, "
-    "Refresh, scopes) never fire",
-)
-def test_mmfdb_datasets_picker_open_selected_takes_the_folder_and_cancel_closes(app):
-    folder = demo_module.make_demo()
-
-    class Client:
-        def call(self, name, args=None):
-            if name == "mmfdb.datasets.browse":
-                return {
-                    "datasets": [
-                        {
-                            "artifact_id": "a1",
-                            "original_filename": "demo_bursts",
-                            "artifact_kind": "burst_data",
-                            "data_format": "bur",
-                        }
-                    ],
-                    "total": 1,
-                }
-            return {"local_path": str(folder)}
-
-    app.controller.datasets.client = Client()
-    press_text(app, "MMFDB datasets")
-    settle_picker(app)
-    click(app, text_rect(draw(app), "demo_bursts [burst_data] (bur)"))
-    click(app, text_rect(draw(app), "Open selected"))
-    for _ in range(50):
-        time.sleep(0.02)
-        draw(app, frames=1)
-    assert app.model.folder == str(folder)
-    press_text(app, "MMFDB datasets")
-    settle_picker(app)
-    click(app, text_rect(draw(app), "Cancel"))
-    assert "Select MMFDB dataset" not in draw(app).strings
-
-
-def settle_picker(app):
-    for _ in range(100):
-        draw(app, frames=1)
-        if app.controller.datasets._pending is None:
-            break
-        time.sleep(0.02)
-    draw(app)
+    assert "Open burst folder" not in strings and "MMFDB datasets" not in strings
+    assert not hasattr(app, "files_dropped") and not hasattr(app, "on_paths_dropped")
+    assert not hasattr(app.controller, "datasets")
 
 
 # -- the P(same) form: typed values, ranges, the table ----------------------------------------------------------------- #
@@ -791,8 +696,5 @@ def test_the_flow_works_in_the_small_window_too(app):
     assert app.model.analysis is not None
     type_into(app, "threshold", "0.6", SMALL)
     assert app.model.settings.threshold == 0.6 and app.model.analysis is None
-    press_text(app, "Open burst folder", SMALL)
-    assert "Choose" in draw(app, SMALL).strings
-    click(app, text_rect(draw(app, SMALL), "Cancel"), SMALL)
-    assert "Choose" not in draw(app, SMALL).strings
+    assert "Input" in draw(app, SMALL).strings
     assert np.isfinite(app.model.settings.threshold)

@@ -24,9 +24,15 @@ import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.im_core import get_current_context
-from emtk.view_form import FormState, draw_sections, find_section
+from emtk.view_form import FormState, draw_form, draw_sections, find_section
 from emtk.widgets.view_spec import load_view_spec
 
+from chisurf.core.plugin.workspace_input import (
+    WorkspaceInputMixin,
+    input_section,
+    read_address,
+    spec_for,
+)
 from chisurf.plugins.emtk_layout import (
     LabelColumn,
     action_caption,
@@ -44,7 +50,9 @@ from .view_model import FusionViewModel
 if TYPE_CHECKING:
     from .controller import FusionController
 
-__all__ = ["BurstFusionApp", "BurstFusionGui", "WINDOW_BG"]
+__all__ = ["BurstFusionApp", "BurstFusionGui", "WINDOW_BG", "receive_bursts"]
+
+PLUGIN = pathlib.Path(__file__).resolve().parents[1]
 
 WINDOW_BG = (30, 32, 38, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
@@ -75,6 +83,18 @@ def _hex_to_rgba(
 
 
 from chisurf.emtk.help_guide import TourTarget
+
+
+class _Input(WorkspaceInputMixin):
+    """The Input section's model: the workspace's burst runs, a pick handed to :func:`receive_bursts`."""
+
+    workspace_input_plugin = "burst_fusion"
+
+
+def _input_spec() -> dict:
+    """The generated Input section of the manifest's ``accepts[].from_workspace``."""
+    found = spec_for(json.loads((PLUGIN / "manifest.json").read_text(encoding="utf-8")))
+    return {"sections": [input_section(found[1])]} if found else {"sections": []}
 
 
 class BurstFusionGui(TourTarget):
@@ -109,6 +129,10 @@ class BurstFusionGui(TourTarget):
 
         # Register custom sections
         self.form_state.custom["fusion_actions"] = self._draw_fusion_actions
+        #: The Input section: which burst run of the workspace is fused.
+        self.input = _Input()
+        self.input_spec = _input_spec()
+        self.input_form = FormState()
 
         self.selected_tab = "All"
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
@@ -134,6 +158,8 @@ class BurstFusionGui(TourTarget):
         )
         self.on_used = self.tour.notify_used
         self.form_state.on_used = self.tour.notify_used
+        self.input_form.on_used = self.tour.notify_used
+        self.input.workspace_input_on_used = self.tour.notify_used
         from emtk.docking import DockManager, Region, Split
 
         self.docks = DockManager(
@@ -145,7 +171,7 @@ class BurstFusionGui(TourTarget):
     def _draw_controls(self, box):
         controller = self.controller
         if controller:
-            controller.draw_controls(remember=self.remember)
+            controller.draw_controls(remember=self.remember, draw_input=self._draw_input)
         running = bool(controller and controller.running)
         target = self.model
         if running:
@@ -176,6 +202,13 @@ class BurstFusionGui(TourTarget):
         im.end_disabled()
         if "summary_rows" in self.form_state.rects:  # the guide names the table by its title
             self.item_rects["Summary"] = self.form_state.rects["summary_rows"]
+
+    def _draw_input(self) -> None:
+        """The generated Input section: the workspace's burst runs, a pick fuses that run."""
+        self.input_form.rects.clear()
+        draw_form(self.input_spec, self.input, self.input_form)
+        for name, rect in self.input_form.rects.items():
+            self.remember(name, tuple(rect))
 
     def _draw_plots(self, box):
         if im.begin_tab_bar("fusion_plot_tabs"):
@@ -478,6 +511,9 @@ class BurstFusionApp(ImApp):
         # ImApp.remember both write into this shared dict, which the tour reads.
         self.item_rects = self.fusion_gui.item_rects
         self.fusion_gui.controller = self.controller
+        self.fusion_gui.input.workspace_input_app = self  # a pick goes to receive_bursts(self, ...)
+        #: The workspace dataset the run belongs to (what the Input section or *Open in…* handed).
+        self.source_uid = ""
         super().__init__(gui=self._render)
 
     @property
@@ -526,22 +562,21 @@ class BurstFusionApp(ImApp):
     def close(self):
         self.controller.close()
 
-    def on_paths_dropped(self, paths):
-        self.controller.on_paths_dropped(paths)
-
-    def files_dropped(self, paths) -> bool:
-        """A host's file drop (Qt, the desktop window, a page): the same as ``on_paths_dropped``.
-
-        Without this name only the Qt host reached the controller: the desktop and web hosts deliver
-        ``files_dropped`` / ``on_files_dropped`` and found nothing to call.
-        """
-        paths = list(paths)
-        self.controller.on_paths_dropped(paths)
-        return bool(paths)
-
 
 def create_app(**kwargs):
     from chisurf.emtk.i18n import install
 
     install()
     return BurstFusionApp(**kwargs)
+
+
+def receive_bursts(app: BurstFusionApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``bursts``): fuse the burst run ``payload["folder"]``.
+
+    ``folder`` is an address -- a run of a measurement container (``m000.pto/<run>``) -- as the
+    Input section, *Open in…* or a drag from the Datasets view hands it (``datasets``: its uid).
+    """
+    address = read_address(str(payload["folder"]))
+    app.source_uid = str((payload.get("datasets") or [""])[0])
+    if not app.controller.adopt_run(address):
+        raise ValueError(f"{address} is not a burst run")

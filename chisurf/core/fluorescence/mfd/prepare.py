@@ -1071,7 +1071,9 @@ def prepare_burst_folder(
     Parameters
     ----------
     folder : path-like
-        The analysis folder, its ``bi4_bur`` directory, or a single ``.bur`` file.
+        A burst run of a measurement container (``m000.pto/<run>``, or the container for its
+        newest run), or a legacy analysis folder, its ``bi4_bur`` directory, or a single ``.bur``
+        file.
     streams : sequence, optional
         Channel definitions, as :class:`~chisurf.core.fluorescence.burst.photons.StreamDef`
         objects or plain dictionaries, one per detector, matched to the detector
@@ -1099,11 +1101,22 @@ def prepare_burst_folder(
         If the channel definition disagrees with the burst tables, or ``streams``
         leaves a detector undefined or names one the folder does not have.
     """
-    analysis_dir, bur_dir = burst_directory(folder)
-    paths = sorted(bur_dir.glob("*.bur"))
-    if not paths:
-        raise FileNotFoundError(f"no .bur tables in {bur_dir}")
-    frame = load_bur_dataframe(paths)
+    from chisurf.core.fio.analysis_path import is_container_path
+
+    preopened: dict[str, Any] | None = None
+    if is_container_path(folder):
+        # A burst run of a measurement container (``m000.pto/<run>``): read as every burst analysis
+        # reads a run, with the container's photon stream opened by the same reader.
+        from chisurf.core.fio.fluorescence.burst import _read_burst_analysis_from_container
+
+        frame, preopened = _read_burst_analysis_from_container(pathlib.Path(str(folder)))
+        analysis_dir = bur_dir = pathlib.Path(str(folder))
+    else:
+        analysis_dir, bur_dir = burst_directory(folder)
+        paths = sorted(bur_dir.glob("*.bur"))
+        if not paths:
+            raise FileNotFoundError(f"no .bur tables in {bur_dir}")
+        frame = load_bur_dataframe(paths)
 
     # The .bur format interleaves an all-zero sentinel row between bursts so that
     # the "…4" companions align to it by position. Those rows are not bursts.
@@ -1121,7 +1134,10 @@ def prepare_burst_folder(
     convention = photon_index_convention(frame)
 
     if streams is None:
-        resolved_streams = _streams_from_manifest(analysis_dir, names)
+        # A run records no detector definition beside it: it is inferred from the photons.
+        resolved_streams = (
+            None if preopened is not None else _streams_from_manifest(analysis_dir, names)
+        )
         stream_origin = "manifest"
         if resolved_streams is None:
             # Deferred until the photons are open — inference needs them. The
@@ -1173,7 +1189,17 @@ def prepare_burst_folder(
     need_photons = with_photons or not has_micro_columns or resolved_streams is None
     sources = SourceResolution()
     tttrs: dict[str, Any] = {}
-    if need_photons:
+    if need_photons and preopened is not None:
+        # The run's container holds (or links) the photons every burst points into.
+        container = pathlib.Path(str(folder))
+        for key in dict.fromkeys(file_key.tolist()):
+            if is_sentinel_file_reference(key):
+                continue
+            sources.paths[str(key)] = container
+            sources.origin[str(key)] = "container"
+            sources.container_type[str(key)] = None
+        tttrs = {str(key): preopened[str(key)] for key in sources.paths if str(key) in preopened}
+    elif need_photons:
         sources = resolve_sources(analysis_dir, list(dict.fromkeys(file_key.tolist())))
         tttrs = open_sources(sources)
 

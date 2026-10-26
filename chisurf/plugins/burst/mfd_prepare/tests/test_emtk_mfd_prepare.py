@@ -1,7 +1,8 @@
 """MFD Prepare's emtk app, operated with real input events and compared with the backend the Qt tool called.
 
-The fixture is the in-repo measured BH SPC-132 burst folder of ``burst_selection``. Only pointer, wheel, typed keys and the host's
-file drop reach the window (``chisurf.plugins.emtk_test_input.Driver``); outcomes are read from what was drawn and from the model.
+The fixture is the in-repo measured BH SPC-132 burst folder of ``burst_selection``, handed to the window the way the workspace
+hands a burst (``receive_bursts``); a burst run of the workspace is picked in the Input section. Only pointer, wheel and typed keys
+reach the window (``chisurf.plugins.emtk_test_input.Driver``); outcomes are read from what was drawn and from the model.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ import pytest
 
 import test.gui.emtk_layout_checks as lay  # noqa: E402  (must import before anything that shadows the stdlib ``test``)
 from chisurf.plugins.burst.mfd_prepare.api import PrepareRequest, prepare_folder
-from chisurf.plugins.burst.mfd_prepare.gui.app import MfdPrepareApp, make_app
+from chisurf.plugins.burst.mfd_prepare.gui.app import MfdPrepareApp, make_app, receive_bursts
 from chisurf.plugins.burst.mfd_prepare.gui.model import MfdPrepareModel
 from chisurf.plugins.emtk_test_input import SIZE, SMALL, Driver, assert_tour_card_clear
 
@@ -42,6 +43,15 @@ def settle(drv, timeout=60.0):
     return drv.draw(3)
 
 
+def hand(drv, path) -> bool:
+    """Hand *path* over as the workspace does (the Input section, *Open in…*, a drag)."""
+    try:
+        receive_bursts(drv.app, {"folder": str(path)})
+    except ValueError:
+        return False
+    return True
+
+
 @pytest.fixture
 def drv():
     return Driver(make_app())
@@ -49,19 +59,22 @@ def drv():
 
 @pytest.fixture
 def prepared(drv):
-    assert drv.app.files_dropped([str(FIXTURE)])
+    assert hand(drv, FIXTURE)
     drv.click_name("prepare")
     settle(drv)
     return drv
 
 
 @pytest.fixture
-def home_folder(tmp_path):
-    """HOME holds a link to the fixture: the folder chooser starts in HOME, so a click on the name picks it."""
-    link = tmp_path / "home" / "mfdfolder"
-    link.symlink_to(FIXTURE, target_is_directory=True)
-    (tmp_path / "home" / "empty_dir").mkdir()
-    return link
+def workspace_run(tmp_path, monkeypatch):
+    """A burst run in the workspace, as a session holds it (its own analysis folder)."""
+    from chisurf.core.project import analysis
+    from test.gui.burst_workspace import burst_run_in_workspace, restore_workspace
+
+    monkeypatch.setenv("CHISURF_ANALYSIS_DIR", str(tmp_path / "analysis"))
+    monkeypatch.setattr(analysis, "_SESSION", None)
+    with restore_workspace():
+        yield burst_run_in_workspace(tmp_path)
 
 
 # ---- parity with the backend the Qt tool called ---------------------------------------------------------------- #
@@ -128,64 +141,27 @@ def test_an_unverified_detector_is_flagged(drv):
     assert m.verdict_text() == "UNVERIFIED: green"
 
 
-# ---- Browse, the folder chooser, drops -------------------------------------------------------------------------- #
-def test_browse_opens_the_folder_chooser_and_choosing_a_folder_sets_it(drv, home_folder):
-    drv.click_name("browse")
-    assert drv.app.dialog is not None and drv.drawn("Select burst folder")
-    drv.click_text("[mfdfolder]")
-    drv.click_text("Choose")
-    assert drv.app.dialog is None
-    assert Path(drv.app.model.folder).resolve() == FIXTURE.resolve()
-    assert "mfdfolder" in " ".join(t[5] for t in drv.draw(2).texts)
-    assert drv.app.model.status_text.startswith("Folder:")
+# ---- The Input section ------------------------------------------------------------------------------------------- #
+def test_the_input_section_lists_the_workspace_runs_and_a_click_picks_one(drv, workspace_run):
+    name = workspace_run.name
+    assert name in {t[5] for t in drv.draw(2).texts}
+    drv.click_text(name)
+    assert drv.app.model.folder == workspace_run.address
+    assert drv.app.model.status_text.startswith("Burst run:")
 
 
-def test_cancel_in_the_chooser_changes_nothing(drv, home_folder):
-    drv.click_name("browse")
-    drv.click_text("Cancel")
-    assert drv.app.dialog is None and drv.app.model.folder == ""
-    assert not drv.app.file_window.open or True
-    assert "No folder selected" in {t[5] for t in drv.draw(2).texts}
-
-
-def test_choose_with_nothing_selected_takes_the_folder_being_browsed(drv, home_folder, tmp_path):
-    drv.click_name("browse")
-    drv.click_text("Choose")
-    assert drv.app.dialog is None
-    assert Path(drv.app.model.folder) == tmp_path / "home"
-
-
-def test_the_chooser_starts_in_the_folder_already_chosen(drv):
-    drv.app.files_dropped([str(FIXTURE)])
-    drv.click_name("browse")
-    assert Path(drv.app.dialog.directory).resolve() == FIXTURE.resolve()
-
-
-def test_double_clicking_a_folder_enters_it_and_dotdot_goes_up(drv, home_folder):
-    drv.click_name("browse")
-    drv.click_text("[mfdfolder]", clicks=2)
-    assert Path(drv.app.dialog.directory).resolve() == FIXTURE.resolve()
-    drv.click_text("[..]", clicks=2)
-    assert Path(drv.app.dialog.directory).name == "home"
-
-
-def test_a_dropped_folder_and_a_dropped_burst_table_set_the_folder(drv):
-    assert drv.drop(FIXTURE)
-    assert Path(drv.app.model.folder) == FIXTURE
-    bur = next((FIXTURE / "bi4_bur").glob("*.bur"))
-    assert drv.drop(bur)
-    assert Path(drv.app.model.folder) == bur
-    assert "Folder: " in drv.app.model.status_text
-
-
-def test_a_drop_that_is_not_a_folder_is_refused(drv, tmp_path):
-    assert not drv.drop(tmp_path / "does_not_exist")
+def test_a_handed_over_path_that_is_not_a_burst_run_is_refused(drv, tmp_path):
+    assert not hand(drv, tmp_path / "does_not_exist")
     assert drv.app.model.folder == ""
-    assert drv.app.model.status_text.startswith("Error: not a folder or burst table")
-    # The message ends in the dropped path, which wraps onto more lines when the temporary
-    # directory is long (a parallel run's --basetemp): the drawn error line is the check.
-    texts = [t[5] for t in drv.draw(1).texts]
-    assert any(t.startswith("Error: not a folder or burst table") for t in texts), texts
+    assert drv.app.model.status_text.startswith("Error: not a burst run")
+
+
+def test_no_input_file_ui_is_left(drv):
+    """The bursts come from the workspace: no Browse button, no folder chooser, no drop hook."""
+    drv.draw(2)
+    assert "browse" not in drv.app.item_rects
+    assert not hasattr(drv.app, "files_dropped") and not hasattr(drv.app, "on_files_dropped")
+    assert not hasattr(drv.app, "dialog")
 
 
 # ---- Prepare ------------------------------------------------------------------------------------------------------ #
@@ -194,8 +170,10 @@ def test_prepare_is_greyed_without_a_folder_and_a_click_does_nothing(drv):
     assert drv.app.item_rects["prepare"]
     drv.click_name("prepare")
     assert not drv.app.job.busy and drv.app.model.report == "" and drv.app.model.result == {}
-    assert "Select a burst folder and press Prepare" in " ".join(t[5] for t in drv.draw(2).texts)
-    assert not drv.app.panel.enabled("prepare") and drv.app.panel.enabled("browse")
+    assert "Pick a burst run in the Input section and press Prepare" in " ".join(
+        t[5] for t in drv.draw(2).texts
+    )
+    assert not drv.app.panel.enabled("prepare") and drv.app.panel.enabled("guide")
 
 
 def test_prepare_runs_in_the_background_and_the_window_stays_alive(drv, monkeypatch):
@@ -207,15 +185,13 @@ def test_prepare_runs_in_the_background_and_the_window_stays_alive(drv, monkeypa
         original(self)
 
     monkeypatch.setattr(MfdPrepareModel, "prepare", slow)
-    drv.app.files_dropped([str(FIXTURE)])
+    hand(drv, FIXTURE)
     drv.click_name("prepare")
     assert drv.app.job.busy
     texts = {t[5] for t in drv.draw(2).texts}
     assert any("Prepare" in t and "..." in t for t in texts) or drv.app.job.progress
-    # while it runs Browse, Prepare and a dropped folder cannot change the folder under the job
+    # while it runs, a second Prepare cannot start another job under the first
     other = FIXTURE.parent
-    drv.click_name("browse")
-    assert drv.app.dialog is None
     drv.click_name("prepare")
     gate.set()
     settle(drv)
@@ -225,8 +201,8 @@ def test_prepare_runs_in_the_background_and_the_window_stays_alive(drv, monkeypa
 
 def test_a_folder_without_bursts_reports_the_backend_error(drv, tmp_path):
     empty = tmp_path / "home" / "empty_dir"
-    empty.mkdir(exist_ok=True)
-    drv.app.files_dropped([str(empty)])
+    empty.mkdir(parents=True, exist_ok=True)
+    hand(drv, empty)
     drv.click_name("prepare")
     settle(drv)
     m = drv.app.model
@@ -244,7 +220,7 @@ def test_an_exception_in_the_backend_is_reported_not_raised(drv, monkeypatch):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(api, "prepare_folder", boom)
-    drv.app.files_dropped([str(FIXTURE)])
+    hand(drv, FIXTURE)
     drv.click_name("prepare")
     settle(drv)
     assert drv.app.model.report == "Error: boom"
@@ -283,13 +259,13 @@ def test_a_connected_rpc_client_is_used_for_the_result():
 def test_prepare_without_a_folder_says_so_for_scripts():
     model = MfdPrepareModel()
     model.prepare()
-    assert model.report == "Select a folder first."
+    assert model.report == "Pick a burst run in the Input section first."
 
 
 def test_a_second_prepare_replaces_the_first_result(prepared, tmp_path):
     empty = tmp_path / "home" / "empty_dir"
-    empty.mkdir(exist_ok=True)
-    prepared.app.files_dropped([str(empty)])
+    empty.mkdir(parents=True, exist_ok=True)
+    hand(prepared, empty)
     prepared.click_name("prepare")
     settle(prepared)
     assert prepared.app.model.result == {} and prepared.app.model.report.startswith("Error")
@@ -307,7 +283,7 @@ def test_help_opens_the_help_window_and_escape_or_close_hides_it(drv):
     assert not drv.app.help_window.open
 
 
-def test_the_tour_is_walked_with_the_user_pressing_each_awaited_control(drv, home_folder):
+def test_the_tour_is_walked_with_the_user_pressing_each_awaited_control(drv, workspace_run):
     drv.click_name("guide")
     tour = drv.app.tour
     assert tour.active
@@ -328,17 +304,17 @@ def test_the_tour_is_walked_with_the_user_pressing_each_awaited_control(drv, hom
                 tour.wait_for_controls,
                 step.get("await"),
             )
-            drv.click_name(target)  # the user presses the highlighted control
-            if target == "browse":  # and finishes the chooser
-                drv.click_text("[mfdfolder]")
-                drv.click_text("Choose")
-                drv.app.files_dropped([str(FIXTURE)])
+            if target == "workspace_input_rows":  # the user clicks the run in the Input section
+                drv.click_text(workspace_run.name)
+                hand(drv, FIXTURE)  # the measured folder, whose preparation is known
+            else:
+                drv.click_name(target)  # the user presses the highlighted control
             if target == "prepare":
                 settle(drv)
             assert tour._step_used
         drv.click_text("Next ►") if tour.step_idx < len(tour.steps) - 1 else tour.next_step()
     assert len(seen) == len(tour.steps) if not tour.active else True
-    assert "Choose the folder" in seen and "Prepare it" in seen
+    assert "Pick the burst run" in seen and "Prepare it" in seen
 
 
 def test_every_target_of_the_guide_is_a_drawn_control(prepared):
@@ -376,21 +352,15 @@ def test_every_control_and_table_column_has_a_tooltip_description():
 def test_draws_at_both_sizes_without_overlap_or_clipped_controls(size, populated):
     drv = Driver(make_app(), size)
     if populated:
-        drv.app.files_dropped([str(FIXTURE)])
+        hand(drv, FIXTURE)
         drv.click_name("prepare")
         settle(drv)
     painter = lay.draw(drv.app, size)
     lay.assert_texts_apart(painter)
-    rects = {
-        k: v for k, v in drv.app.item_rects.items() if k in ("browse", "prepare", "guide", "help")
-    }
-    assert set(rects) == {"browse", "prepare", "guide", "help"}
+    rects = {k: v for k, v in drv.app.item_rects.items() if k in ("prepare", "guide", "help")}
+    assert set(rects) == {"prepare", "guide", "help"}
     lay.assert_inside(rects, size)
     lay.assert_disjoint(rects, list(rects))
-    lay.assert_aligned(
-        {k: rects[k] for k in ("browse", "prepare", "guide", "help")},
-        ["browse", "prepare", "guide", "help"],
-    ) if False else None
     # the buttons keep their natural width: none stretched across the window
     assert all(w <= 140 for (_x, _y, w, _h) in rects.values())
     if populated:
@@ -411,10 +381,12 @@ def test_the_mouse_wheel_scrolls_a_report_that_does_not_fit_the_small_window(pre
         return y is None or y + 16 > SMALL[1]
 
     assert hidden(), "the report should run past the bottom edge at 800x600"
-    prepared.wheel(400, 560, steps=-8)  # wheel down inside the report region
+    x, y, w, h = prepared.app.item_rects["report"]
+    at = (x + w / 2, y + h / 2)  # inside the report region, wherever the layout put it
+    prepared.wheel(*at, steps=-40)  # wheel down
     scrolled = last_y()
     assert scrolled is not None and scrolled < SMALL[1], scrolled
-    prepared.wheel(400, 560, steps=8)
+    prepared.wheel(*at, steps=40)
     assert hidden()  # and back up to the top
 
 

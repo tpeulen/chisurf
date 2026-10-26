@@ -3,12 +3,24 @@
   "version": "1.0.0",
   "display_name": "File:Data:MFD Prepare",
   "description": "Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report.",
-  "authors": ["tpeulen"],
-  "categories": ["File", "Data"],
-  "icon": "📋",
+  "authors": [
+    "tpeulen"
+  ],
+  "categories": [
+    "File",
+    "Data"
+  ],
+  "icon": "\ud83d\udccb",
   "state_namespace": "mfd_prepare",
-  "state_schema": {"folder": {"type": "string", "default": ""}},
-  "statefulness": {"enabled": false},
+  "state_schema": {
+    "folder": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "statefulness": {
+    "enabled": false
+  },
   "entrypoints": {
     "emtk": "chisurf.plugins.burst.mfd_prepare.gui.app:make_app",
     "cli": "mfd-prepare=chisurf.plugins.burst.mfd_prepare.cli.main:cli",
@@ -27,10 +39,30 @@
     {
       "name": "mfd_prepare.describe",
       "summary": "Return the plugin contract descriptor.",
-      "params_schema": {"type": "object"},
-      "result_schema": {"type": "object"},
+      "params_schema": {
+        "type": "object"
+      },
+      "result_schema": {
+        "type": "object"
+      },
       "long_running": false,
       "cancelable": false
+    }
+  ],
+  "accepts": [
+    {
+      "name": "bursts",
+      "summary": "Prepare a burst run for the 2D MFD fit: a run of a measurement container in the project's analysis container.",
+      "receive": "chisurf.plugins.burst.mfd_prepare.gui.app:receive_bursts",
+      "required": [
+        "folder"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "bursts"
+        ],
+        "key": "folder"
+      }
     }
   ]
 }

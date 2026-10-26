@@ -36,9 +36,9 @@ The window opens at 1100 × 720 (a saved size takes precedence). Top to bottom:
 | control | what it does |
 |---|---|
 | folder line | the burst-analysis folder that **Prepare** will read, or "No folder selected" |
-| **Browse...** | opens the drawn folder chooser (starts in the folder already chosen); **Choose** takes the highlighted folder, or the folder being browsed when none is highlighted; **Cancel** changes nothing. Dropping the folder (or one `.bur` file) on the window does the same |
-| **Prepare** | greyed until a folder is chosen; reads the photons in the background (the window stays responsive, and Browse and Prepare are greyed while it runs) |
-| **Guide**, **Help** | the step-by-step tour (it waits for you to press Browse... and Prepare) and the help window |
+| **Input** | the burst runs of the Datasets workspace; clicking one picks it (or use *Open in…* on a run in the Datasets view). Data enters ChiSurf by dropping it on the ChiSurf window; nothing here opens a file |
+| **Prepare** | greyed until a burst run is picked; reads the photons in the background (the window stays responsive, and the Input section and Prepare are greyed while it runs) |
+| **Guide**, **Help** | the step-by-step tour (it waits for you to pick a run in the Input section and press Prepare) and the help window |
 | status line | what was done last: the bursts and the verdict, or the error |
 | **Detectors** | one row per detector: channels, micro-time window, bursts without photons, count agreement and the verdict `ok` / `UNVERIFIED` |
 | **Photon sources** | each photon file the bursts point into, where it was found and how many photons it holds |

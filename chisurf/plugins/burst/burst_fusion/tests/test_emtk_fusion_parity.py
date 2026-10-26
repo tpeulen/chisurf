@@ -70,19 +70,27 @@ def test_the_demo_fuses_as_in_the_qt_tool(tmp_path, monkeypatch):
     monkeypatch.setattr(
         demo, "make_demo", functools.partial(demo.make_demo, folder=tmp_path / "own")
     )
+    from chisurf.core.project import analysis
+
+    monkeypatch.setenv("CHISURF_ANALYSIS_DIR", str(tmp_path / "analysis"))
+    monkeypatch.setattr(analysis, "_SESSION", None)
     app = _demo(create_app())
     try:
         truth = app.model._demo["truth"]
         app.controller.run()
         _settle(app)
-        out = Path(app.model.written_folder)
-        assert out.name == qt["out"]
-        assert sorted(p.name for p in out.rglob("*") if p.is_file()) == qt["files"]
-        # The status names the written folder, under each side's own settings folder (the demo is
-        # cached there; this process resolved its settings folder at import).
-        assert app.model._status.replace(str(out.parent), "<demo>") == qt["status"].replace(
-            "/tmp/bf_qt/demos/burst_fusion", "<demo>"
-        )
+        # The Qt tool wrote a threshold-named folder beside the source; the fused bursts are now a
+        # run of that name in the same analysis container, its tables the folder's content.
+        written = app.model.written_folder
+        assert qt["out"] == "burstwise_demo_fused_p0.50"
+        assert written == f"{app.model.folder} fused p0.50"
+        from chisurf.core.fio.pto import Measurement
+
+        with Measurement.open(Path(written).parent, writable=False) as m:
+            names = {str(o.name) for o in m.artifacts()}
+        run = Path(written).name
+        assert {f"{run}/bursts", f"{run}/assembly", f"{run}/membership"} <= names
+        assert app.model._status == f"Fused bursts written to {written}"
         assert json.loads(json.dumps(app.model.summary_rows(), default=str)) == qt["summary"]
         stats = app.model.analysis.statistics
         before, after = stats["n_bursts_before"], stats["n_bursts_after"]
@@ -164,27 +172,26 @@ def test_errors_reach_the_window(tmp_path):
     try:
         app.controller.run()
         assert app.controller.status == app.model.can_run()
+        from chisurf.plugins.burst.burst_fusion.gui.app import receive_bursts
+
         stray = tmp_path / "notes.txt"
         stray.write_text("x")
-        app.on_paths_dropped([str(stray)])
-        assert (
-            app.controller.status
-            == "Burst fusion reads a burst-analysis folder; notes.txt is not one."
-        )
+        with pytest.raises(ValueError):
+            receive_bursts(app, {"folder": str(stray)})
+        assert app.controller.status == "Burst fusion reads a burst run; notes.txt is not one."
         assert not app.model.folder
         assert "is not one" in " ".join(_draw(app).strings)
     finally:
         app.close()
 
 
-# 5. the folder by dialog and by drop
-def test_the_folder_dialog_and_a_drop_take_a_burst_folder(tmp_path):
-    folder = tmp_path / "burstwise"
-    folder.mkdir()
+# 5. the settings dialogs, and the run handed over by the workspace
+def test_the_settings_dialogs_and_a_workspace_run(tmp_path):
+    from chisurf.plugins.burst.burst_fusion.gui.app import receive_bursts
+
     app = create_app()
     try:
         for action, (title, mode) in {
-            "folder": ("Select burst folder", "folder"),
             "load": ("Load fusion settings", "open"),
             "save": ("Save fusion settings", "save"),
             "export": ("Export fusion report", "save"),
@@ -193,14 +200,10 @@ def test_the_folder_dialog_and_a_drop_take_a_burst_folder(tmp_path):
             assert (app.controller.dialog.title, app.controller.dialog.mode) == (title, mode), (
                 action
             )
-        app.controller.browse("folder")
-        app.controller.dialog.draw = lambda: [str(folder)]
-        _frames_until(app, lambda: app.controller.dialog is None)
-        assert app.model.folder == str(folder)
-        other = tmp_path / "other"
-        other.mkdir()
-        app.on_paths_dropped([str(other)])
-        assert app.model.folder == str(other)
+        app.controller.dialog = None
+        run = tmp_path / "m000.pto" / "burstwise_All 0.1000#15"
+        receive_bursts(app, {"folder": str(run), "datasets": ["uid-1"]})
+        assert app.model.folder == str(run) and app.source_uid == "uid-1"
     finally:
         app.close()
 

@@ -32,7 +32,7 @@ only. **>>** walks every remaining step, the status line at the bottom says what
 the open step needs, and **Guide** walks it with you on a simulated measurement.
 
 1. **Setup** — PIE / ns-ALEX: pick your setup. µs-ALEX: leave it (step 3 writes one).
-2. **Files** — drop the measurements, or **Load example** (in the *Summary* box): a simulated µs-ALEX
+2. **Files** — pick the measurements in its **Input** section (the photon streams of the Datasets workspace), or **Load example** (in the *Summary* box): a simulated µs-ALEX
    stream (100 µs alternation, donor on channel 0, acceptor on channel 1;
    low-FRET, high-FRET, donor-only and acceptor-only molecules) whose answer is known.
 3. **Alternation (optional)** — µs-ALEX data is detected and converted *on
@@ -60,7 +60,7 @@ same bursts and are not part of the Next walk.
 | ALEX-Suite | here |
 |---|---|
 | the channel table inside *Burst Search Settings* | **1. Setup** — the detector setup, chosen or edited |
-| *Select Directory* + file list | **2. Files** — drop files or folders; `.sm` reads directly |
+| *Select Directory* + file list | **2. Files** — the workspace's photon streams (Input section); `.sm` reads directly |
 | *Burst Search Settings → Microscope* | **3. Alternation** — one button, all seven numbers measured |
 | *Burst Search → APBS / DCBS* | **4. Burst search** |
 | `bkg_DD` / `bkg_DA` / `bkg_AA` fields | **5. Background** — measured from the inter-photon times |
@@ -91,7 +91,7 @@ check what it decided.
 
 ## 2 — Files
 
-Drop the measurements, or a folder of them. Any container `tttrlib` reads works,
+Pick the measurements in the **Input** section: the photon streams of the Datasets workspace (data enters ChiSurf by dropping it on the ChiSurf window). Any container `tttrlib` reads works,
 including the `.sm` files the old program used — no conversion step, no cache
 files appearing beside them. Everything later reads what you select here.
 
@@ -201,7 +201,7 @@ the map with Gaussians and giving each population its own γ are here too
 
 ## Titration
 
-One burst file per ligand concentration. The whole series is fitted **together**:
+One burst run per ligand concentration, picked in the titration's **Input** section (the burst runs of the Datasets workspace; *Use selected* adds one row each, then type each concentration). The whole series is fitted **together**:
 the population positions and widths are shared by every concentration (fitted
 once, for the whole series) and only their amounts are free per concentration.
 **Fix peak positions** goes one step further — the old program's "fixed x0 and

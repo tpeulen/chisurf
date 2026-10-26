@@ -499,9 +499,12 @@ class H2mmViewModel(RunPickerMixin):
         return int(row_count(table))
 
     def apply_workflow_context(self, context: dict) -> None:
-        """Apply a burst-workflow context: the burst folder and the detector definition (the Qt tool's method)."""
+        """Apply a burst-workflow context: the bursts (a run of a measurement container, or a legacy
+        folder) and the detector definition (the Qt tool's method)."""
+        from chisurf.plugins.burst.workspace_io import is_burst_source
+
         folder = context.get("burst_folder") or context.get("analysis_folder")
-        if folder and pathlib.Path(str(folder)).is_dir():
+        if folder and is_burst_source(folder):
             self.data_folder = str(folder)
         channel_settings = context.get("channel_settings") or {}
         if channel_settings.get("detectors"):

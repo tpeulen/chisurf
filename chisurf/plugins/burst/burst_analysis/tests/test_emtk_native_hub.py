@@ -30,6 +30,9 @@ SETUP = {
 }
 
 
+from chisurf.plugins.burst.burst_analysis.workflow_context import analysis_path  # noqa: E402
+
+
 @pytest.fixture
 def files(tmp_path, monkeypatch):
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
@@ -161,24 +164,25 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
         settle(drv)
         assert hub.errors.get(role) is None, (role, hub.errors.get(role))
     c = hub.children
-    legacy = ctx.legacy_burst_folder
-    assert legacy is not None and legacy.name == "sliding_window_All 0.1500#60"
-    # The folder-reading steps (still on the legacy tree) ...
-    assert c["bva"].model.analysis_folder == legacy
+    # The search writes no legacy folder: every step reads the run of the analysis container.
+    assert ctx.legacy_burst_folder is None
+    run = analysis_path(ctx)  # the search's run, named as the search names it
+    assert run.parent.name == "m000.pto" and run.name == "sliding_window_All 0.1500#60"
+    assert str(c["bva"].model.analysis_folder) == str(run)
     assert (c["bva"].model.donor_channels_text, c["bva"].model.acceptor_channels_text) == (
         "0,1",
         "8,9",
     )
-    assert c["two_cde"].model.folder == str(legacy)
+    assert c["two_cde"].model.folder == str(run)
     assert (c["two_cde"].model.donor_channels_text, c["two_cde"].model.file_type) == (
         "0,1",
         "SPC-130",
     )
     for role, split in (("mle", False), ("segment_mle", True)):
-        assert c[role].model.n_bursts == 198
+        assert c[role].model.n_bursts == 198, (hub.status, c[role].model.status_text)
         assert c[role].model.detector_names() == ["green", "red"]
         assert c[role].model.split_by_state is split
-    assert Path(c["h2mm"].model.data_folder) == legacy
+    assert Path(c["h2mm"].model.data_folder) == run
     assert c["browser"].model.table is not None
     # ... and the container readers: accurate FRET reads the newest run of m000.pto
     # ... and accurate FRET reads the named run of the container
@@ -195,7 +199,7 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
         "green_ACF",
         "red_ACF",
     ]
-    assert [Path(p).name for p in c["burst_gs"].model.bur_files] == ["m000.bur", "m001.bur"]
+    assert c["burst_gs"].model.bur_files == [str(run)]
     assert (c["burst_gs"].model.donor_channels, c["burst_gs"].model.acceptor_channels) == (
         "0, 1",
         "8, 9",
@@ -206,21 +210,23 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
     assert "bursts: m000.pto" in hub.status
 
 
-def test_a_fused_folder_redirects_the_later_steps(hub, files, tmp_path):
+def test_a_fused_run_redirects_the_later_steps(hub, files):
     drv = walk_to_bursts(hub, files)
     hub.select("bva")
     settle(drv)
-    fused = tmp_path / "fused"
-    shutil.copytree(hub.context.legacy_burst_folder, fused)
+    from chisurf.core.fio.fluorescence import burst_tree
+
+    container = analysis_path(hub.context)
+    source = burst_tree.list_runs(container)[-1]
+    fused = container / f"{source} fused p0.50"  # the run the step writes into the same container
     hub.select("fusion")
     drv.draw(2)
     fusion = hub.children["fusion"]
     assert fusion.model.folder_written is not None
-    fusion.model.folder_written(
-        str(fused)
-    )  # what the step's Fuse button announces when it wrote its folder
-    assert hub.context.burst_folder == fused
-    assert hub.children["bva"].model.analysis_folder == fused  # an open step follows at once
+    fusion.model.folder_written(str(fused))  # what the step's Fuse button announces
+    assert hub.context.burst_folder == fused and hub.context.legacy_burst_folder is None
+    assert hub.context.bur_files == [fused]  # the MLE steps read the fused run too
+    assert str(hub.children["bva"].model.analysis_folder) == str(fused)  # an open step follows
     # a new search supersedes the fusion
     hub._selection_done(hub.children["selection"].model)
     assert hub.context.burst_folder.name == "m000.pto"

@@ -286,7 +286,7 @@ class BurstAnalysisHubApp(ToolHubApp):
         sources = materialize_handoff(
             self.context,
             model.frames_by_file,
-            run_name=legacy_folder.name if legacy_folder is not None else None,
+            run_name=legacy_folder.name if legacy_folder is not None else _search_run(model),
         )
         # A fresh burst search supersedes any fusion of the previous one.
         self._fusion_source = self._fused_folder = None
@@ -308,15 +308,19 @@ class BurstAnalysisHubApp(ToolHubApp):
         self.wants_frame = True
 
     def _on_fused_folder(self, folder: str) -> None:
-        """Adopt a fused burst folder as the folder the later steps analyse."""
+        """Adopt the fused bursts -- a run of the analysis container (``m000.pto/<run>``), or a
+        legacy folder -- as what the later steps analyse."""
+        from chisurf.core.fio.analysis_path import is_container_path
+
         path = Path(folder)
-        if not path.is_dir():
+        run = is_container_path(path)
+        if not (run or path.is_dir()):
             return
         self._fusion_source = self.context.burst_folder
         self._fused_folder = path
         self.context.set_burst_folder(path)
-        # The fused folder is what the folder-reading steps read from now.
-        self.context.legacy_burst_folder = path
+        # A legacy folder is what the folder-reading steps read; a run is read as a run.
+        self.context.legacy_burst_folder = None if run else path
         self._apply_downstream(skip=("data", "selection", "fusion"))
         self.status = f"Fused bursts adopted by the later steps: {path}"
         self.wants_frame = True
@@ -480,12 +484,10 @@ class BurstAnalysisHubApp(ToolHubApp):
         settings = self.context.channel_settings
         if settings and self._changed("burst_gs", "setup", settings):
             child.model.apply_channel_settings(settings)
-        # burst_gs still reads loose .bur tables: the legacy tree keeps it fed until
-        # its own container conversion (the workflow's .bur_files are containers).
-        legacy = getattr(self.context, "legacy_burst_folder", None)
-        tables = sorted(Path(legacy).glob("**/*.bur")) if legacy else []
-        if tables and child.controller is not None and not child.model.bur_files:
-            child.controller.add_files([str(p) for p in tables])
+        # The run the later steps read (a fused run after Fusion), as the workspace hands it.
+        run = analysis_path(self.context)
+        if run is not None and child.controller is not None and not child.model.bur_files:
+            child.controller.set_run(str(run))
 
     def _to_accurate_fret(self, child) -> None:
         from chisurf.core.fio.fluorescence import burst_tree
@@ -594,6 +596,19 @@ class BurstAnalysisHubApp(ToolHubApp):
             badge = self.badge(panel["role"])
             panel["name"] = f"{base} {badge}" if badge else base
         super().render()
+
+
+def _search_run(model) -> str | None:
+    """The run a burst search's results are named by -- what the search names its own run, and
+    its legacy folder was called (``sliding_window_All 0.1500#60``). Without a name the bursts
+    would land at a container's top level, where a run is listed under another name than the one
+    it is read by, and every later step finds no burst table."""
+    from chisurf.plugins.burst.burst_selection.api.selection import legacy_output_folder_name
+
+    try:
+        return legacy_output_folder_name(model.analysis_settings())
+    except Exception:  # noqa: BLE001 - a model without settings hands an unnamed run on
+        return None
 
 
 def child_role(hub: BurstAnalysisHubApp, child) -> str:

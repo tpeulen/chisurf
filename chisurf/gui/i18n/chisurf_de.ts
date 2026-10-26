@@ -71955,6 +71955,14 @@ fortgesetzt werden.
             <source>Remove loaded files and analysis results.</source>
             <translation>Geladene Dateien und Analyseergebnisse entfernen.</translation>
         </message>
+        <message>
+            <source>Burst fusion reads a burst run; {name} is not one.</source>
+            <translation>Burst Fusion liest einen Burst-Lauf; {name} ist keiner.</translation>
+        </message>
+        <message>
+            <source>Cannot import the burst folder {path}: {why}</source>
+            <translation>Der Burst-Ordner {path} kann nicht importiert werden: {why}</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

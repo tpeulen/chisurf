@@ -1,7 +1,7 @@
 """EMTK app for the MFD preparation plugin.
 
-One window: choose a burst-analysis folder (drawn folder chooser, or drop it), prepare it, read what was found as three
-tables (detectors, photon sources, folder summary) and the report text. The spec ``mfd_prepare.view.json`` is drawn by
+One window: pick a burst run of the workspace in the Input section, prepare it, read what was found as three tables
+(detectors, photon sources, summary) and the report text. The spec ``mfd_prepare.view.json`` is drawn by
 ``emtk.view_form``; the state and the numbers are in :class:`~.model.MfdPrepareModel` (Qt-free). The Qt tool in ``tool.py``
 only hosts this app.
 """
@@ -13,10 +13,14 @@ from pathlib import Path
 
 from emtk import im
 from emtk.app import ImApp
-from emtk.dialog_window import DialogWindow
-from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
+from chisurf.core.plugin.workspace_input import (
+    WorkspaceInputMixin,
+    input_section,
+    read_address,
+    spec_for,
+)
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.plugins.emtk_layout import (
@@ -33,7 +37,28 @@ HERE = Path(__file__).parent
 SPEC = json.loads((HERE / "mfd_prepare.view.json").read_text(encoding="utf-8"))
 #: Widest the window's content is drawn: the tables and the report stay readable on a wide screen.
 MAX_WIDTH = 980.0
-REPORT_HINT = "Select a burst folder and press Prepare to see the MFD preparation report."
+REPORT_HINT = (
+    "Pick a burst run in the Input section and press Prepare to see the MFD preparation report."
+)
+
+
+class _Input(WorkspaceInputMixin):
+    """The Input section's model: the workspace's burst runs, a pick handed to :func:`receive_bursts`."""
+
+    workspace_input_plugin = "mfd_prepare"
+
+
+def _input_spec() -> dict:
+    """The generated Input section of the manifest's ``accepts[].from_workspace``."""
+    found = spec_for(json.loads((HERE.parent / "manifest.json").read_text(encoding="utf-8")))
+    if not found:
+        return {"sections": []}
+    section = input_section(found[1])
+    # A few rows (the table scrolls): the result tables and the report below must stay on screen.
+    for part in section.get("sections", []):
+        if (part.get("options") or {}).get("source") == "workspace_input_rows":
+            part["options"]["height"] = 72
+    return {"sections": [section]}
 
 
 class MfdPreparePanel:
@@ -49,7 +74,7 @@ class MfdPreparePanel:
     # fields
     @property
     def folder_line(self) -> str:
-        return ("Burst folder:  " + self.m.folder) if self.m.folder else "No folder selected"
+        return ("Burst run:  " + self.m.folder) if self.m.folder else "No burst run picked"
 
     @property
     def status_line(self) -> str:
@@ -170,9 +195,6 @@ class MfdPreparePanel:
             return bool(self.m.folder)
         return True
 
-    def browse(self):
-        self.app.choose_folder()
-
     def prepare(self):
         self.app.start_prepare()
 
@@ -196,10 +218,12 @@ class MfdPrepareApp(TourTarget, ImApp):
         self.spec = layout_spec(json.loads(json.dumps(SPEC)))
         self.form_state = FormState(on_used=lambda name: self.tour.notify_used(name))
         self.item_rects: dict = {}
-        self.dialog: FileDialog | None = None
-        self.file_window = DialogWindow(
-            "Choose the burst folder", size=(560.0, 420.0), key="mfd_prepare_folder"
-        )
+        #: The Input section: which burst run of the workspace is prepared.
+        self.input = _Input()
+        self.input.workspace_input_app = self  # a pick goes to receive_bursts(self, ...)
+        self.input.workspace_input_on_used = lambda name: self.tour.notify_used(name)
+        self.input_spec = _input_spec()
+        self.input_form = FormState(on_used=lambda name: self.tour.notify_used(name))
         self.help_window = EmTkHelpWindow(
             title="MFD Prepare - Help & Reference",
             resource=HERE / "help.md",
@@ -216,48 +240,32 @@ class MfdPrepareApp(TourTarget, ImApp):
         super().__init__(self._render, continuous=False)
 
     # -- actions -------------------------------------------------------------------------------------- #
-    def choose_folder(self) -> None:
-        here = Path(self.model.folder) if self.model.folder else None
-        start = str(here if here and here.is_dir() else here.parent if here else Path.home())
-        self.dialog = FileDialog("Select burst folder", mode="folder", directory=start)
-        self.file_window.title = "Select burst folder"
-        self.file_window.show()
-
     def start_prepare(self) -> None:
         if not self.model.folder:
             self.model.prepare()  # "Select a folder first." (the button is greyed, this is for scripts)
             return
         self.job.start("prepare")
 
-    def files_dropped(self, paths) -> bool:
-        """A folder (or a ``.bur`` table) dropped on the window becomes the folder to prepare."""
-        for path in paths:
-            if self.model.set_folder(str(path)):
-                return True
-        return False
-
-    on_files_dropped = files_dropped
-
     # -- drawing --
     def draw_toolbar(self, width: float) -> None:
-        """The folder line and one wrapping row of buttons (natural widths, greyed while they cannot act)."""
+        """The Input section (the workspace's burst runs), the run picked, and one wrapping row of
+        buttons (natural widths, greyed while they cannot act)."""
+        self.input_form.rects.clear()
+        im.begin_disabled(self.job.busy)
+        draw_form(self.input_spec, self.input, self.input_form)
+        im.end_disabled()
+        self.item_rects.update(self.input_form.rects)
         im.text_wrapped(self.panel.folder_line)
         busy = self.job.busy
         pressed = button_row(
             [
-                {
-                    "label": action_caption("browse"),
-                    "key": "browse",
-                    "enabled": not busy,
-                    "tip": "Choose the burst-analysis folder (the one holding bi4_bur and Info) in a folder chooser, or drop it on the window.",
-                },
                 {
                     "label": "Prepare",
                     "key": "prepare",
                     "enabled": bool(self.model.folder) and not busy,
                     "colours": ((46, 160, 67, 255), (56, 180, 77, 255), (36, 140, 57, 255)),
                     "tip": "Read the folder the way the MFD fit does: resolve the photon files, detect the photon-index convention and "
-                    "recompute each detector's counts. Nothing is moved or rewritten. Choose a folder first.",
+                    "recompute each detector's counts. Nothing is moved or rewritten. Pick a burst run first.",
                 },
                 {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
                 {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
@@ -301,18 +309,6 @@ class MfdPrepareApp(TourTarget, ImApp):
             # The card is a bounded window of its own, so it takes its own presses and the highlighted control stays
             # clickable; a full-frame overlay would sit on top of the card once a step stops awaiting.
             self.tour.draw(width, height)
-        if self.dialog is not None:
-            closed = self.file_window.begin(frame) == "close"
-            result = self.dialog.draw()
-            self.file_window.end()
-            if closed or result is False:
-                self.dialog = None
-            elif result:
-                self.dialog = None
-                self.model.set_folder(result[0])
-                self.tour.notify_used("browse")
-        elif self.file_window.open:
-            self.file_window.hide()
         if self.job.busy:
             self.request_frame()  # poll the job again
 
@@ -327,4 +323,16 @@ def make_app(**kwargs) -> MfdPrepareApp:
     return MfdPrepareApp(**kwargs)
 
 
-__all__ = ["MfdPrepareApp", "MfdPreparePanel", "make_app"]
+def receive_bursts(app: MfdPrepareApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``bursts``): prepare the burst run ``payload["folder"]``.
+
+    ``folder`` is an address -- a run of a measurement container (``m000.pto/<run>``) -- as the
+    Input section, *Open in…* or a drag from the Datasets view hands it.
+    """
+    address = read_address(str(payload["folder"]))
+    if not app.model.set_folder(address):
+        raise ValueError(f"{address} is not a burst run")
+    app.request_frame()
+
+
+__all__ = ["MfdPrepareApp", "MfdPreparePanel", "make_app", "receive_bursts"]

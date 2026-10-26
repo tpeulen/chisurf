@@ -129,6 +129,9 @@ class FusionAnalysis:
         One entry per ``.bur`` file, in folder order.
     statistics : dict
         Burst counts, group sizes and the before/after observables.
+    sources : dict
+        For a fusion of container runs: each measurement's run address
+        (``m000.pto/<run>``) by its stem. Empty for a legacy folder.
     """
 
     folder: Any
@@ -138,3 +141,4 @@ class FusionAnalysis:
     tau_used_s: float
     measurements: list[MeasurementFusion]
     statistics: dict[str, Any]
+    sources: dict[str, str] = dataclasses.field(default_factory=dict)

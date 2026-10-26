@@ -19,7 +19,7 @@
           "source": "detector_rows",
           "columns_source": "detector_columns",
           "editable": false,
-          "height": 110,
+          "height": 80,
           "description": "One row per detector: its channel definition, the bursts without photons and the count agreement against the burst table."
         }
       ],
@@ -61,7 +61,7 @@
           "source": "summary_rows",
           "columns_source": "summary_columns",
           "editable": false,
-          "height": 165,
+          "height": 130,
           "description": "The facts of the whole folder: bursts, photon-index convention, where the mean micro time comes from."
         }
       ],

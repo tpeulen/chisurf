@@ -35,5 +35,51 @@
     "burst_selection": "*",
     "ptu_alex_creator": "*"
   },
-  "menu_hidden": false
+  "menu_hidden": false,
+  "accepts": [
+    {
+      "name": "photons",
+      "summary": "The ALEX measurements: photon streams of the Datasets workspace (the Files step); the burst runs found become their children.",
+      "receive": "chisurf.plugins.burst.burst_analysis.gui.native:receive_photons",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    },
+    {
+      "name": "setup",
+      "summary": "A detector/channel setup of the Datasets workspace, loaded into the Setup step.",
+      "receive": "chisurf.plugins.burst.burst_analysis.gui.native:receive_setup",
+      "required": [
+        "setup_file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "key": "setup_file"
+      }
+    },
+    {
+      "name": "titration",
+      "summary": "Titration points: burst runs of the Datasets workspace, one per concentration.",
+      "receive": "chisurf.plugins.burst.alex_suite.gui.native:receive_titration",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "bursts"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    }
+  ]
 }

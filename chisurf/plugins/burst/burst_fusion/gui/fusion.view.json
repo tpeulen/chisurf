@@ -23,11 +23,10 @@
             {
               "type": "value",
               "attr": "folder",
-              "call": "set_folder",
-              "kind": "directory",
-              "label": "Folder",
-              "placeholder": "burst-analysis folder holding bi4_bur",
-              "description": "The burst-analysis folder to fuse — the output of burst selection. Nothing in it is modified; the fused bursts go to a new folder beside it."
+              "kind": "str",
+              "read_only": true,
+              "label": "Burst run",
+              "description": "The burst run being fused, as picked in the Input section above (a run of the photon dataset's analysis container). Nothing in it is modified; the fused bursts are written as a new run of the same container, named after the source run and the threshold."
             },
             {
               "type": "value",

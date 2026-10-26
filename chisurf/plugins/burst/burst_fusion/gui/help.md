@@ -9,20 +9,30 @@ the passage as a whole, and a dynamics analysis can read the gap as a
 transition.
 
 This step merges those fragments back together and writes the result as a **new
-burst folder**, which every later step (BVA, 2CDE, MLE, H2MM, the browser) reads
-exactly like the original one. The folder you started from is not modified.
+burst run** of the same measurement, which every later step (BVA, 2CDE, MLE, H2MM,
+the browser) reads exactly like the original one. The run you started from is not
+modified.
+
+## Where the bursts come from
+
+The **Input** section lists the burst runs in the Datasets workspace — every burst
+search of your photon data, shown under its photon stream. Pick one there, or use
+*Open in…* on a run in the Datasets view. Nothing in this tool opens a file: data
+enters ChiSurf by dropping it on the window, and the runs live in the project's
+analysis container of each photon dataset.
 
 ## If you have not brought data
 
 Press **🧪 Load example**. It simulates a measurement in which a *declared* number
 of molecules (300) crossed the focus and about 60 % of those crossings were
 interrupted — the molecule dimming for a fraction of a millisecond and coming
-back — then runs the ordinary burst search over it and loads the result. The
+back — then runs the ordinary burst search over it and puts the result into the
+workspace: the photons a dataset, the search a burst run of it, which is picked. The
 search turns those 300 molecules into 419 bursts, and the status block
 keeps the 300 on screen so every number below can be checked against it.
 
 It is a real measurement: a photon file with macro times, micro times and
-channels, a real burst folder, a real reading manifest. The simulation is
+channels and a real burst search. The simulation is
 deliberately thin — one FRET population, no photophysics, no diffusion model —
 because it exists to demonstrate *the fusion decision*, and anything measured on
 it is a statement about the code rather than about a molecule.
@@ -66,37 +76,43 @@ So the probability answers *"same molecule?"* and the **gap ceiling** answers
 single passage the search cut in two, gaps of microseconds to a few
 milliseconds — and stops there. Set it to 0 only if you know why.
 
-The emitted folder records the price per burst: `Fused Gap Photons` in
-its `fu4` companion is the number of photons the bridged gaps brought in.
+The fused run records the price per burst: `Fused Gap Photons` in its
+`assembly` table is the number of photons the bridged gaps brought in.
 
 ## Preview versus written
 
 *Estimate* is cheap and repeatable: it reads the burst tables only, so the fused
 side of the histograms is the fragments' own photons, summed. *Run (Fuse)*
-(which writes the fused folder) reopens the photon streams and re-derives every column over the real
+(which writes the fused run) reopens the photon streams and re-derives every column over the real
 span; the plots then switch to the written bursts (the legend says which is on
 screen). The two differ by exactly the background the gaps brought in.
 
 ## What is written
 
-    <source>_fused_p0.50/
-      bi4_bur/<stem>.bur        the fused bursts, regenerated from the photons
-      fu4/<stem>.fu4            per fused burst: fragments merged, background gained
-      Info/analysis.json        how the raw data was read (so later steps need not guess)
-      Info/fusion.json          the settings, the window, the P_same curve, the statistics
+A new run of the same container (in a project: the photon dataset's analysis
+container), named after the source run and the threshold:
 
-and, in the **source** folder, an optional `fg4` companion giving each original
-burst its fused-burst number, so the grouping can be inspected or gated on
-where the original bursts live.
+    <source run> fused p0.50/
+      bursts        the fused bursts, regenerated from the photons
+      assembly      per fused burst: fragments merged, background gained
+      membership    which source burst went into which fused burst
+
+The fused bursts are stored as a burst selection — found by fusing a search, which
+their algorithm (`recurrence_probability`), their settings and their parent edge to
+the source search record — so every reader takes them as a run. The **source** run
+gains an optional `fusion groups` table giving each original burst its fused-burst
+number, so the grouping can be inspected or gated on where the original bursts
+live. (A legacy burst-analysis folder handed to the headless `csc fusion` command
+is still fused into a new folder beside it.)
 
 ## Where it sits
 
 It is an optional step directly after burst selection. Walking the pipeline past
 it only estimates the probability — it never redirects the analysis on its own.
-Writing the fused folder is what points the later steps at the fused bursts.
-Companions computed on the source folder (BVA, 2CDE, MLE, …) are **not** copied:
-they have one row per *original* burst and would misalign. Recompute them on the
-fused folder — which is why fusion belongs before them.
+Writing the fused run is what points the later steps at the fused bursts.
+Results computed on the source run (BVA, 2CDE, MLE, …) are **not** copied: they
+have one row per *original* burst. Recompute them on the fused run — which is why
+fusion belongs before them.
 
 ## The original method
 
@@ -129,8 +145,8 @@ your interest is the slow dynamics rather than the split bursts, use recurrence
 analysis and leave fusion alone.
 
 If you publish results from this step, cite the paper above for the method, and
-say which threshold and gap ceiling you used — both are recorded in the fused
-folder's `Info/fusion.json`.
+say which threshold and gap ceiling you used — both are recorded with the fused
+run's burst table (its settings).
 
 ## Further reading
 

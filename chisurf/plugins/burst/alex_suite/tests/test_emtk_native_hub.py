@@ -214,7 +214,10 @@ def test_pie_data_is_left_alone_and_searched_as_before(hub, settings):
     hub.children["setup"].select_setup("probe")
     drv.draw(2)
     press_next(drv)
-    assert drv.drop(data / "m000.spc", data / "m001.spc")
+    from chisurf.plugins.burst.burst_analysis.gui.native import receive_photons
+
+    # The Files step takes the photon streams from the workspace (Open in…, or its Input section).
+    receive_photons(hub, {"files": [str(data / "m000.spc"), str(data / "m001.spc")]})
     drv.draw(2)
     press_next(drv)
     assert hub.selected == "alternation"
