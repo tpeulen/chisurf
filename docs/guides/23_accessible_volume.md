@@ -49,7 +49,7 @@ rmp = donor.dRmp(acceptor)           # distance between the mean dye positions
 mean_donor_position = donor.Rmp      # mean dye position (for a structural restraint)
 ```
 
-ChiMOL's labelling window (**Structure ▸ FRET ▸ FPS JSON Editor**) edits FPS-style
+ChiMOL's labelling window (**ChiMOL ▸ Tools ▸ Labelling**) edits FPS-style
 labelling/AV plans, the structure-ensemble FRET decay model
 ({src}`chisurf/core/models/tcspc/fret_structure.py`) fits the simulated
 $P(R_{DA})$ of each structure directly, and the FRET-docking tools use AV clouds as
@@ -62,9 +62,10 @@ $\langle R_{DA}\rangle_E = 45.2$ Å ($R_0 = 52$ Å).
 
 ### The FPS JSON editor (ChiMOL's labelling window)
 
-**Structure ▸ FRET ▸ FPS JSON Editor** opens ChiMOL with its **Labelling network**
-window on the *Positions* tab; inside ChiMOL it is **Tools ▸ Labelling ▸ Labelling
-network…**.
+Open **Structure ▸ Modelling ▸ ChiMOL**, then **Tools ▸ Labelling ▸ Positions…**: the
+**Labelling network** window on its *Positions* tab (**Labelling network…** opens it on
+the circle). Its **Guide** starts with **Load example**, a three-position plan of the
+T4L network that ships with ChiMOL.
 The editor is a plugin of ChiMOL, so every accessible volume it computes is an
 object of the viewer it sits in: a cloud with its mean position, shown, hidden,
 coloured and saved like any other object, and a line per distance. Its header
@@ -139,5 +140,5 @@ Accessible volumes and the inter-dye distance distribution.
 
 ## See also
 
-- `chisurf/core/structure/av/` (`BasicAV`, `ACV`, `DynamicAV`, computed by `IMP.bff`); plugin `modelling/fps_json_editor`; the structure-ensemble decay model `chisurf/core/models/tcspc/fret_structure.py`.
-- Tool: the **FPS JSON Editor** entry (`chisurf/plugins/modelling/fps_json_editor/`) opens ChiMOL's labelling window (`chimol.plugins.labelling`); the headless payload validation, PDB fetch, CLI and RPC stay in that plugin.
+- `chisurf/core/structure/av/` (`BasicAV`, `ACV`, `DynamicAV`, computed by `IMP.bff`); the labelling editor `chimol.plugins.labelling`; the structure-ensemble decay model `chisurf/core/models/tcspc/fret_structure.py`.
+- Tool: ChiMOL's labelling window (`chimol.plugins.labelling`, in ChiMOL **Tools ▸ Labelling**). Headless: `chimol-fps validate | summarize | normalize | fetch-pdb` on a file, and the RPC methods `chimol.fps.validate`, `chimol.fps.summarize`, `chimol.fps.normalize`, `chimol.pdb.fetch`, `chimol.av.mrc.save` ({src}`chisurf/plugins/chimol/rpc.py`).

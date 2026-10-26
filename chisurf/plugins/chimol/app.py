@@ -44,20 +44,15 @@ class ChimolHostApp(ImApp):
         self,
         size: tuple[int, int] = (900, 620),
         commands: tuple[str, ...] = (),
-        guide_command: str = "",
-        help_resource: Path | None = None,
         ask_display_defaults: bool = False,
     ):
         #: Ask once, when the viewer is up, whether to take the display defaults this chimol ships with
         #: (chimol's in-viewport question; only when the user's settings differ and they did not opt out).
         #: The user's window (:func:`make_app`) asks; a test or a capture building the app directly does not.
         self._ask_display_defaults = bool(ask_display_defaults)
-        #: chimol commands run once the viewer is up: a launcher opens one of chimol's own panels this way
-        #: (Structure › FRET › FPS JSON Editor runs ``fps_circle , , Positions``).
+        #: chimol commands run once the viewer is up, to open one of chimol's own panels
+        #: (``fps_circle , , Positions`` opens the labelling editor; its own Guide and ? are in that window).
         self._startup_commands = tuple(commands)
-        #: The chimol command the Guide button runs instead of the viewer tour below, for a launcher that opens
-        #: one of chimol's own tools (the FPS JSON Editor runs ``tour fps_editor``). Empty: the general tour.
-        self._guide_command = str(guide_command)
         spec = json.loads((HERE / "window.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (1200, 800))
         self._chimol_size = size
@@ -73,9 +68,8 @@ class ChimolHostApp(ImApp):
         self._objects_seen: int | None = None
         self._drag_from: tuple[float, float] | None = None
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
-        # The ``?`` page: the launcher's own (the FPS JSON Editor explains the labelling plan), else the viewer's.
         self.help_window = EmTkHelpWindow(
-            title=tr("ChiMOL — Help"), resource=Path(help_resource or HERE / "help.md"), owner=self
+            title=tr("ChiMOL — Help"), resource=HERE / "help.md", owner=self
         )
         self.tour = EmTkGuidedTour(
             steps=HERE / "guide.json",
@@ -322,17 +316,7 @@ class ChimolHostApp(ImApp):
         self.item_rects["guide"] = im.get_item_rect()
 
     def start_guide(self) -> None:
-        """Start the tour this window is for: its launcher's chimol tour, else the viewer's general one."""
-        if self._guide_command and self._ensure_chimol() and self._chimol_app is not None:
-            try:
-                self._chimol_app.cmd.do(self._guide_command)
-            except Exception:  # noqa: BLE001 - fall back to the general tour rather than a dead button
-                logging.getLogger(__name__).exception(
-                    "chimol guide command failed: %s", self._guide_command
-                )
-            else:
-                self.request_frame()
-                return
+        """Start the viewer's tour (chimol's own tools carry theirs: the labelling window's Guide, ...)."""
         self.tour.start()
 
     def load_example(self) -> bool:
@@ -466,9 +450,7 @@ class ChimolHostApp(ImApp):
             self._chimol = None
 
 
-def make_app(
-    commands: tuple[str, ...] = (), guide_command: str = "", help_resource: Path | None = None
-) -> ChimolHostApp:
+def make_app(commands: tuple[str, ...] = ()) -> ChimolHostApp:
     """The embedded viewer, speaking ChiSurf's language.
 
     :func:`chisurf.emtk.i18n.install` selects ChiSurf's configured language in
@@ -480,9 +462,4 @@ def make_app(
     from chisurf.emtk.i18n import install
 
     install()
-    return ChimolHostApp(
-        commands=commands,
-        guide_command=guide_command,
-        help_resource=help_resource,
-        ask_display_defaults=True,
-    )
+    return ChimolHostApp(commands=commands, ask_display_defaults=True)

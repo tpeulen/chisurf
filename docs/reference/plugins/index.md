@@ -169,7 +169,6 @@ Of the **124 plugins**, **91** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [Docking & Screening](fret_docking.md) | FRET-restrained rigid-body docking, refinement, structure-library screening and error estimation using IMP + IMP.bff accessible volumes (a thin shim around IMP.pmi). |
-| [FPS JSON Editor](fps_json_editor.md) | Edit fps.json labelling plans in ChiMOL's labelling editor (positions, distances, FlexFit, accessible volumes); validate payloads and fetch PDB structures headlessly. |
 
 ## Structure → Modelling
 

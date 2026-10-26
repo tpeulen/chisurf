@@ -6,7 +6,6 @@ cd ..
 # working
 python -m chisurf.plugins.traj.traj_align
 python -m chisurf.plugins.traj.traj_convert
-python -m chisurf.plugins.modelling.fps_json_editor
 python -m chisurf.plugins.traj.fret_trajectory
 python -m chisurf.plugins.traj.traj_join
 python -m chisurf.plugins.traj.potential_energy

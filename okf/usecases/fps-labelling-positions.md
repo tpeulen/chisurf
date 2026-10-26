@@ -27,10 +27,9 @@ type in here).
 **chain `E`** (residues 1–162) plus a hetero/solvent chain `S`. Sites driven this
 run: `E:18:CB` (TYR, buried), `E:44:CB`, `E:60:CB`, `E:134:CB` (ALA, exposed).
 
-**Tool:** `chisurf.plugins.modelling.fps_json_editor`
-(`FpsJsonEditorTool` → `FpsJsonEditor`), display name
-*Structure:FRET:FPS JSON Editor*; CLI `fps-json-editor`, RPC service
-`fps_json_editor.*`. **Since 2026-10-12 the editor is ChiMOL's** (owner: "the fps
+**Tool (2026-10-26):** ChiMOL's labelling editor, ChiMOL › Tools › Labelling › Positions…
+(`chimol.plugins.labelling`); CLI `chimol-fps`, RPC `chimol.fps.*` / `chimol.pdb.fetch` on the
+ChiMOL host. The ChiSurf `fps_json_editor` plugin named below no longer exists. **Since 2026-10-12 the editor is ChiMOL's** (owner: "the fps
 editor should live in chimol"): the menu entry opens ChiMOL's *Labelling network*
 window (`chimol.plugins.labelling`, command `fps_circle , , Positions`); ChiSurf's
 FPS card was deleted after its features were ported (chimol `7c20edb`). The steps

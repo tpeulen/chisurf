@@ -34,7 +34,7 @@ You can define candidates in two ways:
 
 #### A) Recommended: `*.fps.json`
 
-Provide an `*.fps.json` created with ChiSurf's **Structure:FPS JSON Editor**.
+Provide an `*.fps.json` built in ChiMOL's labelling editor (**ChiMOL › Tools › Labelling › Positions…**).
 
 This plugin currently uses the following sections:
 

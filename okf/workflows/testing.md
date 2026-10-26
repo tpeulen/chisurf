@@ -597,7 +597,6 @@ chisurf/plugins/microscopy/spot_finder/tests
 chisurf/plugins/misc/games/test
 chisurf/plugins/modelling/hydropro/test
 chisurf/plugins/modelling/fret/test
-chisurf/plugins/modelling/fps_json_editor/test
 chisurf/plugins/traj/fret_trajectory/test
 chisurf/plugins/traj/potential_energy/test
 chisurf/plugins/traj/traj_align/test

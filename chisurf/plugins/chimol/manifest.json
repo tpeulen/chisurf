@@ -2,7 +2,7 @@
   "id": "chimol",
   "version": "0.2.0",
   "display_name": "Structure:Modelling:ChiMOL",
-  "description": "Molecular structure viewer and protein analysis plugin for ChiSurf.",
+  "description": "Molecular structure viewer and protein analysis plugin for ChiSurf; its labelling editor builds fps.json plans (Tools > Labelling), and its RPC checks plans and fetches structures headlessly.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
@@ -11,7 +11,7 @@
     "Modelling",
     "Molecular Viewer"
   ],
-  "icon": "\ud83e\uddec",
+  "icon": "🧬",
   "state_namespace": "chimol",
   "statefulness": {
     "enabled": true,
@@ -21,8 +21,139 @@
     }
   },
   "entrypoints": {
-    "emtk": "chisurf.plugins.chimol.app:make_app"
+    "emtk": "chisurf.plugins.chimol.app:make_app",
+    "services": "chisurf.plugins.chimol.rpc:register_services"
   },
   "menu_hidden": false,
-  "deprecated": false
+  "deprecated": false,
+  "rpc_methods": [
+    {
+      "name": "chimol.fps.validate",
+      "summary": "Check an fps.json payload's sections and references; errors, warnings and a summary.",
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "payload"
+        ],
+        "properties": {
+          "payload": {
+            "type": "object",
+            "description": "An fps.json document: Positions, Distances, optional χ² score sets and extra sections."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "description": "Service envelope: ok, result or error."
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "chimol.fps.summarize",
+      "summary": "Summarize positions, distances, score sets and unresolved references of an fps.json payload.",
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "payload"
+        ],
+        "properties": {
+          "payload": {
+            "type": "object",
+            "description": "An fps.json document: Positions, Distances, optional χ² score sets and extra sections."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "description": "Service envelope: ok, result or error."
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "chimol.fps.normalize",
+      "summary": "Return an fps.json payload in canonical form.",
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "payload"
+        ],
+        "properties": {
+          "payload": {
+            "type": "object",
+            "description": "An fps.json document: Positions, Distances, optional χ² score sets and extra sections."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "description": "Service envelope: ok, result or error."
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "chimol.pdb.fetch",
+      "summary": "Download a structure from RCSB by its four-character PDB ID.",
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "pdb_id"
+        ],
+        "properties": {
+          "pdb_id": {
+            "type": "string",
+            "pattern": "^[0-9][A-Za-z0-9]{3}$",
+            "description": "Four-character RCSB PDB ID."
+          },
+          "output_dir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Where to write; the structure cache when omitted."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "description": "Service envelope: ok, result or error."
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "chimol.av.mrc.save",
+      "summary": "Write accessible-volume points as an MRC density map.",
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "path",
+          "points",
+          "grid_step"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Output file; .mrc is appended unless present."
+          },
+          "points": {
+            "type": "array",
+            "description": "(N, 3) xyz or (N, 4) xyz plus weight, in Å."
+          },
+          "grid_step": {
+            "type": "number",
+            "description": "Voxel spacing in Å."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "description": "Service envelope: ok, result or error."
+      },
+      "long_running": false,
+      "cancelable": false
+    }
+  ]
 }

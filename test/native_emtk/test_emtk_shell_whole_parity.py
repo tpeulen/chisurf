@@ -68,6 +68,8 @@ ALIASES: dict[str, tuple[str, str]] = {
 RENAMED = {
     "tttrheadereditor": "the menu row and ribbon button say TTTR Inspector, the tool's current name",
     "clsmgenerator": "the menu row and ribbon button say CLSM Simulator, the tool's current name",
+    "fpsjsoneditor": "moved into ChiMOL with the editor itself: ChiMOL, then Tools > Labelling > "
+    "Positions... (the labelling window's own Guide and ? come with it)",
     "dataset": "the Docks toggle is called Read data, the dock's own title",
     "fit": "the Docks toggle is called Analysis, the dock's own title",
     "plot-options": "the Docks toggle is called Plot settings, the dock's own title",

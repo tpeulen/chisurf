@@ -149,7 +149,6 @@ REPAIRED_DECLARATIONS = {
     "FCS",
     "FCS Filter Calculator",
     "FCS-Merger",
-    "FPS JSON Editor",
     "FRET Line Generator",
     "H2MM",
     "Histogram-Microtime",

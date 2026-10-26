@@ -76,7 +76,7 @@ WALKTHROUGH = {
     ],
     # The fps.json editor: the labelling window's controls run these commands.
     "fps_editor": [
-        "load 148l.pdb",
+        "fps_load labelling_example.fps.json",
         "fps_circle , , Positions",
         "fps_position",
         "fps_step , 1",

@@ -219,7 +219,7 @@ irf_estimation
 | [HMM of binned traces (ebFRET)](20_ebfret_binned_hmm.md) | `burst_ebfret` |
 | [Lifetime from photon bursts (MLE)](21_lifetime_from_bursts.md) | `core.fluorescence.mle`, `burst_mle_analysis` |
 | [Binned photon traces (MCS)](22_binned_photon_traces.md) | `trace_browser`, TTTR binning |
-| [Accessible-volume (AV) calculations](23_accessible_volume.md) | `core.structure.av`, `fps_json_editor` |
+| [Accessible-volume (AV) calculations](23_accessible_volume.md) | `core.structure.av`, `chimol.plugins.labelling` |
 | [Confocal scan images (CLSM)](24_scan_images.md) | `tttrlib.CLSMImage`, `plugins/microscopy` |
 | [RCM from FRET-labelled samples (PIE/ALEX)](25_rcm_from_fret_samples.md) | `fret/calibration.py`, `tttrlib.corrected_es` |
 | [2-D peak fitting](26_2d_peak_fitting.md) | `burst_selection` GMM features |

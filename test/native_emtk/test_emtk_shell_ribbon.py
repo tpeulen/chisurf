@@ -31,6 +31,7 @@ KNOWN_GAPS: dict[str, str] = {}
 DELIBERATE: dict[str, str] = {
     "tttrheadereditor": "the tool is called TTTR Inspector -- the header editor is one view of it",
     "clsmgenerator": "the tool is called CLSM Simulator -- a generated scan is a simulation",
+    "fpsjsoneditor": "the labelling editor is ChiMOL's: ChiMOL, then Tools > Labelling > Positions...",
 }
 #: The Qt ribbon's corner controls, by tooltip or class, and the emtk control that replaces each.
 CORNER = {

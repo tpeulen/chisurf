@@ -7,18 +7,24 @@ tags: [plugins, modelling]
 timestamp: '2026-10-12T00:00:00Z'
 ---
 
-## Where to pick this up (2026-10-12, structure hub dissolved, FPS editor in chimol)
+## Where to pick this up (2026-10-26: the FPS JSON editor plugin is gone, the editor is ChiMOL's)
 
-1. **Structure tab layout** is Modelling (ChiMOL) · FRET (Docking & Screening, FPS JSON Editor) · Computation
+1. **Structure tab layout** is Modelling (ChiMOL) · FRET (Docking & Screening) · Computation
    (HydroPro, QuEst) · Trajectory (Traj Tools), from `GROUP_ORDER["Structure"]` in
    `chisurf/core/plugin/ribbon_layout.py`. Re-derive with `test/plugins/test_ribbon_layout.py`; the Qt reference
    inventories (`test/native_emtk/shell_{s5,whole}_qt_inventory.json`) had only their Structure parts re-captured
    (the scripts rewrite the WHOLE file — splice, do not overwrite: other tabs carry other lanes' baselines).
-2. **FPS JSON Editor entry = ChiMOL with `fps_circle , , Positions`** (`fps_json_editor/gui/app.py`,
-   `ChimolHostApp(commands=...)`). Its Guide is ChiMOL's host tour, not chimol's `fps_editor` tour: open item — start
-   `tour fps_editor` from the entry's Guide. Feature parity record: chimol `okf/plugins/labelling.md`
-   (chimol `7c20edb`, `4f1f070`); every card control is present except the card's own 3D View tab (the editor sits
-   in the viewer).
+2. **Measure: the fps.json editor lives in ChiMOL only** (owner 2026-10-26, dedup). The `modelling/fps_json_editor`
+   plugin is deleted; its second document model (`FpsJsonModel`), payload checks, naming and colour helpers were
+   duplicates of chimol's `labelling/fps.py` / `editor.py` and are merged there (chimol `d31ca8b`: cascading
+   removes, gzip, relative `pdb_path`, `validate/summarize/normalize_payload`, CLI `chimol-fps`, the tour's
+   Load-example step `fps_load labelling_example.fps.json`, 'What to check' help, de/fr). ChiSurf reaches it as
+   ChiMOL › Tools › Labelling (the ChiMOL host's `commands=` still opens it on a panel); the window's own Guide
+   (`tour fps_editor`) and ? come with it. The headless RPC moved to the ChiMOL host:
+   `chimol.fps.validate|summarize|normalize`, `chimol.pdb.fetch`, `chimol.av.mrc.save`
+   (`chisurf/plugins/chimol/rpc.py`). ProteinMC's fps.json readers kept their tests
+   (`proteinmc/test/test_fps_json_readers.py`). Before/after renders of the editor are control-for-control
+   identical (same code); deliberate difference: no ribbon button of its own.
 3. **`test_plugin_help_guide_seam` / `demo_contract_audit` read HEAD**: until this change is committed they still
    see `structure_tools` (failures "GUI module not on disk: structure_tools") — not a defect of the tree.
 4. **FRET window** (`fret/gui/app.py`) is a two-tool window of its own (docking + pair selection); Pair Selection
@@ -56,7 +62,6 @@ moved into the plugins that own them, the shared window shell into `chisurf/emtk
 | Plugin dir | Display name | What it does |
 | --- | --- | --- |
 | `modelling/fret` | Structure:FRET:Docking & Screening | One window with the docking card (`gui/docking_card.py`, session `gui/docking_session.py`) and the pair-selection card. FRET-restrained rigid-body docking, refinement, structure-library screening and error estimation; a thin shim around an external molecular-modeling framework and its accessible-volume/FRET extension. |
-| `modelling/fps_json_editor` | Structure:FRET:FPS JSON Editor | Opens ChiMOL's labelling editor (`chimol.plugins.labelling`, `fps_circle , , Positions`): ChiSurf ships no FPS editor of its own (owner, 2026-10-12). Keeps the headless half: payload validation, RCSB fetch, CLI `fps-json-editor`, RPC `fps_json_editor.*`. |
 | `modelling/hydropro` | Structure:Computation:HydroPro | Graphical front-end to an external hydrodynamics tool, computing properties such as the translational diffusion coefficient from atomic or bead-model structures. |
 | `modelling/proteinmc` | (no manifest) | Protein Monte-Carlo helpers; a first-class module still lacking a `manifest.json` (see steering note). |
 | `fret_line` | Spectroscopy:FRET:FRET Line Generator | Compute static, dynamic, WLC and mixture FRET lines for overlay on smFRET 2D histograms in ndxplorer. |
@@ -85,13 +90,9 @@ modules (`av.py`, `clash.py`, `distance.py`, `engine.py`, `docking.py`,
   Windows and must skip gracefully.
 - **`fps.json` is the interchange format.** Never rename its keys (`Positions`,
   `Distances`, `χ²`); multi-body docking carries a `body_id` per position and
-  evaluators serialize under an `Evaluators` key. The GUI `LabelStructure` widget
-  is owned by `fps_json_editor` and imported by `fret/wizard.py`; they share one
-  live Python dict via a `fps_json_payload` getter/setter (no file round-trip).
-  Placement note (2026-08-10): the labelling UI **belongs in ChiMOL** and sits
-  here only because ChiMOL is not ready to host it yet — see the deferred-scope
-  section of [ChiMOL — Target](/specs/chimol.md); the `fps_json_payload` seam is
-  what the eventual move rides on.
+  evaluators serialize under an `Evaluators` key. The labelling UI and the
+  document model are ChiMOL's (`chimol.plugins.labelling`: `FpsModel`, the editor,
+  `chimol-fps`); ChiSurf keeps no copy.
 - **Evaluators** live in `fret/evaluators/` (positions, distance, fret_efficiency,
   chi2, residuals, geometry, av_metrics), all deriving from an `Evaluator` ABC
   with JSON round-trip and DataFrame/CSV export.
@@ -105,13 +106,13 @@ roadmap is [PRD-57](/prds/prd-57.md).
 
 ## Idea: structure-aware MMFDB sample definer
 
-`fps_json_editor` already implements most of what a flrCIF-grade sample definer
+ChiMOL's labelling editor (`chimol.plugins.labelling`) already implements most of what a flrCIF-grade sample definer
 needs — PDB loading, atom-level position picking, accessible-volume simulation,
-and distance restraints. Its sub-widgets (`PositionPanel`, `MolView`, `AVWorker`)
+and distance restraints. Its parts (the positions table, the AV computation, the distance table)
 are reuse candidates for a future `sample_definer` that produces MMFDB
 `SampleDefinition`/`ProbeDefinition`/`FretPairDefinition` records (a structure-aware
 replacement for the flat sample picker), auto-filling AV parameters and
 photophysics from the fluorophore database and computing R0 from spectral overlap.
-The cleanest path composes those widgets into a new host rather than modifying
-`fps_json_editor`; this feeds the sample-tracking work in
+The cleanest path composes those parts into a new host rather than modifying
+the editor; this feeds the sample-tracking work in
 [PRD-02](/prds/prd-02.md), [PRD-06](/prds/prd-06.md) and [PRD-08](/prds/prd-08.md).

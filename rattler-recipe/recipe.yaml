@@ -52,7 +52,6 @@ build:
       - spectra-download = chisurf.plugins.spectra_downloader.cli:cli
       - chisurf = chisurf.__main__:main
       - csg_kappa2distribution = chisurf.plugins.calculator.kappa2_dist.__main__:main
-      - csg_fps_json_edit = chisurf.plugins.modelling.fps_json_editor.__main__:main
       - csg_fret_dock = chisurf.plugins.modelling.fret.__main__:main
       - csg_calculator = chisurf.plugins.calculator.fret_calculator.__main__:main
       - csg_f_test = chisurf.plugins.core.f_test.__main__:main

@@ -252,10 +252,10 @@
     "status": "ai-reviewed"
   },
   "23_accessible_volume.md": {
-    "date": "2026-10-14",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "fb2e9f2a2f25b14feee2c9524aec2d5e0f8f08b4a525464a2f081bd9412f9f84",
+    "sha256": "d6ab26d24b6865f8b7f021516dcdda507046032963761f3c77fedd5197a41150",
     "status": "ai-reviewed"
   },
   "24_scan_images.md": {
@@ -399,10 +399,10 @@
     "status": "ai-reviewed"
   },
   "44_molecular_viewer.md": {
-    "date": "2026-10-20",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "0ab225e94e0fbdeadf665ca51b1c8613554d6b2c5fefe6f16b14263df3e9141b",
+    "sha256": "69316e4ca9fb49df89ae7c02b149621fcf29017791827af184dfbf29c388f3cc",
     "status": "ai-reviewed"
   },
   "45_scan_precision.md": {
@@ -686,10 +686,10 @@
     "status": "ai-reviewed"
   },
   "88_fret_docking.md": {
-    "date": "2026-10-20",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "795e985cc9f9342ddfd16e9c8465819a1cf6dace35791d110e44a7cf6dae77f4",
+    "sha256": "26010304de3746e02c9fa67555bafdf58c029d5575997f35e9de256ea06e7788",
     "status": "ai-reviewed"
   },
   "88_microtime_shifter.md": {
@@ -801,7 +801,7 @@
     "date": "2026-10-26",
     "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "6eaf4ed584405a20563c7b5cb605e15f149a4264d509e332ccf00726bf5dfce1",
+    "sha256": "766e34350c3f6078011bfaf9beb4db217442b73436a1ffa7d955ff3ba3db75f5",
     "status": "ai-reviewed"
   },
   "irf_estimation.md": {

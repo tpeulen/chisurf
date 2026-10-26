@@ -368,19 +368,20 @@ def _grab_22_trace_browser():
 
 # ---------------------------------------------------------------- guide 23
 def _grab_23_fps_editor():
-    """Structure › FRET › FPS JSON Editor: ChiMOL's labelling editor on the HIV-RT project, every AV computed."""
+    """ChiMOL › Tools › Labelling: the labelling editor on the HIV-RT project, every AV computed."""
     import time
 
     from emtk.native import NativeHost
     from PIL import Image
 
-    from chisurf.plugins.modelling.fps_json_editor.gui.app import make_app
+    from chisurf.plugins.chimol.app import make_app as make_chimol
 
     src = pathlib.Path("chisurf/plugins/modelling/fret/examples/fps_hiv_rt")
     work = pathlib.Path(tempfile.mkdtemp()) / "fps_hiv_rt"
     shutil.copytree(src, work, ignore=shutil.ignore_patterns("dock_out"))
     size = (1400, 900)
-    app = make_app()
+    # ChiMOL with its labelling editor open, as Tools > Labelling > Positions... opens it.
+    app = make_chimol(commands=("fps_circle , , Positions",))
     host = NativeHost(app, size=size, backend="offscreen")
     host.draw_frame()
     cmd = app._chimol.cmd

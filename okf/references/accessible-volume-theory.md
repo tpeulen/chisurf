@@ -221,7 +221,7 @@ efficiency-derived experimental distances). This score can drive:
 
 The labeling configuration — attachment atoms, per-dye linker/radius parameters,
 Förster radii, experimental distances, and named scoring groups — is carried in
-an **`fps.json`** file. ChiSurf's `fps_json_editor` plugin edits it against a
+an **`fps.json`** file. ChiMOL's labelling editor (`chimol.plugins.labelling`) edits it against a
 loaded PDB; the FRET plugin's `imp_engine` hands it to
 `IMP.bff.restraints.AVNetworkRestraintWrapper`, which builds the AV network and
 the $\chi^2$ scoring function used by the docking/refinement runs. The
@@ -237,8 +237,8 @@ measured decay.
   `core/distance.py` (`distance_between_mean_positions`, `average_distance`,
   `mean_fret_distance`, `av_pair_statistics`), integrative scoring
   `core/imp_engine.py`.
-- Editor & config: `chisurf/plugins/modelling/fps_json_editor/` (the `fps.json`
-  labeling/scoring schema).
+- Editor & config: `chimol.plugins.labelling` (`FpsModel`, the editor, `chimol-fps`; the `fps.json`
+  labeling/scoring schema is IMP.bff's).
 - User guide: [`docs/guides/23_accessible_volume.md`](../../docs/guides/23_accessible_volume.md);
   polymer $P(R)$ companion
   [`docs/guides/03_polymer_distance_distributions.md`](../../docs/guides/03_polymer_distance_distributions.md).

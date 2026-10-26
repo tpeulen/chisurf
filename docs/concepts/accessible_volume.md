@@ -254,7 +254,7 @@ excluded-volume and other data). Combined with the analytic
 connects a measured efficiency to a structure or an ensemble.
 
 In ChiSurf the labeling/scoring configuration lives in an `fps.json` file edited in
-ChiMOL's labelling window (*Structure ▸ FRET ▸ FPS JSON Editor*); the AV grid
+ChiMOL's labelling window (*ChiMOL ▸ Tools ▸ Labelling*); the AV grid
 engine is the external Bayesian-fluorescence framework (`IMP.bff`, dye code `IMP.bff.cgdye`), and the FRET plugin
 hands the network to an AV-restraint scoring function for docking and refinement.
 
@@ -268,7 +268,7 @@ hands the network to an AV-restraint scoring function for docking and refinement
   {src}`chisurf/core/structure/av/__init__.py#DynamicAV`; FRET plugin
   {src}`chisurf/plugins/modelling/fret/core/av.py` and
   {src}`chisurf/plugins/modelling/fret/core/distance.py`; editor
-  `chimol.plugins.labelling` (opened by `chisurf/plugins/modelling/fps_json_editor/`).
+  `chimol.plugins.labelling` (ChiMOL **Tools ▸ Labelling**; headless `chimol-fps`).
 - Key literature: {cite}`sindbert2011` introduces the accessible volume and
   measures what the linker does to a distance; {cite}`kalinin2012` is the FPS
   toolkit and its benchmark; {cite}`dimura2016` reviews FRET-restrained

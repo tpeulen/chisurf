@@ -7,10 +7,10 @@
     "status": "ai-reviewed"
   },
   "accessible_volume.md": {
-    "date": "2026-10-14",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "91ce743a5e433a9d8ff79a63cc98c7739208e08236ec77f938f84564fd9d8674",
+    "sha256": "d411980b0d436cef3dd446dbbfcca3016e253b923b76dae168b3aa50635d15bc",
     "status": "ai-reviewed"
   },
   "accurate_fret.md": {

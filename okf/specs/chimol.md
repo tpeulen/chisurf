@@ -261,7 +261,11 @@ would have given them. Progress against that is tracked in
 [pymol-parity](/plugins/pymol-parity.md), which holds the measured gap, the tier
 list and the findings — this concept holds only the target.
 
-## Deferred scope — the labelling plugin belongs here
+## Deferred scope — the labelling plugin belongs here (done 2026-10-26)
+
+Done: the editor, its document model and the headless checks live in `chimol.plugins.labelling`
+(chimol `d31ca8b`); ChiSurf's `fps_json_editor` plugin is deleted and its RPC is the ChiMOL host's.
+The ruling below is kept as the record.
 
 Ruled 2026-08-10: the labelling plugin (the `LabelStructure` widget owned by
 `modelling/fps_json_editor`, imported by `modelling/fret`'s wizard) **should be

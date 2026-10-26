@@ -1,8 +1,8 @@
 """The stable API/RPC contract: names, envelopes, error codes, and where data
 stops being objects and becomes JSON.
 
-Modelled on ChiSurf's per-plugin contract (`chisurf/plugins/modelling/
-fps_json_editor/api/contract.py`), because QuEst is one of its plugins and a
+Modelled on ChiSurf's per-plugin RPC contracts (names, envelopes, a
+descriptor), because QuEst is one of its plugins and a
 host that can introspect every other plugin the same way is the point of
 `LAY-05`. Method names were already namespaced (`quest.simulate`, like
 `lightpath.simulate`); what was missing was a version, an error taxonomy, a

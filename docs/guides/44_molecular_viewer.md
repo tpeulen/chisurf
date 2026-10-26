@@ -123,8 +123,7 @@ position's dye **accessible volume** is computed and added as its own object
 (see [accessible-volume calculations](23_accessible_volume.md)), and the
 document's FRET distances are drawn between the AV mean positions. The plan
 opens in the **Labelling network** window (**Tools ▸ Labelling**), the fps.json
-editor — the same window the ChiSurf menu **Structure ▸ FRET ▸ FPS JSON Editor**
-opens.
+editor, ChiMOL's own (the labelling plan is a ChiMOL plugin).
 
 Objects appear in the **Object List**, one row each. Every row carries the same
 five menus PyMOL uses, and the grey `all` row applies them to everything at once:

@@ -391,13 +391,6 @@
     "sha256": "909a24d64c415ca2e29c4005681a5e6db97183561f8817c2a1d7b66d0866f658",
     "status": "ai-reviewed"
   },
-  "plugins/fps_json_editor.md": {
-    "date": "2026-10-14",
-    "reviewer": "agent",
-    "reviewer_kind": "ai",
-    "sha256": "501db87510e39dbaec73268c3423212ece87c3d86caae80a6c9ac3749c21a152",
-    "status": "ai-reviewed"
-  },
   "plugins/fret_calculator.md": {
     "date": "2026-10-20",
     "reviewer": "agent",

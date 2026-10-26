@@ -40,11 +40,6 @@ _SKIP_MARKERS = ("cookiecutter",)
 #: thing that can say where to start, what the setting means and what to check.
 _MIN_STEPS = 3
 
-#: ``GUIDE = "tour <name>"`` in a ChiMOL-hosted tool's emtk module: its Guide
-#: runs that chimol tour (see :meth:`GuiPlugin._delegated_tour`).
-_DELEGATED_TOUR = re.compile(r"""^GUIDE\s*=\s*["']tour\s+([\w-]+)["']""", re.MULTILINE)
-_CHIMOL_TOURS = _ROOT / "modules" / "chimol" / "chimol" / "data" / "tours"
-
 #: Below this a help page is a stub — a sentence restating the tool's name.
 _MIN_HELP_CHARS = 400
 
@@ -136,30 +131,7 @@ class GuiPlugin:
 
     @property
     def guide_file(self) -> pathlib.Path | None:
-        own = self._resource("guide.json")
-        if own is not None and own.is_file():
-            return own
-        return self._delegated_tour() or own
-
-    def _delegated_tour(self) -> pathlib.Path | None:
-        """The chimol tour a ChiMOL-hosted tool's Guide button starts, if it names one.
-
-        A tool that opens one of chimol's own windows inside ``ChimolHostApp``
-        (Structure > FRET > FPS JSON Editor) has no tour of its own to ship: its
-        Guide runs a chimol ``tour <name>``, whose steps live in chimol's
-        ``data/tours/<name>.json``. The module declares that as
-        ``GUIDE = "tour <name>"``; the tour file must exist and pass the same
-        checks as a ``guide.json``.
-        """
-        module = self.gui.split(":")[0]
-        source = _ROOT / pathlib.Path(module.replace(".", "/")).with_suffix(".py")
-        if not module or not source.is_file():
-            return None
-        match = _DELEGATED_TOUR.search(source.read_text(encoding="utf-8"))
-        if match is None:
-            return None
-        tour = _CHIMOL_TOURS / f"{match.group(1)}.json"
-        return tour if tour.is_file() else None
+        return self._resource("guide.json")
 
     def has_help(self) -> bool:
         return self.help_file is not None and self.help_file.is_file()

@@ -12,7 +12,7 @@ tags: [guides, fret, structure]
 Selection** chooses the label pairs that tell the conformations of a trajectory apart. Each keeps its state while the
 other is shown and has its own **Guide** and **Help**.
 
-The restraints are an `fps.json` plan: build it in ChiMOL's labelling window (*Structure → FRET → FPS JSON Editor*,
+The restraints are an `fps.json` plan: build it in ChiMOL's labelling window (*ChiMOL → Tools → Labelling → Positions…*,
 see the [accessible-volume guide](23_accessible_volume.md)). Theory of the accessible volumes behind the restraints:
 [accessible volumes](../concepts/accessible_volume.md).
 

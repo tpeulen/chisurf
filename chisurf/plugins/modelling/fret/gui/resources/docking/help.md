@@ -11,7 +11,7 @@ If you have not used it before, press **Guide** for the walk-through.
 | Input | Meaning |
 |---|---|
 | **PDB rigid bodies** | One structure per rigid body; the row number is the body id. The same file twice is a homodimer. |
-| **fps.json** | Labelling positions and measured distances (build them in ChiMOL's labelling window: Structure › FRET › FPS JSON Editor), or an FPS LPs `.txt` file. |
+| **fps.json** | Labelling positions and measured distances (build them in ChiMOL's labelling window: ChiMOL › Tools › Labelling › Positions…), or an FPS LPs `.txt` file. |
 | **Output** | Where the docked structures, the score file and the traces are written (`dock_out` next to the fps.json when left empty). |
 | **Op** | `dock` rigid-body docking; `refine` conservative minimisation; `screen` ranks a library of structures; `score` scores one structure. |
 | **Method** | `minimize` is fast conjugate-gradient minimisation; `mc` is replica-exchange Monte Carlo. |
