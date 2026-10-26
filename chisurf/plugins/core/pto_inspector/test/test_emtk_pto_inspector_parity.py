@@ -279,26 +279,31 @@ def test_reload_picks_up_a_result_written_since(container):
 # ── 3. drop and pack, MMFDB picker ──────────────────────────────────────
 
 
-def test_the_host_hook_takes_a_dropped_container(shared_container):
-    """emtk's Qt host accepts a drag only for a control with files_dropped / on_files_dropped."""
+def test_the_workspace_hands_a_container_over(shared_container):
+    """A photon stream or burst run of a .pto opens its container; nothing else is opened."""
+    from chisurf.plugins.core.pto_inspector.gui.app import receive_containers
+
     app = make_app()
     try:
-        assert callable(app.files_dropped) and callable(app.on_files_dropped)
-        assert app.on_files_dropped([]) is False
-        assert app.files_dropped(["/tmp/readme.txt"]) is False  # nothing to open or pack
+        for name in ("files_dropped", "on_files_dropped", "on_paths_dropped", "open_database"):
+            assert not hasattr(app, name), name
+        with pytest.raises(ValueError):
+            receive_containers(app, {"files": ["/tmp/readme.txt"]})  # nothing to open or pack
         assert app.model.inspection is None and app.vendor_paths == []
-        assert app.files_dropped([str(shared_container)]) is True
+        receive_containers(app, {"files": [str(shared_container)]})
         assert app.model.filename == str(shared_container) and app.model.selected.name == "fcs"
     finally:
         app.close()
 
 
-def test_a_dropped_vendor_file_is_offered_for_packing_and_sources_are_kept(tmp_path):
+def test_a_picked_vendor_file_is_offered_for_packing_and_sources_are_kept(tmp_path):
+    from chisurf.plugins.core.pto_inspector.gui.app import receive_containers
+
     raw = tmp_path / "raw.ptu"
     shutil.copy(PTU, raw)
     app = make_app()
     try:
-        assert app.files_dropped([str(raw)]) is True
+        receive_containers(app, {"files": [str(raw)]})
         assert app.vendor_paths == [raw]
         assert any("Choose a folder for the new PTO container" in s for s in draw(app).strings)
         out = tmp_path / "containers"
@@ -313,49 +318,13 @@ def test_a_dropped_vendor_file_is_offered_for_packing_and_sources_are_kept(tmp_p
         app.close()
 
 
-def test_the_open_dialog_loads_the_choice_and_cancel_changes_nothing(shared_container, monkeypatch):
-    from emtk.file_dialog import FileDialog
-
+def test_the_one_dialog_left_is_the_export_save_dialog(shared_container):
     app = make_app()
     try:
-        app.choose_file("open")
-        assert app.dialog is not None and app.file_action == "open"
-        monkeypatch.setattr(FileDialog, "draw", lambda self: False)
-        draw(app, frames=1)
-        assert app.dialog is None and app.model.inspection is None
-        app.choose_file("open")
-        monkeypatch.setattr(FileDialog, "draw", lambda self: [str(shared_container)])
-        draw(app, frames=1)
-        assert app.model.filename == str(shared_container)
-    finally:
-        app.close()
-
-
-def test_the_database_picker_opens_the_resolved_container(shared_container, monkeypatch):
-    import chisurf.plugins.core.pto_inspector.gui.app as module
-
-    calls = []
-
-    class Picker:
-        def __init__(self, **kwargs):
-            calls.append(kwargs)
-
-        def open(self):
-            calls[0]["on_paths"]([shared_container])
-
-        def draw(self, box):
-            pass
-
-    monkeypatch.setattr(module, "DatasetPicker", Picker)
-    monkeypatch.setattr(module, "session_client", lambda: "fake client")
-    app = make_app()
-    try:
-        app.open_database()
-        assert calls[0]["client"] == "fake client" and calls[0]["kinds"] == [
-            "raw_measurement",
-            "raw_data",
-        ]
-        assert app.model.filename == str(shared_container)
+        assert not hasattr(app, "choose_file")
+        app.model.set_filename(str(shared_container))
+        app.choose_export()
+        assert app.dialog is not None and app.dialog.mode == "save" and app.file_action == "export"
     finally:
         app.close()
 
@@ -408,8 +377,7 @@ def test_every_control_has_a_tooltip(shared_container):
         assert inventory["controls_without_tooltip"] == []
         labels = {row["label"] for row in inventory["interactive"]}
         assert {
-            action_caption("open"),
-            "Database",
+            "Use selected",
             "Reload",
             "Verify",
             action_caption("export"),
@@ -436,13 +404,13 @@ def test_button_enabled_states_follow_the_state(shared_container, monkeypatch):
     app = make_app()
     try:
         draw(app, frames=1)
+        assert "open" not in seen and "Database" not in seen  # the input is the workspace
         assert (
-            seen["open"],
             seen["Reload"],
             seen["Verify"],
             seen["export"],
             seen["Open tool"],
-        ) == (True, False, False, False, False)
+        ) == (False, False, False, False)
         app.model.set_filename(str(shared_container))  # fcs: no tool claims it
         draw(app, frames=1)
         assert (seen["Reload"], seen["Verify"], seen["export"], seen["Open tool"]) == (
@@ -505,7 +473,7 @@ def test_help_exists_its_links_are_live_and_it_draws(app):
     repo = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
     links = re.findall(r"\]\((docs/[^)#]+)\)", text)
     assert links and all((repo / link).is_file() for link in links)
-    for word in ("Open tool", "Verify", "Export", "Provenance", "Database"):
+    for word in ("Open tool", "Verify", "Export", "Provenance", "Input"):
         assert word in text
     app.help.show()
     assert draw(app).strings

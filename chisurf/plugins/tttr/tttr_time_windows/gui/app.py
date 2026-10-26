@@ -1,7 +1,7 @@
 """EMTK immediate-mode UI for the TTTR → time-window BIDs tool.
 
-Left: the file queue (buttons + the drop hint; OS drops land on the Qt window
-and are routed to :meth:`TimeWindowController.drop_paths`) and the split
+Left: the Input section (the workspace's photon streams, generated from the manifest's
+``accepts[].from_workspace``), the queue of streams picked from it, and the split
 settings — time-window duration and output folder. Right: the intensity-trace
 preview with the time-window boundaries as dashed vertical lines, and the
 processing log. The tool (:class:`~.controller.TimeWindowController`) keeps the client,
@@ -20,8 +20,9 @@ import numpy as np
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
-from emtk.view_form import FormState, draw_sections
+from emtk.view_form import FormState, draw_form, draw_sections
 
+from chisurf.core.plugin.workspace_input import input_section, spec_for
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
@@ -66,7 +67,6 @@ class TimeWindowGui(TourTarget):
         on_process: Callable[[], None] | None = None,
         on_clear: Callable[[], None] | None = None,
         on_browse: Callable[[], None] | None = None,
-        on_add_files: Callable[[], None] | None = None,
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
@@ -74,12 +74,18 @@ class TimeWindowGui(TourTarget):
         self.on_process = on_process
         self.on_clear = on_clear
         self.on_browse = on_browse
-        self.on_add_files = on_add_files
         self.on_guide = on_guide
         self.on_help = on_help
 
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.form = FormState()
+        manifest = json.loads(
+            (Path(__file__).resolve().parents[1] / "manifest.json").read_text(encoding="utf-8")
+        )
+        found = spec_for(manifest)
+        #: The Input section: the workspace's photon streams (the manifest's from_workspace).
+        self.input_spec = {"sections": [input_section(found[1])]} if found else {"sections": []}
+        self.input_form = FormState(on_used=self._used)
         #: Index of the queued file shown in the preview (-1 = none).
         self.preview_index: int = -1
         #: The preview data the plot draws: set by the tool on load.
@@ -92,7 +98,9 @@ class TimeWindowGui(TourTarget):
             Split("v", 0.62, Region("preview"), Region("summary")),
         )
         self.docks = DockManager(layout)
-        self.docks.add_window("files", "TTTR files", self._draw_files, dock="files", closable=True)
+        self.docks.add_window(
+            "files", "Photon streams", self._draw_files, dock="files", closable=True
+        )
         self.docks.add_window(
             "settings", "Settings", self._draw_settings, dock="settings", closable=True
         )
@@ -120,6 +128,7 @@ class TimeWindowGui(TourTarget):
             owner=tool,
             wait_for_controls=True,
         )
+        tool.workspace_input_on_used = self._used
 
     def load_example(self) -> None:
         """Queue the generated demonstration stream through the controller."""
@@ -162,15 +171,6 @@ class TimeWindowGui(TourTarget):
         )
         self.remember("load_example")
         im.same_line()
-        if im.button(tr("Files")):
-            self._used("add_files")
-            if callable(self.on_add_files):
-                self.on_add_files()
-        im.set_item_tooltip(
-            tr("Pick TTTR files (.ptu, .ht3, .phu, …) and queue them for splitting.")
-        )
-        self.remember("add_files")
-        im.same_line()
         if im.button(tr("Clear"), role="danger"):
             if callable(self.on_clear):
                 self.on_clear()
@@ -182,31 +182,19 @@ class TimeWindowGui(TourTarget):
         self.remember("help")
         im.separator()
 
-        for label, callback, tooltip in (
-            (
-                "Folder",
-                self.tool._add_folder_dialog,
-                "Queue supported TTTR files from a folder recursively.",
-            ),
-            (
-                "Database",
-                self.tool._add_from_database,
-                "Select TTTR datasets from the session MMFDB database.",
-            ),
-            (
-                "− Remove",
-                self.tool._remove_preview_file,
-                "Remove the selected preview file from the queue.",
-            ),
-        ):
-            if im.button(label):
-                callback()
-            im.set_item_tooltip(tooltip)
+        # The input: photon streams of the workspace (files dropped on ChiSurf land there).
+        draw_form(self.input_spec, self.tool, self.input_form)
+        if "workspace_input_rows" in self.input_form.rects:
+            self.item_rects["workspace_input_rows"] = self.input_form.rects["workspace_input_rows"]
         im.separator()
-        im.text_wrapped(tr("Drop TTTR files here (.ptu, .ht3, .phu, …) — or use the buttons."))
+        im.text(tr("Queued"))
+        im.same_line()
+        if im.button(tr("− Remove")):
+            self.tool._remove_preview_file()
+        im.set_item_tooltip(tr("Remove the selected preview stream from the queue."))
         paths = self.tool._file_paths
         if not paths:
-            im.text_disabled(tr("No files queued."))
+            im.text_disabled(tr("Nothing queued: pick photon streams above (or Load example)."))
             return
         # One row per queued file; clicking a row selects it for the preview.
         for i, path in enumerate(paths):
@@ -366,7 +354,6 @@ class TimeWindowApp(ImApp):
         on_process: Callable[[], None] | None = None,
         on_clear: Callable[[], None] | None = None,
         on_browse: Callable[[], None] | None = None,
-        on_add_files: Callable[[], None] | None = None,
     ) -> None:
         spec = json.loads(Path(__file__).with_name("window.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (1100, 720))
@@ -376,7 +363,6 @@ class TimeWindowApp(ImApp):
             on_process=on_process,
             on_clear=on_clear,
             on_browse=on_browse,
-            on_add_files=on_add_files,
             on_guide=self.start_guide,
             on_help=self.show_help,
         )

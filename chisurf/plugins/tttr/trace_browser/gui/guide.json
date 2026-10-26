@@ -27,8 +27,8 @@
       }
     },
     {
-      "title": "Open a folder",
-      "text": "Press <b>Open</b> and choose a folder with TTTR files, or drop a folder on the window. The files are listed in the table and the first one is plotted.",
+      "title": "Pick the files",
+      "text": "Pick photon streams in the <b>Input</b> table -- the workspace's TTTR files; files dropped on the ChiSurf window land there -- and press <b>Use selected</b>. They are listed in the table (from their folder, which keeps ratings and notes) and the first one is plotted.",
       "target": {
         "name": "folder_opened"
       },

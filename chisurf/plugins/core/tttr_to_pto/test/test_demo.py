@@ -14,22 +14,33 @@ def test_make_demo_writes_a_photon_stream():
 
 
 def test_load_example_converts_to_pto():
-    """The affordance queues the stream; the worker writes the container file."""
+    """The affordance adds the stream to the workspace and hands it over; the worker writes the
+    container, which comes back into the workspace as the example's child."""
     import time
 
+    from chisurf.core.api import dataset_container
+
+    held = dataset_container()
+    before = list(held)
     app = make_app()
     model = app.model
-    model.load_example()
-    deadline = 60.0
-    while model.job and deadline > 0:
+    try:
+        model.load_example()
+        example = next(d for d in held if d not in before)
+        deadline = time.monotonic() + 60.0
+        while (model.job.running or model.pending) and time.monotonic() < deadline:
+            model.poll()
+            time.sleep(0.05)
         model.poll()
-        time.sleep(0.1)
-        deadline -= 0.1
-    model.poll()
-    rows = model.rows
-    assert rows
-    outputs = rows[0].get("outputs") or []
-    assert outputs, rows[0]
-    container = Path(outputs[0])
-    assert container.suffix == ".pto"
-    assert container.is_file() and container.stat().st_size > 0
+        rows = model.rows
+        assert rows
+        outputs = rows[0].get("outputs") or []
+        assert outputs, rows[0]
+        container = Path(outputs[0])
+        assert container.suffix == ".pto"
+        assert container.is_file() and container.stat().st_size > 0
+        children = [d for d in held if getattr(d, "result_of", "") == example.unique_identifier]
+        assert children and children[0].data_kind == "photons"
+    finally:
+        app.close()
+        held[:] = before

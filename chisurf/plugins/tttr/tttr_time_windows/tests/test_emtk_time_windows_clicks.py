@@ -1,8 +1,10 @@
 """The drawn time-window app, driven with simulated pointer and keyboard events.
 
-Every control of the Qt tool (toolbar Process / Clear / Help, the file list with Files / Folder /
-Database / Remove / drop, the duration and output fields, Browse, the preview and the log) is used
-the way a person uses it, and each test asserts what the next frame shows.
+Every control (toolbar Process / Clear / Help, the Input section of the workspace's photon
+streams with Use selected, the queue with Remove, the duration and output fields, Browse, the
+preview and the log) is used the way a person uses it, and each test asserts what the next frame
+shows. The Qt tool's Files / Folder / Database buttons and its drop are gone: the input is the
+Datasets workspace.
 """
 
 from __future__ import annotations
@@ -42,8 +44,28 @@ def folder(tmp_path, monkeypatch):
     return tmp_path
 
 
+def _rows(folder):
+    """The workspace's photon streams as the Input section lists them."""
+    return [
+        {
+            "uid": f"u-{n}",
+            "name": f"{n}.ptu",
+            "kind": "photons",
+            "kind_label": "Photons",
+            "source": f"{n}.ptu",
+            "address": str(folder / f"{n}.ptu"),
+            "result_of": "",
+        }
+        for n in ("a", "b")
+    ]
+
+
 @pytest.fixture
-def ui(folder):
+def ui(folder, monkeypatch):
+    from chisurf.plugins.tttr.tttr_time_windows.gui.controller import TimeWindowController
+
+    # The rows a session's workspace would hold (the files are one-byte stand-ins, no header).
+    monkeypatch.setattr(TimeWindowController, "workspace_input_rows", lambda self: _rows(folder))
     client = _FakeClient()
     app = create_app(client=client)
     pointer = Pointer(app)
@@ -69,11 +91,17 @@ def settle(ui, limit=60.0):
 
 
 def queue_both(ui):
-    ui.click("Files")
-    ui.click("a.ptu")
-    ui.click("b.ptu")
-    ui.click("Open")
+    """Select both workspace rows of the Input section and press Use selected (the ``folder``
+    fixture's files; it made their folder the working directory)."""
+    ui.app.tool.workspace_input_selection = _rows(Path.cwd())
+    ui.click("Use selected")
     settle(ui)
+
+
+def click_queued(ui, index):
+    """Click the queued stream *index* (its name is in the Input table above it, too)."""
+    x, y, w, h = ui.app.item_rects[f"file{index}"]
+    ui.click((x + w / 2, y + h / 2))
 
 
 def set_time_window(ui, text):
@@ -86,57 +114,48 @@ def set_time_window(ui, text):
 
 
 # -- the file list ---------------------------------------------------------------------------------------
-def test_files_button_opens_the_dialog_cancel_closes_it_and_open_queues_the_picked_files(ui):
-    ui.click("Files")
-    assert ui.app.tool.dialog is not None and ui.drawn("Cancel")
-    ui.click("Cancel")
-    assert ui.app.tool.dialog is None and ui.app.tool._file_paths == []
+def test_streams_picked_in_the_input_section_are_queued_and_the_first_previewed(ui):
+    assert ui.drawn("Nothing queued: pick photon streams above (or Load example).")
+    ui.click("a.ptu")  # a row of the Input section
+    ui.click("Use selected")
+    settle(ui)
+    assert [p.name for p in ui.app.tool._file_paths] == ["a.ptu"]
+    assert ui.app.tool._sources == {str(ui.app.tool._file_paths[0]): "u-a"}
     queue_both(ui)
     assert [p.name for p in ui.app.tool._file_paths] == ["a.ptu", "b.ptu"]
-    assert ui.drawn("a.ptu") and ui.drawn("b.ptu") and not ui.drawn("No files queued.")
+    assert ui.drawn("Using a.ptu, b.ptu")
     assert (
         ui.app.time_window_gui.preview_index == 0 and ui.app.tool.preview_data is not None
     )  # the first is previewed
 
 
-def test_the_file_dialog_closes_with_its_x_and_with_escape(ui):
-    ui.click("Files")
+def test_there_is_no_input_dialog_no_drop_and_no_database_button(ui):
+    """Files enter ChiSurf through the shell's drop into the workspace, never here."""
+    for label in ("Files", "Folder", "Database"):
+        assert not ui.drawn(label), label
+    for name in ("files_dropped", "on_files_dropped", "on_paths_dropped"):
+        assert not hasattr(ui.app, name), name
+    assert not hasattr(ui.app.tool, "dataset_picker")
+
+
+def test_the_output_folder_dialog_closes_with_its_x_and_with_escape(ui):
+    ui.click(action_caption("browse"))
     x, y, w, h = ui.app._file_window.box
     ui.click((x + w - 14.0, y + 13.0))
     assert ui.app.tool.dialog is None
-    ui.click("Files")
+    ui.click(action_caption("browse"))
     ui.move((x + w / 2, y + h / 2))
     ui.key(KEY_ESCAPE)
     assert ui.app.tool.dialog is None
 
 
-def test_folder_button_queues_the_supported_files_of_a_folder(ui, folder):
-    (folder / "sub").mkdir()
-    (folder / "sub" / "c.ht3").write_bytes(b"x")
-    (folder / "notes.txt").write_text("no")
-    ui.click("Folder")
-    assert ui.app.tool.dialog is not None
-    ui.click("Choose")
-    settle(ui)
-    assert sorted(p.name for p in ui.app.tool._file_paths) == ["a.ptu", "b.ptu", "c.ht3"]
-
-
-def test_database_button_opens_the_dataset_picker(ui, monkeypatch):
-    from chisurf.emtk.dataset_picker import DatasetPicker
-
-    opened = []
-    monkeypatch.setattr(DatasetPicker, "open", lambda self: opened.append(self))
-    ui.click("Database")
-    assert len(opened) == 1 and ui.app.tool.dataset_picker is opened[0]
-
-
 def test_clicking_a_file_row_previews_that_file(ui):
     queue_both(ui)
-    ui.click("b.ptu")
+    click_queued(ui, 1)
     settle(ui)
     assert ui.app.time_window_gui.preview_index == 1
     assert ui.drawn("Preview: b.ptu") or ui.app.tool.message == "Preview: b.ptu"
-    ui.click("a.ptu")
+    click_queued(ui, 0)
     settle(ui)
     assert ui.app.time_window_gui.preview_index == 0 and ui.app.tool.message == "Preview: a.ptu"
 
@@ -145,11 +164,12 @@ def test_remove_button_takes_the_previewed_file_off_the_queue(ui):
     ui.click("− Remove")  # nothing queued: nothing happens
     assert ui.app.tool._file_paths == []
     queue_both(ui)
-    ui.click("b.ptu")
+    click_queued(ui, 1)
     settle(ui)
     ui.click("− Remove")
     settle(ui)
-    assert [p.name for p in ui.app.tool._file_paths] == ["a.ptu"] and not ui.drawn("b.ptu")
+    assert [p.name for p in ui.app.tool._file_paths] == ["a.ptu"]
+    assert ui.app.tool._sources == {str(ui.app.tool._file_paths[0]): "u-a"}  # b's source went too
     assert ui.app.time_window_gui.preview_index == 0  # the neighbour is previewed now
 
 
@@ -165,7 +185,7 @@ def test_clear_button_empties_the_queue_the_preview_and_the_log(ui):
         and ui.app.tool.preview_data is None
     )
     assert (
-        ui.drawn("No files queued.")
+        ui.drawn("Nothing queued: pick photon streams above (or Load example).")
         and ui.drawn("Cleared")
         and ui.drawn("Processing log will appear here…")
     )
@@ -310,23 +330,3 @@ def test_the_tour_next_and_prev_buttons_can_be_clicked(ui):
     assert ui.app.time_window_gui.tour.step_idx == 4
     ui.click("◄ Prev")
     assert ui.app.time_window_gui.tour.step_idx == 3
-
-
-# -- drops on the hosts -------------------------------------------------------------------------------------
-def test_a_drop_reaches_the_app_through_the_native_host(ui, folder):
-    """A dropped file is queued, in this app and in a fresh one.
-
-    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
-    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
-    the Qt half.
-    """
-    from emtk.app import ControlSurface
-
-    assert ControlSurface(ui.app).on_files_dropped([str(folder / "a.ptu")]) is True
-    assert [p.name for p in ui.app.tool._file_paths] == ["a.ptu"]
-    other = create_app(client=_FakeClient())
-    try:
-        assert ControlSurface(other).on_files_dropped([str(folder / "b.ptu")]) is True
-        assert [p.name for p in other.tool._file_paths] == ["b.ptu"]
-    finally:
-        other.close()

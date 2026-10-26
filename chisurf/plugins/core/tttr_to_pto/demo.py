@@ -40,7 +40,17 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> Path:
 
 
 def load_into(model) -> Path:
-    """Queue the example for conversion; the model's worker writes the container."""
+    """Put the example in the workspace and hand it to the converter as a picked row would be;
+    the model's worker writes the container (a child of the example in the workspace)."""
+    from chisurf.plugins.tttr.workspace_io import add_photons, example_into_workspace
+
     path = make_demo()
-    model.add_paths([str(path)])
+    app = getattr(model, "workspace_input_app", None)
+    if app is None:  # the model alone (scripts, tests): straight into its own queue
+        dataset = add_photons(str(path))
+        model.add_paths([str(path)], source=str(getattr(dataset, "unique_identifier", "") or ""))
+        return path
+    from chisurf.plugins.core.tttr_to_pto.gui.app import receive_photons
+
+    example_into_workspace(path, receive_photons, app, key="files", many=True)
     return path

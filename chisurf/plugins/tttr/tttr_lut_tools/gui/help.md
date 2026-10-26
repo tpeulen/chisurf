@@ -11,7 +11,8 @@ is not. The Felekyan et al. (Rev. Sci. Instrum. 2005) construction turns that hi
 cumulative table that remaps every photon's raw micro-time onto an equal-width axis. The
 non-linearity is per routing channel, so one LUT is computed per channel.
 
-1. Load the flat-light TTTR file(s): Files, Folder, Database, or drop them on the window.
+1. Pick the flat-light photon stream(s) in the **Input** table: the TTTR files and container
+   streams of the Datasets workspace (files enter ChiSurf by dropping them on the ChiSurf window).
 2. The upper plot is the raw TAC histogram of the Preview channel. Drag the orange region
    (its edges, or the small square in its middle) to the flat plateau. The red line is the
    offset (Noffset), the green line the low-count threshold. Auto-detect region finds
@@ -27,7 +28,8 @@ channel, or the corrected micro-times of its photons, to a file.
 # settings.tttr.json (optional)
 
 Only needed to share a correction between setups, or to import a LUT you already have as a
-file. Load preview files, Load LUT, select a LUT and assign it to the active channel
+file. Pick preview streams, pick a LUT file (or a settings.tttr.json) in the setup **Input**
+table, select a LUT and assign it to the active channel
 (Selected) or to all channels (All), set a photon-level Shift, then Save JSON.
 The channel table's Show column chooses which channels the plot draws.
 

@@ -60,8 +60,15 @@ class LutWorkspace:
     @staticmethod
     def expand(paths):
         result = []
+        from chisurf.core.fio.address import container_of
+
         for path in paths:
             path = Path(path)
+            if container_of(str(path)) != path:  # a container's photon stream: its address
+                if container_of(str(path)).is_file() and path.suffix.lower() in EXTENSIONS:
+                    if str(path) not in result:
+                        result.append(str(path))
+                continue
             candidates = sorted(path.rglob("*")) if path.is_dir() else [path]
             for candidate in candidates:
                 if candidate.is_file() and candidate.suffix.lower() in EXTENSIONS:

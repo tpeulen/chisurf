@@ -1,7 +1,8 @@
 """EMTK immediate-mode UI for the TTTR Inspector.
 
 Left: the header tags as an editable table — one row per tag, the type chosen
-from the tag-type combo, plus Open / Add / Remove / Save-as-PTU actions and the
+from the tag-type combo, plus the Input section (the workspace's photon streams) and
+Add / Remove / Save-as-PTU actions and the
 source summary. Right, top: the read-only JSON view of the edited header;
 bottom: the photon preview — the opened file's first events (routing channel,
 macro and micro time). The widget
@@ -22,7 +23,9 @@ import emtk.im as im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
+from emtk.view_form import FormState, draw_form
 
+from chisurf.core.plugin.workspace_input import input_section, spec_for
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button
 
@@ -40,13 +43,11 @@ class HeaderEditorGui(TourTarget):
     def __init__(
         self,
         tool: NativeHeaderEditor,
-        on_open: Callable[[], None] | None = None,
         on_save: Callable[[], None] | None = None,
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
         self.tool = tool
-        self.on_open = on_open
         self.on_save = on_save
         self.on_guide = on_guide
         self.on_help = on_help
@@ -58,6 +59,13 @@ class HeaderEditorGui(TourTarget):
         self._photon_binding = None
         self._photon_binding_model = None
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+        manifest = json.loads(
+            (Path(__file__).resolve().parents[1] / "manifest.json").read_text(encoding="utf-8")
+        )
+        found = spec_for(manifest)
+        #: The Input section: the workspace's photon streams (the manifest's from_workspace).
+        self.input_spec = {"sections": [input_section(found[1])]} if found else {"sections": []}
+        self.input_form = FormState()
 
         layout = Split(
             "h",
@@ -156,14 +164,6 @@ class HeaderEditorGui(TourTarget):
         )
         self.remember("load_example")
         im.same_line()
-        if action_button(
-            "open", tooltip=tr("Open a TTTR file (PTU / HT3 / SPC / HDF5) and read its header.")
-        ):
-            if callable(self.on_open):
-                self.on_open()
-                self.tour.notify_used("open")
-        self.remember("open")
-        im.same_line()
         if im.button(tr("➕ Add")):
             self._rows.append({"name": "NewTag", "type": "AnsiString", "value": "", "idx": "-1"})
             self._commit()
@@ -197,6 +197,11 @@ class HeaderEditorGui(TourTarget):
         )
         self.remember("save")
 
+        im.separator()
+        # The input: photon streams of the workspace (files dropped on ChiSurf land there).
+        draw_form(self.input_spec, self.tool, self.input_form)
+        if "workspace_input_rows" in self.input_form.rects:
+            self.remember("workspace_input_rows", self.input_form.rects["workspace_input_rows"])
         im.separator()
         if getattr(self.tool, "validation_error", ""):
             im.text_wrapped(self.tool.validation_error)
@@ -279,7 +284,7 @@ class HeaderEditorGui(TourTarget):
         if not self.model.photon_rows:
             im.text_wrapped(
                 tr(
-                    "Open a TTTR file — its first events appear here "
+                    "Pick a photon stream in the Input section — its first events appear here "
                     "(routing channel, macro and micro time)."
                 )
             )
@@ -327,13 +332,11 @@ class HeaderEditorApp(ImApp):
     def __init__(
         self,
         tool: NativeHeaderEditor,
-        on_open: Callable[[], None] | None = None,
         on_save: Callable[[], None] | None = None,
     ) -> None:
         self.tool = tool
         self.header_gui = HeaderEditorGui(
             tool,
-            on_open=on_open,
             on_save=on_save,
             on_guide=self.start_guide,
             on_help=self.show_help,

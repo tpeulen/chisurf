@@ -18,6 +18,8 @@ import pytest
 from emtk import i18n, implot
 from emtk.testing import PixelPainter, RecordingPainter
 
+from chisurf.plugins.tttr.tttr_lut_tools.gui.app import receive_photons, receive_setup
+
 ROOT = Path(__file__).resolve().parents[5]
 SPC = ROOT / "test/data/tttr/BH/132/BH_SPC132.spc"
 GUI = Path(__file__).resolve().parents[1] / "gui"
@@ -429,35 +431,28 @@ def test_buttons_are_disabled_until_there_is_something_to_act_on(env):
         "save_json",
     ):
         assert not model.enabled(name), name
-    assert model.enabled("request_add_files") and model.enabled("show_help")
+    assert model.enabled("load_example") and model.enabled("show_help")
     assert not model.enabled("apply_setup")
     model.busy = True
-    assert not model.enabled("request_add_files")
+    assert not model.enabled("load_example")
 
 
-def test_file_buttons_open_the_right_dialogs(env, chooser):
+def test_only_output_dialogs_are_left(env, chooser):
+    """The inputs come from the workspace: no Files / Folder / Database / Load LUT / Load JSON."""
     app = make(env)
-    click(app, "request_add_files")
-    dialog = chooser.made[-1]
-    assert dialog.mode == "open" and dialog.multiselect and "*.spc" in dialog.filters
-    chooser.chosen = []
-    app.dialog = None
-    click(app, "request_add_folder")
-    assert chooser.made[-1].mode == "folder"
-    app.dialog = None
-    chooser.chosen = []
-    opened = []
-    app.dataset_picker.open = lambda: opened.append(True)  # the MMFDB picker itself is shared
-    click(app, "request_database")
-    assert opened == [True]
+    for name in (
+        "request_add_files",
+        "request_add_folder",
+        "request_database",
+        "request_load_lut",
+        "request_load_json",
+    ):
+        assert not hasattr(app.model, name), name
+    assert not hasattr(app, "on_files_dropped") and not hasattr(app, "dataset_picker")
     app.model.stage = 1
     app.model.ws.receive_computed_lut("a", [0.0, 1.0], 0)  # Save JSON needs a LUT
     frames(app)
-    for name, mode in (
-        ("request_load_lut", "open"),
-        ("request_load_json", "open"),
-        ("request_save_json", "save"),
-    ):
+    for name, mode in (("request_save_json", "save"),):
         app.dialog = None
         chooser.chosen = []
         click(app, name)
@@ -470,8 +465,7 @@ def test_add_files_folder_remove_clear_and_unsupported_files(env, chooser):
     folder.mkdir()
     shutil.copy(SPC, folder / "a.spc")
     (folder / "notes.txt").write_text("not a photon file")
-    chooser.chosen = [str(folder)]
-    click(app, "request_add_folder")
+    receive_photons(app, {"files": [str(folder / "a.spc")]})  # the workspace hands it over
     settle(app)
     assert [r["name"] for r in app.model.file_rows] == ["a.spc"]
     chooser.chosen = [str(folder / "notes.txt")]
@@ -660,12 +654,13 @@ def test_apply_to_detector_setup_uses_the_callback_and_is_hidden_without_one(env
     assert "apply_setup" not in plain.form.rects
 
 
-def test_drag_and_drop_adds_photon_files_and_imports_luts(env):
+def test_the_workspace_hands_photon_streams_and_a_lut_over(env):
     app = make(env)
     model = app.model
     lut = env["dir"] / "dropped.npy"
     np.save(lut, np.linspace(0, 100, 50))
-    assert app.on_files_dropped([str(env["spc"]), str(lut)])
+    receive_photons(app, {"files": [str(env["spc"])]})
+    receive_setup(app, {"setup": str(lut)})
     settle(app)
     assert [r["name"] for r in model.file_rows] == ["uniform.spc"]
     assert "dropped.npy" in model.ws.loaded_luts
@@ -755,7 +750,8 @@ def test_tab_two_controls_have_tooltips_too(env):
     missing = sorted({r["label"] or r["id"] for r in recorder.rows if not r["tooltip"]})
     assert missing == []
     labels = {r["label"] for r in recorder.rows}
-    assert {"Load LUT", "Clear LUTs", "Selected", "All", "Show JSON", "Load JSON"} <= labels
+    assert {"Clear LUTs", "Selected", "All", "Show JSON"} <= labels
+    assert not {"Load LUT", "Load JSON", "Files", "Folder", "Database"} & labels
 
 
 @pytest.mark.parametrize("size", SIZES)

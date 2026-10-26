@@ -38,6 +38,7 @@ from typing import Any
 
 import numpy as np
 
+from chisurf.core.plugin.workspace_input import WorkspaceInputMixin
 from chisurf.plugins.tttr.trace_browser.core import metadata as _metadata
 from chisurf.plugins.tttr.trace_browser.core import trace as _trace
 
@@ -136,7 +137,7 @@ def get_tttr_supported_exts() -> list[str]:
     return norm
 
 
-class TraceBrowserModel:
+class TraceBrowserModel(WorkspaceInputMixin):
     """State and actions of the Trace Browser.
 
     Parameters
@@ -448,12 +449,11 @@ class TraceBrowserModel:
                 return tttrlib is not None and self.ndx_available()
         return True
 
-    def choose_folder(self) -> None:
-        """Ask the host to open its folder chooser (the Qt *Open*)."""
-        self.dialog = "folder"
+    workspace_input_plugin = "trace_browser"
 
     def load_example(self) -> None:
-        """Open the folder of two small simulated PTU files (:mod:`..demo`, written into the settings cache)."""
+        """Simulate the two small PTU files of :mod:`..demo` into the settings cache, add them to
+        the workspace and list them, as picked rows would be."""
         from ..demo import make_demo
 
         try:
@@ -461,26 +461,40 @@ class TraceBrowserModel:
         except (OSError, RuntimeError) as exc:
             self.error_text = f"Could not write the example: {exc}"
             return
-        self.request("open_folder", folder)
+        from chisurf.core.fio.staging import VENDOR_EXTENSIONS
+        from chisurf.plugins.tttr.workspace_io import add_photons
 
-    def on_paths_dropped(self, paths: Any) -> bool:
-        """Open the first dropped folder (the Qt ``dropEvent``); anything else is ignored.
+        files = sorted(
+            str(p) for p in pathlib.Path(folder).iterdir() if p.suffix.lower() in VENDOR_EXTENSIONS
+        )
+
+        uids = [str(getattr(add_photons(f), "unique_identifier", "") or "") for f in files]
+        self.request("open_files", files, uids)
+
+    def open_files(self, paths: Any, uids: Any = ()) -> bool:
+        """Show the photon streams *paths* (picked in the workspace): their folder -- whose ratings,
+        notes and caches the browser keeps -- listing exactly these files, the first selected.
 
         Returns
         -------
         bool
-            ``True`` when a folder was taken.
+            ``False`` when the folder could not be opened.
         """
-        for item in paths or ():
-            try:
-                folder = pathlib.Path(str(item))
-                if folder.exists() and folder.is_dir():
-                    self.request("open_folder", folder)
-                    return True
-            except Exception:
-                continue
-        self.status_text = "Drop a folder to open it; a file is ignored."
-        return False
+        from chisurf.core.fio.address import container_of
+
+        paths = [str(p) for p in paths or ()]
+        if not paths or not self.open_folder(container_of(paths[0]).parent):
+            return False
+        wanted = set(paths)
+        picked = [r for r in self.files if str(r["path"]) in wanted]
+        if not picked:
+            self.status_text = "The picked streams are not files this browser lists here."
+            return False
+        self.files = picked
+        self.apply_filter()
+        if self.rows:
+            self.select_row(self.rows[0])
+        return True
 
     def select_row(self, record: Any) -> None:
         """Select the table row *record* (the table's ``selected_call``; ``None`` clears).

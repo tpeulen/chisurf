@@ -91,7 +91,9 @@ def ui(tmp_path, monkeypatch):
 
 
 def load(ui, path):
-    assert ui.drop(path)  # one file dropped on the window loads it, as a user would
+    from chisurf.plugins.tttr.ptu_alex_creator.gui.app import receive_input
+
+    receive_input(ui.app, {"file": str(path)})
     settle(ui)
     assert ui.app.model.has_data, ui.app.message
 
@@ -216,9 +218,8 @@ def test_ranges_are_defined_by_hand_in_the_table_and_redetect_restores_them(ui, 
     assert not any(r.get("edited") for r in ui.app.region_rows())
 
 
-def test_a_range_typed_after_typing_the_file_path_reaches_the_cell(ui, tmp_path):
-    ui.type_into_name("input_file", str(planted_alex(tmp_path / "alex.spc")))
-    settle(ui)
+def test_a_range_typed_after_the_file_is_handed_over_reaches_the_cell(ui, tmp_path):
+    load(ui, planted_alex(tmp_path / "alex.spc"))  # handed over by the workspace
     ui.click_name("detect_period")
     settle(ui)
     donor = next(r for r in ui.app.region_rows() if inside(r, DONOR_GATE))

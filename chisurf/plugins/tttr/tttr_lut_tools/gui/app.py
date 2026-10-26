@@ -21,10 +21,10 @@ from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_sections
 
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.plugins.emtk_layout import action_button, window_size
+from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
 
 from .controller import COLORS
 from .model import LutToolModel
@@ -37,9 +37,7 @@ ORANGE, RED, GREEN = (255, 165, 0), (220, 70, 70), (70, 180, 80)
 PHOTON_FILTERS = "Photon data (*.pto *.spc *.ht3 *.ptu *.phu *.photonhdf5 *.t3r *.t2r)"
 FILTERS = {
     "save_lut": "LUT (*.npy *.npz *.json *.csv *.txt)",
-    "load_lut": "LUT (*.json *.npy *.npz *.csv *.txt)",
     "export_corrected": "Corrected microtimes (*.npy *.npz *.csv *.txt)",
-    "load_json": "TTTR settings (*.json)",
     "save_json": "TTTR settings (*.json)",
 }
 JSON_PREVIEW_LINES = 60
@@ -94,7 +92,12 @@ class LutToolsApp(ImApp):
             get_target_rect=lambda key: self.form.rects.get(key),
         )
         self.form.on_used = self.tour.notify_used
-        self.dataset_picker = DatasetPicker(on_paths=self.model.add_files)
+        #: The Input sections: photon streams, and setups (a LUT file, a settings.tttr.json).
+        self.photon_input = NamedWorkspaceInput("tttr_lut_tools", "photons", self, height=72)
+        self.setup_input = NamedWorkspaceInput("tttr_lut_tools", "setup", self, height=72)
+        for source in (self.photon_input, self.setup_input):
+            source.workspace_input_on_used = self.tour.notify_used
+        self.model.workspace_app = self
         self.docks = DockManager(Split("h", 0.36, Region("controls"), Region("plots")))
         self.docks.add_window("controls", tr("LUT controls"), self.draw_controls, dock="controls")
         self.docks.add_window("plots", tr("TAC histograms"), self.draw_plots, dock="plots")
@@ -133,18 +136,13 @@ class LutToolsApp(ImApp):
             self.tour.start()
         request = model.dialog_request
         if request and self.dialog is None:
+            # only outputs are asked for here: the inputs come from the workspace
             model.dialog_request = None
-            if request["kind"] == "database":
-                self.dataset_picker.open()
-            else:
-                kind = request["kind"]
-                self.dialog_kind = kind
-                self.dialog = FileDialog(
-                    tr("Select file"),
-                    mode=request.get("mode", "open"),
-                    multiselect=bool(request.get("multiselect")),
-                    filters=FILTERS.get(kind, PHOTON_FILTERS),
-                )
+            kind = request["kind"]
+            self.dialog_kind = kind
+            self.dialog = FileDialog(
+                tr("Select file"), mode="save", filters=FILTERS.get(kind, PHOTON_FILTERS)
+            )
         if model.job_request and not self.job.busy:
             method, args = model.job_request
             model.job_request = None
@@ -152,33 +150,27 @@ class LutToolsApp(ImApp):
             self.job.start(method, *args)
             model.busy = True
 
-    def on_files_dropped(self, paths):
-        """Dropped photon files are added; dropped LUT / settings files are imported."""
-        photons = []
-        for path in paths:
-            suffix = Path(path).suffix.lower()
-            if suffix in {".npy", ".npz", ".txt", ".csv"}:
-                self.model.finish_dialog("load_lut", [path])
-            elif suffix == ".json":
-                self.model.finish_dialog("load_json", [path])
-            else:
-                photons.append(path)
-        if photons:
-            self.model.add_files(photons)
-        return True
-
-    files_dropped = on_paths_dropped = on_files_dropped
-
     # -- windows --------------------------------------------------------------------- #
     def draw_controls(self, box):
         """The controls window: header, files, the shown tab, status."""
         self._sync_spec()
         self.section("header")
         self.section("files")
+        self._input(self.photon_input)
         self.section("compute" if self.model.stage == 0 else "assign")
+        if self.model.stage != 0:
+            self._input(self.setup_input)
         self.section("status")
         if self.model.busy:
             im.text(tr("Working…"))
+
+    def _input(self, source):
+        """An Input section: the workspace rows *source* takes (files dropped on ChiSurf land there)."""
+        im.begin_disabled(self.model.busy)
+        draw_sections(source.spec["sections"], source, source.form, titles=False)
+        im.end_disabled()
+        if "workspace_input_rows" in source.form.rects:
+            self.form.rects[f"{source.name}_input"] = source.form.rects["workspace_input_rows"]
 
     def _plot(self, title, x_label, y_label, curves, height, log_y=False):
         """A plain line plot; with no curve the axes and title still show (empty state)."""
@@ -320,7 +312,6 @@ class LutToolsApp(ImApp):
         vp = im.get_main_viewport()
         box = (0, 0, *vp.size)
         self.docks.draw(box)
-        self.dataset_picker.render(box)
         self.help_window.draw(box)
         if self.dialog:
             if im.begin(tr("Select file")):
@@ -387,7 +378,6 @@ class LutToolsApp(ImApp):
 
     def close(self):
         """Let go of the dialogs and write the preferences."""
-        self.dataset_picker.close()
         if self.preferences_path:
             self.preferences_path.write_text(
                 json.dumps(self.export_settings(), indent=2), encoding="utf-8"
@@ -404,3 +394,23 @@ def create_app(apply_callback=None, preferences_path=None):
 
 
 make_app = create_app
+
+
+def _addresses(given) -> list[str]:
+    from chisurf.core.plugin.workspace_input import read_address
+
+    return [read_address(str(a)) for a in ([given] if isinstance(given, str) else list(given))]
+
+
+def receive_photons(app: LutToolsApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``photons``): read ``payload["files"]`` -- TTTR files or
+    container photon streams, as the workspace hands them -- into the shown tab."""
+    app.model.add_files(_addresses(payload["files"]))
+
+
+def receive_setup(app: LutToolsApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``setup``): import ``payload["setup"]`` -- a
+    settings.tttr.json restores LUTs, shifts and the reading routine; a LUT file is imported."""
+    (address,) = _addresses(payload["setup"])
+    kind = "load_json" if Path(address).suffix.lower() == ".json" else "load_lut"
+    app.model.finish_dialog(kind, [address])

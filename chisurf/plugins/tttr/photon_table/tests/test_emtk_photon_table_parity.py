@@ -318,12 +318,11 @@ def test_a_second_load_is_refused_while_one_runs(sample, monkeypatch):
     draw(app, frames=1)
     assert app.job.busy and app.model.busy
     assert app.load_file(str(sample)) is False
-    assert app.files_dropped([str(sample)]) is False
-    assert app.model.enabled("request_open") is False
+    assert app.model.enabled("load_example") is False
     assert any("Loading the records" in s for s in draw(app).strings)
     gate.set()
     pump(app)
-    assert app.model.loaded and app.model.enabled("request_open")
+    assert app.model.loaded and app.model.enabled("load_example")
 
 
 @needs_sample
@@ -358,34 +357,36 @@ def test_copy_with_nothing_loaded_does_nothing(monkeypatch):
     assert copied == [] and app.model.request == ""
 
 
-def test_open_shows_the_file_dialog_and_loads_the_choice(sample, monkeypatch):
-    from emtk.file_dialog import FileDialog
-
+def test_there_is_no_open_dialog_and_no_drop_hook():
+    """The input is the Datasets workspace: files enter ChiSurf by the shell's drop."""
     app = make_app()
-    app.model.input_file = str(sample)
-    press(app, "request_open")
-    assert app.dialog is not None
-    assert app.dialog.title == "Open TTTR file"
-    assert Path(app.dialog.directory) == sample.parent  # starts where the last file was
-    monkeypatch.setattr(FileDialog, "draw", lambda self: [str(sample)])
-    draw(app, frames=1)
-    assert app.dialog is None
-    pump(app)
-    assert app.model.loaded
-    # cancelling closes the dialog and changes nothing
-    press(app, "request_open")
-    monkeypatch.setattr(FileDialog, "draw", lambda self: False)
-    draw(app, frames=1)
-    assert app.dialog is None and app.model.loaded
+    for name in ("files_dropped", "on_files_dropped", "on_paths_dropped", "dialog"):
+        assert not hasattr(app, name), name
+    assert not hasattr(app.model, "request_open")
+    strings = draw(app).strings
+    assert "Open TTTR..." not in strings
+    assert "workspace_input_rows" in app.item_rects
 
 
 @needs_sample
-def test_a_dropped_file_is_opened(sample):
-    app = make_app()
-    assert app.files_dropped([]) is False
-    assert app.on_files_dropped([str(sample)]) is True
-    pump(app)
-    assert app.model.table.n_photons == 183_657
+def test_a_photon_stream_picked_in_the_workspace_is_shown(sample):
+    from chisurf.core.api import dataset_container
+    from chisurf.core.plugin.workspace_input import register_result
+
+    held = dataset_container()
+    before = list(held)
+    try:
+        stream = register_result(str(sample), kind="photons")  # what the shell's drop does
+        app = make_app()
+        draw(app)
+        rows = app.model.workspace_input_rows()
+        assert [r["uid"] for r in rows] == [stream.unique_identifier]
+        app.model.workspace_input_selected(rows[0])  # the row clicked in the Input section
+        pump(app)
+        assert app.model.table.n_photons == 183_657
+        assert app.model.workspace_input_status == f"Using {stream.name}"
+    finally:
+        held[:] = before
 
 
 # ── 3. error paths ──────────────────────────────────────────────────────
@@ -426,7 +427,7 @@ def test_the_error_does_not_cover_the_window(tmp_path):
     pump(app)
     strings = draw(app).strings
     assert any("Could not open" in s for s in strings)
-    assert "Open TTTR..." in strings  # the controls are still there
+    assert "Copy visible" in strings  # the controls are still there
     app.load_file(str(tmp_path / "gone2.ptu"))  # and a new try is possible
     pump(app)
     assert app.model.notice.endswith("gone2.ptu: file does not exist")
@@ -439,7 +440,7 @@ def test_the_empty_state_is_a_message_and_no_rows():
     app = make_app()
     painter = draw(app)
     assert app.model.rows == []
-    assert any("Open a TTTR file, or drop one on this window" in s for s in painter.strings)
+    assert any("Pick a photon stream in the Input section" in s for s in painter.strings)
     assert not any("photons from" in s for s in painter.strings)
     assert app.model.range_text == "no records"
     assert app.model.channel_labels() == [[-1, "All channels"]]
@@ -533,7 +534,6 @@ def test_the_populated_app_has_no_untooltipped_control_either(sample):
     assert inventory["controls_without_tooltip"] == []
     labels = {row["label"] for row in inventory["interactive"]}
     assert {
-        "Open TTTR...",
         "Copy visible",
         "First",
         "Prev",
@@ -569,18 +569,27 @@ def test_the_tour_hears_the_buttons_and_the_channel(sample):
     heard = []
     app.tour.notify_used = heard.append
     app.form.on_used = app.tour.notify_used
-    app.form.used("request_open")
+    app.form.used("load_example")
     section = next(
         s for s in _walk(app.panels["photons"]["sections"]) if s.get("attr") == "channel_filter"
     )
     _commit(app.model, section, 8, app.form)
-    assert "channel_filter" in heard and "request_open" in heard
+    assert "channel_filter" in heard and "load_example" in heard
     assert app.model.channel_filter == 8
 
 
 def test_help_exists_and_draws():
     text = (GUI / "help.md").read_text()
-    for word in ("Open TTTR...", "Copy visible", "Channel", "Kind", "Rows", "line start", "frame"):
+    for word in (
+        "Input",
+        "Open in…",
+        "Copy visible",
+        "Channel",
+        "Kind",
+        "Rows",
+        "line start",
+        "frame",
+    ):
         assert word in text
     app = make_app()
     app.help_window.show()

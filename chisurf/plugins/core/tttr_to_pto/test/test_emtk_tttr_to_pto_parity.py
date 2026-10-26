@@ -15,7 +15,12 @@ import pytest
 from emtk.testing import RecordingPainter
 
 from chisurf.core.fio.pto import Measurement
-from chisurf.plugins.core.tttr_to_pto.gui.app import TttrToPtoApp, create_app, make_app
+from chisurf.plugins.core.tttr_to_pto.gui.app import (
+    TttrToPtoApp,
+    create_app,
+    make_app,
+    receive_photons,
+)
 from chisurf.plugins.core.tttr_to_pto.gui.model import TttrToPtoModel
 from chisurf.plugins.emtk_layout import action_caption
 
@@ -252,61 +257,81 @@ def test_clear_history_drops_finished_rows_only(tmp_path):
         app.close()
 
 
-def test_the_host_hook_takes_a_drop(tmp_path):
-    """emtk's Qt host only accepts a drag when the control has files_dropped / on_files_dropped."""
-    (tmp_path / "alone.set").write_bytes(b"sidecar")
+@pytest.fixture
+def workspace():
+    """The session's dataset list, restored afterwards (it is process-wide)."""
+    from chisurf.core.api import dataset_container
+
+    held = dataset_container()
+    before = list(held)
+    yield held
+    held[:] = before
+
+
+def test_there_is_no_input_dialog_and_no_drop_hook():
+    """The input is the Datasets workspace: no Add files, no file dialog, no drop hook."""
     app = make_app()
     try:
-        assert callable(app.files_dropped) and callable(app.on_files_dropped)
-        assert app.on_files_dropped([]) is False
-        assert app.files_dropped([str(tmp_path / "alone.set")]) is False  # rejected, but listed
-        assert len(app.model.rows) == 1
-        app.close()
-        assert app.files_dropped([str(tmp_path / "x.ptu")]) is False  # closed: nothing queued
-        assert len(app.model.rows) == 1
+        for hook in ("files_dropped", "on_files_dropped", "on_paths_dropped", "dialog"):
+            assert not hasattr(app, hook), hook
+        assert not hasattr(app.model, "request_add")
+        draw(app)
+        assert "request_add" not in app.form.rects
+        assert "workspace_input_rows" in app.item_rects
     finally:
         app.close()
 
 
 @needs_data
-def test_a_drop_through_the_hook_converts(tmp_path):
-    make_folder(tmp_path)
-    app = make_app()
-    try:
-        assert app.on_files_dropped([str(tmp_path / "m000.spc")]) is True
-        finish(app)
-        assert (tmp_path / "m000.pto").exists()
-        assert app.model.records[0]["status"] == "Verified"
-    finally:
-        app.close()
-
-
-@needs_data
-def test_add_files_opens_the_dialog_and_converts_the_choice(tmp_path, monkeypatch):
-    from emtk.file_dialog import FileDialog
+def test_picked_workspace_streams_are_packed_and_the_container_comes_back_as_children(
+    tmp_path, workspace
+):
+    """Select two vendor files in the Input section, Use selected: one container, name order;
+    its photon streams enter the workspace as children of the first."""
+    from chisurf.core.plugin.workspace_input import register_result
 
     make_folder(tmp_path)
+    m1 = register_result(str(tmp_path / "m001.spc"), kind="photons")
+    m0 = register_result(str(tmp_path / "m000.spc"), kind="photons")
     app = make_app()
     try:
-        app.model.last_dir = str(tmp_path)
-        app.model.request_add()
-        draw(app, frames=1)
-        assert app.dialog is not None and app.dialog.title == "Add files"
-        assert Path(app.dialog.directory) == tmp_path
-        monkeypatch.setattr(
-            FileDialog,
-            "draw",
-            lambda self: [str(tmp_path / "m001.spc"), str(tmp_path / "m000.spc")],
-        )
-        draw(app, frames=1)
-        assert app.dialog is None
+        draw(app)
+        rows = {r["name"]: r for r in app.model.workspace_input_rows()}
+        app.model.workspace_input_selection = [rows[m1.name], rows[m0.name]]
+        app.model.workspace_input_use()
         finish(app)
         assert app.model.records[0]["files"] == "m000.spc, m001.spc"  # one container, name order
-        # cancel: closes, adds nothing
-        monkeypatch.setattr(FileDialog, "draw", lambda self: False)
-        app.model.request_add()
-        draw(app, frames=1)
-        assert app.dialog is None and len(app.model.rows) == 1
+        assert app.model.records[0]["status"] == "Verified"
+        target = tmp_path / "m000.pto"
+        assert target.is_file()
+        children = [d for d in workspace if getattr(d, "result_of", "") == m1.unique_identifier]
+        assert children and all(str(d.address).startswith(str(target)) for d in children)
+        assert {d.data_kind for d in children} == {"photons"}
+    finally:
+        app.close()
+
+
+@needs_data
+def test_a_stream_of_a_container_unpacks_the_container(tmp_path, workspace):
+    """A .pto stream handed over (Open in…, a drag) unpacks its container."""
+    from chisurf.core.fio.pto import Measurement
+    from chisurf.core.plugin.workspace_input import register_result
+
+    make_folder(tmp_path)
+    app = make_app()
+    try:
+        assert app.add_paths([tmp_path / "m000.spc"])
+        finish(app)
+        target = tmp_path / "m000.pto"
+        (tmp_path / "m000.spc").rename(tmp_path / "m000.spc.saved")
+        with Measurement.open(target, writable=False) as m:
+            member = m.photon_member_names()[0]
+        stream = register_result(f"{target}/{member}", kind="photons")
+        receive_photons(app, {"files": [stream.address], "datasets": [stream.unique_identifier]})
+        finish(app)
+        unpack = app.model.rows[-1]
+        assert unpack["action"] == "unpack" and unpack["status"] == "verified"
+        assert (tmp_path / "m000.spc").is_file()
     finally:
         app.close()
 
@@ -320,7 +345,7 @@ def test_the_empty_state_is_a_message_and_no_rows():
         painter = draw(app)
         assert app.model.records == []
         assert any("No conversions yet" in s for s in painter.strings)
-        assert any("Drop vendor photon file(s)" in s for s in painter.strings)
+        assert any("Pick photon streams in the Input section" in s for s in painter.strings)
         assert app.model.enabled("clear_history") is False
     finally:
         app.close()
@@ -393,7 +418,7 @@ def test_every_control_has_a_tooltip():
     assert inventory["controls_without_tooltip"] == []
     labels = {row["label"] for row in inventory["interactive"]}
     assert {
-        "Add files...",
+        "Use selected",
         "Clear history",
         action_caption("guide"),
         action_caption("help"),
@@ -435,13 +460,9 @@ def test_guide_steps_point_at_controls_the_app_draws():
             rect = app.item_rects.get(name) or app.form.rects.get(name)
             assert rect is not None, f"{step['title']}: nothing drawn for {name!r}"
         assert [EmTkGuidedTour._target_key(s["target"]) for s in steps if s.get("await")] == [
-            "request_add"
+            "workspace_input_rows"
         ]
-        heard = []
-        app.tour.notify_used = heard.append
-        app.form.on_used = app.tour.notify_used
-        app.form.used("request_add")
-        assert heard == ["request_add"]
+        assert app.model.workspace_input_on_used == app.tour.notify_used
         app.tour.start()
         assert draw(app).strings
     finally:
@@ -450,7 +471,7 @@ def test_guide_steps_point_at_controls_the_app_draws():
 
 def test_help_exists_and_draws():
     text = (GUI / "help_emtk.md").read_text()
-    for word in ("Add files...", "Clear history", "sidecar", "Both ways"):
+    for word in ("Input", "Open in…", "Clear history", "sidecar", "Both ways"):
         assert word in text
     app = make_app()
     try:

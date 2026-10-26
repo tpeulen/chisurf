@@ -2,7 +2,7 @@
   "id": "photon_table",
   "version": "1.0.0",
   "display_name": "Tools:Photon data:Photon Table",
-  "description": "Inspect the photons of a TTTR file in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter.",
+  "description": "Inspect the photons of a photon stream of the Datasets workspace in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
@@ -25,6 +25,9 @@
     }
   },
   "statefulness": true,
+  "accepts": [
+    {"name": "photons", "summary": "Show the records of a photon stream (a TTTR file or a container's stream).", "receive": "chisurf.plugins.tttr.photon_table.gui.app:receive_photons", "required": ["file"], "from_workspace": {"kinds": ["photons"], "key": "file"}}
+  ],
   "entrypoints": {
     "emtk": "chisurf.plugins.tttr.photon_table.gui.app:make_app"
   },

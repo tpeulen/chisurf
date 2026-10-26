@@ -5,7 +5,7 @@
      "text": "It turns a photon stream into sound and shows the same stream as a waterfall: macro-time (when) against micro-time or lifetime (how long after the pulse), each detector in its own colour. Louder means more photons.<br/><br/>Seven steps; you press the buttons, the tour only points at them.",
      "target": {}},
     {"title": "Load a stream",
-     "text": "Press <b>Load example</b> to generate a deterministic demonstration measurement (a µs-ALEX stream with bursts on two detectors) in the settings cache and open it — no file of your own needed. <b>Load TTTR</b> picks a real photon file instead (or drop it on the window). A Becker &amp; Hickl <i>.spc</i> needs its subtype chosen in the <b>Detector setup</b> window first (File Type).",
+     "text": "Press <b>Load example</b> to generate a deterministic demonstration measurement (a µs-ALEX stream with bursts on two detectors) in the settings cache and open it — no file of your own needed. Your own measurements are picked in the <b>Photon stream</b> tab: the workspace's photon streams, where files dropped on the ChiSurf window land. A Becker &amp; Hickl <i>.spc</i> needs its subtype chosen in the <b>Detector setup</b> window first (File Type).",
      "target": {"name": "load_example"}, "await": {"hint": "Press <b>Load example</b>."}},
     {"title": "Detectors and colours",
      "text": "<b>Detector colours</b> lists the detectors of the setup. <b>Show</b> includes one in the waterfall; double-click its colour to type another (#rrggbb).",

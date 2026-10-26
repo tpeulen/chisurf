@@ -15,6 +15,9 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {"name": "photons", "summary": "Queue photon streams (TTTR files or container streams) and, chosen with them, a detector setup row.", "receive": "chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller:receive_photons", "required": ["files"], "from_workspace": {"kinds": ["photons"], "many": true, "key": "files", "with_setup": true}}
+  ],
   "entrypoints": {
     "cli": "count-rate=chisurf.plugins.tttr.tttr_count_rate_analysis.cli:cli",
     "emtk": "chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller:create_app"

@@ -11,6 +11,9 @@
     "File",
     "Data"
   ],
+  "accepts": [
+    {"name": "photons", "summary": "Read and edit the header of a photon stream (a TTTR file or a container stream).", "receive": "chisurf.plugins.tttr.tttr_header_edit.gui.native:receive_photons", "required": ["file"], "from_workspace": {"kinds": ["photons"], "key": "file"}}
+  ],
   "entrypoints": {
     "script": "__init__.py",
     "emtk": "chisurf.plugins.tttr.tttr_header_edit.gui.native:create_app"

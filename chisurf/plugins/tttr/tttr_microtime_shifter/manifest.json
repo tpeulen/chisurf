@@ -30,6 +30,9 @@
   "statefulness": {
     "enabled": false
   },
+  "accepts": [
+    {"name": "photons", "summary": "Queue TTTR files to shift their micro-times (a container stream is unpacked first with TTTR ⇄ .pto).", "receive": "chisurf.plugins.tttr.tttr_microtime_shifter.gui.app:receive_photons", "required": ["files"], "from_workspace": {"kinds": ["photons"], "many": true, "key": "files"}}
+  ],
   "entrypoints": {
     "cli": "microtime-shift=chisurf.plugins.tttr.tttr_microtime_shifter.cli.main:cli",
     "services": "chisurf.plugins.tttr.tttr_microtime_shifter.backend.services:register_services",

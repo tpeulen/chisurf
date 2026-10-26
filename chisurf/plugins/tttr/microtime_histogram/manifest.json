@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "display_name": "Spectroscopy:Decay:Histogram-Microtime",
   "icon": "⏲️",
-  "description": "Create and inspect TTTR microtime histograms.",
+  "description": "Create and inspect TTTR microtime histograms of photon streams from the Datasets workspace, with a detector setup row, optionally restricted to burst runs.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
@@ -21,6 +21,10 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {"name": "photons", "summary": "Queue photon streams (TTTR files or a container's streams) and, chosen with them, a detector setup row.", "receive": "chisurf.plugins.tttr.microtime_histogram.gui.app:receive_photons", "required": ["files"], "from_workspace": {"kinds": ["photons"], "many": true, "key": "files", "with_setup": true}},
+    {"name": "bursts", "summary": "Restrict the histogram to the bursts of burst runs (m000.pto/<run>).", "receive": "chisurf.plugins.tttr.microtime_histogram.gui.app:receive_bursts", "required": ["bursts"], "from_workspace": {"kinds": ["bursts"], "many": true, "key": "bursts"}}
+  ],
   "entrypoints": {
     "cli": "microtime-histogram=chisurf.plugins.tttr.microtime_histogram.__main__:main",
     "emtk": "chisurf.plugins.tttr.microtime_histogram.gui.app:create_app"

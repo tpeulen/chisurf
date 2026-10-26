@@ -1,21 +1,19 @@
 {
   "window": {"width": 1200, "height": 800},
-  "_comment": "TTTR <-> .pto converter, native emtk window. Drawn by emtk.view_form over TttrToPtoModel (gui/model.py); Help and Guide, the file dialog and the drop are drawn or handled by gui/app.py.",
+  "_comment": "TTTR <-> .pto converter, native emtk window. Drawn by emtk.view_form over TttrToPtoModel (gui/model.py), the generated Input section (workspace photon streams) spliced in first; Help and Guide are drawn by gui/app.py.",
   "title": "TTTR <-> .pto",
   "sections": [
     {
       "type": "info", "key": "drop_hint",
-      "text": "Drop vendor photon file(s) (.ptu, .spc, .ht3, ...) to pack them into one .pto beside the first, or drop a .pto to unpack the original vendor file(s) back out. Whichever direction you drop, the file(s) you dropped are kept untouched.",
-      "description": "What the tool does: the drop decides the direction, and nothing you drop is changed or deleted."
+      "text": "Pick photon streams in the Input section: vendor files (.ptu, .spc, .ht3, ...) are packed into one .pto beside the first; a stream of a .pto unpacks the original vendor file(s) back out. The source is kept untouched, and what is written appears in the workspace under it.",
+      "description": "What the tool does: what you pick decides the direction, and nothing is changed or deleted. Files enter ChiSurf by dropping them on the ChiSurf window."
     },
     {
       "type": "button_row",
-      "description": "Add files with a dialog instead of dropping them, or forget the finished entries.",
+      "description": "Convert the example, or forget the finished entries.",
       "buttons": [
         {"action": "load_example", "label": "Load example", "icon": "🧪",
-         "description": "Write the shared demonstration SPC stream (seeded, shaped like an SPC-132 measurement) in the settings cache and queue it for conversion to a .pto."},
-        {"action": "request_add", "label": "Add files...",
-         "description": "Choose vendor photon files to pack into one .pto, or .pto containers to unpack. Same as dropping them on the window."},
+         "description": "Write the shared demonstration SPC stream (seeded, shaped like an SPC-132 measurement) in the settings cache, add it to the workspace and convert it to a .pto."},
         {"action": "clear_history", "label": "Clear history",
          "role": "danger",
          "description": "Remove the finished entries from the list; the files on disk stay untouched."}

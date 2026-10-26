@@ -114,7 +114,6 @@ class CountRateGui(TourTarget):
         tool: CountRateController,
         on_calculate: Callable[[], None] | None = None,
         on_save: Callable[[], None] | None = None,
-        on_add_files: Callable[[], None] | None = None,
         on_clear: Callable[[], None] | None = None,
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
@@ -122,7 +121,6 @@ class CountRateGui(TourTarget):
         self.tool = tool
         self.on_calculate = on_calculate
         self.on_save = on_save
-        self.on_add_files = on_add_files
         self.on_clear = on_clear
         self.on_guide = on_guide
         self.on_help = on_help
@@ -241,14 +239,6 @@ class CountRateGui(TourTarget):
             )
         )
         self.remember("load_example")
-        if im.get_line_avail() >= im.calc_text_size(tr("Add files"))[0] + 24:
-            im.same_line()
-        if im.button(tr("Add files")):
-            self._used("add_files")
-            if callable(self.on_add_files):
-                self.on_add_files()
-        im.set_item_tooltip(tr("Queue TTTR files (.ptu, .ht3, .spc, …) for the analysis."))
-        self.remember("add_files")
         if im.get_line_avail() >= im.calc_text_size(tr("Clear"))[0] + 24:
             im.same_line()
         if im.button(tr("Clear"), role="danger"):
@@ -266,25 +256,16 @@ class CountRateGui(TourTarget):
         self.remember("guide")
         im.separator()
 
-        for label, callback, tip in (
-            (
-                "Folder…",
-                getattr(self.tool, "add_folder_dialog", None),
-                "Queue supported TTTR files recursively from a folder.",
-            ),
-            (
-                "Database…",
-                getattr(self.tool, "add_database", None),
-                "Select TTTR datasets from MMFDB.",
-            ),
-        ):
-            if callable(callback):
-                if im.button(label):
-                    callback()
-                im.set_item_tooltip(tip)
+        # The input: photon streams (and setup rows) of the workspace; dropped files land there.
+        source = getattr(self.tool, "input", None)
+        if source is not None:
+            draw_form(source.spec, source, source.form)
+            if "workspace_input_rows" in source.form.rects:
+                self.remember("add_files", source.form.rects["workspace_input_rows"])
+            im.separator()
         files = self.model.files
         if not files:
-            im.text_disabled(tr("No files queued."))
+            im.text_disabled(tr("Nothing queued: pick photon streams above (or Load example)."))
             im.end_disabled()
             self.draw_status()
             return
@@ -342,13 +323,6 @@ class CountRateGui(TourTarget):
             if im.button(tr("Edit detector setup…")):
                 editor()
             im.set_item_tooltip(tr("Edit routing channels, detector gates and excitation windows."))
-        browse = getattr(tool, "browse_setups", None)
-        if callable(browse):
-            if im.button(tr("Open setup library…")):
-                browse()
-            im.set_item_tooltip(
-                tr("Read detector definitions from another setup library JSON file.")
-            )
         setups = tool.available_setups()
         names = list(setups.keys())
         if tool.selected_setup not in names:
@@ -479,7 +453,6 @@ class CountRateApp(ImApp):
         tool: CountRateController,
         on_calculate: Callable[[], None] | None = None,
         on_save: Callable[[], None] | None = None,
-        on_add_files: Callable[[], None] | None = None,
         on_clear: Callable[[], None] | None = None,
     ) -> None:
         spec = json.loads(
@@ -491,7 +464,6 @@ class CountRateApp(ImApp):
             tool,
             on_calculate=on_calculate,
             on_save=on_save,
-            on_add_files=on_add_files,
             on_clear=on_clear,
             on_guide=self.start_guide,
             on_help=self.show_help,

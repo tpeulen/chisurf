@@ -8,7 +8,7 @@
     },
     {
       "title": "Queue the files",
-      "text": "Press <b>Load example</b> to generate a deterministic demonstration stream — two detectors whose decays begin 500 micro-time bins apart — in the settings cache and read it, then let the tool align them. Real data goes through <b>➕ Files…</b>, a folder, or datasets from the database — or drop it on the window. All files must have the same number of micro-time bins; the preview sums them by routing channel.",
+      "text": "Press <b>Load example</b> to generate a deterministic demonstration stream — two detectors whose decays begin 500 micro-time bins apart — in the settings cache and read it, then let the tool align them. Real data is picked in the <b>Input</b> table: the workspace's TTTR files, where files dropped on the ChiSurf window land. All files must have the same number of micro-time bins; the preview sums them by routing channel.",
       "target": {"name": "load_example"},
       "await": {"hint": "Press <b>Load example</b>."}
     },

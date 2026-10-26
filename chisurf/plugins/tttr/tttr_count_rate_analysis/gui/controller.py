@@ -1,4 +1,8 @@
-"""Native count-rate controller with snapshot jobs and canonical detector setups."""
+"""Native count-rate controller with snapshot jobs and canonical detector setups.
+
+The inputs are the Datasets workspace: photon streams (and, chosen with them, a detector setup row)
+picked in the Input section or handed over by *Open in…* / a drag (:func:`receive_photons`).
+"""
 
 from __future__ import annotations
 
@@ -14,8 +18,8 @@ from emtk.i18n import tr
 from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
 from chisurf.core.fio.staging import TTTR_EXTENSIONS, open_tttr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
+from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
 
 from .app import CountRateApp, setup_to_channels
 from .view_model import CountRateViewModel
@@ -42,7 +46,6 @@ class CountRateController:
         self.job = BackgroundJob()
         self.dialog = None
         self.dialog_callback = None
-        self.dataset_picker = DatasetPicker(on_paths=self.add_paths)
         self.setup_editor = None
         self.message = ""
         self.progress = (0, 0)
@@ -50,10 +53,12 @@ class CountRateController:
             self,
             on_calculate=self.calculate,
             on_save=self.save_dialog,
-            on_add_files=self.add_files_dialog,
             on_clear=self.clear,
         )
         self.channel_editor.host_app = self.app
+        #: The Input section: the workspace's photon streams (with a detector setup row).
+        self.input = NamedWorkspaceInput("tttr_count_rate_analysis", "photons", self.app, height=72)
+        self.input.workspace_input_on_used = lambda _key: self.app.count_rate_gui._used("add_files")
 
     def available_setups(self):
         return self._setups
@@ -105,14 +110,12 @@ class CountRateController:
 
         self.job.start(work, publish, lambda exc: setattr(self, "message", str(exc)))
 
-    def browse_setups(self):
-        self.choose(
-            "Detector setup library", self.load_setups_file, filters="Setup library (*.json)"
-        )
-
-    def load_setups_file(self, paths):
-        self.setups_path = str(paths[0])
-        self.refresh_setups()
+    def use_setup(self, setup, name=""):
+        """Adopt *setup* (a workspace setup row's definition) as the detector definition."""
+        name = str(name or setup.get("setup_name") or "Workspace setup")
+        self._setups[name] = deepcopy(setup)
+        self.selected_setup = name
+        self.adopt_editor_definition(setup, name)
 
     def edit_setup(self):
         setup = self._setups.get(
@@ -141,10 +144,16 @@ class CountRateController:
         if self.job.running:
             self.message = "Wait for the running analysis to finish before adding files."
             return
+        from chisurf.core.fio.address import container_of
+
         expanded = []
         extensions = tuple(ext.lower() for ext in TTTR_EXTENSIONS)
         for path in paths:
             p = Path(path)
+            if container_of(str(p)) != p:  # a container's photon stream: kept as its address
+                if container_of(str(p)).is_file() and p.suffix.lower() in extensions:
+                    expanded.append(str(p))
+                continue
             candidates = sorted(p.rglob("*")) if p.is_dir() else [p]
             expanded.extend(
                 str(candidate.resolve())
@@ -155,32 +164,12 @@ class CountRateController:
             self.message = "Choose supported TTTR or PTO photon files."
         self._model.add_files(expanded)
 
-    def choose(
-        self,
-        title,
-        callback,
-        mode="open",
-        multiple=False,
-        filters="TTTR (*.pto *.ptu *.ht3 *.ht2 *.spc *.phu *.tttr);;All files (*)",
-    ):
-        if self.job.running:
-            return
-        self.dialog = FileDialog(title, mode=mode, multiselect=multiple, filters=filters)
-        self.dialog_callback = callback
-
-    def add_files_dialog(self):
-        self.choose("Add TTTR files", self.add_paths, multiple=True)
-
-    def add_folder_dialog(self):
-        self.choose("Add TTTR folder", self.add_paths, mode="folder")
-
-    def add_database(self):
-        self.dataset_picker.open()
-
     def load_example(self):
         """Generate the demonstration stream, define its detectors, and queue it."""
         if self.job.running:
             return False
+        from chisurf.plugins.tttr.workspace_io import add_setup, example_into_workspace
+
         from ..demo import demo_folder, make_demo
 
         try:
@@ -188,7 +177,8 @@ class CountRateController:
         except OSError as exc:
             self.message = str(exc)
             return False
-        self.adopt_editor_definition(
+        setup = add_setup(
+            demo_folder() / "count_rate_setup.json",
             {
                 "setup_name": "ALEX demo",
                 "detectors": {
@@ -197,9 +187,11 @@ class CountRateController:
                 },
                 "windows": {},
             },
-            "ALEX demo",
         )
-        self._model.add_files([str(path)])
+        # the stream and its setup row enter the workspace and are handed over as picked rows are
+        example_into_workspace(
+            path, receive_photons, self.app, key="files", many=True, extra={"setup": setup}
+        )
         self.message = f"Example queued: {Path(path).name}. Press Calculate."
         return True
 
@@ -257,12 +249,12 @@ class CountRateController:
         if self._model.can_save():
             self.message = self._model.can_save()
             return
-        self.choose(
-            "Save count-rate table",
-            lambda paths: self.save(paths[0]),
-            mode="save",
-            filters="Table (*.txt *.tsv)",
+        if self.job.running:
+            return
+        self.dialog = FileDialog(
+            "Save count-rate table", mode="save", filters="Table (*.txt *.tsv)"
         )
+        self.dialog_callback = lambda paths: self.save(paths[0])
 
     def save(self, path):
         if self.job.running:
@@ -346,7 +338,6 @@ class _StandaloneApp(CountRateApp):
         self.tool.channel_editor.poll()
         super()._render()
         frame = (0.0, 0.0, *im.get_main_viewport().size)
-        self.tool.dataset_picker.render(frame)
         self.tool.channel_editor.draw_dialogs(frame)
         if self.tool.dialog:
             # A sized window over the app (an unsized ``im.begin`` covered the whole viewport),
@@ -378,15 +369,6 @@ class _StandaloneApp(CountRateApp):
                 im.set_item_tooltip(tr("Discard the current channel-definition edit."))
             im.end()
 
-    def files_dropped(self, paths):
-        """Host hook (native, web and Qt hosts): queue the dropped files and folders."""
-        before = len(self.tool._model.files)
-        self.tool.add_paths([str(p) for p in paths or []])
-        return len(self.tool._model.files) > before
-
-    on_files_dropped = files_dropped
-    on_paths_dropped = files_dropped
-
     def export_settings(self):
         return self.tool.export_settings()
 
@@ -401,9 +383,29 @@ class _StandaloneApp(CountRateApp):
 
     def close(self):
         self.tool.job.close()
-        self.tool.dataset_picker.close()
         self.tool.channel_editor.close()
 
 
 def create_app(reader=None, setups=None):
     return CountRateController(reader=reader, setups=setups).app
+
+
+def receive_photons(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``photons``): queue ``payload["files"]`` -- TTTR files
+    or container photon streams, as the workspace hands them; a ``setup`` row chosen with them
+    becomes the detector definition."""
+    from chisurf.core.plugin.workspace_input import read_address
+    from chisurf.plugins.tttr.workspace_io import read_setup
+
+    tool = app.tool
+    if tool.job.running:
+        raise RuntimeError(tr("the tool is busy; try again when it has finished"))
+    given = payload["files"]
+    addresses = [read_address(str(a)) for a in ([given] if isinstance(given, str) else given)]
+    if payload.get("setup"):
+        setup = read_setup(str(payload["setup"]))
+        tool.use_setup(setup, setup.get("setup_name", ""))
+    tool.add_paths(addresses)
+    tool.message = tr("{n} photon stream(s) queued. Press Calculate.").format(
+        n=len(tool._model.files)
+    )

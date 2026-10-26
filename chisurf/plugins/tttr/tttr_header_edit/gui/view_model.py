@@ -168,13 +168,26 @@ class HeaderEditorViewModel:
         self._refresh_json_text()
         self.notify("loaded")
 
+    @staticmethod
+    def _read(path: str):
+        """The photon stream at *path*, as stored: a TTTR file through :mod:`tttrlib`, a
+        container's stream (``m000.pto/m000.ptu``) through the staging reader, no LUT applied."""
+        from chisurf.core.fio.address import container_of
+
+        if container_of(str(path)) != pathlib.Path(str(path)):
+            from chisurf.core.fio.staging import open_tttr
+
+            return open_tttr(str(path), apply_lut=False, cache=False)
+        return tttrlib.TTTR(str(path))
+
     def load_file(self, path: str) -> None:
-        """Load the header tags from any :mod:`tttrlib`-readable file at *path*.
+        """Load the header tags of the photon stream at *path* (a TTTR file or a container's
+        stream).
 
         The container type is auto-detected. PTU, HT3, SPC and Photon-HDF5 all
         expose the same tag list through ``tttrlib``.
         """
-        tttr = tttrlib.TTTR(path)
+        tttr = self._read(path)
         self.opened_path = path
         self.source_container = self._detect_container(path, tttr)
         self.load_json(tttr.header.json)
@@ -262,7 +275,7 @@ class HeaderEditorViewModel:
     def can_save(self) -> str | None:
         """Return ``None`` when a save can run, else a human-readable reason."""
         if not self.opened_path:
-            return "Open a TTTR file first (its photon data is copied into the new PTU)."
+            return "Pick a photon stream first (its photon data is copied into the new PTU)."
         return None
 
     def save(self, path: str) -> None:
@@ -280,7 +293,7 @@ class HeaderEditorViewModel:
             path += ".ptu"
         if pathlib.Path(path).resolve() == pathlib.Path(self.opened_path).resolve():
             raise ValueError("Choose a new file; saving over the source is not allowed.")
-        src = tttrlib.TTTR(self.opened_path)
+        src = self._read(self.opened_path)
         out = tttrlib.TTTR()
         header_dict = json.loads(src.header.json)
         header_dict["tags"] = self._parsed.get("tags", [])

@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 
 from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
+from chisurf.core.fio.address import container_of
 from chisurf.core.fio.pto import SUFFIX as PTO_SUFFIX
 from chisurf.core.fio.staging import TTTR_EXTENSIONS, open_tttr
 
@@ -26,6 +27,17 @@ def _column_label(column) -> str:
         return str(name() if callable(name) else name)
     except Exception:  # noqa: BLE001 - a column that will not name itself
         return str(column)
+
+
+def _photon_streams(container):
+    """The photon streams a ``.pto`` container embeds, as addresses (``[]`` for none)."""
+    from chisurf.core.fio.pto import Measurement
+
+    try:
+        with Measurement.open(container, writable=False) as m:
+            return [f"{container}/{name}" for name in m.photon_member_names()]
+    except Exception:  # noqa: BLE001 - not a readable container: nothing embedded
+        return []
 
 
 def read_burst_ranges(path):
@@ -192,11 +204,10 @@ class HistogramModel:
         stem = re.sub(r"_\d{2,4}$", "", Path(files[0]).stem)
         p = ",".join(map(str, self.parallel)) or "all"
         s = ",".join(map(str, self.perpendicular)) or "all"
-        directory = (
-            Path(self.selected_bursts()[0]).parent
-            if self.selected_bursts()
-            else Path(files[0]).parent
-        )
+        # Beside the measurement: a container's stream or run is written beside its container.
+        directory = container_of(
+            str(self.selected_bursts()[0] if self.selected_bursts() else files[0])
+        ).parent
         self.output = str(
             directory / f"{stem}{'_' + self.detector if self.detector else ''}_({p})-({s}).dat"
         )
@@ -208,9 +219,18 @@ class HistogramModel:
         return [Path(path) for path in self.burst_files if self.burst_enabled.get(str(path), True)]
 
     def add_paths(self, paths, bursts=False):
+        """Queue photon streams (or, *bursts*, burst containers and runs): files, folders, or
+        addresses of a container's member (``m000.pto/m000.spc``, ``m000.pto/<run>``)."""
         target = self.burst_files if bursts else self.files
         for path in paths:
             p = Path(path)
+            container = container_of(str(p))
+            if container != p:  # a member of a container: kept as its address
+                suffix = container.suffix if bursts else p.suffix
+                extensions = (PTO_SUFFIX,) if bursts else TTTR_EXTENSIONS
+                if container.is_file() and suffix.lower() in extensions and str(p) not in target:
+                    target.append(str(p))
+                continue
             candidates = sorted(p.rglob("*")) if p.is_dir() else [p]
             for candidate in candidates:
                 candidate = candidate.resolve()
@@ -225,8 +245,8 @@ class HistogramModel:
 
     @staticmethod
     def base_name(path):
-        """The identity a burst container shares with the photons it was made on."""
-        stem = Path(path).stem
+        """The identity a burst container (or a run in one) shares with the photons it was made on."""
+        stem = container_of(str(path)).stem
         return re.sub(r"_\d+$", "", stem)
 
     def find_corresponding_files(self):
@@ -237,14 +257,19 @@ class HistogramModel:
         """
         found = []
         for burst in self.selected_bursts():
+            container = container_of(str(burst))
+            embedded = _photon_streams(container)
+            if embedded:  # the container holds the measurement: its own photon streams
+                found.extend(embedded)
+                continue
             stem = self.base_name(burst)
-            for directory in [burst.parent, *list(burst.parents)[1:4]]:
+            for directory in [container.parent, *list(container.parents)[1:4]]:
                 candidates = [
                     path
                     for path in directory.glob(stem + "*")
                     if path.is_file()
                     and path.suffix.lower() in TTTR_EXTENSIONS
-                    and path.resolve() != burst.resolve()
+                    and path.resolve() != container.resolve()
                 ]
                 if candidates:
                     found.extend(candidates)
@@ -273,7 +298,12 @@ class HistogramModel:
                 raise RuntimeError("Histogram calculation stopped between files.")
             if progress_cb:
                 progress_cb(index, len(files))
-            if path.suffix.lower() == ".spc" and self.filetype in {"Auto", "auto", ""}:
+            # A headerless SPC file needs its subtype; a container's SPC stream carries it.
+            if (
+                path.suffix.lower() == ".spc"
+                and self.filetype in {"Auto", "auto", ""}
+                and container_of(str(path)) == path
+            ):
                 raise ValueError(
                     "Choose the SPC container subtype before reading headerless SPC data."
                 )

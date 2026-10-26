@@ -219,11 +219,14 @@ def test_remove_takes_the_selected_file_off_the_queue(demo, tmp_path):
         app.close()
 
 
-def test_a_dropped_folder_queues_its_photon_files(demo):
+def test_a_handed_file_is_queued(demo):
+    from chisurf.plugins.tttr.tttr_microtime_shifter.gui.app import receive_photons
+
     app = create_app()
     try:
-        app.on_paths_dropped([str(Path(demo).parent)])
+        receive_photons(app, {"files": [str(demo)], "datasets": ["u-demo"]})
         _settle(app)
+        assert app.sources == {str(Path(demo).resolve()): "u-demo"}
         assert [p.name for p in app.files] == ["offset.spc"]
     finally:
         app.close()
@@ -331,7 +334,7 @@ def test_draws_empty_and_populated(demo, size, monkeypatch):
     app = create_app()
     try:
         strings = _draw(app, size).strings
-        assert {"📖  Guide", "❓  Help", "➕  Files…", "Alignment", "Shifts", "Save"} <= set(
+        assert {"📖  Guide", "❓  Help", "Use selected", "Alignment", "Shifts", "Save"} <= set(
             strings
         )
         assert "No file loaded." in strings
@@ -353,7 +356,7 @@ def test_draws_empty_and_populated(demo, size, monkeypatch):
         assert "Channel 0" in strings and "Channel 8" in strings and "Routing 8" in strings
         assert not clipped, clipped  # every button inside the window
         fx, fy, fw, fh = app.item_rects["files"]  # and the file buttons inside their dock
-        for key in ("add_files", "add_folder", "add_database", "remove", "clear"):
+        for key in ("add_files", "remove", "clear"):
             x, y, w, h = app.item_rects[key]
             assert x + w <= fx + fw + 16.5, key
     finally:

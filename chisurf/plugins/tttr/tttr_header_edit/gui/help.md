@@ -1,6 +1,8 @@
 # TTTR Inspector
 
-Open or drop a TTTR file to inspect it: the **Photons** dock lists its first
+Pick a photon stream in the **Input** table (the TTTR files and container streams of the
+Datasets workspace; files enter ChiSurf by dropping them on the ChiSurf window) to inspect
+it: the **Photons** dock lists its first
 events (routing channel, macro and micro time) and the **Header tags** dock
 edits the header. Reading and saving run in
 the background. Add tags, edit names/types/values/indices, or remove rows. The

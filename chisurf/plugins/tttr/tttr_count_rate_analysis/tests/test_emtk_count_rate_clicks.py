@@ -54,10 +54,11 @@ def settle(ui, limit=120.0):
 
 
 def add_through_the_dialog(ui, *names):
-    ui.click("Add files")
-    for name in names:
-        ui.click(name)
-    ui.click("Open")
+    """Queue *names* (files of the working folder) as the Input section's Use selected does."""
+    from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller import receive_photons
+
+    receive_photons(ui.app, {"files": [str(Path.cwd() / name) for name in names]})
+    ui.frame(2)
 
 
 def real_state(ui, monkeypatch, folder):
@@ -67,6 +68,7 @@ def real_state(ui, monkeypatch, folder):
     if not PTU.exists():
         pytest.skip("sample PTU not available")
     (folder / "leica.ptu").symlink_to(PTU)
+    monkeypatch.chdir(folder)
     routing = [int(c) for c in tttrlib.TTTR(str(PTU)).get_used_routing_channels()]
     channels = {"all": [{"detector_chs": routing, "micro_time_range": None, "window_range": None}]}
     monkeypatch.setattr(ui.app.tool, "channels", lambda: channels)
@@ -74,45 +76,20 @@ def real_state(ui, monkeypatch, folder):
 
 
 # -- the file list ------------------------------------------------------------------------------------
-def test_add_files_button_dialog_cancel_and_open(ui):
-    assert ui.drawn("No files queued.")
-    ui.click("Add files")
-    assert ui.app.tool.dialog is not None and ui.drawn("Cancel") and ui.drawn("Open")
-    ui.click("Cancel")
-    assert ui.app.tool.dialog is None and ui.app.tool._model.files == []
+def test_streams_handed_from_the_workspace_are_queued(ui, folder, monkeypatch):
+    monkeypatch.chdir(folder)
+    assert ui.drawn("Nothing queued: pick photon streams above (or Load example).")
     add_through_the_dialog(ui, "a.ptu", "b.ptu")
     assert [Path(p).name for p in ui.app.tool._model.files] == ["a.ptu", "b.ptu"]
-    assert ui.drawn("a.ptu") and ui.drawn("b.ptu") and not ui.drawn("No files queued.")
-    assert ui.drawn("Remove")
+    assert ui.drawn("a.ptu") and ui.drawn("b.ptu") and ui.drawn("Remove")
 
 
-def test_the_file_dialog_is_a_window_with_an_x_and_closes_with_escape(ui):
-    ui.click("Add files")
-    x, y, w, h = ui.app._file_window.box
-    assert w < 1200 and h < 800  # not the whole viewport
-    ui.click((x + w - 14.0, y + 13.0))  # the window's x button
-    assert ui.app.tool.dialog is None
-    ui.click("Add files")
-    ui.move((x + w / 2, y + h / 2))
-    ui.key(KEY_ESCAPE)
-    assert ui.app.tool.dialog is None
-
-
-def test_folder_button_queues_a_folder_recursively(ui, folder):
-    (folder / "sub").mkdir()
-    (folder / "sub" / "c.ht3").write_bytes(b"x")
-    (folder / "notes.txt").write_text("no")
-    ui.click("Folder…")
-    assert ui.app.tool.dialog is not None
-    ui.click("Choose")
-    assert sorted(Path(p).name for p in ui.app.tool._model.files) == ["a.ptu", "b.ptu", "c.ht3"]
-
-
-def test_database_button_opens_the_dataset_picker(ui, monkeypatch):
-    opened = []
-    monkeypatch.setattr(ui.app.tool.dataset_picker, "open", lambda: opened.append(1))
-    ui.click("Database…")
-    assert opened == [1]
+def test_there_is_no_input_dialog_no_database_and_no_drop_hook(ui):
+    for label in ("Add files", "Folder…", "Database…", "Open setup library…"):
+        assert not ui.drawn(label), label
+    for name in ("files_dropped", "on_files_dropped", "dataset_picker", "browse_setups"):
+        assert not hasattr(ui.app, name) and not hasattr(ui.app.tool, name), name
+    assert ui.drawn("Use selected")  # the Input section
 
 
 def test_selecting_a_row_enables_remove_and_remove_takes_it_off(ui):
@@ -143,7 +120,9 @@ def test_clear_button_empties_the_queue_and_the_results(ui, monkeypatch, folder)
     assert ui.drawn("6714549")
     ui.click("Clear")
     assert (
-        ui.app.tool._model.files == [] and not ui.drawn("6714549") and ui.drawn("No files queued.")
+        ui.app.tool._model.files == []
+        and not ui.drawn("6714549")
+        and ui.drawn("Nothing queued: pick photon streams above (or Load example).")
     )
     assert ui.drawn("No results yet — press Calculate.")
 
@@ -272,29 +251,6 @@ def test_the_tour_next_and_prev_buttons_can_be_clicked(ui):
     ui.frame(3)
     ui.click("◄ Prev")
     assert ui.app.count_rate_gui.tour.step_idx == 3
-
-
-def test_a_drop_reaches_the_app_through_the_native_host(ui, folder):
-    """A folder and a single file dropped on the window both queue their files.
-
-    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
-    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
-    the Qt half, so a second, fresh app here takes the single-file drop natively.
-    """
-    from emtk.app import ControlSurface
-
-    assert (
-        ControlSurface(ui.app).on_files_dropped([str(folder)]) is True
-    )  # a dropped folder is searched
-    assert sorted(Path(p).name for p in ui.app.tool._model.files) == ["a.ptu", "b.ptu"]
-    ui.frame(2)
-    assert ui.drawn("a.ptu")
-    other = create_app()
-    try:
-        assert ControlSurface(other).on_files_dropped([str(folder / "b.ptu")]) is True
-        assert [Path(p).name for p in other.tool._model.files] == ["b.ptu"]
-    finally:
-        other.close()
 
 
 # -- the channel editor (the shared detector-channel widget) -----------------------------------------------------------

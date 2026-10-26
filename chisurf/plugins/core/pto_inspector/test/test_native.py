@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from chisurf.core.fio.pto import Measurement
-from chisurf.plugins.core.pto_inspector.gui.app import PtoInspectorApp
+from chisurf.plugins.core.pto_inspector.gui.app import PtoInspectorApp, receive_containers
 from chisurf.plugins.core.pto_inspector.test.test_core import container as source_container
 
 
@@ -15,7 +15,7 @@ def container(tmp_path):
 
 def test_selection_payload_units_and_export(container, tmp_path):
     app = PtoInspectorApp()
-    app.on_paths_dropped([container])
+    receive_containers(app, {"files": [str(container)]})
     assert app.model.selected.name == "fcs"
     assert len(app.model.curve_series()[0]["x"]) == 64
     assert app.model.curve_axes()["log_x"]
@@ -153,7 +153,7 @@ def test_vendor_pack_preserves_sources_and_refuses_overwrite(tmp_path):
     raw = tmp_path / "raw.ptu"
     shutil.copy(PTU, raw)
     app = PtoInspectorApp()
-    app.on_paths_dropped([raw])
+    receive_containers(app, {"files": [str(raw)]})
     assert app.vendor_paths == [raw]
     target_dir = tmp_path / "containers"
     app.pack_vendor_files(target_dir)
@@ -161,29 +161,7 @@ def test_vendor_pack_preserves_sources_and_refuses_overwrite(tmp_path):
     assert app.model.filename == str(target_dir / "raw.pto")
     assert raw.exists()
     with pytest.raises(FileExistsError):
-        app.on_paths_dropped([raw])
+        receive_containers(app, {"files": [str(raw)]})
         app.pack_vendor_files(target_dir)
     assert app.model.inspection.verify() == []
-    app.close()
-
-
-def test_database_container_selection_opens_resolved_path(container, monkeypatch):
-    import chisurf.plugins.core.pto_inspector.gui.app as module
-
-    calls = []
-
-    class Picker:
-        def __init__(self, **kwargs):
-            calls.append(kwargs)
-
-        def open(self):
-            calls[0]["on_paths"]([container])
-
-    monkeypatch.setattr(module, "DatasetPicker", Picker)
-    monkeypatch.setattr(module, "session_client", lambda: "authenticated client")
-    app = PtoInspectorApp()
-    app.open_database()
-    assert calls[0]["client"] == "authenticated client"
-    assert calls[0]["formats"] == ["pto"]
-    assert app.model.filename == str(container)
     app.close()

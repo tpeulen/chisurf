@@ -4,7 +4,7 @@ The Trace Browser pages through a folder of single-molecule (point) measurements
 
 ## How it works
 1. Setup page: pick or define the detector setup (which routing channels and micro-time windows make which trace, and the file type, which also decides the listed extensions) and press Continue. When a setup was used before, the window opens straight on the browser page; Select setup goes back.
-2. Press Open and choose a folder, or drop a folder on the window. Include subfolders also lists the files in nested folders. The .trash folder is never listed.
+2. Pick photon streams in the **Input** table (the TTTR files of the Datasets workspace; files enter ChiSurf by dropping them on the ChiSurf window) and press **Use selected**: they are listed from their folder, which keeps the ratings and notes. Include subfolders also lists the files in nested folders. The .trash folder is never listed.
 3. Click a row in the file table: its trace is drawn on the right, one line per detector plus their sum, with the histogram of the counts beside it. The first file is selected for you after every scan.
 4. Rate a file from 0 to 3 (double click the Rating cell, type a whole number, press Enter), write a note in the Notes cell or in the Annotation box under the plot. Ratings and notes are saved beside the data in the folder's .trace_browser_meta.json. Filter shows only the files that pass a rating.
 5. Bin window sets the width of a time bin in milliseconds; Y min and Y max set the y range of the plot (equal values fit the data).

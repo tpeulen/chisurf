@@ -4,6 +4,10 @@ Two dock tabs on the left as in the Qt wizard (Inputs and options, Detector defi
 The options are the view spec ``histogram.view.json`` drawn by emtk's view_form over :class:`HistogramFields` (a proxy of
 the model whose text fields, choices and actions the spec names); the detector definition is the shared
 channel-definition editor, not a copy. Computing runs on a worker, so the window draws only while something moves.
+
+The inputs are the Datasets workspace (the manifest's ``accepts[].from_workspace``): photon streams with a detector
+setup row (:func:`receive_photons`), and burst runs restricting them to bursts (:func:`receive_bursts`), picked in the
+generated Input sections, by *Open in…* or a drag -- never an input file dialog.
 """
 
 from __future__ import annotations
@@ -21,9 +25,9 @@ from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
+from chisurf.core.plugin.workspace_input import WorkspaceInputMixin, input_section, spec_for
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
     LabelColumn,
@@ -39,12 +43,28 @@ from .model import HistogramModel
 
 HERE = Path(__file__).parent
 FORMATS = ["Auto", "PTU", "HT3", "SPC-130", "SPC-600_256", "SPC-600_4096", "PTO"]
-PHOTON_FILTERS = [
-    ("Photon data", ["*.pto", "*.ptu", "*.ht3", "*.ht2", "*.spc", "*.phu", "*.tttr"]),
-    ("All files", ["*"]),
-]
-BURST_FILTERS = [("Burst containers", ["*.pto"]), ("All files", ["*"])]
 DECAY_FILTERS = [("Decay", ["*.dat", "*.txt"]), ("All files", ["*"])]
+
+
+class WorkspaceInput(WorkspaceInputMixin):
+    """One Input section's model: the workspace rows of *kind* the manifest declares, handed to
+    the app's receive hook when picked."""
+
+    workspace_input_plugin = "microtime_histogram"
+
+    def __init__(self, app, kind):
+        self.workspace_input_kind = kind
+        self.workspace_input_app = app
+        manifest = json.loads((HERE.parent / "manifest.json").read_text(encoding="utf-8"))
+        found = spec_for(manifest, kind=kind)
+        section = input_section(found[1], title="") if found else None
+        if section is not None:
+            # Two rows (the table scrolls): the options below the queue must stay on a normal screen.
+            for part in section.get("sections", []):
+                if (part.get("options") or {}).get("source") == "workspace_input_rows":
+                    part["options"]["height"] = 56
+        self.spec = {"sections": [section] if section else []}
+        self.form = FormState()
 
 
 class HistogramFields:
@@ -196,7 +216,18 @@ class HistogramApp(TourTarget, ImApp):
             "Choose a file", size=(640.0, 420.0), key="microtime-histogram-file"
         )
         self.editor = ChannelDefinitionWidget(on_changed=self.definition_changed, host_app=self)
-        self.dataset_picker = DatasetPicker(on_paths=self.add_files)
+        #: The Input sections: photon streams (with a setup row) and burst runs of the workspace.
+        self.inputs = {
+            "photon": WorkspaceInput(self, "photons"),
+            "burst": WorkspaceInput(self, "bursts"),
+        }
+        for name, source in self.inputs.items():
+            source.form.on_used = self.tour.notify_used
+            source.workspace_input_on_used = lambda _key, name=name: self.tour.notify_used(
+                f"{name}_input"
+            )
+        #: The workspace dataset each queued stream came from.
+        self.sources = {}
         self.selected = {"photon": None, "burst": None}
         self.log_y = True
         self.show_vv = self.show_vh = self.show_combined = True
@@ -269,45 +300,54 @@ class HistogramApp(TourTarget, ImApp):
             self.tour.notify_used(key)
             callback()
 
-    def choose(self, title, callback, mode="open", multiple=False, filters=None, filename=""):
+    def choose_save(self, title, callback, filters, filename=""):
+        """Where an output goes (the inputs come from the workspace, never a dialog)."""
         if self.job.running or self.editor._future is not None:
             return
-        self.dialog = FileDialog(
-            title,
-            mode=mode,
-            multiselect=multiple,
-            filters=filters or PHOTON_FILTERS,
-            filename=filename,
-        )
+        self.dialog = FileDialog(title, mode="save", filters=filters, filename=filename)
         self.dialog_callback = callback
         self.dialog_window.title = title
         self.dialog_window.show()
 
-    def add_files(self, paths):
+    def add_files(self, paths, sources=None):
+        """Queue photon streams (files or container members); *sources* maps an address to the
+        workspace dataset it came from."""
         if not self.job.running:
             self.model.add_paths(paths)
+            self.sources.update({str(k): str(v) for k, v in (sources or {}).items() if v})
 
     def add_bursts(self, paths):
         if not self.job.running:
             self.model.add_paths(paths, bursts=True)
-            self.model.message = f"{len(self.model.burst_files)} burst container(s) queued."
-            self.find_sources()
+            self.model.message = f"{len(self.model.burst_files)} burst selection(s) queued."
+            if not self.model.files:  # the photons the bursts were made on, when none are queued
+                self.find_sources()
+
+    def set_setup(self, setup):
+        """Use the detector *setup* (a workspace setup row's definition) for the histogram."""
+        self.editor.load_definition(setup)
 
     def load_example(self):
-        """Queue a known synthetic PTU without changing saved setups or starting analysis."""
+        """Put a known synthetic PTU and its detector setup into the workspace and use them, as
+        picked rows would be; no saved setup changes and nothing is computed."""
         if not self.fields.enabled("load_example"):
             return False
+        from chisurf.plugins.tttr.workspace_io import add_setup, example_into_workspace
+
         from ..demo import SETUP, demo_folder, make_demo
 
         try:
             source = make_demo(demo_folder())
+            setup_address = add_setup(Path(demo_folder()) / "detector_setup.json", SETUP)
         except (OSError, RuntimeError) as error:
             self.model.message = tr("Could not generate demonstration: {error}").format(error=error)
             return False
         self.model = HistogramModel()
-        self.editor.load_definition(SETUP)
         self.model.auto_save = False
-        self.add_files([source])
+        self.sources = {}
+        example_into_workspace(
+            source, receive_photons, self, key="files", many=True, extra={"setup": setup_address}
+        )
         self.model.message = tr("Synthetic demo queued: 3000 VV + 1500 VH photons. Press Compute.")
         self.docks.focus("inputs")
         return True
@@ -404,11 +444,10 @@ class HistogramApp(TourTarget, ImApp):
         return self.run(operation)
 
     def save_as(self):
-        self.choose(
+        self.choose_save(
             "Save decay",
             lambda paths: self.save(paths[0]),
-            mode="save",
-            filters=DECAY_FILTERS,
+            DECAY_FILTERS,
             filename=Path(self.model.output).name,
         )
 
@@ -458,15 +497,18 @@ class HistogramApp(TourTarget, ImApp):
         im.end_disabled()
 
     def draw_queue(self, caption, key, paths, enabled, pickers):
-        """One input list: its pickers, a checkable row per file (right-click removes), and All / None / Remove / Clear."""
+        """One input list: the workspace rows it takes (its Input section), its pickers, a checkable row
+        per queued input (right-click removes), and All / None / Remove / Clear."""
         pad = (
             " " if key == "burst" else ""
         )  # the two lists' buttons need different ids (the caption is the id)
         if caption:
             im.text(caption)
-        im.begin_disabled(
-            self.job.running or self.dialog is not None or self.dataset_picker.is_open
-        )
+        source = self.inputs[key]
+        im.begin_disabled(self.job.running or self.dialog is not None)
+        draw_form(source.spec, source, source.form)
+        if "workspace_input_rows" in source.form.rects:
+            self.remember(f"{key}_input", source.form.rects["workspace_input_rows"])
         got = button_row(
             [
                 dict(label=label + pad, key=f"{key}_{name}", tip=tip)
@@ -573,9 +615,7 @@ class HistogramApp(TourTarget, ImApp):
                 key="stop",
                 role="danger",
             )
-        im.begin_disabled(
-            self.job.running or self.dialog is not None or self.dataset_picker.is_open
-        )
+        im.begin_disabled(self.job.running or self.dialog is not None)
         self.form.rects.clear()
         draw_form(self.run_spec, self.fields, self.form)
         self.item_rects.update(self.form.rects)
@@ -602,59 +642,22 @@ class HistogramApp(TourTarget, ImApp):
                 [f["label"] for f in labelled(self.spec["sections"] + self.run_spec["sections"])]
             )
             self.labels.pad(self.spec["sections"])
-        im.begin_disabled(
-            self.job.running or self.dialog is not None or self.dataset_picker.is_open
-        )
+        im.begin_disabled(self.job.running or self.dialog is not None)
         self.form.rects.clear()
         draw_form(self.spec, self.fields, self.form)
         self.item_rects.update(self.form.rects)
         im.end_disabled()
 
     def draw_photon_list(self):
-        pickers = [
-            (
-                "files",
-                "➕  Files…",
-                "Queue TTTR/PTO photon files, with per-file inclusion controls.",
-                lambda: self.choose("TTTR inputs", self.add_files, multiple=True),
-            ),
-            (
-                "folder",
-                "📁  Folder…",
-                "Queue photon files recursively from a folder.",
-                lambda: self.choose("TTTR folder", self.add_files, mode="folder"),
-            ),
-            (
-                "database",
-                "🗄  Database…",
-                "Select raw photon data from the MMFDB object store.",
-                self.dataset_picker.open,
-            ),
-        ]
-        self.draw_queue("Photon files", "photon", self.model.files, self.model.enabled, pickers)
+        self.draw_queue("Photon streams", "photon", self.model.files, self.model.enabled, [])
 
     def draw_burst_list(self):
         pickers = [
             (
-                "files",
-                "➕  Files…",
-                "Queue .pto burst containers: a burst search's photons, read from provenance.",
-                lambda: self.choose(
-                    "Burst containers", self.add_bursts, multiple=True, filters=BURST_FILTERS
-                ),
-            ),
-            (
-                "folder",
-                "📁  Folder…",
-                "Expand a folder to its .pto burst containers.",
-                lambda: self.choose(
-                    "Burst container folder", self.add_bursts, mode="folder", filters=BURST_FILTERS
-                ),
-            ),
-            (
                 "find",
                 "🔍  Find TTTR",
-                "Search the containers' folders for the photon files the bursts were made on.",
+                "Queue the photon streams the bursts were made on: the ones their container embeds, "
+                "else the photon files beside it.",
                 self.find_sources,
             ),
         ]
@@ -714,7 +717,6 @@ class HistogramApp(TourTarget, ImApp):
         vp = im.get_main_viewport()
         frame = (0.0, 0.0, *vp.size)
         self.docks.draw(frame)
-        self.dataset_picker.render(frame)
         self.editor.draw_dialogs(frame)
         if self.dialog is not None:
             pressed = self.dialog_window.begin(frame)
@@ -732,11 +734,6 @@ class HistogramApp(TourTarget, ImApp):
             self.model.invalidate()
             self.input_signature = signature
 
-    def on_paths_dropped(self, paths):
-        # Photon streams only: the legacy .bst/.bur layouts are reached through
-        # the legacy import/export plugins, never dropped here.
-        self.add_files([p for p in paths or ()])
-
     def export_settings(self):
         return self.model.export_settings()
 
@@ -751,9 +748,43 @@ class HistogramApp(TourTarget, ImApp):
     def close(self):
         self.job.close()
         self.editor.close()
-        self.dataset_picker.close()
 
 
 def create_app(reader=None, add_dataset=None):
     """Create the declared native histogram workflow and its optional I/O callbacks."""
     return HistogramApp(reader=reader, add_dataset=add_dataset)
+
+
+def receive_photons(app: HistogramApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``photons``): queue ``payload["files"]``.
+
+    The values are addresses as the workspace hands them (a TTTR file or a container's photon
+    stream); a ``setup`` row's address, when chosen with them, loads that detector definition.
+    """
+    from chisurf.core.plugin.workspace_input import read_address
+    from chisurf.plugins.tttr.workspace_io import read_setup
+
+    if app.job.running:
+        raise RuntimeError(tr("the tool is busy; try again when it has finished"))
+    given = payload["files"]
+    addresses = [read_address(str(a)) for a in ([given] if isinstance(given, str) else given)]
+    if payload.get("setup"):
+        app.set_setup(read_setup(str(payload["setup"])))
+    uids = [str(u) for u in payload.get("datasets") or []]
+    app.add_files(addresses, sources=dict(zip(addresses, uids)))
+    app.model.message = tr("{n} photon stream(s) queued. Press Compute.").format(
+        n=len(app.model.files)
+    )
+    app.docks.focus("inputs")
+
+
+def receive_bursts(app: HistogramApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``bursts``): restrict the photons to the burst runs
+    ``payload["bursts"]`` (addresses ``m000.pto/<run>``); their photon streams are queued when
+    none are."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    if app.job.running:
+        raise RuntimeError(tr("the tool is busy; try again when it has finished"))
+    given = payload["bursts"]
+    app.add_bursts([read_address(str(a)) for a in ([given] if isinstance(given, str) else given)])

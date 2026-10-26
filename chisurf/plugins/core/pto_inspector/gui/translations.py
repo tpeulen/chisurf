@@ -289,6 +289,20 @@ _HEADERS = {
     "Rows": ["Zeilen", "Lignes", "Filas", "Linhas", "Строки"],
     "Size": ["Größe", "Taille", "Tamaño", "Tamanho", "Размер"],
     "Parents": ["Eltern", "Parents", "Padres", "Ascendentes", "Родители"],
+    "Pick a photon container, a stream of one, or vendor photon files.": [
+        "Einen Photonen-Container, einen Strom daraus oder Hersteller-Photonendateien wählen.",
+        "Choisissez un conteneur de photons, un de ses flux ou des fichiers de photons du fabricant.",
+        "Elija un contenedor de fotones, uno de sus flujos o archivos de fotones del fabricante.",
+        "Escolha um contentor de fotões, um dos seus fluxos ou ficheiros de fotões do fabricante.",
+        "Выберите контейнер фотонов, один из его потоков или файлы фотонов производителя.",
+    ],
+    "Pick a photon stream in the Input section.": [
+        "Einen Photonenstrom im Eingabe-Bereich wählen.",
+        "Choisissez un flux de photons dans la section Entrée.",
+        "Elija un flujo de fotones en la sección Entrada.",
+        "Escolha um fluxo de fotões na secção Entrada.",
+        "Выберите поток фотонов в разделе «Вход».",
+    ],
     "Database": ["Datenbank", "Base de données", "Base de datos", "Base de dados", "База данных"],
     "Choose a container from MMFDB.": [
         "Container aus MMFDB auswählen.",
@@ -393,12 +407,12 @@ _HINTS.update(
             "Nenhum contentor aberto.",
             "Контейнер не открыт.",
         ],
-        "No container open. Drop a .pto on this window, or press Open. A container holds one measurement: the instrument file verbatim, and every result computed from it beside it.": [
-            "Kein Container geöffnet. Eine .pto auf dieses Fenster ziehen oder Öffnen drücken. Ein Container enthält eine Messung: die Instrumentendatei unverändert und daneben jedes daraus berechnete Ergebnis.",
-            "Aucun conteneur ouvert. Déposez un .pto sur cette fenêtre ou appuyez sur Ouvrir. Un conteneur contient une mesure : le fichier instrument tel quel et, à côté, chaque résultat calculé.",
-            "Ningún contenedor abierto. Suelte un .pto en esta ventana o pulse Abrir. Un contenedor guarda una medición: el archivo del instrumento tal cual y, junto a él, cada resultado calculado.",
-            "Nenhum contentor aberto. Largue um .pto nesta janela ou prima Abrir. Um contentor guarda uma medição: o ficheiro do instrumento tal e qual e, ao lado, cada resultado calculado.",
-            "Контейнер не открыт. Перетащите .pto в это окно или нажмите «Открыть». Контейнер хранит одно измерение: файл прибора без изменений и рядом каждый вычисленный результат.",
+        "No container open. Pick a photon stream or a burst run in the Input section (files dropped on ChiSurf land in the workspace). A container holds one measurement: the instrument file verbatim, and every result computed from it beside it.": [
+            "Kein Container geöffnet. Einen Photonenstrom oder einen Burst-Lauf im Eingabe-Bereich wählen (auf ChiSurf abgelegte Dateien landen im Arbeitsbereich). Ein Container enthält eine Messung: die Instrumentendatei unverändert und daneben jedes daraus berechnete Ergebnis.",
+            "Aucun conteneur ouvert. Choisissez un flux de photons ou une série de bursts dans la section Entrée (les fichiers déposés sur ChiSurf arrivent dans l'espace de travail). Un conteneur contient une mesure : le fichier instrument tel quel et, à côté, chaque résultat calculé.",
+            "Ningún contenedor abierto. Elija un flujo de fotones o una serie de ráfagas en la sección Entrada (los archivos soltados en ChiSurf llegan al espacio de trabajo). Un contenedor guarda una medición: el archivo del instrumento tal cual y, junto a él, cada resultado calculado.",
+            "Nenhum contentor aberto. Escolha um fluxo de fotões ou uma série de rajadas na secção Entrada (os ficheiros largados no ChiSurf chegam ao espaço de trabalho). Um contentor guarda uma medição: o ficheiro do instrumento tal e qual e, ao lado, cada resultado calculado.",
+            "Контейнер не открыт. Выберите поток фотонов или серию вспышек в разделе «Вход» (файлы, перетащенные в ChiSurf, попадают в рабочую область). Контейнер хранит одно измерение: файл прибора без изменений и рядом каждый вычисленный результат.",
         ],
         "A container already exists. Choose another folder.": [
             "Container existiert bereits. Anderen Ordner wählen.",

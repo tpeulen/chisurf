@@ -99,8 +99,8 @@ class TTTRImageBrowserApp(ImApp):
         Detector-setups JSON the setup page offers (default: the user's canonical file).
     """
 
+    #: The dialogs of the toolbar: where outputs go (the input comes from the workspace).
     DIALOGS = {
-        "folder": ("Open folder", "folder", "", "open_folder"),
         "copy": ("Copy raw files to", "folder", "", "do_copy_files"),
         "tiff": ("Write TIFF stacks to", "folder", "", "do_export_tiff"),
         "docx": ("Save DOCX report", "save", "DOCX (*.docx)", "do_export_docx"),
@@ -156,6 +156,11 @@ class TTTRImageBrowserApp(ImApp):
             wait_for_controls=True,
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
         )
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: The input: photon images of the workspace (the manifest's ``images``).
+        self.input = NamedWorkspaceInput("tttr_image_browser", "images", self, height=72)
+        self.input.workspace_input_on_used = self.tour.notify_used
         self.help_window = EmTkHelpWindow(
             title="TTTR Image Browser — Help",
             resource=HERE / "help.md",
@@ -226,24 +231,11 @@ class TTTRImageBrowserApp(ImApp):
         self.model.apply_pipeline_context(payload)
         self.request_frame()
 
-    def files_dropped(self, paths: Any) -> bool:
-        """Files dropped on the window (the host's verb): a folder opens, anything else is reported."""
-        paths = [str(p) for p in paths]
-        if not paths:
-            return False
-        if any(Path(p).is_dir() for p in paths):
-            folder = next(p for p in paths if Path(p).is_dir())
-            self.page = "browser"
-            self.pending_page = "browser"
-            self.queue("open_folder", folder)
-            return True
-        self.model.status_line = "Drop a folder of photon files, not a single file."
-        return False
-
-    on_files_dropped = files_dropped
-
     def load_example(self) -> None:
-        """Open the folder of two small simulated scans of :mod:`..demo`, written into the settings cache."""
+        """Simulate the two small scans of :mod:`..demo` into the settings cache, add them to the
+        workspace and show them, as picked rows would be."""
+        from chisurf.core.plugin.workspace_input import register_result
+
         from ..demo import make_demo
 
         try:
@@ -251,9 +243,15 @@ class TTTRImageBrowserApp(ImApp):
         except (OSError, RuntimeError) as exc:
             self.model.status_line = f"Could not write the example: {exc}"
             return
-        self.page = self.pending_page = "browser"
+        scans = sorted(str(p) for p in Path(folder).iterdir() if p.suffix.lower() == ".ptu")
+        uids = []
+        for scan in scans:
+            try:
+                uids.append(str(register_result(scan, kind="image").unique_identifier))
+            except Exception:  # noqa: BLE001 - the scans are written; their rows are a convenience
+                pass
         self._example_pending = True
-        self.queue("open_folder", str(folder))
+        receive_images(self, {"files": scans, "datasets": uids})
 
     def open_folder(self, path: Any) -> None:
         """Open *path* (a file opens the folder that holds it)."""
@@ -488,6 +486,11 @@ class TTTRImageBrowserApp(ImApp):
 
     def _files(self) -> None:
         im.begin_disabled(bool(self.model.busy))
+        # The input: photon images of the workspace (files dropped on ChiSurf land there).
+        source = self.input
+        draw_sections(source.spec["sections"], source, source.form, titles=False)
+        if "workspace_input_rows" in source.form.rects:
+            self.form.rects["workspace_input_rows"] = source.form.rects["workspace_input_rows"]
         draw_sections(self.panels["files"]["sections"], self.model, self.form)
         im.end_disabled()
 
@@ -681,14 +684,18 @@ class TTTRImageBrowserApp(ImApp):
         if not kind or self.dialog is not None:
             return
         title, mode, filters, _handler = self.DIALOGS[kind]
-        name = self.model.dialog_filename(kind) if mode == "save" else ""
-        self.dialog = FileDialog(
-            title,
-            mode=mode,
-            filters=filters or (("All files", ("*",)),),
-            directory=self.model.current_folder or self.model.folder or None,
-            filename=name,
-        )
+        directory = self.model.current_folder or self.model.folder or None
+        if mode == "save":
+            self.dialog = FileDialog(
+                title,
+                mode="save",
+                filters=filters or (("All files", ("*",)),),
+                directory=directory,
+                filename=self.model.dialog_filename(kind),
+            )
+        else:
+            # not-input: the folder the copies or the TIFF stacks are written to
+            self.dialog = FileDialog(title, mode="folder", directory=directory)
         self.dialog_kind = kind
         self.dialog_window = DialogWindow(title, size=(640.0, 460.0), key=f"file_{kind}")
 
@@ -722,3 +729,16 @@ def make_app(**kwargs: Any) -> TTTRImageBrowserApp:
         coordinator=kwargs.get("coordinator"),
         setups_file=kwargs.get("setups_file"),
     )
+
+
+def receive_images(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``images``): show ``payload["files"]`` -- photon images
+    (scanning confocal TTTR files) picked in the workspace -- in their folder, the first selected."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    given = payload["files"]
+    paths = [read_address(str(a)) for a in ([given] if isinstance(given, str) else given)]
+    if not paths:
+        raise ValueError("no image was handed over")
+    app.page = app.pending_page = "browser"
+    app.queue("open_files", paths)

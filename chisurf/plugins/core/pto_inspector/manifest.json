@@ -16,6 +16,9 @@
       "settings_key": "pto_inspector_window"
     }
   },
+  "accepts": [
+    {"name": "containers", "summary": "Open the container of a photon stream or burst run, or offer vendor photon files for packing into one.", "receive": "chisurf.plugins.core.pto_inspector.gui.app:receive_containers", "required": ["files"], "from_workspace": {"kinds": ["photons", "bursts"], "many": true, "key": "files"}}
+  ],
   "entrypoints": {
     "cli": "csg_pto_inspect=chisurf.plugins.core.pto_inspector.cli.main:cli",
     "emtk": "chisurf.plugins.core.pto_inspector.gui.app:make_app"

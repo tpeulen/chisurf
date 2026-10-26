@@ -55,7 +55,7 @@ Load JSON|JSON laden|Charger le JSON|Cargar JSON|Carregar JSON|Загрузит�
 Save JSON|JSON speichern|Enregistrer le JSON|Guardar JSON|Salvar JSON|Сохранить JSON
 Help|Hilfe|Aide|Ayuda|Ajuda|Справка
 Apply to detector setup|Auf Detektoreinrichtung anwenden|Appliquer à la configuration de détecteur|Aplicar a la configuración del detector|Aplicar à configuração do detector|Применить к конфигурации детектора
-Working…|Läuft…|En cours…|Procesando…|Processando…|Обработка…
+Working…|Arbeitet…|En cours…|Procesando…|Processando…|Обработка…
 Select file|Datei auswählen|Sélectionner le fichier|Seleccionar archivo|Selecionar arquivo|Выбрать файл
 Settings JSON preview|JSON-Vorschau der Einstellungen|Aperçu du JSON des réglages|Vista previa JSON de ajustes|Prévia JSON das configurações|Предпросмотр настроек JSON
 Raw TAC|Roh-TAC|TAC brut|TAC sin corregir|TAC bruto|Исходный TAC

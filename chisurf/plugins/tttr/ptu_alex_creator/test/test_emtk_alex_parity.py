@@ -123,7 +123,10 @@ def ui(tmp_path):
 
 
 def loaded(ui, path):
-    assert ui.drop(path)
+    """The file handed over by the workspace (its row picked in the Input section)."""
+    from chisurf.plugins.tttr.ptu_alex_creator.gui.app import receive_input
+
+    receive_input(ui.app, {"file": str(path)})
     ui.settle()
     assert ui.app.model.has_data
     return ui
@@ -243,57 +246,37 @@ def test_another_output_container_equals_the_qt_tools(ui, source, tmp_path):
 # -- the file row ---------------------------------------------------------------------------------------------------- #
 
 
-def test_dropping_one_file_loads_it_and_shows_the_histogram(ui, source):
+def test_a_handed_file_loads_and_shows_the_histogram(ui, source):
     loaded(ui, source)
     assert ui.app.model.input_file == str(source)
     assert sum(ui.app.histogram) == 5000 and ui.drawn("5,000 events")
     assert any("source.ptu" in s for s in ui.draw().strings)
 
 
-def test_open_button_opens_the_dialog_and_a_picked_file_loads(ui, source):
-    ui.click_name("choose_input")
-    assert ui.dialog_open
-    ui.app.dialog.enter(str(source.parent))
-    ui.pick(source.name)
-    assert not ui.dialog_open
-    ui.settle()
-    assert ui.app.model.input_file == str(source) and ui.app.model.has_data
+def test_there_is_no_open_dialog_no_typed_path_and_no_drop_hook(ui):
+    ui.draw()
+    for name in ("choose_input", "load_input"):
+        assert not hasattr(ui.app, name) or name == "choose_input", name
+    assert "choose_files" not in ui.app.item_rects and "choose_database" not in ui.app.item_rects
+    assert not hasattr(ui.app, "on_files_dropped") and not hasattr(ui.app, "dataset_picker")
+    assert "choose_input" in ui.app.item_rects  # the rect of the Input section of the workspace
 
 
-def test_open_dialog_cancel_and_close_load_nothing(ui, source):
-    ui.click_name("choose_input")
-    ui.click_text("Cancel")
-    assert not ui.dialog_open and not ui.app.model.has_data
-    ui.click_name("choose_input")
-    ui.click_text("×")
-    assert not ui.dialog_open and not ui.app.model.has_data
+def test_a_handed_path_that_is_not_a_file_says_so(ui, tmp_path):
+    from chisurf.plugins.tttr.ptu_alex_creator.gui.app import receive_input
 
-
-def test_typing_a_path_and_enter_loads_it(ui, source):
-    ui.type_into_name("input_file", str(source))
-    ui.settle()
-    assert ui.app.model.has_data and ui.app.loaded_path == str(source)
-
-
-def test_the_load_button_reads_the_typed_path_and_is_grey_without_one(ui, source):
-    ui.click_name("load_input")
-    assert not ui.app.model.has_data and ui.app.message == ""  # greyed: a press does nothing
-    ui.type_into_name("input_file", str(source), commit=False)
-    ui.click_name("choose_save")  # leaving the field commits it: the Qt editingFinished
-    ui.settle()
-    assert ui.app.model.has_data
-    ui.app.model._tttr = None
-    ui.app.loaded_path = ""
-    ui.click_name("load_input")
-    ui.settle()
-    assert ui.app.model.has_data
-
-
-def test_a_path_that_is_not_a_file_says_so(ui, tmp_path):
-    ui.type_into_name("input_file", str(tmp_path / "missing.ptu"))
+    receive_input(ui.app, {"file": str(tmp_path / "missing.ptu")})
     assert not ui.app.model.has_data
     assert ui.app.message_is_error and "missing.ptu" in ui.app.message
     assert any("missing.ptu" in s for s in ui.draw().strings)
+
+
+def test_a_stream_inside_a_container_is_refused_with_the_reason(ui, tmp_path):
+    from chisurf.plugins.tttr.ptu_alex_creator.gui.app import receive_input
+
+    (tmp_path / "m.pto").write_bytes(b"x")
+    with pytest.raises(ValueError, match="unpack it"):
+        receive_input(ui.app, {"file": str(tmp_path / "m.pto" / "m.ptu")})
 
 
 def test_the_input_format_choice_is_clicked(ui, source):
@@ -333,8 +316,7 @@ def test_typed_values_are_clamped_and_garbage_is_ignored(ui):
 
 def test_a_click_away_commits_a_typed_value(ui):
     ui.type_into_name("period_shift", "41", commit=False)
-    ui.click_name("choose_input")
-    ui.click_text("Cancel")
+    ui.click_name("clear_queue")  # any other control: leaving the field commits it
     assert ui.app.model.period_shift == 41
 
 
@@ -422,48 +404,14 @@ def queue(ui):
     return [Path(p).name for p in ui.app.model.batch_files]
 
 
-def test_add_files_multiselect_dialog_and_duplicates(ui, source, second):
-    ui.click_name("choose_files")
-    assert ui.dialog_open
-    ui.app.dialog.enter(str(source.parent))
-    ui.click_text(source.name)
-    ui.click_text(second.name)
-    ui.click_text("Open")
+def test_handed_files_fill_the_queue_without_duplicates(ui, source, second):
+    from chisurf.plugins.tttr.ptu_alex_creator.gui.app import receive_batch
+
+    receive_batch(ui.app, {"files": [str(source), str(second)]})
     assert queue(ui) == ["source.ptu", "second.ptu"]
     assert ui.drawn("second.ptu") and ui.drawn("source.ptu")
-    ui.app.add_paths([source])
+    receive_batch(ui.app, {"files": [str(source)]})
     assert queue(ui) == ["source.ptu", "second.ptu"]  # duplicates are ignored
-
-
-def test_add_files_cancel_and_close_change_nothing(ui):
-    ui.click_name("choose_files")
-    ui.click_text("Cancel")
-    ui.click_name("choose_files")
-    ui.click_text("×")
-    assert not ui.dialog_open and queue(ui) == []
-
-
-def test_folder_button_queues_the_supported_files_recursively(ui, source, tmp_path):
-    folder = tmp_path / "many"
-    (folder / "deep").mkdir(parents=True)
-    for name in ("a.ptu", "deep/b.sm", "deep/c.ht3", "notes.txt", "deep/readme.md"):
-        (folder / name).write_text("")
-    ui.click_name("choose_folder")
-    assert ui.dialog_open
-    ui.app.dialog.enter(str(tmp_path))
-    ui.click_text("[many]")
-    ui.click_text("Choose")
-    assert sorted(queue(ui)) == ["a.ptu", "b.sm", "c.ht3"]
-
-
-def test_database_button_opens_the_dataset_picker(ui):
-    before = ui.draw().strings
-    ui.click_name("choose_database")
-    assert (
-        ui.app.dataset_picker.open
-        if hasattr(ui.app.dataset_picker, "open")
-        else ui.draw().strings != before
-    )
 
 
 def test_remove_is_grey_until_a_row_is_selected_then_removes_that_file(ui, source, second):
@@ -567,30 +515,6 @@ def test_run_batch_with_real_input_writes_the_files(ui, source, second, tmp_path
     for a, b in zip(expected, ui.app.outputs):
         same_file(a, b)
     assert any(Path(ui.app.outputs[0]).name in s for s in ui.draw().strings)
-
-
-# -- drops -------------------------------------------------------------------------------------------------------------- #
-
-
-def test_a_file_dropped_outside_the_queue_loads_and_one_over_it_is_queued(ui, source, second):
-    x, y, w, h = ui.rect("choose_input")
-    ui.app.pointer_move(x + 5, y + 5)
-    assert ui.drop(source)
-    ui.settle()
-    assert ui.app.model.has_data and queue(ui) == []
-    qx, qy, qw, qh = ui.app.item_rects["queue"]
-    ui.app.pointer_move(qx + qw / 2, qy + qh / 2)
-    assert ui.drop(second)
-    assert queue(ui) == ["second.ptu"]
-
-
-def test_several_files_and_folders_dropped_are_queued(ui, source, second, tmp_path):
-    folder = tmp_path / "dropdir"
-    folder.mkdir()
-    (folder / "x.sm").write_text("")
-    (folder / "x.txt").write_text("")
-    assert ui.drop(source, second, folder)
-    assert queue(ui) == ["source.ptu", "second.ptu", "x.sm"] and not ui.app.model.has_data
 
 
 # -- settings -------------------------------------------------------------------------------------------------------------- #
@@ -761,7 +685,7 @@ def test_every_spec_guide_and_message_text_is_translated_in_all_five_locales(ui)
         spec = translated(ui.app.spec_source)
         assert spec["sections"][0]["title"] == "Eingabedatei"
         buttons = {b["action"]: b["label"] for b in spec["sections"][0]["sections"][1]["buttons"]}
-        assert buttons["choose_input"] == "Öffnen…"
+        assert "choose_input" not in buttons  # the input is the workspace
         assert buttons["load_example"] == "Beispiel laden"
     finally:
         set_locale(previous)

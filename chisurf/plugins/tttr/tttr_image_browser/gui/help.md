@@ -13,7 +13,7 @@ types the setup reads. Without a setup the browser lists every supported file ty
 
 ## Files
 
-Press Open folder or drop a folder on the window. Include subfolders lists the files below it as well. The list
+Pick photon images in the **Input** table (the confocal scans of the Datasets workspace; files enter ChiSurf by dropping them on the ChiSurf window) and press **Use selected**: the browser opens their folder and lists them. Include subfolders lists the files below it as well. The list
 has a filter box (any text in a row), sortable columns and a Rating filter (all, at least 1, 2 or 3 stars, or only
 unrated). A click selects a file; with Multiple selection a click adds or removes a row, Select all takes every
 row the filters show.

@@ -267,7 +267,7 @@ def test_every_control_has_a_tooltip(setups_file):
         app.continue_to_browser()
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []
-        assert {"← Select setup", action_caption("open"), "Clear", "Clear caches"} <= {
+        assert {"← Select setup", "Use selected", "Clear", "Clear caches"} <= {
             row["label"] for row in inv["interactive"]
         }
     finally:

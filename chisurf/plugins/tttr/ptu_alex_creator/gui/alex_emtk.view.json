@@ -14,16 +14,15 @@
           "kind": "file",
           "label": "File",
           "elide": "start",
-          "description": "Path of the TTTR file to convert. Press Enter (or click elsewhere) to load it; a file dropped on the window loads too."
+          "read_only": true,
+          "description": "The TTTR file being converted: pick it in the Input section below (files dropped on ChiSurf land in the workspace)."
         },
         {
           "type": "button_row",
           "_comment": "Wraps inside its line: it needs its widest button, not all four side by side (which would push the File label above its field).",
           "min_width": 140,
           "buttons": [
-            {"label": "Load example", "action": "load_example", "icon": "🧪", "description": "Generate the deterministic demonstration stream (a µs-ALEX measurement with the alternation still in the macro time) in the settings cache and load it."},
-            {"label": "Open…", "icon": "📂", "action": "choose_input", "description": "Choose a TTTR file and preview its folded ALEX phase."},
-            {"label": "Load", "action": "load_input", "description": "Read the file named above."},
+            {"label": "Load example", "action": "load_example", "icon": "🧪", "description": "Generate the deterministic demonstration stream (a µs-ALEX measurement with the alternation still in the macro time) in the settings cache, add it to the workspace and load it."},
             {"label": "Save as…", "action": "choose_save", "description": "Write the converted photon data to a new file; the input is never overwritten. Grey until a file is loaded."}
           ]
         }
@@ -121,9 +120,6 @@
         {
           "type": "button_row",
           "buttons": [
-            {"label": "Add files…", "action": "choose_files", "description": "Queue TTTR files; duplicate paths are ignored."},
-            {"label": "Folder…", "action": "choose_folder", "description": "Queue the supported TTTR files of a folder, scanned recursively."},
-            {"label": "Database", "action": "choose_database", "description": "Queue TTTR data from the session database."},
             {"label": "Remove", "role": "danger", "action": "remove_selected", "description": "Remove the selected file from the queue; the file stays on disk. Grey until a row is selected."},
             {"label": "Clear", "role": "danger", "action": "clear_queue", "description": "Empty the queue without deleting files."}
           ]
@@ -140,7 +136,7 @@
             "delete_call": "remove_row",
             "editable": false,
             "expand": true,
-            "height": 6,
+            "height": 3,
             "fit_columns": false,
             "min_column_width": 70,
             "tooltip_key": "path",

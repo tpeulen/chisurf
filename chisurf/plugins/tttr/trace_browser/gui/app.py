@@ -304,6 +304,12 @@ class TraceBrowserApp(ImApp):
         self._queue: deque[tuple[str, tuple]] = deque()
         self._reported_error = ""
         self.spec = json.loads((HERE / "trace_browser_emtk.view.json").read_text(encoding="utf-8"))
+        from chisurf.core.plugin.workspace_input import spec_for, with_workspace_input
+
+        found = spec_for(json.loads((HERE.parent / "manifest.json").read_text(encoding="utf-8")))
+        if found is not None:  # the input: the workspace's photon streams
+            self.spec = with_workspace_input(self.spec, found[1])
+        self.model.workspace_input_app = self
         self.window_size = window_size(self.spec, (1200, 800))
         self.form = FormState()
         self.dialog: FileDialog | None = None
@@ -546,8 +552,8 @@ class TraceBrowserApp(ImApp):
         model = self.model
         if "load_example" in self.form.rects:
             self.item_rects["load_example"] = self.form.rects["load_example"]
-        if "choose_folder" in self.form.rects:
-            self.item_rects["folder_opened"] = self.form.rects["choose_folder"]
+        if "workspace_input_rows" in self.form.rects:
+            self.item_rects["folder_opened"] = self.form.rects["workspace_input_rows"]
         if "select_all_files" in self.form.rects:
             self.item_rects["several_selected"] = self.form.rects["select_all_files"]
         if "export_selected" in self.form.rects:
@@ -782,8 +788,8 @@ class TraceBrowserApp(ImApp):
 
     # -- folder dialog ---------------------------------------------------------
     #: Title of the folder dialog for each request of the model.
+    #: Where the outputs go (the input comes from the workspace, never a dialog).
     _DIALOG_TITLES = {
-        "folder": "Select folder with PTU/TTTR files",
         "export": "Select destination folder for the exported files",
         "csv": "Select destination folder for the CSV files",
     }
@@ -800,6 +806,7 @@ class TraceBrowserApp(ImApp):
         folder = self.model.current_folder
         self.dialog_kind = kind
         self._dialog_paths = [str(p) for p in self.model.selection_paths()]
+        # not-input: the folder the exported files or their CSV traces are written to
         self.dialog = FileDialog(
             self._DIALOG_TITLES[kind],
             mode="folder",
@@ -818,8 +825,6 @@ class TraceBrowserApp(ImApp):
                     self.model.request("export_files", Path(result[0]), paths)
                 elif kind == "csv":
                     self.model.request("export_csv_files", Path(result[0]), paths)
-                else:
-                    self.model.request("open_folder", Path(result[0]))
             elif result is False:
                 self.dialog = None
         im.end()
@@ -854,17 +859,6 @@ class TraceBrowserApp(ImApp):
                 self.model.confirm_no()
             self.item_rects["confirm_no"] = im.get_item_rect()
         im.end()
-
-    # -- folders dropped on the window ------------------------------------------
-    def on_paths_dropped(self, paths: Any) -> None:
-        """Open the first dropped folder (a dropped file is ignored, as in the Qt tool)."""
-        self.model.on_paths_dropped(list(paths))
-
-    def files_dropped(self, paths: Any) -> bool:
-        """Host hook: ``True`` when a folder was taken."""
-        return bool(self.model.on_paths_dropped(list(paths)))
-
-    on_files_dropped = files_dropped
 
     # -- persistence -----------------------------------------------------------
     def export_settings(self) -> dict:
@@ -929,3 +923,15 @@ def make_app(on_request: Callable[[str, dict], Any] | None = None) -> TraceBrows
     if on_request is None:
         on_request = default_request_handler()
     return TraceBrowserApp(on_request=on_request)
+
+
+def receive_photons(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``photons``): list ``payload["files"]`` -- photon
+    streams picked in the workspace -- in their folder, the first selected."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    given = payload["files"]
+    paths = [read_address(str(a)) for a in ([given] if isinstance(given, str) else given)]
+    if not paths:
+        raise ValueError("no photon stream was handed over")
+    app.model.request("open_files", paths, list(payload.get("datasets") or []))

@@ -202,10 +202,21 @@ class PhotonTableModel:
             self.n_micro_channels = 0
 
     def load_file(self, path: str | pathlib.Path, tttr_type=None) -> None:
-        """Open a TTTR file and load it. ``tttr_type`` pins the container."""
+        """Open a TTTR file (or a photon stream of a container) and load it, records as stored.
+
+        ``tttr_type`` pins the container. A container's stream is read through
+        :func:`~chisurf.core.fio.staging.open_tttr` with no LUT applied, so its micro-times are
+        the stored ones, as a file's are.
+        """
         import tttrlib
 
-        if tttr_type is None:
+        from chisurf.core.fio.address import container_of
+
+        if container_of(str(path)) != pathlib.Path(str(path)):
+            from chisurf.core.fio.staging import open_tttr
+
+            tttr = open_tttr(str(path), tttr_type, apply_lut=False, cache=False)
+        elif tttr_type is None:
             tttr = tttrlib.TTTR(str(path))
         else:
             tttr = tttrlib.TTTR(str(path), tttr_type)

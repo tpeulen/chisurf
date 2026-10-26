@@ -2,19 +2,19 @@
   "_comment": "Guided tour of the native converter. 'name' is the emtk control (a spec action, or the history table). The Qt tool keeps guide.json.",
   "steps": [
     {
-      "title": "The drop decides the direction",
-      "text": "There is no pack/unpack switch. Drop a vendor file (.ptu, .spc, .ht3) and it is packed <i>into</i> a .pto. Drop a <b>.pto</b> and it is unpacked <i>back out</i> to the vendor files and results it holds. The tool reads the suffix and goes. Every conversion becomes a row of this table.",
-      "target": {"name": "conversion_table"}
+      "title": "What you pick decides the direction",
+      "text": "There is no pack/unpack switch. The <b>Input</b> table lists the photon streams of the workspace (files dropped on the ChiSurf window land there). Pick a vendor file (.ptu, .spc, .ht3) and it is packed <i>into</i> a .pto; pick a stream of a <b>.pto</b> and its container is unpacked <i>back out</i> to the vendor files and results it holds. Select one or more rows, then press <b>Use selected</b>.",
+      "target": {"name": "workspace_input_rows"},
+      "await": {"hint": "Select a photon stream and press <b>Use selected</b> (<b>Load example</b> adds one to the workspace first)."}
     },
     {
       "title": "Nothing is ever deleted",
-      "text": "Packing writes the .pto <b>beside</b> the vendor file and keeps the original, then checks the container against its checksum. Unpacking writes the vendor files back and keeps the container. Either direction can be repeated or thrown away with no loss. <b>Add files...</b> does what a drop does, with a dialog.",
-      "target": {"name": "request_add"},
-      "await": {"hint": "Press <b>Add files...</b>, then pick a file or close the dialog."}
+      "text": "Packing writes the .pto <b>beside</b> the vendor file and keeps the original, then checks the container against its checksum. Unpacking writes the vendor files back and keeps the container. Either direction can be repeated or thrown away with no loss, and every conversion becomes a row of this table; what was written appears in the workspace under what it came from.",
+      "target": {"name": "conversion_table"}
     },
     {
       "title": "Files dropped together are one measurement",
-      "text": "A recording split across <b>m000.spc, m001.spc, ...</b> is one measurement, so files dropped together (or chosen together) are packed into <b>one</b> .pto, in file-name order. The row lists them in that order.",
+      "text": "A recording split across <b>m000.spc, m001.spc, ...</b> is one measurement, so streams used together are packed into <b>one</b> .pto, in file-name order. The row lists them in that order.",
       "target": {"name": "conversion_table"}
     },
     {

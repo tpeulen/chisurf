@@ -1,6 +1,6 @@
 # Micro-time histogram
 
-Turns photon files into the decay the TCSPC analysis fits: the micro-times are histogrammed per detector, split into
+Turns photon streams into the decay the TCSPC analysis fits: the micro-times are histogrammed per detector, split into
 parallel (VV) and perpendicular (VH) streams, gated by excitation window and optionally by bursts, and written as one
 column.
 
@@ -12,11 +12,15 @@ column.
 - **Run** — **Compute** reads the selected photons in the background; **Save** writes the decay to *Output*; **Save as…**
   asks for another name; **Transfer to ChiSurf** saves and adds the TCSPC dataset. *Autosave after compute* writes
   *Output* once the computation succeeds.
-- **Photon files** — **Files…**, **Folder…** (recursive), **Database…** (the MMFDB object store), or drop files on
-  the window. Tick a file to include it; **All / None / Remove / Clear** act on the list (right-click a row to remove it).
-  Headerless SPC data needs its subtype in *TTTR format*.
-- **Burst selections** — queue `.pto` burst containers (a search's bursts in the measurement's provenance); photon bounds are inclusive, overlaps are counted once
-  and bounds are clipped to the stream. **Find TTTR** looks four folders up for the matching photon files.
+- **Photon streams** — the **Input** table lists the photon streams of the Datasets workspace (TTTR files, or the
+  streams of a `.pto` container); files enter ChiSurf by dropping them on the ChiSurf window. Select streams -- and a
+  detector setup row, to use that definition -- then **Use selected**; *Open in…* on a dataset or dragging it onto
+  this window does the same. Tick a queued stream to include it; **All / None / Remove / Clear** act on the list
+  (right-click a row to remove it). Headerless SPC files need their subtype in *TTTR format*.
+- **Burst selections** — pick burst runs of the workspace (`m000.pto/<run>`, a burst search's bursts in the
+  measurement's provenance); photon bounds are inclusive, overlaps are counted once and bounds are clipped to the
+  stream. **Find TTTR** queues the photon streams the container embeds, else looks four folders up for the matching
+  photon files.
 - **Detector and channels** — the detector chooses the interleaved routing channels (parallel, perpendicular, ...) and
   the G-factor; *Parallel* / *Perpendicular* can be edited. Switching *Polarization resolved* merges or splits the current
   ordered routes and synchronizes the working detector definition, retaining the time step, G-factor and shifts.

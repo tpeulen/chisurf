@@ -98,9 +98,10 @@ class TimeWindowClient:
         """
         try:
             import numpy as np
-            import tttrlib
 
-            tttr = tttrlib.TTTR(str(path))
+            from chisurf.core.fio.staging import open_tttr
+
+            tttr = open_tttr(str(path), cache=False)  # a file or a container's photon stream
             time_window_s = time_window_ms / 1000.0
             counts = tttr.get_intensity_trace(time_window_s)
             if counts is None:

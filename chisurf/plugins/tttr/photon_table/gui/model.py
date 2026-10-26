@@ -3,19 +3,19 @@
 Wraps :class:`~..core.model.PhotonTableModel` (every record of one TTTR file --
 photons and marker records -- paged, channel- and kind-filtered) with what the
 window edits: the first record shown, the page size, the channel and kind
-filters, the status line and the requests of the Open and Copy buttons. The
+filters, the status line, the request of the Copy button and the Input section (the
+workspace's photon streams; files enter ChiSurf by the shell's drop, never here). The
 numbers come from the core model, unchanged, so the Qt tool and this app show
 the same rows for the same file.
 """
 
 from __future__ import annotations
 
-import pathlib
 from typing import Any, Callable
 
 from emtk.i18n import tr
 
-from chisurf.core.fio.staging import TTTR_FILE_FILTER
+from chisurf.core.plugin.workspace_input import WorkspaceInputMixin
 
 from ..core.model import KIND_ALL, KIND_MARKERS, PhotonTableModel, record_kinds
 
@@ -23,8 +23,6 @@ from ..core.model import KIND_ALL, KIND_MARKERS, PhotonTableModel, record_kinds
 CHANNEL_ANY = -1
 #: Largest page, as the core model clamps it.
 MAX_ROWS = 20_000
-#: The container formats the Open dialog offers (the Qt tool's filter).
-TTTR_FILTERS = TTTR_FILE_FILTER
 
 
 class _Rows(list):
@@ -33,8 +31,11 @@ class _Rows(list):
     revision = 0
 
 
-class PhotonTableViewModel:
-    """State and actions of the photon table window."""
+class PhotonTableViewModel(WorkspaceInputMixin):
+    """State and actions of the photon table window; the Input section's rows are the
+    workspace's photon streams (:class:`WorkspaceInputMixin`)."""
+
+    workspace_input_plugin = "photon_table"
 
     def __init__(self, table: PhotonTableModel | None = None) -> None:
         self.table = table or PhotonTableModel()
@@ -45,9 +46,9 @@ class PhotonTableViewModel:
         self.kind_filter = KIND_ALL
         #: The status line: what was loaded, what failed, what was copied.
         self.notice = ""
-        #: ``"open"`` or ``"copy"`` while the app has to act on a button.
+        #: ``"copy"`` while the app has to act on the Copy button.
         self.request = ""
-        #: The last file opened successfully (the Open dialog starts in its folder).
+        #: The last photon stream opened successfully (a file or a container's stream).
         self.input_file = ""
         self.busy = False
         self._observers: list[Callable[[str], None]] = []
@@ -159,7 +160,7 @@ class PhotonTableViewModel:
 
     def enabled(self, name: str) -> bool:
         """Which buttons can be pressed now."""
-        if name in ("request_open", "load_example"):
+        if name in ("load_example", "workspace_input_use"):
             return not self.busy
         if name in ("go_first", "go_prev", "go_next", "go_last", "request_copy"):
             return self.loaded and not self.busy
@@ -173,12 +174,15 @@ class PhotonTableViewModel:
 
     # ── loading ───────────────────────────────────────────────────────
     def load_path(self, path: str) -> bool:
-        """Open a TTTR file and show its photons from the first page.
+        """Open a photon stream (a TTTR file or a container's stream) and show its photons from
+        the first page.
 
         A failed load leaves the table that was shown and says why in the status line.
         """
+        from chisurf.core.fio.address import container_of
+
         path = str(path)
-        if not pathlib.Path(path).is_file():
+        if not container_of(path).is_file():
             self.notice = f"Could not open {path}: file does not exist"
             return False
         table = PhotonTableModel()
@@ -199,25 +203,24 @@ class PhotonTableViewModel:
         self.notify("loaded")
         return True
 
-    def drop_directory(self) -> str:
-        """The folder the Open dialog starts in."""
-        if self.input_file:
-            parent = pathlib.Path(self.input_file).parent
-            if parent.is_dir():
-                return str(parent)
-        return ""
-
     # ── buttons ───────────────────────────────────────────────────────
     def load_example(self) -> None:
-        """Generate the demonstration stream and show its photons."""
+        """Generate the demonstration stream, add it to the workspace and show its photons, as a
+        picked row would be."""
         if self.busy:
             return
+        from chisurf.plugins.tttr.workspace_io import example_into_workspace
+
         from ..demo import demo_folder, make_demo
 
-        self.load_path(str(make_demo(demo_folder())))
+        path = str(make_demo(demo_folder()))
+        app = self.workspace_input_app
+        if app is None:  # the model alone (scripts): read it directly
+            self.load_path(path)
+            return
+        from .app import receive_photons
 
-    def request_open(self) -> None:
-        self.request = "open"
+        example_into_workspace(path, receive_photons, app, key="file")
 
     def request_copy(self) -> None:
         self.request = "copy"

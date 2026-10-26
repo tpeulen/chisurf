@@ -43,16 +43,10 @@
              {"key": "name", "title": "File", "width": 300, "tooltip": "File name; hover a row for the full path."}
            ]}},
         {"type": "button_row",
-         "description": "Add or remove input files.",
+         "description": "Load the example, or remove input files (they are picked in the Input section below).",
          "buttons": [
            {"action": "load_example", "label": "Load example", "icon": "🧪",
-            "description": "Generate the deterministic demonstration stream (two detectors with distinct micro-time decays) in the settings cache and read it."},
-           {"action": "request_add_files", "label": "Files",
-            "description": "Load uniform-illumination (or, on the settings tab, preview) TTTR files."},
-           {"action": "request_add_folder", "label": "Folder",
-            "description": "Load supported photon files recursively from a folder."},
-           {"action": "request_database", "label": "Database",
-            "description": "Select photon files from the MMFDB object store."},
+            "description": "Generate the deterministic demonstration stream (two detectors with distinct micro-time decays) in the settings cache, add it to the workspace and read it."},
            {"action": "remove_file", "label": "Remove",
             "role": "danger",
             "description": "Unload the selected input file."},
@@ -118,10 +112,8 @@
         {"type": "choice", "attr": "reading_name", "label": "Reading routine", "options_source": "reading_options", "call": "reading_changed",
          "description": "Select the TTTR container format; Auto detects it from the file."},
         {"type": "button_row",
-         "description": "Import a LUT file, or clear every LUT.",
+         "description": "Remove or clear LUTs (a LUT file is picked in the setup Input section below).",
          "buttons": [
-           {"action": "request_load_lut", "label": "Load LUT",
-            "description": "Import a cumulative LUT from JSON, NumPy, CSV or text."},
            {"action": "remove_lut", "label": "Remove LUT",
             "role": "danger",
             "description": "Remove the selected LUT from the import list; channel assignments are kept."},
@@ -166,12 +158,10 @@
         {"type": "value", "attr": "shift", "label": "Shift", "kind": "int", "minimum": -1000000, "maximum": 1000000,
          "description": "Photon-level shift of the active channel after LUT correction."},
         {"type": "button_row",
-         "description": "Inspect, load or save the portable settings.tttr.json.",
+         "description": "Inspect or save the portable settings.tttr.json (load one by picking it in the setup Input section).",
          "buttons": [
            {"action": "toggle_json", "label": "Show JSON",
             "description": "Inspect the portable settings.tttr.json bundle."},
-           {"action": "request_load_json", "label": "Load JSON",
-            "description": "Restore per-channel LUTs, shifts and the reading routine from a settings.tttr.json."},
            {"action": "request_save_json", "label": "Save JSON",
             "description": "Save the portable TTTR correction settings."}
          ]}

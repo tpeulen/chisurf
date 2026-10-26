@@ -47,6 +47,9 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {"name": "images", "summary": "Show photon images (scanning confocal TTTR files) in their folder, the first selected.", "receive": "chisurf.plugins.tttr.tttr_image_browser.gui.app:receive_images", "required": ["files"], "from_workspace": {"kinds": ["image"], "representations": ["photons"], "many": true, "key": "files"}}
+  ],
   "entrypoints": {
     "emtk": "chisurf.plugins.tttr.tttr_image_browser.gui.app:make_app",
     "cli": "tttr-image-browser=chisurf.plugins.tttr.tttr_image_browser.cli:cli",

@@ -20,6 +20,7 @@ pytestmark = pytest.mark.usefixtures("hermetic")
 
 SP8 = "Leica_SP8.ptu"
 SCAN = "scan_1.ptu"  # the first file of the simulated example
+SCAN_2 = "scan_2.ptu"  # its second (the first is selected when the example is shown)
 
 
 class BrowserDriver(Driver):
@@ -64,9 +65,9 @@ def drv(app):
 
 @pytest.fixture
 def opened(app, drv, photon_folder):
-    """The app with the photon folder opened by a drop (the host's verb) and the two-detector setup in use."""
+    """The app with the photon folder opened (as the imaging hub opens a source's folder) and the two-detector setup in use."""
     app.model.apply_setup_settings(two_detector_setup())
-    assert drv.drop(str(photon_folder))
+    app.open_folder(str(photon_folder))
     drv.settle()
     assert app.model.current_folder == str(photon_folder)
     return photon_folder
@@ -91,37 +92,24 @@ def pixels(app, size=(1000, 700)):
     return np.frombuffer(bytes(p.px), dtype=np.uint8).reshape(size[1], size[0], 4)
 
 
-# ---------------------------------------------------------------------------------------------------- toolbar: Open folder
-def test_open_folder_opens_the_chooser_and_a_picked_folder_is_listed(app, drv, photon_folder):
-    app.model.folder = str(photon_folder.parent)  # where the chooser starts: the remembered folder
-    drv.click("choose_folder")
-    assert dialog_open(drv) and app.dialog_kind == "folder"
-    drv.click_text(f"[{photon_folder.name}]")
-    drv.click_text("Choose", last=True)
+# ---------------------------------------------------------------------------------------------------- the input
+def test_photon_images_handed_from_the_workspace_are_listed(app, drv, photon_folder):
+    from chisurf.plugins.tttr.tttr_image_browser.gui.app import receive_images
+
+    receive_images(app, {"files": [str(photon_folder / SP8)]})  # Use selected / Open in…
     drv.settle()
-    assert app.dialog is None and app.model.current_folder == str(photon_folder)
-    assert "corrupt.ptu" in strings(drv) and SP8 in strings(drv)
-    assert "2 image(s) in imgs" in strings(drv)
+    assert app.model.current_folder == str(photon_folder)
+    assert app.model.current_file == str(photon_folder / SP8)
+    assert [e["label"] for e in app.model.file_entries()] == [SP8]  # exactly what was picked
 
 
-def test_the_folder_chooser_cancel_the_cross_and_escape_change_nothing(app, drv, photon_folder):
-    app.model.folder = str(photon_folder.parent)
-    for how in ("Cancel", "x", "escape"):
-        drv.click("choose_folder")
-        assert dialog_open(drv)
-        if how == "Cancel":
-            drv.click_text("Cancel", last=True)
-        elif how == "x":
-            drv.click_text("×", last=True)
-        else:
-            x, y, w, h = app.dialog_window.box
-            drv.hover(x + w / 2, y + h / 2)  # Escape closes the window the pointer is over
-            drv.escape()
-        assert app.dialog is None, how
-    assert app.model.current_folder is None
+def test_there_is_no_folder_chooser_and_no_drop_hook(app, drv):
+    drv.draw(2)
+    assert "choose_folder" not in app.form.rects and not hasattr(app.model, "choose_folder")
+    assert not hasattr(app, "files_dropped") and not hasattr(app, "on_files_dropped")
+    assert "workspace_input_rows" in app.form.rects
 
 
-# ---------------------------------------------------------------------------------------------------- toolbar: Clear
 def test_clear_empties_the_list_and_deletes_nothing_and_is_greyed_when_there_is_nothing(
     app, drv, shown
 ):
@@ -274,7 +262,7 @@ def test_next_hands_the_image_to_the_pipeline(photon_folder, hermetic):
 
     app = make_app(coordinator=Coordinator())
     drv = BrowserDriver(app, (1000, 700))
-    assert drv.drop(str(photon_folder))
+    app.open_folder(str(photon_folder))
     drv.settle()
     drv.click_text(SP8)
     drv.settle()
@@ -327,14 +315,13 @@ def operate_step(app, drv, folder, tmp_path):
     if target.get("name") == "load_example":
         drv.click("load_example")  # writes the simulated scans and opens their folder
         drv.settle()
-    elif target.get("name") == "choose_folder":
-        app.model.folder = str(folder.parent)
-        drv.click("choose_folder")
-        drv.click_text(f"[{folder.name}]")
-        drv.click_text("Choose", last=True)
+    elif target.get("name") == "workspace_input_rows":
+        from chisurf.plugins.tttr.tttr_image_browser.gui.app import receive_images
+
+        receive_images(app, {"files": [str(folder / SP8)]})  # the workspace hands the scans over
         drv.settle()
     elif target.get("name") == "rows":
-        drv.click_text(SCAN)
+        drv.click_text(SCAN_2, last=True)  # another list row (the Input table above names it too)
         drv.settle()
     elif target.get("attr") == "current_rating":
         drv.click("current_rating.2")
@@ -405,7 +392,7 @@ def test_every_guide_target_is_a_drawn_control_and_the_card_does_not_cover_it(ap
     app.tour.stop()
     assert {
         "load_example",
-        "choose_folder",
+        "workspace_input_rows",
         "rows",
         "image",
         "levels",
@@ -430,10 +417,10 @@ def test_the_tabs_switch_pages_and_use_setup_returns(app, drv, opened):
     drv.click("tab_setup")
     drv.draw(3)
     assert app.page == "setup" and "Use setup and continue" in strings(drv)
-    assert "Open folder" not in strings(drv)  # the browser's toolbar is not drawn on the setup page
+    assert "workspace_input_rows" not in drawn_now(app, drv)  # the browser is not drawn there
     drv.click("use_setup")
     drv.draw(3)
-    assert app.page == "browser" and "Open folder" in strings(drv)
+    assert app.page == "browser" and "workspace_input_rows" in drawn_now(app, drv)
     assert app.model.setup_settings is not None
     drv.click("tab_setup")
     drv.draw(3)
@@ -444,7 +431,7 @@ def test_the_tabs_switch_pages_and_use_setup_returns(app, drv, opened):
 
 def test_a_setup_chosen_on_the_setup_page_filters_the_list_and_the_tiles(app, drv, photon_folder):
     """The shared editor's TTTR format combo: HT3 reads no .ptu file, so the list empties; PTU brings them back."""
-    assert drv.drop(str(photon_folder))
+    app.open_folder(str(photon_folder))
     drv.settle()
     assert [e["label"] for e in app.model.file_entries()] == [
         "corrupt.ptu",
@@ -466,29 +453,21 @@ def test_a_setup_chosen_on_the_setup_page_filters_the_list_and_the_tiles(app, dr
     assert "none" not in app.model.setup_text()
 
 
-# ---------------------------------------------------------------------------------------------------- drops
-def test_dropping_a_folder_opens_it_and_a_file_is_refused(app, drv, photon_folder):
-    drv.drop(str(photon_folder / SP8))
-    assert "not a single file" in app.model.status_line and app.model.current_folder is None
-    assert "not a single file" in " ".join(strings(drv))
-    drv.drop(str(photon_folder))
-    drv.settle()
-    assert app.model.current_folder == str(photon_folder) and SP8 in strings(drv)
-    status = app.model.status_line
-    drv.drop()  # nothing dropped
-    assert app.model.status_line == status and app.model.current_folder == str(photon_folder)
+def test_images_handed_on_the_setup_page_open_the_browser_page(app, drv, photon_folder):
+    from chisurf.plugins.tttr.tttr_image_browser.gui.app import receive_images
 
-
-def test_a_drop_on_the_setup_page_opens_the_browser_page(app, drv, photon_folder):
     drv.click("tab_setup")
     drv.draw(3)
-    assert drv.drop(str(photon_folder))
+    receive_images(app, {"files": [str(photon_folder / SP8)]})
     drv.settle()
     assert app.page == "browser" and app.model.current_folder == str(photon_folder)
 
 
-def test_the_qt_host_hook_is_the_same_verb(app):
-    assert app.on_files_dropped == app.files_dropped
+def drawn_now(app, drv):
+    """The controls drawn in the last frame (the form forgets the rects of a page not drawn)."""
+    app.form.rects.clear()
+    drv.draw(2)
+    return set(app.form.rects)
 
 
 # ---------------------------------------------------------------------------------------------------- file list
@@ -569,7 +548,7 @@ def test_the_filter_box_narrows_the_rows_by_any_text(app, drv, opened):
     app.model.set_recursive(True)
     drv.draw(2)
     drv.settle()
-    box = [t for t in drv.draw(1).texts if t[5] == "filter"][0][:4]
+    box = [t for t in drv.draw(1).texts if t[5] == "filter"][-1][:4]  # the list's (not the Input's)
     drv.click_at(box[0] + 20, box[1] + box[3] / 2)
     drv.type_text("sp5")
     shown_rows = [s for s in strings(drv) if s.endswith(".ptu")]
@@ -882,7 +861,7 @@ def test_the_idle_state_offers_only_what_can_act_and_says_what_to_do(app, drv):
         "gamma",
     ):
         assert not app.model.enabled(name), name
-    assert app.model.enabled("choose_folder")
+    assert app.model.enabled("load_example")
     assert app.item_rects.get("image") is None or app.model.current_image() is None
 
 
@@ -955,7 +934,7 @@ def test_the_window_draws_at_both_sizes_populated(app, drv, shown):
     for size in ((1200, 800), (800, 600)):
         painter = drv.draw(2, size=size)
         assert (
-            "Open folder" in painter.strings
+            "Use selected" in painter.strings
             and SP8 in painter.strings
             and "Colormap" in painter.strings
         )

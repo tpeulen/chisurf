@@ -23,6 +23,10 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {"name": "photons", "summary": "Read photon streams (TTTR files or container streams) into the shown tab.", "receive": "chisurf.plugins.tttr.tttr_lut_tools.gui.app:receive_photons", "required": ["files"], "from_workspace": {"kinds": ["photons"], "many": true, "key": "files"}},
+    {"name": "setup", "summary": "Import a LUT file or restore a settings.tttr.json.", "receive": "chisurf.plugins.tttr.tttr_lut_tools.gui.app:receive_setup", "required": ["setup"], "from_workspace": {"kinds": ["setup"], "key": "setup"}}
+  ],
   "entrypoints": {
     "emtk": "chisurf.plugins.tttr.tttr_lut_tools.gui.app:create_app",
     "cli": "lut-tools=chisurf.plugins.tttr.tttr_lut_tools.cli.main:cli",

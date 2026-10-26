@@ -15,6 +15,9 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {"name": "photons", "summary": "Load a photon stream (a TTTR file or a container stream) and, chosen with it, a detector setup row.", "receive": "chisurf.plugins.tttr.audifier.gui.app:receive_photons", "required": ["file"], "from_workspace": {"kinds": ["photons"], "key": "file", "with_setup": true}}
+  ],
   "entrypoints": {
     "emtk": "chisurf.plugins.tttr.audifier.gui.app:create_app"
   },

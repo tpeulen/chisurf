@@ -17,10 +17,10 @@
       }
     },
     {
-      "title": "Queue photon files",
-      "text": "The demonstration file is already queued. For your own measurements, add files, a folder or datasets from the database, or drop them on the window. Untick a file to leave it out; Burst selections (.pto) restrict the photons to bursts.",
+      "title": "Queue photon streams",
+      "text": "The demonstration stream is already queued, with its detector setup. For your own measurements, pick photon streams in this <b>Input</b> table -- files dropped on the ChiSurf window land in the workspace -- select a detector setup row with them if you have one, and press <b>Use selected</b>. Untick a queued stream to leave it out; <b>Burst selections</b> restrict the photons to the bursts of burst runs.",
       "target": {
-        "name": "photon_files"
+        "name": "photon_input"
       }
     },
     {

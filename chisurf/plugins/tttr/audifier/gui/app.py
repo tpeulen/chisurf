@@ -24,6 +24,7 @@ from chisurf.plugins.emtk_layout import (
     window_size,
 )
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
+from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
 
 from ..core import TTTRData, load_tttr_with_tttrlib
 from ..native_playback import NativeSoundPlayer
@@ -221,7 +222,9 @@ class AudifierApp(TourTarget, ImApp):
         self.range_start = self.range_end = 0.0
         self.editor = ChannelDefinitionWidget(on_changed=self.update_channels, host_app=self)
         self.job = BackgroundJob()
-        self.message = "Load a TTTR stream to render audio and its waterfall."
+        self.message = "Pick a photon stream (Photon stream tab) to render audio and its waterfall."
+        #: The workspace dataset the stream is of.
+        self.source_uid = ""
         self.dialog = None
         self.dialog_callback = None
         self.dialog_window = DialogWindow(
@@ -249,6 +252,10 @@ class AudifierApp(TourTarget, ImApp):
                 "h", 0.37, Region("config"), Split("v", 0.62, Region("waterfall"), Region("mixer"))
             )
         )
+        #: The input: the workspace's photon streams (with a detector setup row), as declared.
+        self.input = NamedWorkspaceInput("tttr_audifier", "photons", self)
+        self.input.workspace_input_on_used = self.guide.notify_used
+        self.docks.add_window("input", "Photon stream", self.draw_input, dock="config")
         self.docks.add_window("setup", "Detector setup", self.draw_setup, dock="config")
         self.docks.add_window(
             "audio", "Audio parameters", lambda box: self.draw_parameters("Audio"), dock="config"
@@ -475,27 +482,21 @@ class AudifierApp(TourTarget, ImApp):
 
         return self.job.start(work, publish, self.error)
 
-    # ── input ─────────────────────────────────────────────────────────────
+    # ── output ────────────────────────────────────────────────────────────
 
-    def choose(self, save=False):
+    def choose_save(self):
+        """Where the WAV goes (the input comes from the workspace, never a dialog)."""
         if self.job.running:
             return
-        if save and self.model.can_render():
+        if self.model.can_render():
             self.message = self.model.can_render()
             return
         self.dialog = FileDialog(
-            "Save audio as WAV" if save else "Load TTTR",
-            mode="save" if save else "open",
-            filters="WAV (*.wav)"
-            if save
-            else "TTTR (*.ptu *.pto *.ht3 *.spc *.h5 *.hdf5);;All files (*)",
-            filename="audified.wav" if save else "",
+            "Save audio as WAV", mode="save", filters="WAV (*.wav)", filename="audified.wav"
         )
         self.dialog_window.title = self.dialog.title
         self.dialog_window.show()
-        self.dialog_callback = lambda paths: (
-            self.render_audio(output=paths[0]) if save else self.load(paths[0])
-        )
+        self.dialog_callback = lambda paths: self.render_audio(output=paths[0])
         self.request_frame()
 
     def stop_playback(self):
@@ -505,24 +506,21 @@ class AudifierApp(TourTarget, ImApp):
             self.message = "Playback stopped; pending audio will not start."
         self.pending_play = False
 
-    def on_paths_dropped(self, paths):
-        if paths:
-            self.load(paths[0])
-
     def load_example(self):
-        """Generate the demonstration stream in the settings cache and load it."""
-        from ..demo import demo_folder, make_demo
+        """Generate the demonstration stream in the settings cache, add it to the workspace and
+        load it, as a picked row would be."""
+        from chisurf.plugins.tttr.workspace_io import add_setup, example_into_workspace
+
+        from ..demo import DEMO, demo_folder, make_demo
 
         path = make_demo(demo_folder())
-        if self.load(path):
-            self.message = f"Example loaded: {Path(path).name}"
-
-    def on_files_dropped(self, paths):
-        """The host's drop verb: the first file is the stream to load."""
-        if self.dialog is None and paths:
-            self.on_paths_dropped([str(p) for p in paths])
-        self.request_frame()
-        return True
+        # The demo is an SPC file: its setup row names the subtype it was written as.
+        setup = add_setup(
+            demo_folder() / "audifier_setup.json",
+            {"detectors": {}, "tttr_reading": {"file_type": DEMO["file_type"]}},
+        )
+        example_into_workspace(path, receive_photons, self, key="file", extra={"setup": setup})
+        self.message = f"Example loaded: {Path(path).name}"
 
     # ── table sources and callbacks ───────────────────────────────────────
 
@@ -635,6 +633,14 @@ class AudifierApp(TourTarget, ImApp):
 
     # ── drawing ───────────────────────────────────────────────────────────
 
+    def draw_input(self, box):
+        """The Input section: the photon streams (and detector setups) of the workspace."""
+        im.begin_disabled(self.job.running)
+        draw_form(self.input.spec, self.input, self.input.form)
+        im.end_disabled()
+        if "workspace_input_rows" in self.input.form.rects:
+            self.remember("workspace_input_rows", self.input.form.rects["workspace_input_rows"])
+
     def draw_setup(self, box):
         im.begin_disabled(self.job.running)
         self.editor.draw()
@@ -695,11 +701,6 @@ class AudifierApp(TourTarget, ImApp):
                     "tip": "Generate the deterministic demonstration stream (a µs-ALEX measurement with bursts on two detectors) and load it.",
                 },
                 {
-                    "label": "Load TTTR",
-                    "key": "load",
-                    "tip": "Load a photon stream. Drag and drop is also supported.",
-                },
-                {
                     "label": "Update",
                     "key": "update",
                     "tip": "Compute the selected detector waterfall in the background.",
@@ -738,13 +739,12 @@ class AudifierApp(TourTarget, ImApp):
             remember=self.remember,
         )
         actions = {
-            "load": self.choose,
             "update": self.compute_waterfall,
             "play": self.play,
             "pause": self.player.pause,
             "stop": self.stop_playback,
             "revert": self.player.revert,
-            "save_wav": lambda: self.choose(save=True),
+            "save_wav": self.choose_save,
             "guide": self.guide.start,
             "help": self.help.show,
         }
@@ -907,3 +907,21 @@ class AudifierApp(TourTarget, ImApp):
 
 def create_app(player=None, loader=None):
     return AudifierApp(player=player, loader=loader)
+
+
+def receive_photons(app: AudifierApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``photons``): load ``payload["file"]`` -- a TTTR file
+    or a container's photon stream, as the workspace hands it; a ``setup`` row chosen with it loads
+    that detector definition first."""
+    from chisurf.core.fio.address import container_of
+    from chisurf.core.plugin.workspace_input import read_address
+    from chisurf.plugins.tttr.workspace_io import read_setup
+
+    address = read_address(str(payload["file"]))
+    if not container_of(address).is_file():
+        raise FileNotFoundError(f"{address} does not exist")
+    if payload.get("setup"):
+        app.editor.load_definition(read_setup(str(payload["setup"])))
+    if not app.load(address):
+        raise RuntimeError(tr("the tool is busy; try again when it has finished"))
+    app.source_uid = str((payload.get("datasets") or [""])[0])

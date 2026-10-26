@@ -8,7 +8,7 @@
     },
     {
       "title": "Load the example",
-      "text": "<b>Load example</b> simulates two small confocal scans into the settings folder and opens that folder, so every step below has files to list.",
+      "text": "<b>Load example</b> simulates two small confocal scans into the settings folder, adds them to the workspace and lists them, so every step below has files to list.",
       "target": {
         "name": "load_example"
       },
@@ -17,10 +17,10 @@
       }
     },
     {
-      "title": "Or open your own folder",
-      "text": "Press <b>Open folder</b> and choose a folder with photon files (PTU, HT3, PT3, SPC ...). You can also drop a folder on the window. Tick <b>Include subfolders</b> first to list the files below it too.",
+      "title": "Or pick your own scans",
+      "text": "Your own scans are picked in the <b>Input</b> table: the photon images of the Datasets workspace (PTU, HT3, PT3, SPC ... confocal scans; files dropped on the ChiSurf window land there). Select them and press <b>Use selected</b>: the browser opens their folder and lists them.",
       "target": {
-        "name": "choose_folder"
+        "name": "workspace_input_rows"
       }
     },
     {

@@ -1,6 +1,6 @@
 # TTTR Audifier
 
-Load or drop a TTTR file, then define detectors and update channels. If no
+Pick a photon stream in the **Photon stream** tab (the TTTR files and container streams of the Datasets workspace; files enter ChiSurf by dropping them on the ChiSurf window, and *Open in…* on a dataset -- with a detector setup row selected beside it, if you like -- does the same), then define detectors and update channels. If no
 detectors are defined, routing channels receive separate default detectors.
 A Becker & Hickl .spc file needs its subtype chosen in the detector setup (File Type) first.
 Detector Show and colour (#rrggbb in the table) control the waterfall; channel enable, chord,

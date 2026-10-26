@@ -384,14 +384,14 @@ def test_clear_empties_the_list_but_deletes_nothing(qt, photon_folder):
     assert (photon_folder / ".image_browser_meta.json").is_file()
 
 
-def test_a_dropped_folder_opens_and_a_dropped_file_is_refused(qt, photon_folder):
+def test_picked_images_open_their_folder_listing_exactly_them(qt, photon_folder):
+    """The Qt tool's dropped folder became the workspace's picked images: their folder, only them."""
     model = model_on(photon_folder)
-    model.on_drop([str(photon_folder / "sub")])
+    model.open_files([str(photon_folder / "sub" / "Leica_SP5.ptu")])
     assert [e["label"] for e in model.file_entries()] == qt["drop_folder"] == ["Leica_SP5.ptu"]
     assert model.current_folder == str(photon_folder / "sub")
-    model.on_drop([str(photon_folder / "Leica_SP8.ptu")])
-    assert model.current_folder == str(photon_folder / "sub")
-    assert "not a single file" in model.status_line
+    assert model.current_file == str(photon_folder / "sub" / "Leica_SP5.ptu")
+    assert not hasattr(model, "on_drop")
 
 
 def test_every_qt_toolbar_action_is_a_drawn_emtk_button(qt):
@@ -406,7 +406,7 @@ def test_every_qt_toolbar_action_is_a_drawn_emtk_button(qt):
     strings = list(painter.strings)
     assert len(qt["toolbar"]) == 8
     mapping = {
-        "Open": "Open folder",
+        "Open": "Use selected",  # the Input section of the workspace's images
         "Clear": "Clear",
         "Caches": "Clear caches",
         "Export": "Copy raw files",
@@ -440,7 +440,7 @@ def test_actions_are_greyed_until_they_can_act(photon_folder):
         "level_low",
     ):
         assert not model.enabled(name), name
-    assert model.enabled("choose_folder")
+    assert model.enabled("load_example")
     model.open_folder(str(photon_folder))
     assert (
         model.enabled("clear")
@@ -474,9 +474,7 @@ def test_actions_without_a_selection_say_so_and_ask_for_nothing(photon_folder):
 
 def test_an_action_asks_for_its_dialog(photon_folder):
     model = model_on(photon_folder)
-    model.choose_folder()
-    assert model.dialog == "folder"
-    model.dialog = ""
+    assert not hasattr(model, "choose_folder")  # the input is the workspace
     model.select_file(str(photon_folder / "Leica_SP8.ptu"))
     for action, kind in (("copy_files", "copy"), ("export_tiff", "tiff"), ("export_docx", "docx")):
         getattr(model, action)()

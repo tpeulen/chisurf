@@ -5,16 +5,13 @@
   "sections": [
     {
       "type": "button_row",
-      "description": "Go back to the detector setup, open a folder of TTTR files, or clear what the browser holds.",
+      "description": "Go back to the detector setup, load the example, or clear what the browser holds (the files are picked in the Input section).",
       "buttons": [
         {"action": "back_to_setup", "label": "← Select setup",
          "description": "Go back to the detector setup page. The accepted setup, the folder and the file list stay as they are."},
-        {"action": "choose_folder", "label": "Open…",
-         "icon": "📂",
-         "description": "Choose a folder with PTU/TTTR files. You can also drop a folder on the window."},
         {"action": "load_example", "label": "Load example",
          "icon": "🧪",
-         "description": "Simulate two small photon files into the settings folder and open that folder, so the browser can be tried without data of your own."},
+         "description": "Simulate two small photon files into the settings folder, add them to the workspace and list them, so the browser can be tried without data of your own."},
         {"action": "clear", "label": "Clear",
          "role": "danger",
          "description": "Clear the file list, the selection and the shown trace. No file and no rating or note is changed."},

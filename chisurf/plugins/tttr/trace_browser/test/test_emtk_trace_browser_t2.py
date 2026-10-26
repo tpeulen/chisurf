@@ -193,7 +193,7 @@ def test_every_spec_key_exists_on_the_model():
             for call in ("selected_call", "edited_call"):
                 assert callable(getattr(model, options[call])), options[call]
             seen["table"] += 1
-    assert seen == {"attr": 8, "call": 3, "action": 15, "table": 1}, (
+    assert seen == {"attr": 8, "call": 3, "action": 14, "table": 1}, (  # Open… -> the Input
         seen
     )  # T3b: Precompute, Stop, the toggle; T4: eight export, delete and hand-off buttons; Load example
     assert callable(model.enabled) and model.enabled("clear") is True
@@ -247,33 +247,21 @@ def test_open_folder_lists_the_real_spc_files(data_dir):
     assert "Not a folder" in model.error_text and model.status_line == model.error_text
 
 
-def test_the_open_button_opens_a_folder_dialog_that_opens_the_folder(data_dir, monkeypatch):
+def test_streams_handed_from_the_workspace_are_listed_from_their_folder(data_dir):
+    """Use selected / Open in…: the picked streams are listed (their folder keeps the notes), the
+    first selected; there is no Open button and no folder dialog for input."""
+    from chisurf.plugins.tttr.trace_browser.gui.app import receive_photons
+
     app = make_app()
     try:
-        frames(app)
+        text = " | ".join(frames(app))
+        assert "Open…" not in text and "choose_folder" not in app.form.rects
+        receive_photons(app, {"files": [str(data_dir / "m001.spc")]})
+        settle(app)
+        assert app.model.current_folder == data_dir
+        assert [r["path"] for r in app.model.rows] == [str(data_dir / "m001.spc")]
+        assert str(app.model.current_file) == str(data_dir / "m001.spc")
         assert app.dialog is None
-        with pressing(monkeypatch, action_caption("open")):
-            frames(app, n=1)
-        frames(app, n=1)
-        assert app.dialog is not None and app.dialog.mode == "folder"
-        assert app.dialog.title == "Select folder with PTU/TTTR files"
-        shown = " | ".join(frames(app, n=1))
-        assert "Choose" in shown and "Cancel" in shown and "[..]" in shown  # the folder chooser
-        app.dialog.directory = str(data_dir)
-        app.dialog.selection = []
-        with pressing(monkeypatch, "Choose"):
-            frames(app, n=1)
-        assert app.dialog is None
-        text = " | ".join(settle(app))
-        assert app.model.current_folder == data_dir and "m000.spc" in text
-        # Cancel leaves the folder alone
-        with pressing(monkeypatch, action_caption("open")):
-            frames(app, n=1)
-        frames(app, n=2)
-        assert app.dialog is not None
-        with pressing(monkeypatch, "Cancel"):
-            frames(app, n=1)
-        assert app.dialog is None and app.model.current_folder == data_dir
     finally:
         app.close()
 
@@ -470,24 +458,12 @@ def test_clear_and_clear_caches_buttons(data_dir, monkeypatch):
         app.close()
 
 
-# 9. drops
-def test_drop_of_a_folder_opens_it_and_a_file_is_ignored(data_dir, fake_dir):
+# 9. no drop hook: files enter ChiSurf through the shell's drop into the workspace
+def test_there_is_no_drop_hook():
     app = make_app()
     try:
-        frames(app)
-        assert app.files_dropped([str(data_dir / "m000.spc")]) is False  # a file: ignored, as in Qt
-        assert app.model.current_folder is None and "Drop a folder" in app.model.status_text
-        assert app.files_dropped([str(data_dir / "nothing_here")]) is False
-        assert app.files_dropped([]) is False
-        assert (
-            app.files_dropped([str(data_dir / "m000.spc"), str(data_dir)]) is True
-        )  # first folder wins
-        text = " | ".join(settle(app))
-        assert app.model.current_folder == data_dir and "m001.spc" in text
-        app.on_paths_dropped([str(fake_dir)])
-        settle(app)
-        assert app.model.current_folder == fake_dir
-        assert names(app.model.rows) == [("a.ptu", 3), ("b.PTU", 2), ("c.spc", 0)]
+        for name in ("files_dropped", "on_files_dropped", "on_paths_dropped"):
+            assert not hasattr(app, name) and not hasattr(app.model, name), name
     finally:
         app.close()
 
@@ -624,7 +600,7 @@ def test_every_control_has_a_tooltip(data_dir):
         labels = {row["label"] for row in inv["interactive"]}
         assert {
             "← Select setup",
-            action_caption("open"),
+            "Use selected",
             "Clear",
             "Clear caches",
             "Include subfolders",

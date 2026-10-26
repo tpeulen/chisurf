@@ -2,7 +2,7 @@
   "id": "tttr_time_windows",
   "version": "2.0.0",
   "display_name": "File:Data:TTTR→Time-Window BIDs",
-  "description": "Split TTTR files into fixed-duration time-window BID (.bst) files.",
+  "description": "Split photon streams of the workspace into fixed-duration time windows, stored as a burst run in each measurement's container (the run appears in the workspace under its stream).",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
@@ -46,9 +46,10 @@
   "accepts": [
     {
       "name": "tttr_files",
-      "summary": "Queue TTTR files, set the time window and preview the first file.",
+      "summary": "Queue photon streams (TTTR files or a container's streams), optionally set the time window, and preview the first.",
       "receive": "chisurf.plugins.tttr.tttr_time_windows.gui.controller:receive_files",
-      "required": ["files", "window_ms"]
+      "required": ["files"],
+      "from_workspace": {"kinds": ["photons"], "many": true, "key": "files"}
     }
   ],
   "entrypoints": {

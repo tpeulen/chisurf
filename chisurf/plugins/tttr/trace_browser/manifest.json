@@ -52,6 +52,9 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {"name": "photons", "summary": "List photon streams picked in the workspace in their folder, the first selected.", "receive": "chisurf.plugins.tttr.trace_browser.gui.app:receive_photons", "required": ["files"], "from_workspace": {"kinds": ["photons"], "many": true, "key": "files"}}
+  ],
   "entrypoints": {
     "emtk": "chisurf.plugins.tttr.trace_browser.gui.app:make_app",
     "cli": "trace-browser=chisurf.plugins.tttr.trace_browser.cli:cli",

@@ -8,7 +8,7 @@
     },
     {
       "title": "Load an example measurement",
-      "text": "<b>Load example</b> generates a deterministic demonstration stream — a µs-ALEX measurement whose excitation alternation is still in the macro time — in the settings cache and loads it: the folded ALEX phase appears as a histogram. <b>Open…</b> chooses a real TTTR file instead (a .sm, .ptu, .ht3 ...), or drop one on the window. Loading detects measured phase candidates automatically at the configured Period and Shift; review them before assigning laser identities.",
+      "text": "<b>Load example</b> generates a deterministic demonstration stream — a µs-ALEX measurement whose excitation alternation is still in the macro time — in the settings cache and loads it: the folded ALEX phase appears as a histogram. A real TTTR file (a .sm, .ptu, .ht3 ...) is picked in the <b>Input</b> table below: the workspace's photon streams, where files dropped on the ChiSurf window land. Loading detects measured phase candidates automatically at the configured Period and Shift; review them before assigning laser identities.",
       "target": {
         "name": "load_example"
       },
@@ -55,12 +55,12 @@
     },
     {
       "title": "Queue files for a batch",
-      "text": "For many files, <b>Add files…</b> (or <b>Folder…</b>, or the session database) fills the queue below. The period, shift and formats above apply to every file in it; select a row and press <b>Remove</b> (or Delete) to drop one.",
+      "text": "For many files, select them in the batch's <b>Input</b> table and press <b>Use selected</b>: they fill the queue below. The period, shift and formats above apply to every file in it; select a row and press <b>Remove</b> (or Delete) to drop one.",
       "target": {
-        "name": "choose_files"
+        "name": "batch_files"
       },
       "await": {
-        "hint": "Press <b>Add files…</b> (Cancel in the dialog to skip)."
+        "hint": "Select files in the batch's <b>Input</b> table and press <b>Use selected</b>."
       }
     },
     {

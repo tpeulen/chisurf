@@ -170,14 +170,24 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
         self.folder = str(path)
         self.status_line = self.info_text()
 
-    def on_drop(self, paths) -> None:
-        """Open the first dropped directory (the Qt workspace ignores everything else)."""
-        for p in paths or []:
-            if pathlib.Path(p).is_dir():
-                self.open_folder(str(p))
-                return
-        if paths:
-            self.status_line = "Drop a folder of photon files, not a single file."
+    def open_files(self, paths) -> None:
+        """Show the photon images *paths* (picked in the workspace): their folder -- whose ratings,
+        notes and caches the browser keeps -- listing exactly these files, the first selected."""
+        from chisurf.core.fio.address import container_of
+
+        paths = [str(p) for p in paths or []]
+        if not paths:
+            return
+        folder = container_of(paths[0]).parent
+        self.open_folder(str(folder))
+        wanted = set(paths)
+        picked = [r for r in self._files if str(r.get("path")) in wanted]
+        if picked:
+            self._files = picked
+            self.notify("folder")
+            self.select_file(str(picked[0]["path"]))
+        else:
+            self.status_line = "The picked images are not photon files this browser lists."
 
     def apply_pipeline_context(self, payload: dict) -> None:
         """The imaging hub's current source: open the folder that holds it and select it."""
@@ -413,10 +423,6 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
         self.reset_view_requested = True
 
     # ------------------------------------------------------------------ toolbar actions
-    def choose_folder(self) -> None:
-        """Open the folder chooser (the toolbar's *Open*)."""
-        self.request_dialog("folder")
-
     def copy_files(self) -> None:
         """Ask for a destination folder; the selected raw files are copied there."""
         if self.paths():

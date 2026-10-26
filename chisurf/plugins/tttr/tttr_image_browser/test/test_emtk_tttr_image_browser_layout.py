@@ -117,7 +117,6 @@ def test_button_labels_fit_their_buttons(app, photon_folder, size):
     drv = populated(app, photon_folder, size)
     painter = drv.draw(1)
     for action in (
-        "choose_folder",
         "clear",
         "clear_caches",
         "copy_files",
@@ -155,7 +154,7 @@ def test_short_inputs_are_not_stretched(app, photon_folder, size):
 def test_the_windows_do_not_overlap_and_fill_the_frame(app, photon_folder, size):
     _drv = populated(app, photon_folder, size)
     rects = app.form.rects
-    toolbar = rects["choose_folder"]
+    toolbar = rects["clear"]
     files = rects["rating_filter"]
     display = rects["colormap"]
     assert toolbar[1] + toolbar[3] <= files[1] and toolbar[1] + toolbar[3] <= display[1]
@@ -197,7 +196,7 @@ def test_a_narrow_window_still_shows_every_control(app, photon_folder):
     drv.draw(2, size=(500, 500))
     strings_ = strings(drv)
     for caption in (
-        "Open folder",
+        "Use selected",
         "Copy raw files",
         "Include subfolders",
         "Colormap",

@@ -88,12 +88,12 @@ def test_a_status_message_does_not_cover_the_tool(app):
     app.tool.notify("Processing complete")
     painter = _draw(app)
     assert "Processing complete" in painter.strings
-    for label in ("Process", "TTTR files", "Processing log", "Time window (ms)"):
+    for label in ("Process", "Photon streams", "Processing log", "Time window (ms)"):
         assert label in painter.strings, label
 
 
 def test_the_job_and_file_windows_are_sized(app):
-    app.tool._add_files_dialog()
+    app.tool._choose_dir()  # the one dialog left: where a new container goes
     _draw(app)
     x, y, w, h = app._file_window.box
     assert w < 1200 and h < 800  # not the whole viewport
@@ -217,23 +217,41 @@ def _settle(app, times=400):
     raise AssertionError("job did not finish")
 
 
-# 9. a drop reaches the queue: the hook is on the app, the Qt window's drop accepted folders
-def test_dropped_files_and_folders_are_queued(app, tmp_path):
-    folder = tmp_path / "set"
-    (folder / "sub").mkdir(parents=True)
-    a, b = folder / "a.ptu", folder / "sub" / "b.ht3"
+# 9. the input is the workspace: no drop hook; a hand-off queues addresses and their sources
+def test_the_workspace_hands_streams_over_and_nothing_is_dropped_here(app, tmp_path):
+    from chisurf.plugins.tttr.tttr_time_windows.gui.controller import receive_files
+
+    for name in ("files_dropped", "on_files_dropped", "on_paths_dropped"):
+        assert not hasattr(app, name), name
+    a, b = tmp_path / "a.ptu", tmp_path / "b.ht3"
     a.write_bytes(b"x")
     b.write_bytes(b"x")
-    (folder / "notes.txt").write_text("no")
-    for name in ("files_dropped", "on_files_dropped", "on_paths_dropped"):
-        assert callable(getattr(app, name, None)), name
     app.tool._client = _FakeClient()
-    assert app.files_dropped([str(folder)]) is True
-    assert sorted(p.name for p in app.tool._file_paths) == ["a.ptu", "b.ht3"]
-    assert app.files_dropped([str(a)]) is False  # already queued
-    assert app.files_dropped([str(folder / "notes.txt")]) is False
-    assert "Nothing to queue" in app.tool.message
-    assert len(app.tool._file_paths) == 2
+    receive_files(app, {"files": [str(a), str(b)], "datasets": ["u-a", "u-b"]})
+    assert [p.name for p in app.tool._file_paths] == ["a.ptu", "b.ht3"]
+    assert app.tool._sources == {str(a): "u-a", str(b): "u-b"}
+    assert app.tool.time_window_ms == 10.0  # no window_ms in the payload: the tool's own
+    receive_files(app, {"files": str(a), "window_ms": 2.5})  # one address; already queued
+    assert len(app.tool._file_paths) == 2 and app.tool.time_window_ms == 2.5
+    with pytest.raises(FileNotFoundError):
+        receive_files(app, {"files": [str(tmp_path / "gone.ptu")]})
+
+
+def test_a_processed_stream_comes_back_as_its_burst_run(app, tmp_path, monkeypatch):
+    """The windows written into a container register as a bursts row, a child of the stream."""
+    from chisurf.core.plugin import workspace_input
+
+    registered = []
+    monkeypatch.setattr(
+        workspace_input, "register_result", lambda r, **kw: registered.append((r, kw))
+    )
+    a = tmp_path / "a.ptu"
+    a.write_bytes(b"x")
+    app.tool._sources = {str(a): "u-a"}
+    app.tool._register_runs({str(a): str(tmp_path / "a.pto")}, 10.0)
+    assert registered == [
+        (f"{tmp_path / 'a.pto'}/time_window 10 ms", {"kind": "bursts", "result_of": "u-a"})
+    ]
 
 
 # 10. the error paths: the status line says what failed, the log says why
@@ -314,7 +332,7 @@ def test_remove_and_clear(tmp_path):
         tool._clear_all()
         assert tool._file_paths == [] and tool.preview_data is None and tool._log_lines == []
         assert tool.message == "Cleared"
-        assert "No files queued." in _draw(app).strings
+        assert "Nothing queued: pick photon streams above (or Load example)." in _draw(app).strings
     finally:
         app.close()
 
@@ -329,7 +347,7 @@ def test_guide_waits_for_the_user(app):
         assert isinstance(step["target"], dict), step["title"]
         assert tour._target_key(step["target"]) in app.item_rects, step["title"]
     tour.start(0)
-    assert not tour.awaiting  # what the Files control is for, read, not pressed
+    assert not tour.awaiting  # what the Input section is for, read, not pressed
     tour.next()
     assert tour.awaiting
     tour.notify_used("process")  # another control: still waiting

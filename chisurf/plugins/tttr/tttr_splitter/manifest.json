@@ -8,6 +8,10 @@
     "Thomas-Otavio Peulen"
   ],
   "categories": ["File", "Data"],
+  "accepts": [
+    {"name": "split", "summary": "Load a photon stream (a TTTR file or a container stream) as the input to split or convert.", "receive": "chisurf.plugins.tttr.tttr_splitter.gui.controller:receive_split", "required": ["file"], "from_workspace": {"kinds": ["photons"], "key": "file"}},
+    {"name": "batch", "summary": "Queue PTU photon streams for the batch run with the current options.", "receive": "chisurf.plugins.tttr.tttr_splitter.gui.controller:receive_batch", "required": ["files"], "from_workspace": {"kinds": ["photons"], "many": true, "key": "files"}}
+  ],
   "entrypoints": {
     "script": "__init__.py",
     "emtk": "chisurf.plugins.tttr.tttr_splitter.gui.controller:create_app"

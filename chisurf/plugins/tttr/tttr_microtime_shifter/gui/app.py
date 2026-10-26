@@ -28,7 +28,6 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form, draw_sections
 
 from chisurf.core.fio.staging import TTTR_EXTENSIONS
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
     NUMBER_WIDTH,
@@ -221,7 +220,11 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         self.sample_window = DialogWindow(
             "New MMFDB sample", size=(620.0, 560.0), key="microtime-shifter-sample"
         )
-        self.dataset_picker = DatasetPicker(on_paths=self.add_paths)
+        #: The input: the workspace's photon streams; and the dataset each queued file came from.
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        self.input = NamedWorkspaceInput("microtime_shifter", "photons", self, height=72)
+        self.sources: dict[str, str] = {}
         self.docks = DockManager(
             Split(
                 "h", 0.34, Split("v", 0.4, Region("files"), Region("controls")), Region("histogram")
@@ -330,10 +333,8 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         }.get(name)
 
     def browse_output_folder(self):
-        self.choose(
-            "Output folder",
-            lambda paths: setattr(self, "output_folder", str(paths[0])),
-            mode="folder",
+        self.choose_output_folder(
+            "Output folder", lambda paths: setattr(self, "output_folder", str(paths[0]))
         )
 
     def save_batch(self):
@@ -358,27 +359,36 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         )
         self.sample_window.show()
 
-    def choose(self, title, callback, mode="open", multiple=False):
-        if self.job.running:
-            return
-        suffix = self.files[0].suffix if mode == "save" and self.files else ""
-        filters = (
-            [("Shifted TTTR", [f"*{suffix}"]), ("All files", ["*"])]
-            if suffix
-            else [("TTTR", [f"*{ext}" for ext in TTTR_EXTENSIONS]), ("All files", ["*"])]
-        )
-        start = self.files[0].parent if self.files else None
-        self.dialog = FileDialog(
-            title,
-            mode=mode,
-            multiselect=multiple,
-            filters=filters,
-            directory=str(start) if start else None,
-            filename=(self.files[0].stem + "_shifted" + suffix) if suffix else "",
-        )
+    def _show_dialog(self, title, callback):
         self.dialog_callback = callback
         self.dialog_window.title = title
         self.dialog_window.show()
+
+    def choose_save(self, title, callback):
+        """Where a shifted file goes (the inputs come from the workspace, never a dialog)."""
+        if self.job.running:
+            return
+        suffix = self.files[0].suffix if self.files else ""
+        start = self.files[0].parent if self.files else None
+        self.dialog = FileDialog(
+            title,
+            mode="save",
+            filters=[("Shifted TTTR", [f"*{suffix}"]), ("All files", ["*"])]
+            if suffix
+            else [("All files", ["*"])],
+            directory=str(start) if start else None,
+            filename=(self.files[0].stem + "_shifted" + suffix) if suffix else "",
+        )
+        self._show_dialog(title, callback)
+
+    def choose_output_folder(self, title, callback):
+        """The folder shifted files are written to (an output)."""
+        if self.job.running:
+            return
+        start = self.files[0].parent if self.files else None
+        # not-input: the folder the shifted copies are written to
+        self.dialog = FileDialog(title, mode="folder", directory=str(start) if start else None)
+        self._show_dialog(title, callback)
 
     def load_example(self):
         """Generate the demonstration stream (detectors' decays 500 bins apart) and read it."""
@@ -391,7 +401,10 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         except OSError as exc:
             self.message = str(exc)
             return False
-        return self.add_paths([path])
+        from chisurf.plugins.tttr.workspace_io import example_into_workspace
+
+        example_into_workspace(path, receive_photons, self, key="files", many=True)
+        return True
 
     def add_paths(self, paths):
         if self.job.running:
@@ -567,6 +580,11 @@ class MicrotimeShifterApp(TourTarget, ImApp):
                 f"{'Registered' if archive else 'Saved'} {count}/{len(paths)} shifted file(s)."
                 + (" Warnings: " + warnings if warnings else "")
             )
+            # the shifted copies enter the workspace as children of what they came from
+            from chisurf.plugins.tttr.workspace_io import register_outputs
+
+            for source, output in (result.get("output_paths_by_file") or {}).items():
+                register_outputs([output], result_of=self.sources.get(str(source), ""))
             if any(
                 Path(output).resolve() in paths
                 for output in result.get("output_paths_by_file", {}).values()
@@ -580,14 +598,10 @@ class MicrotimeShifterApp(TourTarget, ImApp):
 
     def save_dialog(self):
         if len(self.files) == 1:
-            self.choose(
-                "Save shifted TTTR", lambda paths: self.apply(filename=str(paths[0])), mode="save"
-            )
+            self.choose_save("Save shifted TTTR", lambda paths: self.apply(filename=str(paths[0])))
         elif self.files:
-            self.choose(
-                "Shifted output folder",
-                lambda paths: self.apply(output_dir=paths[0]),
-                mode="folder",
+            self.choose_output_folder(
+                "Shifted output folder", lambda paths: self.apply(output_dir=paths[0])
             )
 
     def refresh_samples(self):
@@ -739,11 +753,12 @@ class MicrotimeShifterApp(TourTarget, ImApp):
                 role="danger",
             )
         im.begin_disabled(
-            self.job.running
-            or self.dataset_picker.is_open
-            or self.dialog is not None
-            or self.sample_definition is not None
+            self.job.running or self.dialog is not None or self.sample_definition is not None
         )
+        # The input: photon streams of the workspace (files dropped on ChiSurf land there).
+        draw_form(self.input.spec, self.input, self.input.form)
+        if "workspace_input_rows" in self.input.form.rects:
+            self.remember("add_files", self.input.form.rects["workspace_input_rows"])
         if action_button("example", id="load_example"):
             self.load_example()
             self.tour.notify_used("load_example")
@@ -756,24 +771,6 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         self.remember("load_example")
         im.same_line()
         buttons = (
-            (
-                "➕  Files…",
-                "Queue TTTR files; originals are retained when saving shifts.",
-                lambda: self.choose("TTTR inputs", self.add_paths, multiple=True),
-                "add_files",
-            ),
-            (
-                "📁  Folder…",
-                "Queue supported TTTR files recursively from a folder.",
-                lambda: self.choose("TTTR folder", self.add_paths, mode="folder"),
-                "add_folder",
-            ),
-            (
-                "🗄  Database…",
-                "Select TTTR inputs from the MMFDB object store.",
-                self.dataset_picker.open,
-                "add_database",
-            ),
             (
                 "➖  Remove",
                 "Remove the selected file from the queue (it stays on disk).",
@@ -814,11 +811,7 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         im.end_disabled()
 
     def draw_controls(self, box):
-        im.begin_disabled(
-            self.dataset_picker.is_open
-            or self.dialog is not None
-            or self.sample_definition is not None
-        )
+        im.begin_disabled(self.dialog is not None or self.sample_definition is not None)
         if not self.labels.ready:
             self.labels.measure(
                 [f["label"] for f in labelled(self.spec["sections"])] + ["Channel 00"]
@@ -1032,7 +1025,6 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         vp = im.get_main_viewport()
         frame = (0.0, 0.0, *vp.size)
         self.docks.draw(frame)
-        self.dataset_picker.render(frame)
         if self.dialog is not None:
             pressed = self.dialog_window.begin(frame)
             result = self.dialog.draw()
@@ -1084,15 +1076,11 @@ class MicrotimeShifterApp(TourTarget, ImApp):
     def animating(self):
         return self.job.running or self.trigger_drag_active or super().animating()
 
-    def on_paths_dropped(self, paths):
-        self.add_paths(paths)
-
     def close(self):
         if self.closed:
             return
         self.closed = True
         self.job.stop()
-        self.dataset_picker.close()
 
         def close_connection():
             if self._db_owned and self._db is not None:
@@ -1110,3 +1098,27 @@ def create_app(client=None, mmfdb_db=None, mmfdb_session=None, mmfdb_client=None
     return MicrotimeShifterApp(
         client=client, mmfdb_db=mmfdb_db, mmfdb_session=mmfdb_session, mmfdb_client=mmfdb_client
     )
+
+
+def receive_photons(app: MicrotimeShifterApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``photons``): queue ``payload["files"]``, TTTR files
+    picked in the workspace. A stream inside a container is refused with the reason: the shifter
+    writes a shifted copy beside a vendor file, so unpack the container first (TTTR ⇄ .pto)."""
+    from chisurf.core.fio.address import container_of
+    from chisurf.core.plugin.workspace_input import read_address
+
+    given = payload["files"]
+    addresses = [read_address(str(a)) for a in ([given] if isinstance(given, str) else given)]
+    inside = [a for a in addresses if container_of(a) != Path(a)]
+    if inside:
+        raise ValueError(
+            tr("{name} is a stream inside a container: unpack it with TTTR ⇄ .pto first").format(
+                name=Path(inside[0]).name
+            )
+        )
+    uids = [str(u) for u in payload.get("datasets") or []]
+    app.sources.update(
+        {str(Path(a).expanduser().resolve()): u for a, u in zip(addresses, uids) if u}
+    )
+    if not app.add_paths(addresses):
+        raise RuntimeError(app.message or tr("the tool is busy; try again when it has finished"))

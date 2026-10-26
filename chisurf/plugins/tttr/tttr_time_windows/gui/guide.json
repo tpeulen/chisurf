@@ -3,9 +3,9 @@
   "steps": [
     {
       "title": "Queue the files",
-      "text": "Each queued TTTR file is cut into consecutive windows of equal duration. Press <b>Load example</b> to generate a deterministic demonstration measurement (a µs-ALEX stream with bursts) in the settings cache and queue it. <b>Files</b> (or dropping files or a folder on the window) queues real data; <b>Folder</b> and <b>Database</b> queue whole sets.",
+      "text": "Each queued photon stream is cut into consecutive windows of equal duration. The <b>Input</b> table lists the photon streams of the workspace -- files dropped on the ChiSurf window land there; select them and press <b>Use selected</b> to queue them. <b>Load example</b> generates a deterministic demonstration measurement (a µs-ALEX stream with bursts), adds it to the workspace and queues it.",
       "target": {
-        "action": "add_files"
+        "action": "workspace_input_rows"
       }
     },
     {

@@ -12,11 +12,11 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.view_form import draw_form
 from emtk.widgets.data_table import TableBinding, draw_table
 
 from chisurf.core.datastore import column_names, column_values, write_csv_table
 from chisurf.core.fio.pto import Measurement
-from chisurf.emtk.dataset_picker import DatasetPicker, session_client
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.node_editor.control import GraphControl, NodeContentRenderer
 from chisurf.emtk.node_editor.document import GraphDocument
@@ -73,7 +73,12 @@ class PtoInspectorApp(TourTarget, ImApp):
         self.tool_index = 0
         self.child = None
         self._opened_tools = []
-        self.picker = None
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: The input: photon streams and burst runs of the workspace (a container's opens it).
+        self.input = NamedWorkspaceInput("pto_inspector", "containers", self, height=72)
+        #: The workspace dataset the vendor files offered for packing came from.
+        self.source_uid = ""
         self.vendor_paths = []
         self.child_box = (0, 0, 0, 0)
         self.child_focus = False
@@ -231,40 +236,45 @@ class PtoInspectorApp(TourTarget, ImApp):
         im.end_disabled()
 
     def load_example(self):
-        """Open the small known container of :mod:`..demo`, written into the settings cache."""
+        """Write the small known container of :mod:`..demo` into the settings cache, add its
+        streams to the workspace and open it, as a picked row would be."""
+        from chisurf.plugins.tttr.workspace_io import register_container
+
         from ..demo import make_demo
 
-        self.safe(lambda: self.model.set_filename(str(make_demo())))
+        def run():
+            container = str(make_demo())
+            streams = register_container(container)
+            receive_containers(
+                self,
+                {
+                    "files": [str(getattr(d, "address", "")) for d in streams] or [container],
+                    "datasets": [str(getattr(d, "unique_identifier", "")) for d in streams],
+                },
+            )
+
+        self.safe(run)
         self.tour.notify_used("load_example")
 
-    def choose_file(self, action):
-        self.file_action = action
+    def choose_export(self):
+        """Where the selected payload is exported (an output; the input is the workspace)."""
         selected = self.model.selected
+        self.file_action = "export"
         self.dialog = FileDialog(
-            tr("Open") if action == "open" else tr("Export"),
-            mode="open" if action == "open" else "save",
-            filters="Photon containers (*.pto);;Photon files (*.ptu *.spc *.ht3 *.ht2 *.pt3 *.pt2 *.h5 *.hdf5);;All files (*)"
-            if action == "open"
-            else "CSV (*.csv);;All files (*)"
+            tr("Export"),
+            mode="save",
+            filters="CSV (*.csv);;All files (*)"
             if selected and selected.is_tabular
             else "All files (*)",
             directory=str(Path(self.model.filename).parent) if self.model.filename else None,
         )
-        if action != "open" and selected:
+        if selected:
             self.dialog.filename = selected.name + (".csv" if selected.is_tabular else "")
-        self.file_window = DialogWindow(
-            tr("Open") if action == "open" else tr("Export"), size=(780, 560)
-        )
-
-        self.dialog = FileDialog(
-            tr("Legacy folder"),
-            mode="folder",
-            directory=str(Path(self.model.filename).parent) if self.model.filename else None,
-        )
-        self.file_window = DialogWindow(tr("Legacy folder"), size=(780, 560))
+        self.file_window = DialogWindow(tr("Export"), size=(780, 560))
 
     def choose_pack_directory(self):
         self.file_action = "pack"
+        # not-input: the folder the new container is written to
         self.dialog = FileDialog(
             tr("Choose container folder"),
             mode="folder",
@@ -285,15 +295,10 @@ class PtoInspectorApp(TourTarget, ImApp):
             target = measurement.path
         self.vendor_paths = []
         self.model.set_filename(str(target))
+        # the new container's streams enter the workspace as children of the packed files
+        from chisurf.plugins.tttr.workspace_io import register_container
 
-    def open_database(self):
-        self.picker = DatasetPicker(
-            client=session_client(),
-            kinds=["raw_measurement", "raw_data"],
-            formats=["pto"],
-            on_paths=self.on_paths_dropped,
-        )
-        self.picker.open()
+        register_container(str(target), result_of=self.source_uid)
 
     def export_payload(self, path):
         selected = self.model.selected
@@ -367,14 +372,12 @@ class PtoInspectorApp(TourTarget, ImApp):
         available = im.get_content_region_avail()[0]
         used = 0
         for title, tip, fn, enabled in [
-            ("open", "Open a photon container.", lambda: self.choose_file("open"), True),
-            ("Database", "Choose a container from MMFDB.", self.open_database, True),
             ("Reload", "Read changes from disk.", self.model.reload, bool(self.model.filename)),
             ("Verify", "Check every stored checksum.", self.verify, bool(self.model.inspection)),
             (
                 "export",
                 "Export the selected payload.",
-                lambda: self.choose_file("export"),
+                self.choose_export,
                 bool(self.model.selected),
             ),
             ("help", "Read the inspector help.", lambda: setattr(self.help, "open", True), True),
@@ -398,14 +401,18 @@ class PtoInspectorApp(TourTarget, ImApp):
             )
         )
         self.remember("load_example")
-        im.text_wrapped(self.model.filename or tr("Open a photon container."))
+        # the input: photon streams and burst runs of the workspace (dropped files land there)
+        draw_form(self.input.spec, self.input, self.input.form)
+        if "workspace_input_rows" in self.input.form.rects:
+            self.item_rects["open"] = self.input.form.rects["workspace_input_rows"]
+        im.text_wrapped(self.model.filename or tr("Pick a photon stream in the Input section."))
         im.set_item_tooltip(tr("Container path."))
         self.item_rects["filename"] = (*im.get_item_rect_min(), *im.get_item_rect_size())
         im.separator()
         if self.model.inspection is None:
             im.text_wrapped(
                 tr(
-                    "No container open. Drop a .pto on this window, or press Open. A container holds one measurement: the instrument file verbatim, and every result computed from it beside it."
+                    "No container open. Pick a photon stream or a burst run in the Input section (files dropped on ChiSurf land in the workspace). A container holds one measurement: the instrument file verbatim, and every result computed from it beside it."
                 )
             )
         else:
@@ -615,15 +622,11 @@ class PtoInspectorApp(TourTarget, ImApp):
                 self.dialog = None
                 self.safe(
                     lambda: (
-                        self.on_paths_dropped(selected)
-                        if action == "open"
-                        else self.pack_vendor_files(selected[0])
+                        self.pack_vendor_files(selected[0])
                         if action == "pack"
                         else self.export_payload(selected[0])
                     )
                 )
-        if self.picker:
-            self.picker.render(box)
         self.help.draw(box)
         self.tour.draw(vp.size[0], vp.size[1])
 
@@ -663,28 +666,6 @@ class PtoInspectorApp(TourTarget, ImApp):
             return self.child.key(key, text, modifiers)
         return super().key(key, text, modifiers)
 
-    def on_paths_dropped(self, paths):
-        """Open the first dropped .pto; dropped vendor files are offered for packing."""
-        for path in paths:
-            if str(path).lower().endswith(".pto"):
-                self.model.set_filename(str(path))
-                return True
-        vendor = sorted(
-            [Path(p) for p in paths if Path(p).suffix.lower() in VENDOR_SUFFIXES],
-            key=lambda p: p.name,
-        )
-        if vendor:
-            self.vendor_paths = vendor
-            self.notice = ""
-            return True
-        return False
-
-    def files_dropped(self, paths):
-        """Host hook: emtk's Qt host accepts a drag only when the control has this (or on_files_dropped)."""
-        return bool(self.on_paths_dropped([str(p) for p in paths or []]))
-
-    on_files_dropped = files_dropped
-
     def export_settings(self):
         return {
             "filename": self.model.filename,
@@ -711,3 +692,27 @@ class PtoInspectorApp(TourTarget, ImApp):
 
 def make_app():
     return PtoInspectorApp()
+
+
+def receive_containers(app: PtoInspectorApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``containers``): open what ``payload["files"]``
+    names -- a photon stream or burst run of a ``.pto`` opens that container; vendor photon files
+    are offered for packing into a new one (as the Qt tool offered dropped ones)."""
+    from chisurf.core.fio.address import container_of
+    from chisurf.core.plugin.workspace_input import read_address
+
+    given = payload["files"]
+    addresses = [read_address(str(a)) for a in ([given] if isinstance(given, str) else given)]
+    containers = [container_of(a) for a in addresses if container_of(a).suffix.lower() == ".pto"]
+    if containers:
+        app.model.set_filename(str(containers[0]))
+        return
+    vendor = sorted(
+        (Path(a) for a in addresses if Path(a).suffix.lower() in VENDOR_SUFFIXES),
+        key=lambda p: p.name,
+    )
+    if not vendor:
+        raise ValueError(tr("Pick a photon container, a stream of one, or vendor photon files."))
+    app.vendor_paths = vendor
+    app.source_uid = str((payload.get("datasets") or [""])[0])
+    app.notice = ""

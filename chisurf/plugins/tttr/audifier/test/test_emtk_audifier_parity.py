@@ -1,7 +1,8 @@
 """Audifier emtk app: parity with the Qt tool's model, and every control operated with real input.
 
-Real input = pointer press/release at the rectangles the controls were drawn in, typed text, Enter, the wheel, drops through
-``on_files_dropped``; the outcome is read from the model or the frame. Hermetic: HOME and the settings folders are temporary
+Real input = pointer press/release at the rectangles the controls were drawn in, typed text, Enter, the wheel, and the
+workspace's hand-off (``receive_photons``; the window has no file dialog and no drop hook for input); the outcome is read
+from the model or the frame. Hermetic: HOME and the settings folders are temporary
 and a test asserts that nothing was written under the home folder; audio goes to a fake process.
 """
 
@@ -71,6 +72,13 @@ def stream():
     )
 
 
+def feed(ui, path):
+    """Load *path* as the workspace's hand-off does once it has the address (the fake loader reads it)."""
+    accepted = ui.app.load(str(path))
+    ui.draw(2)
+    return accepted
+
+
 def settle(ui):
     import time
 
@@ -84,7 +92,7 @@ def settle(ui):
 def loaded(**kw):
     app, clock = make(loader=lambda path: stream(), **kw)
     ui = Ui(app, (1200, 800))
-    assert ui.drop("anything.ptu")
+    assert feed(ui, "anything.ptu")
     settle(ui)
     return ui, clock
 
@@ -142,11 +150,11 @@ def test_the_default_parameters_equal_the_qt_models():
 def test_a_real_bh_file_is_dropped_read_with_its_subtype_and_shown():
     app, _ = make()
     ui = Ui(app, (1200, 800))
-    assert ui.drop(BH)  # no subtype chosen: the reason is the answer
+    assert feed(ui, BH)  # no subtype chosen: the reason is the answer
     settle(ui)
     assert ui.shown("Select the SPC subtype") and not app.model.has_data
     app.editor.model.data.setdefault("tttr_reading", {})["file_type"] = "SPC-130"
-    ui.drop(BH)
+    feed(ui, BH)
     settle(ui)
     assert (
         app.model.has_data
@@ -162,22 +170,23 @@ def test_a_real_bh_file_is_dropped_read_with_its_subtype_and_shown():
 # ---- the controls -----------------------------------------------------------------------------------------------
 
 
-def test_load_button_opens_the_dialog_and_every_way_out_works(tmp_path):
-    (tmp_path / "x.ptu").write_text("x")
-    app, _ = make(loader=lambda p: stream())
+def test_the_workspace_hands_a_stream_and_its_setup_row_over(tmp_path):
+    """No Load button, no dialog, no drop hook: a photon stream and a setup row from the workspace."""
+    import json
+
+    from chisurf.plugins.tttr.audifier.gui.app import receive_photons
+
+    app, _ = make()
     ui = Ui(app, (1200, 800))
-    ui.click("load")
-    assert ui.dialog_open and ui.shown("Load TTTR")
-    ui.press_text("Cancel")
-    assert not ui.dialog_open and not app.model.has_data
-    ui.click("load")
-    ui.press_text("×")
-    assert not ui.dialog_open
-    ui.click("load")
-    app.dialog.enter(str(tmp_path))
-    ui.dialog_pick("x.ptu")
+    assert "load" not in app.item_rects and not hasattr(app, "on_files_dropped")
+    setup = tmp_path / "bh_setup.json"
+    setup.write_text(json.dumps({"detectors": {}, "tttr_reading": {"file_type": "SPC-130"}}))
+    receive_photons(app, {"file": str(BH), "setup": str(setup), "datasets": ["u-bh"]})
     settle(ui)
-    assert app.model.has_data and ui.shown("Loaded 4,000 events")
+    assert app.model.has_data and len(app.model.data.macro_ticks) == 183657  # the setup's subtype
+    assert app.source_uid == "u-bh"
+    with pytest.raises(FileNotFoundError):
+        receive_photons(app, {"file": str(tmp_path / "gone.ptu")})
     app.close()
 
 
@@ -376,7 +385,7 @@ def test_layout_at_both_sizes(size):
 
     app, _ = make(loader=lambda p: stream())
     ui = Ui(app, size)
-    ui.drop("x.ptu")
+    feed(ui, "x.ptu")
     settle(ui)
     ui.click("update")
     settle(ui)
@@ -409,7 +418,7 @@ def test_layout_at_both_sizes(size):
             assert_texts_apart(
                 flat, region=region
             )  # (the rotated y label has an unrotated box in the recording)
-    for key in ("load", "update", "play", "save_wav", "guide", "help", "range_start", "range_end"):
+    for key in ("update", "play", "save_wav", "guide", "help", "range_start", "range_end"):
         x, y, w, h = app.item_rects[key]
         assert 0 <= x and x + w <= size[0] + 0.5 and 0 <= y and y + h <= size[1] + 0.5, key
     app.close()

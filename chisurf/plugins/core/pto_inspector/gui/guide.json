@@ -19,8 +19,8 @@
       }
     },
     {
-      "title": "Or open your own container",
-      "text": "Press <b>Open</b> and choose a .pto, pick one from the MMFDB database with <b>Database</b>, or drop one on the window. A vendor photon file dropped here is offered for packing into a new container first.",
+      "title": "Or pick your own container",
+      "text": "Pick a photon stream or a burst run in the <b>Input</b> section: one of a .pto opens that container. Files dropped on the ChiSurf window land in the workspace. A vendor photon file picked here is offered for packing into a new container first.",
       "target": {
         "name": "open"
       }

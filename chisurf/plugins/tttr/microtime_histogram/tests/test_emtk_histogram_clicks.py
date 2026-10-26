@@ -1,7 +1,8 @@
 """Click coverage of the native micro-time histogram: every control operated with pointer, keys, wheel, drags and host drops.
 
-Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` and the host's drop hook (``on_paths_dropped``) reach
-the window; assertions read what is drawn, the model's fields and the files written.
+Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` and the workspace's hand-off (``receive_photons``,
+what the Input section, *Open in…* and a drag call) reach the window; assertions read what is drawn, the model's fields
+and the files written. There is no input file dialog and no drop hook: the input is the Datasets workspace.
 """
 
 from __future__ import annotations
@@ -25,7 +26,11 @@ from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui as _Ui, h
 from emtk import keys  # noqa: E402
 from emtk.app import LEFT_BUTTON  # noqa: E402
 
-from chisurf.plugins.tttr.microtime_histogram.gui.app import create_app  # noqa: E402
+from chisurf.plugins.tttr.microtime_histogram.gui.app import (  # noqa: E402
+    create_app,
+    receive_bursts,
+    receive_photons,
+)
 # isort: on
 
 SIZE = (1200, 800)
@@ -41,10 +46,11 @@ SETUP = {
 
 
 class Ui(_Ui):
-    """The traj family's driver plus a host drop, drags, right click, tabs and the worker."""
+    """The traj family's driver plus the workspace hand-off, drags, right click, tabs and the worker."""
 
-    def drop(self, *paths):
-        self.app.on_paths_dropped([str(p) for p in paths])
+    def feed(self, *paths):
+        """What the workspace hands over when photon streams are picked (no setup row)."""
+        receive_photons(self.app, {"files": [str(p) for p in paths]})
         return self.settle()
 
     def settle(self, timeout=120.0):
@@ -112,7 +118,7 @@ def ui():
 @pytest.fixture
 def loaded(ui, tmp_path):
     ui.pick("filetype", "SPC-130")
-    ui.drop(SPC)
+    ui.feed(SPC)
     ui.app.model.output = str(
         tmp_path / "autosave.dat"
     )  # autosave goes to the temp folder, not the test data
@@ -162,51 +168,32 @@ def test_no_tour_card_button_is_dead_on_any_step():
     assert dead_tour_buttons(create_app, SIZE) == []
 
 
-def test_the_files_button_opens_a_dialog_and_every_way_out_works(ui, monkeypatch):
-    monkeypatch.chdir(SPC.parent)
-    ui.click("photon_files")
-    assert ui.dialog_open and ui.shown("TTTR inputs") and ui.shown(SPC.name)
-    ui.press_text("Open")
-    assert ui.dialog_open and ui.shown("Select a file first.") and not ui.app.model.files
-    ui.press_text("Cancel")
-    assert not ui.dialog_open
-    ui.click("photon_files")
-    ui.press_text("×")
-    assert not ui.dialog_open and not ui.app.model.files
-    ui.click("photon_files")
-    ui.press_text(SPC.name)
-    ui.press_text("Open")
-    assert not ui.dialog_open and ui.app.model.files == [str(SPC.resolve())]
-    assert (
-        ui.shown(SPC.name) and ui.app.model.output.endswith("_(0)-(1).dat") or ui.app.model.output
-    )
+def test_there_is_no_input_dialog_no_database_and_no_drop_hook(ui):
+    """Files enter ChiSurf through the shell's drop into the workspace, never here."""
+    assert not hasattr(ui.app, "on_paths_dropped") and not hasattr(ui.app, "dataset_picker")
+    for key in ("photon_files", "photon_folder", "photon_database"):
+        assert key not in ui.app.item_rects, key
+    assert "photon_input" in ui.app.item_rects  # the Input section of the workspace's streams
 
 
-def test_the_folder_button_queues_the_photon_files_of_a_folder(ui):
-    ui.click("photon_folder")
-    assert ui.dialog_open and ui.shown("TTTR folder")
-    ui.app.dialog.directory = str(SPC.parent.parent)
-    ui.draw(2)
-    ui.press_text(f"[{SPC.parent.name}]")
-    ui.press_text("Choose")
-    assert str(SPC.resolve()) in ui.app.model.files
+def test_picked_streams_and_their_setup_row_are_used(ui, tmp_path):
+    """Photon streams and a setup row chosen together: queued, with that detector definition."""
+    import json
+
+    setup = tmp_path / "setup.json"
+    setup.write_text(json.dumps(SETUP | {"detectors": {"blue": {"chs": [3], "g_factor": 1.0}}}))
+    receive_photons(ui.app, {"files": [str(SPC)], "datasets": ["u-spc"], "setup": str(setup)})
+    ui.settle()
+    assert ui.app.model.files == [str(SPC.resolve())] or ui.app.model.files == [str(SPC)]
+    assert list(ui.app.model.setup["detectors"]) == ["blue"]
+    assert ui.shown("1 photon stream(s) queued. Press Compute.")
 
 
-def test_the_database_button_opens_the_picker_and_closes_again(ui):
-    ui.click("photon_database")
-    assert ui.app.dataset_picker.is_open
-    ui.draw(3)
-    ui.press_text(action_caption("cancel")) if ui.shown(
-        action_caption("cancel")
-    ) else ui.press_text(action_caption("close"))
-    assert not ui.app.dataset_picker.is_open
-
-
-def test_dropped_photon_files_land_in_the_queue_and_legacy_bursts_do_not(ui, tmp_path):
+def test_handed_photon_streams_land_in_the_queue_and_legacy_bursts_do_not(ui, tmp_path):
     """Photon streams only: the legacy .bst/.bur layouts are not inputs any more."""
     bur = tmp_path / "BH_SPC132.bur"
     bur.write_text("First File\tLast File\tFirst Photon\tLast Photon\nunits\n0\t0\t10\t500\n")
-    ui.drop(SPC, bur)
+    ui.feed(SPC, bur)
     assert ui.app.model.files == [str(SPC.resolve())]
     assert ui.app.model.burst_files == []
 
@@ -214,14 +201,14 @@ def test_dropped_photon_files_land_in_the_queue_and_legacy_bursts_do_not(ui, tmp
 def test_a_foreign_file_is_not_queued(ui, tmp_path):
     other = tmp_path / "notes.txt"
     other.write_text("x")
-    ui.drop(other)
+    ui.feed(other)
     assert not ui.app.model.files and not ui.app.model.burst_files
 
 
 def test_checkbox_none_all_remove_and_clear(loaded, tmp_path):
     other = tmp_path / "second.ptu"
     other.write_bytes(b"x")
-    loaded.drop(other)
+    loaded.feed(other)
     assert len(loaded.app.model.files) == 2
     first = loaded.app.model.files[0]
     loaded.click("photon_check_0")
@@ -249,7 +236,8 @@ def test_the_context_menu_removes_an_input(loaded):
     assert loaded.app.model.files == []
 
 
-def test_find_corresponding_tttr_reports_what_it_could_not_find(ui, tmp_path):
+def _moved_container(tmp_path):
+    """A burst container copied away from the photon file it was made on."""
     import pandas as pd
 
     from chisurf.plugins.burst.burst_selection.api.io import write_container
@@ -263,9 +251,26 @@ def test_find_corresponding_tttr_reports_what_it_could_not_find(ui, tmp_path):
         parameters={"demo": 1},
         run="demo search",
     )
-    # the container was made somewhere the photons are not: the search says so
     moved = tmp_path / "m999.pto"
     moved.write_bytes(Path(container).read_bytes())
+    return moved
+
+
+def test_find_corresponding_tttr_queues_the_streams_the_container_embeds(ui, tmp_path):
+    moved = _moved_container(tmp_path)
+    ui.app.model.add_paths([moved], bursts=True)
+    ui.click("burst_header")
+    ui.click("burst_find")
+    ui.settle()
+    assert ui.app.model.files == [f"{moved}/m999.pt3"]  # the measurement travels with it
+
+
+def test_find_corresponding_tttr_reports_what_it_could_not_find(ui, tmp_path, monkeypatch):
+    from chisurf.plugins.tttr.microtime_histogram.gui import model as model_module
+
+    # a container that does not embed its photons (written before containers did), moved away
+    monkeypatch.setattr(model_module, "_photon_streams", lambda container: [])
+    moved = _moved_container(tmp_path)
     ui.app.model.add_paths([moved], bursts=True)
     ui.click("burst_header")
     ui.click("burst_find")
@@ -273,16 +278,26 @@ def test_find_corresponding_tttr_reports_what_it_could_not_find(ui, tmp_path):
     assert "No corresponding TTTR" in ui.app.model.message and ui.shown("No corresponding TTTR")
 
 
-def test_burst_buttons_open_their_dialogs(ui):
-    assert "burst_files" not in ui.app.item_rects  # folded away until asked for
+def test_burst_runs_are_picked_from_the_workspace(ui, tmp_path):
+    """The burst selections take burst runs (m000.pto/<run>); their embedded photons are queued."""
+    import pandas as pd
+
+    from chisurf.plugins.burst.burst_selection.api.io import write_container
+
+    assert "burst_input" not in ui.app.item_rects  # folded away until asked for
     ui.click("burst_header")
-    ui.click("burst_files")
-    assert ui.dialog_open and ui.shown("Burst containers")
-    ui.press_text("Cancel")
-    ui.click("burst_folder")
-    assert ui.dialog_open and ui.shown("Burst container folder")
-    ui.press_text("Cancel")
-    assert not ui.dialog_open
+    assert "burst_input" in ui.app.item_rects
+    source = tmp_path / "m001.ptu"
+    source.write_bytes(SPC.read_bytes())
+    container = write_container(
+        source,
+        pd.DataFrame({"first photon": [1], "last photon": [2]}),
+        parameters={"demo": 1},
+        run="demo search",
+    )
+    receive_bursts(ui.app, {"bursts": [f"{container}/demo search"]})
+    ui.settle()
+    assert ui.app.model.burst_files == [f"{container}/demo search"]
 
 
 # -- options ----------------------------------------------------------------------------------------------- #
@@ -381,7 +396,7 @@ def test_compute_reads_the_photons_and_draws_the_decay(loaded):
 
 
 def test_a_headerless_spc_asks_for_its_subtype_in_the_window(ui):
-    ui.drop(SPC)
+    ui.feed(SPC)
     ui.app.model.auto_save = False
     ui.click("compute")
     ui.settle()
@@ -501,7 +516,7 @@ def test_save_writes_the_histogram_file(tmp_path):
     try:
         ui.app.definition_changed(SETUP)
         ui.pick("filetype", "SPC-130")
-        ui.drop(SPC)
+        ui.feed(SPC)
         ui.type_into("output", str(tmp_path / "t.dat"))
         ui.click("compute")
         ui.settle()
@@ -517,7 +532,7 @@ def test_detector_definition_tab_is_reachable_and_comes_back(loaded):
     loaded.press_text("Detector definition")
     assert loaded.shown("TTTR Reading routine") or loaded.shown("Detectors")
     loaded.press_text("Inputs and options")
-    assert loaded.shown("Photon files")
+    assert loaded.shown("Photon streams")
 
 
 def _real_chisurf_state():

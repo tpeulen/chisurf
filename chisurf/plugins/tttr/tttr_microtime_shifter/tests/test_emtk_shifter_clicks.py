@@ -1,6 +1,6 @@
 """Click coverage of the native micro-time shifter: every control is operated with real pointer, key, wheel and drop input.
 
-Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` and the shell's drop hook (``on_paths_dropped``, which
+Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` and the workspace's hand-off (``receive_photons``, which
 it calls for a window without ``files_dropped``) reach the window; each test asserts what a user sees or
 gets (the strings of the frame, the histogram's drawn lines, the shifted file).
 """
@@ -36,7 +36,10 @@ class Ui(_Ui):
     """The traj family's pointer/keyboard driver plus what the shifter needs: a host drop, drags, right click, the job."""
 
     def drop(self, *paths):
-        self.app.on_paths_dropped([str(p) for p in paths])
+        """What the workspace hands over when photon streams are picked (Use selected, Open in…)."""
+        from chisurf.plugins.tttr.tttr_microtime_shifter.gui.app import receive_photons
+
+        receive_photons(self.app, {"files": [str(p) for p in paths]})
         self.settle()
 
     def settle(self, timeout=60.0):
@@ -183,68 +186,28 @@ def test_guide_and_help_buttons_are_pressed(ui):
     assert not ui.app.help.open
 
 
-def test_the_files_button_opens_a_dialog_and_every_way_out_works(ui, demo, monkeypatch):
-    monkeypatch.chdir(demo.parent)
-    ui.click("add_files")
-    assert ui.dialog_open and ui.shown("TTTR inputs") and ui.shown("Cancel")
-    assert ui.shown(demo.name)
-    ui.press_text("Open")  # nothing selected
-    assert ui.dialog_open and ui.shown("Select a file first.") and not ui.app.files
-    ui.press_text("Cancel")
-    assert not ui.dialog_open and not ui.app.files
-    ui.click("add_files")
-    ui.press_text("×")
-    assert not ui.dialog_open and not ui.app.files
-    ui.click("add_files")
-    ui.press_text(demo.name)
-    ui.press_text("Open")
-    ui.settle()
-    assert not ui.dialog_open and ui.app.files == [demo.resolve()] and ui.app.n_mt == N_MT
-    assert ui.shown(demo.name) and ui.shown("Loaded 1 file(s), 4096 micro-time bins.")
+def test_there_is_no_input_dialog_no_database_and_no_drop_hook(ui):
+    for key in ("add_folder", "add_database"):
+        assert key not in ui.app.item_rects, key
+    assert "add_files" in ui.app.item_rects  # the Input section of the workspace's streams
+    assert not hasattr(ui.app, "on_paths_dropped") and not hasattr(ui.app, "dataset_picker")
 
 
-def test_the_files_dialog_double_click_takes_the_file_at_once(ui, demo):
-    ui.click("add_files")
-    ui.app.dialog.directory = str(demo.parent)
-    ui.draw(2)
-    ui.press_text(demo.name, clicks=2)
-    ui.settle()
-    assert not ui.dialog_open and ui.app.files == [demo.resolve()]
-
-
-def test_the_folder_button_queues_the_photon_files_of_a_folder(ui, demo):
-    ui.click("add_folder")
-    assert ui.dialog_open and ui.shown("TTTR folder")
-    ui.app.dialog.directory = str(demo.parent.parent)
-    ui.draw(2)
-    ui.press_text(f"[{demo.parent.name}]")
-    ui.press_text("Choose")
-    ui.settle()
-    assert not ui.dialog_open and ui.app.files == [demo.resolve()]
-
-
-def test_a_dropped_file_is_loaded_and_a_foreign_one_is_answered(ui, demo, tmp_path):
+def test_a_handed_file_is_loaded_and_a_foreign_one_is_answered(ui, demo, tmp_path):
     other = tmp_path / "notes.txt"
     other.write_text("not photons")
-    ui.drop(other)
-    assert not ui.app.files and ui.shown("Choose supported TTTR or PTO photon files.")
+    with pytest.raises(RuntimeError, match="Choose supported TTTR"):
+        ui.drop(other)
+    assert not ui.app.files
     ui.drop(demo)
     assert ui.app.files == [demo.resolve()] and ui.app.n_mt == N_MT and ui.shown(demo.name)
+    assert ui.shown("Loaded 1 file(s), 4096 micro-time bins.")
 
 
-def test_a_dropped_folder_queues_its_file(ui, demo):
-    ui.drop(demo.parent)
-    assert ui.app.files == [demo.resolve()]
-
-
-def test_the_database_button_opens_the_dataset_picker_and_closes_again(ui):
-    ui.click("add_database")
-    assert ui.app.dataset_picker.is_open
-    ui.draw(3)
-    ui.press_text(action_caption("cancel")) if ui.shown(
-        action_caption("cancel")
-    ) else ui.press_text(action_caption("close"))
-    assert not ui.app.dataset_picker.is_open
+def test_a_stream_inside_a_container_is_refused_with_the_reason(ui, tmp_path):
+    (tmp_path / "m000.pto").write_bytes(b"x")  # the container exists: the address is a member
+    with pytest.raises(ValueError, match="unpack it"):
+        ui.drop(tmp_path / "m000.pto" / "m000.spc")
 
 
 def test_selecting_the_file_in_the_list_reloads_it_and_resets_the_shifts(loaded):

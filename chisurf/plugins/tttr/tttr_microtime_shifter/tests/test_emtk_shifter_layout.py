@@ -78,7 +78,7 @@ CONTROLS = [
 def test_every_control_lies_inside_its_dock_and_the_window(ui):
     for name in CONTROLS:
         inside_dock(ui, name)
-    for name in ("add_files", "add_folder", "add_database", "remove", "clear", "guide", "help"):
+    for name in ("add_files", "remove", "clear", "guide", "help"):
         x, y, w, h = ui.app.item_rects[name]
         assert x + w <= ui.plot_box()[0] - 60 and y + h <= ui.size[1], name
 

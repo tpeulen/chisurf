@@ -16,12 +16,9 @@ sys.meta_path.insert(0, BlockQt())
 from chisurf.plugins.tttr.tttr_time_windows.gui.controller import create_app
 from chisurf.plugins.tttr.tttr_splitter.gui.controller import create_app as splitter
 from types import SimpleNamespace
-from chisurf.emtk.dataset_picker import DatasetPicker
-for app in (create_app(), splitter()):
-    app.tool.dataset_picker = DatasetPicker(client=SimpleNamespace(call=lambda *args: {"datasets": []}))
-    app.tool._add_from_database() if hasattr(app.tool, '_add_from_database') else app.tool._add_batch_database()
-    assert app.tool.dataset_picker is not None
-    assert app.tool.dataset_picker.is_open
+for app in (create_app(), splitter()):  # the input is the workspace: no picker, no file dialog
+    assert not hasattr(app.tool, 'dataset_picker')
+    assert not hasattr(app, 'files_dropped')
 """
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
@@ -88,8 +85,8 @@ def test_pure_apps_render_with_file_choosers():
     from chisurf.plugins.tttr.tttr_time_windows.gui.controller import create_app
 
     for factory, picker in (
-        (create_app, "_add_files_dialog"),
-        (splitter, "_browse_input"),
+        (create_app, "_choose_dir"),
+        (splitter, "_browse_output"),
     ):
         app = factory()
         getattr(app.tool, picker)()

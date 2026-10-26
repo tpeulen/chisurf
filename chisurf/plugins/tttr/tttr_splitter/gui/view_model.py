@@ -21,6 +21,26 @@ logger = logging.getLogger(__name__)
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "splitter.view.json"
 
+
+def read_tttr(path: str, tttr_type: str | None = None):
+    """The photon stream at *path*, as stored: a TTTR file through :mod:`tttrlib`, a photon stream
+    of a container (``m000.pto/m000.ptu``) through the staging reader, no LUT applied."""
+    from chisurf.core.fio.address import container_of
+
+    if container_of(str(path)) != pathlib.Path(str(path)):
+        from chisurf.core.fio.staging import open_tttr
+
+        return open_tttr(str(path), tttr_type, apply_lut=False, cache=False)
+    return tttrlib.TTTR(str(path)) if tttr_type is None else tttrlib.TTTR(str(path), tttr_type)
+
+
+def _is_member(path: pathlib.Path) -> bool:
+    """Whether *path* addresses a stream inside a container rather than a file."""
+    from chisurf.core.fio.address import container_of
+
+    return container_of(str(path)) != pathlib.Path(str(path))
+
+
 # Unified mapping: container name → (file-extension stem, record-type id, container id)
 _CONTAINER_INFO = {
     "PTU": ("ptu", 4, 0),  # PQ_PTU_CONTAINER → PQ_RECORD_TYPE_HHT3v2
@@ -46,6 +66,9 @@ class SplitterViewModel:
         return load_view_spec(_VIEW_JSON)
 
     def __init__(self) -> None:
+        #: The files the last split wrote, and ``{input: files}`` of the last batch run.
+        self.last_written: list[str] = []
+        self.batch_written: dict[str, list[str]] = {}
         # ── AutoForm-bound settings ─────────────────────────────────────
         self.input_format = "Auto"
         self.output_format = "PTU"
@@ -92,10 +115,12 @@ class SplitterViewModel:
     # ── loaded-file accessors ──────────────────────────────────────────
     def set_tttr(self, tttr, path: str) -> None:
         """Store a freshly loaded TTTR object and its source path."""
+        from chisurf.core.fio.address import container_of
+
         self._tttr = tttr
         self.input_file = str(path)
         if not self.output_folder:
-            self.output_folder = str(pathlib.Path(path).parent)
+            self.output_folder = str(container_of(str(path)).parent)
         self.notify("loaded")
 
     @property
@@ -115,15 +140,19 @@ class SplitterViewModel:
             path = self.tttr_input_filename
             if path is None:
                 raise ValueError("The input file no longer exists.")
+            if _is_member(path) and self._tttr is not None:
+                return int(self._tttr.header.tttr_container_type)  # a container's stream says
             return tttrlib.inferTTTRFileType(path.as_posix())
         names = tttrlib.TTTR.get_supported_container_names()
         return names.index(self.input_format)
 
     @property
     def tttr_input_filename(self) -> pathlib.Path | None:
-        """The input path as a ``Path`` if it points at an existing file."""
+        """The input as a ``Path`` if it is an existing file or a stream of an existing container."""
+        from chisurf.core.fio.address import container_of
+
         path = pathlib.Path(self.input_file.strip())
-        return path if path.is_file() else None
+        return path if self.input_file.strip() and container_of(str(path)).is_file() else None
 
     @property
     def output_folder_path(self) -> pathlib.Path | None:
@@ -207,6 +236,8 @@ class SplitterViewModel:
 
         subfolder = out_folder / in_path.stem
         subfolder.mkdir(parents=True, exist_ok=True)
+        #: The files this split wrote (they enter the workspace as children of the input).
+        self.last_written = []
 
         # Prepare the (possibly transcoded) header.
         header = t.header
@@ -250,12 +281,13 @@ class SplitterViewModel:
             else:
                 fname = f"{in_path.stem}_all.{ext}"
             chunk_tttr.write(str(subfolder / fname), header)
+            self.last_written.append(str(subfolder / fname))
 
         if progress_cb is not None:
             progress_cb(100)
 
-        if not self.keep_original:
-            in_path.unlink()
+        if not self.keep_original and not _is_member(in_path):
+            in_path.unlink()  # a file only: a container's stream is never cut out of it
 
         return subfolder
 
@@ -272,26 +304,26 @@ class SplitterViewModel:
         given) is called as ``(index, count, path)`` before each file. Returns the
         number of files processed.
         """
+        from chisurf.core.fio.address import container_of
+
         files = list(self.batch_files)
         count = len(files)
         keep_folder = self.output_folder
         processed = 0
+        #: ``{input: [files written]}`` of this batch run.
+        self.batch_written = {}
         for i, path_str in enumerate(files):
             if file_progress_cb is not None:
                 file_progress_cb(i, count, path_str)
             try:
-                tttr_type = self.tttr_type
-                tttr = (
-                    tttrlib.TTTR(path_str)
-                    if tttr_type is None
-                    else tttrlib.TTTR(path_str, tttr_type)
-                )
+                tttr = read_tttr(path_str, self.tttr_type)
                 self.set_tttr(tttr, path_str)
                 if self.batch_use_parent:
-                    self.output_folder = str(pathlib.Path(path_str).parent)
+                    self.output_folder = str(container_of(path_str).parent)
                 else:
                     self.output_folder = keep_folder
                 self.do_split()
+                self.batch_written[path_str] = list(self.last_written)
                 processed += 1
             except Exception:
                 logger.exception("Batch: failed processing %s", path_str)

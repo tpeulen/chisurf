@@ -92,7 +92,7 @@ def test_a_frame_draws_actions_rows_and_json(tool, monkeypatch):
     tool.draw(painter, 0.0, 0.0, 900.0, 620.0)
 
     assert painter.ops > 120
-    assert action_caption("open") in painter.strings
+    assert action_caption("open") not in painter.strings  # the input is the workspace
     assert "💾 Save as PTU" in painter.strings
     # The sample header's tags are on screen…
     assert "File_GUID" in painter.strings
@@ -159,7 +159,7 @@ def test_the_type_combo_converts_the_value(tool, monkeypatch):
 
 
 def test_a_load_rebuilds_the_editors(tool):
-    """A new header (Open/drop) replaces the editors from the model."""
+    """A new header (a picked photon stream) replaces the editors from the model."""
     other = json.dumps({"tags": [{"name": "TagX", "type": 0x4001FFFF, "value": "v", "idx": 3}]})
     tool.model.load_json(other)
     tool.header_gui.rebuild_rows()

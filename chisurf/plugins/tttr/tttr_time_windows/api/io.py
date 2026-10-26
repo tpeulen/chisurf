@@ -14,21 +14,41 @@ if TYPE_CHECKING:
 
 
 def load_tttr(path: str | Path) -> tttrlib.TTTR:
-    """Load a TTTR file using tttrlib.
+    """Load a photon stream: a TTTR file, or a photon stream of a container.
 
     Parameters
     ----------
     path : str or Path
-        TTTR file path.
+        TTTR file path, or a container member address (``m000.pto/m000.spc``).
 
     Returns
     -------
     tttrlib.TTTR
         Loaded TTTR object.
     """
-    import tttrlib
+    from chisurf.core.fio.staging import open_tttr
 
-    return tttrlib.TTTR(str(path))
+    return open_tttr(str(path), cache=False)
+
+
+def run_name(time_window_s: float) -> str:
+    """The name of the burst run the windows are stored as (one per window length).
+
+    Parameters
+    ----------
+    time_window_s : float
+        Time window duration in seconds.
+
+    Returns
+    -------
+    str
+
+    Examples
+    --------
+    >>> run_name(0.01)
+    'time_window 10 ms'
+    """
+    return f"time_window {time_window_s * 1000.0:g} ms"
 
 
 def save_bst(bids: np.ndarray, path: str | Path) -> None:
@@ -77,7 +97,7 @@ def compute_and_save(
     Parameters
     ----------
     path : str or Path
-        Input TTTR file (or its container).
+        Input TTTR file, its container, or a photon stream of a container.
     time_window_s : float
         Time window duration in seconds.
     output_dir : str or Path, optional
@@ -97,6 +117,7 @@ def compute_and_save(
         If no data or computation fails.
     """
     from chisurf.core.datastore import store_from_arrays
+    from chisurf.core.fio.address import container_of
     from chisurf.core.fio.analysis_path import bur_artifact_name
     from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
 
@@ -112,9 +133,11 @@ def compute_and_save(
             "last photon": nonempty[:, 1] - 1,
         }
     )
-    run = f"time_window {time_window_s * 1000.0:g} ms"
+    run = run_name(time_window_s)
+    # A photon stream of a container writes into that container (the measurement's own).
+    source = container_of(str(path)) if str(container_of(str(path))) != str(path) else path
     container = write_burst_artifact(
-        path,
+        source,
         table,
         name=bur_artifact_name(run, Path(path).stem),
         deinterleave=False,

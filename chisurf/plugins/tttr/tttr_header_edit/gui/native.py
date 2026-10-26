@@ -1,4 +1,9 @@
-"""Qt-free launcher for the shared header table and scientific file model."""
+"""Qt-free launcher for the shared header table and scientific file model.
+
+The input is the Datasets workspace: the Header tags dock draws the generated Input section (the
+manifest's ``accepts[].from_workspace``) over this app, and :func:`receive_photons` reads the
+picked photon stream. The edited copy a save writes comes back into the workspace as a child of it.
+"""
 
 from pathlib import Path
 
@@ -6,13 +11,16 @@ from emtk import im
 from emtk.app import ImApp
 from emtk.file_dialog import FileDialog
 
+from chisurf.core.plugin.workspace_input import WorkspaceInputMixin
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from .app import HeaderEditorGui
-from .view_model import OPEN_FILTER, HeaderEditorViewModel
+from .view_model import HeaderEditorViewModel
 
 
-class NativeHeaderEditor(ImApp):
+class NativeHeaderEditor(WorkspaceInputMixin, ImApp):
+    workspace_input_plugin = "tttr_header_edit"
+
     def __init__(self, json_data=None):
         self.model = HeaderEditorViewModel()
         if json_data:
@@ -23,7 +31,11 @@ class NativeHeaderEditor(ImApp):
         self.dialog = None
         self.dialog_callback = None
         self.last_directory = ""
-        self.header_gui = HeaderEditorGui(self, on_open=self.choose_open, on_save=self.choose_save)
+        #: The workspace dataset the header is of: the saved copy becomes its child.
+        self.source_uid = ""
+        self.workspace_input_app = self
+        self.header_gui = HeaderEditorGui(self, on_save=self.choose_save)
+        self.workspace_input_on_used = self.header_gui.tour.notify_used
         self.docks = self.header_gui.docks
         super().__init__(gui=self.render, continuous=True)
 
@@ -40,20 +52,15 @@ class NativeHeaderEditor(ImApp):
             self.model = model
             self.validation_error = ""
             self.header_gui.rebuild_rows()
-            self.last_directory = str(Path(path).parent)
+            from chisurf.core.fio.address import container_of
+
+            self.last_directory = str(container_of(str(path)).parent)
             self.message = "Header loaded."
 
         return self.job.start(work, publish, self.error)
 
     def error(self, exc):
         self.message = str(exc)
-
-    def choose_open(self):
-        if not self.job.running:
-            self.dialog = FileDialog(
-                "Open TTTR file", filters=OPEN_FILTER, directory=self.last_directory or None
-            )
-            self.dialog_callback = lambda paths: self.load(paths[0]) if paths else None
 
     def choose_save(self):
         self.header_gui._commit()
@@ -80,11 +87,16 @@ class NativeHeaderEditor(ImApp):
 
         model = deepcopy(self.model)
         model._observers = []
-        return self.job.start(
-            lambda: model.save(str(path)),
-            lambda _: setattr(self, "message", f"Saved edited PTU: {path}"),
-            self.error,
-        )
+        target = str(path) if str(path).lower().endswith(".ptu") else f"{path}.ptu"
+
+        def saved(_):
+            self.message = f"Saved edited PTU: {target}"
+            # The edited copy is a photon stream of its own, made from the picked one.
+            from chisurf.plugins.tttr.workspace_io import add_photons
+
+            add_photons(target, result_of=self.source_uid)
+
+        return self.job.start(lambda: model.save(str(path)), saved, self.error)
 
     def render(self):
         self.job.poll()
@@ -102,12 +114,11 @@ class NativeHeaderEditor(ImApp):
                     callback(result)
             im.end()
 
-    def on_paths_dropped(self, paths):
-        if paths:
-            self.load(paths[0])
-
     def load_example(self):
-        """Generate the demonstration PTU in the settings cache and read its header."""
+        """Generate the demonstration PTU in the settings cache, add it to the workspace and read
+        its header, as a picked row would be."""
+        from chisurf.plugins.tttr.workspace_io import example_into_workspace
+
         from ..demo import demo_folder, make_demo
 
         if self.job.running:
@@ -117,7 +128,8 @@ class NativeHeaderEditor(ImApp):
         except OSError as exc:
             self.error(exc)
             return False
-        return self.load(path)
+        example_into_workspace(path, receive_photons, self, key="file")
+        return True
 
     def export_settings(self):
         return {"last_directory": self.last_directory}
@@ -131,3 +143,17 @@ class NativeHeaderEditor(ImApp):
 
 def create_app(json_data=None):
     return NativeHeaderEditor(json_data=json_data)
+
+
+def receive_photons(app: NativeHeaderEditor, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``photons``): read the header of ``payload["file"]``,
+    an address as the workspace hands it (a TTTR file or a container's photon stream)."""
+    from chisurf.core.fio.address import container_of
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = read_address(str(payload["file"]))
+    if not container_of(address).is_file():
+        raise FileNotFoundError(f"{address} does not exist")
+    if not app.load(address):
+        raise RuntimeError("the tool is busy; try again when it has finished")
+    app.source_uid = str((payload.get("datasets") or [""])[0])

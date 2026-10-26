@@ -31,35 +31,32 @@ def test_a_frame_draws_all_three_docks(tool):
     tool.app.draw(painter, 0.0, 0.0, 900.0, 620.0)
 
     assert len(painter.calls) > 60
-    # Input/Output dock (captions + the run button)…
-    assert "Input file:" in painter.strings
+    # Input/Output dock (the workspace's Input section + the run button)…
+    assert "Input file:" not in painter.strings and "Data name" in painter.strings
     assert "✂ Convert / Split" in painter.strings
     # …options…
     assert "Input format" in painter.strings
-    # …and batch panel.
-    assert "➕ Files" in painter.strings
-    assert any("No files queued" in s for s in painter.strings)
+    # …and batch panel: its own Input section, no file buttons.
+    assert "➕ Files" not in painter.strings and "Use selected" in painter.strings
+    assert any("Nothing queued" in s for s in painter.strings)
 
 
-def test_editing_the_input_path_loads_the_file(tool, monkeypatch):
-    """Typing a path into the input row runs the loader with it."""
-    import emtk.im as im
+def test_the_workspace_hands_the_input_and_the_batch_over(tool, tmp_path, monkeypatch):
+    """No typed input path, no drop: the split input and the batch queue come from the workspace."""
+    from chisurf.plugins.tttr.tttr_splitter.gui.controller import receive_batch, receive_split
 
-    loaded: list[str] = []
-    real_input = im.input_text_with_hint
-
-    def input_spy(label, value, *a, **k):
-        if label == "##Input file":
-            return True, "/data/run.ptu"
-        return real_input(label, value, *a, **k)
-
-    monkeypatch.setattr(im, "input_text_with_hint", input_spy)
-    monkeypatch.setattr(tool, "load_input", lambda p: loaded.append(p))
-
-    with __import__("emtk").frame(RecordingPainter(), (0.0, 0.0, 900.0, 620.0)):
-        tool.app.splitter_gui.docks.draw((0.0, 0.0, 900.0, 620.0))
-
-    assert loaded == ["/data/run.ptu"]
+    assert not hasattr(tool.app, "files_dropped") and not hasattr(tool, "_browse_input")
+    run = tmp_path / "run.ptu"
+    run.write_bytes(b"x")
+    loaded = []
+    monkeypatch.setattr(tool, "load_input", lambda p, source="": loaded.append((p, source)))
+    receive_split(tool.app, {"file": str(run), "datasets": ["u-run"]})
+    assert loaded == [(str(run), "u-run")]
+    other = tmp_path / "other.ht3"
+    other.write_bytes(b"x")
+    receive_batch(tool.app, {"files": [str(run), str(other)], "datasets": ["u-run", "u-ht3"]})
+    assert tool._model.batch_files == [str(run)]  # the batch writes from PTU only
+    assert tool.batch_sources == {str(run): "u-run"}
 
 
 def test_load_input_rejects_a_missing_file(tool, monkeypatch):

@@ -246,7 +246,7 @@ def test_the_new_buttons_are_in_the_spec_in_order():
         for s in all_sections(spec)
         for b in s.get("buttons", [])
     ]
-    assert labels[5:13] == BUTTONS  # after the first row of five (with Load example)
+    assert labels[4:12] == BUTTONS  # after the first row of four (with Load example; Open… went)
     from chisurf.plugins.tttr.trace_browser.gui.model import TraceBrowserModel
 
     model = TraceBrowserModel()

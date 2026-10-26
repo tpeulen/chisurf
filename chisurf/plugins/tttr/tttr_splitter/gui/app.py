@@ -1,9 +1,9 @@
 """EMTK immediate-mode UI for the TTTR Split / Convert tool.
 
-Left: the input file and output folder rows (browse buttons; OS drops land on
-the Qt window and load the input) with the Convert/Split button and its
-progress bar. Right: the split options and the batch panel — a queue of files
-processed with the current option set. The widget
+Left: the Input section (the workspace's photon streams; the picked one is the
+input) and the output folder row, with the Convert/Split button and its
+progress bar. Right: the split options and the batch panel — its own Input
+section and the queue of streams processed with the current option set. The widget
 (:class:`~.controller.SplitterController`) keeps the Qt-free
 :class:`~..view_model.SplitterViewModel` and the dialogs; this app renders its
 state and calls back.
@@ -18,6 +18,7 @@ import emtk.im as im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
+from emtk.view_form import draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button
@@ -36,22 +37,16 @@ class SplitterGui(TourTarget):
     def __init__(
         self,
         tool: SplitterController,
-        on_browse_input: Callable[[], None] | None = None,
         on_browse_output: Callable[[], None] | None = None,
         on_run: Callable[[], None] | None = None,
-        on_add_batch_files: Callable[[], None] | None = None,
-        on_add_batch_folder: Callable[[], None] | None = None,
         on_clear_batch: Callable[[], None] | None = None,
         on_run_batch: Callable[[], None] | None = None,
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
         self.tool = tool
-        self.on_browse_input = on_browse_input
         self.on_browse_output = on_browse_output
         self.on_run = on_run
-        self.on_add_batch_files = on_add_batch_files
-        self.on_add_batch_folder = on_add_batch_folder
         self.on_clear_batch = on_clear_batch
         self.on_run_batch = on_run_batch
         self.on_guide = on_guide
@@ -59,8 +54,9 @@ class SplitterGui(TourTarget):
 
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
 
+        # The batch dock holds its own Input section and the queue: it gets the larger share.
         layout = Split(
-            "h", 0.44, Region("io"), Split("v", 0.55, Region("options"), Region("batch"))
+            "h", 0.44, Region("io"), Split("v", 0.40, Region("options"), Region("batch"))
         )
         self.docks = DockManager(layout)
         self.docks.add_window("io", "📂 Input / Output", self._draw_io, dock="io", closable=True)
@@ -128,9 +124,7 @@ class SplitterGui(TourTarget):
         row_w = im.get_line_avail()
         im.set_next_item_width(max(row_w - browse_w - caption_pad, 60.0))
         _, text = im.input_text_with_hint(f"##{caption}", value, hint)
-        im.set_item_tooltip(
-            f"{caption} — type a path, or drop it on the window, or press … to browse."
-        )
+        im.set_item_tooltip(f"{caption} — type a path, or press … to browse.")
         im.same_line()
         if im.button(f"…##{target}"):
             if callable(on_browse):
@@ -180,16 +174,11 @@ class SplitterGui(TourTarget):
         self.remember("help")
 
         im.separator()
-        new_input = self._picker_row(
-            "Input file",
-            m.input_file,
-            "Drop a TTTR file here or browse…",
-            self.on_browse_input,
-            "input",
-        )
-        if new_input != m.input_file and new_input.strip():
-            tool.load_input(new_input.strip())
-        self.remember("input")
+        # The input: a photon stream of the workspace (files dropped on ChiSurf land there).
+        source = tool.split_input
+        draw_form(source.spec, source, source.form)
+        if "workspace_input_rows" in source.form.rects:
+            self.remember("input", source.form.rects["workspace_input_rows"])
 
         new_out = self._picker_row(
             "Output folder", m.output_folder, "Output folder", self.on_browse_output, "output"
@@ -199,7 +188,8 @@ class SplitterGui(TourTarget):
         self.remember("output")
 
         im.spacing()
-        im.text(tr("Drop a TTTR file onto this window to load it."))
+        if m.tttr is None:
+            im.text_disabled(tr("Pick a photon stream above (or Load example) to split it."))
         if m.tttr is not None:
             n = len(m.tttr)
             im.text_colored(f"Loaded: {m.input_file}", (0.4, 0.85, 0.5, 1.0))
@@ -297,30 +287,20 @@ class SplitterGui(TourTarget):
     def _draw_batch(self, box: tuple[float, float, float, float]) -> None:
         m = self.model
 
-        if im.button(tr("➕ Files")):
-            if callable(self.on_add_batch_files):
-                self.on_add_batch_files()
-        im.set_item_tooltip(tr("Queue PTU files for the batch run."))
-        self.remember("batch_files")
-        im.same_line()
-        if im.button(tr("📁 Folder")):
-            if callable(self.on_add_batch_folder):
-                self.on_add_batch_folder()
-        im.set_item_tooltip(tr("Queue .ptu files recursively from a folder, sorted by name."))
-        self.remember("batch_folder")
-        im.same_line()
+        # The queue's input: PTU streams of the workspace, selected and Use selected.
+        source = self.tool.batch_input
+        draw_form(source.spec, source, source.form)
+        if "workspace_input_rows" in source.form.rects:
+            self.remember("batch_files", source.form.rects["workspace_input_rows"])
         if im.button(tr("🗑️ Clear"), role="danger"):
             if callable(self.on_clear_batch):
                 self.on_clear_batch()
         im.set_item_tooltip(tr("Empty the batch queue."))
         self.remember("batch_clear")
-        if im.button(tr("🗄 Database")):
-            self.tool._add_batch_database()
-        im.set_item_tooltip(tr("Queue PTU datasets from the session MMFDB database."))
         im.separator()
 
         if not m.batch_files:
-            im.text_disabled(tr("No files queued — add PTU files or a folder."))
+            im.text_disabled(tr("Nothing queued — select PTU streams above and Use selected."))
         else:
             im.text_disabled(f"Queued files ({len(m.batch_files)})")
             available = im.get_content_region_avail()

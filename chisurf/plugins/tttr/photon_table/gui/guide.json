@@ -2,10 +2,10 @@
   "_comment": "Guided tour of the Photon Table. 'name' is the emtk control (a spec action or field, or a window the app draws).",
   "steps": [
     {
-      "title": "What the file holds",
-      "text": "The file name, the number of photons (and of marker records besides them), the measurement time and the number of micro-time channels the header declares, then the records of each kind and the routing channels that occur in the data.",
+      "title": "Pick a photon stream",
+      "text": "The <b>Input</b> table lists the photon streams of the workspace (files dropped on the ChiSurf window land there); pick one to show its records. Under it, the summary gives the file name, the number of photons (and of marker records besides them), the measurement time and the number of micro-time channels the header declares, then the records of each kind and the routing channels that occur in the data.",
       "target": {
-        "name": "file_summary"
+        "name": "workspace_input_rows"
       }
     },
     {

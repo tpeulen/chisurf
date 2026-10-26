@@ -170,7 +170,7 @@ def test_populated_both_stages_render_with_tooltips_in_all_languages(workspace, 
                     app.draw(painter, 0, 0, *size)
                     assert painter.strings
         assert not [r for r in caplog.records if r.levelname == "ERROR"]
-        assert {"request_load_lut", "assign_selected", "request_save_json", "shift"} <= set(
+        assert {"remove_lut", "assign_selected", "request_save_json", "shift"} <= set(
             app.form.rects
         )
     finally:
@@ -207,11 +207,11 @@ def test_tooltip_hover_and_lut_removal_are_real_input(workspace):
     app.style = Style(tooltip_delay=0)
     try:
         app.draw(RecordingPainter(), 0, 0, 1200, 900)
-        x, y, w, h = app.form.rects["request_load_lut"]
+        x, y, w, h = app.form.rects["remove_lut"]
         app.hover(x + w / 2, y + h / 2)
         painter = RecordingPainter()
         app.draw(painter, 0, 0, 1200, 900)
-        assert any("Import a cumulative LUT" in str(item) for item in painter.strings)
+        assert any("Remove the selected LUT" in str(item) for item in painter.strings)
         name = app.model.ws.selected_lut
         assert name in app.model.ws.loaded_luts
         app.draw(RecordingPainter(), 0, 0, 1200, 900)

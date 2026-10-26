@@ -1,4 +1,8 @@
-"""Click-driven Open / Add / edit / Delete / Save-as-PTU round trip on a real PTU."""
+"""Click-driven pick / Add / edit / Delete / Save-as-PTU round trip on a real PTU.
+
+The PTU is picked in the Input section (the workspace's photon streams), never through a dialog;
+the saved copy comes back into the workspace as a child of it.
+"""
 
 import hashlib
 import json
@@ -41,27 +45,29 @@ def _scroll_to(driver, caption):
     raise AssertionError(f"{caption!r} never scrolled into view")
 
 
-def test_open_add_edit_delete_save_round_trip(tmp_path):
+def test_pick_add_edit_delete_save_round_trip(tmp_path):
     import tttrlib
 
+    from chisurf.core.api import dataset_container
+    from chisurf.core.plugin.workspace_input import register_result
+
     digest = hashlib.sha256(SOURCE.read_bytes()).digest()
+    held = dataset_container()
+    before = list(held)
+    stream = register_result(str(SOURCE), kind="photons")  # what the shell's drop does
     app = create_app()
     driver = Driver(app, (1200, 800))
     try:
         driver.frame(2)
         assert "No file loaded" in " ".join(_texts(driver))
+        assert not hasattr(app, "on_paths_dropped") and "📂  Open…" not in _texts(driver)
 
-        # Open: the dialog appears, the file is picked by clicking its name.
-        driver.click("📂  Open…")
-        assert app.dialog is not None
-        app.dialog.directory = str(SOURCE.parent)
-        driver.frame(2)
+        # Pick: the stream's row in the Input section is clicked.
         driver.click(SOURCE.name)
-        assert app.dialog.selection == [SOURCE.name]
-        driver.click("Open")
         _wait(driver, app)
         assert app.dialog is None
         assert app.message == "Header loaded."
+        assert app.source_uid == stream.unique_identifier
         assert app.model.opened_path == str(SOURCE)
         original_tags = len(app.model.tags)
         assert original_tags > 6
@@ -111,5 +117,8 @@ def test_open_add_edit_delete_save_round_trip(tmp_path):
         names = [tag["name"] for tag in json.loads(saved.header.json)["tags"]]
         assert "NewTagY" in names and first_name not in names
         assert hashlib.sha256(SOURCE.read_bytes()).digest() == digest
+        copies = [d for d in held if getattr(d, "result_of", "") == stream.unique_identifier]
+        assert [str(d.address) for d in copies] == [str(output)]  # the copy is in the workspace
     finally:
         app.close()
+        held[:] = before

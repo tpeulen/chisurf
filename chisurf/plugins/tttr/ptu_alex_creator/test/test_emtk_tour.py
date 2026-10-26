@@ -55,7 +55,9 @@ def settle(ui, timeout=30.0):
 
 
 def test_every_guide_target_is_drawn_and_the_card_leaves_it_free(ui, source):
-    assert ui.drop(source)
+    from chisurf.plugins.tttr.ptu_alex_creator.gui.app import receive_input
+
+    receive_input(ui.app, {"file": str(source)})
     settle(ui)
     ui.click("guide")
     tour = ui.app.guide
@@ -96,6 +98,12 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(ui, sou
                 before = ui.app.model.period_shift
                 ui.type_into("period_shift", "23")  # a spin field: type the value, Enter
                 assert ui.app.model.period_shift != before
+            elif key == "batch_files":
+                # the batch's Input section: select the workspace's rows, then Use selected
+                ui.app.batch_input.workspace_input_selection = (
+                    ui.app.batch_input.workspace_input_rows()
+                )
+                ui.press_text("Use selected")
             else:
                 ui.click(key)
                 if ui.dialog_open:
@@ -104,4 +112,4 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(ui, sou
             ui.draw(2)
         ui.press_text("Finish ✓" if tour.step_idx == len(tour.steps) - 1 else "Next ►")
     assert not tour.active
-    assert seen == ["load_example", "detect_period", "timing", "choose_save", "choose_files"]
+    assert seen == ["load_example", "detect_period", "timing", "choose_save", "batch_files"]

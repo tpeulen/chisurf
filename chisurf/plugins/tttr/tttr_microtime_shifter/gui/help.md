@@ -7,8 +7,10 @@ delay them differently onto one time axis before a lifetime or PIE analysis.
 
 ## Files
 
-- **➕ Files…**, **📁 Folder…** (recursive), **🗄 Database…** (the MMFDB
-  object store), or drop files and folders on the window.
+- Pick TTTR files in the **Input** table (the photon streams of the Datasets workspace;
+  files enter ChiSurf by dropping them on the ChiSurf window) and press **Use selected**.
+  A stream inside a `.pto` container is unpacked first with TTTR ⇄ .pto: the shifter writes
+  a shifted copy beside a vendor file. Shifted copies appear in the workspace under their source.
 - All queued files must have the same number of micro-time bins. The preview
   sums them by routing channel. Select a file to reload it (shifts reset);
   **➖ Remove** (or right-click) takes the selected file off the queue, it

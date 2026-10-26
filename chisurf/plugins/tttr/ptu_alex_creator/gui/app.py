@@ -25,7 +25,6 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.core.fio.staging import TTTR_FILE_FILTER
 from chisurf.core.settings.path_utils import get_path
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.i18n import install
 from chisurf.plugins.emtk_layout import (
@@ -116,7 +115,19 @@ class AlexApp(TourTarget, ImApp):
         self.dialog = self.dialog_callback = None
         self.item_rects = {}
         self.file_window = DialogWindow("ALEX file chooser", size=(600.0, 420.0), key="alex_files")
-        self.dataset_picker = DatasetPicker(on_paths=self.add_paths)
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: The inputs: the file to convert, and the batch queue's files, from the workspace.
+        # two rows each (the tables scroll): Run batch must stay on an 800x600 window
+        self.file_input = NamedWorkspaceInput("ptu_alex_creator", "input", self, height=56)
+        self.batch_input = NamedWorkspaceInput("ptu_alex_creator", "batch", self, height=56)
+        # the batch's section says how data gets in; the file's says it once less (two lines saved)
+        for panel in self.file_input.spec["sections"]:
+            panel["sections"] = [x for x in panel.get("sections", []) if x.get("type") != "info"]
+        self.file_input.workspace_input_on_used = lambda _key: self.used("choose_input")
+        self.batch_input.workspace_input_on_used = lambda _key: self.used("batch_files")
+        #: The workspace dataset each input came from: written files become its children.
+        self.sources: dict[str, str] = {}
         self.state_path = (
             Path(state_path) if state_path else get_path("settings") / "alex-emtk.json"
         )
@@ -222,7 +233,6 @@ class AlexApp(TourTarget, ImApp):
     def close(self):
         self.job.close()
         self.preview_job.close()
-        self.dataset_picker.close()
         try:
             self.state_path.parent.mkdir(parents=True, exist_ok=True)
             self.state_path.write_text(json.dumps(self.get_state(), indent=2))
@@ -457,6 +467,11 @@ class AlexApp(TourTarget, ImApp):
     def completed(self, paths):
         self.outputs = [str(p) for p in paths] if isinstance(paths, (list, tuple)) else [str(paths)]
         self.notice(tr("Written files") + ": " + "\n".join(self.outputs))
+        # what was written enters the workspace (a single conversion: a child of its input)
+        from chisurf.plugins.tttr.workspace_io import register_outputs
+
+        source = self.sources.get(str(self.model.input_file), "") if len(self.outputs) == 1 else ""
+        register_outputs(self.outputs, result_of=source)
 
     def run_batch(self):
         if self.job.running:
@@ -526,61 +541,35 @@ class AlexApp(TourTarget, ImApp):
         except OSError as exc:
             self.error(exc)
             return
-        self.model.input_file = str(path)
-        self.load(str(path))
+        from chisurf.plugins.tttr.workspace_io import example_into_workspace
 
-    def choose_input(self):
-        self.choose(lambda picked: self.load(picked[0]))
+        example_into_workspace(path, receive_input, self, key="file")
 
-    def load_input(self):
-        self.load(str(self.model.input_file).strip())
-
-    def choose_save(self):
-        self.choose(lambda picked: self.save(picked[0]), "save")
-
-    def choose_files(self):
-        self.choose(self.add_paths, multiple=True)
-
-    def choose_folder(self):
-        self.choose(self.add_paths, mode="folder")
-
-    def choose_database(self):
-        self.dataset_picker.open()
-
-    def choose_output(self):
-        self.choose(
-            lambda picked: setattr(self.model, "batch_output_folder", str(picked[0])), mode="folder"
-        )
-
-    def choose(self, callback, mode="open", multiple=False):
+    def _start(self):
         start = Path(self.model.input_file).parent if self.model.input_file else None
-        self.dialog = FileDialog(
-            tr("TTTR files"),
-            mode=mode,
-            multiselect=multiple,
-            filters=FILTERS,
-            directory=str(start) if start and start.is_dir() else "",
-            filename=self.model.default_save_name() if mode == "save" else "",
-        )
+        return str(start) if start and start.is_dir() else ""
+
+    def _show(self, callback):
         self.dialog_callback = callback
         self.file_window.title = tr("TTTR files")
         self.file_window.show()
 
-    # -- host events ---------------------------------------------------------------------------------------------- #
-    def on_files_dropped(self, paths):
-        """One file dropped outside the queue loads it (the Qt file row); files, folders or a drop on the queue are queued."""
-        paths = [str(p) for p in paths]
-        x, y = self.io.mouse_pos
-        qx, qy, qw, qh = self.item_rects.get("queue", (0.0, 0.0, 0.0, 0.0))
-        over_queue = qx <= x <= qx + qw and qy <= y <= qy + qh
-        if len(paths) == 1 and Path(paths[0]).is_file() and not over_queue:
-            self.input_file = paths[0]
-            self.load(paths[0])
-        else:
-            self.add_paths(paths)
-        return True
+    def choose_save(self):
+        """Where the converted file goes (the input comes from the workspace, never a dialog)."""
+        self.dialog = FileDialog(
+            tr("TTTR files"),
+            mode="save",
+            filters=FILTERS,
+            directory=self._start(),
+            filename=self.model.default_save_name(),
+        )
+        self._show(lambda picked: self.save(picked[0]))
 
-    files_dropped = on_files_dropped
+    def choose_output(self):
+        """The folder the batch writes to (an output)."""
+        # not-input: the folder the batch's converted files are written to
+        self.dialog = FileDialog(tr("TTTR files"), mode="folder", directory=self._start())
+        self._show(lambda picked: setattr(self.model, "batch_output_folder", str(picked[0])))
 
     # -- help and tour ------------------------------------------------------------------------------------------- #
     def show_help(self):
@@ -650,7 +639,12 @@ class AlexApp(TourTarget, ImApp):
         self.form.rects.clear()
         im.begin_disabled(self.job.running)
         controls = [s for s in self.spec["sections"] if s.get("name") != "excitation_regions"]
-        draw_form({"sections": controls}, self, self.form, titles=True)
+        for panel in controls:
+            if panel.get("title") == "Batch":  # the queue's input, above the Batch panel
+                self._input(self.batch_input, "batch_files")
+            draw_form({"sections": [panel]}, self, self.form, titles=True)
+            if panel.get("title") == "Input file":  # the file to convert
+                self._input(self.file_input, "choose_input")
         im.end_disabled()
         self.item_rects.update(self.form.rects)
         if "queue_rows" in self.form.rects:
@@ -662,6 +656,12 @@ class AlexApp(TourTarget, ImApp):
             x0, y0 = min(r[0] for r in fields), min(r[1] for r in fields)
             x1, y1 = max(r[0] + r[2] for r in fields), max(r[1] + r[3] for r in fields)
             self.item_rects["timing"] = (x0, y0, x1 - x0, y1 - y0)
+
+    def _input(self, source, key):
+        """An Input section (workspace rows a pick hands over); its rect is remembered as *key*."""
+        draw_form(source.spec, source, source.form)
+        if "workspace_input_rows" in source.form.rects:
+            self.form.rects[key] = source.form.rects["workspace_input_rows"]
 
     def draw_plot(self, box):
         if self.spec:
@@ -761,10 +761,41 @@ class AlexApp(TourTarget, ImApp):
                 callback(result)
         elif self.file_window.open:
             self.file_window.hide()
-        self.dataset_picker.render((0, 0, width, height))
         if self.help.open:
             self.help.draw((0, 0, width, height))
 
 
 def make_app(**kwargs):
     return AlexApp(**kwargs)
+
+
+def _addresses(given) -> list[str]:
+    """The handed addresses as paths; a stream inside a container is refused with the reason."""
+    from chisurf.core.fio.address import container_of
+    from chisurf.core.plugin.workspace_input import read_address
+
+    addresses = [read_address(str(a)) for a in ([given] if isinstance(given, str) else given)]
+    inside = [a for a in addresses if container_of(a) != Path(a)]
+    if inside:
+        raise ValueError(
+            tr("{name} is a stream inside a container: unpack it with TTTR ⇄ .pto first").format(
+                name=Path(inside[0]).name
+            )
+        )
+    return addresses
+
+
+def receive_input(app: AlexApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``input``): load ``payload["file"]`` (a TTTR file
+    picked in the workspace) and preview its folded ALEX phase."""
+    (address,) = _addresses(payload["file"])
+    uid = str((payload.get("datasets") or [""])[0])
+    if uid:
+        app.sources[address] = uid
+    app.model.input_file = address
+    app.load(address)
+
+
+def receive_batch(app: AlexApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``batch``): queue ``payload["files"]`` for the batch."""
+    app.add_paths(_addresses(payload["files"]))

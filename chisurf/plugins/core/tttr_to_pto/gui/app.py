@@ -1,9 +1,11 @@
-"""Native emtk TTTR <-> .pto converter: drop vendor files to pack, a .pto to unpack.
+"""Native emtk TTTR <-> .pto converter: pack a vendor photon stream, unpack a container.
 
 The window is the view spec ``tttr_to_pto_emtk.view.json`` drawn by
-:func:`emtk.view_form.draw_sections` (the history is its ``data_table``). Only the
-Help / Guide buttons, the file dialog and the file drop are handled here; the
-queue, the worker and the conversions are :class:`~.model.TttrToPtoModel`.
+:func:`emtk.view_form.draw_sections`, with the generated Input section first (the
+workspace's photon streams, as the manifest's ``accepts[].from_workspace`` declares).
+Only the Help / Guide buttons are handled here; the queue, the worker and the
+conversions are :class:`~.model.TttrToPtoModel`, and :func:`receive_photons` is how
+the workspace hands it data.
 """
 
 from __future__ import annotations
@@ -15,28 +17,32 @@ from typing import Any
 from emtk import im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region
-from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_sections
 
+from chisurf.core.plugin.workspace_input import spec_for, with_workspace_input
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button, window_size
 
-from .model import FILE_FILTERS, TttrToPtoModel
+from .model import TttrToPtoModel
 
 HERE = Path(__file__).parent
 TABLE_NAME = "records"
 
 
 class TttrToPtoApp(ImApp):
-    """Pack vendor photon files into a .pto, or unpack a .pto, by drop or by dialog."""
+    """Pack vendor photon streams into a .pto, or unpack a .pto, as picked from the workspace."""
 
     def __init__(self, converter=None, extractor=None) -> None:
         self.model = TttrToPtoModel(converter, extractor)
         spec = json.loads((HERE / "tttr_to_pto_emtk.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (1200, 800))
+        manifest = json.loads((HERE.parent / "manifest.json").read_text(encoding="utf-8"))
+        found = spec_for(manifest)
+        if found is not None:  # the input: the workspace's photon streams
+            spec = with_workspace_input(spec, found[1])
         self.sections = spec["sections"]
         self.form = FormState()
-        self.dialog: FileDialog | None = None
+        self.model.workspace_input_app = self
         self.item_rects: dict[str, tuple] = {}
         self.help_window = EmTkHelpWindow(
             title="TTTR ⇄ .pto — Help", resource=HERE / "help_emtk.md", owner=self
@@ -48,6 +54,7 @@ class TttrToPtoApp(ImApp):
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
         )
         self.form.on_used = self.tour.notify_used
+        self.model.workspace_input_on_used = self.tour.notify_used
         self.docks = DockManager(Region("conversion"))
         self.docks.add_window("conversion", "TTTR ⇄ .pto", self.draw_conversion, dock="conversion")
         super().__init__(self.render, continuous=True)
@@ -73,16 +80,9 @@ class TttrToPtoApp(ImApp):
     def clear_history(self) -> None:
         self.model.clear_history()
 
-    def add_paths(self, paths: Any) -> bool:
-        """Queue dropped or chosen paths (see :meth:`TttrToPtoModel.add_paths`)."""
-        return self.model.add_paths(paths)
-
-    def files_dropped(self, paths: Any) -> bool:
-        """Host hook: files dropped on the window. ``True`` when any was accepted."""
-        return self.model.add_paths([str(p) for p in paths or []])
-
-    on_files_dropped = files_dropped
-    on_paths_dropped = files_dropped
+    def add_paths(self, paths: Any, *, source: str = "") -> bool:
+        """Queue paths (see :meth:`TttrToPtoModel.add_paths`): the API's and scripts' route."""
+        return self.model.add_paths(paths, source=source)
 
     # ── one frame ──────────────────────────────────────────────────────
     def render(self) -> None:
@@ -91,8 +91,6 @@ class TttrToPtoApp(ImApp):
         box = (*vp.pos, *vp.size)
         self.form.rects.clear()
         self.docks.draw(box)
-        self._requests()
-        self._draw_file_dialog()
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
 
@@ -109,29 +107,8 @@ class TttrToPtoApp(ImApp):
         draw_sections(self.sections, self.model, self.form, titles=False)
         if TABLE_NAME in self.form.rects:
             self.item_rects["conversion_table"] = self.form.rects[TABLE_NAME]
-
-    # ── the file dialog ────────────────────────────────────────────────
-    def _requests(self) -> None:
-        request, self.model.request = self.model.request, ""
-        if request == "add" and self.dialog is None:
-            self.dialog = FileDialog(
-                "Add files",
-                filters=FILE_FILTERS,
-                directory=self.model.last_dir,
-                multiselect=True,
-            )
-
-    def _draw_file_dialog(self) -> None:
-        if self.dialog is None:
-            return
-        if im.begin(self.dialog.title):
-            result = self.dialog.draw()
-            if result:
-                self.dialog = None
-                self.model.add_paths(result)
-            elif result is False:
-                self.dialog = None
-        im.end()
+        if "workspace_input_rows" in self.form.rects:
+            self.item_rects["workspace_input_rows"] = self.form.rects["workspace_input_rows"]
 
     # ── persistence ────────────────────────────────────────────────────
     def export_settings(self) -> dict:
@@ -145,6 +122,25 @@ class TttrToPtoApp(ImApp):
     def close(self) -> None:
         """Stop queued conversions; a write in progress finishes safely."""
         self.model.close()
+
+
+def receive_photons(app: TttrToPtoApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``convert``): convert ``payload["files"]``.
+
+    The values are addresses as the workspace hands them: a vendor photon file is packed (those
+    handed over together into one container), a photon stream of a ``.pto`` unpacks its container.
+    ``datasets`` (their uids) names the source: what is written becomes its child in the workspace.
+    """
+    from chisurf.core.plugin.workspace_input import read_address
+    from chisurf.plugins.tttr.workspace_io import container_files
+
+    files = payload.get("files")
+    addresses = [files] if isinstance(files, str) else list(files or [])
+    paths = container_files(read_address(a) for a in addresses)
+    if not paths:
+        raise ValueError("no photon stream was handed over")
+    source = str((payload.get("datasets") or [""])[0])
+    app.model.add_paths(paths, source=source)
 
 
 def create_app() -> TttrToPtoApp:

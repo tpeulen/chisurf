@@ -118,7 +118,7 @@ def test_draws_empty_and_populated(monkeypatch, size):
     app = create_app()
     try:
         painter = _draw(app, size)
-        assert "No files queued." in painter.strings
+        assert "Nothing queued: pick photon streams above (or Load example)." in painter.strings
         monkeypatch.setattr(app.tool, "channels", lambda: channels)
         app.tool.add_paths([PTU])
         assert app.tool.calculate()
@@ -170,23 +170,24 @@ def test_settings_round_trip(tmp_path):
         app.close()
 
 
-# 9. a drop reaches the model: the host hook is on the app (it sat on the controller's tool)
-def test_dropped_files_and_folders_are_queued(tmp_path):
+# 9. the input is the workspace: streams (files, container members) and a setup row are handed over
+def test_the_workspace_hands_streams_and_a_setup_row_over(tmp_path):
+    import json
+
+    from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller import receive_photons
+
     app = create_app()
     try:
-        folder = tmp_path / "set"
-        (folder / "sub").mkdir(parents=True)
-        a, b = folder / "a.ptu", folder / "sub" / "b.ht3"
+        assert not hasattr(app, "files_dropped") and not hasattr(app, "on_files_dropped")
+        a = tmp_path / "a.ptu"
         a.write_bytes(b"x")
-        b.write_bytes(b"x")
-        (folder / "notes.txt").write_text("no")
-        assert callable(getattr(app, "files_dropped", None))  # what the native/web hosts call
-        assert callable(getattr(app, "on_files_dropped", None))  # what the Qt host prefers
-        assert app.files_dropped([str(folder)]) is True  # a folder is expanded
-        assert sorted(Path(f).name for f in app.tool._model.files) == ["a.ptu", "b.ht3"]
-        assert app.files_dropped([str(folder / "notes.txt")]) is False  # nothing queued
-        assert "supported" in app.tool.message
-        assert len(app.tool._model.files) == 2
+        setup = tmp_path / "setup.json"
+        setup.write_text(
+            json.dumps({"setup_name": "two", "detectors": {"g": {"chs": [0]}, "r": {"chs": [1]}}})
+        )
+        receive_photons(app, {"files": [str(a)], "setup": str(setup)})
+        assert [Path(f).name for f in app.tool._model.files] == ["a.ptu"]
+        assert app.tool.selected_setup == "two" and "two" in app.tool.available_setups()
     finally:
         app.close()
 

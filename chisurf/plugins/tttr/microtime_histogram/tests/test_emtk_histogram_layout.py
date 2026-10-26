@@ -2,6 +2,7 @@
 
 Defects the screenshots showed: the options as a tall column of label-above-field rows in a dock that cut them off, the
 plot squeezed into a corner, an unsized file chooser, buttons one per line, the Compute button below the fold at 800 px.
+The inputs are the workspace's Input sections (no Files / Folder / Database buttons any more).
 """
 
 from __future__ import annotations
@@ -33,7 +34,7 @@ def ui(request, tmp_path):
     ui = Ui(create_app(), request.param)
     ui.app.definition_changed(SETUP)
     ui.app.model.filetype = "SPC-130"
-    ui.drop(SPC)
+    ui.feed(SPC)
     ui.app.model.output = str(tmp_path / "decay.dat")
     ui.app.model.auto_save = False
     ui.click("compute")
@@ -69,7 +70,7 @@ def test_every_option_field_lies_inside_the_dock_and_the_window(ui):
         "output",
         "polarization",
         "polarized",
-        "photon_files",
+        "photon_input",
         "photon_list",
     ):
         x, y, w, h = ui.app.item_rects[name]
@@ -88,13 +89,15 @@ def test_number_fields_are_short_and_buttons_do_not_overlap(ui):
     for name in ("dt_ns", "g_factor", "vv_shift", "vh_shift"):
         assert ui.app.item_rects[name][2] <= 180, name
     assert_disjoint(ui.app.item_rects, ["compute", "save", "save_as"])
-    assert_disjoint(ui.app.item_rects, ["photon_files", "photon_folder", "photon_database"])
+    assert_disjoint(ui.app.item_rects, ["photon_input", "photon_list", "burst_header"])
 
 
-def test_file_buttons_share_a_row_when_they_fit(ui):
-    rects = ui.app.item_rects
-    if ui.size[0] >= 1200:
-        assert rects["photon_files"][1] == rects["photon_folder"][1] == rects["photon_database"][1]
+def test_the_input_section_spans_the_dock_and_leaves_the_options_on_screen(ui):
+    x, y, w, h = ui.app.item_rects["photon_input"]
+    assert w >= 0.8 * (left_edge_of_plot(ui) - x) and h <= 60  # two rows; the table scrolls
+    if ui.size[1] >= 800:
+        _, y, _, h = ui.app.item_rects["polarization"]
+        assert y + h / 2 < ui.size[1]  # the last option is reachable without scrolling
 
 
 def test_texts_do_not_overlap_and_pictograms_are_clear(ui):
@@ -125,12 +128,13 @@ def test_the_idle_window_has_no_misleading_controls(tmp_path):
 
 @pytest.mark.parametrize("size", SIZES, ids=lambda s: f"{s[0]}x{s[1]}")
 def test_the_file_dialog_is_sized_and_inside_the_window(size):
+    """The one dialog left -- where Save as writes the decay -- fits the window."""
     ui = Ui(create_app(), size)
     try:
-        ui.click("photon_files")
+        ui.app.save_as()
         _win = ui.app.dialog_window
         ui.draw(3)
-        assert ui.shown("Cancel") and ui.shown("TTTR inputs")
+        assert ui.shown("Cancel") and ui.shown("Save decay")
         cx, cy, cw, ch = ui.text_rect("Cancel")
         assert cx + cw <= size[0] and cy + ch <= size[1]
     finally:

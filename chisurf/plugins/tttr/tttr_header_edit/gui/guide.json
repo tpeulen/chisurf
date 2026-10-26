@@ -13,11 +13,11 @@
         }
     },
     {
-        "title": "Open a measurement",
-        "text": "Press <b>Open</b> to choose a supported TTTR file (PTU / HT3 / SPC / HDF5) and read its header — or press <b>Load example</b> for a deterministic demonstration PTU, no file of your own needed. The guide waits for your click; it does not choose or load a file for you.",
-        "target": "open",
+        "title": "Pick a measurement",
+        "text": "Pick a photon stream in the <b>Input</b> table to read its header -- the workspace's TTTR files (PTU / HT3 / SPC / HDF5) and the streams of .pto containers; files dropped on the ChiSurf window land there. <b>Load example</b> already added a deterministic demonstration PTU. The guide waits for your click; it does not choose or load a file for you.",
+        "target": "workspace_input_rows",
         "await": {
-            "hint": "Press Open (or Load example)."
+            "hint": "Pick a photon stream in the Input table."
         }
     },
     {

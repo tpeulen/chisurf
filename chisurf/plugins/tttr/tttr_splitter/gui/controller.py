@@ -1,25 +1,30 @@
-"""Pure EMTK split/convert controller with the original scientific model."""
+"""Pure EMTK split/convert controller with the original scientific model.
+
+The inputs are the Datasets workspace: the stream to split and the batch queue are picked in two
+Input sections (the manifest's ``accepts`` ``split`` and ``batch``), or handed over by *Open in…* /
+a drag; the files a split writes come back into the workspace as children of their input.
+"""
 
 from copy import copy
 from pathlib import Path
 
-import tttrlib
 from emtk import im
 from emtk.file_dialog import FileDialog
 
-from chisurf.core.fio.staging import TTTR_FILE_FILTER
 from chisurf.core.support.i18n import tr
+from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput, register_outputs
 
 from .app import SplitterApp
 from .jobs import BackgroundJob
-from .view_model import SplitterViewModel
+from .view_model import SplitterViewModel, read_tttr
 
 
 class SplitterController:
-    def __init__(self, database_picker=None):
+    def __init__(self):
         self._model = SplitterViewModel()
-        self.database_picker = database_picker
-        self.dataset_picker = None
+        #: The workspace dataset of the input, and of each queued batch file.
+        self.source_uid = ""
+        self.batch_sources: dict[str, str] = {}
         self.run_progress = 0
         self.run_running = False
         self.batch_progress = (0, 0)
@@ -30,14 +35,18 @@ class SplitterController:
         self.dialog_callback = None
         self.app = _StandaloneApp(
             self,
-            on_browse_input=self._browse_input,
             on_browse_output=self._browse_output,
             on_run=self._run,
-            on_add_batch_files=self._add_batch_files,
-            on_add_batch_folder=self._add_batch_folder,
             on_clear_batch=self._clear_batch,
             on_run_batch=self._start_batch,
         )
+        #: The Input sections: the stream to split, and the batch queue's streams.
+        self.split_input = NamedWorkspaceInput("tttr_splitter", "split", self.app, height=72)
+        self.batch_input = NamedWorkspaceInput("tttr_splitter", "batch", self.app, height=72)
+        tour = self.app.splitter_gui.tour
+        # a pick tells the tour under the key its step names (the section's rect is remembered so)
+        self.split_input.workspace_input_on_used = lambda _key: tour.notify_used("input")
+        self.batch_input.workspace_input_on_used = lambda _key: tour.notify_used("batch_files")
 
     def request_frame(self):
         try:
@@ -46,27 +55,17 @@ class SplitterController:
             return
         ctx.request_frame()
 
-    def choose(self, title, callback, mode="open", multiple=False):
-        self.dialog = FileDialog(
-            title,
-            mode=mode,
-            multiselect=multiple,
-            filters=TTTR_FILE_FILTER,
-        )
-        self.dialog_callback = callback
-
-    def _browse_input(self):
-        self.choose("Open TTTR", lambda paths: self.load_input(paths[0]))
-
     def _browse_output(self):
-        self.choose(
-            "Output folder",
-            lambda paths: setattr(self._model, "output_folder", str(paths[0])),
-            mode="folder",
-        )
+        """Where the split files go (an output: the input comes from the workspace)."""
+        # not-input: the output folder the split files are written to
+        self.dialog = FileDialog("Output folder", mode="folder")
+        self.dialog_callback = lambda paths: setattr(self._model, "output_folder", str(paths[0]))
 
     def load_example(self):
-        """Generate the demonstration stream and load it, output beside the cache."""
+        """Generate the demonstration stream, add it to the workspace and load it, as a picked row
+        would be; the output goes beside the cache."""
+        from chisurf.plugins.tttr.workspace_io import example_into_workspace
+
         from ..demo import demo_folder, make_demo
 
         if self.job.running:
@@ -77,19 +76,24 @@ class SplitterController:
             self.message = str(exc)
             return False
         self._model.output_folder = str(demo_folder())
-        self.load_input(str(path))
+        example_into_workspace(path, receive_split, self.app, key="file")
         return True
 
-    def load_input(self, path):
+    def load_input(self, path, source=""):
+        """Read the photon stream *path* (a file or a container's stream) as the input to split;
+        *source* is the workspace dataset it came from."""
+        from chisurf.core.fio.address import container_of
+
         if self.job.running:
             return
-        if not Path(path).is_file():
+        if not container_of(str(path)).is_file():
             self.message = f"Could not load {path}: file does not exist"
             return
         kind = self._model.tttr_type
+        self.source_uid = str(source or "")
 
         def work():
-            return tttrlib.TTTR(str(path)) if kind is None else tttrlib.TTTR(str(path), kind)
+            return read_tttr(str(path), kind)
 
         def publish(tttr):
             self._model.set_tttr(tttr, str(path))
@@ -120,6 +124,7 @@ class SplitterController:
             self.message = f"Complete: {output}"
             self.run_running = False
             self.run_progress = 100
+            register_outputs(snapshot.last_written, result_of=self.source_uid)
 
         def error(exc):
             self.message = f"Split failed: {exc}"
@@ -127,38 +132,21 @@ class SplitterController:
 
         self.job.start(lambda: snapshot.do_split(progress_cb=progress), publish, error)
 
-    def _queue_batch_paths(self, paths):
+    def _queue_batch_paths(self, paths, sources=None):
+        """Queue PTU streams (files or container members) for the batch run; *sources* maps an
+        address to the workspace dataset it came from."""
         known = set(self._model.batch_files)
         for path in paths:
             text = str(path)
             if Path(text).suffix.lower() == ".ptu" and text not in known:
                 self._model.batch_files.append(text)
                 known.add(text)
-
-    def _add_batch_files(self):
-        self.choose("Add PTU files", self._queue_batch_paths, multiple=True)
-
-    def _add_batch_folder(self):
-        self.choose(
-            "Add PTU folder",
-            lambda paths: self._queue_batch_paths(
-                sorted(p for p in Path(paths[0]).rglob("*") if p.is_file())
-            ),
-            mode="folder",
-        )
-
-    def _add_batch_database(self):
-        if self.database_picker is not None:
-            self._queue_batch_paths(self.database_picker() or [])
-            return
-        from chisurf.emtk.dataset_picker import DatasetPicker
-
-        if self.dataset_picker is None:
-            self.dataset_picker = DatasetPicker(on_paths=self._queue_batch_paths)
-        self.dataset_picker.open()
+                if sources and sources.get(text):
+                    self.batch_sources[text] = str(sources[text])
 
     def _clear_batch(self):
         self._model.batch_files = []
+        self.batch_sources = {}
         self.batch_progress = (0, 0)
 
     def _start_batch(self):
@@ -180,6 +168,8 @@ class SplitterController:
         def publish(count):
             self.message = f"Processed {count} file(s)."
             self.batch_running = False
+            for source, written in snapshot.batch_written.items():
+                register_outputs(written, result_of=self.batch_sources.get(source, ""))
 
         def error(exc):
             self.message = f"Batch failed: {exc}"
@@ -217,20 +207,8 @@ class _StandaloneApp(SplitterApp):
         if state.get("input_file") and Path(state["input_file"]).is_file():
             self.tool.load_input(state["input_file"])
 
-    def files_dropped(self, paths):
-        """Host hook: a file dropped on the window becomes the input file."""
-        if not paths:
-            return False
-        self.tool.load_input(str(paths[0]))
-        return True
-
-    on_files_dropped = files_dropped
-    on_paths_dropped = files_dropped
-
     def close(self):
         self.tool.job.close()
-        if self.tool.dataset_picker is not None:
-            self.tool.dataset_picker.close()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -257,11 +235,8 @@ class _StandaloneApp(SplitterApp):
             self.tool.run_running = False
             self.tool.batch_running = False
         super()._render()
-        if self.tool.dataset_picker is not None:
-            vp = im.get_main_viewport()
-            self.tool.dataset_picker.render((0.0, 0.0, *vp.size))
         if self.tool.dialog is not None:
-            if im.begin("Choose files or folder"):
+            if im.begin("Output folder"):
                 result = self.tool.dialog.draw()
                 if result:
                     callback = self.tool.dialog_callback
@@ -272,5 +247,32 @@ class _StandaloneApp(SplitterApp):
             im.end()
 
 
-def create_app(database_picker=None):
-    return SplitterController(database_picker=database_picker).app
+def create_app():
+    return SplitterController().app
+
+
+def _addresses(given) -> list[str]:
+    from chisurf.core.plugin.workspace_input import read_address
+
+    return [read_address(str(a)) for a in ([given] if isinstance(given, str) else list(given))]
+
+
+def receive_split(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``split``): load ``payload["file"]`` -- a TTTR file
+    or a container's photon stream, as the workspace hands it -- as the input to split."""
+    from chisurf.core.fio.address import container_of
+
+    (address,) = _addresses(payload["file"])
+    if not container_of(address).is_file():
+        raise FileNotFoundError(f"{address} does not exist")
+    if app.tool.job.running:
+        raise RuntimeError(tr("the tool is busy; try again when it has finished"))
+    app.tool.load_input(address, source=str((payload.get("datasets") or [""])[0]))
+
+
+def receive_batch(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``batch``): queue the PTU streams ``payload["files"]``
+    for the batch run (other formats are left out, as the batch only writes from PTU)."""
+    addresses = _addresses(payload["files"])
+    uids = [str(u) for u in payload.get("datasets") or []]
+    app.tool._queue_batch_paths(addresses, sources=dict(zip(addresses, uids)))

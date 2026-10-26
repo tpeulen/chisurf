@@ -1,9 +1,12 @@
 """Qt-free model of the TTTR <-> .pto conversion tool.
 
 Holds the history of conversions the user asked for and runs them one at a
-time on a worker: the drop decides the direction (a vendor file is packed, a
-``.pto`` is unpacked), vendor files of one drop are packed into one container
-in file-name order, and nothing the user dropped is ever deleted. The calls
+time on a worker. The input is the Datasets workspace (the Input section, *Open
+in…* or a drag): the photon stream decides the direction (a vendor file is
+packed, a stream of a ``.pto`` unpacks its container), vendor files handed over
+together are packed into one container in file-name order, and nothing is ever
+deleted. What a conversion writes enters the workspace as children of the
+dataset it came from. The calls
 are :func:`~chisurf.plugins.core.tttr_to_pto.api.convert` and
 :func:`~chisurf.plugins.core.tttr_to_pto.api.extract`, the same ones the Qt
 drop tool uses.
@@ -18,14 +21,9 @@ from pathlib import Path
 from chisurf.core.fio import staging
 from chisurf.core.fio.pto import SIDECAR_ONLY_EXTENSIONS, Measurement, is_measurement
 from chisurf.core.fio.pto import SUFFIX as PTO_SUFFIX
+from chisurf.core.plugin.workspace_input import WorkspaceInputMixin
 from chisurf.plugins.core.tttr_to_pto import api
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
-
-#: The filter the Add files dialog offers.
-FILE_FILTERS = (
-    "Photon files and .pto containers (*.ptu *.phu *.ht2 *.ht3 *.pt3 *.t3r *.spc *.sptw *.pto)"
-    ";;All files (*)"
-)
 
 STATUS_LABELS = {
     "queued": "Queued",
@@ -38,8 +36,11 @@ STATUS_LABELS = {
 ACTION_LABELS = {"pack": "Pack", "unpack": "Unpack", "reject": "-"}
 
 
-class TttrToPtoModel:
-    """The conversion history and its serial worker."""
+class TttrToPtoModel(WorkspaceInputMixin):
+    """The conversion history and its serial worker; the Input section's rows are the
+    workspace's photon streams (:class:`WorkspaceInputMixin`)."""
+
+    workspace_input_plugin = "tttr_to_pto"
 
     def __init__(self, converter=None, extractor=None) -> None:
         self.converter = converter or api.convert
@@ -48,9 +49,7 @@ class TttrToPtoModel:
         self.pending: deque = deque()
         self.job = BackgroundJob()
         self.closed = False
-        #: ``"add"`` while the app has to open the file dialog.
-        self.request = ""
-        #: The folder of the last file chosen (the dialog starts there).
+        #: The folder of the last file converted (kept with the settings).
         self.last_dir = ""
         self._next_id = 0
         self._records: list[dict] = []
@@ -110,7 +109,7 @@ class TttrToPtoModel:
     def status_text(self) -> str:
         """One line: nothing yet, converting, or the counts."""
         if not self.rows:
-            return "No conversions yet. Drop files on this window or press Add files."
+            return "No conversions yet. Pick photon streams in the Input section."
         counts = {key: 0 for key in STATUS_LABELS}
         for row in self.rows:
             counts[row["status"]] += 1
@@ -128,20 +127,20 @@ class TttrToPtoModel:
         return True
 
     # ── actions ───────────────────────────────────────────────────────
-    def request_add(self) -> None:
-        self.request = "add"
-
     def load_example(self) -> None:
-        """The demo affordance: queue the shared tttr generator's SPC stream."""
+        """The demo affordance: the shared tttr generator's SPC stream enters the workspace and is
+        handed to this tool as a picked row would be."""
         from chisurf.plugins.core.tttr_to_pto.demo import load_into
 
         load_into(self)
 
-    def add_paths(self, paths) -> bool:
+    def add_paths(self, paths, *, source: str = "") -> bool:
         """Unpack each container; pack all vendor files of this call together.
 
         Returns whether anything was accepted. A rejected path (a lone sidecar,
         a missing file, an unknown type) is listed as such and never touched.
+        *source* is the workspace dataset they came from: what the conversions
+        write is registered as its children.
         """
         if self.closed:
             return False
@@ -163,11 +162,11 @@ class TttrToPtoModel:
             accepted = True
             self.last_dir = str(path.parent)
             if path.suffix.lower() == PTO_SUFFIX or is_measurement(path):
-                self.enqueue("unpack", [value])
+                self.enqueue("unpack", [value], source)
             else:
                 vendors.append(value)
         if vendors:
-            self.enqueue("pack", sorted(vendors, key=lambda p: Path(p).name))
+            self.enqueue("pack", sorted(vendors, key=lambda p: Path(p).name), source)
         self.start_next()
         return accepted
 
@@ -184,8 +183,10 @@ class TttrToPtoModel:
         self.rows.append(row)
         return row
 
-    def enqueue(self, action: str, paths: list) -> None:
-        self.pending.append(self._append(paths, action, "queued"))
+    def enqueue(self, action: str, paths: list, source: str = "") -> None:
+        row = self._append(paths, action, "queued")
+        row["source"] = source
+        self.pending.append(row)
 
     def start_next(self) -> None:
         """Start the next queued conversion when no write is running."""
@@ -207,6 +208,10 @@ class TttrToPtoModel:
 
         def publish(outputs):
             row.update(status="verified", outputs=outputs)
+            # What was written enters the workspace as children of what it came from.
+            from chisurf.plugins.tttr.workspace_io import register_outputs
+
+            register_outputs(outputs, result_of=str(row.get("source", "")))
 
         def error(exc):
             row.update(status="error", error=str(exc))

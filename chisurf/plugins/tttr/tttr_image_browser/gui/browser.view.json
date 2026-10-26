@@ -23,7 +23,7 @@
                "info_source": "info_html", "filter": true,
                "note_source": "current_note", "note_call": "set_note", "note_placeholder": "Annotation…",
                "rating_call": "set_rating", "max_rating": 3,
-               "labels_source": "image_labels", "on_drop": "on_drop",
+               "labels_source": "image_labels",
                "colormap": true, "default_colormap": "magma", "list_width": 320
              },
              "description": "Pick a file to preview its detector-window intensity mosaic; rate ★ and annotate. Drop a folder to open it."}

@@ -3,7 +3,7 @@
 A .pto is one measurement in one file. The instrument file goes in byte for byte and is never decoded into a second copy beside itself; every result computed from it (a burst table, a decay, a correlation, a fit) is written beside it as an artifact, together with the operation and the settings that produced it. This window reads that back. It writes nothing into the container; Export legacy is the one way out to the old folder layout.
 
 ## Open a container
-Open chooses a .pto. Database picks one from the MMFDB database. You can also drop a .pto on the window. A vendor photon file (.ptu, .spc, .ht3, ...) dropped here is offered for packing into a new container in a folder you choose; the source file is kept and an existing container is never overwritten. Reload reads the file again, picking up anything written since.
+Pick a photon stream or a burst run in the **Input** section: the Datasets workspace, where files dropped on the ChiSurf window land; a stream or run of a .pto opens that container. A vendor photon file (.ptu, .spc, .ht3, ...) picked here is offered for packing into a new container in a folder you choose; the source file is kept and an existing container is never overwritten. Reload reads the file again, picking up anything written since.
 
 ## What is in it
 The Objects list has one row per object, in the order it was written. Kind is an artifact kind from the dictionary, Operation the operation that produced it (empty means carried, not computed), Grain says what one row is. Nothing in a container is joined by position: when two tables relate, the relation is a declared key, shown in the details.

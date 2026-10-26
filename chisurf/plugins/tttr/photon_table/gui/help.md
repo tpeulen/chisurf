@@ -3,7 +3,7 @@
 Inspect every record of a TTTR file: one row per photon or marker record with its kind, routing channel, micro time and macro time.
 
 ## Open a file
-Press Open TTTR... and choose a .ptu, .ht3, .phu, .pt3, .ht2 or .t3r file, or drop a file on the window. The status line under the file summary says how many records were read, or why the file could not be opened. A file that fails to open leaves the table that was shown.
+Pick a photon stream in the **Input** table: the photon streams of the Datasets workspace -- TTTR files (.ptu, .ht3, .phu, .pt3, .ht2, .t3r, ...) and the streams of `.pto` containers. Files enter ChiSurf by dropping them on the ChiSurf window; right-clicking a dataset there and choosing *Open in…*, or dragging it onto this window, opens it here too. The status line under the file summary says how many records were read, or why the file could not be opened. A file that fails to open leaves the table that was shown.
 
 ## The summary
 The left window shows the file name, the number of photons and of marker records, the measurement time (the last macro time times the header's resolution), the micro-time channels the header declares, the records of each kind and the routing channels in the data.

@@ -97,10 +97,9 @@ def test_native_library_file_and_snapshot_reading_options(tmp_path, monkeypatch)
 
     monkeypatch.setattr(controller, "open_tttr", read)
     app = create_app()
-    app.tool.load_setups_file([library])
-    app.tool.job.future.result(timeout=5)
-    app.tool.job.poll()
-    app.tool.add_paths([path])
+    from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller import receive_photons
+
+    receive_photons(app, {"files": [str(path)], "setup": str(library)})  # a setup row
     assert app.tool.calculate()
     app.tool.job.future.result(timeout=5)
     app.tool.job.poll()

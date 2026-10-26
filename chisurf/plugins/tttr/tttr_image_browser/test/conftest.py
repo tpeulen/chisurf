@@ -9,6 +9,18 @@ import pytest
 REPO = next(p for p in pathlib.Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
 DATA = REPO / "test" / "data" / "clsm"
 
+
+@pytest.fixture(autouse=True)
+def workspace_restored():
+    """The session's dataset list (the workspace) as it was: Load example adds rows to it."""
+    from chisurf.core.api import dataset_container
+
+    held = dataset_container()
+    before = list(held)
+    yield
+    held[:] = before
+
+
 #: Detector setup of the tests: two detectors over the routing channels of the Leica files (SP8 has channel 1, SP5 0 to 2).
 SETUP_DETECTORS = {
     "windows": {"all": [0, 4095]},

@@ -311,18 +311,6 @@ class LutToolModel:
     def _dialog(self, kind, **options):
         self.dialog_request = {"kind": kind, **options}
 
-    def request_add_files(self):
-        """Ask for photon files to add to the shown tab."""
-        self._dialog("add_files", mode="open", multiselect=True)
-
-    def request_add_folder(self):
-        """Ask for a folder; its photon files are added."""
-        self._dialog("add_files", mode="folder")
-
-    def request_database(self):
-        """Ask the app to open the MMFDB picker."""
-        self._dialog("database")
-
     def request_save_lut(self):
         """Ask where to save the LUT of the shown channel."""
         self._dialog("save_lut", mode="save")
@@ -330,14 +318,6 @@ class LutToolModel:
     def request_export_corrected(self):
         """Ask where to export the corrected micro-times."""
         self._dialog("export_corrected", mode="save")
-
-    def request_load_lut(self):
-        """Ask for a LUT file to import."""
-        self._dialog("load_lut", mode="open")
-
-    def request_load_json(self):
-        """Ask for a settings.tttr.json to load."""
-        self._dialog("load_json", mode="open")
 
     def request_save_json(self):
         """Ask where to save settings.tttr.json."""
@@ -379,7 +359,8 @@ class LutToolModel:
 
     # -- actions --------------------------------------------------------------------- #
     def load_example(self):
-        """Generate the demonstration stream in the settings cache and read it."""
+        """Generate the demonstration stream in the settings cache, add it to the workspace and
+        read it, as a picked row would be."""
         from ..demo import demo_folder, make_demo
 
         try:
@@ -387,7 +368,15 @@ class LutToolModel:
         except OSError as error:
             self.message = str(error)
             return
-        self.add_files([path])
+        app = getattr(self, "workspace_app", None)
+        if app is None:  # the model alone (scripts): read it directly
+            self.add_files([path])
+            return
+        from chisurf.plugins.tttr.workspace_io import example_into_workspace
+
+        from .app import receive_photons
+
+        example_into_workspace(path, receive_photons, app, key="files", many=True)
 
     def add_files(self, paths):
         """Add photon files (or folders) to the shown tab; reads them as a job."""

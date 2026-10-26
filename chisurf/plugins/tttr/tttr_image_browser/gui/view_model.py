@@ -114,14 +114,6 @@ class ImageBrowserViewModel:
         self._mosaic_cache.clear()
         self.notify("changed")
 
-    def on_drop(self, paths) -> None:
-        """Open the first dropped directory (drag-drop a folder onto the list)."""
-        for p in paths or []:
-            path = pathlib.Path(p)
-            if path.is_dir():
-                self.open_folder(str(path))
-                return
-
     # ── metadata helpers ──
     def _rel_key(self, path: str) -> str:
         try:

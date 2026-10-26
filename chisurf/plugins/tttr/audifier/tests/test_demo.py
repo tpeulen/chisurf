@@ -58,3 +58,30 @@ def test_both_detectors_are_mapped_to_their_own_voice(example):
     per_channel = counts.sum(axis=0)
     assert (per_channel > 0).all()
     assert np.isclose(per_channel.sum(), counts.sum())
+
+
+def test_load_example_in_the_window_loads_the_stream_with_its_setup_row(tmp_path, monkeypatch):
+    """Load example adds the stream and a setup row naming its SPC subtype to the workspace, and the
+    window loads it (without the subtype the SPC demo could not be read)."""
+    import time
+
+    from chisurf.core.api import dataset_container
+    from chisurf.plugins.tttr.audifier.gui.app import create_app
+
+    held = dataset_container()
+    before = list(held)
+    app = create_app()
+    try:
+        app.load_example()
+        deadline = time.monotonic() + 60
+        while app.job.running and time.monotonic() < deadline:
+            app.job.poll()
+            time.sleep(0.02)
+        app.job.poll()
+        assert app.model.has_data, app.message
+        kinds = sorted(d.data_kind for d in held if d not in before)
+        assert kinds == ["photons", "setup"]
+        assert app.source_uid
+    finally:
+        app.close()
+        held[:] = before

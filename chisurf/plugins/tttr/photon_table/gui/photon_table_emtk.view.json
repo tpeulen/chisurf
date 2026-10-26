@@ -1,5 +1,5 @@
 {
-  "_comment": "Photon Table, native emtk window. Drawn by emtk.view_form over PhotonTableViewModel (gui/model.py): 'file' is the left window (open, copy, the file summary), 'photons' the right one (navigation, page fields, channel and kind filters, the table of records). Help and Guide are drawn by gui/app.py, which also colours the Kind column from core/record_kinds.yaml.",
+  "_comment": "Photon Table, native emtk window. Drawn by emtk.view_form over PhotonTableViewModel (gui/model.py): 'file' is the left window (load example, copy, the Input section of the workspace's photon streams, the summary), 'photons' the right one (navigation, page fields, channel and kind filters, the table of records). Help and Guide are drawn by gui/app.py, which also colours the Kind column from core/record_kinds.yaml.",
   "title": "Photon Table",
   "window": {"width": 1100, "height": 720},
   "sections": [
@@ -7,23 +7,21 @@
       "type": "panel",
       "title": "TTTR file",
       "name": "file",
-      "description": "The TTTR file and what it holds.",
+      "description": "The photon stream (picked in the Input section) and what it holds.",
       "sections": [
         {
           "type": "button_row",
-          "description": "Open a TTTR file, or copy the rows shown now.",
+          "description": "Load the example, or copy the rows shown now.",
           "buttons": [
             {"action": "load_example", "label": "Load example", "icon": "🧪",
-             "description": "Generate the deterministic demonstration stream (a µs-ALEX measurement with bursts on two detectors) in the settings cache and show its photons."},
-            {"action": "request_open", "label": "Open TTTR...",
-             "description": "Open a TTTR file (.ptu, .ht3, .phu, ...). Dropping one on the window does the same."},
+             "description": "Generate the deterministic demonstration stream (a µs-ALEX measurement with bursts on two detectors) in the settings cache, add it to the workspace and show its photons."},
             {"action": "request_copy", "label": "Copy visible",
              "description": "Copy the visible rows to the clipboard as tab-separated text."}
           ]
         },
         {
           "type": "info", "key": "empty_hint",
-          "text": "Open a TTTR file, or drop one on this window, to inspect its photons.",
+          "text": "Pick a photon stream in the Input section to inspect its photons.",
           "hidden_when": {"attr": "loaded", "equals": "true"},
           "description": "Shown until a file is loaded."
         },
