@@ -289,8 +289,13 @@ def test_the_recorded_qt_tool_and_the_emtk_model_agree_on_every_preset(app):
             for a, b in zip(mine, theirs):
                 n, total, samples = _signature(a["y"])
                 assert n == b["y"]["n"], (preset, source)
-                assert total == pytest.approx(b["y"]["sum"], rel=1e-9, abs=1e-12), (preset, source)
-                assert samples == pytest.approx(b["y"]["samples"], rel=1e-9, abs=1e-12), (
+                # The golden was recorded on macOS (Accelerate). The series go through
+                # LAPACK (linalg.solve, the rate matrix's eigenvalues) and a Hankel
+                # quadrature; another BLAS (OpenBLAS on x86 Linux) differs by ~1.5e-8
+                # relative on the decayed samples of the two-state curve. 1e-7 still
+                # catches any change of the physics.
+                assert total == pytest.approx(b["y"]["sum"], rel=1e-7, abs=1e-12), (preset, source)
+                assert samples == pytest.approx(b["y"]["samples"], rel=1e-7, abs=1e-12), (
                     preset,
                     source,
                 )

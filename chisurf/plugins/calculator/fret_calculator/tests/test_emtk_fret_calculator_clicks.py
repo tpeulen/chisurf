@@ -105,23 +105,36 @@ def test_each_homo_arrow_steps_its_field_up_and_down_and_runs_its_handler(app, n
     app.select_tab(1)
     draw(app)
     m = app.model.homo
+    # The handler is seen at the client: one arrow step of a float is a hundredth of its
+    # decade (pyqtgraph's SpinBox stepping), which can move a 2-decimal follower (rho
+    # 16 -> 16.1 leaves R_DA at 51.35), so "the follower changed" cannot tell.
+    calls = []
+    for method in ("compute_homo_fret", "homo_backmap"):
+        original = getattr(m.client, method)
+
+        def recording(*args, _original=original, **kwargs):
+            calls.append(kwargs)
+            return _original(*args, **kwargs)
+
+        setattr(m.client, method, recording)
     start = getattr(m, name)
-    other = getattr(m, follows) if follows else None
     spin(app, name, +1)
     up = getattr(m, name)
     assert up > start, (name, start, up)
     if follows:
-        assert getattr(m, follows) != other, f"the {name} arrow did not run its handler"
+        assert any(call.get(name) == up for call in calls), (
+            f"the {name} arrow did not run its handler with the new value: {calls}"
+        )
     spin(app, name, -1)
     spin(app, name, -1)
     assert getattr(m, name) < up
 
 
-def test_a_step_is_one_decade_below_the_value_when_the_spec_names_none(app):
+def test_a_step_is_a_hundredth_of_the_decade_when_the_spec_names_none(app):
+    """pyqtgraph's SpinBox stepping (emtk spin_step_by): 50 steps by 0.1, 4 by 0.01."""
     section = {"kind": "float"}
-    assert (
-        spin_step(50.0, section) == 1.0 and spin_step(4.0, section) == 0.1
-    )  # what the arrows moved in the checks above
+    assert spin_step(50.0, section) == pytest.approx(0.1, rel=1e-9)
+    assert spin_step(4.0, section) == pytest.approx(0.01, rel=1e-9)
 
 
 def test_the_wheel_over_a_field_steps_it(app):
