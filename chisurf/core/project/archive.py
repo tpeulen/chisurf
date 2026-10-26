@@ -192,20 +192,22 @@ class ProjectArchive:
 
         self.write_bytes(name, source_path.read_bytes(), overwrite=overwrite)
 
-    def save(self, path: PathLike) -> pathlib.Path:
+    def save(self, path: PathLike, files=()) -> pathlib.Path:
         """Finalize the archive and write it to disk.
 
         Parameters
         ----------
         path : str or pathlib.Path
         Destination ``.cs.pto`` path.
+        files : sequence of ProjectFile
+            The project's linked and embedded data files (:meth:`Project.data_files`).
 
         Returns
         -------
         pathlib.Path
             Destination path.
         """
-        archive_path = write_entries(path, self._entries)
+        archive_path = write_entries(path, self._entries, files)
         self._path = archive_path
         return archive_path
 

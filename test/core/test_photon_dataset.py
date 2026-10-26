@@ -122,10 +122,23 @@ def test_saving_and_restoring_never_hashes_again(measurement, monkeypatch):
     assert _restored(project_path).link_status == "ok"
 
 
-def test_embedding_says_it_is_not_available_yet():
-    assert links.EMBED_AVAILABLE is False
-    with pytest.raises(NotImplementedError, match="stays linked"):
-        links.embed({}, "p.cs.pto")
+def test_an_embedded_photon_stream_is_read_from_the_project_once_its_file_is_gone(measurement):
+    """Embedded: the bytes go into the project; the original file may then be deleted."""
+    project_path = measurement.parent.parent / "study.cs.pto"
+    dataset = PhotonStreamDataset.from_address(str(measurement))
+    dataset.link = links.embed(dataset.link)
+    capture_session([dataset], [], name="packed").save(project_path)
+    assert project_path.stat().st_size > measurement.stat().st_size  # the bytes are inside
+    n_photons = dataset.n_photons
+    measurement.unlink()
+    (measurement.parent / "m000.set").unlink(missing_ok=True)
+    restored = _restored(project_path)
+    assert restored.link_status == "ok"
+    assert restored.address.startswith(str(project_path))
+    assert restored.photons().get_n_valid_events() == n_photons
+    # A second save (an autosave) finds the bytes in the last save of the same file.
+    capture_session([restored], [], name="packed").save(project_path)
+    assert _restored(project_path).photons().get_n_valid_events() == n_photons
 
 
 def test_a_photon_stream_cannot_be_fitted(measurement):

@@ -117,6 +117,19 @@ client's transport is pluggable: `http.client` on desktop, the browser's fetch u
   override (a deliberate checkbox naming the consequence, then a confirm); the override is recorded in the
   deposit's metadata. "Make self-contained" is offered right there.
 
+*Status 2026-10-26 (all four built, uncommitted at the time of writing):* links/embedding in
+`core/project/links.py` (ptolib path behind `links.ptolib_links()`, JSON/`os.walk` fallback marked
+"FALLBACK (2026-10-26)" — delete it at the tttrlib relock); embedded bytes stream into the project at save
+(`Project.data_files` → `pto.write_project(files=…)`); the repair model `core/project/link_repair.py`;
+the tool `plugins/core/project_data` (File › Project › Make Self-contained… / Locate Missing Data…, opens
+itself on a project with unresolved links); Datasets context menu Embed in project / Link to file; the gate
+`core/project/export_gate.py`, enforced by the Zenodo deposit (record list, single and batch upload; the
+override is logged and written into the deposit notes, which voids the metadata approval). Export Project…
+warns (does not block) when the copy still links data. **Open:** the ptolib path is only tested against a
+fake `PtoFile` — run `test/core/test_project_links.py` and `test/core/test_link_repair.py` on the relocked
+tttrlib (real `add_link`, `find_link_candidates`, `sha256_file`, nested reads of a container embedded whole);
+an embedded project is rewritten in full on every save; remote (`mmfdb://`) targets are not started.
+
 **File links in ptolib** (canonical, re-vendored into tttrlib and imp.bff): a first-class object kind, not
 an application convention — `add_link(path, …)` records relative path + size + sha256; `stream`/`extract`/
 `open_address` follow it; `verify` reports missing/changed targets; `compact` keeps links links (98497f1);

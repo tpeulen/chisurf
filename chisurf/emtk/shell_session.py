@@ -649,16 +649,32 @@ class ShellProject:
         self.open_file_dialog(
             title,
             "save",
-            lambda path: self._save_file(Path(path), then),
+            lambda path: self._save_file(Path(path), then, exported=save_as),
             filename=f"{name}{PROJECT_SUFFIX}",
         )
         return True
+
+    def _linked_note(self) -> str:
+        """Which data the saved project links instead of carrying (named), or ``""``."""
+        data = getattr(self.shell, "data", None)
+        linked = data.linked_datasets() if hasattr(data, "linked_datasets") else []
+        outside = [d for d in linked if not (getattr(d, "link", None) or {}).get("embedded")]
+        if not outside:
+            return ""
+        names = ", ".join(str(getattr(d, "name", "")) for d in outside[:4])
+        more = tr(" and {n} more").format(n=len(outside) - 4) if len(outside) > 4 else ""
+        return tr(
+            " It links {n} data file(s) outside it ({names}{more}): copied elsewhere they are not "
+            "found -- File > Project > Make Self-contained… stores them inside."
+        ).format(n=len(outside), names=names, more=more)
 
     def save_as(self) -> bool:
         """*Export Project…* (Ctrl+Shift+S): save under a new file, which becomes the project's."""
         return self.save(save_as=True)
 
-    def _save_file(self, destination: Path, then: Callable[[], Any] | None = None) -> bool:
+    def _save_file(
+        self, destination: Path, then: Callable[[], Any] | None = None, exported: bool = False
+    ) -> bool:
         from chisurf.core.project import storage
 
         if not str(destination).lower().endswith(PROJECT_SUFFIX):
@@ -676,6 +692,9 @@ class ShellProject:
             self._discard_autosave(before, self.document)
             self._add_recent(saved)
             self.status = tr("Saved {path}.").format(path=saved)
+            if exported:
+                # An export usually leaves the machine: say what it does not carry.
+                self.status += self._linked_note()
             if then is not None:
                 then()
 
@@ -756,6 +775,17 @@ class ShellProject:
             return False
         return self.guard(lambda: self.open_file_dialog(tr("Open Project"), "open", self.open_path))
 
+    def _offer_missing_data(self) -> None:
+        """A project whose linked data files are not all found opens the *Locate missing data* tool."""
+        data = getattr(self.shell, "data", None)
+        linked = data.linked_datasets() if hasattr(data, "linked_datasets") else []
+        missing = [d for d in linked if getattr(d, "link_status", "ok") != "ok"]
+        if missing and hasattr(self.shell, "show_project_data"):
+            self.shell.show_project_data("locate")
+            self.status = tr("{n} linked data file(s) of this project were not found.").format(
+                n=len(missing)
+            )
+
     def open_recent(self, path: str) -> bool:
         """A *Recent Projects* entry: guard, then open it."""
         return self.guard(lambda: self.open_path(path))
@@ -792,6 +822,7 @@ class ShellProject:
             chisurf.working_path = path.parent
             self._refresh_docks()
             self.status = tr("Opened {path}.").format(path=path)
+            self._offer_missing_data()
 
         return self._run(
             tr("Opening the project…"),

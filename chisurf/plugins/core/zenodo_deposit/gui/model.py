@@ -123,6 +123,25 @@ def _file_kind(name: str) -> str:
     return _KINDS.get(suffix, suffix.lstrip(".") or "file")
 
 
+def _linked_data_override(rec: DepositRecord, gates: list) -> dict:
+    """The record's logged override for exactly the projects (and data) *gates* lists, if any."""
+    if not gates:
+        return {}
+    wanted = sorted(f"{g.label}:{r.name or r.location}" for g in gates for r in g.linked)
+    for entry in reversed(rec.log or []):
+        if entry.get("event") == "linked_data_override":
+            return entry if sorted(entry.get("data", [])) == wanted else {}
+    return {}
+
+
+def _projects_carry_their_data(rec: DepositRecord) -> bool:
+    """Whether every ChiSurf project in *rec* is self-contained, or overridden explicitly."""
+    from chisurf.core.project.export_gate import check
+
+    gates = check(rec.folder)
+    return not gates or bool(_linked_data_override(rec, gates))
+
+
 class ZenodoDepositModel:
     """The records under a folder, the selected record's items and its gate."""
 
@@ -180,6 +199,10 @@ class ZenodoDepositModel:
         self.item_id = ""
         self.message = ""
         self.job = BackgroundJob()
+        #: The export gate: projects in the record that would leave without their data
+        #: (chisurf.core.project.export_gate), cached per record folder; and the override box.
+        self._link_gates: tuple[tuple, list] | None = None
+        self.accept_linked_data = False
         self.busy_what = ""
         #: The step the running job is on (a build's last output line), for the progress window.
         self.busy_step = ""
@@ -249,7 +272,11 @@ class ZenodoDepositModel:
         return {
             "name": rec.name,
             "pick": False,
-            "state": "cleared for upload" if st["gate"] == "cleared" else st["gate"],
+            "state": (
+                ("cleared for upload" if _projects_carry_their_data(rec) else "projects link data")
+                if st["gate"] == "cleared"
+                else st["gate"]
+            ),
             "review": f"{c['approved']}/{len(rec.items)} approved"
             + (f", {c['rejected']} rejected" if c["rejected"] else ""),
             "remote": (
@@ -307,6 +334,9 @@ class ZenodoDepositModel:
                 rec = DepositRecord.load(root / name)
                 kind = upload_kind(rec, host)
                 self.busy_step = f"{i}/{len(names)}: {name} ({kind})"
+                if not _projects_carry_their_data(rec):
+                    done.append(f"{name}: refused (its projects only link their data)")
+                    continue
                 try:
                     upload(rec, make())
                     done.append(f"{name}: {kind} ok")
@@ -1533,17 +1563,134 @@ class ZenodoDepositModel:
         if self.record is None:
             return
         self._files_of = {}
+        self._link_gates = None
         self.record = scan(self.record.folder)
         self.record.save()
         self.refresh_records()
         self.message = "rescanned: approvals of changed items are void"
+
+    # ── the export gate: projects must carry their data ─────────────────────
+    def link_gates(self) -> list:
+        """The record's ChiSurf projects that still only link data (cached per record folder)."""
+        if self.record is None:
+            return []
+        # Keyed by the folder and its items' digests: any rescan that saw a change re-checks.
+        folder = (str(self.record.folder), tuple(i.digest for i in self.record.items))
+        if self._link_gates is None or self._link_gates[0] != folder:
+            from chisurf.core.project.export_gate import check
+
+            self._link_gates = (folder, check(self.record.folder))
+        return self._link_gates[1]
+
+    def _override_entry(self) -> dict:
+        """The recorded override for exactly the projects (and data) the gate lists now."""
+        if self.record is None:
+            return {}
+        return _linked_data_override(self.record, self.link_gates())
+
+    def _blockers(self, for_publish: bool = False) -> list[str]:
+        """mmfdb's blockers, plus every project that would leave without its data (unless the
+        user overrode exactly that)."""
+        if self.record is None:
+            return ["open a record"]
+        out = list(
+            blockers(self.record, for_publish=for_publish, host=self._host)
+            if for_publish
+            else blockers(self.record)
+        )
+        if not self._override_entry():
+            from chisurf.core.project.export_gate import blocker_lines
+
+            out.extend(blocker_lines(self.link_gates()))
+        return out
+
+    @property
+    def links_text(self) -> str:
+        """What the export gate found: projects that link data, and whether that was overridden."""
+        gates = self.link_gates()
+        if not gates:
+            return "Every ChiSurf project in the record carries its data (or there is none)."
+        from chisurf.core.project.export_gate import blocker_lines
+
+        lines = "\n".join(f"- {_md(x)}" for x in blocker_lines(gates))
+        if self._override_entry():
+            return (
+                f"**Overridden:** these projects are deposited without their linked data; the "
+                f"deposit's notes say so.\n{lines}"
+            )
+        return (
+            "**These projects only link their data** -- copied to Zenodo the links point "
+            "nowhere. *Make projects self-contained* stores the data inside them; or tick the "
+            f"box below and confirm to deposit them as they are.\n{lines}"
+        )
+
+    def make_projects_self_contained(self) -> None:
+        """Embed every linked data file into the record's projects, then rescan the folder."""
+        gates = self.link_gates()
+        if not gates:
+            return
+
+        def work():
+            from chisurf.core.project.export_gate import make_self_contained
+
+            failures = make_self_contained(gates)
+            if failures:
+                return (
+                    "not self-contained: "
+                    + "; ".join(
+                        f"{name} ({', '.join(missing)})" for name, missing in failures.items()
+                    )
+                    + " -- locate the missing files (File > Project > Locate Missing Data…)"
+                )
+            return "projects made self-contained; rescanned -- review the changed items again"
+
+        def done(text):
+            self._link_gates = None
+            self.rescan()
+            self.message = text
+
+        self._busy("making the projects self-contained")
+        self.job.start(work, done, lambda exc: setattr(self, "message", f"failed: {exc}"))
+
+    def confirm_linked_override(self) -> None:
+        """Deposit the projects as they are: recorded in the record's log and the deposit's notes."""
+        gates = self.link_gates()
+        if not (self.accept_linked_data and gates and self.record is not None):
+            return
+        from datetime import datetime, timezone
+
+        from chisurf.core.project.export_gate import override_note
+
+        rec = self.record
+        rec.log.append(
+            {
+                "event": "linked_data_override",
+                "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "data": [f"{g.label}:{r.name or r.location}" for g in gates for r in g.linked],
+                "consequence": "deposited without the data files these projects link",
+            }
+        )
+        note = override_note(gates)
+        notes = str(rec.metadata.get("notes") or "")
+        self.accept_linked_data = False
+        if note not in notes:
+            # Through the one metadata writer: the changed notes void the metadata's approval,
+            # so the reader-facing text is reviewed again before anything is sent.
+            self._set_meta("notes", (notes + "\n\n" + note).strip())
+        else:
+            rec.save()
+            self.refresh_records()
+        self.message = (
+            "override recorded: the deposit's notes say which data is not included -- "
+            "review the changed metadata, then upload"
+        )
 
     # ── the gate ─────────────────────────────────────────────────────────
     @property
     def gate_text(self) -> str:
         if self.record is None:
             return "Open a record."
-        b = blockers(self.record)
+        b = self._blockers()
         pkg = self.record.package
         head = f"Package: `{Path(pkg['path']).name}`, {pkg['bytes']:,} B, md5 `{pkg['md5']}`"
         if pkg.get("mode") == "metadata-separate":
@@ -1735,8 +1882,18 @@ class ZenodoDepositModel:
                 has_rec
                 and idle
                 and bool(self.token_source)
-                and not blockers(self.record)
+                and not self._blockers()
                 and upload_kind(self.record, self._host) != "current"
+            )
+        if name == "make_projects_self_contained":
+            return has_rec and idle and bool(self.link_gates())
+        if name == "confirm_linked_override":
+            return (
+                has_rec
+                and idle
+                and self.accept_linked_data
+                and bool(self.link_gates())
+                and not self._override_entry()
             )
         if name == "upload_metadata_only":
             if not (has_rec and idle and bool(self.token_source)):
@@ -1765,7 +1922,7 @@ class ZenodoDepositModel:
                 has_rec
                 and idle
                 and bool(self.token_source)
-                and not blockers(self.record, for_publish=True, host=self._host)
+                and not self._blockers(for_publish=True)
                 and not self._r().get("doi")
             )
         return True
@@ -1813,6 +1970,12 @@ class ZenodoDepositModel:
                     else ""
                 )
                 + ". Approve a row with its button; right-click it to reject."
+            )
+        if self.link_gates() and not self._override_entry():
+            return (
+                "**Make the projects self-contained** (*3 · Upload*): "
+                f"{len(self.link_gates())} ChiSurf project(s) only link their data -- or "
+                "override explicitly."
             )
         b = blockers(rec)
         if b:
@@ -2028,7 +2191,7 @@ class ZenodoDepositModel:
             return ""
         if self.token_source == "":
             return "Upload needs a token (Zenodo token tab)."
-        b = blockers(self.record)
+        b = self._blockers()
         if b:
             return f"Upload is locked: {len(b)} thing(s) block it -- see the list above."
         return "Upload is unlocked."
@@ -2171,6 +2334,10 @@ class ZenodoDepositModel:
         )
 
     def upload_draft(self) -> None:
+        if self.record is not None and self._blockers():
+            # The button is grey then; a script or the agent calling this is refused the same way.
+            self.message = "upload refused: " + "; ".join(self._blockers()[:3])
+            return
         rec, make = self.record, self._client()
         host = self._host
         kind = upload_kind(rec, host)

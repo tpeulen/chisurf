@@ -1,0 +1,28 @@
+{
+  "id": "project_data",
+  "version": "1.0.0",
+  "display_name": "File:Data:Project data",
+  "description": "The data files a project links instead of copying: which are found, which are missing or changed, where a moved original is now (search a folder by name, confirm by checksum, or point at the file), and Make self-contained, which stores every linked file inside the project so it needs no other file -- before sharing or depositing it.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "File",
+    "Data"
+  ],
+  "icon": "🗂",
+  "single_instance": true,
+  "entrypoints": {
+    "emtk": "chisurf.plugins.core.project_data.gui.app:make_app"
+  },
+  "accepts": [
+    {
+      "name": "project_data",
+      "summary": "Show the open session's linked data: mode 'locate' (find missing files), 'self_contained' (embed every link) or 'check' (list them).",
+      "receive": "chisurf.plugins.core.project_data.gui.app:receive",
+      "required": [
+        "mode"
+      ]
+    }
+  ]
+}

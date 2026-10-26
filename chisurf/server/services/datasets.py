@@ -122,6 +122,7 @@ def _dataset_dto(
     if link_status is not None:
         dto["link_status"] = str(link_status)
         dto["link_problem"] = str(getattr(dataset, "link_problem", "") or "")
+        dto["embedded"] = bool((getattr(dataset, "link", None) or {}).get("embedded"))
     if include_length:
         dto["length"] = (
             None

@@ -219,6 +219,8 @@ class Project:
     resources: ResourceContext = field(default_factory=ResourceContext, repr=False, compare=False)
     #: The folder the project was opened from: linked datasets resolve against it (not saved).
     source_dir: pathlib.Path | None = field(default=None, repr=False, compare=False)
+    #: The ``.cs.pto`` this project was opened from or last saved to (embedded data lives there).
+    source_path: pathlib.Path | None = field(default=None, repr=False, compare=False)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert this project into a deterministic JSON-serializable dictionary."""
@@ -324,6 +326,62 @@ class Project:
                 if isinstance(record.get("link"), dict):
                     record["link"] = relativize(record["link"], project_dir)
 
+    def data_files(self, project_path: PathLike) -> list:
+        """The linked and embedded data files this project's container carries when saved to
+        *project_path* (:class:`chisurf.core.project.pto.ProjectFile`).
+
+        Names each linked dataset's object (``link["object"]``, stable across saves) and records it
+        in the dataset record, so ``project.cs.pto/<object>`` addresses it. An embedded dataset's
+        bytes are streamed from where they are now: its current address (the file it was embedded
+        from, or the previous save of the project), else wherever its link resolves.
+        """
+        from .links import is_embedded, object_tags, resolve
+        from .pto import ProjectFile, ProjectPtoError
+
+        project_dir = pathlib.Path(project_path).parent
+        taken: set[str] = set()
+        out: list = []
+        for record in self.datasets.values():
+            if not isinstance(record, dict) or record.get("kind") != "linked":
+                continue
+            link = record.get("link")
+            if not isinstance(link, dict):
+                continue
+            name = _object_name(link, record, taken)
+            link["object"] = name
+            kind, encoding = _object_kind(record, link)
+            tags = tuple(object_tags(link, project_dir))
+            if not is_embedded(link):
+                out.append(ProjectFile(name, kind, encoding, tags))
+                continue
+            source = _embedded_source(record, link, project_dir) or _saved_object(
+                pathlib.Path(project_path), name, int(link.get("size", -1))
+            )
+            if source is None:
+                raise ProjectPtoError(
+                    f"The data of {record.get('name') or name!r} is embedded but not available: "
+                    "neither its last save nor its original file was found"
+                )
+            out.append(ProjectFile(name, kind, encoding, tags, source, int(link.get("size", 0))))
+            for companion in link.get("companions") or ():
+                comp_name = (
+                    pathlib.PurePosixPath(name).stem
+                    + pathlib.Path(str(companion.get("name", ""))).suffix
+                )
+                taken.add(comp_name)
+                out.append(
+                    ProjectFile(
+                        comp_name,
+                        "raw_measurement",
+                        "setup",
+                        (),
+                        _companion_source(source, str(companion.get("name", "")), comp_name),
+                        int(companion.get("size", 0)),
+                        sidecar_of=name,
+                    )
+                )
+        return out
+
     def save_to_archive(self, archive, graph_session_bytes: bytes | None = None) -> None:
         """Add the portable project record to an assembled PTO project.
 
@@ -366,9 +424,13 @@ class Project:
         """
         project_path = _project_output_path(target_path)
         self.relativize_links(project_path.parent)
+        files = self.data_files(project_path)  # names the objects before the records are written
         archive = ProjectArchive()
         self.save_to_archive(archive, graph_session_bytes)
-        return archive.save(project_path)
+        saved = archive.save(project_path, files=files)
+        self.source_path, self.source_dir = saved, saved.parent
+        adopt_saved_links(self, saved)
+        return saved
 
     @classmethod
     def load(cls, target_path: PathLike) -> Project:
@@ -392,8 +454,10 @@ class Project:
         data = _validate_project_payload(data)
         archive.close()
         project = cls.from_dict(data)
-        # Linked datasets resolve against the folder the project was opened from.
+        # Linked datasets resolve against the folder the project was opened from; embedded ones are
+        # read from the file itself.
         project.source_dir = project_path.parent
+        project.source_path = project_path
         project.resources = ResourceContext(
             {
                 name: archive.read_bytes(name)
@@ -409,6 +473,122 @@ class Project:
 
             restore_graph_session(project.graph_session_bytes)
         return project
+
+
+def _object_name(link: dict, record: dict, taken: set[str]) -> str:
+    """The container object name of a linked dataset: kept across saves, else its file's name,
+    made unique with the dataset's uid."""
+    name = str(link.get("object") or "")
+    if not name:
+        container = pathlib.Path(str(link.get("container", "")))
+        member = str(link.get("member") or "")
+        name = pathlib.PurePosixPath(member).name if member else container.name
+        name = name or str(record.get("uid", "data"))
+    if name in taken:
+        stem, suffix = pathlib.PurePosixPath(name).stem, pathlib.PurePosixPath(name).suffix
+        name = f"{stem}~{str(record.get('uid', ''))[:8]}{suffix}"
+    taken.add(name)
+    return name
+
+
+def _object_kind(record: dict, link: dict) -> tuple[str, str]:
+    """The ptolib kind and encoding of a linked dataset's object (a reader picks the decoder from
+    the encoding)."""
+    from chisurf.core.fio.pto import _encoding_for
+
+    container = pathlib.Path(str(link.get("container", "")))
+    if container.suffix.lower() == ".pto":
+        return "pto_container", "pto"
+    data_kind = str(record.get("data_kind", ""))
+    if data_kind == "photons":
+        return "tttr_photon_stream", _encoding_for(container)
+    if data_kind == "image":
+        return "image_data", container.suffix.lstrip(".").lower() or "unknown"
+    return "raw_measurement", container.suffix.lstrip(".").lower() or "unknown"
+
+
+def _embedded_source(record: dict, link: dict, project_dir: pathlib.Path) -> str | None:
+    """Where an embedded dataset's bytes are now (a file path or a container object address)."""
+    from chisurf.core.fio.address import split_address
+
+    from .links import resolve
+
+    address = str(record.get("address", ""))
+    if address:
+        container, member = split_address(address)
+        if container is not None:
+            if not member:
+                return str(container)  # the file it was embedded from
+            if str(container).endswith(PROJECT_SUFFIX):
+                return address  # the previous save of the project: its object
+            # a member of a measurement container: the link's target is that container (below)
+    resolution = resolve({k: v for k, v in link.items() if k != "embedded"}, project_dir)
+    if resolution.ok and resolution.found is not None:
+        return str(resolution.found)
+    return None
+
+
+def _saved_object(project_path: pathlib.Path, name: str, size: int) -> str | None:
+    """The address of object *name* in the last save at *project_path*, if it holds *size* bytes.
+
+    A save over the same file (and every autosave) finds embedded data there after its original
+    file has gone.
+    """
+    if not project_path.is_file():
+        return None
+    from chisurf.core.fio.address import join_address
+
+    from .pto import _tttrlib
+
+    handle = _tttrlib().PtoFile()
+    if not handle.open(str(project_path)):
+        return None
+    try:
+        for obj in handle.objects():
+            if obj.name == name and int(obj.size) == size:
+                return join_address(project_path, name)
+    finally:
+        handle.close()
+    return None
+
+
+def adopt_saved_links(project: Project, saved: PathLike) -> None:
+    """Point this process's live linked datasets at what *saved* now holds.
+
+    Each learns its object name; an embedded one reads from the saved project from now on (so its
+    original file may go). Datasets living in another process (server mode) learn it when the
+    project is next opened.
+    """
+    from chisurf.core.fio.address import join_address
+
+    try:
+        from chisurf.core.api import dataset_objects
+
+        live = {str(getattr(d, "unique_identifier", "")): d for d in dataset_objects()}
+    except Exception:  # noqa: BLE001 - no live session (a script saving a Project)
+        return
+    for uid, record in project.datasets.items():
+        if not isinstance(record, dict) or record.get("kind") != "linked":
+            continue
+        dataset = live.get(str(record.get("uid", uid)))
+        link = record.get("link") or {}
+        if dataset is None or not hasattr(dataset, "link") or not link.get("object"):
+            continue
+        dataset.link = dict(dataset.link, object=link["object"])
+        if link.get("embedded"):
+            member = f"/{link['member']}" if link.get("member") else ""
+            dataset.address = join_address(saved, str(link["object"])) + member
+            dataset.link_status, dataset.link_problem = "ok", ""
+
+
+def _companion_source(primary_source: str, companion_name: str, companion_object: str) -> str:
+    """Where a companion's bytes are: beside the primary's file, or in the same project save."""
+    from chisurf.core.fio.address import join_address, split_address
+
+    container, member = split_address(primary_source)
+    if member and container is not None and str(container).endswith(PROJECT_SUFFIX):
+        return join_address(container, companion_object)
+    return str(pathlib.Path(primary_source).with_name(companion_name))
 
 
 def save_project(project: Project, target_path: PathLike) -> pathlib.Path:

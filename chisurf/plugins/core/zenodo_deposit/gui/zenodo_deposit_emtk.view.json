@@ -762,6 +762,37 @@
                                 },
                                 {
                                     "type": "info",
+                                    "key": "links_text",
+                                    "source": "links_text",
+                                    "is_markdown": true,
+                                    "description": "ChiSurf projects in the record that only link their data files: copied to Zenodo those links point nowhere, so the upload is blocked until the projects carry their data or you override."
+                                },
+                                {
+                                    "type": "button_row",
+                                    "description": "Store the linked data inside the record's projects, or deposit them as they are.",
+                                    "buttons": [
+                                        {
+                                            "action": "make_projects_self_contained",
+                                            "label": "Make projects self-contained",
+                                            "role": "primary",
+                                            "description": "Store every data file the record's ChiSurf projects link inside the projects (each checked by its checksum; missing files must be located first), then rescan the folder. The projects grow by the size of their data; review the changed items again."
+                                        },
+                                        {
+                                            "action": "confirm_linked_override",
+                                            "label": "Confirm: deposit without the data",
+                                            "role": "danger",
+                                            "description": "Deposit the projects as they are. Recorded in the record's log, and the deposit's notes say which data files are not included. Grey until the box above is ticked."
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "toggle",
+                                    "attr": "accept_linked_data",
+                                    "label": "Deposit these projects without their linked data (they cannot be reopened with their data from the deposit)",
+                                    "description": "Tick to allow the override, then press Confirm. Without the data a reader of the deposit cannot reopen these projects' measurements."
+                                },
+                                {
+                                    "type": "info",
                                     "key": "gate_text",
                                     "source": "gate_text",
                                     "is_markdown": true,

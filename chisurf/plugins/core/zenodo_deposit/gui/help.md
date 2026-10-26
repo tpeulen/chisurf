@@ -33,6 +33,15 @@ The Zenodo metadata at the top of *3 · Upload* is what is submitted with the dr
 
 Build package writes the archive from the record as it is now. With **Build the metadata separate** it leaves EVERY metadata file out of the archive -- the editable README.md and metadata.cif and the provenance, `origins.json` and `manifest_sha256.csv`, are uploaded beside it as sidecars (a real draft holds five files: the zip plus these four) -- so the raw archive stays byte-identical no matter how often you correct or regenerate them; the manifest hashes the editable files, so a correction carries its regenerated manifest along. Upload draft is grey until every item is approved and the package was built from exactly that content; it uploads into a Zenodo **draft** and checks the file's md5 there. **Swap metadata** updates an unpublished draft without sending the raw archive: the changed sidecars and the reviewed Zenodo metadata only -- each sidecar is compared independently, so a README correction sends the README and its regenerated manifest, and untouched provenance stays. It is grey while anything is unapproved (a metadata edit must be reviewed again), before the first upload, once the record is published (a published version is immutable; a correction is a new version), and when the draft does not hold the raw archive unchanged -- changed raw data always means: rebuild, then upload the archive. Check Zenodo reads the draft back and compares it with the local package at any later time. The sandbox switch sends everything to sandbox.zenodo.org for a trial run.
 
+## Analysis projects must carry their data
+A ChiSurf project (`.cs.pto`) in the record usually only *links* its large data files. Copied to Zenodo
+those links point nowhere, so the upload stays locked while a project in the record still links data:
+**Make projects self-contained** stores the linked files inside the projects (missing files must be
+located first, File > Project > Locate Missing Data…), then rescans the folder -- review the changed items
+again. To deposit the projects as they are, tick the box naming the consequence and press **Confirm:
+deposit without the data**; the override is written into the record's log and into the deposit's notes,
+which say which data files are not included, so the changed metadata is reviewed again before upload.
+
 ## Publish
 Publishing is irreversible. It needs its own approval (Approve publish), bound to the md5 of the package in the draft, and a draft that matches it; a rebuilt package voids the approval.
 

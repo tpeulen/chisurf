@@ -1,0 +1,49 @@
+{
+  "_comment": "Guided tour of the Project data window. Steps point at the controls the view registers (form.rects by action or table key) and wait for the user to press them; the tour never presses a button itself.",
+  "steps": [
+    {
+      "title": "Linked, not copied",
+      "text": "A project <b>links</b> large data files -- photon streams, images -- instead of copying them: it records where each file is, its size and its checksum. The project stays small and never duplicates a measurement. This window shows those links, finds files that moved, and stores them all inside the project when it has to travel alone.",
+      "target": {}
+    },
+    {
+      "title": "Start with a project that has a problem",
+      "text": "The example is a small project with three linked files; one of them, <b>c</b>, was moved to a backup folder after the project was saved, and a different file of the same name was left in another folder.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>Load example</b>."}
+    },
+    {
+      "title": "Which files are found",
+      "text": "One row per linked dataset: <b>found</b>, <b>missing</b>, <b>size changed</b> or <b>content changed</b>, and where the file is or was. Opening a project compares sizes only; <b>Check checksums</b> reads every file and compares its SHA-256 too. The missing <b>c</b> is selected.",
+      "target": {"name": "dataset_rows"}
+    },
+    {
+      "title": "Search where it might be",
+      "text": "Choose a folder: every file below it with the same name is listed, the ones with the recorded size first. Nothing is read yet. In the example, choose the <b>backup</b> folder beside the project's folder.",
+      "target": {"name": "request_search"},
+      "await": {"hint": "Press <b>Search in folder…</b> and choose the backup folder."}
+    },
+    {
+      "title": "The candidates",
+      "text": "Two files are named <b>c.tif</b>; the one with the recorded size comes first. Only the checksum can tell whether it is the original.",
+      "target": {"name": "candidate_rows"}
+    },
+    {
+      "title": "Use it",
+      "text": "<b>Use candidate</b> compares the file's checksum with the recorded one and links the dataset to it. A different file is refused; <b>Use anyway</b> would accept it and record its new checksum -- for a file you know is right although it changed.",
+      "target": {"name": "use_candidate"},
+      "await": {"hint": "Press <b>Use candidate</b>."}
+    },
+    {
+      "title": "Self-contained",
+      "text": "<b>Make self-contained</b> stores every linked file inside the project at its next save: the project then needs no other file, ready to share or deposit (a Zenodo deposit insists on it). Missing files must be located first.",
+      "target": {"name": "make_self_contained"},
+      "await": {"hint": "Press <b>Make self-contained</b>."}
+    },
+    {
+      "title": "Save",
+      "text": "The open session is saved with File &gt; Save Project; a project opened here -- the example -- with <b>Save project</b>. The file grows by the size of what was embedded.",
+      "target": {"name": "save_project"}
+    }
+  ]
+}

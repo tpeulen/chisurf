@@ -59661,7 +59661,7 @@ de corrélation) dans un seul outil à navigation latérale. Construit sur l'env
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6914" />
             <source>Press &lt;b&gt;Load example&lt;/b&gt;.</source>
-            <translation>Appuyez sur &lt;b&gt;Charger l’exemple&lt;/b&gt;.</translation>
+            <translation>Appuyez sur &lt;b&gt;Charger l'exemple&lt;/b&gt;.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6920" />
@@ -71416,6 +71416,386 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
         <message>
             <source>How a photon file dropped on the window enters the project: linked (the file stays where it is; its path, size and checksum are recorded, so the project stays small) or embedded (copied into the project file).</source>
             <translation type="unfinished"/>
+        </message>
+        <message>
+            <source> It links {n} data file(s) outside it ({names}{more}): copied elsewhere they are not found -- File &gt; Project &gt; Make Self-contained… stores them inside.</source>
+            <translation> Il lie {n} fichier(s) de données hors du projet ({names}{more}) : copiés ailleurs, ils sont introuvables -- Fichier &gt; Projet &gt; Rendre autonome… les range dans le projet.</translation>
+        </message>
+        <message>
+            <source> and {n} more</source>
+            <translation> et {n} de plus</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Make self-contained&lt;/b&gt; stores every linked file inside the project at its next save: the project then needs no other file, ready to share or deposit (a Zenodo deposit insists on it). Missing files must be located first.</source>
+            <translation>&lt;b&gt;Rendre autonome&lt;/b&gt; range chaque fichier lié dans le projet à la prochaine sauvegarde : le projet n'a alors besoin d'aucun autre fichier et peut être partagé ou déposé (un dépôt Zenodo l'exige). Les fichiers manquants doivent d'abord être retrouvés.</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Use candidate&lt;/b&gt; compares the file's checksum with the recorded one and links the dataset to it. A different file is refused; &lt;b&gt;Use anyway&lt;/b&gt; would accept it and record its new checksum -- for a file you know is right although it changed.</source>
+            <translation>&lt;b&gt;Utiliser le candidat&lt;/b&gt; compare la somme de contrôle du fichier à celle enregistrée et y lie le jeu de données. Un fichier différent est refusé ; &lt;b&gt;Utiliser quand même&lt;/b&gt; l'accepterait et enregistrerait sa nouvelle somme de contrôle -- pour un fichier que vous savez correct bien qu'il ait changé.</translation>
+        </message>
+        <message>
+            <source>A ChiSurf project in the record that only &lt;b&gt;links&lt;/b&gt; its data files would arrive on Zenodo with links that point nowhere: the upload stays locked until &lt;b&gt;Make projects self-contained&lt;/b&gt; stores the data inside them -- or you tick the box below it and confirm, which writes the omission into the deposit's notes.</source>
+            <translation>Un projet ChiSurf de l'enregistrement qui ne fait que &lt;b&gt;lier&lt;/b&gt; ses fichiers de données arriverait sur Zenodo avec des liens qui ne mènent nulle part : le téléversement reste verrouillé jusqu'à ce que &lt;b&gt;Rendre les projets autonomes&lt;/b&gt; y range les données -- ou que vous cochiez la case en dessous et confirmiez, ce qui inscrit l'omission dans les notes du dépôt.</translation>
+        </message>
+        <message>
+            <source>A file with the same name, relative to the searched folder; hover for the full path.</source>
+            <translation>Un fichier du même nom, relatif au dossier parcouru ; survolez-le pour le chemin complet.</translation>
+        </message>
+        <message>
+            <source>A project &lt;b&gt;links&lt;/b&gt; large data files -- photon streams, images -- instead of copying them: it records where each file is, its size and its checksum. The project stays small and never duplicates a measurement. This window shows those links, finds files that moved, and stores them all inside the project when it has to travel alone.</source>
+            <translation>Un projet &lt;b&gt;lie&lt;/b&gt; les gros fichiers de données -- flux de photons, images -- au lieu de les copier : il enregistre l'emplacement de chaque fichier, sa taille et sa somme de contrôle. Le projet reste petit et ne duplique jamais une mesure. Cette fenêtre montre ces liens, retrouve les fichiers déplacés et les range tous dans le projet lorsqu'il doit voyager seul.</translation>
+        </message>
+        <message>
+            <source>Check checksums</source>
+            <translation>Vérifier les sommes de contrôle</translation>
+        </message>
+        <message>
+            <source>Check every link, then store each linked file inside the project at its next save, so the project can be shared or deposited alone. Missing files must be located first. The project grows by the files' size.</source>
+            <translation>Vérifier chaque lien, puis ranger chaque fichier lié dans le projet à la prochaine sauvegarde, pour que le projet puisse être partagé ou déposé seul. Les fichiers manquants doivent d'abord être retrouvés. Le projet grossit de la taille des fichiers.</translation>
+        </message>
+        <message>
+            <source>ChiSurf projects in the record that only link their data files: copied to Zenodo those links point nowhere, so the upload is blocked until the projects carry their data or you override.</source>
+            <translation>Projets ChiSurf de l'enregistrement qui ne font que lier leurs fichiers de données : copiés sur Zenodo, ces liens ne mènent nulle part ; le téléversement est donc bloqué jusqu'à ce que les projets contiennent leurs données ou que vous passiez outre.</translation>
+        </message>
+        <message>
+            <source>Choose a folder: every file below it with the dataset's file name is listed, those with the recorded size first. Nothing is read until you use one.</source>
+            <translation>Choisir un dossier : chaque fichier en dessous portant le nom de fichier du jeu de données est listé, ceux de la taille enregistrée en premier. Rien n'est lu tant que vous n'en utilisez pas un.</translation>
+        </message>
+        <message>
+            <source>Choose a folder: every file below it with the same name is listed, the ones with the recorded size first. Nothing is read yet. In the example, choose the &lt;b&gt;backup&lt;/b&gt; folder beside the project's folder.</source>
+            <translation>Choisir un dossier : chaque fichier en dessous portant le même nom est listé, ceux de la taille enregistrée en premier. Rien n'est encore lu. Dans l'exemple, choisissez le dossier &lt;b&gt;backup&lt;/b&gt; à côté du dossier du projet.</translation>
+        </message>
+        <message>
+            <source>Choose the file to use instead (a moved or renamed original). Its size and checksum are compared with the recorded ones.</source>
+            <translation>Choisir le fichier à utiliser à la place (un original déplacé ou renommé). Sa taille et sa somme de contrôle sont comparées à celles enregistrées.</translation>
+        </message>
+        <message>
+            <source>Choose what to look at: the open session, or the demonstration project.</source>
+            <translation>Choisir ce qui est affiché : la session ouverte ou le projet de démonstration.</translation>
+        </message>
+        <message>
+            <source>Confirm: deposit without the data</source>
+            <translation>Confirmer : déposer sans les données</translation>
+        </message>
+        <message>
+            <source>Data files</source>
+            <translation>Fichiers de données</translation>
+        </message>
+        <message>
+            <source>Demonstration: {name} was moved to a backup folder. Search the folder {folder}.</source>
+            <translation>Démonstration : {name} a été déplacé dans un dossier de sauvegarde. Parcourez le dossier {folder}.</translation>
+        </message>
+        <message>
+            <source>Deposit the projects as they are. Recorded in the record's log, and the deposit's notes say which data files are not included. Grey until the box above is ticked.</source>
+            <translation>Déposer les projets tels quels. Consigné dans le journal de l'enregistrement, et les notes du dépôt indiquent quels fichiers de données ne sont pas inclus. Grisé tant que la case ci-dessus n'est pas cochée.</translation>
+        </message>
+        <message>
+            <source>Deposit these projects without their linked data (they cannot be reopened with their data from the deposit)</source>
+            <translation>Déposer ces projets sans leurs données liées (ils ne pourront pas être rouverts avec leurs données depuis le dépôt)</translation>
+        </message>
+        <message>
+            <source>Embed in project</source>
+            <translation>Intégrer au projet</translation>
+        </message>
+        <message>
+            <source>Embedded in the project</source>
+            <translation>Intégré au projet</translation>
+        </message>
+        <message>
+            <source>Embedding in the project…</source>
+            <translation>Intégration au projet…</translation>
+        </message>
+        <message>
+            <source>Embedding {names}{more}</source>
+            <translation>Intégration de {names}{more}</translation>
+        </message>
+        <message>
+            <source>Files with the dataset's file name found by the folder search; the ones with the recorded size first.</source>
+            <translation>Fichiers portant le nom de fichier du jeu de données trouvés par la recherche dans le dossier ; ceux de la taille enregistrée en premier.</translation>
+        </message>
+        <message>
+            <source>Find the moved original of the selected dataset.</source>
+            <translation>Retrouver l'original déplacé du jeu de données sélectionné.</translation>
+        </message>
+        <message>
+            <source>Find the selected dataset's file.</source>
+            <translation>Retrouver le fichier du jeu de données sélectionné.</translation>
+        </message>
+        <message>
+            <source>How a photon file dropped on the window enters the project: linked (the file stays where it is; its path, size and checksum are recorded, so the project stays small) or embedded (copied into the project file at the next save, so the project is complete on its own). Right-click a dataset to switch it later.</source>
+            <translation>Comment un fichier de photons déposé sur la fenêtre entre dans le projet : lié (le fichier reste où il est ; son chemin, sa taille et sa somme de contrôle sont enregistrés, le projet reste petit) ou intégré (copié dans le fichier du projet à la prochaine sauvegarde, le projet est complet à lui seul). Clic droit sur un jeu de données pour changer plus tard.</translation>
+        </message>
+        <message>
+            <source>How many data files the project links, how many are embedded, found, and not found or changed.</source>
+            <translation>Combien de fichiers de données le projet lie, combien sont intégrés, trouvés, et introuvables ou modifiés.</translation>
+        </message>
+        <message>
+            <source>Link the dataset to the chosen candidate. Its checksum is compared with the recorded one first; a different file is refused (Use anyway accepts it).</source>
+            <translation>Lier le jeu de données au candidat choisi. Sa somme de contrôle est d'abord comparée à celle enregistrée ; un fichier différent est refusé (Utiliser quand même l'accepte).</translation>
+        </message>
+        <message>
+            <source>Link to file</source>
+            <translation>Lier au fichier</translation>
+        </message>
+        <message>
+            <source>Linked, not copied</source>
+            <translation>Lié, pas copié</translation>
+        </message>
+        <message>
+            <source>List the linked data files that were not found or have changed, and find the moved originals.</source>
+            <translation>Lister les fichiers de données liés introuvables ou modifiés, et retrouver les originaux déplacés.</translation>
+        </message>
+        <message>
+            <source>Locate</source>
+            <translation>Retrouver</translation>
+        </message>
+        <message>
+            <source>Locate Missing Data…</source>
+            <translation>Retrouver les données manquantes…</translation>
+        </message>
+        <message>
+            <source>Make Self-contained…</source>
+            <translation>Rendre autonome…</translation>
+        </message>
+        <message>
+            <source>Make projects self-contained</source>
+            <translation>Rendre les projets autonomes</translation>
+        </message>
+        <message>
+            <source>Make self-contained</source>
+            <translation>Rendre autonome</translation>
+        </message>
+        <message>
+            <source>Make the project need no other file.</source>
+            <translation>Faire que le projet n'ait besoin d'aucun autre fichier.</translation>
+        </message>
+        <message>
+            <source>No project: open one in ChiSurf, or press Load example.</source>
+            <translation>Aucun projet : ouvrez-en un dans ChiSurf ou appuyez sur Charger l'exemple.</translation>
+        </message>
+        <message>
+            <source>One row per linked dataset: &lt;b&gt;found&lt;/b&gt;, &lt;b&gt;missing&lt;/b&gt;, &lt;b&gt;size changed&lt;/b&gt; or &lt;b&gt;content changed&lt;/b&gt;, and where the file is or was. Opening a project compares sizes only; &lt;b&gt;Check checksums&lt;/b&gt; reads every file and compares its SHA-256 too. The missing &lt;b&gt;c&lt;/b&gt; is selected.</source>
+            <translation>Une ligne par jeu de données lié : &lt;b&gt;trouvé&lt;/b&gt;, &lt;b&gt;manquant&lt;/b&gt;, &lt;b&gt;taille modifiée&lt;/b&gt; ou &lt;b&gt;contenu modifié&lt;/b&gt;, et où le fichier est ou était. L'ouverture d'un projet ne compare que les tailles ; &lt;b&gt;Vérifier les sommes de contrôle&lt;/b&gt; lit chaque fichier et compare aussi son SHA-256. Le &lt;b&gt;c&lt;/b&gt; manquant est sélectionné.</translation>
+        </message>
+        <message>
+            <source>One row per linked dataset: its name, whether its file is found, and where it is (or was). Select a missing one to locate it; hover a row for why it is not found.</source>
+            <translation>Une ligne par jeu de données lié : son nom, si son fichier est trouvé, et où il est (ou était). Sélectionnez-en un manquant pour le retrouver ; survolez une ligne pour savoir pourquoi il est introuvable.</translation>
+        </message>
+        <message>
+            <source>Open a demonstration project with three linked files, one of which was moved to a backup folder (and a different file of the same name left elsewhere).</source>
+            <translation>Ouvrir un projet de démonstration avec trois fichiers liés, dont l'un a été déplacé dans un dossier de sauvegarde (et un autre fichier du même nom laissé ailleurs).</translation>
+        </message>
+        <message>
+            <source>Open session</source>
+            <translation>Session ouverte</translation>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Make self-contained&lt;/b&gt;.</source>
+            <translation>Appuyez sur &lt;b&gt;Rendre autonome&lt;/b&gt;.</translation>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Search in folder…&lt;/b&gt; and choose the backup folder.</source>
+            <translation>Appuyez sur &lt;b&gt;Chercher dans un dossier…&lt;/b&gt; et choisissez le dossier de sauvegarde.</translation>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Use candidate&lt;/b&gt;.</source>
+            <translation>Appuyez sur &lt;b&gt;Utiliser le candidat&lt;/b&gt;.</translation>
+        </message>
+        <message>
+            <source>Project data</source>
+            <translation>Données du projet</translation>
+        </message>
+        <message>
+            <source>Project file: {path}</source>
+            <translation>Fichier du projet : {path}</translation>
+        </message>
+        <message>
+            <source>Projects carry their data</source>
+            <translation>Les projets contiennent leurs données</translation>
+        </message>
+        <message>
+            <source>Read every linked file and compare its SHA-256 with the recorded one; opening a project compares the sizes only. Runs in the background.</source>
+            <translation>Lire chaque fichier lié et comparer son SHA-256 à celui enregistré ; l'ouverture d'un projet ne compare que les tailles. S'exécute en arrière-plan.</translation>
+        </message>
+        <message>
+            <source>Replace with…</source>
+            <translation>Remplacer par…</translation>
+        </message>
+        <message>
+            <source>Save project</source>
+            <translation>Enregistrer le projet</translation>
+        </message>
+        <message>
+            <source>Search for the file in…</source>
+            <translation>Chercher le fichier dans…</translation>
+        </message>
+        <message>
+            <source>Search in folder…</source>
+            <translation>Chercher dans un dossier…</translation>
+        </message>
+        <message>
+            <source>Search where it might be</source>
+            <translation>Chercher là où il pourrait être</translation>
+        </message>
+        <message>
+            <source>Select linked datasets first.</source>
+            <translation>Sélectionnez d'abord des jeux de données liés.</translation>
+        </message>
+        <message>
+            <source>Self-contained</source>
+            <translation>Autonome</translation>
+        </message>
+        <message>
+            <source>Show the linked data of the project open in ChiSurf.</source>
+            <translation>Afficher les données liées du projet ouvert dans ChiSurf.</translation>
+        </message>
+        <message>
+            <source>Show the open session's linked data: mode 'locate' (find missing files), 'self_contained' (embed every link) or 'check' (list them).</source>
+            <translation>Afficher les données liées de la session ouverte : mode 'locate' (retrouver les fichiers manquants), 'self_contained' (intégrer chaque lien) ou 'check' (les lister).</translation>
+        </message>
+        <message>
+            <source>Start with a project that has a problem</source>
+            <translation>Commencer par un projet qui a un problème</translation>
+        </message>
+        <message>
+            <source>Store every data file the record's ChiSurf projects link inside the projects (each checked by its checksum; missing files must be located first), then rescan the folder. The projects grow by the size of their data; review the changed items again.</source>
+            <translation>Ranger dans les projets chaque fichier de données que lient les projets ChiSurf de l'enregistrement (chacun vérifié par sa somme de contrôle ; les fichiers manquants doivent d'abord être retrouvés), puis réanalyser le dossier. Les projets grossissent de la taille de leurs données ; revoyez les éléments modifiés.</translation>
+        </message>
+        <message>
+            <source>Store every linked data file inside the project at its next save, so it can be shared or deposited alone (missing files are located first).</source>
+            <translation>Ranger chaque fichier de données lié dans le projet à la prochaine sauvegarde, pour qu'il puisse être partagé ou déposé seul (les fichiers manquants sont d'abord retrouvés).</translation>
+        </message>
+        <message>
+            <source>Store every linked file inside the project.</source>
+            <translation>Ranger chaque fichier lié dans le projet.</translation>
+        </message>
+        <message>
+            <source>Store the linked data inside the record's projects, or deposit them as they are.</source>
+            <translation>Ranger les données liées dans les projets de l'enregistrement, ou les déposer tels quels.</translation>
+        </message>
+        <message>
+            <source>Store the selected linked files inside the project file at the next save (checked against their recorded checksum first), so the project no longer needs them.</source>
+            <translation>Ranger les fichiers liés sélectionnés dans le fichier du projet à la prochaine sauvegarde (vérifiés d'abord par leur somme de contrôle enregistrée), pour que le projet n'en ait plus besoin.</translation>
+        </message>
+        <message>
+            <source>The Project data tool is not available.</source>
+            <translation>L'outil Données du projet n'est pas disponible.</translation>
+        </message>
+        <message>
+            <source>The candidates</source>
+            <translation>Les candidats</translation>
+        </message>
+        <message>
+            <source>The data files a project links instead of copying: which are found, which are missing or changed, where a moved original is now (search a folder by name, confirm by checksum, or point at the file), and Make self-contained, which stores every linked file inside the project so it needs no other file -- before sharing or depositing it.</source>
+            <translation>Les fichiers de données qu'un projet lie au lieu de les copier : lesquels sont trouvés, lesquels manquent ou ont changé, où se trouve désormais un original déplacé (parcourir un dossier par nom, confirmer par somme de contrôle, ou désigner le fichier), et Rendre autonome, qui range chaque fichier lié dans le projet pour qu'il n'ait besoin d'aucun autre fichier -- avant de le partager ou de le déposer.</translation>
+        </message>
+        <message>
+            <source>The data files the project links instead of copying, and whether each is found.</source>
+            <translation>Les fichiers de données que le projet lie au lieu de les copier, et si chacun est trouvé.</translation>
+        </message>
+        <message>
+            <source>The dataset's name in the project.</source>
+            <translation>Le nom du jeu de données dans le projet.</translation>
+        </message>
+        <message>
+            <source>The example is a small project with three linked files; one of them, &lt;b&gt;c&lt;/b&gt;, was moved to a backup folder after the project was saved, and a different file of the same name was left in another folder.</source>
+            <translation>L'exemple est un petit projet avec trois fichiers liés ; l'un d'eux, &lt;b&gt;c&lt;/b&gt;, a été déplacé dans un dossier de sauvegarde après l'enregistrement du projet, et un autre fichier du même nom a été laissé dans un autre dossier.</translation>
+        </message>
+        <message>
+            <source>The loaded datasets. Select one (ctrl or shift-click for several) to add a fit to each; drag one onto a fit window to fit that dataset instead; Delete removes it; right-click for Save, Load, Remove, Embed in project, Link to file, Group, Ungroup and Refresh; a 📦 before the source means the data is stored inside the project; a group unfolds with its triangle. A narrow panel drops Experiment, then Source; right-click the header to choose the columns.</source>
+            <translation>Les jeux de données chargés. Sélectionnez-en un (Ctrl ou Maj-clic pour plusieurs) pour ajouter un ajustement à chacun ; faites-en glisser un sur une fenêtre d'ajustement pour ajuster plutôt ce jeu ; Suppr le retire ; clic droit pour Enregistrer, Charger, Retirer, Intégrer au projet, Lier au fichier, Grouper, Dégrouper et Actualiser ; un 📦 devant la source signifie que les données sont rangées dans le projet ; un groupe se déplie avec son triangle. Un panneau étroit masque d'abord Expérience, puis Source ; clic droit sur l'en-tête pour choisir les colonnes.</translation>
+        </message>
+        <message>
+            <source>The open session ({path})</source>
+            <translation>La session ouverte ({path})</translation>
+        </message>
+        <message>
+            <source>The open session is saved with File &amp;gt; Save Project; a project opened here -- the example -- with &lt;b&gt;Save project&lt;/b&gt;. The file grows by the size of what was embedded.</source>
+            <translation>La session ouverte est enregistrée avec Fichier &amp;gt; Enregistrer le projet ; un projet ouvert ici -- l'exemple -- avec &lt;b&gt;Enregistrer le projet&lt;/b&gt;. Le fichier grossit de la taille de ce qui a été intégré.</translation>
+        </message>
+        <message>
+            <source>Tick to allow the override, then press Confirm. Without the data a reader of the deposit cannot reopen these projects' measurements.</source>
+            <translation>Cochez pour autoriser l'exception, puis appuyez sur Confirmer. Sans les données, un lecteur du dépôt ne peut pas rouvrir les mesures de ces projets.</translation>
+        </message>
+        <message>
+            <source>Two files are named &lt;b&gt;c.tif&lt;/b&gt;; the one with the recorded size comes first. Only the checksum can tell whether it is the original.</source>
+            <translation>Deux fichiers s'appellent &lt;b&gt;c.tif&lt;/b&gt; ; celui de la taille enregistrée vient en premier. Seule la somme de contrôle peut dire s'il s'agit de l'original.</translation>
+        </message>
+        <message>
+            <source>Use anyway</source>
+            <translation>Utiliser quand même</translation>
+        </message>
+        <message>
+            <source>Use candidate</source>
+            <translation>Utiliser le candidat</translation>
+        </message>
+        <message>
+            <source>Use it</source>
+            <translation>L'utiliser</translation>
+        </message>
+        <message>
+            <source>Use the chosen candidate.</source>
+            <translation>Utiliser le candidat choisi.</translation>
+        </message>
+        <message>
+            <source>Use the file that was refused because its size or content differs. It becomes the dataset's file and its checksum is recorded; results computed from the old file may not match it.</source>
+            <translation>Utiliser le fichier refusé parce que sa taille ou son contenu diffère. Il devient le fichier du jeu de données et sa somme de contrôle est enregistrée ; les résultats calculés à partir de l'ancien fichier peuvent ne pas lui correspondre.</translation>
+        </message>
+        <message>
+            <source>Use this file</source>
+            <translation>Utiliser ce fichier</translation>
+        </message>
+        <message>
+            <source>What the last action did, and what is left to do.</source>
+            <translation>Ce qu'a fait la dernière action, et ce qu'il reste à faire.</translation>
+        </message>
+        <message>
+            <source>Where the file is, or where it was linked, relative to the project's folder; hover for the full path (or why it is not found).</source>
+            <translation>Où se trouve le fichier, ou où il était lié, relatif au dossier du projet ; survolez pour le chemin complet (ou pourquoi il est introuvable).</translation>
+        </message>
+        <message>
+            <source>Which files are found</source>
+            <translation>Quels fichiers sont trouvés</translation>
+        </message>
+        <message>
+            <source>Which project the table shows.</source>
+            <translation>Quel projet le tableau affiche.</translation>
+        </message>
+        <message>
+            <source>Write the demonstration (or another project opened here) back to its file. The open session is saved with File &gt; Save Project.</source>
+            <translation>Réécrire la démonstration (ou un autre projet ouvert ici) dans son fichier. La session ouverte est enregistrée avec Fichier &gt; Enregistrer le projet.</translation>
+        </message>
+        <message>
+            <source>Write the selected embedded files back to where they were linked from and link them again; the project gets smaller at the next save.</source>
+            <translation>Réécrire les fichiers intégrés sélectionnés là d'où ils étaient liés et les lier à nouveau ; le projet rapetisse à la prochaine sauvegarde.</translation>
+        </message>
+        <message>
+            <source>Writing back to the files…</source>
+            <translation>Réécriture dans les fichiers…</translation>
+        </message>
+        <message>
+            <source>found, embedded (stored in the project), missing, size changed or content changed.</source>
+            <translation>trouvé, intégré (rangé dans le projet), manquant, taille modifiée ou contenu modifié.</translation>
+        </message>
+        <message>
+            <source>same size: may be the original (the checksum decides); other size: a different file.</source>
+            <translation>même taille : peut être l'original (la somme de contrôle tranche) ; autre taille : un fichier différent.</translation>
+        </message>
+        <message>
+            <source>{action} failed: {error}</source>
+            <translation>{action} a échoué : {error}</translation>
+        </message>
+        <message>
+            <source>{label} done; save the project to keep it.</source>
+            <translation>{label} terminé ; enregistrez le projet pour le conserver.</translation>
+        </message>
+        <message>
+            <source>{n} data file(s) of this project were not found where they were linked. Select one and search a folder, or point at the file.</source>
+            <translation>{n} fichier(s) de données de ce projet n'ont pas été trouvés là où ils étaient liés. Sélectionnez-en un et parcourez un dossier, ou désignez le fichier.</translation>
+        </message>
+        <message>
+            <source>{n} linked data file(s) of this project were not found.</source>
+            <translation>{n} fichier(s) de données liés de ce projet n'ont pas été trouvés.</translation>
         </message>
     </context>
     <context>

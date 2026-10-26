@@ -37,6 +37,7 @@ EXPECTED = {
             "MFD Prepare",
             "Metadata Editor",
             "PTO Inspector",
+            "Project data",
             "Split/Convert",
             "TTTR Inspector",
             "TTTR\u2192Time-Window BIDs",
@@ -85,7 +86,7 @@ EXPECTED = {
     },
     "Structure": {
         "Modelling": ["ChiMOL"],
-        "FRET": ["Docking & Screening", "FPS JSON Editor"],
+        "FRET": ["Docking & Screening"],
         "Computation": ["HydroPro", "QuEst"],
         "Trajectory": [
             "Align",

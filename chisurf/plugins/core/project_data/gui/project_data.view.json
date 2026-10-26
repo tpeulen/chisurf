@@ -1,0 +1,98 @@
+{
+  "_comment": "Project data, native emtk window: drawn by emtk.view_form over ProjectDataModel (gui/app.py), a LinkRepairModel (chisurf/core/project/link_repair.py). Guide and Help are drawn by gui/app.py; the folder and file choosers are its dialogs.",
+  "title": "Project data",
+  "window": {"width": 980, "height": 640},
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Data files",
+      "name": "files",
+      "description": "The data files the project links instead of copying, and whether each is found.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Choose what to look at: the open session, or the demonstration project.",
+          "buttons": [
+            {"action": "load_example", "label": "Load example", "icon": "🧪",
+             "description": "Open a demonstration project with three linked files, one of which was moved to a backup folder (and a different file of the same name left elsewhere)."},
+            {"action": "use_session", "label": "Open session",
+             "description": "Show the linked data of the project open in ChiSurf."},
+            {"action": "check_checksums", "label": "Check checksums",
+             "description": "Read every linked file and compare its SHA-256 with the recorded one; opening a project compares the sizes only. Runs in the background."}
+          ]
+        },
+        {"type": "info", "key": "source_text", "source": "source_text",
+         "description": "Which project the table shows."},
+        {"type": "info", "key": "summary", "source": "summary_text",
+         "description": "How many data files the project links, how many are embedded, found, and not found or changed."},
+        {
+          "type": "table", "key": "data_files", "source": "dataset_rows", "row_key": "uid",
+          "selected_call": "select_dataset", "tooltip_key": "problem", "height": 190, "stretch": 1, "min_height": 80,
+          "description": "One row per linked dataset: its name, whether its file is found, and where it is (or was). Select a missing one to locate it; hover a row for why it is not found.",
+          "columns": [
+            {"key": "name", "label": "Dataset", "min_width": 120, "description": "The dataset's name in the project."},
+            {"key": "state_label", "label": "State", "width": 120, "description": "found, embedded (stored in the project), missing, size changed or content changed."},
+            {"key": "shown", "label": "File", "min_width": 200, "description": "Where the file is, or where it was linked, relative to the project's folder; hover for the full path (or why it is not found)."}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Locate",
+      "name": "locate",
+      "description": "Find the moved original of the selected dataset.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Find the selected dataset's file.",
+          "buttons": [
+            {"action": "request_search", "label": "Search in folder…",
+             "description": "Choose a folder: every file below it with the dataset's file name is listed, those with the recorded size first. Nothing is read until you use one."},
+            {"action": "request_replace", "label": "Replace with…",
+             "description": "Choose the file to use instead (a moved or renamed original). Its size and checksum are compared with the recorded ones."},
+            {"action": "use_anyway", "label": "Use anyway", "role": "danger",
+             "description": "Use the file that was refused because its size or content differs. It becomes the dataset's file and its checksum is recorded; results computed from the old file may not match it."}
+          ]
+        },
+        {
+          "type": "table", "key": "candidates", "source": "candidate_rows", "row_key": "path",
+          "selected_call": "select_candidate", "tooltip_key": "path", "height": 110, "stretch": 1, "min_height": 52,
+          "description": "Files with the dataset's file name found by the folder search; the ones with the recorded size first.",
+          "columns": [
+            {"key": "shown", "label": "Candidate", "min_width": 240, "description": "A file with the same name, relative to the searched folder; hover for the full path."},
+            {"key": "match", "label": "Size", "width": 100, "description": "same size: may be the original (the checksum decides); other size: a different file."}
+          ]
+        },
+        {
+          "type": "button_row",
+          "description": "Use the chosen candidate.",
+          "buttons": [
+            {"action": "use_candidate", "label": "Use candidate", "role": "primary",
+             "description": "Link the dataset to the chosen candidate. Its checksum is compared with the recorded one first; a different file is refused (Use anyway accepts it)."}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Self-contained",
+      "name": "pack",
+      "description": "Store every linked file inside the project.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Make the project need no other file.",
+          "buttons": [
+            {"action": "make_self_contained", "label": "Make self-contained", "role": "primary",
+             "description": "Check every link, then store each linked file inside the project at its next save, so the project can be shared or deposited alone. Missing files must be located first. The project grows by the files' size."},
+            {"action": "save_project", "label": "Save project",
+             "description": "Write the demonstration (or another project opened here) back to its file. The open session is saved with File > Save Project."}
+          ]
+        },
+        {"type": "info", "key": "status", "source": "status_text",
+         "description": "What the last action did, and what is left to do."}
+      ]
+    }
+  ]
+}

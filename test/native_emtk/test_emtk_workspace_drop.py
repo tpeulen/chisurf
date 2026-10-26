@@ -47,8 +47,50 @@ def test_a_dropped_photon_file_is_linked_into_the_workspace(shell, tmp_path):  #
     driver.screenshot(SHOTS / "workspace_photon_drop.png")
 
 
-def test_add_as_offers_link_and_says_embedding_is_not_available_yet(shell):  # noqa: F811
+def test_add_as_embed_marks_the_dropped_file_embedded_and_the_menu_switches_it(
+    shell,  # noqa: F811
+    tmp_path,
+):
+    """Add as: Embed stores the file in the project; right-click switches a dataset either way."""
     options = dict(shell.data.datasets.import_mode_options())
     assert set(options) == {"link", "embed"}
-    assert "not available yet" in options["embed"]
     assert shell.data.datasets.import_mode == "link"
+    driver = Driver(shell, (1300, 900))
+    driver.frame(4)
+    shell.data.datasets.import_mode = "embed"
+    try:
+        target = tmp_path / "m001.spc"
+        shutil.copy(SPC, target)
+        assert shell.on_files_dropped([str(target)])
+        _settle(driver, lambda: _idle(shell) and _photon_rows(shell), "the photon dataset")
+    finally:
+        shell.data.datasets.import_mode = "link"
+    (row,) = _photon_rows(shell)
+    assert row["embedded"] and row["source"].startswith("📦")
+    shell.data.datasets.select_dataset(row)
+    assert shell.data.datasets.can_link() and not shell.data.datasets.can_embed()
+    shell.data.datasets.link_selected()  # not saved yet: simply linked again
+    _settle(driver, lambda: _idle(shell) and not _photon_rows(shell)[0]["embedded"], "relinked")
+    shell.data.datasets.select_dataset(_photon_rows(shell)[0])
+    assert shell.data.datasets.can_embed()
+    shell.data.datasets.embed_selected()
+    _settle(driver, lambda: _idle(shell) and _photon_rows(shell)[0]["embedded"], "embedded")
+
+
+def test_export_project_names_the_data_it_only_links(shell, tmp_path):  # noqa: F811
+    """Export Project… writes the copy and says which data stays outside it (not a block)."""
+    driver = Driver(shell, (1300, 900))
+    driver.frame(4)
+    target = tmp_path / "m002.spc"
+    shutil.copy(SPC, target)
+    assert shell.on_files_dropped([str(target)])
+    _settle(driver, lambda: _idle(shell) and _photon_rows(shell), "the photon dataset")
+    project = shell.project
+    project.save_as()
+    driver.frame(2)
+    assert project.file_dialog is not None and project.file_dialog.mode == "save"
+    exported = tmp_path / "exported.cs.pto"
+    project.choose_file(exported)
+    _settle(driver, lambda: _idle(shell) and exported.is_file(), "the export")
+    assert "links 1 data file(s) outside it (m002.spc)" in project.status
+    assert "Make Self-contained" in project.status

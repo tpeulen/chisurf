@@ -731,7 +731,7 @@ def _linked_record(dataset: Any) -> dict[str, Any]:
     return record
 
 
-def _restore_linked(record: dict[str, Any], project_dir: Any) -> Any:
+def _restore_linked(record: dict[str, Any], project_dir: Any, project_path: Any = None) -> Any:
     """Rebuild a linked dataset; a missing or changed file restores it marked unresolved, with why.
 
     Only the size is compared here (an autosave restores too and must never re-hash);
@@ -743,8 +743,10 @@ def _restore_linked(record: dict[str, Any], project_dir: Any) -> Any:
     link = record.get("link")
     if not isinstance(link, dict):
         raise ValueError("linked dataset has no link record")
-    resolution = resolve(link, project_dir)
+    resolution = resolve(link, project_dir, project_path=project_path)
     address = resolution.address or str(record.get("address", ""))
+    if resolution.ok and link.get("embedded") and link.get("member") and project_path is not None:
+        address = f"{address}/{link['member']}"  # a measurement container embedded whole
     common = {"link": link, "name": record.get("name", ""), "unique_identifier": record["uid"]}
     photons = record.get("photons")
     if record.get("data_kind") == "photons":
@@ -1682,7 +1684,11 @@ def restore_session(
             raise SessionCodecError(f"invalid dataset UID/record {uid!r}")
         if record["kind"] == "linked":
             try:
-                datasets[uid] = _restore_linked(record, getattr(project, "source_dir", None))
+                datasets[uid] = _restore_linked(
+                    record,
+                    getattr(project, "source_dir", None),
+                    getattr(project, "source_path", None),
+                )
             except Exception as exc:
                 raise SessionCodecError(f"cannot restore dataset {uid!r}: {exc}") from exc
             continue

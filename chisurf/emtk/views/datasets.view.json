@@ -4,7 +4,7 @@
     {"type": "choice", "attr": "kind_filter", "label": "Show", "options_source": "kind_options",
      "description": "Narrow the datasets to one kind of data: photon streams, decays, correlations, histograms, traces, burst runs, structures or images. A group stays while one of its members is of that kind."},
     {"type": "choice", "attr": "import_mode", "label": "Add as", "options_source": "import_mode_options",
-     "description": "How a photon file dropped on the window enters the project: linked (the file stays where it is; its path, size and checksum are recorded, so the project stays small) or embedded (copied into the project file)."},
+     "description": "How a photon file dropped on the window enters the project: linked (the file stays where it is; its path, size and checksum are recorded, so the project stays small) or embedded (copied into the project file at the next save, so the project is complete on its own). Right-click a dataset to switch it later."},
     {"type": "table", "source": "dataset_rows", "filter": true, "tooltip_key": "source_address", "row_key": "uid", "selected_call": "select_dataset", "selected_attr": "selected", "selection_attr": "selection",
      "tree_key": "parent",
      "context_menu": [
@@ -12,13 +12,16 @@
        {"label": "Load", "call": "load_dataset", "description": "Load a dataset saved with Save into the session."},
        {"label": "Remove", "call": "remove_selected_row", "enabled_when": "can_remove", "description": "Remove the selected datasets (a member of a group removes its group)."},
        {"separator": true},
+       {"label": "Embed in project", "call": "embed_selected", "enabled_when": "can_embed", "description": "Store the selected linked files inside the project file at the next save (checked against their recorded checksum first), so the project no longer needs them."},
+       {"label": "Link to file", "call": "link_selected", "enabled_when": "can_link", "description": "Write the selected embedded files back to where they were linked from and link them again; the project gets smaller at the next save."},
+       {"separator": true},
        {"label": "Group", "call": "group_datasets", "enabled_when": "can_group", "description": "Join the selected datasets into one group; a fit of the group has one curve per member."},
        {"label": "Ungroup", "call": "ungroup_datasets", "enabled_when": "can_ungroup", "description": "Split the selected groups back into their datasets."},
        {"separator": true},
        {"label": "Refresh", "call": "refresh_datasets", "description": "Read the dataset and fit lists from the session again."}
      ],
      "delete_call": "remove_dataset", "drag_call": "drag_dataset", "column_picker": true, "height": 170, "stretch": 1, "min_height": 52,
-     "description": "The loaded datasets. Select one (ctrl or shift-click for several) to add a fit to each; drag one onto a fit window to fit that dataset instead; Delete removes it; right-click for Save, Load, Remove, Group, Ungroup and Refresh; a group unfolds with its triangle. A narrow panel drops Experiment, then Source; right-click the header to choose the columns.",
+     "description": "The loaded datasets. Select one (ctrl or shift-click for several) to add a fit to each; drag one onto a fit window to fit that dataset instead; Delete removes it; right-click for Save, Load, Remove, Embed in project, Link to file, Group, Ungroup and Refresh; a 📦 before the source means the data is stored inside the project; a group unfolds with its triangle. A narrow panel drops Experiment, then Source; right-click the header to choose the columns.",
      "columns": [
        {"key": "number", "label": "#", "width": 44, "description": "Position of the dataset in the session; a member of a group is numbered under it (3.1, 3.2)."},
        {"key": "name", "label": "Data name", "min_width": 110, "description": "The dataset's name (its file name by default)."},

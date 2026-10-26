@@ -748,6 +748,15 @@ class EmtkShellApp(ImApp):
             return None
         return accepted(plugin_id, kind, self.catalog.get(plugin_id))
 
+    def show_project_data(self, mode: str) -> bool:
+        """Open the *Project data* tool on the session's linked data (*mode*: ``"locate"``,
+        ``"self_contained"`` or ``"check"``)."""
+        if "project_data" not in self.by_id:
+            self.status = tr("The Project data tool is not available.")
+            return False
+        self.hand_off("project_data", "project_data", {"mode": mode})
+        return True
+
     def hand_off(
         self,
         plugin_id: str,
@@ -1295,6 +1304,30 @@ class EmtkShellApp(ImApp):
                 "Ctrl+Shift+S",
                 tr("Project"),
                 tr("Save the project under a new .cs.pto file (save as)."),
+                has_session,
+            ),
+            MenuAction(
+                "make_self_contained",
+                tr("Make Self-contained…"),
+                lambda: self.show_project_data("self_contained"),
+                "",
+                tr("Project"),
+                tr(
+                    "Store every linked data file inside the project at its next save, so it can "
+                    "be shared or deposited alone (missing files are located first)."
+                ),
+                has_session,
+            ),
+            MenuAction(
+                "locate_missing_data",
+                tr("Locate Missing Data…"),
+                lambda: self.show_project_data("locate"),
+                "",
+                tr("Project"),
+                tr(
+                    "List the linked data files that were not found or have changed, and find the "
+                    "moved originals."
+                ),
                 has_session,
             ),
             MenuAction(

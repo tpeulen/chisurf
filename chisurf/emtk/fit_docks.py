@@ -71,11 +71,17 @@ def _kind_and_source(dto: dict) -> dict:
         # A linked file that is missing or changed: marked, and the tooltip says why.
         name = f"⚠ {name}"
         tooltip = f"{address}\n{dto.get('link_problem') or dto.get('link_status')}"
+    linked = dto.get("link_status") is not None
+    if dto.get("embedded"):
+        name = f"📦 {name}"  # stored inside the project
+        tooltip = f"{tooltip}\n{tr('Embedded in the project')}"
     return {
         "kind": kind,
         "kind_label": f"{found.icon} {tr(found.label)}" if found else "",
         "source": name,
         "source_address": tooltip,
+        "linked": linked,
+        "embedded": bool(dto.get("embedded")),
     }
 
 
@@ -178,22 +184,33 @@ class DatasetsModel:
 
     @import_mode.setter
     def import_mode(self, value: str) -> None:
-        from chisurf.core.project.links import EMBED_AVAILABLE
-
         self.docks.import_mode = value
-        if value == "embed" and not EMBED_AVAILABLE:
-            self.docks.status = tr(
-                "Embedding is not available yet: photon files are linked until it is."
-            )
 
     def import_mode_options(self) -> list:
-        """The *Add as* choices; embedding says honestly when it is not available yet."""
-        from chisurf.core.project.links import EMBED_AVAILABLE
+        """The *Add as* choices: link (the file stays where it is) or embed (copied into the project)."""
+        return [("link", tr("Link to the file")), ("embed", tr("Embed in the project"))]
 
-        embed = tr("Embed in the project")
-        if not EMBED_AVAILABLE:
-            embed = tr("Embed in the project (not available yet: linked)")
-        return [("link", tr("Link to the file")), ("embed", embed)]
+    def can_embed(self, record: Any = None) -> bool:
+        """*Embed in project* acts on selected linked datasets that are not embedded yet."""
+        rows = self.selected_rows()
+        return (
+            bool(rows)
+            and all(r.get("linked") and not r.get("embedded") for r in rows)
+            and not self.docks.busy
+        )
+
+    def can_link(self, record: Any = None) -> bool:
+        """*Link to file* acts on selected embedded datasets."""
+        rows = self.selected_rows()
+        return bool(rows) and all(r.get("embedded") for r in rows) and not self.docks.busy
+
+    def embed_selected(self, record: Any = None) -> None:
+        """Mark the selected linked datasets to be stored inside the project (checked by sha256)."""
+        self.docks.change_links([str(r["uid"]) for r in self.selected_rows()], embed=True)
+
+    def link_selected(self, record: Any = None) -> None:
+        """Write the selected embedded datasets back out to their files and link them again."""
+        self.docks.change_links([str(r["uid"]) for r in self.selected_rows()], embed=False)
 
     def dataset_rows(self) -> list:
         """The rows of the kind filter: a group stays when it or one of its members is of the kind."""
@@ -667,6 +684,11 @@ class DataDocks:
         self._job_queue: list[tuple[str, Callable[[], Any], Any, Any]] = []
         #: Running imports (hashing, header reads) beside the job queue, with their progress.
         self._imports: list[tuple[_Job, dict]] = []
+        self._link_jobs: list[_Job] = []
+        # The Project data tool finds the session's linked datasets here.
+        from chisurf.emtk.session_sources import register_source
+
+        register_source("project_links", self)
         docks = shell.docks
         docks.add_window(READ_KEY, mark("Read data"), self._draw_read, dock="left", closable=False)
         docks.add_window(
@@ -722,7 +744,7 @@ class DataDocks:
     @property
     def busy(self) -> bool:
         """Whether an API call is under way (or the session is still starting)."""
-        return self.job is not None or self._starting.busy
+        return self.job is not None or self._starting.busy or bool(self._link_jobs)
 
     def experiments(self) -> dict[str, Any]:
         return self.session.experiments() if self.session is not None else {}
@@ -774,6 +796,8 @@ class DataDocks:
                     self._start(next_label, next_call, next_after, next_failed)
         if self._imports:
             self._poll_imports()
+        if self._link_jobs:
+            self._poll_link_jobs()
         if self.session is not None:
             self.session.events.drain()
         if self._dirty and self.session is not None and self.job is None:
@@ -1650,6 +1674,85 @@ class DataDocks:
         cs_settings.setdefault("data_loading", {})["project_photons"] = value
         update_settings_section("data_loading", {"project_photons": value})
 
+    def project_path(self) -> Path | None:
+        """The ``.cs.pto`` the session was opened from or last saved to (embedded data lives there)."""
+        project = getattr(self.shell, "project", None)
+        path = getattr(getattr(project, "document", None), "path", None)
+        return Path(path) if path else None
+
+    def linked_datasets(self) -> list:
+        """The session's datasets that carry a link (photon streams, images, burst runs)."""
+        state = getattr(getattr(self.session, "server", None), "state", None)
+        return [d for d in list(getattr(state, "datasets", None) or ()) if hasattr(d, "link")]
+
+    def changed(self) -> None:
+        """Links changed elsewhere (the Project data tool): show them again."""
+        self.refresh()
+
+    refreshed = changed  # a link's state was checked again: the Source column shows it
+
+    def change_links(self, uids: list[str], *, embed: bool) -> bool:
+        """Embed the datasets *uids* in the project, or write them back out and link them again.
+
+        Embedding checks each file against its recorded sha256 first (it reads the whole file), so
+        it runs as a job beside the queue; the bytes go into the project at the next save. Linking
+        an embedded dataset writes it back to where it was linked from.
+        """
+        from chisurf.core.project import links
+
+        # The session's own dataset objects (as Save reads them), not the rows' copies.
+        targets = [d for d in map(self._live_dataset, uids) if d is not None and hasattr(d, "link")]
+        if not targets:
+            self.status = tr("Select linked datasets first.")
+            return False
+        project_path = self.project_path()
+        label = tr("Embedding in the project…") if embed else tr("Writing back to the files…")
+
+        def build() -> list[str]:
+            problems: list[str] = []
+            for dataset in targets:
+                try:
+                    if embed:
+                        directory = project_path.parent if project_path else None
+                        dataset.link = links.embed(dataset.link, directory)
+                    elif links.is_embedded(dataset.link):
+                        if project_path is None or not dataset.link.get("object"):
+                            # Not saved since it was embedded: the file it came from is still read.
+                            dataset.link = {
+                                k: v for k, v in dataset.link.items() if k != "embedded"
+                            }
+                        else:
+                            dataset.link = links.unembed(dataset.link, project_path)
+                            dataset.address = links.resolve(
+                                dataset.link, project_path.parent
+                            ).address
+                except Exception as exc:  # noqa: BLE001 - reported per dataset
+                    problems.append(f"{getattr(dataset, 'name', '')}: {exc}")
+            return problems
+
+        job = _Job(label, None, BackgroundBuild(wake=self.request_frame), None)
+        self._link_jobs.append(job)
+        job.build.start({"build": build}, name="chisurf-shell-links")
+        self.status = label
+        return True
+
+    def _poll_link_jobs(self) -> None:
+        for job in list(self._link_jobs):
+            results = job.build.collect()
+            if results is None:
+                continue
+            self._link_jobs.remove(job)
+            problems, error = results.get("build", (None, None))
+            if error is not None or problems:
+                self.status = tr("{label} failed: {error}").format(
+                    label=job.label.rstrip("…"), error=error or "; ".join(problems)
+                )
+            else:
+                self.status = tr("{label} done; save the project to keep it.").format(
+                    label=job.label.rstrip("…")
+                )
+            self.refresh()
+
     def import_paths(self, entries: list[tuple[str, str]]) -> bool:
         """Link photon files, containers' photon streams and burst runs, and images into the workspace.
 
@@ -1658,17 +1761,14 @@ class DataDocks:
         on the status line, so a multi-gigabyte file holds up nothing else. Only adding the finished
         datasets to the session goes through the queue (one API call at a time), through the API seam.
         """
-        from chisurf.core.project.links import EMBED_AVAILABLE
-
         if self.session is None or not entries:
             return False
         names = ", ".join(Path(path).name for _kind, path in entries[:3])
         more = "…" if len(entries) > 3 else ""
-        label = tr("Linking {names}{more}").format(names=names, more=more)
-        if self.import_mode == "embed" and not EMBED_AVAILABLE:
-            label = tr("Linking {names}{more} (embedding is not available yet)").format(
-                names=names, more=more
-            )
+        embed = self.import_mode == "embed"
+        label = (tr("Embedding {names}{more}") if embed else tr("Linking {names}{more}")).format(
+            names=names, more=more
+        )
         progress = {"name": "", "done": 0, "total": 0, "shown": 0.0}
         wake = self.request_frame
 
@@ -1710,6 +1810,9 @@ class DataDocks:
                         link = add_link(address, progress=advance)
                         hashed[container] = link
                         base += sizes.get(container, 0)
+                    if embed:
+                        # Hashed just now: stored in the project at the next save.
+                        link = {**link, "embedded": True}
                     if kind == "photons":
                         dataset = PhotonStreamDataset.from_address(address, link=link)
                     else:
