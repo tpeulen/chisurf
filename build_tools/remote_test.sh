@@ -35,15 +35,21 @@
 # Overlays: the ~/dev/<name> checkouts in CHISURF_REMOTE_OVERLAYS (default "emtk") are
 # mirrored like the siblings and put first on PYTHONPATH -- the workstation has them
 # installed editable, newer than pixi.lock (the lock moves at the release cut). Set
-# CHISURF_REMOTE_OVERLAYS= to test the locked env alone.
+# CHISURF_REMOTE_OVERLAYS= to test the locked env alone. Compiled overlays
+# (CHISURF_REMOTE_BUILT_OVERLAYS, default "imp.bff") are mirrored too, built once per
+# commit into ~/.cache/chisurf-remote/<name>/<sha> on the remote
+# (build_tools/remote_overlay_build.sh) and put first on PYTHONPATH.
+# Every run gets its own CHISURF_SETTINGS_DIR / MMFDB_SETTINGS_DIR under $RUN/settings.
 #
-# Environment: CHISURF_REMOTE_HOST (default: home), CHISURF_REMOTE_OVERLAYS.
+# Environment: CHISURF_REMOTE_HOST (default: home), CHISURF_REMOTE_OVERLAYS,
+# CHISURF_REMOTE_BUILT_OVERLAYS.
 
 set -euo pipefail
 
 HOST="${CHISURF_REMOTE_HOST:-home}"
 SUBMODULE="modules/ndxplorer"
 OVERLAYS="${CHISURF_REMOTE_OVERLAYS-emtk}"
+BUILT_OVERLAYS="${CHISURF_REMOTE_BUILT_OVERLAYS-imp.bff}"
 KEEP_REFS=20
 REPO="$(git -C "$(dirname "$0")/.." rev-parse --show-toplevel)"
 case "$REPO" in
@@ -140,6 +146,22 @@ cmd_start() {
         sibmeta="${sibmeta}overlay: $rel $ssha $sdirty (first on PYTHONPATH)"$'\n'
         pypath="${pypath:+$pypath:}\$HOME/$rel"
     done
+    # Compiled overlays: mirrored the same way, built once per commit on the remote
+    # (build_tools/remote_overlay_build.sh) and put first on PYTHONPATH.
+    local prepare=""
+    for name in $BUILT_OVERLAYS; do
+        top="$HOME/dev/$name"
+        [[ -d "$top/.git" ]] || continue
+        rel="dev/$name"
+        ssha="$(git -C "$top" rev-parse HEAD)"
+        sdirty="clean"; [[ -z "$(git -C "$top" status --porcelain --untracked-files=no)" ]] || sdirty="dirty (not sent)"
+        remote "[ -d $rel/.git ] || { mkdir -p $rel && git -C $rel init -q; }"
+        git -C "$top" push -q "$HOST:$rel" "+$ssha:refs/remote-test/$id"
+        siblings="$siblings $rel:$ssha"
+        sibmeta="${sibmeta}built overlay: $rel $ssha $sdirty (built, first on PYTHONPATH)"$'\n'
+        pypath="\$HOME/.cache/chisurf-remote/$name/$ssha/site${pypath:+:$pypath}"
+        prepare="${prepare:+$prepare && }bash \$HOME/$DIR/build_tools/remote_overlay_build.sh $name $ssha >/dev/null"
+    done
     local subsha=""
     if subsha="$(git rev-parse "$sha:$SUBMODULE" 2>/dev/null)"; then
         git -C "$SUBMODULE" push -q "$HOST:$DIR/$SUBMODULE" "+$subsha:refs/remote-test/$id"
@@ -184,8 +206,11 @@ CMD_EOF
 export PATH=\$HOME/.pixi/bin:/usr/local/bin:/usr/bin:/bin
 export RUN=\$RUN
 export PYTHONPATH=$pypath
+# per-run user state: nothing a run does lands in the remote's real ~/.chisurf
+export CHISURF_SETTINGS_DIR=\$RUN/settings MMFDB_SETTINGS_DIR=\$RUN/settings
 cd \$HOME/$DIR
-bash \$RUN/cmd.sh > \$RUN/log.txt 2>&1
+{ true ${prepare:+&& $prepare}; } > \$RUN/log.txt 2>&1 || { echo 1 > \$RUN/exit_code; date -Is > \$RUN/finished; exit 1; }
+bash \$RUN/cmd.sh >> \$RUN/log.txt 2>&1
 rc=\\\$?
 echo \\\$rc > \$RUN/exit_code
 date -Is > \$RUN/finished

@@ -92,7 +92,17 @@ so it survives a dropped ssh) and `start` refuses while another run is active â€
 suite at a time. Output (`meta.txt`, `log.txt`, `junit.xml`, `exit_code`) lands in
 `build/remote-test/<id>/` there and at the same path here after `fetch`. The remote
 gate uses the locked env (emtk from the lock), not the workstation's editable emtk â€”
-a run that needs newer emtk needs the relock first.
+the workstation's newer emtk and IMP.bff reach the run as overlays instead (below).
+
+Overlays: `~/dev/emtk` (CHISURF_REMOTE_OVERLAYS) is mirrored and put first on PYTHONPATH;
+`~/dev/imp.bff` (CHISURF_REMOTE_BUILT_OVERLAYS) is mirrored, built once per commit into
+`~/.cache/chisurf-remote/imp.bff/<sha>/site` with the test env's Python
+(`build_tools/remote_overlay_build.sh`, locked against concurrent builds, newest three kept) and
+put first on PYTHONPATH. Set either variable empty to test the locked env alone. Every run gets
+its own CHISURF_SETTINGS_DIR / MMFDB_SETTINGS_DIR under `$RUN/settings`. `--jobs N` on
+`build_tools/dev_utils/run_tests_chunked.py` runs N chunks at once (`--retry-serial` re-runs the
+failing ones alone; tests marked `timing` run in one serial chunk after the parallel pass);
+several runs may go at once on the same commit.
 
 # Single test
 
