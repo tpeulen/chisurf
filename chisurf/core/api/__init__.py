@@ -47,8 +47,12 @@ def _extract_curve_data(dataset: Any) -> dict[str, Any] | None:
             }
         return value
 
+    from chisurf.core.data import LinkedDataset
     from chisurf.core.structure import Structure
 
+    # A photon stream (or any file-backed dataset) travels as its link record, never its bytes.
+    if isinstance(dataset, LinkedDataset):
+        return _curve_record(dataset)
     if isinstance(dataset, DataGroup):
         if any(not isinstance(member, (DataCurve, Structure)) for member in dataset):
             return None

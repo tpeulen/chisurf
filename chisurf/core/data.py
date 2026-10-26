@@ -1132,6 +1132,144 @@ class ExperimentDataCurveGroup(ExperimentDataGroup[DataCurve], DataCurveGroup):
         super().__init__(*args, **kwargs)
 
 
+class LinkedDataset(ExperimentalData):
+    """A dataset whose data stays in a file (or a container member) the workspace points at.
+
+    It is never read into memory as a whole and never copied: the project keeps its
+    :mod:`link <chisurf.core.project.links>` (address, size, sha256). ``data_kind`` is what it is
+    (``"photons"``, ``"bursts"``, ``"image"`` — :mod:`chisurf.core.data_kinds`). After a project
+    is opened, ``link_status`` says whether the file was found and matches (``"ok"``), or why not;
+    ``link_problem`` is that sentence for the user.
+    """
+
+    data_kind = ""
+
+    def __init__(
+        self,
+        address: str,
+        *,
+        data_kind: str,
+        link: dict | None = None,
+        name: str | None = None,
+        unique_identifier: str | None = None,
+        **kwargs,
+    ):
+        self._address = str(address)
+        super().__init__(
+            filename="None",
+            embed_data=False,
+            name=name or pathlib.PurePath(self._address).name,
+            unique_identifier=unique_identifier,
+            **kwargs,
+        )
+        self.data_kind = str(data_kind)
+        if link is None:
+            from chisurf.core.project.links import add_link
+
+            link = add_link(self._address)
+        self.link: dict = dict(link)
+        self.link_status = "ok"
+        self.link_problem = ""
+
+    @property
+    def address(self) -> str:
+        """Where the data is read from: a file path or a container member's address."""
+        return self._address
+
+    @address.setter
+    def address(self, value: str) -> None:
+        self._address = str(value)
+
+    # The source shown and saved is the address; the file is never read into the dataset.
+    @property
+    def filename(self) -> str:
+        """The dataset's address (the workspace's Source column)."""
+        return getattr(self, "_address", "")
+
+    @filename.setter
+    def filename(self, value: str) -> None:
+        if value not in (None, "", "None"):
+            self._address = str(value)
+
+    @property
+    def resolved(self) -> bool:
+        """Whether the linked file was found and matches."""
+        return self.link_status == "ok"
+
+
+class PhotonStreamDataset(LinkedDataset):
+    """A single-photon (TTTR) stream in the workspace: the file stays where it is.
+
+    Holds what the workspace lists without opening the photons again — the tttr header (JSON), the
+    routing channels, the number of photons and the duration; :meth:`photons` opens the stream
+    lazily through :func:`chisurf.core.fio.staging.open_tttr` (cached, staged when slow).
+    """
+
+    data_kind = "photons"
+
+    def __init__(
+        self,
+        address: str,
+        *,
+        link: dict | None = None,
+        header_json: str = "",
+        channels: typing.Sequence[int] = (),
+        n_photons: int = 0,
+        duration_s: float = 0.0,
+        name: str | None = None,
+        unique_identifier: str | None = None,
+        **kwargs,
+    ):
+        super().__init__(
+            address,
+            data_kind="photons",
+            link=link,
+            name=name,
+            unique_identifier=unique_identifier,
+            **kwargs,
+        )
+        self.header_json = str(header_json or "")
+        self.channels = [int(c) for c in channels]
+        self.n_photons = int(n_photons)
+        self.duration_s = float(duration_s)
+        if self.header_json:
+            self.meta_data["tttr_header_json"] = self.header_json
+
+    @classmethod
+    def from_address(cls, address: str, **kwargs) -> PhotonStreamDataset:
+        """Import the photon stream at *address*: read its header and channels once, link the file."""
+        from chisurf.core.fio.staging import open_tttr
+
+        tttr = open_tttr(str(address))
+        try:
+            header_json = tttr.header.json
+        except Exception:
+            header_json = ""
+        routing = np.asarray(tttr.routing_channels)
+        macro = np.asarray(tttr.macro_times)
+        try:
+            resolution = float(tttr.header.macro_time_resolution)
+        except Exception:
+            resolution = 0.0
+        duration = float(macro[-1] - macro[0]) * resolution if macro.size > 1 else 0.0
+        return cls(
+            str(address),
+            header_json=header_json,
+            channels=sorted({int(c) for c in np.unique(routing)}),
+            n_photons=int(routing.size),
+            duration_s=duration,
+            **kwargs,
+        )
+
+    def photons(self):
+        """Open the photon stream (``tttrlib.TTTR``); refuses an unresolved link."""
+        if not self.resolved:
+            raise FileNotFoundError(self.link_problem or f"{self.address} is not available")
+        from chisurf.core.fio.staging import open_tttr
+
+        return open_tttr(self.address)
+
+
 def get_data(
     curve_type: str = "experiment",
     data_set: typing.List[chisurf.core.data.ExperimentalData] | None = None,

@@ -277,6 +277,10 @@ def _encoding_for(raw: Path) -> str:
 #: header in a ``.set`` beside it.
 _SIDECAR_SUFFIXES = {".spc": (".set",)}
 
+#: The same map, for callers outside this module that keep a primary and its companions together
+#: (a workspace link records an ``.spc``'s ``.set`` beside it).
+COMPANION_SUFFIXES = _SIDECAR_SUFFIXES
+
 #: Suffixes that only ever exist *beside* a primary instrument file, never as
 #: one on their own -- the flattened set of :data:`_SIDECAR_SUFFIXES`' values.
 #: A dropped/selected ``.set`` is never itself something to embed as a
@@ -735,6 +739,16 @@ class Measurement:
             Empty when the container has no instrument object at all.
         """
         return [obj.uid for obj in self._f.objects() if obj.kind in _PRIMARY_KINDS]
+
+    def photon_member_names(self) -> list[str]:
+        """Names of the photon streams in this container, in write order (one address each).
+
+        Returns
+        -------
+        list of str
+            ``measurement.pto/<name>`` opens each (:meth:`source`).
+        """
+        return [str(obj.name) for obj in self._f.objects() if obj.kind == "tttr_photon_stream"]
 
     def source(self, member: str = "") -> str:
         """Return a spec that opens the photon data, for ``open_tttr``.

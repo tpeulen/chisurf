@@ -69,6 +69,7 @@ def select_backend(mmfdb_settings: Mapping[str, Any] | None = None) -> str:
 def save_file(project: Project, path: str | Path) -> Path:
     """Atomically save and exactly read back a portable ``.cs.pto`` project."""
     target = _canonical_path(path)
+    project.relativize_links(target.parent)
     payload = project.to_dict()
     from .graph import capture_graph_session
 

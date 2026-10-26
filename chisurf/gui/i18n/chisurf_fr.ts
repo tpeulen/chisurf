@@ -71377,6 +71377,46 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
             <source>What the data is: photons, a decay, a correlation, a histogram, a trace, bursts, a structure or an image.</source>
             <translation type="unfinished"/>
         </message>
+        <message>
+            <source>No structure reader is available to read the dropped structure.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Linking {names}{more}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Linking {names}{more} (embedding is not available yet)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>{label}: {name} {percent:.0f} %</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Added {n}; not added: {problems}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Embedding is not available yet: photon files are linked until it is.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Embed in the project</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Embed in the project (not available yet: linked)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Link to the file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How a photon file dropped on the window enters the project: linked (the file stays where it is; its path, size and checksum are recorded, so the project stays small) or embedded (copied into the project file).</source>
+            <translation type="unfinished"/>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

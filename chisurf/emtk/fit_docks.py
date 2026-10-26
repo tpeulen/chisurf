@@ -66,11 +66,16 @@ def _kind_and_source(dto: dict) -> dict:
     found = KINDS.get(kind)
     address = str(dto.get("filename") or "")
     name = address.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1] if address else ""
+    tooltip = address
+    if dto.get("link_status") not in (None, "ok"):
+        # A linked file that is missing or changed: marked, and the tooltip says why.
+        name = f"⚠ {name}"
+        tooltip = f"{address}\n{dto.get('link_problem') or dto.get('link_status')}"
     return {
         "kind": kind,
         "kind_label": f"{found.icon} {tr(found.label)}" if found else "",
         "source": name,
-        "source_address": address,
+        "source_address": tooltip,
     }
 
 
@@ -165,6 +170,30 @@ class DatasetsModel:
         #: The kind the table is narrowed to (``""``: every kind), from the filter above it.
         self.kind_filter = ""
         self._shown: tuple = ((), _Rows())
+
+    @property
+    def import_mode(self) -> str:
+        """How dropped photon files enter the project (*Add as*): ``"link"`` or ``"embed"``."""
+        return self.docks.import_mode
+
+    @import_mode.setter
+    def import_mode(self, value: str) -> None:
+        from chisurf.core.project.links import EMBED_AVAILABLE
+
+        self.docks.import_mode = value
+        if value == "embed" and not EMBED_AVAILABLE:
+            self.docks.status = tr(
+                "Embedding is not available yet: photon files are linked until it is."
+            )
+
+    def import_mode_options(self) -> list:
+        """The *Add as* choices; embedding says honestly when it is not available yet."""
+        from chisurf.core.project.links import EMBED_AVAILABLE
+
+        embed = tr("Embed in the project")
+        if not EMBED_AVAILABLE:
+            embed = tr("Embed in the project (not available yet: linked)")
+        return [("link", tr("Link to the file")), ("embed", embed)]
 
     def dataset_rows(self) -> list:
         """The rows of the kind filter: a group stays when it or one of its members is of the kind."""
@@ -636,6 +665,8 @@ class DataDocks:
         self._starting = BackgroundBuild(wake=self.request_frame)
         self._session_factory = session_factory
         self._job_queue: list[tuple[str, Callable[[], Any], Any, Any]] = []
+        #: Running imports (hashing, header reads) beside the job queue, with their progress.
+        self._imports: list[tuple[_Job, dict]] = []
         docks = shell.docks
         docks.add_window(READ_KEY, mark("Read data"), self._draw_read, dock="left", closable=False)
         docks.add_window(
@@ -741,6 +772,8 @@ class DataDocks:
                 if self._job_queue and self.session is not None and self.job is None:
                     next_label, next_call, next_after, next_failed = self._job_queue.pop(0)
                     self._start(next_label, next_call, next_after, next_failed)
+        if self._imports:
+            self._poll_imports()
         if self.session is not None:
             self.session.events.drain()
         if self._dirty and self.session is not None and self.job is None:
@@ -1552,12 +1585,187 @@ class DataDocks:
         self.open_file_dialog(tr("Load a dataset"), mode="open", done=chosen)
 
     def drop(self, paths: list[str]) -> bool:
-        """Files dropped onto the shell: read the first with the selected file type."""
+        """Files dropped onto the shell enter the workspace by what they hold -- the one way in.
+
+        A project opens (after the unsaved-work question); photon files, measurement containers
+        (their photon streams and burst runs) and images are linked into the workspace on the
+        worker (hashing is done once, there); structures and curve files are read -- a structure
+        by the structure reader, a curve by the selected file type, as before.
+        """
         if not paths or self.session is None:
             return False
-        self.read.path = str(paths[0])
-        self.shell.docks.focus(READ_KEY)
-        return self.load(self.read.reader(), self.read.path)
+        from chisurf.core.fio.classify import classify
+
+        groups: dict[str, list[str]] = {}
+        for path in paths:
+            groups.setdefault(classify(path), []).append(str(path))
+        handled = False
+        if groups.get("project"):
+            project = getattr(self.shell, "project", None)
+            if project is not None:
+                handled = bool(project.open_recent(groups["project"][0])) or handled
+        linked = [
+            (kind, path)
+            for kind in ("photons", "container", "image")
+            for path in groups.get(kind, [])
+        ]
+        if linked:
+            handled = self.import_paths(linked) or handled
+        for path in groups.get("structure", []):
+            reader = self._structure_reader()
+            if reader is not None:
+                handled = self.load(reader, path) or handled
+        for index, path in enumerate(groups.get("curve", [])):
+            if index == 0:
+                self.read.path = path
+                self.shell.docks.focus(READ_KEY)
+            handled = self.load(self.read.reader(), path) or handled
+        return handled
+
+    def _structure_reader(self) -> Any:
+        """The structure reader of the experiments, for a dropped PDB/mmCIF."""
+        from chisurf.core.experiments.modelling.reader import StructureReader
+
+        for experiment in self.experiments().values():
+            for reader in getattr(experiment, "readers", ()):
+                if isinstance(reader, StructureReader):
+                    return reader
+        self.status = tr("No structure reader is available to read the dropped structure.")
+        return None
+
+    @property
+    def import_mode(self) -> str:
+        """How a dropped photon file enters the project: ``"link"`` (default) or ``"embed"``."""
+        from chisurf.core.settings import cs_settings
+
+        mode = str((cs_settings.get("data_loading") or {}).get("project_photons", "link"))
+        return mode if mode in ("link", "embed") else "link"
+
+    @import_mode.setter
+    def import_mode(self, value: str) -> None:
+        from chisurf.core.settings import cs_settings
+        from chisurf.core.settings.settings_utils import update_settings_section
+
+        value = value if value in ("link", "embed") else "link"
+        cs_settings.setdefault("data_loading", {})["project_photons"] = value
+        update_settings_section("data_loading", {"project_photons": value})
+
+    def import_paths(self, entries: list[tuple[str, str]]) -> bool:
+        """Link photon files, containers' photon streams and burst runs, and images into the workspace.
+
+        The expensive part -- hashing each file once (its link) and reading a photon stream's header
+        and channels -- runs as an import of its own, beside the shell's job queue, with its progress
+        on the status line, so a multi-gigabyte file holds up nothing else. Only adding the finished
+        datasets to the session goes through the queue (one API call at a time), through the API seam.
+        """
+        from chisurf.core.project.links import EMBED_AVAILABLE
+
+        if self.session is None or not entries:
+            return False
+        names = ", ".join(Path(path).name for _kind, path in entries[:3])
+        more = "…" if len(entries) > 3 else ""
+        label = tr("Linking {names}{more}").format(names=names, more=more)
+        if self.import_mode == "embed" and not EMBED_AVAILABLE:
+            label = tr("Linking {names}{more} (embedding is not available yet)").format(
+                names=names, more=more
+            )
+        progress = {"name": "", "done": 0, "total": 0, "shown": 0.0}
+        wake = self.request_frame
+
+        def build() -> tuple[list, list[str]]:
+            from chisurf.core.data import LinkedDataset, PhotonStreamDataset
+            from chisurf.core.fio.address import container_of, split_address
+            from chisurf.core.fio.classify import container_entries
+            from chisurf.core.project.links import add_link
+
+            items: list[tuple[str, str]] = []
+            problems: list[str] = []
+            for kind, path in entries:
+                try:
+                    items.extend(container_entries(path) if kind == "container" else [(kind, path)])
+                except Exception as exc:  # noqa: BLE001 - reported per file
+                    problems.append(f"{Path(path).name}: {exc}")
+            sizes = {}
+            for _kind, address in items:
+                container = container_of(address)
+                if container is not None and container.is_file():
+                    sizes[str(container)] = container.stat().st_size
+            progress["total"] = sum(sizes.values()) or 1
+            datasets, base, hashed = [], 0, {}
+            for kind, address in items:
+                progress["name"] = Path(address).name
+                container = str(container_of(address) or "")
+
+                def advance(done: int, base: int = base) -> None:
+                    progress["done"] = base + done
+                    if (progress["done"] - progress["shown"]) / progress["total"] > 0.01:
+                        progress["shown"] = progress["done"]
+                        wake()
+
+                try:
+                    if container in hashed:
+                        # Another stream of a container already hashed: the same file, once.
+                        link = {**hashed[container], "member": split_address(address)[1] or ""}
+                    else:
+                        link = add_link(address, progress=advance)
+                        hashed[container] = link
+                        base += sizes.get(container, 0)
+                    if kind == "photons":
+                        dataset = PhotonStreamDataset.from_address(address, link=link)
+                    else:
+                        dataset = LinkedDataset(address, data_kind=kind, link=link)
+                    datasets.append(dataset)
+                except Exception as exc:  # noqa: BLE001 - reported per file, the rest still go in
+                    problems.append(f"{Path(address).name}: {exc}")
+            return datasets, problems
+
+        job = _Job(label, None, BackgroundBuild(wake=self.request_frame), None)
+        self._imports.append((job, progress))
+        job.build.start({"build": build}, name="chisurf-shell-import")
+        self.status = label
+        return True
+
+    def _poll_imports(self) -> None:
+        """Show the running imports' progress; hand finished ones to the queue to be added."""
+        for item in list(self._imports):
+            job, progress = item
+            results = job.build.collect()
+            if results is None:
+                if progress["total"]:
+                    percent = 100.0 * progress["done"] / progress["total"]
+                    self.status = tr("{label}: {name} {percent:.0f} %").format(
+                        label=job.label.rstrip("…"), name=progress["name"], percent=percent
+                    )
+                continue
+            self._imports.remove(item)
+            (datasets, problems), error = results.get("build", ((None, None), None))
+            if error is not None:
+                self.status = tr("{label} failed: {error}").format(label=job.label, error=error)
+                _log.error("%s failed: %s", job.label, error)
+                continue
+            if problems and not datasets:
+                self.status = tr("{label} failed: {error}").format(
+                    label=job.label, error="; ".join(problems)
+                )
+                continue
+            api = self.session.api if self.session is not None else None
+            if api is None:
+                continue
+
+            def add(datasets=datasets) -> dict:
+                for dataset in datasets:
+                    result = api.load_dataset(dataset=dataset)
+                    if isinstance(result, dict) and result.get("ok") is False:
+                        return result
+                return {"ok": True}
+
+            def after(_result: Any, problems=problems) -> None:
+                if problems:
+                    self.status = tr("Added {n}; not added: {problems}").format(
+                        n=len(datasets), problems="; ".join(problems)
+                    )
+
+            self._start(job.label, add, after)
 
     # -- fit windows --------------------------------------------------------------- #
     def _retitle(self, uid: str, title: str) -> None:

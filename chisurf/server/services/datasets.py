@@ -117,6 +117,11 @@ def _dataset_dto(
         # plugin declares the kinds it takes (chisurf.core.data_kinds); "" when it has none.
         "kind": "" if empty_group else str(kind_of(dataset) or ""),
     }
+    # A linked dataset (chisurf.core.project.links) says whether its file was found and matches.
+    link_status = getattr(dataset, "link_status", None)
+    if link_status is not None:
+        dto["link_status"] = str(link_status)
+        dto["link_problem"] = str(getattr(dataset, "link_problem", "") or "")
     if include_length:
         dto["length"] = (
             None
@@ -308,6 +313,19 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
             raise ValueError("cached group metadata contradicts its UID")
         _scientific_value(metadata)
         return {**payload, "members": prepared, "metadata": metadata}
+    if kind == "linked":
+        # A dataset whose data stays in a file: its address and link (chisurf.core.project.links),
+        # never arrays; the server rebuilds it without reading or hashing the file.
+        if not isinstance(payload.get("uid"), str) or not payload["uid"]:
+            raise ValueError("cached linked dataset UID is missing")
+        if not isinstance(payload.get("link"), dict) or not isinstance(payload.get("address"), str):
+            raise ValueError("cached linked dataset needs its address and link")
+        if payload.get("data_kind") == "photons" and not isinstance(payload.get("photons"), dict):
+            raise ValueError("cached photon dataset needs its photon summary")
+        metadata = _restore_scientific_value(payload.get("metadata", {}))
+        if not isinstance(metadata, dict):
+            raise ValueError("cached linked dataset metadata must be an object")
+        return {**copy.deepcopy(payload), "kind": kind, "reader_inputs": {}}
     if kind not in {"curve", "structure", "legacy"}:
         raise ValueError("unsupported cached dataset kind")
     arrays = {}
@@ -499,6 +517,13 @@ def _restore_cached_dataset(
 
     def construct(record):
         """Restore the known curve/group and reader-IRF edges without reading data."""
+        if record["kind"] == "linked":
+            from chisurf.core.project.session import _restore_linked
+
+            uid = record["uid"]
+            if uid not in curves:
+                curves[uid] = _restore_linked(record, None)
+            return curves[uid]
         if record["kind"] == "group":
             members = [construct(member) for member in record["members"]]
             group_class = {

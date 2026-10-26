@@ -19,6 +19,10 @@ data_loading:
   # which is what makes .pto the format ChiSurf works in rather than one it can
   # also write. Off means a vendor file is read where it lies.
   import_to_container: true
+  # How a photon file dropped into the workspace enters the project: 'link' keeps the
+  # project slim (the file stays where it is; path, size and sha256 are recorded),
+  # 'embed' copies it into the .cs.pto. The Datasets panel's "Add as" choice sets it.
+  project_photons: link
   # Files smaller than this are read where they are; staging a small file costs
   # more than it saves.
   min_size: 33554432          # 32 MiB

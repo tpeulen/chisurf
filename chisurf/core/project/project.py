@@ -217,6 +217,8 @@ class Project:
     dependency_edges: list[dict[str, Any]] = field(default_factory=list)
     parameters: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     resources: ResourceContext = field(default_factory=ResourceContext, repr=False, compare=False)
+    #: The folder the project was opened from: linked datasets resolve against it (not saved).
+    source_dir: pathlib.Path | None = field(default=None, repr=False, compare=False)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert this project into a deterministic JSON-serializable dictionary."""
@@ -309,6 +311,19 @@ class Project:
         uids = [str(fit["uid"]) for fit in self.fits if fit.get("uid")]
         return sorted(uids)
 
+    def relativize_links(self, project_dir: PathLike) -> None:
+        """Record each linked dataset's file relative to *project_dir*, where the project is saved.
+
+        A project moved together with its measurements then finds them again
+        (:mod:`chisurf.core.project.links`). No file is read or hashed here.
+        """
+        from .links import relativize
+
+        for record in self.datasets.values():
+            if isinstance(record, dict) and record.get("kind") == "linked":
+                if isinstance(record.get("link"), dict):
+                    record["link"] = relativize(record["link"], project_dir)
+
     def save_to_archive(self, archive, graph_session_bytes: bytes | None = None) -> None:
         """Add the portable project record to an assembled PTO project.
 
@@ -350,6 +365,7 @@ class Project:
         Path to the saved ``.cs.pto`` project.
         """
         project_path = _project_output_path(target_path)
+        self.relativize_links(project_path.parent)
         archive = ProjectArchive()
         self.save_to_archive(archive, graph_session_bytes)
         return archive.save(project_path)
@@ -376,6 +392,8 @@ class Project:
         data = _validate_project_payload(data)
         archive.close()
         project = cls.from_dict(data)
+        # Linked datasets resolve against the folder the project was opened from.
+        project.source_dir = project_path.parent
         project.resources = ResourceContext(
             {
                 name: archive.read_bytes(name)

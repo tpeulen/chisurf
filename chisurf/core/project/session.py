@@ -706,9 +706,72 @@ def _restore_scientific_value(value: Any) -> Any:
     return {k: _restore_scientific_value(v) for k, v in value.items()}
 
 
+def _linked_record(dataset: Any) -> dict[str, Any]:
+    """The record of a dataset whose data stays in a file: its address and link, never its bytes."""
+    from chisurf.core.data import PhotonStreamDataset
+
+    record: dict[str, Any] = {
+        "uid": _uid(dataset, "dataset"),
+        "kind": "linked",
+        "data_kind": str(dataset.data_kind),
+        "name": str(getattr(dataset, "name", "")),
+        "address": str(dataset.address),
+        "link": _json_value(dict(dataset.link)),
+        "metadata": _scientific_value(
+            {k: v for k, v in (getattr(dataset, "meta_data", {}) or {}).items()}
+        ),
+    }
+    if isinstance(dataset, PhotonStreamDataset):
+        record["photons"] = {
+            "header_json": dataset.header_json,
+            "channels": list(dataset.channels),
+            "n_photons": int(dataset.n_photons),
+            "duration_s": float(dataset.duration_s),
+        }
+    return record
+
+
+def _restore_linked(record: dict[str, Any], project_dir: Any) -> Any:
+    """Rebuild a linked dataset; a missing or changed file restores it marked unresolved, with why.
+
+    Only the size is compared here (an autosave restores too and must never re-hash);
+    :func:`chisurf.core.project.links.verify` compares the sha256 on demand.
+    """
+    from chisurf.core.data import LinkedDataset, PhotonStreamDataset
+    from chisurf.core.project.links import resolve
+
+    link = record.get("link")
+    if not isinstance(link, dict):
+        raise ValueError("linked dataset has no link record")
+    resolution = resolve(link, project_dir)
+    address = resolution.address or str(record.get("address", ""))
+    common = {"link": link, "name": record.get("name", ""), "unique_identifier": record["uid"]}
+    photons = record.get("photons")
+    if record.get("data_kind") == "photons":
+        if not isinstance(photons, dict):
+            raise ValueError("photon dataset record has no photon summary")
+        dataset = PhotonStreamDataset(
+            address,
+            header_json=str(photons.get("header_json", "")),
+            channels=[int(c) for c in photons.get("channels", [])],
+            n_photons=int(photons.get("n_photons", 0)),
+            duration_s=float(photons.get("duration_s", 0.0)),
+            **common,
+        )
+    else:
+        dataset = LinkedDataset(address, data_kind=str(record.get("data_kind", "")), **common)
+    dataset.meta_data.update(_restore_scientific_value(record.get("metadata") or {}))
+    dataset.link_status = resolution.status
+    dataset.link_problem = resolution.reason
+    return dataset
+
+
 def _curve_record(curve: Any) -> dict[str, Any]:
+    from chisurf.core.data import LinkedDataset
     from chisurf.core.structure import Structure
 
+    if isinstance(curve, LinkedDataset):
+        return _linked_record(curve)
     is_structure = isinstance(curve, Structure)
     required = ("x", "y", "ex", "ey", "mask")
     if not is_structure and any(not hasattr(curve, key) for key in required):
@@ -1258,7 +1321,7 @@ def _validate_project_graph(project: Project) -> None:
         if (
             not isinstance(dataset, dict)
             or dataset.get("uid") != uid
-            or dataset.get("kind") not in {"curve", "structure"}
+            or dataset.get("kind") not in {"curve", "structure", "linked"}
         ):
             raise SessionCodecError(f"invalid dataset UID/record {uid!r}")
         metadata = _restore_scientific_value(dataset.get("metadata"))
@@ -1614,9 +1677,15 @@ def restore_session(
         if (
             not isinstance(record, dict)
             or uid != record.get("uid")
-            or record.get("kind") not in {"curve", "structure"}
+            or record.get("kind") not in {"curve", "structure", "linked"}
         ):
             raise SessionCodecError(f"invalid dataset UID/record {uid!r}")
+        if record["kind"] == "linked":
+            try:
+                datasets[uid] = _restore_linked(record, getattr(project, "source_dir", None))
+            except Exception as exc:
+                raise SessionCodecError(f"cannot restore dataset {uid!r}: {exc}") from exc
+            continue
         try:
             arrays = {
                 key: np.asarray(value["values"], dtype=value.get("dtype"))
