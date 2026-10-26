@@ -63,6 +63,9 @@ class HandoffSpec:
     summary: str = ""
     #: Payload keys the receiver needs; a request without one is refused before anything opens.
     required: list[str] = field(default_factory=list)
+    #: What this kind takes from the Datasets workspace
+    #: (:class:`chisurf.core.plugin.workspace_input.WorkspaceInput`); ``None``: not fed from it.
+    from_workspace: Any = None
 
 
 @dataclass
@@ -281,6 +284,7 @@ class PluginManifest:
                     receive=a["receive"],
                     summary=tr(a.get("summary", "")),
                     required=list(a.get("required", [])),
+                    from_workspace=_parse_workspace_input(a.get("from_workspace")),
                 )
                 for a in data.get("accepts", [])
             ],
@@ -512,6 +516,27 @@ def build_manifest_schema() -> dict:
             "name": {"type": "string", "pattern": r"^[a-z][a-z0-9_]*$"},
             "receive": {"type": "string", "pattern": CALLABLE_PATTERN},
             "required": {"type": "array", "items": {"type": "string"}},
+            # What this kind takes from the Datasets workspace (chisurf.core.plugin.workspace_input).
+            "from_workspace": {
+                "type": "object",
+                "description": (
+                    "What this hand-off kind takes from the Datasets workspace "
+                    "(chisurf.core.plugin.workspace_input)."
+                ),
+                "properties": {
+                    "kinds": {"type": "array", "items": {"type": "string"}},
+                    "experiments": {"type": "array", "items": {"type": "string"}},
+                    "representations": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["photons", "intensity"]},
+                    },
+                    "many": {"type": "boolean"},
+                    "key": {"type": "string", "minLength": 1},
+                    "with_setup": {"type": "boolean"},
+                    "defaults": {"type": "object"},
+                },
+                "additionalProperties": False,
+            },
         },
         "required": ["name", "receive"],
         "additionalProperties": False,
@@ -969,7 +994,30 @@ def _validate_accepts(data: dict[str, Any]) -> list[str]:
         required = spec.get("required", [])
         if not isinstance(required, list) or any(not isinstance(k, str) for k in required):
             errors.append(f"{prefix}.required must be an array of strings")
+        if "from_workspace" in spec:
+            from chisurf.core.plugin.workspace_input import validate
+
+            raw = spec["from_workspace"]
+            errors.extend(validate(raw, f"{prefix}.from_workspace"))
+            if isinstance(raw, dict) and isinstance(required, list):
+                provided = {str(raw.get("key") or "address"), "datasets", "setup"}
+                provided |= set((raw.get("defaults") or {}) if isinstance(raw.get("defaults"), dict) else ())
+                missing = [k for k in required if k not in provided]
+                if missing:
+                    errors.append(
+                        f"{prefix}.required names {missing}, which the workspace does not provide: "
+                        "give them a 'defaults' value in from_workspace or drop them from required"
+                    )
     return errors
+
+
+def _parse_workspace_input(raw: Any) -> Any:
+    """The parsed ``from_workspace`` of an ``accepts`` entry (``None`` when absent)."""
+    if raw is None:
+        return None
+    from chisurf.core.plugin.workspace_input import parse
+
+    return parse(raw)
 
 
 def _validate_field_shapes(data: dict[str, Any]) -> list[str]:

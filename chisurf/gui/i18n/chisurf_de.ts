@@ -17839,7 +17839,7 @@ Das größte reduzierte χ², das beim gewählten Konfidenzniveau noch mit dem �
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8580" />
             <source>Setup</source>
-            <translation>Aufbau</translation>
+            <translation>Einstellung</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8599" />
@@ -19452,7 +19452,7 @@ Das Speichern einer LUT-Datei oder einer settings.tttr.json (Reiter ②) ist opt
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2459" />
             <source>photons</source>
-            <translation type="obsolete">Photonen</translation>
+            <translation>Photonen</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="11555" />
@@ -71742,6 +71742,70 @@ fortgesetzt werden.
         <message>
             <source>(temporary — not saved)</source>
             <translation>(temporär — nicht gespeichert)</translation>
+        </message>
+        <message>
+            <source>Open in {tool}</source>
+            <translation>In {tool} öffnen</translation>
+        </message>
+        <message>
+            <source>Open in…</source>
+            <translation>Öffnen in…</translation>
+        </message>
+        <message>
+            <source>Give the selected data to {tool}.</source>
+            <translation>Die ausgewählten Daten an {tool} übergeben.</translation>
+        </message>
+        <message>
+            <source>{tool} does not take this data.</source>
+            <translation>{tool} nimmt diese Daten nicht.</translation>
+        </message>
+        <message>
+            <source>{name} → {tool}</source>
+            <translation>{name} → {tool}</translation>
+        </message>
+        <message>
+            <source>{name}: not accepted by {tool}</source>
+            <translation>{name}: von {tool} nicht angenommen</translation>
+        </message>
+        <message>
+            <source>Which experiment is {name}? Choose it in Read data.</source>
+            <translation>Zu welchem Experiment gehört {name}? Wählen Sie es unter Daten lesen.</translation>
+        </message>
+        <message>
+            <source>Use selected</source>
+            <translation>Auswahl verwenden</translation>
+        </message>
+        <message>
+            <source>Pick what this tool works on.</source>
+            <translation>Wählen Sie, womit dieses Werkzeug arbeitet.</translation>
+        </message>
+        <message>
+            <source>Nothing in the workspace yet: drop files on the ChiSurf window to add data.</source>
+            <translation>Noch nichts im Arbeitsbereich: Dateien auf das ChiSurf-Fenster ziehen, um Daten hinzuzufügen.</translation>
+        </message>
+        <message>
+            <source>No trace: pick a photon stream in the Input section (drop files on ChiSurf to add them).</source>
+            <translation>Keine Spur: einen Photonenstrom im Abschnitt Eingabe wählen (Dateien auf ChiSurf ziehen, um sie hinzuzufügen).</translation>
+        </message>
+        <message>
+            <source>Burst run: {run}</source>
+            <translation>Burst-Lauf: {run}</translation>
+        </message>
+        <message>
+            <source>none picked</source>
+            <translation>keiner gewählt</translation>
+        </message>
+        <message>
+            <source>Single photon counting</source>
+            <translation>Einzelphotonenzählung</translation>
+        </message>
+        <message>
+            <source>Instrument setup</source>
+            <translation>Geräteeinstellung</translation>
+        </message>
+        <message>
+            <source>intensity</source>
+            <translation>Intensität</translation>
         </message>
     </context>
     <context>

@@ -138,6 +138,12 @@ If a section exists without a matching `experiment_types:` entry, ChiSurf still
 creates an `Experiment` for it, so adding a new experiment section works even if
 you forget the registry entry.
 
+Three sections carry no models at all: `photon_counting` (*Single photon
+counting*: photon streams and their burst runs), `imaging` (*Imaging*: photon and
+intensity images) and `instrument_setup` (*Instrument setup*). Their readers link
+a file into the workspace instead of reading it into memory
+(`chisurf.core.experiments.linked`); tools analyse that data, models do not fit it.
+
 ---
 
 ## 3. Turning a plain function into a model

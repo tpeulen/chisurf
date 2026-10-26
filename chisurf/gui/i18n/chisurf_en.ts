@@ -3873,7 +3873,7 @@ The preview updates live as you edit.</source>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4419" />
             <source>Input</source>
-            <translation type="unfinished" />
+            <translation>Input</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4420" />
@@ -6988,7 +6988,7 @@ The preview updates live as you edit.</source>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8580" />
             <source>Setup</source>
-            <translation type="unfinished" />
+            <translation>Setup</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8599" />
@@ -21883,7 +21883,7 @@ Features:
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2377" />
             <source>Data name</source>
-            <translation type="unfinished" />
+            <translation>Data name</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2379" />
@@ -57491,7 +57491,7 @@ Disable for exact outer product.</source>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4333" />
             <source>Imaging</source>
-            <translation type="unfinished" />
+            <translation>Imaging</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4336" />
@@ -60798,6 +60798,74 @@ so a run started here can be finished anywhere.
         <message>
             <source>Preloading modules</source>
             <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Open in {tool}</source>
+            <translation>Open in {tool}</translation>
+        </message>
+        <message>
+            <source>Open in…</source>
+            <translation>Open in…</translation>
+        </message>
+        <message>
+            <source>Give the selected data to {tool}.</source>
+            <translation>Give the selected data to {tool}.</translation>
+        </message>
+        <message>
+            <source>{tool} does not take this data.</source>
+            <translation>{tool} does not take this data.</translation>
+        </message>
+        <message>
+            <source>{name} → {tool}</source>
+            <translation>{name} → {tool}</translation>
+        </message>
+        <message>
+            <source>{name}: not accepted by {tool}</source>
+            <translation>{name}: not accepted by {tool}</translation>
+        </message>
+        <message>
+            <source>Which experiment is {name}? Choose it in Read data.</source>
+            <translation>Which experiment is {name}? Choose it in Read data.</translation>
+        </message>
+        <message>
+            <source>Use selected</source>
+            <translation>Use selected</translation>
+        </message>
+        <message>
+            <source>Pick what this tool works on.</source>
+            <translation>Pick what this tool works on.</translation>
+        </message>
+        <message>
+            <source>Nothing in the workspace yet: drop files on the ChiSurf window to add data.</source>
+            <translation>Nothing in the workspace yet: drop files on the ChiSurf window to add data.</translation>
+        </message>
+        <message>
+            <source>No trace: pick a photon stream in the Input section (drop files on ChiSurf to add them).</source>
+            <translation>No trace: pick a photon stream in the Input section (drop files on ChiSurf to add them).</translation>
+        </message>
+        <message>
+            <source>Burst run: {run}</source>
+            <translation>Burst run: {run}</translation>
+        </message>
+        <message>
+            <source>none picked</source>
+            <translation>none picked</translation>
+        </message>
+        <message>
+            <source>Single photon counting</source>
+            <translation>Single photon counting</translation>
+        </message>
+        <message>
+            <source>Instrument setup</source>
+            <translation>Instrument setup</translation>
+        </message>
+        <message>
+            <source>photons</source>
+            <translation>photons</translation>
+        </message>
+        <message>
+            <source>intensity</source>
+            <translation>intensity</translation>
         </message>
     </context>
 </TS>

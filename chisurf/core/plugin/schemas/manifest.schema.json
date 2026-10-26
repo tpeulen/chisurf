@@ -322,6 +322,48 @@
           "items": {
             "type": "string"
           }
+        },
+        "from_workspace": {
+          "type": "object",
+          "description": "What this hand-off kind takes from the Datasets workspace (chisurf.core.plugin.workspace_input).",
+          "properties": {
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "experiments": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "representations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "photons",
+                  "intensity"
+                ]
+              }
+            },
+            "many": {
+              "type": "boolean"
+            },
+            "key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "with_setup": {
+              "type": "boolean"
+            },
+            "defaults": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "required": [

@@ -27,6 +27,22 @@ Every action taken in the interface has an equivalent in the shell, and is echoe
 
 **Fig.5 The data list after an import.** The four files of the IBH sample read with the settings of Fig.4, each with its index, name and data type. Dropping files from a file browser onto this list reads them the same way, with the current reader.
 
+## One way in: dropping files
+
+Files dropped on the ChiSurf window enter the **Datasets workspace** by what they hold, and every tool picks
+its data there (its **Input** section, *Open in…* on a row, or dragging a row onto the tool) — no tool asks
+for an input file. The experiments of the workspace:
+
+| Experiment | What it holds | How a dropped file becomes one |
+|---|---|---|
+| **TCSPC**, **FCS**, … (the fitted experiments) | curves read into the session | read by the file type chosen in *Read data*; with none chosen, by the one the file names: lag times spread over decades are a correlation (FCS), a linear time axis or one column of counts a decay (TCSPC), and a `# #dt` / `# #l1` footer sets the channel width and the stacked VV/VH pair |
+| **Single photon counting** | photon streams (`photons`); the burst runs found in them (`bursts`) | a TTTR file or a measurement container (`.pto`) is *linked* (or embedded, by *Add as*); a container's burst runs show as **child rows** of its photon stream |
+| **Imaging** | photon images (photons with a position, the image built on demand) and intensity images (frames, stacks) | a PTU/PHU with an image header is a photon image, a TIFF an intensity image; the row says which |
+| **Instrument setup** | detector/channel setups, look-up tables, kinetic schemes, IRF and background patterns | `.lut`, `.npz`/`.npy`, and JSON with setup keys (`detectors`, `channels`, `scheme`, …) |
+
+What a tool writes goes back into the workspace the same way: a burst run, a BVA table, a fitted decay, a
+saved trace — each a child row of the dataset it was computed from.
+
 Alternatively, files can be opened programmatically using the shell:
 
 ```

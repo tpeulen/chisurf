@@ -489,6 +489,92 @@ and `table`; used by the Trace Browser (HMM/TW/NDX), H2MM (dwells → ndX), Burs
 Selection (→ ndX, through `open_path_in_ndxplorer`) and the sampling
 diagnostics page (`open_in_ndx`). Test: `test/core/test_plugin_handoff.py`.
 
+### 3.1.5 How a plugin takes its input (`from_workspace`)
+
+Data enters ChiSurf one way: files dropped on the window become rows of the
+**Datasets workspace** (and so of the project). A plugin never asks for an input
+file — no input `FileDialog`, no drop hook, no MMFDB picker handing it a local
+path. It **declares** what it takes on an `accepts` entry, and the host does the
+rest:
+
+```json
+"accepts": [
+  {"name": "decays",
+   "summary": "Fit a decay with its instrument response.",
+   "receive": "chisurf.plugins.fluorescence_decay.lltf.gui.app:receive_decays",
+   "required": ["decays"],
+   "from_workspace": {"kinds": ["decay"], "many": true, "key": "decays"}}
+]
+```
+
+`from_workspace` keys (schema: `manifest.schema.json` `$defs.handoff`):
+
+| key | meaning |
+|---|---|
+| `kinds` | data kinds taken (`chisurf.core.data_kinds`: `photons`, `bursts`, `decay`, `correlation`, `image`, `setup`, …) |
+| `experiments` | or by experiment name (`"TCSPC"`, `"Single photon counting"`, …); a row matches either |
+| `representations` | images only: `photons` and/or `intensity` |
+| `many` | several rows at once (a list under `key`) or exactly one |
+| `key` | the payload key the addresses go under (default `address`) |
+| `with_setup` | also take one `setup` row; its address travels as `setup` |
+| `defaults` | constant payload values, so a `required` key the workspace cannot give is still met |
+
+The manifest validator refuses a `required` key that neither `key`, `datasets`,
+`setup` nor `defaults` provides.
+
+**Payload values are addresses**: a file, a member of a container
+(`m000.pto/runBursts#1`), or `@<uid>` for a curve that lives in the session
+(resolve with `workspace_input.resolve_dataset`, or `read_address` for a linked
+dataset's local read path). `datasets` carries the rows' uids — keep the first
+as the source of what you write back.
+
+What the host builds from the declaration:
+
+* **Open in…** on a Datasets row lists the plugins whose declaration matches the
+  selected rows; **dragging rows onto a plugin** feeds it (the drag label reads
+  "*name* → *tool*" or "not accepted"). Both call
+  `EmtkShellApp.feed_from_workspace(plugin_id, rows)` → `hand_off` → your
+  `receive(app, payload)`.
+* The **Input section** — a table of the workspace rows the plugin takes —
+  generated from the declaration (`chisurf.core.plugin.workspace_input`):
+  * a view-spec plugin splices it in: `with_workspace_input(spec, inputs)` (first
+    section, once), with `inputs = spec_for(manifest)[1]`;
+  * a hand-drawn plugin draws `{"sections": [input_section(inputs)]}` with
+    `emtk.view_form.draw_form`;
+  * the form model inherits `WorkspaceInputMixin` and sets
+    `workspace_input_plugin = "<id>"` and `workspace_input_app = <app>`; a pick
+    calls your receive hook exactly as *Open in…* does. Set
+    `workspace_input_on_used` to the tour's `notify_used` so a guided-tour step
+    targeting `workspace_input_rows` can await the pick.
+
+**Results go back** through the API seam: `register_result(result, kind=...,
+result_of=source_uid, name=...)` takes a dataset object (a computed curve; set
+`data_kind`) or an address the tool wrote (a burst run, a table member of a
+container, an image, a setup file), and the workspace shows it as a child row of
+the dataset it came from.
+
+**Migration recipe** (one plugin; worked examples: `intensity_trace` — photons,
+view spec; `burst_bva` — burst runs, hand-drawn; `lltf` — decays from the
+session, written for a command line):
+
+1. Declare `accepts[].from_workspace`; make `receive` take an address (a
+   container member as well as a file) and remember `payload["datasets"][0]`.
+2. Remove the input buttons, input `FileDialog`s (a save dialog stays; give it a
+   literal `mode="save"`) and the drop hook (`files_dropped`, `on_files_dropped`,
+   `on_paths_dropped`, `take_drop`).
+3. Splice or draw the Input section; mix `WorkspaceInputMixin` into the form model.
+4. `register_result` what the tool writes, with `result_of`.
+5. Point the guide step that said "press Load…" at `workspace_input_rows`, and
+   reword help and status texts.
+6. Strike the plugin's lines from `test/input_file_dialog_allowlist.txt`.
+   `test/test_no_input_file_dialogs.py` fails on a new input route **and** on a
+   stale line; a dialog that is not an input (repairing a link, choosing an output
+   directory) carries `# not-input: <reason>` and its file is named with that reason in
+   the guard's `NOT_INPUT`.
+7. Tests feed the plugin from the workspace (`register_result(path, kind=...)`,
+   then a click on the row or *Use selected*), fail on any input dialog, and assert
+   the result row's `result_of`; render the window fed this way and read the PNG.
+
 ### 3.2 Schema files
 
 Plugin schemas live under `schemas/` and are JSON Schema draft-07 files referenced from the manifest:

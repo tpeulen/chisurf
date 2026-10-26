@@ -83,14 +83,42 @@ def _kind_and_source(dto: dict) -> dict:
     if dto.get("embedded"):
         name = f"📦 {name}"  # stored inside the project
         tooltip = f"{tooltip}\n{tr('Embedded in the project')}"
+    label = f"{found.icon} {tr(found.label)}" if found else ""
+    representation = str(dto.get("representation") or "")
+    if label and representation:
+        # An image says which it is: photon events with a position, or intensity frames.
+        label = f"{label} · {tr(representation)}"
+    from chisurf.core.plugin.workspace_input import address_of
+
     return {
+        "address": address_of(dto),
         "kind": kind,
-        "kind_label": f"{found.icon} {tr(found.label)}" if found else "",
+        "kind_label": label,
+        "representation": representation,
         "source": name,
         "source_address": tooltip,
         "linked": linked,
         "embedded": bool(dto.get("embedded")),
     }
+
+
+def _results_under_sources(tree: _Rows, listed: list) -> _Rows:
+    """Move each result row (a burst run of a photon stream: ``result_of`` in its DTO) under its
+    source dataset's row, as that row's child, right after it and its other children."""
+    result_of = {str(d.get("uid", "")): str(d.get("result_of") or "") for d in listed}
+    uids = {str(r.get("uid")) for r in tree}
+    moved = [r for r in tree if result_of.get(str(r.get("uid"))) in uids]
+    if not moved:
+        return tree
+    out = _Rows(r for r in tree if r not in moved)
+    for row in moved:
+        parent = result_of[str(row["uid"])]
+        row["parent"] = parent
+        at = next(i for i, r in enumerate(out) if str(r.get("uid")) == parent)
+        while at + 1 < len(out) and str(out[at + 1].get("parent")) == parent:
+            at += 1
+        out.insert(at + 1, row)
+    return out
 
 
 def _number(value: Any) -> float | None:
@@ -112,6 +140,19 @@ class ReadDataModel:
         self.experiment = ""
         self.setup = ""
         self.path = ""
+
+    @property
+    def import_mode(self) -> str:
+        """How read or dropped data enters the project (*Add as*): ``"link"`` or ``"embed"``."""
+        return self.docks.import_mode
+
+    @import_mode.setter
+    def import_mode(self, value: str) -> None:
+        self.docks.import_mode = value
+
+    def import_mode_options(self) -> list:
+        """The *Add as* choices: link (the file stays where it is) or embed (copied into the project)."""
+        return [("link", tr("Link to the file")), ("embed", tr("Embed in the project"))]
 
     def experiment_names(self) -> list[str]:
         """The visible experiments."""
@@ -184,19 +225,6 @@ class DatasetsModel:
         #: The kind the table is narrowed to (``""``: every kind), from the filter above it.
         self.kind_filter = ""
         self._shown: tuple = ((), _Rows())
-
-    @property
-    def import_mode(self) -> str:
-        """How dropped photon files enter the project (*Add as*): ``"link"`` or ``"embed"``."""
-        return self.docks.import_mode
-
-    @import_mode.setter
-    def import_mode(self, value: str) -> None:
-        self.docks.import_mode = value
-
-    def import_mode_options(self) -> list:
-        """The *Add as* choices: link (the file stays where it is) or embed (copied into the project)."""
-        return [("link", tr("Link to the file")), ("embed", tr("Embed in the project"))]
 
     def can_embed(self, record: Any = None) -> bool:
         """*Embed in project* acts on selected linked datasets that are not embedded yet."""
@@ -428,6 +456,31 @@ class DatasetsModel:
         if rows:
             self.docks.remove_datasets([str(r["uid"]) for r in rows])
             self.selected, self.selection = {}, []
+
+    def open_in_items(self, record: Any = None) -> list:
+        """The context menu's *Open in…* entries: one per tool that takes the selected rows
+        (their manifests' ``from_workspace``); picking one feeds the tool from the workspace."""
+        rows = self._feed_rows(record)
+        shell = self.docks.shell
+        if not rows or not hasattr(shell, "tools_for_rows"):
+            return []
+        return [
+            {
+                "label": tr("Open in {tool}").format(tool=tr(label)),
+                "call": (lambda _row, pid=plugin_id: shell.feed_from_workspace(pid, rows)),
+                "description": tr("Give the selected data to {tool}.").format(tool=tr(label)),
+            }
+            for plugin_id, label in shell.tools_for_rows(rows)
+        ]
+
+    def _feed_rows(self, record: Any = None) -> list:
+        """The rows a feed hands over: the selection (members included), else the row clicked."""
+        chosen = [r for r in self.selection if isinstance(r, dict) and r.get("uid")]
+        if isinstance(record, dict) and record.get("uid") and not any(
+            str(r["uid"]) == str(record["uid"]) for r in chosen
+        ):
+            chosen = [record]
+        return [r for r in chosen if r.get("kind")]
 
     def drag_dataset(self, record: Any, x: float, y: float, dropped: bool) -> None:
         """A dataset row dragged out of the table; dropped on a fit window, the fit takes it."""
@@ -993,6 +1046,7 @@ class DataDocks:
                                 "group": False,
                             }
                         )
+                tree = _results_under_sources(tree, listed)
                 tree.revision = self.datasets.datasets.revision + 1
                 self.datasets.datasets = tree
                 self._lengths = {}
@@ -1675,8 +1729,32 @@ class DataDocks:
             if index == 0:
                 self.read.path = path
                 self.shell.docks.focus(READ_KEY)
-            handled = self.load(self.read.reader(), path) or handled
+            handled = self.load(self._curve_reader(path), path) or handled
         return handled
+
+    def _curve_reader(self, path: str) -> Any:
+        """The reader of a dropped curve: the one the file names
+        (:func:`chisurf.core.fio.classify.curve_reader`), set up as the file shows it, and then shown
+        in the Read data panel -- unless the panel has another experiment chosen, which wins."""
+        from chisurf.core.fio.classify import curve_reader
+
+        chosen = self.read.reader()
+        found = curve_reader(path)
+        if found is None or found[0] not in self.experiments() or (
+            chosen is not None and self.read.experiment != found[0]
+        ):
+            if chosen is None:
+                self.status = tr("Which experiment is {name}? Choose it in Read data.").format(
+                    name=Path(path).name
+                )
+            return chosen
+        experiment, setup, settings = found
+        self.read.experiment, self.read.setup = experiment, setup
+        reader = self.read.reader()
+        for key, value in settings.items():
+            if reader is not None and hasattr(reader, key):
+                setattr(reader, key, value)
+        return reader
 
     def _structure_reader(self) -> Any:
         """The structure reader of the experiments, for a dropped PDB/mmCIF."""
@@ -2029,6 +2107,7 @@ class DataDocks:
                     sizes[str(container)] = container.stat().st_size
             progress["total"] = sum(sizes.values()) or 1
             datasets, base, hashed = [], 0, {}
+            streams: dict[str, Any] = {}  # container -> its (first) photon dataset
             for kind, address in items:
                 progress["name"] = Path(address).name
                 container = str(container_of(address) or "")
@@ -2053,13 +2132,22 @@ class DataDocks:
                     # Read by the experiment that reads the kind (chisurf.core.experiments.linked),
                     # so the dataset carries its experiment like any other.
                     reader = reader_for_kind(kind)
-                    if reader is not None:
+                    if reader is not None and kind == "bursts":
+                        # A burst run is a result of its container's photon stream: its child.
+                        parent = streams.get(container)
+                        dataset = reader.make_dataset(
+                            address, link=link, result_of=str(parent.unique_identifier) if parent else ""
+                        )
+                        dataset.data_reader = reader
+                    elif reader is not None:
                         dataset = reader.make_dataset(address, link=link)
                         dataset.data_reader = reader
                     elif kind == "photons":
                         dataset = PhotonStreamDataset.from_address(address, link=link)
                     else:
                         dataset = LinkedDataset(address, data_kind=kind, link=link)
+                    if kind == "photons":
+                        streams.setdefault(container, dataset)
                     datasets.append(dataset)
                 except Exception as exc:  # noqa: BLE001 - reported per file, the rest still go in
                     problems.append(f"{Path(address).name}: {exc}")
@@ -2374,24 +2462,43 @@ class DataDocks:
             return
         self.dragged = None
         uid = self.window_at(x, y)
+        if row and not uid and row.get("experiment") != "Global":
+            self._feed_dragged(row, x, y)
+            return
         if not row or not uid or row.get("experiment") == "Global":
             return
         self.show_fit(uid)
         self.current_uid = uid
         self.attach_dataset(row)
 
+    def _feed_dragged(self, row: dict, x: float, y: float) -> None:
+        """Rows dropped on a tool (not a fit window): the tool takes them from the workspace."""
+        tool = getattr(self.shell, "tool_at", lambda *_: None)(x, y)
+        if not tool or not hasattr(self.shell, "feed_from_workspace"):
+            return
+        self.shell.feed_from_workspace(tool, self.datasets._feed_rows(row))
+
+    def _drag_target(self, row: dict, x: float, y: float) -> str:
+        """What a drop at (x, y) would do, said beside the pointer: a fit, a tool, or nothing."""
+        target = self.window_at(x, y)
+        name = str(row.get("name", ""))
+        if target:
+            return tr("{name} → {fit}").format(name=name, fit=self.windows[target].title)
+        tool = getattr(self.shell, "tool_at", lambda *_: None)(x, y)
+        if not tool:
+            return name
+        label = tr(self.shell.by_id[tool].label) if tool in getattr(self.shell, "by_id", {}) else tool
+        offered = {pid for pid, _ in self.shell.tools_for_rows(self.datasets._feed_rows(row))}
+        if tool in offered:
+            return tr("{name} → {tool}").format(name=name, tool=label)
+        return tr("{name}: not accepted by {tool}").format(name=name, tool=label)
+
     def _draw_drag(self) -> None:
         """The dragged dataset's name under the pointer, and the fit it would go to."""
         if self.dragged is None:
             return
         row, x, y = self.dragged
-        target = self.window_at(x, y)
-        name = str(row.get("name", ""))
-        text = (
-            tr("{name} → {fit}").format(name=name, fit=self.windows[target].title)
-            if target
-            else name
-        )
+        text = self._drag_target(row, x, y)
         draw = im.get_foreground_draw_list()
         w, h = im.calc_text_size(text)[:2]
         style = im.get_style()

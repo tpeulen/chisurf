@@ -212,6 +212,27 @@ payload)` opens its target by manifest id, so in a module that imports
 (trace_browser -> ndxplorer is one). That is what the guardrail test compares
 the manifests against, so a declaration cannot drift from the code.
 
+# How a plugin takes its input
+
+One way in (owner 2026-10-26: "the user does not open files; one file entry point in the UI"): files
+dropped on the shell become Datasets-workspace rows (`chisurf.emtk.fit_docks.DataDocks.drop`, sorted by
+`chisurf.core.fio.classify`; curves by `classify.curve_reader` when no file type is chosen), and a plugin
+takes its input from the workspace, never from a file dialog or a drop of its own.
+
+* **Declaration.** `accepts[].from_workspace = {kinds, experiments, representations, many, key, with_setup,
+  defaults}` on the existing hand-off (`HandoffSpec.from_workspace`, validated by `_validate_accepts`, parsed
+  by `chisurf.core.plugin.workspace_input`). Payload values are addresses (file, container member, `@<uid>`).
+* **Host.** `EmtkShellApp.feed_from_workspace(plugin_id, rows)` builds the payload and calls `hand_off`;
+  the Datasets view's *Open in…* menu (emtk `table_menu` `items_source`) and drags onto a tool use it.
+* **Input section.** Generated from the declaration (`input_section`, `with_workspace_input`) over
+  `WorkspaceInputMixin`; a pick is the same hand-off.
+* **Results.** `register_result(..., result_of=uid)` adds what a tool wrote as a child row of its source.
+* **Guard.** `test/test_no_input_file_dialogs.py` (AST scan of plugin GUI code for input dialogs, drop
+  hooks, `DatasetPicker`) against the shrinking `test/input_file_dialog_allowlist.txt`; `# not-input:`
+  dialogs only in files the guard's `NOT_INPUT` names with a reason (link repair, output directory).
+* **Recipe and worked examples** (intensity_trace, burst_bva, lltf): [plugin architecture
+  §3.1.5](../../docs/development/plugin_architecture.md); design: [data workspace](../specs/data-workspace.md).
+
 # The plugin manager
 
 `chisurf/plugins/core/plugin_manager/` is the panel users see this through, and

@@ -22,6 +22,13 @@ from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
 from chisurf.core.fio.decimate import thin_for_plot
+from chisurf.core.plugin.workspace_input import (
+    WorkspaceInputMixin,
+    read_address,
+    register_result,
+    spec_for,
+    with_workspace_input,
+)
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -33,7 +40,6 @@ from ..model import IntensityTraceModel, dwell_histograms
 HERE = Path(__file__).resolve().parent
 PLUGIN = HERE.parent
 ROUTING = "Routing channels"
-TTTR_FILTER = "TTTR files (*.ptu *.ht3 *.spc *.hdf *.h5 *.hdf5 *.pto);;All files (*)"
 CSV_FILTER = "CSV files (*.csv);;All files (*)"
 STATE_COLOURS = [
     (0, 114, 178, 255),
@@ -57,11 +63,15 @@ def _setups() -> dict:
         return {"setups": {}}
 
 
-class _Form:
-    """What the spec reads and writes: the model's fields, the app's settings and actions."""
+class _Form(WorkspaceInputMixin):
+    """What the spec reads and writes: the model's fields, the app's settings and actions; the
+    Input section's rows are the workspace's photon streams (:class:`WorkspaceInputMixin`)."""
+
+    workspace_input_plugin = "intensity_trace"
 
     def __init__(self, app):
         object.__setattr__(self, "_app", app)
+        object.__setattr__(self, "workspace_input_app", app)
 
     def __getattr__(self, name):
         app = self._app
@@ -71,7 +81,9 @@ class _Form:
 
     def __setattr__(self, name, value):
         app = self._app
-        if name in ("setup_name", "dwell_min", "dwell_max", "dwell_bins", "dwell_normalize"):
+        if "workspace_input" in name:  # the Input section's own state
+            object.__setattr__(self, name, value)
+        elif name in ("setup_name", "dwell_min", "dwell_max", "dwell_bins", "dwell_normalize"):
             setattr(app, name, value)
         else:
             setattr(app.model, name, value)
@@ -80,7 +92,7 @@ class _Form:
         app, m = self._app, self._app.model
         if name == "request_cancel":
             return app.busy and app._cancellable and not app._cancel_event.is_set()
-        if name in ("request_help", "request_guide", "request_load", "load_example"):
+        if name in ("request_help", "request_guide", "load_example"):
             return not app.busy
         if name in ("request_matrix", "request_dwell", "request_fret"):
             return m.states is not None and not (name == "request_fret" and m.fret is None)
@@ -100,9 +112,6 @@ class _Form:
     def window_changed(self, _value=None):
         self._app.rebin()
 
-    def request_load(self):
-        self._app.ask("Open TTTR File", "open", TTTR_FILTER, lambda p: self._app.open_file(p[0]))
-
     def load_example(self):
         """Open the known switching sample with two states and 2 ms bins."""
         from ..demo import demo_folder, make_demo
@@ -115,8 +124,8 @@ class _Form:
         self._app.docks.focus("setup")
 
     def request_save_traces(self):
-        self._app.ask(
-            "Save Traces", "save", CSV_FILTER, lambda p: self._app.save_traces(p[0]), "traces.csv"
+        self._app.ask_save(
+            "Save Traces", CSV_FILTER, lambda p: self._app.save_traces(p[0]), "traces.csv"
         )
 
     def request_hmm(self):
@@ -139,9 +148,8 @@ class _Form:
         self._app.show_result("FRET Distributions")
 
     def request_save_dwell(self):
-        self._app.ask(
+        self._app.ask_save(
             "Save Dwell Time Histograms and Fits",
-            "save",
             CSV_FILTER,
             lambda p: self._app.save_dwell(p[0]),
             "dwell_times.csv",
@@ -173,7 +181,9 @@ class IntensityTraceApp(ImApp):
             False,
         )
         self.bics: list = []
-        self.status = "Load a TTTR file."
+        self.status = "Pick a photon stream in the Input section."
+        #: The workspace dataset the trace is of: what the tool writes registers as its child.
+        self.source_uid = ""
         self.tab = "Processing"
         self.result = RESULTS[0]
         self.item_rects: dict = {}
@@ -187,6 +197,10 @@ class IntensityTraceApp(ImApp):
         raw_spec = json.loads((HERE / "intensity_trace.view.json").read_text(encoding="utf-8"))
         self.window_size = shared_window_size(raw_spec, (1100, 720))
         self.spec = raw_spec["panels"]
+        # The input is the workspace's photon streams, as the manifest declares (accepts[].from_workspace).
+        found = spec_for(json.loads((PLUGIN / "manifest.json").read_text(encoding="utf-8")))
+        if found is not None:
+            self.spec["file"] = with_workspace_input(self.spec["file"], found[1])
         self.form_model = _Form(self)
         self.forms = {name: FormState(on_used=self._used) for name in self.spec}
         self.forms["processing"].custom["detectors"] = self._draw_detectors
@@ -317,6 +331,7 @@ class IntensityTraceApp(ImApp):
             # The fit is now complete; writing its outputs is a separate step.
             self._cancellable = False
             base = self.model.export()
+            self._register(base / "traces" / f"{Path(self.model.path).stem}_traces.csv")
             return f"{msg}. Written to {base.name}/"
 
         self.tab = "HMM"
@@ -344,7 +359,18 @@ class IntensityTraceApp(ImApp):
     def save_traces(self, path: str) -> None:
         if not str(path).endswith(".csv"):
             path = f"{path}.csv"
-        self.status = f"Saved {Path(self.model.save_traces(path)).name}"
+        saved = Path(self.model.save_traces(path))
+        self._register(saved)
+        self.status = f"Saved {saved.name}"
+
+    def _register(self, path: Path) -> None:
+        """The traces the tool wrote enter the workspace as a child of the photon stream."""
+        try:
+            register_result(str(path), kind="trace", result_of=self.source_uid, name=path.name)
+        except Exception:  # noqa: BLE001 - the file is written; the workspace row is a convenience
+            import logging
+
+            logging.getLogger(__name__).exception("registering %s in the workspace failed", path)
 
     def save_dwell(self, path: str) -> None:
         if not str(path).endswith(".csv"):
@@ -366,15 +392,9 @@ class IntensityTraceApp(ImApp):
                     f.write(f"{state},A,{fit[0]}\n{state},tau,{fit[1]}\n")
         self.status = f"Saved {Path(path).name}"
 
-    def on_files_dropped(self, paths) -> bool:
-        for p in paths:
-            if Path(str(p)).is_file():
-                self.open_file(str(p))
-                return True
-        return False
-
-    def ask(self, title, mode, filters, on_pick, filename=""):
-        self.dialog = FileDialog(title, mode=mode, filters=filters, filename=filename)
+    def ask_save(self, title, filters, on_pick, filename=""):
+        """Where to write an output (the input comes from the workspace, never a dialog)."""
+        self.dialog = FileDialog(title, mode="save", filters=filters, filename=filename)
         self.dialog_window = DialogWindow(title, size=(720, 520))
         self._on_pick = on_pick
 
@@ -442,7 +462,7 @@ class IntensityTraceApp(ImApp):
     def _draw_traces_locked(self, box) -> None:
         m = self.model
         if not m.loaded:
-            im.text_wrapped(tr("No trace: load a TTTR file (Load TTTR, or drop one here)."))
+            im.text_wrapped(tr("No trace: pick a photon stream in the Input section (drop files on ChiSurf to add them)."))
             self.item_rects["traces"] = tuple(box)
             return
         rows = [(label, m.counts[:, i]) for i, label in enumerate(m.labels)] + [("Sum", m.total)]
@@ -708,22 +728,28 @@ def make_app(**_kwargs) -> IntensityTraceApp:
 def receive_trace(app: IntensityTraceApp, payload: dict) -> None:
     """Hand-off receiver (manifest ``accepts`` ``tttr_trace``): read and bin ``payload["file"]``.
 
-    ``window_ms`` sets the bin window; a ``setup_settings`` with detectors replaces the routing
+    ``file`` is an address -- a TTTR file or a photon stream of a container -- as the workspace's
+    Input section, *Open in…* or a drag from the Datasets view hands it (``datasets``: its uid).
+    ``window_ms``, when given, sets the bin window; a ``setup_settings`` with detectors replaces the routing
     setup (its detectors all selected), as the requester had them. The file is read on the app's
     worker (``app.wait()`` joins it).
     """
-    path = Path(str(payload["file"]))
-    if not path.is_file():
-        raise FileNotFoundError(f"{path} does not exist")
+    from chisurf.core.fio.address import container_of
+
+    address = read_address(str(payload["file"]))
+    if not container_of(address).is_file():
+        raise FileNotFoundError(f"{address} does not exist")
     if app.busy:
         raise RuntimeError(tr("the tool is busy; try again when it has finished"))
-    app.model.window_ms = float(payload["window_ms"])
+    if payload.get("window_ms") is not None:  # from the workspace: the window the tool has
+        app.model.window_ms = float(payload["window_ms"])
+    app.source_uid = str((payload.get("datasets") or [""])[0])
     setup = payload.get("setup_settings")
     if isinstance(setup, dict) and setup.get("detectors"):
         app.model.setup = setup
         app.model.selected = []
         app.setup_name = str(setup.get("setup_name") or "Edited setup")
-    app.open_file(str(path))
+    app.open_file(address)
 
 
 __all__ = ["IntensityTraceApp", "make_app", "receive_trace"]

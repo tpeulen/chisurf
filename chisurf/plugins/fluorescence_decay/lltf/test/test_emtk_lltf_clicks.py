@@ -1,6 +1,7 @@
 """Click coverage of the native Lazy Lifetime Analysis: every control operated with pointer, keys, wheel and host drops.
 
-Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` and the host's drop hook (``on_paths_dropped``) reach
+Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` (the decay and IRF picked in the Input section from
+the Datasets workspace -- no input dialog, no drop hook) reach
 the window; the fit is the real LLTF command line on the shipped example (a subprocess, ~15 s), the assertions read what is
 drawn, the model and the files written.
 """
@@ -14,6 +15,7 @@ import sys
 import time
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
@@ -41,9 +43,50 @@ def hermetic(tmp_path, monkeypatch):
     monkeypatch.setenv("MPLBACKEND", "Agg")
 
 
+@pytest.fixture(autouse=True)
+def workspace():
+    """The session's dataset list, restored afterwards (it is process-wide)."""
+    from chisurf.core.api import dataset_container
+
+    held = dataset_container()
+    before = list(held)
+    yield held
+    held[:] = before
+
+
+def no_input_dialog(monkeypatch):
+    """Any dialog but a save or the output-directory dialog fails the test."""
+    from chisurf.plugins.fluorescence_decay.lltf.gui import app as app_module
+
+    real = app_module.FileDialog
+
+    def guarded(title, mode="open", **kwargs):
+        assert mode == "save" or title == "Output directory", f"an input dialog opened: {title!r}"
+        return real(title, mode=mode, **kwargs)
+
+    monkeypatch.setattr(app_module, "FileDialog", guarded)
+
+
 class Ui(_Ui):
-    def drop(self, *paths):
-        self.app.on_paths_dropped([str(p) for p in paths])
+    def give(self, *paths):
+        """Hand data over as a user does: curves into the workspace (what the shell's drop does),
+        selected in the Input section, *Use selected*; a configuration and an output folder through
+        the model (the editor and *Select...*)."""
+        from chisurf.core.plugin.workspace_input import register_result
+
+        curves = []
+        for path in map(Path, paths):
+            if path.is_dir():
+                self.app.model.output_dir = str(path)
+            elif path.suffix in (".yml", ".yaml"):
+                self.app.error(lambda p=path: self.app.model.load_config(str(p)))
+            else:
+                curves.append(register_result(str(path), kind="decay").unique_identifier)
+        if curves:
+            self.draw(2)
+            rows = {r["uid"]: r for r in self.app.input.workspace_input_rows()}
+            self.app.input.workspace_input_selection = [rows[uid] for uid in curves]
+            self.click("workspace_input_use")
         return self.draw(3)
 
     def settle(self, timeout=300.0):
@@ -81,7 +124,7 @@ def ui(tmp_path):
 
 @pytest.fixture
 def ready(ui):
-    ui.drop(DECAY, IRF)
+    ui.give(DECAY, IRF)
     ui.app.model.output_dir = str(ui.out)
     ui.draw(2)
     return ui
@@ -93,7 +136,7 @@ def fitted(tmp_path_factory):
     os.environ["MPLBACKEND"] = "Agg"
     out = tmp_path_factory.mktemp("lltf_fit")
     ui = Ui(LLTFApp(), SIZE)
-    ui.drop(DECAY, IRF)
+    ui.give(DECAY, IRF)
     ui.app.model.output_dir = str(out)
     ui.type_into("n_lifetimes", "2")
     ui.click("Fit")
@@ -104,7 +147,7 @@ def fitted(tmp_path_factory):
 
 
 def test_the_idle_window_offers_only_what_can_act(ui):
-    assert ui.shown("Load decay and IRF files, configure the fit, then run analysis.")
+    assert ui.shown("Pick the decay and its IRF in the Input section, configure the fit, then run")
     ui.click("Fit")
     assert ui.app.model.process is None and ui.app.model.result is None
     assert ui.shown("Fit plots appear after a successful analysis.")
@@ -137,35 +180,32 @@ def test_no_tour_card_button_is_dead_on_any_step():
     assert dead_tour_buttons(LLTFApp, SIZE) == []
 
 
-@pytest.mark.parametrize(
-    "button,title,expected", [("Load...", "Load decay", DECAY), ("load_irf", "Load IRF", IRF)]
-)
-def test_the_load_buttons_open_a_filtered_dialog_and_every_way_out_works(
-    ui, button, title, expected
-):
-    ui.click(button)
-    ui.app.dialog.directory = str(EXAMPLE)
-    ui.draw(3)
-    assert (
-        ui.dialog_open
-        and ui.shown(title)
-        and ui.shown(expected.name)
-        and not ui.shown("config.yml")
-    )
-    ui.press_text("Open")
-    assert ui.dialog_open and ui.shown("Select a file first.")
-    ui.press_text("Cancel")
-    assert not ui.dialog_open
-    ui.click(button)
-    ui.press_text("×")
-    assert not ui.dialog_open
-    ui.click(button)
-    ui.app.dialog.directory = str(EXAMPLE)
-    ui.draw(3)
-    ui.press_text(expected.name)
-    ui.press_text("Open")
-    attr = "decay_file" if button == "Load..." else "irf_file"
-    assert getattr(ui.app.model, attr) == str(expected) and ui.shown(expected.name)
+def test_the_decay_and_irf_come_from_the_workspace_not_a_dialog_or_a_drop(ui, monkeypatch):
+    no_input_dialog(monkeypatch)
+    assert not hasattr(ui.app, "on_paths_dropped")
+    assert not {"Load...", "load_irf", "load_vh", "load_irf_vh"} & set(ui.app.item_rects)
+    assert ui.shown("Nothing in the workspace yet: drop files on the ChiSurf window to add")
+    ui.give(DECAY, IRF)
+    m = ui.app.model
+    assert (m.decay_file, m.irf_file) == (str(DECAY), str(IRF))
+    assert ui.shown("Using 5-44_D0.dat, IRF_D0.dat")
+    decay_uid = next(r["uid"] for r in ui.app.input.workspace_input_rows() if r["name"] == DECAY.name)
+    assert ui.app.source_uid == decay_uid
+
+
+def test_a_curve_that_lives_in_the_session_is_written_for_the_command_line(ui, tmp_path):
+    from chisurf.core.data import DataCurve
+    from chisurf.core.plugin.workspace_input import register_result
+    from chisurf.plugins.fluorescence_decay.lltf.gui.app import receive_decays
+
+    x = np.linspace(0, 10, 64)
+    curve = DataCurve(x=x, y=np.exp(-x), name="simulated", load_filename_on_init=False)
+    curve.data_kind = "decay"
+    register_result(curve)
+    receive_decays(ui.app, {"decays": [f"@{curve.unique_identifier}", str(IRF)]})
+    written = np.loadtxt(ui.app.model.decay_file)
+    assert written.shape == (64, 2) and np.allclose(written[:, 1], np.exp(-x))
+    assert ui.app.model.irf_file == str(IRF)
 
 
 def test_the_output_directory_dialog_chooses_a_folder(ui):
@@ -178,14 +218,14 @@ def test_the_output_directory_dialog_chooses_a_folder(ui):
     assert ui.app.model.output_dir == str(ui.out)
 
 
-def test_dropped_files_route_by_kind(ui):
-    ui.drop(DECAY)
+def test_picked_curves_route_by_name(ui):
+    ui.give(DECAY)
     assert ui.app.model.decay_file == str(DECAY) and not ui.app.model.irf_file
-    ui.drop(IRF)
+    ui.give(IRF)
     assert ui.app.model.irf_file == str(IRF)
-    ui.drop(CONFIG)
+    ui.give(CONFIG)
     assert ui.app.model.config_file == str(CONFIG) and "find_optimal" in ui.app.model.config_text
-    ui.drop(ui.out)
+    ui.give(ui.out)
     assert ui.app.model.output_dir == str(ui.out)
     assert ui.shown("5-44_D0.dat") and ui.shown("IRF_D0.dat")
 
@@ -198,7 +238,7 @@ def test_the_path_fields_of_data_files_do_not_take_typing(ready):
 
 
 def test_the_configuration_editor_opens_edits_saves_and_closes(ready, tmp_path):
-    ready.drop(CONFIG)
+    ready.give(CONFIG)
     ready.click("Edit...")
     assert (
         ready.app.config_open and ready.shown("Save configuration") and ready.shown("Close editor")
@@ -221,7 +261,7 @@ def test_the_configuration_editor_opens_edits_saves_and_closes(ready, tmp_path):
 def test_a_yaml_that_is_not_a_mapping_is_refused_in_the_window(ready, tmp_path):
     bad = tmp_path / "bad.yml"
     bad.write_text("- a\n- b\n")
-    ready.drop(bad)
+    ready.give(bad)
     assert "mapping" in ready.app.model.status or ready.shown("mapping")
     assert ready.app.model.config_file != str(bad)
 
@@ -301,6 +341,15 @@ def test_the_real_fit_through_the_buttons_gives_the_examples_two_lifetimes(fitte
     assert (fitted.out / "5-44_D0_fit.json").exists() and (fitted.out / "5-44_D0_fit.png").exists()
 
 
+def test_the_fit_goes_back_to_the_workspace_as_a_child_of_its_decay(fitted):
+    from chisurf.core.api import dataset_objects
+
+    source = fitted.app.source_uid
+    fits = [d for d in dataset_objects() if source and getattr(d, "result_of", "") == source]
+    assert [(d.name, d.data_kind) for d in fits] == [("LLTF fit · 5-44_D0", "decay")]
+    assert len(fits[0].x) == len(fitted.app.arrays["fit"])
+
+
 def test_the_results_tab_shows_the_table_and_the_summary(fitted):
     fitted.press_text("Results")
     assert (
@@ -318,7 +367,7 @@ def test_the_tabs_switch_and_clear_output_empties_the_log(fitted):
     fitted.press_text("Clear output")
     assert fitted.app.model.output == []
     fitted.press_text("Information")
-    assert fitted.shown("Load the measured decay and IRF")
+    assert fitted.shown("Pick the measured decay and its IRF")
 
 
 def test_export_result_json_writes_the_fit(fitted, tmp_path):

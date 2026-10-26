@@ -60,7 +60,7 @@ class LLTFModel:
         self.output = []
         self.returncode = None
         self.result = None
-        self.status = "Load decay and IRF files, configure the fit, then run analysis."
+        self.status = "Pick the decay and its IRF in the Input section, configure the fit, then run analysis."
         self._queue = queue.Queue()
         self._reader = None
         self._workspace = None

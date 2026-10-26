@@ -1,7 +1,7 @@
 """Real-input coverage of the native BVA tool: every control is operated with simulated pointer, keyboard and host events.
 
-Only ``pointer_move`` / ``press`` / ``release`` / ``drag`` / ``wheel`` / ``key`` and the host's ``files_dropped`` reach the
-window, at the rectangles the controls were drawn in (``app.item_rects``) or at the text a button drew; the assertions read
+Only ``pointer_move`` / ``press`` / ``release`` / ``drag`` / ``wheel`` / ``key`` reach the window (its input is picked
+from the Datasets workspace, never a file dialog or a drop), at the rectangles the controls were drawn in (``app.item_rects``) or at the text a button drew; the assertions read
 the visible outcome (the model, the status line, the drawn strings, the files written).
 """
 
@@ -37,6 +37,35 @@ def hermetic(tmp_path, monkeypatch):
 @pytest.fixture
 def measurement(tmp_path):
     return build(tmp_path / "measurement")  # <tmp>/measurement/burstwise
+
+
+@pytest.fixture(autouse=True)
+def workspace():
+    """The session's dataset list, restored afterwards (it is process-wide)."""
+    from chisurf.core.api import dataset_container
+
+    held = dataset_container()
+    before = list(held)
+    yield held
+    held[:] = before
+
+
+@pytest.fixture
+def burst_run(measurement, workspace):
+    """The demo's bursts as a run of its measurement container, in the workspace as the drop puts
+    it: the photon stream, and the run as its child row."""
+    from chisurf.core.fio.classify import container_entries
+    from chisurf.core.fio.fluorescence.burst import read_bur_file
+    from chisurf.core.plugin.workspace_input import register_result
+    from chisurf.plugins.burst.burst_selection.api.io import write_container
+
+    bur = sorted((measurement / "bi4_bur").glob("*.bur"))[0]
+    container = write_container(
+        measurement.parent / "m000.spc", read_bur_file(bur), parameters={"run": 1}, run="runBursts#1"
+    )
+    (_, photons), (_, run) = container_entries(container)
+    stream = register_result(photons, kind="photons")
+    return register_result(run, kind="bursts", result_of=stream.unique_identifier)
 
 
 @pytest.fixture
@@ -148,7 +177,7 @@ def test_run_click_computes_bva_as_the_qt_tool_did_and_writes_the_companions(
 ):
     """Folder typed into its field, Run clicked: the per-burst Std equals the Qt tool's on the same folder."""
     qt = _qt_facts(build(tmp_path / "qt_a"), build(tmp_path / "qt_b", seed=9))
-    type_into(app, "folder_path", str(measurement), enter=False)
+    app.model.set_folder(measurement)  # the legacy folder the Qt tool read (the API keeps paths)
     assert app.model.analysis_folder == measurement
     press(app, "run")
     assert app.model.is_running and "Reading burst data …" in draw(app).strings
@@ -162,7 +191,7 @@ def test_run_click_computes_bva_as_the_qt_tool_did_and_writes_the_companions(
 def test_run_without_a_folder_says_so_in_the_window(app):
     press(app, "run")
     assert app.model.df is None
-    assert "Select a data folder first." in draw(app).strings
+    assert "Pick a burst run in the Input section first." in draw(app).strings
 
 
 def test_a_second_run_is_unchanged_and_points_at_restart_whose_click_recomputes(app, measurement):
@@ -262,64 +291,64 @@ def test_save_defaults_click_writes_the_ini_and_a_new_window_restores_it(app, me
         other.close()
 
 
-# -- the folder, by typing, by dialog, by drop -------------------------------------------------------------------- #
+# -- the input, from the workspace ------------------------------------------------------------------------------- #
 
 
-def test_the_folder_field_takes_typed_text_and_backspace_clears_it(app):
-    type_into(app, "folder_path", "/some/where", enter=False)
-    assert str(app.model.analysis_folder) == "/some/where"
-    assert "/some/where" in draw(app).strings
-    type_into(app, "folder_path", "", enter=False)  # Ctrl+A, nothing typed
-    app.key(keys.KEY_BACKSPACE, "")
+def _no_input_dialog(monkeypatch):
+    """The input comes from the workspace: any dialog but a save dialog fails the test."""
+    import emtk.file_dialog
+
+    real = emtk.file_dialog.FileDialog
+
+    def guarded(title, mode="open", **kwargs):
+        assert mode == "save", f"an input dialog opened: {title!r}"
+        return real(title, mode=mode, **kwargs)
+
+    monkeypatch.setattr(emtk.file_dialog, "FileDialog", guarded)
+
+
+def test_there_is_no_folder_button_field_or_drop_hook(app):
     draw(app)
-    assert app.model.analysis_folder is None
+    assert not {"folder"} & set(app.item_rects) and not hasattr(app, "files_dropped")
+    assert not hasattr(app.controller, "browse")
+    assert "Nothing in the workspace yet: drop files on the ChiSurf window to add data." in " ".join(
+        draw(app).strings
+    )  # the hint wraps
 
 
-def test_folder_click_opens_the_dialog_and_choosing_a_folder_by_clicks_sets_it(
-    app, measurement, monkeypatch
+def test_a_burst_run_picked_in_the_input_section_runs_and_its_result_goes_back(
+    app, burst_run, monkeypatch
 ):
-    monkeypatch.chdir(measurement.parent)
-    press(app, "folder")
+    from chisurf.core.api import dataset_objects
+
+    _no_input_dialog(monkeypatch)
     strings = draw(app).strings
-    assert "Select Data Folder" in strings and "Cancel" in strings and "Choose" in strings
-    assert str(measurement.parent) in draw(app).strings  # the dialog lists the working folder
-    click(app, text_rect(draw(app), "[burstwise]"))  # a click selects the folder
-    click(app, text_rect(draw(app), "Choose"))
-    assert app.model.analysis_folder == measurement
-    assert "Choose" not in draw(app).strings  # the dialog closed
-    assert app.model.status_text == f"Data folder: {measurement}"
-
-
-def test_the_folder_dialog_cancel_and_close_buttons_change_nothing(app, tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    press(app, "folder")
-    click(app, text_rect(draw(app), "Cancel"))
-    assert "Cancel" not in draw(app).strings and app.model.analysis_folder is None
-    press(app, "folder")
-    click(app, text_rect(draw(app), "×"))
-    assert "Cancel" not in draw(app).strings and app.model.analysis_folder is None
-
-
-def test_a_dropped_folder_is_taken_and_a_stray_file_is_reported(app, measurement, tmp_path):
-    stray = tmp_path / "notes.txt"
-    stray.write_text("x")
-    assert app.files_dropped([str(stray)])
-    assert "BVA reads a burst-analysis folder; notes.txt is not one." in draw(app).strings
-    assert app.model.analysis_folder is None
-    assert app.files_dropped([str(measurement)])
-    assert app.model.analysis_folder == measurement
-    assert (
-        "Data folder:" in " ".join(draw(app).strings)
-        and app.model.status_text == f"Data folder: {measurement}"
-    )
-    press(app, "run")  # the dropped folder is what runs
+    assert "runBursts#1" in strings and "m000.spc" not in strings  # bursts only, no photon stream
+    click(app, text_rect(draw(app), "runBursts#1"))  # the row of the Input section
+    assert str(app.model.analysis_folder) == burst_run.address
+    assert app.source_uid == burst_run.unique_identifier
+    assert "Using runBursts#1" in draw(app).strings
+    press(app, "run")
     settle(app)
-    assert app.model.df is not None
+    assert app.model.df is not None and app.model.status_text.startswith("Done")
+    results = [d for d in dataset_objects() if getattr(d, "result_of", "") == burst_run.unique_identifier]
+    assert [(d.name, d.data_kind) for d in results] == [("BVA · runBursts#1", "bursts")]
+    assert results[0].address.endswith("m000.pto/bva")  # the table BVA wrote into the container
 
 
-def test_an_empty_drop_is_not_taken(app):
-    assert app.files_dropped([]) is False
-    assert app.model.analysis_folder is None
+def test_open_in_hands_the_run_over_as_the_input_section_does(app, burst_run):
+    from chisurf.core.plugin.handoff import specs_of
+    from chisurf.core.plugin.workspace_input import build_payload, spec_for
+    from chisurf.emtk.plugins import manifests
+
+    handoff, inputs = spec_for(manifests()["burst_bva"])
+    assert [s.name for s in specs_of(manifests()["burst_bva"])] == ["bursts"]
+    row = {"uid": burst_run.unique_identifier, "kind": "bursts", "filename": burst_run.address,
+           "name": burst_run.name, "link_status": "ok"}
+    from chisurf.plugins.burst.burst_bva.gui.app import receive_bursts
+
+    receive_bursts(app, build_payload(inputs, [row]))
+    assert str(app.model.analysis_folder) == burst_run.address
 
 
 # -- save plot ---------------------------------------------------------------------------------------------------- #
@@ -566,10 +595,9 @@ def test_guide_click_starts_the_tour_whose_buttons_work(app):
     assert not tour.active
 
 
-def test_the_tour_waits_for_the_folder_and_run_buttons_and_is_walked_to_the_end(
-    app, measurement, monkeypatch
+def test_the_tour_waits_for_the_input_pick_and_run_and_is_walked_to_the_end(
+    app, burst_run, monkeypatch
 ):
-    monkeypatch.chdir(measurement.parent)
     tour = app.bva_gui.tour
     press(app, "guide")
     waited = []
@@ -580,19 +608,19 @@ def test_the_tour_waits_for_the_folder_and_run_buttons_and_is_walked_to_the_end(
         key = tour._target_key(tour.steps[tour.step_idx].get("target"))
         if tour.awaiting:
             waited.append(key)
-            click(app, app.item_rects[key])  # the user operates the highlighted control
-            assert not tour.awaiting, f"pressing {key} did not release the step"
-            if key == "folder":
-                click(app, text_rect(draw(app), "Cancel"))
+            if key == "workspace_input_rows":  # the user picks the highlighted row
+                click(app, text_rect(draw(app), burst_run.name))
             else:
+                click(app, app.item_rects[key])  # the user operates the highlighted control
                 app.controller.stop()
                 settle(app)
+            assert not tour.awaiting, f"using {key} did not release the step"
         draw(app)
         if tour.step_idx == len(tour.steps) - 1:
             tour.next()  # the last step closes the tour
         else:
             click(app, text_rect(draw(app), "Next ►"))
-    assert waited == ["folder", "run"] and not tour.active
+    assert waited == ["workspace_input_rows", "run"] and not tour.active
 
 
 def test_the_tour_next_button_is_disabled_until_the_awaited_control_is_used(app):

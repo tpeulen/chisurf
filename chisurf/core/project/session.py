@@ -721,6 +721,15 @@ def _linked_record(dataset: Any) -> dict[str, Any]:
             {k: v for k, v in (getattr(dataset, "meta_data", {}) or {}).items()}
         ),
     }
+    experiment = getattr(getattr(dataset, "experiment", None), "name", "")
+    if experiment:
+        record["experiment_name"] = str(experiment)
+    if getattr(dataset, "result_of", ""):
+        record["result_of"] = str(dataset.result_of)
+    if getattr(dataset, "representation", None):
+        record["representation"] = str(dataset.representation)
+        if getattr(dataset, "header_json", ""):
+            record["header_json"] = str(dataset.header_json)
     if isinstance(dataset, PhotonStreamDataset):
         record["photons"] = {
             "header_json": dataset.header_json,
@@ -737,7 +746,7 @@ def _restore_linked(record: dict[str, Any], project_dir: Any, project_path: Any 
     Only the size is compared here (an autosave restores too and must never re-hash);
     :func:`chisurf.core.project.links.verify` compares the sha256 on demand.
     """
-    from chisurf.core.data import LinkedDataset, PhotonStreamDataset
+    from chisurf.core.data import ImageDataset, LinkedDataset, PhotonStreamDataset
     from chisurf.core.project.links import resolve
     from chisurf.core.project.remote_links import is_remote
 
@@ -765,8 +774,27 @@ def _restore_linked(record: dict[str, Any], project_dir: Any, project_path: Any 
             duration_s=float(photons.get("duration_s", 0.0)),
             **common,
         )
+    elif record.get("data_kind") == "image" and record.get("representation"):
+        dataset = ImageDataset(
+            address,
+            representation=str(record["representation"]),
+            header_json=str(record.get("header_json", "")),
+            **common,
+        )
     else:
-        dataset = LinkedDataset(address, data_kind=str(record.get("data_kind", "")), **common)
+        dataset = LinkedDataset(
+            address,
+            data_kind=str(record.get("data_kind", "")),
+            result_of=str(record.get("result_of", "")),
+            **common,
+        )
+    dataset.result_of = str(record.get("result_of", "") or dataset.result_of)
+    # Its experiment back: the one that reads its kind (Single photon counting, Imaging, ...).
+    from chisurf.core.experiments.linked import reader_for_kind
+
+    reader = reader_for_kind(dataset.data_kind)
+    if reader is not None:
+        dataset.data_reader = reader
     dataset.meta_data.update(_restore_scientific_value(record.get("metadata") or {}))
     dataset.link_status = resolution.status
     dataset.link_problem = resolution.reason

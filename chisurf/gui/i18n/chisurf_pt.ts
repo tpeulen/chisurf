@@ -13105,7 +13105,7 @@ Use **A partir do ajuste ▾** na barra para obter n_points, n_free e χ²r de q
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8580" />
             <source>Setup</source>
-            <translation>Montagem</translation>
+            <translation>Configuração</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8592" />
@@ -16047,7 +16047,7 @@ Guardar um ficheiro LUT ou um settings.tttr.json (separador ②) é opcional: s�
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2786" />
             <source>photons</source>
-            <translation type="obsolete">fotões</translation>
+            <translation>fótons</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="11548" />
@@ -25788,7 +25788,7 @@ Features:
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2377" />
             <source>Data name</source>
-            <translation type="unfinished" />
+            <translation>Nome dos dados</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2379" />
@@ -59921,7 +59921,7 @@ Disable for exact outer product.</source>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4333" />
             <source>Imaging</source>
-            <translation type="unfinished" />
+            <translation>Imagem</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4336" />
@@ -63223,6 +63223,70 @@ so a run started here can be finished anywhere.
         <message>
             <source>Preloading modules</source>
             <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Open in {tool}</source>
+            <translation>Abrir em {tool}</translation>
+        </message>
+        <message>
+            <source>Open in…</source>
+            <translation>Abrir em…</translation>
+        </message>
+        <message>
+            <source>Give the selected data to {tool}.</source>
+            <translation>Passar os dados selecionados para {tool}.</translation>
+        </message>
+        <message>
+            <source>{tool} does not take this data.</source>
+            <translation>{tool} não aceita estes dados.</translation>
+        </message>
+        <message>
+            <source>{name} → {tool}</source>
+            <translation>{name} → {tool}</translation>
+        </message>
+        <message>
+            <source>{name}: not accepted by {tool}</source>
+            <translation>{name}: não aceito por {tool}</translation>
+        </message>
+        <message>
+            <source>Which experiment is {name}? Choose it in Read data.</source>
+            <translation>De qual experimento é {name}? Escolha-o em Ler dados.</translation>
+        </message>
+        <message>
+            <source>Use selected</source>
+            <translation>Usar seleção</translation>
+        </message>
+        <message>
+            <source>Pick what this tool works on.</source>
+            <translation>Escolha com o que esta ferramenta trabalha.</translation>
+        </message>
+        <message>
+            <source>Nothing in the workspace yet: drop files on the ChiSurf window to add data.</source>
+            <translation>Nada no espaço de trabalho ainda: solte arquivos na janela do ChiSurf para adicionar dados.</translation>
+        </message>
+        <message>
+            <source>No trace: pick a photon stream in the Input section (drop files on ChiSurf to add them).</source>
+            <translation>Sem traço: escolha um fluxo de fótons na seção Entrada (solte arquivos no ChiSurf para adicioná-los).</translation>
+        </message>
+        <message>
+            <source>Burst run: {run}</source>
+            <translation>Série de bursts: {run}</translation>
+        </message>
+        <message>
+            <source>none picked</source>
+            <translation>nenhuma escolhida</translation>
+        </message>
+        <message>
+            <source>Single photon counting</source>
+            <translation>Contagem de fótons únicos</translation>
+        </message>
+        <message>
+            <source>Instrument setup</source>
+            <translation>Configuração do instrumento</translation>
+        </message>
+        <message>
+            <source>intensity</source>
+            <translation>intensidade</translation>
         </message>
     </context>
 </TS>

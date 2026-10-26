@@ -114,7 +114,7 @@ def test_actual_worker_rows_static_line_and_photons_survive_host_views(tmp_path,
         app.model.auto_update = False
         app.model.donor_channels_text = "0"
         app.model.acceptor_channels_text = "1"
-        assert app.files_dropped([str(folder)])
+        assert app.controller.set_folder(folder)
         app.controller.run()
         app.controller._future.result(timeout=90)
         app.controller.poll()

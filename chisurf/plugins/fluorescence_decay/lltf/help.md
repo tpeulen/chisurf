@@ -8,6 +8,16 @@ rotational correlation times and r0 of the anisotropy.
 
 Press **Guide** for the walk-through.
 
+## Where the data comes from
+
+The **Input** section lists the decay curves in the workspace: files dropped on
+the ChiSurf window are read there, and *Open in…* on a Datasets row (or dragging
+the row onto this tool) does the same as picking it here. Select the decay and
+its IRF, then **Use selected**: the curve named *IRF* (or *prompt*) is the
+instrument response, else the second one picked; a curve named *VH* fills the VH
+row of a VV/VH fit. The fitted decay goes back to the workspace as a child of
+the decay it was fitted to.
+
 ## What it decides for you
 
 1. **Fit range** — from where the rise crosses `start_fraction` of the peak to

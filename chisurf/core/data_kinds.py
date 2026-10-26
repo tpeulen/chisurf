@@ -101,7 +101,24 @@ KINDS: dict[str, Kind] = {
             True,
             "A molecular structure (the Modelling experiment fits it).",
         ),
-        Kind("image", "Image", "Images", "🖼️", False, "An image or a confocal scan."),
+        Kind(
+            "image",
+            "Image",
+            "Images",
+            "🖼️",
+            False,
+            "An image: photon events with a position (a scanning confocal or photon-counting "
+            "camera recording) or an intensity stack.",
+        ),
+        Kind(
+            "setup",
+            "Setup",
+            "Setups",
+            "🎛️",
+            False,
+            "What a tool reads besides the measurement: a detector or channel setup, a look-up "
+            "table, a kinetic scheme, an IRF or background pattern.",
+        ),
     )
 }
 
@@ -118,6 +135,9 @@ EXPERIMENT_KINDS: dict[str, str | None] = {
     "DEER": "trace",
     "Stopped flow": "trace",
     "Modelling": "structure",
+    "Single photon counting": "photons",
+    "Imaging": "image",
+    "Instrument setup": "setup",
     "Global": None,
 }
 

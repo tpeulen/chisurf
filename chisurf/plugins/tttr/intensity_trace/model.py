@@ -162,18 +162,20 @@ class IntensityTraceModel:
 
     def load(self, path: str | pathlib.Path) -> bool:
         """Bin *path* with the current window, setup and selection; the HMM result is dropped (it was of the old trace)."""
+        from chisurf.core.fio.address import container_of
+        from chisurf.core.fio.staging import open_tttr
         from chisurf.plugins.tttr.trace_browser.core.binning import bin_trace
 
-        path = pathlib.Path(str(path))
-        if not path.is_file():
+        address = str(path)  # a TTTR file, or a photon stream of a container (m000.pto/<stream>)
+        path = pathlib.Path(address)
+        if not container_of(address).is_file():
             self.message = f"No such file: {path}"
             return False
-        import tttrlib
 
         window_s = float(self.window_ms) / 1000.0
         detectors = (self.setup or {}).get("detectors") or {}
         try:
-            tttr = tttrlib.TTTR(str(path))  # read once: the channels it uses and the binning
+            tttr = open_tttr(address, cache=False)  # read once: the channels and the binning
             if detectors:
                 selected = [s for s in self.selected if s in detectors] or None
                 t, counts, labels = bin_trace(
@@ -188,7 +190,7 @@ class IntensityTraceModel:
             self.message = f"Could not read {path.name}: {exc}"
             return False
         available = None
-        if self.path != str(path) and not detectors:
+        if self.path != address and not detectors:
             # a new file: offer the channels it uses (Qt offered 0-7, so channels 8+ could not be chosen)
             available = [f"routing_{int(c)}" for c in sorted(tttr.get_used_routing_channels())]
         # The binned trace replaces the old one in one step: the window draws it on another thread while a
@@ -196,7 +198,7 @@ class IntensityTraceModel:
         with self.lock:
             if available is not None:
                 self.available = available
-            self.path = str(path)
+            self.path = address
             self.time_axis, self.counts, self.labels = (
                 np.asarray(t),
                 np.asarray(counts, float),
@@ -313,10 +315,11 @@ class IntensityTraceModel:
         """The HMM outputs beside the file, as the Qt tool writes them after Compute HMM:
         ``<stem>_HMM#<n>_<ms>ms/`` with ``bst/`` (burst IDs per state), ``traces/`` (traces, state and FRET
         trajectories) and ``hist/`` (per-channel, sum and FRET histograms)."""
-        import tttrlib
+        from chisurf.core.fio.address import container_of
+        from chisurf.core.fio.staging import open_tttr
 
-        src = pathlib.Path(self.path).resolve()
-        stem = src.stem
+        src = container_of(self.path).resolve()  # beside the file, or beside its container
+        stem = pathlib.Path(self.path).stem
         base = src.parent / f"{stem}_HMM#{int(self.n_states)}_{int(round(self.window_ms))}ms"
         bst, traces, hists = base / "bst", base / "traces", base / "hist"
         for d in (base, bst, traces, hists):
@@ -325,7 +328,7 @@ class IntensityTraceModel:
             self.states,
             self.time_axis,
             self.window_ms / 1000.0,
-            tttrlib.TTTR(str(src)),
+            open_tttr(self.path, cache=False),
             output_dir=str(bst),
             file_path=self.path,
         )

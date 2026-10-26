@@ -13,6 +13,27 @@ file drop**, lives in the **Datasets workspace** (typed, filterable), and **plug
 workspace** instead of opening files. File interfaces stay in the **API and CLI** (paths and addresses in —
 scripts and the agent need them); in the UI they degrade the UX and go.
 
+## Where to pick this up
+
+1. **Migrate the rest, family by family.** Measure: `python -c "import sys; sys.path.insert(0,'.');
+   from test.test_no_input_file_dialogs import allowed_entries; print(len(allowed_entries()))"` — **185**
+   lines (dialog/drop/mmfdb) after the three worked examples, from 193. A line is one route in one file,
+   so a plugin often holds 2–3. Order: TTTR-file tools (photons ~40), burst consumers (container runs —
+   a legacy burst *folder* cannot be a workspace row: links refuse a directory, so consumers must take
+   `m000.pto/<run>`), curve tools, images, structures. Recipe: [plugin architecture
+   §3.1.5](../../docs/development/plugin_architecture.md).
+2. **Hubs.** alex_suite / burst_analysis step apps still take files per step; feed steps from the hub's
+   context by declared kind (the `with_run_picker` pattern is generalised by `with_workspace_input`, but
+   the hubs still call their own `_to_<role>` adapters).
+3. **Setups as input.** `with_setup` is implemented (a `setup` row's address travels as `setup`) but no
+   plugin declares it yet; intensity_trace still picks detector setups from its own setups store — the
+   next photon tool should take its setup from the workspace.
+4. **Curves dropped with a file type chosen for another experiment** keep that choice (the user's
+   selection wins over `classify.curve_reader`); only an empty selection, or the same experiment, takes
+   the sniffed settings (`skiprows`, `x_on`, `dt`, `is_vv_vh`). A PyCorrFit CSV sniffs as FCS-CSV.
+5. **Journeys** (`test/e2e/test_workspace_journeys.py`) are the acceptance proof; run on `ssh home`
+   (`build_tools/remote_test.sh`), never on the laptop.
+
 ## Where it stands (recon 2026-10-26)
 
 * No photon dataset kind: TTTR readers histogram photons into a `DataCurve` and keep only

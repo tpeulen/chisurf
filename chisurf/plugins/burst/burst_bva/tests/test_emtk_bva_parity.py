@@ -205,7 +205,7 @@ def test_errors_reach_the_window(tmp_path, monkeypatch):
     app = _app()
     try:
         app.controller.run()
-        assert app.model.status_text == "Select a data folder first."
+        assert app.model.status_text == "Pick a burst run in the Input section first."
         empty = tmp_path / "empty"
         empty.mkdir()
         app.model.set_folder(empty)
@@ -222,29 +222,12 @@ def test_errors_reach_the_window(tmp_path, monkeypatch):
         app.close()
 
 
-# 5. folder by drop, by dialog; the plot saved as a picture of the window
-def test_drops_take_folders_and_containers_and_report_the_rest(folder, tmp_path):
-    app = _app()
-    try:
-        stray = tmp_path / "notes.txt"
-        stray.write_text("x")
-        assert app.files_dropped([str(stray)])
-        assert app.model.status_text == "BVA reads a burst-analysis folder; notes.txt is not one."
-        assert app.files_dropped([str(folder)])
-        assert app.model.analysis_folder == folder
-    finally:
-        app.close()
-
-
-def test_the_folder_dialog_and_save_plot(folder, tmp_path):
+# 5. the plot saved as a picture of the window (the input comes from the workspace)
+def test_save_plot(folder, tmp_path):
     app = _app()
     try:
         _draw(app)
-        app.controller.browse()
-        assert app.controller.dialog.title == "Select Data Folder"
-        app.controller.dialog.draw = lambda: [str(folder)]
-        _frames_until(app, lambda: app.controller.dialog is None)
-        assert app.model.analysis_folder == folder
+        app.model.set_folder(folder)
         app.controller.run()
         _settle(app)
         app.controller.save_plot()
@@ -277,13 +260,12 @@ def test_every_guide_target_is_drawn(folder):
 def test_draws_empty_and_populated(folder, size):
     app = _app()
     try:
-        assert "Burst folder:" in _draw(app, size).strings
+        assert "Burst run: none picked" in _draw(app, size).strings
         pane_right = app.item_rects["controls"][0] + app.item_rects["controls"][2]
         for name in (
             "run",
             "restart",
             "stop",
-            "folder",
             "guide",
             "help",
         ):  # the row wraps, nothing is cut

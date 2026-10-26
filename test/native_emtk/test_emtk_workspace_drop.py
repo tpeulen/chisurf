@@ -52,19 +52,19 @@ def test_add_as_embed_marks_the_dropped_file_embedded_and_the_menu_switches_it(
     tmp_path,
 ):
     """Add as: Embed stores the file in the project; right-click switches a dataset either way."""
-    options = dict(shell.data.datasets.import_mode_options())
+    options = dict(shell.data.read.import_mode_options())
     assert set(options) == {"link", "embed"}
-    assert shell.data.datasets.import_mode == "link"
+    assert shell.data.read.import_mode == "link"
     driver = Driver(shell, (1300, 900))
     driver.frame(4)
-    shell.data.datasets.import_mode = "embed"
+    shell.data.read.import_mode = "embed"
     try:
         target = tmp_path / "m001.spc"
         shutil.copy(SPC, target)
         assert shell.on_files_dropped([str(target)])
         _settle(driver, lambda: _idle(shell) and _photon_rows(shell), "the photon dataset")
     finally:
-        shell.data.datasets.import_mode = "link"
+        shell.data.read.import_mode = "link"
     (row,) = _photon_rows(shell)
     assert row["embedded"] and row["source"].startswith("📦")
     shell.data.datasets.select_dataset(row)
@@ -94,3 +94,30 @@ def test_export_project_names_the_data_it_only_links(shell, tmp_path):  # noqa: 
     _settle(driver, lambda: _idle(shell) and exported.is_file(), "the export")
     assert "links 1 data file(s) outside it (m002.spc)" in project.status
     assert "Make Self-contained" in project.status
+
+
+def test_a_dropped_decay_curve_is_read_with_the_file_type_it_names_and_feeds_lltf(
+    shell,  # noqa: F811
+    tmp_path,
+):
+    """A curve dropped with no file type chosen: the file says TCSPC (a stacked VV/VH decay with its
+    ``# #dt`` footer), it becomes a decay row, and *Open in…* offers LLTF, which takes it."""
+    from chisurf.plugins.fluorescence_decay.lltf import demo
+
+    driver = Driver(shell, (1300, 900))
+    driver.frame(4)
+    shell.data.read.experiment = shell.data.read.setup = ""  # nothing chosen in Read data
+    decay = demo.make_demo(tmp_path)["decay"]
+    assert shell.on_files_dropped([str(decay)])
+    _settle(driver, lambda: _idle(shell) and _decay_rows(shell), "the decay dataset")
+    (row,) = _decay_rows(shell)
+    assert row["name"] == decay.name and shell.data.read.experiment == "TCSPC"
+    reader = shell.data.read.reader()
+    assert (reader.dt, reader.x_on, reader.is_vv_vh) == (0.008, False, True)
+    assert "lltf" in [plugin for plugin, _ in shell.tools_for_rows([row])]
+    driver.frame(2)
+    driver.screenshot(SHOTS / "workspace_decay_drop.png")
+
+
+def _decay_rows(shell):  # noqa: F811
+    return [r for r in shell.data.datasets.datasets if r.get("kind") == "decay"]

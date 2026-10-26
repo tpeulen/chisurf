@@ -282,17 +282,15 @@ def test_the_options_grey_as_the_qt_wizard_greys_them(qt):
     )
 
 
-def test_drops_route_data_config_and_folder(tmp_path):
+def test_picked_workspace_curves_route_to_decay_and_irf(tmp_path):
+    """The Qt tool's file rows are filled from the workspace (receive_decays), not a drop."""
+    from chisurf.plugins.fluorescence_decay.lltf.gui.app import receive_decays
+
     app = LLTFApp()
     try:
-        app.on_paths_dropped([DECAY, IRF, CONFIG, str(tmp_path)])
-        m = app.model
-        assert (m.decay_file, m.irf_file, m.config_file, m.output_dir) == (
-            DECAY,
-            IRF,
-            CONFIG,
-            str(tmp_path),
-        )
+        assert not hasattr(app, "on_paths_dropped")
+        receive_decays(app, {"decays": [IRF, DECAY]})  # named IRF wins over the pick order
+        assert (app.model.decay_file, app.model.irf_file) == (DECAY, IRF)
     finally:
         app.close()
 
@@ -339,7 +337,7 @@ def test_every_spec_field_is_drawn_with_its_description(monkeypatch):
         app.close()
 
 
-# guide: the Qt tour's targets are the emtk controls too; Load... and Fit wait for presses
+# guide: the Qt tour's targets are the emtk controls too; the Input pick and Fit wait for the user
 def test_the_guide_points_at_real_controls_and_waits(tmp_path):
     app = LLTFApp()
     size = (1200, 800)
@@ -350,7 +348,7 @@ def test_the_guide_points_at_real_controls_and_waits(tmp_path):
         # The Qt tour's targets, plus the VV/VH steps (mode switch, Load example, rotations,
         # r(t) plot tab: drawn once a VV/VH fit is shown).
         assert keys == {
-            "Load...",
+            "workspace_input_rows",
             "Edit...",
             "Find Optimal",
             "Fit",
@@ -370,17 +368,28 @@ def test_the_guide_points_at_real_controls_and_waits(tmp_path):
             app.release()
             _draw(app, size, n=1, painter=PixelPainter)
 
+        from chisurf.core.api import dataset_container
+        from chisurf.core.plugin.workspace_input import register_result
+
+        held = dataset_container()
+        before = list(held)
+        uids = [register_result(p, kind="decay").unique_identifier for p in (DECAY, IRF)]
         load = next(
-            i for i, s in enumerate(steps) if s.get("target", {}).get("action") == "Load..."
+            i
+            for i, s in enumerate(steps)
+            if s.get("target", {}).get("action") == "workspace_input_rows"
         )
         app.tour.start(load)
         assert app.tour.awaiting and steps[load]["title"] in " ".join(_draw(app, size, n=1).strings)
         _draw(app, size, n=1, painter=PixelPainter)
-        press("Load...")
-        assert not app.tour.awaiting and app.dialog is not None and app.dialog.title == "Load decay"
-        app.dialog = None
+        rows = {r["uid"]: r for r in app.input.workspace_input_rows()}
+        app.input.workspace_input_selection = [rows[u] for u in uids]
+        press("workspace_input_use")
+        held[:] = before
+        assert not app.tour.awaiting and app.dialog is None
         m = app.model
-        m.decay_file, m.irf_file, m.output_dir = DECAY, IRF, str(tmp_path)
+        assert (m.decay_file, m.irf_file) == (DECAY, IRF)
+        m.output_dir = str(tmp_path)
         m.load_config(CONFIG)
         m.n_lifetimes = 1
         fit = next(i for i, s in enumerate(steps) if s.get("target", {}).get("action") == "Fit")
@@ -412,7 +421,7 @@ def test_draws_empty_and_populated(fitted, size, monkeypatch):
     edge = (
         app.item_rects["Information"][0] - 4.0
     )  # the inputs dock ends where the details dock's tabs begin
-    for key in ("Load...", "load_irf", "Edit...", "Select...", "Fit"):
+    for key in ("workspace_input_use", "Edit...", "Select...", "Fit"):
         x, y, w, h = app.item_rects[key]
         assert x + w <= edge, (key, x + w, edge)
     x, y, w, h = app.form.rects["find_optimal"]

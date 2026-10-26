@@ -123,6 +123,14 @@ def _dataset_dto(
         dto["link_status"] = str(link_status)
         dto["link_problem"] = str(getattr(dataset, "link_problem", "") or "")
         dto["embedded"] = bool((getattr(dataset, "link", None) or {}).get("embedded"))
+        # A result of another dataset (a burst run of a photon stream) is shown as its child.
+        result_of = str(getattr(dataset, "result_of", "") or "")
+        if result_of:
+            dto["result_of"] = result_of
+        # An image says which representation it is: photon events, or intensity frames.
+        representation = getattr(dataset, "representation", None)
+        if representation:
+            dto["representation"] = str(representation)
     if include_length:
         dto["length"] = (
             None

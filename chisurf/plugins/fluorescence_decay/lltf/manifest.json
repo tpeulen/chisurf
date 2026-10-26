@@ -20,6 +20,15 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "decays",
+      "summary": "Fit a decay with its instrument response: the picked curve named IRF (or the second) is the IRF, one named VH the VH channel of a VV/VH fit.",
+      "receive": "chisurf.plugins.fluorescence_decay.lltf.gui.app:receive_decays",
+      "required": ["decays"],
+      "from_workspace": {"kinds": ["decay"], "many": true, "key": "decays"}
+    }
+  ],
   "entrypoints": {
     "cli": "lltf=chisurf.plugins.fluorescence_decay.lltf.core.cli:cli",
     "emtk": "chisurf.plugins.fluorescence_decay.lltf.gui.app:make_app"

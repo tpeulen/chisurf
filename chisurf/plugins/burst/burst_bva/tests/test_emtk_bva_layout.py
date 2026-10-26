@@ -37,7 +37,7 @@ def drawn(request):
 def test_actions_are_two_rows_with_no_orphan(drawn):
     app, _p, size = drawn
     rects = app.item_rects
-    first = ["run", "restart", "stop", "folder"]
+    first = ["run", "restart", "stop"]
     second = ["clear", "save_plot", "save_defaults"]
     third = ["guide", "help"]
     assert_disjoint(rects, first + second + third)
@@ -50,6 +50,6 @@ def test_icons_and_texts(drawn):
     app, painter, size = drawn
     assert_icons_clear(painter)
     assert_inside(
-        app.item_rects, size, names=["run", "restart", "stop", "folder", "clear", "guide", "help"]
+        app.item_rects, size, names=["run", "restart", "stop", "clear", "guide", "help"]
     )
     assert_texts_apart(painter, region=(0.0, 0.0, 330.0, size[1]))

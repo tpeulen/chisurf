@@ -7,13 +7,13 @@
       "target": {}
     },
     {
-      "title": "The burst folder",
-      "text": "BVA reads a finished <b>burst-analysis folder</b> — the bursts are already defined and this adds a per-burst column to them. Dropping the folder on this window does the same thing.<br/><br/>A dropped <i>file</i> is refused rather than silently ignored: this analysis has nothing to do with a single measurement.",
+      "title": "The burst run",
+      "text": "BVA reads a finished <b>burst run</b> — the bursts are already defined and this adds a per-burst column to them. The <b>Input</b> section lists the burst runs in the workspace: a run of a measurement container shows under its photon stream in the Datasets view. Files dropped on the ChiSurf window are added there; <i>Open in…</i> on a Datasets row, or dragging the row onto this tool, does the same as picking it here.<br/><br/>A single measurement is not listed: this analysis has nothing to do with photons that were not yet cut into bursts.",
       "target": {
-        "name": "folder"
+        "name": "workspace_input_rows"
       },
       "await": {
-        "hint": "Press the <b>folder</b> button and choose the burst-analysis folder."
+        "hint": "Pick a burst run in the <b>Input</b> section."
       }
     },
     {

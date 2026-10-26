@@ -48,18 +48,18 @@
       }
     },
     {
-      "title": "Load the decay",
-      "text": "Your own data: set <b>Data</b> back to <b>Magic angle</b> for a single decay, then load it. A text file with a time column in <b>ns</b> and a count column. Only the first two columns are read.<br/><br/>The plugin ships an example: <code>chisurf/plugins/fluorescence_decay/lltf/example/5-44_D0.dat</code>.",
+      "title": "Pick the decay and its IRF",
+      "text": "Your own data: set <b>Data</b> back to <b>Magic angle</b> for a single decay. The <b>Input</b> section lists the decay curves in the workspace — files dropped on the ChiSurf window are read there (a text file with a time column in <b>ns</b> and a count column). Select the decay and its IRF, then <b>Use selected</b>: the curve named IRF is the instrument response (else the second one), a curve named VH the VH channel of a VV/VH fit.<br/><br/>The plugin ships an example: <code>chisurf/plugins/fluorescence_decay/lltf/example/5-44_D0.dat</code> with <code>IRF_D0.dat</code>.",
       "target": {
-        "action": "Load..."
+        "action": "workspace_input_rows"
       },
       "await": {
-        "hint": "Press the first <b>Load...</b> and pick a decay file."
+        "hint": "Select the decay and its IRF in the <b>Input</b> section, then press <b>Use selected</b>."
       }
     },
     {
-      "title": "The IRF, and the settings file",
-      "text": "Load the IRF the same way (second <b>Load...</b>; the example is <code>IRF_D0.dat</code>).<br/><br/><b>Edit...</b> opens the configuration file: fit range (<code>start_fraction</code>, <code>area</code>), background window, IRF-shift grid, starting lifetimes, pile-up. Everything not on this panel lives there.",
+      "title": "The settings file",
+      "text": "<b>Edit...</b> opens the configuration file: fit range (<code>start_fraction</code>, <code>area</code>), background window, IRF-shift grid, starting lifetimes, pile-up. Everything not on this panel lives there.",
       "target": {
         "action": "Edit..."
       }

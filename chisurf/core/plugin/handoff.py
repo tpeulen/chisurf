@@ -101,10 +101,19 @@ def specs_of(manifest: dict | None) -> list[HandoffSpec]:
             receive=str(item["receive"]),
             summary=str(item.get("summary", "")),
             required=[str(k) for k in item.get("required", [])],
+            from_workspace=_workspace(item.get("from_workspace")),
         )
         for item in (manifest or {}).get("accepts", [])
         if isinstance(item, dict) and item.get("name") and item.get("receive")
     ]
+
+
+def _workspace(raw: Any) -> Any:
+    if raw is None:
+        return None
+    from chisurf.core.plugin.workspace_input import parse
+
+    return parse(raw)
 
 
 def accepted(plugin_id: str, kind: str, manifest: dict | None) -> HandoffSpec | None:

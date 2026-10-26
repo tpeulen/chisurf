@@ -19,6 +19,15 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "bursts",
+      "summary": "Run BVA on a burst run: a run of a measurement container, or a legacy burst folder.",
+      "receive": "chisurf.plugins.burst.burst_bva.gui.app:receive_bursts",
+      "required": ["folder"],
+      "from_workspace": {"kinds": ["bursts"], "key": "folder"}
+    }
+  ],
   "entrypoints": {
     "cli": "chisurf.plugins.burst.burst_bva.cli.main:cli",
     "services": "chisurf.plugins.burst.burst_bva.backend.services:register_services",

@@ -37,7 +37,7 @@ def app_ui(tmp_path_factory):
 
     os.environ["MPLBACKEND"] = "Agg"
     ui = Ui(LLTFApp(), SIZES[0])
-    ui.drop(DECAY, IRF)
+    ui.give(DECAY, IRF)
     ui.app.model.output_dir = str(tmp_path_factory.mktemp("lltf_layout"))
     ui.type_into("n_lifetimes", "2")
     ui.click("Fit")
@@ -63,7 +63,7 @@ def test_file_rows_show_a_readable_path_inside_the_inputs_dock(ui):
         x, y, w, h = ui.app.item_rects[attr]
         assert w >= 150, (attr, w, "path field cut to a stub")
         assert x + w <= dock_right(ui) + 2, attr
-    for key in ("Load...", "load_irf", "Edit...", "Select..."):
+    for key in ("workspace_input_rows", "workspace_input_use", "Edit...", "Select..."):
         x, y, w, h = ui.app.item_rects[key]
         assert x + w <= dock_right(ui) + 2 and y + h <= ui.size[1], key
 

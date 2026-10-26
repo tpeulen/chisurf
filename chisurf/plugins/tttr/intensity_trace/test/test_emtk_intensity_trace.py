@@ -217,19 +217,49 @@ def test_bic_elbow_and_the_save_dialogs(tmp_path):
     ui.app.close()
 
 
-def test_load_dialog_drop_and_setup_choice(spc, monkeypatch):
+def _no_input_dialog(monkeypatch):
+    """The input comes from the workspace: any dialog but a save dialog fails the test."""
+    from chisurf.plugins.tttr.intensity_trace.gui import app as app_module
+
+    real = app_module.FileDialog
+
+    def guarded(title, mode="open", **kwargs):
+        assert mode == "save", f"an input dialog opened: {title!r}"
+        return real(title, mode=mode, **kwargs)
+
+    monkeypatch.setattr(app_module, "FileDialog", guarded)
+
+
+def test_the_input_is_picked_from_the_workspace_and_the_traces_go_back(spc, tmp_path, monkeypatch):
+    from chisurf.core.api import dataset_container, dataset_objects
+    from chisurf.core.plugin.workspace_input import register_result
+
+    held = dataset_container()
+    before = list(held)  # restored at the end: the session list is process-wide
+    _no_input_dialog(monkeypatch)
     ui = Ui(make_app())
-    ui.click("request_load")
-    ui.app.dialog.enter(str(spc.parent))
+    assert not hasattr(ui.app, "on_files_dropped") and "request_load" not in ui.app.item_rects
+    assert ui.shown("Nothing in the workspace yet")
+    photons = register_result(str(spc), kind="photons")  # what the shell's drop does
     ui.draw(2)
-    ui.press_text(spc.name)
-    ui.press_text("Open")
+    assert ui.shown("Pick what this tool works on.")
+    ui.press_text(spc.name)  # the row of the Input section
     ui.settle()
     assert ui.app.model.labels == ["Ch0", "Ch1", "Ch8", "Ch9"]
-    other = make_app()
-    assert other.on_files_dropped([str(spc)])
-    other.wait()
-    assert other.model.loaded
+    assert ui.app.source_uid == photons.unique_identifier and ui.shown(f"Using {spc.name}")
+    ui.app.save_traces(str(tmp_path / "traces.csv"))
+    traces = [d for d in dataset_objects() if getattr(d, "result_of", "") == photons.unique_identifier]
+    assert [(d.name, d.data_kind) for d in traces] == [("traces.csv", "trace")]
+    ui.app.close()
+    held[:] = before
+
+
+def test_setup_choice(spc, monkeypatch):
+    _no_input_dialog(monkeypatch)
+    ui = Ui(make_app())
+    ui.app.open_file(str(spc))
+    ui.settle()
+    assert ui.app.model.labels == ["Ch0", "Ch1", "Ch8", "Ch9"]
     # a detector setup: green = 0, 8; red = 1, 9
     setup = {
         "detectors": {
@@ -244,8 +274,7 @@ def test_load_dialog_drop_and_setup_choice(spc, monkeypatch):
     assert ui.app.model.labels == ["green", "red"] and ui.shown("green")
     totals = ui.app.model.counts.sum(axis=0)
     assert totals[0] > 0 and totals[1] > 0
-    for app in (ui.app, other):
-        app.close()
+    ui.app.close()
 
 
 def test_edit_setups_opens_the_shared_detector_editor_and_a_change_rebins(spc):

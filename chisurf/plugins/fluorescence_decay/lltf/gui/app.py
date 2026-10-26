@@ -1,8 +1,9 @@
 """EMTK app for Lazy Lifetime Analysis: one decay fitted by the LLTF command line, its log, results and plots.
 
-The inputs and fitting options are the view spec ``lltf.view.json`` drawn by
-emtk's view_form over :class:`~.model.LLTFModel` (the file rows are its custom
-``lltf_files`` section); the Results panel of the same spec is drawn in the
+The decay and IRF are picked from the Datasets workspace in the generated Input section (the
+manifest's ``accepts[].from_workspace``; :func:`receive_decays`). The fitting options are the view
+spec ``lltf.view.json`` drawn by emtk's view_form over :class:`~.model.LLTFModel` (the file rows,
+read-only, are its custom ``lltf_files`` section); the Results panel of the same spec is drawn in the
 Results tab. The fit runs as the LLTF CLI in a subprocess the model owns, so
 the window keeps drawing while it streams its output.
 """
@@ -21,12 +22,18 @@ from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
+from chisurf.core.plugin.workspace_input import (
+    WorkspaceInputMixin,
+    input_section,
+    register_result,
+    resolve_dataset,
+    spec_for,
+)
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import LLTFModel
 
-DATA_FILTERS = [("TCSPC data", ["*.dat", "*.txt", "*.csv"]), ("All files", ["*"])]
 YAML_FILTERS = [("YAML", ["*.yml", "*.yaml"]), ("All files", ["*"])]
 ERROR = (1.0, 0.45, 0.45, 1.0)
 TAB_TIPS = {
@@ -35,48 +42,51 @@ TAB_TIPS = {
     "Results": "Inspect fitted lifetimes, fit statistics and exports.",
 }
 
-#: The file rows: model attribute, caption, tooltip, browse action, browse caption, guide key of the browse button.
-#: The two VH rows are drawn in VV/VH mode only.
+#: The file rows: model attribute, caption, tooltip, button action, button caption, guide key of the button.
+#: The data rows show what the Input section handed over (no button: data comes from the workspace);
+#: the two VH rows are drawn in VV/VH mode only.
 FILE_ROWS = (
     (
         "decay_file",
         "Decay File",
-        "Measured two-column decay: time (ns) and counts.",
-        "decay_file",
-        "Load...",
-        "Load...",
+        "Measured two-column decay: time (ns) and counts; picked in the Input section.",
+        None,
+        "",
+        "",
     ),
     (
         "vh_file",
         "VH File (optional)",
         "The VH channel as a two-column file (time, counts) when the decay file holds only VV. "
-        "Leave empty for a stacked VV/VH or a three-column (time, VV, VH) decay file.",
-        "vh_file",
-        "Load...",
-        "load_vh",
+        "Empty for a stacked VV/VH or a three-column (time, VV, VH) decay file; a picked curve "
+        "named VH fills it.",
+        None,
+        "",
+        "",
     ),
     (
         "irf_file",
         "IRF File",
-        "Measured two-column instrument response: time (ns) and counts.",
-        "irf_file",
-        "Load...",
-        "load_irf",
+        "Measured two-column instrument response: time (ns) and counts; the picked curve named "
+        "IRF (or the second one picked).",
+        None,
+        "",
+        "",
     ),
     (
         "irf_vh_file",
         "VH IRF (optional)",
         "The VH channel's instrument response; empty: the IRF file serves both channels.",
-        "irf_vh_file",
-        "Load...",
-        "load_irf_vh",
+        None,
+        "",
+        "",
     ),
     (
         "config_file",
         "Config File",
         "The LLTF YAML configuration: fit range, background, IRF shift, starting values, "
         "pile-up. Edit… opens it; the next run uses the edited text.",
-        None,
+        "edit_config",
         "Edit...",
         "Edit...",
     ),
@@ -89,6 +99,23 @@ FILE_ROWS = (
         "Select...",
     ),
 )
+
+
+#: The rows of FILE_ROWS that are data from the workspace (read-only).
+DATA_ROWS = ("decay_file", "vh_file", "irf_file", "irf_vh_file")
+
+
+class _Input(WorkspaceInputMixin):
+    """The Input section's model: the workspace's decays, a pick handed to :func:`receive_decays`."""
+
+    workspace_input_plugin = "lltf"
+
+
+def _input_spec() -> dict:
+    """The generated Input section of the manifest's ``accepts[].from_workspace``."""
+    manifest = Path(__file__).resolve().parents[1] / "manifest.json"
+    found = spec_for(json.loads(manifest.read_text(encoding="utf-8")))
+    return {"sections": [input_section(found[1])]} if found else {"sections": []}
 
 
 class LLTFApp(TourTarget, ImApp):
@@ -115,6 +142,13 @@ class LLTFApp(TourTarget, ImApp):
         }
         self.form = FormState()
         self.form.custom["lltf_files"] = self.draw_files
+        #: The Input section: which decay and IRF of the workspace are fitted.
+        self.input = _Input()
+        self.input.workspace_input_app = self
+        self.input_spec = _input_spec()
+        self.input_form = FormState()
+        #: The workspace dataset of the decay: the fit registers as its child.
+        self.source_uid = ""
         self.results_form = FormState()
         resources = Path(__file__).parent.parent
         self.help_window = EmTkHelpWindow(
@@ -128,6 +162,8 @@ class LLTFApp(TourTarget, ImApp):
             on_step_change=self.reveal_step,
         )
         self.form.on_used = self.tour.notify_used
+        self.input_form.on_used = self.tour.notify_used
+        self.input.workspace_input_on_used = self.tour.notify_used
         self.docks = DockManager(
             Split("h", 0.40, Region("inputs"), Split("v", 0.46, Region("details"), Region("plots")))
         )
@@ -160,44 +196,30 @@ class LLTFApp(TourTarget, ImApp):
             return None
 
     def choose(self, action):
+        """Ask where an output goes: the output directory, a saved configuration or the results.
+
+        The decay and IRF are never asked for: they come from the workspace (the Input section).
+        """
         self.file_action = action
-        mode = (
-            "folder"
-            if action == "output_dir"
-            else "save"
-            if action in ("save_config", "save_results")
-            else "open"
-        )
         title = {
-            "decay_file": "Load decay",
-            "irf_file": "Load IRF",
-            "vh_file": "Load VH decay",
-            "irf_vh_file": "Load VH IRF",
-            "config_file": "Load configuration",
             "output_dir": "Output directory",
             "save_config": "Save configuration",
             "save_results": "Export fit results",
         }[action]
-        filename = (
-            "lltf-config.yml"
-            if action == "save_config"
-            else "lltf-results.json"
-            if action == "save_results"
-            else ""
-        )
-        filters = (
-            YAML_FILTERS
-            if "config" in action
-            else [("JSON", ["*.json"])]
-            if action == "save_results"
-            else DATA_FILTERS
-        )
         import chisurf
 
         directory = str(getattr(chisurf, "working_path", "") or "") or None
-        self.dialog = FileDialog(
-            title, mode=mode, filename=filename, filters=filters, directory=directory
-        )
+        if action == "output_dir":
+            # not-input: where the fit's JSON and plot are written
+            self.dialog = FileDialog(title, mode="folder", directory=directory)
+        else:
+            self.dialog = FileDialog(
+                title,
+                mode="save",
+                filename="lltf-config.yml" if action == "save_config" else "lltf-results.json",
+                filters=YAML_FILTERS if action == "save_config" else [("JSON", ["*.json"])],
+                directory=directory,
+            )
         self.file_window = DialogWindow(title, size=(760, 540))
 
     def start(self):
@@ -256,6 +278,11 @@ class LLTFApp(TourTarget, ImApp):
         else:
             im.text_wrapped(m.status)
         im.separator()
+        self.input_form.rects.clear()
+        im.begin_disabled(m.running)
+        draw_form(self.input_spec, self.input, self.input_form)
+        im.end_disabled()
+        self.item_rects.update(self.input_form.rects)
         self.form.rects.clear()
         im.begin_disabled(m.running)
         draw_form(self.controls_spec, m, self.form)
@@ -266,7 +293,8 @@ class LLTFApp(TourTarget, ImApp):
         )  # the Qt tour's name for it
 
     def draw_files(self, section, model, state, width):
-        """The four file rows of the Qt wizard, each as its caption and, under it, the path and its Load... / Edit... / Select... button.
+        """The file rows of the Qt wizard, each as its caption and, under it, the path and -- for the
+        configuration and the output directory -- its Edit... / Select... button.
 
         The path takes the dock's width less the button, so a long path stays readable in a narrow dock instead of
         being cut to a few characters beside a caption.
@@ -283,6 +311,8 @@ class LLTFApp(TourTarget, ImApp):
             im.text(label)
             im.set_next_item_width(max(60.0, width - button_w - spacing - 4.0))
             flags = 0 if attr == "config_file" else im.InputTextFlags.READ_ONLY
+            if action is None:  # data from the workspace: the path, the full width
+                im.set_next_item_width(max(60.0, width - 4.0))
             changed, value = im.input_text(
                 f"##{attr}", getattr(m, attr) or "", flags=flags, elide_start=True
             )
@@ -290,12 +320,14 @@ class LLTFApp(TourTarget, ImApp):
             self.remember(attr)
             if changed and attr == "config_file":
                 m.config_file, m.config_dirty = value, False
+            if action is None:
+                continue
             im.same_line()
             if im.button(
                 f"{button}##{attr}.browse", (button_w, 0)
             ):  # not the field's id: it took the click
                 self.tour.notify_used(key)
-                if action is None:
+                if action == "edit_config":
                     self.edit_config()
                 else:
                     self.choose(action)
@@ -314,20 +346,6 @@ class LLTFApp(TourTarget, ImApp):
             self.error(lambda: m.load_config(m.config_file))
         self.config_open = True
 
-    def on_paths_dropped(self, paths):
-        """A dropped YAML is the configuration, a folder the output directory, data files the decay, then the IRF."""
-        m = self.model
-        for path in map(str, paths):
-            if Path(path).is_dir():
-                m.output_dir = path
-            elif path.lower().endswith((".yml", ".yaml")):
-                self.error(lambda p=path: m.load_config(p))
-            elif Path(path).is_file():
-                if not m.decay_file:
-                    m.decay_file = path
-                else:
-                    m.irf_file = path
-
     def details(self, box):
         m = self.model
         if im.begin_tab_bar("lltf_tabs"):
@@ -341,7 +359,7 @@ class LLTFApp(TourTarget, ImApp):
                     if tab == "Information":
                         im.text_wrapped(
                             tr(
-                                "Load the measured decay and IRF, edit YAML settings if needed, choose a fixed or automatically selected lifetime count, then Fit. Analysis runs separately; inspect its output, fitted lifetimes and weighted residuals before interpreting the model. In VV/VH mode a polarized pair is fitted jointly: shared lifetimes, rotational correlation times and r0. Load example simulates one whose answer is known."
+                                "Pick the measured decay and its IRF in the Input section (data dropped on the ChiSurf window is listed there), edit YAML settings if needed, choose a fixed or automatically selected lifetime count, then Fit. Analysis runs separately; inspect its output, fitted lifetimes and weighted residuals before interpreting the model. In VV/VH mode a polarized pair is fitted jointly: shared lifetimes, rotational correlation times and r0. Load example simulates one whose answer is known."
                             )
                         )
                     elif tab == "Analysis Output":
@@ -471,6 +489,7 @@ class LLTFApp(TourTarget, ImApp):
         if self.model.poll() and self.model.result is not None:
             self.arrays = self.error(self.model.plot_arrays)
             self.pending_tab = "Results"
+            self._register_fit()
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)
         im.begin_disabled(self.dialog is not None or self.config_open)
@@ -503,24 +522,17 @@ class LLTFApp(TourTarget, ImApp):
             if result:
                 action = self.file_action
                 self.dialog = None
-                if action == "config_file":
-                    self.error(lambda: self.model.load_config(result[0]))
-                elif action == "save_config":
+                if action == "save_config":
                     self.error(lambda: self.model.save_config(result[0]))
                 elif action == "save_results":
                     self.error(
                         lambda: Path(result[0]).write_text(json.dumps(self.model.result, indent=2))
                     )
-                else:
-                    setattr(self.model, action, str(result[0]))
-                    if action in ("decay_file", "irf_file", "output_dir"):
-                        import chisurf
+                elif action == "output_dir":
+                    import chisurf
 
-                        chisurf.working_path = (
-                            Path(result[0]) if action == "output_dir" else Path(result[0]).parent
-                        )
-                    if action == "decay_file":
-                        self.tour.notify_used("Load...")
+                    self.model.output_dir = str(result[0])
+                    chisurf.working_path = Path(result[0])
             elif result is False or pressed == "close":
                 self.dialog = None
             self.file_window.end()
@@ -528,5 +540,93 @@ class LLTFApp(TourTarget, ImApp):
         self.tour.draw(*vp.size)
 
 
+    def _register_fit(self) -> None:
+        """The fitted decay enters the workspace, a child of the decay it was fitted to."""
+        a = self.arrays
+        if not a or a.get("polarized"):
+            return
+        try:
+            from chisurf.core.data import DataCurve
+
+            curve = DataCurve(
+                x=np.asarray(a["model_time"], float),
+                y=np.asarray(a["fit"], float),
+                name=f"LLTF fit · {Path(self.model.decay_file).stem}",
+                load_filename_on_init=False,
+            )
+            curve.data_kind = "decay"
+            register_result(curve, result_of=self.source_uid, name=curve.name)
+        except Exception:  # noqa: BLE001 - the fit stands; the workspace row is a convenience
+            import logging
+
+            logging.getLogger(__name__).exception("registering the LLTF fit failed")
+
+
 def make_app():
     return LLTFApp()
+
+
+def _curve_file(address: str, folder: Path) -> str:
+    """A file the LLTF command line reads for the workspace curve *address*: the file it was read
+    from, else its points written as two columns into *folder* (a curve that lives in the session)."""
+    dataset = resolve_dataset(address)
+    if dataset is None:
+        if Path(address).is_file():
+            return address
+        raise FileNotFoundError(f"{address} is not in the workspace")
+    for source in (getattr(dataset, "filename", ""), getattr(dataset, "address", "")):
+        if source and Path(str(source)).is_file():
+            return str(source)
+    name = str(getattr(dataset, "name", "") or "curve").replace("/", "_")
+    folder.mkdir(parents=True, exist_ok=True)
+    target = folder / f"{Path(name).stem or 'curve'}.dat"
+    np.savetxt(target, np.column_stack([np.asarray(dataset.x), np.asarray(dataset.y)]), delimiter="\t")
+    return str(target)
+
+
+def receive_decays(app: LLTFApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``decays``): the decay and IRF to fit.
+
+    ``decays`` are addresses of workspace curves (``@<uid>`` for one read into the session), in the
+    order picked: one named *IRF* (or *prompt*) is the instrument response, else the second; a
+    curve named *VH* fills the VH row of a VV/VH fit. A decay alone replaces the decay and keeps the
+    IRF; an IRF alone replaces the IRF.
+    """
+    import tempfile
+
+    addresses = [str(a) for a in payload.get("decays") or []]
+    uids = [str(u) for u in payload.get("datasets") or []]
+    if not addresses:
+        raise ValueError("no decay picked")
+    folder = Path(tempfile.gettempdir()) / "chisurf-lltf-input"
+    picked = []
+    for index, address in enumerate(addresses):
+        dataset = resolve_dataset(address)
+        label = str(getattr(dataset, "name", "") or Path(address).name).lower()
+        picked.append((address, label, uids[index] if index < len(uids) else ""))
+
+    def is_irf(label: str) -> bool:
+        return "irf" in label or "prompt" in label
+
+    def is_vh(label: str) -> bool:
+        return "vh" in label.replace("vv_vh", "").replace("vvvh", "")
+
+    irfs = [p for p in picked if is_irf(p[1])]
+    decays = [p for p in picked if not is_irf(p[1])]
+    if not irfs and len(decays) >= 2:
+        irfs = [decays.pop(1)]
+    m = app.model
+    if decays:
+        main = next((p for p in decays if not is_vh(p[1])), decays[0])
+        m.decay_file = _curve_file(main[0], folder)
+        app.source_uid = main[2]
+        vh = next((p for p in decays if p is not main and is_vh(p[1])), None)
+        if vh is not None:
+            m.vh_file = _curve_file(vh[0], folder)
+    if irfs:
+        irf = next((p for p in irfs if not is_vh(p[1])), irfs[0])
+        m.irf_file = _curve_file(irf[0], folder)
+        irf_vh = next((p for p in irfs if p is not irf and is_vh(p[1])), None)
+        if irf_vh is not None:
+            m.irf_vh_file = _curve_file(irf_vh[0], folder)
+    app.arrays = None

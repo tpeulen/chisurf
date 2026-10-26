@@ -2,7 +2,7 @@
 
 An immediate-mode emtk application (:class:`BurstBvaApp`) over
 :class:`~.view_model.BvaViewModel`:
-- Left pane: folder input, actions (Run, Restart, Stop, Folder), tabbed settings
+- Left pane: the Input section (the workspace's burst runs), actions (Run, Restart, Stop), tabbed settings
   (BVA Settings and Channel Definitions), and status.
 - Right pane: BVA 2D plot with static line, scatter bursts, and profile mean ± std error.
 
@@ -17,8 +17,15 @@ from emtk import im, implot, style
 from emtk.app import ImApp
 from emtk.i18n import tr
 from emtk.im_core import get_current_context
-from emtk.view_form import FormState, draw_sections
+from emtk.view_form import FormState, draw_form, draw_sections
 
+from chisurf.core.plugin.workspace_input import (
+    WorkspaceInputMixin,
+    input_section,
+    read_address,
+    register_result,
+    spec_for,
+)
 from chisurf.emtk.advanced import advanced_mode
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
@@ -31,7 +38,9 @@ from chisurf.plugins.emtk_layout import (
 
 from .view_model import BvaViewModel
 
-__all__ = ["BurstBvaApp", "BurstBvaGui", "WINDOW_BG"]
+PLUGIN = Path(__file__).resolve().parents[1]
+
+__all__ = ["BurstBvaApp", "BurstBvaGui", "WINDOW_BG", "receive_bursts"]
 
 WINDOW_BG = (30, 32, 38, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
@@ -92,6 +101,18 @@ BINS_SECTIONS = [
 ]
 
 
+class _Input(WorkspaceInputMixin):
+    """The Input section's model: the workspace's burst runs, a pick handed to :func:`receive_bursts`."""
+
+    workspace_input_plugin = "burst_bva"
+
+
+def _input_spec() -> dict:
+    """The generated Input section of the manifest's ``accepts[].from_workspace``."""
+    found = spec_for(json.loads((PLUGIN / "manifest.json").read_text(encoding="utf-8")))
+    return {"sections": [input_section(found[1])]} if found else {"sections": []}
+
+
 class BurstBvaGui:
     """The immediate-mode GUI logic and rendering for BVA."""
 
@@ -103,7 +124,6 @@ class BurstBvaGui:
         on_run: Callable[[], None] | None = None,
         on_restart: Callable[[], None] | None = None,
         on_stop: Callable[[], None] | None = None,
-        on_browse: Callable[[], None] | None = None,
         on_clear: Callable[[], None] | None = None,
         on_save: Callable[[], None] | None = None,
         on_save_settings: Callable[[], None] | None = None,
@@ -114,7 +134,6 @@ class BurstBvaGui:
         self.on_run = on_run
         self.on_restart = on_restart
         self.on_stop = on_stop
-        self.on_browse = on_browse
         self.on_clear = on_clear
         self.on_save = on_save
         self.on_save_settings = on_save_settings
@@ -125,7 +144,11 @@ class BurstBvaGui:
         self.selected_settings_tab = "BVA Settings"
         #: The spin fields of the parameters (view-form: typed + arrows + Enter).
         self.param_form = FormState(on_used=self.track)
-        self._folder_text: str | None = None
+        #: The Input section: which burst run of the workspace BVA reads.
+        self.input = _Input()
+        self.input.workspace_input_on_used = lambda name: self.track(name)
+        self.input_spec = _input_spec()
+        self.input_form = FormState(on_used=self.track)
         self._microtime_text: dict[str, str] = {}
         #: The shared detector editor (``chisurf.emtk.channel_definition``) and the detectors picked from it.
         self.editor: Any = None
@@ -298,7 +321,7 @@ class BurstBvaGui:
         if im.begin("BVA Controls"):
             self._draw_action_buttons()
             im.spacing()
-            self._draw_folder_input(left_w - 16.0)
+            self._draw_input()
             im.spacing()
 
             # The settings tabs scroll inside the pane: an emtk window has no scrollbar, and the channel
@@ -428,11 +451,6 @@ class BurstBvaGui:
                     if running
                     else "Nothing is running; a BVA computation in progress can be stopped here.",
                 },
-                {
-                    "label": icon_label("📁", "Folder"),
-                    "key": "folder",
-                    "tip": "Browse for the folder containing the burst analysis files.",
-                },
             ],
             remember=self.remember,
         )
@@ -451,10 +469,6 @@ class BurstBvaGui:
             self.track("stop")
             if callable(self.on_stop):
                 self.on_stop()
-        elif pressed == "folder":
-            self.track("folder")
-            if callable(self.on_browse):
-                self.on_browse()
 
         # These actions previously lived only in the hidden Qt toolbar.
         pressed = button_row(
@@ -507,24 +521,15 @@ class BurstBvaGui:
             self.track("help")
             self.show_help()
 
-    def _draw_folder_input(self, width: float) -> None:
-        """Folder path input."""
-        im.text(tr("Burst folder:"))
-        current = str(self.model.analysis_folder or "")
-        # What is typed is kept as typed: the model holds a ``Path``, which drops a trailing "/" and so ate every
-        # separator the moment it was typed. The model's value wins as soon as it differs from what was typed
-        # (a dialog, a drop, a restored default).
-        typed = self._folder_text
-        if typed is None or (str(Path(typed)) if typed.strip() else "") != current:
-            typed = self._folder_text = current
-        changed, text = im.input_text("##folder_path", typed, hint=tr("Burst analysis folder …"))
-        im.set_item_tooltip(
-            tr("Path to the burst analysis folder; type a path or use Folder to browse.")
-        )
+    def _draw_input(self) -> None:
+        """The generated Input section (the workspace's burst runs), then the run BVA reads."""
+        self.input_form.rects.clear()
+        draw_form(self.input_spec, self.input, self.input_form)
+        for name, rect in self.input_form.rects.items():
+            self.item_rects[name] = tuple(rect)
+        folder = str(self.model.analysis_folder or "")
+        im.text_wrapped(tr("Burst run: {run}").format(run=folder or tr("none picked")))
         self.remember("folder_path")
-        if changed:
-            self._folder_text = text
-            self.model.set_folder(text)
 
     def _draw_bva_parameters(self) -> None:
         """Draw BVA parameter controls: spin fields (typed or stepped, keyboard-editable)."""
@@ -772,7 +777,6 @@ class BurstBvaApp(ImApp):
         on_run: Callable[[], None] | None = None,
         on_restart: Callable[[], None] | None = None,
         on_stop: Callable[[], None] | None = None,
-        on_browse: Callable[[], None] | None = None,
         on_clear: Callable[[], None] | None = None,
         on_save: Callable[[], None] | None = None,
         on_save_settings: Callable[[], None] | None = None,
@@ -784,21 +788,19 @@ class BurstBvaApp(ImApp):
         )
         self.window_size = window_size(primary, (1100, 720))
         self.controller = None
-        if all(callback is None for callback in (on_run, on_restart, on_stop, on_browse, on_clear)):
+        if all(callback is None for callback in (on_run, on_restart, on_stop, on_clear)):
             from .controller import BvaController
 
             model = model if model is not None else BvaViewModel()
             self.controller = BvaController(model)
             on_run, on_restart = self.controller.run, self.controller.restart
-            on_stop, on_browse = self.controller.stop, self.controller.browse
-            on_clear = self.controller.clear
+            on_stop, on_clear = self.controller.stop, self.controller.clear
             on_save, on_save_settings = self.controller.save_plot, self.controller.save_settings
         self.bva_gui = BurstBvaGui(
             model=model,
             on_run=on_run,
             on_restart=on_restart,
             on_stop=on_stop,
-            on_browse=on_browse,
             on_clear=on_clear,
             on_save=on_save,
             on_save_settings=on_save_settings,
@@ -806,6 +808,11 @@ class BurstBvaApp(ImApp):
             on_help=on_help,
         )
         self.model = self.bva_gui.model
+        self.bva_gui.input.workspace_input_app = self  # a pick goes to receive_bursts(self, ...)
+        #: The workspace dataset BVA reads: what it writes registers as its child.
+        self.source_uid = ""
+        if self.controller is not None:
+            self.controller.on_written = self._register
         self.item_rects = self.bva_gui.item_rects
         self._size = (1200, 800)
         super().__init__(gui=self._render)
@@ -836,12 +843,24 @@ class BurstBvaApp(ImApp):
             controller.pending_export = None
             controller.write_window_png(self, path, self._size)
 
-    def files_dropped(self, paths) -> bool:
-        """A dropped burst folder or container becomes the input; anything else is reported."""
-        if self.controller is None:
-            return False
-        self.controller.on_paths_dropped(list(paths))
-        return bool(paths)
+    def _register(self, written: list[str]) -> None:
+        """The BVA table written into each container (``m000.pto/bva``) enters the workspace, a
+        child of the burst run it was computed from."""
+        from chisurf.core.fio.address import container_of, join_address
+
+        run = Path(str(self.model.analysis_folder or "")).name
+        for container in written:
+            try:
+                register_result(
+                    join_address(container_of(container), "bva"),
+                    kind="bursts",
+                    result_of=self.source_uid,
+                    name=f"BVA · {run}",
+                )
+            except Exception:  # noqa: BLE001 - written to the container; the row is a convenience
+                import logging
+
+                logging.getLogger(__name__).exception("registering %s failed", container)
 
     def _render(self) -> None:
         if self.controller is not None:
@@ -862,3 +881,18 @@ class BurstBvaApp(ImApp):
 def create_app(**kwargs):
     """Create the toolkit-free plugin control."""
     return BurstBvaApp(**kwargs)
+
+
+def receive_bursts(app: BurstBvaApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``bursts``): analyse the burst run ``payload["folder"]``.
+
+    ``folder`` is an address -- a run of a measurement container (``m000.pto/<run>``) or a legacy
+    burst folder -- as the Input section, *Open in…* or a drag from the Datasets view hands it
+    (``datasets``: its uid).
+    """
+    if app.controller is None:
+        raise RuntimeError("this BVA window has no controller to run the analysis")
+    address = read_address(str(payload["folder"]))
+    if not app.controller.set_folder(address):
+        raise ValueError(f"{address} is not a burst run")
+    app.source_uid = str((payload.get("datasets") or [""])[0])

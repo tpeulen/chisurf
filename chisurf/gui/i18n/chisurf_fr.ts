@@ -19425,7 +19425,7 @@ Enregistrer un fichier LUT ou un settings.tttr.json (onglet ②) est optionnel �
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2459" />
             <source>photons</source>
-            <translation type="obsolete">photons</translation>
+            <translation>photons</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="11555" />
@@ -71880,6 +71880,70 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
         <message>
             <source>(temporary — not saved)</source>
             <translation>(temporaire — non enregistré)</translation>
+        </message>
+        <message>
+            <source>Open in {tool}</source>
+            <translation>Ouvrir dans {tool}</translation>
+        </message>
+        <message>
+            <source>Open in…</source>
+            <translation>Ouvrir dans…</translation>
+        </message>
+        <message>
+            <source>Give the selected data to {tool}.</source>
+            <translation>Transmettre les données sélectionnées à {tool}.</translation>
+        </message>
+        <message>
+            <source>{tool} does not take this data.</source>
+            <translation>{tool} ne prend pas ces données.</translation>
+        </message>
+        <message>
+            <source>{name} → {tool}</source>
+            <translation>{name} → {tool}</translation>
+        </message>
+        <message>
+            <source>{name}: not accepted by {tool}</source>
+            <translation>{name} : non accepté par {tool}</translation>
+        </message>
+        <message>
+            <source>Which experiment is {name}? Choose it in Read data.</source>
+            <translation>De quelle expérience relève {name} ? Choisissez-la dans Lire les données.</translation>
+        </message>
+        <message>
+            <source>Use selected</source>
+            <translation>Utiliser la sélection</translation>
+        </message>
+        <message>
+            <source>Pick what this tool works on.</source>
+            <translation>Choisissez les données de cet outil.</translation>
+        </message>
+        <message>
+            <source>Nothing in the workspace yet: drop files on the ChiSurf window to add data.</source>
+            <translation>Rien dans l'espace de travail : déposez des fichiers sur la fenêtre ChiSurf pour ajouter des données.</translation>
+        </message>
+        <message>
+            <source>No trace: pick a photon stream in the Input section (drop files on ChiSurf to add them).</source>
+            <translation>Aucune trace : choisissez un flux de photons dans la section Entrée (déposez des fichiers sur ChiSurf pour les ajouter).</translation>
+        </message>
+        <message>
+            <source>Burst run: {run}</source>
+            <translation>Série de bursts : {run}</translation>
+        </message>
+        <message>
+            <source>none picked</source>
+            <translation>aucune choisie</translation>
+        </message>
+        <message>
+            <source>Single photon counting</source>
+            <translation>Comptage de photons uniques</translation>
+        </message>
+        <message>
+            <source>Instrument setup</source>
+            <translation>Configuration de l'instrument</translation>
+        </message>
+        <message>
+            <source>intensity</source>
+            <translation>intensité</translation>
         </message>
     </context>
     <context>

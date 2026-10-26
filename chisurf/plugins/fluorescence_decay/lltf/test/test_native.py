@@ -95,7 +95,7 @@ app.draw(RecordingPainter(),0,0,1200,900)
 app.config_open=True;app.draw(RecordingPainter(),0,0,1200,900)
 app.model.save_config({str(tmp_path / "config.yml")!r})
 app.model.load_config({str(tmp_path / "config.yml")!r})
-app.config_open=False;app.choose('decay_file');app.draw(RecordingPainter(),0,0,1200,900)
+app.config_open=False;app.choose('output_dir');app.draw(RecordingPainter(),0,0,1200,900)
 assert 'chisurf.gui' not in sys.modules
 """
     result = subprocess.run(

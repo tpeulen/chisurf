@@ -33,6 +33,17 @@ experiment_types:
   structure:
     name: Modelling
     hidden: false
+  # Experiments whose data stays in a file the workspace links (no fit models):
+  # chisurf.core.experiments.linked.
+  photon_counting:
+    name: Single photon counting
+    hidden: false
+  imaging:
+    name: Imaging
+    hidden: false
+  instrument_setup:
+    name: Instrument setup
+    hidden: false
 
 tcspc:
   readers:
@@ -246,6 +257,36 @@ structure:
       reader_params: {}
   models:
     - chisurf.core.models.structure.proteinmc_model.ProteinMCModel
+
+# A single-photon (TTTR) stream: a vendor file or a photon stream of a container, linked. Its burst
+# runs (m000.pto/<run>) are results kept in its container: the workspace shows them as its children.
+photon_counting:
+  readers:
+    - reader_class: chisurf.core.experiments.linked.PhotonStreamReader
+      reader_params:
+        name: Photon stream
+    - reader_class: chisurf.core.experiments.linked.BurstRunReader
+      reader_params:
+        name: Burst run
+  models: []
+
+# An image, either representation: photon events with a position (a scanning confocal TTTR stream,
+# a photon-counting camera) or an intensity stack (TIFF); the reader detects which. Linked.
+imaging:
+  readers:
+    - reader_class: chisurf.core.experiments.linked.ImageStackReader
+      reader_params:
+        name: Image stack
+  models: []
+
+# What a tool reads besides the measurement: detector/channel setups, look-up tables, kinetic
+# schemes, IRF and background patterns, linked.
+instrument_setup:
+  readers:
+    - reader_class: chisurf.core.experiments.linked.InstrumentSetupReader
+      reader_params:
+        name: Setup file
+  models: []
 
 global:
   name: Global

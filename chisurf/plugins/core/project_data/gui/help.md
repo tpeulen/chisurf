@@ -19,7 +19,7 @@ inside the project when it has to travel alone.
    deposit refuses a project that is not self-contained unless you override it explicitly.
 
 Right-click a dataset in the Datasets panel to embed it alone, or to write an embedded file back out and
-link it again. **Add as** above the Datasets table decides how dropped files enter the project.
+link it again. **Add as** on the Read data page decides how read or dropped files enter the project.
 
 ## Before trusting a result
 A file that was replaced with **Use anyway** is not the file earlier results were computed from; recompute

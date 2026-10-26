@@ -1152,6 +1152,7 @@ class LinkedDataset(ExperimentalData):
         link: dict | None = None,
         name: str | None = None,
         unique_identifier: str | None = None,
+        result_of: str = "",
         **kwargs,
     ):
         self._address = str(address)
@@ -1163,6 +1164,9 @@ class LinkedDataset(ExperimentalData):
             **kwargs,
         )
         self.data_kind = str(data_kind)
+        #: The uid of the dataset this one is a result of (a burst run of a photon stream): the
+        #: workspace shows it as that dataset's child row, of that dataset's experiment.
+        self.result_of: str = str(result_of or "")
         if link is None:
             from chisurf.core.project.links import add_link
 
@@ -1218,6 +1222,64 @@ class LinkedDataset(ExperimentalData):
         resolution = resolve(self.link)
         self.link_status, self.link_problem = resolution.status, resolution.reason
         return self.link_status
+
+
+class ImageDataset(LinkedDataset):
+    """An image in the workspace, in one of two representations (the *Imaging* experiment).
+
+    ``representation`` says which: ``"photons"`` -- photon events with a position (a scanning
+    confocal TTTR stream with line/frame markers, or a photon-counting camera): the photons stay
+    linked like a photon stream and an image is built on demand with the binning a tool chooses
+    (:meth:`photons`); ``"intensity"`` -- frames of pixel values (a TIFF stack).
+    """
+
+    data_kind = "image"
+    #: The two representations, in the order the workspace names them.
+    REPRESENTATIONS = ("photons", "intensity")
+
+    def __init__(
+        self,
+        address: str,
+        *,
+        representation: str,
+        link: dict | None = None,
+        header_json: str = "",
+        **kwargs,
+    ):
+        if representation not in self.REPRESENTATIONS:
+            raise ValueError(f"unknown image representation {representation!r}")
+        super().__init__(address, data_kind="image", link=link, **kwargs)
+        self.representation = str(representation)
+        self.header_json = str(header_json or "")
+        if self.header_json:
+            self.meta_data["tttr_header_json"] = self.header_json
+
+    @classmethod
+    def from_address(cls, address: str, **kwargs) -> ImageDataset:
+        """Import the image at *address*, detecting its representation from what the file is."""
+        from chisurf.core.fio.address import container_of
+        from chisurf.core.fio.classify import is_photon_image
+
+        source = container_of(str(address)) or str(address)
+        if is_photon_image(source):
+            from chisurf.core.fio.staging import open_tttr
+
+            try:
+                header = open_tttr(str(address)).header.json
+            except Exception:  # noqa: BLE001 - the listing works without it
+                header = ""
+            return cls(str(address), representation="photons", header_json=header, **kwargs)
+        return cls(str(address), representation="intensity", **kwargs)
+
+    def photons(self):
+        """Open the photon events of a photon image (``tttrlib.TTTR``); an intensity image has none."""
+        if self.representation != "photons":
+            raise TypeError(f"{self.name} is an intensity image: it holds no photons")
+        if not self.resolved:
+            raise FileNotFoundError(self.link_problem or f"{self.address} is not available")
+        from chisurf.core.fio.staging import open_tttr
+
+        return open_tttr(self.read_address)
 
 
 class PhotonStreamDataset(LinkedDataset):

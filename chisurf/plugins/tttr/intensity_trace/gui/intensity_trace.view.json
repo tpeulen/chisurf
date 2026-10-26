@@ -7,13 +7,8 @@
         {
           "type": "button_row",
           "weight": 0,
-          "description": "Open a TTTR file, choose the detector setup, help and the guided tour.",
+          "description": "Load the example, help, the guided tour, and cancel a running fit.",
           "buttons": [
-            {
-              "action": "request_load",
-              "label": "Load TTTR",
-              "description": "Open a TTTR file (PTU, HT3, SPC, HDF5, ...) and bin it into an intensity trace; a dropped file does the same."
-            },
             {
               "action": "load_example",
               "label": "Load example",
@@ -48,7 +43,7 @@
           "read_only": true,
           "elide": "start",
           "placeholder": "No file selected",
-          "description": "The TTTR file being shown (load another with Load TTTR or drop one on the window)."
+          "description": "The photon stream being shown: pick another in the Input section (files dropped on ChiSurf are added to the workspace)."
         },
         {
           "type": "choice",

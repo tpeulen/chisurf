@@ -817,6 +817,57 @@ class EmtkShellApp(ImApp):
         self.request_frame()
         return hosted
 
+    def tools_for_rows(self, rows: list[dict]) -> list[tuple[str, str]]:
+        """``[(plugin_id, label), ...]`` of the tools that take every one of the workspace *rows*
+        (their manifests' ``accepts[].from_workspace``, :mod:`chisurf.core.plugin.workspace_input`)."""
+        from chisurf.core.plugin.workspace_input import plugins_accepting
+
+        offered = {pid: m for pid, m in self.catalog.items() if pid in self.by_id}
+        out = []
+        for plugin_id, _spec in plugins_accepting(offered, rows):
+            entry = self.by_id[plugin_id]
+            if not entry.action:
+                out.append((plugin_id, str(entry.label)))
+        return out
+
+    def tool_at(self, x: float, y: float) -> str | None:
+        """The plugin id of the tool drawn on top at (x, y), ``None`` over anything else."""
+        key = self._plugin_at(x, y)
+        hosted = next((h for h in self.hosted.values() if h.key == key), None)
+        return hosted.entry.plugin_id if hosted is not None else None
+
+    def feed_from_workspace(self, plugin_id: str, rows: list[dict]) -> HostedPlugin | None:
+        """Give *plugin_id* the workspace *rows* (Open in…, or rows dragged onto the tool).
+
+        The plugin's manifest says what it takes (``accepts[].from_workspace``); the payload carries
+        the rows' addresses -- never a file the user had to find -- and goes through the ordinary
+        hand-off to the plugin's receive hook, opening the tool when it is not open yet. A tool that
+        does not take the rows is said in the status line; nothing opens.
+        """
+        from chisurf.core.plugin.handoff import HandoffError
+        from chisurf.core.plugin.workspace_input import build_payload, matches, spec_for
+
+        manifest = self.catalog.get(plugin_id)
+        kinds = {str(r.get("kind") or "") for r in rows}
+        found = None
+        for kind in sorted(kinds - {"setup"}) or [None]:
+            found = spec_for(manifest, kind=kind)
+            if found is not None:
+                break
+        if found is None or not all(
+            matches(found[1], r) or (found[1].with_setup and r.get("kind") == "setup") for r in rows
+        ):
+            label = tr(self.by_id[plugin_id].label) if plugin_id in self.by_id else plugin_id
+            self.status = tr("{tool} does not take this data.").format(tool=label)
+            return None
+        handoff, inputs = found
+        try:
+            payload = build_payload(inputs, rows)
+            return self.hand_off(plugin_id, handoff.name, payload)
+        except (HandoffError, ValueError) as exc:
+            self.status = str(exc)
+            return None
+
     def _place_wide_tool(self, hosted: HostedPlugin) -> None:
         """Deprecated: tools always land docked in their region without auto-floating."""
         hosted.extra["placed"] = True

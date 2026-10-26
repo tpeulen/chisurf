@@ -3,11 +3,11 @@
   "sections": [
     {"type": "choice", "attr": "kind_filter", "label": "Show", "options_source": "kind_options",
      "description": "Narrow the datasets to one kind of data: photon streams, decays, correlations, histograms, traces, burst runs, structures or images. A group stays while one of its members is of that kind."},
-    {"type": "choice", "attr": "import_mode", "label": "Add as", "options_source": "import_mode_options",
-     "description": "How a photon file dropped on the window enters the project: linked (the file stays where it is; its path, size and checksum are recorded, so the project stays small) or embedded (copied into the project file at the next save, so the project is complete on its own). Right-click a dataset to switch it later."},
     {"type": "table", "source": "dataset_rows", "filter": true, "tooltip_key": "source_address", "row_key": "uid", "selected_call": "select_dataset", "selected_attr": "selected", "selection_attr": "selection",
      "tree_key": "parent",
      "context_menu": [
+       {"label": "Open in…", "items_source": "open_in_items", "description": "Give the selected data to a tool that takes it; no tool takes this data when the item is dimmed."},
+       {"separator": true},
        {"label": "Save", "call": "save_dataset", "enabled_when": "can_save", "description": "Save the selected dataset to a pickle file."},
        {"label": "Load", "call": "load_dataset", "description": "Load a dataset saved with Save into the session."},
        {"label": "Remove", "call": "remove_selected_row", "enabled_when": "can_remove", "description": "Remove the selected datasets (a member of a group removes its group)."},

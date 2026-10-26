@@ -7,6 +7,8 @@
     {"type": "choice", "attr": "setup", "label": "File type", "options_source": "setup_names",
      "call": "setup_changed",
      "description": "After selecting a setup-type adjust the parameters of the setup used to open the experimental data."},
+    {"type": "choice", "attr": "import_mode", "label": "Add as", "options_source": "import_mode_options",
+     "description": "How data read here or dropped on the window enters the project: linked (the file stays where it is; its path, size and checksum are recorded, so the project stays small) or embedded (copied into the project file at the next save, so the project is complete on its own). Right-click a dataset in Datasets to switch it later."},
     {"type": "value", "kind": "str", "attr": "path", "label": "File", "placeholder": "Drop files here.",
      "elide": "start",
      "description": "The file to read. Drop a file onto the window, type its path or browse for it."},

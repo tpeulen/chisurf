@@ -21,8 +21,20 @@ from ..core import computation as core
 logger = logging.getLogger(__name__)
 
 
+def _stamp_path(folder) -> Path:
+    """Where the run's fingerprint stamp lives: ``Info/`` of a burst folder, beside a container."""
+    from chisurf.core.fio.address import container_of
+
+    folder = Path(folder)
+    if folder.is_dir():
+        return folder / "Info" / "bva.stamp.json"
+    container = container_of(folder)
+    tag = folder.as_posix()[len(container.as_posix()):].strip("/").replace("/", "_")
+    return container.parent / "Info" / f"{container.stem}{'_' + tag if tag else ''}.bva.stamp.json"
+
+
 class BvaController:
-    """Run, stop, browse and save for :class:`~.view_model.BvaViewModel` without a toolkit."""
+    """Run, stop and save for :class:`~.view_model.BvaViewModel` without a toolkit."""
 
     def __init__(self, model, settings_path=None):
         self.model = model
@@ -32,10 +44,10 @@ class BvaController:
             settings_path = Path(get_path("settings")) / "plugin_burst_bva_settings.ini"
         self.settings_path = Path(settings_path)
         self._restore_settings()
-        self._dialog_kind = "folder"
-        self._dialog_window = DialogWindow(
-            "Select Data Folder", size=(640.0, 460.0), key="bva-file"
-        )
+        self._dialog_window = DialogWindow("Save Plot", size=(640.0, 460.0), key="bva-file")
+        #: Told the containers a written run went into (the app registers them in the workspace).
+        self.on_written = None
+        self._written: list[str] = []
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bva")
         self._future = None
         self._fingerprint = None
@@ -67,16 +79,16 @@ class BvaController:
             return
         if explicit:
             self._cache.allow()
+        from chisurf.core.fio.address import container_of
+
         folder = self.model.analysis_folder
-        if folder is None or not Path(folder).exists():
-            self.model.status_text = "Select a data folder first."
+        if folder is None or not container_of(folder).exists():
+            self.model.status_text = "Pick a burst run in the Input section first."
             return
         folder = Path(folder)
         settings = self.model.bva_settings()
         self._fingerprint = self.model.analysis_fingerprint(settings)
-        outputs_current = analysis_cache.is_current(
-            folder / "Info" / "bva.stamp.json", self._fingerprint
-        )
+        outputs_current = analysis_cache.is_current(_stamp_path(folder), self._fingerprint)
         if (
             not force
             and self.model.df is not None
@@ -142,8 +154,9 @@ class BvaController:
             except Exception as exc:  # the result stands, as in the Qt tool
                 logger.error("BVA write failed: %s", exc)
                 note = f" (could not write the BVA result: {exc})"
+            self._written = [str(p) for p in written]
             analysis_cache.write_stamp(
-                folder / "Info" / "bva.stamp.json",
+                _stamp_path(folder),
                 fingerprint,
                 params=params,
                 inputs=inputs,
@@ -170,6 +183,9 @@ class BvaController:
             self.model.set_result(burst_df, tttrs, result)
             self.model.status_text += note
             self._cache.remember(self._fingerprint)
+            written, self._written = self._written, []
+            if written and callable(self.on_written):
+                self.on_written(written)
         except InterruptedError:
             self.model.status_text = "BVA cancelled."
         except Exception as exc:
@@ -239,28 +255,13 @@ class BvaController:
         """Ask where to save the picture of the window."""
         self._open("save")
 
-    # -- folder -------------------------------------------------------------- #
-    def browse(self):
-        """Open the folder picker."""
-        self._open("folder")
-
     def _open(self, kind):
+        """Ask where to save the plot (the input comes from the workspace, never a dialog)."""
         from emtk.file_dialog import FileDialog
 
-        self._dialog_kind = kind
-        if kind == "save":
-            self.dialog = FileDialog(
-                "Save Plot", mode="save", filename="bva_plot.png", filters=[("PNG", ["*.png"])]
-            )
-            title = "Save Plot"
-        else:
-            self.dialog = FileDialog(
-                "Select Data Folder",
-                mode="folder",
-                directory=str(self.model.analysis_folder or "") or None,
-            )
-            title = "Select Data Folder"
-        self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="bva-file")
+        self.dialog = FileDialog(
+            "Save Plot", mode="save", filename="bva_plot.png", filters=[("PNG", ["*.png"])]
+        )
         self._dialog_window.show()
 
     def draw_dialog(self, frame):
@@ -272,10 +273,7 @@ class BvaController:
         self._dialog_window.end()
         if result:
             self.dialog = None
-            if self._dialog_kind == "save":
-                self.pending_export = result[0]
-            else:
-                self.set_folder(result[0])
+            self.pending_export = result[0]
         elif result is False or pressed == "close":
             self.dialog = None
 
@@ -289,16 +287,6 @@ class BvaController:
             self.model.status_text = f"Data folder: {p}"
             return True
         return False
-
-    def on_paths_dropped(self, paths):
-        """Adopt the first dropped burst folder or container; report anything else."""
-        for path in paths:
-            if self.set_folder(path):
-                return
-        if paths:
-            self.model.status_text = (
-                f"BVA reads a burst-analysis folder; {Path(paths[0]).name} is not one."
-            )
 
     def close(self):
         """Stop and release the worker."""

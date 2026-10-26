@@ -191,6 +191,7 @@ class ProjectDataApp(ImApp):
         elif request in ("folder", "file") and self.dialog is None:
             self._dialog_for = request
             title = tr("Search for the file in…") if request == "folder" else tr("Use this file")
+            # not-input: repair -- finds the moved original of a linked dataset, adds no data
             self.dialog = FileDialog(title, mode="folder" if request == "folder" else "open")
         job, self.model.job = self.model.job, ""
         if job == "check":
