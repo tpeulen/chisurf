@@ -7,7 +7,7 @@ import pytest
 import tttrlib
 
 from chisurf.core.fluorescence.burst import burst_filter
-from chisurf.plugins.core.acq.live.pie import analyze_offline
+from chisurf.plugins.core.acq.live.analyzer import analyze_offline
 from chisurf.plugins.core.acq.live.session import RUN_NAME, RecordSession
 from chisurf.plugins.core.acq.live.sources import SimulatedPieSource
 
@@ -34,24 +34,32 @@ def test_the_recording_holds_every_photon_and_stops_at_the_duration(recorded):
 def test_live_equals_offline_on_the_recorded_file(recorded):
     session, result, _out = recorded
     tttr = tttrlib.TTTR(str(result.ptu))
-    off = analyze_offline(tttr, session.setup, session.burst)
+    exp = session.experiment
+    b = exp.burst
+    off = analyze_offline(
+        tttr,
+        exp.setup,
+        exp.preset,
+        min_photons=b.min_photons,
+        window_photons=b.window_photons,
+        window_time=b.window_time_s,
+    )
     assert result.bursts > 50
     for col in (
         "First Photon",
         "Last Photon",
-        "Number of Photons (DD)",
-        "Number of Photons (DA)",
-        "Number of Photons (AA)",
+        "Number of Photons (green)",
+        "Number of Photons (red)",
     ):
         assert np.array_equal(result.table[col], off[col]), col
-    assert np.allclose(result.table["E"], off["E"], equal_nan=True)
-    assert np.allclose(result.table["S"], off["S"], equal_nan=True)
+    assert np.allclose(result.table["Proximity Ratio"], off["Proximity Ratio"])
+    assert np.allclose(result.table["Stoichiometry"], off["Stoichiometry"])
 
 
 def test_burst_selection_finds_the_same_bursts_in_the_recording(recorded):
     session, result, _out = recorded
     tttr = tttrlib.TTTR(str(result.ptu))
-    p = session.burst
+    p = session.experiment.burst
     mask = burst_filter(tttr, p.min_photons, p.window_photons, p.window_time_s)
     live = np.zeros(len(tttr), bool)
     for a, b in zip(result.table["First Photon"], result.table["Last Photon"]):
@@ -76,4 +84,4 @@ def test_the_run_is_written_where_ndx_reads_it(recorded):
     )
     store, _prov = pto_reader.read_run(container)
     assert int(np.asarray(store["Number of Photons"]).size) == result.bursts
-    assert np.allclose(np.asarray(store["E"]), result.table["E"], equal_nan=True)
+    assert np.allclose(np.asarray(store["Proximity Ratio"]), result.table["Proximity Ratio"])

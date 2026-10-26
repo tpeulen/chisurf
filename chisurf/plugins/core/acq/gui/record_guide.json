@@ -1,11 +1,66 @@
 {
   "steps": [
-    {"title": "Measure and watch E–S build up", "text": "The Record tool measures single molecules with pulsed interleaved excitation (PIE) and analyses every burst while the measurement runs. Until a device is available it measures the <b>simulator</b>: a PIE smFRET experiment whose answer is known."},
-    {"title": "Load the example", "text": "Two populations with E 0.2 and 0.8, both at stoichiometry S 0.5, measured with the default PIE setup.", "target": {"name": "load_example", "action": "Load example"}, "await": {"hint": "Press <b>Load example</b>."}},
-    {"title": "Pick the PIE setup", "text": "Which detector is donor and which acceptor, where the prompt and the delay window lie: a detector setup from the Datasets workspace (drop its JSON on the window), or the default. A setup with gamma, beta, alpha and delta gives corrected E and S.", "target": {"name": "setup_address", "attr": "setup_address"}, "await": {"hint": "Choose the <b>Instrument setup</b> (the default is fine for the example)."}},
-    {"title": "Start", "text": "Photons are analysed as they arrive and written to the recording at the same time.", "target": {"name": "start", "action": "Start"}, "await": {"hint": "Press <b>Start</b>."}},
-    {"title": "Watch the histogram", "text": "Each finished burst lands in the E–S histogram: two clusters grow at E 0.2 and 0.8, both at S 0.5. Below, the count rates of DD, DA and AA photons, and the decays of both detectors with the prompt and delay windows marked — a window in the wrong place shows here first.", "target": {"name": "live_view"}},
-    {"title": "Read the traffic lights", "text": "The FRET quality checker judges the bursts so far, every two seconds: the overall light is the worst check. <b>Green</b>: continue. <b>Amber</b>: usable, read the note. <b>Red</b>: act now — the note says what to do (dilute when the occupancy is too high, check background, focus or laser power). The lights stay grey until there are enough bursts for a verdict. The verdict at stop is stored with the run.", "target": {"name": "live_qc"}},
-    {"title": "Stop", "text": "Stopping closes the open burst and the recording. The recording enters the Datasets workspace as a photons dataset, its bursts as a run below it — ready for Burst Selection, ndXplorer and the other burst tools, with exactly the bursts you saw.", "target": {"name": "stop", "action": "Stop"}, "await": {"hint": "Press <b>Stop</b> (or wait for the duration to pass)."}}
+    {
+      "title": "Measure and watch the bursts build up",
+      "text": "The Record tool measures single molecules and analyses every burst while the measurement runs. Until a device is connected it measures the <b>simulator</b>: a simulated MultiHarp measuring a smFRET sample whose answer is known."
+    },
+    {
+      "title": "Load the example",
+      "text": "Two populations with E 0.2 and 0.8, both at stoichiometry S 0.5, measured with the default PIE setup.",
+      "target": {
+        "name": "load_example",
+        "action": "Load example"
+      },
+      "await": {
+        "hint": "Press <b>Load example</b>."
+      }
+    },
+    {
+      "title": "Pick the measurement type",
+      "text": "The <b>Measurement type</b> decides what is computed and shown: PIE and ALEX give proximity ratio and stoichiometry (the E–S histogram), two colour the proximity ratio, MFD anisotropy, single colour burst size and duration. 'From the setup' takes the type the Instrument setup describes.",
+      "target": {
+        "name": "preset",
+        "attr": "preset"
+      },
+      "await": {
+        "hint": "Choose the <b>Measurement type</b> ('From the setup' is fine for the example)."
+      }
+    },
+    {
+      "title": "Start",
+      "text": "Photons are analysed as they arrive and written to the recording at the same time.",
+      "target": {
+        "name": "start",
+        "action": "Start"
+      },
+      "await": {
+        "hint": "Press <b>Start</b>."
+      }
+    },
+    {
+      "title": "Watch the histogram",
+      "text": "Each finished burst lands in the type's histograms — for the PIE example two clusters at E 0.2 and 0.8, both at S 0.5; <b>Histogram</b> picks which is shown. Below, the count rates and the decays of each stream with the excitation windows marked — a window in the wrong place shows here first.",
+      "target": {
+        "name": "live_view"
+      }
+    },
+    {
+      "title": "Read the traffic lights",
+      "text": "The FRET quality checker judges the bursts so far, every two seconds: the overall light is the worst check. <b>Green</b>: continue. <b>Amber</b>: usable, read the note. <b>Red</b>: act now — the note says what to do (dilute when the occupancy is too high, check background, focus or laser power). The lights stay grey until there are enough bursts for a verdict. The verdict at stop is stored with the run.",
+      "target": {
+        "name": "live_qc"
+      }
+    },
+    {
+      "title": "Stop",
+      "text": "Stopping closes the open burst and the recording. The recording enters the Datasets workspace as a photons dataset, its bursts as a run below it — ready for Burst Selection, ndXplorer and the other burst tools, with exactly the bursts you saw.",
+      "target": {
+        "name": "stop",
+        "action": "Stop"
+      },
+      "await": {
+        "hint": "Press <b>Stop</b> (or wait for the duration to pass)."
+      }
+    }
   ]
 }

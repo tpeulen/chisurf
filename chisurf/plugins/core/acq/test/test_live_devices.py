@@ -14,7 +14,7 @@ import tttrlib
 
 from chisurf.core.fluorescence.burst import burst_filter
 from chisurf.plugins.core.acq.live import devices
-from chisurf.plugins.core.acq.live.pie import analyze_offline
+from chisurf.plugins.core.acq.live.analyzer import analyze_offline
 from chisurf.plugins.core.acq.live.session import RecordSession
 
 pqusb = pytest.importorskip("pqusb")
@@ -29,11 +29,15 @@ def _sim(speed=1000.0, seed=3):
 def test_the_simulated_multiharp_speaks_generic_t3_that_both_decoders_read_alike():
     dev = _sim()
     chunks = []
-    for words in dev.stream(chunk_bytes=1 << 14):
-        if len(words):
-            chunks.append(np.frombuffer(words, dtype=np.uint32).copy())
-        if sum(map(len, chunks)) > 20000:
-            break
+    stream = dev.stream(chunk_bytes=1 << 14)
+    try:
+        for words in stream:
+            if len(words):
+                chunks.append(np.frombuffer(words, dtype=np.uint32).copy())
+            if sum(map(len, chunks)) > 20000:
+                break
+    finally:
+        stream.close()  # stops the measurement and its reader thread
     assert dev.record_type() == 0x00010307
     state, data = tttrlib.TTTRDecodeState(), tttrlib.TTTR()
     for c in chunks:
@@ -71,20 +75,26 @@ def test_the_device_timer_ends_the_run_and_the_ptu_holds_its_records(device_run)
 def test_live_equals_offline_and_burst_selection_on_the_device_recording(device_run):
     session, result = device_run
     tttr = tttrlib.TTTR(str(result.ptu))
-    off = analyze_offline(tttr, session.setup, session.burst)
+    exp = session.experiment
+    p = exp.burst
+    off = analyze_offline(
+        tttr,
+        exp.setup,
+        exp.preset,
+        min_photons=p.min_photons,
+        window_photons=p.window_photons,
+        window_time=p.window_time_s,
+    )
     assert np.array_equal(off["First Photon"], result.table["First Photon"])
-    assert np.allclose(off["E"], result.table["E"], equal_nan=True)
-    p = session.burst
+    assert np.allclose(off["Proximity Ratio"], result.table["Proximity Ratio"])
     mask = burst_filter(tttr, p.min_photons, p.window_photons, p.window_time_s)
     live = np.zeros(len(tttr), bool)
     for a, b in zip(result.table["First Photon"], result.table["Last Photon"]):
         live[a : b + 1] = True
     assert np.array_equal(mask, live)
-    e = result.table["E"][
-        np.isfinite(result.table["E"]) & (result.table["Number of Photons"] >= 40)
-    ]
-    assert np.median(e[e < 0.5]) == pytest.approx(0.2, abs=0.05)
-    assert np.median(e[e >= 0.5]) == pytest.approx(0.8, abs=0.05)
+    e = result.table["Proximity Ratio"][result.table["Number of Photons"] >= 40]
+    assert np.median(e[e < 0.5]) == pytest.approx(0.2, abs=0.06)
+    assert np.median(e[e >= 0.5]) == pytest.approx(0.8, abs=0.06)
 
 
 def test_stop_from_another_thread_ends_the_stream_and_its_reader(tmp_path):

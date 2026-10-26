@@ -1,7 +1,9 @@
 """One recording: a source read in a worker thread, analysed live, written to a PTU as it arrives.
 
 :class:`RecordSession` is what the Record tool starts and stops. The worker thread reads batches
-from the source, pushes them into the PIE analyzer and into a PTU stream writer; the view takes
+from the source, pushes them into the live burst analyzer (tttrlib's ``StreamingBurstAnalyzer``,
+or its stand-in; the measurement type is the :class:`~.setups.Experiment`'s preset) and into the
+recording; the view takes
 :meth:`RecordSession.snapshot` at its own pace (about 5 Hz) and never touches photons. When the run
 ends -- its duration reached, the source exhausted, or :meth:`stop` -- the open burst is closed,
 the PTU is finished, and :meth:`RecordSession.register` puts the result into the project: the PTU
@@ -22,15 +24,15 @@ from typing import Any
 import numpy as np
 import tttrlib
 
-from .pie import BurstParameters, PieSetup, make_analyzer
+from .setups import Experiment, default_setup
 from .sources import PhotonSource
 
 _log = logging.getLogger(__name__)
 
 __all__ = ["RecordSession", "RunResult", "RUN_NAME", "quality_record"]
 
-#: Name of a live run inside the analysis container (``<stem>.pto/live_pie``).
-RUN_NAME = "live_pie"
+#: Name of a live run inside the analysis container (``<stem>.pto/live_bursts``).
+RUN_NAME = "live_bursts"
 #: How often the quality checker re-evaluates the run while it is measured.
 QC_INTERVAL_S = 2.0
 
@@ -84,14 +86,14 @@ def quality_record(qc: dict) -> dict:
 
 
 class RecordSession:
-    """A source, a live PIE analysis and a PTU writer, run in one worker thread.
+    """A source, a live burst analysis and a recording, run in one worker thread.
 
     Parameters
     ----------
     source : PhotonSource
-    setup : PieSetup or None
-        ``None`` uses :meth:`PieSetup.default_for` the source's period.
-    burst : BurstParameters
+    experiment : Experiment or None
+        Setup, preset and burst rule; ``None`` is PIE with the default setup for the source's
+        period.
     duration_s : float or None
         Stop after this much measurement time; ``None`` until :meth:`stop`.
     ptu_path : str or Path or None
@@ -103,8 +105,7 @@ class RecordSession:
     def __init__(
         self,
         source: PhotonSource,
-        setup: PieSetup | None = None,
-        burst: BurstParameters = BurstParameters(),
+        experiment: Experiment | None = None,
         *,
         duration_s: float | None = None,
         ptu_path: str | Path | None = None,
@@ -112,12 +113,16 @@ class RecordSession:
     ):
         self.source = source
         info = source.info
-        self.setup = setup or PieSetup.default_for(info.n_micro)
-        self.burst = burst
+        self.experiment = experiment or Experiment(
+            default_setup("pie", info.n_micro), "pie", name="default PIE"
+        )
         self.duration_s = duration_s
         self.ptu_path = Path(ptu_path) if ptu_path else None
         self.name = name or datetime.datetime.now().strftime("record_%Y%m%d_%H%M%S")
-        self.analyzer = make_analyzer(self.setup, info.macro_clock_s, info.n_micro, burst)
+        self.analyzer = self.experiment.analyzer(info.macro_clock_s, info.micro_res_s, info.n_micro)
+        #: total photons per whole second of the run (the checker's stability trace)
+        self._per_second = np.zeros(0, dtype=np.int64)
+        self._first_macro: int | None = None
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -203,7 +208,8 @@ class RecordSession:
                         self.stop_reason = "duration reached"
                         self._stop.set()
                 with self._lock:
-                    self.analyzer.push(batch.macro, batch.micro, batch.channel)
+                    self.analyzer.push_np(batch.macro, batch.micro, batch.channel.astype(np.int32))
+                    self._count_seconds(batch.macro, clock)
                     self.batches += 1
                 if self._recorder is not None:
                     self._recorder.write(batch)
@@ -223,22 +229,50 @@ class RecordSession:
         finally:
             self.source.stop()
             with self._lock:
-                self.analyzer.finish()
-                table = self.analyzer.results()
+                self.analyzer.flush()
+                table = self.table()
             if self._writer is not None:
                 self._writer.close()
             if self._recorder is not None:
                 self._recorder.close()
             self._update_qc(table)
+            snap = self.analyzer.snapshot()
             self.result = RunResult(
                 ptu=self.ptu_path,
                 table=table,
-                photons=self.analyzer.n_photons,
-                bursts=self.analyzer.burst_count,
-                elapsed_s=self.analyzer.elapsed_s(),
+                photons=int(snap["photons"]),
+                bursts=int(snap["bursts"]),
+                elapsed_s=float(snap["elapsed_s"]),
                 stop_reason=self.stop_reason or "finished",
                 qc=self.qc,
             )
+
+    def table(self) -> dict:
+        """The burst table as stored: the analyzer's columns, then ``First File`` / ``Last File``
+        (one file per run)."""
+        table = dict(self.analyzer.table())
+        n = len(table.get("First Photon", ()))
+        table["First File"] = np.zeros(n, np.int64)
+        table["Last File"] = np.zeros(n, np.int64)
+        return table
+
+    def _count_seconds(self, macro, clock: float) -> None:
+        if len(macro) == 0:
+            return
+        if self._first_macro is None:
+            self._first_macro = int(macro[0])
+        second = ((macro.astype(np.int64) - self._first_macro) * clock).astype(np.int64)
+        counts = np.bincount(second)
+        if counts.size > self._per_second.size:
+            self._per_second = np.concatenate(
+                [self._per_second, np.zeros(counts.size - self._per_second.size, np.int64)]
+            )
+        self._per_second[: counts.size] += counts
+
+    def trace_1s(self) -> tuple[np.ndarray, np.ndarray]:
+        """Total count rate in 1 s bins: bin centres (s) and kHz (the last bin is partial)."""
+        n = self._per_second.size
+        return np.arange(n) + 0.5, self._per_second.astype(float) * 1e-3
 
     def _update_qc(self, table: dict | None = None) -> None:
         """Re-evaluate the quality checker on the bursts so far (worker thread, not the UI's)."""
@@ -246,22 +280,20 @@ class RecordSession:
 
         info = self.source.info
         with self._lock:
-            table = table if table is not None else self.analyzer.results()
-            elapsed = self.analyzer.elapsed_s()
-            background = self.analyzer.background_per_s()
-            trace = self.analyzer.trace_1s()
-            n_photons = self.analyzer.n_photons
+            table = table if table is not None else self.analyzer.table()
+            snap = self.analyzer.snapshot()
+            trace = self.trace_1s()
         try:
             qc = live_qc(
                 table,
-                elapsed_s=elapsed,
-                background_per_s=background,
+                self.experiment,
+                elapsed_s=float(snap["elapsed_s"]),
+                background_cps=snap["background_cps"],
                 trace=trace,
-                setup=self.setup,
                 macro_clock_s=info.macro_clock_s,
                 micro_res_s=info.micro_res_s,
                 n_micro=info.n_micro,
-                n_photons=n_photons,
+                n_photons=int(snap["photons"]),
             )
         except Exception as exc:  # noqa: BLE001 - no verdict is shown as such, the run goes on
             _log.exception("live quality check failed")
@@ -307,14 +339,15 @@ class RecordSession:
                 {c: result.table[c][i].item() for c in columns}
                 for i in range(len(result.table[columns[0]]))
             ]
+            exp = self.experiment
             parameters = {
-                "mode": "live_pie",
-                "min_photons": self.burst.min_photons,
-                "window_photons": self.burst.window_photons,
-                "window_time_s": self.burst.window_time_s,
-                "setup": self.setup.name,
-                "prompt": list(self.setup.prompt),
-                "delay": list(self.setup.delay),
+                "mode": "live",
+                "preset": exp.preset,
+                "min_photons": exp.burst.min_photons,
+                "window_photons": exp.burst.window_photons,
+                "window_time_s": exp.burst.window_time_s,
+                "setup_name": exp.name,
+                "setup": exp.setup,
             }
             if result.qc:
                 # The quality checker's verdict at stop, kept with the run's provenance.

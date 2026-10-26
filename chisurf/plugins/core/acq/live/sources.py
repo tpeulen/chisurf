@@ -152,6 +152,10 @@ _N_MICRO = int(round(_LASER_PERIOD_NS / _MICRO_RES_NS))  # 4000 channels per per
 _HALF = _N_MICRO // 2
 
 
+#: Excitation schemes the simulator measures.
+SCHEMES = ("pie", "two_color")
+
+
 class SimulatedPieSource(PhotonSource):
     """A PIE smFRET measurement from tttrlib's ``SimEngine``, delivered at measurement pace.
 
@@ -192,7 +196,11 @@ class SimulatedPieSource(PhotonSource):
         speed: float = 1.0,
         realtime: bool = True,
         segment_s: float = 5.0,
+        scheme: str = "pie",
     ):
+        if scheme not in SCHEMES:
+            raise ValueError(f"scheme {scheme!r} is not one of {SCHEMES}")
+        self.scheme = scheme
         self.populations = tuple(populations)
         self.duration_s = duration_s
         self.background_khz = tuple(background_khz)
@@ -201,7 +209,7 @@ class SimulatedPieSource(PhotonSource):
         self.segment_s = float(segment_s)
         self._clock = _Clock(speed=float(speed), realtime=bool(realtime))
         self.info = SourceInfo(
-            name="Simulator (PIE smFRET)",
+            name="Simulator (PIE smFRET)" if scheme == "pie" else "Simulator (two-colour smFRET)",
             macro_clock_s=_MACRO_TICK_MS * 1e-3,
             micro_res_s=_MICRO_RES_NS * 1e-9,
             n_micro=_N_MICRO,
@@ -218,13 +226,21 @@ class SimulatedPieSource(PhotonSource):
     def config(self, segment: int) -> dict:
         """The ``SimEngine`` configuration of one segment (public: the tests read the truth)."""
         species = []
+        pie = self.scheme == "pie"
         for p in self.populations:
             green = float(p.brightness)
             red = green * (1.0 - p.S) / max(p.S, 1e-9)
+            # PIE: a brightness row per laser (green: donor + FRET; red: the acceptor directly);
+            # two colour: the green laser only
+            q = (
+                {"q_alex": [[(1.0 - p.E) * green, p.E * green], [0.0, red]]}
+                if pie
+                else {"q": [(1.0 - p.E) * green, p.E * green]}
+            )
             species.append(
                 {
                     "D": 0.05,
-                    "q_alex": [[(1.0 - p.E) * green, p.E * green], [0.0, red]],
+                    **q,
                     "decay": {
                         "lifetimes": [4.0 * (1.0 - p.E) + 0.1],
                         "amplitudes": [1.0],
@@ -233,8 +249,17 @@ class SimulatedPieSource(PhotonSource):
                 }
             )
         n = len(species)
-        bg_pattern = [1.0] * _HALF
-        return {
+        bg_pattern = [1.0] * (_HALF if pie else _N_MICRO)
+        green_focus = {
+            "type": "gaussian3d",
+            "w0": 0.3,
+            "z0": 2.0,
+            "extent_xy": 2.0,
+            "extent_z": 4.0,
+            "spacing": 0.1,
+        }
+        red_focus = dict(green_focus, w0=0.32, z0=2.1)
+        cfg = {
             "settings": {
                 "dt": _DT_MS,
                 "n_ph_max": 50_000_000,
@@ -258,25 +283,12 @@ class SimulatedPieSource(PhotonSource):
             "background": [float(b) for b in self.background_khz],
             "background_decay": {"pattern": bg_pattern, "dt": _MICRO_RES_NS},
             "population": [float(p.concentration) for p in self.populations],
-            "excitation": [
-                {
-                    "type": "gaussian3d",
-                    "w0": 0.3,
-                    "z0": 2.0,
-                    "extent_xy": 2.0,
-                    "extent_z": 4.0,
-                    "spacing": 0.1,
-                },
-                {
-                    "type": "gaussian3d",
-                    "w0": 0.32,
-                    "z0": 2.1,
-                    "extent_xy": 2.0,
-                    "extent_z": 4.0,
-                    "spacing": 0.1,
-                },
-            ],
+            "excitation": [green_focus, red_focus] if pie else green_focus,
         }
+        if not pie:
+            for key in ("alex_period", "alex_markers"):
+                cfg["settings"].pop(key)
+        return cfg
 
     def simulate_segment(self, segment: int) -> PhotonBatch:
         """All photons of one segment, PIE-encoded and sorted; macro times start at the segment."""
@@ -289,11 +301,13 @@ class SimulatedPieSource(PhotonSource):
         t_ms = window * _DT_MS + arrival
         macro = np.floor(t_ms / _MACRO_TICK_MS).astype(np.uint64)
         macro += np.uint64(int(round(segment * self.segment_s * 1000.0 / _MACRO_TICK_MS)))
-        # The laser of a window alternates every dt (alex_period = 2 dt): odd windows are red.
-        red = (window % 2) == 1
-        micro = (np.asarray(ph["micro_time"])[keep].astype(np.int64) % _HALF) + np.where(
-            red, _HALF, 0
-        )
+        raw_micro = np.asarray(ph["micro_time"])[keep].astype(np.int64)
+        if self.scheme == "pie":
+            # The laser of a window alternates every dt (alex_period = 2 dt): odd windows are red.
+            red = (window % 2) == 1
+            micro = (raw_micro % _HALF) + np.where(red, _HALF, 0)
+        else:
+            micro = raw_micro % _N_MICRO
         channel = np.asarray(ph["channel"])[keep].astype(np.int8)
         species = np.asarray(ph["species"])[keep].astype(np.int16)
         order = np.argsort(macro, kind="stable")

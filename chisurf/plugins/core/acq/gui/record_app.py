@@ -1,9 +1,11 @@
-"""The Record tool: measure, watch the E–S histogram build up, keep the run in the project.
+"""The Record tool: measure, watch the burst histograms build up, keep the run in the project.
 
 ``record.view.json`` declares every control; :class:`RecordModel` is its model and owns the
 :class:`~chisurf.plugins.core.acq.live.session.RecordSession` of a run. The analysis runs in the
 session's worker thread; the window takes a snapshot of its accumulators about five times a second
-and draws from that (:meth:`RecordApp._draw_live`), never from photons. The device session of
+and draws from that (:meth:`RecordApp._draw_live`), never from photons. The measurement type is
+the Experiment setup's preset (single colour, two colour, PIE, µs-ALEX, MFD, three-colour PIE); the
+histograms shown are the ones the analyzer keeps for it. The device session of
 earlier versions stays reachable as *Device session…* (``app.AcquisitionApp``).
 
 Devices are CMC's ``pqusb`` (PicoQuant over libusb). The simulator is a simulated MultiHarp
@@ -26,8 +28,15 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.core.acq.live import devices
-from chisurf.plugins.core.acq.live.pie import BurstParameters, PieSetup
+from chisurf.plugins.core.acq.live.analyzer import PRESETS
 from chisurf.plugins.core.acq.live.session import RecordSession
+from chisurf.plugins.core.acq.live.setups import (
+    PRESET_LABELS,
+    BurstParameters,
+    Experiment,
+    default_setup,
+    infer_preset,
+)
 from chisurf.plugins.core.acq.live.sources import (
     FileReplaySource,
     Population,
@@ -37,9 +46,17 @@ from chisurf.plugins.core.acq.live.sources import (
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_SETUP = "default"
+AUTO_PRESET = "auto"
 #: How often the window takes a snapshot of the running analysis.
 SNAPSHOT_INTERVAL_S = 0.2
-_CLASS_COLOURS = [(0.17, 0.63, 0.17, 1.0), (0.84, 0.15, 0.16, 1.0), (0.58, 0.40, 0.74, 1.0)]
+_COLOURS = [
+    (0.17, 0.63, 0.17, 1.0),
+    (0.84, 0.15, 0.16, 1.0),
+    (0.58, 0.40, 0.74, 1.0),
+    (0.12, 0.47, 0.71, 1.0),
+    (0.9, 0.6, 0.1, 1.0),
+    (0.4, 0.4, 0.4, 1.0),
+]
 
 
 def _workspace(kind: str) -> list[Any]:
@@ -76,6 +93,10 @@ class RecordModel:
         self.replay_address = ""
         self.speed = 1.0
         self.setup_address = DEFAULT_SETUP
+        self.sim_scheme = "pie"
+        self.preset = AUTO_PRESET
+        self.alex_period_us = 100.0
+        self.plot_choice = ""
         self.min_photons = 30
         self.window_photons = 10
         self.window_time_ms = 1.0
@@ -108,7 +129,7 @@ class RecordModel:
     # -- options ---------------------------------------------------------------------------------
     def source_options(self) -> list:
         return [
-            ("simulator", tr("Simulator (PIE smFRET)")),
+            ("simulator", tr("Simulator (smFRET)")),
             ("replay", tr("Replay a photon stream")),
             (
                 "device",
@@ -117,6 +138,19 @@ class RecordModel:
                 else tr("PicoQuant device (pqusb not installed)"),
             ),
         ]
+
+    def scheme_options(self) -> list:
+        return [
+            ("pie", tr("PIE (green and red pulses)")),
+            ("two_color", tr("Two colour (green laser only)")),
+        ]
+
+    def preset_options(self) -> list:
+        return [(AUTO_PRESET, tr("From the setup"))] + [(p, tr(PRESET_LABELS[p])) for p in PRESETS]
+
+    def plot_options(self) -> list:
+        names = list((self.snapshot or {}).get("histograms", {}).keys())
+        return [(n, n) for n in names] or [("", tr("Start a run: its histograms appear here"))]
 
     def attached(self) -> list[str]:
         """The attached devices, enumerated at most every two seconds (not on every frame)."""
@@ -167,17 +201,18 @@ class RecordModel:
             self.device_text = tr("No device connected.")
         return True
 
-    def apply_device_settings(self, dev, setup: PieSetup) -> None:
+    def apply_device_settings(self, dev, exp: Experiment) -> None:
         """Send the TCSPC settings to *dev* (before a run)."""
         dev.set_sync_div(int(self.sync_div))
         dev.set_sync_edge_trg(int(self.sync_level_mv), int(self.sync_edge))
         dev.set_sync_channel_offset(int(self.sync_offset_ps))
         for ch in range(int(getattr(dev, "nchan", 0) or 0)):
             dev.set_input_edge_trg(ch, int(self.input_level_mv), int(self.input_edge))
-        offsets = {
-            setup.donor_channels[0]: self.donor_offset_ps,
-            setup.acceptor_channels[0]: self.acceptor_offset_ps,
-        }
+        offsets = {}
+        for role, ps in (("donor", self.donor_offset_ps), ("acceptor", self.acceptor_offset_ps)):
+            chs = exp.channels(role)
+            if chs:
+                offsets[chs[0]] = ps
         for ch, ps in offsets.items():
             if 0 <= int(ch) < int(getattr(dev, "nchan", 0) or 0):
                 dev.set_input_channel_offset(int(ch), int(ps))
@@ -217,7 +252,10 @@ class RecordModel:
             (str(d.address), str(getattr(d, "name", "") or d.address)) for d in _workspace("setup")
         ]
         return [
-            (DEFAULT_SETUP, tr("Default PIE (channel 0 donor, 1 acceptor, half periods)"))
+            (
+                DEFAULT_SETUP,
+                tr("Default for the type (channel 0 donor, 1 acceptor; PIE: half periods)"),
+            )
         ] + rows
 
     # -- what the run uses -----------------------------------------------------------------------
@@ -235,9 +273,10 @@ class RecordModel:
                     pops,
                     seed=int(self.sim_seed),
                     speed=float(self.speed) if self.realtime else 1000.0,
+                    scheme=self.sim_scheme,
                 )
                 dev.initialize(pqusb.MODE_T3)
-                self.apply_device_settings(dev, PieSetup())
+                self.apply_device_settings(dev, self.make_experiment(400))
                 dev.set_sync_div(1)
                 return devices.DeviceSource(dev)
             return SimulatedPieSource(
@@ -246,6 +285,7 @@ class RecordModel:
                 seed=int(self.sim_seed),
                 speed=float(self.speed),
                 realtime=self.realtime,
+                scheme=self.sim_scheme,
             )
         if self.source_kind == "replay":
             if not self.replay_address:
@@ -261,34 +301,39 @@ class RecordModel:
             raise SourceUnavailable(tr("Connect the device first."))
         return devices.DeviceSource(self.device)
 
-    def make_setup(self, n_micro: int) -> PieSetup:
-        if self.setup_address in ("", DEFAULT_SETUP):
-            return PieSetup.default_for(n_micro)
-        from chisurf.plugins.tttr.workspace_io import read_setup
+    def _default_preset(self) -> str:
+        if self.source_kind == "simulator":
+            return self.sim_scheme
+        return "pie"
 
-        return PieSetup.from_setup(
-            read_setup(self.setup_address), name=Path(self.setup_address).name
+    def make_experiment(self, n_micro: int) -> Experiment:
+        """The setup (workspace row or the type's default) read with the chosen preset."""
+        burst = BurstParameters(
+            int(self.min_photons), int(self.window_photons), float(self.window_time_ms) / 1e3
+        )
+        if self.setup_address in ("", DEFAULT_SETUP):
+            preset = self.preset if self.preset != AUTO_PRESET else self._default_preset()
+            setup, name = default_setup(preset, n_micro), f"default {preset}"
+        else:
+            from chisurf.plugins.tttr.workspace_io import read_setup
+
+            setup, name = read_setup(self.setup_address), Path(self.setup_address).name
+            preset = self.preset if self.preset != AUTO_PRESET else infer_preset(setup)
+        return Experiment(
+            setup,
+            preset,
+            burst,
+            name=name,
+            alex_period_s=float(self.alex_period_us) * 1e-6 if preset == "alex" else None,
         )
 
     def setup_text(self) -> str:
+        n_micro = 400 if self.session is None else self.session.source.info.n_micro
         try:
-            s = self.make_setup(4000 if self.session is None else self.session.source.info.n_micro)
+            exp = self.make_experiment(n_micro)
         except Exception as exc:  # noqa: BLE001 - shown, the run refuses to start
             return tr("The setup cannot be used: {e}").format(e=exc)
-        corr = (
-            tr("corrected E/S (gamma {g}, beta {b}, alpha {a}, delta {d})").format(
-                g=s.gamma, b=s.beta, a=s.alpha, d=s.delta
-            )
-            if s.corrected
-            else tr("raw E/S (the setup carries no corrections)")
-        )
-        return tr("Donor {d}, acceptor {a}; prompt {p}, delay {q}; {c}").format(
-            d=list(s.donor_channels),
-            a=list(s.acceptor_channels),
-            p=list(s.prompt),
-            q=list(s.delay),
-            c=corr,
-        )
+        return f"{tr(PRESET_LABELS[exp.preset])}: {exp.describe()}"
 
     def target_text(self) -> str:
         return tr(
@@ -320,28 +365,27 @@ class RecordModel:
         self.sim_concentration = 1.0
         self.min_photons, self.window_photons, self.window_time_ms = 30, 10, 1.0
         self.setup_address = DEFAULT_SETUP
+        self.sim_scheme, self.preset = "pie", AUTO_PRESET
         self.duration_s = 60.0
-        self.status_text = tr("Example ready: two populations, E 0.2 and 0.8, S 0.5. Press Start.")
+        self.status_text = tr(
+            "Example ready: PIE, two populations, E 0.2 and 0.8, S 0.5. Press Start."
+        )
 
     def start(self) -> bool:
         if self.running:
             return False
         try:
             if self.source_kind == "device" and self.device is not None:
-                self.apply_device_settings(self.device, self.make_setup(1))
+                self.apply_device_settings(self.device, self.make_experiment(1))
             source = self.make_source()
-            setup = self.make_setup(source.info.n_micro)
+            experiment = self.make_experiment(source.info.n_micro)
         except Exception as exc:  # noqa: BLE001 - the user picks something else
             self.status_text = str(exc)
             return False
         name = self.run_name.strip() or time.strftime("record_%Y%m%d_%H%M%S")
-        burst = BurstParameters(
-            int(self.min_photons), int(self.window_photons), float(self.window_time_ms) / 1e3
-        )
         self.session = RecordSession(
             source,
-            setup,
-            burst,
+            experiment,
             duration_s=self.duration_s or None,
             ptu_path=self.output_dir / f"{name}.ptu",
             name=name,
@@ -354,6 +398,7 @@ class RecordModel:
             return False
         self._registered = False
         self.snapshot = None
+        self.plot_choice = ""
         self.status_text = tr("Recording {name} …").format(name=name)
         return True
 
@@ -404,39 +449,38 @@ class RecordModel:
             self.disconnect_device()
 
 
-def _plot_es(snap: dict, height: float) -> None:
-    """The E–S heatmap with E (above) and S (right) marginals."""
+def _plot_histogram(hist: dict, height: float) -> None:
+    """One of the analyzer's histograms: 1-D as bars, 2-D as a heatmap with both marginals."""
     from emtk import implot
 
-    es = snap["es"]
-    e_edges, s_edges = snap["e_edges"], snap["s_edges"]
+    counts = np.asarray(hist["counts"], dtype=float)
+    xe = np.asarray(hist["x_edges"], dtype=float)
+    xc = (xe[:-1] + xe[1:]) / 2
     width = im.get_content_region_avail()[0]
+    if "y" not in hist:
+        if implot.begin_plot("##hist1d", (width, height), implot.FLAGS_NO_TITLE):
+            implot.setup_axes(hist["x"], tr("bursts"))
+            implot.setup_axis_limits(
+                implot.AXIS_X1, float(xe[0]), float(xe[-1]), implot.COND_ALWAYS
+            )
+            implot.plot_bars(f"##{hist['x']}", xc, counts, bar_size=float(xe[1] - xe[0]))
+            implot.end_plot()
+        return
+    ye = np.asarray(hist["y_edges"], dtype=float)
+    yc = (ye[:-1] + ye[1:]) / 2
     side = max(80.0, width * 0.22)
     main = max(160.0, width - side - 12.0)
     marg_h = max(70.0, height * 0.28)
-    e_centres = (e_edges[:-1] + e_edges[1:]) / 2
-    s_centres = (s_edges[:-1] + s_edges[1:]) / 2
-    if implot.begin_plot("##e_marginal", (main, marg_h), implot.FLAGS_NO_TITLE):
+    if implot.begin_plot("##x_marginal", (main, marg_h), implot.FLAGS_NO_TITLE):
         implot.setup_axes(None, tr("bursts"))
-        implot.setup_axis_limits(
-            implot.AXIS_X1, float(e_edges[0]), float(e_edges[-1]), implot.COND_ALWAYS
-        )
-        implot.plot_bars(
-            "E",
-            e_centres,
-            snap["e_marginal"].astype(float),
-            bar_size=float(e_edges[1] - e_edges[0]),
-        )
+        implot.setup_axis_limits(implot.AXIS_X1, float(xe[0]), float(xe[-1]), implot.COND_ALWAYS)
+        implot.plot_bars(f"##{hist['x']}", xc, counts.sum(axis=1), bar_size=float(xe[1] - xe[0]))
         implot.end_plot()
-    if implot.begin_plot("##es", (main, height - marg_h), implot.FLAGS_NO_TITLE):
-        implot.setup_axes(tr("E (FRET efficiency)"), tr("S (stoichiometry)"))
-        implot.setup_axis_limits(
-            implot.AXIS_X1, float(e_edges[0]), float(e_edges[-1]), implot.COND_ALWAYS
-        )
-        implot.setup_axis_limits(
-            implot.AXIS_Y1, float(s_edges[0]), float(s_edges[-1]), implot.COND_ALWAYS
-        )
-        grid = np.ascontiguousarray(es.T[::-1]).astype(float)  # rows: S from top (high) down
+    if implot.begin_plot("##hist2d", (main, height - marg_h), implot.FLAGS_NO_TITLE):
+        implot.setup_axes(hist["x"], hist["y"])
+        implot.setup_axis_limits(implot.AXIS_X1, float(xe[0]), float(xe[-1]), implot.COND_ALWAYS)
+        implot.setup_axis_limits(implot.AXIS_Y1, float(ye[0]), float(ye[-1]), implot.COND_ALWAYS)
+        grid = np.ascontiguousarray(counts.T[::-1])  # rows: y from top (high) down
         implot.plot_heatmap(
             "##counts",
             grid,
@@ -445,60 +489,68 @@ def _plot_es(snap: dict, height: float) -> None:
             0.0,
             float(max(1.0, grid.max())),
             None,
-            (float(e_edges[0]), float(s_edges[0])),
-            (float(e_edges[-1]), float(s_edges[-1])),
+            (float(xe[0]), float(ye[0])),
+            (float(xe[-1]), float(ye[-1])),
         )
         implot.end_plot()
     im.same_line()
-    if implot.begin_plot("##s_marginal", (side, height - marg_h), implot.FLAGS_NO_TITLE):
+    if implot.begin_plot("##y_marginal", (side, height - marg_h), implot.FLAGS_NO_TITLE):
         implot.setup_axes(tr("bursts"), None)
-        implot.setup_axis_limits(
-            implot.AXIS_Y1, float(s_edges[0]), float(s_edges[-1]), implot.COND_ALWAYS
-        )
+        implot.setup_axis_limits(implot.AXIS_Y1, float(ye[0]), float(ye[-1]), implot.COND_ALWAYS)
         # horizontal bars: lengths first, positions second
         implot.plot_bars(
-            "S",
-            snap["s_marginal"].astype(float),
-            s_centres,
-            bar_size=float(s_edges[1] - s_edges[0]),
+            f"##{hist['y']}",
+            counts.sum(axis=0),
+            yc,
+            bar_size=float(ye[1] - ye[0]),
             flags=implot.BARS_FLAGS_HORIZONTAL,
         )
         implot.end_plot()
 
 
-def _plot_rates(snap: dict, size) -> None:
+def _shown_streams(snap: dict, exp: Experiment | None) -> list[str]:
+    """The streams the rate and decay plots draw: per window and detector when there are windows
+    (PIE: prompt/delayed x green/red), else per detector."""
+    names = list((snap.get("decays") or snap.get("background_cps") or {}).keys())
+    windowed = [n for n in names if " " in n]
+    return windowed or names
+
+
+def _plot_rates(snap: dict, exp: Experiment | None, size) -> None:
     from emtk import implot
 
+    trace = snap.get("trace") or {}
     if implot.begin_plot("##rates", size, implot.FLAGS_NO_TITLE):
         implot.setup_axes(tr("time (s)"), tr("count rate (kHz)"))
-        t = snap["rate_t"]
-        if len(t):
-            for k, name in enumerate(("DD", "DA", "AA")):
-                implot.set_next_line_style(_CLASS_COLOURS[k])
-                implot.plot_line(name, t, snap["rate"][k])
+        width = float(trace.get("bin_width_s", 0.0))
+        for k, name in enumerate(_shown_streams(snap, exp)):
+            counts = np.asarray((trace.get("counts") or {}).get(name, ()), dtype=float)
+            if counts.size == 0 or width <= 0:
+                continue
+            t = (trace["first_bin"] + np.arange(counts.size)) * width
+            implot.set_next_line_style(_COLOURS[k % len(_COLOURS)])
+            implot.plot_line(name, t, counts / width / 1e3)
         implot.end_plot()
 
 
-def _plot_decays(snap: dict, setup: PieSetup | None, size) -> None:
+def _plot_decays(snap: dict, exp: Experiment | None, size) -> None:
     from emtk import implot
 
+    decays = snap.get("decays") or {}
     if implot.begin_plot("##decays", size, implot.FLAGS_NO_TITLE):
         implot.setup_axes(tr("micro-time channel"), tr("photons"))
         implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
-        x = np.arange(len(snap["decay_donor"]), dtype=float)
-        implot.set_next_line_style(_CLASS_COLOURS[0])
-        implot.plot_line(
-            tr("donor detector"), x, np.maximum(snap["decay_donor"], 0.5).astype(float)
-        )
-        implot.set_next_line_style(_CLASS_COLOURS[1])
-        implot.plot_line(
-            tr("acceptor detector"), x, np.maximum(snap["decay_acceptor"], 0.5).astype(float)
-        )
-        if setup is not None:
-            implot.plot_inf_lines(
-                tr("prompt / delay windows"),
-                np.asarray([*setup.prompt, *setup.delay], dtype=float),
-            )
+        detectors = [n for n in decays if " " not in n]  # all micro times, per detector
+        for k, name in enumerate(detectors):
+            y = np.asarray(decays[name], dtype=float)
+            if y.size == 0:
+                continue
+            implot.set_next_line_style(_COLOURS[k % len(_COLOURS)])
+            implot.plot_line(name, np.arange(y.size, dtype=float), np.maximum(y, 0.5))
+        windows = (exp.setup.get("windows") or {}) if exp is not None else {}
+        if windows:
+            edges = sorted({float(v) for r in windows.values() for v in r})
+            implot.plot_inf_lines(tr("windows"), np.asarray(edges, dtype=float))
         implot.end_plot()
 
 
@@ -581,41 +633,46 @@ class RecordApp(ImApp):
             state.rects["live_view"] = (*top, width, 28.0)
             state.rects["live_qc"] = (*top, width, 28.0)
             return
+        exp = model.session.experiment if model.session is not None else None
         im.text(
-            f"{tr('Bursts')}: {snap['burst_count']:,}   {tr('Burst rate')}: {snap['burst_rate_hz']:.1f} Hz   "
+            f"{tr('Bursts')}: {snap['bursts']:,}   {tr('Burst rate')}: {snap['burst_rate_hz']:.1f} Hz   "
             f"{tr('Photons')}: {snap['photons']:,}   {tr('Measured')}: {snap['elapsed_s']:.1f} s"
         )
-        bg = snap["background_khz"]
-        health = tr(
-            "Health: {batches} batches, {dropped} dropped, {queued} buffered; background DD {a:.2f} / DA {b:.2f} / AA {c:.2f} kHz"
-        ).format(
-            batches=snap["batches"],
-            dropped=snap["dropped"],
-            queued=snap["queued"],
-            a=bg[0],
-            b=bg[1],
-            c=bg[2],
+        bg = ", ".join(
+            f"{name} {rate / 1e3:.2f}"
+            for name, rate in snap["background_cps"].items()
+            if name in _shown_streams(snap, exp)
         )
-        im.text_disabled(health)
+        im.text_disabled(
+            tr(
+                "Health: {batches} batches, {dropped} dropped, {queued} buffered; background (kHz) {bg}"
+            ).format(batches=snap["batches"], dropped=snap["dropped"], queued=snap["queued"], bg=bg)
+        )
         if snap.get("source_error"):
             im.text_colored((1.0, 0.45, 0.4, 1.0), str(snap["source_error"]))
+        hists = snap.get("histograms") or {}
+        if hists and model.plot_choice not in hists:
+            two_d = [n for n, h in hists.items() if "y" in h]
+            model.plot_choice = (two_d or list(hists))[0]
         avail_h = max(320.0, im.get_content_region_avail()[1] - 8.0)
-        es_w = max(320.0, width * 0.62)
-        if im.begin_child("##es_block", (es_w, avail_h * 0.62), scrollable=False):
-            _plot_es(snap, avail_h * 0.62 - 6.0)
+        plot_w = max(320.0, width * 0.62)
+        if im.begin_child("##hist_block", (plot_w, avail_h * 0.62), scrollable=False):
+            if hists:
+                _plot_histogram(hists[model.plot_choice], avail_h * 0.62 - 6.0)
+            else:
+                im.text_wrapped(tr("This measurement type keeps no histogram."))
         im.end_child()
         im.same_line()
         qc_top = im.get_cursor_screen_pos()
-        qc_w = width - es_w - 8.0
+        qc_w = width - plot_w - 8.0
         if im.begin_child("##qc_block", (qc_w, avail_h * 0.62)):
             _draw_qc(snap.get("qc"))
         im.end_child()
         state.rects["live_qc"] = (qc_top[0], qc_top[1], qc_w, avail_h * 0.62)
-        setup = model.session.setup if model.session is not None else None
         half = (width - 8.0) / 2
-        _plot_rates(snap, (half, avail_h * 0.34))
+        _plot_rates(snap, exp, (half, avail_h * 0.34))
         im.same_line()
-        _plot_decays(snap, setup, (half, avail_h * 0.34))
+        _plot_decays(snap, exp, (half, avail_h * 0.34))
         bottom = im.get_cursor_screen_pos()
         state.rects["live_view"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
 
@@ -651,8 +708,7 @@ class RecordApp(ImApp):
             im.end_child()
             im.same_line()
             if im.begin_child("##record_live", (avail[0] - left - 8.0, avail[1])):
-                live = self.sections[-1]["sections"][0]
-                self._draw_live(live, self.model, self.form, im.get_content_region_avail()[0])
+                draw_sections(self.sections[-1]["sections"], self.model, self.form, titles=False)
             im.end_child()
         im.end()
         self.help_window.draw(box)
@@ -668,6 +724,9 @@ class RecordApp(ImApp):
             "sim_seed",
             "speed",
             "setup_address",
+            "sim_scheme",
+            "preset",
+            "alex_period_us",
             "min_photons",
             "window_photons",
             "window_time_ms",

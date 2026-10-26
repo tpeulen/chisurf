@@ -13,6 +13,17 @@
           "description": "Where the photons come from: the simulator (a MultiHarp measuring a PIE smFRET sample with a known answer — its records go through the same device path as a real measurement), a photon stream from the Datasets workspace played back at measurement speed, or a PicoQuant device connected over USB."
         },
         {
+          "type": "choice",
+          "attr": "sim_scheme",
+          "label": "Excitation",
+          "options_source": "scheme_options",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "simulator"
+          },
+          "description": "How the simulated sample is excited: PIE (a green and a red pulse per period, so stoichiometry is measured) or two colour (the green laser only)."
+        },
+        {
           "type": "value",
           "attr": "sim_e_low",
           "label": "Population 1: E",
@@ -318,18 +329,45 @@
           "maximum": 100000000,
           "step": 1
         }
-      ]
+      ],
+      "hidden_when": {
+        "attr": "source_kind",
+        "not_equals": "device"
+      }
     },
     {
       "type": "panel",
-      "title": "PIE setup",
+      "title": "Experiment setup",
       "sections": [
         {
           "type": "choice",
           "attr": "setup_address",
           "label": "Instrument setup",
           "options_source": "setup_options",
-          "description": "Which photons are donor or acceptor, prompt or delay: a setup row of the Datasets workspace (drop a detector setup JSON on the window), or the default — routing channel 0 donor, 1 acceptor, the laser period split into halves. A setup that carries gamma, beta, alpha and delta gives corrected E and S."
+          "description": "Which detector is donor and which acceptor, and the excitation windows: a setup row of the Datasets workspace (drop a detector setup JSON on the window), or the default for the measurement type — routing channel 0 donor, 1 acceptor; PIE splits the laser period into prompt and delay halves. A setup with gamma, beta, alpha and delta gives corrected FRET efficiency and stoichiometry."
+        },
+        {
+          "type": "choice",
+          "attr": "preset",
+          "label": "Measurement type",
+          "options_source": "preset_options",
+          "description": "How the setup is read: single colour, two colour, PIE, µs-ALEX, MFD or three-colour PIE. 'From the setup' takes the type the setup describes. The type decides the quantities (proximity ratio, stoichiometry, anisotropy), the live histograms and which quality checks apply."
+        },
+        {
+          "type": "value",
+          "attr": "alex_period_us",
+          "label": "Alternation period (µs)",
+          "kind": "float",
+          "minimum": 1.0,
+          "maximum": 10000.0,
+          "step": 10.0,
+          "decimals": 1,
+          "style": "spin",
+          "hidden_when": {
+            "attr": "preset",
+            "not_equals": "alex"
+          },
+          "description": "µs-ALEX only: the laser alternation period; the first half excites the donor, the second the acceptor."
         },
         {
           "type": "info",
@@ -438,6 +476,13 @@
       "type": "panel",
       "title": "Live",
       "sections": [
+        {
+          "type": "choice",
+          "attr": "plot_choice",
+          "label": "Histogram",
+          "options_source": "plot_options",
+          "description": "Which of the measurement type's histograms to show: E–S (with its marginals) for PIE and ALEX, the proximity ratio for two colour, anisotropy and proximity ratio for MFD, burst size and duration for a single colour."
+        },
         {
           "type": "custom",
           "key": "live_view",

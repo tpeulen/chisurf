@@ -47,12 +47,31 @@ def test_the_example_runs_and_lands_in_the_workspace(app):
     assert Path(result.ptu).exists()
     assert "bursts" in model.status_text and "in the workspace" in model.status_text
     snap = model.snapshot
-    assert snap["burst_count"] == result.bursts and snap["es"].sum() > 0
+    assert snap["bursts"] == result.bursts
+    assert snap["histograms"]["Proximity Ratio vs Stoichiometry"]["counts"].sum() > 0
+    assert model.plot_choice == "Proximity Ratio vs Stoichiometry"
     rows = {str(getattr(d, "address", "")): d for d in dataset_objects()}
     assert str(result.ptu) in rows
     run = rows.get(result.run_address)
     assert run is not None and str(getattr(run, "data_kind", "")) == "bursts"
     assert "Bursts:" in " ".join(ui.strings())
+
+
+def test_a_two_colour_run_shows_the_proximity_ratio_and_no_stoichiometry(app):
+    model = app.model
+    ui = Driver(app, SIZE)
+    ui.draw(3)
+    ui.click("load_example")
+    model.sim_scheme, model.duration_s = "two_color", 8.0
+    ui.draw(2)
+    assert model.make_experiment(400).preset == "two_color"
+    ui.click("start")
+    _run_to_end(ui, model)
+    snap = model.snapshot
+    assert list(snap["histograms"]) == ["Proximity Ratio"]
+    assert "Stoichiometry" not in model.session.result.table
+    checks = {c["name"]: c for c in (snap["qc"] or {}).get("checks", [])}
+    assert checks["donor-only / acceptor-only"]["value"] == "not applicable"
 
 
 def test_without_a_connected_device_neither_connect_nor_start_is_offered(app, monkeypatch):

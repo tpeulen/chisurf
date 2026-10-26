@@ -230,6 +230,9 @@ class _RawPtuRecorder:
         self.writer.close(acq_ms=acq_ms, sync_rate_hz=int(round(self.source.sync_rate_hz)))
 
 
+#: Measurement time the simulated device synthesises per FIFO read at most.
+_MAX_READ_S = 0.05
+
 if PQUSB:
 
     class PieSimDevice(TcspcDevice):
@@ -261,8 +264,10 @@ if PQUSB:
             background_khz=(0.5, 0.5),
             seed: int = 1,
             speed: float = 1.0,
+            scheme: str = "pie",
         ):
             super().__init__()
+            self.scheme = scheme
             self.populations = tuple(populations)
             self.background_khz = tuple(background_khz)
             self.seed = int(seed)
@@ -283,8 +288,9 @@ if PQUSB:
                 raise DeviceError("the PIE simulator measures in T3 mode")
             self.mode, self.nchan = mode, 2
             self.settings.inputs = [InputSettings() for _ in range(self.nchan)]
+            what = "PIE smFRET" if self.scheme == "pie" else "two-colour smFRET"
             self.identity = Identity(
-                model="MultiHarp (simulated PIE smFRET)", serial="SIMPIE01", partno="sim"
+                model=f"MultiHarp (simulated {what})", serial="SIMPIE01", partno="sim"
             )
             return self.identity
 
@@ -328,6 +334,7 @@ if PQUSB:
                 background_khz=self.background_khz,
                 seed=self.seed,
                 realtime=False,
+                scheme=self.scheme,
             )
             self._photons.start()
             self._t0 = time.monotonic()
@@ -353,7 +360,9 @@ if PQUSB:
 
         def _fifo_read(self, buf, timeout_ms: int) -> int:
             if self._t0 is not None:
-                upto = min(self._elapsed(), self._tacq_s)
+                # at most _MAX_READ_S of measurement per read: a consumer that fell behind at a high
+                # speed must not make one read synthesise seconds of records at once (memory)
+                upto = min(self._elapsed(), self._tacq_s, self._sent_s + _MAX_READ_S)
                 if upto - self._sent_s >= 0.005:
                     self._pending = np.concatenate([self._pending, self._records_until(upto)])
                     self._sent_s = upto
