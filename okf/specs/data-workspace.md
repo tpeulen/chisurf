@@ -86,6 +86,18 @@ authentication. Because MMFDB's object store is content-addressed, a link with a
 satisfied by any MMFDB store holding that object. ChiSurf registers the resolver at startup; *Locate missing
 data* searches MMFDB too.
 
+**One protocol, desktop and web** (owner 2026-10-26): links resolve through the same HTTPS endpoints in the
+desktop app and the web release (`python -m chisurf.web`, Pyodide on the page's main thread). MMFDB's web
+server already serves `/objects/<uuid>` to a bearer token or its HttpOnly session cookie (with CSRF on
+writes). Desktop: bearer token from the OS credential store (sign-in via Switch User). Web: the same
+session cookie as the MMFDB web page — the page never sees the token; served from the MMFDB server's own
+origin (preferred: no cross-site cookies) or, for another origin, an explicit CORS allowlist with
+`credentials` and SameSite=None; Secure cookies. Because the page cannot fetch synchronously, resolution is
+two-phase on every host: an asynchronous **prefetch** (when a project opens or a link is added) fills a
+cache keyed by sha256 — a per-user folder on desktop, IDBFS in the browser (persists across reloads) — and
+ptolib's synchronous resolver only reads that cache, reporting "not fetched yet" otherwise. The mmfdb
+client's transport is pluggable: `http.client` on desktop, the browser's fetch under Pyodide.
+
 **The user decides, in the UI** (owner 2026-10-26):
 
 * *Embed or link* — a project setting (default: link) and a choice at import (the drop offers "Link" /
