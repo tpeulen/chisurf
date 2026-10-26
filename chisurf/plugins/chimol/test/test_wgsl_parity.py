@@ -260,6 +260,8 @@ class TestWgslSource:
         "vol_slice.wgsl": "render",
         "vol_ray.wgsl": "render",
         "vol_composite.wgsl": "render",
+        # PRD-128 WP11: ANISOU ellipsoids, an analytic quadric impostor.
+        "ellipsoid.wgsl": "render",
         # The hierarchical depth buffer the container culls chunks against.
         # Read raw: its compute layout has no room for the render prelude's
         # uniform block at group 0.

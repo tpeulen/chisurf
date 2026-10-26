@@ -151,8 +151,14 @@ def test_every_transforming_spec_round_trips():
         if spec.stored is None and spec.shown is None:
             continue
         assert spec.stored is not None and spec.shown is not None, name
-        for probe in probes.get(spec.kind, (0.0, 1.0)):
-            assert spec.from_config(spec.to_config(probe)) == pytest.approx(probe), (
+        # A choice setting's domain is its choices (PRD-128: cartoon/stereo styles).
+        domain = getattr(spec.stored, "choices", None) or probes.get(spec.kind, (0.0, 1.0))
+        for probe in domain:
+            back = spec.from_config(spec.to_config(probe))
+            if isinstance(probe, str):
+                assert back == probe, f"{name} does not round-trip at {probe!r}"
+                continue
+            assert back == pytest.approx(probe), (
                 f"{name} does not round-trip at {probe}"
             )
         checked += 1

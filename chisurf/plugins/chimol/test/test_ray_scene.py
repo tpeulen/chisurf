@@ -253,8 +253,10 @@ def _fog_probe(**kw) -> tuple[float, float]:
         spheres=[Sphere(center=np.zeros(3), radius=1.0, color=np.full(3, 0.6))],
         camera=_FOG_CAM,
         light_directions=np.array([[0.0, 0.0, 1.0]]),
-        width=48,
-        height=48,
+        # Odd: the sphere is ~1.2 px wide, so a pixel centre must sit on it. At
+        # 48 x 48 it was hit only through a sample-stretch bug fixed in PRD-128.
+        width=49,
+        height=49,
         ssaa=1,
         background=(0, 0, 0),
         **_FLAT,
@@ -305,8 +307,10 @@ def test_render_scene_fits_the_depth_cue_to_the_scene_by_default():
     common = dict(
         camera=_FOG_CAM,
         light_directions=np.array([[0.0, 0.0, 1.0]]),
-        width=48,
-        height=48,
+        # Odd: the sphere is ~1.2 px wide, so a pixel centre must sit on it. At
+        # 48 x 48 it was hit only through a sample-stretch bug fixed in PRD-128.
+        width=49,
+        height=49,
         ssaa=1,
         background=(0, 0, 0),
         **_FLAT,

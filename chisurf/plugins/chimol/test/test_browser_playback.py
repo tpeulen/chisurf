@@ -78,7 +78,10 @@ def page(server):
 
 
 _FRAME = "() => globalThis.emtkApp.view.get_frame_position()"
-_RUNNING = "() => globalThis.emtkApp.animating()"
+#: The movie's own clock. `animating()` is wider since PRD-128 WP6: a still
+#: view also asks for frames while TAA accumulates, then stops once converged.
+_RUNNING = "() => globalThis.emtkApp.view.playback.running"
+_ANIMATING = "() => globalThis.emtkApp.animating()"
 
 
 def _do(page, command: str) -> None:
@@ -115,6 +118,8 @@ def test_stopping_it_stops_the_frames(playing):
     at_stop = page.evaluate(_FRAME)
     page.wait_for_timeout(600)
     assert page.evaluate(_FRAME) == at_stop, "the movie kept running after `mstop`"
+    # And the page stops asking for frames once the still picture converges.
+    page.wait_for_function(f"() => !({_ANIMATING})()", timeout=10_000)
 
 
 def test_the_page_reports_no_errors_from_the_loop(playing):

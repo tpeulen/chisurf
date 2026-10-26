@@ -56,7 +56,8 @@ def test_one_instance_per_bond_carrying_both_ends_and_both_colours():
     packed = _packed([SceneObject(id="sticks", geometry=geometry)])
     rows = WgpuMeshRenderer.interleave_cylinders(packed.objects[0].geometry)
 
-    assert rows.shape == (2, 17)
+    # 18 columns since PRD-128 WP18: the second end's baked occlusion.
+    assert rows.shape == (2, 18)
     assert np.allclose(rows[0, 0:3], positions[0])
     assert np.allclose(rows[0, 4:7], positions[1])
     assert np.allclose(rows[:, 3], 0.3), "the radius comes from the meta"
