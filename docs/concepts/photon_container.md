@@ -137,6 +137,28 @@ Every reader, the API and the command line take an address wherever they take a 
 ({py:mod}`chisurf.core.fio.address`). ptolib and tttrlib are moving to the same rule; until the
 installed tttrlib has it, ChiSurf translates the address where it hands a member to tttrlib.
 
+(concept-mmfdb-links)=
+## Links to MMFDB objects
+
+A dataset may also link a measurement that lives in an MMFDB database instead of a local file:
+`mmfdb://artifact/<id>` (optionally `?server=<host>` for a server other than the configured one).
+The project records the address, the object's size and its sha256 -- never a password or a
+session token. The object is fetched into a local cache (keyed by its sha256) with your MMFDB
+session: on the desktop the token of **Switch User**'s sign-in, in the browser the MMFDB server's
+own session cookie. Reading only uses that cache; a fetched object is checked against the
+recorded size and checksum like any linked file.
+
+In the Datasets panel such a dataset shows ⏳ while it is fetched and 🔑 when its server needs
+a sign-in -- right-click it for **Sign in to MMFDB…**, then **Fetch again**. **Add from MMFDB…**
+links a photon stream or an image picked from the database; nothing is downloaded into a loose
+file. When a linked file is missing, **Locate missing data** also offers **Search MMFDB**: the
+store is content-addressed, so an object with the file's checksum is that file.
+
+The web release reaches an MMFDB server from the page with the server's session cookie. Serve the
+page from the MMFDB server's own address, or list the page's address in the server's
+`MMFDB_WEB_CORS_ORIGINS` (with `SameSite=None; Secure` cookies) -- see MMFDB's web
+administration documentation. Fetched objects stay in the browser's storage across reloads.
+
 ## Where did this number come from
 
 Every derived result records three things, and the third is the one that makes

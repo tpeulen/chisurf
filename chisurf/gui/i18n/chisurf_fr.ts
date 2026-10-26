@@ -71797,6 +71797,82 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
             <source>{n} linked data file(s) of this project were not found.</source>
             <translation>{n} fichier(s) de données liés de ce projet n'ont pas été trouvés.</translation>
         </message>
+        <message>
+            <source>Fetching {n} linked object(s) from MMFDB…</source>
+            <translation>Récupération de {n} objet(s) lié(s) depuis MMFDB…</translation>
+        </message>
+        <message>
+            <source>MMFDB is not available: linked objects cannot be fetched.</source>
+            <translation>MMFDB n'est pas disponible : les objets liés ne peuvent pas être récupérés.</translation>
+        </message>
+        <message>
+            <source>{label} {done}/{total}</source>
+            <translation>{label} {done}/{total}</translation>
+        </message>
+        <message>
+            <source>Fetched {n} linked object(s).</source>
+            <translation>{n} objet(s) lié(s) récupéré(s).</translation>
+        </message>
+        <message>
+            <source>{servers} -- right-click the dataset: Sign in to MMFDB…</source>
+            <translation>{servers} -- clic droit sur le jeu de données : Se connecter à MMFDB…</translation>
+        </message>
+        <message>
+            <source>Not fetched: {why}</source>
+            <translation>Non récupéré : {why}</translation>
+        </message>
+        <message>
+            <source>The MMFDB sign-in (Switch User) is not available here.</source>
+            <translation>La connexion MMFDB (Changer d'utilisateur) n'est pas disponible ici.</translation>
+        </message>
+        <message>
+            <source>Sign in, then choose Fetch again (or close the sign-in window).</source>
+            <translation>Connectez-vous, puis choisissez Récupérer à nouveau (ou fermez la fenêtre de connexion).</translation>
+        </message>
+        <message>
+            <source>{name} is not a photon stream or an image; read it with the Read data panel.</source>
+            <translation>{name} n'est ni un flux de photons ni une image ; lisez-le avec le panneau Lire des données.</translation>
+        </message>
+        <message>
+            <source>{name}: the database records no size and checksum for it, so it cannot be linked.</source>
+            <translation>{name} : la base ne lui associe ni taille ni somme de contrôle, il ne peut donc pas être lié.</translation>
+        </message>
+        <message>
+            <source>Right-click: Sign in to MMFDB…, then Fetch again.</source>
+            <translation>Clic droit : Se connecter à MMFDB…, puis Récupérer à nouveau.</translation>
+        </message>
+        <message>
+            <source>Add from MMFDB…</source>
+            <translation>Ajouter depuis MMFDB…</translation>
+        </message>
+        <message>
+            <source>Sign in to MMFDB…</source>
+            <translation>Se connecter à MMFDB…</translation>
+        </message>
+        <message>
+            <source>Fetch again</source>
+            <translation>Récupérer à nouveau</translation>
+        </message>
+        <message>
+            <source>Search MMFDB</source>
+            <translation>Chercher dans MMFDB</translation>
+        </message>
+        <message>
+            <source>Pick a photon stream or an image stored in an MMFDB database and link it (mmfdb://artifact/&lt;id&gt;): the project records its address, size and checksum, the object is fetched into a local cache with your MMFDB session, and nothing is downloaded into a loose file.</source>
+            <translation>Choisir un flux de photons ou une image stocké dans une base MMFDB et le lier (mmfdb://artifact/&lt;id&gt;) : le projet enregistre son adresse, sa taille et sa somme de contrôle, l'objet est récupéré dans un cache local avec votre session MMFDB, et rien n'est téléchargé dans un fichier isolé.</translation>
+        </message>
+        <message>
+            <source>Open the MMFDB sign-in for the server a linked object is on (its rows show a key); then choose Fetch again. Your password and session never go into the project.</source>
+            <translation>Ouvrir la connexion MMFDB pour le serveur d'un objet lié (ses lignes montrent une clé), puis choisir Récupérer à nouveau. Votre mot de passe et votre session n'entrent jamais dans le projet.</translation>
+        </message>
+        <message>
+            <source>Fetch the selected linked MMFDB objects (or all not fetched yet) into the local cache again, after a sign-in or when the server was unreachable.</source>
+            <translation>Récupérer à nouveau dans le cache local les objets MMFDB liés sélectionnés (ou tous ceux non encore récupérés), après une connexion ou quand le serveur était injoignable.</translation>
+        </message>
+        <message>
+            <source>Look for an object with the dataset's checksum in your MMFDB database (signed in with Switch User): the store is content-addressed, so a match is the same file. Using it links the dataset to the MMFDB copy; it is fetched into the local cache.</source>
+            <translation>Chercher dans votre base MMFDB (connecté via Changer d'utilisateur) un objet ayant la somme de contrôle du jeu de données : le stockage est adressé par contenu, une correspondance est donc le même fichier. L'utiliser lie le jeu de données à la copie MMFDB ; elle est récupérée dans le cache local.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

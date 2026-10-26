@@ -777,9 +777,16 @@ class ShellProject:
 
     def _offer_missing_data(self) -> None:
         """A project whose linked data files are not all found opens the *Locate missing data* tool."""
+        from chisurf.core.project.remote_links import FETCHING, SIGN_IN
+
         data = getattr(self.shell, "data", None)
         linked = data.linked_datasets() if hasattr(data, "linked_datasets") else []
-        missing = [d for d in linked if getattr(d, "link_status", "ok") != "ok"]
+        # Linked MMFDB objects are fetched first (in the background); they are not missing.
+        if hasattr(data, "prefetch_links"):
+            data.prefetch_links()
+        missing = [
+            d for d in linked if getattr(d, "link_status", "ok") not in ("ok", FETCHING, SIGN_IN)
+        ]
         if missing and hasattr(self.shell, "show_project_data"):
             self.shell.show_project_data("locate")
             self.status = tr("{n} linked data file(s) of this project were not found.").format(

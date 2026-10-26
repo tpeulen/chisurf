@@ -1196,6 +1196,29 @@ class LinkedDataset(ExperimentalData):
         """Whether the linked file was found and matches."""
         return self.link_status == "ok"
 
+    @property
+    def read_address(self) -> str:
+        """Where the data is read from now: :attr:`address`, or, for an MMFDB object
+        (``mmfdb://...``), its copy in the local link cache once fetched."""
+        from chisurf.core.project.remote_links import is_remote
+
+        if not is_remote(self.link):
+            return self._address
+        from chisurf.core.project.links import resolve
+
+        resolution = resolve(self.link)
+        if not resolution.ok:
+            raise FileNotFoundError(resolution.reason or f"{self._address} is not fetched yet")
+        return str(resolution.address)
+
+    def recheck(self) -> str:
+        """Resolve the link again (after a fetch, a sign-in or a repair); returns the new status."""
+        from chisurf.core.project.links import resolve
+
+        resolution = resolve(self.link)
+        self.link_status, self.link_problem = resolution.status, resolution.reason
+        return self.link_status
+
 
 class PhotonStreamDataset(LinkedDataset):
     """A single-photon (TTTR) stream in the workspace: the file stays where it is.
@@ -1267,7 +1290,7 @@ class PhotonStreamDataset(LinkedDataset):
             raise FileNotFoundError(self.link_problem or f"{self.address} is not available")
         from chisurf.core.fio.staging import open_tttr
 
-        return open_tttr(self.address)
+        return open_tttr(self.read_address)
 
 
 def get_data(

@@ -49,6 +49,8 @@
           "buttons": [
             {"action": "request_search", "label": "Search in folder…",
              "description": "Choose a folder: every file below it with the dataset's file name is listed, those with the recorded size first. Nothing is read until you use one."},
+            {"action": "search_mmfdb", "label": "Search MMFDB",
+             "description": "Look for an object with the dataset's checksum in your MMFDB database (signed in with Switch User): the store is content-addressed, so a match is the same file. Using it links the dataset to the MMFDB copy; it is fetched into the local cache."},
             {"action": "request_replace", "label": "Replace with…",
              "description": "Choose the file to use instead (a moved or renamed original). Its size and checksum are compared with the recorded ones."},
             {"action": "use_anyway", "label": "Use anyway", "role": "danger",

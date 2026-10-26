@@ -50,10 +50,12 @@ __all__ = [
     "report",
     "resolve",
     "unembed",
+    "use_remote_copy",
     "verify",
 ]
 
-#: The record format written into the project JSON by this backend.
+#: The record format written into the project JSON by this backend (a local file, a container
+#: member, or an MMFDB object ``mmfdb://artifact/<id>`` -- :mod:`chisurf.core.project.remote_links`).
 LINK_SCHEME = "chisurf.file-link.v1"
 
 #: Whether :func:`embed` can store a link's target inside the project (written by the project
@@ -122,12 +124,26 @@ def _container_and_member(address: str) -> tuple[Path, str]:
     return Path(container).resolve(), member or ""
 
 
-def add_link(address: str | os.PathLike, progress=None) -> dict[str, Any]:
-    """Make the link record of *address* (a file, or a member of a container file).
+def add_link(
+    address: str | os.PathLike,
+    progress=None,
+    *,
+    size: int | None = None,
+    sha256: str | None = None,
+) -> dict[str, Any]:
+    """Make the link record of *address* (a file, a member of a container file, or an MMFDB object).
 
     The size and sha256 are those of the file on disk (the container, for a member), computed once
-    (ptolib's ``sha256_file`` where available, :func:`file_digest`).
+    (ptolib's ``sha256_file`` where available, :func:`file_digest`). An ``mmfdb://`` address cannot
+    be hashed here: its *size* and *sha256* come from the artifact's metadata
+    (:mod:`chisurf.core.project.remote_links`).
     """
+    from chisurf.core.project import remote_links
+
+    if remote_links.is_remote(str(address)):
+        if size is None or sha256 is None:
+            raise LinkError(f"{address}: an MMFDB link needs the object's size and sha256")
+        return remote_links.link_for(str(address), size=size, sha256=sha256)
     container, member = _container_and_member(str(address))
     size, sha256 = file_digest(container, progress)
     return {
@@ -158,9 +174,12 @@ def _companions(primary: Path) -> list[dict[str, Any]]:
 def relativize(link: dict[str, Any], project_dir: str | os.PathLike) -> dict[str, Any]:
     """Return *link* with its target's path relative to *project_dir* (where the project is saved).
 
-    No hashing. A target on another volume (no relative path exists) keeps only its absolute path.
+    No hashing. A target on another volume (no relative path exists) keeps only its absolute path;
+    an MMFDB object (no local file) has none.
     """
     updated = dict(link)
+    if not link.get("container"):
+        return updated
     try:
         updated["relative"] = os.path.relpath(
             Path(link["container"]).resolve(), Path(project_dir).resolve()
@@ -221,6 +240,10 @@ def resolve(
         container = Path(project_path)
         if container.is_file():
             return Resolution("ok", join_address(container, str(link["object"])), container)
+    from chisurf.core.project import remote_links
+
+    if remote_links.is_remote(link) and not link.get("container"):
+        return remote_links.resolve_remote(link, check_hash=check_hash)
     if project_dir is None and project_path is not None:
         project_dir = Path(project_path).parent
     base = Path(project_dir).resolve() if project_dir is not None else None
@@ -266,6 +289,9 @@ def resolve(
                 )
         address = join_address(candidate, link["member"]) if link.get("member") else str(candidate)
         return Resolution("ok", address, candidate)
+    if remote_links.is_remote(link):
+        # The local file is gone, but the link knows an MMFDB copy (Locate's "Use MMFDB copy").
+        return remote_links.resolve_remote(link, check_hash=check_hash)
     name = Path(str(link.get("container", ""))).name or "the linked file"
     return Resolution("missing", None, None, f"{name} was not found where it was linked")
 
@@ -457,10 +483,13 @@ def object_tags(link: dict[str, Any], project_dir: str | os.PathLike) -> list[tu
     ``"text"``, ``"uint"``, ``"int"``."""
     prefix = "pto.packed." if is_embedded(link) else "pto.link."
     container = Path(str(link.get("container", "")))
-    try:
-        path = os.path.relpath(container.resolve(), Path(project_dir).resolve())
-    except ValueError:
-        path = str(container)
+    if not link.get("container") and link.get("uri"):
+        path = str(link["uri"])  # an MMFDB object: ptolib resolves the URI through its registry
+    else:
+        try:
+            path = os.path.relpath(container.resolve(), Path(project_dir).resolve())
+        except ValueError:
+            path = str(container)
     tags: list[tuple[str, str, Any]] = [
         (prefix + "path", "text", path),
         (prefix + "size", "uint", int(link.get("size", 0))),
@@ -468,7 +497,26 @@ def object_tags(link: dict[str, Any], project_dir: str | os.PathLike) -> list[tu
     ]
     if link.get("mtime"):
         tags.append((prefix + "mtime", "int", int(float(link["mtime"]))))
+    if link.get("container") and link.get("uri"):
+        # A local file that also knows where it came from: ptolib's fallback source.
+        tags.append((prefix + "uri", "text", str(link["uri"])))
     return tags
+
+
+def use_remote_copy(link: dict[str, Any], uri: str) -> dict[str, Any]:
+    """Return *link* with *uri* (an MMFDB object with the same sha256) as its source.
+
+    Locate missing data's "Use MMFDB copy": the recorded local path stays (a file that reappears
+    there is used first), and the object is fetched from MMFDB otherwise. The size and sha256 are
+    the link's own: the object must match them.
+    """
+    from chisurf.core.project import remote_links
+
+    if not remote_links.is_remote(uri):
+        raise LinkError(f"not an MMFDB address: {uri!r}")
+    updated = dict(link)
+    updated["uri"] = str(uri)
+    return updated
 
 
 @dataclass(frozen=True)
@@ -512,7 +560,7 @@ def report(
             name, link = str(getattr(item, "name", "")), item.link
         else:
             continue
-        location = str(link.get("container", ""))
+        location = str(link.get("container", "") or link.get("uri", ""))
         if is_embedded(link):
             out.append(LinkReport(uid, name, "ok", "", True, location))
             continue

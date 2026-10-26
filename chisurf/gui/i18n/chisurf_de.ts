@@ -61948,7 +61948,7 @@ Der Korrelator-Workflow ist kein eigenständiger Menüeintrag mehr: Er wird als 
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4880" />
             <source>Linking {name}…</source>
-            <translation>{name} wird verknüpft…</translation>
+            <translation>Verknüpfe {name}…</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4987" />
@@ -71658,6 +71658,82 @@ fortgesetzt werden.
         <message>
             <source>{n} linked data file(s) of this project were not found.</source>
             <translation>{n} verknüpfte Datendatei(en) dieses Projekts wurden nicht gefunden.</translation>
+        </message>
+        <message>
+            <source>Fetching {n} linked object(s) from MMFDB…</source>
+            <translation>Hole {n} verknüpfte(s) Objekt(e) aus MMFDB…</translation>
+        </message>
+        <message>
+            <source>MMFDB is not available: linked objects cannot be fetched.</source>
+            <translation>MMFDB ist nicht verfügbar: verknüpfte Objekte können nicht geholt werden.</translation>
+        </message>
+        <message>
+            <source>{label} {done}/{total}</source>
+            <translation>{label} {done}/{total}</translation>
+        </message>
+        <message>
+            <source>Fetched {n} linked object(s).</source>
+            <translation>{n} verknüpfte(s) Objekt(e) geholt.</translation>
+        </message>
+        <message>
+            <source>{servers} -- right-click the dataset: Sign in to MMFDB…</source>
+            <translation>{servers} -- Rechtsklick auf den Datensatz: Bei MMFDB anmelden…</translation>
+        </message>
+        <message>
+            <source>Not fetched: {why}</source>
+            <translation>Nicht geholt: {why}</translation>
+        </message>
+        <message>
+            <source>The MMFDB sign-in (Switch User) is not available here.</source>
+            <translation>Die MMFDB-Anmeldung (Benutzer wechseln) ist hier nicht verfügbar.</translation>
+        </message>
+        <message>
+            <source>Sign in, then choose Fetch again (or close the sign-in window).</source>
+            <translation>Melden Sie sich an und wählen Sie dann Erneut holen (oder schließen Sie das Anmeldefenster).</translation>
+        </message>
+        <message>
+            <source>{name} is not a photon stream or an image; read it with the Read data panel.</source>
+            <translation>{name} ist kein Photonenstrom und kein Bild; lesen Sie es mit dem Bereich Daten lesen.</translation>
+        </message>
+        <message>
+            <source>{name}: the database records no size and checksum for it, so it cannot be linked.</source>
+            <translation>{name}: Die Datenbank verzeichnet dafür keine Größe und Prüfsumme, daher kann es nicht verknüpft werden.</translation>
+        </message>
+        <message>
+            <source>Right-click: Sign in to MMFDB…, then Fetch again.</source>
+            <translation>Rechtsklick: Bei MMFDB anmelden…, dann Erneut holen.</translation>
+        </message>
+        <message>
+            <source>Add from MMFDB…</source>
+            <translation>Aus MMFDB hinzufügen…</translation>
+        </message>
+        <message>
+            <source>Sign in to MMFDB…</source>
+            <translation>Bei MMFDB anmelden…</translation>
+        </message>
+        <message>
+            <source>Fetch again</source>
+            <translation>Erneut holen</translation>
+        </message>
+        <message>
+            <source>Search MMFDB</source>
+            <translation>MMFDB durchsuchen</translation>
+        </message>
+        <message>
+            <source>Pick a photon stream or an image stored in an MMFDB database and link it (mmfdb://artifact/&lt;id&gt;): the project records its address, size and checksum, the object is fetched into a local cache with your MMFDB session, and nothing is downloaded into a loose file.</source>
+            <translation>Einen in einer MMFDB-Datenbank gespeicherten Photonenstrom oder ein Bild auswählen und verknüpfen (mmfdb://artifact/&lt;id&gt;): Das Projekt speichert Adresse, Größe und Prüfsumme, das Objekt wird mit Ihrer MMFDB-Sitzung in einen lokalen Zwischenspeicher geholt, und nichts wird als lose Datei heruntergeladen.</translation>
+        </message>
+        <message>
+            <source>Open the MMFDB sign-in for the server a linked object is on (its rows show a key); then choose Fetch again. Your password and session never go into the project.</source>
+            <translation>Die MMFDB-Anmeldung für den Server öffnen, auf dem ein verknüpftes Objekt liegt (seine Zeilen zeigen einen Schlüssel); dann Erneut holen wählen. Passwort und Sitzung gelangen nie ins Projekt.</translation>
+        </message>
+        <message>
+            <source>Fetch the selected linked MMFDB objects (or all not fetched yet) into the local cache again, after a sign-in or when the server was unreachable.</source>
+            <translation>Die ausgewählten verknüpften MMFDB-Objekte (oder alle noch nicht geholten) erneut in den lokalen Zwischenspeicher holen, nach einer Anmeldung oder wenn der Server nicht erreichbar war.</translation>
+        </message>
+        <message>
+            <source>Look for an object with the dataset's checksum in your MMFDB database (signed in with Switch User): the store is content-addressed, so a match is the same file. Using it links the dataset to the MMFDB copy; it is fetched into the local cache.</source>
+            <translation>In Ihrer MMFDB-Datenbank (angemeldet über Benutzer wechseln) nach einem Objekt mit der Prüfsumme des Datensatzes suchen: Der Speicher ist inhaltsadressiert, ein Treffer ist also dieselbe Datei. Wird er verwendet, wird der Datensatz mit der MMFDB-Kopie verknüpft; sie wird in den lokalen Zwischenspeicher geholt.</translation>
         </message>
     </context>
     <context>

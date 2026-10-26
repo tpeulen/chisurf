@@ -70,6 +70,12 @@ that were open, the ribbon -- plus both dock layouts is kept under one
 Writes go through a :class:`WebSettingsStore` (localStorage, session-only dict
 where there is none), debounced behind the shell's ``settings_sink`` and
 flushed when the page goes away.
+
+Linked MMFDB objects (``mmfdb://artifact/<id>``) are fetched from the page with the MMFDB
+server's session cookie and kept in an IndexedDB-backed cache (:func:`mount_link_cache`). Serve
+the page from the MMFDB server's own origin, or add the page's origin to the server's
+``MMFDB_WEB_CORS_ORIGINS`` (cookies then ``SameSite=None; Secure``); see
+``docs/concepts/photon_container.md`` (concept-mmfdb-links).
 """
 
 from __future__ import annotations
@@ -157,14 +163,15 @@ PLUGIN_EXCLUDE = (
     "burst/burst_selection",
 )
 
-#: The parts of ``mmfdb`` the page ships: its root re-exports ``config``, which
+#: The parts of ``mmfdb`` the page ships (``links.py``: the ``mmfdb://`` link resolver, which
+#: fetches over the browser's fetch with the server's session cookie): its root re-exports ``config``, which
 #: ``chisurf.core.settings`` reads, and the Zenodo deposit path
 #: (:mod:`mmfdb.deposit`, what ``chisurf.plugins.core.zenodo_deposit`` drives)
 #: with the credential store it reads (``mmfdb.security`` is inert at import:
 #: its ``__init__`` is empty and ``credentials.py`` is stdlib-only; the token
 #: store itself never runs in a tab -- a token is given or read from the
 #: environment). The database layer is never imported.
-MMFDB_KEEP = ("__init__.py", "config.py", "deposit", "security")
+MMFDB_KEEP = ("__init__.py", "config.py", "deposit", "security", "links.py")
 
 #: Attributes the shipped (standalone) IMP.bff wheel cannot carry **by
 #: design**, which packed sources may still reference. The Pyodide wheel is
@@ -945,6 +952,63 @@ class WebSettingsSaver:
         return True
 
 
+#: Where the page keeps fetched MMFDB link targets: a folder backed by IndexedDB (IDBFS), so a
+#: fetched object survives a reload and is not fetched again.
+LINK_CACHE_DIR = "/chisurf/link-cache"
+
+
+def mount_link_cache(path: str = LINK_CACHE_DIR, fs: Any = None, links: Any = None) -> bool:
+    """Mount an IndexedDB-backed folder at *path* and make it MMFDB's link cache.
+
+    The page cannot fetch synchronously, so a linked MMFDB object is fetched (awaited) into this
+    cache first and ptolib's resolver only reads it (``okf/specs/data-workspace.md``, "One
+    protocol, desktop and web"). *fs* (Emscripten's ``FS``) and *links* (:mod:`mmfdb.links`) are
+    looked up on the page; tests pass stand-ins. Returns ``False`` off the page.
+    """
+    if fs is None:
+        try:
+            import pyodide_js  # noqa: PLC0415 - the page only
+
+            fs = pyodide_js.FS
+        except ImportError:
+            return False
+    if links is None:
+        try:
+            from mmfdb import links  # noqa: PLC0415
+        except ImportError:
+            return False
+    try:
+        fs.mkdirTree(path)
+    except Exception:  # noqa: BLE001 - already there
+        pass
+    try:
+        fs.mount(fs.filesystems.IDBFS, {}, path)
+    except Exception as exc:  # noqa: BLE001 - no IDBFS: the cache lives in memory for the visit
+        _log.warning("link cache not persistent (%s)", exc)
+    try:
+        fs.syncfs(True, lambda *_: None)  # read what earlier visits fetched
+    except Exception:  # noqa: BLE001
+        pass
+    links.set_cache_root(path)
+    return True
+
+
+def persist_link_cache(fs: Any = None) -> bool:
+    """Write the link cache through to IndexedDB (after a fetch); ``False`` off the page."""
+    if fs is None:
+        try:
+            import pyodide_js  # noqa: PLC0415
+
+            fs = pyodide_js.FS
+        except ImportError:
+            return False
+    try:
+        fs.syncfs(False, lambda *_: None)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def make_app() -> Any:
     """The page's factory: the emtk shell over the socket-free session, its
     settings kept across reloads in ``localStorage``.
@@ -967,8 +1031,12 @@ def make_app() -> Any:
         importlib.import_module("pyodide_http").patch_all()
     except Exception:  # pragma: no cover - depends on the loaded package set
         pass
+    from chisurf.core.project.remote_links import register_resolvers
     from chisurf.emtk.main_app import EmtkShellApp
 
+    # Linked MMFDB objects: a persistent cache, and ptolib's resolver for mmfdb:// reads it.
+    mount_link_cache()
+    register_resolvers()
     store = WebSettingsStore()
     saved = store.get(SETTINGS_KEY) or {}
     saver = WebSettingsSaver(None, store)

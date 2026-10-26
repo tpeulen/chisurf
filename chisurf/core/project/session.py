@@ -739,12 +739,17 @@ def _restore_linked(record: dict[str, Any], project_dir: Any, project_path: Any 
     """
     from chisurf.core.data import LinkedDataset, PhotonStreamDataset
     from chisurf.core.project.links import resolve
+    from chisurf.core.project.remote_links import is_remote
 
     link = record.get("link")
     if not isinstance(link, dict):
         raise ValueError("linked dataset has no link record")
     resolution = resolve(link, project_dir, project_path=project_path)
     address = resolution.address or str(record.get("address", ""))
+    if is_remote(link) and not link.get("container"):
+        # An MMFDB object keeps its URI as the address (the cache path is per machine and never
+        # saved); reading goes through the cache (LinkedDataset.read_address).
+        address = str(link["uri"])
     if resolution.ok and link.get("embedded") and link.get("member") and project_path is not None:
         address = f"{address}/{link['member']}"  # a measurement container embedded whole
     common = {"link": link, "name": record.get("name", ""), "unique_identifier": record["uid"]}

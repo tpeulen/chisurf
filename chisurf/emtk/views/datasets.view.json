@@ -14,6 +14,8 @@
        {"separator": true},
        {"label": "Embed in project", "call": "embed_selected", "enabled_when": "can_embed", "description": "Store the selected linked files inside the project file at the next save (checked against their recorded checksum first), so the project no longer needs them."},
        {"label": "Link to file", "call": "link_selected", "enabled_when": "can_link", "description": "Write the selected embedded files back to where they were linked from and link them again; the project gets smaller at the next save."},
+       {"label": "Sign in to MMFDB…", "call": "sign_in", "enabled_when": "can_sign_in", "description": "Open the MMFDB sign-in for the server a linked object is on (its rows show a key); then choose Fetch again. Your password and session never go into the project."},
+       {"label": "Fetch again", "call": "fetch_again", "enabled_when": "can_fetch_again", "description": "Fetch the selected linked MMFDB objects (or all not fetched yet) into the local cache again, after a sign-in or when the server was unreachable."},
        {"separator": true},
        {"label": "Group", "call": "group_datasets", "enabled_when": "can_group", "description": "Join the selected datasets into one group; a fit of the group has one curve per member."},
        {"label": "Ungroup", "call": "ungroup_datasets", "enabled_when": "can_ungroup", "description": "Split the selected groups back into their datasets."},
@@ -39,6 +41,8 @@
     {"type": "choice", "attr": "model", "label": "Model", "options_source": "model_names",
      "description": "This selection box is updated according to the selected dataset."},
     {"type": "button_row", "buttons": [
+      {"label": "Add from MMFDB…", "action": "add_from_mmfdb",
+       "description": "Pick a photon stream or an image stored in an MMFDB database and link it (mmfdb://artifact/<id>): the project records its address, size and checksum, the object is fetched into a local cache with your MMFDB session, and nothing is downloaded into a loose file."},
       {"label": "+ Analysis", "action": "add_fit",
        "description": "Add a fit of the selected model to the selected dataset; its window opens."},
       {"label": "Remove dataset", "role": "danger", "action": "remove_selected",

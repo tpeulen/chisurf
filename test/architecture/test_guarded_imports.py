@@ -32,6 +32,7 @@ OPTIONAL = {
     # only inside the browser (the ?app= plugin pages import them guarded)
     "js": "pyodide's JavaScript bridge, browser page only",
     "pyodide": "the page's own runtime, browser only",
+    "pyodide_js": "the page's JavaScript-side Pyodide module (its FS: the IDBFS link cache), browser only",
     # build artefacts
     "chisurf.core._version": "written by the installer build only; a source checkout reads git",
     # platform

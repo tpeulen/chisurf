@@ -190,6 +190,62 @@ class LinkRepairModel:
             self.status_text = f"No file of that name under {folder}."
         return self.candidates
 
+    def search_mmfdb(self, *, transport: Any = None) -> list[dict]:
+        """MMFDB objects with the selected dataset's checksum: copies it can be read from.
+
+        The store is content-addressed, so a match by sha256 is the same file wherever it lives.
+        """
+        from chisurf.core.project import remote_links
+
+        dataset = self._datasets().get(str(self.selected.get("uid", "")))
+        self.candidates, self.selected_candidate = [], {}
+        if dataset is None:
+            return []
+        copies = remote_links.find_copies(str(dataset.link.get("sha256", "")), transport=transport)
+        self.candidates = [
+            {
+                "path": c["uri"],
+                "shown": f"MMFDB: {c['name']}" + (f" ({c['server']})" if c["server"] else ""),
+                "size": int(dataset.link.get("size", 0)),
+                "match": "same checksum",
+                "mmfdb": True,
+            }
+            for c in copies
+        ]
+        if self.candidates:
+            self.selected_candidate = self.candidates[0]
+            self.status_text = (
+                f"{len(self.candidates)} MMFDB object(s) with this file's checksum; "
+                "Use candidate reads the dataset from MMFDB."
+            )
+        else:
+            self.status_text = "No MMFDB object with this file's checksum (or no MMFDB session)."
+        return self.candidates
+
+    def use_mmfdb_copy(self, uri: str) -> bool:
+        """Read the selected dataset from the MMFDB object *uri* (same checksum), fetched first."""
+        from chisurf.core.project import remote_links
+
+        uid = str(self.selected.get("uid", ""))
+        dataset = self._datasets().get(uid)
+        if dataset is None:
+            self.status_text = "Select a dataset first."
+            return False
+        dataset.link = links.use_remote_copy(dataset.link, uri)
+        fetch = getattr(self.source, "prefetch_links", None)
+        if callable(fetch):
+            fetch([dataset])
+        else:
+            remote_links.prefetch([dataset.link])
+        resolution = links.resolve(dataset.link)
+        dataset.link_status, dataset.link_problem = resolution.status, resolution.reason
+        self._changed()
+        self.status_text = (
+            f"{dataset.name} is read from MMFDB ({uri}). Save the project to keep it."
+        )
+        self.refresh()
+        return True
+
     def candidate_rows(self) -> list[dict]:
         """The candidates the search found."""
         return self.candidates
@@ -206,6 +262,11 @@ class LinkRepairModel:
         """Relink the selected dataset to the chosen candidate (size and sha256 checked)."""
         if not self.selected_candidate:
             return False
+        if self.selected_candidate.get("mmfdb"):
+            done = self.use_mmfdb_copy(self.selected_candidate["path"])
+            if done:
+                self.candidates, self.selected_candidate = [], {}
+            return done
         done = self.replace(self.selected_candidate["path"])
         if done:
             self.candidates, self.selected_candidate = [], {}

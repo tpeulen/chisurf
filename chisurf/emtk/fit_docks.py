@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -66,11 +67,18 @@ def _kind_and_source(dto: dict) -> dict:
     found = KINDS.get(kind)
     address = str(dto.get("filename") or "")
     name = address.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1] if address else ""
+    if address.startswith("mmfdb://"):
+        name = f"MMFDB {name.split('?', 1)[0]}"  # an object of an MMFDB database, by its id
     tooltip = address
-    if dto.get("link_status") not in (None, "ok"):
-        # A linked file that is missing or changed: marked, and the tooltip says why.
-        name = f"⚠ {name}"
-        tooltip = f"{address}\n{dto.get('link_problem') or dto.get('link_status')}"
+    status = dto.get("link_status")
+    if status not in (None, "ok"):
+        # A linked MMFDB object not fetched yet, or waiting for a sign-in; a linked file that is
+        # missing or changed. Marked, and the tooltip says why (or what to do).
+        mark = {"fetching": "⏳", "sign-in needed": "🔑"}.get(str(status), "⚠")
+        name = f"{mark} {name}"
+        tooltip = f"{address}\n{dto.get('link_problem') or status}"
+        if status == "sign-in needed":
+            tooltip += "\n" + tr("Right-click: Sign in to MMFDB…, then Fetch again.")
     linked = dto.get("link_status") is not None
     if dto.get("embedded"):
         name = f"📦 {name}"  # stored inside the project
@@ -211,6 +219,26 @@ class DatasetsModel:
     def link_selected(self, record: Any = None) -> None:
         """Write the selected embedded datasets back out to their files and link them again."""
         self.docks.change_links([str(r["uid"]) for r in self.selected_rows()], embed=False)
+
+    def can_sign_in(self, record: Any = None) -> bool:
+        """*Sign in to MMFDB…* is offered while a linked MMFDB object waits for a sign-in."""
+        return self.docks.can_sign_in()
+
+    def sign_in(self, record: Any = None) -> None:
+        """Open the MMFDB sign-in; *Fetch again* afterwards fetches the waiting objects."""
+        self.docks.sign_in()
+
+    def can_fetch_again(self, record: Any = None) -> bool:
+        """*Fetch again* is offered while a linked MMFDB object is not fetched."""
+        return self.docks.can_fetch_again() and not self.docks.busy
+
+    def fetch_again(self, record: Any = None) -> None:
+        """Fetch the selected (or all unfetched) linked MMFDB objects again."""
+        self.docks.fetch_again()
+
+    def add_from_mmfdb(self) -> None:
+        """Pick an MMFDB photon stream or image and link it into the workspace."""
+        self.docks.add_from_mmfdb()
 
     def dataset_rows(self) -> list:
         """The rows of the kind filter: a group stays when it or one of its members is of the kind."""
@@ -685,6 +713,8 @@ class DataDocks:
         #: Running imports (hashing, header reads) beside the job queue, with their progress.
         self._imports: list[tuple[_Job, dict]] = []
         self._link_jobs: list[_Job] = []
+        #: Running fetches of MMFDB link targets: ``(job, progress)``.
+        self._fetch_jobs: list[tuple[_Job, dict]] = []
         # The Project data tool finds the session's linked datasets here.
         from chisurf.emtk.session_sources import register_source
 
@@ -798,6 +828,8 @@ class DataDocks:
             self._poll_imports()
         if self._link_jobs:
             self._poll_link_jobs()
+        if self._fetch_jobs:
+            self._poll_fetch_jobs()
         if self.session is not None:
             self.session.events.drain()
         if self._dirty and self.session is not None and self.job is None:
@@ -1630,7 +1662,7 @@ class DataDocks:
                 handled = bool(project.open_recent(groups["project"][0])) or handled
         linked = [
             (kind, path)
-            for kind in ("photons", "container", "image")
+            for kind in ("photons", "container", "image", "setup")
             for path in groups.get(kind, [])
         ]
         if linked:
@@ -1753,6 +1785,210 @@ class DataDocks:
                 )
             self.refresh()
 
+    # -- MMFDB link targets (mmfdb://artifact/<id>) ---------------------------------- #
+    def remote_datasets(self, statuses: tuple[str, ...] | None = None) -> list:
+        """The session's linked datasets whose data is an MMFDB object (or falls back to one)."""
+        from chisurf.core.project.remote_links import is_remote
+
+        return [
+            d
+            for d in self.linked_datasets()
+            if is_remote(d.link) and (statuses is None or getattr(d, "link_status", "") in statuses)
+        ]
+
+    def prefetch_links(self, datasets: list | None = None) -> bool:
+        """Fetch the MMFDB objects of *datasets* (default: every remote link not fetched yet) into
+        the local link cache, in the background, with progress on the status line.
+
+        On the desktop the fetch runs beside the job queue with the user's MMFDB session; in the
+        browser it is awaited on the page's event loop (it cannot block there). A link whose server
+        has no session is marked *sign-in needed*; right-click it to sign in and fetch again.
+        """
+        from chisurf.core.project import remote_links
+
+        targets = (
+            datasets
+            if datasets is not None
+            else self.remote_datasets((remote_links.FETCHING, remote_links.SIGN_IN))
+        )
+        links = [d.link for d in targets if remote_links.is_remote(d.link)]
+        if not links:
+            return False
+        label = tr("Fetching {n} linked object(s) from MMFDB…").format(n=len(links))
+        self.status = label
+        try:
+            from mmfdb.links import is_web
+        except ImportError:
+            self.status = tr("MMFDB is not available: linked objects cannot be fetched.")
+            return False
+        if is_web():
+            import asyncio
+
+            future = asyncio.ensure_future(remote_links.prefetch_async(links))
+            future.add_done_callback(lambda done: self._fetched(targets, done.result()))
+            return True
+        progress = {"done": 0, "total": len(links)}
+        wake = self.request_frame
+
+        def build() -> dict:
+            def advance(done: int, total: int) -> None:
+                progress["done"], progress["total"] = done, total
+                wake()
+
+            return remote_links.prefetch(links, progress=advance)
+
+        job = _Job(label, None, BackgroundBuild(wake=self.request_frame), None)
+        self._fetch_jobs.append((job, progress))
+        job.build.start({"build": build}, name="chisurf-shell-fetch")
+        self._fetch_targets = list(targets)
+        return True
+
+    def _poll_fetch_jobs(self) -> None:
+        for item in list(self._fetch_jobs):
+            job, progress = item
+            results = job.build.collect()
+            if results is None:
+                self.status = tr("{label} {done}/{total}").format(
+                    label=job.label.rstrip("…"), done=progress["done"], total=progress["total"]
+                )
+                continue
+            self._fetch_jobs.remove(item)
+            outcome, error = results.get("build", ({}, None))
+            if error is not None:
+                self.status = tr("{label} failed: {error}").format(label=job.label, error=error)
+                continue
+            self._fetched(getattr(self, "_fetch_targets", []), outcome or {})
+
+    def _fetched(self, targets: list, outcome: dict) -> None:
+        """A fetch finished: check the fetched datasets' links again and say what is left."""
+        from chisurf.core.project import remote_links
+
+        for dataset in targets:
+            if hasattr(dataset, "recheck"):
+                dataset.recheck()
+        sign_in = sorted({r for s, r in outcome.values() if s == remote_links.SIGN_IN})
+        failed = [r for s, r in outcome.values() if s == "missing"]
+        fetched = sum(1 for s, _r in outcome.values() if s == "ok")
+        parts = [tr("Fetched {n} linked object(s).").format(n=fetched)] if fetched else []
+        if sign_in:
+            parts.append(
+                tr("{servers} -- right-click the dataset: Sign in to MMFDB…").format(
+                    servers="; ".join(s[:1].upper() + s[1:] for s in sign_in)
+                )
+            )
+        if failed:
+            parts.append(tr("Not fetched: {why}").format(why="; ".join(failed)))
+        self.status = " ".join(parts)
+        if sys.platform == "emscripten":  # the page keeps the cache in IndexedDB: write it through
+            from chisurf.web import persist_link_cache
+
+            persist_link_cache()
+        self.refresh()
+
+    def _selected_remote(self, status: str) -> list:
+        selected = {
+            str(r.get("uid"))
+            for r in getattr(self.datasets, "selection", [])
+            if isinstance(r, dict)
+        }
+        return [
+            d
+            for d in self.remote_datasets((status,))
+            if not selected or str(getattr(d, "unique_identifier", "")) in selected
+        ]
+
+    def can_sign_in(self) -> bool:
+        """Whether a remote link waits for a sign-in."""
+        from chisurf.core.project.remote_links import SIGN_IN
+
+        return bool(self.remote_datasets((SIGN_IN,)))
+
+    def sign_in(self) -> bool:
+        """Open the MMFDB sign-in (Switch User); fetch the waiting links again once it closes."""
+        from chisurf.core.project.remote_links import SIGN_IN
+
+        waiting = self._selected_remote(SIGN_IN) or self.remote_datasets((SIGN_IN,))
+        shell = self.shell
+        if "switch_user" not in getattr(shell, "by_id", {}):
+            self.status = tr("The MMFDB sign-in (Switch User) is not available here.")
+            return False
+        shell.open_plugin("switch_user")
+        self._retry_after_sign_in = list(waiting)
+        self.status = tr("Sign in, then choose Fetch again (or close the sign-in window).")
+        return True
+
+    def can_fetch_again(self) -> bool:
+        """Whether a remote link is not fetched (yet)."""
+        from chisurf.core.project import remote_links
+
+        return bool(self.remote_datasets((remote_links.FETCHING, remote_links.SIGN_IN, "missing")))
+
+    def fetch_again(self) -> bool:
+        """Fetch the selected (or all unfetched) remote links again: after a sign-in or a fix."""
+        from chisurf.core.project import remote_links
+
+        statuses = (remote_links.FETCHING, remote_links.SIGN_IN, "missing")
+        targets = [d for s in statuses for d in self._selected_remote(s)] or self.remote_datasets(
+            statuses
+        )
+        return self.prefetch_links(targets)
+
+    def add_from_mmfdb(self) -> bool:
+        """Pick an MMFDB artifact and add it as a LINKED dataset (``mmfdb://artifact/<id>``).
+
+        Photon streams and images are linked, never downloaded into a loose file: the project
+        records the URI, size and sha256 (the artifact's metadata) and the object is fetched into
+        the local link cache. Other kinds go through the Read data panel as before.
+        """
+        from chisurf.emtk.dataset_picker import DatasetPicker as DatabasePicker
+
+        picker = DatabasePicker(on_selected=self.link_selection)
+        picker.open()
+        self.model_dialog = picker
+        self.request_frame()
+        return True
+
+    def link_selection(self, selection: Any) -> bool:
+        """Add the picked MMFDB artifact *selection* as a linked dataset, then fetch it."""
+        from chisurf.core.data import LinkedDataset, PhotonStreamDataset
+        from chisurf.core.fio.classify import classify
+        from chisurf.core.project.remote_links import link_for
+
+        meta = dict(getattr(selection, "metadata", {}) or {})
+        name = str(getattr(selection, "label", "") or meta.get("original_filename") or "")
+        kind = classify(name) if name else ""
+        if kind not in ("photons", "image"):
+            self.status = tr(
+                "{name} is not a photon stream or an image; read it with the Read data panel."
+            ).format(name=name or selection.artifact_id)
+            return False
+        sha = str(meta.get("checksum") or meta.get("content_sha256") or "")
+        size = meta.get("size_bytes")
+        uri = f"mmfdb://artifact/{selection.artifact_id}"
+        try:
+            link = link_for(uri, size=int(size), sha256=sha, name=name)
+        except Exception:  # noqa: BLE001 - no size/hash recorded for the artifact
+            self.status = tr(
+                "{name}: the database records no size and checksum for it, so it cannot be linked."
+            ).format(name=name)
+            return False
+        if kind == "photons":
+            dataset = PhotonStreamDataset(uri, link=link, name=name)
+        else:
+            dataset = LinkedDataset(uri, data_kind=kind, link=link, name=name)
+        dataset.link_status, dataset.link_problem = "fetching", f"fetching {uri}…"
+        api = self.session.api if self.session is not None else None
+        if api is None:
+            return False
+
+        def add() -> Any:
+            return api.load_dataset(dataset=dataset)
+
+        def after(_result: Any) -> None:
+            self.prefetch_links()
+
+        return self._start(tr("Linking {name}…").format(name=name), add, after)
+
     def import_paths(self, entries: list[tuple[str, str]]) -> bool:
         """Link photon files, containers' photon streams and burst runs, and images into the workspace.
 
@@ -1774,6 +2010,7 @@ class DataDocks:
 
         def build() -> tuple[list, list[str]]:
             from chisurf.core.data import LinkedDataset, PhotonStreamDataset
+            from chisurf.core.experiments.linked import reader_for_kind
             from chisurf.core.fio.address import container_of, split_address
             from chisurf.core.fio.classify import container_entries
             from chisurf.core.project.links import add_link
@@ -1813,7 +2050,13 @@ class DataDocks:
                     if embed:
                         # Hashed just now: stored in the project at the next save.
                         link = {**link, "embedded": True}
-                    if kind == "photons":
+                    # Read by the experiment that reads the kind (chisurf.core.experiments.linked),
+                    # so the dataset carries its experiment like any other.
+                    reader = reader_for_kind(kind)
+                    if reader is not None:
+                        dataset = reader.make_dataset(address, link=link)
+                        dataset.data_reader = reader
+                    elif kind == "photons":
                         dataset = PhotonStreamDataset.from_address(address, link=link)
                     else:
                         dataset = LinkedDataset(address, data_kind=kind, link=link)

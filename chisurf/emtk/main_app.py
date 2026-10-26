@@ -2598,8 +2598,12 @@ def make_app(persist: bool = True, splash: Any = None) -> EmtkShellApp:
 
     *splash* (:class:`chisurf.emtk.splash.SplashState`) hears the session's startup stages.
     """
+    from chisurf.core.project.remote_links import register_resolvers
     from chisurf.emtk.session import start_session
 
+    # ptolib/tttrlib read an mmfdb:// link target through MMFDB's cache-only resolver (where the
+    # installed tttrlib has the registry); quietly nothing otherwise.
+    register_resolvers()
     # The update check runs for the real window (persisted), not a figure's.
     app = EmtkShellApp(session_factory=start_session, splash=splash, post_show=persist)
     if persist:

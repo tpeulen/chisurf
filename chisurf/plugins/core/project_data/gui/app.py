@@ -65,6 +65,7 @@ class ProjectDataModel(LinkRepairModel):
             "use_session": session_source() is not None and self.source is not session_source(),
             "check_checksums": bool(self.rows),
             "request_search": self.can_search(),
+            "search_mmfdb": self.can_search(),
             "request_replace": self.can_replace(),
             "use_anyway": self.can_use_anyway(),
             "use_candidate": self.can_use_candidate(),
