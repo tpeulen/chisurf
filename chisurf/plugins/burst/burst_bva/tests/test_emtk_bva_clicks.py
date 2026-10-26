@@ -331,9 +331,12 @@ def test_a_burst_run_picked_in_the_input_section_runs_and_its_result_goes_back(
     press(app, "run")
     settle(app)
     assert app.model.df is not None and app.model.status_text.startswith("Done")
-    results = [d for d in dataset_objects() if getattr(d, "result_of", "") == burst_run.unique_identifier]
-    assert [(d.name, d.data_kind) for d in results] == [("BVA · runBursts#1", "bursts")]
-    assert results[0].address.endswith("m000.pto/bva")  # the table BVA wrote into the container
+    # the BVA table is a companion of the run in its container, read with the run by ndX's reader --
+    # not a workspace row of its own
+    assert not [d for d in dataset_objects() if getattr(d, "result_of", "") == burst_run.unique_identifier]
+    from test.gui.burst_workspace import run_columns
+
+    assert {"Proximity Ratio Mean", "Proximity Ratio Std"} <= set(run_columns(burst_run.address))
 
 
 def test_open_in_hands_the_run_over_as_the_input_section_does(app, burst_run):

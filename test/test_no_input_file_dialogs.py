@@ -50,6 +50,27 @@ NOT_INPUT = {
     "chisurf/plugins/fluorescence_decay/lltf/gui/app.py": (
         "Output directory: where the fit's JSON and plot are written, an output."
     ),
+    "chisurf/plugins/tttr/trace_browser/gui/app.py": (
+        "Export / CSV: the folder the exported files or their CSV traces are written to, an output."
+    ),
+    "chisurf/plugins/core/pto_inspector/gui/app.py": (
+        "Pack: the folder the new container is written to, an output."
+    ),
+    "chisurf/plugins/tttr/ptu_alex_creator/gui/app.py": (
+        "Batch output folder: where the batch's converted files are written, an output."
+    ),
+    "chisurf/plugins/tttr/tttr_image_browser/gui/app.py": (
+        "Copy raw files / TIFF: the folder the copies or the TIFF stacks are written to, an output."
+    ),
+    "chisurf/plugins/tttr/tttr_microtime_shifter/gui/app.py": (
+        "Output folder: where the shifted copies are written, an output."
+    ),
+    "chisurf/plugins/tttr/tttr_splitter/gui/controller.py": (
+        "Output folder: where the split or converted files are written, an output."
+    ),
+    "chisurf/plugins/tttr/tttr_time_windows/gui/controller.py": (
+        "Output folder: where a new container is written when a vendor file has none, an output."
+    ),
 }
 
 

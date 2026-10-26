@@ -394,7 +394,10 @@ def test_completed_detector_read_is_deferred_until_snapshot_idle(monkeypatch, ph
         driver.frame(2)
         assert app.editor._future is future
         assert app.editor.model.get_settings() == original
-        assert not app.on_paths_dropped([str(app.model.session.bur_files[0])])
+        from chisurf.plugins.burst.burst_mle_analysis.gui.native import receive_bursts
+
+        with pytest.raises(RuntimeError, match="wait for the running"):
+            receive_bursts(app, {"files": [str(app.model.session.bur_files[0])], "datasets": []})
         release.set()
         app.job.thread.join(3)
         driver.frame(3)

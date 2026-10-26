@@ -823,7 +823,10 @@ def analyze_request(
                 store_from_rows(result.dataframes.get(str(path), [])),
                 parameters=to_jsonable(request.settings),
                 algorithm=_selection_algorithm(request.settings),
-                out_dir=request.output_dir,
+                out_dir=request.container_dirs.get(str(path)) or request.output_dir,
+                # A project's analysis container links the photons; the project decides whether
+                # the photon dataset itself is linked or embedded.
+                raw_data="sidecar" if str(path) in request.container_dirs else "embed",
                 # Named the way the folder layout names its directory, so a
                 # container holding several analyses of one measurement is
                 # addressed exactly as a folder of them is:

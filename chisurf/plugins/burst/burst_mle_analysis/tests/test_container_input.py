@@ -27,6 +27,25 @@ BIG, SMALL_RUN = "runBig#1", "runSmall#2"
 SMALL_N = 41  # table rows (20 bursts after the zero interleave)
 
 
+def feed(app, *paths) -> bool:
+    """Hand burst runs over as the workspace does (Input section / Open in… / a drag); False when
+    nothing new was taken."""
+    from chisurf.plugins.burst.burst_mle_analysis.gui.native import receive_bursts
+
+    try:
+        receive_bursts(app, {"files": [str(p) for p in paths], "datasets": []})
+    except ValueError:
+        return False
+    app.draw(
+        __import__("emtk.testing", fromlist=["RecordingPainter"]).RecordingPainter(),
+        0,
+        0,
+        1200,
+        800,
+    )
+    return True
+
+
 @pytest.fixture(scope="module")
 def container(sample_copy: Path) -> Path:
     """``m000.pto`` with a big and a small burst search of the measurement's own photons."""
@@ -100,15 +119,13 @@ def test_a_burst_table_of_the_other_run_is_not_fitted(model):
     assert model.n_bursts > small
 
 
-def test_the_view_spec_has_the_run_picker_once(model):
-    import json
-
+def test_the_view_spec_has_no_run_picker_of_its_own(model):
+    """The runs are rows of the Datasets workspace (the Input section lists them), so the form does
+    not list a container's runs a second time."""
     from chisurf.plugins.burst.burst_mle_analysis.gui import native
 
-    spec = json.loads(
-        (Path(native.__file__).parent / "mle_native.view.json").read_text(encoding="utf-8")
-    )
-    assert with_run_picker(spec) == spec
+    text = (Path(native.__file__).parent / "mle_native.view.json").read_text(encoding="utf-8")
+    assert "run_rows" not in text and "select_run" not in text
 
 
 def test_legacy_burst_files_are_refused(hermetic_env, sample_copy):
@@ -120,29 +137,39 @@ def test_legacy_burst_files_are_refused(hermetic_env, sample_copy):
     assert "No new .pto" in m.status_text
 
 
-def test_clicking_a_run_in_the_app_fits_that_run(hermetic_env, container):
-    """Drop the container, click the small run's row in the Runs table: the burst table becomes that run."""
+def test_picking_a_run_in_the_input_section_fits_that_run(hermetic_env, container):
+    """The container's runs are workspace rows (the drop puts them there); the run picked in the
+    Input section is the burst table the fit reads."""
+    from chisurf.core.api import dataset_container
     from chisurf.plugins.burst.burst_mle_analysis.gui.native import create_app
+    from chisurf.plugins.burst.workspace_io import register_container
     from chisurf.plugins.emtk_test_input import Driver
 
+    held = dataset_container()
+    before = list(held)
     window = create_app()
     try:
+        register_container(container)
         drv = Driver(window)
         window.model.set_setup(CHANNEL_SETTINGS)
-        assert drv.drop(container)
         drv.draw()
-        assert drv.drawn("Runs") or drv.drawn(BIG)
-        # a bare container opens its newest run; the clicks pick the others
-        drv.click_text(BIG)
-        drv.draw()
-        big = window.model.n_bursts
-        assert window.model.run_path.endswith(f"m000.pto/{BIG}") and big > SMALL_N // 2
-        drv.click_text(SMALL_RUN)
-        drv.draw()
-        assert window.model.n_bursts == SMALL_N // 2
-        assert window.model.run_path.endswith(f"m000.pto/{SMALL_RUN}")
+        assert drv.drawn(BIG) and drv.drawn(SMALL_RUN)
+        model = window.inputs["bursts"][0]
+        for run, n in ((SMALL_RUN, SMALL_N // 2), (BIG, None)):
+            window.model.clear_files()
+            model.workspace_input_selection = [
+                r for r in model.workspace_input_rows() if r["name"] == run
+            ]
+            drv.click_name("workspace_input_use")
+            drv.draw()
+            assert [p.name for p in window.model.session.bur_files] == [run]
+            if n is not None:
+                assert window.model.n_bursts == n
+            else:
+                assert window.model.n_bursts > SMALL_N // 2
     finally:
         window.close()
+        held[:] = before
 
 
 def test_an_unchanged_request_is_not_fitted_again_and_restart_fits(model, monkeypatch):

@@ -27,10 +27,10 @@
       }
     },
     {
-      "title": "Burst files",
-      "text": "Add the burst (.bur) tables of a finished burst analysis: <b>Add files</b>, <b>Add folder</b>, or drop them on the window. The analysis folder they belong to is read whole.",
+      "title": "Burst runs",
+      "text": "The <b>Input</b> section lists the burst runs in the workspace: the runs of the measurement containers, each under its photon stream in the Datasets view. Select one or more and press <b>Use selected</b>; <i>Open in…</i> on a Datasets row, or dragging rows onto this tool, does the same. Files dropped on the ChiSurf window are added to the workspace.",
       "target": {
-        "name": "add_files"
+        "name": "workspace_input_rows"
       }
     },
     {
@@ -52,9 +52,9 @@
     },
     {
       "title": "A measured IRF and background",
-      "text": "A <b>measured</b> IRF (scatter or a short-lifetime reference) and a sample-free background are better than the estimate. Open the <b>IRF/BG files</b> tab and add them: with <b>one for all</b> the files serve every detector. <b>IRF model</b> chooses the shape Auto IRF/background estimates.",
+      "text": "A <b>measured</b> IRF (scatter or a short-lifetime reference) and a sample-free background are better than the estimate. Open the <b>IRF/BG files</b> tab: the <b>Measured IRF</b> and <b>Measured background</b> sections list the photon streams in the workspace — select the measurement and press <b>Use selected</b>. With <b>one for all</b> the files serve every detector. <b>IRF model</b> chooses the shape Auto IRF/background estimates.",
       "target": {
-        "name": "add_irf_files"
+        "name": "irf_measurement:workspace_input_rows"
       }
     },
     {

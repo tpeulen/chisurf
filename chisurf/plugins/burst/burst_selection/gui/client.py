@@ -56,6 +56,7 @@ class BurstSelectionClient:
         detectors: dict[str, dict[str, Any]] | None = None,
         filetype: str | None = None,
         output_dir: str | Path | None = None,
+        container_dirs: dict[str, str] | None = None,
         legacy_output: bool = False,
         legacy_output_folder_name: str | None = None,
         selected_setup: str | None = None,
@@ -79,6 +80,8 @@ class BurstSelectionClient:
             Explicit TTTR container/file type from the selected detector setup.
         output_dir : str or Path, optional
             Directory for generated output files.
+        container_dirs : dict, optional
+            Per input file, the folder its measurement container goes into.
         legacy_output : bool
             If ``True``, ask the API to write the legacy burstwise layout.
         legacy_output_folder_name : str, optional
@@ -123,6 +126,8 @@ class BurstSelectionClient:
             params["filetype"] = filetype
         if output_dir is not None:
             params["output_dir"] = str(output_dir)
+        if container_dirs:
+            params["container_dirs"] = {str(k): str(v) for k, v in container_dirs.items()}
         if legacy_output:
             params["legacy_output"] = True
         if legacy_output_folder_name is not None:

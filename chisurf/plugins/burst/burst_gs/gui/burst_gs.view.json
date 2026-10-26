@@ -17,31 +17,11 @@
           "n_col": 1,
           "sections": [
             {
-              "description": "TTTR input and burst selection: channels, macro-time tick, minimum photons and burst count.",
+              "description": "Burst selection: channels, macro-time tick, minimum photons and burst count. The burst run itself is picked in the Input section, from the Datasets workspace.",
               "type": "panel",
               "title": "Photons",
               "collapsed": false,
               "sections": [
-                {
-                  "description": "TTTR files or burst folders to analyse.",
-                  "type": "custom",
-                  "key": "path_list",
-                  "target": "bur_files",
-                  "options": {
-                    "title": "Burst tables (drop .bur files or folders)",
-                    "extensions": [
-                      ".bur"
-                    ],
-                    "add_folders": true
-                  }
-                },
-                {
-                  "type": "value",
-                  "attr": "data_dir",
-                  "label": "TTTR folder",
-                  "kind": "directory",
-                  "description": "Folder the raw TTTR files named in the burst table resolve against. Left empty, the burst table's own folder is used."
-                },
                 {
                   "type": "choice",
                   "attr": "file_type",

@@ -380,6 +380,15 @@ class Project:
                         sidecar_of=name,
                     )
                 )
+        # The analysis containers of the photon datasets (burst runs and their tables), embedded.
+        from .analysis import EXTRA_KEY, project_files
+
+        analysis_files, mapping = project_files(taken)
+        out.extend(analysis_files)
+        if mapping:
+            self.extra[EXTRA_KEY] = mapping
+        else:
+            self.extra.pop(EXTRA_KEY, None)
         return out
 
     def save_to_archive(self, archive, graph_session_bytes: bytes | None = None) -> None:
@@ -454,6 +463,11 @@ class Project:
         data = _validate_project_payload(data)
         archive.close()
         project = cls.from_dict(data)
+        # The analysis containers (burst runs and their tables) back into this session's folder.
+        from .analysis import EXTRA_KEY
+        from .analysis import restore as restore_analysis
+
+        restore_analysis(project_path, (project.extra or {}).get(EXTRA_KEY))
         # Linked datasets resolve against the folder the project was opened from; embedded ones are
         # read from the file itself.
         project.source_dir = project_path.parent

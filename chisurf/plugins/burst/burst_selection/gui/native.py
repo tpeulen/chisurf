@@ -20,7 +20,7 @@ from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
 from emtk.im_core import get_current_context
-from emtk.view_form import FormState, draw_sections
+from emtk.view_form import FormState, draw_form, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
@@ -69,8 +69,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
     """
 
     DIALOGS = {
-        "add_files": ("Add TTTR files", "open"),
-        "add_folder": ("Add a folder of TTTR files", "folder"),
         "export_cif": ("Export as flrCIF", "save"),
         "save_settings": ("Save Burst Selection settings", "save"),
         "load_settings": ("Load Burst Selection settings", "open"),
@@ -94,6 +92,17 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             self.model.restore()
         self.on_run_done = on_run_done
         self.job = SnapshotJob(self.model)
+        # The Input section: the workspace's photon streams (manifest ``accepts`` ``photons``).
+        from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput, input_spec
+
+        self.input = NamedWorkspaceInput("burst_selection", "photons", app=self)
+        self.input_spec = input_spec(
+            Path(__file__).resolve().parents[1] / "manifest.json", "photons"
+        )
+        self.input_form = FormState()
+        #: Which workspace dataset each searched file came from (its runs become its children).
+        self.sources: dict[str, str] = {}
+        self.model.sources = self.sources  # the model writes each file into its dataset's container
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.form = FormState()
         spec = load_view_spec(str(HERE / "native.view.json"))
@@ -239,6 +248,40 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self.job.start("run")
         return True
 
+    def take_photons(self, paths, uids=()) -> int:
+        """Add photon files from the workspace; remember which dataset each came from (its runs
+        become that dataset's children)."""
+        added = self.model.add_paths([Path(p) for p in paths])
+        for path, uid in zip(paths, uids):
+            if uid:
+                self.sources[str(Path(path).resolve())] = str(uid)
+        if added:
+            self._diag_due = time.monotonic()
+        return added
+
+    def _register_runs(self) -> None:
+        """Show the newest burst run of each searched measurement in the workspace: a child of the
+        photon dataset, read from that dataset's analysis container in the project (the run is not
+        stored as a dataset; the container is its record)."""
+        from chisurf.core.api import dataset_objects
+        from chisurf.core.fio.classify import container_entries
+        from chisurf.core.plugin.workspace_input import register_result
+
+        known = {str(getattr(d, "address", "")) for d in dataset_objects()}
+        folders = self.model.container_dirs()
+        for path in self.model.files:
+            container = Path(folders[str(path)]) / f"{Path(path).stem}.pto"
+            if not container.exists():
+                continue
+            try:
+                runs = [a for kind, a in container_entries(container) if kind == "bursts"]
+            except Exception:  # noqa: BLE001 - written either way; the row is a view of it
+                continue
+            if runs and runs[-1] not in known:
+                register_result(
+                    runs[-1], kind="bursts", result_of=self.sources.get(str(Path(path).resolve()), "")
+                )
+
     def load_example(self) -> None:
         """Add the simulated stream with its known twelve bursts and select the matching detectors."""
         from ..demo import SETUP, make_demo
@@ -249,8 +292,14 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             self.model.status_text = f"Cannot build the example: {exc}"
             return
         self.apply_setup(SETUP)
-        self.model.add_paths([path])
-        self._diag_due = time.monotonic()
+        from chisurf.core.plugin.workspace_input import register_result
+
+        try:  # the example enters the workspace like a dropped file, then feeds this tool
+            stream = register_result(str(path), kind="photons", name=Path(path).name)
+            uid = str(getattr(stream, "unique_identifier", ""))
+        except Exception:  # noqa: BLE001 - the search still runs on the file
+            uid = ""
+        self.take_photons([path], [uid])
         self.track("load_example")
         self.model.status_text = (
             "Example added: a simulated stream with 12 planted bursts of about 200 photons. "
@@ -271,18 +320,11 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         from emtk.dialog_window import DialogWindow
         from emtk.file_dialog import FileDialog
 
-        from chisurf.core.fio.staging import TTTR_EXTENSIONS
-
         title, mode = self.DIALOGS[action]
         options: dict[str, Any] = {}
         if self.model.files:
             options["directory"] = str(self.model.files[0].parent)
         filters = self.FILTERS.get(action)
-        if action == "add_files":
-            filters = [
-                ("TTTR files", sorted("*" + ext for ext in TTTR_EXTENSIONS)),
-                ("All files", ["*"]),
-            ]
         if filters:
             options["filters"] = filters
         filename = ""
@@ -290,9 +332,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             filename = "bursts.cif"
         elif action == "save_settings":
             filename = "burst_selection_settings.json"
-        self.dialog = FileDialog(
-            title, mode=mode, filename=filename, multiselect=action == "add_files", **options
-        )
+        self.dialog = FileDialog(title, mode=mode, filename=filename, **options)
         self.dialog_action = action
         window = DialogWindow(title, size=(660.0, 470.0), key="burst-selection-file")
         self._dialog_window = window
@@ -301,14 +341,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
     def _dialog_done(self, result: list[str]) -> None:
         action = self.dialog_action
         try:
-            if action in ("add_files", "add_folder"):
-                if self.model.add_paths([Path(p) for p in result]):
-                    self._diag_due = time.monotonic()
-                else:  # keep the message on screen: a preview would overwrite it
-                    self.model.status_text = (
-                        "Nothing new to add (already listed, or no TTTR files)."
-                    )
-            elif action == "export_cif":
+            if action == "export_cif":
                 self.model.export_flr_cif(result[0])
             elif action == "save_settings":
                 self.model.save_settings(result[0])
@@ -348,34 +381,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self.model.status_text = f"Opened {path} in ndX."
         return True
 
-    def open_registered_in_ndx(self) -> None:
-        """Pick a burst selection registered in MMFDB and open it in ndX."""
-        from chisurf.emtk.dataset_picker import DatasetPicker
-        from chisurf.plugins.ndxplorer.mmfdb_launcher import BURST_FORMATS, BURST_KINDS
-
-        def chosen(selection) -> None:
-            path = getattr(selection, "local_path", None)
-            if not path:
-                self.model.status_text = "The selected burst selection has no local path."
-                return
-            from chisurf.plugins.ndxplorer.mmfdb_launcher import open_path_in_ndxplorer
-
-            self._ndx_window = open_path_in_ndxplorer(path)
-
-        try:
-            picker = DatasetPicker(
-                kinds=BURST_KINDS,
-                formats=BURST_FORMATS,
-                scope="all",
-                on_paths=lambda _p: None,
-                on_selected=chosen,
-            )
-            self.picker = picker
-            picker.open()
-        except Exception as exc:  # noqa: BLE001 - no database
-            self.picker = None
-            self.model.status_text = f"MMFDB is not available: {exc}"
-
     def _press(self, key: str) -> None:
         m = self.model
         self.track(key)
@@ -394,8 +399,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                 self.open_panel("metadata")
             elif key == "ndx_current":
                 self.send_to_ndx()
-            elif key == "ndx_mmfdb":
-                self.open_registered_in_ndx()
             elif key == "guide":
                 self.start_guide()
             elif key == "help":
@@ -407,6 +410,13 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
     def _files(self, box=None) -> None:
         m = self.model
         busy = self.running
+        im.begin_disabled(busy)
+        self.input.workspace_input_on_used = self.track
+        self.input_form.rects.clear()
+        draw_form(self.input_spec, self.input, self.input_form)
+        im.end_disabled()
+        for name, rect in self.input_form.rects.items():
+            self.item_rects[name] = tuple(rect)
         has_files = bool(m.files)
         has_result = m.has_processed
         shown = m.display_frame is not None
@@ -419,26 +429,12 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                     "tip": "Add a simulated photon stream with 12 planted bursts and select its detectors.",
                 },
                 {
-                    "label": "Add files",
-                    "key": "add_files",
-                    "enabled": not busy,
-                    "keys": ["toolAction_add"],
-                    "tip": "Choose TTTR files to search (drop files or folders on the window works too).",
-                },
-                {
-                    "label": "Add folder",
-                    "key": "add_folder",
-                    "enabled": not busy,
-                    "keys": ["toolAction_batch"],
-                    "tip": "Add every TTTR file of a folder (the Qt batch dialog).",
-                },
-                {
                     "label": action_caption("run"),
                     "key": "toolAction_run",
                     "enabled": has_files and not busy,
                     "tip": "Search the bursts of every file and write the burst tables."
                     if has_files
-                    else "Add TTTR files first.",
+                    else "Pick photon streams in the Input section first.",
                 },
                 {
                     "label": action_caption("restart"),
@@ -476,11 +472,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                     "tip": "Open the last run's burst folder in ndXplorer."
                     if has_result
                     else "Run the search first.",
-                },
-                {
-                    "label": "ndX from MMFDB",
-                    "key": "ndx_mmfdb",
-                    "tip": "Pick a burst selection registered in MMFDB and open it in ndXplorer.",
                 },
                 {
                     "label": "Save settings",
@@ -811,6 +802,8 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         if self.job.poll():
             self.model.remember()
             self._diag_due = time.monotonic()
+            if not self.job.error:
+                self._register_runs()
             if self.on_run_done is not None and not self.job.error:
                 self.on_run_done(self.model)
         if self.job.busy or self._diag_due is not None:
@@ -840,17 +833,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         if self.tour.active:
             self.tour.draw(w, h)
 
-    # -- host input ------------------------------------------------------------------------------------------ #
-    def files_dropped(self, paths) -> bool:
-        paths = [Path(p) for p in paths]
-        added = bool(paths) and self.model.add_paths(paths) > 0
-        if added:
-            self._diag_due = time.monotonic()
-        return added
-
-    on_paths_dropped = files_dropped
-    on_files_dropped = files_dropped
-
     # -- persistence ----------------------------------------------------------------------------------------- #
     def export_settings(self) -> dict[str, Any]:
         return self.model.export_settings()
@@ -862,11 +844,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
     def close(self) -> None:
         self.model.remember()
         self.editor.close()
-        if self.picker is not None:
-            try:
-                self.picker.close()
-            except Exception:  # noqa: BLE001
-                pass
 
 
 def create_app(**kwargs) -> BurstSelectionNativeApp:
@@ -875,3 +852,18 @@ def create_app(**kwargs) -> BurstSelectionNativeApp:
 
     install()
     return BurstSelectionNativeApp(**kwargs)
+
+
+def receive_photons(app: BurstSelectionNativeApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``photons``): search the photon streams
+    ``payload["files"]`` of the Datasets workspace; the runs found become their children."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    files = payload.get("files") or []
+    files = files if isinstance(files, list) else [files]
+    paths = [read_address(str(f)) for f in files]
+    uids = list(payload.get("datasets") or [])
+    if not app.take_photons(paths, uids) and not set(map(str, paths)) & {
+        str(p) for p in app.model.files
+    }:
+        raise ValueError("nothing new to add (already listed, or not a photon file)")

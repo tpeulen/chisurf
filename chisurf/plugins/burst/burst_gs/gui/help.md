@@ -32,7 +32,10 @@ Between them, the method is the sharpest tool available.
 
 ## How to run it
 
-1. Drop the `.bur` burst tables, point **TTTR folder** at the raw files, and
+1. Pick a **burst run** in the **Input** section — the runs of the measurement
+   containers in the Datasets workspace (drop the measurement on the ChiSurf
+   window, run a burst search; the run shows under its photon stream). *Open in…*
+   on a Datasets row, or dragging the row onto this window, does the same. Then
    check the donor and acceptor **channel** lists.
 2. Check the **macro-time tick**. Zero reads it from the file header. Every
    fitted rate is proportional to it, so a wrong value rescales the entire

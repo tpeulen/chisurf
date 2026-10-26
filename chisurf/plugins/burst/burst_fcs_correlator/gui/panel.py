@@ -295,15 +295,6 @@ class BurstFcsPanel:
     def stop(self):
         self.c.stop()
 
-    def add_files(self):
-        self.app.choose("files")
-
-    def add_folder(self):
-        self.app.choose("folder")
-
-    def mmfdb(self):
-        self.c.datasets.open()
-
     def check_all(self):
         self.c.check_all()
 

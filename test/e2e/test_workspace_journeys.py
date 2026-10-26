@@ -97,8 +97,8 @@ LEGS: dict[str, Leg] = {
         needs_kinds=("structure",),
     ),
     "setup_json": Leg(
-        "a detector setup JSON dropped -> a setup row a tool uses with photons",
-        tools=("tttr_time_windows",),
+        "a detector setup JSON dropped -> a setup row the micro-time histogram uses with photons",
+        tools=("microtime_histogram",),
         needs_kinds=("setup",),
     ),
     "project_link_embed": Leg(
@@ -545,9 +545,11 @@ def leg_setup_json(walk: Walk) -> dict:
     setups = walk.drop([setup], "setup")
     _demo, spc = _photons(walk)
     photons = walk.drop([spc], "photons")
-    walk.feed("tttr_time_windows", photons + setups)
+    app = walk.feed("microtime_histogram", photons + setups)
     walk.grab("setup_used")
-    return {"setup": setups[0].get("address")}
+    detectors = sorted((getattr(getattr(app, "model", None), "setup", None) or {}).get("detectors", {}))
+    assert detectors == sorted(demo.SETUP.get("detectors", {})), detectors
+    return {"setup": setups[0].get("address"), "detectors": detectors}
 
 
 def leg_project_link_embed(walk: Walk) -> dict:

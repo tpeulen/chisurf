@@ -17,9 +17,15 @@ if TYPE_CHECKING:
 from emtk.app import ImApp
 from emtk.i18n import tr
 from emtk.im_core import get_current_context
-from emtk.view_form import FormState, draw_sections, find_section
+from emtk.view_form import FormState, draw_form, draw_sections, find_section
 from emtk.widgets.view_spec import load_view_spec
 
+from chisurf.core.plugin.workspace_input import (
+    WorkspaceInputMixin,
+    input_section,
+    read_address,
+    spec_for,
+)
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
     LabelColumn,
@@ -34,6 +40,19 @@ from chisurf.plugins.emtk_layout import (
 )
 
 WINDOW_BG = (30, 32, 38, 255)
+PLUGIN = Path(__file__).resolve().parents[1]
+
+
+class _Input(WorkspaceInputMixin):
+    """The Input section's model: the workspace's burst runs, a pick handed to :func:`receive_bursts`."""
+
+    workspace_input_plugin = "burst_gs"
+
+
+def _input_spec() -> dict:
+    """The generated Input section of the manifest's ``accepts[].from_workspace``."""
+    found = spec_for(json.loads((PLUGIN / "manifest.json").read_text(encoding="utf-8")))
+    return {"sections": [input_section(found[1])]} if found else {"sections": []}
 
 
 def _hex_to_rgba(colour: str) -> tuple[int, int, int, int]:
@@ -98,6 +117,11 @@ class BurstGsGui:
         )
         self.on_used = self.tour.notify_used  # the Simulate and Fit steps wait for their control
         self.form_state.on_used = self.tour.notify_used
+        #: The Input section: which burst run of the workspace is fitted.
+        self.input = _Input()
+        self.input.workspace_input_on_used = self.tour.notify_used
+        self.input_spec = _input_spec()
+        self.input_form = FormState(on_used=self.tour.notify_used)
         self.docks = DockManager(
             Split("h", 0.4, Region("controls"), Split("v", 0.5, Region("results"), Region("plot"))),
             name="burst_gs",
@@ -169,9 +193,11 @@ class BurstGsGui:
     def _render_controls_window(self, box=None) -> None:
 
         controller = getattr(self, "controller", None)
-        if controller is not None:
-            controller.draw_inputs(remember=self.remember, track=self.track)
-            im.spacing()
+        self.input_form.rects.clear()
+        draw_form(self.input_spec, self.input, self.input_form)
+        for name, rect in self.input_form.rects.items():
+            self.item_rects[name] = tuple(rect)
+        im.spacing()
 
         # One wrapped row of actions: Fit, Stop (live only while a fit runs), Export, Guide, Help.
         can_run_msg = self.model.can_run()
@@ -186,8 +212,8 @@ class BurstGsGui:
                         "Fit the photon-by-photon kinetic model (Gopich–Szabo) to the loaded bursts and report rates and "
                         "states."
                         if not can_run_msg
-                        else "Fit the photon-by-photon kinetic model (Gopich–Szabo). Load .bur files and set the channels "
-                        "below first."
+                        else "Fit the photon-by-photon kinetic model (Gopich–Szabo). Pick a burst run in the Input section "
+                        "and set the channels below first."
                     ),
                 },
                 {
@@ -285,10 +311,10 @@ class BurstGsGui:
                     form,
                 )
         elif self._section("Data Input & Channels", im.TreeNodeFlags.DEFAULT_OPEN):
-            im.text(f"Loaded .bur files: {len(self.model.bur_files)}")
+            run = self.model.bur_files[0] if self.model.bur_files else ""
+            im.text_wrapped(tr("Burst run: {run}").format(run=run or tr("none picked")))
             draw_sections(
                 self._group(
-                    "data_dir",
                     "file_type",
                     "donor_channels",
                     "acceptor_channels",
@@ -463,6 +489,7 @@ class BurstGsApp(ImApp):
         self.model = self.gs_gui.model
         self.item_rects = self.gs_gui.item_rects
         self.gs_gui.controller = self.controller
+        self.gs_gui.input.workspace_input_app = self  # a pick goes to receive_bursts(self, ...)
         super().__init__(gui=self._render)
 
     def start_guide(self) -> None:
@@ -488,23 +515,24 @@ class BurstGsApp(ImApp):
         if self.controller is not None:
             self.controller.close()
 
-    def on_paths_dropped(self, paths):
-        if self.controller is not None:
-            self.controller.on_paths_dropped(paths)
-
-    def files_dropped(self, paths) -> bool:
-        """A host's file drop (Qt, the desktop window, a page): the same as ``on_paths_dropped``.
-
-        Without this name only the Qt host reached the controller: the desktop and web hosts deliver ``files_dropped`` /
-        ``on_files_dropped`` and found nothing to call.
-        """
-        paths = list(paths)
-        self.on_paths_dropped(paths)
-        return bool(paths) and self.controller is not None
-
 
 def create_app(**kwargs):
     from chisurf.emtk.i18n import install
 
     install()
     return BurstGsApp(**kwargs)
+
+
+def receive_bursts(app: BurstGsApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``bursts``): fit the burst run ``payload["folder"]``.
+
+    ``folder`` is an address -- a run of a measurement container (``m000.pto/<run>``) -- as the
+    Input section, *Open in…* or a drag from the Datasets view hands it.
+    """
+    if app.controller is None:
+        raise RuntimeError("this window has no controller to run the fit")
+    address = read_address(str(payload["folder"]))
+    if not app.controller.set_run(address):
+        raise ValueError(f"{address} is not a burst run")
+    app.model.use_simulation = False
+    app.model.notify("use_simulation")

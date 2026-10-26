@@ -17,9 +17,15 @@ from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
 from emtk.im_core import get_current_context
-from emtk.view_form import FormState, draw_sections
+from emtk.view_form import FormState, draw_form, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
+from chisurf.core.plugin.workspace_input import (
+    WorkspaceInputMixin,
+    input_section,
+    read_address,
+    spec_for,
+)
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
@@ -61,12 +67,25 @@ def translated(node):
     return node
 
 
+class _Input(WorkspaceInputMixin):
+    """The Input section's model: the workspace's burst runs, a pick handed to :func:`receive_bursts`."""
+
+    workspace_input_plugin = "burst_h2mm"
+
+
+def _input_spec() -> dict:
+    """The generated Input section of the manifest's ``accepts[].from_workspace``."""
+    import json
+
+    found = spec_for(json.loads((HERE.parent / "manifest.json").read_text(encoding="utf-8")))
+    return {"sections": [input_section(found[1])]} if found else {"sections": []}
+
+
 class H2mmNativeApp(TourTarget, ImApp):
     """Immediate-mode H2MM app: settings form, detector editor, actions through ``SnapshotJob``, tables and plots."""
 
     #: Dialog actions: (title, mode, filters).
     DIALOGS = {
-        "folder": ("Select burst (.bur) folder", "folder", None),
         "save_settings": ("Save H2MM settings", "save", [("JSON", ["*.json"])]),
         "load_settings": ("Load H2MM settings", "open", [("JSON", ["*.json"])]),
         "export_dwells": ("Export dwell table", "save", [("CSV", ["*.csv"])]),
@@ -117,6 +136,12 @@ class H2mmNativeApp(TourTarget, ImApp):
         )
         self.form.on_used = self.tour.notify_used
         self.on_used = self.tour.notify_used
+        #: The Input section: which burst run of the workspace H2MM fits.
+        self.input = _Input()
+        self.input.workspace_input_app = self  # a pick goes to receive_bursts(self, ...)
+        self.input.workspace_input_on_used = self.tour.notify_used
+        self.input_spec = _input_spec()
+        self.input_form = FormState(on_used=self.tour.notify_used)
         self.editor.on_used = self.tour.notify_used
         self.docks = DockManager(
             Split(
@@ -208,7 +233,15 @@ class H2mmNativeApp(TourTarget, ImApp):
         from emtk.file_dialog import FileDialog
 
         title, mode, filters = self.DIALOGS[action]
-        directory = str(self.model.data_folder) if self.model.data_folder else None
+        from chisurf.core.fio.address import container_of
+
+        # Beside the measurement: the burst folder itself, or the folder its container is in.
+        source = Path(str(self.model.data_folder)) if self.model.data_folder else None
+        directory = (
+            None
+            if source is None
+            else str(source if source.is_dir() else container_of(source).parent)
+        )
         filename = {
             "save_settings": "h2mm_settings.json",
             "export_dwells": "h2mm_dwells.csv",
@@ -229,10 +262,7 @@ class H2mmNativeApp(TourTarget, ImApp):
     def _dialog_done(self, result: list[str]) -> None:
         action, path = self.dialog_action, result[0]
         try:
-            if action == "folder":
-                self.model.data_folder = path
-                self.model.status_text = f"Data folder: {path}"
-            elif action == "save_settings":
+            if action == "save_settings":
                 self.model.save_settings(path)
                 self.model.status_text = f"Settings saved to {path}"
             elif action == "load_settings":
@@ -300,22 +330,25 @@ class H2mmNativeApp(TourTarget, ImApp):
 
     def _controls(self, box=None) -> None:
         running = self.job.busy
+        im.begin_disabled(running)
+        self.input_form.rects.clear()
+        draw_form(self.input_spec, self.input, self.input_form)
+        im.end_disabled()
+        for name, rect in self.input_form.rects.items():
+            self.item_rects[name] = tuple(rect)
+        run = str(self.model.data_folder or "")
+        im.text_wrapped(tr("Burst run: {run}").format(run=run or tr("none picked")))
+        self.remember("burst_run")
         problem = self.model.can_run()
         has_fit = self.model.bundle is not None
         idle_fit = has_fit and not running
         pressed = button_row(
             [
                 {
-                    "label": "Browse folder",
-                    "key": "folder",
-                    "enabled": not running,
-                    "tip": "Choose the folder with the burst (.bur) tables of a finished burst analysis.",
-                },
-                {
                     "label": "Run H2MM",
                     "key": "toolAction_run",
                     "enabled": not problem and not running,
-                    "tip": "Fit the photon-by-photon HMM to the bursts of the folder: every state count of the scan, then the "
+                    "tip": "Fit the photon-by-photon HMM to the bursts of the run: every state count of the scan, then the "
                     "criterion picks one. A fit of unchanged inputs is kept."
                     if not problem
                     else "Fit the photon-by-photon HMM. " + problem,
@@ -436,8 +469,6 @@ class H2mmNativeApp(TourTarget, ImApp):
             fields = group_by_width(fields, toggles_join=False)
         draw_sections(fields, target, self.form)
         im.end_disabled()
-        if "data_folder" in self.form.rects:
-            self.item_rects["folder_field"] = tuple(self.form.rects["data_folder"])
 
     def _detectors(self, box=None) -> None:
         self.remember("detectors", box)
@@ -449,7 +480,7 @@ class H2mmNativeApp(TourTarget, ImApp):
         if self.model.analysis is None:
             im.text_wrapped(
                 tr(
-                    "No H2MM fit yet. Select a burst folder, define the detectors and press Run H2MM."
+                    "No H2MM fit yet. Pick a burst run in the Input section, define the detectors and press Run H2MM."
                 )
             )
             return
@@ -526,21 +557,6 @@ class H2mmNativeApp(TourTarget, ImApp):
         if self.tour.active:
             self.tour.draw(w, h)
 
-    # -- host input ---------------------------------------------------------------------------------------- #
-    def files_dropped(self, paths) -> bool:
-        """A dropped folder (or the folder of a dropped file) becomes the burst folder; a ``.pto`` is its own input."""
-        for path in map(Path, paths):
-            if path.suffix.lower() == ".pto":
-                self.model.data_folder = str(path)
-                return True
-            folder = path if path.is_dir() else path.parent
-            if folder.is_dir():
-                self.model.data_folder = str(folder)
-                return True
-        return False
-
-    on_paths_dropped = files_dropped
-
     def close(self) -> None:
         self.model.stop()
         self.editor.close()
@@ -552,3 +568,20 @@ def create_app(**kwargs) -> H2mmNativeApp:
 
     install()
     return H2mmNativeApp(**kwargs)
+
+
+def receive_bursts(app: H2mmNativeApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``bursts``): fit the burst run ``payload["folder"]``.
+
+    ``folder`` is an address -- a run of a measurement container (``m000.pto/<run>``) or a legacy
+    burst folder -- as the Input section, *Open in…* or a drag from the Datasets view hands it.
+    """
+    from chisurf.plugins.burst.workspace_io import is_burst_source
+
+    address = read_address(str(payload["folder"]))
+    if not is_burst_source(address):
+        raise ValueError(f"{address} is not a burst run")
+    app.model.data_folder = address
+    app.model.run_path = ""
+    app.model.status_text = f"Burst run: {address}"
+    app.model.notify("data_folder")

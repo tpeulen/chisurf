@@ -53,6 +53,17 @@ class PlotSpy:
         return spy
 
 
+def feed(window, *paths) -> bool:
+    """Hand photon files over as the workspace does (Input section / Open in… / a drag)."""
+    from chisurf.plugins.burst.burst_selection.gui.native import receive_photons
+
+    try:
+        receive_photons(window, {"files": [str(p) for p in paths], "datasets": []})
+    except ValueError:
+        return False
+    return True
+
+
 @pytest.fixture
 def files(tmp_path, monkeypatch):
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
@@ -117,7 +128,7 @@ def test_empty_app_draws_no_data_and_says_so(monkeypatch, files):
 
 def test_drop_run_and_draw_the_models_numbers(monkeypatch, app, files):
     drv = Driver(app, (1200, 800))
-    assert drv.drop(*files)
+    assert feed(drv.app, *files)
     assert [p.name for p in app.model.files] == ["m000.spc", "m001.spc"]
     drv.draw(2)
     drv.click_name("toolAction_run")

@@ -64,9 +64,9 @@
     },
     {
       "title": "Then bring your own photons",
-      "text": "Untick <b>Simulate</b>, drop the <code>.bur</code> burst tables here, point the folder at the raw files and check the donor/acceptor channel lists.<br/><br/>Two checks before believing the result: <b>does the BIC clearly fall</b> when you add a state (if not, do not add it), and <b>does the H2MM cross-check agree</b>? H2MM fits the same photons in discrete time and shares no likelihood with this — agreement is real evidence.<br/><br/>The <b>?</b> button has the long version.",
+      "text": "Untick <b>Simulate</b> and pick a <b>burst run</b> in the <b>Input</b> section: the runs of the measurement containers in the workspace, each under its photon stream in the Datasets view. Files dropped on the ChiSurf window are added there; <i>Open in…</i> on a Datasets row, or dragging the row onto this tool, does the same. Then check the donor/acceptor channel lists.<br/><br/>Two checks before believing the result: <b>does the BIC clearly fall</b> when you add a state (if not, do not add it), and <b>does the H2MM cross-check agree</b>? H2MM fits the same photons in discrete time and shares no likelihood with this — agreement is real evidence.<br/><br/>The <b>?</b> button has the long version.",
       "target": {
-        "attr": "bur_files"
+        "name": "workspace_input_rows"
       }
     }
   ]

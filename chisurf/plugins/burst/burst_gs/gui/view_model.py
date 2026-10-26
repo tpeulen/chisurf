@@ -71,7 +71,7 @@ class BurstGsViewModel:
         self._info: dict[str, Any] = {}
         self._analysis: _core.GsAnalysis | None = None
         self.results_text: str = (
-            "Drop .bur burst tables (or tick Simulate) and press Fit.\n\n"
+            "Pick a burst run in the Input section (or tick Simulate) and press Fit.\n\n"
             "This fits kinetic rates directly to the arrival time and colour of "
             "every photon, so it resolves exchange faster than any bin."
         )
@@ -134,7 +134,7 @@ class BurstGsViewModel:
         if self.use_simulation:
             return ""
         if not self.bur_files:
-            return "Add at least one .bur burst table, or tick Simulate."
+            return "Pick a burst run in the Input section, or tick Simulate."
         if int(self.n_states) < 2:
             return "A kinetic fit needs at least two states."
         return ""

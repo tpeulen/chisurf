@@ -20,6 +20,22 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "bursts",
+      "summary": "Fit photon-by-photon kinetics to a burst run of a measurement container.",
+      "receive": "chisurf.plugins.burst.burst_gs.gui.app:receive_bursts",
+      "required": [
+        "folder"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "bursts"
+        ],
+        "key": "folder"
+      }
+    }
+  ],
   "entrypoints": {
     "cli": "burst-gs=chisurf.plugins.burst.burst_gs.cli:cli",
     "services": "chisurf.plugins.burst.burst_gs.backend.services:register_services",

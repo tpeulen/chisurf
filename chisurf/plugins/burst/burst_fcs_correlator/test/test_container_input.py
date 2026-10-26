@@ -20,7 +20,6 @@ from chisurf.plugins.burst.burst_fcs_correlator import demo
 from chisurf.plugins.burst.burst_fcs_correlator.core import algorithms as core
 from chisurf.plugins.burst.burst_fcs_correlator.gui.controller import BurstFcsController
 from chisurf.plugins.burst.burst_selection.api.io import write_container
-from chisurf.plugins.core.pto_inspector.core import with_run_picker
 
 from .driving import BIG, BurstDriver, hermetic_env
 
@@ -101,31 +100,36 @@ def test_picking_a_run_correlates_that_run_and_writes_into_the_container(contain
         ctrl.close()
 
 
-def test_the_view_spec_has_the_run_picker_once():
-    import json
-
+def test_the_view_spec_has_no_run_picker_of_its_own():
+    """The runs are rows of the Datasets workspace (the Input section lists them)."""
     from chisurf.plugins.burst.burst_fcs_correlator.gui import app
 
-    section = json.loads(
-        (Path(app.__file__).parent / "burst_fcs_emtk.view.json").read_text(encoding="utf-8")
-    )["files"]
-    assert with_run_picker(section) == section
+    text = (Path(app.__file__).parent / "burst_fcs_emtk.view.json").read_text(encoding="utf-8")
+    assert "run_rows" not in text and "select_run" not in text
 
 
-def test_clicking_a_run_in_the_window_selects_it(container):
+def test_picking_runs_in_the_input_section_lists_them(container):
+    """The container's runs are workspace rows; the picked ones become the inputs."""
+    from chisurf.core.api import dataset_container
     from chisurf.plugins.burst.burst_fcs_correlator.gui.app import create_app
+    from chisurf.plugins.burst.workspace_io import register_container
 
+    held = dataset_container()
+    before = list(held)
     app = create_app()
     try:
+        register_container(container)
         drv = BurstDriver(app, BIG)
-        assert drv.drop(container)
         drv.draw(3)
-        assert app.controller.files == [str(container)]
-        drv.click_text(FULL)
-        drv.draw(2)
-        assert app.controller.files == [f"{container}/{FULL}"]
-        drv.click_text(FIRST3)
-        drv.draw(2)
-        assert app.controller.files == [f"{container}/{FIRST3}"]
+        model = app._input
+        for run in (FULL, FIRST3):
+            app.controller.files.clear()
+            model.workspace_input_selection = [
+                r for r in model.workspace_input_rows() if r["name"] == run
+            ]
+            model.workspace_input_use()
+            drv.draw(2)
+            assert app.controller.files == [f"{container}/{run}"]
     finally:
         app.close()
+        held[:] = before

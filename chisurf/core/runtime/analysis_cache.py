@@ -71,6 +71,7 @@ __all__ = [
     "photon_read_context",
     "read_stamp",
     "stamp_entry",
+    "stamp_path",
     "write_stamp",
 ]
 
@@ -436,6 +437,23 @@ def stamp_entry(path, fingerprint_: str) -> dict[str, Any] | None:
         if isinstance(entry, dict) and entry.get("fingerprint") == fingerprint_:
             return entry
     return None
+
+
+def stamp_path(source, tool: str) -> Path:
+    """Where *tool*'s stamp for the burst data *source* lives.
+
+    *source* is a legacy burst-analysis folder (the stamp sits in its ``Info/``) or a burst run of a
+    measurement container, ``m000.pto/<run>`` (beside the container, in ``Info/`` of its folder,
+    named after the container and the run so two runs do not share a stamp).
+    """
+    from chisurf.core.fio.address import container_of
+
+    source = Path(source)
+    if source.is_dir():
+        return source / "Info" / f"{tool}.stamp.json"
+    container = container_of(source)
+    tag = source.as_posix()[len(container.as_posix()):].strip("/").replace("/", "_")
+    return container.parent / "Info" / f"{container.stem}{'_' + tag if tag else ''}.{tool}.stamp.json"
 
 
 def is_current(stamp_path, fingerprint_: str, outputs: Sequence[Any] = ()) -> bool:

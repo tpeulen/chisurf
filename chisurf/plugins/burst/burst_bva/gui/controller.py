@@ -21,18 +21,6 @@ from ..core import computation as core
 logger = logging.getLogger(__name__)
 
 
-def _stamp_path(folder) -> Path:
-    """Where the run's fingerprint stamp lives: ``Info/`` of a burst folder, beside a container."""
-    from chisurf.core.fio.address import container_of
-
-    folder = Path(folder)
-    if folder.is_dir():
-        return folder / "Info" / "bva.stamp.json"
-    container = container_of(folder)
-    tag = folder.as_posix()[len(container.as_posix()):].strip("/").replace("/", "_")
-    return container.parent / "Info" / f"{container.stem}{'_' + tag if tag else ''}.bva.stamp.json"
-
-
 class BvaController:
     """Run, stop and save for :class:`~.view_model.BvaViewModel` without a toolkit."""
 
@@ -45,9 +33,6 @@ class BvaController:
         self.settings_path = Path(settings_path)
         self._restore_settings()
         self._dialog_window = DialogWindow("Save Plot", size=(640.0, 460.0), key="bva-file")
-        #: Told the containers a written run went into (the app registers them in the workspace).
-        self.on_written = None
-        self._written: list[str] = []
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bva")
         self._future = None
         self._fingerprint = None
@@ -88,7 +73,9 @@ class BvaController:
         folder = Path(folder)
         settings = self.model.bva_settings()
         self._fingerprint = self.model.analysis_fingerprint(settings)
-        outputs_current = analysis_cache.is_current(_stamp_path(folder), self._fingerprint)
+        outputs_current = analysis_cache.is_current(
+            analysis_cache.stamp_path(folder, "bva"), self._fingerprint
+        )
         if (
             not force
             and self.model.df is not None
@@ -154,9 +141,8 @@ class BvaController:
             except Exception as exc:  # the result stands, as in the Qt tool
                 logger.error("BVA write failed: %s", exc)
                 note = f" (could not write the BVA result: {exc})"
-            self._written = [str(p) for p in written]
             analysis_cache.write_stamp(
-                _stamp_path(folder),
+                analysis_cache.stamp_path(folder, "bva"),
                 fingerprint,
                 params=params,
                 inputs=inputs,
@@ -183,9 +169,6 @@ class BvaController:
             self.model.set_result(burst_df, tttrs, result)
             self.model.status_text += note
             self._cache.remember(self._fingerprint)
-            written, self._written = self._written, []
-            if written and callable(self.on_written):
-                self.on_written(written)
         except InterruptedError:
             self.model.status_text = "BVA cancelled."
         except Exception as exc:

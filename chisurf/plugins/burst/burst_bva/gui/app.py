@@ -23,7 +23,6 @@ from chisurf.core.plugin.workspace_input import (
     WorkspaceInputMixin,
     input_section,
     read_address,
-    register_result,
     spec_for,
 )
 from chisurf.emtk.advanced import advanced_mode
@@ -809,10 +808,8 @@ class BurstBvaApp(ImApp):
         )
         self.model = self.bva_gui.model
         self.bva_gui.input.workspace_input_app = self  # a pick goes to receive_bursts(self, ...)
-        #: The workspace dataset BVA reads: what it writes registers as its child.
+        #: The workspace dataset it reads (what *Open in…* or the Input section handed over).
         self.source_uid = ""
-        if self.controller is not None:
-            self.controller.on_written = self._register
         self.item_rects = self.bva_gui.item_rects
         self._size = (1200, 800)
         super().__init__(gui=self._render)
@@ -842,25 +839,6 @@ class BurstBvaApp(ImApp):
             path = controller.pending_export
             controller.pending_export = None
             controller.write_window_png(self, path, self._size)
-
-    def _register(self, written: list[str]) -> None:
-        """The BVA table written into each container (``m000.pto/bva``) enters the workspace, a
-        child of the burst run it was computed from."""
-        from chisurf.core.fio.address import container_of, join_address
-
-        run = Path(str(self.model.analysis_folder or "")).name
-        for container in written:
-            try:
-                register_result(
-                    join_address(container_of(container), "bva"),
-                    kind="bursts",
-                    result_of=self.source_uid,
-                    name=f"BVA · {run}",
-                )
-            except Exception:  # noqa: BLE001 - written to the container; the row is a convenience
-                import logging
-
-                logging.getLogger(__name__).exception("registering %s failed", container)
 
     def _render(self) -> None:
         if self.controller is not None:

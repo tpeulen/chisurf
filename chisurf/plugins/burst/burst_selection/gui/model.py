@@ -731,15 +731,21 @@ class BurstSelectionModel(RunPickerMixin):
     def output_formats(self) -> list[str]:
         return diag_mod.output_formats_for_inputs(self.files)
 
+    #: Which workspace dataset each file is (its analysis container is that dataset's), by path.
+    sources: dict | None = None
+
+    def container_dirs(self) -> dict[str, str]:
+        """Per file, the folder of its photon dataset's analysis container in the project."""
+        from chisurf.core.project.analysis import container_dir
+
+        sources = getattr(self, "sources", {}) or {}
+        return {
+            str(path): str(container_dir(sources.get(str(Path(path).resolve()), "")))
+            for path in self.files
+        }
+
     def output_text(self) -> str:
-        formats = self.output_formats()
-        if not self.files:
-            return "Results go to: the measurement's .pto"
-        if "bur" in formats and "pto" in formats:
-            return "Results go to: each .pto, and a folder per vendor file"
-        if "bur" in formats:
-            return "Results go to: a bi4_bur/ folder beside each file"
-        return "Results go to: the measurement's own .pto"
+        return "Results go to: the project (each measurement's runs, beside its photons)"
 
     def enabled(self, name: str) -> bool:
         """Spec hook: the zip options apply to a companion folder only."""
@@ -800,7 +806,9 @@ class BurstSelectionModel(RunPickerMixin):
             windows=copy.deepcopy(self.windows),
             detectors=copy.deepcopy(self.detectors),
             filetype=self.file_type,
-            legacy_output=True,
+            # Each run goes into its photon dataset's analysis container, which the project
+            # carries embedded; the legacy bi4_bur/ folder is an explicit export, not a by-product.
+            container_dirs=self.container_dirs(),
             selected_setup=self.setup_name,
             legacy_parameters=self.burst_selection_parameters(),
         )
@@ -1680,7 +1688,10 @@ class BurstSelectionModel(RunPickerMixin):
 
     # -- workflow hand-off --------------------------------------------------------------------------------- #
     def output_folder(self) -> Path | None:
-        """The burst folder the later workflow steps read (``None`` before a run)."""
+        """The burst run the later workflow steps read (``None`` before a run): its address in the
+        measurement container (``<container>/<run>``), or a legacy folder."""
+        from chisurf.core.fio.fluorescence.burst_tree import is_container_path
+
         result = self.result or {}
         candidates = [
             result.get("output_folder"),
@@ -1688,7 +1699,7 @@ class BurstSelectionModel(RunPickerMixin):
         ]
         candidates.append((result.get("output_paths") or {}).get("output_folder"))
         for value in candidates:
-            if isinstance(value, str) and Path(value).is_dir():
+            if isinstance(value, str) and (Path(value).is_dir() or is_container_path(value)):
                 return Path(value)
         return None
 

@@ -150,16 +150,12 @@ def test_a_windowed_trace_does_not_start_with_the_empty_run_in_front() -> None:
     )
 
 
-def test_the_destination_follows_the_input() -> None:
-    """`.pto` in, `.pto` out; anything else gets the companion folder."""
+def test_the_destination_is_always_the_measurement_container() -> None:
+    """Every run goes into the measurement container of its photon dataset (in the project); a
+    folder is an explicit export, never a by-product."""
     decide = diag.output_formats_for_inputs
-    assert decide([Path("m000.pto")]) == ["pto"]
-    assert decide([Path("m000.spc")]) == ["bur"]
-    # Each measurement still gets the one destination it can use.
-    assert decide([Path("a.pto"), Path("b.ptu")]) == ["pto", "bur"]
-    # Nothing loaded: the container, which is what a fresh panel should say.
-    assert decide([]) == ["pto"]
-
+    for files in ([Path("m000.pto")], [Path("m000.spc")], [Path("a.pto"), Path("b.ptu")], []):
+        assert decide(files) == ["pto"], files
 
 def test_the_gate_mismatch_is_named() -> None:
     """The sentence that explains an all-zero table, rather than a silent one."""

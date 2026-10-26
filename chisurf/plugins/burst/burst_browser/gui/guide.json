@@ -2,10 +2,10 @@
   "_comment": "Guided tour for the Burst Browser. Each step points at a real control (its name is the key the app remembers the control's rectangle under) and the action steps wait for the user to use it. Read by chisurf.emtk.help_guide and chisurf.gui.widgets.tools.guided_tour.",
   "steps": [
     {
-      "title": "Open the bursts",
-      "text": "<b>Open Folder</b> reads every <b>.bur</b> table under a burstwise analysis folder, with the per-burst companions beside it. A single .bur file or a .pto container goes through <b>Open File</b>.",
-      "target": {"name": "open_folder"},
-      "await": {"hint": "Press <b>Open Folder</b> and choose a folder with .bur files."}
+      "title": "Pick the bursts",
+      "text": "The <b>Input</b> section lists the burst runs in the workspace: a run of a measurement container shows under its photon stream in the Datasets view, with the per-burst results written beside it. Files dropped on the ChiSurf window are added there; <i>Open in…</i> on a Datasets row, or dragging the row onto this tool, does the same as picking it here.",
+      "target": {"name": "workspace_input_rows"},
+      "await": {"hint": "Pick a burst run in the <b>Input</b> section."}
     },
     {
       "title": "Which detector",

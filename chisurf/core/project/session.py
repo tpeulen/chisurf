@@ -1028,8 +1028,14 @@ def capture_session(
         curves[uid] = curve
         return uid
 
+    from .analysis import is_derived
+
     for item in datasets or []:
         members = list(item) if isinstance(item, (list, DataGroup)) else None
+        if members is None and is_derived(getattr(item, "address", "")):
+            # A run of an analysis container: the embedded container is the record, and the row
+            # is derived from it again on restore (chisurf.core.project.analysis).
+            continue
         if members is None:
             layouts.append({"kind": "dataset", "dataset_uid": register(item)})
         else:
@@ -2057,6 +2063,11 @@ def restore_session(
             group.data_reader = getattr(members[0], "data_reader", None)
             group.experiment = getattr(members[0], "experiment", None)
             output.append(group)
+    # The runs of the analysis containers the project carries (restored beside the session by
+    # Project.load): rows derived from the containers, children of their photon datasets.
+    from .analysis import derived_datasets
+
+    output.extend(derived_datasets())
     return RestoredSession(
         output,
         restored_fits,

@@ -8,7 +8,7 @@
     },
     {
       "title": "Start with a stream whose answer you know",
-      "text": "<b>Load example</b> adds a simulated photon stream with exactly <b>12 planted bursts</b> of about 200 photons, 60 % of them on the red detector, and selects the matching detectors. Your own files go in with <b>Add files</b>, <b>Add folder</b> or by dropping them on the window; they are read once here and nothing downstream re-opens them.",
+      "text": "<b>Load example</b> adds a simulated photon stream with exactly <b>12 planted bursts</b> of about 200 photons, 60 % of them on the red detector, and selects the matching detectors. Your own measurements are dropped on the ChiSurf window and appear in the <b>Input</b> section (pick them and press <b>Use selected</b>, or use <i>Open in…</i> on a Datasets row); the runs a search finds come back as their children in the Datasets view.",
       "target": {
         "name": "load_example",
         "tab": "files"

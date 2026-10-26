@@ -102,6 +102,7 @@ def analyze_files_handler(
     detectors: dict[str, dict[str, Any]] | None = None,
     settings: dict[str, Any] | None = None,
     output_dir: str | None = None,
+    container_dirs: dict[str, str] | None = None,
     legacy_output: bool = False,
     legacy_output_folder_name: str | None = None,
     selected_setup: str | None = None,
@@ -127,6 +128,8 @@ def analyze_files_handler(
         JSON-compatible analysis settings.
     output_dir : str, optional
         Output directory for generated ``.bur`` files.
+    container_dirs : dict, optional
+        Per input file, the folder its measurement container goes into.
     legacy_output : bool
         If ``True``, write the legacy burstwise folder layout.
     legacy_output_folder_name : str, optional
@@ -157,6 +160,7 @@ def analyze_files_handler(
                 "detectors": detectors or {},
                 "settings": settings or {},
                 "output_dir": output_dir,
+                "container_dirs": container_dirs or {},
                 "legacy_output": legacy_output,
                 "legacy_output_folder_name": legacy_output_folder_name,
                 "selected_setup": selected_setup,

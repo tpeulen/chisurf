@@ -56,15 +56,15 @@ def test_plotted_column_follows_the_run_not_the_live_variant():
     assert core.COLUMN_ALEX_2CDE not in model.status_text
 
 
-def test_a_dropped_folder_is_adopted(tmp_path, monkeypatch):
-    """A folder dropped on the window is taken exactly as Browse takes one."""
+def test_a_picked_burst_run_is_adopted(tmp_path, monkeypatch):
+    """A burst run handed over from the workspace is taken and computed."""
     from chisurf.plugins.burst.burst_2cde.gui.app import create_app
 
     app = create_app()
     try:
         runs = []
         monkeypatch.setattr(app.controller, "run", lambda *a, **k: runs.append(True))
-        app.controller.on_paths_dropped([pathlib.Path(tmp_path)])
+        assert app.controller.adopt_folder(pathlib.Path(tmp_path))
         assert app.model.folder == str(tmp_path)
         assert runs == [True]
     finally:

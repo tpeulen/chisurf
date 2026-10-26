@@ -20,6 +20,22 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "bursts",
+      "summary": "Calibrate accurate FRET on a burst run of a measurement container.",
+      "receive": "chisurf.plugins.burst.accurate_fret.gui.app:receive_bursts",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "bursts"
+        ],
+        "key": "file"
+      }
+    }
+  ],
   "entrypoints": {
     "cli": "accurate-fret=chisurf.plugins.burst.accurate_fret.cli:cli",
     "services": "chisurf.plugins.burst.accurate_fret.backend.services:register_services",

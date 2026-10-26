@@ -52,6 +52,23 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "photons",
+      "summary": "Search the bursts of photon streams; the runs found become their children in the workspace.",
+      "receive": "chisurf.plugins.burst.burst_selection.gui.native:receive_photons",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    }
+  ],
   "entrypoints": {
     "emtk": "chisurf.plugins.burst.burst_selection.gui.native:create_app",
     "cli": "burst-selection=chisurf.plugins.burst.burst_selection.cli:cli",

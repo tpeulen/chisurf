@@ -77,7 +77,11 @@ def configure(drv, sample, min_states="2", max_states="2"):
     """The BH sample's detectors go in through the shared editor's model (the editor's own inputs are tested apart)."""
     drv.app.editor.model.data = __import__("copy").deepcopy(BH_SETUP)
     drv.app.model.set_setup(BH_SETUP)
-    drv.type_into_name("data_folder", str(sample))
+    from chisurf.plugins.burst.burst_h2mm.gui.native import receive_bursts
+
+    receive_bursts(
+        drv.app, {"folder": str(sample), "datasets": ["sample"]}
+    )  # as the Input section hands it
     drv.type_into_name("min_states", min_states)
     drv.type_into_name("max_states", max_states)
     drv.type_into_name("restarts", "1")
@@ -107,10 +111,10 @@ def test_empty_state_draws_no_data_at_both_sizes(monkeypatch, app):
         assert message in text, message
 
 
-def test_the_run_button_is_greyed_with_its_reason_until_a_folder_is_given(app):
+def test_the_run_button_is_greyed_with_its_reason_until_a_run_is_picked(app):
     drv = Driver(app)
     shown = " ".join(texts(drv.draw()))
-    assert "Select a folder of .bur files first." in shown
+    assert "Pick a burst run in the Input section first." in shown
     drv.click_name("toolAction_run")
     assert not app.job.busy and app.model.analysis is None
 
@@ -223,11 +227,12 @@ def test_edits_are_refused_while_a_fit_runs(app, sample):
     assert app.model.restarts == 20
 
 
-def test_a_dropped_folder_becomes_the_burst_folder(app, sample):
-    drv = Driver(app)
-    assert drv.drop(sample)
-    assert app.model.data_folder == str(sample)
-    assert not drv.drop()
+def test_a_handed_over_burst_run_becomes_the_input(app, sample):
+    """What the Input section, Open in… or a drag from the workspace hands over is the input."""
+    from chisurf.plugins.burst.burst_h2mm.gui.native import receive_bursts
+
+    receive_bursts(app, {"folder": str(sample), "datasets": ["uid"]})
+    assert app.model.data_folder == str(sample) and app.model.run_path == ""
 
 
 def test_settings_file_round_trip(tmp_path):
@@ -486,14 +491,19 @@ def test_export_dwells_and_save_plot_write_files(fitted, tmp_path):
     assert (tmp_path / "plots.png").stat().st_size > 1000
 
 
-def test_browse_folder_dialog_sets_the_folder(app, sample):
+def test_the_burst_run_comes_from_the_workspace_not_a_folder_dialog(app, tmp_path):
+    """No Browse button, no folder field, no drop hook: the Input section lists the workspace's runs."""
+    from chisurf.plugins.burst.burst_h2mm.gui.native import receive_bursts
+
     drv = Driver(app)
-    drv.click_name("folder")
-    drv.draw(3)
-    assert app.dialog is not None
-    app.dialog.directory = str(sample)
-    drv.click_text("Choose")
-    assert app.model.data_folder in (str(sample), "")
+    strings = texts(drv.draw())
+    assert "Browse folder" not in strings and "Input" in strings
+    assert "workspace_input_rows" in app.item_rects and "data_folder" not in app.form.rects
+    assert not hasattr(app, "files_dropped") and "folder" not in app.DIALOGS
+    stray = tmp_path / "notes.txt"
+    stray.write_text("x")
+    with pytest.raises(ValueError, match="not a burst run"):
+        receive_bursts(app, {"folder": str(stray), "datasets": ["x"]})
 
 
 def test_bootstrap_bands_follow_the_uncertainty_on_the_dwell_fret_plot(monkeypatch, fitted):

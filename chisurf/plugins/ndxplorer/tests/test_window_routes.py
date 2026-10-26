@@ -329,3 +329,27 @@ def test_saved_burst_ids_are_recorded_against_the_mmfdb_product(make, embedded_m
             relationship_type="produced",
         )
         assert len(produced) == 1
+
+
+def test_a_burst_run_of_the_workspace_opens_by_its_address(make, tmp_path, monkeypatch):
+    """*Open in…* on a burst run hands ndX the run's address in its analysis container; ndX reads
+    that run (and its companions) with its own burst-analysis reader."""
+    import time
+
+    from chisurf.core.project import analysis
+    from chisurf.plugins.ndxplorer.gui.app import receive_path
+    from test.gui.burst_workspace import burst_run_in_workspace, restore_workspace
+
+    monkeypatch.setenv("CHISURF_ANALYSIS_DIR", str(tmp_path / "analysis"))
+    monkeypatch.setattr(analysis, "_SESSION", None)
+    with restore_workspace():
+        run = burst_run_in_workspace(tmp_path)
+        app = make(session_autosave=False)
+        receive_path(app, {"path": run.address, "datasets": [run.unique_identifier]})
+        end = time.monotonic() + 30
+        while not app.model.has_data and time.monotonic() < end:
+            app.request_frame()
+            app.poll() if hasattr(app, "poll") else None
+            time.sleep(0.05)
+        assert app.model.has_data, app.model.error
+        assert app.model.source.size == 120

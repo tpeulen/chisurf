@@ -161,7 +161,7 @@ def test_errors_and_the_no_result_case(monkeypatch):
     app = _app(simulate=False)
     try:
         app.controller.run()
-        assert app.controller.status == "Add at least one .bur burst table, or tick Simulate."
+        assert app.controller.status == "Pick a burst run in the Input section, or tick Simulate."
         app.controller.browse("export")
         assert app.controller.status == "Run a fit first." and app.controller.dialog is None
         from chisurf.plugins.burst.burst_gs.gui import view_model
@@ -187,11 +187,11 @@ def test_errors_and_the_no_result_case(monkeypatch):
 
 
 def test_export_after_a_fit_suggests_the_qt_name(tmp_path):
-    table = tmp_path / "m000.bur"
-    table.write_text("First Photon\tLast Photon\n")
     app = _app()
     try:
-        app.controller.add_files([table])
+        # A run of the measurement's container (the workspace's address); the fit is simulated.
+        (tmp_path / "m000.pto").write_bytes(b"")  # the container exists, as in a session
+        app.model.bur_files = [str(tmp_path / "m000.pto" / "runBursts#1")]
         app.controller.run()
         _settle(app)
         app.controller.browse("export")
@@ -209,18 +209,18 @@ def test_export_after_a_fit_suggests_the_qt_name(tmp_path):
         app.close()
 
 
-def test_drops_add_tables_and_folders_and_say_when_nothing_was_added(tmp_path):
-    (tmp_path / "a").mkdir()
-    (tmp_path / "a" / "m1.bur").write_text("x")
-    (tmp_path / "m2.bur").write_text("x")
+def test_the_burst_run_comes_from_the_workspace_not_a_drop(tmp_path):
+    """The Qt tool took dropped .bur tables; the input is now a workspace burst run (the shell's
+    drop is the one entry point), so the window has no drop hook."""
+    from chisurf.plugins.burst.burst_gs.gui.app import receive_bursts
+
     stray = tmp_path / "notes.txt"
     stray.write_text("x")
     app = _app(simulate=False)
     try:
-        app.on_paths_dropped([str(tmp_path / "a"), str(tmp_path / "m2.bur")])
-        assert [Path(p).name for p in app.model.bur_files] == ["m1.bur", "m2.bur"]
-        app.on_paths_dropped([str(stray)])
-        assert app.controller.status == "No .bur burst table among the dropped paths."
+        assert not hasattr(app, "on_paths_dropped") and not hasattr(app, "files_dropped")
+        with pytest.raises(ValueError, match="not a burst run"):
+            receive_bursts(app, {"folder": str(stray), "datasets": ["x"]})
     finally:
         app.close()
 

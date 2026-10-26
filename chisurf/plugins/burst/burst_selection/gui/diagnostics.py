@@ -178,20 +178,11 @@ def gate_mismatch_warning(tttr, detectors) -> str | None:
     )
 
 
-def output_formats_for_inputs(paths) -> list[str]:
-    """Where a run's results go, decided by what was loaded: ``"pto"`` into a container, ``"bur"`` beside a file."""
-    from chisurf.core.fio.pto import SUFFIX
-
-    paths = list(paths or [])
-    if not paths:
-        return ["pto"]
-    containers = [p for p in paths if Path(p).suffix.lower() == SUFFIX]
-    formats = []
-    if containers:
-        formats.append("pto")
-    if len(containers) != len(paths):
-        formats.append("bur")
-    return formats
+def output_formats_for_inputs(paths) -> list[str]:  # noqa: ARG001 - one rule for every input
+    """Where a run's results go: ``"pto"``, the measurement container of its photon dataset,
+    which the project carries. The legacy ``bi4_bur/`` folder is written only on an explicit
+    export, never as a by-product of a search."""
+    return ["pto"]
 
 
 def display_frame(frames: list, file_indices: list[int] | None = None):

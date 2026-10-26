@@ -107,12 +107,15 @@ def test_same_bursts_as_the_qt_tool(hermetic, qt_reference):
             json.loads(json.dumps(got, default=lambda o: getattr(o, "value", str(o)))) == value
         ), key
     assert ms.burst_detection.min_photons == qt_reference["min_photons"] == 60
-    assert ms.output_formats == qt_reference["output_formats"] == ["bur"]
+    # The Qt tool wrote a folder; the native tool writes the run into the photon dataset's
+    # analysis container in the project (the folder is an explicit export). Same bursts.
+    assert qt_reference["output_formats"] == ["bur"] and ms.output_formats == ["pto"]
     assert m.prepare_run() is None
     mine = m.run()
 
     assert mine["metadata"]["n_bursts"] == qt_reference["n_bursts"] == 198
-    assert Path(mine["metadata"]["output_folder"]).name == qt_reference["output_folder_name"]
+    # the run is named as the Qt tool's folder was: `<container>/<run>`
+    assert Path(mine["output_paths"]["output_folder"]).name == qt_reference["output_folder_name"]
     by_name = {Path(k).name: v for k, v in mine["dataframes"].items()}
     assert by_name.keys() == qt_reference["frames"].keys()
     for name, rows in qt_reference["frames"].items():
@@ -240,7 +243,9 @@ def test_preview_then_plots_histogram_gmm_and_exports(model, tmp_path):
     cif = model.export_flr_cif(tmp_path / "out.cif")
     text = cif.read_text()
     assert "_pH 7.4" in text and "loop_" in text
-    assert model.output_path() and Path(model.output_path()).exists()
+    from chisurf.core.fio.address import container_of
+
+    assert model.output_path() and container_of(model.output_path()).is_file()
     assert model.output_folder() is not None
 
 

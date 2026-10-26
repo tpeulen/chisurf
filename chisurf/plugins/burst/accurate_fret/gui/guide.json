@@ -8,9 +8,9 @@
     },
     {
       "title": "Point it at bursts",
-      "text": "The tool calibrates from the bursts you already have — a burst folder from the burst-analysis pipeline, with the per-burst photon counts in it. Nothing is re-searched here.",
+      "text": "The tool calibrates from the bursts you already have — a burst run from the burst-analysis pipeline, with the per-burst photon counts in it. Nothing is re-searched here. The <b>Input</b> section lists the burst runs in the workspace; <i>Open in…</i> on a Datasets row, or dragging the row onto this tool, does the same as picking it here. A plain per-burst table (CSV, TSV, NPZ) goes through the <b>Burst table</b> field below.",
       "target": {
-        "attr": "filename"
+        "name": "workspace_input_rows"
       }
     },
     {

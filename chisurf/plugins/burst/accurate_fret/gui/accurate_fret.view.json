@@ -27,6 +27,11 @@
               "description": "Detector setup whose named windows (green, red, yellow, …) say which detection channels this measurement has. Picking one helps the channel columns below map themselves even when the table uses site-specific names, and it names the detectors when the optical model supplies the prior."
             },
             {
+              "type": "custom",
+              "key": "accurate_input",
+              "description": "The burst runs in the Datasets workspace (runs of measurement containers, shown under their photon streams; files dropped on the ChiSurf window are added there). Picking one loads it, as Open in… or a drag from the Datasets view does."
+            },
+            {
               "type": "value",
               "attr": "filename",
               "label": "Burst table",

@@ -256,52 +256,17 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
 # -- the inputs -------------------------------------------------------------------------------------------------------- #
 
 
-def test_files_dialog_lists_the_picked_table_and_cancel_adds_nothing(drv, data, tmp_path):
-    import shutil
+def test_the_inputs_come_from_the_workspace_not_dialogs_or_drops(drv, data):
+    """No Files / Folder / Database buttons and no drop hook: the Input section lists the
+    workspace's burst runs, and a hand-off lists them as inputs."""
+    from chisurf.plugins.burst.burst_fcs_correlator.gui.app import receive_bursts
 
-    shutil.copy(data[1], tmp_path / "picked.pto")
-    drv.click("add_files")
-    assert drv.app.dialog is not None
-    drv.draw(4)
-    drv.click_text("Cancel")
-    assert drv.app.dialog is None and not ctrl(drv).files
-    drv.click("add_files")
-    drv.draw(4)
-    drv.click_text("picked.pto")
-    drv.click_text("Open", last=True)
-    assert (
-        ctrl(drv).files == [str(tmp_path / "picked.pto")]
-        and ctrl(drv).status == "1 input(s) listed."
-    )
-
-
-def test_folder_dialog_and_a_dropped_folder_list_the_folder(drv, data, tmp_path):
-    drv.click("add_folder")
-    assert drv.app.dialog is not None and drv.app.file_window.title == "Add analysis folder"
-    drv.click_text("Cancel")
-    folder = data[1].parent
-    drv.drop(str(folder))
-    assert str(folder) in ctrl(drv).files
-
-
-def test_a_dropped_burst_table_a_settings_file_and_a_pairs_file_are_each_taken_in(
-    drv, data, tmp_path
-):
-    settings = tmp_path / "s.json"
-    settings.write_text(json.dumps({"n_bins": 7, "n_casc": 11, "fit_mode": "none"}))
-    pairs = tmp_path / "p.json"
-    pairs.write_text(json.dumps([{"pair_name": "only", "chs_a": [1], "chs_b": [1]}]))
-    drv.drop(str(data[1]), str(settings), str(pairs))
-    assert ctrl(drv).files == [str(data[1])]
-    assert (model(drv).n_bins, model(drv).n_casc, model(drv).fit_mode) == (7, 11, "none")
-    assert [p["pair_name"] for p in ctrl(drv)._pair_presets] == ["only"]
-
-
-def test_a_broken_dropped_json_reports(drv, tmp_path):
-    bad = tmp_path / "bad.json"
-    bad.write_text("{ nope")
-    drv.drop(str(bad))
-    assert ctrl(drv).status.startswith("Error:")
+    shown = drv.draw(3).strings
+    assert not {"Files...", "Folder...", "Database..."} & set(shown)
+    assert not hasattr(drv.app, "files_dropped") and not hasattr(drv.app, "on_paths_dropped")
+    assert "workspace_input_rows" in drv.app.item_rects
+    receive_bursts(drv.app, {"files": [str(data[1])], "datasets": []})
+    assert ctrl(drv).files == [str(data[1])] and ctrl(drv).status == "1 input(s) listed."
 
 
 def test_the_use_checkbox_all_none_remove_and_clear(drv, data, tmp_path):
@@ -338,11 +303,6 @@ def test_an_unticked_file_is_not_correlated(drv):
     drv.click_cell("file_rows", 0, "use")
     drv.click("run")
     assert not ctrl(drv).running and ctrl(drv)._curves == []
-
-
-def test_the_database_button_opens_the_dataset_picker(drv):
-    drv.click("mmfdb")
-    assert ctrl(drv).datasets.is_open if hasattr(ctrl(drv).datasets, "is_open") else True
 
 
 # -- the channel pairs --------------------------------------------------------------------------------------------------- #
@@ -424,7 +384,9 @@ def test_save_pairs_load_pairs_and_show_json(drv, tmp_path):
 def test_a_pairs_file_with_a_detector_setup_is_accepted(drv, tmp_path):
     setup = tmp_path / "setup.json"
     setup.write_text(json.dumps({"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}}))
-    drv.drop(str(setup))
+    from chisurf.plugins.burst.burst_fcs_correlator.gui.app import receive_pairs
+
+    receive_pairs(drv.app, {"file": str(setup), "datasets": []})  # a setup row of the workspace
     assert [p["pair_name"] for p in ctrl(drv)._pair_presets] == ["green_ACF", "red_ACF"]
 
 

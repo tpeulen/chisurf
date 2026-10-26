@@ -92,33 +92,40 @@ def test_loading_and_gating_show_what_the_qt_widget_shows(root):
         app.close()
 
 
-# 5. end to end: the folder dialog, the drop and the workflow call load by drawing frames alone
-def test_the_folder_dialog_loads_by_drawing_frames(root):
-    app = create_app()
-    try:
-        _draw(app)
-        app.start_guide()
-        assert app.browser_gui.tour.awaiting  # step 1 waits for Open Folder
-        x, y, w, h = app.item_rects["open_folder"]
-        app.pointer_move(x + w / 2, y + h / 2)
-        app.press(x + w / 2, y + h / 2)
-        _draw(app, n=1)
-        app.release()
-        _draw(app, n=1)
-        assert app.controller.dialog is not None
-        assert not app.browser_gui.tour.awaiting  # the press released it
-        assert app.controller.dialog.title == "Select folder with .bur files"
-        app.controller.dialog.draw = lambda: [str(root)]  # the user picks the folder
-        _frames_until(app, lambda: app.table is not None and not app.controller.running)
-        assert row_count(app.table) == 300 and app.controller.dialog is None
-    finally:
-        app.close()
+# 5. end to end: the Input section, a hand-off and the workflow call load by drawing frames alone
+def test_a_burst_run_picked_in_the_input_section_loads(tmp_path, monkeypatch):
+    """The tour's first step waits for a pick in the Input section; the pick loads the run."""
+    from test.gui.burst_workspace import (
+        burst_run_in_workspace,
+        no_input_dialog,
+        pick_row,
+        restore_workspace,
+    )
+
+    with restore_workspace():
+        run = burst_run_in_workspace(tmp_path)
+        no_input_dialog(monkeypatch)
+        app = create_app()
+        try:
+            _draw(app)
+            app.start_guide()
+            assert app.browser_gui.tour.awaiting  # step 1 waits for the Input section
+            pick_row(app, "runBursts#1")
+            assert not app.browser_gui.tour.awaiting  # the pick released it
+            _frames_until(app, lambda: app.table is not None and not app.controller.running)
+            assert row_count(app.table) > 0 and app.model.path_text.endswith("runBursts#1")
+            assert str(run.address).endswith("runBursts#1")
+        finally:
+            app.close()
 
 
-def test_a_drop_and_the_workflow_call_load(root):
+def test_a_hand_off_and_the_workflow_call_load(root):
+    from chisurf.plugins.burst.burst_browser.gui.app import receive_bursts
+
     app = create_app()
     try:
-        app.on_paths_dropped([str(root)])
+        assert not hasattr(app, "on_paths_dropped") and not hasattr(app, "files_dropped")
+        receive_bursts(app, {"folder": str(root), "datasets": ["uid"]})
         _frames_until(app, lambda: app.table is not None and not app.controller.running)
         assert row_count(app.table) == 300
     finally:
@@ -163,9 +170,7 @@ def test_frames_are_requested_while_a_read_runs(root, monkeypatch):
 def test_each_action_opens_its_own_dialog():
     app = create_app()
     try:
-        expected = {
-            "folder": ("Select folder with .bur files", "folder"),
-            "file": ("Select burst file", "open"),
+        expected = {  # only exports: the bursts come from the workspace
             "export_gate": ("Export gated bursts", "save"),
             "export_selected": ("Export selected bursts", "save"),
         }
@@ -174,11 +179,7 @@ def test_each_action_opens_its_own_dialog():
             assert (app.controller.dialog.title, app.controller.dialog.mode) == (title, mode), (
                 action
             )
-        app.controller.browse("file")
-        assert app.controller.dialog.filters[0] == (
-            "Burst Files",
-            ["*.bur", "*.pto"],
-        )  # the Qt filter
+        assert set(app.controller.DIALOGS) == {"export_gate", "export_selected"}
     finally:
         app.close()
 

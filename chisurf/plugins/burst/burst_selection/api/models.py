@@ -228,6 +228,10 @@ class AnalysisRequest:
         Analysis and output settings.
     output_dir : str, optional
         Directory for direct output files.
+    container_dirs : dict
+        Per input file, the folder its measurement container is written into (the photon
+        dataset's analysis container of the project, ``chisurf.core.project.analysis``);
+        files not named here get theirs in ``output_dir``, else beside the file.
     legacy_output : bool
         If ``True``, write the legacy ``burstwise...`` output folder layout.
     legacy_output_folder_name : str, optional
@@ -247,6 +251,7 @@ class AnalysisRequest:
     detectors: dict[str, dict[str, Any]] = field(default_factory=dict)
     settings: AnalysisSettings = field(default_factory=AnalysisSettings)
     output_dir: str | None = None
+    container_dirs: dict[str, str] = field(default_factory=dict)
     legacy_output: bool = False
     legacy_output_folder_name: str | None = None
     selected_setup: str | None = None

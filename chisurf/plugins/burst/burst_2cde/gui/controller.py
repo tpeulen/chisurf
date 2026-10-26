@@ -10,10 +10,9 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
 
-from emtk.dialog_window import DialogWindow
-
 from chisurf.core.datastore import row_count
 from chisurf.core.runtime import analysis_cache
+from chisurf.plugins.burst.workspace_io import is_burst_source
 
 from ..core import computation as core
 
@@ -21,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class TwoCdeController:
-    """Run, stop and browse for :class:`~.view_model.TwoCdeViewModel` without a toolkit."""
+    """Run and stop for :class:`~.view_model.TwoCdeViewModel` without a toolkit."""
 
     def __init__(self, model):
         self.model = model
@@ -31,10 +30,6 @@ class TwoCdeController:
         self._cancel = Event()
         self._cache = analysis_cache.ResultCache()
         self._progress_max = 0
-        self.dialog = None
-        self._dialog_window = DialogWindow(
-            "Select burstwise folder", size=(640.0, 460.0), key="2cde-folder"
-        )
 
     # -- runs ---------------------------------------------------------------- #
     def run(self, force=False, explicit=True):
@@ -44,11 +39,11 @@ class TwoCdeController:
         if explicit:
             self._cache.allow()
         folder = Path(self.model.folder).expanduser()
-        if not self.model.folder or not folder.is_dir():
-            self.model.status_text = "Select a valid burstwise analysis folder."
+        if not self.model.folder or not is_burst_source(folder):
+            self.model.status_text = "Pick a burst run in the Input section first."
             return
         fingerprint = self.model.analysis_fingerprint()
-        stamp = folder / "Info" / "2cde.stamp.json"
+        stamp = analysis_cache.stamp_path(folder, "2cde")
         if (
             not force
             and self.model.df is not None
@@ -82,7 +77,7 @@ class TwoCdeController:
     def auto_run(self):
         """What the Qt tool does when it is shown: run, unless this exact run was stopped."""
         folder = self.model.folder.strip()
-        if not folder or not Path(folder).expanduser().is_dir() or self.model.is_running:
+        if not folder or not is_burst_source(Path(folder).expanduser()) or self.model.is_running:
             return
         if self._cache.was_abandoned(self.model.analysis_fingerprint()):
             self.model.status_text = "Stopped earlier — press Run to compute 2CDE"
@@ -135,7 +130,7 @@ class TwoCdeController:
                 analysis_folder=folder,
             )
             analysis_cache.write_stamp(
-                folder / "Info" / "2cde.stamp.json",
+                analysis_cache.stamp_path(folder, "2cde"),
                 fingerprint,
                 params=params,
                 inputs=inputs,
@@ -179,44 +174,14 @@ class TwoCdeController:
             self._set_progress("", None)
             self.model.notify("finished")
 
-    # -- folder -------------------------------------------------------------- #
-    def browse(self):
-        """Open the folder picker."""
-        from emtk.file_dialog import FileDialog
-
-        self.dialog = FileDialog(
-            "Select burstwise folder", mode="folder", directory=self.model.folder or None
-        )
-        self._dialog_window.show()
-
-    def draw_dialog(self, frame):
-        """Draw the folder picker in a sized window over *frame*; a pick runs."""
-        if self.dialog is None:
-            return
-        pressed = self._dialog_window.begin(frame)
-        result = self.dialog.draw()
-        self._dialog_window.end()
-        if result:
-            self.dialog = None
-            self.adopt_folder(result[0])
-        elif result is False or pressed == "close":
-            self.dialog = None
-
+    # -- input ------------------------------------------------------------- #
     def adopt_folder(self, folder):
-        """Take *folder* as the analysis folder and compute its 2CDE."""
+        """Take the burst run *folder* (an address from the workspace) and compute its 2CDE."""
+        if not is_burst_source(folder):
+            return False
         self.model.set_folder(folder)
         self.run()
-
-    def on_paths_dropped(self, paths):
-        """Adopt the first dropped directory; report anything else."""
-        for path in map(Path, paths):
-            if path.is_dir():
-                self.adopt_folder(path)
-                return
-        if paths:
-            self.model.status_text = (
-                f"2CDE reads a burst-analysis folder; {Path(paths[0]).name} is not one."
-            )
+        return True
 
     def close(self):
         """Stop and release the worker."""

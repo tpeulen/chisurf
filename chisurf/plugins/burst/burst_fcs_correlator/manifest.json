@@ -35,6 +35,37 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "bursts",
+      "summary": "Correlate the photons of burst runs of measurement containers.",
+      "receive": "chisurf.plugins.burst.burst_fcs_correlator.gui.app:receive_bursts",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "bursts"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    },
+    {
+      "name": "pairs",
+      "summary": "Take the FCS channel pairs from a detector setup or channel-pairs file.",
+      "receive": "chisurf.plugins.burst.burst_fcs_correlator.gui.app:receive_pairs",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "key": "file"
+      }
+    }
+  ],
   "entrypoints": {
     "cli": null,
     "services": "chisurf.plugins.burst.burst_fcs_correlator.backend.services:register_services",

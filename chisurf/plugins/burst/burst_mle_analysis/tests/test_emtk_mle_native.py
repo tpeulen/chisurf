@@ -29,6 +29,25 @@ GUI = Path(__file__).parents[1] / "gui"
 TABS = ("Decay and fit", "Inspected burst", "Burst lifetimes", "Lifetime table")
 
 
+def feed(app, *paths) -> bool:
+    """Hand burst runs over as the workspace does (Input section / Open in… / a drag); False when
+    nothing new was taken."""
+    from chisurf.plugins.burst.burst_mle_analysis.gui.native import receive_bursts
+
+    try:
+        receive_bursts(app, {"files": [str(p) for p in paths], "datasets": []})
+    except ValueError:
+        return False
+    app.draw(
+        __import__("emtk.testing", fromlist=["RecordingPainter"]).RecordingPainter(),
+        0,
+        0,
+        1200,
+        800,
+    )
+    return True
+
+
 def wait(drv, timeout=240.0):
     end = time.monotonic() + timeout
     drv.draw(1)
@@ -58,7 +77,7 @@ def fitted(hermetic_env, burst_table):
     drv = Driver(window)
     window.editor.model.data["detectors"] = json.loads(json.dumps(CHANNEL_SETTINGS["detectors"]))
     window.model.set_setup(CHANNEL_SETTINGS)
-    assert drv.drop(burst_table / "m000.pto")
+    assert feed(drv.app, burst_table / "m000.pto")
     drv.draw()
     drv.click_name("auto")
     wait(drv)
@@ -90,14 +109,14 @@ def test_empty_state_draws_no_data_at_both_sizes(monkeypatch, app):
 
 def test_a_dropped_burst_table_loads_the_analysis_and_lists_the_file(app, burst_table):
     drv = Driver(app)
-    assert drv.drop(burst_table)
+    assert feed(drv.app, burst_table)
     assert app.model.n_bursts == 2980 and [p.name for p in app.model.session.bur_files] == [
         f"m{i:03d}.pto" for i in range(10)
     ]
     shown = texts(drv.draw(2))
     assert "m000.pto" in shown
-    assert not drv.drop(burst_table), "a table already listed is not added twice"
-    assert not drv.drop("/no/such/file.txt")
+    assert not feed(drv.app, burst_table), "a table already listed is not added twice"
+    assert not feed(drv.app, "/no/such/file.txt")
 
 
 def test_auto_irf_background_click_equals_the_engine_and_draws_its_curves(monkeypatch, fitted):
@@ -158,6 +177,10 @@ def test_the_parameter_table_edits_a_start_value_and_a_fixed_flag(fitted):
     before = window.model.session.outcome
     assert before is not None and before.x[0] != 4.0
     window.model.tau = 4.0
+    # the Input section sits on top of the pane: scroll it until the table's rows are on screen
+    for _ in range(6):
+        drv.app.wheel(200, 400, -3.0)
+        drv.draw(1)
     # the Fixed check box of gamma: a click on its cell flips the flag (real pointer press at the drawn cell)
     painter = drv.draw(2)
     header = drv.text_rect(painter, "Fixed")
@@ -305,20 +328,25 @@ def test_settings_round_trip_through_the_file_dialog(app, tmp_path):
     assert app.model.tau == 2.5 and app.model.micro_time_stop == 99
 
 
-def test_add_files_dialog_adds_a_table(app, burst_table):
+def test_the_inputs_come_from_the_workspace_not_dialogs_or_drops(app):
+    """No Add files / Add folder / database buttons and no drop hook: three Input sections list the
+    workspace's burst runs and photon streams (the measured IRF and background)."""
     drv = Driver(app)
-    drv.click_name("add_files")
-    drv.draw(3)
-    assert app.dialog is not None
-    app.dialog.directory = str(burst_table)
-    drv.click_text("m000.pto")
-    drv.click_text("Open")
-    assert app.model.n_bursts == 203  # this container's own search
+    shown = texts(drv.draw(2))
+    for gone in ("Add files", "Add folder", "From database"):
+        assert gone not in shown, gone
+    assert "workspace_input_rows" in app.item_rects
+    assert not hasattr(app, "files_dropped") and not hasattr(app, "on_paths_dropped")
+    assert not {"add_files", "add_folder", "add_irf_files", "add_bg_files"} & set(app.DIALOGS)
+    drv.click_text("IRF/BG files")
+    shown = texts(drv.draw(3))
+    assert "Measured IRF" in shown and "Measured background" in shown
+    assert "irf_measurement:workspace_input_rows" in app.item_rects
 
 
 def test_guide_targets_are_drawn_and_the_awaited_steps_are_released_by_presses(app, burst_table):
     drv = Driver(app)
-    assert drv.drop(burst_table)
+    assert feed(drv.app, burst_table)
     drv.draw(2)
     steps = json.loads((GUI / "guide.json").read_text())["steps"]
     for step in steps:
@@ -326,7 +354,7 @@ def test_guide_targets_are_drawn_and_the_awaited_steps_are_released_by_presses(a
         if key and key not in (
             "decay",
             "distribution",
-            "add_irf_files",
+            "irf_measurement:workspace_input_rows",
         ):  # in the plot tabs / the files tab
             assert key in app.item_rects or key in app.form.rects, key
     auto_step = next(
@@ -387,32 +415,22 @@ def test_a_dropped_folder_adds_the_burst_tables_under_it(app, pto_bursts):
     assert app.model.add_files([pto_bursts]) == 0, "tables already listed are not added twice"
 
 
-def test_the_database_buttons_open_their_pickers(monkeypatch, app):
-    """The Qt tool's three "Database" buttons: burst tables, measured IRF files, measured background files."""
-    opened = []
-    for key, picker in app.pickers.items():
-        monkeypatch.setattr(picker, "open", lambda key=key: opened.append(key))
-    drv = Driver(app)
-    drv.click_name("db_files")
-    drv.click_text("IRF/BG files")
-    drv.draw(2)
-    drv.click_name("db_irf_files")
-    drv.click_name("db_bg_files")
-    assert opened == ["db_files", "db_irf_files", "db_bg_files"]
+def test_each_input_section_feeds_its_own_input(monkeypatch, app, burst_table):
+    """What each hand-off delivers goes where its section says: burst runs, IRF, background."""
+    from chisurf.plugins.burst.burst_mle_analysis.gui import native
 
-
-def test_a_picked_dataset_reaches_the_model(monkeypatch, app, burst_table):
-    """What the picker resolves to a local path goes where its button said: burst tables, IRF, background."""
     added = []
     monkeypatch.setattr(
         app.model, "add_files", lambda paths: added.append(("bur", list(paths))) or 1
     )
     monkeypatch.setattr(
-        app.model, "add_irf_files", lambda paths: added.append(("irf", list(paths)))
+        app.model, "add_irf_files", lambda paths: added.append(("irf", list(paths))) or 1
     )
-    monkeypatch.setattr(app.model, "add_bg_files", lambda paths: added.append(("bg", list(paths))))
-    for key in ("db_files", "db_irf_files", "db_bg_files"):
-        app.pickers[key].on_paths([burst_table])
+    monkeypatch.setattr(
+        app.model, "add_bg_files", lambda paths: added.append(("bg", list(paths))) or 1
+    )
+    for receive in (native.receive_bursts, native.receive_irf, native.receive_background):
+        receive(app, {"files": [str(burst_table)], "datasets": []})
     assert [kind for kind, _ in added] == ["bur", "irf", "bg"]
 
 

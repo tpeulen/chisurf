@@ -19,12 +19,7 @@ class BurstBrowserController:
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="burst-browser")
         self._future = None
         self.dialog = None
-        self.action = "file"
-        from chisurf.emtk.dataset_picker import DatasetPicker
-
-        self.datasets = DatasetPicker(
-            kinds=["analysis_result", "raw_data", "burst_data"], on_paths=self.on_paths_dropped
-        )
+        self.action = "export_gate"
 
     def check_cancel(self):
         if self._cancel.is_set():
@@ -77,10 +72,6 @@ class BurstBrowserController:
         finally:
             self.running = False
 
-    def on_paths_dropped(self, paths):
-        if paths:
-            self.load(paths[0])
-
     def stop(self):
         if self.running:
             self._cancel.set()
@@ -109,29 +100,22 @@ class BurstBrowserController:
         write_csv_table(Path(path), take_rows(self.model.table, rows))
         self.status = f"Exported {len(rows)} bursts: {path}"
 
-    #: Per action: the dialog's title, mode and file filters (open ones as the Qt widget's).
+    #: Per action: the dialog's title, mode and file filters (only exports: the bursts come from
+    #: the Datasets workspace).
     DIALOGS = {
-        "folder": ("Select folder with .bur files", "folder", None),
-        "file": (
-            "Select burst file",
-            "open",
-            [("Burst Files", ["*.bur", "*.pto"]), ("All Files", ["*"])],
-        ),
         "export_gate": ("Export gated bursts", "save", [("CSV", ["*.csv"])]),
         "export_selected": ("Export selected bursts", "save", [("CSV", ["*.csv"])]),
     }
 
-    def browse(self, action="file"):
-        """Open the file dialog for *action* (folder, file, export_gate, export_selected)."""
+    def browse(self, action="export_gate"):
+        """Open the save dialog for *action* (export_gate, export_selected)."""
         from emtk.dialog_window import DialogWindow
         from emtk.file_dialog import FileDialog
 
-        title, mode, filters = self.DIALOGS[action]
+        title, _mode, filters = self.DIALOGS[action]
         self.action = action
         options = {"filters": filters} if filters else {}
-        self.dialog = FileDialog(
-            title, mode=mode, filename="bursts.csv" if mode == "save" else None, **options
-        )
+        self.dialog = FileDialog(title, mode="save", filename="bursts.csv", **options)
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-browser-file")
         self._dialog_window.show()
 
@@ -139,7 +123,6 @@ class BurstBrowserController:
     CONTROL_KEYS = {
         "Export gated bursts": "export_gated",
         "Export selected bursts": "export_selected",
-        "MMFDB datasets": "mmfdb",
         "Clear data": "clear",
         "Stop loading": "stop",
     }
@@ -149,11 +132,6 @@ class BurstBrowserController:
         from emtk import im
 
         for label, callback, tip in (
-            (
-                "MMFDB datasets",
-                self.datasets.open,
-                "Load a burst analysis dataset from the database.",
-            ),
             (
                 "Export gated bursts",
                 lambda: self.browse("export_gate"),
@@ -183,23 +161,19 @@ class BurstBrowserController:
             im.text_wrapped(self.status)
 
     def draw_dialogs(self, frame):
-        """The file dialog in a sized window over *frame*, and the MMFDB picker."""
+        """The export's save dialog in a sized window over *frame*."""
         if self.dialog is not None:
             pressed = self._dialog_window.begin(frame)
             result = self.dialog.draw()
             self._dialog_window.end()
             if result:
                 try:
-                    if self.action.startswith("export"):
-                        self.export(result[0], selected=self.action == "export_selected")
-                    else:
-                        self.load(result[0])
+                    self.export(result[0], selected=self.action == "export_selected")
                 except Exception as exc:
                     self.status = f"Error: {exc}"
                 self.dialog = None
             elif result is False or pressed == "close":
                 self.dialog = None
-        self.datasets.render(frame)
 
     def close(self):
         self.stop()

@@ -20,13 +20,13 @@ from emtk import style as _style
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.im_core import get_current_context
-from emtk.view_form import FormState, draw_sections
+from emtk.view_form import FormState, draw_form, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
+from chisurf.core.plugin.workspace_input import read_address
 from chisurf.core.registry import catalog
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.plugins.emtk_layout import (
@@ -51,12 +51,8 @@ class MleNativeApp(TourTarget, ImApp):
     """Immediate-mode burst-MLE app: files, detector editor, settings, fit, batch, plots."""
 
     DIALOGS = {
-        "add_files": ("Open burst tables", "open", [("PTO", ["*.pto"])]),
-        "add_folder": ("Add burst folder", "folder", None),
         "save_settings": ("Save burst-MLE settings", "save", [("JSON", ["*.json"])]),
         "load_settings": ("Load burst-MLE settings", "open", [("JSON", ["*.json"])]),
-        "add_irf_files": ("Open measured IRF files", "open", None),
-        "add_bg_files": ("Open measured background files", "open", None),
     }
 
     def __init__(self, model: MleViewModel | None = None) -> None:
@@ -94,20 +90,22 @@ class MleNativeApp(TourTarget, ImApp):
         self.gate_max: float | None = None
         self._editor_read_only_before_job: bool | None = None
 
-        # MMFDB pickers (the Qt tool's "Database" buttons): burst tables, measured IRF files,
-        # measured background files.
-        def adder(method: str) -> Callable[[list], None]:
-            """A picker callback calling the model's *method* at pick time (its count is not needed)."""
+        # The inputs come from the Datasets workspace: the burst runs, and measured IRF and
+        # background photon streams, each its own generated Input section (manifest ``accepts``).
+        from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput, input_spec
 
-            def add_paths(paths: list) -> None:
-                getattr(self.model, method)(paths)
-
-            return add_paths
-
-        self.pickers = {
-            "db_files": DatasetPicker(on_paths=adder("add_files")),
-            "db_irf_files": DatasetPicker(on_paths=adder("add_irf_files")),
-            "db_bg_files": DatasetPicker(on_paths=adder("add_bg_files")),
+        manifest = HERE.parent / "manifest.json"
+        self.inputs = {
+            name: (
+                NamedWorkspaceInput("burst_mle_analysis", name, app=self),
+                input_spec(manifest, name, title=title),
+                FormState(),
+            )
+            for name, title in (
+                ("bursts", "Input"),
+                ("irf_measurement", "Measured IRF"),
+                ("background_measurement", "Measured background"),
+            )
         }
         self.editor = ChannelDefinitionWidget(
             self.model.session.definition_payload(),
@@ -155,7 +153,10 @@ class MleNativeApp(TourTarget, ImApp):
     def _tour_step(self, index, step) -> None:
         """Expose the real example control when the tour awaits its use."""
         name = (step.get("target") or {}).get("name")
-        if name == "add_irf_files":
+        if name in (
+            "irf_measurement:workspace_input_rows",
+            "background_measurement:workspace_input_rows",
+        ):
             self.docks.focus("patterns")
         elif name in ("load_example", "optimize", "window_start"):
             self.docks.focus("controls")
@@ -231,13 +232,7 @@ class MleNativeApp(TourTarget, ImApp):
             else:
                 options["directory"] = str(first.parents[2] if pattern else first.parent)
         filename = "burst_mle_settings.json" if action == "save_settings" else ""
-        self.dialog = FileDialog(
-            title,
-            mode=mode,
-            filename=filename,
-            multiselect=action in ("add_files", "add_irf_files", "add_bg_files"),
-            **options,
-        )
+        self.dialog = FileDialog(title, mode=mode, filename=filename, **options)
         self.dialog_action = action
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-mle-file")
         self._dialog_window.show()
@@ -245,13 +240,7 @@ class MleNativeApp(TourTarget, ImApp):
     def _dialog_done(self, result: list[str]) -> None:
         action = self.dialog_action
         try:
-            if action in ("add_files", "add_folder"):
-                self.model.add_files(result)
-            elif action == "add_irf_files":
-                self.model.add_irf_files(result)
-            elif action == "add_bg_files":
-                self.model.add_bg_files(result)
-            elif action == "save_settings":
+            if action == "save_settings":
                 self.model.save_settings(result[0])
                 self.model.status_text = f"Settings saved to {result[0]}"
             elif action == "load_settings":
@@ -276,31 +265,27 @@ class MleNativeApp(TourTarget, ImApp):
             self._measured = True
         return self.sections
 
+    def _draw_input(self, name: str) -> None:
+        """One generated Input section (the workspace data of the ``accepts`` entry *name*)."""
+        model, spec, form = self.inputs[name]
+        model.workspace_input_on_used = self.tour.notify_used
+        form.on_used = self.tour.notify_used
+        form.rects.clear()
+        draw_form(spec, model, form)
+        prefix = "" if name == "bursts" else f"{name}:"
+        for key, rect in form.rects.items():
+            self.item_rects[prefix + key] = tuple(rect)
+
     def _controls(self, box=None) -> None:
         running = self.job.busy
+        im.begin_disabled(running)
+        self._draw_input("bursts")
+        im.end_disabled()
         has_data = self.model.session.df_bursts is not None
         has_results = bool(self.model.burst_results)
         ready, _n = self.model.input_status()
         pressed = button_row(
             [
-                {
-                    "label": "Add files",
-                    "key": "add_files",
-                    "enabled": not running,
-                    "tip": "Choose burst tables in .pto containers; the analysis folder they belong to is read whole.",
-                },
-                {
-                    "label": "Add folder",
-                    "key": "add_folder",
-                    "enabled": not running,
-                    "tip": "Add every burst table below a folder.",
-                },
-                {
-                    "label": "From database",
-                    "key": "db_files",
-                    "enabled": not running,
-                    "tip": "Select a dataset from the MMFDB database (including S3-backed object stores) and add its burst tables.",
-                },
                 {
                     "label": "Clear",
                     "key": "clear_files",
@@ -441,8 +426,6 @@ class MleNativeApp(TourTarget, ImApp):
                 self.model.export_results()
             except Exception as exc:
                 self.model.status_text = f"Error: {exc}"
-        elif pressed in self.pickers:
-            self.pickers[pressed].open()
         elif pressed in self.DIALOGS:
             self.browse(pressed)
         elif pressed == "guide":
@@ -511,26 +494,10 @@ class MleNativeApp(TourTarget, ImApp):
         target = self.model.values_snapshot() if running else self.model
         im.begin_disabled(running)
         draw_sections(self.pattern_sections, target, self.form)
+        self._draw_input("irf_measurement")
+        self._draw_input("background_measurement")
         pressed = button_row(
             [
-                {
-                    "label": str(tr("Add IRF files")),
-                    "key": "add_irf_files",
-                    "enabled": not running,
-                    "tip": str(
-                        tr("Choose measured IRF files (scatter or short-lifetime reference).")
-                    ),
-                },
-                {
-                    "label": str(tr("IRF from database")),
-                    "key": "db_irf_files",
-                    "enabled": not running,
-                    "tip": str(
-                        tr(
-                            "Select a measured IRF dataset from the MMFDB database (including S3-backed object stores)."
-                        )
-                    ),
-                },
                 {
                     "label": str(tr("Clear IRF")),
                     "key": "clear_irf_files",
@@ -538,22 +505,6 @@ class MleNativeApp(TourTarget, ImApp):
                     "tip": str(
                         tr(
                             "Forget the measured IRF files; Auto IRF/background estimates the IRF again."
-                        )
-                    ),
-                },
-                {
-                    "label": str(tr("Add background files")),
-                    "key": "add_bg_files",
-                    "enabled": not running,
-                    "tip": str(tr("Choose measured background files (a sample-free measurement).")),
-                },
-                {
-                    "label": str(tr("Background from database")),
-                    "key": "db_bg_files",
-                    "enabled": not running,
-                    "tip": str(
-                        tr(
-                            "Select a measured background dataset from the MMFDB database (including S3-backed object stores)."
                         )
                     ),
                 },
@@ -575,12 +526,6 @@ class MleNativeApp(TourTarget, ImApp):
             self.model.clear_irf_files()
         elif pressed == "clear_bg_files":
             self.model.clear_bg_files()
-        elif pressed in self.pickers:
-            self.track(pressed)
-            self.pickers[pressed].open()
-        elif pressed in self.DIALOGS:
-            self.track(pressed)
-            self.browse(pressed)
 
     def _detectors(self, box=None) -> None:
         self.remember("detectors", box)
@@ -702,8 +647,6 @@ class MleNativeApp(TourTarget, ImApp):
         im.begin_disabled(self.editor.read_only)
         self.editor.draw_dialogs(frame)
         im.end_disabled()
-        for picker in self.pickers.values():
-            picker.render(frame)
         if self.dialog is not None:
             pressed = self._dialog_window.begin(frame)
             result = self.dialog.draw()
@@ -718,18 +661,6 @@ class MleNativeApp(TourTarget, ImApp):
         if self.tour.active:
             self.tour.draw(w, h)
 
-    # -- host input --------------------------------------------------------------------------------------- #
-    def files_dropped(self, paths) -> bool:
-        if self.job.busy:
-            self.model.status_text = str(
-                tr("Wait for the running Burst MLE job before changing its inputs.")
-            )
-            return False
-        paths = list(paths)
-        return bool(paths) and self.model.add_files(paths) > 0
-
-    on_paths_dropped = files_dropped
-
     def animating(self) -> bool:
         """Keep drawing while the model registry is read in the background (the model list and table wait on it)."""
         return super().animating() or not catalog.ready()
@@ -740,8 +671,6 @@ class MleNativeApp(TourTarget, ImApp):
             self.editor.read_only = self._editor_read_only_before_job
             self._editor_read_only_before_job = None
         self.editor.close()
-        for picker in self.pickers.values():
-            picker.close()
 
 
 def create_app(**kwargs) -> MleNativeApp:
@@ -750,3 +679,30 @@ def create_app(**kwargs) -> MleNativeApp:
 
     install()
     return MleNativeApp(**kwargs)
+
+
+def _receive(app: MleNativeApp, payload: dict, add: str) -> None:
+    if app.job.busy:
+        raise RuntimeError("wait for the running Burst MLE job before changing its inputs")
+    addresses = payload.get("files") or []
+    addresses = [
+        read_address(str(a)) for a in (addresses if isinstance(addresses, list) else [addresses])
+    ]
+    if getattr(app.model, add)(addresses) <= 0:
+        raise ValueError(app.model.status_text or "nothing new to add")
+
+
+def receive_bursts(app: MleNativeApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``bursts``): add the burst runs ``payload["files"]``
+    (runs of measurement containers, ``m000.pto/<run>``) from the Datasets workspace."""
+    _receive(app, payload, "add_files")
+
+
+def receive_irf(app: MleNativeApp, payload: dict) -> None:
+    """Hand-off receiver (``irf_measurement``): measured IRF photon streams for the current detector."""
+    _receive(app, payload, "add_irf_files")
+
+
+def receive_background(app: MleNativeApp, payload: dict) -> None:
+    """Hand-off receiver (``background_measurement``): measured background photon streams."""
+    _receive(app, payload, "add_bg_files")

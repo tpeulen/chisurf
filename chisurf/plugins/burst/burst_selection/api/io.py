@@ -102,6 +102,7 @@ def write_container(
     out_dir: str | Path | None = None,
     run: str = "",
     algorithm: str = "",
+    raw_data: str = "embed",
 ) -> str:
     """Write the burst table into the measurement's own container.
 
@@ -126,6 +127,10 @@ def write_container(
         settings hash already tells two runs apart; this is what tells a reader
         which *method* produced a burst list without parsing them. Omitted
         means unrecorded, not "the default one".
+    raw_data : {"embed", "sidecar"}, optional
+        How a container created here holds the instrument file: its bytes, or a link to it (an
+        analysis container of the project: the photon dataset itself is linked or embedded by the
+        project's own choice, so the container does not copy it a second time).
     run : str, optional
         Name of this analysis inside the container -- the same string the
         legacy layout uses for its directory. A container holds several
@@ -158,6 +163,7 @@ def write_container(
         parameters=dict(parameters) if parameters else None,
         derived_from=(),
         out_dir=out_dir,
+        raw_data=raw_data,
     )
 
 

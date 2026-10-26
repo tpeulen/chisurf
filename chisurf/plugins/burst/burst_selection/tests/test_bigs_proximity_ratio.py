@@ -59,6 +59,17 @@ BIGS_SETUP: dict[str, Any] = {
 }
 
 
+def feed(window, *paths) -> bool:
+    """Hand photon files over as the workspace does (Input section / Open in… / a drag)."""
+    from chisurf.plugins.burst.burst_selection.gui.native import receive_photons
+
+    try:
+        receive_photons(window, {"files": [str(p) for p in paths], "datasets": []})
+    except ValueError:
+        return False
+    return True
+
+
 def test_synthetic_bigs_table_computes_proximity_ratio() -> None:
     """Proximity ratio must be computed from capitalized Green/Red photon counts."""
     df = pd.DataFrame(
@@ -162,7 +173,7 @@ def test_bigs_driver_end_to_end() -> None:
             app.apply_setup(BIGS_SETUP, "BigS")
 
             drv = Driver(app, (1200, 800))
-            assert drv.drop(spc)
+            assert feed(drv.app, spc)
             drv.draw(2)
 
             drv.click_name("toolAction_run")

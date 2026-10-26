@@ -88,15 +88,15 @@ def test_narrow_output_labels_fit_the_control_dock():
         app.close()
 
 
-def test_typed_folder_dialog_keeps_the_selected_directory(tmp_path):
-    """The real file chooser retains the folder and default filter after type repair."""
+def test_typed_save_dialog_opens_beside_the_burst_data(tmp_path):
+    """The real file chooser opens beside the burst data, with the action's filter."""
     model = H2mmViewModel()
     model.data_folder = str(tmp_path)
     app = owner.H2mmNativeApp(model)
     try:
-        app.browse("folder")
+        app.browse("export_dwells")
         assert app.dialog.directory == str(tmp_path)
-        assert app.dialog.filters == [("All files", ["*"])]
+        assert app.dialog.filters == [("CSV", ["*.csv"])]
         assert app._dialog_window.open
     finally:
         app.close()

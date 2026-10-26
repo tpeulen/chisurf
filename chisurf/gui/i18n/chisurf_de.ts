@@ -71807,6 +71807,118 @@ fortgesetzt werden.
             <source>intensity</source>
             <translation>Intensität</translation>
         </message>
+        <message>
+            <source>Burst runs in this analysis</source>
+            <translation>Burst-Läufe dieser Analyse</translation>
+        </message>
+        <message>
+            <source>Compute micro-time histogram</source>
+            <translation>Mikrozeit-Histogramm berechnen</translation>
+        </message>
+        <message>
+            <source>Compute the micro-time histogram of the selected run.</source>
+            <translation>Das Mikrozeit-Histogramm des gewählten Laufs berechnen.</translation>
+        </message>
+        <message>
+            <source>No container open. Pick a photon stream or a burst run in the Input section (files dropped on ChiSurf land in the workspace). A container holds one measurement: the instrument file verbatim, and every result computed from it beside it.</source>
+            <translation>Kein Container geöffnet. Einen Photonenstrom oder einen Burst-Lauf im Eingabe-Bereich wählen (auf ChiSurf abgelegte Dateien landen im Arbeitsbereich). Ein Container enthält eine Messung: die Instrumentendatei unverändert und daneben jedes daraus berechnete Ergebnis.</translation>
+        </message>
+        <message>
+            <source>Open the tool that produced this step.</source>
+            <translation>Das Werkzeug öffnen, das diesen Schritt erzeugt hat.</translation>
+        </message>
+        <message>
+            <source>Open this step's tool</source>
+            <translation>Werkzeug dieses Schritts öffnen</translation>
+        </message>
+        <message>
+            <source>Pick a photon container, a stream of one, or vendor photon files.</source>
+            <translation>Einen Photonen-Container, einen Strom daraus oder Hersteller-Photonendateien wählen.</translation>
+        </message>
+        <message>
+            <source>Pick a photon stream in the Input section.</source>
+            <translation>Einen Photonenstrom im Eingabe-Bereich wählen.</translation>
+        </message>
+        <message>
+            <source>Restrict the photons to bursts: queue .pto containers carrying a burst run (inclusive photon bounds, read from the provenance).</source>
+            <translation>Die Photonen auf Bursts beschränken: Burst-Läufe von .pto-Containern einreihen (inklusive Photonengrenzen, aus der Provenienz gelesen).</translation>
+        </message>
+        <message>
+            <source>{n} photon stream(s) queued. Press Compute.</source>
+            <translation>{n} Photonenstrom/-ströme eingereiht. Berechnen drücken.</translation>
+        </message>
+        <message>
+            <source>{name} is a stream inside a container: unpack it with TTTR ⇄ .pto first</source>
+            <translation>{name} ist ein Strom in einem Container: zuerst mit TTTR ⇄ .pto entpacken</translation>
+        </message>
+        <message>
+            <source>Generate the deterministic demonstration stream in the settings cache and queue it.</source>
+            <translation>Den deterministischen Demonstrationsdatenstrom im Einstellungs-Cache erzeugen und einreihen.</translation>
+        </message>
+        <message>
+            <source>Nothing queued: pick photon streams above (or Load example).</source>
+            <translation>Nichts eingereiht: oben Photonenströme wählen (oder Beispiel laden).</translation>
+        </message>
+        <message>
+            <source>{n} photon stream(s) queued. Press Calculate.</source>
+            <translation>{n} Photonenstrom/-ströme eingereiht. Berechnen drücken.</translation>
+        </message>
+        <message>
+            <source>First {n} events; macro/micro times are the format's raw clock; the header tags carry units and setup.</source>
+            <translation>Erste {n} Ereignisse; Makro-/Mikrozeiten sind der Rohtakt des Formats; die Header-Tags tragen Einheiten und Aufbau.</translation>
+        </message>
+        <message>
+            <source>Generate a deterministic demonstration PTU in the settings cache and read its header.</source>
+            <translation>Eine deterministische Demonstrations-PTU im Einstellungs-Cache erzeugen und ihren Header lesen.</translation>
+        </message>
+        <message>
+            <source>Pick a photon stream in the Input section — its first events appear here (routing channel, macro and micro time).</source>
+            <translation>Einen Photonenstrom im Eingabe-Bereich wählen — seine ersten Ereignisse erscheinen hier (Routing-Kanal, Makro- und Mikrozeit).</translation>
+        </message>
+        <message>
+            <source>Generate the demonstration stream (two detectors with offset micro-time decays) in the settings cache and read it.</source>
+            <translation>Den Demonstrationsdatenstrom (zwei Detektoren mit versetzten Mikrozeit-Abklingkurven) im Einstellungs-Cache erzeugen und lesen.</translation>
+        </message>
+        <message>
+            <source>Generate the deterministic demonstration stream (two detectors, plenty of photons) in the settings cache and load it for splitting.</source>
+            <translation>Den deterministischen Demonstrationsdatenstrom (zwei Detektoren, viele Photonen) im Einstellungs-Cache erzeugen und zum Aufteilen laden.</translation>
+        </message>
+        <message>
+            <source>Nothing queued — select PTU streams above and Use selected.</source>
+            <translation>Nichts eingereiht — oben PTU-Ströme wählen und Auswahl verwenden.</translation>
+        </message>
+        <message>
+            <source>Pick a photon stream above (or Load example) to split it.</source>
+            <translation>Oben einen Photonenstrom wählen (oder Beispiel laden), um ihn aufzuteilen.</translation>
+        </message>
+        <message>
+            <source>Container folder:</source>
+            <translation>Container-Ordner:</translation>
+        </message>
+        <message>
+            <source>Output: {}</source>
+            <translation>Ausgabe: {}</translation>
+        </message>
+        <message>
+            <source>Queued</source>
+            <translation>Eingereiht</translation>
+        </message>
+        <message>
+            <source>Remove the selected preview stream from the queue.</source>
+            <translation>Den gewählten Vorschau-Strom aus der Warteschlange entfernen.</translation>
+        </message>
+        <message>
+            <source>The windows go into each measurement's own .pto container. Leave empty and the container is the one beside the input file.</source>
+            <translation>Die Fenster kommen in den eigenen .pto-Container jeder Messung. Leer lassen, und es ist der Container neben der Eingabedatei.</translation>
+        </message>
+        <message>
+            <source>each measurement's .pto container, beside the input</source>
+            <translation>der .pto-Container jeder Messung, neben der Eingabe</translation>
+        </message>
+        <message>
+            <source>− Remove</source>
+            <translation>− Entfernen</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

@@ -66,6 +66,7 @@ class AccurateFretGui(TourTarget):
             elif section.get("type") == "info":
                 section["max_height"] = 100
         self.form_state.custom["accurate_file"] = self._file_section
+        self.form_state.custom["accurate_input"] = self._input_section
         self.form_state.custom["accurate_setup"] = self._setup_section
         self.help_window = EmTkHelpWindow(
             title="Accurate FRET — Help & Reference",
@@ -193,6 +194,28 @@ class AccurateFretGui(TourTarget):
         im.set_item_tooltip(tooltip)
         if key:
             self.remember(key)
+
+    def _input_section(self, section, model, state, width):
+        """The generated Input section: the workspace's burst runs (a pick loads one).
+
+        Burst-table files (CSV/TSV/NPZ/.bur) still come through the field below: the workspace has
+        no kind for a plain table yet (okf/specs/data-workspace.md).
+        """
+        from emtk.view_form import FormState, draw_form
+
+        from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput, input_spec
+
+        if not hasattr(self, "_input"):
+            self._input = NamedWorkspaceInput("accurate_fret", "bursts")
+            self._input_spec = input_spec(Path(__file__).resolve().parents[1] / "manifest.json")
+            self._input_form = FormState()
+        self._input.workspace_input_app = getattr(self, "app", None)
+        self._input.workspace_input_on_used = self.track
+        self._input_form.on_used = self.track
+        self._input_form.rects.clear()
+        draw_form(self._input_spec, self._input, self._input_form)
+        for name, rect in self._input_form.rects.items():
+            self.item_rects[name] = tuple(rect)
 
     def _file_section(self, section, model, state, width):
         self._button(
@@ -496,6 +519,7 @@ class AccurateFretApp(ImApp):
             on_help,
         )
         self.accurate_gui.controller = self.controller
+        self.accurate_gui.app = self  # the Input section hands a pick to receive_bursts(self, ...)
         self.gui = self.accurate_gui
         super().__init__(gui=self._render, continuous=True)
 
@@ -573,3 +597,19 @@ def create_app(**kwargs):
 
     install()
     return AccurateFretApp(**kwargs)
+
+
+def receive_bursts(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``bursts``): load the burst run ``payload["file"]``.
+
+    ``file`` is an address -- a run of a measurement container (``m000.pto/<run>``) -- as the
+    Input section, *Open in…* or a drag from the Datasets view hands it.
+    """
+    from chisurf.core.plugin.workspace_input import read_address
+
+    from .controller import _is_container_run
+
+    address = read_address(str(payload["file"]))
+    if not (Path(address).is_file() or _is_container_run(address)):
+        raise ValueError(f"{address} is not a burst run")
+    app.controller.load(address)

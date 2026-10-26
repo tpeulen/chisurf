@@ -560,3 +560,20 @@ def test_the_load_and_calibrate_flow_works_in_the_small_window_too(app, bursts):
     painter = calibrate_by_click(app, SMALL)
     assert app.model.result is not None and "α" in painter.strings
     assert np.isfinite(float(app.model.factor_rows()[0]["value"]))
+
+
+# ── the workspace: a burst run picked in the Input section ---------------------------------------------------- #
+
+
+def test_a_burst_run_picked_in_the_input_section_loads(app, tmp_path):
+    """The Input section lists the workspace's burst runs; a click loads the run (no dialog)."""
+    from test.gui.burst_workspace import burst_run_in_workspace, pick_row, restore_workspace
+
+    with restore_workspace():
+        run = burst_run_in_workspace(tmp_path)
+        draw(app, frames=3)
+        assert "workspace_input_rows" in app.accurate_gui.item_rects
+        pick_row(app, "runBursts#1")
+        wait(app)
+        assert app.controller.dialog is None
+        assert app.model.filename == run.address, app.controller.status

@@ -205,18 +205,18 @@ def test_a_container_source_keeps_the_folder_controls_disabled(model):  # noqa: 
     assert model.enabled("zip_output") is False and model.enabled("remove_folder") is False
     s = model.analysis_settings()
     assert s.zip_output is False and s.remove_folder is False, "no folder, nothing to zip"
-    assert "own .pto" in model.output_text()
+    assert "the project" in model.output_text()
 
 
-def test_a_vendor_source_leaves_the_folder_controls_available(model):  # noqa: F811
-    """There is a folder to zip when the source cannot hold the results."""
+def test_a_vendor_source_writes_no_folder_by_product(model):  # noqa: F811
+    """A vendor file's runs go into its analysis container in the project too; the legacy
+    bi4_bur/ folder is an explicit export, so the folder controls stay off."""
     model.files = [Path("m000.spc")]
     model.zip_output = True
-    assert model.output_formats() == ["bur"]
-    assert model.enabled("zip_output") is True and model.enabled("remove_folder") is True
-    assert model.analysis_settings().zip_output is True
-    model.zip_output = False
-    assert model.enabled("remove_folder") is False
+    assert model.output_formats() == ["pto"]
+    assert model.enabled("zip_output") is False and model.enabled("remove_folder") is False
+    assert model.analysis_settings().zip_output is False
+    assert "legacy_output" not in model.request() and model.request()["container_dirs"]
 
 
 # --- MMFDB ------------------------------------------------------------------------------------------------
@@ -299,7 +299,7 @@ def test_mmfdb_only_output_runs_the_batch_analysis(model, monkeypatch):  # noqa:
     assert calls[0]["file_paths"] == list(model.files)
     assert calls[0]["detectors"] == model.detectors
     assert calls[0]["mmfdb"] == context
-    assert calls[0]["legacy_output"] is True
+    assert "legacy_output" not in calls[0] and calls[0]["container_dirs"]  # into the project
 
 
 def test_the_batch_reports_per_file_progress(model, monkeypatch):  # noqa: F811

@@ -2,7 +2,7 @@
 
 An immediate-mode emtk application (:class:`BurstTwoCdeApp`) over
 :class:`~.view_model.TwoCdeViewModel`:
-- Left pane: folder input, actions (Run, Restart, Stop, Browse), and settings
+- Left pane: actions (Run, Restart, Stop), the Input section (the workspace's burst runs) and settings
   (Variant, Kernel, tau, donor channels, acceptor channels, file type).
 - Right pane: 2CDE scatter plot (FRET efficiency vs 2CDE) or 1D histogram.
 
@@ -19,19 +19,39 @@ from emtk import im, implot, style
 from emtk.app import ImApp
 from emtk.i18n import tr
 from emtk.im_core import get_current_context
-from emtk.view_form import FormState, draw_sections
+from emtk.view_form import FormState, draw_form, draw_sections
 
+from chisurf.core.plugin.workspace_input import (
+    WorkspaceInputMixin,
+    input_section,
+    read_address,
+    spec_for,
+)
 from chisurf.emtk.advanced import advanced_mode, draw_toggle
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
 from .view_model import TwoCdeViewModel
 
-__all__ = ["BurstTwoCdeApp", "BurstTwoCdeGui", "WINDOW_BG"]
+__all__ = ["BurstTwoCdeApp", "BurstTwoCdeGui", "WINDOW_BG", "receive_bursts"]
+
+PLUGIN = Path(__file__).resolve().parents[1]
 
 WINDOW_BG = (30, 32, 38, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
 ACCENT_GRAY = (158, 158, 158, 255)
+
+
+class _Input(WorkspaceInputMixin):
+    """The Input section's model: the workspace's burst runs, a pick handed to :func:`receive_bursts`."""
+
+    workspace_input_plugin = "burst_2cde"
+
+
+def _input_spec() -> dict:
+    """The generated Input section of the manifest's ``accepts[].from_workspace``."""
+    found = spec_for(json.loads((PLUGIN / "manifest.json").read_text(encoding="utf-8")))
+    return {"sections": [input_section(found[1])]} if found else {"sections": []}
 
 
 class BurstTwoCdeGui:
@@ -43,7 +63,6 @@ class BurstTwoCdeGui:
         on_run: Callable[[], None] | None = None,
         on_restart: Callable[[], None] | None = None,
         on_stop: Callable[[], None] | None = None,
-        on_browse: Callable[[], None] | None = None,
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
@@ -54,7 +73,6 @@ class BurstTwoCdeGui:
         self.on_run = on_run
         self.on_restart = on_restart
         self.on_stop = on_stop
-        self.on_browse = on_browse
         self.on_guide = on_guide
         self.on_help = on_help
 
@@ -81,6 +99,11 @@ class BurstTwoCdeGui:
         self.model.add_observer(self._on_model_event)
         #: The spin fields of the parameters (view-form: typed + arrows + Enter).
         self.param_form = FormState(on_used=self.track)
+        #: The Input section: which burst run of the workspace 2CDE reads.
+        self.input = _Input()
+        self.input.workspace_input_on_used = lambda name: self.track(name)
+        self.input_spec = _input_spec()
+        self.input_form = FormState(on_used=self.track)
 
     def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
         if self.on_remember is not None:
@@ -134,7 +157,7 @@ class BurstTwoCdeGui:
             self._draw_action_buttons()
             im.spacing()
             im.begin_disabled(self.model.is_locked or self.model.is_running)
-            self._draw_folder_input(left_w - 16.0)
+            self._draw_input()
             im.spacing()
             self._draw_settings(left_w - 16.0)
             im.end_disabled()
@@ -220,14 +243,6 @@ class BurstTwoCdeGui:
         self.remember("stop")
         self.remember("toolAction_stop")
 
-        self._same_line_if_fits("📁 Folder")
-        if im.button(tr("📁 Folder")):
-            self.track("folder")
-            if callable(self.on_browse):
-                self.on_browse()
-        im.set_item_tooltip(tr("Browse for the folder containing the burst analysis files."))
-        self.remember("folder")
-
         self._same_line_if_fits(action_caption("guide"))
         if action_button("guide"):
             self.track("guide")
@@ -240,17 +255,14 @@ class BurstTwoCdeGui:
             self.show_help()
         self.remember("help")
 
-    def _draw_folder_input(self, width: float) -> None:
-        """Folder path input."""
-        im.text(tr("Analysis folder:"))
-        changed, text = im.input_text("##folder_path", self.model.folder, hint=tr("Burst folder …"))
-        im.set_item_tooltip(
-            tr(
-                "Path to the folder with the bursts to analyze; type a path or use Folder to browse."
-            )
-        )
-        if changed:
-            self.model.set_folder(text)
+    def _draw_input(self) -> None:
+        """The generated Input section (the workspace's burst runs), then the run 2CDE reads."""
+        self.input_form.rects.clear()
+        draw_form(self.input_spec, self.input, self.input_form)
+        for name, rect in self.input_form.rects.items():
+            self.remember(name, tuple(rect))
+        im.text_wrapped(tr("Burst run: {run}").format(run=self.model.folder or tr("none picked")))
+        self.remember("folder_path")
 
     def _draw_settings(self, width: float) -> None:
         """2CDE analysis parameters."""
@@ -445,32 +457,35 @@ class BurstTwoCdeApp(ImApp):
         on_run: Callable[[], None] | None = None,
         on_restart: Callable[[], None] | None = None,
         on_stop: Callable[[], None] | None = None,
-        on_browse: Callable[[], None] | None = None,
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
         spec = json.loads(Path(__file__).with_name("window.view.json").read_text())
         self.window_size = window_size(spec, (1100, 720))
         self.controller = None
-        if all(callback is None for callback in (on_run, on_restart, on_stop, on_browse)):
+        if all(callback is None for callback in (on_run, on_restart, on_stop)):
             from .controller import TwoCdeController
 
             model = model if model is not None else TwoCdeViewModel()
             self.controller = TwoCdeController(model)
             on_run, on_restart = self.controller.run, self.controller.restart
-            on_stop, on_browse = self.controller.stop, self.controller.browse
+            on_stop = self.controller.stop
         self.two_cde_gui = BurstTwoCdeGui(
             model=model,
             on_run=on_run,
             on_restart=on_restart,
             on_stop=on_stop,
-            on_browse=on_browse,
             on_guide=on_guide,
             on_help=on_help,
         )
         self.model = self.two_cde_gui.model
         self.item_rects = self.two_cde_gui.item_rects
         self.two_cde_gui.on_remember = self.remember
+        self.two_cde_gui.input.workspace_input_app = (
+            self  # a pick goes to receive_bursts(self, ...)
+        )
+        #: The workspace dataset it reads (what *Open in…* or the Input section handed over).
+        self.source_uid = ""
         self._shown = False
         super().__init__(gui=self._render)
 
@@ -487,13 +502,6 @@ class BurstTwoCdeApp(ImApp):
         if self.controller is not None:
             self.controller.close()
 
-    def files_dropped(self, paths) -> bool:
-        """A dropped folder becomes the analysis folder and runs; anything else is reported."""
-        if self.controller is None:
-            return False
-        self.controller.on_paths_dropped(list(paths))
-        return bool(paths)
-
     def _render(self) -> None:
         if self.controller is not None:
             if not self._shown:  # the Qt tool runs when shown
@@ -506,10 +514,23 @@ class BurstTwoCdeApp(ImApp):
                 ctx.request_frame_at(ctx.io.now + 0.1)
         w, h = im.get_main_viewport().size
         self.two_cde_gui.draw(float(w), float(h))
-        if self.controller is not None:
-            self.controller.draw_dialog((0.0, 0.0, float(w), float(h)))
 
 
 def create_app(**kwargs):
     """Create the toolkit-free plugin control."""
     return BurstTwoCdeApp(**kwargs)
+
+
+def receive_bursts(app: BurstTwoCdeApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``bursts``): compute 2CDE for ``payload["folder"]``.
+
+    ``folder`` is an address -- a run of a measurement container (``m000.pto/<run>``) or a legacy
+    burst folder -- as the Input section, *Open in…* or a drag from the Datasets view hands it
+    (``datasets``: its uid).
+    """
+    if app.controller is None:
+        raise RuntimeError("this 2CDE window has no controller to run the analysis")
+    address = read_address(str(payload["folder"]))
+    app.source_uid = str((payload.get("datasets") or [""])[0])
+    if not app.controller.adopt_folder(address):
+        raise ValueError(f"{address} is not a burst run")

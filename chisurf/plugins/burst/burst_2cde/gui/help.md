@@ -55,9 +55,16 @@ positions, always sits on its own peak and over-estimates the rate.
 them backwards and the analysis still completes and still looks plausible.
 
 **Variant** picks which of the two columns is computed. A run produces one, not
-both; `FRET-2CDE` and `ALEX-2CDE` are written into the `2c4/` companion folder
-beside the burst tables, one row per burst, so the burst browser and ndX can gate
-on them.
+both; `FRET-2CDE` and `ALEX-2CDE` are written into the burst run's measurement
+container (`m000.pto/<run>/2cde fret`), one row per burst, so the burst browser and
+ndX can gate on them; the table also appears in the Datasets view, under the run.
+
+## Input
+
+2CDE takes a **burst run** from the Datasets workspace — pick it in the **Input**
+section, use *Open in…* on a Datasets row, or drag the row onto this window. Data
+enters ChiSurf by dropping files on the main window; a run of a measurement
+container shows under its photon stream.
 
 ## Before believing the result
 

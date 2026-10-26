@@ -70,12 +70,17 @@ def test_native_stop_discards_result_and_does_not_write(tmp_path, monkeypatch):
         ctrl.close()
 
 
-def test_native_app_has_wired_workflow_and_folder_drop(tmp_path):
+def test_native_app_has_wired_workflow_and_refuses_a_non_burst_input(tmp_path):
+    import pytest
+
+    from chisurf.plugins.burst.burst_2cde.gui.app import receive_bursts
+
     app = BurstTwoCdeApp()
     try:
         assert app.two_cde_gui.on_run == app.controller.run
         stray = tmp_path / "run.ptu"
-        app.controller.on_paths_dropped([stray])
-        assert "is not one" in app.model.status_text
+        with pytest.raises(ValueError, match="not a burst run"):
+            receive_bursts(app, {"folder": str(stray), "datasets": ["uid-1"]})
+        assert app.model.folder == ""
     finally:
         app.controller.close()

@@ -83,8 +83,7 @@ def test_default_preserves_real_burst_gating_histogram_and_exports(tmp_path, mon
             app.browser_gui.docks.focus(key)
             driver.draw(2)
         assert {
-            "open_folder",
-            "open_file",
+            "workspace_input_rows",
             "export_gated",
             "export_selected",
             "detector",

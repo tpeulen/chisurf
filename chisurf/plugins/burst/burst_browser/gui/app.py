@@ -31,13 +31,21 @@ from emtk.im_core import get_current_context
 from emtk.widgets.data_table import TableBinding, draw_table
 
 from chisurf.core.datastore import column_names, column_values, is_missing
+from chisurf.core.plugin.workspace_input import WorkspaceInputMixin, read_address
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.typed_field import typed_number_field
 from chisurf.plugins.emtk_layout import action_button, window_size
 
 from ..view_model import BurstBrowserViewModel
 
-__all__ = ["BurstBrowserApp", "BurstBrowserGui", "WINDOW_BG"]
+__all__ = ["BurstBrowserApp", "BurstBrowserGui", "WINDOW_BG", "receive_bursts"]
+
+
+class _Input(WorkspaceInputMixin):
+    """The Input section's model: the workspace's burst runs, a pick handed to :func:`receive_bursts`."""
+
+    workspace_input_plugin = "burst_browser"
+
 
 logger = logging.getLogger(__name__)
 
@@ -56,14 +64,20 @@ class BurstBrowserGui:
     def __init__(
         self,
         model: BurstBrowserViewModel | None = None,
-        on_open_folder: Callable[[], None] | None = None,
-        on_open_file: Callable[[], None] | None = None,
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
         self.model = model if model is not None else BurstBrowserViewModel()
-        self.on_open_folder = on_open_folder
-        self.on_open_file = on_open_file
+        from pathlib import Path
+
+        from emtk.view_form import FormState
+
+        from chisurf.plugins.burst.workspace_io import input_spec
+
+        #: The Input section: which burst run of the workspace is browsed.
+        self.input = _Input()
+        self.input_spec = input_spec(Path(__file__).resolve().parents[1] / "manifest.json")
+        self.input_form = FormState()
         self.on_guide = on_guide
         self.on_help = on_help
 
@@ -159,20 +173,14 @@ class BurstBrowserGui:
         avail_w = im.get_content_region_avail()[0]
         im.text_colored(ACCENT_BLUE, "Data Source")
         btn_w = max(60.0, (avail_w - 6.0) * 0.5)
-        if im.button(tr("Open Folder"), (btn_w, 24.0)):
-            self.track("open_folder")
-            if callable(self.on_open_folder):
-                self.on_open_folder()
-        im.set_item_tooltip(tr("Open a folder of .bur burst files (with their companions)."))
-        self.remember("open_folder")
+        from emtk.view_form import draw_form
 
-        im.same_line()
-        if im.button(tr("Open File"), (btn_w, 24.0)):
-            self.track("open_file")
-            if callable(self.on_open_file):
-                self.on_open_file()
-        im.set_item_tooltip(tr("Open a single .bur burst file or .pto container."))
-        self.remember("open_file")
+        self.input.workspace_input_on_used = self.track
+        self.input_form.on_used = self.track
+        self.input_form.rects.clear()
+        draw_form(self.input_spec, self.input, self.input_form)
+        for name, rect in self.input_form.rects.items():
+            self.item_rects[name] = tuple(rect)
 
         if action_button("guide", size=(btn_w, 24.0)):
             self.track("guide")
@@ -562,8 +570,6 @@ class BurstBrowserApp(ImApp):
     def __init__(
         self,
         model: BurstBrowserViewModel | None = None,
-        on_open_folder: Callable[[], None] | None = None,
-        on_open_file: Callable[[], None] | None = None,
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
@@ -572,28 +578,21 @@ class BurstBrowserApp(ImApp):
         spec = json.loads(Path(__file__).with_name("burst_browser.view.json").read_text())
         self.window_size = window_size(spec, (1200, 800))
         self.controller = None
-        if on_open_folder is None and on_open_file is None:
-            from .controller import BurstBrowserController
+        from .controller import BurstBrowserController
 
-            model = model if model is not None else BurstBrowserViewModel()
-            self.controller = BurstBrowserController(model)
-
-            def on_open_folder():
-                self.controller.browse("folder")
-
-            def on_open_file():
-                self.controller.browse("file")
-
+        model = model if model is not None else BurstBrowserViewModel()
+        self.controller = BurstBrowserController(model)
         self.browser_gui = BurstBrowserGui(
             model=model,
-            on_open_folder=on_open_folder,
-            on_open_file=on_open_file,
             on_guide=on_guide,
             on_help=on_help,
         )
         self.model = self.browser_gui.model
         self.item_rects = self.browser_gui.item_rects
         self.browser_gui.controller = self.controller
+        self.browser_gui.input.workspace_input_app = (
+            self  # a pick goes to receive_bursts(self, ...)
+        )
         super().__init__(gui=self._render)
 
     def start_guide(self) -> None:
@@ -632,13 +631,23 @@ class BurstBrowserApp(ImApp):
         if self.controller is not None:
             self.controller.close()
 
-    def on_paths_dropped(self, paths):
-        if self.controller is not None:
-            self.controller.on_paths_dropped(paths)
-
 
 def create_app(**kwargs):
     from chisurf.emtk.i18n import install
 
     install()
     return BurstBrowserApp(**kwargs)
+
+
+def receive_bursts(app: BurstBrowserApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``bursts``): browse the burst run ``payload["folder"]``.
+
+    ``folder`` is an address -- a run of a measurement container (``m000.pto/<run>``) or a legacy
+    burst folder -- as the Input section, *Open in…* or a drag from the Datasets view hands it.
+    """
+    from chisurf.plugins.burst.workspace_io import is_burst_source
+
+    address = read_address(str(payload["folder"]))
+    if not is_burst_source(address):
+        raise ValueError(f"{address} is not a burst run")
+    app.load_folder(address)

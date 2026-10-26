@@ -77,11 +77,6 @@ class BurstFcsController(RunPickerMixin):
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="burst-fcs")
         self._future = None
         self._cancel = Event()
-        from chisurf.emtk.dataset_picker import DatasetPicker
-
-        self.datasets = DatasetPicker(
-            kinds=["analysis_result", "raw_data", "raw_measurement"], on_paths=self.add_files
-        )
 
     def add_files(self, paths):
         for path in map(str, paths):
@@ -169,23 +164,6 @@ class BurstFcsController(RunPickerMixin):
 
     def curve_label(self, curve):
         return f"{curve.get('file', '')} - b{curve.get('burst_index', 0)} - {curve.get('pair_name', '')}"
-
-    def on_paths_dropped(self, paths):
-        """Burst files are added; a dropped JSON file is read as settings (it has ``n_bins``) or as channel pairs."""
-        added = []
-        for path in map(str, paths):
-            if path.lower().endswith(".json"):
-                try:
-                    data = json.loads(Path(path).read_text())
-                    if isinstance(data, dict) and ("n_bins" in data or "fit_mode" in data):
-                        self.load_settings(path)
-                    else:
-                        self.apply_pairs(json.dumps(data))
-                except Exception as exc:  # noqa: BLE001 - shown on the status line
-                    self.status = f"Error: {path}: {exc}"
-            else:
-                added.append(path)
-        self.add_files(added)
 
     def save_pairs(self, path):
         Path(path).write_text(json.dumps(self._pair_presets, indent=2))

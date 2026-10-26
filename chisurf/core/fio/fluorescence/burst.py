@@ -636,51 +636,30 @@ def _read_burst_analysis_from_container(path: pathlib.Path) -> tuple:
         If the container holds no burst table, or none under the named run.
     """
     from chisurf.core.datastore import set_constant
-    from chisurf.core.fio.analysis_path import (
-        read_tables,
-        resolve_run,
-        run_path,
-        split_container_path,
-    )
-    from chisurf.core.fio.fluorescence.burst_container import deinterleave_bursts
-    from chisurf.core.fio.fluorescence.burst_tree import OPERATION, RUN_COLUMN, TABLE
+    from chisurf.core.fio.analysis_path import resolve_run, run_path, split_container_path
+    from chisurf.core.fio.fluorescence.burst_tree import OPERATION, RUN_COLUMN
     from chisurf.core.fio.staging import open_tttr
 
     container, _run = split_container_path(path)
     if container is None:
         raise FileNotFoundError(f"{path} does not name a measurement container")
-    tables = read_tables(path, operation=OPERATION)
     # The run actually read, named even when *path* named none: a result
     # computed from these rows is written as derived from this run, not from
     # whichever search happens to be the newest when it is written.
-    run = resolve_run(path, operation=OPERATION)
-    # The container stores the `.bur` as that file holds it, interleave and all,
-    # so the padding comes off here -- the same stride the folder reader applies
-    # to the same rows. Storing the file 1:1 is what makes the two layouts
-    # interchangeable; a table that had been trimmed on the way in could not
-    # reproduce the file on the way out.
-    df = None
-    for name, table in tables.items():
-        if name.endswith(".bur") or name == TABLE:
-            df = deinterleave_bursts(table)
-            break
-    if df is None:
-        # A run whose only tables are companions: nothing to hang them on.
+    # The read itself is ndX's (one reader for every burst analysis): the run's
+    # burst table, the `.bur` interleave dropped, and each per-burst companion
+    # joined beside it by its declared parent -- exactly what ndX shows.
+    from ndxplorer.io.pto_reader import list_tables, read_run
+
+    searches = [t for t in list_tables(container) if t["grain"] == "burst"]
+    run = resolve_run(path, operation=OPERATION) if searches else ""
+    names = [t["name"] for t in searches if t["run"] == run]
+    if not names:
         raise FileNotFoundError(
             f"{pathlib.Path(path).name} holds no burst table: run a burst "
             "search first, or point this at an analysis folder if one exists."
         )
-
-    # Per-burst results computed from that search join it side by side — the
-    # container's answer to the `…4` companions, matched on row count because
-    # that is the contract those companions are written under.
-    for name, companion in tables.items():
-        if name.endswith(".bur") or name == TABLE:
-            continue
-        companion = deinterleave_bursts(companion)
-        if row_count(companion) != row_count(df):
-            continue
-        df.append_columns(companion, tttrlib.DataStore.OnDuplicate_KeepFirst)
+    df, _provenance = read_run(container, table=names[-1])
 
     # One container is one measurement, however many vendor files were packed
     # into it, so every burst points at the same photon stream. Keyed by each

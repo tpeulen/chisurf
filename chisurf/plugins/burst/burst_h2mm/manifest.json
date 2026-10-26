@@ -19,6 +19,22 @@
       "settings_key": "burst_h2mm_window"
     }
   },
+  "accepts": [
+    {
+      "name": "bursts",
+      "summary": "Fit H2MM to a burst run: a run of a measurement container, or a legacy burst folder.",
+      "receive": "chisurf.plugins.burst.burst_h2mm.gui.native:receive_bursts",
+      "required": [
+        "folder"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "bursts"
+        ],
+        "key": "folder"
+      }
+    }
+  ],
   "entrypoints": {
     "cli": "h2mm=chisurf.plugins.burst.burst_h2mm.cli.main:cli",
     "services": "chisurf.plugins.burst.burst_h2mm.backend.services:register_services",

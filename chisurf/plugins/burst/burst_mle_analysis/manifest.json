@@ -19,6 +19,53 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "bursts",
+      "summary": "Fit burst lifetimes to burst runs of measurement containers.",
+      "receive": "chisurf.plugins.burst.burst_mle_analysis.gui.native:receive_bursts",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "bursts"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    },
+    {
+      "name": "irf_measurement",
+      "summary": "Use measured IRF photon streams (scatter or a short-lifetime reference) for the current detector.",
+      "receive": "chisurf.plugins.burst.burst_mle_analysis.gui.native:receive_irf",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    },
+    {
+      "name": "background_measurement",
+      "summary": "Use measured background photon streams (a sample-free measurement) for the current detector.",
+      "receive": "chisurf.plugins.burst.burst_mle_analysis.gui.native:receive_background",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    }
+  ],
   "entrypoints": {
     "services": "chisurf.plugins.burst.burst_mle_analysis.backend.services:register_services",
     "emtk": "chisurf.plugins.burst.burst_mle_analysis.gui.native:create_app"

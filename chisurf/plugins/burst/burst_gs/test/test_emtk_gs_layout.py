@@ -40,7 +40,7 @@ ACTIONS = ["Fit", "Stop", "Export", "guide", "help"]
 def test_actions_are_wrapped_rows_not_a_stack(drawn):
     app, _p, size = drawn
     rects = app.item_rects
-    assert_disjoint(rects, ["bur_files", *ACTIONS])
+    assert_disjoint(rects, ["workspace_input_rows", *ACTIONS])
     ys = {round(rects[n][1]) for n in ACTIONS}
     assert len(ys) <= (1 if size[0] >= 1200 else 3), (
         f"the action buttons stack in {len(ys)} rows: {sorted(ys)}"

@@ -506,10 +506,15 @@ def show_table_in_ndx(table, path=None) -> object:
 def receive_path(app, payload: dict) -> None:
     """Hand-off receiver (manifest ``accepts`` ``open_path``): open ``payload["path"]``.
 
-    Anything File > Open reads: a burst-analysis folder, a ``.pto``, a table.
+    Anything File > Open reads: a burst-analysis folder, a ``.pto``, a table -- or a burst run by
+    its address (``m000.pto/<run>``, what *Open in…* on a run of the Datasets workspace hands over),
+    which ndX reads with its burst-analysis reader.
     """
-    path = Path(str(payload["path"]))
-    if not path.exists():
+    from chisurf.core.fio.address import container_of
+    from chisurf.core.plugin.workspace_input import read_address
+
+    path = Path(read_address(str(payload["path"])))
+    if not container_of(path).exists():
         raise FileNotFoundError(f"{path} does not exist")
     if not app.open_path(str(path)):
         raise ValueError(f"ndX could not read {path.name}")

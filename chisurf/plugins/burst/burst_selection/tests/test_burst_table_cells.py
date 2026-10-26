@@ -23,6 +23,17 @@ SETUP = {
 }
 
 
+def feed(window, *paths) -> bool:
+    """Hand photon files over as the workspace does (Input section / Open in… / a drag)."""
+    from chisurf.plugins.burst.burst_selection.gui.native import receive_photons
+
+    try:
+        receive_photons(window, {"files": [str(p) for p in paths], "datasets": []})
+    except ValueError:
+        return False
+    return True
+
+
 def test_cell_text_keeps_whole_numbers_whole():
     from chisurf.plugins.burst.burst_selection.gui.model import _cell_text
 
@@ -74,7 +85,7 @@ def test_the_duration_tab_says_its_bursts_are_the_windows(tmp_path, monkeypatch)
         app.apply_setup(SETUP, "sm dna")
         size = (1400, 860)
         drv = Driver(app, size)
-        assert drv.drop(tmp_path / "m000.spc")
+        assert feed(drv.app, tmp_path / "m000.spc")
         app.model.run()
         app.model.load_diagnostics()
         drv.draw(2)
@@ -112,7 +123,7 @@ def test_a_fitted_mixture_keeps_its_legend_off_the_histogram(tmp_path, monkeypat
         app.apply_setup(SETUP, "sm dna")
         size = (1400, 860)
         drv = Driver(app, size)
-        assert drv.drop(*paths)
+        assert feed(drv.app, *paths)
         app.model.run()
         app.model.pool_files = True
         app.model.gmm_components = 3

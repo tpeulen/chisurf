@@ -1,7 +1,7 @@
 """Real-input coverage of the native photon-by-photon kinetics tool: every control is operated with simulated input.
 
-Only ``pointer_move`` / ``press`` / ``release`` / ``drag`` / ``wheel`` / ``key`` and the host's ``files_dropped`` reach the
-window, at the rectangles the controls were drawn in (``app.item_rects`` for the buttons and the guide's targets,
+Only ``pointer_move`` / ``press`` / ``release`` / ``drag`` / ``wheel`` / ``key`` reach the window (the burst run is picked
+from the Datasets workspace, never a file dialog or a drop), at the rectangles the controls were drawn in (``app.item_rects`` for the buttons and the guide's targets,
 ``form_state.rects`` for the spec's fields) or at the text a button drew; the assertions read the visible outcome (the model,
 the status line, the drawn strings, the files written).
 """
@@ -147,7 +147,7 @@ def burs(tmp_path, *names):
 def test_the_simulation_checkbox_switches_the_input_panels_and_enables_fit(app):
     strings = draw(app).strings
     assert has(strings, "Data Input & Channels") and not has(strings, "Simulation Parameters")
-    assert "Add at least one .bur burst table, or tick Simulate." in shown(
+    assert "Pick a burst run in the Input section, or tick Simulate." in shown(
         app
     )  # Fit is greyed with its hint
     click(app, text_rect(draw(app), "▶ Fit Kinetics"))
@@ -318,7 +318,6 @@ def test_the_data_fields_are_typed(app):
     for field, typed, expected in (
         ("donor_channels", "0, 8", "0, 8"),
         ("acceptor_channels", "1, 9", "1, 9"),
-        ("data_dir", "/some/dir", "/some/dir"),
         ("min_photons", "30", 30),
         ("min_photons", "1", 2),
         ("max_bursts", "500", 500),
@@ -326,7 +325,6 @@ def test_the_data_fields_are_typed(app):
     ):
         type_into(app, field, typed)
         assert getattr(app.model, field) == expected, (field, typed)
-    assert "/some/dir" in draw(app).strings
 
 
 def test_a_second_fit_with_new_settings_replaces_the_result(app):
@@ -383,8 +381,6 @@ def test_the_buttons_and_fields_are_inert_while_a_fit_is_running(app, monkeypatc
     future = app.controller._future
     press_text(app, "▶ Fit Kinetics")
     assert app.controller._future is future
-    press_text(app, "Open BUR files")
-    assert app.controller.dialog is None
     k = app.model.sim_k_forward
     type_into(app, "sim_k_forward", "4000", greyed=True)
     assert app.model.sim_k_forward == k
@@ -414,114 +410,44 @@ def test_a_failed_fit_and_an_empty_result_are_reported_in_the_window(app, monkey
     assert "The fit failed: singular Hessian" in shown(app)
 
 
-# -- burst tables: dialog, folder, drops, removal ------------------------------------------------------------------------- #
+# -- the burst run: from the workspace -------------------------------------------------------------------------------- #
 
 
-def test_open_bur_files_dialog_selects_files_by_clicks_and_open_adds_them(app, tmp_path):
-    burs(tmp_path, "a.bur", "b.bur")
-    (tmp_path / "notes.txt").write_text("x")
-    press_text(app, "Open BUR files")
+def test_there_is_no_input_dialog_button_or_drop_hook(app):
     strings = draw(app).strings
-    assert (
-        "Open burst tables" in strings
-        and "a.bur" in strings
-        and "b.bur" in strings
-        and "notes.txt" not in strings
-    )  # the BUR filter
-    click(app, text_rect(draw(app), "a.bur"))
-    click(app, text_rect(draw(app), "Open"))
-    assert [Path(p).name for p in app.model.bur_files] == ["a.bur"]
-    assert "Loaded .bur files: 1" in shown(app) and "Open burst tables" not in draw(app).strings
+    assert not {"Open BUR files", "Add burst folder", "MMFDB datasets", "Clear burst files"} & set(
+        strings
+    )
+    assert not hasattr(app, "files_dropped") and not hasattr(app, "on_paths_dropped")
+    assert "Input" in strings and "workspace_input_rows" in app.item_rects
 
 
-def test_the_open_dialog_cancel_and_close_buttons_add_nothing(app, tmp_path):
-    burs(tmp_path, "a.bur")
-    press_text(app, "Open BUR files")
-    click(app, text_rect(draw(app), "Cancel"))
-    assert "Cancel" not in draw(app).strings and not app.model.bur_files
-    press_text(app, "Open BUR files")
-    click(app, text_rect(draw(app), "×"))
-    assert "Cancel" not in draw(app).strings and not app.model.bur_files
+def test_a_burst_run_picked_in_the_input_section_is_fitted(app, tmp_path, monkeypatch):
+    from test.gui.burst_workspace import burst_run_in_workspace, no_input_dialog, restore_workspace
+
+    with restore_workspace():
+        run = burst_run_in_workspace(tmp_path)
+        no_input_dialog(monkeypatch)
+        app.model.donor_channels, app.model.acceptor_channels = "0", "1"
+        app.model.max_iterations, app.model.min_photons = 100, 10
+        assert "runBursts#1" in draw(app).strings
+        click(app, text_rect(draw(app), "runBursts#1"))
+        assert app.model.bur_files == [run.address] and app.model.use_simulation is False
+        assert any(run.address in s for s in shown(app).split("\n")) or "runBursts#1" in shown(app)
+        fit(app)
+        assert app.model.analysis is not None, shown(app)
+        assert app.model.analysis.info["n_bursts"] > 0
+        assert "logL = " in shown(app)
 
 
-def test_add_burst_folder_dialog_adds_every_table_below_it(app, tmp_path):
-    burs(tmp_path, "run/m1.bur", "run/sub/m2.bur")
-    press_text(app, "Add burst folder")
-    assert "Add burst folder" in draw(app).strings
-    click(app, text_rect(draw(app), "[run]"))
-    click(app, text_rect(draw(app), "Choose"))
-    assert sorted(Path(p).name for p in app.model.bur_files) == ["m1.bur", "m2.bur"]
+def test_a_non_burst_address_is_refused(app, tmp_path):
+    from chisurf.plugins.burst.burst_gs.gui.app import receive_bursts
 
-
-def test_a_dropped_table_or_folder_is_added_and_a_stray_file_is_reported(app, tmp_path):
-    a, b = burs(tmp_path, "d/a.bur", "b.bur")
     stray = tmp_path / "notes.txt"
     stray.write_text("x")
-    assert app.files_dropped([str(a.parent), str(b)])
-    assert sorted(Path(p).name for p in app.model.bur_files) == ["a.bur", "b.bur"]
-    assert "Loaded .bur files: 2" in shown(app)
-    assert app.files_dropped([str(stray)])
-    assert "No .bur burst table among the dropped paths." in shown(app)
-    assert app.files_dropped([]) is False
-
-
-def test_each_listed_table_has_a_remove_button_and_clear_removes_all_and_the_result(app, tmp_path):
-    a, b = burs(tmp_path, "a.bur", "b.bur")
-    app.files_dropped([str(a), str(b)])
-    painter = draw(app)
-    assert (
-        "a.bur" in " ".join(painter.strings)
-        and "b.bur" in " ".join(painter.strings)
-        and painter.strings.count("Remove") == 2
-    )
-    click(app, text_rect(draw(app), "Remove", last=False))  # the first one's button
-    assert [Path(p).name for p in app.model.bur_files] == ["b.bur"]
-    simulate(app)
-    fit(app)
-    assert app.model.analysis is not None
-    press_text(app, "Clear burst files")
-    assert (
-        app.model.bur_files == []
-        and app.model.analysis is None
-        and "1 → 2" not in draw(app).strings
-    )
-
-
-def test_a_fit_on_a_dropped_table_reports_the_load_failure_in_the_report(app, tmp_path):
-    (table,) = burs(tmp_path, "m.bur")
-    app.files_dropped([str(table)])
-    fit(app)
-    assert "Could not load the photons" in shown(app) and app.model.analysis is None
-
-
-def test_mmfdb_datasets_picker_lists_a_dataset_selects_it_and_the_window_closes(app):
-    class Client:
-        def call(self, name, args=None):
-            return {
-                "datasets": [
-                    {
-                        "artifact_id": "a1",
-                        "original_filename": "m.bur",
-                        "artifact_kind": "burst_data",
-                        "data_format": "bur",
-                    }
-                ],
-                "total": 1,
-            }
-
-    app.controller.datasets.client = Client()
-    press_text(app, "MMFDB datasets")
-    for _ in range(50):
-        draw(app, frames=1)
-        if app.controller.datasets._pending is None:
-            break
-        time.sleep(0.02)
-    draw(app)
-    assert "Select MMFDB dataset" in draw(app).strings
-    click(app, text_rect(draw(app), "m.bur [burst_data] (bur)"))
-    assert app.controller.datasets.selection.artifact_id == "a1"
-    click(app, text_rect(draw(app), "×"))
-    assert "Select MMFDB dataset" not in draw(app).strings
+    with pytest.raises(ValueError, match="not a burst run"):
+        receive_bursts(app, {"folder": str(stray), "datasets": ["x"]})
+    assert app.model.bur_files == []
 
 
 # -- export ----------------------------------------------------------------------------------------------------------------- #
@@ -734,11 +660,12 @@ def test_the_flow_works_in_the_small_window_too(app):
     assert app.model.use_simulation
     type_into(app, "sim_n_bursts", "20", SMALL)
     type_into(app, "sim_photons_per_burst", "40", SMALL)
+    # the Input section sits on top, so at this size the panel scrolls to reach the model settings
+    app.wheel(150, 400, -4.0)
+    draw(app, SMALL)
     type_into(app, "max_iterations", "100", SMALL)
+    app.wheel(150, 400, 8.0)
+    draw(app, SMALL)
     click(app, text_rect(draw(app, SMALL), "▶ Fit Kinetics"), SMALL)
     settle(app, SMALL)
     assert app.model.analysis is not None and "1 → 2" in draw(app, SMALL).strings
-    press_text(app, "Add burst folder", SMALL)
-    assert "Choose" in draw(app, SMALL).strings
-    click(app, text_rect(draw(app, SMALL), "Cancel"), SMALL)
-    assert "Choose" not in draw(app, SMALL).strings

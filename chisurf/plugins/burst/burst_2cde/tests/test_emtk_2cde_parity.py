@@ -158,12 +158,18 @@ def test_the_first_frame_runs_a_folder_that_is_already_set(folder):
         app.close()
 
 
-def test_a_dropped_folder_runs_and_anything_else_is_reported(folder):
+def test_a_burst_run_handed_over_runs_and_no_input_dialog_or_drop_exists(folder):
+    """The Input section / Open in… hands a burst run over (no file dialog, no drop hook)."""
+    import pytest
+
+    from chisurf.plugins.burst.burst_2cde.gui.app import receive_bursts
+
     app = _app()
     try:
-        assert app.files_dropped([str(folder / "bi4_bur" / "m000.bur")])
-        assert app.model.status_text == "2CDE reads a burst-analysis folder; m000.bur is not one."
-        assert app.files_dropped([str(folder)])
+        assert not hasattr(app, "files_dropped")
+        with pytest.raises(ValueError, match="not a burst run"):
+            receive_bursts(app, {"folder": str(folder / "bi4_bur" / "m000.bur"), "datasets": ["x"]})
+        receive_bursts(app, {"folder": str(folder), "datasets": ["run-uid"]})
         assert app.model.folder == str(folder)
         _settle(app)
         assert app.model.df is not None
@@ -209,7 +215,7 @@ def test_errors_reach_the_window(folder, tmp_path, monkeypatch):
     app = _app(tmp_path / "missing")
     try:
         app.controller.run()
-        assert app.model.status_text == "Select a valid burstwise analysis folder."
+        assert app.model.status_text == "Pick a burst run in the Input section first."
         app.model.set_folder(folder)
         monkeypatch.setattr(
             core,
@@ -252,13 +258,12 @@ def test_every_guide_target_is_drawn():
 def test_draws_empty_and_populated(folder, size):
     app = _app()
     try:
-        assert {"Analysis folder:", "2CDE Parameters"} <= set(_draw(app, size).strings)
+        assert {"Input", "2CDE Parameters"} <= set(_draw(app, size).strings)
         pane_right = app.item_rects["controls"][0] + app.item_rects["controls"][2]
         for name in (
             "run",
             "restart",
             "stop",
-            "folder",
             "guide",
             "help",
         ):  # the row wraps, nothing is cut

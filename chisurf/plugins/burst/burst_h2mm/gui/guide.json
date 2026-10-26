@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour of the emtk H2MM app. Targets are the keys the app records: data_folder, donor_channels, min_states, restarts, decoder, toolAction_run, results. The folder and run steps wait for the real input.",
+  "_comment": "Guided tour of the emtk H2MM app. Targets are the keys the app records: workspace_input_rows, donor_channels, min_states, restarts, decoder, toolAction_run, results. The input step waits for a pick in the Input section.",
   "steps": [
     {
       "title": "From \"it moved\" to how fast, and into what",
@@ -7,13 +7,13 @@
       "target": {}
     },
     {
-      "title": "The burst folder",
-      "text": "H2MM fits the photons <i>inside</i> already-defined bursts, so it reads a finished burst-analysis folder rather than raw files. Dropping the folder on this window does the same thing.",
+      "title": "The burst run",
+      "text": "H2MM fits the photons <i>inside</i> already-defined bursts, so it reads a finished <b>burst run</b> rather than raw files. The <b>Input</b> section lists the burst runs in the workspace: a run of a measurement container shows under its photon stream in the Datasets view. Files dropped on the ChiSurf window are added there; <i>Open in…</i> on a Datasets row, or dragging the row onto this tool, does the same as picking it here.",
       "target": {
-        "name": "data_folder"
+        "name": "workspace_input_rows"
       },
       "await": {
-        "hint": "Press the <b>Burst folder</b> field: type or choose the burst-analysis folder."
+        "hint": "Pick a burst run in the <b>Input</b> section."
       }
     },
     {

@@ -46,8 +46,8 @@
     },
     {
       "title": "Your own data",
-      "text": "Add your burst tables with <b>Files...</b> (BUR or BST), <b>Folder...</b> (an analysis folder) or <b>Database...</b>, or drop them on the window. On the <b>Detector setup</b> tab the shared detector editor defines the channels; <b>Use setup for pairs</b> turns a setup into channel pairs. <b>Export curves...</b> saves the curves and fits as JSON.",
-      "target": {"action": "add_files"},
+      "text": "Pick your burst runs in the <b>Input</b> section and press <b>Use selected</b>: it lists the runs of the measurement containers in the workspace, each under its photon stream in the Datasets view (<i>Open in…</i> or dragging rows onto this tool does the same). On the <b>Detector setup</b> tab the shared detector editor defines the channels; <b>Use setup for pairs</b> turns a setup into channel pairs. <b>Export curves...</b> saves the curves and fits as JSON.",
+      "target": {"name": "workspace_input_rows"},
       "tab": "Inputs"
     }
   ]

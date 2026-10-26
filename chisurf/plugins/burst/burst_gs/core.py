@@ -59,12 +59,13 @@ def load_photons(
     min_photons: int = 10,
     max_bursts: int = 0,
 ) -> tuple[gs.PhotonBursts, dict]:
-    """Load bursts from ``.bur`` tables and their TTTR files.
+    """Load bursts from a burst run (or ``.bur`` tables) and their TTTR files.
 
     Parameters
     ----------
     bur_paths : sequence of path-like
-        Burst tables.
+        One burst run of a measurement container (``m000.pto/<run>``, as the Datasets workspace
+        hands it over), or legacy ``.bur`` burst tables.
     data_dir : path-like
         Directory the ``First File`` entries resolve against.
     streams : sequence, optional
@@ -102,7 +103,18 @@ def load_photons(
     stream_defs = [s if isinstance(s, StreamDef) else streams_from_dicts([s])[0] for s in streams]
 
     paths = [pathlib.Path(p) for p in bur_paths]
-    if len(paths) > 1:
+    from chisurf.core.fio.fluorescence.burst_tree import is_container_path
+
+    if any(is_container_path(p) for p in paths):
+        if len(paths) != 1:
+            raise ValueError("fit one burst run at a time")
+        from chisurf.core.fio.address import container_of
+        from chisurf.core.fio.fluorescence.burst import read_burst_analysis
+
+        table, tttrs = read_burst_analysis(paths[0], file_type)
+        # ``First File`` names resolve beside the container, where the measurement lies.
+        data_dir = container_of(paths[0]).parent
+    if not any(is_container_path(p) for p in paths) and len(paths) > 1:
         relative_sources: dict[str, pathlib.Path] = {}
         for path in paths:
             frame = load_bur_dataframe([path])
@@ -118,8 +130,9 @@ def load_photons(
                         "use absolute First File references"
                     )
                 relative_sources[str(key)] = resolved
-    table = load_bur_dataframe(paths)
-    tttrs = load_tttrs_for_dataframe(table, data_dir, file_type=file_type)
+    if not any(is_container_path(p) for p in paths):
+        table = load_bur_dataframe(paths)
+        tttrs = load_tttrs_for_dataframe(table, data_dir, file_type=file_type)
     if not tttrs:
         raise ValueError("none of the TTTR files referenced by the burst table could be loaded")
 

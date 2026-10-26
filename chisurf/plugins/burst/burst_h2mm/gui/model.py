@@ -302,7 +302,7 @@ class H2mmViewModel(RunPickerMixin):
         if not self.data_folder or not (
             pathlib.Path(self.data_folder).is_dir() or self.container_path()
         ):
-            return "Select a folder of .bur files first."
+            return "Pick a burst run in the Input section first."
         if not self._stream(self.donor).channels or not self._stream(self.acceptor).channels:
             return "Define the donor and the acceptor detector (routing channels) first."
         return ""

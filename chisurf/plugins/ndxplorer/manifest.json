@@ -22,11 +22,17 @@
   "accepts": [
     {
       "name": "open_path",
-      "summary": "Open a burst-analysis folder, a .pto or a table file, as File > Open does.",
+      "summary": "Open a burst run of the Datasets workspace (its address), a burst-analysis folder, a .pto or a table file, as File > Open does.",
       "receive": "chisurf.plugins.ndxplorer.gui.app:receive_path",
       "required": [
         "path"
-      ]
+      ],
+      "from_workspace": {
+        "kinds": [
+          "bursts"
+        ],
+        "key": "path"
+      }
     },
     {
       "name": "table",

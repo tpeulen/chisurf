@@ -33,6 +33,20 @@ scripts and the agent need them); in the UI they degrade the UX and go.
    the sniffed settings (`skiprows`, `x_on`, `dt`, `is_vv_vh`). A PyCorrFit CSV sniffs as FCS-CSV.
 5. **Journeys** (`test/e2e/test_workspace_journeys.py`) are the acceptance proof; run on `ssh home`
    (`build_tools/remote_test.sh`), never on the laptop.
+6. **Burst family, on the project model** (§ Burst results live in the project). Migrated: BVA, 2CDE,
+   GS, H2MM, MLE, burst browser, burst FCS correlator, burst_selection (photons in, runs into the
+   dataset's analysis container); accurate_fret has the Input section but keeps its CSV/NPZ table
+   routes (no workspace kind for a plain table). Open: burst_fusion (its engine reads and writes
+   folders only: port `core/fusion.py` to read a run via `read_run` and write the fused bursts as a run
+   of the same container), burst_irf_bg and burst_background (photon files, like burst_selection),
+   alex_suite, bid_to_analysis, mfd_prepare, fret_check, the burst_analysis hub, burst_ebfret (trace
+   files: no kind). burstwise_import needs the shell drop to route a legacy burstwise folder to it,
+   and its containers to land as analysis containers of the photon datasets it registers. Blocks:
+   no workspace kind for a plain or result table; tool presets (settings JSON) are not classified as
+   `setup`, so "Load settings" dialogs remain; H2MM's per-photon side files (`h2mm/`) sit in the
+   session folder and are not carried by the project (move them into the container or make them an
+   explicit export); the Datasets view cannot yet show a run's companion tables as view-only
+   children.
 
 ## Where it stands (recon 2026-10-26)
 
@@ -173,6 +187,30 @@ an application convention — `add_link(path, …)` records relative path + size
 `pack`/`unpack` convert between linked and embedded; `relink(uid, path)` points a link at a new target
 (size + sha256 checked, a mismatch refused unless forced) — the repair step of *Locate missing data*. The present `external_payload_path` hook and
 tttrlib's `add_sidecar_file` / chisurf's `_mmfdb_sidecar.*` tags map onto it (one mechanism).
+
+## Burst results live in the project (owner 2026-10-26)
+
+* **Each photon dataset has an analysis container in the project**: a measurement container embedded
+  as `project.cs.pto/<name>.pto`, holding that dataset's burst runs and every table computed from them
+  (`chisurf.core.project.analysis`). While the session runs it is a working file in a private session
+  folder (`container_dir(<dataset uid>)`); the project embeds it at save (`project_files`, recorded
+  in `Project.extra["analysis_containers"]`) and writes it back on open (`restore`). It links the
+  photons (`raw_data="sidecar"`): the photon dataset itself is linked or embedded by the project's
+  own choice. Nothing is written beside the vendor file, and the legacy `bi4_bur/` folder is an
+  explicit export (Legacy Export), never a by-product of a search.
+* **One format, one reader.** The container is written by the existing burst writer
+  (`burst_selection.api.io.write_container`, `burst_container.write_per_source`) in exactly the
+  format ndX reads; every ChiSurf burst tool reads a run *through* ndX's reader
+  (`ndxplorer.io.pto_reader.read_run`, the run with its companions as stored) -- ChiSurf's own
+  container table read is gone.
+* **Companions are tables of their run**, joined by their declared parent (BVA, 2CDE, lifetimes, H2MM
+  states, ...), not workspace rows. The workspace shows the runs as children of the photon dataset,
+  **derived** from the containers (`derived_datasets`) on every restore and never stored as datasets;
+  consumers declare `bursts` = runs.
+* **ndX reads the project's runs**: `ndxplorer.io.project_reader` lists `<name>.pto/<run>` stores of a
+  `.cs.pto` and reads them through `pto_reader` (nested member read where tttrlib has
+  `split_address`, else extracted to a temporary file -- fallback to delete at the relock); a run
+  address `m000.pto/<run>` or `p.cs.pto/<name>.pto/<run>` opens directly in ndX.
 
 ## One way in
 

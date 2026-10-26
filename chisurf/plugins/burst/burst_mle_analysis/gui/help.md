@@ -11,12 +11,14 @@ Press **Guide** for the walk-through. **Demo** loads 16 generated bursts of 1000
 Everything in the windows is read from the fit that the engine computed. With no fit they say so; nothing is drawn as a
 placeholder.
 
-* **Burst MLE** tab: **Add files** / **Add folder** (or drop .bur files or a measurement .pto; the **Runs** table then picks which burst search of the container is fitted), **Auto IRF/background**, **Refit**, **Fit bursts**,
+* **Burst MLE** tab: the **Input** section lists the burst runs of the measurement containers in the Datasets
+  workspace (drop a measurement on the ChiSurf window and run a burst search; *Open in…* or dragging rows onto this
+  window does the same as **Use selected**), then **Clear**, **Auto IRF/background**, **Refit**, **Fit bursts**,
   **Stop**, **Save results** and **Save/Load settings**; below them the burst-file table, the detector and fit window,
   the IRF settings and the editable *Fit parameters* table (start value, fixed flag, fitted value). A change refits the
   current decay. **Detector setup** is the shared detector editor.
-* **IRF/BG files** tab: **Add IRF files** / **Add background files** (measured patterns, per detector or
-  *one for all*), **IRF model** of Auto IRF/background, **Save VV/VHs**. **Opt** (in the *Burst MLE* tab) searches the
+* **IRF/BG files** tab: the **Measured IRF** and **Measured background** sections take photon streams from the
+  workspace (measured patterns, per detector or *one for all*), **IRF model** of Auto IRF/background, **Save VV/VHs**. **Opt** (in the *Burst MLE* tab) searches the
   shifts, IRF window and thresholds for the lowest 2I*; **Save fit** stores a detector's fit settings on the selected
   detector setup. The fit model **Tail fit (multi-exp)** previews a multi-exponential tail fit (no IRF; not used by
   **Fit bursts**).

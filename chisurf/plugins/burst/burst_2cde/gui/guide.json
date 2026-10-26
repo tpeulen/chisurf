@@ -17,13 +17,13 @@
       ]
     },
     {
-      "title": "The burst folder, not the raw files",
-      "text": "2CDE reads a finished <b>burst-analysis folder</b> \u2014 the bursts are already defined, and this adds a column to them. It re-opens the raw measurements named in that folder's manifest to get the photon times, so both have to be reachable.<br/><br/>You can also drop the folder onto this window.",
+      "title": "The burst run, not the raw files",
+      "text": "2CDE reads a finished <b>burst run</b> \u2014 the bursts are already defined, and this adds a column to them. It re-opens the photons the run was cut from to get the photon times, so both have to be reachable.<br/><br/>The <b>Input</b> section lists the burst runs in the workspace: a run of a measurement container shows under its photon stream in the Datasets view. Files dropped on the ChiSurf window are added there; <i>Open in\u2026</i> on a Datasets row, or dragging the row onto this tool, does the same as picking it here.",
       "target": {
-        "name": "folder"
+        "name": "workspace_input_rows"
       },
       "await": {
-        "hint": "Press the <b>Folder</b> button and choose the burst-analysis folder."
+        "hint": "Pick a burst run in the <b>Input</b> section."
       }
     },
     {

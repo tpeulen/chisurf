@@ -30,14 +30,6 @@ WHITE, RED, YELLOW = (255, 255, 255, 255), (230, 40, 40, 255), (250, 204, 21, 25
 #: Width the controls get at least in a narrow window.
 MIN_CONTROLS = 430.0
 DIALOGS = {
-    "files": (
-        "Open BUR/BST/PTO files",
-        "open",
-        True,
-        "BUR/BST/PTO (*.bur *.bst *.pto);;All files (*)",
-        "",
-    ),
-    "folder": ("Add analysis folder", "folder", True, "", ""),
     "load_settings": ("Load settings", "open", False, "Settings (*.json)", ""),
     "save_settings": (
         "Save settings",
@@ -166,10 +158,7 @@ class BurstFcsApp(TourTarget, ImApp):
     def _answer(self, paths):
         c, action = self.controller, self.dialog_action
         try:
-            if action in ("files", "folder"):
-                c.add_files(paths)
-                c.status = f"{len(c.files)} input(s) listed."
-            elif action == "load_settings":
+            if action == "load_settings":
                 c.load_settings(paths[0])
             elif action == "save_settings":
                 c.save_settings(self._suffix(paths[0]))
@@ -237,7 +226,20 @@ class BurstFcsApp(TourTarget, ImApp):
         self.form("progress") if self.controller.running else self.form("status")
 
     def draw_inputs(self, box):
-        im.text_unformatted("Burst folders or BUR/BST files")
+        from emtk.view_form import FormState
+
+        from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput, input_spec
+
+        if not hasattr(self, "_input"):
+            self._input = NamedWorkspaceInput("burst_fcs_correlator", "bursts", app=self)
+            self._input_spec = input_spec(HERE.parent / "manifest.json", "bursts")
+            self._input_form = FormState()
+        self._input.workspace_input_on_used = self._used
+        self._input_form.on_used = self._used
+        self._input_form.rects.clear()
+        draw_form(self._input_spec, self._input, self._input_form)
+        self.item_rects.update(self._input_form.rects)
+        im.text_unformatted(tr("Burst runs in this analysis"))
         self.form("files")
         im.text_unformatted(tr("FCS channel pairs"))
         im.set_item_tooltip(tr(SPEC["pairs"]["sections"][0]["description"]))
@@ -401,14 +403,7 @@ class BurstFcsApp(TourTarget, ImApp):
             if closed:
                 self.pairs_window.hide()
         self.setup.draw_dialogs(frame)
-        c.datasets.render(frame)
         self.setup.poll()
-
-    def files_dropped(self, paths):
-        self.on_paths_dropped(paths)
-
-    def on_paths_dropped(self, paths):
-        self.controller.on_paths_dropped(paths)
 
     def close(self):
         self.setup.close()
@@ -420,3 +415,22 @@ def create_app(**kwargs):
 
     install()
     return BurstFcsApp(**kwargs)
+
+
+def receive_bursts(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``bursts``): list the burst runs ``payload["files"]``
+    (runs of measurement containers, ``m000.pto/<run>``) from the Datasets workspace."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    files = payload.get("files") or []
+    files = [read_address(str(f)) for f in (files if isinstance(files, list) else [files])]
+    app.controller.add_files(files)
+    app.controller.status = f"{len(app.controller.files)} input(s) listed."
+
+
+def receive_pairs(app, payload: dict) -> None:
+    """Hand-off receiver (``pairs``): take the channel pairs of a detector setup or pairs file from
+    the workspace (a ``setup`` row)."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    app.controller.apply_pairs(Path(read_address(str(payload["file"]))).read_text())

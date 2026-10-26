@@ -16,7 +16,9 @@ def test_native_settings_pairs_and_actual_ranges_roundtrip(tmp_path):
         from .driving import make_input_container
 
         raw, container = make_input_container(tmp_path, [(0, 100), (200, 400)])
-        app.on_paths_dropped([container])
+        from chisurf.plugins.burst.burst_fcs_correlator.gui.app import receive_bursts
+
+        receive_bursts(app, {"files": [str(container)], "datasets": []})
         assert ctrl.resolve_files() == [(container.resolve(), [(0, 100), (200, 400)])]
         assert ctrl.apply_pairs('[{"pair_name":"cross","chs_a":[0],"chs_b":[1]}]')
         assert not ctrl.apply_pairs('[{"pair_name":"bad","chs_a":[],"chs_b":[1]}]')

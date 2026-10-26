@@ -353,7 +353,7 @@ def test_the_view_model_refuses_to_run_without_data():
     from chisurf.plugins.burst.burst_gs.gui.view_model import BurstGsViewModel
 
     model = BurstGsViewModel()
-    assert "burst table" in model.can_run()
+    assert "burst run" in model.can_run()
     model.use_simulation = True
     assert model.can_run() == ""
 

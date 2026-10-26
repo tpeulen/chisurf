@@ -25,6 +25,25 @@ from .test_emtk_mle_no_invented_data import texts
 TRUE_TAU = demo.SIGNAL_LIFETIME_NS
 
 
+def feed(app, *paths) -> bool:
+    """Hand burst runs over as the workspace does (Input section / Open in… / a drag); False when
+    nothing new was taken."""
+    from chisurf.plugins.burst.burst_mle_analysis.gui.native import receive_bursts
+
+    try:
+        receive_bursts(app, {"files": [str(p) for p in paths], "datasets": []})
+    except ValueError:
+        return False
+    app.draw(
+        __import__("emtk.testing", fromlist=["RecordingPainter"]).RecordingPainter(),
+        0,
+        0,
+        1200,
+        800,
+    )
+    return True
+
+
 def write_ptu(path: Path, micro: np.ndarray, seed_ticks: int = 100) -> Path:
     """A PTU of *micro* times on alternating routing channels with the demo's clock."""
     import tttrlib
@@ -290,18 +309,24 @@ def open_demo(app, inputs) -> Driver:
     app.editor.load_definition(demo.SETUP)
     app.model.gamma = 0.0  # the demo has no scattered light and no anisotropy
     app.model.r0 = 0.0
-    assert drv.drop(inputs["bur"])
+    assert feed(drv.app, inputs["bur"])
     app.model.session.set_binning(1)
     return drv
 
 
 def pick_file(app, drv, button: str, name: str, folder: Path) -> None:
+    """Pick the measured file *name* in the files tab's Input section (*button*: which input)."""
+    from chisurf.core.plugin.workspace_input import register_result
+
+    register_result(str(folder / name), kind="photons")
+    handoff = {"add_irf_files": "irf_measurement", "add_bg_files": "background_measurement"}[button]
     drv.click_text("IRF/BG files")
-    drv.click_name(button)
     drv.draw(3)
-    app.dialog.directory = str(folder)
-    drv.click_text(name)
-    drv.click_text("Open")
+    model = app.inputs[handoff][0]
+    model.workspace_input_selection = [
+        r for r in model.workspace_input_rows() if r.get("name") == name
+    ]
+    model.workspace_input_use()
     drv.draw(2)
 
 
@@ -402,7 +427,7 @@ def test_the_new_controls_are_drawn_at_the_small_size(app, inputs):
     assert "Opt" in shown and "Save fit" in shown
     drv.click_text("IRF/BG files")
     shown = " ".join(texts(drv.draw(2)))
-    for label in ("Add IRF files", "Add background files", "IRF model", "Save VV/VHs"):
+    for label in ("Measured IRF", "Measured background", "IRF model", "Save VV/VHs"):
         assert label in shown, label
 
 
@@ -410,11 +435,13 @@ def test_the_tour_step_for_measured_files_shows_the_files_tab_and_points_at_its_
     drv = open_demo(app, inputs)
     steps = json.loads((Path(__file__).parents[1] / "gui" / "guide.json").read_text())["steps"]
     index = next(
-        i for i, s in enumerate(steps) if (s.get("target") or {}).get("name") == "add_irf_files"
+        i
+        for i, s in enumerate(steps)
+        if (s.get("target") or {}).get("name") == "irf_measurement:workspace_input_rows"
     )
     app.tour.start(index)  # the host callback shows the tab of the step's target
     drv.draw(3)
-    assert "add_irf_files" in app.item_rects
+    assert "irf_measurement:workspace_input_rows" in app.item_rects
     optimise = next(
         i for i, s in enumerate(steps) if (s.get("target") or {}).get("name") == "optimize"
     )
