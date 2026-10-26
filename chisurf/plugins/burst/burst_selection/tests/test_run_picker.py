@@ -102,8 +102,12 @@ def test_the_decay_is_registered_with_the_running_session(model, monkeypatch):
     assert loaded == ["m000 sub-ensemble decay"]
 
 
-def test_without_a_session_nothing_is_registered(model, monkeypatch):
+def test_without_a_session_the_decay_joins_the_session_less_dataset_list(model, monkeypatch):
+    """Headless (scripts, the agent): no GUI session, so the plain dataset list is the registry."""
     import chisurf
 
     monkeypatch.setattr(chisurf, "cs", None, raising=False)
-    assert "registered" not in model.write_decay()
+    monkeypatch.setattr(chisurf, "imported_datasets", [])
+    verdict = model.write_decay()
+    assert verdict.endswith("registered as a dataset"), verdict
+    assert [d.name for d in chisurf.imported_datasets] == ["m000 sub-ensemble decay"]

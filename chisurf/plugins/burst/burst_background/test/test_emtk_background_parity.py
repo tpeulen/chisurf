@@ -69,7 +69,10 @@ def test_an_estimate_gives_the_qt_widgets_rates_and_the_known_background(qt, mea
     try:
         rates = _estimated(app, measurement)
         for detector in ("green", "red"):
-            assert rates[detector] == pytest.approx(qt["rates"][detector])
+            # A Poisson-MLE fit of the inter-photon tail (L-BFGS-B, forward differences): it
+            # stops at the optimiser's tolerance, so the last digits differ between compilers
+            # (a few 1e-6 relative, x86 Linux vs arm64 macOS); the statistical error is ~0.5 %.
+            assert rates[detector] == pytest.approx(qt["rates"][detector], rel=1e-5)
             assert rates[detector] == pytest.approx(BACKGROUND_KHZ[detector], rel=0.1)
         assert [app.model.fit_from_ms, app.model.fit_to_ms] == pytest.approx(qt["window"])
         assert not app.controller.running

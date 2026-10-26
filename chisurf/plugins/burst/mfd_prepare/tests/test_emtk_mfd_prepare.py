@@ -182,7 +182,10 @@ def test_a_drop_that_is_not_a_folder_is_refused(drv, tmp_path):
     assert not drv.drop(tmp_path / "does_not_exist")
     assert drv.app.model.folder == ""
     assert drv.app.model.status_text.startswith("Error: not a folder or burst table")
-    assert drv.drawn(drv.app.model.status_text)
+    # The message ends in the dropped path, which wraps onto more lines when the temporary
+    # directory is long (a parallel run's --basetemp): the drawn error line is the check.
+    texts = [t[5] for t in drv.draw(1).texts]
+    assert any(t.startswith("Error: not a folder or burst table") for t in texts), texts
 
 
 # ---- Prepare ------------------------------------------------------------------------------------------------------ #

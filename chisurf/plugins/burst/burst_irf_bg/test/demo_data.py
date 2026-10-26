@@ -68,3 +68,26 @@ def build(root: pathlib.Path, seed: int = 4) -> pathlib.Path:
     path = root / "m000.spc"
     data.write(str(path))
     return path
+
+
+#: The background rate is a Poisson-MLE fit of the inter-photon-time tail (L-BFGS-B, forward
+#: differences); it stops at the optimiser's function tolerance, which fixes the rate to a few
+#: 1e-6 relative -- the last digits differ between compilers (x86 Linux vs arm64 macOS), while
+#: the rate's statistical error (~1/sqrt(tail counts)) is near 0.5 %. Counts and the prompt are
+#: exact.
+FITTED_RTOL = 1e-5
+
+
+def assert_rows_match(rows, reference) -> None:
+    """The tool's result rows equal the recorded ones: counts and prompt exactly, the fit to its tolerance."""
+    import json  # noqa: PLC0415
+
+    import pytest  # noqa: PLC0415
+
+    rows = json.loads(json.dumps(rows))
+    assert [{k: v for k, v in r.items() if k != "background_khz"} for r in rows] == [
+        {k: v for k, v in r.items() if k != "background_khz"} for r in reference
+    ]
+    assert [r["background_khz"] for r in rows] == pytest.approx(
+        [r["background_khz"] for r in reference], rel=FITTED_RTOL
+    )

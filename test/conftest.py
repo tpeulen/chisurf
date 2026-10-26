@@ -17,77 +17,9 @@ TESTDIR = TOPDIR / "test"
 if str(TESTDIR) not in sys.path:
     sys.path.insert(0, str(TESTDIR))
 
-# ---------------------------------------------------------------------------
-# Hermetic test harness (PRD-18)
-#
-# Redirect chisurf's per-user state directory to a temporary location for the
-# whole test session so no test can read or write the real ``~/.chisurf`` — in
-# particular the sample database at ``~/.chisurf/flr/sample_management.db`` and
-# the object store. This is set *before* any chisurf import resolves a path, via
-# the ``CHISURF_SETTINGS_DIR`` override honoured by ``settings.path_utils.get_path``.
-# ---------------------------------------------------------------------------
-
-_REAL_SETTINGS_DIR = pathlib.Path.home() / ".chisurf"
-_HERMETIC_SETTINGS_DIR = pathlib.Path(tempfile.mkdtemp(prefix="chisurf-test-settings-"))
-os.environ["CHISURF_SETTINGS_DIR"] = str(_HERMETIC_SETTINGS_DIR)
-os.environ["MMFDB_SETTINGS_DIR"] = str(_HERMETIC_SETTINGS_DIR)
-# One directory per pytest process, tens of MB each (the user database): without this a day of
-# runs fills the disk, and a full disk makes every later test fail with ENOSPC.
-atexit.register(shutil.rmtree, _HERMETIC_SETTINGS_DIR, ignore_errors=True)
-
-# Matplotlib must not open windows during a test run. The default backend on
-# macOS is ``macosx``, a native GUI backend, so any test that draws a figure
-# pops a real window onto the user's screen — and a run that is meant to be
-# headless becomes interactive, can block on a window manager, and scatters
-# windows over whatever else is happening. Qt is already muzzled by
-# ``QT_QPA_PLATFORM=offscreen``; that setting does nothing for matplotlib, which
-# picks its own backend. Set before any import pulls matplotlib in, because the
-# backend is resolved at first import and cannot be changed afterwards.
-os.environ.setdefault("MPLBACKEND", "Agg")
-
-
-@pytest.fixture(scope="session", autouse=True)
-def _hermetic_settings_dir():
-    """Ensure every test uses the temp settings dir, never the real ~/.chisurf."""
-    os.environ["CHISURF_SETTINGS_DIR"] = str(_HERMETIC_SETTINGS_DIR)
-    os.environ["MMFDB_SETTINGS_DIR"] = str(_HERMETIC_SETTINGS_DIR)
-    # Pre-create a fresh, current-schema user database so resolve_database_path()
-    # does not copy the shipped curated source DB (which carries demo data and an
-    # older schema). Tests get a clean DB; isolation is preserved.
-    try:
-        from mmfdb.repository import MFDatabase
-        from mmfdb.store.database_resolver import user_database_path
-
-        user_db = user_database_path()
-        user_db.parent.mkdir(parents=True, exist_ok=True)
-        if not user_db.exists():
-            MFDatabase(str(user_db)).close()
-    except Exception:
-        pass
-    yield _HERMETIC_SETTINGS_DIR
-
-
-@pytest.fixture(autouse=True)
-def _guard_real_user_db():
-    """Fail loudly if a test resolves chisurf state to the real ~/.chisurf."""
-    from mmfdb.store.database_resolver import (
-        object_store_root,
-        user_database_path,
-    )
-
-    from chisurf.core.settings.path_utils import get_path
-
-    real = _REAL_SETTINGS_DIR.resolve()
-    assert get_path("settings").resolve() != real, (
-        "Test resolved the REAL settings dir; CHISURF_SETTINGS_DIR not in effect."
-    )
-    assert real not in user_database_path().resolve().parents, (
-        f"Test would use the REAL user database at {user_database_path()}."
-    )
-    assert (
-        real not in object_store_root().resolve().parents and object_store_root().resolve() != real
-    ), f"Test would use the REAL object store at {object_store_root()}."
-    yield
+# The hermetic settings folder (CHISURF_SETTINGS_DIR / MMFDB_SETTINGS_DIR, a fresh user
+# database, the guard against the real ~/.chisurf) lives in the root conftest.py, so the
+# plugin test directories are hermetic too.
 
 
 @pytest.fixture(autouse=True)
@@ -101,7 +33,7 @@ def _forget_recent_projects():
     """
     yield
     try:
-        (_HERMETIC_SETTINGS_DIR / "recent_projects.json").unlink(missing_ok=True)
+        (pathlib.Path(os.environ["CHISURF_SETTINGS_DIR"]) / "recent_projects.json").unlink(missing_ok=True)
     except OSError:
         pass
 

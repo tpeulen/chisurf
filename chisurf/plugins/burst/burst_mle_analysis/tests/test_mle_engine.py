@@ -67,10 +67,12 @@ def test_auto_extract_equals_the_wizards_one_click(session, qt_reference):
     assert session.settings.micro_time_binning == ref["binning"]
     assert list(session.micro_time_range) == ref["micro_time_range"]
     for det in ("green", "red"):
-        np.testing.assert_array_equal(session.irf_np[det], _a(ref["irf_np"][det]))
+        # A Gaussian least-squares fit to the prompt: equal to the optimiser's tolerance, which
+        # differs between compilers in the last digits (1e-6 relative, x86 Linux vs arm64 macOS).
+        np.testing.assert_allclose(session.irf_np[det], _a(ref["irf_np"][det]), rtol=1e-5, atol=0)
         np.testing.assert_array_equal(session.bg_np[det], _a(ref["bg_np"][det]))
     np.testing.assert_array_equal(session.decay, _a(ref["decay"]))
-    np.testing.assert_array_equal(session.irf(), _a(ref["irf"]))
+    np.testing.assert_allclose(session.irf(), _a(ref["irf"]), rtol=1e-5, atol=0)  # built from irf_np
     np.testing.assert_array_equal(session.background(), _a(ref["bg"]))
     # the fit: same optimum, same displayed curves
     assert session.outcome.names[0] == "tau"

@@ -20,7 +20,7 @@ from emtk.testing import RecordingPainter
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.plugins.burst.burst_irf_bg.gui import view_model
 from chisurf.plugins.burst.burst_irf_bg.gui.app import create_app
-from chisurf.plugins.burst.burst_irf_bg.test.demo_data import IRF_PEAK_NS, build
+from chisurf.plugins.burst.burst_irf_bg.test.demo_data import IRF_PEAK_NS, assert_rows_match, build
 from chisurf.plugins.emtk_layout import help_close_caption
 
 SIZE = (1200, 800)
@@ -142,10 +142,8 @@ def test_compute_without_files_says_why_and_a_click_on_a_loaded_demo_gives_the_q
     press(app, "irf_bg_run")
     assert app.controller.running and "Extracting IRF and background …" in shown(app)
     settle(app)
-    import json
-
     rows = app.model.results_rows()
-    assert json.loads(json.dumps(rows)) == qt["rows"]
+    assert_rows_match(rows, qt["rows"])
     for row in rows:
         assert abs(row["prompt_ns"] - IRF_PEAK_NS) < 0.15  # the IRF the demo was made with
     strings = draw(app).strings

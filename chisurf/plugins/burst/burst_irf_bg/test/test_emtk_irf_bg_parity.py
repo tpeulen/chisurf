@@ -22,7 +22,11 @@ sys.path.insert(0, str(REPO))
 from emtk.testing import PixelPainter, RecordingPainter  # noqa: E402
 
 from chisurf.plugins.burst.burst_irf_bg.gui.app import create_app  # noqa: E402
-from chisurf.plugins.burst.burst_irf_bg.test.demo_data import IRF_PEAK_NS, build  # noqa: E402
+from chisurf.plugins.burst.burst_irf_bg.test.demo_data import (  # noqa: E402
+    IRF_PEAK_NS,
+    assert_rows_match,
+    build,
+)
 from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  # noqa: E402
 
 DETECTORS = {
@@ -71,7 +75,7 @@ def test_results_equal_the_qt_tools_and_the_known_irf(qt, measurement):
     app = _computed(create_app(), measurement)
     try:
         rows = app.model.results_rows()
-        assert json.loads(json.dumps(rows)) == qt["rows"]
+        assert_rows_match(rows, qt["rows"])
         for row in rows:
             assert abs(row["prompt_ns"] - IRF_PEAK_NS) < 0.15
         rates = [r["background_khz"] for r in rows]
