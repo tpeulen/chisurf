@@ -329,10 +329,12 @@ def test_guide_waits_for_the_user(app):
         assert isinstance(step["target"], dict), step["title"]
         assert tour._target_key(step["target"]) in app.item_rects, step["title"]
     tour.start(0)
+    assert not tour.awaiting  # what the Files control is for, read, not pressed
+    tour.next()
     assert tour.awaiting
     tour.notify_used("process")  # another control: still waiting
     assert tour.awaiting
-    tour.notify_used("add_files")
+    tour.notify_used("load_example")
     assert not tour.awaiting
     tour.next()
     app.time_window_gui.tool.time_window_ms = 10.0

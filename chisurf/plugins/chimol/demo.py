@@ -12,6 +12,8 @@ import shutil
 from pathlib import Path
 
 STEM = "example"
+#: Nothing is simulated: the example is the bundled T4 lysozyme (PDB 148l), else a minimal PDB.
+DEMO = {"structure": "148l"}
 
 
 def demo_folder() -> Path:

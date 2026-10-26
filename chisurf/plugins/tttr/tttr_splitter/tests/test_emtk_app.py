@@ -145,7 +145,7 @@ def test_split_options_restore_qt_controls(tool, monkeypatch):
     assert {"Split into files", "Reset macro times", "Keep original"} <= set(seen)
     assert tool._model.split_files is False
     assert tool._model.keep_original is True
-    assert len(tool.app.splitter_gui.tour.steps) == 4
+    assert len(tool.app.splitter_gui.tour.steps) == 6
 
 
 def test_batch_count_reports_successes_only(monkeypatch):

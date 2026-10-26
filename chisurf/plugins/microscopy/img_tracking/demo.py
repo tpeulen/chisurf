@@ -16,6 +16,8 @@ from chisurf.plugins.microscopy import demo_stack
 STEM = "tracking_demo"
 #: The truth the fit must recover (px²/frame).
 DIFFUSION = 0.5
+#: The generator's parameters: the cached movie is this, seeded.
+DEMO = {"diffusion": DIFFUSION, "seed": 1}
 
 
 def demo_folder() -> Path:
@@ -31,7 +33,7 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> Path:
     path = folder / f"{STEM}.tif"
     if overwrite or not path.is_file():
         folder.mkdir(parents=True, exist_ok=True)
-        demo_stack.write_tif(path, demo_stack.tracking_stack(diffusion=DIFFUSION))
+        demo_stack.write_tif(path, demo_stack.tracking_stack(**DEMO))
     return path
 
 

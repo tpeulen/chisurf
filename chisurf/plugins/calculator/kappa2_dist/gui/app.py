@@ -24,7 +24,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk import job_gate
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import _Kappa2DistModel
 
@@ -102,6 +102,8 @@ class Kappa2Gui(TourTarget):
         self.on_save = on_save
         self.on_guide = on_guide
         self.on_help = on_help
+        #: *Load example*: set by the app (the shipped inputs, computed and exported).
+        self.on_example: Callable[[], Any] | None = None
 
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         spec = json.loads(_SPEC_PATH.read_text(encoding="utf-8"))
@@ -233,6 +235,17 @@ class Kappa2Gui(TourTarget):
             )
         )
         self.remember("compute")
+        im.same_line()
+        if action_button(
+            "example",
+            tooltip=tr(
+                "Compute the distribution for the shipped inputs and export it as CSV beside "
+                "the settings: a known starting point to change one input at a time."
+            ),
+        ):
+            self.load_example()
+            self.tour.notify_used("load_example")
+        self.item_rects["load_example"] = im.get_item_rect()
         im.end_disabled()
         for label, key, tip, action in (
             (
@@ -267,6 +280,10 @@ class Kappa2Gui(TourTarget):
             im.end_disabled()
             im.set_item_tooltip(tip)
             self.remember(key)
+
+    def load_example(self) -> Any:
+        """The *Load example* button: what the app installed as ``on_example``."""
+        return self.on_example() if callable(self.on_example) else None
 
     def has_results(self) -> bool:
         """Whether a distribution with weight exists (the Qt Save button's enabling rule)."""
@@ -549,6 +566,7 @@ def make_app(kappa2: float = 0.667, **kwargs):
         return load_into(app)
 
     app.load_example = load_example
+    app.kappa2_gui.on_example = load_example
 
     def write(path):
         m = state._model

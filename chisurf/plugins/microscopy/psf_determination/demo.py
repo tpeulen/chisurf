@@ -16,6 +16,9 @@ from chisurf.plugins.microscopy import demo_stack
 STEM = "psf_demo"
 #: The truth the fit must recover, from the generator's sigma and sampling.
 TRUE_FWHM = {"lateral_nm": 424.0, "axial_nm": 2120.0}
+#: The generator behind the cached stack (demo_stack.psf_stack: five beads, seed 4, 100 nm
+#: pixels, 300 nm z step) and the answer it must give.
+DEMO = {"seed": 4, "pixel_nm": 100.0, "z_step_nm": 300.0, **TRUE_FWHM}
 
 
 def demo_folder() -> Path:

@@ -10,7 +10,7 @@
       "title": "Start with lifetimes you already know",
       "text": "A fitted lifetime is a number with nothing to check it against. So start with a <b>simulated</b> field: four objects with lifetimes of 1.0, 3.6, 2.2 and 0.6 ns, its own IRF measurement, and the standard detection already run over it.<br/><br/>Everything below is then filled in the way a real analysis would fill it, and the answers are known.",
       "target": {
-        "action": "Load demo"
+        "name": "load_example"
       },
       "await": {
         "hint": "Press <b>Load example</b>. It simulates the field (a few seconds the first time), detects the regions, and fills this panel in."

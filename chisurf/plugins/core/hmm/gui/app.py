@@ -14,7 +14,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
-from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.plugins.emtk_layout import (
     LabelColumn,
@@ -38,7 +38,7 @@ def hex_colour(text, alpha=255):
     return (int(text[0:2], 16), int(text[2:4], 16), int(text[4:6], 16), alpha)
 
 
-class HmmApp(ImApp):
+class HmmApp(TourTarget, ImApp):
     def __init__(self, model=None):
         self.model = model or HmmViewModel()
         self.job = SnapshotJob(self.model)
@@ -107,9 +107,6 @@ class HmmApp(ImApp):
         column.pad(spec["sections"])
         draw_form(spec, self.model, self.forms[name])
 
-    def remember(self, name):
-        self.item_rects[name] = im.get_item_rect()
-
     def choose(self, action):
         self.dialog_action = action
         title = {"add": "Add trace files", "save": "Save the fit as JSON"}[action]
@@ -135,6 +132,11 @@ class HmmApp(ImApp):
         self.tour.notify_used({"run": "request_run", "run_scan": "request_scan"}[method])
         return ok
 
+    def on_demo(self) -> None:
+        """*Load example*: the generated three-state trace with known means and dwell times."""
+        self.model.load_demo()
+        self.tour.notify_used("load_example")
+
     def add_files(self, paths):
         paths = [str(p) for p in paths]
         if paths:
@@ -142,6 +144,7 @@ class HmmApp(ImApp):
             self.model.add_files(paths)
             self.model._status = f"{len(self.model.files)} trace file(s) selected: press Fit."
             self.tour.notify_used("add_files")
+            self.tour.notify_used("load_example")  # the data step: an example or your own traces
 
     def files_dropped(self, paths):
         """Host drop: every dropped file joins the trace list."""
@@ -178,8 +181,8 @@ class HmmApp(ImApp):
                     "tip": "Fit every state count in the range and score each by AIC and BIC.",
                 },
                 {
-                    "label": "Demo trace",
-                    "key": "demo",
+                    "label": action_caption("example"),
+                    "key": "load_example",
                     "enabled": idle,
                     "tip": "Replace the traces by a generated three-state trace with known means and dwell times (a demo, not data).",
                 },
@@ -198,10 +201,8 @@ class HmmApp(ImApp):
             self.start("run")
         elif pressed == "request_scan":
             self.start("run_scan")
-        elif pressed == "demo":
-            m.load_demo()
-            self.tour.notify_used("demo")
-            self.tour.notify_used("add_files")
+        elif pressed == "load_example":
+            self.on_demo()
         elif pressed == "save":
             self.choose("save")
         elif pressed == "help":
@@ -301,7 +302,7 @@ class HmmApp(ImApp):
             self.model.trace_series(),
             self.time_label("time"),
             "counts per bin",
-            empty="Load a trace (Add files... or Demo trace).",
+            empty="Load a trace (Add files... or Load example).",
         )
 
     def histogram_plot(self, box):

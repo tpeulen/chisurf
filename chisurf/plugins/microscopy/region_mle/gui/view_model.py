@@ -396,8 +396,8 @@ class RegionMleViewModel(MleObserverMixin):
         """Button action: ask the host to preview the segmentation on a worker."""
         self.notify("start_preview")
 
-    def request_demo(self) -> None:
-        """Button action: generate and load the demo on a worker thread."""
+    def load_example(self) -> None:
+        """Button action (*Load example*): generate and load the demo on a worker thread."""
         self.notify("start_demo")
 
     def load_demo(self) -> str:

@@ -256,7 +256,16 @@ def test_the_guide_points_at_real_controls_and_waits():
     try:
         _draw(app, size, painter=PixelPainter)
         keys = {app.tour._target_key(s.get("target")) for s in app.tour.steps} - {""}
-        assert keys == {"trajectory", "topology", "donor", "acceptor", "dipoles", "process", "log"}
+        assert keys == {
+            "load_example",
+            "trajectory",
+            "topology",
+            "donor",
+            "acceptor",
+            "dipoles",
+            "process",
+            "log",
+        }
         assert keys <= set(app.item_rects)
 
         def press(key):
@@ -268,7 +277,12 @@ def test_the_guide_points_at_real_controls_and_waits():
             _draw(app, size, n=1, painter=PixelPainter)
 
         steps = app.tour.steps
-        for target, button in (("topology", "topology_browse"), ("process", "process")):
+        # Load example fills the file rows, so their step explains rather than waits.
+        app.tour.start(
+            next(i for i, s in enumerate(steps) if s.get("target", {}).get("name") == "topology")
+        )
+        assert not app.tour.awaiting
+        for target, button in (("process", "process"),):
             index = next(
                 i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target
             )

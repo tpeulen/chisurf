@@ -7,20 +7,20 @@
       "target": {}
     },
     {
-      "title": "The answer, before you press anything",
-      "text": "These fields drive a two-state exchange simulator, so the tour can run with no data of yours — and you can check the result, because you set it.<br/><br/>With the defaults <b>τ₁ = 1 ns, τ₂ = 3 ns, k₁₂ = 30 s⁻¹, k₂₁ = 10 s⁻¹</b>, two numbers are fixed:<br/>• equilibrium populations <b>0.25 / 0.75</b>, from p₁ = k₂₁/(k₁₂+k₂₁);<br/>• relaxation time <b>1/(k₁₂+k₂₁) = 25 ms</b>.<br/><br/>Remember the 25 ms. The next step is about it.",
+      "title": "Start with a stream whose answer you know",
+      "text": "<b>Load example</b> generates a photon stream from the simulator fields below and loads it as the active dataset; the status bar reports how many photons and with which parameters. On a real measurement this is where <b>Open</b> would go instead.",
       "target": {
-        "attr": "sim_tau1_ns"
+        "name": "load_example"
+      },
+      "await": {
+        "hint": "Press <b>🧪 Load example</b> to generate the demo stream."
       }
     },
     {
-      "title": "Simulate the stream",
-      "text": "<b>Sim</b> generates the photon stream and loads it as the active dataset; the status bar reports how many photons and with which parameters. On a real measurement this is where <b>Open</b> would go instead.",
+      "title": "The answer, before you press anything",
+      "text": "These fields drove the example's two-state exchange simulator — and you can check the result, because you set it.<br/><br/>With the defaults <b>τ₁ = 1 ns, τ₂ = 3 ns, k₁₂ = 30 s⁻¹, k₂₁ = 10 s⁻¹</b>, two numbers are fixed:<br/>• equilibrium populations <b>0.25 / 0.75</b>, from p₁ = k₂₁/(k₁₂+k₂₁);<br/>• relaxation time <b>1/(k₁₂+k₂₁) = 25 ms</b>.<br/><br/>Remember the 25 ms. The next step is about it.",
       "target": {
-        "action": "Sim"
-      },
-      "await": {
-        "hint": "Press <b>Sim</b> to generate the demo stream."
+        "attr": "sim_tau1_ns"
       }
     },
     {

@@ -530,7 +530,8 @@ class FilterPanel:
             filename="filters.json",
         )
 
-    def example(self):
+    def load_example(self):
+        """*Load example*: the synthetic two-component example, populated and computed."""
         self.app.submit(lambda model: (model.populate_example(), model.compute()))
 
     def stop(self):

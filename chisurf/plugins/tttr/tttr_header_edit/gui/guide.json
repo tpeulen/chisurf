@@ -1,5 +1,18 @@
 [
     {
+        "title": "Read and edit a TTTR header",
+        "text": "This tool reads the header of a TTTR file, lets you add or change its tags and saves a copy — the original file is never overwritten. Start with a demonstration file, then your own.",
+        "target": {}
+    },
+    {
+        "title": "Start with a demonstration file",
+        "text": "<b>Load example</b> writes a deterministic demonstration PTU in the settings cache and reads its header, so every control below has something to act on.",
+        "target": "load_example",
+        "await": {
+            "hint": "Press <b>🧪 Load example</b>."
+        }
+    },
+    {
         "title": "Open a measurement",
         "text": "Press <b>Open</b> to choose a supported TTTR file (PTU / HT3 / SPC / HDF5) and read its header — or press <b>Load example</b> for a deterministic demonstration PTU, no file of your own needed. The guide waits for your click; it does not choose or load a file for you.",
         "target": "open",

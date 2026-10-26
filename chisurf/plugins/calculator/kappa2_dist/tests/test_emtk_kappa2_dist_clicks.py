@@ -262,7 +262,12 @@ def test_guide_button_starts_the_tour_and_the_tour_card_buttons_work(app):
     press_text(app, "Guide")
     tour = app.kappa2_gui.tour
     assert tour.active
-    tour.next()  # step 1 (introduction) -> 2: the model choice (the Next button's callback; its click is test_the_tour_next_button_can_be_clicked)
+    tour.next()  # step 1 (introduction) -> 2: Load example (the Next button's callback; its click is test_the_tour_next_button_can_be_clicked)
+    draw(app)
+    assert tour.awaiting
+    click(app, app.item_rects["load_example"])  # the user presses the highlighted button
+    assert not tour.awaiting
+    tour.next()  # -> 3: the model choice
     draw(app)
     assert tour.awaiting
     pick_model(app, "Isotropic")  # the user operates the highlighted control
@@ -288,10 +293,14 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
         guard += 1
         draw(app)
         step = tour.steps[tour.step_idx]
-        key = (step.get("target") or {}).get("attr") or (step.get("target") or {}).get("key")
+        target = step.get("target") or {}
+        key = target.get("attr") or target.get("key") or target.get("name")
         if tour.awaiting:
-            if key == "model_type":
-                pick_model(app, "Isotropic" if tour.step_idx == 1 else "WIC (Cone)")
+            if key == "load_example":
+                click(app, app.item_rects["load_example"])
+                settle(app)
+            elif key == "model_type":
+                pick_model(app, "Isotropic" if tour.step_idx == 2 else "WIC (Cone)")
             elif key == "compute":
                 np.random.seed(7)
                 press_text(app, "Compute")

@@ -16,6 +16,10 @@ FIXTURE = (
 )
 
 
+#: Nothing is generated: the example is the legacy sample folder shipped with the plugin.
+DEMO = {"folder": FIXTURE.name}
+
+
 def demo_folder() -> Path:
     """The settings-owned demonstration folder of the importer."""
     from chisurf.core.settings import get_path

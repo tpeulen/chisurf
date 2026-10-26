@@ -98,7 +98,7 @@ def test_sim_run_and_the_inversion_settings_shape_the_result(app_driver):
     driver.click("Simulator.fold")
     type_into(driver, "sim_time_s", "30")
     assert model.sim_time_s == 30.0
-    driver.click("Sim")
+    driver.click("load_example")
     settle(app, driver)
     assert not model.error_text, model.error_text
     assert model.tttr is not None and model.tttr.n_photons > 100000
@@ -138,7 +138,7 @@ def test_the_map_colormap_control_recolours_both_maps(app_driver):
     model = app.model
     driver.click("Simulator.fold")
     type_into(driver, "sim_time_s", "5")
-    driver.click("Sim")
+    driver.click("load_example")
     settle(app, driver)
     type_into(driver, "n_components", "16")
     driver.click("Run")

@@ -148,5 +148,16 @@ def test_declared_window_and_translated_actions_keep_identity(widget, monkeypatc
 
     monkeypatch.setattr(module.im, "button", remember)
     widget.app.draw(RecordingPainter(), 0.0, 0.0, 640.0, 480.0)
-    assert [split_label(label)[1] for label in captions] == ["Compute", "Save", "Guide", "Help"]
-    assert all(split_label(label)[0].startswith("Translated ") for label in captions)
+    assert [split_label(label)[1] for label in captions] == [
+        "Compute",
+        "example",
+        "Save",
+        "Guide",
+        "Help",
+    ]
+    # Load example is the shared vocabulary action: its caption is translated by the vocabulary.
+    assert all(
+        split_label(label)[0].startswith("Translated ")
+        for label in captions
+        if split_label(label)[1] != "example"
+    )

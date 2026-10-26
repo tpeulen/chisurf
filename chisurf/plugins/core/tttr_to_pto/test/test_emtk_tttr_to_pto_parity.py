@@ -462,7 +462,7 @@ def test_help_exists_and_draws():
 
 def test_the_qt_tool_keeps_its_own_help_and_guide():
     """The legacy Qt tool still reads help.md and guide.json untouched."""
-    assert json.loads((GUI / "guide.json").read_text())["steps"][1]["await"]["hint"].startswith(
+    assert json.loads((GUI / "guide.json").read_text())["steps"][2]["await"]["hint"].startswith(
         "Drop a vendor"
     )
     assert "TTTR ⇄ PTO" in (GUI / "help.md").read_text()

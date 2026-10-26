@@ -7,10 +7,15 @@
       "target": {}
     },
     {
+      "title": "Start with a stack whose answer you know",
+      "text": "<b>Load example</b> writes a bead stack that drifts by exactly (2, −1) px per frame and measures it, so you can check the tool against the truth before you trust it on your own data.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>🧪 Load example</b>."}
+    },
+    {
       "title": "Load the stack",
-      "text": "A frame stack or a photon stream. It needs enough structure to correlate: a nearly empty field of view has no peak to find. Choosing a file measures it at once.",
-      "target": {"attr": "filename"},
-      "await": {"hint": "Press <b>Browse</b> (or drop a file, or type a path and press Enter) and choose the image or photon file."}
+      "text": "Your own data goes here: a frame stack or a photon stream (Browse, a drop, or a typed path and Enter). It needs enough structure to correlate: a nearly empty field of view has no peak to find. Choosing a file measures it at once.",
+      "target": {"attr": "filename"}
     },
     {
       "title": "The reference decides which failure you get",

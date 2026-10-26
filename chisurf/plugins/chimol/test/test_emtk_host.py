@@ -179,7 +179,7 @@ def test_first_draw_starts_chimol_off_the_ui_thread(monkeypatch):
 
 def test_load_example_button_opens_a_structure_and_satisfies_the_tour(app):
     """The guide's first awaited step points at the host's own Load example button, which loads 148l."""
-    assert app.tour.steps[1]["target"] == {"name": "example"}
+    assert app.tour.steps[1]["target"] == {"name": "load_example"}
     before = app._object_count()
     assert app.load_example()
     assert app._object_count() == before + 1

@@ -8,12 +8,12 @@
     },
     {
       "title": "Load the traces, and say what a bin is worth",
-      "text": "Add one or many traces (the Add files... button, or drop them on the window). The <b>time step</b> is what turns transition probabilities into rates, so a wrong value gives you a kinetic scheme in the wrong units — and the fit will not object.",
+      "text": "Start with <b>Load example</b>: a generated three-state trace with known means and dwell times. Your own traces come in the same way with <b>Add files...</b> (one or many), or drop them on the window. The <b>time step</b> is what turns transition probabilities into rates, so a wrong value gives you a kinetic scheme in the wrong units — and the fit will not object.",
       "target": {
-        "name": "add_files"
+        "name": "load_example"
       },
       "await": {
-        "hint": "Press Add files... (or Demo trace to try the tool on a generated three-state trace)."
+        "hint": "Press 🧪 Load example (or Add files... for your own traces)."
       }
     },
     {

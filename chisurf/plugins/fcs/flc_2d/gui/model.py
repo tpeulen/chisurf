@@ -224,8 +224,8 @@ class _FlcModel:
         """Button action: ask the window for an IRF file dialog."""
         self.dialog = "open_irf"
 
-    def request_simulate(self) -> None:
-        """Button action: announce that a stream should be simulated."""
+    def load_example(self) -> None:
+        """Button action (*Load example*): announce that the example stream should be simulated."""
         self.notify("start_simulate")
 
     def request_run(self) -> None:

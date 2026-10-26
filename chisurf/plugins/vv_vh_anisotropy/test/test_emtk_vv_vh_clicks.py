@@ -269,9 +269,14 @@ def test_guide_button_starts_the_tour_which_waits_for_the_load_example_button(
     monkeypatch.setattr(ui.app.model, "load_example", lambda: loaded.append(True))
     ui.click(action_caption("guide"))
     assert (
-        ui.app.tour.active and ui.drawn("Close Tour") and ui.drawn("Step 1 of 7: Load an example")
+        ui.app.tour.active
+        and ui.drawn("Close Tour")
+        and ui.drawn("Step 1 of 8: VV and VH in one file")
     )
-    assert ui.app.tour.awaiting  # step 1 waits for Load example
+    assert not ui.app.tour.awaiting  # step 1 explains the file
+    ui.click("Next ►")
+    assert ui.drawn("Step 2 of 8: Load an example")
+    assert ui.app.tour.awaiting  # step 2 waits for Load example
     ui.click(action_caption("example"))  # the awaited control
     assert loaded and not ui.app.tour.awaiting
     ui.click("Close Tour")
@@ -281,7 +286,7 @@ def test_guide_button_starts_the_tour_which_waits_for_the_load_example_button(
 def test_the_tour_waits_for_the_g_factor_field_to_be_edited(ui, files):
     a, _ = files
     load(ui, a)
-    ui.app.tour.start(1)
+    ui.app.tour.start(2)
     ui.frame(2)
     assert ui.app.tour.awaiting
     set_field(ui, "g_factor", "1.1")  # the highlighted field is operated
@@ -289,12 +294,12 @@ def test_the_tour_waits_for_the_g_factor_field_to_be_edited(ui, files):
 
 
 def test_the_tour_next_and_prev_buttons_can_be_clicked(ui, files):
-    ui.app.tour.start(2)
+    ui.app.tour.start(3)
     ui.frame(3)
     ui.click("Next ►")
-    assert ui.app.tour.step_idx == 3
+    assert ui.app.tour.step_idx == 4
     ui.click("◄ Prev")
-    assert ui.app.tour.step_idx == 2
+    assert ui.app.tour.step_idx == 3
 
 
 def test_a_file_dropped_on_the_native_host_is_loaded(ui, files):

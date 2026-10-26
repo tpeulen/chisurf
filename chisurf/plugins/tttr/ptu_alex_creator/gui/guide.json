@@ -2,6 +2,11 @@
   "_comment": "Guided tour for the ALEX Creator. Targets are the names the app registers for its controls; a step with an await waits until the user operates that control (the tour never presses it).",
   "steps": [
     {
+      "title": "Turn a µs-ALEX stream into PIE",
+      "text": "The ALEX Creator folds a µs-ALEX measurement — its excitation alternation still in the macro time — into the micro time, so the PIE tools can read it like any other measurement. Start with a stream whose answer is known, then your own.",
+      "target": {}
+    },
+    {
       "title": "Load an example measurement",
       "text": "<b>Load example</b> generates a deterministic demonstration stream — a µs-ALEX measurement whose excitation alternation is still in the macro time — in the settings cache and loads it: the folded ALEX phase appears as a histogram. <b>Open…</b> chooses a real TTTR file instead (a .sm, .ptu, .ht3 ...), or drop one on the window. Loading detects measured phase candidates automatically at the configured Period and Shift; review them before assigning laser identities.",
       "target": {

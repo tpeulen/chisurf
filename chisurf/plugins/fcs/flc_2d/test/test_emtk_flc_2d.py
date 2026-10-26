@@ -56,7 +56,7 @@ def run_through_app(app, sim_time_s, mem=False, size=(1200, 800)):
     """Press Sim and Run the way the buttons do (``model.request_*``) and wait for each."""
     app.model.sim_time_s = sim_time_s
     app.model.run_1d_mem = mem
-    app.model.request_simulate()
+    app.model.load_example()
     settle(app, size)
     assert not app.model.error_text, app.model.error_text
     app.model.request_run()
@@ -182,7 +182,7 @@ def test_actions_change_state_and_report_errors(tmp_path):
     events = []
     model.add_observer(events.append)
     assert not model.enabled("request_run")  # no stream yet
-    assert model.enabled("request_open") and model.enabled("request_simulate")
+    assert model.enabled("request_open") and model.enabled("load_example")
     model.request_open()
     assert model.dialog == "open_tttr"
     model.dialog = ""
@@ -211,7 +211,7 @@ def test_actions_change_state_and_report_errors(tmp_path):
     assert model.enabled("request_run")
     # everything is greyed while a worker runs
     model.busy = True
-    assert not model.enabled("request_run") and not model.enabled("request_simulate")
+    assert not model.enabled("request_run") and not model.enabled("load_example")
     model.busy = False
     # an unusable IRF file is an error, the IRF mode is not switched
     with pytest.raises(RuntimeError):
@@ -423,7 +423,7 @@ def test_guide_targets_are_reachable_and_tour_waits_for_outcomes():
     tour = app.tour
     titles = {w["title"] for w in app.windows}
     # every target is a spec field, a toolbar button (Sim, Run), or a window's title
-    known = set(app._settings_keys) | titles | {"Sim", "Run", "IRF", "Open"}
+    known = set(app._settings_keys) | titles | {"load_example", "Run", "IRF", "Open"}
     keys = [tour._target_key(s.get("target")) for s in steps if tour._target_key(s.get("target"))]
     assert [k for k in keys if k not in known] == []
     # each step, in turn, finds a rect for its target after the tour brought the window forward
@@ -437,11 +437,13 @@ def test_guide_targets_are_reachable_and_tour_waits_for_outcomes():
     tour.stop()
     assert len(WINDOW_KEYS) == len(app.windows) == 8
     # the Sim step waits for the stream to be there, not for the press alone
-    sim_step = next(i for i, s in enumerate(steps) if tour._target_key(s.get("target")) == "Sim")
+    sim_step = next(
+        i for i, s in enumerate(steps) if tour._target_key(s.get("target")) == "load_example"
+    )
     tour.start(sim_step)
     assert tour.awaiting
     app.model.sim_time_s = 1.0
-    app.model.request_simulate()
+    app.model.load_example()
     assert tour.awaiting
     settle(app)
     assert not tour.awaiting

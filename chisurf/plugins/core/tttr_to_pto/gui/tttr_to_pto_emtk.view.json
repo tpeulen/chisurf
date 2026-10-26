@@ -12,6 +12,8 @@
       "type": "button_row",
       "description": "Add files with a dialog instead of dropping them, or forget the finished entries.",
       "buttons": [
+        {"action": "load_example", "label": "Load example", "icon": "🧪",
+         "description": "Write the shared demonstration SPC stream (seeded, shaped like an SPC-132 measurement) in the settings cache and queue it for conversion to a .pto."},
         {"action": "request_add", "label": "Add files...",
          "description": "Choose vendor photon files to pack into one .pto, or .pto containers to unpack. Same as dropping them on the window."},
         {"action": "clear_history", "label": "Clear history",

@@ -11,7 +11,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from chisurf.plugins.tttr import demo_lib
+
 STEM = "tttr_to_pto_demo"
+#: The shared tttr generator's full configuration: the cached stream is this, seeded.
+DEMO = dict(demo_lib.config())
 
 
 def demo_folder() -> Path:
@@ -23,13 +27,11 @@ def demo_folder() -> Path:
 
 def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> Path:
     """Write (or reuse) the synthetic SPC photon stream."""
-    from chisurf.plugins.tttr import demo_lib
-
     folder = demo_folder() if folder is None else Path(folder)
     path = folder / f"{STEM}.spc"
     if overwrite or not path.is_file():
         folder.mkdir(parents=True, exist_ok=True)
-        c = demo_lib.config()
+        c = DEMO
         macro, micro, routing = demo_lib.photon_stream(c)
         info = demo_lib.write_spc(path, c, macro, micro, routing)
         if not path.is_file() or path.stat().st_size == 0:

@@ -174,7 +174,7 @@ class FlcApp(ImApp):
         if self.model.error_text:
             return
         if method == "simulate":
-            self.tour.notify_used("Sim")
+            self.tour.notify_used("load_example")
         elif method == "run":
             self.tour.notify_used("Run")
 
@@ -198,7 +198,7 @@ class FlcApp(ImApp):
         for key, name in (
             ("Open", "request_open"),
             ("IRF", "request_open_irf"),
-            ("Sim", "request_simulate"),
+            ("load_example", "load_example"),
             ("Run", "request_run"),
             ("help", "request_help"),
             ("guide", "request_guide"),

@@ -61,7 +61,7 @@
       "description": "Export the filters, reconstruction and metadata as JSON."
      },
      {
-      "action": "example",
+      "action": "load_example",
       "label": "Load example",
       "icon": "🧪",
       "description": "Restore the detector-convolved synthetic 70/30 example."

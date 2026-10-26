@@ -246,8 +246,9 @@ class ImagingToolApp(ImApp):
         if self._demo_module() is not None:  # only tools with a demo offer the example
             im.same_line()
             if action_button("example"):
+                self.tour.notify_used("load_example")
                 self.load_example()
-            self.item_rects["example"] = im.get_item_rect()
+            self.item_rects["load_example"] = im.get_item_rect()
         if self.CANCELLABLE:
             im.same_line()
             im.begin_disabled(not (self.job.busy or self.model.busy))

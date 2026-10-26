@@ -887,7 +887,10 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
         step = app.tour.steps[app.tour.step_idx]
         target = step.get("target") or {}
         if app.tour.awaiting:
-            if target.get("name") == "Simulate instead.fold":
+            if target.get("name") == "load_example":
+                drv.click("load_example")
+                drv.settle()
+            elif target.get("name") == "Simulate instead.fold":
                 drv.click("Simulate instead.fold")
             elif target.get("attr") == "use_simulation":
                 drv.click("use_simulation")
@@ -902,7 +905,7 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
         drv.click_text(
             "Finish ✓" if app.tour.step_idx == len(app.tour.steps) - 1 else "Next ►", last=True
         )
-    assert not app.tour.active and app.model.use_simulation and app.model.result is not None
+    assert not app.tour.active and app.model.result is not None  # the example movie, tracked
 
 
 def test_every_guide_target_is_a_drawn_control_or_window(app, drv):

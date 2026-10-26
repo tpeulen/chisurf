@@ -449,7 +449,10 @@ def test_every_editable_field_has_arrows_and_the_qt_range_and_step(app):
 
 def test_no_emoji_and_the_model_choice_lists_the_qt_labels(app):
     strings = draw(app).strings
-    assert all(ord(ch) < 0x2190 or ch in "κ²₀∞δ°ₐ₂" for text in strings for ch in text), strings
+    # No emoji, as in the Qt tool -- except the shared vocabulary's Load example icon (🧪).
+    assert all(ord(ch) < 0x2190 or ch in "κ²₀∞δ°ₐ₂\U0001f9ea" for text in strings for ch in text), (
+        strings
+    )
     draw(app)
     click(app, app.item_rects["model_type"])
     assert {"WIC (Cone)", "DWT (Diffusion)", "Isotropic"} <= set(draw(app, frames=1).strings)
@@ -498,6 +501,7 @@ def test_guide_targets_are_drawn_and_the_tour_waits_for_the_user(app):
             name = EmTkGuidedTour._target_key(target)
             assert app.item_rects.get(name), f"{step['title']}: nothing drawn for {name!r}"
     assert [s["title"] for s in steps if s.get("await")] == [
+        "Start from the shipped inputs",
         "Start with the worst case",
         "Compute, and read the mean",
         "Now use your own dyes",
@@ -506,7 +510,7 @@ def test_guide_targets_are_drawn_and_the_tour_waits_for_the_user(app):
     assert (
         "Press <b>Help</b>" in steps[-1]["text"] and "<b>?</b>" not in steps[-1]["text"]
     )  # the Qt '?' is Help here
-    app.kappa2_gui.tour.start(1)
+    app.kappa2_gui.tour.start(2)
     draw(app)
     assert app.kappa2_gui.tour.awaiting
     pick_model(app, "Isotropic")

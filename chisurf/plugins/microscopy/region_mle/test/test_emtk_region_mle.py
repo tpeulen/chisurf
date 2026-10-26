@@ -156,7 +156,7 @@ def test_actions_change_state_and_report_errors(workdir, tmp_path):
     assert model.sel_irf_files == ["i1.ptu"]
     # busy greys everything
     model.busy = True
-    assert not model.enabled("request_demo") and not model.enabled("tau")
+    assert not model.enabled("load_example") and not model.enabled("tau")
     # the real workflow: after a run the export action is usable and writes a table
     model = loaded_model(workdir)
     assert model.enabled("request_run") and model.enabled("request_preview")
@@ -393,7 +393,7 @@ def test_guide_targets_are_reachable_and_tour_waits_for_outcomes(workdir):
     # the demo step waits for the demo being loaded, not for the button press
     tour.start(1)
     assert tour.awaiting
-    app.form.on_used("request_demo")
+    app.form.on_used("load_example")
     assert tour.awaiting
     app._job_method = "load_demo"
     app._job_finished()

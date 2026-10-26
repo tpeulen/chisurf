@@ -8,6 +8,13 @@
       "target": {"name": "nav_list"}
     },
     {
+      "title": "Start with an example session",
+      "text": "<b>Load example</b> attaches a small session — three datasets and two template fits whose parameters move by known amounts — and stages the batch, so you can walk the wizard to a result before you pick your own datasets.",
+      "page": "datasets",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>🧪 Load example</b>."}
+    },
+    {
       "title": "Pick datasets already loaded",
       "text": "Anything loaded in ChiSurf can join the batch. Open <b>Loaded data</b> in the step list.",
       "page": "welcome",

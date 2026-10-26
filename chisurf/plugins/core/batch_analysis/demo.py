@@ -14,6 +14,10 @@ from pathlib import Path
 
 STEM = "batch_demo"
 N_DATASETS = 3
+#: Two template fits, so choosing the template is a real choice (the tour waits for it).
+TEMPLATES = ("Template fit", "Second fit")
+#: The example session: three datasets, the templates, fits with known parameter movements.
+DEMO = {"datasets": N_DATASETS, "templates": TEMPLATES}
 
 
 def demo_folder() -> Path:
@@ -29,7 +33,7 @@ def _example_model(folder: Path):
     from chisurf.plugins.core.batch_analysis.gui.model import BatchModel
     from chisurf.plugins.core.batch_analysis.test.fakes import FakeSession
 
-    model = BatchModel(session=FakeSession())
+    model = BatchModel(session=FakeSession(fits=TEMPLATES))
     model.selected_dataset_indices = list(range(N_DATASETS))
     model.set_save_path(str(folder / f"{STEM}.csv"))
     model.run()
@@ -56,7 +60,7 @@ def load_into(app) -> Path:
     from chisurf.plugins.core.batch_analysis.test.fakes import FakeSession
 
     model = app.model if hasattr(app, "model") else app
-    model.session = FakeSession()
+    model.session = FakeSession(fits=TEMPLATES)
     model.reload_fits()
     model.reload_datasets()
     model.update()

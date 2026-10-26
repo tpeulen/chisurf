@@ -365,3 +365,31 @@ def test_a_tool_tour_beside_its_resources_teaches_the_plugins_demo(tmp_path):
     (tool / "guide.json").unlink()  # without it the plugin's own tour is audited, and fails
     codes = {f["code"] for f in audit_tree(tmp_path, revision=None)["findings"]}
     assert "demo-tour-target" in codes
+
+
+SHARED_BASE = """from emtk import im
+from chisurf.emtk.help_guide import TourTarget
+from chisurf.plugins.emtk_layout import action_button
+class FamilyToolApp(TourTarget):
+    def draw(self):
+        if action_button("example"):
+            self.load_example()
+        self.remember("load_example")
+"""
+
+
+@pytest.mark.parametrize("uses_it, expected", [(True, []), (False, ["demo-control"])])
+def test_a_family_base_the_plugin_uses_draws_its_control(uses_it, expected):
+    """A tool family's shared base proves the control only for a plugin that uses it."""
+    app = "from chisurf.plugins.family.base import FamilyToolApp\n" + (
+        "app = FamilyToolApp()\n" if uses_it else ""
+    )
+    findings = audit_demo(
+        GOOD,
+        GUIDE,
+        {},
+        "chisurf/plugins/family/probe/demo.py",
+        control_sources={"chisurf/plugins/family/probe/app.py": app},
+        registration_sources={"chisurf/plugins/family/base.py": SHARED_BASE},
+    )
+    assert [f.code for f in findings] == expected

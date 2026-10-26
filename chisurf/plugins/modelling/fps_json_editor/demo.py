@@ -23,6 +23,9 @@ SOURCE = (
     / "pair_selection_tutorial.fps.json"
 )
 
+#: Nothing is generated: the example is a labelling plan shipped with the FRET modelling plugin.
+DEMO = {"document": SOURCE.name}
+
 
 def demo_folder() -> Path:
     """The settings-owned demonstration folder of the FPS JSON editor."""

@@ -10,8 +10,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from chisurf.plugins.microscopy.spot_finder.demo import DEMO as _SOURCE_DEMO
 from chisurf.plugins.microscopy.spot_finder.demo import demo_folder as _source_folder
 from chisurf.plugins.microscopy.spot_finder.demo import make_demo as _make_source_demo
+
+#: The spot finder's demo field, read in place: the same generator parameters.
+DEMO = dict(_SOURCE_DEMO)
 
 
 def demo_folder() -> Path:

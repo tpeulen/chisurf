@@ -7,10 +7,15 @@
       "target": {}
     },
     {
+      "title": "Start with a stack whose answer you know",
+      "text": "<b>Load example</b> writes an object band-limited to 0.15 cycles/px under independent noise and measures it, so the resolution the tool reports can be checked against the band limit.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>🧪 Load example</b>."}
+    },
+    {
       "title": "Load the acquisition",
-      "text": "A frame stack, or a photon stream that will be binned into one. FRC needs many frames: the split must leave enough photons in each half to form an image. Choosing a file reads its channels; it does not measure.",
-      "target": {"attr": "filename"},
-      "await": {"hint": "Press <b>Browse</b> (or drop a file, or type a path and press Enter) and choose the acquisition."}
+      "text": "Your own data goes here: a frame stack, or a photon stream that will be binned into one (Browse, a drop, or a typed path and Enter). FRC needs many frames: the split must leave enough photons in each half to form an image. Choosing a file reads its channels; it does not measure.",
+      "target": {"attr": "filename"}
     },
     {
       "title": "The split IS the measurement",

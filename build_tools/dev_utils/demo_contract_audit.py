@@ -259,6 +259,49 @@ def _imperative_control(tree, registration_sources):
     return False
 
 
+def _shared_control(tree, registration_sources, name=""):
+    """Whether a class this source imports from a shared module and uses draws the control.
+
+    A tool family keeps its Load-example button in one base (the trajectory tools'
+    ``TrajToolApp``, the imaging tools' ``ImagingToolApp``): a plugin that constructs or
+    subclasses that class has the control the base proves with :func:`_imperative_control`.
+    The class must be used here -- called or a base of a class here -- not merely imported.
+    """
+    imported = {}
+    for node in tree.body:
+        if not isinstance(node, ast.ImportFrom) or not node.module:
+            continue
+        module = node.module
+        if node.level:  # relative to the importing file's package
+            package = Path(name).parent
+            for _ in range(node.level - 1):
+                package = package.parent
+            module = ".".join([*package.parts, *node.module.split(".")])
+        for alias in node.names:
+            imported[alias.asname or alias.name] = (module, alias.name)
+    used = {
+        node.func.id for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    } | {
+        base.id for node in ast.walk(tree) if isinstance(node, ast.ClassDef)
+        for base in node.bases if isinstance(base, ast.Name)
+    }
+    for local, (module, cls) in imported.items():
+        if local not in used:
+            continue
+        source = registration_sources.get(module.replace(".", "/") + ".py")
+        if source is None:
+            continue
+        try:
+            shared = ast.parse(source)
+        except SyntaxError:
+            continue
+        if any(isinstance(node, ast.ClassDef) and node.name == cls for node in shared.body) and \
+                _imperative_control(shared, registration_sources):
+            return True
+    return False
+
+
 def audit_demo(source: str, guide, view, path: str, *, control_sources=None, registration_sources=None) -> list[Finding]:
     """Check configuration, cache API shape and the declared first example action.
 
@@ -367,6 +410,7 @@ def audit_demo(source: str, guide, view, path: str, *, control_sources=None, reg
             findings.append(Finding(name, "/", "invalid-python", str(exc), exc.lineno))
         else:
             imperative |= _imperative_control(control_tree, registration_sources or {})
+            imperative |= _shared_control(control_tree, registration_sources or {}, name)
     if not controls and not imperative:
         missing("demo-control", "Declare load_example in a view or register its actual drawn control.")
     return findings
@@ -451,12 +495,13 @@ def audit_tree(root: Path = ROOT, *, revision: str | None = "HEAD") -> dict:
             if owner(name) == plugin and name.startswith(parent + "/")
         }
         # A plugin that hosts several tools keeps each tool's tour beside its resources
-        # (``gui/resources/<tool>/guide.json``); the demo is taught by one of them.
+        # (``gui/resources/<tool>/guide.json``); the demo is taught by one of them. A tour in
+        # ``gui_parts/`` counts as the help/guide seam counts it (test_plugin_help_guide_seam).
         guides = [
             (name, text)
             for name, text in sorted(owned.items())
             if (
-                Path(name).parent.as_posix() in {parent, parent + "/gui"}
+                Path(name).parent.as_posix() in {parent, parent + "/gui", parent + "/gui_parts"}
                 or Path(name).parent.parent.as_posix() == parent + "/gui/resources"
             )
             and "guide" in Path(name).name
@@ -480,9 +525,13 @@ def audit_tree(root: Path = ROOT, *, revision: str | None = "HEAD") -> dict:
 
         parsed_guides = [parse_resource(name, text) for name, text in guides]
         view = [parse_resource(name, text) for name, text in views]
+        # The plugin's own GUI code: its gui/ package, or the modules beside a tool that keeps
+        # no gui/ package (a family tool's app.py); tests and the demo producer never count.
         control_sources = {
             name: text for name, text in owned.items()
-            if name.endswith(".py") and "gui" in Path(name).parts
+            if name.endswith(".py")
+            and not {"test", "tests"} & set(Path(name).parts)
+            and Path(name).name != "demo.py"
         }
         result = invalid + audit_demo(
             source, parsed_guides[0] if parsed_guides else [], view, path,

@@ -18,6 +18,16 @@ OUTPUT = "energies_demo.csv"
 STRIDE = 20
 
 
+#: The example the tool runs on: the family's shipped NMSim trajectory (nothing is
+#: simulated, so no seed), and what the tool writes from it.
+DEMO = {"example": "modelling/fret/examples/olga_t4l", "output": OUTPUT, "stride": STRIDE}
+
+
+def demo_folder() -> Path:
+    """The settings-owned demonstration folder of this tool."""
+    return demo_data.demo_folder(Path(__file__).parent.name)
+
+
 def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> dict[str, Path]:
     """Return the example trajectory and topology the tool runs on."""
     return demo_data.family_demo(Path(__file__).parent.name)

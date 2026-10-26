@@ -775,7 +775,10 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
         step = app.tour.steps[app.tour.step_idx]
         target = step.get("target") or {}
         if app.tour.awaiting:
-            if target.get("attr") == "filename":
+            if target.get("name") == "load_example":
+                drv.click("load_example")
+                drv.settle()
+            elif target.get("attr") == "filename":
                 drv.type_into("filename", str(tiff))
                 drv.settle()
             elif target.get("name") == "computed":
@@ -791,18 +794,24 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
     assert not app.tour.active and app.model.result is not None
 
 
-def test_a_file_chosen_in_the_dialog_also_releases_the_load_step(app, tiff):
+def test_the_load_step_explains_and_a_file_chosen_in_the_dialog_loads(app, tiff):
     drv = Driver(app, BIG)
     app.model.folder = str(tiff.parent)
     drv.click("guide")
-    app.tour.next()
+    app.tour.start(
+        next(
+            i
+            for i, s in enumerate(app.tour.steps)
+            if (s.get("target") or {}).get("attr") == "filename"
+        )
+    )
     drv.draw(2)
-    assert app.tour.awaiting
+    assert not app.tour.awaiting  # Load example already loaded a stack; your own is optional
     drv.click("open_file")
     drv.click_text("drift.tif")
     drv.click_text("Open", last=True)
     drv.settle()
-    assert not app.tour.awaiting
+    assert app.model.filename.endswith("drift.tif")
 
 
 def test_every_guide_target_is_a_drawn_control_or_window(app, drv, tiff):

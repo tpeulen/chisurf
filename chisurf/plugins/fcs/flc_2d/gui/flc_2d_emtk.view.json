@@ -34,8 +34,9 @@
                   "description": "Load an instrument-response TTTR file."
                 },
                 {
-                  "action": "request_simulate",
-                  "label": "Sim",
+                  "action": "load_example",
+                  "label": "Load example",
+                  "icon": "🧪",
                   "description": "Generate a synthetic two-state exchange photon stream."
                 },
                 {

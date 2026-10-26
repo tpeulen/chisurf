@@ -10,6 +10,9 @@ from __future__ import annotations
 from pathlib import Path
 
 STEM = "kappa2_demo"
+#: Nothing is simulated: the example is the tool's answer for its shipped default inputs
+#: (no seed), exported in the CSV format of the old tool's Save.
+DEMO = {"inputs": "shipped defaults", "export": "csv"}
 
 
 def demo_folder() -> Path:

@@ -356,7 +356,7 @@ def test_the_guide_points_at_real_controls_and_waits(tmp_path):
             "Fit",
             "Results",
             "mode",
-            "Load example",
+            "load_example",
             "n_rotations",
             "r(t)",
         }

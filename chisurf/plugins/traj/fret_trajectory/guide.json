@@ -7,16 +7,20 @@
       "target": {}
     },
     {
+      "title": "Start with the example",
+      "text": "<b>Load example</b> fills the rows with the trajectory this tool ships with (894 frames of T4 lysozyme from an NMSim run) and runs the tool on it, so you see a result before you pick your own files.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>🧪 Load example</b>."}
+    },
+    {
       "title": "The trajectory",
       "text": "The DCD to analyse. Press <b>…</b> or drop a <code>.dcd</code>.",
-      "target": {"name": "trajectory"},
-      "await": {"hint": "Press <b>…</b> and pick a trajectory."}
+      "target": {"name": "trajectory"}
     },
     {
       "title": "The topology",
       "text": "Names the atoms — and fills the pickers below. Either file may come first.",
-      "target": {"name": "topology"},
-      "await": {"hint": "Press <b>…</b> and pick the PDB that names the atoms."}
+      "target": {"name": "topology"}
     },
     {
       "title": "The donor dipole",

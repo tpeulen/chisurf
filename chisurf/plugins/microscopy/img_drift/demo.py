@@ -19,6 +19,8 @@ N_FRAMES = 6
 TRUE_SHIFTS = [
     (k * demo_stack.DRIFT_STEP[0], k * demo_stack.DRIFT_STEP[1]) for k in range(N_FRAMES)
 ]
+#: The generator's parameters: the cached stack is this, seeded.
+DEMO = {"n_frames": N_FRAMES, "seed": 7}
 
 
 def demo_folder() -> Path:
@@ -34,7 +36,7 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> Path:
     path = folder / f"{STEM}.tif"
     if overwrite or not path.is_file():
         folder.mkdir(parents=True, exist_ok=True)
-        demo_stack.write_tif(path, demo_stack.drift_stack(n_frames=N_FRAMES))
+        demo_stack.write_tif(path, demo_stack.drift_stack(**DEMO))
     return path
 
 

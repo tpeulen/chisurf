@@ -7,6 +7,12 @@
       "target": {}
     },
     {
+      "title": "Start with an example whose answer you know",
+      "text": "<b>Load example</b> restores the synthetic mixture — two lifetime components, 1.2 ns and 4.0 ns, seen through per-detector IRFs — and computes its filters, so you can see what a clean separation looks like before you load your own decays.",
+      "target": {"action": "load_example"},
+      "await": {"hint": "Press <b>🧪 Load example</b>."}
+    },
+    {
       "title": "The mixed decay you are separating",
       "text": "The tool opens with an <b>example</b> already loaded, so you can walk this whole tour without a file of your own.<br/><br/>For real work this is where a measured mixed decay goes — the histogram containing every species at once. Everything else on this page is about explaining <i>this</i> curve as a sum of components.",
       "target": {

@@ -283,7 +283,7 @@ class ChimolHostApp(ImApp):
         self.item_rects["command_line"] = (vx, vy + vh - prompt_h, vw, prompt_h)
         objects = self._object_count()
         if self._objects_seen is not None and objects > self._objects_seen:
-            self.tour.notify_used("example")
+            self.tour.notify_used("load_example")
         self._objects_seen = objects
         im.text(tr("ChiMOL · {count} object(s)").format(count=objects))
         self.item_rects["status"] = im.get_item_rect()
@@ -311,7 +311,7 @@ class ChimolHostApp(ImApp):
         im.same_line(max(0.0, width - needed))
         if action_button("example"):
             self.load_example()
-        self.item_rects["example"] = im.get_item_rect()
+        self.item_rects["load_example"] = im.get_item_rect()
         im.same_line()
         if action_button("help"):
             self.help_window.show()

@@ -513,7 +513,9 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_awaited_cont
         target = step.get("target") or {}
         if tour.awaiting:
             seen.append(step["title"])
-            if target.get("name") == "step_datasets":
+            if target.get("name") == "load_example":
+                drv.click_name("load_example")  # the example session: two template fits
+            elif target.get("name") == "step_datasets":
                 drv.click_name("step_datasets")
             elif target.get("name") == "selected_fit_name":
                 drv.click_name("selected_fit_name")
@@ -526,6 +528,7 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_awaited_cont
         tour.next()
     wait_run(drv)
     assert not tour.active and seen == [
+        "Start with an example session",
         "Pick datasets already loaded",
         "Choose the template",
         "Run it",

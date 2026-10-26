@@ -23,7 +23,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import action_button, button_row, window_size
+from chisurf.plugins.emtk_layout import action_button, button_row, icon_label, window_size
 from chisurf.plugins.emtk_wizard import draw_steps
 
 from .model import BatchModel
@@ -181,7 +181,7 @@ class BatchAnalysisApp(ImApp):
         """A row of actions at their natural width (the spec's own button rows stretch to the window)."""
         buttons = [
             {
-                "label": b["label"],
+                "label": icon_label(b["icon"], b["label"]) if b.get("icon") else b["label"],
                 "key": b["action"],
                 "tip": b.get("description", ""),
                 "enabled": model.enabled(b["action"]),

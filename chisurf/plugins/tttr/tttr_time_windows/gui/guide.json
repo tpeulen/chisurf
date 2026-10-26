@@ -6,9 +6,16 @@
       "text": "Each queued TTTR file is cut into consecutive windows of equal duration. Press <b>Load example</b> to generate a deterministic demonstration measurement (a µs-ALEX stream with bursts) in the settings cache and queue it. <b>Files</b> (or dropping files or a folder on the window) queues real data; <b>Folder</b> and <b>Database</b> queue whole sets.",
       "target": {
         "action": "add_files"
+      }
+    },
+    {
+      "title": "Start with a demonstration stream",
+      "text": "Start with the example: the demonstration stream is generated and queued, so every step below has data to act on.",
+      "target": {
+        "action": "load_example"
       },
       "await": {
-        "hint": "Queue a file: press <b>Files</b>, drop one on the window, or press <b>Load example</b>."
+        "hint": "Press <b>🧪 Load example</b>."
       }
     },
     {

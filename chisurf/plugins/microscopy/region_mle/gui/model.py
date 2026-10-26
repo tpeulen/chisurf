@@ -50,7 +50,7 @@ PERSISTED_SCALARS = (
 
 #: Button actions and what each needs before it is usable.
 ACTIONS = (
-    "request_demo",
+    "load_example",
     "request_preview",
     "request_run",
     "request_export",

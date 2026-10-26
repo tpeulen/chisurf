@@ -15,7 +15,7 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.dataset_picker import DatasetPicker
-from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
     LabelColumn,
     action_caption,
@@ -59,7 +59,7 @@ class BeadNavigator:
         return bool(self._app.model.detected_beads) and not self.busy
 
 
-class PsfDeterminationApp(ImApp):
+class PsfDeterminationApp(TourTarget, ImApp):
     def __init__(self, model=None):
         self.model = model or PsfViewModel()
         self.job = SnapshotJob(self.model)
@@ -229,9 +229,6 @@ class PsfDeterminationApp(ImApp):
         self.file_window = DialogWindow(self.dialog.title, size=(700, 540), key=f"file_{id(self)}")
         self.file_window.show()
 
-    def remember(self, name):
-        self.item_rects[name] = im.get_item_rect()
-
     def form(self, name):
         spec, column = self.panels[name], self.columns[name]
         if not column.ready:
@@ -243,7 +240,6 @@ class PsfDeterminationApp(ImApp):
         _m = self.model
         {
             "load_stack": lambda: self.choose("load_stack"),
-            "demo": self.load_demo,
             "mmfdb": self.picker.open,
             "detect_beads": lambda: self.start("detect_beads"),
             "fit_selected": lambda: self.start("fit_selected"),
@@ -279,8 +275,8 @@ class PsfDeterminationApp(ImApp):
                     "tip": "Load a 2-D TIFF image or a 3-D TIFF bead stack (or drop the file on the window).",
                 },
                 {
-                    "label": "Demo stack",
-                    "key": "demo",
+                    "label": action_caption("example"),
+                    "key": "load_example",
                     "enabled": idle,
                     "tip": "Replace the stack by a generated one with five beads of known size (a demo, not data).",
                 },
@@ -331,7 +327,10 @@ class PsfDeterminationApp(ImApp):
             ],
             remember=self.remember,
         )
-        if pressed:
+        if pressed == "load_example":
+            self.load_example()
+            self.tour.notify_used("load_example")
+        elif pressed:
             self.do(pressed)
         if self.job.busy:
             im.text_wrapped(self.job.progress)

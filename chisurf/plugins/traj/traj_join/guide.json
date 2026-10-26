@@ -7,16 +7,20 @@
       "target": {}
     },
     {
+      "title": "Start with the example",
+      "text": "<b>Load example</b> fills the rows with the trajectory this tool ships with (894 frames of T4 lysozyme from an NMSim run) and runs the tool on it, so you see a result before you pick your own files.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>🧪 Load example</b>."}
+    },
+    {
       "title": "The first trajectory",
       "text": "Its frames come first in time mode, its atoms first in atoms mode. Press <b>…</b> or drop a <code>.dcd</code>.",
-      "target": {"name": "trajectory_1"},
-      "await": {"hint": "Press <b>…</b> and pick the first trajectory."}
+      "target": {"name": "trajectory_1"}
     },
     {
       "title": "The second trajectory",
       "text": "Appended after the first, or placed beside it.",
-      "target": {"name": "trajectory_2"},
-      "await": {"hint": "Press <b>…</b> and pick the second trajectory."}
+      "target": {"name": "trajectory_2"}
     },
     {
       "title": "The topology",

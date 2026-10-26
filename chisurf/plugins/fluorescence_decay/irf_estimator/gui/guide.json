@@ -7,13 +7,16 @@
       "target": {}
     },
     {
+      "title": "Start with a decay whose IRF is known",
+      "text": "<b>Load example</b> loads a seeded VV/VH decay built on an IRF centred at 0.4 ns with a FWHM of 0.18 ns and estimates it, so you can see how close the blind estimate comes before you trust it on your own measurement.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>🧪 Load example</b>."}
+    },
+    {
       "title": "Load the decay",
-      "text": "From a file, or from a dataset already open in ChiSurf. It should be a decay whose tail is long enough to fit — the tail is the entire input to the first half of the method.",
+      "text": "Your own decay comes in here: <b>Load Decay</b> from a file, or <b>Load from Dataset</b> for one already open in ChiSurf. It should be a decay whose tail is long enough to fit — the tail is the entire input to the first half of the method.",
       "target": {
         "action": "Load Decay"
-      },
-      "await": {
-        "hint": "Press <b>Load Decay</b> (or <b>Load from Dataset</b>)."
       }
     },
     {

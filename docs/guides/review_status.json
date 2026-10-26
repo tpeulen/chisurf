@@ -469,10 +469,10 @@
     "status": "ai-reviewed"
   },
   "54_hidden_markov_models.md": {
-    "date": "2026-10-14",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "efe213c0890cd53d29be9559c5a127c5af8ec15b6605b98da05f80dd5db5e011",
+    "sha256": "f38cd411e6d04e0a811243d3a964badfca5b3f730e0546967ac571554ff62609",
     "status": "ai-reviewed"
   },
   "55_pair_correlation.md": {
@@ -721,10 +721,10 @@
     "status": "ai-reviewed"
   },
   "92_hmm_binned_traces.md": {
-    "date": "2026-10-14",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "6c4544b544ab96de3f642392501c0656a8344c51341a2357626a4b35db904a25",
+    "sha256": "61b5c05dca0c836e14916d43c8ca8fbc5731b4f33cef1ad18eaaa2de06020019",
     "status": "ai-reviewed"
   },
   "93_psf_determination.md": {

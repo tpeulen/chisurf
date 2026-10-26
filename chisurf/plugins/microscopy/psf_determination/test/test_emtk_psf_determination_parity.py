@@ -92,7 +92,7 @@ def ui():
 
 @pytest.fixture
 def demo(ui):
-    ui.click_name("demo")
+    ui.click_name("load_example")
     ui.draw(3)
     return ui
 
@@ -542,7 +542,7 @@ def test_the_tour_waits_for_the_demo_detect_and_fit_all(ui):
     assert tour.step_idx == 1 and tour.awaiting
     ui.click_text("Next ►")
     assert tour.step_idx == 1
-    ui.click_name("demo")
+    ui.click_name("load_example")
     assert not tour.awaiting
     ui.click_text("Next ►")
     assert tour.step_idx == 2
@@ -578,7 +578,7 @@ def test_every_tour_target_is_drawn(ui):
 def test_the_window_draws_empty_and_populated_at_every_size(ui, size):
     ui.resize(size)
     ui.draw(3)
-    ui.click_name("demo")
+    ui.click_name("load_example")
     ui.click_name("detect_beads")
     ui.settle()
     ui.click_name("fit_all")

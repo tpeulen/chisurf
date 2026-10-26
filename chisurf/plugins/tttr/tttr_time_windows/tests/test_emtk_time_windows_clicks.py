@@ -283,11 +283,13 @@ def test_each_help_button_opens_the_help_window(ui, nth):
 def test_guide_button_starts_the_tour_which_waits_for_each_control(ui):
     tour = ui.app.time_window_gui.tour
     ui.click(action_caption("guide"))
-    assert tour.active and ui.drawn("Step 1 of 4: Queue the files") and tour.awaiting
-    ui.click("Files")  # the awaited button
-    assert not tour.awaiting
-    ui.click("Cancel")
+    assert tour.active and ui.drawn("Step 1 of 5: Queue the files") and not tour.awaiting
     tour.start(1)
+    ui.frame(2)
+    assert tour.awaiting
+    ui.click(action_caption("example"))  # the awaited button
+    assert not tour.awaiting
+    tour.start(2)
     ui.frame(2)
     assert tour.awaiting
     set_time_window(ui, "12")  # the awaited field
@@ -302,12 +304,12 @@ def test_guide_button_starts_the_tour_which_waits_for_each_control(ui):
 
 
 def test_the_tour_next_and_prev_buttons_can_be_clicked(ui):
-    ui.app.time_window_gui.tour.start(2)
+    ui.app.time_window_gui.tour.start(3)
     ui.frame(3)
     ui.click("Next ►")
-    assert ui.app.time_window_gui.tour.step_idx == 3
+    assert ui.app.time_window_gui.tour.step_idx == 4
     ui.click("◄ Prev")
-    assert ui.app.time_window_gui.tour.step_idx == 2
+    assert ui.app.time_window_gui.tour.step_idx == 3
 
 
 # -- drops on the hosts -------------------------------------------------------------------------------------

@@ -27,13 +27,13 @@ so the number of states is chosen by the minimum of AIC or BIC. See {ref}`concep
 *Spectroscopy → Kinetics → Hidden Markov model*. A trace file has one row per time bin and one column per
 detection channel (`.csv`, `.txt`, `.dat` or `.npy`). Press **Add files...** and click one or more files in
 the dialog, or drop them on the window; several files are fitted jointly as separate sequences.
-**Demo trace** loads a generated three-state trace with known means and dwell times, to try the tool.
+**🧪 Load example** loads a generated three-state trace with known means and dwell times, to try the tool.
 
 ```{figure} figures/hmm_window.png
 :name: fig-hmm-window
 :width: 100%
 
-The **Demo trace**: two channels, three states (mean counts per bin 20 / 60 / 110 in channel 1), fitted
+The example trace: two channels, three states (mean counts per bin 20 / 60 / 110 in channel 1), fitted
 with three states and scanned from one to five. **Top right**, the trace with the decoded state path drawn
 at each state's summed emission mean; **bottom centre**, the fitted states and the transition matrix with
 rates; **bottom right**, the histogram of the summed counts with the fitted emission densities (further

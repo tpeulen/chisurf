@@ -600,7 +600,7 @@ def test_help_opens_with_live_links_and_closes(ui):
     assert links and all((repo / link).is_file() for link in links)
 
 
-def test_the_tour_waits_for_refresh_run_and_lcurve(fitted, monkeypatch):
+def test_the_tour_waits_for_the_example_refresh_run_and_lcurve(fitted, monkeypatch):
     import chisurf
 
     monkeypatch.setattr(chisurf, "fits", [stub_fit()])
@@ -613,15 +613,20 @@ def test_the_tour_waits_for_refresh_run_and_lcurve(fitted, monkeypatch):
     assert tour.step_idx == 1 and tour.awaiting
     ui.click_text("Next ►")
     assert tour.step_idx == 1
-    ui.click_text("Refresh")
+    ui.click_name("load_example")
+    ui.settle()
     assert not tour.awaiting
     ui.click_text("Next ►")
     assert tour.step_idx == 2 and tour.awaiting
+    ui.click_text("Refresh")
+    assert not tour.awaiting
+    ui.click_text("Next ►")
+    assert tour.step_idx == 3 and tour.awaiting
     ui.click_text("Run MEM")
     ui.settle()
     assert not tour.awaiting
     ui.click_text("Next ►")
-    assert tour.step_idx == 3 and tour.awaiting
+    assert tour.step_idx == 4 and tour.awaiting
     ui.click_name("lcurve")
     ui.settle()
     assert not tour.awaiting

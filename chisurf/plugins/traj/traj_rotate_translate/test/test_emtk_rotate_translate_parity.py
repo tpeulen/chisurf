@@ -221,6 +221,7 @@ def test_the_guide_points_at_real_controls_and_waits(monkeypatch):
         _draw(app, size, painter=PixelPainter)
         keys = {app.tour._target_key(s.get("target")) for s in app.tour.steps} - {""}
         assert keys == {
+            "load_example",
             "trajectory",
             "topology",
             "rotation_matrix",
@@ -258,7 +259,15 @@ def test_the_guide_points_at_real_controls_and_waits(monkeypatch):
             app.release()
             _draw(app, size, n=1, painter=PixelPainter)
 
-        for target, button in (("trajectory", "trajectory_browse"), ("save", "save")):
+        # Load example fills the file rows, so their step explains rather than waits.
+
+        app.tour.start(
+            next(i for i, s in enumerate(steps) if s.get("target", {}).get("name") == "trajectory")
+        )
+
+        assert not app.tour.awaiting
+
+        for target, button in (("save", "save"),):
             index = next(
                 i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target
             )

@@ -7,16 +7,20 @@
       "target": {}
     },
     {
+      "title": "Start with the example",
+      "text": "<b>Load example</b> fills the rows with the trajectory this tool ships with (894 frames of T4 lysozyme from an NMSim run) and runs the tool on it, so you see a result before you pick your own files.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>🧪 Load example</b>."}
+    },
+    {
       "title": "The trajectory",
       "text": "A DCD holds the coordinates of every frame. Press <b>…</b> beside the row, or drop a <code>.dcd</code> on the window.",
-      "target": {"name": "trajectory"},
-      "await": {"hint": "Press <b>…</b> and pick a trajectory."}
+      "target": {"name": "trajectory"}
     },
     {
       "title": "The topology",
       "text": "A DCD stores coordinates and <i>nothing else</i>: the atom names, residues and chains come from a structure file. Choose the PDB the trajectory was written for — the atom order must match.",
-      "target": {"name": "topology"},
-      "await": {"hint": "Press <b>…</b> and pick the PDB that names the atoms."}
+      "target": {"name": "topology"}
     },
     {
       "title": "Save",

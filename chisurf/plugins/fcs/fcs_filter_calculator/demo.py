@@ -19,6 +19,8 @@ TRUTH = {
     "n_bins": 256,
     "bin_width_ns": 0.05,
 }
+#: The example's parameters are its truth: nothing beyond these numbers is drawn.
+DEMO = dict(TRUTH)
 
 
 def demo_folder() -> Path:

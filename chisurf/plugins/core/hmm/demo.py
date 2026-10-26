@@ -19,6 +19,14 @@ N_BINS = 4000
 STATE_MEANS = (0.30, 0.70)
 SWITCH_PROBABILITY = 0.01
 NOISE = 0.05
+#: The generator behind the cached trace.
+DEMO = {
+    "seed": SEED,
+    "n_bins": N_BINS,
+    "state_means": STATE_MEANS,
+    "switch_probability": SWITCH_PROBABILITY,
+    "noise": NOISE,
+}
 
 
 def demo_folder() -> Path:

@@ -88,7 +88,7 @@ def ui():
 
 @pytest.fixture
 def demo(ui):
-    ui.click_name("demo")
+    ui.click_name("load_example")
     ui.draw(3)
     return ui
 
@@ -226,7 +226,7 @@ def test_the_native_forms_carry_the_ranges_choices_and_decimals_of_the_qt_spec()
 
 def test_the_empty_window_asks_for_data_and_greys_fit_and_scan(ui):
     strings = [t[5] for t in ui.draw().texts]
-    assert "Load a trace (Add files... or Demo trace)." in strings
+    assert "Load a trace (Add files... or Load example)." in strings
     ui.click_name("request_run")
     ui.click_name("request_scan")
     assert not ui.app.job.busy and ui.app.model.fit is None
@@ -507,7 +507,7 @@ def test_the_tour_waits_for_the_demo_scan_and_fit(ui):
     assert tour.step_idx == 1 and tour.awaiting
     ui.click_text("Next ►")
     assert tour.step_idx == 1
-    ui.click_name("demo")
+    ui.click_name("load_example")
     assert not tour.awaiting
     ui.click_text("Next ►")
     assert tour.step_idx == 2 and tour.awaiting
@@ -563,7 +563,7 @@ def test_settings_round_trip(ui, files):
 def test_the_window_draws_empty_and_fitted_at_every_size(ui, size):
     ui.resize(size)
     ui.draw(3)
-    ui.click_name("demo")
+    ui.click_name("load_example")
     ui.app.model.n_states = 3
     ui.click_name("request_run")
     ui.settle()

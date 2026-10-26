@@ -373,7 +373,7 @@ def test_vv_vh_example_is_loaded_fitted_and_shown(ui):
     """Load example → Fit: the joint VV/VH fit, its rotation table and the r(t) plot tab."""
     from chisurf.plugins.fluorescence_decay.lltf.core.polarized import DEMO
 
-    ui.click("Load example")
+    ui.click("load_example")
     m = ui.app.model
     assert m.mode == "VV/VH" and Path(m.decay_file).is_file()
     assert "Anisotropy (VV/VH)" in ui.last.strings and "VH File (optional)" in ui.last.strings

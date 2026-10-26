@@ -64,6 +64,26 @@
       "sections": [
         {
           "type": "custom",
+          "key": "actions",
+          "description": "Load the example session, or re-scan the datasets loaded in ChiSurf.",
+          "options": {
+            "buttons": [
+              {
+                "action": "load_example",
+                "label": "Load example",
+                "icon": "🧪",
+                "description": "Attach a small example session (three datasets and two template fits with known parameter movements) and stage the batch, so the wizard can be walked to a result."
+              },
+              {
+                "action": "refresh_datasets",
+                "label": "Refresh",
+                "description": "Re-scan the datasets currently loaded in ChiSurf; ticks of datasets that are still there are kept."
+              }
+            ]
+          }
+        },
+        {
+          "type": "custom",
           "key": "data_table",
           "title": "Loaded datasets",
           "description": "Every dataset loaded in ChiSurf. Tick the ones to fit with the template; they run before the files.",
@@ -99,20 +119,6 @@
           "description": "How many datasets are ticked, or why the list is empty.",
           "options": {
             "source": "datasets_hint"
-          }
-        },
-        {
-          "type": "custom",
-          "key": "actions",
-          "description": "Re-scan the datasets loaded in ChiSurf.",
-          "options": {
-            "buttons": [
-              {
-                "action": "refresh_datasets",
-                "label": "Refresh",
-                "description": "Re-scan the datasets currently loaded in ChiSurf; ticks of datasets that are still there are kept."
-              }
-            ]
           }
         }
       ]

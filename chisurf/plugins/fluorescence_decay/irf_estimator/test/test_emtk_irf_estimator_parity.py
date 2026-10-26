@@ -363,18 +363,24 @@ def test_the_guide_points_at_real_controls_and_waits():
         _draw(app)
         steps = app.tour.steps
         keys = {app.tour._target_key(s.get("target")) for s in steps} - {""}
-        assert keys == {"Load Decay", "irf_background", "irf_rl_iterations", "Estimate IRF"}
+        assert keys == {
+            "load_example",
+            "Load Decay",
+            "irf_background",
+            "irf_rl_iterations",
+            "Estimate IRF",
+        }
         assert keys <= set(app.item_rects)
+        app.tour.start(1)  # the example step waits for its own button
+        assert app.tour.awaiting
+        _click(app, "load_example")
+        assert not app.tour.awaiting
         load = next(
             i for i, s in enumerate(steps) if s.get("target", {}).get("action") == "Load Decay"
         )
         app.tour.start(load)
-        assert app.tour.awaiting
-        _click(app, "request_load")
-        assert app.tour.awaiting  # opening the dialog is not loading
-        app.dialog = None
+        assert not app.tour.awaiting  # the example already loaded a decay: your own is optional
         app.file_chosen(DECAY)
-        assert not app.tour.awaiting
         estimate = next(
             i for i, s in enumerate(steps) if s.get("target", {}).get("action") == "Estimate IRF"
         )

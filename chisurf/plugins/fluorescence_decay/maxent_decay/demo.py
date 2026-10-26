@@ -20,6 +20,15 @@ WEIGHTS = (0.6, 0.4)
 N_BINS = 400
 DT_NS = 0.05
 BACKGROUND = 2.0
+#: The generator behind the cached decay.
+DEMO = {
+    "seed": SEED,
+    "lifetimes_ns": LIFETIMES_NS,
+    "weights": WEIGHTS,
+    "n_bins": N_BINS,
+    "dt_ns": DT_NS,
+    "background": BACKGROUND,
+}
 
 
 def demo_folder() -> Path:

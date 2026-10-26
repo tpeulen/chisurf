@@ -7,6 +7,12 @@
       "target": {}
     },
     {
+      "title": "Start from the shipped inputs",
+      "text": "<b>Load example</b> computes the distribution for the inputs the tool ships with and exports it as CSV beside the settings — a known result to come back to while you change one input at a time.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>🧪 Load example</b>."}
+    },
+    {
       "title": "Start with the worst case",
       "text": "Pick <b>Isotropic</b> first. It means the dipoles are randomly oriented and completely frozen — no reorientation at all during the donor lifetime.<br/><br/>It is not a model of a real sample. It is the reference to compare against, and it needs no anisotropy inputs.",
       "target": {

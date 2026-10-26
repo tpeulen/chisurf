@@ -21,6 +21,15 @@ LIFETIMES_NS = (1.1, 3.9)
 WEIGHTS = (0.7, 0.3)
 N_BINS = 512
 BIN_NS = 0.02
+#: The generator behind the cached decay: seed, true IRF and the bi-exponential it is convolved with.
+DEMO = {
+    "seed": SEED,
+    "irf": TRUE_IRF,
+    "lifetimes_ns": LIFETIMES_NS,
+    "weights": WEIGHTS,
+    "n_bins": N_BINS,
+    "bin_ns": BIN_NS,
+}
 
 
 def demo_folder() -> Path:

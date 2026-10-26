@@ -268,6 +268,7 @@ def test_the_guide_points_at_real_controls_and_waits():
         _draw(app, size, painter=PixelPainter)
         keys = {app.tour._target_key(s.get("target")) for s in app.tour.steps} - {""}
         assert keys == {
+            "load_example",
             "topology",
             "trajectory",
             "use_folder",

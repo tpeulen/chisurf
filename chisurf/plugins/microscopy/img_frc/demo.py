@@ -15,6 +15,8 @@ from chisurf.plugins.microscopy import demo_stack
 STEM = "frc_demo"
 #: The spatial frequency the object is band-limited to (cycles/px).
 CUTOFF = 0.15
+#: The generator's parameters: the cached stack is this, seeded.
+DEMO = {"cutoff": CUTOFF, "seed": 3, "object_seed": 1}
 
 
 def demo_folder() -> Path:
@@ -30,7 +32,7 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> Path:
     path = folder / f"{STEM}.tif"
     if overwrite or not path.is_file():
         folder.mkdir(parents=True, exist_ok=True)
-        demo_stack.write_tif(path, demo_stack.frc_stack(cutoff=CUTOFF))
+        demo_stack.write_tif(path, demo_stack.frc_stack(**DEMO))
     return path
 
 

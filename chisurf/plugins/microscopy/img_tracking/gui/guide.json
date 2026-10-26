@@ -8,15 +8,19 @@
     },
     {
       "title": "Start with a movie whose answer you know",
-      "text": "Open the <b>Simulate instead</b> panel: it generates Brownian particles with a diffusion coefficient you choose, so the result can be checked against a number. Any TIFF stack or photon stream works the same way via <b>Open</b> or a drop on the window.",
-      "target": {"name": "Simulate instead.fold"},
-      "await": {"hint": "Click the <b>Simulate instead</b> header to open it."}
+      "text": "<b>Load example</b> writes a movie of six particles diffusing with D = 0.5 px²/frame and tracks them, so the diffusion coefficient the tool reports can be checked against the truth.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>🧪 Load example</b>."}
+    },
+    {
+      "title": "Start with a movie whose answer you know",
+      "text": "Another way to a known answer: the <b>Simulate instead</b> panel generates Brownian particles with a diffusion coefficient you choose, so the result can be checked against a number. Any TIFF stack or photon stream works the same way via <b>Open</b> or a drop on the window.",
+      "target": {"name": "Simulate instead.fold"}
     },
     {
       "title": "Switch to the simulation",
       "text": "With <b>Simulate</b> ticked the tool ignores the file field and tracks a generated movie. The true D below is what the fit should give back.",
-      "target": {"attr": "use_simulation"},
-      "await": {"hint": "Tick <b>Simulate</b>."}
+      "target": {"attr": "use_simulation"}
     },
     {
       "title": "Detection: count them before you believe them",

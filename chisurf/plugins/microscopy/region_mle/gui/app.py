@@ -190,19 +190,22 @@ class RegionMleApp(ImApp):
         if self._job_method in ("preview_regions", "run") and self.model.molecule_entries():
             self.docks.focus("regions")
         if self._job_method == "load_demo":
-            self.tour.notify_used("Load demo")
+            self.tour.notify_used("load_example")
         elif self._job_method in ("preview_regions", "run") and self.model.molecule_entries():
             self.tour.notify_used("Preview")
 
     def _used(self, name: str) -> None:
-        self.tour.notify_used(name)
+        # The example step waits for the loaded field (released in _job_finished), not
+        # for the press: the simulation takes seconds and the next steps need its result.
+        if name != "load_example":
+            self.tour.notify_used(name)
 
     # ── windows ────────────────────────────────────────────────────────
     def _collect_rects(self) -> None:
         """Name the controls by the labels the guide points at."""
         rects = self.form.rects
         for key, name in (
-            ("Load demo", "request_demo"),
+            ("load_example", "load_example"),
             ("Preview", "request_preview"),
             ("Regions", "Regions.fold"),
             ("Fit (Fit23)", "Fit (Fit23).fold"),

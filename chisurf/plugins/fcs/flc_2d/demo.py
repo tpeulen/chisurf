@@ -16,6 +16,9 @@ from chisurf.plugins.fcs.flc_2d.gui.model import FlcModel
 STEM = "flc_2d_demo"
 #: The demo simulates a short stream so the 2D correlation stays interactive.
 SIM_TIME_S = 10.0
+#: What the demo sets; the rest are the simulator's defaults, recorded in the sidecar
+#: (_sim_parameters) so a changed default shows up there.
+DEMO = {"sim_time_s": SIM_TIME_S}
 
 
 def demo_folder() -> Path:

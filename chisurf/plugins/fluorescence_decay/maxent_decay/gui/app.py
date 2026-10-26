@@ -18,6 +18,7 @@ from emtk.view_form import FormState, draw_form
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import (
     LabelColumn,
+    action_button,
     action_caption,
     action_tooltip,
     button_row,
@@ -186,6 +187,17 @@ class MaxentApp(ImApp):
         idle = self.jobs.process is None and self.dialog is None and not self.edit_settings
         have_data = m.decay is not None
         fret = s.mode == "fret"
+        if action_button(
+            "example",
+            enabled=idle,
+            tooltip=tr(
+                "Load a seeded bi-exponential decay (1.0 and 4.5 ns, 60:40) and reconstruct its "
+                "lifetime distribution, so the peaks can be checked against the truth."
+            ),
+        ):
+            self.error(lambda: m.load_example())
+            self.tour.notify_used("load_example")
+        self.item_rects["load_example"] = im.get_item_rect()
         self.buttons(
             [
                 {

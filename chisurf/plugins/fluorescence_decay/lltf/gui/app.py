@@ -226,9 +226,9 @@ class LLTFApp(TourTarget, ImApp):
                 "r0 = 0.35, G = 1.2), select it in VV/VH mode with the example IRF."
             ),
         ):
-            self.error(m.load_example)
-            self.tour.notify_used("Load example")
-        self.remember("Load example")
+            self.error(lambda: m.load_example())
+            self.tour.notify_used("load_example")
+        self.remember("load_example")
         im.same_line()
         ready = Path(m.decay_file).is_file() and Path(m.irf_file).is_file()
         im.begin_disabled(m.running or not ready)

@@ -544,7 +544,9 @@ def test_guide_waits_for_the_user_and_points_at_drawn_controls(app, files):
         key = tour._target_key(step["target"])
         assert key in app.item_rects or key in app.form.rects, step["title"]
     tour.start(0)
-    assert tour.awaiting and tour.steps[0]["target"] == {"name": "load_example"}
+    assert not tour.awaiting  # what a measurement file holds: read, not pressed
+    tour.start(1)
+    assert tour.awaiting and tour.steps[1]["target"] == {"name": "load_example"}
     tour.notify_used("request_save")  # another control: still waiting
     assert tour.awaiting
     app.form.on_used("load_example")  # what the form reports on a press of Load example

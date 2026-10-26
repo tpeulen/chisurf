@@ -14,6 +14,12 @@
           "description": "File actions of the IRF estimator.",
           "buttons": [
             {
+              "action": "load_example",
+              "label": "Load example",
+              "icon": "🧪",
+              "description": "Load a seeded VV/VH decay whose IRF is known (centre 0.4 ns, FWHM 0.18 ns) and estimate it, so the estimate can be checked against the truth."
+            },
+            {
               "action": "request_load",
               "label": "📂  Load Decay",
               "description": "Load a measured decay from a VV/VH file (.dat): the VV channel is used, the time per channel comes from the file."

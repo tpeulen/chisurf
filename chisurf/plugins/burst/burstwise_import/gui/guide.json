@@ -4,6 +4,14 @@
     "text": "This tool packages legacy burst analysis folders (bi4_bur, bg4, br4, Info, .mti) into standardized .mmfdb.pto containers."
   },
   {
+    "title": "Start with the sample folder",
+    "text": "<b>Load example</b> points the importer at the legacy burstwise folder that ships with the plugin and scans it, so the inventory, the source resolution and the conversion below all have something to show.",
+    "target": "load_example",
+    "await": {
+      "hint": "Press <b>🧪 Load example</b>."
+    }
+  },
+  {
     "title": "Select analysis folder",
     "text": "Enter or browse for a legacy burstwise folder. Folders can also be dragged and dropped directly onto the window.",
     "target": "folder_input"

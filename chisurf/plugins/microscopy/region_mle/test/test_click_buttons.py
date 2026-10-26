@@ -103,7 +103,7 @@ def test_load_demo_button_fills_the_lists_and_the_run_finds_the_known_lifetimes(
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
     app, driver = _app()
     assert app.model.files == []
-    driver.click("request_demo")
+    driver.click("load_example")
     _settle(driver, app, timeout=300.0)
     assert not app.model.error_text, app.model.error_text
     assert [p.rsplit("/", 1)[-1] for p in app.model.files] == ["spot_demo_mixture.ptu"]

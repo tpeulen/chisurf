@@ -7,6 +7,16 @@
       "target": {}
     },
     {
+      "title": "Start with a stream whose shape you know",
+      "text": "<b>Load example</b> writes the shared demonstration SPC stream and queues it: the list shows the .pto the importer writes beside it, so you see a conversion before you drop your own files.",
+      "target": {
+        "name": "load_example"
+      },
+      "await": {
+        "hint": "Press <b>🧪 Load example</b>."
+      }
+    },
+    {
       "title": "Nothing is ever deleted",
       "text": "Packing writes the .pto <b>beside</b> the vendor file and keeps the original. Unpacking writes the vendor files back and keeps the container. Either direction can be repeated or thrown away with no loss.",
       "await": {

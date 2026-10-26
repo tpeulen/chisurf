@@ -106,7 +106,8 @@ def test_the_form_is_the_qt_spec():
     assert (
         choice["labels"] == ["WIC (Cone)", "DWT (Diffusion)", "Isotropic"] and "style" not in choice
     )
-    assert [s for s in painter.strings if PICTOGRAM.search(s)] == []
+    # No pictograms, as in the Qt tool -- except the shared vocabulary's Load example icon.
+    assert [s for s in painter.strings if PICTOGRAM.search(s.replace("\U0001f9ea", ""))] == []
     spec = json.loads((PLUGIN / "k2dist.view.json").read_text(encoding="utf-8"))
 
     def walk(sections):

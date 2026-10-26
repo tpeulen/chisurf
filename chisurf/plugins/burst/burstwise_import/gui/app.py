@@ -189,6 +189,20 @@ class BurstwiseImportApp(ImApp, TourTarget):
         im.set_item_tooltip(tr("Scan folder for measurement tables, Info, MTI, and parameters."))
         self.remember("scan_button")
 
+        example_w = im.calc_text_size(action_caption("example"))[0] + pad
+        if im.get_line_avail() >= example_w:
+            im.same_line()
+        if action_button(
+            "example",
+            tooltip=tr(
+                "Point the importer at the legacy sample folder that ships with the plugin "
+                "(.bur splits, an .mti file, bg4 backgrounds) and scan it."
+            ),
+        ):
+            self.model.load_example()
+            self.tour.notify_used("load_example")
+        self.remember("load_example")
+
         # Inventory details
         if self.model.inventory is not None:
             inv = self.model.inventory

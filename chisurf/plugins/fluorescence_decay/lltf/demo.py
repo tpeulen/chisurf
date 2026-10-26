@@ -9,7 +9,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from chisurf.plugins.fluorescence_decay.lltf.core.polarized import DEMO as _PAIR
+
 STEM = "lltf_demo"
+#: The simulated pair's parameters (one definition, in core.polarized: help, guide and tests
+#: read the same numbers).
+DEMO = dict(_PAIR)
 
 
 def demo_folder() -> Path:

@@ -104,7 +104,7 @@ def test_auto_fit_replaces_the_components_with_fitted_species_and_names_the_fit(
 def test_the_example_button_restores_the_example_after_a_change(drv):
     model(drv).components.pop()
     drv.settle()  # the change recomputes; a button pressed while the worker runs is greyed
-    drv.click("example")
+    drv.click("load_example")
     drv.settle()
     assert len(model(drv).components) == 2 and model(drv).total_label.startswith(
         "Convolved example"
@@ -213,13 +213,15 @@ def test_the_tour_is_walked_to_the_end_with_the_user_pressing_the_highlighted_bu
         if tour.awaiting:
             target = tour.steps[tour.step_idx].get("target", {})
             name = target.get("action")
-            drv.click({"Auto-fit": "autofit", "Unmix": "unmix"}[name])
+            drv.click(
+                {"load_example": "load_example", "Auto-fit": "autofit", "Unmix": "unmix"}[name]
+            )
             pressed.append(name)
             drv.settle()
             assert not tour.awaiting
         drv.draw(2)
         drv.click_text("Finish ✓" if tour.step_idx == len(tour.steps) - 1 else "Next ►")
-    assert pressed == ["Auto-fit", "Unmix"] and not tour.active
+    assert pressed == ["load_example", "Auto-fit", "Unmix"] and not tour.active
 
 
 def test_every_guide_target_is_a_drawn_control(drv):

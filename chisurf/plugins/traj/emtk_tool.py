@@ -512,8 +512,9 @@ class TrajToolApp(TourTarget, ImApp):
                 "Load the example trajectory this tool ships with and run the action on it."
             ),
         ):
+            self.tour.notify_used("load_example")
             self.load_example()
-        self.remember("example")
+        self.remember("load_example")
         im.same_line()
         if im.button(self.action.label):
             self.tour.notify_used(self.action.key)

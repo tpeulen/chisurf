@@ -69,8 +69,11 @@ def test_every_guide_target_is_drawn_and_the_card_leaves_it_free(ui, source):
 def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(ui, source):
     ui.click("guide")
     tour = ui.app.guide
-    assert tour.active and tour.awaiting  # the first step waits for Load example
-    assert tour.step_idx == 0, "Next must not skip a step that waits for its control"
+    assert tour.active and not tour.awaiting  # the introduction, then Load example
+    ui.press_text("Next ►")
+    assert tour.step_idx == 1 and tour.awaiting  # the example step waits for Load example
+    ui.press_text("Next ►")
+    assert tour.step_idx == 1, "Next must not skip a step that waits for its control"
 
     seen = []
     for _ in range(30):
