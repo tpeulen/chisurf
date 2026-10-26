@@ -145,7 +145,7 @@ class SplitterGui(TourTarget):
         tool = self.tool
         m = self.model
 
-        if im.button(tr("Load example")):
+        if action_button("example", id="load_example"):
             self.load_example()
             self.tour.notify_used("load_example")
         im.set_item_tooltip(

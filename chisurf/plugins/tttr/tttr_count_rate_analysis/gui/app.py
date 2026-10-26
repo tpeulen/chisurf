@@ -232,7 +232,7 @@ class CountRateGui(TourTarget):
 
     def _draw_files(self, box: tuple[float, float, float, float]) -> None:
         im.begin_disabled(self.busy())
-        if im.button(tr("Load example")):
+        if action_button("example", id="load_example"):
             self.load_example()
             self._used("load_example")
         im.set_item_tooltip(

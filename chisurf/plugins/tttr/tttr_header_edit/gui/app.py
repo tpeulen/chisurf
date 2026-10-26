@@ -144,7 +144,7 @@ class HeaderEditorGui(TourTarget):
     # ── the tags dock ─────────────────────────────────────────────────────
 
     def _draw_tags(self, box: tuple[float, float, float, float]) -> None:
-        if im.button(tr("Load example")):
+        if action_button("example", id="load_example"):
             self.load_example()
             self.tour.notify_used("load_example")
         im.set_item_tooltip(

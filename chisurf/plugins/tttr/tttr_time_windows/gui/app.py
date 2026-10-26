@@ -152,7 +152,7 @@ class TimeWindowGui(TourTarget):
     # ── the file queue ────────────────────────────────────────────────────
 
     def _draw_files(self, box: tuple[float, float, float, float]) -> None:
-        if im.button(tr("Load example")):
+        if action_button("example", id="load_example"):
             self.load_example()
             self._used("load_example")
         im.set_item_tooltip(

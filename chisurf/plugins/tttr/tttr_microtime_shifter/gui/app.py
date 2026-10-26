@@ -744,7 +744,7 @@ class MicrotimeShifterApp(TourTarget, ImApp):
             or self.dialog is not None
             or self.sample_definition is not None
         )
-        if im.button(tr("Load example")):
+        if action_button("example", id="load_example"):
             self.load_example()
             self.tour.notify_used("load_example")
         im.set_item_tooltip(
