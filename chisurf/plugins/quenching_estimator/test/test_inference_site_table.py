@@ -221,7 +221,8 @@ def test_direct_method_and_walk_agree_on_the_corrected_frame():
 def test_a_missing_kernel_is_named(monkeypatch):
     import IMP.bff as bff
 
-    monkeypatch.delattr(bff, "probe_solvent_exposure")
+    # raising=False: an IMP.bff that predates the kernel never had it, and must be named the same.
+    monkeypatch.delattr(bff, "probe_solvent_exposure", raising=False)
     with pytest.raises(ImportError, match="probe_solvent_exposure"):
         st._bff()
 

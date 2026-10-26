@@ -88,12 +88,19 @@ def _rows(golden, state="APO", site=72, linker=20.12):
                 yield stage, v["theta"], row
 
 
-def test_the_shipped_table_gives_the_golden_rows_exactly(golden, shipped):
+#: The golden rows were recorded on arm64 macOS. The lifetimes are numpy reductions over ~1e5
+#: voxels, whose pairwise sums follow the SIMD width (NEON vs AVX), so other CPUs agree to
+#: rounding, not to the bit: 4e-17 relative on a lifetime, 1e-14 on the exposure (x86 Linux).
+ROUNDING = 1e-13
+
+
+def test_the_shipped_table_gives_the_golden_rows_to_rounding(golden, shipped):
     rows = list(_rows(golden))
     assert len(rows) == 3
     for _, theta, row in rows:
         out = shipped.lifetime(theta, row["tau0"], row["water"])
-        assert out == (row["lifetime"], row["dark_fraction"], row["visible_exposure"])
+        expected = (row["lifetime"], row["dark_fraction"], row["visible_exposure"])
+        assert out == pytest.approx(expected, rel=ROUNDING, abs=0)
 
 
 def test_unique_rows_and_the_time_weighted_exposure(golden, shipped):
@@ -102,9 +109,9 @@ def test_unique_rows_and_the_time_weighted_exposure(golden, shipped):
     assert shipped.n_positions == ref["positions"]
     theta = golden["site_lifetimes"]["Atto655 in D2O and H2O"]["theta"]
     e = shipped.exposure_profile(theta, golden["TAU0"]["Atto655 D2O"])
-    assert e["visible"] == ref["visible_time_weighted_e"]
-    assert e["reachable"] == ref["reachable_count_weighted_e"]
-    assert e["dark_fraction"] == ref["dark_fraction"]
+    assert e["visible"] == pytest.approx(ref["visible_time_weighted_e"], rel=ROUNDING, abs=0)
+    assert e["reachable"] == pytest.approx(ref["reachable_count_weighted_e"], rel=ROUNDING, abs=0)
+    assert e["dark_fraction"] == pytest.approx(ref["dark_fraction"], rel=ROUNDING, abs=0)
     assert abs(e["weight"].sum() - 1.0) < 1e-12
 
 

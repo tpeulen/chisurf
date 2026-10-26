@@ -94,6 +94,14 @@ def residue_types(settings_=None):
     return [r for group in s["groups"].values() for r in group]
 
 
+def bff_version(bff) -> str:
+    """The IMP.bff version for messages: ``__version__`` (IMP build) or ``get_module_version()``."""
+    version = getattr(bff, "__version__", None)
+    if not version and callable(getattr(bff, "get_module_version", None)):
+        version = bff.get_module_version()
+    return str(version or "unknown version")
+
+
 def _bff():
     """IMP.bff with every kernel a site table needs.
 
@@ -114,7 +122,7 @@ def _bff():
     missing = [name for name in _KERNELS if not hasattr(bff, name)]
     if missing:
         raise ImportError(
-            f"this IMP.bff ({getattr(bff, '__version__', '?')}) lacks the site-table kernel(s) "
+            f"this IMP.bff ({bff_version(bff)}) lacks the site-table kernel(s) "
             f"{', '.join(missing)}; update imp.bff"
         )
     for name in ("get_voxel_indices", "get_voxel_centres"):

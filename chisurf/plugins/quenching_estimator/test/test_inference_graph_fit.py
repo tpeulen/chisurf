@@ -12,6 +12,7 @@ are in ``test_male_reproduction.py`` (slow).
 from __future__ import annotations
 
 import json
+import pathlib
 
 import numpy as np
 import pytest
@@ -371,17 +372,28 @@ print("OK", r.stages["B"].numbers["blocks"]["Atto655 in D2O"]["stats"]["n_rows"]
 
 
 def test_worker_processes_from_a_script_without_main_guard(tmp_path):
+    import os
     import subprocess
     import sys
 
+    import chisurf
+
     script = tmp_path / "unguarded.py"
     script.write_text(UNGUARDED)
+    # The child imports chisurf from where this process did: a source checkout run without an
+    # installed package (the remote gate) has it only through sys.path, not site-packages.
+    root = str(pathlib.Path(chisurf.__file__).resolve().parents[1])
+    env = {
+        **os.environ,
+        "PYTHONPATH": os.pathsep.join(filter(None, [root, os.environ.get("PYTHONPATH")])),
+    }
     out = subprocess.run(
         [sys.executable, str(script)],
         capture_output=True,
         text=True,
         timeout=600,
         cwd=str(tmp_path),
+        env=env,
     )
     assert out.returncode == 0, out.stderr[-3000:]
     assert "OK 18" in out.stdout

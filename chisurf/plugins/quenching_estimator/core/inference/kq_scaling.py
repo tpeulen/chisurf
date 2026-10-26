@@ -91,7 +91,9 @@ def kq_vector(dye, K, tau0, textbook, settings=None):
         aa = settings["titrated"][residue]
         mine = max(K[(dye, aa)], 0.0) / tau0[(dye, aa)]
         ref = max(K[(ref_dye, aa)], 0.0) / tau0[(ref_dye, aa)]
-        out.append(textbook[residue] * mine / ref if ref > 0 else 0.0)
+        # mine / ref first: for the reference dye that is x / x == 1.0 exactly, so its kQ is the
+        # textbook value to the bit and its propagated sd is 0 (t * m / m is not always t).
+        out.append(textbook[residue] * (mine / ref) if ref > 0 else 0.0)
     return np.array(out)
 
 

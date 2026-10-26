@@ -166,3 +166,18 @@ def test_the_walk_from_p_x_agrees_with_the_pde(fields, slow):
     if slow < 0.3:
         return  # reported, not asserted
     assert abs(tau - pde.tau_x) < 3.0 * se + WALK_BIAS * pde.tau_x
+
+
+def test_an_imp_bff_without_the_detailed_balance_solver_is_named(fields, monkeypatch):
+    """An older solver (no weight field) refuses the PDE ensemble by name, not with a SWIG TypeError."""
+    import IMP.bff as bff
+
+    _, f = fields[1.0]
+
+    def old_solver(*args):
+        if len(args) > 8:
+            raise TypeError("new_GridDiffusionSolver() takes at most 8 arguments (9 given)")
+
+    monkeypatch.setattr(bff, "GridDiffusionSolver", old_solver)
+    with pytest.raises(ImportError, match="detailed-balance GridDiffusionSolver"):
+        pde_solver(f)

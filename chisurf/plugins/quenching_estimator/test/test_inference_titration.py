@@ -17,6 +17,10 @@ from chisurf.plugins.quenching_estimator.core.inference import columns, measurem
 
 GOLDEN = Path(__file__).resolve().parent / "baselines" / "male_prototype.json"
 RTOL = 1e-12
+#: The marginals are exp(log_evidence - max) over a grid whose log evidences are sums of many
+#: log-likelihood terms (order 1e3); a last-ulp difference between platform libm log/exp then
+#: reaches ~1e-12 relative in a weight (1.1e-12 measured, x86 Linux glibc vs arm64 macOS).
+MARGINAL_RTOL = 1e-10
 
 
 @pytest.fixture(scope="module")
@@ -77,8 +81,8 @@ def test_day_to_day_hyper_posterior(result, golden):
     hyper = golden["hyper"]
     np.testing.assert_allclose(post.day_abs, hyper["DAY_ABS"], rtol=RTOL)
     np.testing.assert_allclose(post.day_rel, hyper["DAY_REL"], rtol=RTOL)
-    np.testing.assert_allclose(post.abs_marginal, hyper["abs_marginal"], rtol=RTOL, atol=0)
-    np.testing.assert_allclose(post.rel_marginal, hyper["rel_marginal"], rtol=RTOL, atol=0)
+    np.testing.assert_allclose(post.abs_marginal, hyper["abs_marginal"], rtol=MARGINAL_RTOL, atol=0)
+    np.testing.assert_allclose(post.rel_marginal, hyper["rel_marginal"], rtol=MARGINAL_RTOL, atol=0)
     for q, v in hyper["abs_quantiles"].items():
         assert post.quantile("abs", float(q)) == pytest.approx(v, rel=RTOL)
     for q, v in hyper["rel_quantiles"].items():

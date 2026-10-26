@@ -266,20 +266,36 @@ def equilibrium_lifetimes(f: EnsembleFields, tau0: float) -> EnsembleLifetimes:
 
 
 def pde_solver(f: EnsembleFields, t_step: float = PDE_DECAY_DT):
-    """IMP.bff's grid solver for these maps, started from the equilibrium occupancy."""
+    """IMP.bff's grid solver for these maps, started from the equilibrium occupancy.
+
+    Raises
+    ------
+    ImportError
+        When this IMP.bff's solver predates the detailed-balance form (the weight field and
+        the grid lifetimes the PDE ensemble is built on); the message names its version.
+    """
     import IMP.bff as bff
 
-    return bff.GridDiffusionSolver(
-        f.diffusion,
-        f.bounds,
-        f.occupancy,
-        f.rate,
-        f.dg,
-        float(t_step),
-        "detailed_balance",
-        False,
-        f.weight,
-    )
+    from chisurf.plugins.quenching_estimator.core.inference.site_table import bff_version
+
+    try:
+        solver = bff.GridDiffusionSolver(
+            f.diffusion,
+            f.bounds,
+            f.occupancy,
+            f.rate,
+            f.dg,
+            float(t_step),
+            "detailed_balance",
+            False,
+            f.weight,
+        )
+    except TypeError as exc:  # an older solver takes no weight field
+        raise ImportError(
+            f"this IMP.bff ({bff_version(bff)}) has no detailed-balance GridDiffusionSolver "
+            "(weight field, grid lifetimes) for the PDE ensemble; update imp.bff"
+        ) from exc
+    return solver
 
 
 def pde_lifetimes(f: EnsembleFields, tau0: float, solver=None) -> EnsembleLifetimes:
