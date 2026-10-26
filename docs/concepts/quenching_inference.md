@@ -136,9 +136,10 @@ models, but three views of one diffusion problem:
    diffusion solver (example 05 uses the same solver for the 1-D
    Haas–Steinberg equation).
 3. **Brownian walk.** A stochastic realisation of the PDE (trajectories plus
-   a photon race). This is the straightforward path for FRET, where donor and
-   acceptor dynamics and the per-frame transfer rate matter
-   ({ref}`concept-dye-quenching`). Each walker starts from $p(x)$, so every
+   a photon race). This is the path for FRET with acceptor dynamics, where the
+   per-frame transfer rate matters ({ref}`concept-dye-quenching`); the PDE takes
+   FRET in the fast-acceptor limit (the rate averaged over the acceptor's volume
+   joins the sink). Each walker starts from $p(x)$, so every
    frame is already an equilibrium sample and nothing has to equilibrate. A
    walker started on a uniform voxel does not reach the sticky voxels within a
    run at slow factors ≤ 0.1, and its decay then reports where it began
@@ -189,7 +190,7 @@ counts is the **rate model** (`site_model.yaml: rate_model`):
 - **`kernel` (the default): distance-continuous.** With
   $u = r - R_q$, the distance beyond the reference contact radius,
   $$
-  f(u) = \begin{cases} 1, & u \le 0,\\ e^{-u/\ell}, & u > 0, \end{cases}
+  f(u) = \min\!\left(1,\ e^{-u/\ell}\right)
   \qquad c_q(x) = \sum_\text{centres} w\, f(u).
   $$
   The decay length $\ell$ replaces the contact offset. A free offset ρ would be
@@ -262,7 +263,7 @@ backbone + Cβ.
 ## Priors and parameters
 
 Parameters per dye: $\ln s_\text{common}$, $\ln s_g$ (five groups),
-$\ln\kappa$, $\delta$, $\lambda$, $\ln\gamma$, $\delta_s$, $\Delta\tau_\text{shield}$,
+$\ln\kappa$, $\ell$ (kernel) or $\delta$ (contact shell), $\lambda$, $\ln\gamma$, $\delta_s$, $\Delta\tau_\text{shield}$,
 inside physical bounds ($s$ 0.001–1, κ 0.01–100, $\ell$ 0.1–2 Å (kernel) or
 δ −4…+5 Å (contact shell, the tabulated offsets), γ 0.001–100, δ_s −4…0 Å).
 Each parameter is declared in `fit_parameters.yaml` with the mmfdb term it is
@@ -472,8 +473,9 @@ stored run did not print it.
 
 The dye is one sphere on a stretched-linker AV; the protein is one rigid
 structure per state (side chains through rotamers only); stickiness is per
-residue type and group, additive in $\ln s$; contact quenching is a step at
-$R_q + \delta$; the water term assumes quenching proportional to exposed dye
+residue type and group, additive in $\ln s$; contact quenching decays as
+$e^{-u/\ell}$ beyond the contact radius (a step at $R_q + \delta$ in the prototype's
+`contact_shell` model); the water term assumes quenching proportional to exposed dye
 surface; the lifetime model is the static (equilibrium) limit; the linker
 models in IMP.bff (C1R/C2R maleimides) are assumed to match the reagents.
 

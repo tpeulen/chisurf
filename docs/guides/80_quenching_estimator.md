@@ -80,7 +80,7 @@ the same ones every AV in ChiSurf uses.
    residues in range and the equilibrium occupancy $w(x) = 1/m(x)$
    ({ref}`concept-quenching-inference`, "three ensembles"):
    - *walk*: Brownian walkers, each started from $w$, and a photon race along
-     each. The only ensemble that simulates FRET; Monte-Carlo noise plus a
+     each. FRET follows the donor-acceptor distance along each path; Monte-Carlo noise plus a
      small time-step bias at sticky boundaries.
    - *equilibrium*: the static limit. Every position decays on its own at
      $1/\tau_0 + k_Q$, weighted by $w$. Exact, fast, and what the inverse fit
@@ -88,7 +88,8 @@ the same ones every AV in ChiSurf uses.
    - *pde*: the diffusion equation on the AV grid with the stickiness as a
      potential and quenching as a sink (IMP.bff's grid solver). Motion during the
      excited state, no sampling noise; its stationary state is the equilibrium
-     ensemble.
+     ensemble. With FRET it uses the fast-acceptor limit: the transfer rate,
+     averaged over the acceptor's volume, joins the sink at every voxel.
 
    MalE APO site 95 with the AF488 table at slow factor 0.3: equilibrium
    $\tau_x$ 2.872 ns, PDE 2.494 ns (fast-exchange limit 1.057 ns). The
@@ -200,7 +201,7 @@ project["attachment"] = {"chain": "E", "residue": 36, "atom": "CB"}
 result = quest.simulate(project)          # a DecaySimulationResult
 print(result.quantum_yield_donor, result.lifetime_donor)
 
-project["ensemble"] = "pde"               # or "equilibrium"; FRET needs "walk"
+project["ensemble"] = "pde"               # or "equilibrium" (donor only: no FRET)
 print(quest.simulate(project).ensemble_lifetimes)
 ```
 
@@ -236,8 +237,9 @@ excitation lower the brightness without changing the simulated decay.
   IMP's united-atom radii (carbon up to 2.275 Å), and with FPS's smaller Bondi
   radii the same search leaves exactly FPS's 33 empty, 96, 117 and 132 among the
   labelled. A width of 0.5 Å labels all 151.
-- **FRET needs the walk.** *equilibrium* and *pde* refuse a project with FRET
-  enabled, because the transfer rate is read along the dyes' paths.
+- **FRET: walk or pde.** *equilibrium* refuses a project with FRET enabled; the
+  *walk* reads the transfer rate along the dyes' paths, the *pde* averages the
+  acceptor over its volume (the fast-acceptor limit).
 
 ## See also
 

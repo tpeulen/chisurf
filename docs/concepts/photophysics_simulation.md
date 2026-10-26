@@ -186,7 +186,7 @@ they don't, the simulator has isolated the bias before it reaches real data.
   {cite}`borner2018` the camera-based counterpart, which a photon-counting
   simulation does not reproduce — integration over a frame, readout noise and
   motion blur change what a trajectory looks like before any analysis touches it.
-- Tools in ChiSurf: the **CLSM Generator** (`chisurf/plugins/microscopy/clsm_generator/`) simulates a scanned image with a known lifetime map, and the **Light Path Simulator** (`chisurf/plugins/core/lightpath_simulator/`) models the optics the photons pass through.
+- Tools in ChiSurf: the **CLSM Simulator** (`chisurf/plugins/microscopy/clsm_generator/`) simulates a scanned image with a known lifetime map, and the **Light Path Simulator** (`chisurf/plugins/core/lightpath_simulator/`) models the optics the photons pass through.
 
 The map-based CLSM generator treats brightness as an emitter rate, not a
 fixed output photon count. Its scan rounds dwell to whole integration windows;

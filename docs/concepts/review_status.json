@@ -189,10 +189,10 @@
     "status": "ai-reviewed"
   },
   "flrcif_vocabulary.md": {
-    "date": "2026-10-20",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "c0c8265076d6d0251b9bae1decd3c4881bc67373d0f329cf14cfbad2dbb2a8dd",
+    "sha256": "28d3ccd114c9ad796a577dd6223d0a70863247a06edf4465ccd3462e824cdc33",
     "status": "ai-reviewed"
   },
   "frap.md": {
@@ -266,10 +266,10 @@
     "status": "ai-reviewed"
   },
   "imaging_flim_phasor.md": {
-    "date": "2026-10-20",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "c529c613478bfe5f36b066da333296017605325e571133f7d597b5f3ccc842d8",
+    "sha256": "cb974cdc5092fac3b1dedce7e89a55b9b3d69a57ad1345e80e449c477b8033f0",
     "status": "ai-reviewed"
   },
   "index.md": {
@@ -364,10 +364,10 @@
     "status": "ai-reviewed"
   },
   "multidimensional_exploration.md": {
-    "date": "2026-10-14",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "7e6f12e19c4f89853dd08dcc5af0c19522b3fdbd19b9b98a6eab5fd384e8902e",
+    "sha256": "6f837ce4aba0b525ee9f7f21b6c947d2e1befded52a7c67c22cf471fbe3a5cbc",
     "status": "ai-reviewed"
   },
   "number_and_brightness.md": {
@@ -434,10 +434,10 @@
     "status": "ai-reviewed"
   },
   "photophysics_simulation.md": {
-    "date": "2026-10-10",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "ae0331acb32d9dc8f88f6087b060c81145bca44dda52eefc07bf2fb6fff64d4c",
+    "sha256": "7eaad97c68a6180530c4f8df79f11df2455fc86ba295046264583ec0627a1798",
     "status": "ai-reviewed"
   },
   "point_spread_function.md": {
@@ -452,6 +452,13 @@
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "7f4524fd77b14616929aa9ecd69de919e25c361919cd93c96d89596bf13fccf1",
+    "status": "ai-reviewed"
+  },
+  "quenching_inference.md": {
+    "date": "2026-10-26",
+    "reviewer": "claude",
+    "reviewer_kind": "ai",
+    "sha256": "5f851ef0deea03684755236d3c2a9ed8d89b734f00ed920bb23ee49dd5e11b7f",
     "status": "ai-reviewed"
   },
   "recurrence.md": {
@@ -504,24 +511,24 @@
     "status": "ai-reviewed"
   },
   "terminal.md": {
-    "date": "2026-10-20",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "d695fe7a32a4acff5c3d2393e232e63aedb250a16a71e10ea306c4b0acc416c6",
+    "sha256": "a4f2a22e89fd141e847434df227a4800a28794bed13792cdd58f1034736d690a",
     "status": "ai-reviewed"
   },
   "tttr_stream_tools.md": {
-    "date": "2026-10-19",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "182a966c1d3c6618c52c94d04513c47fb2d448373ca89173fc060ed1f0f0e913",
+    "sha256": "dc0dfbfce127e3dbecd05e8d1455db5d06dfe877e28aaefcf3ad0a2452690b31",
     "status": "ai-reviewed"
   },
   "us_alex.md": {
-    "date": "2026-10-14",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "cee473f060e2d991db1f8d3d774ae9b6c12ff9dd56eeeedbc01fd9f2efb72be5",
+    "sha256": "3dbbf2b147109c9fde90af26e31871c31e69ff6cbd8d089002744708aa4272fd",
     "status": "ai-reviewed"
   },
   "workflow_agent.md": {

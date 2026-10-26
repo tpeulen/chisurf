@@ -86,14 +86,14 @@ guess at.
 
 The spectrum is binned at a width $w$ set by the FFT length, so $w$ grows with
 the record while $T$ does not: a 300 s record at a 12.5 ns clock is binned at
-$w \approx 5700$ units against $T = 8000$, below the Nyquist limit $w < T/2$, and
-the line then appears at an alias $|1/T - n/w|$. The peak alone does not say
+$w \approx 5700$ units against $T = 8000$ -- coarser than the Nyquist condition
+$w < T/2$ allows -- and the line then appears at an alias $|1/T - n/w|$. The peak alone does not say
 which $n$, so every $n$ that puts $T$ in the searched range is a candidate, and
 the photons decide: each candidate's integer neighbourhood is folded, and the
 period whose folded detector signal is most modulated wins. Only that fold is
 coherent — a period one unit out smears over $10^5$ cycles — so the true one
 stands out by orders of magnitude.
-The spectrum is taken twice, at $w$ and at $w\varphi$ ($\varphi$ the golden
+The spectrum is taken twice, at $w$ and at $gw$ ($g = (1+\sqrt5)/2$, the golden
 ratio): a bin exactly a whole number of periods wide holds the same complete
 cycles every time, so the alternation cancels from that spectrum entirely, and
 no period can make both widths whole multiples.

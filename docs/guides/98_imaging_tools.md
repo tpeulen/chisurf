@@ -47,7 +47,7 @@ description, and the shared **Source** and **HDF5** (none created yet). Below: t
 Every listed step consumes the shared context of §3: the Setup's detector windows, the Browser's source, the imaging
 HDF5 or the IRF & BG calibration. Tools that read their own input and take none of it are buttons of their own in
 **Spectroscopy → Imaging**, each a tool of its own: **Drift Correction** (align a stack and export it before the maps
-are built), **Particle Tracking**, **PSF Determination** and **CLSM Generator** (a synthetic photon image whose answer
+are built), **Particle Tracking**, **PSF Determination** and **CLSM Simulator** (a synthetic photon image whose answer
 is known; open the file it writes in Browser).
 
 Type in **Search** to keep the tools whose name or description contains the text. Hover over a tool for what it does;
