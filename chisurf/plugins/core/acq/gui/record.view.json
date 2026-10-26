@@ -1,0 +1,449 @@
+{
+  "title": "Record",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Source",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "source_kind",
+          "label": "Source",
+          "options_source": "source_options",
+          "description": "Where the photons come from: the simulator (a MultiHarp measuring a PIE smFRET sample with a known answer — its records go through the same device path as a real measurement), a photon stream from the Datasets workspace played back at measurement speed, or a PicoQuant device connected over USB."
+        },
+        {
+          "type": "value",
+          "attr": "sim_e_low",
+          "label": "Population 1: E",
+          "kind": "float",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "step": 0.05,
+          "decimals": 2,
+          "style": "spin",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "simulator"
+          },
+          "description": "FRET efficiency of the first simulated population. Each molecule carries donor and acceptor; its photons are split into donor and acceptor channel by this E."
+        },
+        {
+          "type": "value",
+          "attr": "sim_e_high",
+          "label": "Population 2: E",
+          "kind": "float",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "step": 0.05,
+          "decimals": 2,
+          "style": "spin",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "simulator"
+          },
+          "description": "FRET efficiency of the second simulated population."
+        },
+        {
+          "type": "value",
+          "attr": "sim_s",
+          "label": "Stoichiometry S",
+          "kind": "float",
+          "minimum": 0.1,
+          "maximum": 0.9,
+          "step": 0.05,
+          "decimals": 2,
+          "style": "spin",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "simulator"
+          },
+          "description": "Stoichiometry of both populations: the share of donor-excited photons in all photons of a molecule (0.5 = equally bright under both lasers)."
+        },
+        {
+          "type": "value",
+          "attr": "sim_concentration",
+          "label": "Concentration",
+          "kind": "float",
+          "minimum": 0.1,
+          "maximum": 20.0,
+          "step": 0.5,
+          "decimals": 1,
+          "style": "spin",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "simulator"
+          },
+          "description": "Molecules of each population in the simulation box. Higher means more bursts per second, and more coincident molecules."
+        },
+        {
+          "type": "value",
+          "attr": "sim_seed",
+          "label": "Seed",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "step": 1,
+          "style": "spin",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "simulator"
+          },
+          "description": "Seeds diffusion and emission, so a run is reproducible."
+        },
+        {
+          "type": "choice",
+          "attr": "replay_address",
+          "label": "Photon stream",
+          "options_source": "photon_options",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "replay"
+          },
+          "description": "A photons dataset of the Datasets workspace, played back at measurement speed. Drop the file on the ChiSurf window to add it."
+        },
+        {
+          "type": "value",
+          "attr": "speed",
+          "label": "Speed",
+          "kind": "float",
+          "minimum": 0.1,
+          "maximum": 100.0,
+          "step": 1.0,
+          "decimals": 1,
+          "style": "spin",
+          "hidden_when": {
+            "attr": "source_kind",
+            "equals": "device"
+          },
+          "description": "How fast simulated or replayed photons arrive: 1 is the pace of the real measurement, 10 ten times faster."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "TCSPC device",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "device_index",
+          "label": "Device",
+          "options_source": "device_options",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          },
+          "description": "The PicoQuant devices connected over USB (driven through CMC's pqusb, without PicoQuant's libraries). Connect opens and initialises it in T3 mode."
+        },
+        {
+          "type": "button_row",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          },
+          "buttons": [
+            {
+              "action": "connect_device",
+              "label": "Connect",
+              "description": "Open and initialise the device in T3 mode (internal reference clock) and show its identity and count rates. Nothing is recorded until Start."
+            },
+            {
+              "action": "disconnect_device",
+              "label": "Disconnect",
+              "description": "Release the device so another program can use it."
+            }
+          ]
+        },
+        {
+          "type": "info",
+          "source": "device_text",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          }
+        },
+        {
+          "type": "value",
+          "attr": "sync_div",
+          "label": "Sync divider",
+          "kind": "int",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          },
+          "description": "Divides the laser's sync pulses. Keep 1 for PIE: the micro-time must span one full laser period, both pulses.",
+          "style": "spin",
+          "minimum": 1,
+          "maximum": 16,
+          "step": 1
+        },
+        {
+          "type": "value",
+          "attr": "sync_level_mv",
+          "label": "Sync level (mV)",
+          "kind": "int",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          },
+          "description": "Trigger level of the sync input.",
+          "style": "spin",
+          "minimum": -1200,
+          "maximum": 1200,
+          "step": 10
+        },
+        {
+          "type": "choice",
+          "options": [
+            "0",
+            "1"
+          ],
+          "labels": [
+            "falling",
+            "rising"
+          ],
+          "attr": "sync_edge",
+          "label": "Sync edge",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          },
+          "description": "Which edge of the sync signal triggers."
+        },
+        {
+          "type": "value",
+          "attr": "sync_offset_ps",
+          "label": "Sync offset (ps)",
+          "kind": "int",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          },
+          "description": "Shifts all micro-times; use it to place the prompt pulse at the start of the period.",
+          "style": "spin",
+          "minimum": -99999,
+          "maximum": 99999,
+          "step": 100
+        },
+        {
+          "type": "value",
+          "attr": "input_level_mv",
+          "label": "Input level (mV)",
+          "kind": "int",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          },
+          "description": "Trigger level of the detector inputs (all inputs).",
+          "style": "spin",
+          "minimum": -1200,
+          "maximum": 1200,
+          "step": 10
+        },
+        {
+          "type": "choice",
+          "options": [
+            "0",
+            "1"
+          ],
+          "labels": [
+            "falling",
+            "rising"
+          ],
+          "attr": "input_edge",
+          "label": "Input edge",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          },
+          "description": "Which edge of the detector pulses triggers (all inputs)."
+        },
+        {
+          "type": "value",
+          "attr": "donor_offset_ps",
+          "label": "Donor input offset (ps)",
+          "kind": "int",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          },
+          "description": "Delay of the donor detector's input (the first donor channel of the setup), to align it with the acceptor's.",
+          "style": "spin",
+          "minimum": -99999,
+          "maximum": 99999,
+          "step": 100
+        },
+        {
+          "type": "value",
+          "attr": "acceptor_offset_ps",
+          "label": "Acceptor input offset (ps)",
+          "kind": "int",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          },
+          "description": "Delay of the acceptor detector's input (the first acceptor channel of the setup).",
+          "style": "spin",
+          "minimum": -99999,
+          "maximum": 99999,
+          "step": 100
+        },
+        {
+          "type": "value",
+          "attr": "binning",
+          "label": "Binning",
+          "kind": "int",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          },
+          "description": "T3 micro-time bin width = base resolution x 2^binning.",
+          "style": "spin",
+          "minimum": 0,
+          "maximum": 24,
+          "step": 1
+        },
+        {
+          "type": "value",
+          "attr": "offset_ns",
+          "label": "Offset (ns)",
+          "kind": "int",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          },
+          "description": "T3 offset of the micro-time window (ns).",
+          "style": "spin",
+          "minimum": 0,
+          "maximum": 100000000,
+          "step": 1
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "PIE setup",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "setup_address",
+          "label": "Instrument setup",
+          "options_source": "setup_options",
+          "description": "Which photons are donor or acceptor, prompt or delay: a setup row of the Datasets workspace (drop a detector setup JSON on the window), or the default — routing channel 0 donor, 1 acceptor, the laser period split into halves. A setup that carries gamma, beta, alpha and delta gives corrected E and S."
+        },
+        {
+          "type": "info",
+          "source": "setup_text"
+        },
+        {
+          "type": "value",
+          "attr": "min_photons",
+          "label": "Minimum photons",
+          "kind": "int",
+          "minimum": 5,
+          "maximum": 10000,
+          "step": 5,
+          "style": "spin",
+          "description": "A burst needs at least this many photons (L)."
+        },
+        {
+          "type": "value",
+          "attr": "window_photons",
+          "label": "Window photons",
+          "kind": "int",
+          "minimum": 2,
+          "maximum": 1000,
+          "step": 1,
+          "style": "spin",
+          "description": "The sliding window: this many consecutive photons (m) ..."
+        },
+        {
+          "type": "value",
+          "attr": "window_time_ms",
+          "label": "Window time (ms)",
+          "kind": "float",
+          "minimum": 0.01,
+          "maximum": 100.0,
+          "step": 0.05,
+          "decimals": 3,
+          "style": "spin",
+          "description": "... arriving within this time (T) belong to a burst. The same criterion as Burst Selection's sliding-window search, so the run can be re-analysed offline with identical bursts."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Run",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "duration_s",
+          "label": "Duration (s)",
+          "kind": "float",
+          "minimum": 0.0,
+          "maximum": 86400.0,
+          "step": 10.0,
+          "decimals": 1,
+          "style": "spin",
+          "description": "Stop after this much measurement time; 0 measures until you press Stop."
+        },
+        {
+          "type": "value",
+          "attr": "run_name",
+          "label": "Name",
+          "kind": "str",
+          "description": "The recording's file name (a .ptu in the acquisition output folder) and its name in the Datasets workspace."
+        },
+        {
+          "type": "info",
+          "source": "target_text"
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "action": "load_example",
+              "label": "Load example",
+              "icon": "🧪",
+              "description": "Choose the simulator with two populations of known E (0.2 and 0.8, S 0.5) and the default PIE setup, ready to Start."
+            },
+            {
+              "action": "start",
+              "label": "Start",
+              "icon": "▶",
+              "role": "primary",
+              "description": "Start measuring: photons are analysed live and written to the recording as they arrive."
+            },
+            {
+              "action": "stop",
+              "label": "Stop",
+              "icon": "⏹",
+              "role": "danger",
+              "description": "Stop measuring. The open burst is closed, the recording finished, and both enter the project: the photons as a dataset, its bursts as a run below it."
+            },
+            {
+              "action": "open_classic",
+              "label": "Device session…",
+              "description": "The device session of earlier versions (Becker-Hickl, PicoQuant, BrickMic setup cards, routing, decay and correlation plots)."
+            }
+          ]
+        },
+        {
+          "type": "info",
+          "source": "status_text"
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Live",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "live_view",
+          "description": "The measurement as it builds up: the E–S histogram of the bursts with its two marginals, count rates per photon class (DD, DA, AA), the micro-time decays of both detectors with the prompt and delay windows, and the run's health."
+        }
+      ]
+    }
+  ]
+}

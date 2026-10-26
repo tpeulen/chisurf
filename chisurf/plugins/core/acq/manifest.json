@@ -2,10 +2,10 @@
   "id": "acq",
   "version": "1.0.0",
   "display_name": "Tools:Views:Acquisition",
-  "description": "Single-molecule fluorescence acquisition: stream photons from real TCSPC hardware or the built-in tttrlib Sim* photon simulator (confocal diffusion with FRET, anisotropy and photophysics).",
+  "description": "Record single-molecule measurements with pulsed interleaved excitation and watch the E–S histogram build up live: bursts are searched, counted into DD/DA/AA and placed in E and S while the photons arrive, written to a PTU, and the run lands in the project (photons dataset with its burst run). Sources: the built-in tttrlib photon simulator (PIE smFRET with known E/S), replay of a workspace photon stream; devices follow. The device session of earlier versions (Becker-Hickl, PicoQuant, BrickMic) stays available.",
   "authors": ["Thomas-Otavio Peulen"],
   "experimental": true,
-  "experimental_message": "Development status: the hardware-streaming path (live TCSPC devices) is untested on real hardware for now -- no device was available. The built-in tttrlib Sim* photon simulator is the supported path.",
+  "experimental_message": "Development status: devices are not connected to the Record tool yet — it measures the built-in simulator or replays a recorded stream. The device session of earlier versions is untested on real hardware.",
   "categories": ["Tools", "Views", "Acquisition"],
   "icon": "📷",
   "state_namespace": "acq",
@@ -24,7 +24,7 @@
     }
   },
   "entrypoints": {
-    "emtk": "chisurf.plugins.core.acq.gui.app:make_app",
+    "emtk": "chisurf.plugins.core.acq.gui.record_app:make_app",
     "cli": "photon-acquisition=chisurf.plugins.core.acq.standalone:main",
     "services": "chisurf.plugins.core.acq.services:register"
   },
