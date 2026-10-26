@@ -75,6 +75,16 @@ JSON, the routing channels; the photons open lazily through `staging.open_tttr(a
 Autosave never re-hashes link targets or packed photon objects (immutable once recorded); hashing happens
 once, at import.
 
+**Remote link targets** (owner 2026-10-26): a link may point at a URI instead of a file — first
+`mmfdb://<server>/<artifact-uid>` (an object of an MMFDB server, fetched with the user's credentials the way
+the web pages fetch it), later `https://` (e.g. a deposited record). ptolib stays generic: a link target may
+be a URI, ptolib keeps a scheme → resolver registry (`register_link_resolver`), resolving fetches into a
+local cache and then checks the recorded size + sha256 like any file. Credentials are never stored in the
+container or the URI; the mmfdb resolver (mmfdb repo) takes them from the user's MMFDB client
+authentication. Because MMFDB's object store is content-addressed, a link with a recorded sha256 can also be
+satisfied by any MMFDB store holding that object. ChiSurf registers the resolver at startup; *Locate missing
+data* searches MMFDB too.
+
 **The user decides, in the UI** (owner 2026-10-26):
 
 * *Embed or link* — a project setting (default: link) and a choice at import (the drop offers "Link" /
