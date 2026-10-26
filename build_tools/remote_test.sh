@@ -7,9 +7,10 @@
 # clone over ssh as refs/remote-test/<id> (no branch is touched, no GitHub
 # round trip) and checked out detached. Pixi environments are detached into
 # the pixi cache, so the checkout stays clean. Each run is a systemd user
-# unit (survives a dropped ssh connection); only one runs at a time, never
-# two pytest suites at once. Run output lands in build/remote-test/<id> on
-# the remote and, after `fetch`, at the same path here. Sibling checkouts the
+# unit (survives a dropped ssh connection). Several runs may go at once, but
+# only on the same commit (they share the checkout); `start` refuses otherwise.
+# Run output lands in build/remote-test/<id> on the remote and, after `fetch`,
+# at the same path here. Sibling checkouts the
 # tree links in (modules/<name> -> ~/dev/<name>: tttrlib, mmfdb, chimol, ...)
 # are mirrored the same way: their committed HEAD is pushed to the same path
 # on the remote and checked out detached (their uncommitted edits are not
@@ -78,16 +79,20 @@ cmd_start() {
     done
     [[ ${#cmd[@]} -gt 0 ]] || cmd=(pixi run -e test test)
 
-    if remote "systemctl --user list-units --state=active,activating --no-legend 'chisurf-test-*' | grep -q ."; then
-        echo "a run is already active on $HOST:" >&2
-        remote "systemctl --user list-units --state=active,activating --no-legend 'chisurf-test-*'" >&2
-        exit 3
-    fi
-
     cd "$REPO"
     local sha="" label="HEAD"
     if [[ $dirty -eq 1 ]]; then sha="$(git stash create "remote_test snapshot")"; fi
     if [[ -n "$sha" ]]; then label="dirty"; else sha="$(git rev-parse HEAD)"; fi
+
+    # Runs share the one checkout: several may run at once (the box has the cores), but
+    # only on the same commit -- checking out another would change the tree under them.
+    local busy
+    busy="$(remote "for u in \$(systemctl --user list-units --state=active,activating --no-legend --plain 'chisurf-test-*' | awk '{print \$1}'); do
+        id=\${u#chisurf-test-}; id=\${id%.service}; sed -n 's/^sha: //p' $RUNS/\$id/meta.txt 2>/dev/null; done | sort -u")"
+    if [[ -n "$busy" && "$busy" != "$sha" ]]; then
+        echo "runs on another commit are active on $HOST ($busy); wait or stop them" >&2
+        exit 3
+    fi
     [[ -n "$id" ]] || id="$(date +%Y%m%d-%H%M%S)-$(git rev-parse --short "$sha")"
 
     ensure_remote

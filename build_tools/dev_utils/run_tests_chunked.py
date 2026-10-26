@@ -12,7 +12,14 @@ run yields to other work instead of being stopped half way.
 Usage::
 
     python -m build_tools.dev_utils.run_tests_chunked [--resume] [--only test/fio ...]
-        [-- extra pytest args]
+        [--jobs N] [--retry-serial] [--out DIR] [-- extra pytest args]
+
+``--jobs N`` runs N chunks at once (each its own pytest process with its own temporary
+directory) -- for a machine with cores to spare, such as the remote test box; on a laptop
+keep the default 1. A chunk that fails beside others may have collided with them (a port,
+a shared file), so ``--retry-serial`` runs the failing chunks again one at a time after the
+parallel pass; the summary keeps both exits (``exit`` is the serial one, ``parallel_exit``
+the first).
 
 Results land in ``~/.cache/chisurf/test-resources/gate/``: ``<chunk>.log`` per chunk and
 ``summary.json`` (chunk -> exit code, counts, seconds). The exit code is 0 only when every
@@ -160,36 +167,72 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--resume", action="store_true", help="skip chunks with a recorded result")
     parser.add_argument("--only", nargs="*", default=None, help="run only these chunks")
+    parser.add_argument("--jobs", type=int, default=1, help="chunks run at once (default 1)")
+    parser.add_argument("--retry-serial", action="store_true",
+                        help="run failing chunks again, one at a time, after the parallel pass")
+    parser.add_argument("--out", type=Path, default=OUT, help=f"result directory (default {OUT})")
     parser.add_argument("pytest_args", nargs="*", help="extra pytest arguments (after --)")
     args = parser.parse_args(argv)
-    OUT.mkdir(parents=True, exist_ok=True)
-    summary_path = OUT / "summary.json"
+    out = args.out
+    out.mkdir(parents=True, exist_ok=True)
+    summary_path = out / "summary.json"
     summary = json.loads(summary_path.read_text()) if args.resume and summary_path.is_file() else {}
     todo = args.only or chunks()
     env = {**os.environ, **ENV}
     awake = _hold_awake()
-    for chunk in todo:
-        if args.resume and chunk in summary and summary[chunk]["exit"] in (0, 1, 5):
-            continue
+
+    def start(chunk: str) -> tuple:
         _wait_for_memory()
-        log = OUT / (re.sub(r"[\[\]]", "_", chunk).replace("/", "__").replace("*", "loose") + ".log")
-        started, started_wall = time.monotonic(), time.time()
+        stem = re.sub(r"[\[\]]", "_", chunk).replace("/", "__").replace("*", "loose")
+        log = out / f"{stem}.log"
+        fh = open(log, "w")
         print(f"{chunk} ...", flush=True)
-        with open(log, "w") as fh:
-            code = subprocess.call(
-                [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-m", MARKERS,
-                 "--timeout=120", "-rfE", *_targets(chunk), *args.pytest_args],
-                cwd=ROOT, env=env, stdout=fh, stderr=subprocess.STDOUT,
-            )
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-m", MARKERS,
+             "--timeout=120", "-rfE", f"--basetemp={out / 'tmp' / stem}",
+             f"--junitxml={out / 'junit' / (stem + '.xml')}",
+             *_targets(chunk), *args.pytest_args],
+            cwd=ROOT, env=env, stdout=fh, stderr=subprocess.STDOUT,
+        )
+        return chunk, proc, fh, log, time.monotonic(), time.time()
+
+    def finish(chunk, proc, fh, log, started, started_wall) -> int:
+        fh.close()
+        code = proc.returncode
         counts = _counts(log.read_text(errors="replace"))
         seconds, wall = time.monotonic() - started, time.time() - started_wall
+        previous = summary.get(chunk, {})
         summary[chunk] = {"exit": code, **counts, "seconds": round(seconds, 1)}
+        if "parallel_exit" in previous:
+            summary[chunk]["parallel_exit"] = previous["parallel_exit"]
         slept = ""
         if wall - seconds > 60:
             summary[chunk].update(wall_seconds=round(wall, 1), slept_seconds=round(wall - seconds, 1))
             slept = f" (machine slept {wall - seconds:.0f}s; wall {wall:.0f}s)"
         summary_path.write_text(json.dumps(summary, indent=1))
-        print(f"  exit {code} {counts} {summary[chunk]['seconds']}s{slept}", flush=True)
+        print(f"  {chunk}: exit {code} {counts} {summary[chunk]['seconds']}s{slept}", flush=True)
+        return code
+
+    def run(chunks_to_run: list[str], jobs: int) -> None:
+        pending = list(chunks_to_run)
+        running: list[tuple] = []
+        while pending or running:
+            while pending and len(running) < max(1, jobs):
+                running.append(start(pending.pop(0)))
+            time.sleep(0.5)
+            for item in [r for r in running if r[1].poll() is not None]:
+                running.remove(item)
+                finish(*item)
+
+    run([c for c in todo if not (args.resume and c in summary and summary[c]["exit"] in (0, 1, 5))],
+        args.jobs)
+    if args.retry_serial and args.jobs > 1:
+        failing = [c for c in todo if summary.get(c, {}).get("exit") not in (0, 5)]
+        for chunk in failing:
+            summary[chunk]["parallel_exit"] = summary[chunk]["exit"]
+        if failing:
+            print(f"retrying {len(failing)} failing chunk(s) one at a time", flush=True)
+            run(failing, 1)
     if awake is not None:
         awake.terminate()
     bad = {c: r for c, r in summary.items() if c in todo and r["exit"] not in (0, 5)}
