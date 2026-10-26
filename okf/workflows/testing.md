@@ -83,7 +83,10 @@ The remote mirrors the local layout: `~/dev/chisurf` there is a plain clone of t
 origin with `modules/ndxplorer` in place. The commit under test is pushed straight into
 it as `refs/remote-test/<id>` (no branch moves, no GitHub round trip; the newest 20 refs
 are kept) and checked out detached; `--dirty` sends a `git stash create` snapshot of the
-tracked changes (untracked files are not included). Pixi envs are detached into the
+tracked changes (untracked files are not included). The sibling checkouts the tree links
+in (`modules/tttrlib`, `mmfdb`, `chimol`, `imp-tricks` -> `~/dev/<name>`) are mirrored the same
+way at the same paths: their committed HEAD is pushed and checked out detached, and `meta.txt`
+records each sibling's sha and whether local edits were left behind. Pixi envs are detached into the
 pixi cache, so the checkout stays clean. Each run is a systemd user unit (linger is on,
 so it survives a dropped ssh) and `start` refuses while another run is active — one
 suite at a time. Output (`meta.txt`, `log.txt`, `junit.xml`, `exit_code`) lands in

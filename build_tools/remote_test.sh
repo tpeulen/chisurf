@@ -9,7 +9,11 @@
 # the pixi cache, so the checkout stays clean. Each run is a systemd user
 # unit (survives a dropped ssh connection); only one runs at a time, never
 # two pytest suites at once. Run output lands in build/remote-test/<id> on
-# the remote and, after `fetch`, at the same path here.
+# the remote and, after `fetch`, at the same path here. Sibling checkouts the
+# tree links in (modules/<name> -> ~/dev/<name>: tttrlib, mmfdb, chimol, ...)
+# are mirrored the same way: their committed HEAD is pushed to the same path
+# on the remote and checked out detached (their uncommitted edits are not
+# sent; meta.txt records each sibling's sha and whether it was dirty).
 #
 #   build_tools/remote_test.sh start [--dirty] [--id ID] [-- CMD...]
 #   build_tools/remote_test.sh status [ID]      # state + log tail
@@ -88,6 +92,27 @@ cmd_start() {
 
     ensure_remote
     git push -q "$HOST:$DIR" "+$sha:refs/remote-test/$id"
+
+    # Siblings: modules/<link> -> a git checkout elsewhere under $HOME.
+    local link target top rel ssha sdirty siblings="" sibmeta=""
+    for link in "$REPO"/modules/*; do
+        [[ -L "$link" ]] || continue
+        target="$(cd "$link" 2>/dev/null && pwd -P)" || continue
+        top="$(git -C "$target" rev-parse --show-toplevel 2>/dev/null)" || continue
+        case "$top" in "$HOME"/*) rel="${top#"$HOME"/}" ;; *) continue ;; esac
+        ssha="$(git -C "$top" rev-parse HEAD)"
+        sdirty="clean"; [[ -z "$(git -C "$top" status --porcelain --untracked-files=no)" ]] || sdirty="dirty (not sent)"
+        remote "set -e
+            if [ ! -d $rel/.git ]; then
+                mkdir -p $rel && git -C $rel init -q
+                git -C $rel remote add origin $(git -C "$top" remote get-url origin 2>/dev/null || echo none)
+            fi"
+        git -C "$top" push -q "$HOST:$rel" "+$ssha:refs/remote-test/$id"
+        # an untracked link (local convenience) is recreated as it is here
+        remote "[ -e $DIR/modules/${link##*/} ] || ln -sn $(readlink "$link") $DIR/modules/${link##*/}"
+        siblings="$siblings $rel:$ssha"
+        sibmeta="${sibmeta}sibling: $rel $ssha $sdirty"$'\n'
+    done
     local subsha=""
     if subsha="$(git rev-parse "$sha:$SUBMODULE" 2>/dev/null)"; then
         git -C "$SUBMODULE" push -q "$HOST:$DIR/$SUBMODULE" "+$subsha:refs/remote-test/$id"
@@ -103,8 +128,11 @@ cmd_start() {
         cd $DIR
         git checkout -q -f --detach $sha
         if [ -n '$subsha' ]; then git -C $SUBMODULE checkout -q -f --detach $subsha; fi
+        for pair in $siblings; do
+            git -C \$HOME/\${pair%%:*} checkout -q -f --detach \${pair#*:}
+        done
         # keep the newest $KEEP_REFS pushed refs, drop the rest
-        for repo in . $SUBMODULE; do
+        for repo in . $SUBMODULE \$(for pair in $siblings; do echo \$HOME/\${pair%%:*}; done); do
             git -C \$repo for-each-ref --sort=-refname --format='%(refname)' refs/remote-test/ \
                 | tail -n +$((KEEP_REFS + 1)) | xargs -r -n1 git -C \$repo update-ref -d
         done
@@ -114,14 +142,18 @@ id: $id
 sha: $sha
 tree: $label
 submodule: $subsha
-cmd: $quoted
+${sibmeta}cmd: $quoted
 started: \$(date -Is)
 EOF
+        # the command verbatim: a quoted heredoc expands nothing
+        cat > \$RUN/cmd.sh <<'CMD_EOF'
+$quoted$extra
+CMD_EOF
         cat > \$RUN/run.sh <<EOF
 #!/bin/bash
 export PATH=\$HOME/.pixi/bin:/usr/local/bin:/usr/bin:/bin
 cd \$HOME/$DIR
-$quoted$extra > \$RUN/log.txt 2>&1
+bash \$RUN/cmd.sh > \$RUN/log.txt 2>&1
 rc=\\\$?
 echo \\\$rc > \$RUN/exit_code
 date -Is > \$RUN/finished
