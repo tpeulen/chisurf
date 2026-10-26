@@ -132,7 +132,12 @@ def test_every_file_a_demo_names_ships_with_the_demos():
 def test_the_shipped_trajectory_fits_its_topology():
     from chimol.io.dcd import dcd_info
 
-    header = dcd_info(DATA / "hgbp1_transition.dcd")
+    # Bulk demo data is fetched on first use, not committed (chimol's .gitignore); read it the
+    # way a demo does, through the catalog, which returns the sha-checked cached copy.
+    trajectory = pathlib.Path(resolve_structure("hgbp1_transition.dcd"))
+    if not trajectory.is_file():
+        pytest.skip("hgbp1_transition.dcd is neither cached nor downloadable here")
+    header = dcd_info(trajectory)
     n_atoms = sum(
         1
         for line in (DATA / "topol.pdb").read_text().splitlines()

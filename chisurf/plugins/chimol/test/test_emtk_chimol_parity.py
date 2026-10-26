@@ -98,10 +98,28 @@ def test_loaded_structure_matches_the_qt_window(app, qt_facts):
     assert [[s.name, len(s.codes)] for s in gui.sequences] == qt_facts["sequences"]
 
 
+#: Menu entries the recorded Qt window had from a separately installed chimol plugin (its
+#: ``chimol.plugins`` entry point), not from chimol: expected only where that plugin is installed.
+_ENTRY_POINT_ENTRIES = {"labelizer": ("Tools", ["Labelizer (FRET sites)…", "labelizer"])}
+
+
+def _installed_chimol_plugins() -> set[str]:
+    from importlib.metadata import entry_points
+
+    return {ep.name for ep in entry_points(group="chimol.plugins")}
+
+
 def test_menus_and_toolbar_match_the_qt_window(app, qt_facts):
     """Every menu entry and toolbar button of the Qt window, with the same command."""
     ours = json.loads(json.dumps(_chrome(app._chimol.renderer._internal_gui)))
-    assert ours["menus"] == qt_facts["menus"]
+    expected = json.loads(json.dumps(qt_facts["menus"]))
+    installed = _installed_chimol_plugins()
+    for plugin, (menu, entry) in _ENTRY_POINT_ENTRIES.items():
+        if plugin not in installed:
+            for title, entries in expected:
+                if title == menu and entry in entries:
+                    entries.remove(entry)
+    assert ours["menus"] == expected
     assert ours["toolbar"] == qt_facts["toolbar"]
 
 
