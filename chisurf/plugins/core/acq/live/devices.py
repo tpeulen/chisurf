@@ -208,9 +208,12 @@ class DeviceSource(PhotonSource):
         )
 
     # -- recording -----------------------------------------------------------------------------
-    def make_recorder(self, path, name: str = ""):
-        """A PTU writer for the device's raw records (pqusb's, with the device's header)."""
-        return _RawPtuRecorder(pqusb.PtuWriter.for_device(str(path), self.device), self)
+    def make_recorder(self, path, name: str = "", extra: dict | None = None):
+        """A PTU writer for the device's raw records (pqusb's, with the device's header and the
+        *extra* string tags -- the run's acquisition settings)."""
+        return _RawPtuRecorder(
+            pqusb.PtuWriter.for_device(str(path), self.device, extra=extra), self
+        )
 
 
 class _RawPtuRecorder:
@@ -265,9 +268,11 @@ if PQUSB:
             seed: int = 1,
             speed: float = 1.0,
             scheme: str = "pie",
+            realism=None,
         ):
             super().__init__()
             self.scheme = scheme
+            self.realism = realism
             self.populations = tuple(populations)
             self.background_khz = tuple(background_khz)
             self.seed = int(seed)
@@ -335,6 +340,7 @@ if PQUSB:
                 seed=self.seed,
                 realtime=False,
                 scheme=self.scheme,
+                **({"realism": self.realism} if self.realism is not None else {}),
             )
             self._photons.start()
             self._t0 = time.monotonic()

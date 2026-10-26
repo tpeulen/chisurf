@@ -3,6 +3,51 @@
   "sections": [
     {
       "type": "panel",
+      "title": "Settings",
+      "description": "Acquisition settings files: one JSON document with the device, the laser program, the experiment and the run. Load one from the workspace (drop a settings file onto ChiSurf), recover them from a measurement, or save what is set now.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "settings_address",
+          "label": "From",
+          "options_source": "settings_options",
+          "description": "A settings file (⚙) or a measurement (⏱) of the workspace. Settings files enter ChiSurf through the drop, like every input."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "action": "load_settings",
+              "label": "Load",
+              "icon": "⚙",
+              "description": "Read the chosen settings file, fill the form and send it to the connected device and laser. The laser's emission stays off."
+            },
+            {
+              "action": "use_measurement_settings",
+              "label": "Use settings of this measurement",
+              "description": "Recover the settings of the chosen measurement from its file header. What the header did not record is listed in the tooltip of the line below."
+            },
+            {
+              "action": "use_proposed_windows",
+              "label": "Use its windows",
+              "description": "Take the micro-time windows the measurement's laser program implies into the Experiment setup."
+            },
+            {
+              "action": "save_settings_as",
+              "label": "Save as…",
+              "icon": "💾",
+              "description": "Write what the form, the device and the laser hold now to a settings file."
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "settings_status"
+        }
+      ]
+    },
+    {
+      "type": "panel",
       "title": "Source",
       "sections": [
         {
@@ -128,6 +173,286 @@
             "equals": "device"
           },
           "description": "How fast simulated or replayed photons arrive: 1 is the pace of the real measurement, 10 ten times faster."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Sample & instrument realism",
+      "collapsible": true,
+      "collapsed": true,
+      "hidden_when": {
+        "attr": "source_kind",
+        "not_equals": "simulator"
+      },
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "realism_preset",
+          "label": "Preset",
+          "options_source": "realism_options",
+          "call": "apply_realism_preset",
+          "description": "Realistic: what a confocal smFRET measurement shows (donor-/acceptor-only molecules, bleaching, blinking, crosstalk, background, IRF, dead time). Ideal: everything off — the clean stream for teaching and exact tests. Editing a value makes it Custom."
+        },
+        {
+          "type": "value",
+          "attr": "real_donor_only_fraction",
+          "label": "Donor-only",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 1,
+          "step": 0.05,
+          "decimals": 2,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Fraction of molecules without an active acceptor: an island at stoichiometry ≈ 1 and E ≈ 0."
+        },
+        {
+          "type": "value",
+          "attr": "real_acceptor_only_fraction",
+          "label": "Acceptor-only",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 1,
+          "step": 0.05,
+          "decimals": 2,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Fraction of molecules without a donor: an island at stoichiometry ≈ 0."
+        },
+        {
+          "type": "value",
+          "attr": "real_aggregate_fraction",
+          "label": "Aggregates",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 0.1,
+          "step": 0.002,
+          "decimals": 3,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Fraction of bright, slowly diffusing particles: rare bright spikes and long bursts."
+        },
+        {
+          "type": "value",
+          "attr": "real_brightness_cv",
+          "label": "Brightness spread",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 1,
+          "step": 0.05,
+          "decimals": 2,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Molecule-to-molecule brightness spread (coefficient of variation): broadens burst sizes and the clusters."
+        },
+        {
+          "type": "value",
+          "attr": "real_diffusion_um2_per_s",
+          "label": "Diffusion (µm²/s)",
+          "kind": "float",
+          "minimum": 1,
+          "maximum": 1000,
+          "step": 10,
+          "decimals": 0,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Translational diffusion coefficient; with the focus it sets the burst duration (80 µm²/s ≈ a 30 kDa protein)."
+        },
+        {
+          "type": "value",
+          "attr": "real_gamma",
+          "label": "γ",
+          "kind": "float",
+          "minimum": 0.1,
+          "maximum": 5,
+          "step": 0.05,
+          "decimals": 2,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Detection-efficiency × quantum-yield ratio of acceptor to donor. γ ≠ 1 shifts raw E; the corrected E uses it."
+        },
+        {
+          "type": "value",
+          "attr": "real_alpha",
+          "label": "α (leakage)",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 0.5,
+          "step": 0.01,
+          "decimals": 3,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Donor emission leaking into the acceptor channel: raises raw E, most visibly for donor-only molecules."
+        },
+        {
+          "type": "value",
+          "attr": "real_delta",
+          "label": "δ (direct exc.)",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 0.5,
+          "step": 0.01,
+          "decimals": 3,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Direct excitation of the acceptor by the donor laser (relative to its own laser): raises raw E."
+        },
+        {
+          "type": "value",
+          "attr": "real_tau_donor_ns",
+          "label": "Donor lifetime (ns)",
+          "kind": "float",
+          "minimum": 0.5,
+          "maximum": 10,
+          "step": 0.1,
+          "decimals": 2,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Donor lifetime without FRET; a FRET population decays with τ_D (1 − E)."
+        },
+        {
+          "type": "value",
+          "attr": "real_tau_acceptor_ns",
+          "label": "Acceptor lifetime (ns)",
+          "kind": "float",
+          "minimum": 0.5,
+          "maximum": 10,
+          "step": 0.1,
+          "decimals": 2,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Acceptor lifetime: decay of the directly excited acceptor and the delay of sensitised emission."
+        },
+        {
+          "type": "value",
+          "attr": "real_irf_fwhm_ns",
+          "label": "IRF FWHM (ns)",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 2,
+          "step": 0.05,
+          "decimals": 3,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Instrument response width, with a small exponential tail and per-detector timing jitter."
+        },
+        {
+          "type": "value",
+          "attr": "real_background_donor_khz",
+          "label": "Background donor (kHz)",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 20,
+          "step": 0.1,
+          "decimals": 2,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Uncorrelated background of the donor detector (dark counts, ambient light), flat in micro time."
+        },
+        {
+          "type": "value",
+          "attr": "real_background_acceptor_khz",
+          "label": "Background acceptor (kHz)",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 20,
+          "step": 0.1,
+          "decimals": 2,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Uncorrelated background of the acceptor detector."
+        },
+        {
+          "type": "value",
+          "attr": "real_scatter_donor_khz",
+          "label": "Scatter (kHz)",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 20,
+          "step": 0.1,
+          "decimals": 2,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Scattered and Raman light of the donor laser in the donor detector: prompt window, instrument response only."
+        },
+        {
+          "type": "value",
+          "attr": "real_afterpulse_probability",
+          "label": "Afterpulsing",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 0.1,
+          "step": 0.001,
+          "decimals": 4,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Probability that a detection repeats on the same detector shortly after (detector afterpulsing)."
+        },
+        {
+          "type": "value",
+          "attr": "real_dead_time_ns",
+          "label": "Dead time (ns)",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 500,
+          "step": 5,
+          "decimals": 0,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Detector dead time: a photon arriving within it after another is lost (count-rate saturation)."
+        },
+        {
+          "type": "value",
+          "attr": "real_acceptor_bleach_per_ms",
+          "label": "Acceptor bleaching (/ms)",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 5,
+          "step": 0.01,
+          "decimals": 3,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Acceptor photobleaching rate at the focus centre: bursts end as donor only — tails towards high S and low E."
+        },
+        {
+          "type": "value",
+          "attr": "real_donor_bleach_per_ms",
+          "label": "Donor bleaching (/ms)",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 5,
+          "step": 0.01,
+          "decimals": 3,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Donor photobleaching rate at the focus centre: bursts end as acceptor only — tails towards low S."
+        },
+        {
+          "type": "value",
+          "attr": "real_acceptor_blink_per_ms",
+          "label": "Acceptor blinking (/ms)",
+          "kind": "float",
+          "minimum": 0,
+          "maximum": 20,
+          "step": 0.05,
+          "decimals": 2,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Rate into the acceptor's dark state (it returns after ~0.2 ms): FRET drops for a while within a burst."
+        },
+        {
+          "type": "value",
+          "attr": "real_drift_per_minute",
+          "label": "Drift (per min)",
+          "kind": "float",
+          "minimum": -0.5,
+          "maximum": 0.5,
+          "step": 0.01,
+          "decimals": 3,
+          "style": "spin",
+          "call": "realism_edited",
+          "description": "Slow relative intensity change per minute (focus, laser power, evaporation)."
         }
       ]
     },
@@ -337,6 +662,179 @@
     },
     {
       "type": "panel",
+      "title": "Laser",
+      "description": "The pulsed laser driver (PicoQuant Sepia II, or a simulated one). Connecting switches every output off; a program reaches the laser only with Apply, and emission needs Emission on after that.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "laser_kind",
+          "label": "Laser",
+          "options_source": "laser_options",
+          "description": "Auto uses the Sepia II driver when its library is installed, else the simulated laser. Why Sepia II is not available is shown on the status line."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "action": "connect_laser",
+              "label": "Connect",
+              "description": "Open the laser. All outputs are switched off."
+            },
+            {
+              "action": "disconnect_laser",
+              "label": "Disconnect",
+              "description": "Switch the outputs off and release the laser."
+            },
+            {
+              "action": "laser_off",
+              "label": "Laser off",
+              "icon": "■",
+              "role": "danger",
+              "description": "Block all emission now. Always available; never fails."
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "laser_status"
+        },
+        {
+          "type": "panel",
+          "title": "Program",
+          "collapsible": true,
+          "hidden_when": {
+            "attr": "laser_connected",
+            "equals": false
+          },
+          "description": "What Apply sends to the laser. Any change switches the outputs off until Apply.",
+          "sections": [
+            {
+              "type": "custom",
+              "key": "data_table",
+              "options": {
+                "source": "laser_heads",
+                "editable": true,
+                "edited_call": "laser_head_edited",
+                "fit_rows": true,
+                "row_key": "slot",
+                "columns": [
+                  {
+                    "key": "head",
+                    "title": "Head",
+                    "editable": false,
+                    "tooltip": "Laser head and its wavelength."
+                  },
+                  {
+                    "key": "enabled",
+                    "title": "On",
+                    "tooltip": "Whether the head's sequencer output fires."
+                  },
+                  {
+                    "key": "intensity_pct",
+                    "title": "Intensity %",
+                    "format": "%.1f",
+                    "tooltip": "Drive intensity, 0–100 %."
+                  },
+                  {
+                    "key": "pulsed",
+                    "title": "Pulsed",
+                    "tooltip": "Pulsed (on) or continuous-wave (off)."
+                  }
+                ],
+                "tooltip_key": "detail",
+                "selection_note": false
+              }
+            },
+            {
+              "type": "value",
+              "attr": "laser_divider",
+              "label": "Divider",
+              "kind": "int",
+              "minimum": 1,
+              "maximum": 65535,
+              "step": 1,
+              "style": "spin",
+              "call": "laser_program_edited",
+              "description": "The oscillator's base frequency is divided by this to give the pulse rate the sequencer distributes."
+            },
+            {
+              "type": "custom",
+              "key": "laser_rate"
+            },
+            {
+              "type": "panel",
+              "title": "Sequencer",
+              "collapsible": true,
+              "collapsed": true,
+              "description": "Pulses per output in one sequence, which outputs fire and which give the sync.",
+              "sections": [
+                {
+                  "type": "custom",
+                  "key": "data_table",
+                  "options": {
+                    "source": "laser_outputs",
+                    "editable": true,
+                    "edited_call": "laser_output_edited",
+                    "fit_rows": true,
+                    "row_key": "output",
+                    "columns": [
+                      {
+                        "key": "output",
+                        "title": "Out",
+                        "editable": false
+                      },
+                      {
+                        "key": "head",
+                        "title": "Head",
+                        "editable": false
+                      },
+                      {
+                        "key": "burst",
+                        "title": "Pulses",
+                        "tooltip": "Pulses of this output in one sequence (0: not in the sequence)."
+                      },
+                      {
+                        "key": "enabled",
+                        "title": "On",
+                        "tooltip": "The output fires."
+                      },
+                      {
+                        "key": "sync",
+                        "title": "Sync",
+                        "tooltip": "The output contributes to the sync signal."
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "type": "button_row",
+              "buttons": [
+                {
+                  "action": "apply_laser_program",
+                  "label": "Apply",
+                  "role": "primary",
+                  "description": "Send the program to the laser. Emission stays off."
+                },
+                {
+                  "action": "laser_emission_on",
+                  "label": "Emission on",
+                  "description": "Allow emission. Offered only after Apply."
+                },
+                {
+                  "action": "windows_from_laser",
+                  "label": "Windows from laser",
+                  "description": "Use the micro-time windows the applied program implies (one per enabled excitation, shifted by the sync offset) in the Experiment setup."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
       "title": "Experiment setup",
       "sections": [
         {
@@ -354,6 +852,11 @@
           "description": "How the setup is read: single colour, two colour, PIE, µs-ALEX, MFD or three-colour PIE. 'From the setup' takes the type the setup describes. The type decides the quantities (proximity ratio, stoichiometry, anisotropy), the live histograms and which quality checks apply."
         },
         {
+          "type": "custom",
+          "key": "setup_summary",
+          "description": "The setup as read: detectors, windows and whether E and S are corrected. Hover for the details."
+        },
+        {
           "type": "value",
           "attr": "alex_period_us",
           "label": "Alternation period (µs)",
@@ -368,10 +871,6 @@
             "not_equals": "alex"
           },
           "description": "µs-ALEX only: the laser alternation period; the first half excites the donor, the second the acceptor."
-        },
-        {
-          "type": "info",
-          "source": "setup_text"
         },
         {
           "type": "value",
@@ -430,11 +929,14 @@
           "attr": "run_name",
           "label": "Name",
           "kind": "str",
-          "description": "The recording's file name (a .ptu in the acquisition output folder) and its name in the Datasets workspace."
+          "description": "The recording's name: its file in the project's recordings folder and its row in Datasets."
         },
         {
-          "type": "info",
-          "source": "target_text"
+          "type": "choice",
+          "attr": "recording_store",
+          "label": "Store photons",
+          "options_source": "store_options",
+          "description": "Embed (default): the photons are stored inside the project's .cs.pto when the run stops, so the project carries its data. Link: the project records the file's path and checksum only. Written beside the project while measuring, so a crash leaves the photons on disk."
         },
         {
           "type": "button_row",
@@ -467,8 +969,9 @@
           ]
         },
         {
-          "type": "info",
-          "source": "status_text"
+          "type": "custom",
+          "key": "run_status",
+          "description": "What the run is doing, and where it was saved (hover for the full path)."
         }
       ]
     },

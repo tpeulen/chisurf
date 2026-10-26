@@ -24,6 +24,8 @@ from typing import Any
 import numpy as np
 import tttrlib
 
+from . import settings_file
+from .settings_file import CHISURF_SETTINGS_TAG
 from .setups import Experiment, default_setup
 from .sources import PhotonSource
 
@@ -58,8 +60,9 @@ class RunResult:
     qc: dict | None = None
 
 
-def _header(source_info, name: str):
-    """A PTU header for the source's clocks (T3, MultiHarp record layout)."""
+def _header(source_info, name: str, settings: dict | None = None):
+    """A PTU header for the source's clocks (T3, MultiHarp record layout), with the run's
+    acquisition settings document in the ``ChiSurf_AcquisitionSettings`` tag when given."""
     probe = tttrlib.TTTR()
     probe.append_events(
         np.zeros(1, np.uint64), np.zeros(1, np.uint16), np.zeros(1, np.int8), np.zeros(1, np.int8)
@@ -70,6 +73,8 @@ def _header(source_info, name: str):
     h.set_tag("TTResultFormat_TTTRRecType", _REC_MULTIHARP_T3, _TY_I8)
     h.set_tag("MeasDesc_RecordingMode", 3, _TY_I8)
     h.set_tag("File_Comment", f"ChiSurf live recording: {name}", _TY_ANSI)
+    if settings:
+        h.set_tag(CHISURF_SETTINGS_TAG, settings_file.dumps(settings), _TY_ANSI)
     return h
 
 
@@ -100,6 +105,10 @@ class RecordSession:
         Where the photons are written while measuring; ``None`` records nothing (view only).
     name : str
         The dataset name in the workspace.
+    settings : dict or None
+        The run's acquisition settings document (``live.settings_file``), written into the
+        recording's header as the ``ChiSurf_AcquisitionSettings`` tag so the measurement can be
+        repeated from the file alone.
     """
 
     def __init__(
@@ -110,6 +119,8 @@ class RecordSession:
         duration_s: float | None = None,
         ptu_path: str | Path | None = None,
         name: str = "",
+        embed: bool = True,
+        settings: dict | None = None,
     ):
         self.source = source
         info = source.info
@@ -119,6 +130,10 @@ class RecordSession:
         self.duration_s = duration_s
         self.ptu_path = Path(ptu_path) if ptu_path else None
         self.name = name or datetime.datetime.now().strftime("record_%Y%m%d_%H%M%S")
+        #: store the recording inside the project (a fresh recording's default) or link it
+        self.embed = bool(embed)
+        self.settings = settings
+        self._dataset = None  # the photons dataset, built (hashed) by the worker at stop
         self.analyzer = self.experiment.analyzer(info.macro_clock_s, info.micro_res_s, info.n_micro)
         #: total photons per whole second of the run (the checker's stability trace)
         self._per_second = np.zeros(0, dtype=np.int64)
@@ -154,12 +169,17 @@ class RecordSession:
         if self.ptu_path is not None and hasattr(self.source, "make_recorder"):
             # a device records its own raw records, header and all
             self.ptu_path.parent.mkdir(parents=True, exist_ok=True)
-            self._recorder = self.source.make_recorder(self.ptu_path, self.name)
+            extra = (
+                {CHISURF_SETTINGS_TAG: settings_file.dumps(self.settings)}
+                if self.settings
+                else None
+            )
+            self._recorder = self.source.make_recorder(self.ptu_path, self.name, extra=extra)
         elif self.ptu_path is not None:
             self.ptu_path.parent.mkdir(parents=True, exist_ok=True)
             writer = tttrlib.RecordStreamWriter(_PQ_PTU)
             if not writer.create(
-                str(self.ptu_path), _header(self.source.info, self.name), self.name
+                str(self.ptu_path), _header(self.source.info, self.name, self.settings), self.name
             ):
                 raise OSError(f"cannot write {self.ptu_path}: {writer.error()}")
             writer.set_auto_checkpoint(200_000)
@@ -246,6 +266,30 @@ class RecordSession:
                 stop_reason=self.stop_reason or "finished",
                 qc=self.qc,
             )
+            self._dataset = self._photon_dataset()
+
+    def _photon_dataset(self):
+        """The recording as a photons dataset, the way a dropped file becomes one: its link (size
+        and sha256, hashed here in the worker), embedded when the run is stored in the project, read
+        by the experiment that reads photons."""
+        ptu = self.ptu_path
+        if ptu is None or not ptu.exists():
+            return None
+        try:
+            from chisurf.core.experiments.linked import reader_for_kind
+            from chisurf.core.project.links import add_link
+
+            link = add_link(str(ptu))
+            if self.embed:
+                link = {**link, "embedded": True}  # stored in the project at its next save
+            reader = reader_for_kind("photons")
+            dataset = reader.make_dataset(str(ptu), link=link)
+            dataset.data_reader = reader
+            dataset.name = ptu.name
+            return dataset
+        except Exception:  # noqa: BLE001 - register() falls back to the plain address
+            _log.exception("building the recording's dataset failed")
+            return None
 
     def table(self) -> dict:
         """The burst table as stored: the analyzer's columns, then ``First File`` / ``Last File``
@@ -321,18 +365,28 @@ class RecordSession:
 
     # -- into the project ------------------------------------------------------------------------
     def register(self) -> RunResult | None:
-        """Add the recorded PTU and its burst run to the workspace (after the run ended)."""
+        """Add the recording and its burst run to the workspace (after the run ended): the photons
+        dataset (embedded in the project or linked), its burst run -- written into the dataset's
+        analysis container -- as its child, through the shell's API like a dropped file."""
         result = self.result
         if result is None or result.ptu is None or not result.ptu.exists():
             return result
         from chisurf.core.datastore import store_from_rows
-        from chisurf.core.plugin.workspace_input import register_result
+        from chisurf.core.experiments.linked import reader_for_kind
         from chisurf.core.project.analysis import container_dir
         from chisurf.plugins.burst.burst_selection.api.io import write_container
 
-        stream = register_result(str(result.ptu), kind="photons", name=result.ptu.name)
-        uid = str(getattr(stream, "unique_identifier", "") or "")
+        from .project import add_to_workspace
+
+        photons = self._dataset
+        if photons is None:  # hashing failed in the worker: link the file plainly
+            reader = reader_for_kind("photons")
+            photons = reader.make_dataset(str(result.ptu))
+            photons.data_reader = reader
+        photons.name = result.ptu.name
+        uid = str(getattr(photons, "unique_identifier", "") or "")
         result.dataset_uid = uid
+        datasets = [photons]
         if result.bursts:
             columns = list(result.table)
             rows = [
@@ -362,5 +416,9 @@ class RecordSession:
                 run=RUN_NAME,
             )
             result.run_address = f"{container}/{RUN_NAME}"
-            register_result(result.run_address, kind="bursts", result_of=uid)
+            runs = reader_for_kind("bursts")
+            run = runs.make_dataset(result.run_address, result_of=uid)
+            run.data_reader = runs
+            datasets.append(run)
+        add_to_workspace(datasets, f"Adding {result.ptu.name}")
         return result

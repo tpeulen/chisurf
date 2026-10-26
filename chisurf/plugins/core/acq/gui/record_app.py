@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import json
 import time
+from dataclasses import fields as _fields
+from dataclasses import replace as _replace
 from pathlib import Path
 from typing import Any
 
@@ -27,8 +29,12 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.core.acq.gui.record_settings import SETTINGS_SETUP, LaserSettingsMixin
 from chisurf.plugins.core.acq.live import devices
 from chisurf.plugins.core.acq.live.analyzer import PRESETS
+from chisurf.plugins.core.acq.live.project import recording_dir, workspace_datasets
+from chisurf.plugins.core.acq.live.realism import PRESETS as REALISM_PRESETS
+from chisurf.plugins.core.acq.live.realism import REALISTIC, Realism
 from chisurf.plugins.core.acq.live.session import RecordSession
 from chisurf.plugins.core.acq.live.setups import (
     PRESET_LABELS,
@@ -60,15 +66,10 @@ _COLOURS = [
 
 
 def _workspace(kind: str) -> list[Any]:
-    try:
-        from chisurf.core.api import dataset_objects
-
-        return [d for d in dataset_objects() if str(getattr(d, "data_kind", "")) == kind]
-    except Exception:  # noqa: BLE001 - no session (standalone): an empty workspace
-        return []
+    return workspace_datasets(kind)
 
 
-class RecordModel:
+class RecordModel(LaserSettingsMixin):
     """The state behind ``record.view.json``.
 
     Parameters
@@ -97,12 +98,19 @@ class RecordModel:
         self.preset = AUTO_PRESET
         self.alex_period_us = 100.0
         self.plot_choice = ""
+        # -- realism of the simulated measurement (live.realism): Realistic unless chosen otherwise
+        self.realism_preset = "realistic"
+        self._set_realism(REALISTIC)
+        #: a fresh recording is stored in the project (Embed) unless the user links it
+        self.recording_store = "embed"
+        self.saved_path: Path | None = None
         self.min_photons = 30
         self.window_photons = 10
         self.window_time_ms = 1.0
         self.duration_s = 60.0
         self.run_name = ""
-        self.status_text = tr("Ready. Press Load example, then Start.")
+        self.status_text = tr("Ready")
+        self.status_detail = tr("Press Load example, then Start.")
         self.session: RecordSession | None = None
         self.snapshot: dict[str, Any] | None = None
         self._last_snapshot = 0.0
@@ -125,6 +133,8 @@ class RecordModel:
         self.acceptor_offset_ps = 0
         self.binning = 0
         self.offset_ns = 0
+        # -- the laser and the acquisition settings file (record_settings) --------------------
+        self._init_laser_settings()
 
     # -- options ---------------------------------------------------------------------------------
     def source_options(self) -> list:
@@ -138,6 +148,43 @@ class RecordModel:
                 else tr("PicoQuant device (pqusb not installed)"),
             ),
         ]
+
+    # -- realism ---------------------------------------------------------------------------------
+    _REALISM_FIELDS = tuple(
+        f.name for f in _fields(Realism) if f.name not in ("name", "ideal", "acceptor_recover_per_ms",
+                                                          "irf_tail_fraction", "irf_tail_ns", "jitter_donor_ns",
+                                                          "jitter_acceptor_ns", "scatter_acceptor_khz",
+                                                          "afterpulse_delay_us", "aggregate_brightness", "beta",
+                                                          "focus_w0_um", "focus_z0_um")
+    )  # fmt: skip
+
+    def _set_realism(self, realism: Realism) -> None:
+        for name in self._REALISM_FIELDS:
+            setattr(self, f"real_{name}", getattr(realism, name))
+
+    def realism_options(self) -> list:
+        return [
+            ("realistic", tr("Realistic")),
+            ("ideal", tr("Ideal (no imperfections)")),
+            ("custom", tr("Custom")),
+        ]
+
+    def apply_realism_preset(self, value: str) -> None:
+        if value in REALISM_PRESETS:
+            self._set_realism(REALISM_PRESETS[value])
+
+    def realism_edited(self, _value=None) -> None:
+        self.realism_preset = "custom"
+
+    def realism(self) -> Realism:
+        """The imperfections the simulator adds (the preset's, or the edited values)."""
+        if self.realism_preset in REALISM_PRESETS:
+            return REALISM_PRESETS[self.realism_preset]
+        edited = {name: float(getattr(self, f"real_{name}")) for name in self._REALISM_FIELDS}
+        return _replace(REALISTIC, name="custom", **edited)
+
+    def store_options(self) -> list:
+        return [("embed", tr("Embed in the project")), ("link", tr("Link to the file"))]
 
     def scheme_options(self) -> list:
         return [
@@ -251,12 +298,21 @@ class RecordModel:
         rows = [
             (str(d.address), str(getattr(d, "name", "") or d.address)) for d in _workspace("setup")
         ]
-        return [
-            (
-                DEFAULT_SETUP,
-                tr("Default for the type (channel 0 donor, 1 acceptor; PIE: half periods)"),
-            )
-        ] + rows
+        loaded = (
+            [(SETTINGS_SETUP, tr("From settings: {name}").format(name=self.settings_name))]
+            if self.settings_setup is not None
+            else []
+        )
+        return (
+            [
+                (
+                    DEFAULT_SETUP,
+                    tr("Default for the type (channel 0 donor, 1 acceptor; PIE: half periods)"),
+                )
+            ]
+            + loaded
+            + rows
+        )
 
     # -- what the run uses -----------------------------------------------------------------------
     def make_source(self):
@@ -274,6 +330,7 @@ class RecordModel:
                     seed=int(self.sim_seed),
                     speed=float(self.speed) if self.realtime else 1000.0,
                     scheme=self.sim_scheme,
+                    realism=self.realism(),
                 )
                 dev.initialize(pqusb.MODE_T3)
                 self.apply_device_settings(dev, self.make_experiment(400))
@@ -286,6 +343,7 @@ class RecordModel:
                 speed=float(self.speed),
                 realtime=self.realtime,
                 scheme=self.sim_scheme,
+                realism=self.realism(),
             )
         if self.source_kind == "replay":
             if not self.replay_address:
@@ -314,10 +372,20 @@ class RecordModel:
         if self.setup_address in ("", DEFAULT_SETUP):
             preset = self.preset if self.preset != AUTO_PRESET else self._default_preset()
             setup, name = default_setup(preset, n_micro), f"default {preset}"
+            if self.window_override and preset in ("pie", "three_color_pie"):
+                setup, name = self.windows_patched(setup), f"{name}, windows from the laser"
+            realism = self.realism()
+            if self.source_kind == "simulator" and not realism.ideal:
+                # the simulated instrument is calibrated: its factors give corrected E and S
+                setup = {**setup, "corrections": realism.factors()}
         else:
-            from chisurf.plugins.tttr.workspace_io import read_setup
+            if self.setup_address == SETTINGS_SETUP and self.settings_setup is not None:
+                setup, name = dict(self.settings_setup), self.settings_name
+            else:
+                from chisurf.plugins.tttr.workspace_io import read_setup
 
-            setup, name = read_setup(self.setup_address), Path(self.setup_address).name
+                setup, name = read_setup(self.setup_address), Path(self.setup_address).name
+            setup = self.windows_patched(setup)
             preset = self.preset if self.preset != AUTO_PRESET else infer_preset(setup)
         return Experiment(
             setup,
@@ -327,19 +395,19 @@ class RecordModel:
             alex_period_s=float(self.alex_period_us) * 1e-6 if preset == "alex" else None,
         )
 
-    def setup_text(self) -> str:
+    def setup_summary(self) -> tuple[str, str]:
+        """A few words on the setup, and its details for the tooltip."""
         n_micro = 400 if self.session is None else self.session.source.info.n_micro
         try:
             exp = self.make_experiment(n_micro)
         except Exception as exc:  # noqa: BLE001 - shown, the run refuses to start
-            return tr("The setup cannot be used: {e}").format(e=exc)
-        return f"{tr(PRESET_LABELS[exp.preset])}: {exp.describe()}"
-
-    def target_text(self) -> str:
-        return tr(
-            "Recorded to {folder}; enters the project as a photons dataset (linked or embedded as "
-            "Read data › Add as says), its bursts as a run below it."
-        ).format(folder=self.output_dir)
+            return tr("Setup cannot be used"), str(exc)
+        label = tr(PRESET_LABELS[exp.preset]).split(" (")[0]
+        corrected = (
+            tr("corrected") if (exp.factors() and exp.preset in ("pie", "alex")) else tr("raw")
+        )
+        windows = f" · {tr('laser windows')}" if self.window_override else ""
+        return f"{label} · {corrected}{windows}", exp.describe()
 
     # -- actions ---------------------------------------------------------------------------------
     @property
@@ -347,6 +415,9 @@ class RecordModel:
         return self.session is not None and self.session.running
 
     def enabled(self, action: str) -> bool:
+        mine = self.laser_settings_enabled(action)
+        if mine is not None:
+            return mine
         if action == "start":
             return not self.running and (self.source_kind != "device" or self.device is not None)
         if action == "connect_device":
@@ -367,8 +438,12 @@ class RecordModel:
         self.setup_address = DEFAULT_SETUP
         self.sim_scheme, self.preset = "pie", AUTO_PRESET
         self.duration_s = 60.0
-        self.status_text = tr(
-            "Example ready: PIE, two populations, E 0.2 and 0.8, S 0.5. Press Start."
+        self.realism_preset = "realistic"
+        self._set_realism(REALISTIC)
+        self.status_text = tr("Example ready")
+        self.status_detail = tr(
+            "PIE, two FRET populations (E 0.2 and 0.8, S 0.5) in a realistic sample: donor-only and "
+            "acceptor-only molecules, bleaching, crosstalk, background. Press Start."
         )
 
     def start(self) -> bool:
@@ -380,33 +455,65 @@ class RecordModel:
             source = self.make_source()
             experiment = self.make_experiment(source.info.n_micro)
         except Exception as exc:  # noqa: BLE001 - the user picks something else
-            self.status_text = str(exc)
+            self.status_text = tr("Cannot start")
+            self.status_detail = str(exc)
             return False
-        name = self.run_name.strip() or time.strftime("record_%Y%m%d_%H%M%S")
+        name = self.run_name.strip().replace("{date}", time.strftime("%Y%m%d_%H%M%S"))
+        name = name or time.strftime("record_%Y%m%d_%H%M%S")
+        self.saved_path = recording_dir(self.output_dir) / f"{name}.ptu"
         self.session = RecordSession(
             source,
             experiment,
             duration_s=self.duration_s or None,
-            ptu_path=self.output_dir / f"{name}.ptu",
+            ptu_path=self.saved_path,
             name=name,
+            embed=self.recording_store == "embed",
+            settings=self._run_settings(),
         )
         try:
             self.session.start()
         except OSError as exc:
-            self.status_text = str(exc)
+            self.status_text = tr("Cannot start")
+            self.status_detail = str(exc)
             self.session = None
             return False
         self._registered = False
         self.snapshot = None
         self.plot_choice = ""
-        self.status_text = tr("Recording {name} …").format(name=name)
+        self.status_text = tr("Recording…")
+        self.status_detail = str(self.saved_path)
         return True
+
+    def _run_settings(self) -> dict | None:
+        """The settings document the recording's header carries (``None`` if it cannot be made)."""
+        from chisurf.plugins.core.acq.live import settings_file
+
+        doc = self.current_settings()
+        return doc if not settings_file.validate(doc) else None
 
     def stop(self) -> bool:
         if not self.running:
             return False
         self.session.stop()
         return True
+
+    def reveal_saved(self) -> None:
+        """Show the recording in the system's file browser."""
+        import subprocess
+        import sys
+
+        path = self.saved_path
+        if path is None or not path.exists():
+            return
+        try:
+            if sys.platform == "darwin":
+                subprocess.Popen(["open", "-R", str(path)])
+            elif sys.platform.startswith("win"):
+                subprocess.Popen(["explorer", "/select,", str(path)])
+            else:
+                subprocess.Popen(["xdg-open", str(path.parent)])
+        except OSError:
+            pass
 
     def open_classic(self) -> None:
         self._open_classic = True
@@ -423,22 +530,22 @@ class RecordModel:
             self._last_snapshot = now
         if not session.running and session.result is not None and not self._registered:
             self._registered = True
+            self.disconnect_laser()  # a run's end closes the laser (outputs off first)
             self.snapshot = session.snapshot()
             result = session.result
             try:
                 session.register()
-                where = tr("in the workspace") if result.dataset_uid else tr("on disk")
+                self.status_detail = (
+                    tr("In Datasets, {how}.").format(
+                        how=tr("embedded in the project") if session.embed else tr("linked")
+                    )
+                    if result.dataset_uid
+                    else tr("On disk only (no project open).")
+                )
             except Exception as exc:  # noqa: BLE001 - the file is written either way
-                where = tr("on disk (not added to the workspace: {e})").format(e=exc)
-            self.status_text = tr(
-                "{reason}: {bursts} bursts in {photons} photons, {t:.1f} s — {file} {where}."
-            ).format(
-                reason=result.stop_reason.capitalize(),
-                bursts=result.bursts,
-                photons=result.photons,
-                t=result.elapsed_s,
-                file=result.ptu.name if result.ptu else "",
-                where=where,
+                self.status_detail = tr("On disk; not added to Datasets: {e}").format(e=exc)
+            self.status_text = tr("{reason}: {bursts} bursts, {t:.0f} s").format(
+                reason=result.stop_reason.capitalize(), bursts=result.bursts, t=result.elapsed_s
             )
 
     def close(self) -> None:
@@ -447,6 +554,7 @@ class RecordModel:
             self.session.wait(5.0)
         if self.device is not None:
             self.disconnect_device()
+        self.disconnect_laser()
 
 
 def _plot_histogram(hist: dict, height: float) -> None:
@@ -569,26 +677,35 @@ _OVERALL = {
 
 
 def _draw_qc(qc: dict | None) -> None:
-    """The quality checker's verdict as traffic lights: overall, then one light per check."""
+    """The quality checker's verdict: an overall light, then one line per check -- light, name,
+    value; what it means and what to do are in the line's tooltip (and in the stored verdict)."""
     if not qc or not qc.get("ready"):
-        why = (qc or {}).get("why", "")
         im.text_colored(_LIGHT_COLOURS["grey"], "●")
         im.same_line()
-        im.text_wrapped(tr("Quality: not enough data yet") + (f" ({why})" if why else ""))
+        im.text(tr("Quality: no verdict yet"))
+        im.set_item_tooltip((qc or {}).get("why", "") or tr("Not enough bursts yet."))
         return
     level = qc["level"]
     im.text_colored(_LIGHT_COLOURS[level], "●")
     im.same_line()
-    im.text(tr(_OVERALL[level]))
+    im.text(tr(_OVERALL[level]).split(" — ")[0])
+    im.set_item_tooltip(tr(_OVERALL[level]))
     for check in qc["checks"]:
         im.text_colored(_LIGHT_COLOURS.get(check["light"], _LIGHT_COLOURS["grey"]), "●")
         im.same_line()
         im.text_wrapped(f"{check['name']}: {check['value']}")
-        im.set_item_tooltip(check["detail"])
-        if check.get("action"):
-            im.text_colored(_LIGHT_COLOURS.get(check["light"], _LIGHT_COLOURS["grey"]), "   →")
-            im.same_line()
-            im.text_wrapped(check["action"])
+        tip = check["detail"] + (f"\n\n→ {check['action']}" if check.get("action") else "")
+        im.set_item_tooltip(tip)
+
+
+def _short_line(text: str, tooltip: str, colour=None) -> None:
+    """A few words, the details on hover."""
+    if colour is None:
+        im.text(text)
+    else:
+        im.text_colored(colour, text)
+    if tooltip:
+        im.set_item_tooltip(tooltip)
 
 
 class RecordApp(ImApp):
@@ -603,6 +720,13 @@ class RecordApp(ImApp):
         ]
         self.form = FormState()
         self.form.custom["live_view"] = self._draw_live
+        self.form.custom["setup_summary"] = self._draw_setup_summary
+        self.form.custom["run_status"] = self._draw_run_status
+        self.form.custom["laser_status"] = self._draw_laser_status
+        self.form.custom["laser_rate"] = self._draw_laser_rate
+        self.form.custom["settings_status"] = self._draw_settings_status
+        self.save_dialog = None
+        self.save_window = None
         self.help_window = EmTkHelpWindow(
             title="Record help", resource=HERE / "record_help.md", owner=self
         )
@@ -622,6 +746,76 @@ class RecordApp(ImApp):
         im.same_line()
         if im.small_button(f"❓ {tr('Help')}"):
             self.help_window.open()
+
+    def _draw_setup_summary(
+        self, section, model: RecordModel, state: FormState, width: float
+    ) -> None:
+        top = im.get_cursor_screen_pos()
+        label, detail = model.setup_summary()
+        _short_line(label, detail, (0.7, 0.7, 0.7, 1.0))
+        state.rects["setup_summary"] = (*top, width, 20.0)
+
+    def _draw_run_status(self, section, model: RecordModel, state: FormState, width: float) -> None:
+        top = im.get_cursor_screen_pos()
+        _short_line(model.status_text, model.status_detail)
+        if model.saved_path is not None:
+            _short_line(tr("Saved: {name}").format(name=model.saved_path.name), str(model.saved_path),
+                        (0.7, 0.7, 0.7, 1.0))  # fmt: skip
+            im.same_line()
+            if im.small_button(tr("Show file")):
+                model.reveal_saved()
+            im.set_item_tooltip(tr("Show the recording in the file browser."))
+        state.rects["run_status"] = (*top, width, im.get_cursor_screen_pos()[1] - top[1])
+
+    def _draw_laser_status(self, section, model: RecordModel, state: FormState, width: float):
+        top = im.get_cursor_screen_pos()
+        reason = getattr(model, "_sepia_reason", "")
+        detail = model.laser_detail or (
+            tr("Sepia II is not available: {why}").format(why=reason) if reason else ""
+        )
+        _short_line(f"● {model.laser_text}", detail, _LIGHT_COLOURS[model.laser_light()])
+        state.rects["laser_status"] = (*top, width, 20.0)
+
+    def _draw_laser_rate(self, section, model: RecordModel, state: FormState, width: float):
+        text, detail = model.laser_rate()
+        if text:
+            _short_line(text, detail, (0.7, 0.7, 0.7, 1.0))
+
+    def _draw_settings_status(self, section, model: RecordModel, state: FormState, width: float):
+        top = im.get_cursor_screen_pos()
+        _short_line(model.settings_text, model.settings_detail, (0.7, 0.7, 0.7, 1.0))
+        state.rects["settings_status"] = (*top, width, 20.0)
+
+    def _open_save_dialog(self) -> None:
+        from emtk.dialog_window import DialogWindow
+        from emtk.file_dialog import FileDialog
+
+        self.model.save_settings_requested = False
+        title = tr("Save acquisition settings")
+        # not-input: where the acquisition settings file is written, an output
+        self.save_dialog = FileDialog(
+            title,
+            mode="save",
+            filters=[(tr("Acquisition settings"), ["*.json"])],
+            directory=str(self.model.output_dir),
+            filename=f"{self.model.run_name.strip() or 'acquisition'}.settings.json",
+        )
+        self.save_window = DialogWindow(title, size=(720, 500))
+        self.save_window.show()
+
+    def _draw_save_dialog(self, box) -> None:
+        if self.model.save_settings_requested:
+            self._open_save_dialog()
+        if self.save_dialog is None:
+            return
+        pressed = self.save_window.begin(box)
+        result = self.save_dialog.draw()
+        self.save_window.end()
+        if result:
+            self.model.save_settings_to(result[0])
+            self.save_dialog = None
+        elif result is False or pressed == "close":
+            self.save_dialog = None
 
     def _draw_live(self, section: dict, model: RecordModel, state: FormState, width: float) -> None:
         top = im.get_cursor_screen_pos()
@@ -643,10 +837,15 @@ class RecordApp(ImApp):
             for name, rate in snap["background_cps"].items()
             if name in _shown_streams(snap, exp)
         )
-        im.text_disabled(
+        healthy = not snap["dropped"] and not snap.get("source_error")
+        _short_line(
+            tr("● healthy") if healthy else tr("● data lost"),
             tr(
-                "Health: {batches} batches, {dropped} dropped, {queued} buffered; background (kHz) {bg}"
-            ).format(batches=snap["batches"], dropped=snap["dropped"], queued=snap["queued"], bg=bg)
+                "{batches} batches, {dropped} dropped, {queued} buffered.\nBackground (kHz): {bg}"
+            ).format(
+                batches=snap["batches"], dropped=snap["dropped"], queued=snap["queued"], bg=bg
+            ),
+            _LIGHT_COLOURS["green" if healthy else "red"],
         )
         if snap.get("source_error"):
             im.text_colored((1.0, 0.45, 0.4, 1.0), str(snap["source_error"]))
@@ -711,6 +910,7 @@ class RecordApp(ImApp):
                 draw_sections(self.sections[-1]["sections"], self.model, self.form, titles=False)
             im.end_child()
         im.end()
+        self._draw_save_dialog(box)
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
 
@@ -727,10 +927,13 @@ class RecordApp(ImApp):
             "sim_scheme",
             "preset",
             "alex_period_us",
+            "realism_preset",
+            "recording_store",
             "min_photons",
             "window_photons",
             "window_time_ms",
             "duration_s",
+            "laser_kind",
         )
         return {k: getattr(self.model, k) for k in keys}
 

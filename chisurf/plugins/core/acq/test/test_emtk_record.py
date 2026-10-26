@@ -45,7 +45,8 @@ def test_the_example_runs_and_lands_in_the_workspace(app):
     result = model.session.result
     assert result.stop_reason == "duration reached" and result.bursts > 50
     assert Path(result.ptu).exists()
-    assert "bursts" in model.status_text and "in the workspace" in model.status_text
+    assert "bursts" in model.status_text  # a few words; the details are in the tooltip
+    assert "In Datasets" in model.status_detail and model.saved_path == Path(result.ptu)
     snap = model.snapshot
     assert snap["bursts"] == result.bursts
     assert snap["histograms"]["Proximity Ratio vs Stoichiometry"]["counts"].sum() > 0

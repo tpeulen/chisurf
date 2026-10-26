@@ -61,6 +61,14 @@
       "await": {
         "hint": "Press <b>Stop</b> (or wait for the duration to pass)."
       }
+    },
+    {
+      "title": "Laser off",
+      "text": "With a laser connected, <b>Laser off</b> blocks all emission at once. It is always there; the end of a run closes the laser too.",
+      "target": {
+        "name": "laser_off",
+        "action": "Laser off"
+      }
     }
   ]
 }

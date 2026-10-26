@@ -77,6 +77,10 @@ NOT_INPUT = {
     "chisurf/plugins/tttr/tttr_splitter/gui/controller.py": (
         "Output folder: where the split or converted files are written, an output."
     ),
+    "chisurf/plugins/core/acq/gui/record_app.py": (
+        "Record, Settings: Save as…: where the acquisition settings file is written, an output "
+        "(settings files come in through the workspace drop)."
+    ),
     "chisurf/plugins/tttr/tttr_time_windows/gui/controller.py": (
         "Output folder: where a new container is written when a vendor file has none, an output."
     ),

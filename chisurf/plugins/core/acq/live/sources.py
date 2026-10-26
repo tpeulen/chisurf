@@ -30,6 +30,8 @@ from typing import Any
 import numpy as np
 import tttrlib
 
+from .realism import IDEAL, Realism
+
 __all__ = [
     "FileReplaySource",
     "PhotonBatch",
@@ -197,10 +199,12 @@ class SimulatedPieSource(PhotonSource):
         realtime: bool = True,
         segment_s: float = 5.0,
         scheme: str = "pie",
+        realism: Realism = IDEAL,
     ):
         if scheme not in SCHEMES:
             raise ValueError(f"scheme {scheme!r} is not one of {SCHEMES}")
         self.scheme = scheme
+        self.realism = realism
         self.populations = tuple(populations)
         self.duration_s = duration_s
         self.background_khz = tuple(background_khz)
@@ -225,6 +229,8 @@ class SimulatedPieSource(PhotonSource):
     # -- the simulation ---------------------------------------------------------------------
     def config(self, segment: int) -> dict:
         """The ``SimEngine`` configuration of one segment (public: the tests read the truth)."""
+        if not self.realism.ideal:
+            return self._realistic_config(segment)
         species = []
         pie = self.scheme == "pie"
         for p in self.populations:
@@ -292,6 +298,8 @@ class SimulatedPieSource(PhotonSource):
 
     def simulate_segment(self, segment: int) -> PhotonBatch:
         """All photons of one segment, PIE-encoded and sorted; macro times start at the segment."""
+        if not self.realism.ideal:
+            return self._realistic_segment(segment)
         engine = tttrlib.SimEngine.from_dict(self.config(segment))
         engine.run()
         ph = engine.photons()
@@ -313,6 +321,231 @@ class SimulatedPieSource(PhotonSource):
         order = np.argsort(macro, kind="stable")
         return PhotonBatch(
             macro[order], micro[order].astype(np.uint16), channel[order], species[order]
+        )
+
+    # -- realism (see live.realism) -------------------------------------------------------------
+    def _realistic_config(self, segment: int) -> dict:
+        """SimEngine configuration with the sample's populations, photophysics and detection.
+
+        Per FRET population four molecular states: active, acceptor bleached (emits as donor
+        only), donor bleached (acceptor only, under its own laser), acceptor dark (blinking).
+        Donor-only, acceptor-only and aggregate molecules are populations of their own. The
+        brightness rows hold gamma, alpha and delta, so the accurate-FRET corrections with these
+        factors return each population's true E and S. ``self._states`` keeps per species what the
+        record level needs (lifetimes, which population it belongs to).
+        """
+        r = self.realism
+        pie = self.scheme == "pie"
+        g, a, d, b_ = r.gamma, r.alpha, r.delta, r.beta
+        boost = 1.0 + 3.0 * r.brightness_cv  # molecules are thinned by their brightness factor
+        states: list[dict] = []
+        species: list[dict] = []
+
+        def add(green_row, red_row, label, kind, tau_donor):
+            q = {"q_alex": [list(green_row), list(red_row)]} if pie else {"q": list(green_row)}
+            species.append({"D": r.diffusion_um2_per_s / 1000.0, **q,
+                            "decay": {"lifetimes": [1.0], "amplitudes": [1.0], "dt": _MICRO_RES_NS}})  # fmt: skip
+            states.append({"label": label, "kind": kind, "tau_donor": tau_donor})
+            return len(species) - 1
+
+        transitions: list[tuple[int, int, float, bool]] = []  # (from, to, rate, radiative)
+        fret_conc = sum(p.concentration for p in self.populations)
+        rest = max(
+            1e-9, 1.0 - r.donor_only_fraction - r.acceptor_only_fraction - r.aggregate_fraction
+        )
+        populations = []
+        for i, p in enumerate(self.populations):
+            b = float(p.brightness) * boost
+            aa = b_ * g * b * (1.0 - p.S) / max(p.S, 1e-9)
+            dd, da = b * (1.0 - p.E), g * b * p.E + a * b * (1.0 - p.E) + d * aa
+            active = add((dd, da), (0.0, aa), i, "fret", r.tau_donor_ns * (1.0 - p.E))
+            bleached_a = add((b, a * b), (0.0, 0.0), i, "donor", r.tau_donor_ns)
+            bleached_d = add((0.0, d * aa), (0.0, aa), i, "acceptor", None)
+            dark_a = add((b, a * b), (0.0, 0.0), i, "donor", r.tau_donor_ns)
+            transitions += [
+                (active, bleached_a, r.acceptor_bleach_per_ms, True),
+                (active, bleached_d, r.donor_bleach_per_ms, True),
+                (active, dark_a, r.acceptor_blink_per_ms, True),
+                (dark_a, active, r.acceptor_recover_per_ms, False),
+            ]
+            populations += [p.concentration, 0.0, 0.0, 0.0]
+        n_pop = len(self.populations)
+        b = float(self.populations[0].brightness) * boost if self.populations else 300.0
+        aa = b_ * g * b  # S = 0.5 brightness for the single-dye molecules
+        add((b, a * b), (0.0, 0.0), n_pop, "donor", r.tau_donor_ns)
+        populations.append(fret_conc * r.donor_only_fraction / rest)
+        add((0.0, d * aa), (0.0, aa), n_pop + 1, "acceptor", None)
+        populations.append(fret_conc * r.acceptor_only_fraction / rest)
+        k = r.aggregate_brightness
+        agg = add(
+            (k * b * 0.5, k * b * 0.5),
+            (0.0, k * aa * 0.5),
+            n_pop + 2,
+            "aggregate",
+            r.tau_donor_ns * 0.6,
+        )
+        species[agg]["D"] = species[agg]["D"] * 0.1
+        populations.append(fret_conc * r.aggregate_fraction / rest)
+        n = len(species)
+        k_rad, k_nrad = [0.0] * (n * n), [0.0] * (n * n)
+        for i, j, rate, radiative in transitions:
+            (k_rad if radiative else k_nrad)[i * n + j] = float(rate)
+        self._states = states
+        focus = {"type": "gaussian3d", "w0": r.focus_w0_um, "z0": r.focus_z0_um,
+                 "extent_xy": 2.0, "extent_z": 4.0, "spacing": 0.1}  # fmt: skip
+        cfg = {
+            "settings": {
+                "dt": _DT_MS,
+                "n_ph_max": 50_000_000,
+                "n_channels": 2,
+                "n_microtime_channels": _N_MICRO,
+                "microtime_resolution": _MICRO_RES_NS,
+                "laser_period": _LASER_PERIOD_NS,
+                "alex_period": 2 * _DT_MS,
+                "alex_markers": False,
+                "active_margin": 1.0,
+                "fast_grid_bbox": True,
+                "max_windows": int(round(self.segment_s * 1000.0 / _DT_MS)),
+                "seed_diffusion": self.seed + 7919 * segment,
+                "seed_emission": self.seed + 104729 * segment + 1,
+            },
+            "box": {"xy": 2.0, "z": 4.0},
+            "species": species,
+            "k_rad": k_rad,
+            "k_nrad": k_nrad,
+            "background": [r.background_donor_khz, r.background_acceptor_khz],
+            "background_decay": {"pattern": [1.0] * _N_MICRO, "dt": _MICRO_RES_NS},
+            "population": populations,
+            "excitation": [focus, dict(focus, w0=r.focus_w0_um * 1.07)] if pie else focus,
+        }
+        if not pie:
+            for key in ("alex_period", "alex_markers"):
+                cfg["settings"].pop(key)
+        return cfg
+
+    def _realistic_segment(self, segment: int) -> PhotonBatch:
+        """A segment with the record-level imperfections: micro times from the instrument response
+        and the lifetimes of each state, brightness heterogeneity, drift, scatter, afterpulses and
+        detector dead time. ``truth`` is the population (FRET populations, then donor-only,
+        acceptor-only, aggregate); -1 for background, scatter and afterpulses."""
+        r = self.realism
+        pie = self.scheme == "pie"
+        rng = np.random.default_rng([self.seed, segment, 7])
+        engine = tttrlib.SimEngine.from_dict(self.config(segment))
+        engine.run()
+        ph = engine.photons()
+        keep = np.asarray(ph["event_type"]) == 0
+        window = np.asarray(ph["macro_window"])[keep].astype(np.int64)
+        t_ms = window * _DT_MS + np.asarray(ph["arrival_time"])[keep]
+        channel = np.asarray(ph["channel"])[keep].astype(np.int64)
+        species = np.asarray(ph["species"])[keep].astype(np.int64)
+        molecule = np.asarray(ph["molecule"])[keep].astype(np.int64)
+        red = ((window % 2) == 1) if pie else np.zeros(len(window), bool)
+        n_species = len(self._states)
+        signal = (species >= 0) & (species < n_species)
+        # brightness heterogeneity and drift: thin each molecule's photons
+        keep_p = np.ones(len(t_ms))
+        if r.brightness_cv > 0:
+            ids, inv = np.unique(molecule[signal], return_inverse=True)
+            sigma = np.sqrt(np.log(1.0 + r.brightness_cv**2))
+            m_rng = np.random.default_rng([self.seed, 11])
+            # a molecule's factor is fixed by its id (and the seed), across segments alike
+            factor = np.exp(
+                sigma * m_rng.standard_normal(int(ids.max()) + 1 if ids.size else 1) - sigma**2 / 2
+            )
+            keep_p[signal] = np.minimum(1.0, factor[ids][inv] / (1.0 + 3.0 * r.brightness_cv))
+        t_abs_min = (segment * self.segment_s * 1000.0 + t_ms) / 60_000.0
+        if r.drift_per_minute:
+            # relative intensity 1 + drift x minutes; a rising drift is normalised to its 10-min value
+            ref = 1.0 + max(r.drift_per_minute, 0.0) * 10.0
+            keep_p[signal] *= np.clip(
+                (1.0 + r.drift_per_minute * t_abs_min[signal]) / ref, 0.0, 1.0
+            )
+        kept = rng.random(len(t_ms)) < keep_p
+        t_ms, channel, species, red = t_ms[kept], channel[kept], species[kept], red[kept]
+        signal = (species >= 0) & (species < n_species)
+
+        # micro times: pulse + IRF + jitter + the state's decay(s)
+        n = len(t_ms)
+        sigma_irf = r.irf_fwhm_ns / 2.3548
+        jitter = np.where(channel == 0, r.jitter_donor_ns, r.jitter_acceptor_ns)
+
+        def irf(k):
+            x = rng.normal(0.0, 1.0, k) * sigma_irf
+            tail = rng.random(k) < r.irf_tail_fraction
+            x[tail] += rng.exponential(r.irf_tail_ns, int(tail.sum()))
+            return x
+
+        t0 = 0.5 + np.where(red, _LASER_PERIOD_NS / 2.0, 0.0)
+        t_ns = t0 + irf(n) + rng.normal(0.0, 1.0, n) * jitter
+        kind = np.array([s["kind"] for s in self._states] + ["bg"])
+        tau_d = np.array(
+            [s["tau_donor"] or r.tau_donor_ns for s in self._states] + [r.tau_donor_ns]
+        )
+        st = np.where(signal, species, n_species)
+        sk = kind[st]
+        donor_emits = signal & ~red & (channel == 0)
+        t_ns[donor_emits] += rng.exponential(tau_d[st[donor_emits]])
+        acc_green = signal & ~red & (channel == 1)
+        fret = acc_green & (sk == "fret")  # sensitised: donor decay, then the acceptor's
+        t_ns[fret] += rng.exponential(tau_d[st[fret]]) + rng.exponential(
+            r.tau_acceptor_ns, int(fret.sum())
+        )
+        leak = acc_green & ((sk == "donor") | (sk == "aggregate"))
+        t_ns[leak] += rng.exponential(tau_d[st[leak]])
+        direct = (acc_green & (sk == "acceptor")) | (signal & red)
+        t_ns[direct] += rng.exponential(r.tau_acceptor_ns, int(direct.sum()))
+        t_ns[~signal] = rng.uniform(
+            0.0, _LASER_PERIOD_NS, int((~signal).sum())
+        )  # uncorrelated background
+
+        # scatter of the donor laser: prompt window, the instrument response only
+        span_ms = self.segment_s * 1000.0
+        extra_t, extra_ch, extra_micro = [t_ms], [channel], [t_ns]
+        for ch, khz in ((0, r.scatter_donor_khz), (1, r.scatter_acceptor_khz)):
+            k = int(rng.poisson(khz * span_ms))
+            if k:
+                ts = np.sort(rng.uniform(0.0, span_ms, k))
+                if pie:  # only while the donor laser pulses
+                    ts = ts[(np.floor(ts / _DT_MS).astype(np.int64) % 2) == 0]
+                extra_t.append(ts)
+                extra_ch.append(np.full(len(ts), ch))
+                extra_micro.append(0.5 + irf(len(ts)))
+        t_ms = np.concatenate(extra_t)
+        channel = np.concatenate(extra_ch)
+        t_ns = np.concatenate(extra_micro)
+        truth = np.full(len(t_ms), -1, np.int64)
+        labels = np.array([s["label"] for s in self._states] + [-1], dtype=np.int64)
+        truth[: len(st)] = labels[st]
+        # afterpulses: a fraction of detections repeats on the same detector a little later
+        if r.afterpulse_probability > 0:
+            ap = rng.random(len(t_ms)) < r.afterpulse_probability
+            k = int(ap.sum())
+            t_ms = np.concatenate(
+                [t_ms, t_ms[ap] + rng.exponential(r.afterpulse_delay_us * 1e-3, k)]
+            )
+            channel = np.concatenate([channel, channel[ap]])
+            t_ns = np.concatenate([t_ns, rng.uniform(0.0, _LASER_PERIOD_NS, k)])
+            truth = np.concatenate([truth, np.full(k, -1, np.int64)])
+        order = np.argsort(t_ms, kind="stable")
+        t_ms, channel, t_ns, truth = t_ms[order], channel[order], t_ns[order], truth[order]
+        # detector dead time: a detection within the dead time after the previous one is lost
+        if r.dead_time_ns > 0:
+            lost = np.zeros(len(t_ms), bool)
+            dead_ms = r.dead_time_ns * 1e-6
+            for ch in (0, 1):
+                idx = np.flatnonzero(channel == ch)
+                gaps = np.diff(t_ms[idx], prepend=-np.inf)
+                lost[idx[gaps < dead_ms]] = True
+            t_ms, channel, t_ns, truth = t_ms[~lost], channel[~lost], t_ns[~lost], truth[~lost]
+        t_ms = t_ms[t_ms < span_ms]
+        n = len(t_ms)
+        channel, t_ns, truth = channel[:n], t_ns[:n], truth[:n]
+        micro = np.floor(np.mod(t_ns, _LASER_PERIOD_NS) / _MICRO_RES_NS).astype(np.int64) % _N_MICRO
+        macro = np.floor(t_ms / _MACRO_TICK_MS).astype(np.uint64)
+        macro += np.uint64(int(round(segment * self.segment_s * 1000.0 / _MACRO_TICK_MS)))
+        return PhotonBatch(
+            macro, micro.astype(np.uint16), channel.astype(np.int8), truth.astype(np.int16)
         )
 
     def _produce(self) -> None:

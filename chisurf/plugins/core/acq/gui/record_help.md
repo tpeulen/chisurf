@@ -12,6 +12,35 @@ and the run lands in the project with exactly the bursts you saw.
 | **Replay a photon stream** | A photons dataset of the Datasets workspace played back at measurement speed (*Speed* 1) or faster. |
 | **PicoQuant device (USB)** | A MultiHarp (or another PicoQuant device the driver supports) over USB, through CMC's pqusb: **Connect**, check the count rates, set the sync and input levels, then Start. |
 
+**Sample & instrument realism** (simulator only, folded) sets how real the simulated measurement
+looks. *Realistic* (the default) adds what a confocal smFRET measurement shows: donor-only and
+acceptor-only molecules, aggregates, bleaching and blinking, γ ≠ 1, leakage α and direct excitation
+δ, background, scatter, afterpulses, an instrument response with timing jitter, per-state lifetimes,
+detector dead time, brightness spread and slow drift. *Ideal* switches all of it off. Runs with the
+same *Seed* are identical.
+
+## Laser
+
+**Connect** opens the laser driver — PicoQuant Sepia II when its library is installed, else a
+simulated laser (the status line's tooltip says why Sepia II is not available). Connecting switches
+every output off. The **Program** (head on/off, intensity, pulsed; the oscillator *Divider*; the
+*Sequencer*'s pulses, outputs and sync per output) reaches the laser only with **Apply**, and light
+needs **Emission on** after that. Any edit switches the outputs off until the next Apply.
+**Laser off** is always there. The end of a run and closing the window close the laser.
+
+**Windows from laser** turns the applied program into the Experiment setup's micro-time windows: one
+window per enabled excitation, shifted by the sync offset (two give *prompt* and *delayed*: PIE).
+
+## Settings files
+
+One JSON document holds the device, the laser program, the experiment and the run. Settings files
+enter ChiSurf through the drop like every input. **Load** reads a settings row of the workspace,
+fills the form and sends it to the connected device and laser (emission stays off). **Use settings
+of this measurement** recovers them from a photons row's file header; what the header did not
+record is listed in the status line's tooltip, and **Use its windows** takes the windows its laser
+program implies. **Save as…** writes what is set now. Every recording carries its settings document
+in its header (the `ChiSurf_AcquisitionSettings` tag), so a measurement can be repeated from the file.
+
 ## Measurement types
 
 The **Experiment setup** reads the Instrument setup as one measurement type (by default the one the
@@ -48,10 +77,13 @@ the FRET checker on the recording). The verdict at stop is stored with the run.
 
 ## Where the run goes
 
-The photons are written to `<name>.ptu` in the acquisition output folder while measuring. On stop the
-file enters the Datasets workspace as a photons dataset — linked or embedded as **Read data › Add as**
-says — and its bursts become a run in the project, shown below it, readable by ndXplorer and every
-burst tool.
+The photons are written to `<name>.ptu` in a `<project> recordings` folder beside the project file
+while measuring, so a crash leaves them on disk. On stop the run enters the Datasets workspace as a
+photons dataset with its bursts as a run below it, readable by ndXplorer and every burst tool.
+**Store photons** decides how: *Embed in the project* (the default) puts the photons inside the
+`.cs.pto` at the next save, which the autosave makes at once; *Link* keeps only the path. The status
+line says what happened; *Saved* names the file (the full path is its tooltip) and **Show file**
+opens its folder.
 
 ## Device session
 
