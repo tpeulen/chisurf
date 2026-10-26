@@ -441,7 +441,7 @@ class BurstBackgroundApp(ImApp):
             from .controller import BackgroundController
 
             model = model if model is not None else BackgroundViewModel()
-            self.controller = BackgroundController(model)
+            self.controller = BackgroundController(model, app=self)
             on_estimate = self.controller.run
         self.bg_gui = BurstBackgroundGui(
             model=model,
@@ -496,13 +496,24 @@ class BurstBackgroundApp(ImApp):
         if self.controller is not None:
             self.controller.close()
 
-    def on_paths_dropped(self, paths):
-        if self.controller is not None:
-            self.controller.on_paths_dropped(paths)
-
 
 def create_app(**kwargs):
     from chisurf.emtk.i18n import install
 
     install()
     return BurstBackgroundApp(**kwargs)
+
+
+def receive_photons(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``photons``): add the photon streams
+    ``payload["files"]`` of the Datasets workspace (addresses; ``datasets``: their uids)."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    if app.controller is None:
+        raise RuntimeError("this window has no controller to take photon streams")
+    files = payload.get("files") or []
+    files = files if isinstance(files, list) else [files]
+    paths = [read_address(str(f)) for f in files]
+    if not app.controller.take_photons(paths, list(payload.get("datasets") or [])):
+        if not set(paths) & {str(p) for p in app.model.files}:
+            raise ValueError("nothing new to add (already listed, or not a photon stream)")

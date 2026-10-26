@@ -407,7 +407,7 @@ class BurstIrfBackgroundApp(ImApp):
             from .controller import IrfBackgroundController
 
             model = model if model is not None else IrfBackgroundViewModel()
-            self.controller = IrfBackgroundController(model, mle_receiver=mle_receiver)
+            self.controller = IrfBackgroundController(model, mle_receiver=mle_receiver, app=self)
             on_compute = self.controller.run
             on_send_to_mle = on_send_to_mle or self.controller.send_to_mle
         self.irf_gui = BurstIrfBackgroundGui(
@@ -448,23 +448,24 @@ class BurstIrfBackgroundApp(ImApp):
         if self.controller is not None:
             self.controller.close()
 
-    def on_paths_dropped(self, paths):
-        if self.controller is not None:
-            self.controller.on_paths_dropped(paths)
-
-    def files_dropped(self, paths) -> bool:
-        """A host's file drop (Qt, the desktop window, a page): the same as ``on_paths_dropped``.
-
-        Without this name only the Qt host reached the controller: the desktop and web hosts deliver ``files_dropped`` /
-        ``on_files_dropped`` and found nothing to call.
-        """
-        paths = list(paths)
-        self.on_paths_dropped(paths)
-        return bool(paths) and self.controller is not None
-
 
 def create_app(**kwargs):
     from chisurf.emtk.i18n import install
 
     install()
     return BurstIrfBackgroundApp(**kwargs)
+
+
+def receive_photons(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``photons``): add the photon streams
+    ``payload["files"]`` of the Datasets workspace (addresses; ``datasets``: their uids)."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    if app.controller is None:
+        raise RuntimeError("this window has no controller to take photon streams")
+    files = payload.get("files") or []
+    files = files if isinstance(files, list) else [files]
+    paths = [read_address(str(f)) for f in files]
+    if not app.controller.take_photons(paths, list(payload.get("datasets") or [])):
+        if not set(paths) & {str(p) for p in app.model.files}:
+            raise ValueError("nothing new to add (already listed, or not a photon stream)")

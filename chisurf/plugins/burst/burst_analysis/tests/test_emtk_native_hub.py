@@ -76,7 +76,8 @@ def settle(drv, timeout=240.0) -> None:
 
 
 def walk_to_bursts(hub, files) -> Driver:
-    """Setup 'probe', Next, drop the files, Next, Next (runs the search): the bursts are in the context."""
+    """Setup 'probe', Next, hand the photon streams over (as the Datasets workspace does), Next, Next
+    (runs the search): the bursts are in the context."""
     drv = Driver(hub, (1200, 800))
     drv.draw(3)
     hub.children["setup"].select_setup("probe")
@@ -84,7 +85,10 @@ def walk_to_bursts(hub, files) -> Driver:
     drv.click(hub.item_rects["next"])
     drv.draw(2)
     assert hub.selected == "data"
-    assert drv.drop(*files)
+    from chisurf.plugins.burst.burst_analysis.gui.native import receive_photons
+
+    receive_photons(hub, {"files": [str(f) for f in files]})
+    assert [str(p) for p in hub.children["data"]._paths()] == [str(f) for f in files]
     drv.draw(2)
     drv.click(hub.item_rects["next"])
     drv.draw(2)

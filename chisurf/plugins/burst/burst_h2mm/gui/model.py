@@ -358,13 +358,22 @@ class H2mmViewModel(RunPickerMixin):
         )
         if getattr(settings, "write_photons", True):
             try:
-                # Beside the container when the input is one, inside the folder otherwise.
-                where = (
-                    pathlib.Path(self.container_path()).parent
-                    if self.container_path()
-                    else pathlib.Path(self.data_folder)
-                )
-                write_result_tables(result, bundle, where / "h2mm")
+                from chisurf.core.project.analysis import is_derived
+
+                container = self.container_path()
+                if container and is_derived(container):
+                    # A run of the project: its results are tables of the run in that container;
+                    # the loose files are an explicit export (export_tables), never written into
+                    # the session's working folder, which the project does not keep.
+                    write_result_tables(result, bundle, pathlib.Path(container).parent, files=False)
+                else:
+                    # Beside the container when the input is one, inside the folder otherwise.
+                    where = (
+                        pathlib.Path(container).parent
+                        if container
+                        else pathlib.Path(self.data_folder)
+                    )
+                    write_result_tables(result, bundle, where / "h2mm")
             except Exception as exc:  # disk / permission path: the fit itself succeeded
                 self.status_text = f"Fitted, but the tables could not be written: {exc}"
         self.result, self.bundle, self.uncertainty, self.scans = result, bundle, None, []
@@ -465,6 +474,19 @@ class H2mmViewModel(RunPickerMixin):
             stream_groups=colour_groups(ana, bundle.settings),
             micro_time_ns=(micro_ns or None),
         )
+
+    def export_tables(self, path: str | pathlib.Path) -> list[str]:
+        """Write the fit's files -- the summary (*path*, ``h2mm_result.json``) and, beside it, the
+        per-photon, burst, dwell and state-decay tables -- into the folder of *path*; returns the
+        paths written. The run's container already holds the per-burst states and dwells."""
+        from ..backend.services import write_result_tables
+
+        if self.result is None or self.bundle is None:
+            raise ValueError("No fit to export: run a fit first.")
+        before = dict(self.result.output_paths)
+        folder = pathlib.Path(path).parent
+        write_result_tables(self.result, self.bundle, folder, containers=False)
+        return [str(v) for k, v in self.result.output_paths.items() if before.get(k) != v]
 
     def export_dwells(self, path: str | pathlib.Path) -> int:
         """Write the dwell table as CSV; returns the number of dwells."""

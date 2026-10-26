@@ -122,7 +122,10 @@ def test_real_known_irf_worker_patterns_and_handoff_survive_all_views(tmp_path, 
             "channel_shifts": {},
         }
         app.controller.channel_definition.load_definition(clean)
-        assert app.files_dropped([str(path)])
+        from chisurf.plugins.burst.burst_irf_bg.gui.app import receive_photons
+
+        receive_photons(app, {"files": [str(path)]})  # what the Datasets workspace hands over
+        assert app.model.files
         app.controller.run()
         app.controller._future.result(timeout=120)
         app.controller.poll()
@@ -169,6 +172,6 @@ def test_custom_callback_without_native_controller_draws_and_closes(tmp_path, mo
         assert "patterns" not in app.item_rects
         app.irf_gui.on_compute()
         assert calls == ["compute"]
-        assert not app.files_dropped(["measurement.spc"])
+        assert not hasattr(app, "files_dropped")  # the input comes from the workspace
     finally:
         app.close()

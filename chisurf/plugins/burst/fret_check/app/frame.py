@@ -64,7 +64,8 @@ WELCOME = (
     "Confocal single-molecule FRET, analysed locally on this machine.\n\n"
     "Your data stays on this computer: the file is read and processed here, by tttrlib (in the "
     "page, compiled to WebAssembly). Nothing is uploaded, and no data ends up on any server.\n\n"
-    "Drop a TTTR file on the window (PicoQuant PTU/HT3/T3R, Becker & Hickl SPC, SM, PTO, ...), "
+    "Pick a photon stream in the Input section below (TTTR files -- PicoQuant PTU/HT3/T3R, Becker & "
+    "Hickl SPC, SM, PTO, ... -- dropped on the ChiSurf window are listed there), "
     "or simulate an example under Measurement > Try it without a file. The experiment -- cw, PIE "
     "or µsALEX, which detector is donor or acceptor, polarization -- is detected from the photons.\n\n"
     "New here? Press Guide."
@@ -126,6 +127,13 @@ class SmFretApp(ImApp):
         )
         for form in self.forms.values():
             form.on_used = self._used
+        # The Input section: the workspace's photon streams (manifest ``accepts`` ``photons``).
+        from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput, input_spec
+
+        self.input = NamedWorkspaceInput("fret_check", "photons", app=self)
+        self.input.workspace_input_on_used = self._used
+        self.input_spec = input_spec(HERE.parent / "manifest.json", "photons")
+        self.input_form = FormState(on_used=self._used)
         self._apply_mode()
         if self.session.runner == "jobs":
             # In a page: boot the compute worker now, while the user picks a
@@ -221,17 +229,6 @@ class SmFretApp(ImApp):
                     self.session.status = f"Could not load: {exc}"
             self.request_frame()
 
-    def files_dropped(self, paths) -> bool:
-        paths = [str(p) for p in paths or ()]
-        if not paths:
-            return False
-        if self._ndx_drawn and self.ndx.focus:
-            return bool(self.ndx.app.files_dropped(paths))
-        self.open(paths[0])
-        return True
-
-    on_files_dropped = files_dropped
-
     def open(self, path: str) -> None:
         if self.session.runner == "sync":
             # Inline: show "loading" for a frame before the work blocks.
@@ -321,9 +318,13 @@ class SmFretApp(ImApp):
     def _drawer(self, key: str):
         def draw(win_box) -> None:
             if key in PANELS:
-                if key == "measurement" and self._plots is None and self._pending is None:
-                    im.text_wrapped(WELCOME)
-                    im.separator()
+                if key == "measurement":
+                    if self._plots is None and self._pending is None:
+                        im.text_wrapped(WELCOME)
+                        im.separator()
+                    self.input_form.rects.clear()
+                    draw_form(self.input_spec, self.input, self.input_form)
+                    self.item_rects.update(self.input_form.rects)
                 draw_form(
                     find_section(VIEW, PANELS[key]), self.session, self.forms[key], titles=False
                 )
@@ -363,3 +364,11 @@ def make_app(path: str | None = None, runner: str | None = None) -> SmFretApp:
     if path:
         app.open(path)
     return app
+
+
+def receive_photons(app: SmFretApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``photons``): check the photon stream
+    ``payload["file"]`` of the Datasets workspace (an address: a file or a container member)."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    app.open(read_address(str(payload["file"])))

@@ -1,7 +1,7 @@
 [
   {
     "title": "Burstwise → PTO Import",
-    "text": "This tool packages legacy burst analysis folders (bi4_bur, bg4, br4, Info, .mti) into standardized .mmfdb.pto containers."
+    "text": "This tool packages legacy burst analysis folders (bi4_bur, bg4, br4, Info, .mti) into the project: each measurement's burst runs become children of its photon stream in the Datasets workspace."
   },
   {
     "title": "Start with the sample folder",
@@ -13,7 +13,7 @@
   },
   {
     "title": "Select analysis folder",
-    "text": "Enter or browse for a legacy burstwise folder. Folders can also be dragged and dropped directly onto the window.",
+    "text": "The folder to import. Drop a legacy burstwise folder on the ChiSurf window: the drop hands it to this tool, which scans it.",
     "target": "folder_input"
   },
   {
@@ -31,7 +31,7 @@
   },
   {
     "title": "Convert to PTO",
-    "text": "Click Run to convert detected measurements into .mmfdb.pto containers.",
+    "text": "Click Run to convert the detected measurements into measurement containers of the project; their burst runs appear in the Datasets workspace under their photon streams.",
     "target": "convert_button",
     "await": {
       "hint": "Press Run."

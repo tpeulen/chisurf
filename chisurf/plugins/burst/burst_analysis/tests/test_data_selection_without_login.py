@@ -75,7 +75,7 @@ def test_the_details_offer_import_now_for_a_file_that_was_not_registered(tmp_pat
     app = make_app(source=BurstDataSelectionModel(_Client(token=None)))
     driver = Driver(app, (1200, 800))
     driver.frame(2)
-    app.files_dropped([str(p) for p in _files(tmp_path, 1)])
+    app.take_photons([str(p) for p in _files(tmp_path, 1)])
     driver.frame(3)
     drawn = [entry[5] for entry in driver.painter.texts]
     assert "Import now" in drawn and "Import again" not in drawn

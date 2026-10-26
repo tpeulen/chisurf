@@ -29,7 +29,17 @@
     }
   ],
   "operation_types": [
-  "burst_selection",
-  "burst_lifetime_fitting"
+    "burst_selection",
+    "burst_lifetime_fitting"
+  ],
+  "accepts": [
+    {
+      "name": "legacy_folder",
+      "summary": "Import a legacy burstwise analysis folder dropped on the ChiSurf window: its runs become children of their photon streams in the workspace.",
+      "receive": "chisurf.plugins.burst.burstwise_import.gui.app:receive_folder",
+      "required": [
+        "folder"
+      ]
+    }
   ]
 }

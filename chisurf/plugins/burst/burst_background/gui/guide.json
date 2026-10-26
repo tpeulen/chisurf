@@ -15,9 +15,9 @@
     },
     {
       "title": "Estimated from the measurement, not from a blank",
-      "text": "Point this at the same raw files you ran the burst search on.<br/><br/>A buffer-only acquisition measures the background of <i>that</i> acquisition — not the sample in the beam, not the laser power after it drifted for two hours, and not the dim out-of-focus molecules that genuinely contribute. Estimating from the measurement itself tracks all of it and costs no extra beam time.",
+      "text": "Pick, in the Input section, the photon streams of the Datasets workspace you ran the burst search on.<br/><br/>A buffer-only acquisition measures the background of <i>that</i> acquisition — not the sample in the beam, not the laser power after it drifted for two hours, and not the dim out-of-focus molecules that genuinely contribute. Estimating from the measurement itself tracks all of it and costs no extra beam time.",
       "target": {
-        "attr": "files"
+        "name": "workspace_input_rows"
       }
     },
     {

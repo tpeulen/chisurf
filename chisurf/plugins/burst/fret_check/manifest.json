@@ -2,7 +2,7 @@
   "id": "fret_check",
   "version": "1.0.0",
   "display_name": "Spectroscopy:Single-Molecule:FRET check",
-  "description": "The single-button measurement check: drop a TTTR file, get a verdict. Is the measurement usable (burst density, multi-molecule events, stability, background)? Which bursts are suspicious? Works with or without ALEX/PIE; cw two-colour is a full citizen. Simple mode is one drop-zone and the verdict; advanced mode exposes editable detection, burst search and corrections, and hands off to ndX and burst analysis. Ported from smfret-web (peulen.xyz/smfret), now at home in ChiSurf.",
+  "description": "The single-button measurement check: pick a photon stream, get a verdict. Is the measurement usable (burst density, multi-molecule events, stability, background)? Which bursts are suspicious? Works with or without ALEX/PIE; cw two-colour is a full citizen. Simple mode is the Input section and the verdict; advanced mode exposes editable detection, burst search and corrections, and hands off to ndX and burst analysis. Ported from smfret-web (peulen.xyz/smfret), now at home in ChiSurf.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
@@ -27,6 +27,22 @@
     {
       "name": "fret_check.qc",
       "summary": "The quality verdict alone (burst density, multi-molecule, stability, background)."
+    }
+  ],
+  "accepts": [
+    {
+      "name": "photons",
+      "summary": "Check one photon stream of the Datasets workspace: burst density, multi-molecule events, stability, background.",
+      "receive": "chisurf.plugins.burst.fret_check.app.frame:receive_photons",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons"
+        ],
+        "key": "file"
+      }
     }
   ]
 }

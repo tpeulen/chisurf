@@ -398,7 +398,7 @@ class BackgroundViewModel:
             self.notify("files")
 
     def _write_containers(self) -> None:
-        """Record each file's background rates beside its photons.
+        """Record each file's background rates in its measurement container.
 
         A background rate is a property *of a measurement*, and until now it
         lived only in this window: every later step that needs one — an MLE
@@ -419,12 +419,19 @@ class BackgroundViewModel:
             return
         parameters = copy.deepcopy(self._result_settings)
 
+        from chisurf.core.project.analysis import container_dir
+
+        sources = getattr(self, "sources", None) or {}
         for path, diags in self.diagnostics.items():
             if not diags:
                 continue
             names = list(diags)
+            uid = sources.get(str(path), "")
+            # A workspace dataset's results go into its analysis container in the project (the
+            # photons linked, not copied); a file named through the API keeps its own container.
+            target = {"out_dir": container_dir(uid), "raw_data": "sidecar"} if uid else {}
             try:
-                with open_measurement(path) as measurement:
+                with open_measurement(path, **target) as measurement:
                     rates = store_from_arrays(
                         {
                             "Detector": np.array(names, dtype=object),

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
@@ -21,6 +22,8 @@ from chisurf.plugins.emtk_layout import (
 
 from .view_model import BurstwiseImportViewModel
 
+logger = logging.getLogger(__name__)
+
 
 class BurstwiseImportApp(ImApp, TourTarget):
     """EMTK application for importing legacy burstwise analysis folders into PTO containers."""
@@ -39,8 +42,6 @@ class BurstwiseImportApp(ImApp, TourTarget):
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="burstwise-importer")
         self.future: Future[Any] | None = None
         self.cancel = Event()
-        self.dialog = None
-        self.dialog_mode = "folder"
 
         self.docks = DockManager(
             Split("h", 0.50, Region("setup"), Split("v", 0.65, Region("results"), Region("log"))),
@@ -74,22 +75,6 @@ class BurstwiseImportApp(ImApp, TourTarget):
         self.help_window.hide()
         self.tour.start()
 
-    def browse(self, mode: str) -> None:
-        """Open a directory browse dialog."""
-        from emtk.file_dialog import FileDialog
-
-        self.dialog_mode = mode
-        title_map = {
-            "folder": tr("Choose Burstwise Folder"),
-            "prefix": tr("Choose Local TTTR Root Prefix"),
-            "out_dir": tr("Choose Output Directory"),
-        }
-        self.dialog = FileDialog(
-            title_map.get(mode, tr("Choose Folder")),
-            mode="folder",
-            multiselect=False,
-        )
-
     def scan(self, folder: str | Path | None = None) -> dict | None:
         """Scan target folder and populate detected tables and parameters."""
         try:
@@ -112,7 +97,12 @@ class BurstwiseImportApp(ImApp, TourTarget):
         self.cancel.clear()
         self.model.status_text = tr("Converting...")
         self.status = self.model.status_text
-        self.future = self.executor.submit(self.model.convert)
+        # Written into a private staging folder, then moved into the project's analysis
+        # containers (adopt_into_project) -- never beside the legacy folder.
+        import tempfile
+
+        staging = tempfile.mkdtemp(prefix="burstwise-import-")
+        self.future = self.executor.submit(self.model.convert, out_dir=staging)
 
     def cancel_conversion(self) -> None:
         """Signal cancellation of ongoing conversion."""
@@ -126,6 +116,11 @@ class BurstwiseImportApp(ImApp, TourTarget):
                 report = self.future.result()
                 self.model.report = report
                 self.status = report.summary()
+                if not self.model.dry_run:
+                    added = adopt_into_project(report.containers)
+                    self.model.messages.append(
+                        tr("{n} burst run(s) added to the Datasets workspace.").format(n=added)
+                    )
             except Exception as exc:
                 err = f"Conversion error: {exc}"
                 self.model.status_text = err
@@ -135,15 +130,6 @@ class BurstwiseImportApp(ImApp, TourTarget):
                 self.future = None
                 self.running = False
                 self.model.is_running = False
-
-    def on_paths_dropped(self, paths: list[str | Path]) -> None:
-        """Adopt dropped directory path."""
-        for p in paths:
-            path = Path(p).expanduser().resolve()
-            if path.is_dir():
-                self.model.folder = str(path)
-                self.scan()
-                break
 
     def draw_setup(self, box) -> None:
         """Draw setup pane: folder, scan summary, resolution options, and convert action."""
@@ -165,24 +151,16 @@ class BurstwiseImportApp(ImApp, TourTarget):
 
         # Folder selection & scan
         im.text(tr("Burstwise analysis folder:"))
-        changed, self.model.folder = im.input_text("##burstwise_folder", self.model.folder)
+        im.text_wrapped(
+            self.model.folder
+            or tr("Drop a legacy burstwise folder on the ChiSurf window, or load the example.")
+        )
         im.set_item_tooltip(
             tr("Legacy burstwise directory (containing bi4_bur, bg4, br4, Info, .mti).")
         )
         self.remember("folder_input")
 
-        browse_caption = action_caption("browse")
-        browse_w = im.calc_text_size(browse_caption)[0] + pad
-        if im.get_line_avail() >= browse_w:
-            im.same_line()
-        if action_button("browse", tooltip=tr("Select burstwise analysis folder.")):
-            self.browse("folder")
-        self.remember("browse_folder")
-
         scan_caption = tr("🔍  Scan")
-        scan_w = im.calc_text_size(scan_caption)[0] + pad
-        if im.get_line_avail() >= scan_w:
-            im.same_line()
         if im.button(scan_caption, role="primary"):
             self.scan()
             self.tour.notify_used("scan_button")
@@ -281,12 +259,6 @@ class BurstwiseImportApp(ImApp, TourTarget):
             im.set_item_tooltip(tr("Local path where raw TTTR files reside"))
             self.remember("new_prefix")
 
-            if im.get_line_avail() >= browse_w:
-                im.same_line()
-            if action_button(
-                "browse", id="browse_prefix", tooltip=tr("Select local root prefix directory.")
-            ):
-                self.browse("prefix")
         else:
             beside_path = Path(self.model.folder).parent if self.model.folder else Path(".")
             im.text_wrapped(
@@ -311,15 +283,12 @@ class BurstwiseImportApp(ImApp, TourTarget):
         im.set_item_tooltip(tr("Flag legacy columns not matched in the flrCIF dictionary."))
         self.remember("report_unmapped")
 
-        im.text(tr("Output directory (empty: beside folder):"))
-        changed, self.model.out_dir = im.input_text("##out_dir", self.model.out_dir)
-        im.set_item_tooltip(
-            tr("Explicit output directory for .mmfdb.pto containers; empty writes beside folder.")
+        im.text_wrapped(
+            tr(
+                "The containers go into the project: each measurement's burst runs become "
+                "children of its photon stream in the Datasets workspace."
+            )
         )
-        if im.get_line_avail() >= browse_w:
-            im.same_line()
-        if action_button("browse", id="browse_out", tooltip=tr("Select output directory.")):
-            self.browse("out_dir")
 
         # Convert action
         im.separator()
@@ -328,7 +297,9 @@ class BurstwiseImportApp(ImApp, TourTarget):
         if action_button(
             "run",
             id="convert_btn",
-            tooltip=tr("Convert legacy burstwise folder to .mmfdb.pto containers."),
+            tooltip=tr(
+                "Convert the legacy burstwise folder into the project's measurement containers."
+            ),
             role="primary",
         ):
             self.convert()
@@ -429,22 +400,6 @@ class BurstwiseImportApp(ImApp, TourTarget):
         self.docks.draw((0.0, 0.0, float(width), float(height)))
         im.end_disabled()
 
-        if self.dialog is not None:
-            if im.begin(self.dialog.title):
-                result = self.dialog.draw()
-                if result:
-                    if self.dialog_mode == "folder":
-                        self.model.folder = str(result[0])
-                        self.scan()
-                    elif self.dialog_mode == "prefix":
-                        self.model.new_prefix = str(result[0])
-                    elif self.dialog_mode == "out_dir":
-                        self.model.out_dir = str(result[0])
-                    self.dialog = None
-                elif result is False:
-                    self.dialog = None
-            im.end()
-
         if self.help_window.open:
             self.help_window.draw((0.0, 0.0, float(width), float(height)))
         if self.tour.active:
@@ -470,3 +425,59 @@ def create_app(**kwargs) -> BurstwiseImportApp:
 
     install()
     return BurstwiseImportApp(**kwargs)
+
+
+def adopt_into_project(containers) -> int:
+    """Put converted containers into the project: each measurement's photon file becomes a photon
+    dataset of the workspace, its container that dataset's analysis container
+    (:mod:`chisurf.core.project.analysis`), and the container's burst runs its child rows.
+
+    A container whose photon file cannot be found (a folder kept without its raw data) is
+    carried by the project all the same, without a photon dataset: its runs are top-level rows.
+    Returns the number of runs added.
+    """
+    import shutil
+
+    from chisurf.core.fio.classify import container_entries
+    from chisurf.core.fio.pto import Measurement
+    from chisurf.core.plugin.workspace_input import register_result
+    from chisurf.core.project.analysis import container_dir
+
+    added = 0
+    for container in map(Path, containers):
+        try:
+            with Measurement.open(container, writable=False) as measurement:
+                raw = measurement.external_path()
+        except Exception:  # noqa: BLE001 - reported, the next container is tried
+            logger.warning("cannot open converted container %s", container, exc_info=True)
+            continue
+        if raw is None or not Path(raw).exists():
+            # No photons to hang the runs under: the project keeps the container unowned.
+            owner, folder, target = "", container_dir(""), None
+        else:
+            raw = Path(raw)
+            stream = register_result(str(raw), kind="photons", name=raw.name)
+            owner = stream.unique_identifier
+            folder = container_dir(owner)
+            target = folder / f"{raw.stem}.pto"
+        if target is None:
+            target = folder / container.name
+        if target.exists():  # the dataset already has an analysis container (a burst search)
+            target = folder / container.name
+        shutil.move(str(container), str(target))
+        for kind, address in container_entries(target):
+            if kind == "bursts":
+                register_result(address, kind="bursts", result_of=owner)
+                added += 1
+    return added
+
+
+def receive_folder(app: BurstwiseImportApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``legacy_folder``): a legacy burstwise folder
+    dropped on the ChiSurf window, ``payload["folder"]``, is scanned for import."""
+    folder = Path(str(payload["folder"])).expanduser()
+    if not folder.is_dir():
+        raise ValueError(f"{folder} is not a folder")
+    app.model.folder = str(folder.resolve())
+    if app.scan() is None:
+        raise ValueError(app.status)

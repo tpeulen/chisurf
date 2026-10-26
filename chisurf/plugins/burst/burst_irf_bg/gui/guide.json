@@ -15,9 +15,9 @@
     },
     {
       "title": "The same files the bursts came from",
-      "text": "The non-burst photons are, by definition, everything the burst search did <b>not</b> select. So this reads the same raw files and inverts the burst mask rather than searching again.",
+      "text": "Pick, in the Input section, the photon streams of the Datasets workspace the burst search ran on.<br/><br/>The non-burst photons are, by definition, everything the burst search did <b>not</b> select. So this reads the same raw files and inverts the burst mask rather than searching again.",
       "target": {
-        "attr": "files"
+        "name": "workspace_input_rows"
       }
     },
     {

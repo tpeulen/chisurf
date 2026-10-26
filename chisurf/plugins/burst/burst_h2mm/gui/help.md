@@ -80,6 +80,11 @@ with the model, decoder, seed and channel map. A per-state decay or per-state FC
 then becomes an ordinary channel or mask selection in any tool, with no H2MM-aware
 plumbing. The per-dwell table opens directly in ndX.
 
+For a burst run of the project, the per-burst states and the dwells are stored **in the run**,
+inside its photon dataset's container in the project (`.cs.pto`), where ndX reads them with the
+run. The other files -- the summary, the per-photon and state-decay tables, the optional state
+PTU -- are an explicit export: **Export tables** writes them into the folder you choose.
+
 ## Before believing the result
 
 **The kinetic window is bounded at both ends, by photons and by bursts.** A

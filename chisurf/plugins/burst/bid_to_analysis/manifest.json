@@ -7,8 +7,28 @@
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": ["File", "Data"],
+  "categories": [
+    "File",
+    "Data"
+  ],
   "entrypoints": {
     "emtk": "chisurf.plugins.burst.bid_to_analysis.gui.app:create_app"
-  }
+  },
+  "accepts": [
+    {
+      "name": "photons",
+      "summary": "Import the burst-ID selection (.bid/.bst/.txt, same stem) beside each photon stream of the Datasets workspace into that stream's container in the project.",
+      "receive": "chisurf.plugins.burst.bid_to_analysis.gui.app:receive_photons",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    }
+  ]
 }

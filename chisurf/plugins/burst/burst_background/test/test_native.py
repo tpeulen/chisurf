@@ -32,7 +32,7 @@ def test_files_detectors_setup_roundtrip(tmp_path):
     try:
         path = tmp_path / "measurement.ptu"
         path.touch()
-        app.on_paths_dropped([path, path])
+        app.controller.take_photons([str(path), str(path)])
         assert app.model.files == [str(path)]
         assert app.controller.apply_detectors('{"blue":{"chs":[2],"micro_time_ranges":[[5,10]]}}')
         assert not app.controller.apply_detectors('{"bad":{"chs":[-1]}}')

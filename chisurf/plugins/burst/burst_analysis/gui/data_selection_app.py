@@ -6,8 +6,8 @@ local file in MMFDB (object store + raw-data registry) through :func:`import_raw
 :class:`BurstDataSelectionApp` draws a *source* -- the model, or any object that
 speaks the same few methods (``paths``, ``add_paths``, ``remove_index``, ``clear``, ``mmfdb_payload``,
 ``import_path``) -- as three windows: the file table (``data_table`` from ``data_selection.view.json``), the
-selected file's details with its MMFDB status, and a summary. Files come from :class:`emtk.file_dialog.FileDialog`,
-a drop on the window, or the shared MMFDB :class:`chisurf.emtk.dataset_picker.DatasetPicker`.
+selected file's details with its MMFDB status, and a summary. Files come from the Datasets workspace: the
+Input section lists its photon streams (the hosting plugin's manifest ``accepts`` ``photons``).
 """
 
 from __future__ import annotations
@@ -22,17 +22,12 @@ from emtk import im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
-from emtk.view_form import FormState, draw_sections
+from emtk.view_form import FormState, draw_form, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.core.fio.staging import TTTR_EXTENSIONS
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row
-
-if TYPE_CHECKING:
-    from emtk.dialog_window import DialogWindow
-
-    from chisurf.emtk.dataset_picker import DatasetPicker
 
 HERE = Path(__file__).resolve().parent
 
@@ -169,6 +164,9 @@ class BurstDataSelectionModel:
         self.selected_index: int | None = None
         self.status_text = "No TTTR files selected."
         self._told_not_signed_in = False
+        #: Which workspace dataset each file came from (its burst runs go into that dataset's
+        #: analysis container in the project).
+        self.sources: dict[str, str] = {}
 
     # -- the source protocol ------------------------------------------------------------------------------- #
     def paths(self) -> list[Path]:
@@ -306,10 +304,8 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         Called by *Proceed to Burst Selection* (the workflow hub moves to the next step).
     """
 
-    DIALOGS = {
-        "add_files": ("Add TTTR files", "open"),
-        "add_folder": ("Add a folder of TTTR files", "folder"),
-    }
+    #: The plugin whose manifest ``accepts`` ``photons`` the Input section feeds.
+    WORKSPACE_PLUGIN = "burst_analysis"
     #: The Summary dock's proceed button and its tooltip (a workflow whose next step is another one renames it).
     PROCEED_LABEL = "Proceed to Burst Selection"
     PROCEED_TIP = "Go on to 2. Burst Selection with these files."
@@ -332,11 +328,16 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         self.selected_index: int | None = None
         self.form = FormState()
         self.spec = load_view_spec(str(HERE / "data_selection.view.json"))
-        self.dialog = None
-        self.dialog_action = ""
-        self._dialog_window: DialogWindow | None = None
-        self.picker: DatasetPicker | None = None
         self.message = ""
+        # The Input section: the workspace's photon streams.
+        from chisurf.core.plugin.workspace_input import input_section, spec_for
+        from chisurf.emtk.plugins import manifests
+        from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput
+
+        self.input = NamedWorkspaceInput(self.WORKSPACE_PLUGIN, "photons", app=self)
+        found = spec_for(manifests().get(self.WORKSPACE_PLUGIN), kind="photons")
+        self.input_spec = {"sections": [input_section(found[1])]} if found else {"sections": []}
+        self.input_form = FormState()
         self.help_window = EmTkHelpWindow(
             title="Data Selection - Help",
             resource=HERE / "data_selection_help.md",
@@ -428,99 +429,35 @@ class BurstDataSelectionApp(TourTarget, ImApp):
             self.selected_index = n - 1 if n else None
 
     # -- actions -------------------------------------------------------------------------------------------- #
-    def browse(self, action: str) -> None:
-        from emtk.dialog_window import DialogWindow
-        from emtk.file_dialog import FileDialog
-
-        title, mode = self.DIALOGS[action]
-        options: dict[str, Any] = {}
-        paths = self._paths()
-        if paths:
-            options["directory"] = str(paths[-1].parent)
-        if mode == "open":
-            patterns = sorted("*." + ext for ext in _EXTENSIONS)
-            options["filters"] = [("TTTR files", patterns), ("All files", ["*"])]
-        self.dialog = FileDialog(title, mode=mode, multiselect=mode == "open", **options)
-        self.dialog_action = action
-        window = DialogWindow(title, size=(640.0, 460.0), key="burst-data-file")
-        self._dialog_window = window
-        window.show()
-
-    def _dialog_done(self, result: list[str]) -> None:
-        try:
-            added = self.source.add_paths([Path(p) for p in result])
-        except Exception as exc:  # noqa: BLE001 - shown in the window
-            self.message = f"Could not add: {exc}"
-            return
-        self.message = (
-            ""
-            if added is None or added
-            else "Nothing new to add (already in the list, or no TTTR files)."
-        )
+    def take_photons(self, paths, uids=()) -> int:
+        """Add photon streams from the workspace; remember the dataset each came from."""
+        paths = [Path(str(p)) for p in paths]
+        added = self.source.add_paths(paths)
+        sources = getattr(self.source, "sources", None)
+        if isinstance(sources, dict):
+            for path, uid in zip(paths, uids):
+                if uid:
+                    sources[str(path)] = str(uid)
         if self.selected_index is None and self._paths():
             self.selected_index = 0
-
-    def open_database(self) -> None:
-        from chisurf.emtk.dataset_picker import DatasetPicker
-
-        def chosen(selection):
-            local_path = getattr(selection, "local_path", None)
-            if not local_path:
-                return
-            adder = getattr(self.source, "add_database_selection", None)
-            if callable(adder):
-                adder(selection, local_path)
-            else:
-                self.source.add_paths([Path(local_path)])
-            if self.selected_index is None and self._paths():
-                self.selected_index = 0
-
-        try:
-            # ``on_paths`` makes the picker resolve the dataset to a local file before ``on_selected`` runs.
-            picker = DatasetPicker(
-                kinds=MMFDB_KINDS, scope="all", on_paths=lambda _paths: None, on_selected=chosen
-            )
-            self.picker = picker
-            picker.open()
-        except Exception as exc:  # noqa: BLE001 - no database
-            self.picker = None
-            self.message = f"MMFDB is not available: {exc}"
-
-    def files_dropped(self, paths) -> bool:
-        paths = list(paths)
-        if not paths:
-            return False
-        self.source.add_paths([Path(p) for p in paths])
-        if self.selected_index is None and self._paths():
-            self.selected_index = 0
-        return True
-
-    on_paths_dropped = files_dropped
-    on_files_dropped = files_dropped
+        self.message = "" if added is None or added else "Nothing new to add (already in the list)."
+        return int(added or 0)
 
     # -- windows -------------------------------------------------------------------------------------------- #
     def _draw_files(self, box=None) -> None:
         paths = self._paths()
         self._clamp_selection()
         selected = self.selected_index is not None and 0 <= self.selected_index < len(paths)
+        self.input.workspace_input_on_used = self.track
+        self.input_form.rects.clear()
+        draw_form(self.input_spec, self.input, self.input_form)
+        for name, rect in self.input_form.rects.items():
+            self.item_rects[name] = tuple(rect)
+        if "workspace_input_rows" in self.input_form.rects:  # the guide's name for adding data
+            self.item_rects["add_files"] = tuple(self.input_form.rects["workspace_input_rows"])
+            self.item_rects["toolAction_add"] = self.item_rects["add_files"]
         pressed = button_row(
             [
-                {
-                    "label": "Add files",
-                    "key": "add_files",
-                    "keys": ["toolAction_add"],
-                    "tip": "Choose TTTR measurement files to add to the workflow.",
-                },
-                {
-                    "label": "Add folder",
-                    "key": "add_folder",
-                    "tip": "Add every TTTR file directly inside a folder.",
-                },
-                {
-                    "label": "Database (MMFDB)",
-                    "key": "database",
-                    "tip": "Choose raw data registered in MMFDB; the file is resolved to a local path.",
-                },
                 {
                     "label": "Remove",
                     "key": "remove",
@@ -540,13 +477,7 @@ class BurstDataSelectionApp(TourTarget, ImApp):
             ],
             remember=self.remember,
         )
-        if pressed in self.DIALOGS:
-            self.track(pressed)
-            self.browse(pressed)
-        elif pressed == "database":
-            self.track("database")
-            self.open_database()
-        elif pressed == "remove" and selected and self.selected_index is not None:
+        if pressed == "remove" and selected and self.selected_index is not None:
             self.source.remove_index(int(self.selected_index))
             self._clamp_selection()
         elif pressed == "clear":
@@ -573,9 +504,7 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         if "data_table" in self.form.rects:
             self.item_rects["files"] = tuple(self.form.rects["data_table"])
         if not paths:
-            im.text_disabled(
-                tr("No files yet: add TTTR files or a folder, or drop them on this window.")
-            )
+            im.text_disabled(tr("No files yet: pick photon streams in the Input section above."))
 
     def _draw_details(self, box=None) -> None:
         paths = self._paths()
@@ -644,20 +573,6 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         w, h = im.get_main_viewport().size
         frame = (0.0, 0.0, float(w), float(h))
         self.docks.draw(frame)
-        window = self._dialog_window
-        if self.dialog is not None and window is not None:
-            pressed = window.begin(frame)
-            result = self.dialog.draw()
-            window.end()
-            if result:
-                self._dialog_done(result)
-                self.dialog = None
-            elif result is False or pressed == "close":
-                self.dialog = None
-        if self.picker is not None:
-            self.picker.render(frame)
-            if not getattr(self.picker, "is_open", True):
-                self.picker = None
         if self.help_window.open:
             self.help_window.draw(frame)
         if self.tour.active:
@@ -678,11 +593,7 @@ class BurstDataSelectionApp(TourTarget, ImApp):
             restore(state)
 
     def close(self) -> None:
-        if self.picker is not None:
-            try:
-                self.picker.close()
-            except Exception:  # noqa: BLE001
-                pass
+        pass
 
 
 def make_app(**kwargs) -> BurstDataSelectionApp:

@@ -18,7 +18,7 @@ from typing import Any, Callable
 
 from emtk import im
 from emtk.i18n import tr
-from emtk.view_form import FormState, draw_sections
+from emtk.view_form import FormState, draw_form, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.core.setup_channel_definition import ChannelDefinition
@@ -86,6 +86,15 @@ class BurstSetupSelectionApp(SetupStepApp):
         )
         self.page.on_used = self.tour.notify_used
         self.strip_form = FormState(on_used=self.tour.notify_used)
+        # The Input section: a detector setup of the Datasets workspace (a ``setup`` row).
+        from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput, input_spec
+
+        self.setup_input = NamedWorkspaceInput("burst_analysis", "setup", app=self)
+        self.setup_input.workspace_input_on_used = self.tour.notify_used
+        self.setup_input_spec = input_spec(
+            HERE.parent / "manifest.json", "setup", title="Setup from the workspace"
+        )
+        self.setup_input_form = FormState()
 
     # -- the workflow's view of the step ------------------------------------------------------------------- #
     def _changed(self, settings: dict) -> None:
@@ -144,7 +153,14 @@ class BurstSetupSelectionApp(SetupStepApp):
     def _draw_window(self, box: Any = None) -> None:
         draw_sections(self.strip, self, self.strip_form)
         self.item_rects.update(self.strip_form.rects)
+        self.setup_input_form.rects.clear()
+        draw_form(self.setup_input_spec, self.setup_input, self.setup_input_form)
+        self.item_rects.update(self.setup_input_form.rects)
         super()._draw_window(box)
+
+    def take_setup(self, path: str) -> bool:
+        """Load the detector setup file *path* (a workspace ``setup`` row) into the editor."""
+        return bool(self.page.files_dropped([str(path)]))
 
     def start_guide(self):
         """Start the existing workflow setup guide."""
@@ -176,12 +192,6 @@ class BurstSetupSelectionApp(SetupStepApp):
         )
 
     # -- host input / persistence -------------------------------------------------------------------------- #
-    def files_dropped(self, paths) -> bool:
-        return bool(self.page.files_dropped(paths))
-
-    on_files_dropped = files_dropped
-    on_paths_dropped = files_dropped
-
     def export_settings(self) -> dict[str, Any]:
         return {
             "setup_name": self.selected_setup_name(),

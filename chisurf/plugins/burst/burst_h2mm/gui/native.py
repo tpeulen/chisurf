@@ -89,6 +89,7 @@ class H2mmNativeApp(TourTarget, ImApp):
         "save_settings": ("Save H2MM settings", "save", [("JSON", ["*.json"])]),
         "load_settings": ("Load H2MM settings", "open", [("JSON", ["*.json"])]),
         "export_dwells": ("Export dwell table", "save", [("CSV", ["*.csv"])]),
+        "export_tables": ("Export H2MM tables", "save", [("JSON", ["*.json"])]),
         "save_plot": ("Save plots", "save", [("PNG", ["*.png"])]),
     }
 
@@ -245,6 +246,7 @@ class H2mmNativeApp(TourTarget, ImApp):
         filename = {
             "save_settings": "h2mm_settings.json",
             "export_dwells": "h2mm_dwells.csv",
+            "export_tables": "h2mm_result.json",
             "save_plot": "h2mm.png",
         }.get(action, "")
         self.dialog = FileDialog(
@@ -272,6 +274,9 @@ class H2mmNativeApp(TourTarget, ImApp):
             elif action == "export_dwells":
                 n = self.model.export_dwells(path)
                 self.model.status_text = f"{n} dwells written to {path}"
+            elif action == "export_tables":
+                written = self.model.export_tables(path)
+                self.model.status_text = f"{len(written)} H2MM files written to {Path(path).parent}"
             elif action == "save_plot":
                 self.save_plot(path)
                 self.model.status_text = f"Plots saved to {path}"
@@ -408,6 +413,15 @@ class H2mmNativeApp(TourTarget, ImApp):
                     "key": "export_dwells",
                     "enabled": has_fit,
                     "tip": "Write the per-dwell table as CSV." if has_fit else "Run a fit first.",
+                },
+                {
+                    "label": "Export tables",
+                    "key": "export_tables",
+                    "enabled": has_fit,
+                    "tip": "Write the fit's summary and its per-photon, burst, dwell and state-decay "
+                    "tables to a folder (the burst run already holds the per-burst states)."
+                    if has_fit
+                    else "Run a fit first.",
                 },
                 {
                     "label": "Save settings",

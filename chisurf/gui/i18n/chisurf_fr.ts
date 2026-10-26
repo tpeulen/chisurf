@@ -72057,6 +72057,42 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
             <source>− Remove</source>
             <translation>− Retirer</translation>
         </message>
+        <message>
+            <source>Drop a legacy burstwise folder on the ChiSurf window, or load the example.</source>
+            <translation>Déposez un dossier burstwise sur la fenêtre ChiSurf, ou chargez l’exemple.</translation>
+        </message>
+        <message>
+            <source>The containers go into the project: each measurement's burst runs become children of its photon stream in the Datasets workspace.</source>
+            <translation>Les conteneurs vont dans le projet : les séries de bursts de chaque mesure deviennent les enfants de son flux de photons dans l’espace de travail Jeux de données.</translation>
+        </message>
+        <message>
+            <source>Convert the legacy burstwise folder into the project's measurement containers.</source>
+            <translation>Convertir le dossier burstwise en conteneurs de mesure du projet.</translation>
+        </message>
+        <message>
+            <source>{n} burst run(s) added to the Datasets workspace.</source>
+            <translation>{n} série(s) de bursts ajoutée(s) à l’espace de travail Jeux de données.</translation>
+        </message>
+        <message>
+            <source>Pick photon streams in the Input section (their burst-ID selections are found beside them), or press Load example.</source>
+            <translation>Choisissez des flux de photons dans la section Entrée (leurs sélections burst-ID sont trouvées à côté), ou appuyez sur Charger l’exemple.</translation>
+        </message>
+        <message>
+            <source>Output: the measurement's container in the project -- the original BID and its burst table, with provenance; it appears under its photon stream in the Datasets workspace. Legacy formats are exported from it by the legacy export plugin.</source>
+            <translation>Sortie : le conteneur de la mesure dans le projet – le BID d’origine et sa table de bursts, avec leur provenance ; il apparaît sous son flux de photons dans l’espace de travail Jeux de données. Les anciens formats en sont exportés par le module d’export historique.</translation>
+        </message>
+        <message>
+            <source>No files yet: pick photon streams in the Input section above.</source>
+            <translation>Pas encore de fichiers : choisissez des flux de photons dans la section Entrée ci-dessus.</translation>
+        </message>
+        <message>
+            <source>Clear files</source>
+            <translation>Vider les fichiers</translation>
+        </message>
+        <message>
+            <source>Remove loaded files and analysis results.</source>
+            <translation>Retirer les fichiers chargés et les résultats d’analyse.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

@@ -73,7 +73,7 @@ class Session:
         self.bursts: Bursts | None = None
         self.qc: QCReport | None = None
         self.corrected: dict | None = None
-        self.status = "Drop a TTTR file (PTU, HT3, SPC, SM, PTO, ...) on the window."
+        self.status = "Pick a photon stream in the Input section, or simulate an example."
         self.version = 0  # bumped on every new result; plots cache on it
         # Settings (view.json).
         self.mode = "simple"

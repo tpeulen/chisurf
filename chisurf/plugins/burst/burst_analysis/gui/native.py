@@ -376,7 +376,15 @@ class BurstAnalysisHubApp(ToolHubApp):
 
     def _to_selection(self, child) -> None:
         if self.context.raw_files and not child.model.files:
-            child.model.add_paths(self.context.raw_files)
+            data = self.children.get("data")
+            sources = getattr(getattr(data, "model", None), "sources", None) or {}
+            uids = [sources.get(str(p), "") for p in self.context.raw_files]
+            take = getattr(child, "take_photons", None)
+            if callable(take) and any(uids):
+                # Each file's runs go into its workspace dataset's analysis container.
+                take([str(p) for p in self.context.raw_files], uids)
+            else:
+                child.model.add_paths(self.context.raw_files)
 
     def _to_fusion(self, child) -> None:
         settings = self.context.channel_settings
@@ -604,3 +612,40 @@ def create_app(**kwargs) -> BurstAnalysisHubApp:
 make_app = create_app
 
 __all__ = ["STEPS", "BurstAnalysisHubApp", "create_app", "make_app"]
+
+
+def receive_photons(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``photons``): the photon streams
+    ``payload["files"]`` of the Datasets workspace become the workflow's data (its Data step).
+
+    *app* is the hub (*Open in…*) or its Data step (the step's own Input section)."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    files = payload.get("files") or []
+    files = files if isinstance(files, list) else [files]
+    paths = [read_address(str(f)) for f in files]
+    data = app
+    if hasattr(app, "children") and hasattr(app, "select"):
+        app.select("data")
+        data = app.children.get("data")
+    if data is None:
+        raise RuntimeError("the burst analysis has no Data step to take photon streams")
+    if not data.take_photons(paths, list(payload.get("datasets") or [])):
+        if not {str(p) for p in paths} & {str(p) for p in data._paths()}:
+            raise ValueError("nothing new to add (already listed, or not a photon stream)")
+
+
+def receive_setup(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``setup``): the detector setup
+    ``payload["setup_file"]`` of the Datasets workspace is loaded into the Setup step.
+
+    *app* is the hub (*Open in…*) or its Setup step (the step's own Input section)."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    path = read_address(str(payload["setup_file"]))
+    step = app
+    if hasattr(app, "children") and hasattr(app, "select"):
+        app.select("setup")
+        step = app.children.get("setup")
+    if step is None or not step.take_setup(path):
+        raise ValueError(f"{path} is not a detector setup the editor reads")

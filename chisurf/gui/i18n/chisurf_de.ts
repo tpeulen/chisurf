@@ -71919,6 +71919,42 @@ fortgesetzt werden.
             <source>− Remove</source>
             <translation>− Entfernen</translation>
         </message>
+        <message>
+            <source>Drop a legacy burstwise folder on the ChiSurf window, or load the example.</source>
+            <translation>Einen Burstwise-Ordner auf das ChiSurf-Fenster ziehen oder das Beispiel laden.</translation>
+        </message>
+        <message>
+            <source>The containers go into the project: each measurement's burst runs become children of its photon stream in the Datasets workspace.</source>
+            <translation>Die Container kommen ins Projekt: Die Burst-Läufe jeder Messung werden Kinder ihres Photonenstroms im Datensatz-Arbeitsbereich.</translation>
+        </message>
+        <message>
+            <source>Convert the legacy burstwise folder into the project's measurement containers.</source>
+            <translation>Den Burstwise-Ordner in Messcontainer des Projekts umwandeln.</translation>
+        </message>
+        <message>
+            <source>{n} burst run(s) added to the Datasets workspace.</source>
+            <translation>{n} Burst-Lauf/Läufe zum Datensatz-Arbeitsbereich hinzugefügt.</translation>
+        </message>
+        <message>
+            <source>Pick photon streams in the Input section (their burst-ID selections are found beside them), or press Load example.</source>
+            <translation>Photonenströme im Eingabebereich wählen (ihre Burst-ID-Auswahlen werden daneben gefunden) oder „Beispiel laden“ drücken.</translation>
+        </message>
+        <message>
+            <source>Output: the measurement's container in the project -- the original BID and its burst table, with provenance; it appears under its photon stream in the Datasets workspace. Legacy formats are exported from it by the legacy export plugin.</source>
+            <translation>Ausgabe: der Container der Messung im Projekt – die ursprüngliche BID und ihre Burst-Tabelle, mit Herkunft; er erscheint unter seinem Photonenstrom im Datensatz-Arbeitsbereich. Alte Formate exportiert das Legacy-Export-Plugin daraus.</translation>
+        </message>
+        <message>
+            <source>No files yet: pick photon streams in the Input section above.</source>
+            <translation>Noch keine Dateien: Photonenströme im Eingabebereich oben wählen.</translation>
+        </message>
+        <message>
+            <source>Clear files</source>
+            <translation>Dateien leeren</translation>
+        </message>
+        <message>
+            <source>Remove loaded files and analysis results.</source>
+            <translation>Geladene Dateien und Analyseergebnisse entfernen.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

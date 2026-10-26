@@ -15,30 +15,43 @@ def selection(tmp_path):
 
 
 def test_native_conversion_outputs_and_original_provenance(tmp_path, caplog):
-    """The container is the one output: original BID in, burst table out."""
+    """The container is the one output: original BID in, burst table out -- written into the
+    photon stream's analysis container in the project, never beside the measurement."""
     from chisurf.core.datastore import row_count
     from chisurf.core.fio.pto import Measurement
+    from chisurf.core.plugin.workspace_input import register_result
+    from chisurf.core.project.analysis import container_dir
+    from chisurf.plugins.burst.bid_to_analysis.gui.app import receive_photons
+    from test.gui.burst_workspace import restore_workspace
 
     path = selection(tmp_path)
-    raw = path.with_suffix(".spc").read_bytes()
+    photons = path.with_suffix(".spc")
+    raw = photons.read_bytes()
     app = create_app()
     try:
-        app.on_paths_dropped([path, path])
-        assert len(app.rows) == 1
-        app.process()
-        app.future.result(timeout=30)
-        app.poll()
-        assert app.rows[0]["status"] == "Done"
-        folder = tmp_path / "m000"
-        assert (folder / "Info" / "photon_selection_parameters.json").exists()
-        assert not (folder / "bi4_bur").exists()  # no legacy side outputs any more
-        with Measurement.open(path.with_suffix(".pto")) as measurement:
-            assert row_count(measurement.get_store("bursts")) == len(INTERVALS)
-            assert measurement.get_blob("m000.bid") == path.read_bytes()
-            assert measurement.parents(measurement._resolve("bursts")) == [
-                measurement._resolve("m000.bid")
-            ]
-        assert path.with_suffix(".spc").read_bytes() == raw
+        with restore_workspace() as held:
+            stream = register_result(str(photons), kind="photons", name=photons.name)
+            payload = {"files": [str(photons)], "datasets": [stream.unique_identifier]}
+            receive_photons(app, payload)
+            receive_photons(app, payload)  # the same stream twice is queued once
+            assert len(app.rows) == 1 and app.rows[0]["bid"] == str(path)
+            app.process()
+            app.future.result(timeout=30)
+            app.poll()
+            assert app.rows[0]["status"] == "Done"
+            container = container_dir(stream.unique_identifier) / "m000.pto"
+            with Measurement.open(container) as measurement:
+                assert row_count(measurement.get_store("bursts")) == len(INTERVALS)
+                assert measurement.get_blob("m000.bid") == path.read_bytes()
+                assert measurement.parents(measurement._resolve("bursts")) == [
+                    measurement._resolve("m000.bid")
+                ]
+            runs = [d for d in held if getattr(d, "data_kind", "") == "bursts"]
+            assert [r.result_of for r in runs] == [stream.unique_identifier]  # its child row
+            assert not path.with_suffix(".pto").exists()  # nothing beside the measurement
+            assert not (tmp_path / "m000").exists()
+            del held
+        assert photons.read_bytes() == raw
         for width, height in ((1200, 800), (800, 600)):
             app.draw(RecordingPainter(), 0, 0, width, height)
         assert not [record for record in caplog.records if record.levelno >= 40]
@@ -57,10 +70,8 @@ def test_native_errors_dialogs_preferences_and_help(tmp_path):
         app.future.result(timeout=10)
         app.poll()
         assert app.rows[0]["status"].startswith("Error:")
-        for mode in ("files", "folder", "output"):
-            app.browse(mode)
-            assert app.dialog is not None
-        app.dialog = None
+        # The input comes from the workspace: no file, folder or output dialog, no drop hook.
+        assert not any(hasattr(app, n) for n in ("browse", "on_paths_dropped", "dialog"))
         app.analysis_folder = str(tmp_path / "output")
         app.unique_folder = True
         preferences = app.export_settings()

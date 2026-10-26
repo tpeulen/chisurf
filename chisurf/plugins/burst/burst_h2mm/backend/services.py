@@ -292,8 +292,17 @@ def write_result_tables(
     result: H2mmResult,
     bundle: H2mmAnalysisBundle,
     out_dir: pathlib.Path,
+    *,
+    files: bool = True,
+    containers: bool = True,
 ) -> None:
     """Write the JSON summary plus the ndX-openable per-photon/per-burst tables.
+
+    ``files`` writes the loose files into *out_dir* (the summary, the per-photon, burst, dwell and
+    state-decay tables, the optional state TTTR); ``containers`` writes the per-burst states and
+    dwells into each measurement's container as tables of its run. A run of the project's analysis
+    container takes only the latter -- loose files beside it would not be part of the project --
+    and the files are an explicit export.
 
     Records every written path in ``result.output_paths``.
     """
@@ -306,24 +315,24 @@ def write_result_tables(
     )
 
     out_dir = pathlib.Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    out_path = out_dir / "h2mm_result.json"
-    with open(out_path, "w") as fh:
-        json.dump(result.to_dict(), fh, indent=2)
-    result.output_paths["result_json"] = str(out_path)
-
     meta = getattr(bundle, "meta", None)
-    # Writing the state back into the photons is an independent choice from the
-    # ndX tables -- it answers a different need and must not be skipped just
-    # because the per-photon table was turned off.
-    _write_state_tttr(
-        result,
-        bundle,
-        out_dir,
-        getattr(bundle, "burst_df", None),
-        getattr(meta, "burst_rows", None),
-    )
+    if files:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / "h2mm_result.json"
+        with open(out_path, "w") as fh:
+            json.dump(result.to_dict(), fh, indent=2)
+        result.output_paths["result_json"] = str(out_path)
+
+        # Writing the state back into the photons is an independent choice from the
+        # ndX tables -- it answers a different need and must not be skipped just
+        # because the per-photon table was turned off.
+        _write_state_tttr(
+            result,
+            bundle,
+            out_dir,
+            getattr(bundle, "burst_df", None),
+            getattr(meta, "burst_rows", None),
+        )
 
     if meta is None or not getattr(bundle.settings, "write_photons", True):
         return
@@ -344,64 +353,69 @@ def write_result_tables(
     if source_names:
         result.output_paths.setdefault("sources", ",".join(source_names))
 
-    tables = build_tables(
-        bundle.data,
-        meta,
-        ana.path,
-        ana.fret,
-        ana.base_time_s,
-        stream_groups=stream_groups,
-        micro_time_ns=(micro_ns if micro_ns else None),
-        burst_sources=burst_sources,
-    )
-    # Formats are two independent choices, not a fallback chain: HDF5 is compact
-    # and fast to reload, CSV is what every other tool opens, and a folder can
-    # carry both. The fallback survives *inside* that: if HDF5 was asked for and
-    # cannot be written, the CSV is written whether or not it was ticked, so a
-    # run never ends with the state assignment nowhere on disk.
-    want_hdf5 = bool(getattr(bundle.settings, "photon_hdf5", True))
-    want_csv = bool(getattr(bundle.settings, "photon_csv", True))
-    if not (want_hdf5 or want_csv):
-        want_hdf5 = True
-    if want_hdf5:
-        try:
-            result.output_paths["photons_hdf5"] = write_hdf5(
-                tables.photons, out_dir / "h2mm_photons.h5"
+    if files:
+        tables = build_tables(
+            bundle.data,
+            meta,
+            ana.path,
+            ana.fret,
+            ana.base_time_s,
+            stream_groups=stream_groups,
+            micro_time_ns=(micro_ns if micro_ns else None),
+            burst_sources=burst_sources,
+        )
+        # Formats are two independent choices, not a fallback chain: HDF5 is compact
+        # and fast to reload, CSV is what every other tool opens, and a folder can
+        # carry both. The fallback survives *inside* that: if HDF5 was asked for and
+        # cannot be written, the CSV is written whether or not it was ticked, so a
+        # run never ends with the state assignment nowhere on disk.
+        want_hdf5 = bool(getattr(bundle.settings, "photon_hdf5", True))
+        want_csv = bool(getattr(bundle.settings, "photon_csv", True))
+        if not (want_hdf5 or want_csv):
+            want_hdf5 = True
+        if want_hdf5:
+            try:
+                result.output_paths["photons_hdf5"] = write_hdf5(
+                    tables.photons, out_dir / "h2mm_photons.h5"
+                )
+            except Exception:  # pragma: no cover - pytables optional
+                want_csv = True
+        if want_csv:
+            result.output_paths["photons_csv"] = write_csv(
+                tables.photons, out_dir / "h2mm_photons.csv"
             )
-        except Exception:  # pragma: no cover - pytables optional
-            want_csv = True
-    if want_csv:
-        result.output_paths["photons_csv"] = write_csv(tables.photons, out_dir / "h2mm_photons.csv")
-    result.output_paths["bursts_csv"] = write_csv(tables.bursts, out_dir / "h2mm_bursts.csv")
+        result.output_paths["bursts_csv"] = write_csv(tables.bursts, out_dir / "h2mm_bursts.csv")
 
-    # Per-dwell table (one row per Viterbi dwell) — the unit ndxplorer filters on
-    # (min photons, drop burst-edge dwells, select by state/duration).
-    dwells_df = build_dwell_table(
-        bundle.data,
-        meta,
-        ana.dwells,
-        ana.base_time_s,
-        stream_groups=stream_groups,
-        micro_time_ns=(micro_ns if micro_ns else None),
-    )
-    result.output_paths["dwells_csv"] = write_csv(dwells_df, out_dir / "h2mm_dwells.csv")
+        # Per-dwell table (one row per Viterbi dwell) — the unit ndxplorer filters on
+        # (min photons, drop burst-edge dwells, select by state/duration).
+        dwells_df = build_dwell_table(
+            bundle.data,
+            meta,
+            ana.dwells,
+            ana.base_time_s,
+            stream_groups=stream_groups,
+            micro_time_ns=(micro_ns if micro_ns else None),
+        )
+        result.output_paths["dwells_csv"] = write_csv(dwells_df, out_dir / "h2mm_dwells.csv")
 
-    # Per-state decays, kept per detector. A decay is only defined within one
-    # detection colour, so this is written at the finest meaningful key --
-    # (state, stream, routing channel) -- and merged upwards by the reader.
-    decays = state_decays(
-        meta.micro_time,
-        meta.channel,
-        bundle.data.streams,
-        ana.path,
-        n_states=int(ana.fret.shape[0]),
-        groups=stream_groups,
-        micro_time_ns=(micro_ns if micro_ns else None),
-    )
-    result.output_paths["state_decays_csv"] = write_csv(
-        decay_table(decays), out_dir / "h2mm_state_decays.csv"
-    )
+        # Per-state decays, kept per detector. A decay is only defined within one
+        # detection colour, so this is written at the finest meaningful key --
+        # (state, stream, routing channel) -- and merged upwards by the reader.
+        decays = state_decays(
+            meta.micro_time,
+            meta.channel,
+            bundle.data.streams,
+            ana.path,
+            n_states=int(ana.fret.shape[0]),
+            groups=stream_groups,
+            micro_time_ns=(micro_ns if micro_ns else None),
+        )
+        result.output_paths["state_decays_csv"] = write_csv(
+            decay_table(decays), out_dir / "h2mm_state_decays.csv"
+        )
 
+    if not containers:
+        return
     # Per-measurement results in each measurement's own container, one row per
     # burst, so the H2MM state is a column of the burst table's run and bursts
     # can be gated on it. A legacy ``bh4`` is `export_legacy`'s business.

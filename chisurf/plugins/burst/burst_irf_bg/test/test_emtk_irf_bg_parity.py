@@ -208,16 +208,6 @@ def test_every_guide_target_is_drawn_and_extract_waits(measurement):
         app.close()
 
 
-def test_a_dropped_folder_adds_its_measurement_not_its_container(measurement):
-    measurement.with_suffix(".pto").write_bytes(b"")
-    app = create_app()
-    try:
-        app.on_paths_dropped([str(measurement.parent)])
-        assert app.model.files == [str(measurement)]
-    finally:
-        app.close()
-
-
 # 4. draws, empty and populated, at both sizes
 @pytest.mark.parametrize("size", [(1200, 800), (800, 600)])
 def test_draws_empty_and_populated(measurement, size):

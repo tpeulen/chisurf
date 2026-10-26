@@ -26,5 +26,22 @@
   "operation_types": [
     "background_correction"
   ],
-  "menu_hidden": true
+  "menu_hidden": true,
+  "accepts": [
+    {
+      "name": "photons",
+      "summary": "Estimate the background (and IRF) from the non-burst photons of photon streams of the Datasets workspace.",
+      "receive": "chisurf.plugins.burst.burst_background.gui.app:receive_photons",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    }
+  ]
 }

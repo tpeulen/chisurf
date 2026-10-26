@@ -1,7 +1,7 @@
 """The standalone emtk H2MM app (cards H0, H1, H3 core): settings model, spec form, actions through SnapshotJob.
 
 Real input: the in-repository BH SPC-132 smFRET DNA sample (``burst_selection/tests/data``, copied to a temp folder
-because the fit writes ``h2mm/`` beside the bursts), fitted by the unchanged ``run_analysis``. Nothing is generated
+because a fit of a folder writes ``h2mm/`` beside the bursts), fitted by the unchanged ``run_analysis``. Nothing is generated
 or read from outside the repository. Every control is operated with pointer, keyboard and host drops.
 """
 
@@ -489,6 +489,39 @@ def test_export_dwells_and_save_plot_write_files(fitted, tmp_path):
     if not (tmp_path / "plots.png").exists():
         pytest.fail(f"File missing. Status: {window.model.status_text}")
     assert (tmp_path / "plots.png").stat().st_size > 1000
+
+
+def test_export_tables_writes_the_fits_files_beside_the_chosen_summary(fitted, tmp_path):
+    """The loose files are an explicit export: a save dialog names the summary, the tables go
+    beside it."""
+    window, drv = fitted
+    window.browse("export_tables")
+    drv.draw(3)
+    assert window.dialog.mode == "save"
+    window.dialog.directory = str(tmp_path)
+    window.dialog.filename = "h2mm_result.json"
+    drv.click_text("Save")
+    drv.draw(1)
+    assert (tmp_path / "h2mm_result.json").exists(), window.model.status_text
+    assert list(tmp_path.glob("h2mm_bursts.csv")) and list(tmp_path.glob("h2mm_photons.*"))
+
+
+def test_a_run_of_the_project_writes_no_loose_files(monkeypatch, fitted, tmp_path):
+    """A burst run of the project's analysis container: the fit's results go into that container
+    (``files=False``); nothing is written into the session's working folder."""
+    from chisurf.plugins.burst.burst_h2mm.backend import services
+
+    window, _drv = fitted
+    model = window.model
+    calls = []
+    container = tmp_path / "m000.pto"
+    monkeypatch.setattr(model, "container_path", lambda: str(container))
+    monkeypatch.setattr("chisurf.core.project.analysis.is_derived", lambda address: True)
+    monkeypatch.setattr(services, "run_analysis", lambda *a, **k: (model.result, model.bundle))
+    monkeypatch.setattr(services, "write_result_tables", lambda *a, **k: calls.append(k))
+    model.compute(force=True)
+    assert calls == [{"files": False}]
+    assert not (tmp_path / "h2mm").exists()
 
 
 def test_the_burst_run_comes_from_the_workspace_not_a_folder_dialog(app, tmp_path):

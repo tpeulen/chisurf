@@ -15,7 +15,7 @@ Press Guide for a step-by-step tour.
 
 # Opening data
 
-Drop a file on the window. Any format tttrlib reads works: PicoQuant PTU, HT3, T3R and T2; Becker & Hickl SPC; SM; PTO. The container is recognised from the file.
+Pick a photon stream in the **Input** section of the Measurement window; files dropped on the ChiSurf window are listed there. Any format tttrlib reads works: PicoQuant PTU, HT3, T3R and T2; Becker & Hickl SPC; SM; PTO. The container is recognised from the file.
 
 No file at hand? Under Measurement > Try it without a file, pick an example and press Simulate. The examples are simulated with tttrlib's photon simulator: cw, PIE and µsALEX, with and without polarization, with noise channels, and one-colour data.
 

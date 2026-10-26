@@ -80,48 +80,73 @@ def test_an_estimate_gives_the_qt_widgets_rates_and_the_known_background(qt, mea
         app.close()
 
 
-# 5. end to end: the files dialog opened by a press, the Estimate button pressed, frames alone
-def test_open_files_and_estimate_by_presses_and_frames(measurement):
-    app = create_app()
+# 5. end to end: the measurement picked in the Input section (the Datasets workspace), the
+# Estimate button pressed, frames alone -- and no input dialog anywhere
+def test_pick_from_the_workspace_and_estimate_by_presses_and_frames(measurement, monkeypatch):
+    from chisurf.core.plugin.workspace_input import register_result
+    from test.gui.burst_workspace import click, draw, no_input_dialog, pick_row, restore_workspace
+
+    no_input_dialog(monkeypatch)
     size = (800, 600)
-    try:
-        _draw(app, size, painter=PixelPainter)
+    with restore_workspace():
+        register_result(str(measurement), kind="photons", name=Path(measurement).name)
+        app = create_app()
+        try:
+            _draw(app, size, painter=PixelPainter)
 
-        def press(key):
-            x, y, w, h = app.item_rects[key]
-            app.pointer_move(x + w / 2, y + h / 2)
-            app.press(x + w / 2, y + h / 2)
+            def press(key):
+                x, y, w, h = app.item_rects[key]
+                app.pointer_move(x + w / 2, y + h / 2)
+                app.press(x + w / 2, y + h / 2)
+                _draw(app, size, n=1, painter=PixelPainter)
+                app.release()
+                _draw(app, size, n=1, painter=PixelPainter)
+
+            pick_row(app, Path(measurement).name, size)  # select its row in the Input section
+            draw(app, size)
+            click(app, app.item_rects["workspace_input_use"], size)  # and hand it over
+            status = app.controller.input.workspace_input_status
+            assert [Path(f).resolve() for f in app.model.files] == [Path(measurement).resolve()], (
+                status
+            )
+            # The pick lands at the end of a frame; the next frame lays out the moved rows.
             _draw(app, size, n=1, painter=PixelPainter)
-            app.release()
-            _draw(app, size, n=1, painter=PixelPainter)
-
-        press("files")  # the drawn Open TTTR files button
-        assert app.controller.dialog.title == "Select TTTR files"
-        app.controller.dialog.draw = lambda: [str(measurement)]  # the user picks the measurement
-        _frames_until(app, lambda: app.controller.dialog is None, size=size)
-        assert app.model.files == [str(measurement)]
-        # The pick lands at the end of a frame, after the layout: the file row it adds moves
-        # Estimate down, which the next frame (a host draws one after any input) lays out.
-        _draw(app, size, n=1, painter=PixelPainter)
-        step = next(i for i, st in enumerate(app.bg_gui.tour.steps) if st.get("await"))
-        app.bg_gui.tour.start(step)
-        assert app.bg_gui.tour.awaiting  # "Run it" waits for Estimate
-        press("bg_run")
-        assert not app.bg_gui.tour.awaiting
-        _frames_until(app, lambda: not app.controller.running and app.model.backgrounds, size=size)
-        assert set(next(iter(app.model.backgrounds.values()))) >= {"green", "red"}
-    finally:
-        app.close()
+            step = next(i for i, st in enumerate(app.bg_gui.tour.steps) if st.get("await"))
+            app.bg_gui.tour.start(step)
+            assert app.bg_gui.tour.awaiting  # "Run it" waits for Estimate
+            press("bg_run")
+            assert not app.bg_gui.tour.awaiting
+            _frames_until(
+                app, lambda: not app.controller.running and app.model.backgrounds, size=size
+            )
+            assert set(next(iter(app.model.backgrounds.values()))) >= {"green", "red"}
+        finally:
+            app.close()
 
 
-def test_a_dropped_folder_adds_its_measurements_not_their_containers(measurement):
-    measurement.with_suffix(".pto").write_bytes(b"")  # what an estimate writes beside the photons
-    app = create_app()
-    try:
-        app.on_paths_dropped([str(measurement.parent)])
-        assert app.model.files == [str(measurement)]
-    finally:
-        app.close()
+def test_the_estimate_goes_into_the_datasets_analysis_container(measurement):
+    """A workspace stream's background rates are a table of its analysis container in the
+    project -- nothing is written beside the photons."""
+    from chisurf.core.plugin.workspace_input import register_result
+    from chisurf.core.project.analysis import container_dir
+    from chisurf.plugins.burst.burst_background.gui.app import receive_photons
+    from test.gui.burst_workspace import restore_workspace
+
+    beside = Path(measurement).with_suffix(".pto")
+    beside.unlink(missing_ok=True)
+    with restore_workspace():
+        stream = register_result(str(measurement), kind="photons", name=Path(measurement).name)
+        app = create_app()
+        try:
+            receive_photons(
+                app, {"files": [str(measurement)], "datasets": [stream.unique_identifier]}
+            )
+            app.controller.run()
+            _frames_until(app, lambda: not app.controller.running and app.model.backgrounds)
+            assert list(container_dir(stream.unique_identifier).glob("*.pto"))
+            assert not beside.exists()
+        finally:
+            app.close()
 
 
 def test_frames_are_requested_while_estimating(measurement, monkeypatch):
@@ -150,19 +175,16 @@ def test_frames_are_requested_while_estimating(measurement, monkeypatch):
 
 
 # 2. actions and errors
-def test_each_action_opens_its_own_dialog():
+def test_only_output_dialogs_remain():
+    """The inputs come from the workspace; the one dialog left saves the detector setup."""
     app = create_app()
     try:
-        for action, (title, mode) in {
-            "files": ("Select TTTR files", "open"),
-            "folder": ("Add TTTR folder", "folder"),
-            "load_setup": ("Load detector setup", "open"),
-            "save_setup": ("Save detector setup", "save"),
-        }.items():
-            app.controller.browse(action)
-            assert (app.controller.dialog.title, app.controller.dialog.mode) == (title, mode), (
-                action
-            )
+        assert set(app.controller.DIALOGS) == {"save_setup"}
+        app.controller.browse("save_setup")
+        assert (app.controller.dialog.title, app.controller.dialog.mode) == (
+            "Save detector setup",
+            "save",
+        )
     finally:
         app.close()
 

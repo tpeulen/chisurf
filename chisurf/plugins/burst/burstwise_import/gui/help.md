@@ -1,7 +1,11 @@
 # Burstwise → PTO
 
-This tool imports legacy burstwise analysis folders into standardized
-`.mmfdb.pto` containers conformant to the flrCIF dictionary.
+This tool imports legacy burstwise analysis folders into the project, as measurement containers
+conformant to the flrCIF dictionary. Drop the folder on the ChiSurf window: the drop hands it to this
+tool. After **Run**, each measurement's photon file is a photon stream of the Datasets workspace and
+its burst runs are children of it; the containers are kept in the project (`.cs.pto`), not written
+beside the legacy folder. The command line (`burstwise-import convert -o …`) still writes
+containers to a folder of your choice.
 
 ## Legacy folder structure
 The importer recognizes the multi-file legacy burst analysis format:
@@ -14,8 +18,8 @@ The importer recognizes the multi-file legacy burst analysis format:
 - `*.mti` — original TTTR file paths and durations.
 
 ## Source TTTR Resolution
-To pack the raw measurement along with the burst tables into `.mmfdb.pto`,
-the importer matches each measurement stem to its raw TTTR file:
+To link the raw measurement with its burst tables, the importer matches each measurement stem to
+its raw TTTR file (a measurement whose file is not found is not converted; the log says so):
 1. **Resolve via .mti prefix mapping** — rewrites original paths recorded in the
    `.mti` (e.g. `N:\Data\...`) by substituting the old drive or server prefix with
    your local directory path.
@@ -27,5 +31,4 @@ the importer matches each measurement stem to its raw TTTR file:
   containers would be created without writing any files to disk.
 - **Report unmapped columns** — flags any legacy table columns that do not have
   an exact or normalized match in the `mmfdb_workflow_ext.dic` dictionary.
-- **Output directory** — destination for generated `.mmfdb.pto` containers
-  (default: parent directory beside the burstwise folder).
+- **Local root prefix** — typed: the local folder that replaces the `.mti` prefix.

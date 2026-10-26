@@ -10,56 +10,20 @@ from chisurf.plugins.burst.burst_background.gui.controller import BackgroundCont
 
 
 class IrfBackgroundController(BackgroundController):
-    def __init__(self, model, mle_receiver=None):
-        super().__init__(model)
+    PLUGIN = "burst_irf_bg"
+
+    def __init__(self, model, mle_receiver=None, app=None):
+        super().__init__(model, app=app)
         self.mle_receiver = mle_receiver
 
     def draw_inputs(self, remember=None, track=None):
-        """The data row (open, add, MMFDB, clear, channel editor) and the loaded files, in one wrapped row."""
+        """The Input section (the workspace's photon streams), Clear, the channel editor, and the files."""
         from emtk import im
-
-        from chisurf.plugins.emtk_layout import button_row
 
         im.text(tr("Measurements & detectors"))
         im.begin_disabled(self.running)
-        pressed = button_row(
-            [
-                {
-                    "label": "Open TTTR files",
-                    "key": "files",
-                    "tip": "Choose one or more photon measurement files.",
-                },
-                {
-                    "label": "Add TTTR folder",
-                    "tip": "Add supported photon measurements from a folder.",
-                },
-                {
-                    "label": "MMFDB datasets",
-                    "tip": "Browse database measurements and resolve their local paths.",
-                },
-                {"label": "Clear files", "tip": "Remove loaded files and analysis results."},
-                {
-                    "label": "Channel definition",
-                    "key": "bg_channels",
-                    "tip": "Open the complete detector setup, timing, calibration, PIE, TAC and optical editor.",
-                },
-            ],
-            remember=remember,
-        )
-        if pressed == "files":
-            if track is not None:
-                track("files")
-            self.browse()
-        elif pressed == "Add TTTR folder":
-            self.browse("folder")
-        elif pressed == "MMFDB datasets":
-            self.datasets.open()
-        elif pressed == "Clear files":
-            self.clear()
-        elif pressed == "bg_channels":
-            callback = getattr(self, "on_show_channels", None)
-            if callable(callback):
-                callback()
+        self.draw_input(remember, track)
+        self._show_channels_button(remember)
         for path in list(self.model.files):
             im.text_wrapped(str(path))
             if im.button(f"Remove##{path}"):

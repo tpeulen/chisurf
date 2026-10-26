@@ -1,7 +1,7 @@
 """Real-input coverage of the native Burst IRF & Background tool: every control is operated with simulated input.
 
-Only ``pointer_move`` / ``press`` / ``release`` / ``drag`` / ``wheel`` / ``key`` and the host's ``files_dropped`` reach the
-window, at the rectangles the controls were drawn in (``app.item_rects`` for the buttons and the guide's targets,
+Only ``pointer_move`` / ``press`` / ``release`` / ``drag`` / ``wheel`` / ``key`` and the workspace hand-off (what the
+Input section or *Open in…* delivers, :func:`receive_photons`) reach the window, at the rectangles the controls were drawn in (``app.item_rects`` for the buttons and the guide's targets,
 ``form_state.rects`` for the spec's fields) or at the text a button drew; the assertions read the visible outcome (the model,
 the status line, the drawn strings, the files written).
 """
@@ -19,7 +19,7 @@ from emtk.testing import RecordingPainter
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.plugins.burst.burst_irf_bg.gui import view_model
-from chisurf.plugins.burst.burst_irf_bg.gui.app import create_app
+from chisurf.plugins.burst.burst_irf_bg.gui.app import create_app, receive_photons
 from chisurf.plugins.burst.burst_irf_bg.test.demo_data import IRF_PEAK_NS, assert_rows_match, build
 from chisurf.plugins.emtk_layout import help_close_caption
 
@@ -125,8 +125,13 @@ def compute(app, size=SIZE):
     return settle(app, size)
 
 
+def give(app, *paths):
+    """Hand photon streams over as the Datasets workspace does (*Open in…*, the Input section)."""
+    receive_photons(app, {"files": [str(p) for p in paths]})
+
+
 def load(app, measurement):
-    app.files_dropped([str(measurement)])
+    give(app, measurement)
     assert app.model.files == [str(measurement)]
 
 
@@ -209,8 +214,8 @@ def test_everything_is_inert_while_a_computation_runs(app, measurement, monkeypa
     future = app.controller._future
     press(app, "irf_bg_run")
     assert app.controller._future is future
-    press_text(app, "Open TTTR files")
-    assert app.controller.dialog is None
+    press_text(app, "Use selected")  # the Input section is greyed while a computation runs
+    assert app.model.files == [str(measurement)]
     k = app.model.min_photons
     type_into(app, "min_photons", "99", greyed=True)
     assert app.model.min_photons == k
@@ -224,7 +229,7 @@ def test_everything_is_inert_while_a_computation_runs(app, measurement, monkeypa
 def test_a_broken_file_reports_its_error_in_the_window(app, tmp_path):
     bad = tmp_path / "broken.ptu"
     bad.write_bytes(b"not a measurement")
-    app.files_dropped([str(bad)])
+    give(app, bad)
     press(app, "irf_bg_run")
     settle(app)
     assert "Error:" in shown(app) and not app.model.has_results()
@@ -421,60 +426,25 @@ def test_the_export_dialog_cancel_and_close_write_nothing(app, measurement, tmp_
 # -- files: dialog, folder, drops, MMFDB, remove, clear ----------------------------------------------------------------------------------- #
 
 
-def test_open_tttr_files_dialog_lists_measurements_and_open_adds_the_clicked_one(app, measurement):
-    import os
-
-    os.chdir(measurement.parent)
-    (measurement.parent / "notes.txt").write_text("x")
-    press_text(app, "Open TTTR files")
-    strings = draw(app).strings
-    assert (
-        "Select TTTR files" in strings
-        and measurement.name in strings
-        and "notes.txt" not in strings
-    )  # the TTTR filter
-    click(app, text_rect(draw(app), measurement.name))
-    click(app, text_rect(draw(app), "Open"))
-    assert app.model.files == [str(measurement)]
-    assert "Files loaded: 1" in shown(app) and "Select TTTR files" not in draw(app).strings
-
-
-def test_the_open_dialog_cancel_and_close_buttons_add_nothing(app, measurement):
-    import os
-
-    os.chdir(measurement.parent)
-    for closer in ("Cancel", "×"):
-        press_text(app, "Open TTTR files")
-        click(app, text_rect(draw(app), closer))
-        assert "Cancel" not in draw(app).strings
-    assert app.model.files == []
-
-
-def test_add_tttr_folder_dialog_adds_the_measurement_in_it(app, measurement):
-    import os
-
-    os.chdir(measurement.parent.parent)
-    press_text(app, "Add TTTR folder")
-    assert "Add TTTR folder" in draw(app).strings
-    click(app, text_rect(draw(app), f"[{measurement.parent.name}]"))
-    click(app, text_rect(draw(app), "Choose"))
-    assert app.model.files == [str(measurement)]
-
-
-def test_a_dropped_measurement_folder_or_container_is_handled_as_the_qt_tool_does(
-    app, measurement, tmp_path
+def test_the_measurement_is_picked_in_the_input_section_and_no_input_dialog_opens(
+    app, measurement, monkeypatch
 ):
-    folder = tmp_path / "pair"
-    folder.mkdir()
-    spc = folder / "m.spc"
-    spc.write_bytes(measurement.read_bytes())
-    (folder / "m.pto").write_bytes(
-        b""
-    )  # the container beside the vendor file is not a second measurement
-    (folder / "notes.txt").write_text("x")
-    assert app.files_dropped([str(folder)])
-    assert app.model.files == [str(spc)]
-    assert app.files_dropped([]) is False
+    """The input comes from the Datasets workspace: select the stream's row, press *Use
+    selected*; no file dialog, folder dialog, drop hook or MMFDB picker is left."""
+    from chisurf.core.plugin.workspace_input import register_result
+    from test.gui.burst_workspace import no_input_dialog, pick_row, restore_workspace
+
+    no_input_dialog(monkeypatch)
+    with restore_workspace():
+        register_result(str(measurement), kind="photons", name=measurement.name)
+        pick_row(app, measurement.name)
+        draw(app)
+        click(app, app.item_rects["workspace_input_use"])
+        assert [Path(f).resolve() for f in app.model.files] == [measurement.resolve()]
+        assert "Files loaded: 1" in shown(app)
+    assert not any(hasattr(app, n) for n in ("files_dropped", "on_paths_dropped"))
+    strings = draw(app).strings
+    assert not {"Open TTTR files", "Add TTTR folder", "MMFDB datasets"} & set(strings)
 
 
 def test_each_listed_file_has_a_remove_button_and_clear_files_drops_files_and_results(
@@ -482,7 +452,7 @@ def test_each_listed_file_has_a_remove_button_and_clear_files_drops_files_and_re
 ):
     other = tmp_path / "other.spc"
     other.write_bytes(measurement.read_bytes())
-    app.files_dropped([str(measurement), str(other)])
+    give(app, measurement, other)
     painter = draw(app)
     assert painter.strings.count("Remove") == 2 and "Files loaded: 2" in " ".join(painter.strings)
     compute(app)
@@ -502,36 +472,6 @@ def test_each_listed_file_has_a_remove_button_and_clear_files_drops_files_and_re
     assert "Files and results cleared." in shown(app) and "No IRF data available." in " ".join(
         draw(app).strings
     )
-
-
-def test_mmfdb_datasets_picker_lists_a_dataset_selects_it_and_the_window_closes(app):
-    class Client:
-        def call(self, name, args=None):
-            return {
-                "datasets": [
-                    {
-                        "artifact_id": "a1",
-                        "original_filename": "m000.spc",
-                        "artifact_kind": "raw_data",
-                        "data_format": "spc",
-                    }
-                ],
-                "total": 1,
-            }
-
-    app.controller.datasets.client = Client()
-    press_text(app, "MMFDB datasets")
-    for _ in range(50):
-        draw(app, frames=1)
-        if app.controller.datasets._pending is None:
-            break
-        time.sleep(0.02)
-    draw(app)
-    assert "Select MMFDB dataset" in draw(app).strings
-    click(app, text_rect(draw(app), "m000.spc [raw_data] (spc)"))
-    assert app.controller.datasets.selection.artifact_id == "a1"
-    click(app, text_rect(draw(app), "×"))
-    assert "Select MMFDB dataset" not in draw(app).strings
 
 
 # -- tables and plots ------------------------------------------------------------------------------------------------------------------- #
@@ -672,13 +612,11 @@ def test_help_click_opens_the_window_whose_buttons_and_escape_close_it(app):
 
 def test_the_flow_works_in_the_small_window_too(app, measurement):
     draw(app, SMALL)
-    app.files_dropped([str(measurement)])
+    give(app, measurement)
     type_into(app, "baseline_quantile", "0.3", SMALL)
     assert app.model.baseline_quantile == 0.3
     click(app, rect(app, "irf_bg_run"), SMALL)
     settle(app, SMALL)
     assert app.model.has_results() and {"green", "red"} <= set(draw(app, SMALL).strings)
-    press_text(app, "Open TTTR files", SMALL)
-    assert "Select TTTR files" in draw(app, SMALL).strings
-    click(app, text_rect(draw(app, SMALL), "Cancel"), SMALL)
-    assert "Select TTTR files" not in draw(app, SMALL).strings
+    press_text(app, "Clear files", SMALL)  # the Input section's own control fits the small window
+    assert app.model.files == [] and not app.model.has_results()

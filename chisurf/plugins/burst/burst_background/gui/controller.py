@@ -11,7 +11,10 @@ from emtk.i18n import tr
 
 
 class BackgroundController:
-    def __init__(self, model):
+    #: The plugin whose manifest ``accepts`` entry ``photons`` the Input section feeds.
+    PLUGIN = "burst_background"
+
+    def __init__(self, model, app=None):
         self.model = model
         self.on_show_channels: Callable[[], None] | None = None
         self.detectors = {
@@ -45,10 +48,19 @@ class BackgroundController:
         self._future = None
         self._cancel = Event()
         self.dialog = None
-        self.dialog_action = "files"
-        from chisurf.emtk.dataset_picker import DatasetPicker
+        self.dialog_action = "save_setup"
+        # The Input section: the workspace's photon streams (manifest ``accepts`` ``photons``).
+        from emtk.view_form import FormState
 
-        self.datasets = DatasetPicker(on_paths=self.add_files)
+        from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput, input_spec
+
+        manifest = Path(__file__).resolve().parents[2] / self.PLUGIN / "manifest.json"
+        self.input = NamedWorkspaceInput(self.PLUGIN, "photons", app=app)
+        self.input_spec = input_spec(manifest, "photons")
+        self.input_form = FormState()
+        #: Which workspace dataset each file came from: its results go into that dataset's
+        #: analysis container in the project, never beside the photons.
+        self.model.sources = {}
 
     def _channels_changed(self, settings):
         self.detectors = settings["detectors"]
@@ -60,6 +72,15 @@ class BackgroundController:
 
     def add_files(self, paths):
         self.model.add_files([str(p) for p in paths])
+
+    def take_photons(self, paths, uids=()) -> int:
+        """Add photon streams from the workspace; remember the dataset each came from."""
+        before = len(self.model.files)
+        self.add_files(paths)
+        for path, uid in zip(paths, uids):
+            if uid:
+                self.model.sources[str(path)] = str(uid)
+        return len(self.model.files) - before
 
     def remove_file(self, path):
         if path not in self.model.files:
@@ -73,24 +94,6 @@ class BackgroundController:
                 setattr(self.model, field, {})
         self.model.notify("files")
         self.status = "File removed; recompute to refresh pooled results."
-
-    MEASUREMENTS = {".ptu", ".pto", ".spc", ".ht3", ".pt3", ".h5", ".hdf5"}
-
-    def on_paths_dropped(self, paths):
-        """Add dropped files, and the measurements in dropped folders."""
-        files = []
-        for path in map(Path, paths):
-            if path.is_file():
-                files.append(path)
-            elif path.is_dir():
-                found = sorted(p for p in path.iterdir() if p.suffix.lower() in self.MEASUREMENTS)
-                # A .pto beside a vendor file of the same stem is the container this tool
-                # (and the burst search) writes next to the photons, not a second measurement.
-                vendor = {p.stem for p in found if p.suffix.lower() != ".pto"}
-                files.extend(
-                    p for p in found if not (p.suffix.lower() == ".pto" and p.stem in vendor)
-                )
-        self.add_files(files)
 
     def apply_detectors(self, text):
         try:
@@ -128,33 +131,20 @@ class BackgroundController:
         Path(path).write_text(json.dumps({"detectors": self.model._channels()}, indent=2))
         self.status = "Detector setup saved."
 
-    #: Per action: the dialog's title, mode and file filters.
+    #: Per action: the dialog's title and file filters. Only outputs: the input comes from the
+    #: workspace (a setup is loaded from a workspace ``setup`` row, not a dialog).
     DIALOGS = {
-        "files": (
-            "Select TTTR files",
-            "open",
-            [("TTTR", ["*.ptu", "*.spc", "*.ht3", "*.pt3", "*.h5", "*.hdf5"])],
-        ),
-        "folder": ("Add TTTR folder", "folder", None),
-        "load_setup": ("Load detector setup", "open", [("JSON", ["*.json"])]),
-        "save_setup": ("Save detector setup", "save", [("JSON", ["*.json"])]),
+        "save_setup": ("Save detector setup", [("JSON", ["*.json"])]),
     }
 
-    def browse(self, action="files"):
-        """Open the file dialog for *action* (files, folder, load_setup, save_setup)."""
+    def browse(self, action="save_setup"):
+        """Open the save dialog for *action*."""
         from emtk.dialog_window import DialogWindow
         from emtk.file_dialog import FileDialog
 
-        title, mode, filters = self.DIALOGS[action]
+        title, filters = self.DIALOGS[action]
         self.dialog_action = action
-        options = {"filters": filters} if filters else {}
-        self.dialog = FileDialog(
-            title,
-            mode=mode,
-            multiselect=action == "files",
-            filename="detectors.json" if action == "save_setup" else None,
-            **options,
-        )
+        self.dialog = FileDialog(title, mode="save", filename="detectors.json", filters=filters)
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-background-file")
         self._dialog_window.show()
 
@@ -258,8 +248,21 @@ class BackgroundController:
         if remember is not None:
             remember("bg_channels")
 
-    #: The guide's key for each input button.
-    INPUT_KEYS = {"Open TTTR files": "files"}
+    def draw_input(self, remember=None, track=None):
+        """The generated Input section (the workspace's photon streams) and Clear files."""
+        from emtk import im
+        from emtk.view_form import draw_form
+
+        if track is not None:
+            self.input.workspace_input_on_used = track
+        self.input_form.rects.clear()
+        draw_form(self.input_spec, self.input, self.input_form)
+        if remember is not None:
+            for name, rect in self.input_form.rects.items():
+                remember(name, tuple(rect))
+        if im.button(tr("Clear files")):
+            self.clear()
+        im.set_item_tooltip(tr("Remove loaded files and analysis results."))
 
     def draw_inputs(self, remember=None, track=None):
         """File inputs, the channel editor button, Stop and the status; *remember* records rects for the guide."""
@@ -267,27 +270,7 @@ class BackgroundController:
 
         im.text(tr("Measurements & detectors"))
         im.begin_disabled(self.running)
-        for label, callback, tip in (
-            ("Open TTTR files", self.browse, "Choose one or more photon measurement files."),
-            (
-                "Add TTTR folder",
-                lambda: self.browse("folder"),
-                "Add supported photon measurements from a folder.",
-            ),
-            (
-                "MMFDB datasets",
-                self.datasets.open,
-                "Browse database measurements and resolve their local paths.",
-            ),
-            ("Clear files", self.clear, "Remove loaded files and analysis results."),
-        ):
-            if im.button(label):
-                if track is not None and label in self.INPUT_KEYS:
-                    track(self.INPUT_KEYS[label])
-                callback()
-            im.set_item_tooltip(tip)
-            if remember is not None and label in self.INPUT_KEYS:
-                remember(self.INPUT_KEYS[label])
+        self.draw_input(remember, track)
         for path in list(self.model.files):
             im.text_wrapped(str(path))
             if im.button(f"Remove##{path}"):
@@ -303,27 +286,19 @@ class BackgroundController:
         im.separator()
 
     def draw_dialogs(self, frame):
-        """The file dialog in a sized window over *frame*, the MMFDB picker, the channel editor's dialogs."""
+        """The save dialog in a sized window over *frame*, and the channel editor's dialogs."""
         if self.dialog is not None:
             pressed = self._dialog_window.begin(frame)
             result = self.dialog.draw()
             self._dialog_window.end()
             if result:
                 try:
-                    if self.dialog_action == "files":
-                        self.add_files(result)
-                    elif self.dialog_action == "folder":
-                        self.on_paths_dropped(result)
-                    elif self.dialog_action == "load_setup":
-                        self.load_setup(result[0])
-                    else:
-                        self.save_setup(result[0])
+                    self.save_setup(result[0])
                 except Exception as exc:
                     self.status = f"Error: {exc}"
                 self.dialog = None
             elif result is False or pressed == "close":
                 self.dialog = None
-        self.datasets.render(frame)
         self.channel_definition.draw_dialogs(frame)
 
     def close(self):

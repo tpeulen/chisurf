@@ -58,6 +58,19 @@ icon = "🔗"
 #: ``tttrlib`` is good at, so nothing needs to be guessed from a suffix.
 from chisurf.core.fio.staging import TTTR_EXTENSIONS as _TTTR_EXTENSIONS
 
+#: The suffixes of a burst-ID selection file.
+BID_SUFFIXES = (".bid", ".bst", ".txt")
+
+
+def find_bid_for(tttr_path: os.PathLike | str) -> pathlib.Path | None:
+    """The burst-ID selection beside the photon file *tttr_path* (same stem), or ``None``."""
+    tttr_path = pathlib.Path(tttr_path)
+    for suffix in BID_SUFFIXES:
+        for candidate in (tttr_path.with_suffix(suffix), tttr_path.with_suffix(suffix.upper())):
+            if candidate.is_file():
+                return candidate
+    return None
+
 
 def _find_tttr_by_stem(start_dir: pathlib.Path, bid_stem: str) -> pathlib.Path | None:
     """Find TTTR file matching a BID stem by searching up the directory tree.
@@ -289,6 +302,7 @@ def _per_file_process(
     windows: dict | None,
     detectors: dict | None,
     bid_index: int = 1,
+    container_dir: os.PathLike | str | None = None,
 ) -> tuple[tttrlib.TTTR, dict, dict]:
     """Import one BID selection: read it, tabulate its bursts, write the container."""
     bid_path = pathlib.Path(bid_path)
@@ -323,7 +337,7 @@ def _per_file_process(
     _set_constant(df, "BID File", bid_path.name)
     _set_constant(df, "BID Index", int(bid_index))
 
-    _write_container(tttr_path, bid_path, df, bid_index)
+    _write_container(tttr_path, bid_path, df, bid_index, container_dir=container_dir)
 
     return tttr, detectors, windows
 
@@ -333,6 +347,7 @@ def _write_container(
     bid_path: pathlib.Path,
     df,
     bid_index: int,
+    container_dir: os.PathLike | str | None = None,
 ) -> None:
     """Write the imported bursts, and the `.bid` they were imported from.
 
@@ -372,7 +387,12 @@ def _write_container(
         return
     table = df
     try:
-        with open_measurement(tttr_path) as m:
+        # Into the given folder with the photons linked (a project's analysis container), or
+        # beside the TTTR.
+        target = (
+            {"out_dir": container_dir, "raw_data": "sidecar"} if container_dir is not None else {}
+        )
+        with open_measurement(tttr_path, **target) as m:
             source = m.put_blob(
                 bid_path.name,
                 bid_path.read_bytes(),
@@ -423,8 +443,12 @@ def convert_bid_file(
     remove_folder: bool = False,
     selected_setup: str | None = None,
     bid_index: int = 1,
+    container_dir: os.PathLike | str | None = None,
 ) -> pathlib.Path:
     """Import a single BID file into its measurement's `.pto` container.
+
+    *container_dir* names the folder the container is written into (a photon dataset's analysis
+    container in the project, the photons linked); by default it is written beside the TTTR.
 
     Writes the burst table -- and the `.bid` it was derived from -- into the
     container beside the TTTR, and the analysis ``Info`` metadata into
@@ -460,7 +484,7 @@ def convert_bid_file(
 
     # Process this single file
     tttr, dets, wins = _per_file_process(
-        bid_path, output_dir, windows, detectors, bid_index=bid_index
+        bid_path, output_dir, windows, detectors, bid_index=bid_index, container_dir=container_dir
     )
 
     # Info files

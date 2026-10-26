@@ -9,6 +9,7 @@ from emtk import im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
+from emtk.view_form import draw_form
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
@@ -24,7 +25,10 @@ class BidToAnalysisApp(ImApp, TourTarget):
         self.rows = []
         self.messages = []
         self.running = False
-        self.status = tr("Add BID files or drop them here, or press Load example.")
+        self.status = tr(
+            "Pick photon streams in the Input section (their burst-ID selections are found "
+            "beside them), or press Load example."
+        )
         #: The one output: the measurement container (kept as state for settings parity).
         self.output_types = {"pto"}
         self.unique_folder = False
@@ -35,8 +39,17 @@ class BidToAnalysisApp(ImApp, TourTarget):
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bid-converter")
         self.future = None
         self.cancel = Event()
-        self.dialog = None
-        self.dialog_mode = "files"
+        # The Input section: the workspace's photon streams (manifest ``accepts`` ``photons``).
+        from emtk.view_form import FormState
+
+        from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput, input_spec
+
+        self.input = NamedWorkspaceInput("bid_to_analysis", "photons", app=self)
+        self.input.workspace_input_on_used = lambda name: self.tour.notify_used(name)
+        self.input_spec = input_spec(
+            Path(__file__).resolve().parents[1] / "manifest.json", "photons"
+        )
+        self.input_form = FormState()
         self.docks = DockManager(
             Split("h", 0.43, Region("setup"), Split("v", 0.72, Region("files"), Region("log"))),
             name="bid_to_analysis",
@@ -71,9 +84,18 @@ class BidToAnalysisApp(ImApp, TourTarget):
         """Queue the shipped simulated stream with its known BID selection."""
         if self.running:
             return
+        from chisurf.core.plugin.workspace_input import register_result
+
+        from .. import _find_tttr_by_stem
         from ..demo import make_demo
 
-        self.add_files([make_demo()])
+        bid = Path(make_demo())
+        tttr = _find_tttr_by_stem(bid.parent, bid.stem)
+        if tttr is None:
+            self.add_files([bid])
+        else:  # the demo enters the workspace like any measurement, then comes in from there
+            stream = register_result(str(tttr), kind="photons", name=tttr.name)
+            self.take_photons([str(tttr)], [stream.unique_identifier])
         self.status = tr("Example queued: six simulated bursts. Press Process.")
 
     def add_files(self, paths):
@@ -107,8 +129,34 @@ class BidToAnalysisApp(ImApp, TourTarget):
             existing.add(str(path))
         self.status = tr("{n} BID file(s) queued.").format(n=len(self.rows))
 
-    def on_paths_dropped(self, paths):
-        self.add_files(paths)
+    def take_photons(self, paths, uids=()):
+        """Queue the burst-ID selection beside each photon stream of the workspace; its import is
+        written into that stream's analysis container in the project."""
+        from .. import find_bid_for
+
+        if self.running:
+            return 0
+        existing = {row["tttr"] for row in self.rows}
+        uids = list(uids) + [""] * (len(paths) - len(uids))
+        added = 0
+        for value, uid in zip(paths, uids):
+            tttr = Path(str(value))
+            if str(tttr) in existing:
+                continue
+            bid = find_bid_for(tttr)
+            self.rows.append(
+                dict(
+                    bid=str(bid) if bid else "",
+                    tttr=str(tttr),
+                    uid=str(uid or ""),
+                    output="",
+                    status="Ready" if bid else "No BID selection beside it",
+                )
+            )
+            existing.add(str(tttr))
+            added += 1
+        self.status = tr("{n} BID file(s) queued.").format(n=len(self.rows))
+        return added
 
     def clear(self):
         if not self.running:
@@ -144,15 +192,27 @@ class BidToAnalysisApp(ImApp, TourTarget):
             try:
                 if not row["tttr"]:
                     raise FileNotFoundError("Matching TTTR file not found")
+                if not row["bid"]:
+                    raise FileNotFoundError("No burst-ID selection beside the measurement")
+                from chisurf.core.fio.fluorescence.burst_container import container_for
+                from chisurf.core.project.analysis import container_dir
+
+                # A workspace stream's import goes into its analysis container in the project.
+                into = container_dir(row["uid"]) if row.get("uid") else None
                 output = convert_bid_file(
-                    row["bid"], analysis_folder=folder, bid_index=index, **options
+                    row["bid"],
+                    analysis_folder=folder if into is None else into / "analysis",
+                    bid_index=index,
+                    container_dir=into,
+                    **options,
                 )
                 # The container is the one output: prove it holds what the
                 # import promised before the row is called Done.
                 from chisurf.core.datastore import row_count
                 from chisurf.core.fio.pto import Measurement
 
-                with Measurement.open(Path(row["tttr"]).with_suffix(".pto")) as measurement:
+                row["container"] = str(container_for(row["tttr"], into))
+                with Measurement.open(row["container"]) as measurement:
                     if not row_count(measurement.get_store("bursts")):
                         raise RuntimeError("PTO output contains no burst table")
                     if measurement.get_blob(Path(row["bid"]).name) != Path(row["bid"]).read_bytes():
@@ -170,6 +230,7 @@ class BidToAnalysisApp(ImApp, TourTarget):
             try:
                 self.rows, messages = self.future.result()
                 self.messages.extend(messages)
+                self._register_runs()
                 count = sum(row["status"] == "Done" for row in self.rows)
                 self.status = tr("Finished: {done}/{total} files converted.").format(
                     done=count, total=len(self.rows)
@@ -180,16 +241,27 @@ class BidToAnalysisApp(ImApp, TourTarget):
             self.future = None
             self.running = False
 
-    def browse(self, mode):
-        from emtk.file_dialog import FileDialog
+    def _register_runs(self):
+        """Show each imported selection in the workspace: the bursts of the container written for
+        a workspace stream become a child row of that stream."""
+        from chisurf.core.fio.classify import container_entries
+        from chisurf.core.plugin.workspace_input import register_result
 
-        self.dialog_mode = mode
-        self.dialog = FileDialog(
-            tr("BID conversion paths"),
-            mode="folder" if mode in {"folder", "output"} else "open",
-            filters=[(tr("BID selections"), ["*.bid", "*.bst", "*.txt"])],
-            multiselect=mode == "files",
-        )
+        for row in self.rows:
+            if row["status"] != "Done" or not row.get("uid") or not row.get("container"):
+                continue
+            try:
+                runs = [a for kind, a in container_entries(row["container"]) if kind == "bursts"]
+                if not runs:
+                    # The import's table is not a burst-search run, which is all the container
+                    # listing knows (chisurf.core.fio.classify.container_entries): name it.
+                    from chisurf.core.fio.address import join_address
+
+                    runs = [join_address(row["container"], "bursts")]
+                for address in runs:
+                    register_result(address, kind="bursts", result_of=row["uid"])
+            except Exception as error:  # noqa: BLE001 - the import itself succeeded
+                self.messages.append(f"{row['tttr']}: not shown in the workspace: {error}")
 
     def button(self, label, tip, callback, key=None, role=None):
         """Draw one action in emtk button *role*; a keyed action is a tour target and reports its use."""
@@ -212,20 +284,10 @@ class BidToAnalysisApp(ImApp, TourTarget):
             self.load_example()
             self.tour.notify_used("load_example")
         self.remember("load_example")
-        im.same_line()
+        self.input_form.rects.clear()
+        draw_form(self.input_spec, self.input, self.input_form)
+        self.item_rects.update(self.input_form.rects)
         for label, tip, action, key in [
-            (
-                tr("Add files"),
-                tr("Choose BID, BST or TXT photon-index selections."),
-                lambda: self.browse("files"),
-                "add_files",
-            ),
-            (
-                tr("Folder"),
-                tr("Add matching selection files from one folder."),
-                lambda: self.browse("folder"),
-                "folder",
-            ),
             (tr("Clear"), tr("Remove all queued selections and log entries."), self.clear, "clear"),
         ]:
             self.button(label, tip, action, key, role="danger" if key == "clear" else None)
@@ -242,9 +304,10 @@ class BidToAnalysisApp(ImApp, TourTarget):
         )
         im.text_wrapped(
             tr(
-                "Output: the measurement's own .pto container -- the original BID "
-                "and its burst table, with provenance. Legacy formats are exported "
-                "from it by the legacy export plugin."
+                "Output: the measurement's container in the project -- the original BID "
+                "and its burst table, with provenance; it appears under its photon stream "
+                "in the Datasets workspace. Legacy formats are exported from it by the "
+                "legacy export plugin."
             )
         )
         self.remember("formats")
@@ -255,16 +318,6 @@ class BidToAnalysisApp(ImApp, TourTarget):
         )
         changed, self.zip_output = im.checkbox(tr("ZIP output"), self.zip_output)
         im.set_item_tooltip(tr("Archive generated analysis files while keeping the output folder."))
-        im.text(tr("Output folder (empty: beside each measurement):"))
-        changed, self.analysis_folder = im.input_text("##bid_output", self.analysis_folder)
-        im.set_item_tooltip(
-            tr("Explicit output destination; empty uses the BID stem beside its TTTR measurement.")
-        )
-        self.button(
-            tr("Choose output folder"),
-            tr("Select a destination for generated analysis files."),
-            lambda: self.browse("output"),
-        )
         if im.begin_table(
             "bid_queue", 4, im.TableFlags.BORDERS | im.TableFlags.ROW_BG | im.TableFlags.SCROLL_X
         ):
@@ -324,18 +377,6 @@ class BidToAnalysisApp(ImApp, TourTarget):
                     self.cancel.set,
                 )
             im.end()
-        if self.dialog is not None:
-            if im.begin(tr("Choose conversion paths")):
-                result = self.dialog.draw()
-                if result:
-                    if self.dialog_mode == "output":
-                        self.analysis_folder = str(result[0])
-                    else:
-                        self.add_files(result)
-                    self.dialog = None
-                elif result is False:
-                    self.dialog = None
-            im.end()
         self.setup.draw_dialogs((0.0, 0.0, float(width), float(height)))
         if self.help_window.open:
             self.help_window.draw((0.0, 0.0, float(width), float(height)))
@@ -371,3 +412,17 @@ def create_app(**kwargs):
 
     install()
     return BidToAnalysisApp(**kwargs)
+
+
+def receive_photons(app: BidToAnalysisApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``photons``): queue the burst-ID selections beside
+    the photon streams ``payload["files"]`` of the Datasets workspace."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    files = payload.get("files") or []
+    files = files if isinstance(files, list) else [files]
+    paths = [read_address(str(f)) for f in files]
+    if not app.take_photons(paths, list(payload.get("datasets") or [])) and not set(paths) & {
+        row["tttr"] for row in app.rows
+    }:
+        raise ValueError("nothing new to queue")
