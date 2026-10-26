@@ -17,6 +17,6 @@
     "emtk": "chisurf.plugins.core.agent.gui.panel:make_app"
   },
   "optional_requires": {
-    "ai_settings": "*"
+    "code_editor": "*"
   }
 }

@@ -45,3 +45,27 @@ def test_the_assistant_session_carries_the_full_registry():
         "create_fit",
     ):
         assert expected in names, f"the assistant cannot reach {expected}"
+
+
+def test_every_tour_target_is_a_drawn_control_and_guide_opens_the_tour(tmp_path, monkeypatch):
+    """The Agent panel draws Guide and ?, and each guide.json target is a recorded control."""
+    monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path))
+    from emtk.testing import Driver
+
+    from chisurf.plugins.core.agent.gui.panel import make_app
+
+    app = make_app()
+    try:
+        driver = Driver(app, (760, 720))
+        driver.frame(3)
+        guide = json.loads(
+            (Path(__file__).parents[3] / "chisurf/plugins/core/agent/gui/guide.json").read_text()
+        )
+        targets = {s["target"]["name"] for s in guide["steps"] if s.get("target")}
+        assert targets <= set(app.item_rects), targets - set(app.item_rects)
+        assert {"guide", "help"} <= set(app.item_rects)
+        driver.click(app.item_rects["guide"])
+        driver.frame(2)
+        assert app.tour.active
+    finally:
+        app.close()

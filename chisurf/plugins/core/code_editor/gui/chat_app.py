@@ -697,10 +697,20 @@ class ChatGui:
         self.model = model or ChatModel(editor_ref=editor_ref)
         self.provider_settings: AISettingsApp | None = None
         self.provider_settings_open = False
+        #: Hooks of a host with a guided tour: record a control's rectangle under a
+        #: name, tell the tour a control was used, draw extra toolbar buttons.
+        self.remember: Callable[..., None] = lambda name, rect=None: None
+        self.notify_used: Callable[[str], None] = lambda name: None
+        self.toolbar_extra: Callable[[], None] | None = None
 
     def use_example(self, prompt: str) -> None:
         """Put an example prompt in the input box for the user to edit or send (Things to ask)."""
         self.model.input_text = prompt.strip()
+        self.notify_used("examples")
+
+    def _send(self, text: str) -> None:
+        self.model.send_prompt(text)
+        self.notify_used("input")
 
     def draw_provider_settings(self) -> None:
         if not self.provider_settings_open or self.provider_settings is None:
@@ -761,19 +771,22 @@ class ChatGui:
             on_replace_code=self._on_replace_code,
             on_link=self._open_link,
         )
+        self.remember("transcript")
 
         im.separator()
 
         # 4. Input bar: multiline field and Send / Cancel / Clear
+        bar_x, bar_y = im.get_cursor_screen_pos()
         new_prompt, send_requested = draw_chat_input_bar(
             self.model.input_text,
             is_generating=self.model.is_generating,
-            on_send=self.model.send_prompt,
+            on_send=self._send,
             on_cancel=self.model.cancel,
             on_clear=self.model.clear,
             input_height=input_box_h,
         )
         self.model.input_text = new_prompt
+        self.remember("input", (bar_x, bar_y, width, im.get_cursor_screen_pos()[1] - bar_y))
         self.draw_provider_settings()
 
     def draw_overlays(self, width: float, height: float) -> None:
@@ -794,6 +807,7 @@ class ChatGui:
         p_labels = [PROVIDER_LABELS.get(p, p) for p in PROVIDERS]
         changed_p, new_p_idx = im.combo("##p_select", current_p_idx, p_labels)
         im.set_item_tooltip(tr("Choose the assistant provider"))
+        self.remember("provider")
         if changed_p:
             self.model.provider = PROVIDERS[new_p_idx]
         ready, why = self.model.provider_status()
@@ -809,6 +823,7 @@ class ChatGui:
         m_labels = [MODE_LABELS.get(m, m) for m in MODES]
         changed_m, new_m_idx = im.combo("##m_select", current_m_idx, m_labels)
         im.set_item_tooltip(tr("Choose which tools the assistant may use"))
+        self.remember("mode")
         if changed_m:
             self.model.set_mode(MODES[new_m_idx])
 
@@ -823,12 +838,17 @@ class ChatGui:
         im.set_item_tooltip(
             tr("Configure API endpoint, masked credential, models, sampling or the ACP command")
         )
+        self.remember("provider_settings")
         im.end_disabled()
         if im.small_button(tr("💡 Things to ask") + "##chat_examples"):
             im.open_popup("chat_examples")
         im.set_item_tooltip(
             tr("Example prompts shipped with ChiSurf and tested against a real model")
         )
+        self.remember("examples")
+        if self.toolbar_extra is not None:
+            im.same_line()
+            self.toolbar_extra()
         if im.begin_popup("chat_examples"):
             from chisurf.core.agent.example_prompts import starter_prompts
 
@@ -892,7 +912,33 @@ class ChatApp(ImApp):
 
     def __init__(self, model: ChatModel | None = None, editor_ref: Any = None) -> None:
         self.chat_gui = ChatGui(model=model, editor_ref=editor_ref)
+        #: Control rectangles by id: the tour's targets and the driver's click names.
+        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+        self.tour = None
+        self.help_window = None
         super().__init__(gui=self._render, continuous=False)
+
+    def attach_help(self, help_window: Any, tour: Any) -> None:
+        """Draw a host's help window and guided tour: Guide and ? join the toolbar.
+
+        The host (the Agent plugin) builds both from its own ``help.md`` and
+        ``guide.json``; the chat records its controls' rectangles for the tour.
+        """
+        self.help_window, self.tour = help_window, tour
+        self.chat_gui.remember = self.remember
+        self.chat_gui.notify_used = tour.notify_used
+        self.chat_gui.toolbar_extra = self._draw_help_buttons
+
+    def _draw_help_buttons(self) -> None:
+        from chisurf.plugins.emtk_layout import action_button
+
+        if action_button("guide"):
+            self.tour.start()
+        self.remember("guide")
+        im.same_line()
+        if action_button("help"):
+            self.help_window.show()
+        self.remember("help")
 
     def export_settings(self) -> dict:
         return self.chat_gui.model.export_settings()
@@ -921,6 +967,9 @@ class ChatApp(ImApp):
         self.chat_gui.draw()
         vp = im.get_main_viewport()
         self.chat_gui.draw_overlays(float(vp.size[0] or 440.0), float(vp.size[1] or 680.0))
+        if self.tour is not None:
+            self.help_window.draw((*vp.pos, *vp.size))
+            self.tour.draw(*vp.size)
 
 
 def make_chat_app() -> ChatApp:

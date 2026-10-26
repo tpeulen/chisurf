@@ -9,6 +9,10 @@ wherever it is opened from.
 
 from __future__ import annotations
 
+import pathlib
+
+from emtk.i18n import tr
+
 
 def make_app(**kwargs):
     """The plugin's entrypoint: the code editor's AI Assistant application.
@@ -19,6 +23,19 @@ def make_app(**kwargs):
         Forwarded to :class:`ChatApp` (``model``, ``editor_ref``) — absent
         when opened from the Tools menu, where the assistant runs standalone.
     """
+    from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
     from chisurf.plugins.core.code_editor.gui.chat_app import ChatApp
 
-    return ChatApp(**kwargs)
+    app = ChatApp(**kwargs)
+    here = pathlib.Path(__file__).resolve().parent
+    tour = EmTkGuidedTour(
+        steps=here / "guide.json",
+        owner=app,
+        wait_for_controls=True,
+        get_target_rect=lambda key: app.item_rects.get(key),
+    )
+    help_window = EmTkHelpWindow(
+        title=tr("Agent — Help"), resource=here / "help.md", owner=app, on_start_guide=tour.start
+    )
+    app.attach_help(help_window, tour)
+    return app

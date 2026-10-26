@@ -1,0 +1,42 @@
+{
+  "_comment": "Guided tour of the Agent panel. Targets are the item_rects ChatApp records when opened as the agent plugin; awaited steps wait for the user's own press.",
+  "steps": [
+    {
+      "title": "ChiSurf in plain words",
+      "text": "Ask for an analysis the way you would ask a colleague. The agent runs ChiSurf's tools on the loaded data and shows every step it takes.",
+      "target": {}
+    },
+    {
+      "title": "Choose a provider",
+      "text": "The model that answers. The dot beside it is green when the provider is configured; hover it to see what is missing.",
+      "target": {"name": "provider"}
+    },
+    {
+      "title": "Provider settings",
+      "text": "Endpoint, key and model of the selected provider. The key is kept in your settings store and never written into a project.",
+      "target": {"name": "provider_settings"}
+    },
+    {
+      "title": "What the agent may do",
+      "text": "The <b>mode</b> limits the tools: reading only, running analyses, or also executing code it writes.",
+      "target": {"name": "mode"}
+    },
+    {
+      "title": "Start from an example",
+      "text": "<b>💡 Things to ask</b> lists prompts that ship with ChiSurf. Picking one puts it in the input box for you to edit.",
+      "target": {"name": "examples"},
+      "await": {"hint": "Pick an example from <b>💡 Things to ask</b>."}
+    },
+    {
+      "title": "Send the request",
+      "text": "Edit the request if you like, then press <b>Send</b>. If a choice is open, the agent asks first; answer in the same box.",
+      "target": {"name": "input"},
+      "await": {"hint": "Press <b>Send</b>."}
+    },
+    {
+      "title": "Read what it did",
+      "text": "Every tool call is a badge here: <b>[ok]</b> done, <b>[x]</b> failed. Click a badge to see its input and result; the last message states the numbers and the assumptions behind them.",
+      "target": {"name": "transcript"}
+    }
+  ]
+}
