@@ -4,6 +4,18 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Code ahead of the pins: relock before the release cut (found 2026-10-26)
+
+status: open — owner: release cut (the lock moves only then, by convention).
+`pixi.lock` pins emtk 55829995 (0.1.32) and imp-bff 127e1b104; the tree already uses newer work:
+fret_check's report needs emtk >= 0.1.33 (`Figure(margin=)`, `hgap`/`vgap`, `ax(span=)` kept; emtk
+2b80cd2), Fedora fonts need emtk 2a9ccf9, and the IMP.bff lanes of 2026-10-26 (directory data fetch,
+standalone contact volume, portable seeded sampling) change imp-bff. Measure: on `ssh home`,
+`CHISURF_REMOTE_OVERLAYS= build_tools/remote_test.sh start` runs the locked env alone; the default run
+overlays `~/dev/emtk`. Blocks: a release built from the lock. At the cut: relock emtk and imp-bff, raise
+`EMTK_MIN_VERSION` (and pyproject/recipe/licences) to 0.1.33, re-record the chisurf references the
+portable sampling changes.
+
 ## tttrlib `auto_calibrate` returns zero leakage on PIE data with donor-only molecules (found 2026-10-26)
 
 status: open — owner tttrlib (calibration); found while fixing fret_check's background subtraction.
