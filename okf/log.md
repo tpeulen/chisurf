@@ -1,5 +1,14 @@
 # Update Log
 
+## 2026-10-26
+
+- **PRD-154 item 12 closed: the natural-language workflow agent.** `test/agent` 595 passed, 25 skipped; the
+  owner's verbatim burstwise prompt runs as a recorded test on a simulated measurement (one clarification round,
+  then burst search → species gate → sub-ensemble decay → Gaussian distance fit), the PIE chain lands within the
+  documented residual, Z.ai GLM is a provider, and no feature commit of the lane touched `pixi.lock`/`pixi.toml`/`pyproject.toml` (this one edits only the marker text).
+  Found on the way: the live example-prompt tests had no opt-in and called the provider whenever a key was in
+  the settings; the `CHISURF_AGENT_TEST_LIVE=1` gate now sits on the `live_llm` marker (`test/agent/conftest.py`).
+
 ## 2026-10-25
 
 - **PRD-154 item 13 closed: the .pto-only journeys are green.**

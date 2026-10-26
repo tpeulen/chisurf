@@ -226,7 +226,7 @@ testpaths = ["test", "chisurf"]
 markers = [
     "e2e: opens every plugin headlessly",
     "slow: marks tests as slow (reader-heavy) and excluded from default runs",
-    "live_llm: hits a real LLM provider; skipped unless an API key is configured",
+    "live_llm: hits a real LLM provider; skipped unless CHISURF_AGENT_TEST_LIVE=1 and an API key is configured",
     "gui: marks tests that require or drive the graphical user interface",
     "widget: marks tests that drive an emtk app or control",
 ]
