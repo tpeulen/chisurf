@@ -620,6 +620,11 @@ def resolve_sources(
                 candidate = data_dir / name
             elif name in mti and mti[name].is_file():
                 candidate, origin, container = mti[name], "mti", None
+            elif name in mti and (data_dir / name).is_file():
+                # The sidecar lists the file under the absolute path it had when the
+                # analysis ran; the folder has moved (another machine, another
+                # checkout) and the measurement moved with it. Still the sidecar's file.
+                candidate, origin, container = data_dir / name, "mti", None
             elif (analysis_dir / "Info" / name).is_file():
                 candidate, origin, container = analysis_dir / "Info" / name, "mti", None
             elif (data_dir / name).is_file():

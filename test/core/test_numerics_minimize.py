@@ -35,7 +35,13 @@ def test_lbfgsb_with_open_sided_bounds(jac):
     s = so.minimize(fun, X0, method="L-BFGS-B", jac=j, bounds=BOUNDS)
     _close(r, s, 1e-8)
     assert (r.nit, r.message) == (s.nit, s.message)
-    np.testing.assert_allclose(r.hess_inv.todense(), s.hess_inv.todense(), rtol=1e-6, atol=1e-9)
+    # With forward differences every gradient carries rounding error of order sqrt(eps)
+    # in the step, which the inverse-Hessian updates accumulate: the two implementations
+    # (IMP.bff's C++ and scipy's) agree on x, fun and the iterations but differ near 1e-4 on
+    # hess_inv between compilers (seen on x86 Linux vs arm64 macOS). Analytic gradients keep
+    # the tight check.
+    rtol = 1e-3 if jac is None else 1e-6
+    np.testing.assert_allclose(r.hess_inv.todense(), s.hess_inv.todense(), rtol=rtol, atol=1e-9)
 
 
 def test_lbfgsb_with_a_bounds_object_and_tol():

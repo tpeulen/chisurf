@@ -116,6 +116,24 @@ def test_sources_resolve_through_the_mti_sidecar(preparation):
         assert path.is_file()
 
 
+def test_a_moved_folder_still_resolves_through_its_mti(tmp_path):
+    """The sidecar's absolute path is gone (another machine); the listed file beside the analysis is it."""
+    analysis = tmp_path / "analysis"
+    (analysis / "bi4_bur").mkdir(parents=True)
+    (analysis / "bi4_bur" / "m000.bur").write_text(
+        "First Photon\tLast Photon\tNumber of Photons\tFirst File\n0\t1\t2\tm000.spc\n",
+        encoding="utf-8",
+    )
+    (analysis / "Info").mkdir()
+    (tmp_path / "m000.spc").write_bytes(b"x")
+    (analysis / "Info" / "m000.mti").write_text("/elsewhere/data/m000.spc\t69.2\n", encoding="utf-8")
+    resolution = resolve_sources(analysis, ["m000.spc"])
+    assert resolution.paths["m000.spc"] == tmp_path / "m000.spc"
+    assert resolution.origin["m000.spc"] == "mti"
+    (tmp_path / "m001.spc").write_bytes(b"x")
+    assert resolve_sources(analysis, ["m001.spc"]).origin["m001.spc"] == "sibling"
+
+
 def test_unresolvable_source_raises_with_the_places_searched(tmp_path):
     """A burst table pointing at a file that is nowhere is an error, not empty data."""
     bur_dir = tmp_path / "analysis" / "bi4_bur"
