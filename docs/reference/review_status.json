@@ -1064,10 +1064,10 @@
     "status": "ai-reviewed"
   },
   "user_models.md": {
-    "date": "2026-10-20",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "5808d3954291b8ec6175578fecf61a2cb12b9d7fdc2913b124b9cb0395ed1510",
+    "sha256": "a54aceb8327fc232041442c2a356e453df920022023a14be82b557ca9c66e66a",
     "status": "ai-reviewed"
   }
 }

@@ -126,10 +126,10 @@
     "status": "ai-reviewed"
   },
   "data_import.md": {
-    "date": "2026-10-13",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "439a4771b8c50789aa404c50a93e901a6293838071a28899c8e5a876ea751dd6",
+    "sha256": "a4f3692efc9bc18e1f4114c3852aa34b49d3a10c62163609b2dcbfa6424a3709",
     "status": "ai-reviewed"
   },
   "data_input_and_file_format.md": {
