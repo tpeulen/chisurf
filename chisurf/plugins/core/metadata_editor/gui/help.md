@@ -1,16 +1,25 @@
 # Metadata editor
 
-Edit the metadata of a measurement: sample, dyes, buffer, instrument, and the identifiers that later tools
-(BURST, QuEst, MMFDB deposit) read. The editor writes structured fields — not free text — so a value entered
-here is the value every downstream tool sees.
+One editor for every metadata record: typed fields from a schema plus free key/value entries,
+validated before they are applied. Burst Selection (the flrCIF metadata of an export) and the Zenodo
+deposit (a record's metadata) embed it; this window edits a JSON metadata file on its own.
 
 ## How it works
-1. Open the tool on a loaded measurement (or from the burst workflow's metadata step).
-2. Fill the fields: sample name, dyes (donor/acceptor), concentrations, buffer, temperature, instrument and
-   detector details, and the measurement identifier.
-3. Press Save. The metadata is written to the measurement's record and travels with the ``.pto`` project and
-   any MMFDB deposit.
+1. Pick the **Schema**: *free-form* (no typed fields), *flrCIF* (pH, temperature, ionic strength,
+   buffer, solvent, labelling fractions) or *Zenodo* (title, creators, license, dates, ...).
+   Switching keeps what has been typed.
+2. **Open…** a `.json` file holding one object. Schema keys fill the fields; every other key is a
+   free entry. Add more with *Add key* / *Add value* and **Add entry**; select a table row and press
+   Delete to remove one.
+3. Fix what is listed in red (a number that is not a number, a date that is not `YYYY-MM-DD`, a
+   required field left empty) — **Apply** stays grey until the list is empty.
+4. **Apply** writes the open file and the editor stays on it; **Cancel** reverts to what is on disk;
+   **Save as…** writes a new file and makes it the open one.
 
 ## Before trusting a result
-Dye names must match the dye repository's spelling — a typo silently disables the per-dye corrections that
-QuEst and the FRET corrections apply.
+Values are stored as text, as typed: a number field is checked, not converted, and units belong in
+the field's meaning, not the value (`150 mM` fails a number field). Zenodo creators are one person
+per line, `Family, Given; Affiliation; ORCID`; they are written back as a list.
+
+Further reading: [Metadata editor](docs/concepts/metadata_editor.md),
+[Editing metadata](docs/guides/113_metadata_editor.md).

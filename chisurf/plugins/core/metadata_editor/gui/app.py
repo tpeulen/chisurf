@@ -2,7 +2,8 @@
 
 Hosts embed :class:`~chisurf.plugins.core.metadata_editor.gui.widget.MetadataEditorWidget`
 into their own windows; this app is the same editor on its own -- open it from
-the hub (``?app=metadata-editor``), open a JSON file, edit, save. A schema
+the hub (``?app=metadata-editor``), open a JSON file, edit, Apply writes it back
+(the editor stays on the file; Cancel reverts to its contents). A schema
 picks the typed fields: *free-form* (no typed fields), *flrCIF* (the analysis
 metadata of a burst export), or *Zenodo* (a deposit).
 """
@@ -13,11 +14,12 @@ import json
 import pathlib
 
 from emtk import im, style
-from chisurf.plugins.emtk_layout import action_button
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
+
+from chisurf.plugins.emtk_layout import action_button
 
 from ..core import flrcif_schema, freeform_schema, zenodo_schema
 from .widget import MetadataEditorWidget
@@ -39,11 +41,14 @@ class MetadataEditorApp(ImApp):
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.path: pathlib.Path | None = None
         self.schema_name = "free-form"
-        self.editor = MetadataEditorWidget(on_apply=self._applied)
+        self.editor = MetadataEditorWidget(
+            on_apply=self._applied, keep_open=True, on_used=self._used
+        )
         self.file_window = DialogWindow(title=tr("Metadata file"), size=(700.0, 440.0))
         self.dialog: FileDialog | None = None
         self._dialog_save = False
         self._error = ""
+        self._status = ""
         self.editor.open(freeform_schema(), {})
         from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 
@@ -57,7 +62,12 @@ class MetadataEditorApp(ImApp):
             wait_for_controls=True,
             get_target_rect=lambda key: self.item_rects.get(key),
         )
+        self.help_window.on_start_guide = self.tour.start
         super().__init__(gui=self._render)
+
+    def _used(self, name: str) -> None:
+        """A control was used: an awaiting tour step moves on."""
+        self.tour.notify_used(name)
 
     # -- schema ----------------------------------------------------------------------- #
     def _schema(self):
@@ -70,7 +80,7 @@ class MetadataEditorApp(ImApp):
         """Switch the schema, keeping what has been typed."""
         if name not in dict(_SCHEMAS):
             return
-        entries = self.editor.editor.entries() if self.editor.editor else {}
+        entries = self.editor.editor.structured_entries() if self.editor.editor else {}
         self.schema_name = name
         self.editor.open(self._schema(), entries)
 
@@ -98,20 +108,25 @@ class MetadataEditorApp(ImApp):
         return payload
 
     def _applied(self, entries: dict[str, str]) -> None:
-        """Apply hands the entries back; with a file open they are written to it."""
+        """Apply writes the entries to the open file; the editor stays on them."""
         if self.path is None:
             self._error = tr("Open a .json file first -- or keep editing and Save as…")
-            self.editor.open(self._schema(), entries)
             return
-        self._error = ""
-        self.path.write_text(json.dumps(entries, indent=2) + "\n", encoding="utf-8")
+        self._write(self.path)
 
     def save_as(self, path: str | pathlib.Path) -> None:
         """Write the current entries to *path* and make it the open file."""
-        entries = self.editor.editor.entries() if self.editor.editor else {}
         self.path = pathlib.Path(path)
-        self.path.write_text(json.dumps(entries, indent=2) + "\n", encoding="utf-8")
+        self._write(self.path)
+
+    def _write(self, path: pathlib.Path) -> None:
+        """Write the entries (lists and records parsed back) and rebase Cancel on them."""
+        model = self.editor.editor
+        structured = model.structured_entries() if model else {}
+        path.write_text(json.dumps(structured, indent=2) + "\n", encoding="utf-8")
+        self.editor.open(self._schema(), structured)  # Cancel now reverts to what is on disk
         self._error = ""
+        self._status = tr("Written to {}").format(path.name)
 
     # -- frame ------------------------------------------------------------------------ #
     def _render(self) -> None:
@@ -123,18 +138,32 @@ class MetadataEditorApp(ImApp):
         im.set_item_tooltip(tr("Which metadata schema to edit."))
         if changed:
             self.pick_schema(names[index])
+            self._used("schema")
         self.remember("schema")
+        im.same_line()
+        if action_button("guide"):
+            self.tour.start()
+        self.remember("guide")
+        im.same_line()
+        if action_button("help"):
+            self.help_window.show()
+        self.remember("help")
         if action_button("open", tooltip=tr("Open a metadata record.")):
             self.choose_open()
+            self._used("open")
         self.remember("open")
         im.same_line()
         pressed = im.button(tr("Save as…"))
         im.set_item_tooltip(tr("Write the metadata record to a file."))
         if pressed:
             self.choose_save()
+            self._used("save_as")
         self.remember("save_as")
         name = self.path.name if self.path else tr("no file")
         im.text(tr("File: {}").format(name))
+        if self._status and not self._error:
+            im.same_line()
+            im.text_colored(style.TEXT_TIP, self._status)
         if self._error:
             im.text_colored(style.TEXT_DANGER, tr(self._error))
         im.separator()
@@ -159,6 +188,7 @@ class MetadataEditorApp(ImApp):
                         self._error = f"{target.name}: {exc}"
                     else:
                         self._error = ""
+                        self._status = ""
                         self.path = target
                         self.editor.open(self._schema(), payload)
             return  # the chooser's frame
@@ -170,7 +200,7 @@ class MetadataEditorApp(ImApp):
         self.tour.draw(*vp.size)
 
 
-def make_app() -> "MetadataEditorApp":
+def make_app() -> MetadataEditorApp:
     """The plugin registry's EMTK entrypoint."""
     return MetadataEditorApp()
 

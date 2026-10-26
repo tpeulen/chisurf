@@ -133,6 +133,84 @@ class TestStandaloneApp:
         on_disk = json.loads(path.read_text(encoding="utf-8"))
         assert on_disk == {"pH": "8.0", "note": "x"}
 
+    def _open(self, app, tmp_path, payload):
+        path = tmp_path / "meta.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        app.pick_schema("flrCIF")
+        drv = Driver(app, (1000, 800))
+        drv.draw(1)
+        drv.click_name("open")
+        app.dialog.directory = str(tmp_path)
+        drv.draw(3)
+        drv.click_text("meta.json")
+        drv.click_text("Open")
+        return drv, path
+
+    def test_apply_keeps_the_editor_on_the_file(self, app, tmp_path):
+        """Apply writes the file and the editor stays on it -- no "Nothing to edit"."""
+        drv, path = self._open(app, tmp_path, {"pH": 7.4, "note": "x"})
+        drv.type_into_name("pH", "8.0")
+        drv.click_name("apply")
+        assert app.editor.visible
+        assert app.editor.editor.entries() == {"pH": "8.0", "note": "x"}
+        texts = [t[5] for t in drv.draw(2).texts]
+        assert not any("Nothing to edit" in t for t in texts)
+        assert any("Written to meta.json" in t for t in texts)
+        # A second edit and Apply lands too.
+        drv.type_into_name("pH", "8.5")
+        drv.click_name("apply")
+        assert json.loads(path.read_text(encoding="utf-8"))["pH"] == "8.5"
+
+    def test_cancel_reverts_to_the_file(self, app, tmp_path):
+        drv, path = self._open(app, tmp_path, {"pH": 7.4, "note": "x"})
+        drv.type_into_name("pH", "9.9")
+        drv.click_name("cancel")
+        assert app.editor.visible
+        assert app.editor.editor.entries()["pH"] == "7.4"
+        assert json.loads(path.read_text(encoding="utf-8"))["pH"] == 7.4  # untouched
+
+    def test_a_schema_switch_after_apply_keeps_the_file(self, app, tmp_path):
+        drv, _ = self._open(app, tmp_path, {"pH": 7.4, "note": "x"})
+        drv.click_name("apply")
+        app.pick_schema("free-form")
+        assert app.editor.editor.entries() == {"pH": "7.4", "note": "x"}
+
+    def test_a_zenodo_file_keeps_its_creators_list(self, app, tmp_path):
+        """Lists and records go back to the file as lists and records, not flattened text."""
+        creators = [{"name": "Doe, Jane", "affiliation": "Lab"}, {"name": "Roe, R"}]
+        path = tmp_path / "zen.json"
+        path.write_text(
+            json.dumps({"title": "t", "creators": creators, "keywords": ["a", "b"]}),
+            encoding="utf-8",
+        )
+        app.pick_schema("Zenodo")
+        app.path = path
+        app.editor.open(app._schema(), app._read(path))
+        app._applied(app.editor.editor.entries())
+        on_disk = json.loads(path.read_text(encoding="utf-8"))
+        assert on_disk["creators"] == creators and on_disk["keywords"] == ["a", "b"]
+
+    def test_every_tour_target_is_a_drawn_control_and_the_tour_opens(self, app):
+        steps = json.loads(
+            (Path(__file__).resolve().parents[1] / "gui" / "guide.json").read_text(encoding="utf-8")
+        )["steps"]
+        drv = Driver(app, (1000, 800))
+        drv.draw(2)
+        rects = {**app.item_rects, **app.editor.item_rects}
+        names = [st["target"]["name"] for st in steps if st.get("target")]
+        assert names and all(n in rects for n in names), [n for n in names if n not in rects]
+        drv.click_name("guide")
+        assert app.tour.active
+
+    def test_an_awaited_step_moves_on_when_its_control_is_used(self, app, tmp_path):
+        drv, _ = self._open(app, tmp_path, {"pH": 7.4})
+        steps = app.tour.steps
+        index = next(i for i, st in enumerate(steps) if st.get("target", {}).get("name") == "apply")
+        app.tour.start(index)
+        assert app.tour.awaiting
+        drv.click_name("apply")
+        assert not app.tour.awaiting
+
     def test_switching_the_schema_keeps_the_entries(self, app):
         from chisurf.plugins.core.metadata_editor.core import freeform_schema
 

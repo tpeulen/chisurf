@@ -1,41 +1,39 @@
 {
-    "_comment": "Guided tour for the metadata editor.",
+    "_comment": "Guided tour for the standalone metadata editor. Steps point at real controls and wait for the user to press them; targets are the names the window and the editor widget remember.",
     "steps": [
         {
-            "title": "What this does",
-            "text": "The metadata editor fills the structured fields of a measurement — sample, dyes, buffer, instrument — the values every downstream tool (BURST, QuEst, MMFDB) reads.",
+            "title": "What this edits",
+            "text": "A metadata record as a JSON file: typed fields from a <b>schema</b> plus free-form key/value entries. The same editor sits inside Burst Selection (the flrCIF metadata of an export) and the Zenodo deposit (a record's metadata); here it edits a file on its own.",
             "target": {}
         },
         {
-            "title": "Sample",
-            "text": "Sample name, construct, concentration and buffer describe <b>what</b> was measured.",
-            "target": {
-                "name": "sample"
-            }
+            "title": "Pick the schema",
+            "text": "<b>free-form</b> has no typed fields, <b>flrCIF</b> the experiment keys of a burst export (pH, temperature, ionic strength, labelling fractions), <b>Zenodo</b> a deposit's fields. Switching keeps what has been typed.",
+            "target": {"name": "schema"},
+            "await": {"hint": "Pick a schema from the list."}
         },
         {
-            "title": "Dyes",
-            "text": "Donor and acceptor names must match the dye repository's spelling exactly — a typo silently disables per-dye corrections.",
-            "target": {
-                "name": "dyes"
-            }
+            "title": "Open a file",
+            "text": "Open a <b>.json</b> object. Keys of the schema fill its fields; every other key becomes a free-form entry, nothing is dropped.",
+            "target": {"name": "open"},
+            "await": {"hint": "Press <b>Open…</b> and pick a metadata file."}
         },
         {
-            "title": "Instrument",
-            "text": "Instrument, detectors and excitation details record <b>how</b> it was measured.",
-            "target": {
-                "name": "instrument"
-            }
+            "title": "Add an entry beyond the schema",
+            "text": "Type a key and a value, then <b>Add entry</b>. An existing key is replaced; a schema key edits that field. Select a row in the table below and press Delete to remove it.",
+            "target": {"name": "add_extra"},
+            "await": {"hint": "Type a key and a value, then press <b>Add entry</b>."}
         },
         {
-            "title": "Save",
-            "text": "Press <b>Save</b>: the metadata is written to the measurement's record and travels with the .pto project and any MMFDB deposit.",
-            "target": {
-                "name": "save"
-            },
-            "await": {
-                "hint": "Press <b>Save</b>."
-            }
+            "title": "Apply writes the file",
+            "text": "Every problem is listed in red above the buttons (a number that is not a number, a date that is not YYYY-MM-DD, a required field left empty); <b>Apply</b> stays grey until the list is empty. Apply writes the open file and the editor stays on it; <b>Cancel</b> reverts to what is on disk.",
+            "target": {"name": "apply"},
+            "await": {"hint": "Fix what is listed, then press <b>Apply</b>."}
+        },
+        {
+            "title": "Or write a new file",
+            "text": "<b>Save as…</b> writes the entries to a new file and makes it the open one.",
+            "target": {"name": "save_as"}
         }
     ]
 }

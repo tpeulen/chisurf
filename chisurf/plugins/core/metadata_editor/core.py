@@ -13,6 +13,8 @@ drawing lives in ``gui/widget.py``.
 from __future__ import annotations
 
 import dataclasses
+import datetime
+import re
 from typing import Any, Iterable
 
 __all__ = [
@@ -31,6 +33,13 @@ class Field:
 
     ``kind`` is a view-form value kind (``str``, ``text``, ``int``, ``float``,
     ``date``) or ``"choice"`` with *options*; ``text`` is multi-line.
+
+    A field whose stored value is structured declares its shape, so the text the
+    editor shows parses back to the same structure:
+
+    * *parts* -- a list of records (``dict``), one per line, its values in this
+      order joined by *part_sep* (Zenodo creators: ``name; affiliation; orcid``);
+    * *list_sep* -- a list of strings joined by it (keywords: ``", "``).
     """
 
     key: str
@@ -40,6 +49,9 @@ class Field:
     required: bool = False
     placeholder: str = ""
     help: str = ""
+    parts: tuple[str, ...] = ()
+    part_sep: str = "; "
+    list_sep: str = ""
 
     def __post_init__(self) -> None:
         if self.kind == "choice" and not self.options:
@@ -49,7 +61,52 @@ class Field:
 
     @property
     def display_label(self) -> str:
-        return self.label or self.key.replace("_", " ").strip().capitalize()
+        """The label; from the key, an all-lower key gets a capital first letter.
+
+        A key with an upper-case letter is cased on purpose (``pH``) and is kept.
+        """
+        if self.label:
+            return self.label
+        text = self.key.replace("_", " ").strip()
+        if text == text.lower():
+            text = text[:1].upper() + text[1:]
+        return text
+
+    def to_text(self, value: Any) -> str:
+        """The editor text of a stored *value* (structured values per the declared shape)."""
+        if isinstance(value, (list, tuple)):
+            if self.parts:
+                return "\n".join(self._record_line(item) for item in value)
+            if self.list_sep:
+                return self.list_sep.join(str(item) for item in value)
+        return _as_text(value)
+
+    def from_text(self, text: str) -> Any:
+        """Parse editor *text* back to the declared shape (plain text without one)."""
+        if self.parts:
+            records = []
+            for line in text.splitlines():
+                if not line.strip():
+                    continue
+                if self.part_sep.strip():
+                    cells = [
+                        c.strip() for c in line.split(self.part_sep.strip(), len(self.parts) - 1)
+                    ]
+                else:  # a whitespace separator: split on runs, the last part keeps its spaces
+                    cells = line.split(None, len(self.parts) - 1)
+                records.append({k: v for k, v in zip(self.parts, cells) if v})
+            return records
+        if self.list_sep:
+            return [item.strip() for item in text.split(self.list_sep.strip()) if item.strip()]
+        return text
+
+    def _record_line(self, item: Any) -> str:
+        if not isinstance(item, dict):
+            return str(item)
+        cells = [str(item.get(k, "") or "") for k in self.parts]
+        while cells and not cells[-1]:
+            cells.pop()
+        return self.part_sep.join(cells)
 
 
 class Schema(tuple):
@@ -96,7 +153,12 @@ def flrcif_schema(extra_keys: Iterable[str] = ()) -> Schema:
         Field("ionic_strength", kind="float", help="Ionic strength [mM]."),
         Field("buffer_composition", kind="str", help="Buffer composition."),
         Field("solvent_phase", kind="str", help="Solvent phase."),
-        Field("labeling_efficiency", kind="float", placeholder="0.95", help="Fraction of labelled molecules."),
+        Field(
+            "labeling_efficiency",
+            kind="float",
+            placeholder="0.95",
+            help="Fraction of labelled molecules.",
+        ),
         Field("donor_only_fraction", kind="float", help="Fraction of donor-only species."),
         Field("acceptor_only_fraction", kind="float", help="Fraction of acceptor-only species."),
     ]
@@ -108,21 +170,41 @@ def flrcif_schema(extra_keys: Iterable[str] = ()) -> Schema:
 
 def zenodo_schema() -> Schema:
     """A Zenodo deposit's metadata (the fields the deposit API takes)."""
-    return Schema([
-        Field("title", required=True, help="Deposit title."),
-        Field("upload_type", kind="choice", options=("publication", "dataset", "image", "software", "lesson")),
-        Field("publication_date", kind="date", help="Format: YYYY-MM-DD."),
-        Field("description", kind="text", help="Deposit description (HTML allowed)."),
-        Field("creators", kind="text", required=True,
-              help="One creator per line: ``Family, Given; Affiliation; ORCID``."),
-        Field("keywords", kind="str", help="Comma-separated keywords."),
-        Field("license", kind="str", placeholder="MIT", help="License id (e.g. MIT, CC-BY-4.0)."),
-        Field("access_right", kind="choice",
-              options=("open", "embargoed", "restricted", "closed")),
-        Field("embargo_date", kind="date", help="Applies when access is 'embargoed'."),
-        Field("version", kind="str", help="Deposit version."),
-        Field("related", kind="text", help="One related identifier per line: ``relation identifier``."),
-    ])
+    return Schema(
+        [
+            Field("title", required=True, help="Deposit title."),
+            Field(
+                "upload_type",
+                kind="choice",
+                options=("publication", "dataset", "image", "software", "lesson"),
+            ),
+            Field("publication_date", kind="date", help="Format: YYYY-MM-DD."),
+            Field("description", kind="text", help="Deposit description (HTML allowed)."),
+            Field(
+                "creators",
+                kind="text",
+                required=True,
+                help="One creator per line: ``Family, Given; Affiliation; ORCID``.",
+                parts=("name", "affiliation", "orcid"),
+            ),
+            Field("keywords", kind="str", help="Comma-separated keywords.", list_sep=", "),
+            Field(
+                "license", kind="str", placeholder="MIT", help="License id (e.g. MIT, CC-BY-4.0)."
+            ),
+            Field(
+                "access_right", kind="choice", options=("open", "embargoed", "restricted", "closed")
+            ),
+            Field("embargo_date", kind="date", help="Applies when access is 'embargoed'."),
+            Field("version", kind="str", help="Deposit version."),
+            Field(
+                "related",
+                kind="text",
+                help="One related identifier per line: ``relation identifier``.",
+                parts=("relation", "identifier"),
+                part_sep=" ",
+            ),
+        ]
+    )
 
 
 # ── the editor state ──────────────────────────────────────────────────────────
@@ -136,13 +218,17 @@ class EditorModel:
     construct it from their store and read :meth:`entries` back on Apply.
     """
 
-    def __init__(self, schema: Schema, initial: dict[str, Any] | None = None,
-                 *, extra_key: str = "", extra_value: str = "") -> None:
+    def __init__(
+        self,
+        schema: Schema,
+        initial: dict[str, Any] | None = None,
+        *,
+        extra_key: str = "",
+        extra_value: str = "",
+    ) -> None:
         self.schema = schema
         initial = {str(k): v for k, v in (initial or {}).items()}
-        self.values: dict[str, str] = {
-            f.key: _as_text(initial.get(f.key, "")) for f in schema
-        }
+        self.values: dict[str, str] = {f.key: f.to_text(initial.get(f.key, "")) for f in schema}
         known = set(self.values)
         self.extras: list[list[str]] = [
             [str(k), _as_text(v)] for k, v in initial.items() if str(k) not in known
@@ -193,8 +279,8 @@ class EditorModel:
                     float(text)
                 except ValueError:
                     problems[f.key] = f"{f.display_label} must be a number."
-            elif f.kind == "date" and len(text) != 10:
-                problems[f.key] = f"{f.display_label} must be YYYY-MM-DD."
+            elif f.kind == "date" and not _is_iso_date(text):
+                problems[f.key] = f"{f.display_label} must be a date, YYYY-MM-DD."
         return problems
 
     def entries(self) -> dict[str, str]:
@@ -205,18 +291,41 @@ class EditorModel:
                 out[key.strip()] = value.strip()
         return out
 
+    def structured_entries(self) -> dict[str, Any]:
+        """:meth:`entries` with each shaped schema field parsed back (lists, records)."""
+        out: dict[str, Any] = {}
+        for key, value in self.entries().items():
+            f = self.schema.field(key)
+            out[key] = f.from_text(value) if f is not None else value
+        return out
+
     def rows(self) -> list[dict[str, str]]:
-        """The entries table: every entry with an editor-friendly value preview."""
-        return [{"key": k, "value": v.replace("\n", "; ")} for k, v in self.entries().items()]
+        """The entries table: every entry with a one-line value preview (lines as `` | ``)."""
+        return [{"key": k, "value": v.replace("\n", " | ")} for k, v in self.entries().items()]
+
+
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _is_iso_date(text: str) -> bool:
+    """``YYYY-MM-DD`` and a real calendar day (``fromisoformat`` alone also takes ``YYYYMMDD``)."""
+    if not _ISO_DATE.fullmatch(text):
+        return False
+    try:
+        datetime.date.fromisoformat(text)
+    except ValueError:
+        return False
+    return True
 
 
 def _as_text(value: Any) -> str:
+    """Editor text of a value with no declared shape: one line per list item."""
     if value is None:
         return ""
     if isinstance(value, str):
         return value
-    if isinstance(value, (list, tuple)):  # e.g. creators, keywords from a deposit
-        return "; ".join(
+    if isinstance(value, (list, tuple)):
+        return "\n".join(
             "; ".join(str(part) for part in item.values()) if isinstance(item, dict) else str(item)
             for item in value
         )

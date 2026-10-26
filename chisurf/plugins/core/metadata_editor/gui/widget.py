@@ -84,14 +84,30 @@ def _field_sections(schema: Schema) -> list[dict]:
 
 
 _ADD_SECTIONS: list[dict] = [
-    {"type": "value", "attr": "extra_key", "label": "Add key", "kind": "str",
-     "description": "A new (or existing) key for an entry beyond the schema."},
-    {"type": "value", "attr": "extra_value", "label": "Add value", "kind": "str",
-     "description": "Its value. Add entry adds (or replaces) the entry."},
-    {"type": "button_row", "buttons": [
-        {"label": "Add entry", "action": "add_extra",
-         "description": "Add or replace the entry for this key."},
-    ]},
+    {
+        "type": "value",
+        "attr": "extra_key",
+        "label": "Add key",
+        "kind": "str",
+        "description": "A new (or existing) key for an entry beyond the schema.",
+    },
+    {
+        "type": "value",
+        "attr": "extra_value",
+        "label": "Add value",
+        "kind": "str",
+        "description": "Its value. Add entry adds (or replaces) the entry.",
+    },
+    {
+        "type": "button_row",
+        "buttons": [
+            {
+                "label": "Add entry",
+                "action": "add_extra",
+                "description": "Add or replace the entry for this key.",
+            },
+        ],
+    },
 ]
 
 _EXTRAS_SECTION: dict = {
@@ -114,17 +130,30 @@ _EXTRAS_SECTION: dict = {
 
 
 class MetadataEditorWidget:
-    """The one metadata editor body: typed fields, free-form extras, Apply."""
+    """The one metadata editor body: typed fields, free-form extras, Apply.
+
+    An embedded editor closes on Apply / Cancel (the host decides what to show
+    next). With *keep_open* -- the standalone window, whose only content is the
+    editor -- Apply leaves it on the applied entries and Cancel reverts it to
+    what it was opened with.
+    """
 
     def __init__(
         self,
         on_apply: Callable[[dict[str, str]], None] | None = None,
         on_cancel: Callable[[], None] | None = None,
+        *,
+        keep_open: bool = False,
+        on_used: Callable[[str], None] | None = None,
     ) -> None:
         self.on_apply = on_apply
         self.on_cancel = on_cancel
+        self.keep_open = keep_open
+        #: told the name of every control the user used (a host's tour listens)
+        self.on_used = on_used
         self.editor: EditorModel | None = None
-        self.form = FormState(on_used=lambda name: None)
+        self._opened: tuple[Schema, dict[str, Any]] | None = None
+        self.form = FormState(on_used=lambda name: self._used(name))
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self._values: _Values | None = None
         self._sections: list[dict] = []
@@ -134,6 +163,7 @@ class MetadataEditorWidget:
     # -- open / close ---------------------------------------------------------------- #
     def open(self, schema: Schema, initial: dict[str, Any] | None = None) -> None:
         """Fill the editor from *initial* (schema fields and extras alike)."""
+        self._opened = (schema, dict(initial or {}))
         self.editor = EditorModel(schema, initial)
         self._values = _Values(self.editor.values)
         self._sections = _field_sections(schema)
@@ -141,7 +171,12 @@ class MetadataEditorWidget:
 
     def close(self) -> None:
         self.editor = None
+        self._opened = None
         self._message[0] = ""
+
+    def _used(self, name: str) -> None:
+        if callable(self.on_used):
+            self.on_used(name)
 
     @property
     def visible(self) -> bool:
@@ -171,9 +206,7 @@ class MetadataEditorWidget:
         im.begin_disabled(bool(problems))
         pressed_apply = im.button(tr("Apply"), role="primary")
         im.end_disabled()
-        im.set_item_tooltip(
-            tr("Store every entry (nothing is written until the host applies it).")
-        )
+        im.set_item_tooltip(tr("Store every entry (nothing is written until the host applies it)."))
         self.remember("apply")
         im.same_line()
         from chisurf.plugins.emtk_layout import action_button
@@ -182,11 +215,17 @@ class MetadataEditorWidget:
         self.remember("cancel")
         if pressed_apply:
             entries = editor.entries()
-            self.close()
+            if not self.keep_open:
+                self.close()
+            self._used("apply")
             if callable(self.on_apply):
                 self.on_apply(entries)
         elif pressed_cancel:
-            self.close()
+            if self.keep_open and self._opened is not None:
+                self.open(*self._opened)
+            else:
+                self.close()
+            self._used("cancel")
             if callable(self.on_cancel):
                 self.on_cancel()
         # The entries table last: a table region takes the pointer over its area,
