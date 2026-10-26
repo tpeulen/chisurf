@@ -206,7 +206,7 @@ class BatchModel(Stepper, BatchViewModel):
         return list(self._fit_names)
 
     def load_example(self) -> None:
-        """The demo affordance: the test fakes' session in, the wizard staged to run."""
+        """The demo affordance: the fake session of :mod:`..fakes` in, the wizard staged to run."""
         from chisurf.plugins.core.batch_analysis.demo import load_into
 
         load_into(self)

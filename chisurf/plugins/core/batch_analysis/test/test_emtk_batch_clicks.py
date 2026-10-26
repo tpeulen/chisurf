@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from chisurf.plugins.core.batch_analysis.fakes import FakeSession
 from chisurf.plugins.emtk_hermetic import (  # noqa: F401  (autouse fixtures)
     hermetic,
     real_chisurf_untouched,
@@ -20,7 +21,6 @@ from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear
 
 from ..gui.app import BatchAnalysisApp
 from ..gui.model import BatchModel
-from .fakes import FakeSession
 
 BIG, SMALL = (1200, 800), (800, 600)
 
@@ -312,7 +312,7 @@ def test_the_template_fit_is_picked_from_the_list_of_fits(drv):
 
 def test_refresh_fits_lists_the_fits_created_since(drv):
     to_step(drv, "files")
-    from .fakes import FakeFit
+    from chisurf.plugins.core.batch_analysis.fakes import FakeFit
 
     drv.app.model.session.fits.append(FakeFit("Third fit"))
     assert "Third fit" not in drv.app.model.fit_names()

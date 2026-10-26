@@ -1,4 +1,7 @@
-"""A fake ChiSurf session for the batch-analysis tests: datasets, one template fit, a fit client and a dispatcher.
+"""A fake ChiSurf session for the batch wizard: datasets, template fits, a fit client and a dispatcher.
+
+Shipped with the plugin, not kept under ``test/``: *Load example* runs the real batch on it
+(:mod:`.demo`), and the plugin's tests use the same session.
 
 The numbers are deterministic: running the fit on the k-th item gives ``tau = 1 + 0.5 k`` and ``chi2r = 1 + 0.05 k``,
 so the results of a batch differ item by item and a test can tell the items apart.

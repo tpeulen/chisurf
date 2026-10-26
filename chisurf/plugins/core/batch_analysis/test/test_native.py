@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from emtk.testing import RecordingPainter
 
+from chisurf.plugins.core.batch_analysis.fakes import FakeSession
 from chisurf.plugins.emtk_hermetic import (  # noqa: F401  (autouse fixtures)
     hermetic,
     real_chisurf_untouched,
@@ -15,7 +16,6 @@ from chisurf.plugins.emtk_hermetic import (  # noqa: F401  (autouse fixtures)
 
 from ..gui.app import BatchAnalysisApp
 from ..gui.model import BatchModel
-from .fakes import FakeSession
 
 
 def test_native_batch_selection_and_state_roundtrip():

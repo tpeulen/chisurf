@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 from emtk.testing import RecordingPainter
 
+from chisurf.plugins.core.batch_analysis.fakes import FakeSession
 from chisurf.plugins.core.project_browser.test.driving import (
     clipped_texts,
     draw_clip,
@@ -30,7 +31,6 @@ from ..core import runner
 from ..gui.app import BatchAnalysisApp
 from ..gui.model import STEPS, BatchModel
 from ..gui.view_model import BatchViewModel
-from .fakes import FakeSession
 
 PLUGIN = Path(__file__).parent.parent
 BIG, SMALL = (1200, 800), (800, 600)

@@ -1,4 +1,4 @@
-"""The batch wizard's example: the test fakes' session, run through the real batch."""
+"""The batch wizard's example: the shipped fake session (:mod:`..fakes`), run through the real batch."""
 
 import csv
 

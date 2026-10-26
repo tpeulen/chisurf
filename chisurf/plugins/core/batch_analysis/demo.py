@@ -2,7 +2,7 @@
 
 A batch needs three things a headless run does not have on its own — datasets, a
 template fit and a fitting client — so the demo borrows the session the plugin's
-own tests use (:mod:`chisurf.plugins.core.batch_analysis.test.fakes`): three
+own tests use (:mod:`chisurf.plugins.core.batch_analysis.fakes`, shipped with the plugin): three
 datasets, one template fit whose ``fit.run`` answers with known parameter and χ²
 movements. ``make_demo`` runs that batch and writes the results CSV;
 ``load_into`` hands the same session to a live wizard.
@@ -30,8 +30,8 @@ def demo_folder() -> Path:
 def _example_model(folder: Path):
     import threading
 
+    from chisurf.plugins.core.batch_analysis.fakes import FakeSession
     from chisurf.plugins.core.batch_analysis.gui.model import BatchModel
-    from chisurf.plugins.core.batch_analysis.test.fakes import FakeSession
 
     model = BatchModel(session=FakeSession(fits=TEMPLATES))
     model.selected_dataset_indices = list(range(N_DATASETS))
@@ -57,7 +57,7 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> Path:
 
 def load_into(app) -> Path:
     """Attach the example session to the wizard and stage the run (app or model)."""
-    from chisurf.plugins.core.batch_analysis.test.fakes import FakeSession
+    from chisurf.plugins.core.batch_analysis.fakes import FakeSession
 
     model = app.model if hasattr(app, "model") else app
     model.session = FakeSession(fits=TEMPLATES)
