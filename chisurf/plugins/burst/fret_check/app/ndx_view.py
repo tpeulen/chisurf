@@ -48,6 +48,13 @@ class NdxView:
             return False
         return True
 
+    def close(self) -> None:
+        """Close the hosted ndX app (it holds the burst table and its plots)."""
+        if self.app is not None and hasattr(self.app, "close"):
+            self.app.close()
+        self.app = None
+        self._version = None
+
     def show(self, columns: dict, version) -> None:
         """Give ndX the burst table (only when it changed)."""
         if version == self._version or not self.ensure():

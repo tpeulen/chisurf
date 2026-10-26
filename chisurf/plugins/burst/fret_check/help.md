@@ -7,8 +7,8 @@ of every burst, and a QC list that names what is wrong with the measurement in p
 to download. All processing is local; nothing leaves the machine.
 
 ## How it works
-1. Open a photon-stream file (PTU, HT3, PTU/ALEX .sm, PTO, SPC) or press the example button for a simulated
-   measurement.
+1. Open a photon-stream file (PTU, HT3, PTU/ALEX .sm, PTO, SPC), or under **Try it without a file** pick an
+   example and press **Simulate** for a simulated measurement.
 2. Check the detected experiment in **Channels and windows**: the micro-time histogram of every detector with
    the excitation windows marked. Fix a wrong guess and press Apply.
 3. The **time trace** shows the count rate per stream in 1 ms bins with the bursts shaded; **E/S** shows the
@@ -19,6 +19,8 @@ to download. All processing is local; nothing leaves the machine.
    full burst table for gating and follow-up.
 
 ## Before trusting a result
-The corrections (gamma, beta, background) default to neutral values — set yours before reading absolute E.
+The background is measured outside the bursts and subtracted from every burst (rate × duration, per stream;
+*Subtract background* in Corrections). γ and β default to 1 and α, δ to 0 — set yours, or auto-calibrate
+(ALEX/PIE), before reading absolute E.
 The QC flags compare the measurement against the comfort zones of a healthy confocal smFRET run; amber means
 "look, this may be fine", red means "fix this before publishing".

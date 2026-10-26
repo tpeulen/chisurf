@@ -28,6 +28,7 @@ from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form, find_section
 
+from .. import jobs
 from . import plots
 from .ndx_view import NdxView
 from .session import Session
@@ -54,9 +55,9 @@ PANELS = {"measurement": "Measurement", "channels": "Channels", "search": "Burst
           "corrections": "Corrections", "trace": "Time trace"}
 
 WELCOME = (
-    "Confocal single-molecule FRET, analysed entirely in your browser.\n\n"
-    "Your data stays on this computer: the file is read and processed here, by tttrlib compiled "
-    "to WebAssembly. Nothing is uploaded, and no data ends up on any server.\n\n"
+    "Confocal single-molecule FRET, analysed locally on this machine.\n\n"
+    "Your data stays on this computer: the file is read and processed here, by tttrlib (in the "
+    "page, compiled to WebAssembly). Nothing is uploaded, and no data ends up on any server.\n\n"
     "Drop a TTTR file on the window (PicoQuant PTU/HT3/T3R, Becker & Hickl SPC, SM, PTO, ...), "
     "or simulate an example under Measurement > Try it without a file. The experiment -- cw, PIE "
     "or µsALEX, which detector is donor or acceptor, polarization -- is detected from the photons.\n\n"
@@ -247,6 +248,20 @@ class SmFretApp(ImApp):
         if self._ndx_drawn and self.ndx.key(key, text, modifiers):
             return True
         return super().key(key, text, modifiers)
+
+    def close(self) -> None:
+        """Release what the window holds: a running job, the hosted ndX, the measurement.
+
+        With the inline runner the decoded measurement lives in this process
+        (:data:`..jobs._CACHE`); a page's worker keeps its own and ends with it.
+        """
+        self.session.cancel()
+        self.ndx.close()
+        if self.session.runner == "sync":
+            jobs._CACHE.clear()
+        base = getattr(super(), "close", None)
+        if base is not None:
+            base()
 
     def animating(self) -> bool:
         return super().animating() or self.ndx.animating() or self.session.busy

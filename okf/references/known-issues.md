@@ -4,6 +4,15 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## tttrlib `auto_calibrate` returns zero leakage on PIE data with donor-only molecules (found 2026-10-26)
+
+status: open — owner tttrlib (calibration); found while fixing fret_check's background subtraction.
+On the PIE scenario of `test/agent/test_pie_chain.py` (simulated leakage α = 0.06, 15 % donor-only
+molecules) `tttrlib.auto_calibrate` returns α = 0.0 while β (0.80) comes out plausible. Corrected E is then
+biased by the uncorrected leakage. Measure: run the scenario with `auto_calibrate=True` through
+`chisurf.plugins.burst.fret_check.jobs.analyse` and print `factors_used`; compare with the simulator's
+`Scenario` leakage. Blocks: trusting auto-calibrated α on PIE; explicit factors are unaffected.
+
 ## kappa2_dist's kappasq returns negative kappa-squared for reachable anisotropies (found 2026-10-25)
 
 status: open — found while porting the anisotropy-to-kappa script to a real test (the old script only printed).

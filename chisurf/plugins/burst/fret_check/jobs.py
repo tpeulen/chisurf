@@ -79,7 +79,9 @@ def bursts_from_dict(d: dict) -> Bursts:
 
 
 def qc_to_dict(q: QCReport) -> dict:
+    """The report as JSON; ``level`` is the overall verdict (``ok``/``warn``/``bad``)."""
     return {
+        "level": q.level,
         "checks": [dataclasses.asdict(c) for c in q.checks], "flags": pack(q.flags),
         "burst_rate": q.burst_rate, "occupancy": q.occupancy, "p_multi": q.p_multi,
         "p_multi_gaps": q.p_multi_gaps, "arrival_rate": q.arrival_rate, "gaps": pack(q.gaps),
@@ -143,9 +145,22 @@ def trace(data, exp: Experiment, bursts: Bursts, bin_s: float = 1e-3) -> dict:
     return {"bin_s": bin_s, "rates": rates, "bursts": pack(spans)}
 
 
-def corrections(b: Bursts, factors: dict, auto: bool):
+def background_counts(b: Bursts) -> dict[str, np.ndarray]:
+    """Expected background photons of every burst per stream: rate x duration.
+
+    The rates are measured outside the bursts (:attr:`Bursts.background`,
+    counts/s); a burst of duration *T* collects ``rate * T`` of them.
+    """
+    return {k: float(b.background.get(k, 0.0)) * np.asarray(b.duration, float) for k in b.counts}
+
+
+def corrections(b: Bursts, factors: dict, auto: bool, subtract_background: bool = True):
     """Accurate E/S (tttrlib) and the factors used; auto-calibrated on request.
 
+    The background is subtracted burst by burst (:func:`background_counts`,
+    the out-of-burst rate times the burst duration) before anything else, so
+    the calibration and the corrected E/S see background-free signal;
+    ``subtract_background=False`` keeps the raw counts.
     ALEX/PIE: every factor from the measurement (``tttrlib.auto_calibrate``).
     cw: only the leakage is in the data -- from the donor-only (low-E) bursts;
     delta needs acceptor excitation, gamma and beta a reference.
@@ -155,10 +170,14 @@ def corrections(b: Bursts, factors: dict, auto: bool):
     if b.n == 0:
         return None, factors
     factors = dict(factors)
+    # tttrlib's bg_* is one count for every burst; durations differ, so the
+    # per-burst background is taken off the counts here instead.
     factors.update(bg_dd=0.0, bg_da=0.0, bg_aa=0.0)
-    cols = {"i_dd": b.counts["DD"], "i_da": b.counts["DA"]}
+    bg = background_counts(b) if subtract_background else {}
+    cols = {"i_dd": np.asarray(b.counts["DD"], float) - bg.get("DD", 0.0),
+            "i_da": np.asarray(b.counts["DA"], float) - bg.get("DA", 0.0)}
     if "AA" in b.counts:
-        cols["i_aa"] = b.counts["AA"]
+        cols["i_aa"] = np.asarray(b.counts["AA"], float) - bg.get("AA", 0.0)
     if auto and "i_aa" in cols:
         cal = tttrlib.auto_calibrate(cols)
         got = cal.get("factors", cal) if isinstance(cal, dict) else {}
@@ -168,10 +187,9 @@ def corrections(b: Bursts, factors: dict, auto: bool):
     elif auto:
         do = b.E < 0.15
         if do.sum() >= 20:
-            mean_dur = float(b.duration[do].mean())
+            # cols are background-free already (or raw on request).
             alpha = float(tttrlib.leakage_from_donor_only(
-                cols["i_dd"][do], cols["i_da"][do],
-                bg_dd=b.background["DD"] * mean_dur, bg_da=b.background["DA"] * mean_dur))
+                cols["i_dd"][do], cols["i_da"][do], bg_dd=0.0, bg_da=0.0))
             if np.isfinite(alpha):
                 factors["alpha"] = alpha
     res = tttrlib.accurate_fret(cols["i_dd"], cols["i_da"], cols.get("i_aa"), factors=factors)
@@ -215,7 +233,8 @@ def _measurement(report, key, path, scenario, redetect):
 # --------------------------------------------------------------------------- #
 def analyse(report, key: str, path: str = "", scenario: str = "", redetect: bool = False,
             experiment: dict | None = None, settings: dict | None = None, v_eff_fl: float = 1.0,
-            correct: bool = False, factors: dict | None = None, auto_calibrate: bool = False) -> dict:
+            correct: bool = False, factors: dict | None = None, auto_calibrate: bool = False,
+            subtract_background: bool = True) -> dict:
     """Load (once), detect, find the bursts, check, correct: one measurement.
 
     Parameters
@@ -236,6 +255,9 @@ def analyse(report, key: str, path: str = "", scenario: str = "", redetect: bool
     correct, factors, auto_calibrate
         Accurate E/S with these factors (advanced mode), auto-calibrated on
         request.
+    subtract_background : bool
+        Take each burst's measured background (out-of-burst rate x duration)
+        off its counts before the corrections.
 
     Returns
     -------
@@ -253,7 +275,7 @@ def analyse(report, key: str, path: str = "", scenario: str = "", redetect: bool
     mounted = bool(path) and os.path.islink(path)
     if entry.get("large"):
         out = _analyse_large(report, path, burst_settings, experiment, v_eff_fl, correct, factors,
-                             auto_calibrate)
+                             auto_calibrate, subtract_background)
         out["file_mounted"] = mounted
         return out
     exp = experiment_from_dict(experiment) if experiment else entry["exp"]
@@ -265,7 +287,7 @@ def analyse(report, key: str, path: str = "", scenario: str = "", redetect: bool
     corrected, used = None, dict(factors or {})
     if correct:
         report(0.86, "FRET corrections")
-        corrected, used = corrections(bursts, factors or {}, auto_calibrate)
+        corrected, used = corrections(bursts, factors or {}, auto_calibrate, subtract_background)
     report(0.93, "time trace")
     tr = trace(data, exp, bursts)
     report(1.0, "done")
@@ -277,7 +299,7 @@ def analyse(report, key: str, path: str = "", scenario: str = "", redetect: bool
 
 
 def _analyse_large(report, path, burst_settings, experiment, v_eff_fl, correct, factors,
-                   auto_calibrate) -> dict:
+                   auto_calibrate, subtract_background=True) -> dict:
     """:func:`analyse` for a file too large to decode whole (:mod:`.chunked`)."""
     from .chunked import analyse_chunked, one_second_trace  # noqa: PLC0415
 
@@ -288,7 +310,7 @@ def _analyse_large(report, path, burst_settings, experiment, v_eff_fl, correct, 
     corrected, used = None, dict(factors or {})
     if correct:
         report(0.95, "FRET corrections")
-        corrected, used = corrections(bursts, factors or {}, auto_calibrate)
+        corrected, used = corrections(bursts, factors or {}, auto_calibrate, subtract_background)
     spans = (np.stack([bursts.t_start, bursts.t_start + bursts.duration], axis=1)
              if bursts.n else np.zeros((0, 2)))
     tr = {"bin_s": fine["bin_s"], "bursts": pack(spans),

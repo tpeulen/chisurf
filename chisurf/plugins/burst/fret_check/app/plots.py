@@ -214,13 +214,13 @@ def draw_trace(s, width: float) -> None:
                              ip.COND_ALWAYS if hasattr(ip, "COND_ALWAYS") else 1)
         spans = s.trace_bursts
         if spans.size and t.size:
+            # One band per burst, between the two plot edges: a single polyline
+            # through all bursts would fill every gap down to y = 0.
             sel = (spans[:, 1] >= t[0]) & (spans[:, 0] <= t[-1])
-            xs, ys = [], []
+            hi = np.full(2, top * 1.08)
+            lo = np.full(2, -bottom * 1.08)
             for a, b in spans[sel]:
-                xs += [a, a, b, b]
-                ys += [-bottom * 1.08, top * 1.08, top * 1.08, -bottom * 1.08]
-            if xs:
-                ip.plot_shaded("bursts", np.asarray(xs), np.asarray(ys))
+                ip.plot_shaded("bursts", np.asarray([a, b], float), hi, lo)
         for k in up:
             ip.plot_line(STREAM_LABEL.get(k, k), t, rates[k][i0:i1],
                          line_color=STREAM_COLOUR.get(k))

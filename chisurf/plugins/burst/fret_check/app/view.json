@@ -278,6 +278,12 @@
             "sections": [
                 {
                     "type": "toggle",
+                    "attr": "subtract_background",
+                    "label": "Subtract background",
+                    "description": "Take each burst's background off its counts: the count rate measured outside the bursts, per stream, times the burst duration."
+                },
+                {
+                    "type": "toggle",
                     "attr": "auto_calibrate",
                     "label": "Auto-calibrate",
                     "description": "ALEX/PIE: all factors from the measurement (tttrlib.auto_calibrate). cw: the leakage \u03b1 from the donor-only bursts; \u03b3, \u03b2 and \u03b4 need a reference and stay as typed."

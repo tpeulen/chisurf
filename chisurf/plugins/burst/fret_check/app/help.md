@@ -1,8 +1,8 @@
 # Overview
 
-Your data stays on your computer. All processing happens in your browser: the file you open is read and analysed on this computer, by tttrlib compiled to WebAssembly and running inside the page. Nothing is uploaded. No data, result or file name is sent to or stored on any server.
+Your data stays on your computer. All processing happens locally, on this machine: the file you open is read and analysed by tttrlib -- inside the ChiSurf app on the desktop, compiled to WebAssembly inside the page in a browser. Nothing is uploaded. No data, result or file name is sent to or stored on any server.
 
-The web server only delivers the page itself, like any static website. After that, opening a file, the analysis, the plots and the downloads all happen locally. Downloads are made by the browser from memory.
+On the web page the server only delivers the page itself, like any static website. After that, opening a file, the analysis, the plots and the downloads all happen locally. Downloads are made by the browser from memory; in the desktop app they are written to your Downloads folder.
 
 This page checks and analyses confocal single-molecule FRET (smFRET) measurements: diffusing molecules recorded with time-tagged photon counting (TTTR).
 
@@ -90,6 +90,8 @@ ndX (advanced) shows this table: choose any two columns, histogram them, gate po
 
 In advanced mode, E and S are corrected with γ (detection and quantum yield), α (leakage), δ (direct excitation) and β (excitation).
 
+Background: with *Subtract background* on (the default), each burst loses its expected background photons before any factor is applied or calibrated -- per stream, the count rate measured outside the bursts times the burst's duration. Turn it off to correct the raw counts.
+
 Auto-calibrate:
 
 - *ALEX/PIE*: finds every factor from the measurement itself, using the donor-only and acceptor-only populations and the FRET populations' 1/S against E.
@@ -100,9 +102,12 @@ Auto-calibrate:
 - Burst search: all-photon sliding window. A burst is where m consecutive photons arrive within T, and it is kept when it has at least *Min photons*. 2CDE τ is the kernel width of the 2CDE filters. V_eff only enters the concentration estimate.
 - Channels: donor and acceptor routing channels, comma separated, with polarization parallel first. With ALEX/PIE, the donor- and acceptor-excitation windows are given as start-stop. Re-detect goes back to what the data say.
 
-# Privacy: everything stays in your browser
+# Privacy: everything stays on this machine
 
-- Processing: reading the file, detecting the experiment, the burst search, the quality checks, corrections, plots and ndX all run inside this browser tab, in WebAssembly. No part of the analysis runs on a server.
+- Processing: reading the file, detecting the experiment, the burst search, the quality checks, corrections, plots and ndX all run locally -- in the ChiSurf process on the desktop, inside the browser tab (WebAssembly) on the web page. No part of the analysis runs on a server.
+
+On the web page:
+
 - Your data: the file is read from your disk into the page's memory. It is never uploaded, and neither are the bursts, the results or the file name.
 - Downloads: the CSV and JSON files are created by the browser from memory and saved directly to your computer.
 - What is loaded from the network: only the page itself (from peulen.xyz) and the Python runtime, Pyodide (from the jsDelivr CDN). These are the same for every visitor and carry nothing of yours.

@@ -8,12 +8,12 @@
         },
         {
             "title": "Start from an example",
-            "text": "The example button loads a simulated measurement with a known answer, so every panel that follows can be judged against what should be there.",
+            "text": "<b>Try it without a file</b> simulates a measurement with a known answer: pick an example and press <b>Simulate</b>, so every panel that follows can be judged against what should be there.",
             "target": {
                 "name": "data_loaded"
             },
             "await": {
-                "hint": "Press <b>Example</b> for a simulated measurement."
+                "hint": "Pick an example and press <b>Simulate</b>."
             }
         },
         {

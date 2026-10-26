@@ -59,6 +59,7 @@ def analyse(
     correct: bool = False,
     factors: dict | None = None,
     auto_calibrate: bool = False,
+    subtract_background: bool = True,
     report: Callable[[float, str], None] | None = None,
     progress: Callable[[float, str], None] | None = None,
     **kwargs: Any,
@@ -82,6 +83,7 @@ def analyse(
         correct=correct,
         factors=factors,
         auto_calibrate=auto_calibrate,
+        subtract_background=subtract_background,
     )
 
 
@@ -101,7 +103,7 @@ def qc(
     progress: Callable[[float, str], None] | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """Run smFRET quality control and generate the quality verdict."""
+    """Run smFRET quality control: the verdict ``level`` (``ok``/``warn``/``bad``) and its checks."""
     result = analyse(
         filename=filename,
         path=path,

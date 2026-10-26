@@ -86,10 +86,57 @@ def test_guide_targets_exist():
 
 
 def test_help_says_data_stays_local():
+    """Host-neutral: the same help ships with the desktop plugin and the page."""
     text = (APP_DIR / "help.md").read_text()
     head = text[: text.index("# Opening data")]
-    assert "in your browser" in head and "server" in head
+    assert "locally" in head and "server" in head
+    assert "desktop" in head and "browser" in head
     assert "# Privacy" in text
+    assert "in your browser" not in frame.WELCOME
+
+
+def test_the_trace_shades_each_burst_and_no_gap(app, monkeypatch):
+    """One band per burst span: a single polyline filled to y=0 shaded every gap."""
+    from chisurf.plugins.burst.fret_check.app import plots
+
+    bands = []
+    real = plots.ip.plot_shaded
+
+    def record(label, xs, *args, **kw):
+        bands.append((label, list(map(float, xs))))
+        return real(label, xs, *args, **kw)
+
+    monkeypatch.setattr(plots.ip, "plot_shaded", record)
+    app.session.mode = "advanced"
+    grab(app, (1300, 860), frames=2)
+    app.docks.focus("trace")
+    grab(app, (1300, 860), frames=2)
+    app.session.mode = "simple"
+    spans = app.session.trace_bursts
+    window = plots.TRACE_SPAN_S
+    visible = spans[(spans[:, 1] >= 0.0) & (spans[:, 0] <= window)]
+    burst_bands = [xs for label, xs in bands if label == "bursts"]
+    assert burst_bands, "no burst shading drawn"
+    assert all(len(xs) == 2 for xs in burst_bands)
+    # Every frame draws the same bands: exactly the visible burst spans.
+    assert {tuple(xs) for xs in burst_bands} == {(float(a), float(b)) for a, b in visible}
+
+
+def test_the_info_line_of_a_simulation_has_no_dangling_separator(app):
+    second = app.session.file_info().splitlines()[1]
+    assert not second.startswith("·") and not second.startswith(" ·"), second
+
+
+def test_close_releases_the_measurement_and_ndx():
+    from chisurf.plugins.burst.fret_check import jobs
+
+    a = frame.make_app(runner="sync")
+    a.session.demo = "PIE 2c"
+    a.session.simulate()
+    assert jobs._CACHE
+    a.close()
+    assert not jobs._CACHE
+    assert a.ndx.app is None
 
 
 @pytest.mark.parametrize("mode", ["simple", "advanced"])

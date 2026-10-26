@@ -86,6 +86,8 @@ class Session:
         self.T_us = s.T * 1e6
         self.cde_tau_us = s.cde_tau * 1e6
         self.auto_calibrate = False
+        #: Take each burst's measured background off its counts before correcting.
+        self.subtract_background = True
         self.gamma, self.alpha, self.delta, self.beta = 1.0, 0.0, 0.0, 1.0
         self.drop_flagged = False
         #: Effective observation volume for the concentration estimate, fL.
@@ -118,7 +120,8 @@ class Session:
                 pathlib.Path(self.path).name if self.path else "")
         lines = [
             f"{name}",
-            f"{e.container} · {e.n_photons:,} photons · {e.duration_s:.1f} s",
+            # A simulated measurement has no container format: no leading "·".
+            " · ".join(p for p in (e.container, f"{e.n_photons:,} photons", f"{e.duration_s:.1f} s") if p),
             f"Detected: {e.kind}",
         ]
         if e.unassigned_channels:
@@ -166,7 +169,8 @@ class Session:
                   "correct": self.mode == "advanced",
                   "factors": {"gamma": float(self.gamma), "alpha": float(self.alpha),
                               "delta": float(self.delta), "beta": float(self.beta)},
-                  "auto_calibrate": bool(self.auto_calibrate)}
+                  "auto_calibrate": bool(self.auto_calibrate),
+                  "subtract_background": bool(self.subtract_background)}
         if self.mode == "advanced" and self.exp is not None and not fresh and not redetect:
             params["experiment"] = jobs.experiment_to_dict(self._experiment_from_settings())
         self.busy, self.progress = True, None
