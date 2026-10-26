@@ -7,7 +7,6 @@ fields live in a child region that scrolls with the wheel and a draggable scroll
 from __future__ import annotations
 
 import pytest
-
 from emtk import keys
 
 from chisurf.plugins.core.setup.test import seeded

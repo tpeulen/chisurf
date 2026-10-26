@@ -6,7 +6,6 @@ from typing import Any
 
 import chisurf as cs
 import chisurf.core.experiments
-
 from chisurf.core.fitting.fit import Fit, FitGroup
 
 

@@ -42,8 +42,8 @@ def test_write_concept_slugs_and_frontmatter(tmp_path):
 
 
 def test_record_finding_tool_registers_and_validates(tmp_path):
-    from chisurf.core.agent.spec import ToolRegistry, ToolError
     from chisurf.core.agent import user_okf
+    from chisurf.core.agent.spec import ToolError, ToolRegistry
 
     registry = ToolRegistry()
     user_okf.build_tool_handler(registry)
@@ -52,7 +52,7 @@ def test_record_finding_tool_registers_and_validates(tmp_path):
 
     # An empty title raises before anything is written (and the real home is
     # never touched in tests: content paths are driven through `root=`).
-    from chisurf.core.agent.spec import ToolError, call_handler
+    from chisurf.core.agent.spec import call_handler
 
     try:
         call_handler(spec, None, {"title": "  "})
@@ -92,7 +92,7 @@ def test_save_skill_writes_a_skill_the_library_loads(tmp_path):
 
 
 def test_save_skill_tool_registers_and_requires_a_body(tmp_path):
-    from chisurf.core.agent.spec import ToolRegistry, ToolError, call_handler
+    from chisurf.core.agent.spec import ToolError, ToolRegistry, call_handler
 
     registry = ToolRegistry()
     user_okf.build_tool_handler(registry)

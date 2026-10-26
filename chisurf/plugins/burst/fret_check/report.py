@@ -212,7 +212,6 @@ def _scatter(fig, r: int, c: int, x, y, title: str, x_label: str, y_label: str,
     ax.scatter(x, y, size=1.2, color=color, alpha=0.45)
     ax.set_title(title)
     ax.set_labels(x=x_label, y=y_label)
-    scaled = False
     if "static FRET" in title:  # tau_D(E) = tau_D0 (1 - E), the MFD reference
         donor_only = x[y < 0.2]  # x is tau_D, y is E here
         tau0 = float(np.nanmedian(donor_only)) if donor_only.size >= 5 \
@@ -407,8 +406,7 @@ def build_pdf_report(session) -> bytes:
         checks = list(qc.checks)
         y0 = 0.955
         # line pitch as a fraction of THIS cell's height: 11 pt between lines
-        avail_h_pt = 792.0 - 2 * 30.0 - (len(rows_list) - 1) * 6.0 if False else \
-            792.0 - 2 * 30.0 - 6.0 * max(0, len(at) - 2)
+        avail_h_pt = 792.0 - 2 * 30.0 - 6.0 * max(0, len(at) - 2)
         cell_h_pt = grid_table / max(grid_total, 1e-9) * avail_h_pt
         pitch = 11.0 / max(cell_h_pt, 1e-9)
         cols_x = (0.02, 0.35, 0.68)

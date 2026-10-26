@@ -14,7 +14,6 @@ import numpy as np
 import pytest
 
 
-
 def _draw_settings(page, width=440.0, height=640.0):
     """Draw the page's settings once on an emtk surface; return the form's field names."""
     from emtk import im

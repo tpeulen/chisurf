@@ -177,7 +177,6 @@ def loaded(ui, files, slow=True, background=False):
 
 def field(ui, name):
     """The rectangle of field *name*, scrolled into view the way a user would (mouse wheel over its panel)."""
-    m = ui.app.model
     if any(name.startswith(p) for p in ("tail_start", "tail_stop", "shift", "background", "fp_")):
         return ui.rect(name.split(".")[0])
     ui.draw()
@@ -663,12 +662,12 @@ def test_parameter_table_and_in_place_editing(ui, files):
     m = loaded(ui, files)
     param_rows = m.parameter_rows()
     assert len(param_rows) >= 10
-    keys = [r["key"] for r in param_rows]
-    assert "tail_start" in keys
-    assert "tail_stop" in keys
-    assert "background" in keys
-    assert "shift" in keys
-    assert "fp_dt_ns" in keys
+    param_keys = [r["key"] for r in param_rows]
+    assert "tail_start" in param_keys
+    assert "tail_stop" in param_keys
+    assert "background" in param_keys
+    assert "shift" in param_keys
+    assert "fp_dt_ns" in param_keys
 
     # Edit numeric parameter in table
     tail_start_row = next(r for r in param_rows if r["key"] == "tail_start")
@@ -706,7 +705,7 @@ def test_parameter_table_and_in_place_editing(ui, files):
     # Reference parameters table: rho, tau, r0, bg_vv, bg_vh per sample
     ref_rows = m.reference_rows()
     assert len(ref_rows) >= 2
-    r_keys = ref_rows[0].keys()
+    r_keys = ref_rows[0].param_keys()
     assert "rho_ns" in r_keys
     assert "tau_ns" in r_keys
     assert "r0" in r_keys

@@ -13,9 +13,9 @@ import os
 import pathlib
 import subprocess
 import sys
-import tomllib
 
 import pytest
+import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SUITES = ("test", "test-gui", "test-slow", "test-e2e")

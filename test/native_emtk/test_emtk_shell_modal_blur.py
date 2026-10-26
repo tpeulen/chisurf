@@ -27,8 +27,7 @@ def _blur_action(shell):
 
 
 def test_the_styles_menu_switches_the_blur_and_keeps_it(_settings, monkeypatch):
-    from chisurf.core.settings import cs_settings
-    from chisurf.core.settings import settings_utils
+    from chisurf.core.settings import cs_settings, settings_utils
 
     monkeypatch.setattr(settings_utils, "get_path", lambda kind: _settings)
     monkeypatch.setitem(cs_settings, "gui", dict(cs_settings.get("gui") or {}))

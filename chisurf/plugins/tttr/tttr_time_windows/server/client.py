@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+
 class TimeWindowClient:
     """Client wrapper for Time Window Bins ZMQ services."""
 
@@ -14,8 +15,6 @@ class TimeWindowClient:
         host: str = "127.0.0.1",
         timeout_ms: int = 5000,
     ) -> None:
-        from chisurf.server.transport.zmq import ZmqClient  # noqa: PLC0415 - lazy: pyzmq is optional
-
         """Initialize the Time Window Bins ZMQ client.
 
         Parameters
@@ -29,6 +28,8 @@ class TimeWindowClient:
         timeout_ms : int, default=5000
             Request timeout in milliseconds.
         """
+        from chisurf.server.transport.zmq import ZmqClient  # noqa: PLC0415 - lazy: pyzmq is optional
+
         self._client = ZmqClient(
             cmd_port=cmd_port,
             pub_port=pub_port,

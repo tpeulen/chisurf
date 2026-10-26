@@ -12,8 +12,6 @@ import numpy as np
 import pytest
 
 
-
-
 def _make_fcs_data():
     """Return a DataCurve with a synthetic log-spaced FCS lag grid (ms)."""
     from chisurf.core.data import DataCurve

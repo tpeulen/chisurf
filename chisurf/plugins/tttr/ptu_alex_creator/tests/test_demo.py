@@ -12,7 +12,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.tttr.demo_lib import DONOR_GATE, ACCEPTOR_GATE
+from chisurf.plugins.tttr.demo_lib import ACCEPTOR_GATE, DONOR_GATE
 from chisurf.plugins.tttr.ptu_alex_creator import core
 from chisurf.plugins.tttr.ptu_alex_creator.demo import make_demo
 

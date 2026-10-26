@@ -345,8 +345,8 @@ def bundle(tttrlib_wheel: bool = True, impbff_wheel: bool = True):
     if chimol_full:
         # ChiMOL standalone (?app=chimol): the whole viewer -- the same rules
         # its own page builds with -- beside the readers the other apps share.
-        from chimol.hosts.web.serve import (  # noqa: PLC0415 - build-time import
-            CHIMOL_SUFFIXES, EXCLUDE_PREFIXES as CHIMOL_EXCLUDE)
+        from chimol.hosts.web.serve import CHIMOL_SUFFIXES  # noqa: PLC0415 - build-time import
+        from chimol.hosts.web.serve import EXCLUDE_PREFIXES as CHIMOL_EXCLUDE
         extra += ["chimol", "ihm"]
         exclude_built += list(CHIMOL_EXCLUDE)
         exclude_built.append("chimol/test/")
@@ -538,7 +538,7 @@ class BusEventSubscriber:
         """Always true: there is no worker to stop."""
         return True
 
-    def start(self, timeout: float = 5.0) -> "BusEventSubscriber":
+    def start(self, timeout: float = 5.0) -> BusEventSubscriber:
         """Nothing to start (the subscription is live); returns ``self``."""
         return self
 

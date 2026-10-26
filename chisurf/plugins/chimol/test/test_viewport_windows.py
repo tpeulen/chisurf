@@ -15,8 +15,6 @@ immediate-mode core was deliberately not adopted.
 from __future__ import annotations
 
 import pytest
-
-
 from chimol.ui.gui import GuiWindow, InternalGui  # noqa: E402
 
 SIZE = (780, 460)

@@ -26,10 +26,10 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from emtk import im, implot
-from emtk.view_form import FormState, draw_sections
 from emtk.app import ImApp
 from emtk.i18n import tr
 from emtk.im_core import get_current_context
+from emtk.view_form import FormState, draw_sections
 
 from chisurf.plugins.emtk_layout import action_button, window_size
 

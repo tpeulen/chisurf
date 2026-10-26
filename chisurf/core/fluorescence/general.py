@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import overload
+
 import numpy as np
 
 import chisurf.core.math.datatools
@@ -176,13 +178,13 @@ def fluorescence_averaged_lifetime(
         return np.sum(intensity * time_axis) / isum
 
 
-@typing.overload
+@overload
 def distance_to_fret_rate_constant(
     r: float, forster_radius: float, tau0: float, kappa2: float = ...
 ) -> float: ...
 
 
-@typing.overload
+@overload
 def distance_to_fret_rate_constant(
     r: np.ndarray,
     forster_radius: float | np.ndarray,
@@ -191,7 +193,7 @@ def distance_to_fret_rate_constant(
 ) -> np.ndarray: ...
 
 
-@typing.overload
+@overload
 def distance_to_fret_rate_constant(
     r: float,
     forster_radius: float | np.ndarray,
@@ -398,11 +400,11 @@ def convolve_distance_with_k2_ratio(
     return r_app_centers[mask], r_app_hist[mask]
 
 
-@typing.overload
+@overload
 def distance_to_fret_efficiency(distance: float, forster_radius: float) -> float: ...
 
 
-@typing.overload
+@overload
 def distance_to_fret_efficiency(
     distance: np.ndarray, forster_radius: float | np.ndarray
 ) -> np.ndarray: ...

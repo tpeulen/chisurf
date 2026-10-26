@@ -971,7 +971,7 @@ class EmtkShellApp(ImApp):
         self.data.focused_window()
         self.feed_status_strip()
 
-    def present_tool(self, plugin_id: str, focus: bool = True) -> "HostedPlugin | None":
+    def present_tool(self, plugin_id: str, focus: bool = True) -> HostedPlugin | None:
         """Open *plugin_id* as the whole window: the tool alone, no shell chrome.
 
         The shell keeps running underneath -- the session, the services and the
@@ -983,13 +983,13 @@ class EmtkShellApp(ImApp):
         self._tool_only = str(plugin_id)
         return self.open_plugin(plugin_id, focus=focus)
 
-    def _tool_only_hosted(self) -> "HostedPlugin | None":
+    def _tool_only_hosted(self) -> HostedPlugin | None:
         """The hosted tool a tool-only frame draws, ``None`` for the ordinary shell."""
         if not self._tool_only:
             return None
         return self.hosted.get(self._tool_only)
 
-    def _draw_tool_only(self, hosted: "HostedPlugin | None", width: float, height: float) -> None:
+    def _draw_tool_only(self, hosted: HostedPlugin | None, width: float, height: float) -> None:
         """One frame of the standalone presentation: the tool and the overlays it needs."""
         box = (0.0, 0.0, max(1.0, float(width)), max(1.0, float(height)))
         if hosted is not None:

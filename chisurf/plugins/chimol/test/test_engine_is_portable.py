@@ -23,8 +23,8 @@ Neither assertion has an allow-list. If one is ever needed it should be a
 
 from __future__ import annotations
 
-import os
 import inspect
+import os
 import pathlib
 import re
 import subprocess

@@ -8,6 +8,7 @@ from chisurf.server.dispatcher import ServiceDispatcher
 from chisurf.server.eventbus import EventBus, InProcessEventBus
 from chisurf.server.jobs import JobManager
 from chisurf.server.session import SessionState
+
 try:  # pyzmq is an optional transport; the web page runs the in-process bus
     from chisurf.server.transport.zmq import ZmqServer
 except ImportError:  # pragma: no cover - the page, and any env without pyzmq

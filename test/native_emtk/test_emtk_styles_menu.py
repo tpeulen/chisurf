@@ -47,6 +47,7 @@ def test_styles_submenu_in_settings_menu(shell):
     driver.frame(2)
 
     from emtk import theme
+
     from chisurf.core.settings import theme as stored_theme
 
     assert theme.current_theme() == "dark_green"

@@ -7,7 +7,6 @@ from importlib import resources
 from typing import TYPE_CHECKING, Any
 
 
-
 class RemoteError(Exception):
     """Raised when a server call returns an error or a transport failure."""
 
@@ -144,7 +143,9 @@ class ChisurfClient:
         host: str = "127.0.0.1",
         timeout_ms: int = 5000,
     ):
-        from chisurf.server.transport.zmq import ZmqClient  # noqa: PLC0415 - pyzmq is optional (the page runs in-process)
+        from chisurf.server.transport.zmq import (
+            ZmqClient,  # noqa: PLC0415 - pyzmq is optional (the page runs in-process)
+        )
 
         self._client = ZmqClient(
             cmd_port=cmd_port,

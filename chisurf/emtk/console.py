@@ -943,7 +943,7 @@ class ShellConsole:
         self._jobs: queue.SimpleQueue[Cell | None] = queue.SimpleQueue()
         # A ``_FinishedThread`` stand-in is assigned when the host has no
         # threads (the web page) -- it quacks like a finished worker.
-        self._worker: "threading.Thread | _FinishedThread | None" = None
+        self._worker: threading.Thread | _FinishedThread | None = None
         self._worker_id: int | None = None
         # A browser page without cross-origin isolation has no worker threads
         # (Pyodide cannot start one without SharedArrayBuffer): cells then run

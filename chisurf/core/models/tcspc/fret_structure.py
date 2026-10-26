@@ -12,10 +12,9 @@ per load, which is Python by design (nothing here runs per iteration).
 from __future__ import annotations
 
 import pathlib
+import typing
 
 import numpy as np
-
-import typing
 
 import chisurf as cs
 from chisurf.core.models.description import for_family

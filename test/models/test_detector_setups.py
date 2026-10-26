@@ -9,8 +9,7 @@ sys.path.insert(0, os.path.abspath(".."))
 from mmfdb.repository import MFDatabase
 
 import chisurf.core.data_io.detector_setups as detector_setups_module
-from chisurf.core.data_io.detector_setups import save_detector_setups
-from chisurf.core.data_io.detector_setups import load_detector_setups
+from chisurf.core.data_io.detector_setups import load_detector_setups, save_detector_setups
 
 
 def test_save_detector_setups():

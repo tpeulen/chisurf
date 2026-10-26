@@ -110,7 +110,7 @@ def _turn(name, arguments, call_id):
 
 def test_the_owner_example_runs_end_to_end(context, tmp_path):
     """Verbatim prompt -> one grilling round -> answers -> full chain -> report."""
-    tttrlib = pytest.importorskip("tttrlib")
+    pytest.importorskip("tttrlib")
     from chisurf.plugins.burst.fret_check.sim import Scenario, simulate
 
     (tmp_path / "xy").mkdir()

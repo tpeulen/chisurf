@@ -15,7 +15,7 @@ def test_make_demo_stages_a_structure():
 
 def test_load_example_loads_the_bundled_structure():
     """The host's own Load example runs the chimol catalogue's 148l."""
-    chimol = pytest.importorskip("chimol")
+    pytest.importorskip("chimol")
     from chisurf.plugins.chimol.app import make_app
 
     app = make_app()

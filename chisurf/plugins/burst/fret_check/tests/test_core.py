@@ -6,9 +6,19 @@ import pytest
 
 tttrlib = pytest.importorskip("tttrlib")
 
-from chisurf.plugins.burst.fret_check.detect import detect_experiment, load, open_measurement, with_phase  # noqa: E402
+from chisurf.plugins.burst.fret_check.detect import (  # noqa: E402
+    detect_experiment,
+    load,
+    open_measurement,
+    with_phase,
+)
 from chisurf.plugins.burst.fret_check.pipeline import BurstSettings, _merge, analyse  # noqa: E402
-from chisurf.plugins.burst.fret_check.qc import FLAG_BRIGHT, _lambda_for, _p_multi, run_qc  # noqa: E402
+from chisurf.plugins.burst.fret_check.qc import (  # noqa: E402
+    FLAG_BRIGHT,
+    _lambda_for,
+    _p_multi,
+    run_qc,
+)
 
 DATA = pathlib.Path(__file__).resolve().parents[5].parent / "tttr-data"
 RES = 12.5e-9
@@ -23,7 +33,8 @@ def synthetic(alternating: bool, n_bursts=1000, seed=1, donor=0, acceptor=1, don
     # Background 0.5 kHz per channel.
     for c in (donor, acceptor):
         n = rng.poisson(5e2 * duration)
-        t.append(rng.uniform(0, duration, n)); ch.append(np.full(n, c))
+        t.append(rng.uniform(0, duration, n))
+        ch.append(np.full(n, c))
         micro.append(np.zeros(n, int) if macro_period else rng.integers(0, 4096, n))
     starts = np.sort(rng.uniform(0, duration - 0.01, n_bursts))
     for s in starts:
@@ -45,8 +56,11 @@ def synthetic(alternating: bool, n_bursts=1000, seed=1, donor=0, acceptor=1, don
             ticks = ticks - ticks % macro_period + np.where(aex, half, 0) + rng.integers(0, half, n)
             tb = ticks * RES
             m = np.zeros(n, int)
-        t.append(tb); ch.append(c); micro.append(m)
-    t = np.concatenate(t); order = np.argsort(t)
+        t.append(tb)
+        ch.append(c)
+        micro.append(m)
+    t = np.concatenate(t)
+    order = np.argsort(t)
     macro = (t[order] / RES).astype(np.uint64)
     routing = np.concatenate(ch)[order].astype(np.int8)
     micro = np.concatenate(micro)[order].astype(np.uint16)

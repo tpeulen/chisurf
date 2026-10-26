@@ -16,9 +16,9 @@ Two destinations, dispatched on the URL:
 
 Anything else is left alone rather than guessed at.
 
-Attach it to any rich-text widget with :func:`wire_text_browser`, which is what
-the shared ``?`` help modal does — so a plugin gets clickable cross-references
-by writing ordinary Markdown links in its ``help.md``.
+A clicked link goes through :func:`open_link`, which is what the shared ``?``
+help modal does — so a plugin gets clickable cross-references by writing
+ordinary Markdown links in its ``help.md``.
 """
 
 from __future__ import annotations
@@ -27,7 +27,6 @@ import logging
 import pathlib
 import sys
 import webbrowser
-
 
 from chisurf.plugins.core.help.api.source_links import is_source_path
 from chisurf.plugins.core.help.api.xref import (
@@ -47,7 +46,6 @@ __all__ = [
     "repository_root",
     "resolve_document",
     "resolve_ref",
-    "wire_text_browser",
 ]
 
 #: URL schemes handed to the system browser.

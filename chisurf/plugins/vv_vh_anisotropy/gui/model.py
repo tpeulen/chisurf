@@ -133,8 +133,8 @@ class AnisotropyModel:
 
     def load_example(self) -> None:
         """Generate the reference decays; load the slow protein's, queue all four."""
-        from ..demo import PRIMARY, demo_folder, make_demo, paths
         from ..demo import DEMO as DEMO_SETTINGS
+        from ..demo import PRIMARY, demo_folder, make_demo, paths
 
         folder = demo_folder()
         make_demo(folder)

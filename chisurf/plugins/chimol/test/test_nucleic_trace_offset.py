@@ -25,8 +25,8 @@ so it rendered a configuration nobody ran.
 
 from __future__ import annotations
 
-import json
 import inspect
+import json
 import pathlib
 
 import numpy as np

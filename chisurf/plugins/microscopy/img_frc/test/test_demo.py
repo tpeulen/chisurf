@@ -2,9 +2,9 @@
 
 import pytest
 
+from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 from chisurf.plugins.microscopy.img_frc.demo import CUTOFF, make_demo
 from chisurf.plugins.microscopy.img_frc.gui.app import make_app
-from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
 
 def test_make_demo_writes_a_band_limited_stack():

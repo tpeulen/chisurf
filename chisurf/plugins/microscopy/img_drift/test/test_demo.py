@@ -3,9 +3,9 @@
 import numpy as np
 
 from chisurf.plugins.microscopy.demo_stack import DRIFT_STEP
+from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 from chisurf.plugins.microscopy.img_drift.demo import N_FRAMES, TRUE_SHIFTS, make_demo
 from chisurf.plugins.microscopy.img_drift.gui.app import make_app
-from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
 
 def test_make_demo_writes_a_drifting_stack():

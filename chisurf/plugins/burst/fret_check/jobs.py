@@ -17,7 +17,8 @@ import dataclasses
 import numpy as np
 
 from .detect import Experiment, Window, detect_experiment, load, with_phase
-from .pipeline import STREAMS, BurstSettings, Bursts, analyse as analyse_bursts, photon_streams
+from .pipeline import STREAMS, Bursts, BurstSettings, photon_streams
+from .pipeline import analyse as analyse_bursts
 from .qc import Check, QCReport, run_qc
 
 __all__ = ["analyse", "pack", "unpack", "experiment_from_dict", "bursts_from_dict", "qc_from_dict"]

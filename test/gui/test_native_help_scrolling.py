@@ -11,7 +11,6 @@ from emtk.testing import Driver
 
 from chisurf.emtk.help_guide import EmTkHelpWindow, resolve_resource_file
 
-
 RESOURCE = (
     Path(__file__).resolve().parents[2] / "chisurf/plugins/tttr/microtime_histogram/gui/help.md"
 )

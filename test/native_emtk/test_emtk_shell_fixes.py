@@ -48,7 +48,7 @@ def test_the_link_menu_lists_the_equations_parameters_not_the_catalogue(shell): 
     assert sorted(offered) == sorted(n for n in active if n != record["name"] or first != second)
 
 
-def _row_point(shell, table: str, position: int) -> tuple[float, float]:
+def _row_point(shell, table: str, position: int) -> tuple[float, float]:  # noqa: F811
     """A point on row *position* of the Datasets dock's *table*, from the control's drawn box."""
     control = shell.data.forms["datasets"].tables[table].control
     bx, by, bw, _bh = control._body_box
@@ -66,7 +66,7 @@ def _click(driver, point, modifiers=0):
     driver.frame(2)
 
 
-def _two_curves(driver, shell):
+def _two_curves(driver, shell):  # noqa: F811
     from chisurf.core.experiments.fcs.demo import DEMO, make_demo
 
     _load(driver, shell, KRISTINE)
@@ -127,7 +127,7 @@ def test_a_dataset_selected_by_the_program_is_drawn_selected(shell):  # noqa: F8
     driver.screenshot(SHOTS / "emtk_fix_program_select.png")
 
 
-def _global_over_two_fits(driver, shell):
+def _global_over_two_fits(driver, shell):  # noqa: F811
     """Two local fits and a Global fit over them, as the Local fits table builds it; their uids."""
     from chisurf.core.experiments.fcs.demo import DEMO, make_demo
     from test.native_emtk.test_emtk_shell_fits import _show_analysis
@@ -226,7 +226,7 @@ def test_a_global_fit_over_curves_of_different_length_can_be_captured(shell):  #
     assert project is not None
 
 
-def _six_fits(driver, shell):
+def _six_fits(driver, shell):  # noqa: F811
     _load(driver, shell, KRISTINE)
     api = shell.data.session.api
     uids = [api.add_fit([1], model_name=MODEL)["uid"] for _ in range(6)]

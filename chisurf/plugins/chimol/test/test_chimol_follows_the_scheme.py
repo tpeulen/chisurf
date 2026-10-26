@@ -23,8 +23,8 @@ So this file pins the seam from chimol's side:
 
 from __future__ import annotations
 
-import json
 import inspect
+import json
 import pathlib
 
 import pytest

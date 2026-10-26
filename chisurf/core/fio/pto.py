@@ -39,9 +39,9 @@ never have to be encoded in a file name.
 from __future__ import annotations
 
 import hashlib
-import re
 import json
 import logging
+import re
 import uuid
 import warnings
 from collections.abc import Iterator, Mapping, Sequence

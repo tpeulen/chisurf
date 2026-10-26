@@ -12,12 +12,10 @@ from emtk.testing import Driver
 
 from test.gui.test_channel_definition_lut_box import (
     _Page,
+    native_driver,
 )
 from test.gui.test_channel_definition_lut_box import (
     isolated_detector_settings as isolated_detector_settings,
-)
-from test.gui.test_channel_definition_lut_box import (
-    native_driver,
 )
 
 

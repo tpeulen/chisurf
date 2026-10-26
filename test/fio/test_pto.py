@@ -772,6 +772,7 @@ def test_create_sidecar_raw_file_container(tmp_path: Path):
 
         # Reading photons directly via open_tttr and tttrlib.TTTR works
         import tttrlib
+
         from chisurf.core.fio.staging import open_tttr
 
         tttr_pto = open_tttr(m.source())

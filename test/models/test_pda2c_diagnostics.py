@@ -13,7 +13,6 @@ import json
 import numpy as np
 import pytest
 
-
 PDA_MODELS = [
     "chisurf.core.models.pda2c.simple.Pda2cSimpleModel",
     "chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel",

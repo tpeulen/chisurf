@@ -32,6 +32,7 @@ import pathlib
 import numpy as np
 import pytest
 
+
 def _default_tcspc_model_paths():
     """The TCSPC model class paths from the *default* experiment config.
 

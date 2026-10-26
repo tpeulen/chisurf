@@ -9,8 +9,6 @@ worse than no promise.
 from __future__ import annotations
 
 import pytest
-
-
 from chimol.ui.gui import GuiRow, InternalGui  # noqa: E402
 from chimol.ui.menus.objects import OBJECT_MENUS  # noqa: E402
 

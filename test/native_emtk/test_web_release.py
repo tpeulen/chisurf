@@ -24,8 +24,8 @@ import socket
 import subprocess
 import sys
 import zipfile
-from unittest import mock as unittest_mock
 from pathlib import Path
+from unittest import mock as unittest_mock
 
 import pytest
 
@@ -70,8 +70,9 @@ def test_the_tttrlib_wheel_covers_the_compat_modules_fast_paths(tmp_path):
     """
     import io
 
-    from chisurf.web import TTTRLIB_PYTHON_MODULES, find_wheel
     from emtk.web.serve import pack_zip
+
+    from chisurf.web import TTTRLIB_PYTHON_MODULES, find_wheel
 
     archive = zipfile.ZipFile(pack_zip(_bundle(), tmp_path / "app.zip"))
     compat = {
@@ -149,8 +150,9 @@ def test_the_impbff_wheel_covers_the_attributes_the_page_uses(tmp_path):
     """
     import io
 
-    from chisurf.web import IMPBFF_STANDALONE_ABSENT, find_wheel
     from emtk.web.serve import pack_zip
+
+    from chisurf.web import IMPBFF_STANDALONE_ABSENT, find_wheel
 
     wheel_path = find_wheel("IMP.bff")
     if wheel_path is None:
@@ -266,13 +268,11 @@ def test_the_glyph_vocabulary_and_the_split_buttons_are_baked(tmp_path):
     import ast as _ast
     import inspect as _inspect
 
-    import chisurf.core.glyphs as glyphs_mod
-
     import emtk  # noqa: F401 - the atlas the page ships is emtk's
-
     from emtk.grapheme import glyph_of
-
     from emtk.web.serve import pack_zip
+
+    import chisurf.core.glyphs as glyphs_mod
 
     bundle = _bundle()
     archive = zipfile.ZipFile(pack_zip(bundle, tmp_path / "app.zip"))
@@ -324,10 +324,8 @@ def test_every_plugin_manifest_icon_is_a_baked_glyph(tmp_path):
     import json
 
     import numpy as np
-
-    from emtk.grapheme import glyph_of
-
     from emtk.gpu_atlas import png_decode
+    from emtk.grapheme import glyph_of
     from emtk.web.serve import pack_zip
 
     bundle = _bundle()
@@ -671,8 +669,9 @@ def test_the_desktop_only_database_tools_are_not_packed(tmp_path):
     the page (:data:`PLUGIN_EXCLUDE`); this pins that they stay excluded and
     that the exclusion does not overmatch a working web plugin.
     """
-    from chisurf.web import PLUGIN_EXCLUDE
     from emtk.web.serve import pack_zip
+
+    from chisurf.web import PLUGIN_EXCLUDE
 
     archive = zipfile.ZipFile(pack_zip(_bundle(), tmp_path / "excluded.zip"))
     names = archive.namelist()
@@ -754,7 +753,6 @@ def test_the_packed_page_imports_only_what_it_ships(tmp_path):
     """
     import ast
     import io
-
     import sys as _sys
 
     from emtk.web.serve import DEFAULT_PYODIDE_PACKAGES, pack_zip

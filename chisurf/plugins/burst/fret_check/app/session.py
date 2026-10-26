@@ -22,7 +22,7 @@ import numpy as np
 
 from .. import jobs
 from ..detect import Experiment, Window
-from ..pipeline import BurstSettings, Bursts
+from ..pipeline import Bursts, BurstSettings
 from ..qc import FLAG_NAMES, QCReport
 
 JOB = "chisurf.plugins.burst.fret_check.jobs:analyse"

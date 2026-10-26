@@ -9,8 +9,8 @@ is a property the generator put there on purpose.
 
 from __future__ import annotations
 
-import tttrlib
 import pytest
+import tttrlib
 
 from chisurf.plugins.tttr.tttr_splitter.demo import make_demo
 from chisurf.plugins.tttr.tttr_splitter.gui.view_model import SplitterViewModel

@@ -51,7 +51,7 @@ class SetupToolbar:
         self.loading = False
         self._loaded: tuple | None = None
         # A ``_FinishedThread`` stand-in lands here on a host without threads.
-        self._thread: "threading.Thread | _FinishedThread | None" = None
+        self._thread: threading.Thread | _FinishedThread | None = None
 
     # ------------------------------------------------------------------ state
     @property

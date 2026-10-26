@@ -19,7 +19,6 @@ import gc
 import weakref
 
 import pytest
-
 from native_window import PDB_148L, NativeWindow
 
 

@@ -30,8 +30,8 @@ What this pins
 
 from __future__ import annotations
 
-import json
 import inspect
+import json
 import pathlib
 
 import pytest

@@ -24,12 +24,14 @@ import os
 import numpy as np
 
 from .detect import Experiment, detect_experiment
-from .pipeline import STREAMS, BurstSettings, Bursts, analyse as analyse_bursts, photon_streams
+from .pipeline import STREAMS, Bursts, BurstSettings, photon_streams
+from .pipeline import analyse as analyse_bursts
 
 __all__ = ["LARGE_BYTES", "CHUNK_RECORDS", "GUARD", "is_large", "iter_chunks", "analyse_chunked"]
 
 #: Files above this many bytes are analysed in chunks (shared with the page build).
 from .limits import LARGE_BYTES  # noqa: E402
+
 #: Records decoded per chunk (~120 MB of arrays).
 CHUNK_RECORDS = 10_000_000
 #: Photons before a chunk's end within which a burst counts as unfinished.

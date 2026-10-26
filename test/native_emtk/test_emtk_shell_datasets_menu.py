@@ -25,11 +25,11 @@ from test.native_emtk.test_emtk_shell_fits import (  # noqa: F401  (the fixture 
 from test.native_emtk.test_emtk_shell_fixes import _click, _row_point, _two_curves
 
 
-def _table(shell):
+def _table(shell):  # noqa: F811
     return shell.data.forms["datasets"].tables["dataset_rows"]
 
 
-def _names(shell) -> list[str]:
+def _names(shell) -> list[str]:  # noqa: F811
     return [r["name"] for r in shell.data.datasets.datasets if r["experiment"] != "Global"]
 
 
@@ -42,14 +42,14 @@ def _right_click(driver, point):
     driver.frame(2)
 
 
-def _menu_labels(shell) -> dict[str, bool]:
+def _menu_labels(shell) -> dict[str, bool]:  # noqa: F811
     """``{label: enabled}`` of the open menu."""
     panel = _table(shell).menu_panel
     assert panel is not None, "the context menu is not open"
     return {e.label: bool(e.enabled) for e in panel.entries if e is not None and hasattr(e, "label")}
 
 
-def _pick(driver, shell, label: str) -> None:
+def _pick(driver, shell, label: str) -> None:  # noqa: F811
     """Click the menu entry *label* where it is drawn."""
     texts = [t for t in driver.painter.texts if t[5].strip() == label]
     assert texts, f"{label!r} is not drawn: {[t[5] for t in driver.painter.texts][-30:]}"
@@ -57,7 +57,7 @@ def _pick(driver, shell, label: str) -> None:
     _click(driver, (x + w / 2 if w else x + 4, y + h / 2))
 
 
-def _setup(driver, shell):
+def _setup(driver, shell):  # noqa: F811
     names = _two_curves(driver, shell)
     return names, names.index("Kristine_with_error"), names.index("fcs_demo")
 
@@ -165,7 +165,7 @@ def test_save_then_load_round_trips_a_dataset(shell, tmp_path):  # noqa: F811
 # -- the parameter tables: Prior, linked ink ---------------------------------------------------- #
 
 
-def _two_fits(driver, shell):
+def _two_fits(driver, shell):  # noqa: F811
     _load(driver, shell, KRISTINE)
     first = _add_fit(driver, shell)
     second = _add_fit(driver, shell)
@@ -174,7 +174,7 @@ def _two_fits(driver, shell):
     return first, second
 
 
-def _editor_row(shell, name: str) -> dict:
+def _editor_row(shell, name: str) -> dict:  # noqa: F811
     """The current fit's editor row *name* (the editor lists every diffusion preset's ``N``)."""
     data = shell.data
     info = data.session.api.get_fit_info(fit_uid=data.current_uid)
@@ -183,7 +183,7 @@ def _editor_row(shell, name: str) -> dict:
     return next(r for source in data.editor._sources.values() for r in source if r.get("uid") == uid)
 
 
-def _prior_of(shell, uid: str, name: str):
+def _prior_of(shell, uid: str, name: str):  # noqa: F811
     info = shell.data.session.api.get_fit_info(fit_uid=uid)
     info = info.get("fit", info)
     entry = next(p for p in info["model"]["parameters_all"] if p["name"] == name)

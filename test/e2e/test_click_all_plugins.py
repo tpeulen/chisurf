@@ -295,10 +295,9 @@ def _guards(stack, result):
     import socket
     import webbrowser
 
-    from emtk.file_dialog import FileDialog
-
     # A "Copy …" button or menu row must not overwrite the user's clipboard: keep it in memory.
     from emtk import clipboard as emtk_clipboard
+    from emtk.file_dialog import FileDialog
 
     copied: list = []
     stack.enter_context(patch.object(emtk_clipboard, "_hook", copied.append))
@@ -2401,7 +2400,7 @@ def run_one(plugin_id, mode, variant=None):
                     result["demo_dir"] = str(demo_dir)
                 result["stub_dir"] = str(Path(scratch) / "stubs")
                 _guards(stack, result)
-                with warnings.catch_warnings(record=True) as seen:
+                with warnings.catch_warnings(record=True):
                     warnings.simplefilter("always")
                     _native(plugin_id, result, directory / f"{stem}.png")
                 # A refused network/process attempt is evidence, not a failure by itself: the

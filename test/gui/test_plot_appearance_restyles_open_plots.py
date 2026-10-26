@@ -12,7 +12,6 @@ import copy
 
 import pytest
 
-
 #: Settings that style node graphs, not plots: they have their own subscriber
 #: (``style_settings.refresh_open_graphs``, run by ``flush``), tested with the node editor.
 NODE_GRAPH_FIELDS = {

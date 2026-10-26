@@ -30,5 +30,5 @@ def test_load_example_writes_a_clash_free_trajectory():
     kept = md.load(str(out), top=str(pdb))
     assert kept.n_atoms == 1293
     assert kept.n_frames <= EXPECTED_FRAMES
-    assert any(f"Kept" in line for line in app.model.log_text())
+    assert any("Kept" in line for line in app.model.log_text())
     assert callable(below_min_distance)  # the screen itself is unit-tested elsewhere

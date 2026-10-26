@@ -16,8 +16,8 @@ import pytest
 
 pytestmark = pytest.mark.gui
 
-from chisurf.chiplot import backends as _backends  # noqa: E402
 from chisurf import chiplot as cp  # noqa: E402
+from chisurf.chiplot import backends as _backends  # noqa: E402
 
 
 @pytest.fixture(scope="module", autouse=True)

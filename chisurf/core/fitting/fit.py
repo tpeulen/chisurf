@@ -9,6 +9,7 @@ import re
 import time
 import weakref
 from collections import OrderedDict, deque
+from typing import overload
 
 import numpy as np
 
@@ -2431,10 +2432,10 @@ class FitGroup(Fit):
         """
         return len(self.grouped_fits)
 
-    @typing.overload
+    @overload
     def __getitem__(self, key: int) -> Fit: ...
 
-    @typing.overload
+    @overload
     def __getitem__(self, key: slice) -> typing.List[Fit]: ...
 
     def __getitem__(self, key: int | slice) -> Fit | typing.List[Fit]:

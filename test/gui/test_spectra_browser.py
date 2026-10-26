@@ -7,6 +7,7 @@ import tempfile
 
 import numpy as np
 
+
 def _staging_db():
     from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
 

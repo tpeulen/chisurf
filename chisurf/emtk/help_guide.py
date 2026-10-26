@@ -22,7 +22,6 @@ from emtk.im_core import Col
 from emtk.keys import KEY_ESCAPE
 from emtk.type_scale import text_style
 
-
 logger = logging.getLogger(__name__)
 
 

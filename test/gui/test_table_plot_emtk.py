@@ -14,7 +14,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-
 from chisurf.emtk.fit_pages.pages.table_plot_emtk import _BASE_COLUMNS  # noqa: E402
 
 

@@ -690,11 +690,14 @@ class TestGraphService:
 
 def test_fit_create_resolves_a_shared_model_name_through_the_datasets_experiment():
     """"Parse-Model" names a TCSPC, an FCS and a PCF model: the dataset's experiment picks the FCS one."""
+    import numpy as np
+
+    import chisurf as cs
     from chisurf.core.data import DataCurve
     from chisurf.core.experiments.bootstrap import ensure_experiments_registered
-    from chisurf.core.experiments.fcs.demo import DEMO  # noqa: F401 - ensures the FCS experiment imports
-    import chisurf as cs
-    import numpy as np
+    from chisurf.core.experiments.fcs.demo import (
+        DEMO,  # noqa: F401 - ensures the FCS experiment imports
+    )
 
     ensure_experiments_registered()
     experiment = cs.experiment["FCS"]

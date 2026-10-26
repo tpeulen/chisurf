@@ -77,9 +77,9 @@ def test_the_frame_ceiling_never_halves_the_rate_below_sixty():
     fraction of the screen's refresh rate that still reaches 60, plus a margin.
     chimol must hand that default through untouched, or the fitting never runs.
     """
+    from chimol.hosts.native import canvas as native
     from emtk.native import DEFAULT_MAX_FPS as EMTK_DEFAULT
     from emtk.native import _frame_ceiling
-    from chimol.hosts.native import canvas as native
 
     assert native.DEFAULT_MAX_FPS == EMTK_DEFAULT
     assert native._max_fps() == EMTK_DEFAULT, "chimol's default must let emtk fit the screen"
@@ -121,7 +121,10 @@ def test_an_existing_configuration_is_lifted_off_the_old_ceilings():
     made -- so each is migrated onto today's default, and a value the user
     *did* choose is left alone.
     """
-    from chimol.core.settings.config import DISPLAY_CONFIG_MIGRATIONS, apply_display_config_migrations
+    from chimol.core.settings.config import (
+        DISPLAY_CONFIG_MIGRATIONS,
+        apply_display_config_migrations,
+    )
     from chimol.hosts.native.canvas import DEFAULT_MAX_FPS
 
     for old in (60, 240):

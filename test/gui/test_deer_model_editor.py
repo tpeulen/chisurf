@@ -20,8 +20,6 @@ import pytest
 from chisurf.core.models.deer import kernel as K
 
 
-
-
 def _make_deer_data(
     r_mean: float = 40.0,
     sigma: float = 3.0,

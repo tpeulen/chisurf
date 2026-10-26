@@ -16,10 +16,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im, implot, style
-from emtk.view_form import FormState, draw_sections
 from emtk.app import ImApp
 from emtk.i18n import tr
 from emtk.im_core import get_current_context
+from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.advanced import advanced_mode, draw_toggle
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget

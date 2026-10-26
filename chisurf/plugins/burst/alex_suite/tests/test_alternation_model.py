@@ -7,9 +7,8 @@ measure all of that, fold the alternation into one ``.pto`` beside the file and 
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import copy
+from pathlib import Path
 
 import numpy as np
 import pytest

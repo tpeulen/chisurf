@@ -13,8 +13,6 @@ is the set of coordinate rows those nodes cover.
 from __future__ import annotations
 
 import pytest
-
-
 from chimol.core.model.hierarchy import HierarchyNode  # noqa: E402
 from chimol.plugins.hierarchy.window import HierarchyWindow  # noqa: E402
 from chimol.ui.gui import InternalGui  # noqa: E402

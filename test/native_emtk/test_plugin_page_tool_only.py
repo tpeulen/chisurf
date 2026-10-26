@@ -9,7 +9,6 @@ top of the canvas and spans it; a shell-opened one sits under the chrome.
 from emtk.testing import Driver
 
 from chisurf.emtk.background_build import join_all
-
 from chisurf.emtk.main_app import EmtkShellApp
 from chisurf.emtk.plugins import manifests
 

@@ -189,7 +189,7 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> P
         header.set_micro_time_resolution(config["micro_resolution_s"])
         if not stream.write(str(staged / SPC_FILENAME), config["format"], header):
             raise OSError(f"could not write {staged / SPC_FILENAME}")
-        container = Path(
+        Path(
             write_container(
                 staged / SPC_FILENAME,
                 demo_burst_table(ranges),

@@ -7,7 +7,6 @@ Nothing here keeps state between frames.
 from __future__ import annotations
 
 import numpy as np
-
 from emtk import im
 from emtk import implot as ip
 

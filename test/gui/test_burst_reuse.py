@@ -18,7 +18,6 @@ import os
 import pytest
 
 
-
 @pytest.fixture
 def burst_folder(tmp_path):
     """A minimal burst-analysis folder: what every step reads."""

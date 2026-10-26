@@ -38,7 +38,6 @@ def host_in_open_shell(plugin_id: str, then: Any = None) -> bool:
 
     Looked up in :data:`sys.modules`, so a process without the shell never imports it.
     """
-    import sys
 
     shell_module = sys.modules.get("chisurf.emtk.main_app")
     host = getattr(shell_module, "host_in_shell", None)

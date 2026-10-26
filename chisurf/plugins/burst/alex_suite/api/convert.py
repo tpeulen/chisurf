@@ -86,7 +86,8 @@ def alex_to_pto(
 
     target_dir = pathlib.Path(out_dir) if out_dir is not None else sources[0].parent
     from chisurf.plugins.tttr.ptu_alex_creator.api.container import (  # noqa: PLC0415
-        convert_to_container)
+        convert_to_container,
+    )
     return convert_to_container(sources, alex_period=int(alex_period),
                                 period_shift=int(period_shift), out_dir=target_dir,
                                 suffix=suffix)

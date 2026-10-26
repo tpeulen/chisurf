@@ -57,7 +57,7 @@ class Schema(tuple):
 
     __slots__ = ()
 
-    def __new__(cls, fields: Iterable[Field]) -> "Schema":
+    def __new__(cls, fields: Iterable[Field]) -> Schema:
         items = [f if isinstance(f, Field) else Field(**f) for f in fields]
         keys = [f.key for f in items]
         if len(set(keys)) != len(keys):
@@ -157,7 +157,7 @@ class EditorModel:
         if not key:
             raise ValueError("An entry needs a key.")
         value = self.extra_value
-        if (field := self.schema.field(key)) is not None:  # a schema key: edit it in place
+        if self.schema.field(key) is not None:  # a schema key: edit it in place
             self.values[key] = value
         elif (row := next((r for r in self.extras if r[0] == key), None)) is not None:
             row[1] = value

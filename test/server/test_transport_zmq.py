@@ -116,7 +116,6 @@ def test_zmq_timeout():
     cmd_port = find_free_port()
 
     def handler(method, params):
-        import time
 
         time.sleep(10)
 

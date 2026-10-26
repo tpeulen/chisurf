@@ -12,7 +12,6 @@ import copy
 import pytest
 
 
-
 @pytest.fixture
 def plot(monkeypatch):
     import chisurf.core.settings as css

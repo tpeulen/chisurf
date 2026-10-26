@@ -72,8 +72,8 @@ def test_background_publishes_through_a_lazy_host(tmp_path=None):
     from emtk.app import next_frame_in as host_next_frame_in
     from emtk.testing import Driver
 
-    from chisurf.plugins.burst.burst_selection.gui.model import save_setup
     from chisurf.plugins.burst.burst_analysis.gui.native import BurstAnalysisHubApp
+    from chisurf.plugins.burst.burst_selection.gui.model import save_setup
 
     setup = dict(json.loads(HANDOFF.read_text())["channel_settings"])
     setup["setup_name"] = "BS"

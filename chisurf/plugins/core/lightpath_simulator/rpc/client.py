@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from ..api.client import LightPathClient
 
 
@@ -17,9 +16,9 @@ class LightPathZmqClient(LightPathClient):
         timeout_ms: int = 5000,
     ) -> None:
         """Initialize the ZMQ client wrapper."""
-        super().__init__(
-            from chisurf.server.transport.zmq import ZmqClient  # noqa: PLC0415 - lazy
+        from chisurf.server.transport.zmq import ZmqClient  # noqa: PLC0415 - lazy
 
+        super().__init__(
             ZmqClient(
                 cmd_port=cmd_port,
                 pub_port=pub_port,

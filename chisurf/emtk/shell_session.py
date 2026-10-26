@@ -287,7 +287,7 @@ class MenuAction:
     checked: Callable[[], bool] | None = None
     #: nested items when this entry opens a submenu; the session menus stay flat,
     #: but the drawer reads this for any producer that nests (defaults to none).
-    children: tuple["MenuAction", ...] = ()
+    children: tuple[MenuAction, ...] = ()
 
 
 class ShellProject:

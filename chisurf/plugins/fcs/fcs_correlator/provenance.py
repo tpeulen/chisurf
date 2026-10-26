@@ -18,7 +18,12 @@ from typing import Any
 
 import numpy as np
 
-from chisurf.core.fluorescence.fcs.provenance import complete_inputs, new_record, read_settings, sha256
+from chisurf.core.fluorescence.fcs.provenance import (
+    complete_inputs,
+    new_record,
+    read_settings,
+    sha256,
+)
 
 #: Settings attributes are the models' public scalar attributes; these are views, not inputs.
 _NOT_SETTINGS = {"range_lo", "range_hi", "mcs_bin_width"}

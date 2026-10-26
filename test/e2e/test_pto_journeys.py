@@ -240,7 +240,6 @@ class Journeys:
         """W1 leg 1: Add files -> the demo .pto -> the run appears; no sibling folder needed."""
         self.need("burst_tool")
         from chisurf.core.fio.pto import Measurement
-
         from chisurf.plugins.burst.burst_selection import demo
 
         spc = demo.make_demo(self.scratch / "data")
@@ -335,7 +334,7 @@ class Journeys:
     def fit_the_decay(self):
         """W2 leg 2: the shell's Datasets dock lists the decay; a fit runs on it."""
         self.need("app", "decay_dataset")
-        app, dataset = self.shell, self.state["decay_dataset"]
+        app = self.shell
         docks, panel = app.data, app.data.datasets
         rows = panel.dataset_rows()
         names = [r.get("name") for r in rows] if rows else []
@@ -397,7 +396,7 @@ class Journeys:
         assert key, f"dead end: no add-files affordance in the FCS window ({sorted(fcs.item_rects)[:12]})"
         self.click(fcs, key)
         self.wait_for(lambda: len(getattr(ctrl, "files", []) or []) > 0, timeout=60, what="the container in the FCS input list")
-        rows = self.wait_for(lambda: ctrl.run_rows() or None, timeout=120, what="the FCS run picker")
+        self.wait_for(lambda: ctrl.run_rows() or None, timeout=120, what="the FCS run picker")
         ctrl.select_run(ctrl.run_rows()[-1])
         ctrl._on_run()
         end = time.monotonic() + 180

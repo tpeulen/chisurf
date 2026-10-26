@@ -9,8 +9,8 @@ from typing import Any
 import numpy as np
 import pytest
 
-from chisurf.chiplot import backends
 from chisurf import chiplot as cp
+from chisurf.chiplot import backends
 
 
 @pytest.fixture(params=["emtk"])

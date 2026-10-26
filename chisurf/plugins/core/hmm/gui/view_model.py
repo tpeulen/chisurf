@@ -14,8 +14,8 @@ import pathlib
 
 import numpy as np
 
-from ..api.models import HmmFit, HmmSettings, StateScan
 from ..api.io import load_trace
+from ..api.models import HmmFit, HmmSettings, StateScan
 from ..core.analysis import fit_traces, scan_state_counts
 
 logger = logging.getLogger(__name__)

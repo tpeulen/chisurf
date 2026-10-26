@@ -36,8 +36,8 @@ which needs Playwright and a minute of Pyodide.
 from __future__ import annotations
 
 import argparse
-import json
 import inspect
+import json
 import pathlib
 import socket
 import subprocess

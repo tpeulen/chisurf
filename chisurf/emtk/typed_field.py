@@ -13,8 +13,8 @@ The stepping itself is pyqtgraph's (:func:`emtk.im_widgets.spin_step_by`).
 from __future__ import annotations
 
 from emtk import im
-from emtk.im_core import get_current_context
 from emtk.i18n import tr
+from emtk.im_core import get_current_context
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_RETURN, KEY_UP
 
 

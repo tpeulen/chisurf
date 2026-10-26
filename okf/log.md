@@ -9,6 +9,7 @@
   Found on the way: the live example-prompt tests had no opt-in and called the provider whenever a key was in
   the settings; the `CHISURF_AGENT_TEST_LIVE=1` gate now sits on the `live_llm` marker (`test/agent/conftest.py`).
 - Heavy test runs move to the remote box (owner): `build_tools/remote_test.sh` pushes the commit under test into a mirrored `~/dev/chisurf` clone on `ssh home` (refs/remote-test/<id>, submodule included, detached pixi envs), runs the suite as a systemd user unit, one at a time, and fetches log + JUnit back to `build/remote-test/<id>`. Documented in [testing](workflows/testing.md); PRD-154 item 6's gate run goes there.
+- Lint batch (PRD-154 Part D gate 1): `ruff check chisurf test` clean apart from two files holding another lane's uncommitted edits. Real defects fixed on the way: `lightpath_simulator/rpc/client.py` had not parsed since 8d150ee0a (a lazy import pasted inside the `super().__init__(` call); `fret_check/report.py` carried a dead `... if False else` naming an undefined `rows_list`; `emtk/doc_links.__all__` exported the deleted Qt `wire_text_browser`; `from chisurf import typing` hid `typing.overload` from ruff (stdlib `overload` now); five plugin test directories became packages (`fret_check/tests/test_core.py` and `metadata_editor/test/test_core.py` could not be collected in one run). New guards `test/test_sources_compile.py` (every chisurf source compiles) and `test/test_plugin_test_packages.py` (no two rootdir-style plugin test files share a basename). 475 targeted tests green.
 
 ## 2026-10-25
 

@@ -235,7 +235,6 @@ def test_watermark_fps_does_not_stall_or_pollute_on_idle_gap():
     try:
         driver = Driver(shell, (1440, 900))
         driver.frame(5)
-        active_fps = getattr(shell, "_fps", 0.0)
 
         # Simulate 1 second idle gap (as happens when sleeping between 1Hz polls)
         shell._last_frame_ts = time.perf_counter() - 1.05

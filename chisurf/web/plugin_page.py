@@ -24,8 +24,9 @@ SPEC = "chisurf.web.plugin_page:make_app"
 def requested_app_name() -> str:
     """The ``?app=`` value from the page's URL; ``""`` off a page or without one."""
     try:  # pragma: no cover - exercised on a page (js) and by E2E, not by unit runs
-        import js  # noqa: PLC0415 - page-only import
         from urllib.parse import parse_qs, urlparse
+
+        import js  # noqa: PLC0415 - page-only import
 
         for name in parse_qs(urlparse(str(js.location.href)).query).get("app", ()):
             return str(name)
