@@ -89,7 +89,7 @@ app=make_app()
 app.model.generate()
 app.draw(RecordingPainter(),0,0,1200,900)
 app.model.save({str(tmp_path / "decay.json")!r})
-app.browse_irf()
+app.request_file("save", "Save decay", "decay.csv", "CSV (*.csv)")
 app.draw(RecordingPainter(),0,0,1200,900)
 app.dialog=None
 app.model.set_polarization('vv/vh')
@@ -152,7 +152,7 @@ def test_native_file_chooser_blocks_background_generate():
     app = SyntheticDecayApp()
     app.draw(RecordingPainter(), 0, 0, 1200, 900)
     x, y, w, h = app.item_rects["generate"]
-    app.browse_irf()
+    app.request_file("save", "Save decay", "decay.csv", "CSV (*.csv)")
     app.press(x + w / 2, y + h / 2)
     app.draw(RecordingPainter(), 0, 0, 1200, 900)
     app.release()

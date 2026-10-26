@@ -11,7 +11,7 @@
     "Fluorescence decay",
     "Decay"
   ],
-  "icon": "\u2696\ufe0f",
+  "icon": "⚖️",
   "state_namespace": "vv_vh_g_factor",
   "statefulness": {
     "enabled": true,
@@ -25,7 +25,54 @@
       "name": "reader_calibration",
       "summary": "Calibrate G, VH shift and mixing for a reader; the values return to it on close.",
       "receive": "chisurf.emtk.reader_settings:receive_reader_calibration",
-      "required": ["dt_ns"]
+      "required": [
+        "dt_ns"
+      ]
+    },
+    {
+      "name": "reference",
+      "summary": "The reference standard's VV/VH decay (a fast-rotating dye) that calibrates G.",
+      "receive": "chisurf.plugins.vv_vh_g_factor.gui.app:receive_reference",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "decay"
+        ],
+        "many": true,
+        "key": "file"
+      }
+    },
+    {
+      "name": "slow",
+      "summary": "A slow-rotating protein reference for the polarization-mixing estimate.",
+      "receive": "chisurf.plugins.vv_vh_g_factor.gui.app:receive_slow",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "decay"
+        ],
+        "many": true,
+        "key": "file"
+      }
+    },
+    {
+      "name": "batch",
+      "summary": "VV/VH decays of unknown samples, evaluated with the calibration.",
+      "receive": "chisurf.plugins.vv_vh_g_factor.gui.app:receive_batch",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "decay"
+        ],
+        "many": true,
+        "key": "files"
+      }
     }
   ],
   "entrypoints": {

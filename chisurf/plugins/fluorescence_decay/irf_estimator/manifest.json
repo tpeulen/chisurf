@@ -41,6 +41,23 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "decay",
+      "summary": "Estimate the instrument response from a measured decay picked in the workspace.",
+      "receive": "chisurf.plugins.fluorescence_decay.irf_estimator.gui.app:receive_decay",
+      "required": [
+        "decay"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "decay"
+        ],
+        "many": false,
+        "key": "decay"
+      }
+    }
+  ],
   "entrypoints": {
     "cli": "irf-estimator=chisurf.plugins.fluorescence_decay.irf_estimator.cli:cli",
     "services": "chisurf.plugins.fluorescence_decay.irf_estimator.backend.services:register_services",

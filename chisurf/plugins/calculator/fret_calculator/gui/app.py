@@ -25,7 +25,6 @@ from .model import FretCalculatorModel
 HERE = Path(__file__).parent
 
 _TAB_BAR_H = 26.0
-_NO_FILES = "The FRET Calculator takes no dropped files."
 
 
 def _rgba(colour) -> tuple:
@@ -232,16 +231,6 @@ class FretCalcApp(ImApp):
         self.active.draw(0.0, _TAB_BAR_H, width, height - _TAB_BAR_H)
         self.help_window.draw((0.0, 0.0, width, height))
         self.tour.draw(width, height)
-
-    # -- file drops: the calculator has no file input (the Qt tool said so in its status bar) -- #
-    def files_dropped(self, paths) -> bool:
-        paths = [p for p in (paths or ()) if p]
-        if paths:
-            self.active.model.status = _NO_FILES
-        return bool(paths)
-
-    on_files_dropped = files_dropped
-    on_paths_dropped = files_dropped
 
     # -- persistence ------------------------------------------------------------------ #
     def export_settings(self) -> dict:

@@ -55,6 +55,10 @@ class HmmApp(TourTarget, ImApp):
         self.dialog_action = ""
         self.last_dir = ""
         self.message = ""
+        from chisurf.plugins.curve_input import CurveInput
+
+        #: The Input section: the workspace's traces, fitted jointly as separate sequences.
+        self.input = CurveInput("hmm", self, name="traces", title="", height=92.0)
         self.help_window = EmTkHelpWindow(
             title=tr("Hidden Markov model") + ": Help", resource=HERE / "help.md", owner=self
         )
@@ -108,17 +112,15 @@ class HmmApp(TourTarget, ImApp):
         draw_form(spec, self.model, self.forms[name])
 
     def choose(self, action):
+        """Ask where the fit is saved (the traces come from the workspace)."""
         self.dialog_action = action
-        title = {"add": "Add trace files", "save": "Save the fit as JSON"}[action]
+        title = {"save": "Save the fit as JSON"}[action]
         self.dialog = FileDialog(
             title,
-            mode="save" if action == "save" else "open",
-            multiselect=action == "add",
+            mode="save",
             directory=self.last_dir or None,
-            filename="hmm_fit.json" if action == "save" else "",
-            filters="Traces (*.csv *.txt *.dat *.npy);;All files (*)"
-            if action == "add"
-            else "JSON (*.json);;All files (*)",
+            filename="hmm_fit.json",
+            filters="JSON (*.json);;All files (*)",
         )
         self.dialog_window = DialogWindow(title, size=(760, 540))
 
@@ -146,19 +148,34 @@ class HmmApp(TourTarget, ImApp):
             self.tour.notify_used("add_files")
             self.tour.notify_used("load_example")  # the data step: an example or your own traces
 
-    def files_dropped(self, paths):
-        """Host drop: every dropped file joins the trace list."""
-        paths = [str(p) for p in paths]
-        if not paths:
-            return False
-        self.add_files(paths)
-        return True
-
-    on_files_dropped = files_dropped
-
     def set_traces(self, traces, labels=None):
         """The seam other tools use: analyse traces handed over in memory."""
         self.model.set_traces(traces, labels)
+
+    def take_traces(self, addresses):
+        """The traces at *addresses* (picked in the workspace): files the workspace links to join
+        the file list; curves read into ChiSurf are handed over in memory (with any files)."""
+        from chisurf.plugins.curve_input import curve_of
+
+        from ..api.io import load_trace
+
+        datasets = [curve_of(a) for a in addresses]
+        if all(d is None for d in datasets):
+            self.add_files(addresses)
+            return
+        traces, labels = [], []
+        for address, dataset in zip(addresses, datasets):
+            if dataset is not None and getattr(dataset, "y", None) is not None:
+                traces.append(np.asarray(dataset.y, float))
+                labels.append(str(getattr(dataset, "name", "") or address))
+            else:
+                traces.append(load_trace(address))
+                labels.append(Path(address).name)
+        self.model.files = []
+        self.set_traces(traces, labels)
+        self.model._status = f"{len(traces)} trace(s) from the workspace: press Fit."
+        self.tour.notify_used("add_files")
+        self.tour.notify_used("load_example")  # the data step: an example or your own traces
 
     # -- windows ----------------------------------------------------------------------------- #
     def controls(self, box):
@@ -219,14 +236,13 @@ class HmmApp(TourTarget, ImApp):
         im.separator()
         im.text(tr("Traces"))
         self.form("files")
+        im.begin_disabled(not idle)
+        rects = {}
+        self.input.draw(rects, on_used=self.tour.notify_used)
+        im.end_disabled()
+        self.item_rects.update(rects)
         pressed = button_row(
             [
-                {
-                    "label": "Add files...",
-                    "key": "add_files",
-                    "enabled": idle,
-                    "tip": "Choose binned trace files (several are fitted jointly as separate sequences); dropping files on the window does the same.",
-                },
                 {
                     "label": "Remove",
                     "key": "remove",
@@ -242,9 +258,7 @@ class HmmApp(TourTarget, ImApp):
             ],
             remember=self.remember,
         )
-        if pressed == "add_files":
-            self.choose("add")
-        elif pressed == "remove":
+        if pressed == "remove":
             m.remove_file()
         elif pressed == "clear":
             m.clear_files()
@@ -302,7 +316,7 @@ class HmmApp(TourTarget, ImApp):
             self.model.trace_series(),
             self.time_label("time"),
             "counts per bin",
-            empty="Load a trace (Add files... or Load example).",
+            empty="Load a trace (pick one in the Input section, or Load example).",
         )
 
     def histogram_plot(self, box):
@@ -361,16 +375,13 @@ class HmmApp(TourTarget, ImApp):
             pressed = self.dialog_window.begin(frame)
             result = self.dialog.draw()
             if result:
-                action, self.dialog = self.dialog_action, None
-                if action == "add":
-                    self.add_files(result)
-                else:
-                    try:
-                        self.model.save_result(result[0])
-                        self.last_dir = str(Path(result[0]).parent)
-                        self.model._status = f"Saved the fit to {result[0]}."
-                    except Exception as exc:  # noqa: BLE001
-                        self.model._status = f"Error: {exc}"
+                self.dialog = None
+                try:
+                    self.model.save_result(result[0])
+                    self.last_dir = str(Path(result[0]).parent)
+                    self.model._status = f"Saved the fit to {result[0]}."
+                except Exception as exc:  # noqa: BLE001
+                    self.model._status = f"Error: {exc}"
             elif result is False or pressed == "close":
                 self.dialog = None
             self.dialog_window.end()
@@ -424,6 +435,17 @@ class HmmApp(TourTarget, ImApp):
 
     def close(self):
         self.model._observers.clear()
+
+
+def receive_traces(app: HmmApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``traces``): binned traces to fit jointly."""
+    addresses = payload.get("traces") or []
+    addresses = [addresses] if isinstance(addresses, str) else [str(a) for a in addresses if str(a)]
+    if addresses:
+        try:
+            app.take_traces(addresses)
+        except Exception as exc:  # noqa: BLE001 - said in the status line
+            app.model._status = f"Error: {exc}"
 
 
 def make_app():

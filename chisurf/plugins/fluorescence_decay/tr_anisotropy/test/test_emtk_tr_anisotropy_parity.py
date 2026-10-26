@@ -87,6 +87,17 @@ def go(ui, title):
     return ui.app.model
 
 
+def pick_files(ui, *paths):
+    """The files are in the Datasets workspace (as a drop puts them) and their rows are picked in
+    the data step's Input section, in this order."""
+    from chisurf.core.plugin.workspace_input import register_result
+    from test.gui.curve_workspace import pick
+
+    rows = [register_result(str(p), kind="decay", name=Path(p).name) for p in paths]
+    pick(ui.app.input, *rows)
+    return ui.app.model
+
+
 def set_files(model, files):
     for key, path in files.items():
         setattr(model, key + "_path", path)
@@ -218,45 +229,28 @@ def test_the_check_marks_follow_the_files_and_the_spectra(ui, files):
 # ─────────────────────────────────────── Data step ─────────────────────────────────────── #
 
 
-def test_each_path_field_takes_typed_text_and_says_found_or_missing(ui, files):
+def test_picked_curves_fill_the_path_fields_by_name_and_say_found(ui, files):
     m = go(ui, "Data")
+    pick_files(ui, files["data_vh"], files["irf_vv"], files["data_vv"], files["irf_vh"])
     for attr in ("irf_vv_path", "irf_vh_path", "data_vv_path", "data_vh_path"):
-        ui.type_into_name(attr, files[attr.replace("_path", "")])
-        assert getattr(m, attr) == files[attr.replace("_path", "")]
+        assert getattr(m, attr) == files[attr.replace("_path", "")], attr
     assert m.files_ready()
     assert [t[5] for t in ui.draw().texts].count("found") == 4
-    ui.type_into_name("data_vh_path", str(Path(files["data_vh"]).with_name("nope.txt")))
-    assert not m.files_ready()
-    assert [t[5] for t in ui.draw().texts].count("missing") == 1
 
 
-@pytest.mark.parametrize("attr", ["irf_vv_path", "irf_vh_path", "data_vv_path", "data_vh_path"])
-def test_browse_opens_the_file_dialog_and_a_clicked_file_fills_the_field(ui, files, attr):
+def test_unnamed_curves_fill_the_roles_in_order_and_session_curves_are_written(ui):
+    from test.gui.curve_workspace import add_curve, pick
+
     m = go(ui, "Data")
-    ui.app.last_dir = str(Path(files["irf_vv"]).parent)
-    index = ["irf_vv_path", "irf_vh_path", "data_vv_path", "data_vh_path"].index(attr)
-    ui.click(
-        ui.text_rect(ui.draw(), action_caption("browse"), last=False)
-        if index == 0
-        else [t[:4] for t in ui.draw().texts if t[5] == action_caption("browse")][index]
-    )
-    assert ui.app.dialog is not None
-    name = Path(files[attr.replace("_path", "")]).name
-    ui.click_text(name)
-    ui.click_text("Open")
-    assert ui.app.dialog is None
-    assert getattr(m, attr) == files[attr.replace("_path", "")]
-
-
-def test_the_file_dialog_cancel_and_close_leave_the_path_unchanged(ui, files):
-    m = go(ui, "Data")
-    ui.app.last_dir = str(Path(files["irf_vv"]).parent)
-    for closer in ("Cancel", "×"):
-        ui.click_text(action_caption("browse"), last=False)
-        assert ui.app.dialog is not None
-        ui.click_text(closer)
-        assert ui.app.dialog is None
-    assert m.irf_vv_path == ""
+    t = np.arange(64) * 0.05
+    rows = [
+        add_curve(t, np.exp(-t / tau) * 100 + 1, name=f"c{i}") for i, tau in enumerate((1, 2, 3, 4))
+    ]
+    pick(ui.app.input, *rows)
+    paths = [m.irf_vv_path, m.irf_vh_path, m.data_vv_path, m.data_vh_path]
+    assert [Path(p).stem for p in paths] == ["c0", "c1", "c2", "c3"]
+    assert m.first_column_is_time is True  # the written curves are (time, counts)
+    assert np.loadtxt(paths[3])[:, 0] == pytest.approx(t)
 
 
 def test_the_stacked_toggle_swaps_four_fields_for_two_and_the_reader_settings_follow(ui):
@@ -329,8 +323,7 @@ def test_stacked_files_are_read_with_the_channel_and_the_header_bin_width(ui, tm
     )
     m = go(ui, "Data")
     ui.click_text("Two stacked VV/VH files")
-    ui.type_into_name("irf_vv_path", str(tmp_path / "irf.dat"))
-    ui.type_into_name("data_vv_path", str(tmp_path / "data.dat"))
+    pick_files(ui, tmp_path / "irf.dat", tmp_path / "data.dat")
     go(ui, "Normalize IRF")
     ui.click_text("Load / reload data")
     for key in arrays:
@@ -338,19 +331,14 @@ def test_stacked_files_are_read_with_the_channel_and_the_header_bin_width(ui, tm
     assert np.diff(m.data["data_vh"].x).mean() == pytest.approx(0.1)
 
 
-def test_dropping_files_fills_the_next_empty_path_and_a_json_loads_the_spectra(ui, files, tmp_path):
+def test_a_pick_moves_to_the_data_step_and_a_second_pick_fills_the_rest(ui, files):
     m = ui.app.model
-    assert ui.drop(files["data_vv"], files["irf_vv"]) is True
-    assert (m.irf_vv_path, m.irf_vh_path) == (files["data_vv"], files["irf_vv"])
-    assert ui.app.step_index == 1
-    ui.drop(files["irf_vh"], files["data_vh"])
-    assert (m.data_vv_path, m.data_vh_path) == (files["irf_vh"], files["data_vh"])
-    saved = tmp_path / "s.spk.json"
-    core_spectra.save_spectra(saved, [[0.9, 2.5]], [[0.2, 7.0]], mirror_to_default=False)
-    ui.drop(saved)
-    assert m.lifetime_spectrum == [[0.9, 2.5]] and m.rotation_spectrum == [[0.2, 7.0]]
-    assert ui.app.step_index == 4
-    assert ui.drop() is False
+    pick_files(ui, files["irf_vv"], files["irf_vh"])
+    assert (m.irf_vv_path, m.irf_vh_path) == (files["irf_vv"], files["irf_vh"])
+    assert ui.app.step_index == 1 and not m.files_ready()
+    pick_files(ui, files["data_vv"], files["data_vh"])
+    assert (m.data_vv_path, m.data_vh_path) == (files["data_vv"], files["data_vh"])
+    assert m.files_ready()
 
 
 # ───────────────────────────────── Normalize IRF step ───────────────────────────────── #
@@ -658,7 +646,8 @@ def test_a_damaged_spectra_file_is_reported_not_raised(ui, tmp_path):
     m = go(ui, "Components")
     bad = tmp_path / "bad.spk.json"
     bad.write_text("{not json")
-    ui.drop(bad)
+    ui.app.file_action = "load_spectra"  # what Load spectra… then choosing the file does
+    ui.app._file_chosen([str(bad)])
     assert m.status.startswith("Error:")
     assert m.lifetime_spectrum == [[0.3, 1.8], [0.7, 4.1]]
 

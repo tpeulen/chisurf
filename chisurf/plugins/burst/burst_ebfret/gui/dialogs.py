@@ -25,6 +25,7 @@ from emtk.i18n import tr
 __all__ = [
     "Dialog",
     "FileChooser",
+    "WorkspaceTraces",
     "Question",
     "MessageBox",
     "SpecDialog",
@@ -124,8 +125,11 @@ class FileChooser(Dialog):
         directory: str | None = None,
     ) -> None:
         super().__init__()
+        if mode != "save":
+            raise ValueError("FileChooser saves: the time series come from the workspace")
         self.title = title
         self.on_ok = on_ok
+        # not-input: save, export and SMD-export targets only (mode is checked above)
         self.chooser = FileDialog(
             title, mode=mode, filters=filters, directory=directory, multiselect=multiselect, rows=13
         )
@@ -140,6 +144,39 @@ class FileChooser(Dialog):
             gui.track("dialog.ok")
             self.close()
             self.on_ok(list(result), self.chooser.filter_index + 1)
+
+
+class WorkspaceTraces(Dialog):
+    """*File > Load*: the time series come from the Datasets workspace, picked in its Input
+    section (``section``, a :class:`chisurf.plugins.curve_input.CurveInput`); files dropped on
+    the ChiSurf window are listed there."""
+
+    title = "Load time series"
+    size = (620.0, 360.0)
+
+    def __init__(self, section) -> None:
+        super().__init__()
+        self.section = section
+
+    def draw(self, gui) -> None:
+        """Draw the Input section and a Close button; a pick closes the dialog."""
+        from emtk.i18n import tr
+
+        im.text_wrapped(
+            tr(
+                "Pick the time series in the Datasets workspace: an ebFRET session or SMD .mat, "
+                "an SF-Tracer .tsv, an SMD .json(.gz) or a raw .dat series."
+            )
+        )
+        before = self.section.workspace_input_status
+        self.section.draw()
+        if self.section.workspace_input_status != before and not str(
+            self.section.workspace_input_status
+        ).startswith("Could not"):
+            self.close()
+        if im.button(tr("Close") + "##workspace_traces", (BUTTON_W, 0)):
+            gui.track("dialog.cancel")
+            self.close()
 
 
 class Question(Dialog):

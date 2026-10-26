@@ -76,6 +76,10 @@ NOT_INPUT = {
         "Spectra / corrected IRFs: a saved spectrum is the tool's own component list (its state, "
         "like a saved region), the rest are outputs; the polarized decays come from the workspace."
     ),
+    "chisurf/plugins/burst/burst_ebfret/gui/dialogs.py": (
+        "FileChooser: Save / Export summary / Export traces / Export SMD targets; it refuses any "
+        "mode but save (the time series come from the workspace)."
+    ),
     "chisurf/plugins/fluorescence_decay/lltf/gui/app.py": (
         "Output directory: where the fit's JSON and plot are written, an output."
     ),

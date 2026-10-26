@@ -360,20 +360,14 @@ def test_a_help_section_button_shows_only_that_section(app):
 # ── file drop through the native host ---------------------------------------------------------------------- #
 
 
-def test_a_file_dropped_on_the_host_reaches_the_app_and_says_the_calculator_has_no_file_input(app):
-    """The host takes the drop (the app has a drop hook) and the app says it reads no files.
-
-    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and the Qt
-    host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves the Qt half.
-    """
+def test_the_host_does_not_offer_this_calculator_a_drop(app):
+    """Files dropped on ChiSurf go to the Datasets workspace: the calculator has no drop hook, so
+    the host does not take a drop on it."""
     from emtk.app import ControlSurface
 
     draw(app)
-    assert ControlSurface(app).on_files_dropped(["/tmp/run.ptu"]) is True, (
-        "the host refuses a drop on this app"
-    )
-    assert app.model.hetero.status == "The FRET Calculator takes no dropped files."
-    assert "takes no dropped files" in " ".join(draw(app).strings)
+    assert not ControlSurface(app).on_files_dropped(["/tmp/run.ptu"])
+    assert app.model.hetero.status == ""
 
 
 # ── the same flow at the small size ------------------------------------------------------------------------- #

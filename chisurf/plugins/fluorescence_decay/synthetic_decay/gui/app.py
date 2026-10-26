@@ -12,6 +12,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import mark, tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.datasets import register_synthetic_fit
@@ -30,6 +31,13 @@ class SyntheticDecayApp(ImApp):
         self.dialog_action = ""
         self.file_window = None
         self.form = FormState()
+        from chisurf.plugins.curve_input import CurveInput
+
+        #: The Input sections: the IRF to convolve with, a lifetime spectrum for the table.
+        self.inputs = {
+            name: CurveInput("synthetic_decay", self, name=name, title="", height=74.0)
+            for name in ("irf", "spectrum")
+        }
         self.item_rects = {}
         spec = json.loads(Path(__file__).with_name("synthetic_decay.view.json").read_text())
         self.window_size = window_size(spec, (1100, 720))
@@ -136,17 +144,37 @@ class SyntheticDecayApp(ImApp):
         )
 
     def request_file(self, mode, title, filename, filters):
-        self.dialog = FileDialog(title, mode=mode, filename=filename, filters=filters)
+        """The model asks where a generated decay is saved (its inputs come from the workspace)."""
+        self.dialog = FileDialog(title, mode="save", filename=filename, filters=filters)
         self.file_window = DialogWindow(title, size=(760, 540))
-        self.dialog_action = "load_spectrum" if title == "Load lifetime spectrum" else "save"
+        self.dialog_action = "save"
         return None
 
-    def browse_irf(self):
-        self.dialog = FileDialog(
-            "Select instrument response", mode="open", filters="Data (*.txt *.dat *.npy)"
-        )
-        self.dialog_action = "irf"
-        self.file_window = DialogWindow("Select instrument response", size=(760, 540))
+    def clear_irf(self):
+        """Convolve with no instrument response: the ideal decay."""
+        self.model.irf_path = ""
+        self.form.buffers.clear()
+
+    def draw_inputs(self):
+        """The Input sections: the instrument response, and a lifetime spectrum for the table."""
+        for name, caption, tip in (
+            (
+                "irf",
+                mark("IRF"),
+                mark("An instrument response from the Datasets workspace to convolve with."),
+            ),
+            (
+                "spectrum",
+                mark("Lifetime spectrum"),
+                mark("A curve with lifetimes (ns) on x and amplitudes on y fills the component table."),
+            ),
+        ):
+            im.text_disabled(tr(caption))
+            im.set_item_tooltip(tr(tip))
+            rects = {}
+            self.inputs[name].draw(rects, on_used=self.tour.notify_used)
+            for key, rect in rects.items():
+                self.item_rects[f"{name}.{key}"] = rect
 
     def controls(self, box):
         actions = [
@@ -169,10 +197,10 @@ class SyntheticDecayApp(ImApp):
                 self.model.send_to_fit,
             ),
             (
-                "Browse IRF",
-                "irf_path",
-                "Choose an optional instrument response to convolve with the ideal decay.",
-                self.browse_irf,
+                "Clear IRF",
+                "clear_irf",
+                "Convolve with no instrument response (the IRF input picks one).",
+                self.clear_irf,
             ),
             (None, "help", None, self.help_window.show),
             (None, "guide", None, self.tour.start),
@@ -198,6 +226,7 @@ class SyntheticDecayApp(ImApp):
             if (index + 1) % 3 and index + 1 < len(actions):
                 im.same_line()
         im.text_wrapped(self.model.status_text())
+        self.draw_inputs()
         draw_form(self.spec, self.model, self.form)
 
     def _plot(self, title, series, label, log=False):
@@ -235,16 +264,9 @@ class SyntheticDecayApp(ImApp):
             pressed = self.file_window.begin(box)
             result = self.dialog.draw()
             if result:
-                action = self.dialog_action
                 self.dialog = None
                 try:
-                    if action == "irf":
-                        self.model.irf_path = str(result[0])
-                        self.form.buffers.clear()
-                    elif action == "load_spectrum":
-                        self.model.load_spectrum(str(result[0]))
-                    else:
-                        self.model.save(str(result[0]))
+                    self.model.save(str(result[0]))
                 except Exception as exc:
                     self.model.status = f"File action failed: {exc}"
             elif result is False or pressed == "close":
@@ -262,6 +284,64 @@ class SyntheticDecayApp(ImApp):
         """Restore :meth:`export_settings`; invalid entries are ignored."""
         self.model.restore_settings(settings)
         self.form.buffers.clear()
+
+
+def _address(payload: dict, key: str) -> str:
+    value = payload.get(key)
+    if isinstance(value, (list, tuple)):
+        value = value[0] if value else ""
+    return str(value or "")
+
+
+def receive_irf(app: SyntheticDecayApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``irf``): the instrument response to convolve with.
+
+    The generator reads one column of counts: a curve of the session is written as its counts
+    alone (a time column would be flattened into the IRF); a file the workspace links to is used
+    as it is.
+    """
+    import tempfile
+
+    from chisurf.plugins.curve_input import curve_of
+
+    address = _address(payload, "irf")
+    if not address:
+        return
+    dataset = curve_of(address)
+    try:
+        counts = getattr(dataset, "y", None)
+        if counts is not None and len(counts):
+            folder = Path(tempfile.gettempdir()) / "chisurf-synthetic-decay-input"
+            folder.mkdir(parents=True, exist_ok=True)
+            stem = Path(str(getattr(dataset, "name", "") or "irf")).stem or "irf"
+            target = folder / f"{stem}.txt"
+            np.savetxt(target, np.asarray(counts, float))
+            app.model.irf_path = str(target)
+        elif Path(address).is_file():
+            app.model.irf_path = address
+        else:
+            raise FileNotFoundError(f"{address} is not in the workspace")
+    except Exception as exc:  # noqa: BLE001 - said in the status line
+        app.model.status = f"IRF not taken: {exc}"
+        return
+    app.form.buffers.clear()
+    app.tour.notify_used("irf_path")
+
+
+def receive_spectrum(app: SyntheticDecayApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``spectrum``): a lifetime spectrum for the table,
+    a curve with lifetimes on x and amplitudes on y."""
+    from chisurf.plugins.curve_input import curve_of
+
+    address = _address(payload, "spectrum")
+    if not address:
+        return
+    dataset = curve_of(address)
+    if dataset is None:
+        app.model.load_spectrum(address)  # a file the session links to: the table formats
+        return
+    x, y = np.asarray(dataset.x, float), np.asarray(dataset.y, float)
+    app.model.set_spectrum(np.column_stack([y, x]).ravel(), str(getattr(dataset, "name", "")))
 
 
 def make_app():

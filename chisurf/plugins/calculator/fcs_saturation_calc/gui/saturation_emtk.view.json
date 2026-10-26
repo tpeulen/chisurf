@@ -14,11 +14,6 @@
       "description": "Recompute the FCS curves, the one-component and two-component fits, the radial profiles and the power sweeps from the current kinetics and optics. The plots also follow every edit."
      },
      {
-      "action": "load_scheme",
-      "label": "Load scheme",
-      "description": "Load a photophysical scheme (states, labels, transition rates and brightness) from a JSON file."
-     },
-     {
       "action": "save_scheme",
       "label": "Save scheme",
       "description": "Export the state labels, every non-zero transition rate and the brightness as a JSON scheme file."

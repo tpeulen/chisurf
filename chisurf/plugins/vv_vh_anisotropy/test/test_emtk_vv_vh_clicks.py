@@ -51,33 +51,54 @@ def set_field(ui, name, text):
     ui.enter()
 
 
+def pick_file(ui, path, section="file"):
+    """The file is in the Datasets workspace (as a drop puts it) and its row is picked in the
+    Input section *section*."""
+    from chisurf.core.plugin.workspace_input import register_result
+    from test.gui.curve_workspace import pick
+
+    pick(ui.app.inputs[section], register_result(str(path), kind="decay", name=path.name))
+    ui.frame(2)
+
+
 def load(ui, path):
-    ui.click("Load VV/VH file…")
-    ui.click(path.name)  # the file in the dialog's list
-    ui.click("Open")
+    pick_file(ui, path)
     assert ui.app.model.loaded_file == str(path)
 
 
 # -- the main window ---------------------------------------------------------------------------
-def test_load_button_dialog_cancel_and_open(ui, files):
+def test_a_file_picked_in_the_input_section_is_loaded(ui, files):
     a, _ = files
-    assert not ui.app.model.has_data and ui.drawn("Load a VV/VH file")  # empty plots say so
-    ui.click("Load VV/VH file…")
-    assert ui.app.dialog is not None and ui.drawn("Cancel") and ui.drawn("Open")
-    ui.click("Cancel")
-    assert ui.app.dialog is None and not ui.app.model.has_data
+    assert not ui.app.model.has_data and ui.drawn("Pick a VV/VH file")  # empty plots say so
     load(ui, a)
     assert ui.app.dialog is None and ui.app.model.message == "Loaded a.dat: 256 channels"
-    assert ui.drawn("Loaded a.dat: 256 channels") and not ui.drawn("Load a VV/VH file")
+    assert ui.drawn("Loaded a.dat: 256 channels") and not ui.drawn("Pick a VV/VH file")
     assert ui.app.form.rects["loaded_file"]  # the path field
 
 
-def test_file_dialog_window_closes_with_its_x_button_and_with_escape(ui, files):
-    ui.click("Load VV/VH file…")
+def test_two_curves_named_vv_and_vh_are_analysed_as_one_pair(ui, files):
+    from test.gui.curve_workspace import add_curve, pick
+
+    a, _ = files
+    reference = AnisotropyModel()
+    reference.load(a)  # the two channels of the file, as the tool reads them
+    t = np.arange(len(reference.vv_raw), dtype=float)
+    vv = add_curve(t, reference.vv_raw, name="sample VV")
+    vh = add_curve(t, reference.vh_raw, name="sample VH")
+    pick(ui.app.inputs["file"], vv, vh)
+    m = ui.app.model
+    assert m.has_data and np.allclose(m.vv_raw, reference.vv_raw)
+    assert np.allclose(m.vh_raw, reference.vh_raw)
+
+
+def test_the_save_dialog_closes_with_its_x_button_and_with_escape(ui, files):
+    a, _ = files
+    load(ui, a)
+    ui.click("Save outputs…")
     x, y, w, h = ui.app.file_window.box
     ui.click((x + w - 14.0, y + 13.0))  # the window's x button
-    assert ui.app.dialog is None and not ui.app.model.has_data
-    ui.click("Load VV/VH file…")
+    assert ui.app.dialog is None
+    ui.click("Save outputs…")
     ui.move((x + w / 2, y + h / 2))  # Escape counts over the window
     ui.key(KEY_ESCAPE)
     assert ui.app.dialog is None
@@ -246,9 +267,7 @@ def test_a_bad_file_through_the_dialog_is_a_status_line_not_a_crash(ui, files, t
     a, _ = files
     (tmp_path / "words.dat").write_text("not numbers\n")
     load(ui, a)
-    ui.click("Load VV/VH file…")
-    ui.click("words.dat")
-    ui.click("Open")
+    pick_file(ui, tmp_path / "words.dat")
     assert ui.app.dialog is None and ui.app.model.loaded_file == str(a)
     assert ui.drawn(
         "Could not load words.dat: VV/VH file needs at least two bins in each equally sized channel."
@@ -302,26 +321,6 @@ def test_the_tour_next_and_prev_buttons_can_be_clicked(ui, files):
     assert ui.app.tour.step_idx == 3
 
 
-def test_a_file_dropped_on_the_native_host_is_loaded(ui, files):
-    """A dropped file is loaded, in this app and in a fresh one.
-
-    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
-    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
-    the Qt half.
-    """
-    from emtk.app import ControlSurface
-
-    a, b = files
-    assert ControlSurface(ui.app).on_files_dropped([str(a)]) is True  # native window and page hosts
-    assert ui.app.model.loaded_file == str(a)
-    other = create_app()
-    try:
-        assert ControlSurface(other).on_files_dropped([str(b)]) is True  # the host takes the drop
-        assert other.model.loaded_file == str(b)
-    finally:
-        other.close()
-
-
 # -- the batch window -----------------------------------------------------------------------------
 def open_batch(ui):
     ui.click("Batch files…")
@@ -338,37 +337,19 @@ def test_batch_button_opens_and_close_button_and_title_x_close_it(ui, files):
     assert not ui.app.model.batch_open
 
 
-def test_batch_files_button_dialog_adds_files_and_table_rows_select(ui, files):
+def test_batch_input_queues_picked_files_and_table_rows_select(ui, files):
+    from chisurf.core.plugin.workspace_input import register_result
+    from test.gui.curve_workspace import pick
+
     a, b = files
     open_batch(ui)
-    ui.click("Files")
-    assert ui.app.dialog is not None
-    ui.click("a.dat")
-    ui.click("b.dat")  # multi-select by clicks
-    ui.click("Open")
-    assert ui.app.model.batch_files and Path(ui.app.model.batch_files[0]).name in ("a.dat", "b.dat")
+    rows = [register_result(str(p), kind="decay", name=p.name) for p in (a, b)]
+    pick(ui.app.inputs["batch"], *rows)
+    ui.frame(2)
+    assert sorted(Path(p).name for p in ui.app.model.batch_files) == ["a.dat", "b.dat"]
     assert ui.drawn("File") and ui.drawn("Path")  # the queue table's header
-    names = sorted(Path(p).name for p in ui.app.model.batch_files)
-    assert names and set(names) <= {"a.dat", "b.dat"}
-    ui.click(names[0])  # click the row: selected
-    assert Path(ui.app.model.selected_batch_file).name == names[0]
-
-
-def test_batch_folder_button_queues_a_folder(ui, files, tmp_path):
-    a, b = files
-    open_batch(ui)
-    ui.click("Folder")
-    assert ui.app.dialog is not None
-    ui.click("Choose")  # the dialog's current folder
-    assert sorted(Path(p).name for p in ui.app.model.batch_files) in (["a.dat", "b.dat"], [])
-
-
-def test_batch_database_button_opens_the_picker(ui, files, monkeypatch):
-    opened = []
-    monkeypatch.setattr(ui.app.picker, "open", lambda: opened.append(1))
-    open_batch(ui)
-    ui.click("Database")
-    assert opened == [1]
+    ui.click("b.dat", nth=-1)  # click the queue's row (the last drawn b.dat): selected
+    assert Path(ui.app.model.selected_batch_file).name == "b.dat"
 
 
 def test_batch_remove_clear_delete_key_and_the_disabled_buttons(ui, files):
@@ -444,17 +425,6 @@ def test_a_bad_file_in_the_batch_shows_its_error_in_the_table(ui, files, tmp_pat
     ui.click("Run Batch")
     assert ui.drawn("Processed 2 file(s), 1 failed.") and ui.drawn("N/A")
     assert any("two bins" in s for s in ui.strings)
-
-
-def test_drop_with_the_batch_window_open_queues_the_files(ui, files):
-    from emtk.app import ControlSurface
-
-    a, b = files
-    open_batch(ui)
-    assert ControlSurface(ui.app).on_files_dropped([str(a), str(b)]) is True
-    ui.frame(2)
-    assert sorted(Path(p).name for p in ui.app.model.batch_files) == ["a.dat", "b.dat"]
-    assert ui.drawn("a.dat") and ui.drawn("b.dat") and not ui.app.model.has_data
 
 
 def test_the_file_path_name_field_accepts_backspace(ui, files):

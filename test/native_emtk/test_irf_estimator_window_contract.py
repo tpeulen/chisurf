@@ -105,7 +105,9 @@ def test_real_estimate_and_export_survive_every_dock_and_narrow_view(tmp_path, m
     source = repo / "test/data/tcspc/Jordi_FRETsens/Donor/D0_14_TAC1024_DexDem.dat"
     app = make_app()
     try:
-        assert app.files_dropped([str(source)])
+        from chisurf.plugins.fluorescence_decay.irf_estimator.gui.app import receive_decay
+
+        receive_decay(app, {"decay": str(source)})  # a workspace row linked to the file
         assert not app.error
         app.model.rl_iterations = 100
         app.model.use_range_selection = True
@@ -129,7 +131,7 @@ def test_real_estimate_and_export_survive_every_dock_and_narrow_view(tmp_path, m
                 "first_channel",
                 "last_channel",
                 "request_estimate",
-                "request_load",
+                "workspace_input_rows",
                 "request_save",
             ):
                 x, y, width, height = app.item_rects[name]

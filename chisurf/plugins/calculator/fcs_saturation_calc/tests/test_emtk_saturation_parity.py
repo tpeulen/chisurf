@@ -301,9 +301,17 @@ def test_the_recorded_qt_tool_and_the_emtk_model_agree_on_every_preset(app):
                 # of the curve, not of the sample (Cyanine 5's 4-state curve, peak 323.7, differs
                 # by 1.0e-9 = 3e-12 of its peak at samples of 1e-6, i.e. rel 1.5e-6 there). So
                 # the floor scales with the curve's peak: 1e-11 of it (3x the measured spread).
+                # Cyanine 5's residual inherits its curve's 1.0e-9 per point, and a sum's absolute
+                # error grows with its n points: on Linux the 300-point Cy5 residual sum differed by
+                # 2.25e-7 (rel 1.16e-7). So a residual sample gets 3e-9 (3x the per-point error) and
+                # a residual sum n times that (9e-7 here, 4x the measured difference).
                 scale = max((abs(v) for v in b["y"]["samples"]), default=0.0)
-                floor = 1e-9 if "residual" in source else max(1e-12, 1e-11 * scale)
-                assert total == pytest.approx(b["y"]["sum"], rel=1e-7, abs=floor), (preset, source)
+                floor = 3e-9 if "residual" in source else max(1e-12, 1e-11 * scale)
+                sum_floor = floor * max(1, n) if "residual" in source else floor
+                assert total == pytest.approx(b["y"]["sum"], rel=1e-7, abs=sum_floor), (
+                    preset,
+                    source,
+                )
                 assert samples == pytest.approx(b["y"]["samples"], rel=1e-7, abs=floor), (
                     preset,
                     source,
@@ -506,7 +514,6 @@ def test_every_tab_draws_and_the_layout_is_clean(app, size, tab, preset):
     assert not problems, problems[:6]
     assert {
         "Compute",
-        "Load scheme",
         "Save scheme",
         "Load session",
         "Save session",

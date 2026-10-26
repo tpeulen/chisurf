@@ -13,11 +13,10 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
-from emtk.i18n import tr
+from emtk.i18n import mark, tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.core.fio import read_vv_vh
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
     LabelColumn,
@@ -51,24 +50,21 @@ class GFactorApp(TourTarget, ImApp):
         panels = primary["panels"]
         self.panels = {n: layout_spec(copy.deepcopy(p)) for n, p in panels.items()}
         self.forms = {n: FormState() for n in panels}
-        self.dataset_picker = DatasetPicker(client=dataset_client, on_paths=self.add_batch)
-        self.ref_picker = DatasetPicker(client=dataset_client, on_paths=self.add_reference_paths)
-        self.picker = self.dataset_picker
+        from chisurf.plugins.curve_input import CurveInput
+
+        #: The Input sections: the reference standard, the slow reference, the batch decays.
+        self.inputs = {
+            name: CurveInput("vv_vh_g_factor", self, name=name, title="", height=height)
+            for name, height in (("reference", 56.0), ("slow", 56.0), ("batch", 92.0))
+        }
         self.path_list = PathListView(
             self,
             actions={
-                "add": lambda: self.choose(tr("Batch VV/VH decays"), self.add_batch, multiple=True),
-                "folder": lambda: self.choose(
-                    tr("Batch VV/VH folder"), self.add_batch_folder, mode="folder"
-                ),
-                "database": self.dataset_picker.open,
                 "remove": lambda path: self.model.remove_batch({"path": path}),
                 "clear": self.clear_batch,
             },
         )
-        self.forms["batch"].custom["path_list"] = lambda section, model, state, width: (
-            self.path_list.draw(section, model, state)
-        )
+        self.forms["batch"].custom["path_list"] = self.draw_batch_list
         self.labels = {n: LabelColumn() for n in panels}
         self.help = EmTkHelpWindow(
             title="VV/VH G-factor: Help", resource=HERE / "help.md", owner=self
@@ -160,21 +156,19 @@ class GFactorApp(TourTarget, ImApp):
         self,
         title,
         callback: Callable[[list[str]], object],
-        mode="open",
+        mode="save",
         multiple=False,
         filename="",
     ):
+        """Ask where a result is written (the decays come from the workspace)."""
         if self.job.running:
             return
         self.dialog = FileDialog(
             title,
-            mode=mode,
-            multiselect=multiple,
+            mode="save",
             filename=filename,
             directory=self.last_dir or None,
-            filters="VV/VH decay (*.dat *.txt *.csv);;All files (*)"
-            if mode != "save"
-            else "Results (*.json *.tsv *.txt *.csv *.dat);;All files (*)",
+            filters="Results (*.json *.tsv *.txt *.csv *.dat);;All files (*)",
         )
         self.dialog_window = DialogWindow(title, size=(760, 540))
         self.dialog_callback = callback
@@ -309,24 +303,25 @@ class GFactorApp(TourTarget, ImApp):
         self.model.batch_files = []
         self.model.batch_results = []
 
-    def files_dropped(self, paths):
-        """Host drop: first is fast reference, second slow protein, any more join batch queue. If fast loaded, single file is sample."""
-        paths = [str(p) for p in paths or []]
-        if not paths:
-            return False
-        if getattr(self.model, "batch_open", False):
-            return self.add_batch_paths(paths) > 0
-        if len(paths) == 1 and self.model.fast is not None:
-            return self.load(paths[0], sample=True)
-        self.load(paths[0])
-        if len(paths) > 1:
-            self._follow = [lambda: self.load(paths[1], slow=True)]
-            if paths[2:]:
-                self._follow.append(lambda: self.add_batch(paths[2:]))
-        return True
+    def draw_input(self, name: str, caption: str, tip: str = "") -> None:
+        """The Input section *name*: a caption, then the workspace rows; its rects are tour targets
+        (``<name>.workspace_input_rows``)."""
+        im.text_disabled(tr(caption))
+        if tip:
+            im.set_item_tooltip(tr(tip))
+        im.begin_disabled(self.job.running)
+        rects: dict = {}
+        self.inputs[name].draw(rects, on_used=self.guide.notify_used)
+        im.end_disabled()
+        for key, rect in rects.items():
+            self.item_rects[f"{name}.{key}"] = rect
 
-    on_files_dropped = files_dropped
-    on_paths_dropped = files_dropped
+    def draw_batch_list(self, section, model, state, width):
+        """The batch Input section, then the queue it fills."""
+        self.draw_input(
+            "batch", mark("Input"), mark("VV/VH decays of the unknown samples, from the workspace.")
+        )
+        self.path_list.draw(section, model, state)
 
     def window_resized(self, width: int | float, height: int | float) -> None:
         self.window_size = (int(width), int(height))
@@ -344,20 +339,18 @@ class GFactorApp(TourTarget, ImApp):
         m = self.model
         m.busy = self.job.running
         busy = self.job.running or self.dialog is not None
+        self.draw_input(
+            "reference",
+            mark("Reference standard"),
+            mark("The VV/VH decay of a fast-rotating reference dye, picked in the Datasets workspace."),
+        )
+        self.draw_input(
+            "slow",
+            mark("Slow reference"),
+            mark("A slow-rotating protein reference (polarization mixing)."),
+        )
         pressed = button_row(
             [
-                {
-                    "label": "Load...",
-                    "key": "load_fast",
-                    "enabled": not busy,
-                    "tip": "Load reference standard VV/VH decay file(s) for G-factor calibration.",
-                },
-                {
-                    "label": "Slow...",
-                    "key": "load_slow",
-                    "enabled": not busy,
-                    "tip": "Load a slow-rotating reference standard for polarization-mixing estimation.",
-                },
                 {
                     "label": action_caption("example"),
                     "key": "load_example",
@@ -368,12 +361,6 @@ class GFactorApp(TourTarget, ImApp):
                             "Load simulated references with a known G of 1.2: a fast dye, a slow protein and two batch decays."
                         ),
                     ),
-                },
-                {
-                    "label": "MMFDB...",
-                    "key": "load_database",
-                    "enabled": not busy,
-                    "tip": "Select and load reference standard datasets directly from MMFDB database.",
                 },
                 {
                     "label": "Batch ->",
@@ -406,12 +393,6 @@ class GFactorApp(TourTarget, ImApp):
         )
         if pressed == "load_example":
             self.load_example()
-        elif pressed == "load_fast":
-            self.choose("Reference standard decay", lambda paths: self.load(paths[0]))
-        elif pressed == "load_slow":
-            self.choose("Slow protein reference", lambda paths: self.load(paths[0], slow=True))
-        elif pressed == "load_database":
-            self.ref_picker.open()
         elif pressed == "open_batch":
             self.model.open_batch()
             self.docks.focus("batch")
@@ -1025,12 +1006,7 @@ class GFactorApp(TourTarget, ImApp):
         self.model.busy = self.job.running
         for form in self.forms.values():
             form.rects.clear()
-        im.begin_disabled(
-            self.dialog is not None
-            or self.dataset_picker.is_open
-            or self.ref_picker.is_open
-            or self.model.batch_open
-        )
+        im.begin_disabled(self.dialog is not None or self.model.batch_open)
         self.docks.draw(frame)
         im.end_disabled()
 
@@ -1060,10 +1036,6 @@ class GFactorApp(TourTarget, ImApp):
             elif result is False or pressed == "close":
                 self.dialog = None
             window.end()
-        if self.dataset_picker.is_open:
-            self.dataset_picker.render(frame)
-        if self.ref_picker.is_open:
-            self.ref_picker.render(frame)
         self.help.draw(frame)
         self.guide.draw(*vp.size)
         signature = self.fingerprint()
@@ -1121,10 +1093,57 @@ class GFactorApp(TourTarget, ImApp):
         )
         snapshot = self.model.snapshot() if publish else None
         self.job.close()
-        self.dataset_picker.close()
-        self.ref_picker.close()
         if self.on_close is not None:
             self.on_close(snapshot)
+
+
+def _files(app: GFactorApp, payload: dict, key: str) -> list[str]:
+    """The VV/VH files behind the addresses under *key*, a failure said in the message line."""
+    from chisurf.plugins.curve_input import vv_vh_files
+
+    value = payload.get(key) or []
+    addresses = [value] if isinstance(value, str) else [str(v) for v in value if str(v)]
+    try:
+        return vv_vh_files(addresses)
+    except Exception as exc:  # noqa: BLE001 - shown to the user
+        app.model.message = f"Error: {exc}"
+        return []
+
+
+def _queue(app: GFactorApp, loads: list) -> None:
+    """Run the first load now and the rest after it (one background job at a time)."""
+    if loads:
+        follow = getattr(app, "_follow", None) or []
+        if app.job.running:
+            app._follow = follow + loads
+        else:
+            app._follow = follow + loads[1:]
+            loads[0]()
+
+
+def receive_reference(app: GFactorApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``reference``): the reference standard decay(s) --
+    the first replaces the reference, more join the reference list."""
+    files = _files(app, payload, "file")
+    _queue(
+        app,
+        [lambda p=p: app.load(p) for p in files[:1]]
+        + [(lambda p=p: app.add_reference_paths([p])) for p in files[1:]],
+    )
+
+
+def receive_slow(app: GFactorApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``slow``): the slow-rotating protein reference."""
+    files = _files(app, payload, "file")
+    _queue(app, [lambda p=p: app.load(p, slow=True) for p in files[:1]])
+
+
+def receive_batch(app: GFactorApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``batch``): decays of unknown samples to evaluate."""
+    files = _files(app, payload, "files")
+    if files:
+        # after a running load: its result replaces the model, queue included
+        _queue(app, [lambda: app.add_batch(files)])
 
 
 def create_app(client=None, on_close=None, dataset_client=None):

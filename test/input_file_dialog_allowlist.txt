@@ -7,15 +7,11 @@ chisurf/plugins/burst/accurate_fret/gui/app.py: drop
 chisurf/plugins/burst/accurate_fret/gui/controller.py: dialog
 chisurf/plugins/burst/accurate_fret/gui/controller.py: drop
 chisurf/plugins/burst/accurate_fret/gui/controller.py: mmfdb
-chisurf/plugins/burst/burst_ebfret/gui/dialogs.py: dialog
 chisurf/plugins/burst/burst_fcs_correlator/gui/app.py: dialog
 chisurf/plugins/burst/burst_fusion/gui/controller.py: dialog
 chisurf/plugins/burst/burst_h2mm/gui/native.py: dialog
 chisurf/plugins/burst/burst_mle_analysis/gui/native.py: dialog
 chisurf/plugins/burst/burst_selection/gui/native.py: dialog
-chisurf/plugins/calculator/fcs_saturation_calc/gui/app.py: dialog
-chisurf/plugins/calculator/fcs_saturation_calc/gui/app.py: drop
-chisurf/plugins/calculator/fret_calculator/gui/app.py: drop
 chisurf/plugins/core/acq/gui/app.py: dialog
 chisurf/plugins/core/batch_analysis/gui/app.py: dialog
 chisurf/plugins/core/batch_analysis/gui/app.py: drop

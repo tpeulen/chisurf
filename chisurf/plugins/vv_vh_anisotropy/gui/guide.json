@@ -3,9 +3,9 @@
   "steps": [
     {
       "title": "VV and VH in one file",
-      "text": "A measurement file holds the parallel decay (VV) followed by the perpendicular decay (VH). <b>Load VV/VH file…</b> (or a drop on the window) opens one; both decays and r(t) appear at once.",
+      "text": "A measurement file holds the parallel decay (VV) followed by the perpendicular decay (VH). Pick it in the <b>Input</b> section, which lists the decays of the Datasets workspace (drop a VV/VH file on the ChiSurf window to add it); both decays and r(t) appear at once.",
       "target": {
-        "action": "request_load"
+        "name": "workspace_input_rows"
       }
     },
     {

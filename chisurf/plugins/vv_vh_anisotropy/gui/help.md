@@ -19,12 +19,14 @@ The two green lines of the anisotropy plot, or Region start and Region end, boun
 channels whose r(t) is averaged. The y axis of the plot is fixed to 0 to 0.45.
 
 ## Files
-Load VV/VH file… (or a dropped file) reads a .dat/.txt file; a file with no numbers is
-reported on the status line and the loaded data stays. Save outputs… writes
+The Input section lists the decays of the Datasets workspace (drop a VV/VH file on the ChiSurf
+window to add it): picking a row reads its .dat/.txt file, and two curves named VV and VH are
+analysed as one pair. A file with no numbers is reported on the status line and the loaded data
+stays. Save outputs… writes
 <name>_shifted.dat (VV and the shifted VH), <name>_anisotropy.txt (channel, r(t), r(t) minus
 r∞) and <name>_rinf.csv (file, r∞, region, backgrounds, g).
 
 ## Batch
-Batch files… opens the batch window with a snapshot of the current settings: queue files,
-folders or database datasets, press Run Batch, then Save CSV…. A file that cannot be
+Batch files… opens the batch window with a snapshot of the current settings: queue files from
+its Input section (the workspace), press Run Batch, then Save CSV…. A file that cannot be
 read gets a row with its error and the others are still processed.

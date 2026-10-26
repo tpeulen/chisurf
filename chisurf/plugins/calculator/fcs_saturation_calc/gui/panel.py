@@ -135,9 +135,6 @@ class SaturationPanel:
     def compute(self) -> None:
         self.app.compute()
 
-    def load_scheme(self) -> None:
-        self.app.choose("open")
-
     def save_scheme(self) -> None:
         self.app.choose("save")
 

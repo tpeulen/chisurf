@@ -35,7 +35,7 @@ from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.plugins.emtk_layout import window_size
 
-from ..core.session import FILE_TYPES, SESSION, SMD_JSON, SMD_JSON_GZ, SMD_MAT
+from ..core.session import RAW, SESSION, SF_TRACER, SMD_JSON, SMD_JSON_GZ, SMD_MAT
 from . import dialogs as dlg
 from .controls import MainControls
 
@@ -345,12 +345,39 @@ class EbfretGui(TourTarget):
         self.act(self.client.reset)
 
     def load_data(self) -> None:
-        """*File > Load* (``load_data.m``)."""
-        self.show(
-            dlg.FileChooser(
-                "Load", "open", FILE_TYPES, self._loaded, multiselect=True, directory=self.directory
+        """*File > Load* (``load_data.m``): the time series come from the Datasets workspace."""
+        if getattr(self, "input", None) is None:
+            from chisurf.plugins.curve_input import CurveInput
+
+            self.input = CurveInput("burst_ebfret", self, name="traces", title="", height=120.0)
+        self.show(dlg.WorkspaceTraces(self.input))
+
+    def load_files(self, files: list[str]) -> None:
+        """Load the time-series *files* by their type (a ``.mat`` is asked: session or SMD)."""
+        types = {".tsv": SF_TRACER, ".json": SMD_JSON, ".dat": RAW}
+        files = [str(f) for f in files if str(f)]
+        if not files:
+            return
+        first = files[0].lower()
+        if first.endswith(".json.gz"):
+            ftype = SMD_JSON_GZ
+        elif first.endswith(".mat"):
+            self.show(
+                dlg.Question(
+                    "Load .mat",
+                    "Is this an ebFRET saved session or an SMD time-series file?",
+                    ["ebFRET session", "SMD time series", "Cancel"],
+                    lambda answer: (
+                        None
+                        if answer == "Cancel"
+                        else self._loaded(files, SESSION if answer == "ebFRET session" else SMD_MAT)
+                    ),
+                )
             )
-        )
+            return
+        else:
+            ftype = types.get("." + first.rsplit(".", 1)[-1], RAW)
+        self._loaded(files, ftype)
 
     def _loaded(self, files: list[str], ftype: int) -> None:
         import os
@@ -420,7 +447,13 @@ class EbfretGui(TourTarget):
         from .. import demo
 
         path = demo.make_demo()
-        self._loaded([str(path)], 2)
+        try:  # the demo enters the workspace as a trace row, as a dropped file would
+            from chisurf.core.plugin.workspace_input import register_result
+
+            register_result(str(path), kind="trace", name=path.name)
+        except Exception:  # noqa: BLE001 - the demo still loads without its row
+            pass
+        self._loaded([str(path)], RAW)
         self.track("load_example")
 
     def save_data(self) -> None:
@@ -939,3 +972,14 @@ def make_app(**kwargs) -> App:
     client = EbfretClient()
     gui = EbfretGui(client)
     return App(gui, on_exit=client.close)
+
+
+def receive_traces(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``traces``): the time-series files to load (``app``
+    is the window or its :class:`EbfretGui`)."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    gui = getattr(app, "gui", app)
+    value = payload.get("files") or []
+    addresses = [value] if isinstance(value, str) else [str(v) for v in value if str(v)]
+    gui.load_files([read_address(a) for a in addresses])

@@ -226,7 +226,7 @@ def test_the_native_forms_carry_the_ranges_choices_and_decimals_of_the_qt_spec()
 
 def test_the_empty_window_asks_for_data_and_greys_fit_and_scan(ui):
     strings = [t[5] for t in ui.draw().texts]
-    assert "Load a trace (Add files... or Load example)." in strings
+    assert "Load a trace (pick one in the Input section, or Load example)." in strings
     ui.click_name("request_run")
     ui.click_name("request_scan")
     assert not ui.app.job.busy and ui.app.model.fit is None
@@ -245,13 +245,19 @@ def test_the_demo_button_loads_a_generated_trace_and_a_fit_recovers_its_three_st
     assert any("Demo" in t[5] or "state path" in t[5] for t in demo.draw().texts)
 
 
-def test_add_files_through_the_dialog_toggles_files_and_fits_them_jointly(ui, files):
-    ui.app.last_dir = str(Path(files["a"]).parent)
-    ui.click_name("add_files")
-    assert ui.app.dialog is not None
-    ui.click_text("a.csv")
-    ui.click_text("b.csv")
-    ui.click_text("Open")
+def pick_files(ui, *paths):
+    """The trace files are in the Datasets workspace (as a drop puts them) and their rows are
+    picked in the Input section, in this order."""
+    from chisurf.core.plugin.workspace_input import register_result
+    from test.gui.curve_workspace import pick
+
+    rows = [register_result(str(p), kind="trace", name=Path(p).name) for p in paths]
+    pick(ui.app.input, *rows)
+    ui.draw()
+
+
+def test_trace_files_picked_in_the_workspace_are_fitted_jointly(ui, files):
+    pick_files(ui, files["a"], files["b"])
     m = ui.app.model
     assert ui.app.dialog is None and m.files == [files["a"], files["b"]]
     assert {"a.csv", "b.csv"} <= {t[5] for t in ui.draw().texts}
@@ -260,39 +266,39 @@ def test_add_files_through_the_dialog_toggles_files_and_fits_them_jointly(ui, fi
     assert len(m.traces) == 2 and m.fit.n_states == 3
 
 
-def test_the_dialog_cancel_and_close_add_nothing(ui, files):
-    ui.app.last_dir = str(Path(files["a"]).parent)
-    for closer in ("Cancel", "×"):
-        ui.click_name("add_files")
-        assert ui.app.dialog is not None
-        ui.click_text(closer)
-        assert ui.app.dialog is None
-    assert ui.app.model.files == []
+def test_a_trace_read_into_chisurf_is_handed_over_in_memory(ui):
+    from test.gui.curve_workspace import add_curve, pick
+
+    counts = np.r_[np.full(200, 20.0), np.full(200, 80.0)]
+    pick(ui.app.input, add_curve(np.arange(400.0), counts, name="intensity trace", kind="trace"))
+    m = ui.app.model
+    assert m.files == [] and len(m.traces) == 1 and m.traces[0].shape == (400, 1)
+    assert "intensity trace" in m._labels
 
 
-def test_dropped_files_join_the_list_and_duplicates_are_ignored(ui, files):
-    assert ui.drop(files["a"], files["b"], files["a"]) is True
+def test_picked_files_join_the_list_and_duplicates_are_ignored(ui, files):
+    pick_files(ui, files["a"], files["b"])
+    pick_files(ui, files["a"])
     assert ui.app.model.files == [files["a"], files["b"]]
-    assert ui.drop() is False
 
 
 def test_remove_and_clear_and_the_delete_key_edit_the_file_list(ui, files):
     m = ui.app.model
-    ui.drop(files["a"], files["b"])
+    pick_files(ui, files["a"], files["b"])
     ui.click_name("remove")
     assert m.files == [files["a"]]  # none selected: the last one goes
-    ui.drop(files["b"])
-    ui.click(ui.text_rect(ui.draw(), "a.csv"))
+    pick_files(ui, files["b"])
+    ui.click(ui.text_rect(ui.draw(), "a.csv", last=False))  # the file list, above the Input rows
     ui.delete()
     assert m.files == [files["b"]]
     ui.click_name("clear")
-    assert m.files == [] and ui.drawn("Add files...")
+    assert m.files == [] and ui.drawn("Use selected")
 
 
 def test_an_unreadable_file_is_reported_and_nothing_is_fitted(ui, tmp_path):
     bad = tmp_path / "bad.csv"
     bad.write_text("not,numbers\nat,all\n")
-    ui.drop(bad)
+    pick_files(ui, bad)
     ui.click_name("request_run")
     m = ui.settle()
     assert m.fit is None and (

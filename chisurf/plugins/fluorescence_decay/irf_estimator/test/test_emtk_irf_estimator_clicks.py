@@ -1,7 +1,8 @@
 """Click coverage of the native blind IRF estimator: every control operated with pointer, keys, wheel, drags and drops.
 
-Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` and the host's drop hook (``files_dropped``) reach the
-window; assertions read what is drawn, the model and the files written.
+Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` reach the window, and the decay is
+picked in its Input section from the Datasets workspace (where a drop on ChiSurf puts it);
+assertions read what is drawn, the model and the files written.
 """
 
 from __future__ import annotations
@@ -39,11 +40,24 @@ def hermetic(tmp_path, monkeypatch):
     monkeypatch.setenv("MMFDB_DATABASE_PATH", str(tmp_path / "mmfdb.sqlite"))
 
 
+def decay_arrays(path=DECAY):
+    """The time axis and counts of a VV/VH decay file, as the workspace holds the curve."""
+    from chisurf.plugins.fluorescence_decay.irf_estimator.backend.services import load_decay_handler
+
+    data = load_decay_handler(str(path))["result"]
+    y = np.asarray(data["intensity"], float)
+    return np.arange(len(y)) * float(data["dt"]), y
+
+
 class Ui(_Ui):
-    def drop(self, *paths):
-        accepted = self.app.files_dropped([str(p) for p in paths])
+    def pick_decay(self, path=DECAY, name=None):
+        """The decay at *path* is in the workspace; its row is picked in the Input section."""
+        from test.gui.curve_workspace import pick_curve
+
+        x, y = decay_arrays(path)
+        dataset = pick_curve(self.app.input, x, y, name=name or Path(path).stem)
         self.draw(3)
-        return accepted
+        return dataset
 
     def settle(self, timeout=120.0):
         end = time.monotonic() + timeout
@@ -88,7 +102,7 @@ def ui():
 
 @pytest.fixture
 def loaded(ui):
-    assert ui.drop(DECAY)
+    ui.pick_decay()
     assert ui.app.model.decay_data_original is not None
     return ui
 
@@ -139,37 +153,17 @@ def test_no_tour_card_button_is_dead_on_any_step():
     assert dead_tour_buttons(IRFEstimatorApp, SIZE) == []
 
 
-def test_load_decay_opens_a_filtered_dialog_and_every_way_out_works(ui):
-    ui.click("request_load")
-    ui.app.dialog.directory = str(DECAY.parent)
-    ui.draw(3)
-    assert ui.dialog_open and ui.shown("Load Decay File") and ui.shown(DECAY.name)
-    ui.press_text("Open")
-    assert (
-        ui.dialog_open
-        and ui.shown("Select a file first.")
-        and ui.app.model.decay_data_original is None
-    )
-    ui.press_text("Cancel")
-    assert not ui.dialog_open
-    ui.click("request_load")
-    ui.press_text("×")
-    assert not ui.dialog_open
-    ui.click("request_load")
-    ui.app.dialog.directory = str(DECAY.parent)
-    ui.draw(3)
-    ui.press_text(DECAY.name)
-    ui.press_text("Open")
-    assert not ui.dialog_open and ui.app.model.decay_data_original is not None
-    assert ui.shown(str(DECAY)) or ui.shown(DECAY.name)
+def test_the_input_section_lists_workspace_decays_and_a_pick_loads_one(ui):
+    from test.gui.curve_workspace import add_curve
 
-
-def test_a_dropped_file_loads_and_a_foreign_one_is_reported(ui, tmp_path):
-    bad = tmp_path / "notes.dat"
-    bad.write_text("not a decay")
-    ui.drop(bad)
-    assert ui.app.model.decay_data_original is None and ui.shown("Error")
-    assert ui.drop(DECAY) and ui.app.model.decay_data_original is not None
+    t = np.arange(50) * 0.1
+    add_curve(t, np.exp(-t), name="a correlation", kind="correlation")
+    ui.draw(2)
+    assert not ui.app.input.workspace_input_rows()  # only decays are offered
+    dataset = ui.pick_decay()
+    assert ui.app.model.decay_data_original is not None
+    assert ui.app.source_uid == str(dataset.unique_identifier)
+    assert ui.shown(DECAY.stem)
 
 
 def test_time_per_channel_is_typed_and_rescales_the_axis(loaded):
@@ -345,25 +339,19 @@ def test_transfer_hands_the_irf_to_chisurf(estimated):
     assert len(got) == 1 and len(got[0]) == 2 and estimated.shown("registered as a ChiSurf dataset")
 
 
-def test_load_from_dataset_lists_the_open_curves_and_loads_the_chosen_one():
-    from chisurf.core.data import DataCurve
+def test_a_second_decay_picked_in_the_workspace_replaces_the_first(ui):
+    from test.gui.curve_workspace import add_curve, pick
 
     t = np.arange(200) * 0.05
-    curves = [
-        DataCurve(x=t, y=np.exp(-t / tau) * 1000 + 3, name=name, load_filename_on_init=False)
-        for tau, name in ((2.0, "donor decay"), (4.0, "acceptor decay"))
-    ]
-    ui = Ui(IRFEstimatorApp(dataset_provider=lambda: curves), SIZE)
-    try:
-        ui.click("request_dataset")
-        assert ui.app.show_datasets and ui.shown("donor decay")
-        ui.click("dataset", fx=0.9)
-        ui.press_text("acceptor decay")
-        assert ui.app.dataset_index == 1
-        ui.click("dataset_load")
-        assert ui.app.model.source_text.endswith("acceptor decay") and not ui.app.show_datasets
-    finally:
-        ui.app.close()
+    donor = add_curve(t, np.exp(-t / 2.0) * 1000 + 3, name="donor decay")
+    acceptor = add_curve(t, np.exp(-t / 4.0) * 1000 + 3, name="acceptor decay")
+    ui.draw(2)
+    assert ui.shown("donor decay") and ui.shown("acceptor decay")
+    pick(ui.app.input, donor)
+    pick(ui.app.input, acceptor)
+    ui.draw(2)
+    assert ui.app.model.source_text.endswith("acceptor decay")
+    assert ui.app.source_uid == str(acceptor.unique_identifier)
 
 
 def test_the_plot_has_axes_a_crosshair_and_zooms_with_the_wheel(estimated):

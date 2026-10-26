@@ -71,14 +71,15 @@ def test_known_anisotropy_survives_default_narrow_and_native_restore(tmp_path, m
         restored.close()
 
 
-def test_picker_callback_queues_paths_without_a_result(tmp_path, monkeypatch):
-    """The actual picker boundary preserves queue behavior with a None result."""
+def test_the_batch_input_queues_what_the_workspace_hands_over(tmp_path, monkeypatch):
+    """Files reach the batch queue from the workspace; there is no MMFDB picker any more."""
     _isolate(tmp_path, monkeypatch)
     file = tmp_path / "queued.dat"
     np.savetxt(file, np.ones(20))
     app = owner.create_app()
     try:
-        assert app.picker.on_paths([file]) is None
+        assert not hasattr(app, "picker")
+        owner.receive_batch(app, {"files": [str(file)]})
         assert str(file) in app.model.batch_files
     finally:
         app.close()

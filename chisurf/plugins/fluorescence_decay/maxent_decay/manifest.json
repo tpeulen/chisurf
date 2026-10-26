@@ -41,6 +41,59 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "decays",
+      "summary": "The measured decay and its instrument response: the picked curve named IRF (or prompt) is the IRF, else the second one picked.",
+      "receive": "chisurf.plugins.fluorescence_decay.maxent_decay.gui.app:receive_decays",
+      "required": [
+        "decays"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "decay"
+        ],
+        "many": true,
+        "key": "decays"
+      }
+    },
+    {
+      "name": "prior",
+      "summary": "A prior distribution for the current grid: a curve with the lifetime (or distance) on x and the prior mass on y.",
+      "receive": "chisurf.plugins.fluorescence_decay.maxent_decay.gui.app:receive_prior",
+      "required": [
+        "prior"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "decay",
+          "histogram",
+          "trace",
+          "correlation"
+        ],
+        "many": false,
+        "key": "prior"
+      }
+    },
+    {
+      "name": "donor",
+      "summary": "The donor-only lifetime spectrum (FRET mode): a curve with lifetimes (ns) on x and amplitudes on y.",
+      "receive": "chisurf.plugins.fluorescence_decay.maxent_decay.gui.app:receive_donor",
+      "required": [
+        "donor"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "decay",
+          "histogram",
+          "trace",
+          "correlation"
+        ],
+        "many": false,
+        "key": "donor"
+      }
+    }
+  ],
   "entrypoints": {
     "cli": "maxent-decay=chisurf.plugins.fluorescence_decay.maxent_decay.cli.cli:cli",
     "services": "chisurf.plugins.fluorescence_decay.maxent_decay.backend.services:register_services",

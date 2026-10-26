@@ -257,13 +257,13 @@ def test_load_and_save_dialogs_do_the_work(app, tmp_path, monkeypatch):
     from emtk.file_dialog import FileDialog
 
     draw(app)
-    spectrum = tmp_path / "spectrum.csv"
-    np.savetxt(spectrum, [[0.3, 1.2], [0.7, 4.0]], delimiter=",")
-    click(app, app.form.rects["load_spectrum"])
-    assert app.dialog is not None and app.dialog_action == "load_spectrum"
-    monkeypatch.setattr(FileDialog, "draw", lambda self: [str(spectrum)])
-    draw(app, frames=1)
+    from test.gui.curve_workspace import add_curve, pick
+
+    spectrum = add_curve([1.2, 4.0], [0.3, 0.7], name="spectrum", kind="histogram")
+    draw(app)
+    pick(app.inputs["spectrum"], spectrum)  # lifetimes on x, amplitudes on y
     assert app.dialog is None and [r["amp"] for r in app.model.spectrum_rows] == [0.3, 0.7]
+    assert [r["tau"] for r in app.model.spectrum_rows] == [1.2, 4.0]
     app.model.generate()
     out = tmp_path / "decay.csv"
     monkeypatch.undo()
@@ -349,19 +349,20 @@ def test_a_failing_fit_sink_is_reported_not_raised():
     assert app.model.status_text() == "Fit group failed: no session"
 
 
-def test_browse_irf_sets_the_path_and_a_cancel_changes_nothing(app, tmp_path, monkeypatch):
-    from emtk.file_dialog import FileDialog
+def test_an_irf_picked_in_the_workspace_is_convolved_and_clear_irf_drops_it(app, tmp_path):
+    from chisurf.core.plugin.workspace_input import register_result
+    from test.gui.curve_workspace import add_curve, pick
 
     irf = tmp_path / "irf.txt"
     np.savetxt(irf, np.ones(256))
-    monkeypatch.setattr(FileDialog, "draw", lambda self: False)
-    press_action(app, "irf_path")
-    draw(app, frames=1)
-    assert app.dialog is None and app.model.irf_path == ""
-    monkeypatch.setattr(FileDialog, "draw", lambda self: [str(irf)])
-    press_action(app, "irf_path")
-    draw(app, frames=1)
-    assert app.model.irf_path == str(irf)
+    pick(app.inputs["irf"], register_result(str(irf), kind="decay", name="irf.txt"))
+    assert app.model.irf_path == str(irf)  # a file the workspace links to is used as it is
+    press_action(app, "clear_irf")
+    assert app.model.irf_path == ""
+    t = np.arange(64) * 0.05
+    pick(app.inputs["irf"], add_curve(t, np.exp(-(((t - 0.5) / 0.1) ** 2)), name="prompt"))
+    written = np.loadtxt(app.model.irf_path)  # its counts alone: the generator reads one column
+    assert written.shape == (64,) and written == pytest.approx(np.exp(-(((t - 0.5) / 0.1) ** 2)))
 
 
 def test_the_mode_choice_shows_the_corrections_and_both_plots_draw(app):
@@ -420,8 +421,9 @@ def test_no_emoji_in_the_native_labels(app):
         t for t in own if any(ord(ch) >= 0x2190 and ch not in "τΔρΣ" for ch in t)
     ]
     labels = {text for text in strings}
-    assert {"Add", "Remove", "Load", "Generate", action_caption("save"), "Fit group"} <= labels
-    assert {"Browse IRF", action_caption("help"), action_caption("guide")} <= labels
+    # Load / Browse IRF moved to the Spectrum and IRF inputs (the workspace); Clear IRF empties it.
+    assert {"Add", "Remove", "Generate", action_caption("save"), "Fit group"} <= labels
+    assert {"Clear IRF", action_caption("help"), action_caption("guide")} <= labels
 
 
 # ── 4. tooltips, spec, guide, help ──────────────────────────────────────
@@ -461,12 +463,11 @@ def test_every_control_has_a_tooltip(app):
         "Generate",
         action_caption("save"),
         "Fit group",
-        "Browse IRF",
+        "Clear IRF",
         action_caption("help"),
         action_caption("guide"),
         "Add",
         "Remove",
-        "Load",
     } <= labels
     spec = json.loads((GUI / "synthetic_decay.view.json").read_text())
     for section in _walk(spec["sections"]):

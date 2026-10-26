@@ -20,6 +20,23 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "decays",
+      "summary": "The polarized IRF and decay curves: named IRF/prompt for the response and VH/perp for the perpendicular channel, else in the order IRF VV, IRF VH, data VV, data VH (IRF then data for stacked VV/VH files).",
+      "receive": "chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.app:receive_decays",
+      "required": [
+        "decays"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "decay"
+        ],
+        "many": true,
+        "key": "decays"
+      }
+    }
+  ],
   "entrypoints": {
     "cli": "anisotropy=chisurf.plugins.fluorescence_decay.tr_anisotropy.cli:cli",
     "emtk": "chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.app:make_app"

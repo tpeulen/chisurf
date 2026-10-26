@@ -1,6 +1,6 @@
 # VV/VH detector calibration
 
-Load the fast-rotating reference to determine G from tail matching. Tail/background bounds and fractional VH shifts use TAC-bin units. Core calculations remain the canonical VV/VH backend.
+Pick the fast-rotating reference in the **Reference standard** input (the Datasets workspace lists the VV/VH files dropped on the ChiSurf window) to determine G from tail matching; the slow reference and the batch decays come from their own inputs the same way. Tail/background bounds and fractional VH shifts use TAC-bin units. Core calculations remain the canonical VV/VH backend.
 
 **Load example** loads simulated references whose answer is known: G = 1.2 and no polarisation mixing (a fast dye, a slow protein with ρ 16 ns and r0 0.38, τ 4 ns, and two batch decays). Tail matching should return G within its SD of 1.2 and a linked l1 = l2 near zero.
 

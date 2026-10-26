@@ -19,7 +19,7 @@
     },
     {
       "title": "Four files, and they must be the same measurement",
-      "text": "An IRF and a decay for each polarisation. All four are read on the same time axis, and the fit assumes they were taken under the same conditions.<br/><br/>The one to watch: <b>a timing shift between the VV and VH channels mimics a fast rotational component</b>, because the early part of the decay is exactly where photoselection shows. If the two detectors have different cable lengths or different IRF positions, that difference arrives as physics.",
+      "text": "An IRF and a decay for each polarisation, picked in the <b>Input</b> section from the Datasets workspace (drop the files on the ChiSurf window to add them; names with IRF/prompt and VH/perp place them). All four are read on the same time axis, and the fit assumes they were taken under the same conditions.<br/><br/>The one to watch: <b>a timing shift between the VV and VH channels mimics a fast rotational component</b>, because the early part of the decay is exactly where photoselection shows. If the two detectors have different cable lengths or different IRF positions, that difference arrives as physics.",
       "target": {
         "name": "data_vv_path"
       }

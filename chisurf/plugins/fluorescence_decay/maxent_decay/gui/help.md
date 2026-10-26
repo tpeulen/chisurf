@@ -6,6 +6,10 @@ times is consistent with the data**, without assuming a shape.
 
 If you have not run it before, press **Guide** for the guided tour.
 
+The data comes from the Datasets workspace, in the **Input** sections: the decay and its IRF (the
+curve named IRF or prompt is the response, else the second one picked), an optional prior, and in
+FRET mode the donor-only spectrum. Drop a file on the ChiSurf window to add it to the workspace.
+
 Use it when you suspect a continuum — a dye sampling many environments, a
 quencher at a range of distances, a disordered chain — or when you want to check
 whether the components a discrete fit returned are real.
@@ -58,8 +62,8 @@ decides which of the many fitting answers you are shown.
 **Lifetime** recovers p(τ) on a lifetime grid. **FRET** recovers p(R) directly on
 a distance grid, using the same solver with the transfer kernel substituted — the
 model-free counterpart to the Gaussian and polymer distance models. It needs a
-donor-only reference, which is what **Load donor** and **Load donor fit** are
-for; getting that reference wrong puts the donor's own heterogeneity into your
+donor-only reference, which is what the **Donor-only spectrum** input (a workspace
+curve with lifetimes on x and amplitudes on y) and **Donor from fit** are for; getting that reference wrong puts the donor's own heterogeneity into your
 distance distribution.
 
 ## What it does not give you

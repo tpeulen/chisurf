@@ -191,13 +191,20 @@ def test_save_scheme_to_an_unwritable_place_reports_instead_of_raising(drv, tmp_
     )
 
 
-def test_load_scheme_dialog_loads_the_picked_file_and_marks_the_preset_custom(drv, tmp_path):
+def pick_scheme(drv, path):
+    """The scheme file is in the Datasets workspace (as a drop puts it) and its row is picked in
+    the Scheme input."""
+    from chisurf.core.plugin.workspace_input import register_result
+    from test.gui.curve_workspace import pick
+
+    pick(drv.app.input, register_result(str(path), kind="setup", name=Path(path).name))
+    drv.draw(2)
+
+
+def test_a_scheme_picked_in_the_workspace_loads_and_marks_the_preset_custom(drv, tmp_path):
     src = Path(__file__).parents[1] / "schemes" / "cyanine_4state.json"
     (tmp_path / "cy5_copy.json").write_text(src.read_text())
-    drv.click("load_scheme")
-    assert drv.app.dialog is not None and drv.app.file_window.title == "Load scheme"
-    drv.click_text("cy5_copy.json")
-    drv.click_text("Open", last=True)
+    pick_scheme(drv, tmp_path / "cy5_copy.json")
     assert (
         drv.app.dialog is None and sat(drv).n_states == 4 and model(drv).scheme_preset == "Custom"
     )
@@ -211,30 +218,27 @@ def series_after(drv):
     return series(drv)
 
 
-def test_load_scheme_cancel_and_a_broken_file(drv, tmp_path):
+def test_a_broken_or_missing_scheme_is_reported(drv, tmp_path):
+    from chisurf.plugins.calculator.fcs_saturation_calc.gui.app import receive_scheme
+
     (tmp_path / "broken.json").write_text("{ not json")
-    drv.click("load_scheme")
-    drv.click_text("Cancel")
-    assert drv.app.dialog is None and sat(drv).n_states == 3
-    drv.click("load_scheme")
-    drv.click_text("broken.json")
-    drv.click_text("Open", last=True)
+    pick_scheme(drv, tmp_path / "broken.json")
     assert drv.app.error.startswith("Error:") and sat(drv).n_states == 3
     assert any(s.startswith("Error:") for s in drv.draw(2).strings)
+    receive_scheme(drv.app, {"scheme": str(tmp_path / "missing.json")})
+    assert drv.app.error.startswith("Error:") and sat(drv).n_states == 3
 
 
-def test_a_dropped_scheme_is_loaded_and_a_stray_file_is_refused(drv, tmp_path):
+def test_a_dropped_scheme_is_a_setup_row_and_loads_when_picked(drv, tmp_path):
+    from chisurf.core.fio.classify import classify
+
     src = Path(__file__).parents[1] / "schemes" / "two_state.json"
     (tmp_path / "dropped.json").write_text(src.read_text())
-    (tmp_path / "notes.txt").write_text("not a scheme")
-    assert drv.drop(str(tmp_path / "notes.txt")) in (True, False)
-    assert drv.app.error == "Error: drop a scheme .json file." and sat(drv).n_states == 3
-    drv.drop(str(tmp_path / "dropped.json"))
+    assert classify(tmp_path / "dropped.json") == "setup"  # how the shell drop sorts it
+    pick_scheme(drv, tmp_path / "dropped.json")
     assert (
         sat(drv).n_states == 2 and drv.app.status == "Loaded dropped.json" and drv.app.error == ""
     )
-    drv.drop(str(tmp_path / "missing.json"))
-    assert drv.app.error.startswith("Error:") and sat(drv).n_states == 2
 
 
 # -- the photophysics fields ------------------------------------------------------------------------------------------- #

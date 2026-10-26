@@ -90,11 +90,16 @@ def _states(app):
     return [form.enabled(name) for name in ("request_estimate", "request_save", "request_transfer")]
 
 
+def _receive(app, address):
+    """What a pick in the Input section does: the workspace hands the decay's address over."""
+    from chisurf.plugins.fluorescence_decay.irf_estimator.gui.app import receive_decay
+
+    receive_decay(app, {"decay": str(address)})
+
+
 def _loaded(**kwargs):
     app = IRFEstimatorApp(**kwargs)
-    app.choose_file()
-    app.dialog = None
-    app.file_chosen(DECAY)
+    _receive(app, DECAY)
     return app
 
 
@@ -115,10 +120,7 @@ def test_load_and_estimate_match_the_qt_tool(qt):
         assert _states(app) == qt["states"][0] == [False, False, False]
         assert app.model.time_axis_text() == qt["time_empty"]
         assert app.model.source_text == qt["label_empty"]
-        _click(app, "request_load")
-        assert app.dialog is not None and app.dialog.mode == "open" and app.file_action == "load"
-        app.dialog = None
-        app.file_chosen(DECAY)  # what the dialog's result does
+        _receive(app, DECAY)  # a workspace row linked to the file is handed over by its path
         assert _states(app) == qt["states"][1]
         assert app.model.manual_background == pytest.approx(qt["background"])
         assert app.model.source_text == qt["label"]
@@ -136,7 +138,10 @@ def test_load_and_estimate_match_the_qt_tool(qt):
             [_number(text) for text in qt["results"]], rel=1e-4
         )
         assert [_unit(text) for text in rows] == [_unit(text) for text in qt["results"]]
-        np.testing.assert_allclose(app.model.irf_data, qt["irf"], rtol=1e-6, atol=1e-9)
+        # The IRF is built from those fitted tail parameters, so it inherits their cross-platform
+        # spread, amplified on the steep rising edge: the Linux gate (2026-10-26) differed from the
+        # macOS recording by up to 4.3e-4 relative (samples 27-31). 1e-3 is ~2x that.
+        np.testing.assert_allclose(app.model.irf_data, qt["irf"], rtol=1e-3, atol=1e-9)
         assert app.model.status == qt["status"]
         strings = _draw(app).strings
         assert all(text in strings for text in rows) and qt["time"] in " ".join(strings)
@@ -147,7 +152,7 @@ def test_load_and_estimate_match_the_qt_tool(qt):
 def test_a_file_sets_the_qt_background_estimate(qt, tail_file):
     app = IRFEstimatorApp()
     try:
-        app.file_chosen(tail_file)
+        _receive(app, tail_file)
         assert qt["tail_background"] > 0
         assert app.model.manual_background == pytest.approx(qt["tail_background"])
     finally:
@@ -202,12 +207,12 @@ def test_a_file_that_cannot_load_is_reported(tmp_path):
     bad.write_text("not a decay\n")
     app = IRFEstimatorApp()
     try:
-        app.files_dropped([str(bad)])
+        _receive(app, bad)
         assert app.error and app.model.source_text.startswith("Error: ")
         assert app.model.decay_data_original is None
         strings = _draw(app).strings
         assert any(app.error in s for s in strings)
-        app.files_dropped([DECAY])  # a drop loads the first file
+        _receive(app, DECAY)
         assert not app.error and app.model.source_text == DECAY
     finally:
         app.close()
@@ -240,7 +245,7 @@ def test_one_estimate_at_a_time_and_frames_only_while_running():
         assert app.start_estimate()
         assert not app.start_estimate()
         assert app.animating()
-        assert not app.form_model.enabled("request_load") and app.form_model.enabled("request_help")
+        assert not app.form_model.enabled("load_example") and app.form_model.enabled("request_help")
         _wait(app)
         assert not app.animating() and app.model.result is not None
     finally:
@@ -333,25 +338,24 @@ def test_save_writes_the_irf_and_transfer_registers_it(tmp_path):
         app.close()
 
 
-def test_load_from_dataset_through_the_combo():
-    from chisurf.core.data import DataCurve
+def test_a_decay_picked_in_the_workspace_input_section():
+    from test.gui.curve_workspace import add_curve, pick
 
     t = np.arange(200) * 0.05
     y = np.exp(-t / 2.0) * 1000 + 3
-    curve = DataCurve(x=t, y=y, name="donor decay", load_filename_on_init=False)
-    empty = IRFEstimatorApp(dataset_provider=lambda: [])
+    empty = IRFEstimatorApp()
     try:
-        _click(empty, "request_dataset")
-        assert empty.error and empty.model.decay_data_original is None
+        assert "donor decay" not in _draw(empty).strings
     finally:
         empty.close()
-    app = IRFEstimatorApp(dataset_provider=lambda: [curve])
+    curve = add_curve(t, y, name="donor decay")
+    app = IRFEstimatorApp()
     try:
-        _click(app, "request_dataset")
-        assert app.show_datasets and "donor decay" in _draw(app).strings
-        _click(app, "dataset_load")
+        assert "donor decay" in _draw(app).strings
+        pick(app.input, curve)
         assert app.model.source_text == "Dataset: Uncategorized - donor decay"
-        assert app.model.dt == pytest.approx(0.05) and not app.show_datasets
+        assert app.model.dt == pytest.approx(0.05)
+        assert app.source_uid == str(curve.unique_identifier)
     finally:
         app.close()
 
@@ -380,7 +384,7 @@ def test_the_guide_points_at_real_controls_and_waits():
         )
         app.tour.start(load)
         assert not app.tour.awaiting  # the example already loaded a decay: your own is optional
-        app.file_chosen(DECAY)
+        _receive(app, DECAY)
         estimate = next(
             i for i, s in enumerate(steps) if s.get("target", {}).get("action") == "Estimate IRF"
         )
@@ -401,18 +405,16 @@ def test_draws_inside_the_docks(size):
     app = IRFEstimatorApp()
     try:
         strings = _draw(app, size).strings
-        assert {"📂  Load Decay", "🔮  Estimate IRF", "Time axis: Not available", "N/A"} <= set(
-            strings
-        )
-        app.file_chosen(DECAY)
+        assert {"🔮  Estimate IRF", "Time axis: Not available", "N/A"} <= set(strings)
+        assert any("workspace" in s for s in strings)  # the Input section says how data gets in
+        _receive(app, DECAY)
         app.model.rl_iterations = 20
         app.start_estimate()
         _wait(app)
         _draw(app, size)
         x0, y0, w0, h0 = app.item_rects["controls"]
         for name in (
-            "request_load",
-            "request_dataset",
+            "workspace_input_rows",
             "request_save",
             "request_transfer",
             "request_guide",

@@ -29,7 +29,7 @@
     },
     {
       "title": "Give it an IRF if the test involves one",
-      "text": "Without an IRF the decay starts instantaneously — a convenience no instrument produces. With one, the rise is smeared, and <b>components shorter than the IRF width stop being recoverable</b>: below about a nanosecond most of the shape is the instrument rather than the sample.<br/><br/>If the point is to test a routine that <i>deconvolves</i>, it has to be given data that were convolved. Testing a deconvolving fit on IRF-free data proves it can do the easy case.",
+      "text": "Pick an instrument response in the <b>IRF</b> input (it lists the decays of the Datasets workspace). Without an IRF the decay starts instantaneously — a convenience no instrument produces. With one, the rise is smeared, and <b>components shorter than the IRF width stop being recoverable</b>: below about a nanosecond most of the shape is the instrument rather than the sample.<br/><br/>If the point is to test a routine that <i>deconvolves</i>, it has to be given data that were convolved. Testing a deconvolving fit on IRF-free data proves it can do the easy case.",
       "target": {
         "attr": "irf_path"
       }

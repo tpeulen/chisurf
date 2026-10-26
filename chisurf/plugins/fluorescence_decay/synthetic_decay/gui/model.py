@@ -157,11 +157,7 @@ class SyntheticDecayModel:
         """
         import numpy as np
 
-        if path is None:
-            path = self._choose_file(
-                "open", "Load lifetime spectrum", "", "Data files (*.csv *.txt *.dat)"
-            )
-        if not path:
+        if not path:  # the GUI takes the spectrum from the workspace (its Spectrum input)
             return
         try:
             try:
@@ -183,6 +179,11 @@ class SyntheticDecayModel:
             self.status = "Load failed: expected an interleaved list or a 2-column table."
             self._refresh_fields()
             return
+        self.set_spectrum(values, pathlib.Path(path).name)
+
+    def set_spectrum(self, values, source: str = "") -> bool:
+        """Replace the lifetime table with the interleaved ``a1, tau1, a2, tau2, …`` *values*
+        (validated); *source* names where they came from. Returns whether they were taken."""
         try:
             from chisurf.core.fluorescence.decay import validate_lifetime_spectrum
 
@@ -190,13 +191,14 @@ class SyntheticDecayModel:
         except Exception as exc:
             self.status = f"Invalid lifetime spectrum: {exc}"
             self._refresh_fields()
-            return
+            return False
         self.spectrum_rows = [
             {"amp": float(values[i]), "tau": float(values[i + 1])} for i in range(0, len(values), 2)
         ]
         self.selected_row = -1
-        self.status = f"Loaded {len(self.spectrum_rows)} components from {pathlib.Path(path).name}."
+        self.status = f"Loaded {len(self.spectrum_rows)} components from {source or 'the spectrum'}."
         self._refresh_fields()
+        return True
 
     def _choose_file(self, mode, title, filename, filters):
         if callable(self.choose_file):

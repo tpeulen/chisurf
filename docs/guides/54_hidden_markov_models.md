@@ -53,7 +53,7 @@ shown below).
 
 ## Load a trace
 
-Drop text or `.npy` files on the window, or use **Add files...**; **🧪 Load example**
+Drop text or `.npy` files on the ChiSurf window and pick them in the tool's **Input** section; **🧪 Load example**
 loads a generated three-state trace whose means and dwell times are known. The layout is one
 row per time bin, one column per channel:
 

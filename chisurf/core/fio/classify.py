@@ -17,6 +17,10 @@ sorted here by what it holds, not by which reader happens to be selected:
   its primary, never on its own;
 * ``"burst_folder"`` — a legacy burstwise analysis folder (``bi4_bur/*.bur``): handed to
   burstwise import, which brings its runs into the project's analysis containers.
+* ``"trace"`` — a single-molecule FRET time-series file of the trace tools (a MATLAB ``.mat``
+  session or SMD file, an SF-Tracer ``.tsv``, an SMD ``.json``/``.json.gz``): linked into the
+  workspace, read by the tool that takes it (a raw ``.dat`` series cannot be told from a curve and
+  is read as one);
 * ``"curve"`` — anything else: read by the selected reader, as before.
 """
 
@@ -27,6 +31,7 @@ from pathlib import Path
 __all__ = [
     "IMAGE_EXTENSIONS",
     "SETUP_EXTENSIONS",
+    "TRACE_EXTENSIONS",
     "SETUP_JSON_KEYS",
     "TOOL_SCHEMA_PREFIX",
     "LEGACY_TOOL_SETTINGS_KEYS",
@@ -125,9 +130,35 @@ def _is_setup_json(path: Path) -> bool:
     )
 
 
+#: Extensions of single-molecule time-series files (the trace tools read them).
+TRACE_EXTENSIONS: tuple[str, ...] = (".mat", ".tsv")
+
+
+def _is_smd_json(path: Path) -> bool:
+    """Whether *path* (``.json`` or ``.json.gz``) is an SMD time-series file: a ``data`` list of
+    traces with ``values``, and the ``columns`` they hold."""
+    import gzip
+    import json
+
+    try:
+        if path.stat().st_size > 256 * 2**20:
+            return False
+        opener = gzip.open if path.name.lower().endswith(".gz") else open
+        with opener(path, "rt", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError, UnicodeDecodeError, EOFError):
+        return False
+    traces = data.get("data") if isinstance(data, dict) else None
+    return (
+        isinstance(traces, list)
+        and "columns" in data
+        and all(isinstance(t, dict) and "values" in t for t in traces[:3])
+    )
+
+
 def _suffix(path: Path) -> str:
     name = path.name.lower()
-    for compound in (".cs.pto", ".pdb.gz", ".cif.gz"):
+    for compound in (".cs.pto", ".pdb.gz", ".cif.gz", ".json.gz"):
         if name.endswith(compound):
             return compound
     return path.suffix.lower()
@@ -167,6 +198,8 @@ def classify(path: str | Path) -> str:
         return "structure"
     if suffix in IMAGE_EXTENSIONS:
         return "image"
+    if suffix in TRACE_EXTENSIONS or (suffix in (".json", ".json.gz") and _is_smd_json(Path(path))):
+        return "trace"
     if suffix in SETUP_EXTENSIONS or (suffix == ".json" and _is_setup_json(Path(path))):
         return "setup"
     return "curve"

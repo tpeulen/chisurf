@@ -20,7 +20,6 @@ from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_sections
 
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button, window_size
 
@@ -35,8 +34,7 @@ R_COLOUR = (230, 70, 230, 255)
 REGION_COLOUR = (60, 205, 100, 255)
 R_LIMITS = (0.0, 0.45)
 #: Height of the parameter form at its widest (the wide layout), in pixels.
-CONTROLS_HEIGHT = 330.0
-DATA_FILTERS = "VV/VH data (*.dat *.txt);;All files (*)"
+CONTROLS_HEIGHT = 440.0  # the form plus the Input section (filter, a short table, its hint)
 RESULT_FILTERS = "Results (*.dat *.txt *.csv);;All files (*)"
 
 
@@ -74,7 +72,13 @@ class AnisotropyApp(ImApp):
         self.batch_window = DialogWindow(
             tr("VV/VH Anisotropy Batch Processor"), size=(880.0, 560.0), key="vv-vh-batch"
         )
-        self.picker = DatasetPicker(formats=None, on_paths=self._dataset_paths)
+        from chisurf.plugins.curve_input import CurveInput
+
+        #: The Input sections: the VV/VH pair to analyse, and the files queued for the batch.
+        self.inputs = {
+            "file": CurveInput("vv_vh_anisotropy", self, name="file", title="", height=92.0),
+            "batch": CurveInput("vv_vh_anisotropy", self, name="batch", title="", height=92.0),
+        }
         self._plot_signature: int | None = None
         self.help_window = EmTkHelpWindow(
             title="VV/VH Anisotropy Decay — Help",
@@ -126,25 +130,15 @@ class AnisotropyApp(ImApp):
     def load_file(self, path) -> bool:
         return self.action(lambda: self.model.load(path))
 
-    def _dataset_paths(self, paths: list[Path]) -> None:
-        """Queue picker paths through its result-free callback contract."""
-        self.add_batch_paths(paths)
-
     def add_batch_paths(self, paths) -> int:
         return self.model.add_batch_paths([str(p) for p in paths or []])
 
-    def files_dropped(self, paths: Any) -> bool:
-        """Host hook (native, web and Qt hosts): files go to the batch queue while its window is
-        open, otherwise the first one is loaded."""
-        paths = [str(p) for p in paths or []]
-        if not paths:
-            return False
-        if self.model.batch_open:
-            return self.add_batch_paths(paths) > 0
-        return self.load_file(paths[0])
-
-    on_files_dropped = files_dropped
-    on_paths_dropped = files_dropped
+    def draw_input(self, name: str) -> None:
+        """The Input section *name* (``file`` or ``batch``); its rects are tour targets."""
+        rects: dict = {}
+        self.inputs[name].draw(rects, on_used=self.tour.notify_used)
+        for key, rect in rects.items():
+            self.item_rects[key if name == "file" else f"batch.{key}"] = rect
 
     # -- windows ----------------------------------------------------------------
     def draw_controls(self, box: Any) -> None:
@@ -154,6 +148,7 @@ class AnisotropyApp(ImApp):
             tr("[Deprecated] Use the unified VV/VH G-Factor and Anisotropy plugin instead."),
         )
         im.separator()
+        self.draw_input("file")
         draw_sections(self.panels["controls"]["sections"], self.model, self.form)
         if action_button("guide"):
             self.tour.start()
@@ -187,7 +182,7 @@ class AnisotropyApp(ImApp):
                     np.where(vh > 0, vh, np.nan),
                 )
             else:
-                implot.plot_dummy(tr("Load a VV/VH file"))
+                implot.plot_dummy(tr("Pick a VV/VH file"))
             implot.end_plot()
         im.set_item_tooltip(
             tr("Background-corrected VV and shifted VH on a logarithmic intensity scale.")
@@ -231,7 +226,7 @@ class AnisotropyApp(ImApp):
                     lx, ly = implot.plot_to_pixels(model.region_bounds[index], 0.5 * sum(R_LIMITS))
                     self.item_rects[f"region_line_{index}"] = (lx - 3.0, ly - 3.0, 6.0, 6.0)
             else:
-                implot.plot_dummy(tr("Load a VV/VH file"))
+                implot.plot_dummy(tr("Pick a VV/VH file"))
             implot.end_plot()
         im.set_item_tooltip(tr("Drag the green lines to choose the r∞ region."))
         self.item_rects["anisotropy"] = im.get_item_rect()
@@ -254,41 +249,26 @@ class AnisotropyApp(ImApp):
         self._requests()
         self._draw_batch(box)
         self._draw_file_dialog(box)
-        self.picker.render(box)
         self.help_window.draw(box)
         self.tour.draw(*viewport.size)
 
     def _requests(self) -> None:
-        """Act on the model's ``request``: open the file dialog or the database picker."""
+        """Act on the model's ``request``: ask where outputs are saved (the files come from the
+        workspace)."""
         request, self.model.request = self.model.request, ""
         if not request or self.dialog is not None:
             return
-        if request == "database":
-            self.picker.open()
-            return
         if request == "save" and not self.model.has_data:
-            self.model.message = "Load a VV/VH file before saving outputs."
+            self.model.message = "Pick a VV/VH file before saving outputs."
             return
         if request == "save_batch" and not self.model.has_batch_results:
             self.model.message = "Run batch before saving CSV."
             return
-        titles = {
-            "load": "Load VV/VH file",
-            "save": "Save outputs",
-            "add_files": "Add VV/VH files",
-            "add_folder": "Add a folder of VV/VH files",
-            "save_batch": "Save batch CSV",
-        }
+        titles = {"save": "Save outputs", "save_batch": "Save batch CSV"}
         if request not in titles:
             return
-        mode = {"save": "save", "save_batch": "save", "add_folder": "folder"}.get(request, "open")
         self.dialog_request = request
-        self.dialog = FileDialog(
-            tr(titles[request]),
-            mode=mode,
-            multiselect=request == "add_files",
-            filters=DATA_FILTERS if mode == "open" else RESULT_FILTERS,
-        )
+        self.dialog = FileDialog(tr(titles[request]), mode="save", filters=RESULT_FILTERS)
         self.file_window = DialogWindow(tr(titles[request]), size=(760.0, 520.0), key="vv-vh-file")
 
     def _draw_file_dialog(self, box: Any) -> None:
@@ -301,12 +281,8 @@ class AnisotropyApp(ImApp):
             request, self.dialog = self.dialog_request, None
             paths = [str(p) for p in result]
             model = self.model
-            if request == "load":
-                self.load_file(paths[0])
-            elif request == "save":
+            if request == "save":
                 self.action(lambda: model.save(paths[0]))
-            elif request in ("add_files", "add_folder"):
-                self.add_batch_paths(paths)
             elif request == "save_batch":
                 self.action(lambda: model.save_batch(paths[0]))
         elif result is False or pressed == "close":
@@ -320,6 +296,7 @@ class AnisotropyApp(ImApp):
         self.batch_window.show()
         im.begin_disabled(self.dialog is not None)
         pressed = self.batch_window.begin(box)
+        self.draw_input("batch")
         draw_sections(self.panels["batch"]["sections"], self.model, self.form, titles=False)
         self.batch_window.end()
         im.end_disabled()
@@ -337,7 +314,41 @@ class AnisotropyApp(ImApp):
         self.form.buffers.clear()
 
     def close(self) -> None:
-        self.picker.close()
+        """Nothing outlives the window (the files come from the workspace)."""
+
+
+
+
+def _list(value) -> list[str]:
+    if isinstance(value, (list, tuple)):
+        return [str(v) for v in value if str(v)]
+    return [str(value)] if value else []
+
+
+def _files(app: AnisotropyApp, addresses: list[str]) -> list[str]:
+    """The VV/VH files behind *addresses* (:func:`chisurf.plugins.curve_input.vv_vh_files`), a
+    failure said on the status line."""
+    from chisurf.plugins.curve_input import vv_vh_files
+
+    try:
+        return vv_vh_files(addresses)
+    except Exception as exc:  # noqa: BLE001 - shown to the user
+        app.model.message = f"{type(exc).__name__}: {exc}"
+        return []
+
+
+def receive_file(app: AnisotropyApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``file``): the VV/VH pair to analyse."""
+    files = _files(app, _list(payload.get("file")))
+    if files:
+        app.load_file(files[0])
+
+
+def receive_batch(app: AnisotropyApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``batch``): VV/VH files for the batch queue."""
+    files = _files(app, _list(payload.get("files")))
+    if files:
+        app.add_batch_paths(files)
 
 
 def create_app() -> AnisotropyApp:

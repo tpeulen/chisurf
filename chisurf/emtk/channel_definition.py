@@ -1595,9 +1595,14 @@ class ChannelDefinitionWidget:
         self._reference_drop_hooks.clear()
 
     def _reference_drop(self, paths):
-        """A reference modal cannot replace the active parent dataset/definition."""
-        if self.reference_app is not None and not self.read_only:
-            return self.reference_app.files_dropped(paths) is not False
+        """A reference modal cannot replace the active parent dataset/definition: the drop is
+        taken and nothing is read -- the reference comes from the calibration window's Input
+        section (the Datasets workspace)."""
+        child = self.reference_app
+        if child is not None and not self.read_only:
+            child.model.message = tr(
+                "Pick the reference in the Input section: files dropped on ChiSurf are listed there."
+            )
         return True
 
     def _reference_events(self, box):
@@ -1654,10 +1659,7 @@ class ChannelDefinitionWidget:
         if child is None:
             return
         self.reference_window.escape_closes = not (
-            child.dialog is not None
-            or child.help.open
-            or child.guide.active
-            or child.dataset_picker.is_open
+            child.dialog is not None or child.help.open or child.guide.active
         )
         pressed = self.reference_window.begin(frame)
         draw_form(self._reference_view["calibration_footer"], self, self._reference_state)

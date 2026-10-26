@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour for blind IRF estimation. Hand-built Qt (no view spec), so steps target toolbar actions by caption and the parameter spin boxes by the irf_* objectNames set in gui/tool.py. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "_comment": "Guided tour for blind IRF estimation. Steps target the view spec's controls by name and the Input section by the 'Load Decay' key (the app maps the spec names onto the Qt tour's names). Read by chisurf.gui.widgets.tools.guided_tour.",
   "steps": [
     {
       "title": "An IRF you did not measure",
@@ -9,12 +9,16 @@
     {
       "title": "Start with a decay whose IRF is known",
       "text": "<b>Load example</b> loads a seeded VV/VH decay built on an IRF centred at 0.4 ns with a FWHM of 0.18 ns and estimates it, so you can see how close the blind estimate comes before you trust it on your own measurement.",
-      "target": {"name": "load_example"},
-      "await": {"hint": "Press <b>🧪 Load example</b>."}
+      "target": {
+        "name": "load_example"
+      },
+      "await": {
+        "hint": "Press <b>🧪 Load example</b>."
+      }
     },
     {
       "title": "Load the decay",
-      "text": "Your own decay comes in here: <b>Load Decay</b> from a file, or <b>Load from Dataset</b> for one already open in ChiSurf. It should be a decay whose tail is long enough to fit — the tail is the entire input to the first half of the method.",
+      "text": "Your own decay comes from the <b>Input</b> section: every decay in the Datasets workspace is listed there (drop a file on the ChiSurf window to add one), and picking a row loads it. It should be a decay whose tail is long enough to fit — the tail is the entire input to the first half of the method.",
       "target": {
         "action": "Load Decay"
       }

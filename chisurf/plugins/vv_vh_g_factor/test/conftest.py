@@ -12,3 +12,7 @@ def hermetic_env(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "chisurf_settings_path", tmp_path / "settings", raising=False)
     (tmp_path / "settings").mkdir(exist_ok=True)
     (tmp_path / "home").mkdir(exist_ok=True)
+
+from test.gui.curve_workspace import (
+    workspace_restored,  # noqa: E402,F401  (curves leave with their test)
+)

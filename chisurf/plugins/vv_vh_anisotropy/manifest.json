@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "display_name": "Spectroscopy:Decay:VV/VH Anisotropy Decay",
   "description": "Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, backgrounds and a fractional VH shift.",
-  "authors": ["Thomas-Otavio Peulen"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
   "categories": [
     "Spectroscopy",
     "Fluorescence decay",
@@ -11,6 +13,38 @@
   ],
   "icon": "🎏",
   "state_namespace": "vv_vh_anisotropy",
+  "accepts": [
+    {
+      "name": "file",
+      "summary": "The VV/VH decay pair to analyse: a stacked VV/VH file, the file a picked curve was read from, or two picked curves named VV and VH.",
+      "receive": "chisurf.plugins.vv_vh_anisotropy.gui.app:receive_file",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "decay"
+        ],
+        "many": true,
+        "key": "file"
+      }
+    },
+    {
+      "name": "batch",
+      "summary": "VV/VH files queued for the batch r-infinity.",
+      "receive": "chisurf.plugins.vv_vh_anisotropy.gui.app:receive_batch",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "decay"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    }
+  ],
   "entrypoints": {
     "emtk": "chisurf.plugins.vv_vh_anisotropy.gui.app:create_app"
   },

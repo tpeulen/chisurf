@@ -1,9 +1,9 @@
 [
   {
     "title": "Load the fast reference",
-    "text": "G is the detection-efficiency ratio of the two polarisation channels. It is measured on a dye that depolarises within the pulse width, so its true anisotropy is zero in the tail and VV/VH there is G alone. With your own data, load that dye's VV/VH decay here (or drop the file on the window); the example has already loaded the simulated one, and the status line shows the G it gives.",
+    "text": "G is the detection-efficiency ratio of the two polarisation channels. It is measured on a dye that depolarises within the pulse width, so its true anisotropy is zero in the tail and VV/VH there is G alone. With your own data, pick that dye's VV/VH decay in the <b>Reference standard</b> input (the Datasets workspace lists what was dropped on the ChiSurf window); the example has already loaded the simulated one, and the status line shows the G it gives.",
     "target": {
-      "name": "load_fast"
+      "name": "reference.workspace_input_rows"
     }
   },
   {
@@ -29,9 +29,9 @@
   },
   {
     "title": "Load a slow protein reference",
-    "text": "A slow-rotating, long-lived reference has a known steady-state anisotropy. Its measured value constrains the polarisation mixing: only the single linked estimate l1 = l2 can be determined from one observable, and values outside 0 to 0.5 are shown but not applied. The example loaded a simulated slow protein; for your own instrument press Slow protein... and choose its file.",
+    "text": "A slow-rotating, long-lived reference has a known steady-state anisotropy. Its measured value constrains the polarisation mixing: only the single linked estimate l1 = l2 can be determined from one observable, and values outside 0 to 0.5 are shown but not applied. The example loaded a simulated slow protein; for your own instrument pick its VV/VH decay in the <b>Slow reference</b> input.",
     "target": {
-      "name": "load_slow"
+      "name": "slow.workspace_input_rows"
     }
   },
   {

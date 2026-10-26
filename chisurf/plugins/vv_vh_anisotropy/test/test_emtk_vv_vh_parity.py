@@ -193,7 +193,7 @@ def test_save_outputs_and_its_error_path(app, files, tmp_path):
     assert not app.model.enabled("request_save")
     app.model.request_save()  # e.g. a stale request
     _draw(app)
-    assert app.dialog is None and app.model.message == "Load a VV/VH file before saving outputs."
+    assert app.dialog is None and app.model.message == "Pick a VV/VH file before saving outputs."
     app.load_file(a)
     assert app.model.enabled("request_save")
     out = tmp_path / "res.txt"
@@ -223,23 +223,24 @@ def test_save_outputs_and_its_error_path(app, files, tmp_path):
     assert any(s.startswith(prefix) for s in _draw(app).strings)
 
 
-def test_cancelling_a_dialog_changes_nothing(app, files):
+def test_cancelling_a_dialog_changes_nothing(app, files, tmp_path):
     a, _ = files
-    app.model.request_load()
+    app.model.load(a)
+    app.model.request_save()
     _draw(app)
     assert app.dialog is not None
     app.dialog.draw = lambda: False
     _draw(app, times=1)
-    assert app.dialog is None and not app.model.has_data
+    assert app.dialog is None and app.model.loaded_file == str(a)
+    assert not list(tmp_path.glob("*_rinf.csv"))
 
 
-# 7. Load through the dialog
-def test_load_through_the_file_dialog(app, files):
+# 7. Load what the workspace hands over
+def test_load_what_the_workspace_hands_over(app, files):
+    from chisurf.plugins.vv_vh_anisotropy.gui.app import receive_file
+
     a, _ = files
-    app.model.request_load()
-    _draw(app)
-    app.dialog.draw = lambda: [str(a)]
-    _draw(app, times=1)
+    receive_file(app, {"file": [str(a)]})
     assert app.model.loaded_file == str(a) and app.model.message == "Loaded a.dat: 256 channels"
     painter = _draw(app)
     assert any("a.dat" in s for s in painter.strings) and "0.01..." not in painter.strings
@@ -288,27 +289,30 @@ def test_fields_clamp_and_the_region_is_ordered_for_the_average(app, files):
     assert model.r_infty_text == "N/A"
 
 
-# 9. a drop: the hook is on the app; with the batch window open the files join the batch queue
-def test_a_dropped_file_is_loaded_or_queued(app, files, tmp_path):
+# 9. no drop hook: the workspace hands files over; a folder or files join the batch queue
+def test_handed_over_files_are_loaded_or_queued(app, files, tmp_path):
+    from chisurf.plugins.vv_vh_anisotropy.gui.app import receive_batch, receive_file
+
     a, b = files
     for name in ("files_dropped", "on_files_dropped", "on_paths_dropped"):
-        assert callable(getattr(app, name, None)), name
-    assert app.files_dropped([str(a), str(b)]) is True
+        assert not callable(getattr(app, name, None)), name
+    receive_file(app, {"file": [str(a)]})
     assert app.model.loaded_file == str(a) and app.model.batch_files == []
-    assert app.files_dropped([]) is False
-    assert app.files_dropped([str(tmp_path / "missing.dat")]) is False
-    assert "Could not load" in app.model.message
-    app.model.open_batch()
+    receive_file(app, {"file": []})
+    assert app.model.loaded_file == str(a)
+    receive_file(app, {"file": [str(tmp_path / "missing.dat")]})
+    assert app.model.loaded_file == str(a)
     folder = tmp_path / "set"
     (folder / "sub").mkdir(parents=True)
     make(folder / "c.dat", seed=3)
     make(folder / "sub" / "d.txt", seed=4)
     (folder / "notes.md").write_text("x")
-    assert app.files_dropped([str(folder)]) is True
+    receive_batch(app, {"files": [str(folder)]})
     assert sorted(Path(p).name for p in app.model.batch_files) == ["c.dat", "d.txt"]
-    assert app.files_dropped([str(folder / "notes.md")]) is False
+    receive_batch(app, {"files": [str(folder / "notes.md")]})
     assert app.model.message.startswith("Nothing to queue")
-    assert app.files_dropped([str(folder / "c.dat")]) is False  # already queued
+    receive_batch(app, {"files": [str(folder / "c.dat")]})
+    assert app.model.message.startswith("Nothing to queue")  # already queued
 
 
 # 10. the batch window: queue, select, remove, clear, run, save, every error path
@@ -367,39 +371,20 @@ def test_a_bad_file_in_the_batch_is_a_row_with_its_error(app, files, tmp_path):
     assert "two bins" in (tmp_path / "b.csv").read_text()
 
 
-def test_batch_buttons_reach_the_dialogs_and_the_picker(app, files, tmp_path, monkeypatch):
+def test_batch_files_come_from_the_workspace_and_save_csv_through_the_dialog(app, files, tmp_path):
+    from chisurf.plugins.vv_vh_anisotropy.gui.app import receive_batch
+
     a, b = files
     model = app.model
     model.open_batch()
-    opened = []
-    monkeypatch.setattr(app.picker, "open", lambda: opened.append(1))
-    model.request_database()
-    _draw(app, times=1)
-    assert opened == [1]
-    # Files / Folder through the dialog; Save CSV through the dialog
-    model.request_add_files()
-    _draw(app)
-    assert app.dialog_request == "add_files"
-    app.dialog.draw = lambda: [str(a), str(b)]
-    _draw(app, times=1)
+    receive_batch(app, {"files": [str(a), str(b)]})
     assert model.batch_files == [str(a), str(b)]
-    model.request_add_folder()
-    _draw(app)
-    folder = tmp_path / "f"
-    folder.mkdir()
-    make(folder / "z.dat", seed=9)
-    app.dialog.draw = lambda: [str(folder)]
-    _draw(app, times=1)
-    assert Path(model.batch_files[-1]).name == "z.dat"
     model.run_batch()
     model.request_save_batch()
     _draw(app)
     app.dialog.draw = lambda: [str(tmp_path / "t.csv")]
     _draw(app, times=1)
     assert (tmp_path / "t.csv").exists() and model.message == "Saved t.csv"
-    # the picker hands its paths to the queue
-    app.picker.on_paths([folder / "z.dat"])
-    assert model.message.startswith("Nothing to queue")  # already queued
 
 
 # 11. persistence
@@ -436,13 +421,13 @@ def test_settings_round_trip(app, files, tmp_path):
 def test_draws_empty_and_populated(app, files, size):
     a, b = files
     painter = _draw(app, size)
-    assert "Load a VV/VH file" in painter.strings or any(
-        "Load a VV/VH file" in s for s in painter.strings
+    assert "Pick a VV/VH file" in painter.strings or any(
+        "Pick a VV/VH file" in s for s in painter.strings
     )
     app.model.load(a)
     app.model.add_batch_paths([str(a), str(b)])
     painter = _draw(app, size)
-    assert "Load VV/VH file…" in painter.strings and any("a.dat" in s for s in painter.strings)
+    assert "Save outputs…" in painter.strings and any("a.dat" in s for s in painter.strings)
     app.model.open_batch()
     rows = app.model.run_batch()
     painter = _draw(app, size)

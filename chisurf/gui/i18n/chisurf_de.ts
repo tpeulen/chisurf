@@ -71963,6 +71963,3887 @@ fortgesetzt werden.
             <source>Cannot import the burst folder {path}: {why}</source>
             <translation>Der Burst-Ordner {path} kann nicht importiert werden: {why}</translation>
         </message>
+        <message>
+            <source> fL</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source> µs</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>"all" (the declared order A, B, naive_h2o, C, summary), one stage name, or a list. A stage also runs what it needs (C solves the joint graph).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>"full" (64 searches, the published run) or "quick" (8 short searches; a test run, less reliable). Omitted: the declared settings (as full).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>(N, 3) xyz or (N, 4) xyz plus weight, in Å.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>... arriving within T microseconds belong to a burst.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>... arriving within this time (T) belong to a burst. The same criterion as Burst Selection's sliding-window search, so the run can be re-analysed offline with identical bursts.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>1 · Create</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>2 · Review</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>2CDE reads a finished &lt;b&gt;burst run&lt;/b&gt; — the bursts are already defined, and this adds a column to them. It re-opens the photons the run was cut from to get the photon times, so both have to be reachable.&lt;br/&gt;&lt;br/&gt;The &lt;b&gt;Input&lt;/b&gt; section lists the burst runs in the workspace: a run of a measurement container shows under its photon stream in the Datasets view. Files dropped on the ChiSurf window are added there; &lt;i&gt;Open in…&lt;/i&gt; on a Datasets row, or dragging the row onto this tool, does the same as picking it here.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>2CDE τ</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>3 · Upload</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>64 searches and the full joint fit, as the stored analysis: hours on a desktop (the stored run took 24 minutes on 44 cores).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>8 searches with short iterations and a 7-point profile: about 20 minutes on a desktop, for a first look; the numbers are less reliable.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Before upload&lt;/b&gt; lists the plan: every file that would be sent, replaced, kept or deleted, before anything leaves the machine. &lt;b&gt;Upload draft&lt;/b&gt; stays grey until every item is approved and the package matches what you approved. It uploads into a Zenodo &lt;i&gt;draft&lt;/i&gt; and checks the md5 there; nothing is published.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Burst properties&lt;/b&gt; (the burst table), &lt;b&gt;Titration&lt;/b&gt; (a concentration series fitted together, seeded with your bursts and the γ / β of step 6), and &lt;b&gt;BVA&lt;/b&gt;. They read the same bursts and are not part of the Next walk. The old program's five CSV export is not a step any more: the analysis stays in the .pto container, and &lt;b&gt;csc alex-suite export-legacy&lt;/b&gt; writes those files when a script needs them.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Bursts (.csv)&lt;/b&gt; downloads the burst table (ChiSurf names; ndX and ChiSurf open it). &lt;b&gt;QC report (.json)&lt;/b&gt; downloads the verdict. &lt;b&gt;Help&lt;/b&gt; explains every check and setting.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Channels&lt;/b&gt; shows the micro-time histogram of every detector with the excitation windows marked. A wrong window guess breaks everything downstream — fix it here and press &lt;b&gt;Apply&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Channels&lt;/b&gt; shows the micro-time histogram of every detector, with the excitation windows marked. Fix a wrong guess here and press &lt;b&gt;Apply&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Data&lt;/b&gt; shows the Stern–Volmer titrations with their posterior slopes, the day-to-day error that all titrations share, and the lifetime of every site with its error. All of this is computed as the folder is read.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;E / S&lt;/b&gt; shows the proximity ratio against the stoichiometry. With cw excitation only E is shown, because S needs alternating lasers.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;E/S&lt;/b&gt; is the joint burst histogram. &lt;b&gt;ndX&lt;/b&gt; holds the full burst table — lifetimes, anisotropies, TGX−TRR, 2CDE, QC flags — choose any two columns and gate populations through the other dimensions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Edit...&lt;/b&gt; opens the configuration file: fit range (&lt;code&gt;start_fraction&lt;/code&gt;, &lt;code&gt;area&lt;/code&gt;), background window, IRF-shift grid, starting lifetimes, pile-up. Everything not on this panel lives there.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Export flrCIF&lt;/b&gt; writes the displayed table with its metadata, and &lt;b&gt;Open in ndX&lt;/b&gt; explores the run's burst folder. Legacy .bur tables come from the &lt;b&gt;Legacy Export&lt;/b&gt; plugin.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Fit&lt;/b&gt; shows one stage and data set: the result in words, the estimates with their 68 % intervals, and the checks.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; adds a simulated photon stream with exactly &lt;b&gt;12 planted bursts&lt;/b&gt; of about 200 photons, 60 % of them on the red detector, and selects the matching detectors. Your own measurements are dropped on the ChiSurf window and appear in the &lt;b&gt;Input&lt;/b&gt; section (pick them and press &lt;b&gt;Use selected&lt;/b&gt;, or use &lt;i&gt;Open in…&lt;/i&gt; on a Datasets row); the runs a search finds come back as their children in the Datasets view.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; attaches a small session — three datasets and two template fits whose parameters move by known amounts — and stages the batch, so you can walk the wizard to a result before you pick your own datasets.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; computes the distribution for the inputs the tool ships with and exports it as CSV beside the settings — a known result to come back to while you change one input at a time.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; fills the rows with the trajectory this tool ships with (894 frames of T4 lysozyme from an NMSim run) and runs the tool on it, so you see a result before you pick your own files.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; generates a deterministic demonstration stream (two detectors, plenty of photons) in the settings cache and selects it as the input.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; generates a deterministic demonstration stream — a µs-ALEX measurement whose excitation alternation is still in the macro time — in the settings cache and loads it: the folded ALEX phase appears as a histogram. A real TTTR file (a .sm, .ptu, .ht3 ...) is picked in the &lt;b&gt;Input&lt;/b&gt; table below: the workspace's photon streams, where files dropped on the ChiSurf window land. Loading detects measured phase candidates automatically at the configured Period and Shift; review them before assigning laser identities.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; generates a photon stream from the simulator fields below and loads it as the active dataset; the status bar reports how many photons and with which parameters. On a real measurement this is where &lt;b&gt;Open&lt;/b&gt; would go instead.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; generates a physical photon measurement and runs the ordinary burst search. It declares 300 molecule crossings and puts it into the workspace: the photons a dataset, the search a burst run of it in the project. Loading picks that run; press Estimate separately to inspect recurrence before fusing.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; loads a seeded VV/VH decay built on an IRF centred at 0.4 ns with a FWHM of 0.18 ns and estimates it, so you can see how close the blind estimate comes before you trust it on your own measurement.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; loads a seeded bi-exponential decay (1.0 and 4.5 ns, 60:40) and reconstructs its lifetime distribution: two peaks at known places, so you can see what the method makes of them before you give it your own decay.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; loads a simulated molecule that switches between two FRET states (visits of 20 and 80 ms) on two detectors. Two levels must be visible, anti-correlated between the detectors.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; loads the MalE data set that ships with ChiSurf: nine sites, the dyes AF488, Cy3B and Atto655, apo and holo, in normal and heavy water. It also chooses the quick preset. With your own data, use &lt;b&gt;Data folder…&lt;/b&gt; on a folder with the same three tables.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; points the importer at the legacy burstwise folder that ships with the plugin and scans it, so the inventory, the source resolution and the conversion below all have something to show.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; restores the synthetic mixture — two lifetime components, 1.2 ns and 4.0 ns, seen through per-detector IRFs — and computes its filters, so you can see what a clean separation looks like before you load your own decays.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; simulates two small confocal scans into the settings folder, adds them to the workspace and lists them, so every step below has files to list.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; writes a bead stack that drifts by exactly (2, −1) px per frame and measures it, so you can check the tool against the truth before you trust it on your own data.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; writes a deterministic demonstration PTU in the settings cache and reads its header, so every control below has something to act on.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; writes a deterministic demonstration measurement (a µs-ALEX stream with bursts on two detectors) into the settings cache and shows its photons — no file of your own needed. &lt;b&gt;Open TTTR...&lt;/b&gt; chooses a real .ptu, .ht3, .phu, .pt3 or other TTTR file instead; you can also drop one on the window.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; writes a movie of six particles diffusing with D = 0.5 px²/frame and tracks them, so the diffusion coefficient the tool reports can be checked against the truth.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; writes a simulated measurement: molecules crossing the focus in about 0.25 ms on a weak background, split over two detectors. Its curve must decay near half a millisecond. If it does not, the settings are wrong, not the sample.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; writes an object band-limited to 0.15 cycles/px under independent noise and measures it, so the resolution the tool reports can be checked against the band limit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; writes the shared demonstration SPC stream and queues it: the list shows the .pto the importer writes beside it, so you see a conversion before you drop your own files.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Quality&lt;/b&gt; rates the measurement. The basic checks need no ALEX: burst density, the share of bursts with more than one molecule, stability, background. Hover a check for what it means.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Run&lt;/b&gt; first builds the site table of every measured site (accessible volume, neighbouring residues, quencher contacts, water exposure). The tables are cached, so only the first run pays for them. Then it fits the stages in the background, and the bar shows how far it has got. You can keep reading the Data tab meanwhile.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Summary&lt;/b&gt; gives one line per dye: its quench scale and the residue group it sticks to most, on log axes. &lt;b&gt;Write results…&lt;/b&gt; saves every table as CSV for your own plots. Press &lt;b&gt;Help&lt;/b&gt; for every control.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Time trace&lt;/b&gt; shows the count rate of each stream in 1 ms bins with the bursts shaded. Judge the burst search here: a good run shows clean bursts over a flat background.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Time trace&lt;/b&gt; shows the count rate of each stream in 1 ms bins, with the bursts shaded. Use it to judge the burst search.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Water&lt;/b&gt; belongs to stage C. Atto655 is quenched by water as well, so the difference between normal and heavy water measures how exposed the dye is at each site. The model predicts that exposure from the structure, without a new parameter.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;ndX&lt;/b&gt; holds the full burst table: lifetimes, anisotropies, TGX−TRR, 2CDE, the QC flags. Choose any two columns, gate populations and follow them through the other dimensions.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;i&gt;Quick&lt;/i&gt; runs a few searches (about 20 minutes on a desktop), which is enough to see the shape of the answer. &lt;i&gt;Full&lt;/i&gt; is the stored analysis and takes hours. Leave it on Quick for the tour.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>?app={name}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A &lt;b&gt;measured&lt;/b&gt; IRF (scatter or a short-lifetime reference) and a sample-free background are better than the estimate. Open the &lt;b&gt;IRF/BG files&lt;/b&gt; tab: the &lt;b&gt;Measured IRF&lt;/b&gt; and &lt;b&gt;Measured background&lt;/b&gt; sections list the photon streams in the workspace — select the measurement and press &lt;b&gt;Use selected&lt;/b&gt;. With &lt;b&gt;one for all&lt;/b&gt; the files serve every detector. &lt;b&gt;IRF model&lt;/b&gt; chooses the shape Auto IRF/background estimates.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A burst needs at least this many photons (L).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A detector/channel setup of the Datasets workspace, loaded into the Setup step.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A detector/channel setup of the Datasets workspace, loaded into the workflow's Setup step.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A job this server ran (by job_id) returns the full result with plot data; a stored run (by its directory name under jobs/) returns its summary.json and run record. A job still running fails with job_not_finished, a cancelled one with operation_cancelled.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A measurement file holds the parallel decay (VV) followed by the perpendicular decay (VH). &lt;b&gt;Load VV/VH file…&lt;/b&gt; (or a drop on the window) opens one; both decays and r(t) appear at once.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A photons dataset of the Datasets workspace, played back at measurement speed. Drop the file on the ChiSurf window to add it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A recording split across &lt;b&gt;m000.spc, m001.spc, ...&lt;/b&gt; is one measurement, so streams used together are packed into &lt;b&gt;one&lt;/b&gt; .pto, in file-name order. The row lists them in that order.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A simulated measurement (tttrlib's photon simulator): cw, PIE or µsALEX, with or without polarization, noise channels, one colour.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>ALEX / PIE</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>ALEX/PIE: all factors from the measurement (tttrlib.auto_calibrate). cw: the leakage α from the donor-only bursts; γ, β and δ need a reference and stay as typed.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>APO (PDB 1OMP) or HOLO (PDB 1ANF).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Absolute anisotropy contribution of the component; click to edit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Acceptor input offset (ps)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Acceptor-excitation window, 'start-stop' in micro-time channels (for µsALEX: in alternation-phase ticks).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Advanced mode</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Aex window</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Agent</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>All-photon sliding window: m consecutive photons ...</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Also compute the profile likelihood of the quench scale (the data set's sub-graph refitted at fixed scale values). It costs about one joint fit per point.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Also the channel, burst-search and correction settings, the time trace and the burst table in ndX.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Alternation period (µs)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>An fps.json document: Positions, Distances, optional χ² score sets and extra sections.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Analyse</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Analyse again with these channels and windows.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Another way to a known answer: the &lt;b&gt;Simulate instead&lt;/b&gt; panel generates Brownian particles with a diffusion coefficient you choose, so the result can be checked against a number. Any TIFF stack or photon stream works the same way via &lt;b&gt;Open&lt;/b&gt; or a drop on the window.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Anything beyond the typed fields: add it as key/value.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Arriving with µs-ALEX data, this step ran the &lt;b&gt;ALEX Creator&lt;/b&gt;'s conversion: it found the period, the two laser gates and which detector is the donor, folded the alternation into the micro-time (one &lt;code&gt;.pto&lt;/code&gt; container beside your file) and wrote the setup. PIE data is left alone.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Check the plot&lt;/b&gt;: two plateaus, the donor detector brighter in one, the acceptor in the other. That crossover is what the old channel-flip checkbox was guessing at. The gates are editable here and as bands on the plot. The Creator's window (Tools → Photon data) converts files by hand, in any format.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Attach a small example session (three datasets and two template fits with known parameter movements) and stage the batch, so the wizard can be walked to a result.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Auto-calibrate</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>BVA reads a finished &lt;b&gt;burst run&lt;/b&gt; — the bursts are already defined and this adds a per-burst column to them. The &lt;b&gt;Input&lt;/b&gt; section lists the burst runs in the workspace: a run of a measurement container shows under its photon stream in the Datasets view. Files dropped on the ChiSurf window are added there; &lt;i&gt;Open in…&lt;/i&gt; on a Datasets row, or dragging the row onto this tool, does the same as picking it here.&lt;br/&gt;&lt;br/&gt;A single measurement is not listed: this analysis has nothing to do with photons that were not yet cut into bursts.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Back to Record</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Base directory of the jobs/&lt;uuid&gt; run directories (default: the per-user artefact root).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Base directory of the run directories (default: the per-user artefact root).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Before upload</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Browse and gate a burst run: a run of a measurement container, or a legacy burst folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Build from a project script</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Build or read one site table and return its summary.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Build site tables</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Build the metadata separate</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Build the missing site tables and run the chosen stages in the background. The window stays usable; the bar shows how far it is.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Build the site tables without fitting.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Building site tables</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Burst detection, corrections and quality control; the job JSON the app runs.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Burst rate</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Burst run</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Burst runs</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Burst selection: channels, macro-time tick, minimum photons and burst count. The burst run itself is picked in the Input section, from the Datasets workspace.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Bursts (.csv)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Bursts with fewer photons are dropped.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Bytes to transfer; for a delete, the remote file's size.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>CLSM Simulator</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Calibrate accurate FRET on a burst run of a measurement container.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Cancelled after {s:.0f} s; what was finished is kept.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Cannot connect: {e}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Cannot run: load a data folder first.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Channels and windows</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Check an fps.json payload's sections and references; errors, warnings and a summary.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Check one photon stream of the Datasets workspace: burst density, multi-molecule events, stability, background.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Check records to upload or update together (Upload / update checked).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose &lt;b&gt;Advanced&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose a measurement folder</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose a photon stream of the workspace first.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose the &lt;b&gt;Measurement type&lt;/b&gt; ('From the setup' is fine for the example).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose the simulator with two populations of known E (0.2 and 0.8, S 0.5) and the default PIE setup, ready to Start.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Clear the list, export the selected files or a report, hand the image on, get help (the images are picked in the Input section).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Click Run to convert the detected measurements into measurement containers of the project; their burst runs appear in the Datasets workspace under their photon streams.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Click a burst run in the &lt;b&gt;Input&lt;/b&gt; section.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Component number; click it to select the row (Delete removes it).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Compute (or read from the cache) the site table of every measured site at each dye's linker length, in the background. A run does this first anyway.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Compute 2CDE for a burst run: a run of a measurement container, or a legacy burst folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Compute already holds the histogram; &lt;b&gt;Save&lt;/b&gt; with Output &lt;b&gt;PTO&lt;/b&gt; writes it into the measurement's .pto, where ChiSurf and the provenance view find it. Right-click a photon stream in the PTO Inspector to send it here.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Compute the declared quench-scale profile likelihoods (about one joint fit of the block per point).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Compute the distribution for the shipped inputs and export it as CSV beside the settings: a known starting point to change one input at a time.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Connect the device first.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Contact quenching rate of every quenching residue for each dye, scaled from the reference chemistry by the titrations.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Continue from job</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Convert ALEX macro-time modulation into micro-time (single, batch or merged) — the one ALEX→PIE converter — writing TTTR files or .pto containers, for PIE-style analysis of .sm and other TTTR files.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Pick photon streams of the Datasets workspace: a vendor file is packed into a .pto beside it, a stream of a .pto unpacks the vendor file(s) it embeds back out. The source is kept and the result verified byte-for-byte before anything is ever deleted; what is written enters the workspace as children of what it came from. Packing is also offered as a one-time nag wherever a plugin loads a vendor file as the working measurement.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Convert or split a TTTR file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Convert the example, or forget the finished entries.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Correct E and S again with these factors.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Correlate files separately</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Correlate the photons of burst runs of measurement containers.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Create and inspect TTTR microtime histograms of photon streams from the Datasets workspace, with a detector setup row, optionally restricted to burst runs.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>DOI</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>DOI &amp; publish</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Data folder…</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Data set</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Day-to-day error: hyper-posterior</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Declared fit settings to replace after the preset, e.g. {"n_starts": 4}. quest.analysis.template lists them.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Default for the type (channel 0 donor, 1 acceptor; PIE: half periods)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Delay of the acceptor detector's input (the first acceptor channel of the setup).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Delay of the donor detector's input (the first donor channel of the setup), to align it with the acceptor's.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Deposit settings: access right, licence and community curation.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Detect the experiment configuration and routing channels from a TTTR file or a seeded scenario.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Detected from the data: alternating when a micro-time (PIE) or macro-time (µsALEX) window leaves the donor detectors dark.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Detection, burst search and the quality check with defaults.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Detection-efficiency and quantum-yield ratio of acceptor to donor.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Development status: devices are not connected to the Record tool yet — it measures the built-in simulator or replays a recorded stream. The device session of earlier versions is untested on real hardware.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Device session…</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Dex window</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Distinct</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Divides the laser's sync pulses. Keep 1 for PIE: the micro-time must span one full laser period, both pulses.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Does the model reproduce the measurements?</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Done in {s:.0f} s: stages {stages}.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Donor emission leaking into the acceptor detectors.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Donor input offset (ps)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Donor {} · Acceptor {} · {}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Donor-excitation window, 'start-stop' in micro-time channels (for µsALEX: in alternation-phase ticks).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Download a structure from RCSB by its four-character PDB ID.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Download the burst table (ChiSurf .bur column names, QC flags included). ndX and ChiSurf open it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Download the detected experiment, the settings and every quality check as JSON.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Draft</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Drive ChiSurf in plain words: the agent runs the analysis tools of the loaded session, asks when a request is ambiguous, and scripts pipelines over the plugin and core APIs.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Drop QC-flagged bursts</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Drop a file, or press &lt;b&gt;Simulate&lt;/b&gt; under &lt;b&gt;Try it without a file&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Duration (s)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Dye whose linker length the table was built at.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>E and S</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>E/S and the burst table</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Each file has a tick box. A folder adds every TTTR file in it. With several files, &lt;b&gt;Correlate files separately&lt;/b&gt; correlates each on its own and the merger averages them; off, their photons are stacked into one stream first. The two step switches below decide whether the photon filter and the merger are part of the run; a switched-off step is grey in the rail and Back / Next skip it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Each finished burst lands in the type's histograms — for the PIE example two clusters at E 0.2 and 0.8, both at S 0.5; &lt;b&gt;Histogram&lt;/b&gt; picks which is shown. Below, the count rates and the decays of each stream with the excitation windows marked — a window in the wrong place shows here first.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Each point is a site: measured lifetime across, predicted lifetime up, with both errors. Ringed points are outliers. The dashed lines are the free dye's lifetime: a site above it is brighter than the free dye.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Each queued photon stream is cut into consecutive windows of equal duration. The &lt;b&gt;Input&lt;/b&gt; table lists the photon streams of the workspace -- files dropped on the ChiSurf window land there; select them and press &lt;b&gt;Use selected&lt;/b&gt; to queue them. &lt;b&gt;Load example&lt;/b&gt; generates a deterministic demonstration measurement (a µs-ALEX stream with bursts), adds it to the workspace and queues it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Each site is left out in turn and predicted from the others. A bar above the dashed line at 3 is a site that the rest of the data cannot explain.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Effective observation volume, for the concentration estimate only (from FCS or a dye standard).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Ensemble</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Estimate the background (and IRF) from the non-burst photons of photon streams of the Datasets workspace.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Estimate the same-molecule probability of a burst run (or legacy folder) and report what a threshold would fuse.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Estimates of the data set with their 68 % intervals; a note says when a parameter is not determined or sits at a bound.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Estimates with 68 % intervals: {block}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Estimates, predictions and checks of one data set of one stage.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Every file operation of the planned upload. = identical rows transfer nothing; × delete rows are files on the draft that the package does not have.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Every item of the record, its files under it: each measurement with the calibrations it uses nested under it (one calibration, stored once, can serve several), and every folder's files under their item -- a numbered series (one acquisition over rollover files) as one foldable row. Approve a row with its button; right-click for Reject, Undo decision or Open in ndX. Double click opens a file in the modal viewer, an item in ndX. ⚠ = check first; hover a row for why, its content and origin.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Everything about the photon stream: where it comes from and how it was detected.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Everything quest.analysis.run accepts, read from settings/analysis/{stages,fit_parameters}.yaml: the stages in run order with their titles and graphs, the presets as differences to the full settings, every declared fit setting, the shipped data folder and the declared result tables.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Example ready: PIE, two populations, E 0.2 and 0.8, S 0.5. Press Start.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Excitation-intensity and cross-section ratio of the two lasers (ALEX/PIE).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Experiment setup</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Explore the bursts in ndX</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Exposure</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Exposure of {state} {site} ({dye}): {n} positions</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>FRET check</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>FRET check walks a single-molecule FRET measurement in one pass: the experiment is detected, the bursts are found, and a QC verdict says what is wrong in plain words. Everything runs locally.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>FRET efficiency of the first simulated population. Each molecule carries donor and acceptor; its photons are split into donor and acceptor channel by this E.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>FRET efficiency of the second simulated population.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Failed to stage the example: {error}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Failed to write the results: {error}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>File: {}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Find raw TTTR files with matching stems beside the analysis folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fit H2MM to a burst run: a run of a measurement container, or a legacy burst folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fit a decay with its instrument response: the picked curve named IRF (or the second) is the IRF, one named VH the VH channel of a VV/VH fit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fit burst lifetimes to burst runs of measurement containers.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fit photon-by-photon kinetics to a burst run of a measurement container.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fit preset</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fit settings</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fluorescence lifetime of the component in nanoseconds; click to edit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Folder the built site tables are cached in. Omitted: &lt;settings&gt;/cache/quenching_estimator/site_tables.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Folder with the three measurement CSV files (site lifetimes, titration points, titration summary). Omitted: the shipped MalE data (examples/male).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>For many files, select them in the batch's &lt;b&gt;Input&lt;/b&gt; table and press &lt;b&gt;Use selected&lt;/b&gt;: they fill the queue below. The period, shift and formats above apply to every file in it; select a row and press &lt;b&gt;Remove&lt;/b&gt; (or Delete) to drop one.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Forget the edits and detect channels and excitation again from the photons.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Four-character RCSB PDB ID.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Free-dye lifetimes tau0 in normal and heavy water: where every prediction starts.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>From the setup</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Further entries</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fuse bursts the same molecule produced, using the recurrence same-molecule probability, into a new burst run of the same measurement.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fuse the bursts of a burst run: a run of a measurement container in the project's analysis container.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Generate an example</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Generate the deterministic demonstration stream (a µs-ALEX measurement with bursts on two detectors) in the settings cache, add it to the workspace and show its photons.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Generate the deterministic demonstration stream (a µs-ALEX measurement with the alternation still in the macro time) in the settings cache, add it to the workspace and load it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Generate the deterministic demonstration stream (two detectors with distinct micro-time decays) in the settings cache, add it to the workspace and read it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Generate the reference decays (known r(t) = r0·exp(-t/ρ), four files) in the settings cache, load the slow protein's decay and queue all four for the batch.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Give the selected data to a tool that takes it; no tool takes this data when the item is dimmed.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Go back to the detector setup, load the example, or clear what the browser holds (the files are picked in the Input section).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>H2MM fits the photons &lt;i&gt;inside&lt;/i&gt; already-defined bursts, so it reads a finished &lt;b&gt;burst run&lt;/b&gt; rather than raw files. The &lt;b&gt;Input&lt;/b&gt; section lists the burst runs in the workspace: a run of a measurement container shows under its photon stream in the Datasets view. Files dropped on the ChiSurf window are added there; &lt;i&gt;Open in…&lt;/i&gt; on a Datasets row, or dragging the row onto this tool, does the same as picking it here.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Health: {batches} batches, {dropped} dropped, {queued} buffered; background (kHz) {bg}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How data read here or dropped on the window enters the project: linked (the file stays where it is; its path, size and checksum are recorded, so the project stays small) or embedded (copied into the project file at the next save, so the project is complete on its own). Right-click a dataset in Datasets to switch it later.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How far the analysis has come. It runs in the background: the page stays responsive.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How far the run is.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How fast simulated or replayed photons arrive: 1 is the pace of the real measurement, 10 ten times faster.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How the acceptor is treated: 'trajectory' simulates its Brownian walk with its own diffusion coefficient and stickiness and uses the instantaneous donor-acceptor distance, 'averaged' averages over its static accessible volume (the fast-acceptor limit, valid only when it explores that volume quickly compared with the donor lifetime). The two disagree because a cloud is weighted uniformly while a trajectory is weighted by where the dye dwells. The 'pde' ensemble has no donor trajectory to pair one with, so it requires 'averaged'.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How the setup is read: single colour, two colour, PIE, µs-ALEX, MFD or three-colour PIE. 'From the setup' takes the type the setup describes. The type decides the quantities (proximity ratio, stoichiometry, anisotropy), the live histograms and which quality checks apply.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How the simulated sample is excited: PIE (a green and a red pulse per period, so stoichiometry is measured) or two colour (the green laser only).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How thoroughly</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>How thoroughly the inverse fit searches. Changing it discards the solved graphs.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Import a LUT file or restore a settings.tttr.json.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Import a legacy burstwise analysis folder dropped on the ChiSurf window: its runs become children of their photon streams in the workspace.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Import the burst-ID selection (.bid/.bst/.txt, same stem) beside each photon stream of the Datasets workspace into that stream's container in the project.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>In &lt;b&gt;1 · Create&lt;/b&gt;, type the record's name: lower case, no spaces. It becomes the folder and the archive name. (Already have one? Pick it in the list at the top instead.)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>In the Burst Analysis window the later steps now point at the fused run; running the burst search again supersedes that and takes you back.&lt;br/&gt;&lt;br/&gt;One thing to know: results already computed on the &lt;i&gt;original&lt;/i&gt; run — BVA, 2CDE, per-burst MLE lifetimes — are &lt;b&gt;not&lt;/b&gt; carried over. They have one row per original burst and they are tables of that run, one row per burst, so they would line up one burst's lifetime against another's efficiency. Recompute them here, which is exactly why fusion sits before them.&lt;br/&gt;&lt;br/&gt;Your own data comes the same way: pick a burst run of your photon data in the &lt;b&gt;Input&lt;/b&gt; section, or use &lt;i&gt;Open in…&lt;/i&gt; on a run in the Datasets view.&lt;br/&gt;&lt;br/&gt;Finally, the method: the same-molecule probability comes from &lt;b&gt;recurrence analysis of single particles&lt;/b&gt; (Hoffmann et al., &lt;i&gt;PCCP&lt;/i&gt; &lt;b&gt;13&lt;/b&gt;, 1857, 2011). The &lt;b&gt;?&lt;/b&gt; button has the full citation and a live DOI link, and explains where that paper uses the curve to &lt;i&gt;correlate&lt;/i&gt; recurring bursts rather than merge them — which is the analysis you want if your interest is slow dynamics rather than split bursts.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Input edge</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Input level (mV)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Inspect any TTTR file tttrlib reads (PTU, HT3, SPC, Photon-HDF5): the photon table -- first events with routing channel, macro and micro time -- and the header tags as an editable table. Edited headers save into a new PTU file, the only container that keeps arbitrary tags, with the photons copied unchanged.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Inspect or save the portable settings.tttr.json (load one by picking it in the setup Input section).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Inspect the photons of a photon stream of the Datasets workspace in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Is it on Zenodo: not uploaded, ✓ uploaded and current (this package and metadata), changed since upload (an update is due), or published.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Job</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Keep every metadata file out of the raw archive: the editable README.md and metadata.cif AND the provenance (origins.json, manifest_sha256.csv) are uploaded beside it as sidecars, so correcting or regenerating any of them later is a metadata-only swap and never re-sends the raw data.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Kernel width of FRET-2CDE and ALEX-2CDE.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Labelled chain; the declared chain by default.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Labelled residue number.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Labelled residue.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Last recording → editor</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Last upload</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Leave bursts flagged bright, long or by 2CDE out of the E/S plots and of ndX.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Leave one site out</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Leave one site out: the largest |z| of each site's prediction when the site is left out of the fit; above the dashed line (3) a site is an outlier.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Leave the metadata as it was.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Legacy Export</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Legacy folders only: the target folder; a threshold-named sibling of the source by default. A run is written into its own container.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Lifetime components: amplitude and lifetime in ns; click a cell to edit it, or a row's # to select the row for Delete.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Linker</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List node-graph session artifacts in MMFDB.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>List photon streams picked in the workspace in their folder, the first selected.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Live</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load a 3-D TIFF of beads, or press &lt;b&gt;🧪 Load example&lt;/b&gt; for a generated stack whose answer is known (five beads, true FWHM 424 nm laterally and 2120 nm axially).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load a TTTR file to convert and preview its folded ALEX phase.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load a node-graph session artifact from MMFDB.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load a photon stream (a TTTR file or a container stream) and, chosen with it, a detector setup row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load a photon stream (a TTTR file or a container stream) as the input to split or convert.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load a seeded VV/VH decay whose IRF is known (centre 0.4 ns, FWHM 0.18 ns) and estimate it, so the estimate can be checked against the truth.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load a seeded bi-exponential decay (1.0 and 4.5 ns, 60:40) and reconstruct its lifetime distribution, so the peaks can be checked against the truth.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load an example</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load an example measurement</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load the example session, or re-scan the datasets loaded in ChiSurf.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load the example trajectory this tool ships with and run the action on it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load the example, help, the guided tour, and cancel a running fit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load the example, or copy the rows shown now.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load the example, or remove input files (they are picked in the Input section below).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load the shipped MalE data set (nine labelled sites, three dyes, apo and holo, H2O and D2O, plus the free-dye amino-acid titrations) and choose the quick preset.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load the shipped MalE measurements, or pick a folder of your own.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Loaded {n} site lifetimes and {k} titrations from {folder}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Look up each raw TTTR path by re-mapping the original drive prefix recorded in the folder's .mti file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Mean number of residues within the slowing radius of a position.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Mean water exposure over the reachable positions (1 = as exposed as the free dye).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Measure and watch the bursts build up</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Measured</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Measured and model water access per site.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Measured and predicted lifetime of every site of the data set.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Measurement type</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Metadata Editor</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Metadata file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Molecular structure viewer and protein analysis plugin for ChiSurf; its labelling editor builds fps.json plans (Tools &gt; Labelling), and its RPC checks plans and fetches structures headlessly.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Molecules of each population in the simulation box. Higher means more bursts per second, and more coincident molecules.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Multi-molecule events</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Needs two or more ticked files.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Neighbours</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>New record</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No H2MM fit yet. Pick a burst run in the Input section, define the detectors and press Run H2MM.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No PicoQuant device found</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No device connected.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No measurement folder among the dropped paths.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No photon stream in the workspace</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No result yet: press Run.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No such plugin on this page; ChiSurf started instead.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Not a measurement folder ({missing} missing): {folder}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Nothing measured yet. Start a run to see its bursts build up here.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Nothing to edit: open the editor with metadata.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Nothing to write: run a stage first.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Number of t_max-long trajectory blocks in the walk ensemble. The walkers are vectorised, so this sets the total simulated time, not a thread count. Use -1 for the number of CPU cores, capped at 8.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Offset (ns)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>On: each file is correlated on its own (Splits within each file) and the merger averages the files' curves; a file that differs shows as its own curve. Off: the files' photons are stacked into one stream, then correlated.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>One data set at a time</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>One line per dye, written from the numbers.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>One molecule crossing the confocal spot does not always leave one burst. It dims for a few hundred microseconds — to the edge of the volume and back, an acceptor blink — and the burst search, which sees only a count rate, ends one burst and starts another. Downstream, each fragment counts as its own molecule.&lt;br/&gt;&lt;br/&gt;This tool merges the fragments back together and writes a &lt;b&gt;new&lt;/b&gt; burst run of the same measurement. The run you start from is never modified, so a threshold can be tried, looked at, and thrown away.&lt;br/&gt;&lt;br/&gt;You do not need your own data to follow this. Press &lt;b&gt;🧪 Load example&lt;/b&gt; among the actions: it simulates a measurement in which &lt;i&gt;300 molecules&lt;/i&gt; crossed the focus and about 60 % of those crossings were interrupted, then runs the ordinary burst search over it. Everything below is checked against that known 300.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>One page: the FRET and stoichiometry histograms, the count-rate trace, the inter-burst gaps, the background and every report value.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>One row per dye: the quench scale, the stickiest group and the outlier sites.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>One row per site table the analysis holds. Select a row to see its exposure histogram.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>One subject per tab.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a .json file first -- or keep editing and Save as…</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a burst run of the Datasets workspace (its address), a burst-analysis folder, a .pto or a table file, as File &gt; Open does.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a metadata record.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open and initialise the device in T3 mode (internal reference clock) and show its identity and count rates. Nothing is recorded until Start.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open metadata</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open the &lt;b&gt;Fit&lt;/b&gt; tab (after the run has finished).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open the &lt;b&gt;Summary&lt;/b&gt; tab.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open the &lt;b&gt;Water&lt;/b&gt; tab.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open the container of a photon stream or burst run, or offer vendor photon files for packing into one.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Or pick your own container</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Or pick your own scans</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Output file; .mrc is appended unless present.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>PIE (green and red pulses)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pack vendor photon streams into one .pto, or unpack the container of a .pto stream.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Packing writes the .pto &lt;b&gt;beside&lt;/b&gt; the vendor file and keeps the original, then checks the container against its checksum. Unpacking writes the vendor files back and keeps the container. Either direction can be repeated or thrown away with no loss, and every conversion becomes a row of this table; what was written appears in the workspace under what it came from.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Per stage (title, numbers, text, tables as row lists in the declared result_columns.yaml columns, plots) and per graph (blocks, size). A stored run read from disk has no plots.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Photon counts and rates over the measurement.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Photon stream</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Photons are analysed as they arrive and written to the recording at the same time.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick a burst run in the &lt;b&gt;Input&lt;/b&gt; section.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick a folder holding the three measurement tables: tcspc_fit_results.csv, amino_acid_quenching_flt.csv and titration_summary.csv (the layout of examples/male).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick a measurement</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick a photon stream</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick a photon stream in the &lt;b&gt;Input&lt;/b&gt; section of the Measurement window (TTTR files -- PTU, HT3, SPC, SM, PTO, ... -- dropped on the ChiSurf window are listed there). No file at hand? Open &lt;b&gt;Try it without a file&lt;/b&gt;, choose an example and press &lt;b&gt;Simulate&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick a photon stream in the &lt;b&gt;Input&lt;/b&gt; table to read its header -- the workspace's TTTR files (PTU / HT3 / SPC / HDF5) and the streams of .pto containers; files dropped on the ChiSurf window land there. &lt;b&gt;Load example&lt;/b&gt; already added a deterministic demonstration PTU. The guide waits for your click; it does not choose or load a file for you.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick a photon stream in the Input section to inspect its photons.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick a photon stream in the Input table.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick a photon stream or a burst run in the &lt;b&gt;Input&lt;/b&gt; section: one of a .pto opens that container. Files dropped on the ChiSurf window land in the workspace. A vendor photon file picked here is offered for packing into a new container first.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick photon streams in the &lt;b&gt;Input&lt;/b&gt; table -- the workspace's TTTR files; files dropped on the ChiSurf window land there -- and press &lt;b&gt;Use selected&lt;/b&gt;. They are listed in the table (from their folder, which keeps ratings and notes) and the first one is plotted.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick photon streams in the Input section: vendor files (.ptu, .spc, .ht3, ...) are packed into one .pto beside the first; a stream of a .pto unpacks the original vendor file(s) back out. The source is kept untouched, and what is written appears in the workspace under it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick the burst run</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick the bursts</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick the decay and its IRF</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick the files</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick the measured decay and its IRF in the Input section (data dropped on the ChiSurf window is listed there), edit YAML settings if needed, choose a fixed or automatically selected lifetime count, then Fit. Analysis runs separately; inspect its output, fitted lifetimes and weighted residuals before interpreting the model. In VV/VH mode a polarized pair is fitted jointly: shared lifetimes, rotational correlation times and r0. Load example simulates one whose answer is known.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick the measurement type</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick the photon stream to split in the &lt;b&gt;Input&lt;/b&gt; table -- the workspace's TTTR files and the streams of .pto containers; files dropped on the ChiSurf window land there. &lt;b&gt;Load example&lt;/b&gt; already added a deterministic demonstration measurement.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick your burst runs in the &lt;b&gt;Input&lt;/b&gt; section and press &lt;b&gt;Use selected&lt;/b&gt;: it lists the runs of the measurement containers in the workspace, each under its photon stream in the Datasets view (&lt;i&gt;Open in…&lt;/i&gt; or dragging rows onto this tool does the same). On the &lt;b&gt;Detector setup&lt;/b&gt; tab the shared detector editor defines the channels; &lt;b&gt;Use setup for pairs&lt;/b&gt; turns a setup into channel pairs. &lt;b&gt;Export curves...&lt;/b&gt; saves the curves and fits as JSON.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick your measurements in the &lt;b&gt;Input&lt;/b&gt; section: the photon streams of the Datasets workspace (data enters ChiSurf by dropping it on the ChiSurf window). &lt;b&gt;&lt;code&gt;.sm&lt;/code&gt; files work directly&lt;/b&gt;, no conversion, no cache files beside them.&lt;br/&gt;&lt;br/&gt;No measurement at hand: &lt;b&gt;Load example&lt;/b&gt; writes a simulated µs-ALEX stream (100 µs alternation, donor on channel 0, acceptor on channel 1; low-FRET, high-FRET, donor-only and acceptor-only molecules) into a plugin’s generated-data folder and adds it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick, in the Input section, the photon streams of the Datasets workspace the burst search ran on.&lt;br/&gt;&lt;br/&gt;The non-burst photons are, by definition, everything the burst search did &lt;b&gt;not&lt;/b&gt; select. So this reads the same raw files and inverts the burst mask rather than searching again.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick, in the Input section, the photon streams of the Datasets workspace you ran the burst search on.&lt;br/&gt;&lt;br/&gt;A buffer-only acquisition measures the background of &lt;i&gt;that&lt;/i&gt; acquisition — not the sample in the beam, not the laser power after it drifted for two hours, and not the dim out-of-focus molecules that genuinely contribute. Estimating from the measurement itself tracks all of it and costs no extra beam time.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>PicoQuant device (USB)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>PicoQuant device (pqusb not installed)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>PicoQuant devices need pqusb (CMC), which is not installed.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Plot failed: {error}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Point the importer at the legacy sample folder that ships with the plugin (.bur splits, an .mti file, bg4 backgrounds) and scan it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Population 1: E</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Population 2: E</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Positions</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Positions with distinct features; the fit evaluates these only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Posterior of the day-to-day error that all titrations share: absolute part (1/M) against relative part, on log axes. The K_SV errors are averaged over it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Predicted against measured lifetime per site: x error = measurement and model error, y error = prediction uncertainty; ringed points are outliers; dashed lines are the free-dye tau0 per solvent.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Predicted against measured: {block}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Prepare a burst run for the 2D MFD fit: a run of a measurement container in the project's analysis container.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Preparing the fit (site models, then the first searches)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Preset</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Preset changed: the next run solves the graphs again.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Load example&lt;/b&gt; in Files &amp; Steps.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Load example&lt;/b&gt; to generate a deterministic demonstration measurement (a µs-ALEX stream with bursts on two detectors) in the settings cache and open it — no file of your own needed. Your own measurements are picked in the &lt;b&gt;Photon stream&lt;/b&gt; tab: the workspace's photon streams, where files dropped on the ChiSurf window land. A Becker &amp;amp; Hickl &lt;i&gt;.spc&lt;/i&gt; needs its subtype chosen in the &lt;b&gt;Detector setup&lt;/b&gt; window first (File Type).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Load example&lt;/b&gt; to generate a deterministic demonstration measurement (two detectors with distinct micro-time decays) in the settings cache and read it — no file of your own needed. Your own flat-light measurement is picked in the &lt;b&gt;Input&lt;/b&gt; table below -- the workspace's photon streams, where files dropped on the ChiSurf window land. The raw TAC histogram appears in the upper plot.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Load example&lt;/b&gt; to generate a deterministic demonstration stream — two detectors whose decays begin 500 micro-time bins apart — in the settings cache and read it, then let the tool align them. Real data is picked in the &lt;b&gt;Input&lt;/b&gt; table: the workspace's TTTR files, where files dropped on the ChiSurf window land. All files must have the same number of micro-time bins; the preview sums them by routing channel.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Run&lt;/b&gt;. The bar fills while it works.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Start&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Stop&lt;/b&gt; (or wait for the duration to pass).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;🚀 Run (Fuse)&lt;/b&gt; (the green button) — on this step, running &lt;i&gt;is&lt;/i&gt; fusing.&lt;br/&gt;&lt;br/&gt;This is the slow half: the photon streams are reopened and every column is re-derived over the real span, so the result is an ordinary burst run, written beside its source in the same container — BVA, 2CDE, the MLE, H2MM and the browser read it with no idea that fusion happened.&lt;br/&gt;&lt;br/&gt;The plots then switch from the preview to &lt;b&gt;what was actually written&lt;/b&gt; (the legend says which). The two differ by the photons the bridged gaps brought in, and the run's &lt;b&gt;assembly&lt;/b&gt; table records that number for every burst — worth a look before you build on the run. In the Datasets workspace the fused run appears under the same photon stream.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;🧪 Load example&lt;/b&gt; to generate the demo stream.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;🧪 Load example&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press Load example to add the simulated burst files.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press Load example, or pick a data folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press Load example. It writes a simulated photon stream with six known bursts and its BID selection, adds the stream to the Datasets workspace and queues it. Your own measurements come from the workspace: pick their photon streams in the Input section -- the BID selection with the same stem beside each one is queued with it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press the &lt;b&gt;Estimate Background&lt;/b&gt; button.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press 🧪 Load example (or Add files... for your own traces).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press 🧪 Load example (or Load stack to use your own file).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Process imports every selection into its measurement's container in the project: the original BID file and the burst table derived from it, with provenance. The detector setup on the left decides the per-detector columns.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Profile likelihood</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Progress</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Put the last recording (clicks as cs_dispatch calls, plus the console) into the console's editor to edit and run.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>QC report (.json)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>QuEst Analysis — Help</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Quality: not enough data yet</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Quench scale of Atto655 from heavy water alone (B) and from heavy and normal water together (C): profile likelihoods and Laplace intervals. Narrower in C means normal water added information.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Quench scale of each dye's final data set with its 68 % interval, on a log axis.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Quench scale per dye</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Quench scale: heavy water alone (B) against heavy and normal water (C)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Quench scale: profile likelihood</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Quench scale: the profile likelihood (deviance, the sub-graph refitted at each fixed scale) and the Laplace 68 % interval.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Queue PTU photon streams for the batch run with the current options.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Queue TTTR files for the batch conversion.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Queue TTTR files to shift their micro-times (a container stream is unpacked first with TTTR ⇄ .pto).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Queue photon streams</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Queue photon streams (TTTR files or a container's streams) and, chosen with them, a detector setup row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Queue photon streams (TTTR files or a container's streams), optionally set the time window, and preview the first.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Queue photon streams (TTTR files or container streams) and, chosen with them, a detector setup row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Quick</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Reachable dye positions (voxels of the accessible volume).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Read and bin a photon stream (a TTTR file or a container's stream) with the given bin window and detector setup.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Read and edit a TTTR header</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Read and edit the header of a photon stream (a TTTR file or a container stream).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Read photon streams (TTTR files or container streams) into the shown tab.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Read the QC verdict, then press &lt;b&gt;Report&lt;/b&gt; for the PDF.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Read the traffic lights</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Reading the measurements</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Ready. Press Load example, then Start.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Record single-molecule measurements with pulsed interleaved excitation and watch the E–S histogram build up live: bursts are searched, counted into DD/DA/AA and placed in E and S while the photons arrive, written to a PTU, and the run lands in the project (photons dataset with its burst run). Sources: the built-in tttrlib photon simulator (PIE smFRET with known E/S), replay of a workspace photon stream; devices follow. The device session of earlier versions (Becker-Hickl, PicoQuant, BrickMic) stays available.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Record what you click and type; click again to stop -- the macro opens in the console's editor as code.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Recorded to {folder}; enters the project as a photons dataset (linked or embedded as Read data › Add as says), its bursts as a run below it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Recording macro… (clicks and console)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Recording {name} …</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Relative amplitude of the lifetime component; click to edit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Release the device so another program can use it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Remove or clear LUTs (a LUT file is picked in the setup Input section below).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Replay a photon stream</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Report (.pdf)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Report and export: the A4 PDF and the burst table for ndX.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Restore a node-graph session artifact from MMFDB.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Restrict the histogram to the bursts of burst runs (m000.pto/&lt;run&gt;).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return an fps.json payload in canonical form.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return the declared analysis stages, fit presets and fit settings.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return the job_id at once instead of waiting; poll quest.jobs.get, stop with quest.jobs.cancel, fetch with quest.analysis.result.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Return the result of an analysis job or of a stored analysis run.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rotational components: amplitude and correlation time in ns; click a cell to edit it, or a row's # to select the row for Delete.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rotational correlation time of the component in nanoseconds; click to edit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Routing channels of the acceptor detectors, comma separated; with polarization: parallel first, then perpendicular.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Routing channels of the donor detectors, comma separated; with polarization: parallel first, then perpendicular.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Run BVA on a burst run: a run of a measurement container, or a legacy burst folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Run stages of the quenching analysis (inverse fit), blocking or as a background job.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Run the analysis, stop it, or write its tables.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Run the burst search and the quality check again with the current settings.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Save into the container</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Save metadata as</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Schema:</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Search bursts again with these settings.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Search the bursts of photon streams; the runs found become their children in the workspace.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Seeds diffusion and emission, so a run is reproducible.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select a photon stream and press &lt;b&gt;Use selected&lt;/b&gt; (&lt;b&gt;Load example&lt;/b&gt; adds one to the workspace first).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select files in the batch's &lt;b&gt;Input&lt;/b&gt; table and press &lt;b&gt;Use selected&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Select the decay and its IRF in the &lt;b&gt;Input&lt;/b&gt; section, then press &lt;b&gt;Use selected&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Service envelope: ok, result or error.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Shifts all micro-times; use it to place the prompt pulse at the start of the period.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show photon images (scanning confocal TTTR files) in their folder, the first selected.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show the rarely needed controls: routing channels, file types, raw detector settings. Off, only what an analysis needs is visible.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show the records of a photon stream (a TTTR file or a container's stream).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Simple: detection, burst search and the quality check with defaults. Advanced: also the channel, burst-search and correction settings, the time trace and the burst table in ndX.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Simulate a measurement with a known answer: species, background and rates.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Simulate the chosen example (5 s of data, a second or two) and analyse it like a file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Simulate two small confocal scans into the settings folder, add them to the workspace and show them, so the browser can be tried without data of your own.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Simulate two small photon files into the settings folder, add them to the workspace and list them, so the browser can be tried without data of your own.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Simulated time per trajectory block (walk ensemble). The walk covers parallel_trajectories × t_max in all, cut into walkers of 20–50 × tau0 (about 1000 of them) that each start from the equilibrium occupancy. Unused by the equilibrium and PDE ensembles.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Simulator (smFRET)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Site</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Site table {i} of {n}: {state} {site} ({dye})</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Site tables</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Site-table cache</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Site-table cache folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Split photon streams of the workspace into fixed-duration time windows, stored as a burst run in each measurement's container (the run appears in the workspace under its stream).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stage</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stage C: does the model's water exposure explain the measured difference between normal and heavy water?</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stages</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start a run: its histograms appear here</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start from an example</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start from the shipped inputs</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start measuring: photons are analysed live and written to the recording as they arrive.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start of the 10 s stretch of the trace shown below; drag or zoom the plot itself for detail.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with &lt;b&gt;Load example&lt;/b&gt;: a generated three-state trace with known means and dwell times. Your own traces come in the same way with &lt;b&gt;Add files...&lt;/b&gt; (one or many), or drop them on the window. The &lt;b&gt;time step&lt;/b&gt; is what turns transition probabilities into rates, so a wrong value gives you a kinetic scheme in the wrong units — and the fit will not object.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with a decay whose IRF is known</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with a decay whose answer you know</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with a demonstration file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with a demonstration stream</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with a stack whose answer you know</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with a stream whose shape you know</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with an example session</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with an example whose answer you know</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with reference decays whose r(t) is known: &lt;b&gt;Load example&lt;/b&gt; generates them in the settings cache, loads the slow protein's and queues all four for the batch.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with the example</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with the example: the demonstration stream is generated and queued, so every step below has data to act on.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with the sample folder</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stern-Volmer plot: tau0/tau - 1 of the free dye against the amino-acid concentration, every titration point, with the posterior slope K_SV of each amino acid as a line.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stern-Volmer: {dye}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stickiness per residue group</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stickiness per residue group and dye (1 = not sticky, smaller = the dye lingers longer near that group), with 68 % intervals, on a log axis.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stoichiometry S</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stoichiometry of both populations: the share of donor-excited photons in all photons of a molecule (0.5 = equally bright under both lasers).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stop after this much measurement time; 0 measures until you press Stop.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stop measuring. The open burst is closed, the recording finished, and both enter the project: the photons as a dataset, its bursts as a run below it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stop the run at its next checkpoint (between site tables, between searches, at a joint-fit step). A search already running in a worker finishes first.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stop the running analysis. The results shown before stay.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stopping at the next checkpoint...</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stopping closes the open burst and the recording. The recording enters the Datasets workspace as a photons dataset, its bursts as a run below it — ready for Burst Selection, ndXplorer and the other burst tools, with exactly the bursts you saw.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Store a canonical node-graph session payload in MMFDB.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Store every entry (nothing is written until the host applies it).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stored site tables</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stretched linker length in Angstrom; overrides the dye's.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Stretched linker length of the dye.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Structure file; the shipped MalE structure of the state by default.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Structure state (APO or HOLO for the shipped MalE structures).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Summarize positions, distances, score sets and unresolved references of an fps.json payload.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Swap metadata</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Swap the metadata of the unpublished draft without sending the raw archive: the changed sidecars -- the editable README.md and metadata.cif and, when the build keeps them beside the zip, the provenance origins.json and manifest_sha256.csv -- and the reviewed Zenodo metadata only. Grey while anything blocks (the edited metadata must be reviewed again), before the first upload, once published (immutable), and when the draft does not hold the raw archive unchanged.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Switch &lt;b&gt;Mode&lt;/b&gt; to &lt;b&gt;Advanced&lt;/b&gt; to check and edit the channels, the burst search and the corrections.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sync divider</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sync edge</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sync level (mV)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sync offset (ps)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>T3 micro-time bin width = base resolution x 2^binning.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>T3 offset of the micro-time window (ns).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TCSPC device</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>TTTR Inspector</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Take it with you</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Take the FCS channel pairs from a detector setup or channel-pairs file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Take the declared linker length of this dye (AF488, Cy3B, Atto655).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The &lt;b&gt;Input&lt;/b&gt; section lists the burst runs in the workspace — every burst search of your photon data, under its photon stream. Click the run to prepare (or use &lt;i&gt;Open in…&lt;/i&gt; on it in the Datasets view). Nothing here opens a file: data enters ChiSurf by dropping it on the window.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The &lt;b&gt;Input&lt;/b&gt; section lists the burst runs in the workspace — every burst search of your photon data, under its photon stream. Clicking one picks it; the demo's run is already picked.&lt;br/&gt;&lt;br/&gt;Nothing here opens a file: data enters ChiSurf once, by dropping it on the window, and every tool takes it from the workspace.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The &lt;b&gt;Input&lt;/b&gt; section lists the burst runs in the workspace: a run of a measurement container shows under its photon stream in the Datasets view, with the per-burst results written beside it. Files dropped on the ChiSurf window are added there; &lt;i&gt;Open in…&lt;/i&gt; on a Datasets row, or dragging the row onto this tool, does the same as picking it here.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The &lt;b&gt;Input&lt;/b&gt; section lists the burst runs in the workspace: the runs of the measurement containers, each under its photon stream in the Datasets view. Select one or more and press &lt;b&gt;Use selected&lt;/b&gt;; &lt;i&gt;Open in…&lt;/i&gt; on a Datasets row, or dragging rows onto this tool, does the same. Files dropped on the ChiSurf window are added to the workspace.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The &lt;b&gt;Input&lt;/b&gt; table lists the photon streams of the workspace (files dropped on the ChiSurf window land there); pick one to show its records. Under it, the summary gives the file name, the number of photons (and of marker records besides them), the measurement time and the number of micro-time channels the header declares, then the records of each kind and the routing channels that occur in the data.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The &lt;b&gt;Measurement type&lt;/b&gt; decides what is computed and shown: PIE and ALEX give proximity ratio and stoichiometry (the E–S histogram), two colour the proximity ratio, MFD anisotropy, single colour burst size and duration. 'From the setup' takes the type the Instrument setup describes.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The ALEX Creator (Tools → Photon data) is the converter; this step runs it on arrival and publishes the detector setup.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The ALEX Creator folds a µs-ALEX measurement — its excitation alternation still in the macro time — into the micro time, so the PIE tools can read it like any other measurement. Start with a stream whose answer is known, then your own.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The ALEX measurements: photon streams of the Datasets workspace (the Files step); the burst runs found become their children.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The Bayesian graph fit of measured site lifetimes against the site model (stages A, B, naive_h2o, C, summary). Always a job: listed by quest.jobs.list, with progress and a cooperative cancel (quest.jobs.cancel) that stops at the next search, joint-fit evaluation or profile point. The declared tables, summary.json and report.md are written to the output folder or the run directory.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The FRET quality checker judges the bursts so far, every two seconds: the overall light is the worst check. &lt;b&gt;Green&lt;/b&gt;: continue. &lt;b&gt;Amber&lt;/b&gt;: usable, read the note. &lt;b&gt;Red&lt;/b&gt;: act now — the note says what to do (dilute when the occupancy is too high, check background, focus or laser power). The lights stay grey until there are enough bursts for a verdict. The verdict at stop is stored with the run.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The K_SV posterior of every titration and the bimolecular quenching constant kq = K_SV / tau0.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The PicoQuant devices connected over USB (driven through CMC's pqusb, without PicoQuant's libraries). Connect opens and initialises it in T3 mode.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The QC verdict: every check of the measurement with its flag.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The Record tool measures single molecules and analyses every burst while the measurement runs. Until a device is connected it measures the &lt;b&gt;simulator&lt;/b&gt;: a simulated MultiHarp measuring a smFRET sample whose answer is known.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The TTTR file being converted: pick it in the Input section below (files dropped on ChiSurf land in the workspace).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The Zenodo record files: what will be deposited.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The analysis job's id (also its run directory name).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The burst run</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The burst run being fused, as picked in the Input section above (a run of the photon dataset's analysis container). Nothing in it is modified; the fused bursts are written as a new run of the same container, named after the source run and the threshold.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The burst run this concentration was measured in (picked in the Input section above).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The burst run to fuse (m000.pto/&lt;run&gt;), or a legacy burst-analysis folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The burst run, not the raw files</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The burst runs in the Datasets workspace (runs of measurement containers, shown under their photon streams; files dropped on the ChiSurf window are added there). Picking one loads it, as Open in… or a drag from the Datasets view does.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The burst runs this tool correlates, added from the Datasets workspace (the Input section above, Open in… or a drag from the Datasets view). Click Use to include or exclude one.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The checks table flags occupancy, stoichiometry, background and burst density; &lt;b&gt;Issues&lt;/b&gt; names the cause and the fix for every red. &lt;b&gt;Report&lt;/b&gt; writes the A4 PDF.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The classic ALEX-Suite workflow, as a linear ChiSurf pipeline: files, µs-ALEX alternation, burst search, background, accurate FRET, E-S. Plus the titration/stack-plot analysis; the old ALEX-Suite CSV export is the converter command (csc alex-suite export-legacy), not a pipeline step. Writes the same .pto container and burst companions as the PIE burst workflow.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The data set of the stage (one dye in its solvents).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The dedicated way out of the .pto world: unpack a container into the Seidel/Margarita legacy burst folder (bi4_bur/*.bur plus one companion directory per analysis), and write the five ALEX-Suite CSVs from a container run. The workflow tools read and write .pto only; legacy formats are reached from here.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The demonstration stream is already queued, with its detector setup. For your own measurements, pick photon streams in this &lt;b&gt;Input&lt;/b&gt; table -- files dropped on the ChiSurf window land in the workspace -- select a detector setup row with them if you have one, and press &lt;b&gt;Use selected&lt;/b&gt;. Untick a queued stream to leave it out; &lt;b&gt;Burst selections&lt;/b&gt; restrict the photons to the bursts of burst runs.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The detector assignment the workflow's Setup Selection step hands over.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The detector setup this analysis uses. In the pipeline it is the one Setup Selection chose.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The device session of earlier versions (Becker-Hickl, PicoQuant, BrickMic setup cards, routing, decay and correlation plots).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The donor, acceptor and acceptor-excitation detectors (the burst run is picked in the Input section, from the Datasets workspace).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The draft (or published record) it went to.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The dye whose titrations and water quenching are plotted.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The example switched &lt;b&gt;Data&lt;/b&gt; to &lt;b&gt;VV/VH&lt;/b&gt;, which fits a parallel (VV) and a perpendicular (VH) decay &lt;i&gt;jointly&lt;/i&gt;: both share the lifetimes of the population decay F(t), and their difference is the anisotropy r(t) = Σ b&lt;sub&gt;j&lt;/sub&gt; exp(−t/ρ&lt;sub&gt;j&lt;/sub&gt;):&lt;br/&gt;&lt;br/&gt;VV = F (1 + (2 − 3 l1) r), VH = F (1 − (1 − 3 l2) r) / G.&lt;br/&gt;&lt;br/&gt;Fitting both channels, not the noisy ratio, keeps the Poisson statistics and resolves ρ shorter than the IRF.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The file of the planned operation: the package zip, one of its sidecar metadata files (README.md and metadata.cif; with the metadata-separate build also origins.json and manifest_sha256.csv), or a remote file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The folder to import. Drop a legacy burstwise folder on the ChiSurf window: the drop hands it to this tool, which scans it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The forward model predicts the lifetime of one dye at one site. This page goes the other way. From lifetimes measured on many labelled sites, and from the free dye titrated against amino acids, it fits how strongly each dye is quenched on the protein and near which residues it lingers.&lt;br/&gt;&lt;br/&gt;You press the buttons; the tour only points at them.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The gap histogram (right) shows how bursts follow each other. Random arrivals give the orange curve. A big excess of short gaps means fragmented bursts or molecules coming back. If &lt;b&gt;multi-molecule events&lt;/b&gt; is above about 5 %, dilute by the factor under &lt;b&gt;dilution&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The issue list: what is wrong, in plain words, each with its fix.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The joint burst histogram (E/S) with its marginals.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The lifetime of every labelled site, read from its heavy-water line at 0 % and 100 % D2O, with its measurement error.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The measurement as it builds up: the E–S histogram of the bursts with its two marginals, count rates per photon class (DD, DA, AA), the micro-time decays of both detectors with the prompt and delay windows, and the run's health.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The measurement folder being analysed. Its three CSV tables are read when the folder is chosen; the titrations, lifetimes and kQ per dye are shown at once, before any fit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The measurements, before any fit</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The measurements, their statistics and the fit results, one subject per tab.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The metadata-only swap: the changed sidecars and the Zenodo metadata, never the raw archive -- and why it refuses, if it does.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The multiplicative parameters (stickiness per group, quench scale, static channel) with their 68 % intervals, on a log axis.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The one metadata editor (core plugin): the deposit fields, validated.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The one metadata editor: a schema of typed fields plus free-form extras, validated, shared by every plugin that has metadata (burst selection's flrCIF metadata, the Zenodo deposit, ...). Standalone it edits a JSON metadata file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The page has read the photons: the excitation (cw, PIE or µsALEX), which detectors are donor and acceptor, and polarization. Lines starting with &lt;b&gt;!&lt;/b&gt; are guesses the data could not settle; check them.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The per-position features of every labelled site: accessible volume, residue neighbours, quencher contacts and water exposure.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The per-voxel features of one labelled site (neighbour counts per residue group, quencher contacts, water exposure) that the site model evaluates, from the cache or built on IMP.bff. Building one takes seconds to a minute.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The photon stream (picked in the Input section) and what it holds.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The photon stream being shown: pick another in the Input section (files dropped on ChiSurf are added to the workspace).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The plan in one line, before anything leaves the machine.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The plan of the upload this tab would run now, file by file: what is sent, what is replaced, what is identical already on the draft, and what would be deleted from it. Press Check (DOI &amp; publish panel) to compare against the live draft.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The published DOI, or the one reserved before publishing.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The quality verdict alone (burst density, multi-molecule, stability, background).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The recording's file name (a .ptu in the acquisition output folder) and its name in the Datasets workspace.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The settings file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The setup cannot be used: {e}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The single-button measurement check: pick a photon stream, get a verdict. Is the measurement usable (burst density, multi-molecule events, stability, background)? Which bursts are suspicious? Works with or without ALEX/PIE; cw two-colour is a full citizen. Simple mode is the Input section and the verdict; advanced mode exposes editable detection, burst search and corrections, and hands off to ndX and burst analysis. Ported from smfret-web (peulen.xyz/smfret), now at home in ChiSurf.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The sliding window: this many consecutive photons (m) ...</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The stage whose result is shown (A: AF488 and Cy3B in H2O; B: Atto655 in D2O; the naive H2O transfer test; C: Atto655 in D2O and H2O).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The stage's result in words, written from its numbers.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The status line counts converted files and the imported bursts appear under the photon stream in the Datasets workspace. The example gives six bursts, each with last minus first plus one photons from its BID row.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The summary appears once the summary stage has run (Stages: all).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The time trace</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The titration slopes the graph reads, measured and after the fit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The titrations and the lifetimes on the protein, with the statistics derived from them.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The tool calibrates from the bursts you already have — a burst run from the burst-analysis pipeline, with the per-burst photon counts in it. Nothing is re-searched here. The &lt;b&gt;Input&lt;/b&gt; section lists the burst runs in the workspace; &lt;i&gt;Open in…&lt;/i&gt; on a Datasets row, or dragging the row onto this tool, does the same as picking it here. A plain per-burst table (CSV, TSV, NPZ) goes through the &lt;b&gt;Burst table&lt;/b&gt; field below.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The tool reports one count rate per detector channel over many TTTR files. Press &lt;b&gt;Load example&lt;/b&gt; to generate a deterministic demonstration measurement (a µs-ALEX stream on two detectors) in the settings cache and queue it with its detectors already defined. &lt;b&gt;Add files&lt;/b&gt; (or dropping files or a folder on the window) queues real data; &lt;b&gt;Folder&lt;/b&gt; and &lt;b&gt;Database&lt;/b&gt; queue whole sets.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The verdict</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The workflow's measurements: photon streams of the Datasets workspace; the burst runs found become their children.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>There is no pack/unpack switch. The &lt;b&gt;Input&lt;/b&gt; table lists the photon streams of the workspace (files dropped on the ChiSurf window land there). Pick a vendor file (.ptu, .spc, .ht3) and it is packed &lt;i&gt;into&lt;/i&gt; a .pto; pick a stream of a &lt;b&gt;.pto&lt;/b&gt; and its container is unpacked &lt;i&gt;back out&lt;/i&gt; to the vendor files and results it holds. Select one or more rows, then press &lt;b&gt;Use selected&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>These fields drove the example's two-state exchange simulator — and you can check the result, because you set it.&lt;br/&gt;&lt;br/&gt;With the defaults &lt;b&gt;τ₁ = 1 ns, τ₂ = 3 ns, k₁₂ = 30 s⁻¹, k₂₁ = 10 s⁻¹&lt;/b&gt;, two numbers are fixed:&lt;br/&gt;• equilibrium populations &lt;b&gt;0.25 / 0.75&lt;/b&gt;, from p₁ = k₂₁/(k₁₂+k₂₁);&lt;br/&gt;• relaxation time &lt;b&gt;1/(k₁₂+k₂₁) = 25 ms&lt;/b&gt;.&lt;br/&gt;&lt;br/&gt;Remember the 25 ms. The next step is about it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>This fits a single TCSPC decay with a few exponentials, reconvolved with a measured IRF. What makes it &lt;b&gt;lazy&lt;/b&gt; is that the fit range, the background, the IRF shift and — if you ask — the number of components are decided by fixed rules instead of by you.&lt;br/&gt;&lt;br/&gt;That is convenient and it is also the risk: each rule can be wrong for your data. Five steps on a polarized VV/VH pair whose answer is known, then six for one decay of your own.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>This measurement type keeps no histogram.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>This page checks a confocal smFRET measurement and finds its bursts. All processing happens in your browser: the file is analysed on this computer and no data ends up on any server. The tour takes about two minutes.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>This tool converts a TTTR file to another format, or splits it into parts by time or by photon count. Start with a demonstration stream, then your own.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>This tool correlates the photons inside each single-molecule burst separately, so the curves are not diluted by the empty time between bursts.&lt;br/&gt;&lt;br/&gt;The tour works on a small data set the tool writes itself: eight bursts on two detectors, drawn from a seeded generator (nothing here is a measurement). Press &lt;b&gt;Load example&lt;/b&gt; to add it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>This tool packages legacy burst analysis folders (bi4_bur, bg4, br4, Info, .mti) into the project: each measurement's burst runs become children of its photon stream in the Datasets workspace.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>This tool reads the header of a TTTR file, lets you add or change its tags and saves a copy — the original file is never overwritten. Start with a demonstration file, then your own.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Tick, untick and remove inputs (they are added from the Datasets workspace above).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Time step of the Brownian walk (walk ensemble). A smaller step shrinks the walk's bias at sticky boundaries; the equilibrium and PDE ensembles do not step.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Time trace</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Time-weighted water exposure of the declared sites: how much of the visible dye's time is spent at each exposure.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Time-weighted water exposure of the visible dye</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Titration points: burst runs of the Datasets workspace, one per concentration.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Titration slopes K_SV as measured (titrations alone) and after the graph fit (the protein lifetimes also inform them), with 68 % intervals.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Titration slopes: titrations alone (circles) and after the graph fit (squares)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Trigger level of the detector inputs (all inputs).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Trigger level of the sync input.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Try it without a file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Turn a µs-ALEX stream into PIE</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Two colour (green laser only)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Two populations with E 0.2 and 0.8, both at stoichiometry S 0.5, measured with the default PIE setup.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Untick &lt;b&gt;Simulate&lt;/b&gt; and pick a &lt;b&gt;burst run&lt;/b&gt; in the &lt;b&gt;Input&lt;/b&gt; section: the runs of the measurement containers in the workspace, each under its photon stream in the Datasets view. Files dropped on the ChiSurf window are added there; &lt;i&gt;Open in…&lt;/i&gt; on a Datasets row, or dragging the row onto this tool, does the same. Then check the donor/acceptor channel lists.&lt;br/&gt;&lt;br/&gt;Two checks before believing the result: &lt;b&gt;does the BIC clearly fall&lt;/b&gt; when you add a state (if not, do not add it), and &lt;b&gt;does the H2MM cross-check agree&lt;/b&gt;? H2MM fits the same photons in discrete time and shares no likelihood with this — agreement is real evidence.&lt;br/&gt;&lt;br/&gt;The &lt;b&gt;?&lt;/b&gt; button has the long version.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Upload</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Upload / update checked</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Upload every checked record that is cleared and changed since its last upload (or never uploaded), one after another. Nothing is published.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Upload the checked records that are cleared and not current: each as a new draft, an update, or a new version.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Use measured IRF photon streams (scatter or a short-lifetime reference) for the current detector.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Use measured background photon streams (a sample-free measurement) for the current detector.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>VV and VH in one file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>V_eff</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Voxel spacing in Å.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Watch the histogram</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Water</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Water access per site, model against measured (1 = as exposed as the free dye), with both errors.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Water access: r = {a:.2f} (all), {b:.2f} (without {w})</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Water exposure of the selected site's reachable positions (histogram over positions, not weighted by where the dye spends its time).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Water exposure per site over reachable positions and over the visible dye's time.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Water quenching per site: {dye}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Water quenching rate kq_w of the chosen dye per site (slope of 1/tau against the H2O fraction); apo and holo side by side.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What each dye tells</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What each dye tells, across the stages.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What the analysis fits</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What the tool does: what you pick decides the direction, and nothing is changed or deleted. Files enter ChiSurf by dropping them on the ChiSurf window.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What this checks</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What to analyse: the shipped example, your own file, or a fresh simulation.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What was detected</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What you pick decides the direction</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>When it was last uploaded (and how often).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Where the dye sits during the excited state. 'walk': Brownian walkers, each started from the equilibrium occupancy (w = product of slow_factor^-1 over the residues in range), and a photon race along each; FRET reads the transfer rate off the dyes' trajectories, with Monte-Carlo noise. 'equilibrium': the static limit, every position decays on its own at 1/tau0 + kQ, weighted by w; exact and fast, what the inverse fit uses. 'pde': the diffusion equation on the AV grid with stickiness as a potential and quenching as a sink, solved without sampling noise; it includes motion during the excited state, and its stationary state is the equilibrium ensemble. The walk and the PDE describe the same physics and agree to the walk's time-step bias. Both simulate FRET: the PDE's is the fast-acceptor limit (the acceptor averaged over its volume) entering as a transfer-rate field in the sink, so fret.acceptor_dynamics must be 'averaged'.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Where the photons come from: the simulator (a MultiHarp measuring a PIE smFRET sample with a known answer — its records go through the same device path as a real measurement), a photon stream from the Datasets workspace played back at measurement speed, or a PicoQuant device connected over USB.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Where to write; the structure cache when omitted.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Which detector is donor and which acceptor, and the excitation windows: a setup row of the Datasets workspace (drop a detector setup JSON on the window), or the default for the measurement type — routing channel 0 donor, 1 acceptor; PIE splits the laser period into prompt and delay halves. A setup with gamma, beta, alpha and delta gives corrected FRET efficiency and stoichiometry.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Which edge of the detector pulses triggers (all inputs).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Which edge of the sync signal triggers.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Which measurements are analysed, how thoroughly, and the run.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Which metadata schema to edit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Which of the measurement type's histograms to show: E–S (with its marginals) for PIE and ALEX, the proximity ratio for two colour, anisotropy and proximity ratio for MFD, burst size and duration for a single colour.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Which sites the fit hangs on</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Which stages to run: all of them in the declared order, or one stage and whatever it needs (stage A solves the joint graph, so C after A costs nothing more).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Why</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Window photons</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Window time (ms)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Worker processes for the searches (1 = in process; the numbers do not depend on it). Omitted: the CPU count.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Worker processes for the searches and Jacobians; 0 uses every CPU, 1 runs in this process. The numbers do not depend on it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Workers</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write accessible-volume points as an MRC density map.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write every table of the stages run so far as CSV, the numbers as summary.json and the texts as report.md into a folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write results…</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the declared tables (&lt;stage&gt;.&lt;table&gt;.csv), summary.json, report.md and run.json here. Omitted: the run directory &lt;runs&gt;/&lt;job_id&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the diagnostics report as an A4 PDF.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the fused bursts as a new run of the same container (a legacy folder: a new folder).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the metadata record to a file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the results into a folder</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the results to disk (the output folder or the run directory). False keeps them only in the reply and in this server's memory.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the shared demonstration SPC stream (seeded, shaped like an SPC-132 measurement) in the settings cache, add it to the workspace and convert it to a .pto.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Writes the windows into each measurement's own &lt;b&gt;.pto&lt;/b&gt; container as a &lt;b&gt;time_window&lt;/b&gt; run -- the inclusive first and last photon of every window, where every burst reader finds them. The processing log lists the windows per file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Wrote {n} files into {folder}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Your own data goes here: a frame stack or a photon stream (Browse, a drop, or a typed path and Enter). It needs enough structure to correlate: a nearly empty field of view has no peak to find. Choosing a file measures it at once.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Your own data goes here: a frame stack, or a photon stream that will be binned into one (Browse, a drop, or a typed path and Enter). FRC needs many frames: the split must leave enough photons in each half to form an image. Choosing a file reads its channels; it does not measure.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Your own data: set &lt;b&gt;Data&lt;/b&gt; back to &lt;b&gt;Magic angle&lt;/b&gt; for a single decay. The &lt;b&gt;Input&lt;/b&gt; section lists the decay curves in the workspace — files dropped on the ChiSurf window are read there (a text file with a time column in &lt;b&gt;ns&lt;/b&gt; and a count column). Select the decay and its IRF, then &lt;b&gt;Use selected&lt;/b&gt;: the curve named IRF is the instrument response (else the second one), a curve named VH the VH channel of a VV/VH fit.&lt;br/&gt;&lt;br/&gt;The plugin ships an example: &lt;code&gt;chisurf/plugins/fluorescence_decay/lltf/example/5-44_D0.dat&lt;/code&gt; with &lt;code&gt;IRF_D0.dat&lt;/code&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Your own decay comes in here: &lt;b&gt;Load Decay&lt;/b&gt; from a file, or &lt;b&gt;Load from Dataset&lt;/b&gt; for one already open in ChiSurf. It should be a decay whose tail is long enough to fit — the tail is the entire input to the first half of the method.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Your own scans are picked in the &lt;b&gt;Input&lt;/b&gt; table: the photon images of the Datasets workspace (PTU, HT3, PT3, SPC ... confocal scans; files dropped on the ChiSurf window land there). Select them and press &lt;b&gt;Use selected&lt;/b&gt;: the browser opens their folder and lists them.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Zenodo metadata</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>count rate (kHz)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>cw</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>equilibrium</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>every CPU</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>falling</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>in the workspace</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>job_id of a finished analysis job on this server whose solved graphs are reused (stage C after stage A costs nothing). Its inputs and fit settings win.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>kQ at contact per dye</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>kQ at contact per dye and quenching residue.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>kQ at contact per residue (bars) and dye (colours), with its uncertainty propagated from the K_SV posterior.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>kQ per dye</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>m photons</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>micro-time channel</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>new / changed / same / extra on remote.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>no file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>number</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>on disk</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>on disk (not added to the workspace: {e})</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>outlier</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>pde</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>pqusb is not installed</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>press Load example, or pick a data folder</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>rates: {e}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>rising</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>site {site}: reachable {v:.2f}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>site {site}: visible {v:.2f}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>sync {sync:.2f} MHz; inputs {rates}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>time (s)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>walk</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>where the bursts come from</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>whole number</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>windows</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>within T</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>{"STATE:site:linker_length": npz path}: use stored site tables (for example the MalE prototype cache) instead of building them.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>{model} {serial}, {n} inputs, T3 mode.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>{n} site tables ready ({s:.0f} s).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>{reason}: {bursts} bursts in {photons} photons, {t:.1f} s — {file} {where}.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>{state: structure path} the site tables are built on. Omitted: the shipped MalE structures (APO 1OMP, HOLO 1ANF).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>µs-ALEX only: the laser alternation period; the first half excites the donor, the second the acceptor.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>α (leakage)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>δ (dir. exc.)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>→ upload: not on the draft yet. → replace: the draft holds a different md5. = identical: nothing to send. × delete: on the draft, not in the package.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A PTU or HT3 file with line and frame markers. Your own data: drop it on the ChiSurf window, then pick it in the &lt;b&gt;Input&lt;/b&gt; section (the Datasets workspace).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A PTU or HT3 file with line and frame markers: the scanner geometry is read from its header. Your own data: drop it on the ChiSurf window, then pick it in the &lt;b&gt;Input&lt;/b&gt; section (the Datasets workspace).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A photon stream or image for the tool that is open (the Browser, a pixel map, Resolution, Flow, Colocalization, …).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Another way to a known answer: the &lt;b&gt;Simulate instead&lt;/b&gt; panel generates Brownian particles with a diffusion coefficient you choose, so the result can be checked against a number. Any TIFF stack or photon stream works the same way once dropped on the ChiSurf window and picked in the &lt;b&gt;Input&lt;/b&gt; section.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Correlation curves (.cor or .json.gz) to screen and merge.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Drop correlation files (.cor) on the ChiSurf window, then pick them in the &lt;b&gt;Input&lt;/b&gt; section above. Every curve picked is loaded, plotted and listed; the folder field shows where they are.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Example, clear, guided tour and help.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load the example, clear, and the help and guided tour.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Load the example, compute and fit the histogram, and export the results.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No file: pick photon streams in the Input section below.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Photon streams (TTTR files or a container's streams) to correlate; only the ticked ones are used.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick the correlation curves to merge from the Datasets workspace (drop .cor files on the ChiSurf window to add them there).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick the photon stream from the Datasets workspace (drop TTTR files on the ChiSurf window to add them there).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The CLSM photon images fitted pixel by pixel.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The IRF photon stream the phasors are referenced to.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The IRF photon streams of the fit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The files come from the Datasets workspace: drop TTTR files (or a container) on the ChiSurf window and pick their streams in the &lt;b&gt;Input&lt;/b&gt; section under the list. Each file has a tick box. With several files, &lt;b&gt;Correlate files separately&lt;/b&gt; correlates each on its own and the merger averages them; off, their photons are stacked into one stream first. The two step switches below decide whether the photon filter and the merger are part of the run; a switched-off step is grey in the rail and Back / Next skip it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The folder of the picked curves (the merged curve is written beside them by default).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The image (or first of two) whose resolution is measured.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The image stack (TIFF or photon image) whose drift is removed.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The image stack whose flow is measured.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The image stack whose particles are tracked.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The photon image whose number and brightness are mapped.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The photon image whose pixel intensities are mapped.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The photon image whose pixel micro times are mapped.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The photon image whose pixel phasors are mapped.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The photon stream whose counting histogram is built.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The photon-stream file that is loaded: the one picked in the Input section above.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The second, independent image of the same field (two-file FRC).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The two-channel image whose colocalization is measured.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Two channels of the same field of view: a TIFF stack or a photon-stream file. Your own data: drop it on the ChiSurf window, then pick it in the &lt;b&gt;Input&lt;/b&gt; section (the Datasets workspace); picking it loads and runs it. Which channel is A and which is B matters for M1 and M2 — they are not symmetric, and reporting one without saying which channel it belongs to makes it unreadable.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>With your own data drop a PTU, HT3, T2R, T3R, PTO or SPC file on the ChiSurf window and pick its stream in the &lt;b&gt;Input&lt;/b&gt; section.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>With your own data, drop the confocal TTTR files (PTU/HT3/...) on the ChiSurf window and pick them in the &lt;b&gt;Input&lt;/b&gt; sections above the lists (several at once). The &lt;b&gt;IRF&lt;/b&gt; is the instrument response measurement, the first file is used; without it the decay cannot be deconvolved.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Your own data goes here: a frame stack or a photon stream (drop it on the ChiSurf window, then pick it in the &lt;b&gt;Input&lt;/b&gt; section (the Datasets workspace)). It needs enough structure to correlate: a nearly empty field of view has no peak to find. Picking a file measures it at once.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Your own data goes here: a frame stack, or a photon stream that will be binned into one (drop it on the ChiSurf window, then pick it in the &lt;b&gt;Input&lt;/b&gt; section (the Datasets workspace)). FRC needs many frames: the split must leave enough photons in each half to form an image. Picking a file reads its channels; it does not measure.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A settings file (⚙) or a measurement (⏱) of the workspace. Settings files enter ChiSurf through the drop, like every input.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Acceptor bleaching (/ms)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Acceptor blinking (/ms)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Acceptor lifetime (ns)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Acceptor lifetime: decay of the directly excited acceptor and the delay of sensitised emission.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Acceptor photobleaching rate at the focus centre: bursts end as donor only — tails towards high S and low E.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Acceptor-only</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Acquisition settings</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Acquisition settings files: one JSON document with the device, the laser program, the experiment and the run. Load one from the workspace (drop a settings file onto ChiSurf), recover them from a measurement, or save what is set now.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Afterpulsing</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Aggregates</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Allow emission. Offered only after Apply.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Applied as written.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Applied, emission off</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Auto (Sepia II, else simulated)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Auto uses the Sepia II driver when its library is installed, else the simulated laser. Why Sepia II is not available is shown on the status line.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Background acceptor (kHz)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Background donor (kHz)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Block all emission now. Always available; never fails.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Brightness spread</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Cannot connect the laser</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Cannot start</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose settings or a measurement</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Connected, outputs off</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Custom</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Detection-efficiency × quantum-yield ratio of acceptor to donor. γ ≠ 1 shifts raw E; the corrected E uses it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Detector dead time: a photon arriving within it after another is lost (count-rate saturation).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Diffusion (µm²/s)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Direct excitation of the acceptor by the donor laser (relative to its own laser): raises raw E.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Divider</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Donor bleaching (/ms)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Donor emission leaking into the acceptor channel: raises raw E, most visibly for donor-only molecules.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Donor lifetime without FRET; a FRET population decays with τ_D (1 − E).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Donor photobleaching rate at the focus centre: bursts end as acceptor only — tails towards low S.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Donor-only</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Drift (per min)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Drive intensity, 0–100 %.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Embed (default): the photons are stored inside the project's .cs.pto when the run stops, so the project carries its data. Link: the project records the file's path and checksum only. Written beside the project while measuring, so a crash leaves the photons on disk.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Emission ON</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Emission on</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Emission refused</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Enable a head with pulses in the sequencer, then Apply.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Example ready</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fraction of bright, slowly diffusing particles: rare bright spikes and long bursts.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fraction of molecules without a donor: an island at stoichiometry ≈ 0.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fraction of molecules without an active acceptor: an island at stoichiometry ≈ 1 and E ≈ 0.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>From settings: {name}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Head</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>IRF FWHM (ns)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Ideal (no imperfections)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>In Datasets, {how}.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Instrument response width, with a small exponential tail and per-detector timing jitter.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Intensity %</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Laser</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Laser head and its wavelength.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Laser off</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Molecule-to-molecule brightness spread (coefficient of variation): broadens burst sizes and the clusters.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No enabled excitation</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No laser connected</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No settings in it</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No settings loaded</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Not a settings file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Not enough bursts yet.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Not recorded by the measurement:</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Not saved</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Notes:</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>On</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>On disk only (no project open).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>On disk; not added to Datasets: {e}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open the laser. All outputs are switched off.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Out</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>PIE, two FRET populations (E 0.2 and 0.8, S 0.5) in a realistic sample: donor-only and acceptor-only molecules, bleaching, crosstalk, background. Press Start.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press Load example, then Start.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Probability that a detection repeats on the same detector shortly after (detector afterpulsing).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Program</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Program refused</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pulsed (on) or continuous-wave (off).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pulses</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pulses of this output in one sequence (0: not in the sequence).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pulses per output in one sequence, which outputs fire and which give the sync.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Quality: no verdict yet</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rate into the acceptor's dark state (it returns after ~0.2 ms): FRET drops for a while within a burst.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rate unknown</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Rate {mhz:.2f} MHz</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Read the chosen settings file, fill the form and send it to the connected device and laser. The laser's emission stays off.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Realistic</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Realistic: what a confocal smFRET measurement shows (donor-/acceptor-only molecules, bleaching, blinking, crosstalk, background, IRF, dead time). Ideal: everything off — the clean stream for teaching and exact tests. Editing a value makes it Custom.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Recording…</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Recover the settings of the chosen measurement from its file header. What the header did not record is listed in the tooltip of the line below.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sample &amp; instrument realism</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Save acquisition settings</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Saved settings: {name}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Saved: {name}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Scatter (kHz)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Scattered and Raman light of the donor laser in the donor detector: prompt window, instrument response only.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Send the program to the laser. Emission stays off.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sepia II</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sepia II (not available)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sepia II is not available: {why}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sepia II not available</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sequencer</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Settings not valid</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Settings: {name}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Setup cannot be used</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Show the recording in the file browser.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Simulated laser</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Slow relative intensity change per minute (focus, laser power, evaporation).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Store photons</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Switch the outputs off and release the laser.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Take the micro-time windows the measurement's laser program implies into the Experiment setup.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The laser's repetition rate now. The program: {mhz:.2f} MHz, one sequence {ns:.1f} ns.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The oscillator's base frequency is divided by this to give the pulse rate the sequencer distributes.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The output contributes to the sync signal.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The output fires.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The pulsed laser driver (PicoQuant Sepia II, or a simulated one). Connecting switches every output off; a program reaches the laser only with Apply, and emission needs Emission on after that.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The recording's name: its file in the project's recordings folder and its row in Datasets.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The setup as read: detectors, windows and whether E and S are corrected. Hover for the details.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Translational diffusion coefficient; with the focus it sets the burst duration (80 µm²/s ≈ a 30 kDa protein).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Uncorrelated background of the acceptor detector.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Uncorrelated background of the donor detector (dark counts, ambient light), flat in micro time.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Use its windows</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Use settings of this measurement</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Use the micro-time windows the applied program implies (one per enabled excitation, shifted by the sync offset) in the Experiment setup.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What Apply sends to the laser. Any change switches the outputs off until Apply.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What the run is doing, and where it was saved (hover for the full path).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Whether the head's sequencer output fires.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Windows from laser</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Windows from the laser</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Windows from the measurement</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>With a laser connected, &lt;b&gt;Laser off&lt;/b&gt; blocks all emission at once. It is always there; the end of a run closes the laser too.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write what the form, the device and the laser hold now to a settings file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>corrected</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>embedded in the project</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>laser windows</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>linked</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>raw</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>{batches} batches, {dropped} dropped, {queued} buffered.
+Background (kHz): {bg}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>{reason}: {bursts} bursts, {t:.0f} s</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>δ (direct exc.)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>● data lost</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>● healthy</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A curve with lifetimes (ns) on x and amplitudes on y fills the component table.</source>
+            <translation>Eine Kurve mit Lebensdauern (ns) auf x und Amplituden auf y füllt die Komponententabelle.</translation>
+        </message>
+        <message>
+            <source>A lifetime spectrum: a curve with lifetimes (ns) on x and amplitudes on y.</source>
+            <translation>Ein Lebensdauerspektrum: eine Kurve mit Lebensdauern (ns) auf x und Amplituden auf y.</translation>
+        </message>
+        <message>
+            <source>A measurement file holds the parallel decay (VV) followed by the perpendicular decay (VH). Pick it in the &lt;b&gt;Input&lt;/b&gt; section, which lists the decays of the Datasets workspace (drop a VV/VH file on the ChiSurf window to add it); both decays and r(t) appear at once.</source>
+            <translation>Eine Messdatei enthält den parallelen Abfall (VV), gefolgt vom senkrechten Abfall (VH). Wählen Sie sie im Bereich &lt;b&gt;Eingabe&lt;/b&gt;, der die Abfälle des Datasets-Arbeitsbereichs auflistet (ziehen Sie eine VV/VH-Datei auf das ChiSurf-Fenster, um sie hinzuzufügen); beide Abfälle und r(t) erscheinen sofort.</translation>
+        </message>
+        <message>
+            <source>A photophysical scheme (states, labels, rates, brightness) saved as JSON, picked in the workspace.</source>
+            <translation>Ein photophysikalisches Schema (Zustände, Markierungen, Raten, Helligkeit), als JSON gespeichert und im Arbeitsbereich gewählt.</translation>
+        </message>
+        <message>
+            <source>A prior distribution for the current grid: a curve with the lifetime (or distance) on x and the prior mass on y.</source>
+            <translation>Eine Prior-Verteilung für das aktuelle Raster: eine Kurve mit der Lebensdauer (oder dem Abstand) auf x und der Prior-Masse auf y.</translation>
+        </message>
+        <message>
+            <source>A prior distribution for the current grid: lifetime (or distance) on x, prior mass on y.</source>
+            <translation>Eine Prior-Verteilung für das aktuelle Raster: Lebensdauer (oder Abstand) auf x, Prior-Masse auf y.</translation>
+        </message>
+        <message>
+            <source>A saved scheme from the Datasets workspace (drop its .json on the ChiSurf window).</source>
+            <translation>Ein gespeichertes Schema aus dem Datasets-Arbeitsbereich (ziehen Sie seine .json auf das ChiSurf-Fenster).</translation>
+        </message>
+        <message>
+            <source>A slow-rotating protein reference (polarization mixing).</source>
+            <translation>Eine langsam rotierende Proteinreferenz (Polarisationsmischung).</translation>
+        </message>
+        <message>
+            <source>A slow-rotating protein reference for the polarization-mixing estimate.</source>
+            <translation>Eine langsam rotierende Proteinreferenz für die Schätzung der Polarisationsmischung.</translation>
+        </message>
+        <message>
+            <source>A slow-rotating, long-lived reference has a known steady-state anisotropy. Its measured value constrains the polarisation mixing: only the single linked estimate l1 = l2 can be determined from one observable, and values outside 0 to 0.5 are shown but not applied. The example loaded a simulated slow protein; for your own instrument pick its VV/VH decay in the &lt;b&gt;Slow reference&lt;/b&gt; input.</source>
+            <translation>Eine langsam rotierende, langlebige Referenz hat eine bekannte stationäre Anisotropie. Ihr gemessener Wert begrenzt die Polarisationsmischung: aus einer Observablen lässt sich nur die eine gekoppelte Schätzung l1 = l2 bestimmen, und Werte außerhalb von 0 bis 0,5 werden angezeigt, aber nicht angewendet. Das Beispiel hat ein simuliertes langsames Protein geladen; für Ihr eigenes Instrument wählen Sie dessen VV/VH-Abfall in der Eingabe &lt;b&gt;Langsame Referenz&lt;/b&gt;.</translation>
+        </message>
+        <message>
+            <source>Add data…</source>
+            <translation>Daten hinzufügen…</translation>
+        </message>
+        <message>
+            <source>An IRF and a decay for each polarisation, picked in the &lt;b&gt;Input&lt;/b&gt; section from the Datasets workspace (drop the files on the ChiSurf window to add them; names with IRF/prompt and VH/perp place them). All four are read on the same time axis, and the fit assumes they were taken under the same conditions.&lt;br/&gt;&lt;br/&gt;The one to watch: &lt;b&gt;a timing shift between the VV and VH channels mimics a fast rotational component&lt;/b&gt;, because the early part of the decay is exactly where photoselection shows. If the two detectors have different cable lengths or different IRF positions, that difference arrives as physics.</source>
+            <translation>Eine IRF und ein Abfall für jede Polarisation, im Bereich &lt;b&gt;Eingabe&lt;/b&gt; aus dem Datasets-Arbeitsbereich gewählt (ziehen Sie die Dateien auf das ChiSurf-Fenster, um sie hinzuzufügen; Namen mit IRF/prompt und VH/perp ordnen sie zu). Alle vier werden auf derselben Zeitachse gelesen, und der Fit nimmt an, dass sie unter denselben Bedingungen aufgenommen wurden.&lt;br/&gt;&lt;br/&gt;Worauf zu achten ist: &lt;b&gt;eine Zeitverschiebung zwischen den VV- und VH-Kanälen täuscht eine schnelle Rotationskomponente vor&lt;/b&gt;, denn der frühe Teil des Abfalls ist genau dort, wo sich Photoselektion zeigt. Haben die beiden Detektoren unterschiedliche Kabellängen oder IRF-Positionen, kommt dieser Unterschied als Physik an.</translation>
+        </message>
+        <message>
+            <source>An instrument response from the Datasets workspace to convolve with.</source>
+            <translation>Eine Instrumentenantwort aus dem Datasets-Arbeitsbereich zum Falten.</translation>
+        </message>
+        <message>
+            <source>An instrument response to convolve the ideal decay with.</source>
+            <translation>Eine Instrumentenantwort, mit der der ideale Abfall gefaltet wird.</translation>
+        </message>
+        <message>
+            <source>Binned traces to fit jointly, each a separate sequence: curves read into ChiSurf, or trace files the workspace links to.</source>
+            <translation>Gebinnte Spuren für einen gemeinsamen Fit, jede eine eigene Sequenz: in ChiSurf gelesene Kurven oder Spurdateien, auf die der Arbeitsbereich verweist.</translation>
+        </message>
+        <message>
+            <source>Choose files to add to the workspace: the same as dropping them on the window (photon files, containers, curves, images, structures, setups).</source>
+            <translation>Dateien wählen, die dem Arbeitsbereich hinzugefügt werden: dasselbe wie das Ablegen auf dem Fenster (Photonendateien, Container, Kurven, Bilder, Strukturen, Setups).</translation>
+        </message>
+        <message>
+            <source>Decay and IRF</source>
+            <translation>Abfall und IRF</translation>
+        </message>
+        <message>
+            <source>Donor-acceptor time series: an ebFRET session or SMD .mat, an SF-Tracer .tsv, an SMD .json/.json.gz, or a raw .dat series.</source>
+            <translation>Donor-Akzeptor-Zeitreihen: eine ebFRET-Sitzung oder SMD-.mat, eine SF-Tracer-.tsv, eine SMD-.json/.json.gz oder eine rohe .dat-Reihe.</translation>
+        </message>
+        <message>
+            <source>Donor-only spectrum</source>
+            <translation>Nur-Donor-Spektrum</translation>
+        </message>
+        <message>
+            <source>Estimate the instrument response from a measured decay picked in the workspace.</source>
+            <translation>Die Instrumentenantwort aus einem im Arbeitsbereich gewählten gemessenen Abfall schätzen.</translation>
+        </message>
+        <message>
+            <source>FRET mode: a curve with lifetimes (ns) on x and amplitudes on y; or use Donor from fit.</source>
+            <translation>FRET-Modus: eine Kurve mit Lebensdauern (ns) auf x und Amplituden auf y; oder Donor aus Fit verwenden.</translation>
+        </message>
+        <message>
+            <source>G is the detection-efficiency ratio of the two polarisation channels. It is measured on a dye that depolarises within the pulse width, so its true anisotropy is zero in the tail and VV/VH there is G alone. With your own data, pick that dye's VV/VH decay in the &lt;b&gt;Reference standard&lt;/b&gt; input (the Datasets workspace lists what was dropped on the ChiSurf window); the example has already loaded the simulated one, and the status line shows the G it gives.</source>
+            <translation>G ist das Verhältnis der Detektionseffizienzen der beiden Polarisationskanäle. Es wird an einem Farbstoff gemessen, der innerhalb der Pulsbreite depolarisiert, sodass seine wahre Anisotropie im Ausläufer null ist und VV/VH dort allein G ist. Mit eigenen Daten wählen Sie den VV/VH-Abfall dieses Farbstoffs in der Eingabe &lt;b&gt;Referenzstandard&lt;/b&gt; (der Datasets-Arbeitsbereich listet, was auf das ChiSurf-Fenster gezogen wurde); das Beispiel hat bereits den simulierten geladen, und die Statuszeile zeigt das sich ergebende G.</translation>
+        </message>
+        <message>
+            <source>MEM fits in convolved space like any other TCSPC analysis, so it needs the instrument response as well as the decay.&lt;br/&gt;&lt;br/&gt;Pick both in the &lt;b&gt;Input&lt;/b&gt; section: the curve named IRF (or prompt) is the response, else the second one picked. &lt;b&gt;Refresh&lt;/b&gt; lists the live fits instead (then &lt;b&gt;Fit&lt;/b&gt; takes data, range and IRF from one). An instrument response measured on a different day or at a different count rate no longer matches the data, and the mismatch will appear in the recovered distribution as structure.</source>
+            <translation>MEM fittet im gefalteten Raum wie jede andere TCSPC-Analyse und braucht daher neben dem Abfall auch die Instrumentenantwort.&lt;br/&gt;&lt;br/&gt;Wählen Sie beide im Bereich &lt;b&gt;Eingabe&lt;/b&gt;: die Kurve namens IRF (oder prompt) ist die Antwort, sonst die zweite gewählte. &lt;b&gt;Aktualisieren&lt;/b&gt; listet stattdessen die laufenden Fits (dann übernimmt &lt;b&gt;Fit&lt;/b&gt; Daten, Bereich und IRF aus einem). Eine an einem anderen Tag oder bei anderer Zählrate gemessene Instrumentenantwort passt nicht mehr zu den Daten, und die Abweichung erscheint in der gewonnenen Verteilung als Struktur.</translation>
+        </message>
+        <message>
+            <source>Pick a decay (and its IRF) in the Input section and press Use selected.</source>
+            <translation>Wählen Sie im Bereich Eingabe einen Abfall (und seine IRF) und drücken Sie Auswahl verwenden.</translation>
+        </message>
+        <message>
+            <source>Pick an instrument response in the &lt;b&gt;IRF&lt;/b&gt; input (it lists the decays of the Datasets workspace). Without an IRF the decay starts instantaneously — a convenience no instrument produces. With one, the rise is smeared, and &lt;b&gt;components shorter than the IRF width stop being recoverable&lt;/b&gt;: below about a nanosecond most of the shape is the instrument rather than the sample.&lt;br/&gt;&lt;br/&gt;If the point is to test a routine that &lt;i&gt;deconvolves&lt;/i&gt;, it has to be given data that were convolved. Testing a deconvolving fit on IRF-free data proves it can do the easy case.</source>
+            <translation>Wählen Sie eine Instrumentenantwort in der Eingabe &lt;b&gt;IRF&lt;/b&gt; (sie listet die Abfälle des Datasets-Arbeitsbereichs). Ohne IRF beginnt der Abfall augenblicklich — eine Bequemlichkeit, die kein Instrument liefert. Mit einer IRF ist der Anstieg verschmiert, und &lt;b&gt;Komponenten kürzer als die IRF-Breite sind nicht mehr rekonstruierbar&lt;/b&gt;: unterhalb etwa einer Nanosekunde ist der Großteil der Form das Instrument statt der Probe.&lt;br/&gt;&lt;br/&gt;Soll eine Routine getestet werden, die &lt;i&gt;entfaltet&lt;/i&gt;, muss sie gefaltete Daten erhalten. Ein entfaltender Fit auf IRF-freien Daten beweist nur, dass er den einfachen Fall kann.</translation>
+        </message>
+        <message>
+            <source>Pick the decay from the workspace, save or transfer the estimated IRF, and open the help or the guided tour.</source>
+            <translation>Den Abfall aus dem Arbeitsbereich wählen, die geschätzte IRF speichern oder übertragen und die Hilfe oder die Führung öffnen.</translation>
+        </message>
+        <message>
+            <source>Pick the polarized curves in the Datasets workspace: named IRF/prompt for the response and VH/perp for the perpendicular channel, else in the order IRF VV, IRF VH, data VV, data VH. Drop files on the ChiSurf window to add them.</source>
+            <translation>Wählen Sie die polarisierten Kurven im Datasets-Arbeitsbereich: benannt IRF/prompt für die Antwort und VH/perp für den senkrechten Kanal, sonst in der Reihenfolge IRF VV, IRF VH, Daten VV, Daten VH. Ziehen Sie Dateien auf das ChiSurf-Fenster, um sie hinzuzufügen.</translation>
+        </message>
+        <message>
+            <source>Pick the reference in the Input section: files dropped on ChiSurf are listed there.</source>
+            <translation>Wählen Sie die Referenz im Bereich Eingabe: auf ChiSurf abgelegte Dateien werden dort aufgelistet.</translation>
+        </message>
+        <message>
+            <source>Pick the time series in the Datasets workspace: an ebFRET session or SMD .mat, an SF-Tracer .tsv, an SMD .json(.gz) or a raw .dat series.</source>
+            <translation>Wählen Sie die Zeitreihen im Datasets-Arbeitsbereich: eine ebFRET-Sitzung oder SMD-.mat, eine SF-Tracer-.tsv, eine SMD-.json(.gz) oder eine rohe .dat-Reihe.</translation>
+        </message>
+        <message>
+            <source>Press 🧪 Load example (or pick your own traces in the Input section).</source>
+            <translation>Drücken Sie 🧪 Beispiel laden (oder wählen Sie eigene Spuren im Bereich Eingabe).</translation>
+        </message>
+        <message>
+            <source>Reference standard</source>
+            <translation>Referenzstandard</translation>
+        </message>
+        <message>
+            <source>Save or transfer the estimated IRF, or load the example.</source>
+            <translation>Die geschätzte IRF speichern oder übertragen oder das Beispiel laden.</translation>
+        </message>
+        <message>
+            <source>Slow reference</source>
+            <translation>Langsame Referenz</translation>
+        </message>
+        <message>
+            <source>Start with &lt;b&gt;Load example&lt;/b&gt;: a generated three-state trace with known means and dwell times. Your own traces come from the &lt;b&gt;Input&lt;/b&gt; section, which lists the traces of the Datasets workspace (drop the files on the ChiSurf window to add them); pick one or many. The &lt;b&gt;time step&lt;/b&gt; is what turns transition probabilities into rates, so a wrong value gives you a kinetic scheme in the wrong units — and the fit will not object.</source>
+            <translation>Beginnen Sie mit &lt;b&gt;Beispiel laden&lt;/b&gt;: eine erzeugte Drei-Zustands-Spur mit bekannten Mittelwerten und Verweilzeiten. Eigene Spuren kommen aus dem Bereich &lt;b&gt;Eingabe&lt;/b&gt;, der die Spuren des Datasets-Arbeitsbereichs auflistet (ziehen Sie die Dateien auf das ChiSurf-Fenster, um sie hinzuzufügen); wählen Sie eine oder mehrere. Der &lt;b&gt;Zeitschritt&lt;/b&gt; macht aus Übergangswahrscheinlichkeiten Raten, ein falscher Wert liefert also ein kinetisches Schema in falschen Einheiten — und der Fit wird nicht widersprechen.</translation>
+        </message>
+        <message>
+            <source>The VV/VH decay of a fast-rotating reference dye, picked in the Datasets workspace.</source>
+            <translation>Der VV/VH-Abfall eines schnell rotierenden Referenzfarbstoffs, im Datasets-Arbeitsbereich gewählt.</translation>
+        </message>
+        <message>
+            <source>The VV/VH decay pair to analyse: a stacked VV/VH file, the file a picked curve was read from, or two picked curves named VV and VH.</source>
+            <translation>Das zu analysierende VV/VH-Abfallpaar: eine gestapelte VV/VH-Datei, die Datei, aus der eine gewählte Kurve gelesen wurde, oder zwei gewählte Kurven namens VV und VH.</translation>
+        </message>
+        <message>
+            <source>The decay to estimate the IRF from, picked from the Datasets workspace (files dropped on the ChiSurf window are listed there).</source>
+            <translation>Der Abfall, aus dem die IRF geschätzt wird, aus dem Datasets-Arbeitsbereich gewählt (auf das ChiSurf-Fenster gezogene Dateien werden dort aufgelistet).</translation>
+        </message>
+        <message>
+            <source>The donor-only lifetime spectrum (FRET mode): a curve with lifetimes (ns) on x and amplitudes on y.</source>
+            <translation>Das Nur-Donor-Lebensdauerspektrum (FRET-Modus): eine Kurve mit Lebensdauern (ns) auf x und Amplituden auf y.</translation>
+        </message>
+        <message>
+            <source>The instrument response the decay is convolved with, picked in the IRF input from the Datasets workspace. Empty = ideal decay; Clear IRF empties it.</source>
+            <translation>Die Instrumentenantwort, mit der der Abfall gefaltet wird, in der IRF-Eingabe aus dem Datasets-Arbeitsbereich gewählt. Leer = idealer Abfall; IRF löschen leert sie.</translation>
+        </message>
+        <message>
+            <source>The last curve file read. Files enter ChiSurf by a drop on the window, or Add data…; + Data reads this one again with the selected file type.</source>
+            <translation>Die zuletzt gelesene Kurvendatei. Dateien gelangen durch Ablegen auf dem Fenster oder Daten hinzufügen… in ChiSurf; + Daten liest diese erneut mit dem gewählten Dateityp.</translation>
+        </message>
+        <message>
+            <source>The measured decay and its instrument response: the picked curve named IRF (or prompt) is the IRF, else the second one picked.</source>
+            <translation>Der gemessene Abfall und seine Instrumentenantwort: die gewählte Kurve namens IRF (oder prompt) ist die IRF, sonst die zweite gewählte.</translation>
+        </message>
+        <message>
+            <source>The measured decay, and its IRF: the curve named IRF (or prompt), else the second one picked.</source>
+            <translation>Der gemessene Abfall und seine IRF: die Kurve namens IRF (oder prompt), sonst die zweite gewählte.</translation>
+        </message>
+        <message>
+            <source>The polarized IRF and decay curves: named IRF/prompt for the response and VH/perp for the perpendicular channel, else in the order IRF VV, IRF VH, data VV, data VH (IRF then data for stacked VV/VH files).</source>
+            <translation>Die polarisierten IRF- und Abfallkurven: benannt IRF/prompt für die Antwort und VH/perp für den senkrechten Kanal, sonst in der Reihenfolge IRF VV, IRF VH, Daten VV, Daten VH (IRF, dann Daten bei gestapelten VV/VH-Dateien).</translation>
+        </message>
+        <message>
+            <source>The reference standard's VV/VH decay (a fast-rotating dye) that calibrates G.</source>
+            <translation>Der VV/VH-Abfall des Referenzstandards (ein schnell rotierender Farbstoff), der G kalibriert.</translation>
+        </message>
+        <message>
+            <source>VV/VH decays of the unknown samples, from the workspace.</source>
+            <translation>VV/VH-Abfälle der unbekannten Proben, aus dem Arbeitsbereich.</translation>
+        </message>
+        <message>
+            <source>VV/VH decays of unknown samples, evaluated with the calibration.</source>
+            <translation>VV/VH-Abfälle unbekannter Proben, mit der Kalibrierung ausgewertet.</translation>
+        </message>
+        <message>
+            <source>VV/VH files queued for the batch r-infinity.</source>
+            <translation>VV/VH-Dateien in der Warteschlange für das Stapel-r-unendlich.</translation>
+        </message>
+        <message>
+            <source>Your own decay comes from the &lt;b&gt;Input&lt;/b&gt; section: every decay in the Datasets workspace is listed there (drop a file on the ChiSurf window to add one), and picking a row loads it. It should be a decay whose tail is long enough to fit — the tail is the entire input to the first half of the method.</source>
+            <translation>Ihr eigener Abfall kommt aus dem Bereich &lt;b&gt;Eingabe&lt;/b&gt;: jeder Abfall im Datasets-Arbeitsbereich wird dort aufgelistet (ziehen Sie eine Datei auf das ChiSurf-Fenster, um einen hinzuzufügen), und das Wählen einer Zeile lädt ihn. Es sollte ein Abfall sein, dessen Ausläufer lang genug für einen Fit ist — der Ausläufer ist die gesamte Eingabe der ersten Hälfte der Methode.</translation>
+        </message>
+        <message>
+            <source>ns</source>
+            <translation>ns</translation>
+        </message>
+        <message>
+            <source>Pick a VV/VH file</source>
+            <translation>VV/VH-Datei wählen</translation>
+        </message>
+        <message>
+            <source>Pick a VV/VH file before saving outputs.</source>
+            <translation>Wählen Sie eine VV/VH-Datei, bevor Sie Ergebnisse speichern.</translation>
+        </message>
+        <message>
+            <source>Pick a VV/VH file, save the results, or process many files with the same settings.</source>
+            <translation>Eine VV/VH-Datei wählen, die Ergebnisse speichern oder viele Dateien mit denselben Einstellungen verarbeiten.</translation>
+        </message>
+        <message>
+            <source>Pick a VV/VH file in the Input section, set the correction and choose the region that defines r-infinity.</source>
+            <translation>Eine VV/VH-Datei im Bereich Eingabe wählen, die Korrektur einstellen und den Bereich wählen, der r-unendlich festlegt.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

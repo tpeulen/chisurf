@@ -22,9 +22,8 @@ The **IRF Estimator** plugin provides blind instrument response function (IRF) e
 
 ### 1. Load Decay Data
 
-1. Choose how to load data:
-   - **Load Decay (VV/VH)**: Select a VV/VH format file containing fluorescence decay data.
-   - **Load from Dataset**: Select an already loaded TCSPC dataset from ChiSurf.
+1. Pick the decay in the **Input** section: it lists the decays of the Datasets workspace (drop a VV/VH
+   file on the ChiSurf window to add one). Scripts and the CLI still take a file path.
 2. The selected decay will be displayed in the main plot (logarithmic scale). For multi-decay VV/VH files, all decays are loaded and the plugin can process them to compute an averaged IRF.
 
 ### 2. Adjust Parameters (Optional)

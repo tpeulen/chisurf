@@ -33,8 +33,10 @@ from chisurf.plugins.fluorescence_decay.irf_estimator.test.test_emtk_irf_estimat
 
 @pytest.fixture(scope="module")
 def app_ui():
+    from chisurf.plugins.fluorescence_decay.irf_estimator.gui.app import receive_decay
+
     ui = Ui(IRFEstimatorApp(), SIZES[0])
-    ui.drop(DECAY)
+    receive_decay(ui.app, {"decay": str(DECAY)})  # the decay a workspace row hands over
     ui.type_into("rl_iterations", "100")
     ui.click("use_range_selection")
     ui.click("request_estimate")
@@ -68,8 +70,8 @@ FIELDS = [
 
 def test_every_control_lies_inside_the_parameters_dock_and_the_window(ui):
     for name in [
-        "request_load",
-        "request_dataset",
+        "load_example",
+        "workspace_input_rows",
         "request_save",
         "request_transfer",
         "request_guide",
@@ -92,7 +94,7 @@ def test_parameter_fields_start_in_one_caption_column_and_are_short(ui):
 
 def test_toolbar_buttons_do_not_overlap_and_the_estimate_button_is_in_view(ui):
     assert_disjoint(
-        ui.app.item_rects, ["request_load", "request_dataset", "request_save", "request_transfer"]
+        ui.app.item_rects, ["load_example", "request_save", "request_transfer"]
     )
     assert (
         ui.app.item_rects["request_estimate"][1] + ui.app.item_rects["request_estimate"][3]

@@ -25,8 +25,8 @@ so the number of states is chosen by the minimum of AIC or BIC. See {ref}`concep
 ## 1. Open the tool and load a trace
 
 *Spectroscopy → Kinetics → Hidden Markov model*. A trace file has one row per time bin and one column per
-detection channel (`.csv`, `.txt`, `.dat` or `.npy`). Press **Add files...** and click one or more files in
-the dialog, or drop them on the window; several files are fitted jointly as separate sequences.
+detection channel (`.csv`, `.txt`, `.dat` or `.npy`). Drop the files on the ChiSurf window and pick one or more of them in
+the tool's **Input** section; several traces are fitted jointly as separate sequences.
 **🧪 Load example** loads a generated three-state trace with known means and dwell times, to try the tool.
 
 ```{figure} figures/hmm_window.png

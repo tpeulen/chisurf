@@ -193,8 +193,11 @@ class ReadDataModel:
         return True
 
     def browse(self) -> None:
-        """Open the file dialog for the file to read."""
-        self.docks.open_file_dialog()
+        """*Add data…*: the keyboard twin of a drop -- the chosen file enters the workspace exactly
+        as a dropped one does (:meth:`DataDocks.drop`)."""
+        self.docks.open_file_dialog(
+            title=tr("Add data"), done=lambda path: self.docks.drop([path])
+        )
 
     def use_demo(self) -> None:
         """Write the demo curve and select it with its file type."""
@@ -1716,7 +1719,7 @@ class DataDocks:
                 handled = bool(project.open_recent(groups["project"][0])) or handled
         linked = [
             (kind, path)
-            for kind in ("photons", "container", "image", "setup")
+            for kind in ("photons", "container", "image", "setup", "trace")
             for path in groups.get(kind, [])
         ]
         if linked:

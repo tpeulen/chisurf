@@ -1,32 +1,49 @@
 {
-  "id": "fcs_saturation",
-  "version": "1.0.0",
-  "display_name": "Tools:Calculators:FCS Saturation",
-  "description": "FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5).",
-  "authors": [
-    "Thomas-Otavio Peulen"
-  ],
-  "categories": [
-    "Tools",
-    "Calculators",
-    "Fluorescence Correlation Spectroscopy"
-  ],
-  "icon": "☀️",
-  "entrypoints": {
-    "emtk": "chisurf.plugins.calculator.fcs_saturation_calc.gui.app:make_app",
-    "cli": "chisurf.plugins.calculator.fcs_saturation_calc.cli.main:cli",
-    "services": "chisurf.plugins.calculator.fcs_saturation_calc.backend.services:register_services"
-  },
-  "rpc_methods": [
-    {
-      "name": "fcs_saturation.compute",
-      "summary": "Compute unperturbed and saturated FCS curves for arbitrary kinetic scheme.",
-      "params_schema": {},
-      "result_schema": {},
-      "long_running": false,
-      "cancelable": false
-    }
-  ],
-  "dependencies": {},
-  "deprecated": false
+ "id": "fcs_saturation",
+ "version": "1.0.0",
+ "display_name": "Tools:Calculators:FCS Saturation",
+ "description": "FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5).",
+ "authors": [
+  "Thomas-Otavio Peulen"
+ ],
+ "categories": [
+  "Tools",
+  "Calculators",
+  "Fluorescence Correlation Spectroscopy"
+ ],
+ "icon": "☀️",
+ "accepts": [
+  {
+   "name": "scheme",
+   "summary": "A photophysical scheme (states, labels, rates, brightness) saved as JSON, picked in the workspace.",
+   "receive": "chisurf.plugins.calculator.fcs_saturation_calc.gui.app:receive_scheme",
+   "required": [
+    "scheme"
+   ],
+   "from_workspace": {
+    "kinds": [
+     "setup"
+    ],
+    "many": false,
+    "key": "scheme"
+   }
+  }
+ ],
+ "entrypoints": {
+  "emtk": "chisurf.plugins.calculator.fcs_saturation_calc.gui.app:make_app",
+  "cli": "chisurf.plugins.calculator.fcs_saturation_calc.cli.main:cli",
+  "services": "chisurf.plugins.calculator.fcs_saturation_calc.backend.services:register_services"
+ },
+ "rpc_methods": [
+  {
+   "name": "fcs_saturation.compute",
+   "summary": "Compute unperturbed and saturated FCS curves for arbitrary kinetic scheme.",
+   "params_schema": {},
+   "result_schema": {},
+   "long_running": false,
+   "cancelable": false
+  }
+ ],
+ "dependencies": {},
+ "deprecated": false
 }

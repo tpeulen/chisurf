@@ -119,6 +119,10 @@ class SaturationApp(TourTarget, ImApp):
             "profile_toggles",
         )
         self.forms = {n: FormState(on_used=self.tour.notify_used) for n in names}
+        from chisurf.plugins.curve_input import CurveInput
+
+        #: The Input section: a saved scheme (a workspace ``setup`` row).
+        self.input = CurveInput("fcs_saturation", self, name="scheme", title="", height=56.0)
         self.docks = DockManager(
             Split("h", 0.40, Region("controls"), Region("plots")), name="saturation"
         )
@@ -145,14 +149,12 @@ class SaturationApp(TourTarget, ImApp):
         self.model._on_compute()
         self.status = tr("Computed.")
 
-    def choose(self, mode: str) -> None:
-        self.dialog_mode = mode
-        title = tr("Load scheme") if mode == "open" else tr("Save scheme")
+    def choose(self, mode: str = "save") -> None:
+        """Ask where the scheme is saved (a scheme to load comes from the workspace)."""
+        self.dialog_mode = "save"
+        title = tr("Save scheme")
         self.dialog = FileDialog(
-            title,
-            mode=mode,
-            filename="scheme.json" if mode == "save" else "",
-            filters="JSON (*.json)",
+            title, mode="save", filename="scheme.json", filters="JSON (*.json)"
         )
         self.file_window = DialogWindow(title, size=(560, 420), key=title)
         self.file_window.show()
@@ -199,6 +201,15 @@ class SaturationApp(TourTarget, ImApp):
 
     def _draw_controls(self, box) -> None:
         self._form("toolbar")
+        im.text_disabled(tr("Scheme"))
+        im.set_item_tooltip(
+            tr("A saved scheme from the Datasets workspace (drop its .json on the ChiSurf window).")
+        )
+        rects = {}
+        self.input.draw(rects, on_used=self.tour.notify_used)
+        self.item_rects.update(rects)
+        if "workspace_input_rows" in rects:
+            self.item_rects["load_scheme"] = rects["workspace_input_rows"]
         for name in (
             "compute",
             "load_scheme",
@@ -481,15 +492,12 @@ class SaturationApp(TourTarget, ImApp):
             self.dialog = None
         elif chosen:
             path = chosen[0]
-            mode, self.dialog = self.dialog_mode, None
+            self.dialog = None
             try:
-                if mode == "open":
-                    self.load_scheme(path)
-                else:
-                    if not pathlib.Path(path).suffix:
-                        path = str(pathlib.Path(path).with_suffix(".json"))
-                    self.model.save_scheme_to_file(path)
-                    self.status = tr("Saved {path}").format(path=path)
+                if not pathlib.Path(path).suffix:
+                    path = str(pathlib.Path(path).with_suffix(".json"))
+                self.model.save_scheme_to_file(path)
+                self.status = tr("Saved {path}").format(path=path)
                 self.error = ""
             except Exception as exc:  # noqa: BLE001 - shown in the window
                 self.error = tr("Error: {error}").format(error=exc)
@@ -508,17 +516,6 @@ class SaturationApp(TourTarget, ImApp):
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
 
-    def files_dropped(self, paths) -> None:
-        """A dropped JSON file is loaded as a scheme."""
-        for path in paths:
-            if str(path).lower().endswith(".json"):
-                try:
-                    self.load_scheme(path)
-                except Exception as exc:  # noqa: BLE001
-                    self.error = tr("Error: {error}").format(error=exc)
-                return
-        self.error = tr("Error: drop a scheme .json file.")
-
     def close(self) -> None:
         """Persist the session as the Qt tool does when its window closes."""
         self.panel.wait()
@@ -528,6 +525,22 @@ class SaturationApp(TourTarget, ImApp):
 def re_plain(text: str) -> str:
     """*text* without markup (the help modal's plain form)."""
     return plain(text)
+
+
+def receive_scheme(app: SaturationApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``scheme``): a saved photophysical scheme."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("scheme")
+    if isinstance(address, (list, tuple)):
+        address = address[0] if address else ""
+    if not address:
+        return
+    try:
+        app.load_scheme(read_address(str(address)))
+        app.error = ""
+    except Exception as exc:  # noqa: BLE001 - shown in the window
+        app.error = tr("Error: {error}").format(error=exc)
 
 
 def make_app(**kwargs):

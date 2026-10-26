@@ -214,21 +214,19 @@ def test_an_empty_window_asks_for_data_and_greys_the_actions(ui):
     assert ui.app.dialog is None
 
 
-def test_load_decay_and_irf_through_the_dialog_then_run(ui, tmp_path):
+def test_the_decay_and_irf_picked_in_the_workspace_then_run(ui):
+    from test.gui.curve_workspace import add_curve, pick
+
     y, lamp, dt, t = _problem(n=128)
-    write_decay(tmp_path / "decay.dat", t, y)
-    write_decay(tmp_path / "irf.dat", t, lamp)
-    ui.app.last_dir = str(tmp_path)
-    ui.click_text("Load decay")
-    assert ui.app.dialog is not None
-    ui.click_text("decay.dat")
-    ui.click_text("Open")
+    decay = add_curve(t, y, name="decay.dat")
+    irf = add_curve(t, lamp, name="irf.dat")
+    ui.draw()
+    assert ui.drawn("decay.dat") and ui.drawn("irf.dat")
+    pick(ui.app.inputs["decays"], decay, irf)  # the second one picked is the IRF
     m = ui.app.model
     assert m.source == "decay.dat" and len(m.decay) == 128 and m.dt == pytest.approx(dt)
-    ui.click_text("IRF file")
-    ui.click_text("irf.dat")
-    ui.click_text("Open")
     assert m.irf_source == "irf.dat" and m.irf is not None
+    assert ui.app.source_uid == str(decay.unique_identifier)
     m.settings.tau_bins = 16
     m.settings.tau_max = 8.0
     m = run(ui)
@@ -237,55 +235,55 @@ def test_load_decay_and_irf_through_the_dialog_then_run(ui, tmp_path):
     assert m.irf is None and m.result is None
 
 
-def test_the_dialog_cancel_and_close_load_nothing(ui, tmp_path):
-    ui.app.last_dir = str(tmp_path)
-    for closer in ("Cancel", "×"):
-        ui.click_text("Load decay")
-        assert ui.app.dialog is not None
-        ui.click_text(closer)
-        assert ui.app.dialog is None
-    assert ui.app.model.decay is None
+def test_a_curve_named_irf_is_the_response_whatever_the_order(ui):
+    from test.gui.curve_workspace import add_curve, pick
+
+    y, lamp, dt, t = _problem(n=64)
+    irf = add_curve(t, lamp, name="prompt")
+    decay = add_curve(t, y, name="sample")
+    pick(ui.app.inputs["decays"], irf, decay)
+    m = ui.app.model
+    assert m.source == "sample" and m.irf_source == "prompt"
 
 
-def test_a_file_that_is_not_a_decay_is_reported(ui, tmp_path):
+def test_only_decays_are_offered_and_a_file_that_is_not_one_is_reported(ui, tmp_path):
+    from chisurf.plugins.fluorescence_decay.maxent_decay.gui.app import receive_decays
+    from test.gui.curve_workspace import add_curve
+
+    t = np.arange(10) * 0.1
+    add_curve(t, t, name="a correlation", kind="correlation")
+    assert not ui.app.inputs["decays"].workspace_input_rows()
     (tmp_path / "bad.dat").write_text("just text\n")
-    ui.app.last_dir = str(tmp_path)
-    ui.click_text("Load decay")
-    ui.click_text("bad.dat")
-    ui.click_text("Open")
+    receive_decays(ui.app, {"decays": [str(tmp_path / "bad.dat")]})
     assert ui.app.model.decay is None and ui.app.model.status.startswith("Error:")
     assert any(ui.app.model.status[:30] in t[5] for t in ui.draw().texts)
 
 
-def test_dropped_files_load_decay_irf_and_preferences(ui, tmp_path):
-    y, lamp, dt, t = _problem(n=128)
-    decay, irf = write_decay(tmp_path / "d.dat", t, y), write_decay(tmp_path / "i.dat", t, lamp)
-    prefs = tmp_path / "p.json"
-    prefs.write_text(json.dumps({"tau_grid": {"max": 9.5}}))
-    assert ui.drop(decay, irf, prefs) is True
+def test_a_prior_and_a_donor_spectrum_come_from_the_workspace(ui):
+    from test.gui.curve_workspace import add_curve, pick
+
+    grid = np.linspace(0.1, 10.0, 32)
+    prior = add_curve(grid, np.exp(-grid), name="prior", kind="histogram")
+    pick(ui.app.inputs["prior"], prior)
     m = ui.app.model
-    assert m.source == "d.dat" and m.irf_source == "i.dat" and m.settings.tau_max == 9.5
-    assert ui.drop() is False
+    x, values = m.priors[m.settings.mode]
+    assert np.allclose(x, grid) and values[0] == pytest.approx(np.exp(-0.1))
+    donor = add_curve([4.0, 1.0], [0.6, 0.4], name="donor only", kind="histogram")
+    pick(ui.app.inputs["donor"], donor)
+    assert list(m.donor) == [0.6, 4.0, 0.4, 1.0]  # amplitude/lifetime pairs
 
 
-def test_refresh_lists_live_fits_and_datasets_and_each_use_button_works(ui, monkeypatch):
+def test_refresh_lists_the_live_fits_and_fit_takes_one(ui, monkeypatch):
     import chisurf
 
     fit = stub_fit()
-    other = SimpleNamespace(x=fit.data.x, y=fit.data.y * 0.5 + 1, name="half.dat")
     monkeypatch.setattr(chisurf, "fits", [fit])
-    monkeypatch.setattr(chisurf, "imported_datasets", [fit.data, other])
     m = ui.app.model
     assert not ui.drawn("Fit")
     ui.click_text("Refresh")
-    assert ui.drawn("Fit") and ui.drawn("Use as decay")
+    assert ui.drawn("Fit") and not ui.drawn("Use as decay")
     ui.click_text("Fit")
     assert m.source == "two_lifetimes.dat" and m.fit is fit and m.settings.background == 5.0
-    ui.app.dataset_index = 1
-    ui.click_text("Use as decay")
-    assert m.source == "half.dat"
-    ui.click_text("Use as IRF")
-    assert m.irf_source == "half.dat"
 
 
 # ───────────────────────────────────── settings forms ───────────────────────────────────── #
@@ -382,17 +380,16 @@ def test_the_fret_fields_and_the_donor_gate(fitted, tmp_path):
     ui.click_text("Run MEM")
     assert ui.app.jobs.process is None  # greyed: FRET needs a donor spectrum
     assert any("required in FRET mode" in t[5] for t in ui.draw().texts)
-    donor = tmp_path / "donor.csv"
-    np.savetxt(donor, [[1.0, 4.1]], delimiter=",")
-    ui.app.last_dir = str(tmp_path)
-    ui.click_text("Donor")
-    ui.click_text("donor.csv")
-    ui.click_text("Open")
+    from test.gui.curve_workspace import add_curve, pick
+
+    pick(ui.app.inputs["donor"], add_curve([4.1], [1.0], name="donor only", kind="histogram"))
     assert m.donor is not None and "1 components" in " ".join(t[5] for t in ui.draw().texts)
     ui.click_text("fix donor-only fraction")
     assert m.fix_x_donly is True
     m.settings.r_bins = 8
+    reveal(ui, "Run MEM", steps=4.0)  # the Input sections made the panel taller: scroll back up
     m = run(ui)
+    assert m.result is not None, m.status
     assert "R" in m.result and len(m.result["p"]) == 8
 
 
@@ -618,7 +615,10 @@ def test_the_tour_waits_for_the_example_refresh_run_and_lcurve(fitted, monkeypat
     assert not tour.awaiting
     ui.click_text("Next ►")
     assert tour.step_idx == 2 and tour.awaiting
-    ui.click_text("Refresh")
+    from test.gui.curve_workspace import add_curve, pick
+
+    y, lamp, dt, t = _problem(n=64)
+    pick(ui.app.inputs["decays"], add_curve(t, y, name="sample"), add_curve(t, lamp, name="irf"))
     assert not tour.awaiting
     ui.click_text("Next ►")
     assert tour.step_idx == 3 and tour.awaiting

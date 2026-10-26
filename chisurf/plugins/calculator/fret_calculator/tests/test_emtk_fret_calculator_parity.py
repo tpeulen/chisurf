@@ -289,17 +289,11 @@ def test_the_tab_bar_switches_tabs(app):
     assert app.active_tab == 0 and "FRET parameters" in " ".join(draw(app).strings)
 
 
-def test_a_dropped_file_says_the_calculator_has_no_file_input(app):
-    assert app.files_dropped([]) is False and app.model.hetero.status == ""
-    assert app.on_files_dropped(["/tmp/run.ptu"]) is True
-    assert app.model.hetero.status == "The FRET Calculator takes no dropped files."
-    assert "takes no dropped files" in " ".join(draw(app).strings)
-    app.select_tab(1)
-    assert app.on_paths_dropped(["/tmp/x"]) and "takes no dropped files" in app.model.homo.status
-    edit(app, "t_RM", 2.0)
-    assert app.model.homo.status == ""
-    # the Qt host reaches the drop through the same hooks
-    assert callable(getattr(app, "files_dropped")) and callable(getattr(app, "on_paths_dropped"))
+def test_the_calculator_takes_no_dropped_files(app):
+    # Files dropped on ChiSurf go to the Datasets workspace; this calculator reads none.
+    for name in ("files_dropped", "on_files_dropped", "on_paths_dropped"):
+        assert not callable(getattr(app, name, None)), name
+    assert app.model.hetero.status == ""
 
 
 # ── 3. spec, tooltips, drawing ------------------------------------------------------------------ #

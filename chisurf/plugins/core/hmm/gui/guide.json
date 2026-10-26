@@ -8,12 +8,12 @@
     },
     {
       "title": "Load the traces, and say what a bin is worth",
-      "text": "Start with <b>Load example</b>: a generated three-state trace with known means and dwell times. Your own traces come in the same way with <b>Add files...</b> (one or many), or drop them on the window. The <b>time step</b> is what turns transition probabilities into rates, so a wrong value gives you a kinetic scheme in the wrong units — and the fit will not object.",
+      "text": "Start with <b>Load example</b>: a generated three-state trace with known means and dwell times. Your own traces come from the <b>Input</b> section, which lists the traces of the Datasets workspace (drop the files on the ChiSurf window to add them); pick one or many. The <b>time step</b> is what turns transition probabilities into rates, so a wrong value gives you a kinetic scheme in the wrong units — and the fit will not object.",
       "target": {
         "name": "load_example"
       },
       "await": {
-        "hint": "Press 🧪 Load example (or Add files... for your own traces)."
+        "hint": "Press 🧪 Load example (or pick your own traces in the Input section)."
       }
     },
     {

@@ -24,8 +24,7 @@
           "type": "button_row",
           "buttons": [
             {"label": "➕ Add", "action": "add_row", "description": "Add a lifetime component."},
-            {"label": "➖ Remove", "role": "danger", "action": "remove_row", "description": "Remove the selected lifetime component."},
-            {"label": "📂 Load", "action": "load_spectrum", "description": "Load a lifetime spectrum from a CSV/text file (interleaved a,τ list or 2-column amplitude/lifetime table)."}
+            {"label": "➖ Remove", "role": "danger", "action": "remove_row", "description": "Remove the selected lifetime component."}
           ]
         }
       ]
@@ -47,7 +46,7 @@
       "description": "Instrument response file, shot noise, photon count and random seed.",
       "n_col": 2,
       "sections": [
-        {"type": "value", "attr": "irf_path", "kind": "file", "label": "IRF", "description": "Optional instrument response function file (text or .npy) to convolve with the decay. Empty = ideal decay."},
+        {"type": "value", "attr": "irf_path", "kind": "str", "read_only": true, "label": "IRF", "description": "The instrument response the decay is convolved with, picked in the IRF input from the Datasets workspace. Empty = ideal decay; Clear IRF empties it."},
         {"type": "toggle", "attr": "shot_noise", "label": "Noise", "description": "Poisson-sample a finite-count observation (uses Photons + Seed). Off = normalized ideal pattern."},
         {"type": "value", "attr": "photon_count", "label": "Photons", "kind": "float", "minimum": 1.0, "maximum": 1000000000.0, "description": "Total photon count for the Poisson observation."},
         {"type": "value", "attr": "seed", "label": "Seed", "kind": "int", "minimum": 0, "maximum": 2147483647, "description": "Random seed for the shot-noise realization (reproducible)."}

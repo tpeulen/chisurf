@@ -21,3 +21,7 @@ def hermetic_user_state(tmp_path_factory, monkeypatch):
     except Exception:  # pragma: no cover
         pass
     yield
+
+from test.gui.curve_workspace import (
+    workspace_restored,  # noqa: E402,F401  (curves leave with their test)
+)

@@ -159,11 +159,15 @@ def test_reloaded_fast_reference_requires_a_new_tttr_context(editor, tmp_path, m
     replacement = tmp_path / "replacement.dat"
     decay = np.exp(-np.arange(100) / 20) * 1000
     write_vv_vh(str(replacement), vv=decay, vh=decay / 1.3)
-    ui.click("reference.load_fast")
-    child.dialog.directory = str(tmp_path)
+    from chisurf.core.plugin.workspace_input import register_result
+    from test.gui.curve_workspace import pick
+
+    # the replacement is in the workspace; its row is picked in the child's Reference input
+    pick(
+        child.inputs["reference"],
+        register_result(str(replacement), kind="decay", name="replacement.dat"),
+    )
     ui.draw(2)
-    ui.click("replacement.dat")
-    ui.click("Open")
     deadline = time.monotonic() + 10
     while child.job.running and time.monotonic() < deadline:
         ui.draw(1)
@@ -219,9 +223,10 @@ def test_parent_drop_is_captured_by_child_without_replacing_parent(editor, tmp_p
     while child.job.running and time.monotonic() < deadline:
         ui.draw(1)
         time.sleep(0.01)
-    # T-20261016-01: a single dropped file no longer replaces the fast reference; with
-    # one loaded it becomes the unknown sample of the unified workflow.
-    assert child.model.sample_file == str(replacement)
+    # The modal takes the drop (the parent is not replaced) and reads nothing: the reference
+    # and samples come from the calibration window's Input sections (the workspace).
+    assert child.model.sample_file != str(replacement)
+    assert "Input section" in child.model.message
     assert app.model.data == before and not notices
     ui.click("calibration_cancel")
     assert {
@@ -342,7 +347,7 @@ def test_pending_keyboard_mixing_applies_after_compute_and_nested_help_guide_bat
     # c27f562eb: batch moved behind the toolbar's "Batch ->" button (open_batch) and
     # the mixing controls became rows of the parameters table.
     ui.click("reference.open_batch")
-    assert "reference.batch_files.add" in ui.ids()
+    assert "reference.batch.workspace_input_rows" in ui.ids()  # the batch Input section
     l1_row = next(r for r in child.model.parameter_rows() if r["key"] == "l1")
     child.model.edit_parameter(l1_row, "fixed", True)
     ui.draw(1)

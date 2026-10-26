@@ -10,10 +10,10 @@
     {"type": "choice", "attr": "import_mode", "label": "Add as", "options_source": "import_mode_options",
      "description": "How data read here or dropped on the window enters the project: linked (the file stays where it is; its path, size and checksum are recorded, so the project stays small) or embedded (copied into the project file at the next save, so the project is complete on its own). Right-click a dataset in Datasets to switch it later."},
     {"type": "value", "kind": "str", "attr": "path", "label": "File", "placeholder": "Drop files here.",
-     "elide": "start",
-     "description": "The file to read. Drop a file onto the window, type its path or browse for it."},
+     "elide": "start", "read_only": true,
+     "description": "The last curve file read. Files enter ChiSurf by a drop on the window, or Add data…; + Data reads this one again with the selected file type."},
     {"type": "button_row", "buttons": [
-      {"label": "Browse…", "icon": "📂", "action": "browse", "description": "Choose the file to read."},
+      {"label": "Add data…", "icon": "📂", "action": "browse", "description": "Choose files to add to the workspace: the same as dropping them on the window (photon files, containers, curves, images, structures, setups)."},
       {"label": "Load example", "icon": "🧪", "action": "use_demo",
        "description": "Write a correlation curve whose answer is known (one diffusing species, N = 2, τD = 0.5 ms) and select it with the FCS file type."},
       {"label": "+ Data", "action": "load",

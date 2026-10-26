@@ -161,13 +161,18 @@ def ui():
     app.close()
 
 
+#: The Input section each former file button became.
+SECTION = {"load_fast": "reference", "load_slow": "slow", "batch": "batch"}
+
+
 def pick_file(ui, button, name, directory):
-    ui.app.last_dir = str(directory)
-    ui.click_name(button)
-    assert ui.app.dialog is not None
-    ui.click_text(name)
-    ui.click_text("Open")
-    assert ui.app.dialog is None
+    """The file is in the Datasets workspace (as a drop puts it) and its row is picked in the
+    Input section that replaced *button*; then the load finishes."""
+    from chisurf.core.plugin.workspace_input import register_result
+    from test.gui.curve_workspace import pick
+
+    row = register_result(str(Path(directory) / name), kind="decay", name=name)
+    pick(ui.app.inputs[SECTION[button]], row)
     return ui.settle()
 
 
@@ -370,7 +375,7 @@ def test_batch_results_equal_frozen_qt_batch_window(files, legacy_oracle):
 # ───────────────────────────────────── loading ───────────────────────────────────── #
 
 
-def test_the_fast_reference_loads_through_the_dialog_and_gives_the_calculated_g(ui, files):
+def test_the_fast_reference_picked_in_the_workspace_gives_the_calculated_g(ui, files):
     m = pick_file(ui, "load_fast", "fast.dat", Path(files["fast"]).parent)
     assert m.fast_file == files["fast"] and m.g_factor == pytest.approx(1.2, rel=0.05)
     expected = calculate_g_factor_core(
@@ -393,37 +398,32 @@ def test_the_slow_reference_adds_the_mixing_estimate(ui, files):
     assert m.fp_result["r_expected"] is not None
 
 
-def test_the_dialog_cancel_and_close_load_nothing(ui, files):
-    ui.app.last_dir = str(Path(files["fast"]).parent)
-    for closer in ("Cancel", "×"):
-        ui.click_name("load_fast")
-        assert ui.app.dialog is not None
-        ui.click_text(closer)
-        assert ui.app.dialog is None
-    assert ui.app.model.fast is None
-
-
 def test_a_file_that_is_not_vv_vh_data_is_reported(ui, tmp_path):
     bad = tmp_path / "bad.dat"
     bad.write_text("1 2\n")
-    ui.app.last_dir = str(tmp_path)
-    ui.click_name("load_fast")
-    ui.click_text("bad.dat")
-    ui.click_text("Open")
-    m = ui.settle()
+    m = pick_file(ui, "load_fast", "bad.dat", tmp_path)
     assert m.fast is None and m.message.startswith("Error")
     assert m.message in [t[5] for t in ui.draw().texts] or any(
         m.message[:40] in t[5] for t in ui.draw().texts
     )
 
 
-def test_dropped_files_load_fast_then_slow_and_queue_the_rest(ui, files):
-    assert ui.drop(files["fast"], files["slow"], files["batch1"]) is True
-    m = ui.settle()
+def test_handed_over_files_load_fast_then_slow_and_queue_the_batch(ui, files):
+    from chisurf.plugins.vv_vh_g_factor.gui.app import (
+        receive_batch,
+        receive_reference,
+        receive_slow,
+    )
+
+    for name in ("files_dropped", "on_files_dropped", "on_paths_dropped"):
+        assert not callable(getattr(ui.app, name, None)), name  # files come from the workspace
+    receive_reference(ui.app, {"file": [files["fast"]]})
+    receive_slow(ui.app, {"file": [files["slow"]]})
+    receive_batch(ui.app, {"files": [files["batch1"]]})
     ui.settle()
-    assert m.fast_file == files["fast"]
+    ui.settle()
+    assert ui.app.model.fast_file == files["fast"]
     assert ui.app.model.slow_file == files["slow"] and ui.app.model.batch_files == [files["batch1"]]
-    assert ui.drop() is False
 
 
 # ───────────────────────────── tail matching, shift, overrides ───────────────────────────── #
@@ -824,99 +824,28 @@ def open_batch(ui):
         ui.draw(2)
 
 
-def test_batch_folder_database_and_selected_remove_are_real_actions(files, tmp_path):
-    """Drive the three formerly missing actions without using a user's MMFDB service."""
+def test_batch_input_queues_and_selected_remove_and_clear_are_real_actions(ui, files):
+    from chisurf.core.plugin.workspace_input import register_result
+    from test.gui.curve_workspace import pick
 
-    class Catalogue:
-        def __init__(self):
-            self.calls = []
-
-        def call(self, method, params):
-            self.calls.append((method, params))
-            if method == "mmfdb.datasets.browse":
-                return {
-                    "datasets": [
-                        {
-                            "artifact_id": "batch-1",
-                            "original_filename": "batch1.dat",
-                            "artifact_kind": "raw_data",
-                            "data_format": "vv_vh",
-                        }
-                    ],
-                    "total": 1,
-                }
-            assert method == "mmfdb.datasets.open" and params == {"artifact_id": "batch-1"}
-            return {"local_path": files["batch1"]}
-
-    catalogue = Catalogue()
-    app = GFactorApp(client=FakeArchive(), dataset_client=catalogue)
-    ui = UI(app)
-    try:
-        ui.draw()
-        open_batch(ui)
-        # All seven actions captured in the legacy batch window have real native hit rectangles.
-        for name in (
-            "batch_files.add",
-            "batch_files.folder",
-            "batch_files.database",
-            "batch_files.remove",
-            "batch_files.clear",
-            "run",
-            "save",
-        ):
-            assert ui.rect(name)[2] > 0, name
-        folder = tmp_path / "batch-folder"
-        nested = folder / "nested"
-        nested.mkdir(parents=True)
-        first = folder / "batch1.dat"
-        second = nested / "batch2.dat"
-        first.write_bytes(Path(files["batch1"]).read_bytes())
-        second.write_bytes(Path(files["batch2"]).read_bytes())
-        (folder / "ignore.bin").write_bytes(b"not a VV/VH file")
-        app.last_dir = str(folder)
-        ui.click_name("batch_files.folder")
-        assert app.dialog is not None and app.dialog.mode == "folder"
-        ui.click_text("Choose")
-        assert app.dialog is None
-        assert app.model.batch_files == [str(first), str(second)]
-        ui.click_name("batch_files.1")
-        ui.click_name("batch_files.remove")
-        assert app.model.batch_files == [str(first)] and second.is_file()
-        app.last_dir = str(folder)
-        ui.click_name("batch_files.folder")
-        ui.click_text("Choose")
-        assert app.model.batch_files == [str(first), str(second)]
-        ui.click_name("batch_files.1")
-        ui.click_name("batch_files.clear")
-        assert app.model.batch_files == [] and first.is_file()
-        app.last_dir = str(folder)
-        ui.click_name("batch_files.folder")
-        ui.click_text("Choose")
-        assert app.model.batch_files == [str(first), str(second)]
-        ui.click_name("batch_files.remove")
-        assert app.model.batch_files == [
-            str(second)
-        ]  # Clear reset the former second-row selection.
-        ui.click_name("batch_files.clear")
-        ui.click_name("batch_files.database")
-        deadline = time.monotonic() + 5
-        while app.dataset_picker._pending is not None and time.monotonic() < deadline:
-            time.sleep(0.005)
-            ui.draw()
-        assert app.dataset_picker.is_open and not app.dataset_picker.error
-        ui.click_text("batch1.dat [raw_data] (vv_vh)")
-        ui.click_text("Open selected")
-        while app.dataset_picker.is_open and time.monotonic() < deadline:
-            time.sleep(0.005)
-            ui.draw()
-        assert not app.dataset_picker.is_open and not app.dataset_picker.error
-        assert app.model.batch_files == [files["batch1"]]
-        assert [method for method, _ in catalogue.calls] == [
-            "mmfdb.datasets.browse",
-            "mmfdb.datasets.open",
-        ]
-    finally:
-        app.close()
+    app = ui.app
+    open_batch(ui)
+    for name in ("batch_files.remove", "batch_files.clear", "run", "save"):
+        assert ui.rect(name)[2] > 0, name
+    for name in ("batch_files.add", "batch_files.folder", "batch_files.database"):
+        assert name not in app.item_rects, name  # the batch comes from the workspace
+    rows = [
+        register_result(files[k], kind="decay", name=Path(files[k]).name)
+        for k in ("batch1", "batch2")
+    ]
+    pick(app.inputs["batch"], *rows)
+    ui.draw()
+    assert app.model.batch_files == [files["batch1"], files["batch2"]]
+    ui.click_name("batch_files.1")
+    ui.click_name("batch_files.remove")
+    assert app.model.batch_files == [files["batch1"]] and Path(files["batch2"]).is_file()
+    ui.click_name("batch_files.clear")
+    assert app.model.batch_files == []
 
 
 def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_path):
@@ -925,11 +854,9 @@ def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_p
     assert any(t[5].startswith("No files queued") for t in ui.draw().texts)
     ui.click_name("run")
     assert m.batch_results == []  # greyed: nothing queued
-    ui.app.last_dir = str(Path(files["fast"]).parent)
-    ui.click_name("batch_files.add")
-    ui.click_text("batch1.dat")
-    ui.click_text("batch2.dat")
-    ui.click_text("Open")
+    folder = Path(files["fast"]).parent
+    for name in ("batch1.dat", "batch2.dat"):
+        pick_file(ui, "batch", name, folder)
     m = ui.settle()
     assert m.batch_files == [files["batch1"], files["batch2"]]
     assert {"batch1.dat", "batch2.dat"} <= {t[5] for t in ui.draw().texts}
@@ -1029,8 +956,8 @@ def test_the_tour_waits_for_the_real_controls(ui, files, tmp_path):
     ui.click_name("guide")
     tour = ui.app.guide
     assert tour.active and tour.get_target_rect(
-        "load_fast"
-    )  # what G is, at the fast-reference button
+        "reference.workspace_input_rows"
+    )  # what G is, at the fast-reference input
     ui.click_text("Next ►")
     assert tour.step_idx == 1 and tour.awaiting
     ui.click_text("Next ►")
@@ -1043,7 +970,7 @@ def test_the_tour_waits_for_the_real_controls(ui, files, tmp_path):
     type_value(ui, "tail_start", "320")
     assert not tour.awaiting
     ui.click_text("Next ►")
-    assert tour.step_idx == 3 and tour.get_target_rect("load_slow")
+    assert tour.step_idx == 3 and tour.get_target_rect("slow.workspace_input_rows")
     ui.click_text("Next ►")
     assert tour.step_idx == 4
     assert ui.app.guide.get_target_rect("export")

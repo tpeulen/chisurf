@@ -128,9 +128,6 @@ class AnisotropyModel:
         """The spec's ``call`` after a field changed: r(t) and r-infinity follow it."""
         self.compute()
 
-    def request_load(self):
-        self.request = "load"
-
     def load_example(self) -> None:
         """Generate the reference decays; load the slow protein's, queue all four."""
         from ..demo import DEMO as DEMO_SETTINGS
@@ -150,15 +147,6 @@ class AnisotropyModel:
 
     def request_save(self):
         self.request = "save"
-
-    def request_add_files(self):
-        self.request = "add_files"
-
-    def request_add_folder(self):
-        self.request = "add_folder"
-
-    def request_database(self):
-        self.request = "database"
 
     def request_save_batch(self):
         self.request = "save_batch"
@@ -239,7 +227,7 @@ class AnisotropyModel:
 
     def save(self, base_path):
         if self.r_t is None:
-            raise ValueError("Load a VV/VH file before saving outputs.")
+            raise ValueError("Pick a VV/VH file before saving outputs.")
         self.compute()
         base = Path(base_path).with_suffix("")
         vv, vh = self.corrected_channels()

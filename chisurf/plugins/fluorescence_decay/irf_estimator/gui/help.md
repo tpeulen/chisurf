@@ -9,6 +9,10 @@ section before a number from here goes anywhere near a result.
 
 Press **Guide** for the walk-through.
 
+The decay comes from the **Input** section, which lists the decays of the Datasets workspace: drop a
+file on the ChiSurf window to add one, then pick it. **Load example** adds a seeded decay with a
+known IRF to the workspace and estimates it.
+
 ## How it works
 
 The measured decay is your molecule's decay convolved with the instrument

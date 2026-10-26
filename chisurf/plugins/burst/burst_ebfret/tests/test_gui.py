@@ -104,17 +104,20 @@ def test_the_empty_window_disables_what_needs_data(window):
     assert not model.enabled("crop_min") and not model.enabled("stop")
 
 
-def test_menu_load_opens_the_file_dialog_with_ebfrets_filters(window):
+def test_menu_load_picks_the_time_series_in_the_workspace(window, tmp_path):
+    from chisurf.core.plugin.workspace_input import register_result
+    from test.gui.curve_workspace import pick
+
     window.click_item("menu.File")
     load = window.app.items["load"]
     window.app.command("load")
     window.frame()
-    chooser = window.gui.dialogs[-1].chooser
-    assert [label for label, _ in chooser.filters][:2] == [
-        "ebFRET saved session (.mat)",
-        "Raw donor-acceptor time series (.dat)",
-    ]
-    assert chooser.multiselect and load.label == "Load"
+    dialog = window.gui.dialogs[-1]
+    assert not hasattr(dialog, "chooser") and load.label == "Load"  # no file dialog any more
+    path = demo.make_demo(tmp_path, seed=4)  # a raw .dat series, dropped on ChiSurf
+    pick(dialog.section, register_result(str(path), kind="trace", name=path.name))
+    window.frame(2)
+    assert window.gui.has_data
 
 
 def test_typing_a_series_number_selects_it(window, tmp_path):

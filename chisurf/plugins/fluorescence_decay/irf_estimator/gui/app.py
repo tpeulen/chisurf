@@ -1,5 +1,7 @@
 """Native blind IRF estimation: the Qt IRFEstimatorTool's toolbar, parameters, plot and results.
 
+The decay comes from the Datasets workspace: the Input section (the manifest's
+``accepts[].from_workspace``) hands it to :func:`receive_decay`; nothing asks for an input file.
 The form is ``irf_estimator_emtk.view.json`` drawn by :func:`emtk.view_form.draw_form` over
 :class:`_Form` (the view model's fields, this app's actions). The estimate runs on a worker
 thread; the plot and the results are their own dock windows, laid out as in the Qt tool
@@ -30,7 +32,7 @@ from .view_model import IRFViewModel
 HERE = Path(__file__).parent
 _EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="irf-estimation")
 ERROR = (230, 90, 90, 255)
-DATA_FILTERS = "VV/VH Files (*.dat);;All Files (*)"
+DATA_FILTERS = "VV/VH Files (*.dat);;All Files (*)"  # the saved IRF
 #: The Qt plot's pens, by curve: colour and dash.
 PENS = {
     "Measured Decay": ((0, 110, 255, 255), None),
@@ -41,7 +43,7 @@ PENS = {
 #: guide.json is shared with the Qt tour, which names the toolbar actions by caption and
 #: the spin boxes by objectName; the spec's names are mapped onto those.
 TOUR_KEYS = {
-    "request_load": "Load Decay",
+    "workspace_input_rows": "Load Decay",
     "request_estimate": "Estimate IRF",
     "manual_background": "irf_background",
     "rl_iterations": "irf_rl_iterations",
@@ -57,25 +59,6 @@ ESTIMATION_INPUTS = {
     "first_channel",
     "last_channel",
 }
-
-
-def open_datasets():
-    """The decay curves open in this ChiSurf process; a group contributes each member."""
-    from chisurf.core.api import dataset_objects
-    from chisurf.core.data import DataGroup
-
-    curves = []
-
-    def collect(dataset):
-        if isinstance(dataset, (list, tuple, DataGroup)):
-            for member in dataset:
-                collect(member)
-        elif (hasattr(dataset, "y") and hasattr(dataset, "x")) or hasattr(dataset, "data"):
-            curves.append(dataset)
-
-    for dataset in dataset_objects():
-        collect(dataset)
-    return curves
 
 
 def _spec():
@@ -129,11 +112,8 @@ class _Form:
             return m.result is not None
         return True
 
-    def request_load(self):
-        self._app.choose_file()
-
-    def request_dataset(self):
-        self._app.refresh_datasets()
+    def load_example(self):
+        self._app.load_example()
 
     def request_save(self):
         self._app.choose_file(save=True)
@@ -152,13 +132,11 @@ class _Form:
 
 
 class IRFEstimatorApp(ImApp):
-    def __init__(self, model=None, dataset_provider=None, dataset_sink=None):
+    def __init__(self, model=None, dataset_sink=None):
         self.model = model or IRFViewModel()
-        self.dataset_provider = dataset_provider or open_datasets
         self.dataset_sink = dataset_sink
-        self.datasets = []
-        self.dataset_index = 0
-        self.show_datasets = False
+        #: The workspace dataset the decay came from: the estimated IRF registers as its child.
+        self.source_uid = ""
         self.dialog = None
         self.file_window = None
         self.file_action = ""
@@ -173,7 +151,11 @@ class IRFEstimatorApp(ImApp):
         self.labels = LabelColumn()  # one caption column for the parameter fields
         self.form_model = _Form(self)
         self.form = FormState(on_used=self._used)
-        self.form.custom["datasets"] = self.draw_datasets
+        self.form.custom["input"] = self.draw_input
+        from chisurf.plugins.curve_input import CurveInput
+
+        #: The Input section: the decay of the workspace the IRF is estimated from.
+        self.input = CurveInput("irf_estimator", self, name="decay", title="", height=72.0)
         self.form.custom["status"] = self.draw_status
         self.help_window = EmTkHelpWindow(
             title="Blind IRF estimation — help",
@@ -214,59 +196,65 @@ class IRFEstimatorApp(ImApp):
         return result
 
     def _used(self, name):
-        # Loading counts when a decay has loaded (load_file, load_selected_dataset), not when
-        # the dialog opens: a cancelled dialog has not done the step.
-        if name != "request_load":
+        # Loading counts when a decay has loaded (receive_decay), not when a row is clicked.
+        if name != "workspace_input_rows":
             self.tour.notify_used(TOUR_KEYS.get(name, name))
 
-    def choose_file(self, save=False):
-        title = "Save IRF" if save else "Load Decay File"
+    def choose_file(self, save=True):
+        """Ask where the estimated IRF is saved (the decay itself comes from the workspace)."""
+        title = "Save IRF"
         self.dialog = FileDialog(
-            title,
-            mode="save" if save else "open",
-            filename="estimated_irf.dat" if save else "",
-            filters=DATA_FILTERS,
+            title, mode="save", filename="estimated_irf.dat", filters=DATA_FILTERS
         )
         self.file_window = DialogWindow(title, size=(760, 540))
-        self.file_action = "save" if save else "load"
+        self.file_action = "save"
 
     def file_chosen(self, path):
-        if self.file_action == "save":
-            self.guard(lambda: self.model.save(path))
-        else:
-            self.load_file(path)
+        self.guard(lambda: self.model.save(path))
 
-    def load_file(self, path):
-        if self.guard(lambda: self.model.load_file(path) or True):
-            self.show_datasets = False
+    def load_decay(self, address):
+        """Load the decay at *address*: a curve of the session (``@<uid>``) or a VV/VH file."""
+        from chisurf.plugins.curve_input import curve_of
+
+        m = self.model
+        dataset = curve_of(address)
+
+        def load():
+            if dataset is not None:
+                m.load_dataset(dataset)
+                values = m.decay_data_original
+                m.manual_background = float(np.median(values[int(0.9 * len(values)) :]))
+            else:
+                m.load_file(str(address))
+            return True
+
+        if self.guard(load):
             self.tour.notify_used("Load Decay")
-        else:
-            self.model.source_text = f"Error: {self.error}"
+            return True
+        m.source_text = f"Error: {self.error}"
+        return False
 
-    def refresh_datasets(self):
-        self.datasets = list(self.dataset_provider())
-        self.dataset_index = min(self.dataset_index, max(0, len(self.datasets) - 1))
-        self.show_datasets = True
-        self.error = (
-            "" if self.datasets else "No datasets are open in ChiSurf; load a decay file instead."
+    def load_example(self):
+        """The demo decay enters the workspace, is handed over like the user's data, and estimated."""
+        from chisurf.plugins.curve_input import example_into_workspace
+
+        from ..demo import BIN_NS, make_demo, synthetic_decay
+
+        make_demo()
+        decay = synthetic_decay()
+        example_into_workspace(
+            [(np.arange(len(decay)) * BIN_NS, decay, "irf_demo_vvvh")],
+            receive_decay,
+            self,
+            key="decay",
+            kind="decay",
+            experiment="TCSPC",
         )
-
-    def load_selected_dataset(self):
-        if not self.datasets:
-            self.error = "No dataset selected."
-            return
-        if self.guard(lambda: self.model.load_dataset(self.datasets[self.dataset_index]) or True):
-            self.show_datasets = False
-            self.tour.notify_used("Load Decay")
+        if self.model.decay_data_original is not None:
+            self.guard(self.model.estimate)
 
     def transfer(self):
         self.guard(lambda: self.model.transfer(self.dataset_sink))
-
-    def files_dropped(self, paths):
-        if paths and self.future is None:
-            self.load_file(str(paths[0]))
-            return True
-        return False
 
     def start_estimate(self, quick=False):
         """Start the estimate on the worker; full RL iterations, or 50 for an auto-update."""
@@ -338,21 +326,11 @@ class IRFEstimatorApp(ImApp):
             if name in self.form.rects:
                 self.item_rects[key] = self.form.rects[name]
 
-    def draw_datasets(self, section, model, state, width):
-        if not self.show_datasets or not self.datasets:
-            return
-        names = [
-            getattr(ds, "name", None) or f"Dataset {i + 1}" for i, ds in enumerate(self.datasets)
-        ]
-        im.set_next_item_width(max(80.0, width - 160.0))
-        _, self.dataset_index = im.combo("Dataset##irf_dataset", self.dataset_index, names)
-        im.set_item_tooltip(str(section.get("description")))
-        state.rects["dataset"] = im.get_item_rect()
-        im.same_line()
-        if im.button(tr("Load selected") + "##irf_dataset_load"):
-            self.load_selected_dataset()
-        im.set_item_tooltip(tr("Use the chosen curve's time axis and counts for the estimate."))
-        state.rects["dataset_load"] = im.get_item_rect()
+    def draw_input(self, section, model, state, width):
+        """The Input section: the workspace's decays; a pick loads one (:func:`receive_decay`)."""
+        im.begin_disabled(self.future is not None)
+        self.input.draw(state.rects)
+        im.end_disabled()
 
     def draw_status(self, section, model, state, width):
         im.separator()
@@ -443,3 +421,19 @@ class IRFEstimatorApp(ImApp):
 
 def make_app():
     return IRFEstimatorApp()
+
+
+def receive_decay(app: IRFEstimatorApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``decay``): the decay to estimate the IRF from.
+
+    ``decay`` is the address of a workspace curve (``@<uid>`` for one read into the session) or a
+    VV/VH file; ``datasets`` names the workspace dataset, so the estimated IRF is its child.
+    """
+    address = payload.get("decay")
+    if isinstance(address, (list, tuple)):
+        address = address[0] if address else ""
+    if not address:
+        return
+    uids = [str(u) for u in payload.get("datasets") or [] if str(u)]
+    if app.load_decay(str(address)):
+        app.source_uid = uids[0] if uids else ""

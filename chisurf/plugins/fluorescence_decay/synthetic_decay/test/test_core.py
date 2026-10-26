@@ -300,6 +300,5 @@ def test_view_model_load_spectrum(tmp_path):
 
     for f in (inter, twocol):
         vm = SyntheticDecayViewModel()
-        vm.choose_file = lambda mode, title, filename, filters, _f=f: str(_f)  # the host's dialog
-        vm.load_spectrum()
+        vm.load_spectrum(str(f))  # the API reads a path; the GUI takes a workspace curve
         assert vm.spectrum_rows == expected

@@ -2,6 +2,10 @@
 
 import pytest
 
+from test.gui.curve_workspace import (
+    workspace_restored,  # noqa: F401  (autouse: curves leave with their test)
+)
+
 
 @pytest.fixture(autouse=True)
 def hermetic_user_state(tmp_path_factory, monkeypatch):

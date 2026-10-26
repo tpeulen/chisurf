@@ -29,6 +29,40 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "irf",
+      "summary": "An instrument response to convolve the ideal decay with.",
+      "receive": "chisurf.plugins.fluorescence_decay.synthetic_decay.gui.app:receive_irf",
+      "required": [
+        "irf"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "decay"
+        ],
+        "many": false,
+        "key": "irf"
+      }
+    },
+    {
+      "name": "spectrum",
+      "summary": "A lifetime spectrum: a curve with lifetimes (ns) on x and amplitudes on y.",
+      "receive": "chisurf.plugins.fluorescence_decay.synthetic_decay.gui.app:receive_spectrum",
+      "required": [
+        "spectrum"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "histogram",
+          "decay",
+          "trace"
+        ],
+        "many": false,
+        "key": "spectrum"
+      }
+    }
+  ],
   "entrypoints": {
     "cli": "synth-decay=chisurf.plugins.fluorescence_decay.synthetic_decay.cli.main:cli",
     "services": "chisurf.plugins.fluorescence_decay.synthetic_decay.backend.services:register_services",

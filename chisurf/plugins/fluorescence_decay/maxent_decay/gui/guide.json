@@ -9,17 +9,21 @@
     {
       "title": "Start with a decay whose answer you know",
       "text": "<b>Load example</b> loads a seeded bi-exponential decay (1.0 and 4.5 ns, 60:40) and reconstructs its lifetime distribution: two peaks at known places, so you can see what the method makes of them before you give it your own decay.",
-      "target": {"name": "load_example"},
-      "await": {"hint": "Press <b>🧪 Load example</b>."}
+      "target": {
+        "name": "load_example"
+      },
+      "await": {
+        "hint": "Press <b>🧪 Load example</b>."
+      }
     },
     {
       "title": "Give it a decay and an IRF",
-      "text": "MEM fits in convolved space like any other TCSPC analysis, so it needs the instrument response as well as the decay.<br/><br/><b>Refresh</b> picks up the decay from the current fit; <b>IRF</b> selects the response. An instrument response measured on a different day or at a different count rate no longer matches the data, and the mismatch will appear in the recovered distribution as structure.",
+      "text": "MEM fits in convolved space like any other TCSPC analysis, so it needs the instrument response as well as the decay.<br/><br/>Pick both in the <b>Input</b> section: the curve named IRF (or prompt) is the response, else the second one picked. <b>Refresh</b> lists the live fits instead (then <b>Fit</b> takes data, range and IRF from one). An instrument response measured on a different day or at a different count rate no longer matches the data, and the mismatch will appear in the recovered distribution as structure.",
       "target": {
-        "name": "maxentBtnRefresh"
+        "name": "workspace_input_rows"
       },
       "await": {
-        "hint": "Press Refresh to list the fits and datasets of this session (then choose one with Fit, or load a decay file and an IRF file)."
+        "hint": "Pick a decay (and its IRF) in the Input section and press Use selected."
       }
     },
     {

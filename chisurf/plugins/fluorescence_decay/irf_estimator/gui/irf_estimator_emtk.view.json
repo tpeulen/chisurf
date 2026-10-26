@@ -1,5 +1,5 @@
 {
-  "_comment": "Blind IRF estimation, drawn by emtk.view_form over the app's form adapter (gui/app.py _Form: the IRFViewModel's fields, the app's actions). The Qt tool's toolbar (Load Decay, Load from Dataset, Save IRF, Transfer to ChiSurf, data label, Guide, ?), its parameter group, the Estimate button and its status bar, in that order. The custom sections datasets and status are drawn by callbacks registered in app.py (FormState.custom); the plot and the results are their own dock windows.",
+  "_comment": "Blind IRF estimation, drawn by emtk.view_form over the app's form adapter (gui/app.py _Form: the IRFViewModel's fields, the app's actions). The Qt tool's toolbar (Save IRF, Transfer to ChiSurf, data label, Guide, ?), its parameter group, the Estimate button and its status bar, in that order. The custom sections input (the workspace Input section) and status are drawn by callbacks registered in app.py (FormState.custom); the plot and the results are their own dock windows.",
   "window": {
     "width": 1100,
     "height": 720
@@ -7,27 +7,17 @@
   "sections": [
     {
       "type": "panel",
-      "description": "Load a decay, save or transfer the estimated IRF, and open the help or the guided tour.",
+      "description": "Pick the decay from the workspace, save or transfer the estimated IRF, and open the help or the guided tour.",
       "sections": [
         {
           "type": "button_row",
-          "description": "File actions of the IRF estimator.",
+          "description": "Save or transfer the estimated IRF, or load the example.",
           "buttons": [
             {
               "action": "load_example",
               "label": "Load example",
               "icon": "🧪",
               "description": "Load a seeded VV/VH decay whose IRF is known (centre 0.4 ns, FWHM 0.18 ns) and estimate it, so the estimate can be checked against the truth."
-            },
-            {
-              "action": "request_load",
-              "label": "📂  Load Decay",
-              "description": "Load a measured decay from a VV/VH file (.dat): the VV channel is used, the time per channel comes from the file."
-            },
-            {
-              "action": "request_dataset",
-              "label": "📊  Load from Dataset",
-              "description": "Choose a decay curve already open in ChiSurf; grouped datasets list each channel."
             },
             {
               "action": "request_save",
@@ -66,8 +56,8 @@
         },
         {
           "type": "custom",
-          "key": "datasets",
-          "description": "The decay curves open in ChiSurf, shown after Load from Dataset."
+          "key": "input",
+          "description": "The decay to estimate the IRF from, picked from the Datasets workspace (files dropped on the ChiSurf window are listed there)."
         }
       ]
     },
@@ -171,7 +161,7 @@
               "attr": "first_channel",
               "label": "First channel",
               "kind": "int",
-          "style": "spin",
+              "style": "spin",
               "minimum": 0,
               "maximum": 100000,
               "step": 1,
@@ -186,7 +176,7 @@
               "attr": "last_channel",
               "label": "Last channel",
               "kind": "int",
-          "style": "spin",
+              "style": "spin",
               "minimum": 0,
               "maximum": 100000,
               "step": 1,

@@ -70,9 +70,14 @@ noise pattern, and it usually takes only a handful of seeds to find out.
 
 ## The IRF
 
-The file must hold **one** column of counts (text or `.npy`). A two-column
-time/count file is not rejected but flattened into a single vector, which
-silently corrupts the IRF — strip the time column first.
+Pick it in the **IRF** input, which lists the decays of the Datasets workspace (drop a file on the
+ChiSurf window to add it). A curve read into ChiSurf is used as its counts alone. A file the
+workspace links to is read as it is, and must then hold **one** column of counts (text or `.npy`):
+a two-column time/count file is not rejected but flattened into a single vector, which silently
+corrupts the IRF — strip the time column first. **Clear IRF** goes back to the ideal decay.
+
+A lifetime spectrum for the table comes from the **Lifetime spectrum** input: a curve with
+lifetimes (ns) on x and amplitudes on y.
 
 Without one, the generated decay starts instantaneously — a mathematical
 convenience no instrument produces. With one, the rise is smeared by the

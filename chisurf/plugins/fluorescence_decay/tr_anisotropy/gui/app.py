@@ -1,4 +1,9 @@
-"""Native six-step anisotropy workflow (emtk): forms from ``anisotropy_emtk.view.json``, the IRF plot, pure linked fits."""
+"""Native six-step anisotropy workflow (emtk): forms from ``anisotropy_emtk.view.json``, the IRF plot, pure linked fits.
+
+The polarized IRF and decay curves come from the Datasets workspace: the Input section of the data
+step (the manifest's ``accepts[].from_workspace``) hands them to :func:`receive_decays`; the path
+fields show what was picked. Nothing asks for an input file.
+"""
 
 from __future__ import annotations
 
@@ -77,6 +82,10 @@ class AnisotropyApp(ImApp):
         self.file_window = None
         self.file_action = ""
         self.last_dir = ""
+        from chisurf.plugins.curve_input import CurveInput
+
+        #: The Input section of the data step: the workspace's polarized IRFs and decays.
+        self.input = CurveInput("tr_anisotropy", self, name="decays", title="", height=92.0)
         self.help_window = EmTkHelpWindow(
             title="Time-resolved anisotropy: Help", resource=HERE / "help.md", owner=self
         )
@@ -136,22 +145,24 @@ class AnisotropyApp(ImApp):
         self.step_index = max(0, min(int(index), len(self.steps) - 1))
 
     def choose(self, action):
-        """Open the in-app file dialog for *action* (a path attribute, or one of the spectra / export actions)."""
+        """Open the in-app file dialog for the spectra or the corrected IRFs (the decays come from
+        the workspace)."""
         self.file_action = action
         saving = action in ("save_spectra", "export_irfs")
         title = {
             "save_spectra": "Save spectra",
             "load_spectra": "Load spectra",
             "export_irfs": "Export corrected IRFs",
-        }.get(action, "Select polarized decay")
+        }[action]
         filename = {"save_spectra": "anisotropy.spk.json", "export_irfs": "corrected_irfs.dat"}.get(
             action, ""
         )
         filters = (
             "Spectra (*.spk.json *.json);;All files (*)"
             if "spectra" in action
-            else "TCSPC data (*.dat *.txt *.csv *.npy *.thd *.pqres);;All files (*)"
+            else "TCSPC data (*.dat *.txt *.csv);;All files (*)"
         )
+        # not-input: a saved spectrum is this tool's own component list; the rest are outputs
         self.dialog = FileDialog(
             title,
             mode="save" if saving else "open",
@@ -160,28 +171,6 @@ class AnisotropyApp(ImApp):
             directory=self.last_dir or None,
         )
         self.file_window = DialogWindow(title, size=(760, 540))
-
-    def files_dropped(self, paths):
-        """Host drop: a ``.json`` loads the spectra, other files fill the next empty path (IRF VV, IRF VH, Data VV, Data VH)."""
-        paths = [str(p) for p in paths]
-        if not paths:
-            return False
-        for path in paths:
-            self.last_dir = str(Path(path).parent)
-            if path.lower().endswith(".json"):
-                self.model.error(self.model.load_spectra, path)
-                self.select_step(4)
-                continue
-            fields = STACKED_FIELDS if self.model.stacked_files else FILE_FIELDS
-            empty = [attr for attr, _ in fields if not getattr(self.model, attr)]
-            attr = empty[0] if empty else fields[0][0]
-            setattr(self.model, attr, path)
-            self.select_step(1)
-        if self.model.files_ready():
-            self.tour.notify_used("data_vv_path")
-        return True
-
-    on_files_dropped = files_dropped
 
     def _file_chosen(self, result):
         action = self.file_action
@@ -193,10 +182,6 @@ class AnisotropyApp(ImApp):
         elif action == "export_irfs":
             if self.model.error(self.model.export_irfs, result[0]) is not None:
                 self.model.status = f"Exported the corrected IRFs to {result[0]}."
-        else:
-            setattr(self.model, action, str(result[0]))
-            if self.model.files_ready():
-                self.tour.notify_used("data_vv_path")
 
     # -- navigation ---------------------------------------------------------------------------- #
     def navigation(self, box):
@@ -232,8 +217,18 @@ class AnisotropyApp(ImApp):
         draw_form(spec, model or self.model, self.forms[name])
 
     def load_example(self):
-        """Fill the four paths and the reader settings from the simulated example (known answer)."""
+        """Fill the four paths and the reader settings from the simulated example (known answer);
+        the four curves enter the workspace as rows, as a drop of them would."""
         self.model.error(self.model.load_example)
+        from chisurf.core.plugin.workspace_input import register_result
+
+        for attr, _label in FILE_FIELDS:
+            path = getattr(self.model, attr)
+            if path and Path(path).is_file():
+                try:
+                    register_result(path, kind="decay", name=Path(path).name)
+                except Exception:  # noqa: BLE001 - the example works without its rows
+                    pass
         self.tour.notify_used("load_example")
         if self.model.files_ready():
             self.tour.notify_used("data_vv_path")
@@ -248,6 +243,17 @@ class AnisotropyApp(ImApp):
             160.0,
             min(520.0, im.get_content_region_avail()[0] - label_w - browse_w - 80.0 - 3 * spacing),
         )
+        im.text_disabled(tr("Input"))
+        im.set_item_tooltip(
+            tr(
+                "Pick the polarized curves in the Datasets workspace: named IRF/prompt for the "
+                "response and VH/perp for the perpendicular channel, else in the order IRF VV, "
+                "IRF VH, data VV, data VH. Drop files on the ChiSurf window to add them."
+            )
+        )
+        rects = {}
+        self.input.draw(rects, on_used=self.tour.notify_used)
+        self.item_rects.update(rects)
         if im.button(f"{action_caption('example')}###load_example"):
             self.load_example()
         im.set_item_tooltip(
@@ -263,21 +269,12 @@ class AnisotropyApp(ImApp):
         for attr, label in fields:
             im.text(label)
             im.same_line(label_w)
-            im.set_next_item_width(field_w)
-            changed, value = im.input_text(f"##{attr}", getattr(m, attr), elide_start=True)
-            im.set_item_tooltip(
-                f"Path to the {label} curve: type or paste it, press Enter, or use Browse."
+            im.set_next_item_width(field_w + browse_w + spacing)
+            im.input_text(
+                f"##{attr}", getattr(m, attr), flags=im.InputTextFlags.READ_ONLY, elide_start=True
             )
+            im.set_item_tooltip(f"The {label} curve, picked in the Input section above.")
             self.item_rects[attr] = im.get_item_rect()
-            if changed:
-                setattr(m, attr, value)
-                if m.files_ready():
-                    self.tour.notify_used("data_vv_path")
-            im.same_line()
-            if action_button(
-                "browse", tooltip=f"Choose the {label} file from disk.", id=f"browse_{attr}"
-            ):
-                self.choose(attr)
             im.same_line()
             ok = bool(getattr(m, attr)) and Path(getattr(m, attr)).is_file()
             im.text("found" if ok else "missing")
@@ -287,7 +284,7 @@ class AnisotropyApp(ImApp):
         im.text_wrapped(
             "All required files are ready: continue to Normalize IRF."
             if m.files_ready()
-            else "Select each required file before loading the data. Dropping files on the window fills the next empty path."
+            else "Pick each required curve in the Input section before loading the data."
         )
 
     def normalization_step(self):
@@ -492,6 +489,73 @@ class AnisotropyApp(ImApp):
             self.file_window.end()
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
+
+
+def _role(name: str) -> tuple[str, str]:
+    """``(irf|data, vv|vh)`` a curve's name says, ``("", "")`` parts it does not say."""
+    low = name.lower()
+    kind = "irf" if any(w in low for w in ("irf", "prompt", "instrument")) else ""
+    if not kind and any(w in low for w in ("data", "decay", "sample")):
+        kind = "data"
+    channel = "vh" if any(w in low for w in ("vh", "perp", "⊥")) else ""
+    if not channel and any(w in low for w in ("vv", "par", "∥")):
+        channel = "vv"
+    return kind, channel
+
+
+def receive_decays(app: AnisotropyApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``decays``): the polarized IRF and decay curves.
+
+    A curve's name places it (IRF/prompt -> the response, VH/perp -> the perpendicular channel);
+    the rest fill the empty roles in the order IRF VV, IRF VH, data VV, data VH (IRF, data for
+    stacked VV/VH files). A curve read into the session is written as two columns (time, counts)
+    for the reader, which then reads its first column as time.
+    """
+    import tempfile
+
+    from chisurf.plugins.curve_input import curve_file, curve_of
+
+    m = app.model
+    addresses = payload.get("decays") or []
+    addresses = [addresses] if isinstance(addresses, str) else [str(a) for a in addresses if str(a)]
+    if not addresses:
+        return
+    fields = [attr for attr, _ in (STACKED_FIELDS if m.stacked_files else FILE_FIELDS)]
+    folder = Path(tempfile.gettempdir()) / "chisurf-tr-anisotropy-input"
+    chosen: dict[str, str] = {}
+    unplaced = []
+    wrote = False
+    for address in addresses:
+        dataset = curve_of(address)
+        name = str(getattr(dataset, "name", "") or Path(address).name)
+        try:
+            path = curve_file(address, folder)
+        except Exception as exc:  # noqa: BLE001 - said in the status line
+            m.status = f"Error: {exc}"
+            return
+        wrote = wrote or Path(path).parent == folder
+        kind, channel = _role(name)
+        attr = None
+        if kind:
+            wanted = f"{kind}_{channel or 'vv'}_path" if not m.stacked_files else f"{kind}_vv_path"
+            attr = wanted if wanted in fields and wanted not in chosen else None
+        if attr is None:
+            unplaced.append(path)
+        else:
+            chosen[attr] = path
+    for path in unplaced:
+        free = [f for f in fields if f not in chosen]
+        if not free:
+            break
+        chosen[free[0]] = path
+    for attr, path in chosen.items():
+        setattr(m, attr, path)
+    if wrote:
+        m.first_column_is_time = True  # the written curves are (time, counts)
+    app.last_dir = str(Path(next(iter(chosen.values()))).parent) if chosen else app.last_dir
+    app.select_step(1)
+    if m.files_ready():
+        app.tour.notify_used("data_vv_path")
 
 
 def make_app():

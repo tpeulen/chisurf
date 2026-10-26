@@ -1,4 +1,9 @@
-"""Native MEM lifetime/FRET analysis with actual solver, L-curve and sampling jobs."""
+"""Native MEM lifetime/FRET analysis with actual solver, L-curve and sampling jobs.
+
+The decay with its IRF, a prior and the donor-only spectrum come from the Datasets workspace: one
+Input section each (the manifest's ``accepts[].from_workspace``; :func:`receive_decays`,
+:func:`receive_prior`, :func:`receive_donor`). Nothing asks for an input file.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +17,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
-from emtk.i18n import tr
+from emtk.i18n import mark, tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -29,7 +34,7 @@ from chisurf.plugins.emtk_layout import (
 )
 
 from .controller import MEMJobs
-from .model import MEMForm, MEMModel, open_datasets, open_fits
+from .model import MEMForm, MEMModel, open_fits
 
 HERE = Path(__file__).parent
 #: Tour targets from the Qt era -> the button that answers them.
@@ -52,9 +57,16 @@ class MaxentApp(ImApp):
         self.columns = {n: LabelColumn() for n in panels}
         self.jobs = MEMJobs(self.model)
         self.fits = []
-        self.datasets = []
         self.fit_index = 0
-        self.dataset_index = 0
+        from chisurf.plugins.curve_input import CurveInput
+
+        #: The Input sections: the decay (and IRF), a prior, the donor-only spectrum.
+        self.inputs = {
+            name: CurveInput("maxent_decay", self, name=name, title="", height=height)
+            for name, height in (("decays", 92.0), ("prior", 56.0), ("donor", 56.0))
+        }
+        #: The workspace dataset of the decay: the reconstruction is computed from it.
+        self.source_uid = ""
         self.dialog = None
         self.file_window = None
         self.file_action = ""
@@ -108,28 +120,19 @@ class MaxentApp(ImApp):
             return None
 
     def refresh_sources(self):
+        """List the fits of this session (the data itself comes from the Input sections)."""
         self.fits = open_fits()
-        self.datasets = open_datasets()
         self.fit_index = min(self.fit_index, max(0, len(self.fits) - 1))
-        self.dataset_index = min(self.dataset_index, max(0, len(self.datasets) - 1))
 
     def choose(self, action):
+        """Ask for the folder a result or a sampling run is written to (outputs only)."""
         self.file_action = action
-        mode = "folder" if action in ("export", "sample") else "open"
         title = {
-            "decay": "Load measured decay",
-            "irf": "Load measured IRF",
-            "prior": "Load distribution prior",
-            "donor": "Load donor-only spectrum",
             "export": "Save MEM result folder",
             "sample": "Sample MEM distribution into folder",
         }[action]
-        self.dialog = FileDialog(
-            title,
-            mode=mode,
-            filters="Data (*.txt *.dat *.csv);;All files (*)",
-            directory=self.last_dir or None,
-        )
+        # not-input: the folder the MEM result or the sampling chains are written to
+        self.dialog = FileDialog(title, mode="folder", directory=self.last_dir or None)
         self.file_window = DialogWindow(title, size=(760, 540))
 
     def remember(self, name):
@@ -152,15 +155,9 @@ class MaxentApp(ImApp):
         m = self.model
         actions = {
             "refresh": self.refresh_sources,
-            "load_decay": lambda: self.choose("decay"),
-            "load_irf": lambda: self.choose("irf"),
             "clear_irf": m.clear_irf,
-            "load_prior": lambda: self.choose("prior"),
-            "load_donor": lambda: self.choose("donor"),
             "donor_fit": lambda: m.donor_from_fit(self.fits[self.fit_index]),
             "use_fit": lambda: m.load_fit(self.fits[self.fit_index]),
-            "use_decay": lambda: m.load_dataset(self.datasets[self.dataset_index]),
-            "use_irf": lambda: m.select_irf(self.datasets[self.dataset_index]),
             "run": lambda: self.jobs.start("run"),
             "lcurve": lambda: self.jobs.start("lcurve"),
             "sample": lambda: self.choose("sample"),
@@ -195,7 +192,7 @@ class MaxentApp(ImApp):
                 "lifetime distribution, so the peaks can be checked against the truth."
             ),
         ):
-            self.error(lambda: m.load_example())
+            self.error(self.load_example)
             self.tour.notify_used("load_example")
         self.item_rects["load_example"] = im.get_item_rect()
         self.buttons(
@@ -241,37 +238,13 @@ class MaxentApp(ImApp):
                     "label": "Refresh",
                     "key": "refresh",
                     "enabled": idle,
-                    "tip": "List the datasets and fits of this running ChiSurf session.",
-                },
-                {
-                    "label": "Load decay",
-                    "key": "load_decay",
-                    "enabled": idle,
-                    "tip": "Load a measured two-column time/counts decay from a file.",
-                },
-                {
-                    "label": "IRF file",
-                    "key": "load_irf",
-                    "enabled": idle,
-                    "tip": "Load a measured instrument response and resample it onto the decay time axis.",
+                    "tip": "List the fits of this running ChiSurf session (Live fit below).",
                 },
                 {
                     "label": "Clear IRF",
                     "key": "clear_irf",
                     "enabled": idle and m.irf is not None,
                     "tip": "Drop the measured IRF: use the response of the live fit, or an impulse.",
-                },
-                {
-                    "label": "Prior",
-                    "key": "load_prior",
-                    "enabled": idle,
-                    "tip": "Use a vector or axis/value prior for the current distribution grid.",
-                },
-                {
-                    "label": "Donor",
-                    "key": "load_donor",
-                    "enabled": idle and fret,
-                    "tip": "Load the amplitude/lifetime pairs of the donor-only decay (FRET mode).",
                 },
                 {
                     "label": "JSON",
@@ -283,56 +256,31 @@ class MaxentApp(ImApp):
                 {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
             ]
         )
-        if self.fits or self.datasets:
-            if self.fits:
-                _, self.fit_index = im.combo(
-                    "Live fit", self.fit_index, [getattr(f, "name", "Fit") for f in self.fits]
-                )
-                im.set_item_tooltip(
-                    tr(
-                        "Choose a fit for the observed data, the fit range and the instrument values."
-                    )
-                )
-                self.buttons(
-                    [
-                        {
-                            "label": "Fit",
-                            "key": "use_fit",
-                            "role": "default",
-                            "enabled": idle,
-                            "tip": "Take data, range, response and nuisance values from the selected live fit.",
-                        },
-                        {
-                            "label": "Donor from fit",
-                            "key": "donor_fit",
-                            "enabled": idle and fret,
-                            "tip": "Use the selected fit's lifetime components as the donor-only spectrum.",
-                        },
-                    ]
-                )
-            if self.datasets:
-                _, self.dataset_index = im.combo(
-                    "Dataset",
-                    self.dataset_index,
-                    [getattr(d, "name", "Dataset") for d in self.datasets],
-                )
-                im.set_item_tooltip(tr("Choose an existing measured curve."))
-                self.buttons(
-                    [
-                        {
-                            "label": "Use as decay",
-                            "key": "use_decay",
-                            "enabled": idle,
-                            "tip": "Use the selected dataset's counts and time axis as the decay.",
-                        },
-                        {
-                            "label": "Use as IRF",
-                            "key": "use_irf",
-                            "enabled": idle,
-                            "tip": "Resample the selected dataset to the decay grid as the response.",
-                        },
-                    ]
-                )
+        self.draw_inputs(idle, fret)
+        if self.fits:
+            _, self.fit_index = im.combo(
+                "Live fit", self.fit_index, [getattr(f, "name", "Fit") for f in self.fits]
+            )
+            im.set_item_tooltip(
+                tr("Choose a fit for the observed data, the fit range and the instrument values.")
+            )
+            self.buttons(
+                [
+                    {
+                        "label": "Fit",
+                        "key": "use_fit",
+                        "role": "default",
+                        "enabled": idle,
+                        "tip": "Take data, range, response and nuisance values from the selected live fit.",
+                    },
+                    {
+                        "label": "Donor from fit",
+                        "key": "donor_fit",
+                        "enabled": idle and fret,
+                        "tip": "Use the selected fit's lifetime components as the donor-only spectrum.",
+                    },
+                ]
+            )
         im.separator()
         im.text_wrapped(m.source)
         im.text_wrapped("IRF: " + m.irf_source)
@@ -346,7 +294,7 @@ class MaxentApp(ImApp):
             im.text_wrapped(
                 f"Donor spectrum: {len(m.donor) // 2} components"
                 if m.donor is not None
-                else "Donor spectrum: required in FRET mode (Donor)."
+                else "Donor spectrum: required in FRET mode (Donor-only spectrum input, or Donor from fit)."
             )
         im.text_wrapped(m.status)
         if self.jobs.progress[1]:
@@ -496,25 +444,63 @@ class MaxentApp(ImApp):
                         )
             implot.end_plot()
 
-    def files_dropped(self, paths):
-        """Host drop: the first file is the decay, the second the IRF, a ``.json`` loads preferences."""
-        paths = [str(p) for p in paths]
-        if not paths:
-            return False
-        slots = iter(("decay", "irf"))
-        for path in paths:
-            if path.lower().endswith(".json"):
-                self.error(
-                    lambda p=path: self.model.restore_preferences(json.loads(Path(p).read_text()))
-                )
+    def draw_inputs(self, idle, fret):
+        """The Input sections: the decay and its IRF, a prior, and (FRET) the donor-only spectrum."""
+        captions = {
+            "decays": (
+                mark("Decay and IRF"),
+                mark(
+                    "The measured decay, and its IRF: the curve named IRF (or prompt), else the "
+                    "second one picked."
+                ),
+            ),
+            "prior": (
+                mark("Prior"),
+                mark(
+                    "A prior distribution for the current grid: lifetime (or distance) on x, "
+                    "prior mass on y."
+                ),
+            ),
+            "donor": (
+                mark("Donor-only spectrum"),
+                mark(
+                    "FRET mode: a curve with lifetimes (ns) on x and amplitudes on y; or use "
+                    "Donor from fit."
+                ),
+            ),
+        }
+        for name, section in self.inputs.items():
+            if name == "donor" and not fret:
                 continue
-            slot = next(slots, None)
-            if slot is None:
-                break
-            self.error(lambda p=path, irf=slot == "irf": self.model.load_file(p, irf=irf))
-        return True
+            caption, tip = captions[name]
+            im.text_disabled(tr(caption))
+            im.set_item_tooltip(tr(tip))
+            im.begin_disabled(not idle)
+            rects = {}
+            section.draw(rects, on_used=self.tour.notify_used)
+            im.end_disabled()
+            for key, rect in rects.items():
+                self.item_rects[key if name == "decays" else f"{name}.{key}"] = rect
 
-    on_files_dropped = files_dropped
+    def load_example(self):
+        """The demo decay enters the workspace, is handed over like the user's data, and solved."""
+        from chisurf.plugins.curve_input import example_into_workspace
+
+        from ..demo import make_demo, synthetic_decay
+
+        make_demo()
+        t, counts = synthetic_decay()
+        example_into_workspace(
+            [(t, counts, "maxent_demo")],
+            receive_decays,
+            self,
+            key="decays",
+            kind="decay",
+            many=True,
+            experiment="TCSPC",
+        )
+        if self.model.decay is not None:
+            self.model.run()
 
     def restore_settings(self, settings):
         self.model.restore_preferences(settings)
@@ -569,13 +555,7 @@ class MaxentApp(ImApp):
                     if action in ("export", "sample")
                     else str(Path(result[0]).parent)
                 )
-                if action in ("decay", "irf"):
-                    self.error(lambda: self.model.load_file(result[0], irf=action == "irf"))
-                elif action == "prior":
-                    self.error(lambda: self.model.load_prior(result[0]))
-                elif action == "donor":
-                    self.error(lambda: self.model.load_donor(result[0]))
-                elif action == "export":
+                if action == "export":
                     self.error(lambda: self.model.export_result(result[0]))
                 else:
                     self.error(lambda: self.jobs.start("sample", result[0]))
@@ -588,3 +568,92 @@ class MaxentApp(ImApp):
 
 def make_app():
     return MaxentApp()
+
+
+def _curves(addresses):
+    """``(name, x, y)`` of the workspace curves (or two-column files) at *addresses*."""
+    from chisurf.plugins.curve_input import curve_of
+
+    out = []
+    for address in addresses:
+        dataset = curve_of(address)
+        if dataset is not None:
+            out.append(
+                (
+                    str(getattr(dataset, "name", "") or address),
+                    np.asarray(dataset.x, float),
+                    np.asarray(dataset.y, float),
+                )
+            )
+            continue
+        try:
+            values = np.loadtxt(address, ndmin=2)
+        except ValueError:
+            values = np.loadtxt(address, ndmin=2, delimiter=",")
+        if values.shape[1] < 2:
+            raise ValueError(f"{Path(address).name}: two columns (x, y) expected")
+        out.append((Path(address).name, values[:, 0], values[:, 1]))
+    return out
+
+
+def _addresses(value):
+    if isinstance(value, (list, tuple)):
+        return [str(v) for v in value if str(v)]
+    return [str(value)] if value else []
+
+
+def receive_decays(app: MaxentApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``decays``): the decay and its IRF.
+
+    A picked curve named *IRF* (or *prompt*) is the instrument response, else the second one; the
+    first other curve is the decay. A pick of only an IRF keeps the decay.
+    """
+    from types import SimpleNamespace
+
+    curves = app.error(lambda: _curves(_addresses(payload.get("decays"))))
+    uids = [str(u) for u in payload.get("datasets") or [] if str(u)]
+    if not curves:
+        return
+    named_irf = [c for c in curves if any(w in c[0].lower() for w in ("irf", "prompt"))]
+    others = [c for c in curves if c not in named_irf]
+    irf = named_irf[0] if named_irf else (others[1] if len(others) > 1 else None)
+    decay = others[0] if others else None
+    m = app.model
+
+    def load():
+        if decay is not None:
+            m.set_data(decay[1], decay[2], decay[0])
+            app.source_uid = uids[curves.index(decay)] if curves.index(decay) < len(uids) else ""
+        if irf is not None:
+            m.select_irf(SimpleNamespace(x=irf[1], y=irf[2], name=irf[0]))
+
+    app.error(load)
+
+
+def receive_prior(app: MaxentApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``prior``): the prior distribution of the grid."""
+    curves = app.error(lambda: _curves(_addresses(payload.get("prior"))))
+    if curves:
+        name, x, y = curves[0]
+
+        def load():
+            if not np.isfinite(y).all() or not y.size:
+                raise ValueError("Prior must contain finite values.")
+            app.model.priors[app.model.settings.mode] = (x, y)
+
+        app.error(load)
+
+
+def receive_donor(app: MaxentApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``donor``): the donor-only lifetime spectrum, a
+    curve with lifetimes on x and amplitudes on y (interleaved as amplitude/lifetime pairs)."""
+    curves = app.error(lambda: _curves(_addresses(payload.get("donor"))))
+    if curves:
+        from chisurf.core.fluorescence.decay import validate_lifetime_spectrum
+
+        name, x, y = curves[0]
+
+        def load():
+            app.model.donor = validate_lifetime_spectrum(np.column_stack([y, x]).ravel())
+
+        app.error(load)

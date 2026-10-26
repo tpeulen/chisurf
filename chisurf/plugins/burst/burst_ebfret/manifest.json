@@ -21,6 +21,24 @@
   },
   "experimental": true,
   "experimental_message": "A plain port of the ebFRET GUI. The VBEM/empirical-Bayes loop is pure NumPy and slower than ebFRET's compiled forward-backward; runs on large datasets take minutes per state count.",
+  "accepts": [
+    {
+      "name": "traces",
+      "summary": "Donor-acceptor time series: an ebFRET session or SMD .mat, an SF-Tracer .tsv, an SMD .json/.json.gz, or a raw .dat series.",
+      "receive": "chisurf.plugins.burst.burst_ebfret.gui.app:receive_traces",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "trace",
+          "decay"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    }
+  ],
   "entrypoints": {
     "emtk": "chisurf.plugins.burst.burst_ebfret.gui.app:make_app",
     "cli": "ebfret=chisurf.plugins.burst.burst_ebfret.cli.main:cli",
