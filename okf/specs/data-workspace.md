@@ -41,7 +41,8 @@ shortest leading prefix that is an existing regular file. Conformance table:
 
 ## Data kinds
 
-A small central vocabulary, emitted as `kind` on every dataset DTO and row (beside `experiment`):
+A small central vocabulary (`chisurf/core/data_kinds.py`), emitted as `kind` on every dataset DTO and row
+(beside `experiment`); every registered experiment is mapped there (`Global` deliberately to no kind):
 
 | kind | what | today's source |
 | --- | --- | --- |
@@ -49,6 +50,7 @@ A small central vocabulary, emitted as `kind` on every dataset DTO and row (besi
 | `decay` | a fluorescence decay (TCSPC curve) | `DataCurve`, experiment TCSPC |
 | `correlation` | an FCS curve | `DataCurve`, experiment FCS |
 | `histogram` | PDA / PCH / burst histograms | `DataCurve`, those experiments |
+| `trace` | a signal over time (DEER dipolar evolution, stopped flow) | `DataCurve`, DEER / Stopped flow |
 | `bursts` | a burst run of a measurement container | `.pto` run (address) |
 | `structure` | a molecular structure | existing structure record |
 | `image` | an image / CLSM stack | new kind, address of the stack |

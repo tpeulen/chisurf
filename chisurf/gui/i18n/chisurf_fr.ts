@@ -71345,6 +71345,38 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
             <source>Written to {}</source>
             <translation type="unfinished"/>
         </message>
+        <message>
+            <source>All kinds</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Correlations</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Decays</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Histograms</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Narrow the datasets to one kind of data: photon streams, decays, correlations, histograms, traces, burst runs, structures or images. A group stays while one of its members is of that kind.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The file or container the data came from; hover a row for its full address.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The loaded datasets. Select one (ctrl or shift-click for several) to add a fit to each; drag one onto a fit window to fit that dataset instead; Delete removes it; right-click for Save, Load, Remove, Group, Ungroup and Refresh; a group unfolds with its triangle. A narrow panel drops Experiment, then Source; right-click the header to choose the columns.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What the data is: photons, a decay, a correlation, a histogram, a trace, bursts, a structure or an image.</source>
+            <translation type="unfinished"/>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

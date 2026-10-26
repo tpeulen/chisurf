@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from chisurf.core.data_kinds import kind_of
 from chisurf.server.services import (
     INVALID_INPUT,
     INVALID_STATE,
@@ -112,6 +113,9 @@ def _dataset_dto(
         if empty_group
         else str(getattr(getattr(dataset, "experiment", None), "name", "") or ""),
         "filename": str(getattr(dataset, "filename", "") or ""),
+        # What the dataset is (decay, correlation, photons, ...): the workspace filters by it and a
+        # plugin declares the kinds it takes (chisurf.core.data_kinds); "" when it has none.
+        "kind": "" if empty_group else str(kind_of(dataset) or ""),
     }
     if include_length:
         dto["length"] = (

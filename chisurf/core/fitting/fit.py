@@ -2337,6 +2337,17 @@ class FitGroup(Fit):
         self._selected_fit_index = 0
         self.grouped_fits: list[Fit] = list()
 
+        from chisurf.core.data_kinds import is_fittable, kind_of
+
+        for d in data:
+            # A photon stream, a burst run or an image is data a plugin analyses, not a curve a
+            # model is fitted to: refused here, the one place every fit path (UI, API, server) passes.
+            kind = kind_of(d)
+            if not is_fittable(kind):
+                raise ValueError(
+                    f"{getattr(d, 'name', 'this dataset')!s} is {kind} data; a fit takes curves "
+                    "(decays, correlations, histograms, traces) or structures"
+                )
         for d in data:
             if model_kw is None:
                 model_kw = dict()

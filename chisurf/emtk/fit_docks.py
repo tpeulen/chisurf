@@ -57,6 +57,23 @@ class _Rows(list):
     revision = 0
 
 
+def _kind_and_source(dto: dict) -> dict:
+    """The row fields of a dataset's kind and source: ``kind``, ``kind_label`` (icon and word), the
+    source's file name ``source`` and its full address ``source_address`` (the row's tooltip)."""
+    from chisurf.core.data_kinds import KINDS
+
+    kind = str(dto.get("kind") or "")
+    found = KINDS.get(kind)
+    address = str(dto.get("filename") or "")
+    name = address.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1] if address else ""
+    return {
+        "kind": kind,
+        "kind_label": f"{found.icon} {tr(found.label)}" if found else "",
+        "source": name,
+        "source_address": address,
+    }
+
+
 def _number(value: Any) -> float | None:
     try:
         number = float(value)
@@ -145,9 +162,51 @@ class DatasetsModel:
         self.selection: list = []
         self.datasets = _Rows()
         self.fits = _Rows()
+        #: The kind the table is narrowed to (``""``: every kind), from the filter above it.
+        self.kind_filter = ""
+        self._shown: tuple = ((), _Rows())
 
     def dataset_rows(self) -> list:
-        return self.datasets
+        """The rows of the kind filter: a group stays when it or one of its members is of the kind."""
+        kind = self.kind_filter
+        if not kind:
+            return self.datasets
+        key = (id(self.datasets), self.datasets.revision, len(self.datasets), kind)
+        if self._shown[0] == key:
+            return self._shown[1]
+        keep_groups = {
+            str(r.get("parent")) for r in self.datasets if r.get("parent") and r.get("kind") == kind
+        }
+        shown = _Rows(
+            r
+            for r in self.datasets
+            if r.get("kind") == kind
+            or str(r.get("uid")) in keep_groups
+            or (r.get("parent") and str(r.get("parent")) in keep_groups and r.get("kind") == kind)
+        )
+        shown.revision = hash(key)
+        self._shown = (key, shown)
+        return shown
+
+    def kind_options(self) -> list:
+        """The filter's choices: every kind, then the kinds the loaded datasets have (with their count)."""
+        from chisurf.core.data_kinds import KINDS
+
+        counts: dict[str, int] = {}
+        for r in self.datasets:
+            if not r.get("parent") and r.get("kind"):
+                counts[str(r["kind"])] = counts.get(str(r["kind"]), 0) + 1
+        options = [("", tr("All kinds"))]
+        for key, kind in KINDS.items():
+            if key in counts or key == self.kind_filter:
+                options.append((key, f"{kind.icon} {tr(kind.plural)} ({counts.get(key, 0)})"))
+        return options
+
+    def selected_kind_is_fittable(self) -> bool:
+        """Whether the selected dataset is a kind a fit takes (a photon stream is not)."""
+        from chisurf.core.data_kinds import is_fittable
+
+        return is_fittable(str(self.selected.get("kind") or "") or None)
 
     def fit_rows(self) -> list:
         return self.fits
@@ -180,7 +239,7 @@ class DatasetsModel:
         the experiment's list is filtered by the dataset; models the user disabled are left out.
         """
         experiment = self.selected_experiment()
-        if experiment is None:
+        if experiment is None or not self.selected_kind_is_fittable():
             return []
         dataset = self.selected_dataset()
         try:
@@ -207,7 +266,11 @@ class DatasetsModel:
 
     def enabled(self, name: str) -> bool:
         if name == "add_fit":
-            return bool(self.selected and self.model) and not self.docks.busy
+            return (
+                bool(self.selected and self.model)
+                and self.selected_kind_is_fittable()
+                and not self.docks.busy
+            )
         if name == "remove_selected":
             return bool(self.selected) and not self.docks.busy
         return True
@@ -275,8 +338,13 @@ class DatasetsModel:
         self.docks.refresh()
 
     def add_fit(self) -> None:
-        """Add a fit of the chosen model to each selected dataset (one fit per curve, as the Qt shell does)."""
-        rows = self.selected_rows()
+        """Add a fit of the chosen model to each selected dataset (one fit per curve, as the Qt shell does).
+
+        Datasets of a kind no fit takes (a photon stream, a burst run) are left out.
+        """
+        from chisurf.core.data_kinds import is_fittable
+
+        rows = [r for r in self.selected_rows() if is_fittable(str(r.get("kind") or "") or None)]
         if rows:
             self.docks.add_fit([int(r["index"]) for r in rows], self.model)
 
@@ -796,6 +864,7 @@ class DataDocks:
                         "uid": str(d.get("uid", "")),
                         "name": str(d.get("name", "")),
                         "experiment": str(d.get("experiment", "")),
+                        **_kind_and_source(d),
                     }
                     for i, d in enumerate(listed)
                 )
@@ -830,6 +899,7 @@ class DataDocks:
                                 "uid": muid,
                                 "name": str(member.get("name", "")),
                                 "experiment": str(member.get("experiment", "")),
+                                **_kind_and_source(member),
                                 "parent": row["uid"],
                                 "group": False,
                             }
