@@ -264,6 +264,13 @@ class TestWgslSource:
         # Read raw: its compute layout has no room for the render prelude's
         # uniform block at group 0.
         "hiz.wgsl": "raw",
+        # PRD-128: GPU cluster culling and its depth pyramid (compute), the
+        # temporal resolve and the quality-lighting post pass (full-screen,
+        # their own bind layouts) -- none takes the render prelude.
+        "gpu_cull.wgsl": "raw",
+        "hiz_pyramid.wgsl": "raw",
+        "temporal.wgsl": "raw",
+        "postlight.wgsl": "raw",
     }
 
     def test_every_shader_is_classified(self):
