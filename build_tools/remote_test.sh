@@ -30,6 +30,8 @@
 # alone; untracked files and uncommitted submodule edits are not included).
 # Without it, HEAD is tested.
 #
+# The command sees \$RUN, its run directory (for extra output, e.g. --out \$RUN/chunks).
+#
 # Environment: CHISURF_REMOTE_HOST (default: home).
 
 set -euo pipefail
@@ -160,6 +162,7 @@ CMD_EOF
         cat > \$RUN/run.sh <<EOF
 #!/bin/bash
 export PATH=\$HOME/.pixi/bin:/usr/local/bin:/usr/bin:/bin
+export RUN=\$RUN
 cd \$HOME/$DIR
 bash \$RUN/cmd.sh > \$RUN/log.txt 2>&1
 rc=\\\$?

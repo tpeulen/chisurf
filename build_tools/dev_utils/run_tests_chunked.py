@@ -174,7 +174,8 @@ def main(argv=None) -> int:
     parser.add_argument("pytest_args", nargs="*", help="extra pytest arguments (after --)")
     args = parser.parse_args(argv)
     out = args.out
-    out.mkdir(parents=True, exist_ok=True)
+    for directory in (out, out / "tmp", out / "junit"):
+        directory.mkdir(parents=True, exist_ok=True)
     summary_path = out / "summary.json"
     summary = json.loads(summary_path.read_text()) if args.resume and summary_path.is_file() else {}
     todo = args.only or chunks()
