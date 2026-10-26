@@ -26,6 +26,7 @@ from emtk.widgets.chat import (
     draw_chat_transcript,
 )
 
+from chisurf.core.settings import ai_settings
 from chisurf.plugins.core.code_editor.acp_client import AcpClient
 from chisurf.plugins.core.code_editor.agent_modes import (
     AgentMode,
@@ -40,15 +41,30 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-PROVIDERS = ["acp", "openai", "mistral", "openrouter", "local", "custom"]
-PROVIDER_LABELS = {
-    "acp": "ACP Agent (stdio)",
-    "openai": "OpenAI (ChatGPT)",
-    "mistral": "Mistral",
-    "openrouter": "OpenRouter",
-    "local": "Local (Ollama/LMStudio)",
-    "custom": "Custom",
-}
+#: Provider key -> label, read from the AI settings so the panel offers every provider the
+#: settings know (a provider added there appears here); the ACP agent leads, as the default.
+PROVIDER_LABELS = {key: label for label, (key, *_rest) in ai_settings.PROVIDERS.items()}
+PROVIDERS = ["acp"] + [key for key in PROVIDER_LABELS if key != "acp"]
+
+#: Tool-call states as the emtk chat widget reads them: ``running`` draws ``...``,
+#: ``success`` draws ``[ok]``, anything else ``[x]``. The runtime and ACP agents report
+#: their own words; :func:`_badge_status` maps them onto these three.
+_RUNNING_STATES = {"running", "pending", "in_progress", "started"}
+_SUCCESS_STATES = {"success", "complete", "completed", "ok", "done"}
+
+
+def _badge_status(status: str | None) -> str:
+    """Map a reported tool state onto the chat widget's ``running``/``success``/``error``."""
+    state = str(status or "running").lower()
+    if state in _RUNNING_STATES:
+        return "running"
+    return "success" if state in _SUCCESS_STATES else "error"
+
+
+def _as_text(value: Any) -> str:
+    """JSON for a tool badge, with non-ASCII characters kept (``ö``, ``Å``, not ``\\u00f6``)."""
+    return json.dumps(value, default=str, ensure_ascii=False)
+
 
 MODES = ["chat_only", "chisurf_tools", "full_control"]
 MODE_LABELS = {
@@ -155,7 +171,7 @@ class ChatModel:
 
         def confirm(tool: str, arguments: dict) -> bool:
             decision = self._handle_permission_request(
-                {"title": f"{tool}: {json.dumps(arguments, default=str)}"},
+                {"title": f"{tool}: {_as_text(arguments)}"},
                 [
                     {"optionId": "allow_once", "name": "Allow once"},
                     {"optionId": "deny_once", "name": "Deny"},
@@ -259,7 +275,7 @@ class ChatModel:
             return
         call_id = data.get("toolCallId") or data.get("id") or "tool"
         name = data.get("title") or data.get("name") or "tool"
-        status = data.get("status", "running")
+        status = _badge_status(data.get("status"))
         output = str(data.get("output", ""))
         args = data.get("arguments") or data.get("rawInput")
         self.event_queue.put(
@@ -277,12 +293,30 @@ class ChatModel:
         cancelled = self._ignore_response or stop_reason in ("cancelled", "canceled")
         self.is_generating = False
         self._ignore_response = False
-        self.history.finish_generation(
+        self._finish_open_messages(
             "cancelled" if cancelled else "error" if stop_reason == "error" else "complete"
         )
         last = self.history.messages[-1] if self.history.messages else None
         if not cancelled and last is not None and last.role == "assistant":
             self.apply_file_writes(last.content)
+
+    def _finish_open_messages(self, status: str) -> None:
+        """End every assistant message still streaming, not only the last one.
+
+        A turn's tool calls attach to their own streaming message; the answer, a skill notice
+        or the run summary then follow it, so the last message is often not the one that is
+        still open, and ``ChatHistory.finish_generation`` alone left "Thinking..." under the
+        tool calls after the turn had ended.
+        """
+        for message in self.history.messages:
+            if message.role == "assistant" and message.status == "streaming":
+                message.status = status
+        if status != "complete":
+            # A cancelled or failed turn never reports its running tools as finished.
+            for message in self.history.messages:
+                for call in message.tool_calls:
+                    if call.get("status") == "running":
+                        call["status"] = "error"
 
     def apply_file_writes(self, response: str) -> list[tuple[str, str]]:
         """Write the files *response* asks for into the editor, then check them off the UI thread.
@@ -545,7 +579,7 @@ class ChatModel:
                 "running"
                 if event == "tool.started"
                 else (
-                    "complete" if event == "tool.completed" and payload.get("ok", True) else "error"
+                    "success" if event == "tool.completed" and payload.get("ok", True) else "error"
                 )
             )
             self.event_queue.put(
@@ -557,7 +591,7 @@ class ChatModel:
                     # The numbers a user watches for (3 dataset(s), chi2r ...), else the raw result.
                     output=tool_highlight(payload)
                     or (str(payload.get("error")) if payload.get("error") else "")
-                    or json.dumps(payload.get("result", ""), default=str),
+                    or _as_text(payload.get("result", "")),
                 )
             )
         elif event == "agent.failed":
@@ -574,6 +608,13 @@ class ChatModel:
         elif event == "agent.completed":
             stop_reason = payload.get("stop_reason", "answer")
             tools = payload.get("tools", [])
+            if stop_reason == "needs_input":
+                # The run waits for the user: its questions are the assistant's turn, and the
+                # next message the user sends answers them in the same session.
+                questions = str(payload.get("text") or "").strip()
+                if questions:
+                    self.event_queue.put(lambda: self.history.add_message("assistant", questions))
+                return
             lines = [] if stop_reason == "answer" else [f"⏹ Stopped: {stop_reason}"]
             if tools:
                 lines.append(
@@ -620,7 +661,7 @@ class ChatModel:
         # Do not allow a second turn to reset the cancelled session while its
         # first network request or tool is still returning.
         self.is_generating = bool(active_worker or active_acp)
-        self.history.finish_generation("cancelled")
+        self._finish_open_messages("cancelled")
 
     def close(self) -> None:
         if self._closed:
