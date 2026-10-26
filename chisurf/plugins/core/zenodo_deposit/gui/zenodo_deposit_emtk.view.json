@@ -774,7 +774,7 @@
                                         {
                                             "action": "make_projects_self_contained",
                                             "label": "Make projects self-contained",
-                                            "role": "primary",
+                                            "role": "success",
                                             "description": "Store every data file the record's ChiSurf projects link inside the projects (each checked by its checksum; missing files must be located first), then rescan the folder. The projects grow by the size of their data; review the changed items again."
                                         },
                                         {
