@@ -14,7 +14,8 @@ Usage::
     python -m build_tools.dev_utils.run_tests_chunked [--resume] [--only test/fio ...]
         [--jobs N] [--retry-serial] [--out DIR] [-- extra pytest args]
 
-``--jobs N`` runs N chunks at once (each its own pytest process with its own temporary
+``--jobs N`` runs N chunks at once (tests marked ``timing`` -- wall-clock assertions -- are left
+out of the chunks and run together in one serial pytest after them) (each its own pytest process with its own temporary
 directory) -- for a machine with cores to spare, such as the remote test box; on a laptop
 keep the default 1. A chunk that fails beside others may have collided with them (a port,
 a shared file), so ``--retry-serial`` runs the failing chunks again one at a time after the
@@ -65,6 +66,11 @@ ENV = {
     "CHISURF_TEST_MAX_SWAP_GROWTH_MB": "1500",
     "CHISURF_TEST_MIN_DISK_MB": "6000",
 }
+#: The chunk that runs every ``@pytest.mark.timing`` test (wall-clock assertions) in one serial
+#: pytest after the parallel pass: beside eleven other chunks a 30 fps budget measures the
+#: load, not the code (both timing failures of the first parallel gate passed alone).
+TIMING = "timing (serial)"
+
 #: Memory the machine must have available before a chunk starts.
 START_FREE_MB = 3000
 
@@ -182,17 +188,26 @@ def main(argv=None) -> int:
     env = {**os.environ, **ENV}
     awake = _hold_awake()
 
+    # In parallel mode the timing tests leave the chunks and run together, alone, at the end.
+    split_timing = args.jobs > 1
+
     def start(chunk: str) -> tuple:
         _wait_for_memory()
-        stem = re.sub(r"[\[\]]", "_", chunk).replace("/", "__").replace("*", "loose")
+        stem = re.sub(r"[\[\]() ]", "_", chunk).replace("/", "__").replace("*", "loose")
         log = out / f"{stem}.log"
         fh = open(log, "w")
         print(f"{chunk} ...", flush=True)
+        if chunk == TIMING:
+            markers = f"timing and ({MARKERS})"
+            targets = [t for c in todo for t in _targets(c)]
+        else:
+            markers = f"({MARKERS}) and not timing" if split_timing else MARKERS
+            targets = _targets(chunk)
         proc = subprocess.Popen(
-            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-m", MARKERS,
+            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-m", markers,
              "--timeout=120", "-rfE", f"--basetemp={out / 'tmp' / stem}",
              f"--junitxml={out / 'junit' / (stem + '.xml')}",
-             *_targets(chunk), *args.pytest_args],
+             *targets, *args.pytest_args],
             cwd=ROOT, env=env, stdout=fh, stderr=subprocess.STDOUT,
         )
         return chunk, proc, fh, log, time.monotonic(), time.time()
@@ -227,6 +242,9 @@ def main(argv=None) -> int:
 
     run([c for c in todo if not (args.resume and c in summary and summary[c]["exit"] in (0, 1, 5))],
         args.jobs)
+    if split_timing:
+        run([TIMING], 1)
+        todo = [*todo, TIMING]
     if args.retry_serial and args.jobs > 1:
         failing = [c for c in todo if summary.get(c, {}).get("exit") not in (0, 5)]
         for chunk in failing:

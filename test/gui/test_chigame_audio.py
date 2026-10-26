@@ -122,6 +122,7 @@ def test_a_blip_bends_and_fades_to_nothing():
     assert second > first * 1.2, "the bend has to be audible"
 
 
+@pytest.mark.timing
 def test_the_synthesiser_is_fast_enough_to_run_at_load_time():
     """A track that takes a second to build is a second of frozen window."""
     import time

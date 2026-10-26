@@ -72,7 +72,9 @@ def test_auto_extract_equals_the_wizards_one_click(session, qt_reference):
         np.testing.assert_allclose(session.irf_np[det], _a(ref["irf_np"][det]), rtol=1e-5, atol=0)
         np.testing.assert_array_equal(session.bg_np[det], _a(ref["bg_np"][det]))
     np.testing.assert_array_equal(session.decay, _a(ref["decay"]))
-    np.testing.assert_allclose(session.irf(), _a(ref["irf"]), rtol=1e-5, atol=0)  # built from irf_np
+    np.testing.assert_allclose(
+        session.irf(), _a(ref["irf"]), rtol=1e-5, atol=0
+    )  # built from irf_np
     np.testing.assert_array_equal(session.background(), _a(ref["bg"]))
     # the fit: same optimum, same displayed curves
     assert session.outcome.names[0] == "tau"
@@ -81,8 +83,10 @@ def test_auto_extract_equals_the_wizards_one_click(session, qt_reference):
     )  # the wizard showed 3 decimals
     assert session.outcome.two_istar == pytest.approx(ref["twoIstar"], abs=6e-4)
     for field in ("data", "model", "irf", "background", "residuals"):
+        # The curves are the model at the fitted parameters, which agree across platforms only
+        # to the optimiser's stopping tolerance (tau above: abs 6e-4); measured 2.6e-9 on Linux.
         np.testing.assert_allclose(
-            getattr(session.outcome.curves, field), _a(ref["curves"][field]), rtol=1e-9, atol=1e-12
+            getattr(session.outcome.curves, field), _a(ref["curves"][field]), rtol=1e-5, atol=1e-12
         )
     assert 0.5 < session.outcome.x[0] < 5.0
 

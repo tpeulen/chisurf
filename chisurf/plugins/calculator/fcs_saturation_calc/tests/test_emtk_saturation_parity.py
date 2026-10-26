@@ -294,8 +294,12 @@ def test_the_recorded_qt_tool_and_the_emtk_model_agree_on_every_preset(app):
                 # quadrature; another BLAS (OpenBLAS on x86 Linux) differs by ~1.5e-8
                 # relative on the decayed samples of the two-state curve. 1e-7 still
                 # catches any change of the physics.
-                assert total == pytest.approx(b["y"]["sum"], rel=1e-7, abs=1e-12), (preset, source)
-                assert samples == pytest.approx(b["y"]["samples"], rel=1e-7, abs=1e-12), (
+                # A residual series is the difference of two nearly equal curves: the curves'
+                # error carries over as an *absolute* one, so near its zero crossings a residual
+                # differs by up to 3e-10 (rel 3e-7 of the residual, 1.5e-8 of the curves).
+                floor = 1e-9 if "residual" in source else 1e-12
+                assert total == pytest.approx(b["y"]["sum"], rel=1e-7, abs=floor), (preset, source)
+                assert samples == pytest.approx(b["y"]["samples"], rel=1e-7, abs=floor), (
                     preset,
                     source,
                 )

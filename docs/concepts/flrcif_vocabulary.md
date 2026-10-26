@@ -262,6 +262,7 @@ Fit/model parameters, by registry key. This category holds the parameters a fitt
 | `_flr_fit_parameter.pxl_dur` | float | Fit parameter pxl_dur. |
 | `_flr_fit_parameter.pxl_size` | float | Fit parameter pxl_size. |
 | `_flr_fit_parameter.quench_contact_offset` | float | Offset added to the dye-quencher contact distances of the quenching model, angstroms. |
+| `_flr_fit_parameter.quench_decay_length` | float | Decay length of a distance-continuous dye-quencher rate kernel beyond the contact distance: a quencher u angstroms beyond contact quenches at kQ exp(-u / decay_length), angstroms. |
 | `_flr_fit_parameter.quench_scale` | float | Common scale factor on a dye's contact quenching rates kQ of all quenching residue types (dimensionless). |
 | `_flr_fit_parameter.r0` | float | Frster radius R0 of the donor-acceptor pair. |
 | `_flr_fit_parameter.r_experimental` | float | Uncorrected experimental steady-state anisotropy from the raw parallel/perpendicular counts (rE of the BIFL export). |
@@ -491,8 +492,9 @@ Dataset artifact representing a raw measurement or processed result. Ownership a
 | `_mmfdb_artifact.artifact_id` | code |  |
 | `_mmfdb_artifact.artifact_kind` | code |  |
 | `_mmfdb_artifact.author` | text | Who made the data this artifact holds, as they name themselves. Free text, because an author list is not a controlled vocabulary and a writer that has to normalise one will get it wrong or drop it. This is the upstream author of the DATA, not whoever ran the tool -- that is _mmfdb_operation.operator_user_id, and the two are routinely different: a converted rotamer library is somebody else's measurement in this package's format. |
-| `_mmfdb_artifact.checksum` | code | Digest of the payload, lowercase hexadecimal, in the algorithm named by _mmfdb_artifact.checksum_algorithm. This is what makes an artifact held by reference, or embedded in a container, restorable with a guarantee rather than merely restorable. |
+| `_mmfdb_artifact.checksum` | code | Digest of the payload, lowercase hexadecimal, in the algorithm named by _mmfdb_artifact.checksum_algorithm. This is what makes an artifact held by reference, or embedded in a container, restorable with a guarantee rather than merely restorable. What the digest is taken over is stated by _mmfdb_artifact.checksum_scope: the stored bytes of a file artifact, or, for a directory artifact, a canonical manifest of its members -- never an unstated convention. |
 | `_mmfdb_artifact.checksum_algorithm` | code | Which digest _mmfdb_artifact.checksum holds. The object store addresses blobs by md5 and verifies them by sha256, so both occur. |
+| `_mmfdb_artifact.checksum_scope` | code | What byte stream _mmfdb_artifact.checksum is the digest of. A digest whose input is not stated can be neither recomputed nor trusted, and a directory has no single byte stream, so the convention must be named on the row rather than guessed at. `file_bytes` is the artifact payload read as one byte stream: the exact stored bytes of a file. It is the default, and the only scope a `local_file` artifact may meaningfully carry. `directory_manifest` means the checksum of a directory artifact is the digest, in the algorithm named by _mmfdb_artifact.checksum_algorithm, over a canonical manifest of the directory's member files: one newline-terminated UTF-8 line per member, each line "<member digest> <member size in octets> <member path>", the member path relative to the artifact and the lines sorted by member path byte-wise ascending. The member digest is the member's own content digest in the same algorithm. The hashed input carries no timestamps, no permissions and no other mutable metadata, so the digest is order-independent and reproducible; renaming, adding, deleting or altering any member changes it. The digest is an aggregate over a manifest, NOT the digest of any one file's bytes. |
 | `_mmfdb_artifact.citation` | text | Where the data was published: a DOI where one exists, otherwise enough of a reference to find it. |
 | `_mmfdb_artifact.created_by_user_id` | code | User who created/registered this artifact. NULL for builtin/shared artifacts. Used for dataset-browser scoping (own vs public). |
 | `_mmfdb_artifact.data_blob` | text |  |
@@ -844,6 +846,18 @@ Append-only log of interactive analysis operations. One row per recorded action.
 | `_mmfdb_event_log.summary` | text |  |
 | `_mmfdb_event_log.target_uid` | code |  |
 
+## `_mmfdb_file_dependency`
+
+One row is one directed dependency between two deposited files. A raw-data record is not a bag of files. A measurement was taken with the calibration files of its day (the prompt response, the white-light linearization table, a G-factor or dye reference), and a donor-acceptor measurement is referenced to the donor-only measurement of the same sample state. Which file belongs to which is a decision of the deposition -- it is not recoverable from file names -- so it is written here, in the metadata, where a reader and a downloader can follow it. The files are rows of _ihm_external_files: file_id depends on depends_on_file_id.
+
+| Item | Type | Description |
+|---|---|---|
+| `_mmfdb_file_dependency.dependency_type` | code | The kind of dependency. instrument_calibration: the measurement was taken with this calibration file of its setup (prompt/instrument response, white-light linearization, G-factor or dye reference). donor_only_D0_reference: the donor-acceptor measurement is referenced to this donor-only measurement, which carries the donor properties of the same sample state. |
+| `_mmfdb_file_dependency.depends_on_file_id` | int | The file depended on: a row of _ihm_external_files.id. |
+| `_mmfdb_file_dependency.details` | text | Free-form context of the dependency, written by the deposition (which measurement uses which calibration, and why a donor-only measurement is the reference of a donor-acceptor one). |
+| `_mmfdb_file_dependency.file_id` | int | The depending file: a row of _ihm_external_files.id. |
+| `_mmfdb_file_dependency.id` | int | The row's id, unique within the file. |
+
 ## `_mmfdb_group`
 
 User groups for access control and organization.
@@ -965,7 +979,7 @@ Links an operation to its input/output artifacts.
 
 ## `_mmfdb_operation_parameter_def`
 
-Typed parameter schema for an operation type — the data-side analog of a chinet node's typed ports. One row per (operation_type, name) declares the type, units, default, bounds, whether the parameter is required, and whether it is repeatable (role-indexed). Operation parameter rows in mmfdb_parameter are validated against this schema at registration.
+Typed parameter schema for an operation type — the data-side analog of a graph node's typed ports. One row per (operation_type, name) declares the type, units, default, bounds, whether the parameter is required, and whether it is repeatable (role-indexed). Operation parameter rows in mmfdb_parameter are validated against this schema at registration.
 
 | Item | Type | Description |
 |---|---|---|
@@ -1014,7 +1028,7 @@ Named parameters associated with an operation.
 | `_mmfdb_parameter.parameter_type` | code |  |
 | `_mmfdb_parameter.parameter_uuid` | code |  |
 | `_mmfdb_parameter.prior_json` | code |  |
-| `_mmfdb_parameter.role` | code | Optional role/index distinguishing repeated parameter rows of the same name on one operation (the data-side analog of chinet's multiple ports), e.g. the detector channel for a per-channel shift. NULL/empty for scalar parameters (exactly one row per operation+name). |
+| `_mmfdb_parameter.role` | code | Optional role/index distinguishing repeated parameter rows of the same name on one operation (the data-side analog of a node's multiple ports), e.g. the detector channel for a per-channel shift. NULL/empty for scalar parameters (exactly one row per operation+name). |
 | `_mmfdb_parameter.standard_error` | float |  |
 | `_mmfdb_parameter.units` | code |  |
 | `_mmfdb_parameter.upper_bound` | float |  |
@@ -1214,6 +1228,17 @@ Many-to-many link of a reagent lot to what used it — an operation (a measureme
 | `_mmfdb_reagent_usage.target_id` | code |  |
 | `_mmfdb_reagent_usage.target_type` | code |  |
 | `_mmfdb_reagent_usage.usage_row_id` | int |  |
+
+## `_mmfdb_record`
+
+The record this data block describes, and the terms of use it is released under, stated ONCE for the record instead of repeated on every artifact row. A single-instance category (the upstream _entry precedent): one row per data block, keyed by record_id. Its license, terms and terms_url are the record-wide DEFAULT: they govern every mmfdb_artifact row in this block that does not state terms of its own. The artifact row remains the override, and the two kinds of "no artifact value" are not the same thing: * an explicit _mmfdb_artifact.license value wins for that artifact; * "." on an artifact row means the record default governs it; * "?" on an artifact row means the terms are UNKNOWN -- it must never be read as inheriting the default, because to whoever redistributes the artifact, unknown terms and the record's terms are different legal positions; * nothing stated at either level means the terms are unknown, and a writer should say so out of band rather than guess. Conciseness is the point, but not at the cost of meaning: dropping a per-row license is only correct when the record-level statement is present, and only when the rows really do share the terms.
+
+| Item | Type | Description |
+|---|---|---|
+| `_mmfdb_record.license` | line | The record-wide default license: an SPDX identifier WHERE ONE EXISTS -- "CC-BY-4.0", "MIT" -- under the same rule as _mmfdb_artifact.license, which this default stands behind. Deliberately not mandatory and deliberately not enumerated, for the same reasons as the artifact item: much scientific data is released under conditions with no SPDX identifier (use _mmfdb_record.terms for those), and the SPDX list moves under a frozen file. |
+| `_mmfdb_record.record_id` | code | Names the record: the data block's own identifier, so a row in the store and a data block in an export refer to the same thing. |
+| `_mmfdb_record.terms` | text | The record's default conditions of use in words, for data whose terms have no SPDX identifier -- "free for academic use", "no commercial redistribution". Carried verbatim, like _mmfdb_artifact.terms. A summary of a licence is not a licence. |
+| `_mmfdb_record.terms_url` | code | Where the record's default terms actually live, so a reader can check them rather than trust this file's paraphrase. |
 
 ## `_mmfdb_session`
 

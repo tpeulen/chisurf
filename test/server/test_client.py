@@ -14,19 +14,15 @@ from test.server.helpers import find_free_port
 
 @pytest.fixture
 def zmq_server():
-    cmd_port = find_free_port()
-    pub_port = find_free_port()
     dispatcher = ServiceDispatcher(SessionState())
     dispatcher._build_default_registry()
-    server = ZmqServer(
-        handler=dispatcher.dispatch,
-        cmd_port=cmd_port,
-        pub_port=pub_port,
-    )
+    # Port 0: the server binds free ports itself; a port picked here and bound later could
+    # be taken by another test process in between (the gate runs chunks in parallel).
+    server = ZmqServer(handler=dispatcher.dispatch, cmd_port=0, pub_port=0)
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
     assert server.wait_ready(), "the server did not bind its sockets"
-    yield cmd_port, pub_port, dispatcher, server
+    yield server.cmd_port, server.pub_port, dispatcher, server
     server.stop()
 
 

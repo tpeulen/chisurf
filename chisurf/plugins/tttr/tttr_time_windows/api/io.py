@@ -96,8 +96,7 @@ def compute_and_save(
     RuntimeError
         If no data or computation fails.
     """
-    import pandas as pd
-
+    from chisurf.core.datastore import store_from_arrays
     from chisurf.core.fio.analysis_path import bur_artifact_name
     from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
 
@@ -106,7 +105,7 @@ def compute_and_save(
         raise RuntimeError(f"No windows produced for {path}")
     bids = bids.reshape(-1, 2).astype(np.int64)
     nonempty = bids[bids[:, 1] > bids[:, 0]]
-    table = pd.DataFrame(
+    table = store_from_arrays(
         {
             "first photon": nonempty[:, 0],
             # inclusive last photon, the convention every burst reader assumes

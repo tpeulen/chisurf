@@ -55,9 +55,10 @@ class ZmqServer:
         Called with ``(method, params)`` for each incoming request.
         Must return a result dict.
     cmd_port : int
-        TCP port for the REQ/REP command socket.
+        TCP port for the REQ/REP command socket; ``0`` binds a free port, read back from
+        :attr:`cmd_port` once :meth:`wait_ready` returned.
     pub_port : int
-        TCP port for the PUB event broadcast socket.
+        TCP port for the PUB event broadcast socket; ``0`` as for *cmd_port*.
     host : str
         Bind address (default ``"127.0.0.1"``).
     """
@@ -119,11 +120,13 @@ class ZmqServer:
         try:
             self._ctx = zmq.Context()
 
+            # Port 0 asks the OS for a free port at bind time: a port picked beforehand and
+            # bound later can be taken by another process in between (parallel test runs).
             self._rep_socket = self._ctx.socket(zmq.REP)
-            self._rep_socket.bind(f"tcp://{self._host}:{self._cmd_port}")
+            self._cmd_port = self._bind(self._rep_socket, self._cmd_port)
 
             self._pub_socket = self._ctx.socket(zmq.PUB)
-            self._pub_socket.bind(f"tcp://{self._host}:{self._pub_port}")
+            self._pub_port = self._bind(self._pub_socket, self._pub_port)
 
             self._ready.set()
             _log.info(
@@ -152,6 +155,23 @@ class ZmqServer:
             # its timeout for a server that never came up.
             self._cleanup()
             self._finished.set()
+
+    def _bind(self, socket, port: int) -> int:
+        """Bind *socket* to *port* (``0``: a free one chosen now); the port it is bound to."""
+        if port:
+            socket.bind(f"tcp://{self._host}:{port}")
+            return port
+        return socket.bind_to_random_port(f"tcp://{self._host}")
+
+    @property
+    def cmd_port(self) -> int:
+        """The command socket's port (the bound one when ``0`` was asked for)."""
+        return self._cmd_port
+
+    @property
+    def pub_port(self) -> int:
+        """The event socket's port (the bound one when ``0`` was asked for)."""
+        return self._pub_port
 
     @property
     def _running(self) -> bool:

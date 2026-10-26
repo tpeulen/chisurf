@@ -322,9 +322,12 @@ def _register_decay(store, name: str) -> int | None:
     if getattr(cs, "cs", None) is None:
         # No live GUI session (headless scripts, the agent runtime): the
         # session-less dataset list is the registry, the same place a plain
-        # data load appends to.
-        cs.imported_datasets.append(curve)
-        return len(cs.imported_datasets) - 1
+        # data load appends to -- through the API seam, not the global.
+        from chisurf.core.api import dataset_objects
+        from chisurf.core.api.live_edit import add_dataset
+
+        add_dataset(curve)
+        return len(dataset_objects()) - 1
     api = getattr(cs, "api", None)
     if api is None:
         from chisurf.core.api import ChiSurfAPI

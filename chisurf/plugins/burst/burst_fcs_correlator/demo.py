@@ -213,16 +213,13 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> P
 
 def demo_burst_table(ranges):
     """A burst table as the container stores it: zero rows between the bursts, as a ``.bur`` has them."""
-    import pandas as pd
+    from chisurf.core.datastore import store_from_arrays
 
     n = len(ranges)
-    table = pd.DataFrame(
-        {
-            "First Photon": np.zeros(2 * n + 1),
-            "Last Photon": np.zeros(2 * n + 1),
-            "First File": [STREAM_NAME] * (2 * n + 1),
-        }
+    first = np.zeros(2 * n + 1)
+    last = np.zeros(2 * n + 1)
+    first[1::2] = [a for a, _ in ranges]
+    last[1::2] = [b for _, b in ranges]
+    return store_from_arrays(
+        {"First Photon": first, "Last Photon": last, "First File": [STREAM_NAME] * (2 * n + 1)}
     )
-    table.loc[1::2, "First Photon"] = [a for a, _ in ranges]
-    table.loc[1::2, "Last Photon"] = [b for _, b in ranges]
-    return table

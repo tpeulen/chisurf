@@ -28,8 +28,16 @@ def test_demos_resolve_packaged_material_without_checkout_test_data(demo_host, n
     host._place_chimol_settings_beside_chisurf_s()
     assert calls == ["settings", "logging"]
     assert all(not {"test", "tests"}.intersection(path.parts) for path in catalog.data_dirs())
+    from chimol.plugins.demos import fetch
+
     material = Path(catalog.resolve_structure(name))
-    assert material.parent == catalog.DEMO_DIR
+    # Bulk material (the trajectory) is fetched on first use, not committed: on a fresh
+    # checkout it lands in the fetch cache, on a workstation that fetched it long ago it may
+    # sit beside the demos. Never in a test-data folder of the checkout.
+    places = {catalog.DEMO_DIR}
+    if fetch.registry_key(name) is not None:
+        places.add(fetch.cache_dir())
+    assert material.parent in places, material
     assert material.is_file() and material.stat().st_size > 0
 
 

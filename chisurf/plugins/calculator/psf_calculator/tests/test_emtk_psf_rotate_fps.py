@@ -21,6 +21,7 @@ def hermetic(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
 
+@pytest.mark.timing
 def test_rotating_a_64_cubed_volume_runs_at_30_fps():
     app = make_app()
     model = app.model

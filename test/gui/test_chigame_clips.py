@@ -52,6 +52,7 @@ def test_the_codec_is_four_to_one_and_sounds_like_the_input():
     assert snr > 15.0, f"only {snr:.1f} dB"
 
 
+@pytest.mark.timing
 def test_decoding_is_fast_enough_to_run_at_load():
     """A sequential decoder would be a Python loop over millions of samples.
 

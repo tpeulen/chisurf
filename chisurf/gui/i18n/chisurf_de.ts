@@ -70983,6 +70983,230 @@ fortgesetzt werden.
             <source>📤 Export burst folder</source>
             <translation type="unfinished"/>
         </message>
+        <message>
+            <source>&lt;b&gt;?&lt;/b&gt; opens the help: what the export keeps, what it leaves out, and why the .pto stays the record.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Save as…&lt;/b&gt; writes the entries to a new file and makes it the open one.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;Try it without a file&lt;/b&gt; simulates a measurement with a known answer: pick an example and press &lt;b&gt;Simulate&lt;/b&gt;, so every panel that follows can be judged against what should be there.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;free-form&lt;/b&gt; has no typed fields, &lt;b&gt;flrCIF&lt;/b&gt; the experiment keys of a burst export (pH, temperature, ionic strength, labelling fractions), &lt;b&gt;Zenodo&lt;/b&gt; a deposit's fields. Switching keeps what has been typed.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;meta&lt;/b&gt; carries sample and buffer, &lt;b&gt;hist_E&lt;/b&gt;, &lt;b&gt;hist_S&lt;/b&gt; and &lt;b&gt;hist_2D&lt;/b&gt; the histograms, &lt;b&gt;original_bursts&lt;/b&gt; the burst table itself. The thresholds are the defaults and the corrections neutral; the files carry no fit curves.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>&lt;b&gt;💡 Things to ask&lt;/b&gt; lists prompts that ship with ChiSurf. Picking one puts it in the input box for you to edit.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>A metadata record as a JSON file: typed fields from a &lt;b&gt;schema&lt;/b&gt; plus free-form key/value entries. The same editor sits inside Burst Selection (the flrCIF metadata of an export) and the Zenodo deposit (a record's metadata); here it edits a file on its own.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>ALEX-Suite CSVs: pick the burst search</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Add an entry beyond the schema</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Agent — Help</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Apply writes the file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Ask for an analysis the way you would ask a colleague. The agent runs ChiSurf's tools on the loaded data and shows every step it takes.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>ChiSurf in plain words</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose a provider</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Edit the request if you like, then press &lt;b&gt;Send&lt;/b&gt;. If a choice is open, the agent asks first; answer in the same box.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Endpoint, key and model of the selected provider. The key is kept in your settings store and never written into a project.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Every companion is merged by &lt;b&gt;position&lt;/b&gt;, one row per burst, so a skipped burst is a zero row, not a missing one. The files written are listed under the status line.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Every problem is listed in red above the buttons (a number that is not a number, a date that is not YYYY-MM-DD, a required field left empty); &lt;b&gt;Apply&lt;/b&gt; stays grey until the list is empty. Apply writes the open file and the editor stays on it; &lt;b&gt;Cancel&lt;/b&gt; reverts to what is on disk.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Every tool call is a badge here: &lt;b&gt;[ok]&lt;/b&gt; done, &lt;b&gt;[x]&lt;/b&gt; failed. Click a badge to see its input and result; the last message states the numbers and the assumptions behind them.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Fix what is listed, then press &lt;b&gt;Apply&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Further reading</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>One row per analysis in the container: its run, the table inside it, the operation that wrote it, and the companion ending it becomes. The burst search becomes &lt;b&gt;bi4_bur/bs_demo.bur&lt;/b&gt;, the BVA the companion &lt;b&gt;bv4/bs_demo.bv4&lt;/b&gt;. A dash means no registered companion: that analysis is skipped, never guessed.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a &lt;b&gt;.json&lt;/b&gt; object. Keys of the schema fill its fields; every other key becomes a free-form entry, nothing is dropped.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Or write a new file</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick a schema from the list.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick an example and press &lt;b&gt;Simulate&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick an example from &lt;b&gt;💡 Things to ask&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Pick the schema</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Export burst folder&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Open…&lt;/b&gt; and pick a metadata file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Send&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Write ALEX-Suite CSVs&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Provider settings</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Read what it did</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Send the request</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Start with a container whose contents are known</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Subtract background</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Take each burst's background off its counts: the count rate measured outside the bursts, per stream, times the burst duration.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The &lt;b&gt;mode&lt;/b&gt; limits the tools: reading only, running analyses, or also executing code it writes.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The CSVs are E/S histograms over the bursts of one burst-search run. Only runs that hold a burst table are offered.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The burst folder is written below this folder, one subfolder per burst-search run. It defaults to the container's folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The example is the Burst Selection demo stream (12 planted bursts) with two runs: a burst search, &lt;b&gt;burstwise&lt;/b&gt;, and a burst variance analysis, &lt;b&gt;bva&lt;/b&gt;. Your own container goes in through &lt;b&gt;Open…&lt;/b&gt; or by dropping it on the window.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The files are written beside the container's name with the suffix &lt;b&gt;_alex&lt;/b&gt; in the output folder.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The model that answers. The dot beside it is green when the provider is configured; hover it to see what is missing.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The plan: what each run becomes</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The workflow tools read and write &lt;b&gt;.pto&lt;/b&gt; containers only. This window writes the layouts older tools still read: the Seidel/Margarita burst folder (&lt;b&gt;bi4_bur/*.bur&lt;/b&gt; plus one companion folder per analysis) and the five ALEX-Suite CSV files. The container stays the record; the export is a view of it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Type a key and a value, then &lt;b&gt;Add entry&lt;/b&gt;. An existing key is replaced; a schema key edits that field. Select a row in the table below and press Delete to remove it.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Type a key and a value, then press &lt;b&gt;Add entry&lt;/b&gt;.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What the agent may do</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>What this edits</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Where to write</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Which tables</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the CSVs</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the burst folder</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Written to {}</source>
+            <translation type="unfinished"/>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>
