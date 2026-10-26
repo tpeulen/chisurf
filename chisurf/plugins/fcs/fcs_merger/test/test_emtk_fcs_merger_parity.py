@@ -256,7 +256,14 @@ def test_open_save_as_and_add(folder, tmp_path):
         )
         _click(app, "request_add")
         _wait(app)
-        assert added == [str(tmp_path / "elsewhere.cor")] or added == [tmp_path / "elsewhere.cor"]
+        # Failed only under the 12-way parallel gate and never alone: say which half failed --
+        # the click (no job, status unchanged) or the save (error set) -- instead of a bare [].
+        assert added == [str(tmp_path / "elsewhere.cor")] or added == [
+            tmp_path / "elsewhere.cor"
+        ], (
+            f"added={added!r} error={app.model.error!r} status={app.model.status!r} "
+            f"enabled={app.form_model.enabled('request_add')} rect={app.item_rects.get('request_add')}"
+        )
         other = MergerApp()
         other.form_model.folder = str(folder)
         other.form_model.folder_entered(str(folder))  # what Enter in the folder field does

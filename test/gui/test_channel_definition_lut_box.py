@@ -36,6 +36,10 @@ def native_driver(page):
     """Drive the actual app with canonical SDK font, input and clipping metrics."""
     from emtk.testing import Driver
 
+    # The frame clock, not the wall clock: a spinbox opens for typing on two clicks within
+    # 0.4 s of io.now, and on a loaded machine the frames drawn between two driver clicks
+    # took longer than that, so the "double click" became two single clicks.
+    page.app.io.wall_clock = False
     return Driver(page.app, (1200, 900))
 
 

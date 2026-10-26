@@ -31,13 +31,20 @@ pytestmark = pytest.mark.skipif(not PTU.exists(), reason="no CLSM test data")
 def computed(tmp_path: Path):
     """An N&B view model that has run over a real CLSM measurement."""
     from chisurf.plugins.microscopy.img_pixel_nb.gui.view_model import NBViewModel
+    from test.process_caches import release_process_caches
 
     source = tmp_path / PTU.name
     source.write_bytes(PTU.read_bytes())
     model = NBViewModel()
     model.load_file(str(source))
     model.compute()
-    return model, source
+    yield model, source
+    # Every test computes over a fresh copy (a new path), so the parent's TTTR/CLSM caches
+    # and the imaging worker process's own cache each gain one CLSM measurement per test;
+    # the per-module release came too late and the process tree crossed the test guard's
+    # 3 GB cap on Linux (958 -> 1281 -> 1587 MB within this module). Release per test.
+    del model
+    release_process_caches()
 
 
 def test_the_maps_land_in_the_measurements_own_file(computed):

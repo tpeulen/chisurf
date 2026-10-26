@@ -286,7 +286,9 @@ def test_a_structure_ensemble():
     radii took IMP.bff 3b1751b7e's declared radius scale 0.84 (at most 0.41 % per channel),
     and once more when BasicAV's obstacles became IMP's radii by residue and atom name times
     that scale instead of the reader's radius column (IMP.bff 113a0b1d6; at most 0.48 % per
-    channel, and no longer dependent on whether IMP is linked).
+    channel, and no longer dependent on whether IMP is linked). Regenerated 2026-10-26 when IMP.bff's
+    seeded draws became platform-independent (imp.bff 924be7949): a different 50,000-pair sample,
+    at most 8.5e-4 per channel (Monte Carlo noise); macOS and Linux now give the same curve.
     """
     import json
     import pathlib

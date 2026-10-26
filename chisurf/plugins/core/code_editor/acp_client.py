@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import pathlib
 import subprocess
 import sys
@@ -19,6 +20,30 @@ from collections.abc import Callable
 from typing import Any
 
 _LOG = logging.getLogger("chisurf.code_editor.acp_client")
+
+
+def _child_environment() -> dict[str, str]:
+    """The environment for the agent subprocess: this one, able to import this ChiSurf.
+
+    The child starts in the project folder (``root_path``). Run from a source checkout
+    rather than an installed package, ChiSurf is importable only because the parent's
+    working directory or path holds it; ``python -m chisurf...`` from another folder then
+    fails with ModuleNotFoundError and the handshake never comes. Putting the folder this
+    ``chisurf`` was imported from first on ``PYTHONPATH`` makes the child import the same
+    ChiSurf; an installed one is found either way.
+
+    Returns
+    -------
+    dict of str to str
+    """
+    env = dict(os.environ)
+    import chisurf  # noqa: PLC0415
+
+    root = str(pathlib.Path(chisurf.__file__).resolve().parent.parent)
+    parts = [p for p in env.get("PYTHONPATH", "").split(os.pathsep) if p]
+    if root not in parts:
+        env["PYTHONPATH"] = os.pathsep.join([root, *parts])
+    return env
 
 
 class Signal:
@@ -156,6 +181,7 @@ class AcpClient:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 cwd=str(self.root_path),
+                env=_child_environment(),
                 bufsize=0,
             )
             self._running = True

@@ -297,7 +297,12 @@ def test_the_recorded_qt_tool_and_the_emtk_model_agree_on_every_preset(app):
                 # A residual series is the difference of two nearly equal curves: the curves'
                 # error carries over as an *absolute* one, so near its zero crossings a residual
                 # differs by up to 3e-10 (rel 3e-7 of the residual, 1.5e-8 of the curves).
-                floor = 1e-9 if "residual" in source else 1e-12
+                # The same holds for a curve's decayed tail: its error is absolute at the scale
+                # of the curve, not of the sample (Cyanine 5's 4-state curve, peak 323.7, differs
+                # by 1.0e-9 = 3e-12 of its peak at samples of 1e-6, i.e. rel 1.5e-6 there). So
+                # the floor scales with the curve's peak: 1e-11 of it (3x the measured spread).
+                scale = max((abs(v) for v in b["y"]["samples"]), default=0.0)
+                floor = 1e-9 if "residual" in source else max(1e-12, 1e-11 * scale)
                 assert total == pytest.approx(b["y"]["sum"], rel=1e-7, abs=floor), (preset, source)
                 assert samples == pytest.approx(b["y"]["samples"], rel=1e-7, abs=floor), (
                     preset,
