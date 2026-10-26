@@ -242,11 +242,14 @@ def test_help_button_opens_and_closes_the_help_window(ui):
 
 def test_guide_button_starts_the_tour_which_waits_for_each_awaited_button(ui):
     tour = ui.app.count_rate_gui.tour
+    ui.app.count_rate_gui.load_example = lambda: None  # the tour, not the demo, is under test
     ui.click(action_caption("guide"))
-    assert tour.active and tour.awaiting and ui.drawn("Step 1 of 5: Queue the files")
-    ui.click("Add files")  # the awaited button
+    assert tour.active and not tour.awaiting and ui.drawn("Step 1 of 5: Define the channels")
+    ui.click("Next ►")
+    ui.frame(2)
+    assert tour.awaiting and ui.drawn("Step 2 of 5: Load the example")
+    ui.click(action_caption("example"))  # the awaited button
     assert not tour.awaiting
-    ui.click("Cancel")
     tour.start(2)
     ui.frame(2)
     assert tour.awaiting

@@ -69,7 +69,7 @@ def test_every_guide_target_is_drawn_and_the_card_leaves_it_free(ui, source):
 def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(ui, source):
     ui.click("guide")
     tour = ui.app.guide
-    assert tour.active and tour.awaiting  # the first step waits for Open...
+    assert tour.active and tour.awaiting  # the first step waits for Load example
     assert tour.step_idx == 0, "Next must not skip a step that waits for its control"
 
     seen = []
@@ -82,18 +82,13 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(ui, sou
         if tour.awaiting:
             key = tour._target_key(step["target"])
             seen.append(key)
-            if key == "choose_input":
-                ui.click("choose_input")
-                assert ui.dialog_open
-                ui.app.dialog.enter(str(source.parent))
-                ui.dialog_pick(source.name)
+            if key == "load_example":
+                ui.click("load_example")
                 settle(ui)
-                assert ui.app.model.has_data
+                assert ui.app.model.has_data  # data first: Detect period needs photons
             elif key == "detect_period":
                 ui.click("detect_period")
-                settle(
-                    ui
-                )  # the sample does not alternate: the measurement is refused, Period is kept
+                settle(ui)  # the example alternates in the macro time: Period is measured
             elif key == "timing":
                 before = ui.app.model.period_shift
                 ui.type_into("period_shift", "23")  # a spin field: type the value, Enter
@@ -106,4 +101,4 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(ui, sou
             ui.draw(2)
         ui.press_text("Finish ✓" if tour.step_idx == len(tour.steps) - 1 else "Next ►")
     assert not tour.active
-    assert seen == ["choose_input", "detect_period", "timing", "choose_save", "choose_files"]
+    assert seen == ["load_example", "detect_period", "timing", "choose_save", "choose_files"]

@@ -275,12 +275,13 @@ def test_guide_waits_for_the_user():
             key = tour._target_key(step["target"])
             if key != "results":  # the table exists after Calculate
                 assert key in app.item_rects, key
-        tour.start(0)
+        tour.start(0)  # the channels: read, not pressed
+        assert not tour.awaiting
+        tour.start(1)  # Load example waits for the user
         assert tour.awaiting
-        app.count_rate_gui.on_add_files = lambda: None
         tour.notify_used("calculate")  # another control: still waiting
         assert tour.awaiting
-        tour.notify_used("add_files")
+        tour.notify_used("load_example")
         assert not tour.awaiting
     finally:
         app.close()

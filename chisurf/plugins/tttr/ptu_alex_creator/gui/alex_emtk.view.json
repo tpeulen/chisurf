@@ -18,6 +18,8 @@
         },
         {
           "type": "button_row",
+          "_comment": "Wraps inside its line: it needs its widest button, not all four side by side (which would push the File label above its field).",
+          "min_width": 140,
           "buttons": [
             {"label": "Load example", "action": "load_example", "icon": "🧪", "description": "Generate the deterministic demonstration stream (a µs-ALEX measurement with the alternation still in the macro time) in the settings cache and load it."},
             {"label": "Open…", "icon": "📂", "action": "choose_input", "description": "Choose a TTTR file and preview its folded ALEX phase."},

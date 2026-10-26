@@ -304,7 +304,9 @@ def test_the_guide_points_at_real_controls_and_waits(demo):
             app.release()
             _draw(app, size, n=1, painter=PixelPainter)
 
-        for key in ("add_files", "auto_align", "save_dialog"):
+        # The tour, not a second demo, is under test: the fixture already loaded one.
+        app.load_example = lambda: None
+        for key in ("load_example", "auto_align", "save_dialog"):
             index = next(
                 i for i, s in enumerate(steps) if app.tour._target_key(s.get("target")) == key
             )

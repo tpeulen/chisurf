@@ -2,16 +2,6 @@
   "_comment": "Guided tour for the ALEX Creator. Targets are the names the app registers for its controls; a step with an await waits until the user operates that control (the tour never presses it).",
   "steps": [
     {
-      "title": "Measure the period",
-      "text": "Press <b>Detect period</b> to measure the alternation period from the photons themselves: the two busiest detectors alternate, and the strongest line of that alternation sets <b>Period</b>. A stream that does not alternate is refused with its contrast and Period stays as it was. The histogram and the excitation regions fold again at the measured period.",
-      "target": {
-        "name": "detect_period"
-      },
-      "await": {
-        "hint": "Press <b>Detect period</b>."
-      }
-    },
-    {
       "title": "Load an example measurement",
       "text": "<b>Load example</b> generates a deterministic demonstration stream — a µs-ALEX measurement whose excitation alternation is still in the macro time — in the settings cache and loads it: the folded ALEX phase appears as a histogram. <b>Open…</b> chooses a real TTTR file instead (a .sm, .ptu, .ht3 ...), or drop one on the window. Loading detects measured phase candidates automatically at the configured Period and Shift; review them before assigning laser identities.",
       "target": {
@@ -19,6 +9,16 @@
       },
       "await": {
         "hint": "Press <b>Load example</b>."
+      }
+    },
+    {
+      "title": "Measure the period",
+      "text": "Press <b>Detect period</b> to measure the alternation period from the photons themselves: the two busiest detectors alternate, and the strongest line of that alternation sets <b>Period</b>. A stream that does not alternate is refused with its contrast and Period stays as it was. The histogram and the excitation regions fold again at the measured period.",
+      "target": {
+        "name": "detect_period"
+      },
+      "await": {
+        "hint": "Press <b>Detect period</b>."
       }
     },
     {

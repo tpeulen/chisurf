@@ -760,7 +760,9 @@ def test_every_spec_guide_and_message_text_is_translated_in_all_five_locales(ui)
         set_locale("de")
         spec = translated(ui.app.spec_source)
         assert spec["sections"][0]["title"] == "Eingabedatei"
-        assert spec["sections"][0]["sections"][1]["buttons"][0]["label"] == "Öffnen…"
+        buttons = {b["action"]: b["label"] for b in spec["sections"][0]["sections"][1]["buttons"]}
+        assert buttons["choose_input"] == "Öffnen…"
+        assert buttons["load_example"] == "Beispiel laden"
     finally:
         set_locale(previous)
 

@@ -790,15 +790,15 @@ def test_the_guide_targets_are_real_controls_and_wait_for_the_user(env, chooser)
     for step in steps:
         assert step["target"]["name"] in known, step["title"]
     awaited = [s["target"]["name"] for s in steps if s.get("await")]
-    assert awaited == ["request_add_files", "autodetect", "add_all"]
+    assert awaited == ["load_example", "autodetect", "add_all"]
     app.model.ws.compute.clear()
     app.tour.start(1)
     frames(app)
     assert app.tour.awaiting
     app.tour.next()
     assert app.tour.step_idx == 1, "the tour does not press or skip for the user"
-    chooser.chosen = [str(env["spc"])]
-    click(app, "request_add_files")
+    app.model.load_example = lambda *a, **k: None  # the tour, not the demo, is under test
+    click(app, "load_example")
     settle(app)
     assert not app.tour.awaiting
     app.tour.next()

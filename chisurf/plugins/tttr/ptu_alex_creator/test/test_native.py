@@ -158,7 +158,7 @@ def test_all_locales_and_control_tooltips(tmp_path, monkeypatch):
             app.help.hide()
             app.start_guide()
             assert app.guide.steps[0]["title"] == tr(
-                "Load a photon file"
+                "Load an example measurement"
             )  # from guide.json, through the translation table
             app.guide.active = False
             if locale != "en":
