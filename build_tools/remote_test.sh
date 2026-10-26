@@ -24,7 +24,7 @@
 #   build_tools/remote_test.sh list
 #
 # CMD defaults to `pixi run -e test test`; a JUnit report is requested when
-# CMD is a `pixi run` task. --dirty tests the working tree's tracked changes
+# CMD is a pixi `test*` task. --dirty tests the working tree's tracked changes
 # (a `git stash create` commit, which leaves the tree and the stash list
 # alone; untracked files and uncommitted submodule edits are not included).
 # Without it, HEAD is tested.
@@ -118,9 +118,12 @@ cmd_start() {
         git -C "$SUBMODULE" push -q "$HOST:$DIR/$SUBMODULE" "+$subsha:refs/remote-test/$id"
     fi
 
-    local quoted extra=""
-    if [[ "${cmd[0]}" == "pixi" && "${cmd[1]:-}" == "run" ]]; then
-        extra=" --junitxml=$RUNS/$id/junit.xml"
+    # A JUnit report for the pytest tasks (pixi run [-e ENV] test*), at an absolute
+    # path: the command runs from the checkout, not from $HOME.
+    local quoted extra="" task="${cmd[2]:-}"
+    [[ "$task" == "-e" ]] && task="${cmd[4]:-}"
+    if [[ "${cmd[0]}" == "pixi" && "${cmd[1]:-}" == "run" && "$task" == test* ]]; then
+        extra=" --junitxml=\$HOME/$RUNS/$id/junit.xml"
     fi
     printf -v quoted '%q ' "${cmd[@]}"
 
