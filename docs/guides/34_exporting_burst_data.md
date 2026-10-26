@@ -34,14 +34,76 @@ writes no `.bur` table either — on a vendor file (`.spc`, `.ptu`, …) its con
 simply sits beside the measurement, and every later step reads the bursts back out
 of a container. When an older tool
 (ndX's folder reader, the Seidel/Margarita software, ALEX-Suite-era scripts) needs
-the old layouts, you ask for it once, explicitly, with the converters:
+the old layouts, you ask for it once, explicitly. Theory: {doc}`../concepts/legacy_export`.
 
-- in the **PTO inspector**: open the container, press **Export legacy…** and
-  choose a folder;
-- on the command line: `csc csg_pto_inspect export-legacy m000.pto out_folder`;
-- in Python: `chisurf.core.fio.fluorescence.legacy_export.export_legacy(container, out_dir)`;
-- for the five ALEX-Suite CSV files: `csc alex-suite export-legacy m000.pto/<run> stem`
-  (see the [ALEX Suite guide](66_alex_suite.md)).
+### Legacy Export
+
+**File › Data › Legacy Export** (`chisurf/plugins/core/legacy_export/`) is the
+dedicated way out:
+
+1. **Open…** a `.pto` container, drop one on the window, or press **🧪 Load
+   example** for a demo container (the Burst Selection demo stream, 12 planted
+   bursts, with the burst-search run `burstwise` and a BVA run `bva`). The table
+   lists every analysis: its **Run**, the **Table** inside it, its **Operation**
+   and the **Companion** ending it becomes (`bur` for a burst table, `bv4`, `2c4`,
+   `bg4`/`br4`/`by4`, `bh4`, `td4`, `bf4` for analyses). A dash in *Run* means the
+   table is stored outside any run; a dash in *Companion* means that analysis has
+   no registered companion and is skipped. *Refresh* re-reads the container;
+   **📖 Guide** walks the window step by step.
+2. **Output folder** defaults to the container's folder.
+3. **📤 Export burst folder** writes the folder. The status line counts the files
+   and lists the last ones written.
+4. *ALEX-Suite CSVs (optional)*: pick the **Run** (only runs holding a burst
+   table are offered; the first is preselected), type **Sample** and **Buffer**
+   (free text, written into `_meta`), tick the parts (`meta`, `hist_E`, `hist_S`,
+   `hist_2D`, `original_bursts`) and press **Write ALEX-Suite CSVs**. The files go
+   into the output folder as `<container stem>_alex_<part>.csv`.
+
+```{figure} figures/34_legacy_export_folder.png
+:width: 100%
+
+The Burst Selection demo stream (12 planted bursts) in a container with two
+runs: the burst search (`burst_selection` → `bur`) and tttrlib's BVA
+(`burst_variance_analysis` → `bv4`). After *Export burst folder*:
+`burstwise/bi4_bur/bs_demo.bur`, the BVA companion `burstwise/bv4/bs_demo.bv4`
+with 12 rows on the burst grid, and the BVA table as text, `bs_demo/bva.csv`.
+```
+
+```{figure} figures/34_legacy_export_alex.png
+:width: 100%
+
+The same container after *Write ALEX-Suite CSVs* on the run `burstwise`, sample
+"demo bursts", buffer "PBS", the four default parts ticked: `bs_demo_alex_meta.csv`,
+`_hist_E`, `_hist_S` and `_hist_2D` in the output folder.
+```
+
+The same export without a window:
+
+```bash
+csc legacy-export plan m000.pto                        # what each run becomes
+csc legacy-export burst-folder m000.pto out_folder     # out_folder defaults to beside m000.pto
+csc legacy-export alex-csvs m000.pto/burstwise stem \
+    --sample "dsDNA" --buffer "TE" --parts meta,hist_E,hist_S,hist_2D,original_bursts
+csc alex-suite export-legacy m000.pto/burstwise stem   # the same CSVs from the ALEX Suite CLI
+```
+
+and in Python:
+
+```python
+from chisurf.plugins.core.legacy_export import core
+
+core.export_plan("m000.pto")                       # [{"run", "container_run", "operation", "ending"}, ...]
+core.export_burst_folder("m000.pto", "out_folder") # every file written
+core.export_alex_csvs("m000.pto/burstwise", "out_folder/m000_alex", sample="dsDNA")
+```
+
+`export_burst_folder` is `chisurf.core.fio.fluorescence.legacy_export.export_legacy`.
+The PTO inspector's **Export legacy (Seidel/Margarita)** button and
+`csc csg_pto_inspect export-legacy m000.pto out_folder` call the same writer.
+`alex-csvs` takes a run inside a container (`m000.pto/<run>`) or an exported
+`.bur` table. Both ALEX-Suite CSV commands take the same options and write the same files
+(see the [ALEX Suite guide](66_alex_suite.md)): default thresholds, neutral
+corrections and no fit curves in `_meta` and the histogram files.
 
 The export writes `bi4_bur/<stem>.bur` for each burst run and, beside it, one
 `<ending>4/<stem>.<ending>` companion per analysis (`bv4`, `2c4`, `bg4`/`br4`/`by4`,
@@ -134,7 +196,8 @@ collapsed, which a screenshot of an empty table would not have told you.
 
 ## See also
 
-- {src}`chisurf/plugins/burst/burst_h2mm/core/export.py`, `chisurf/core/fio/fluorescence/legacy_export.py`, `chisurf/plugins/burst/bid_to_analysis/`.
+- {src}`chisurf/plugins/burst/burst_h2mm/core/export.py`, `chisurf/core/fio/fluorescence/legacy_export.py`, `chisurf/plugins/core/legacy_export/`, `chisurf/plugins/burst/bid_to_analysis/`.
+- What the legacy export writes and loses: {doc}`../concepts/legacy_export`.
 - The companion contract the export keeps: `okf/subsystems/burst-companions.md`.
 - What the index ranges being exported mean: [timestamps and bursts](33_timestamps_and_bursts.md).
 - The analysis that produces the `State` column: [H2MM](19_h2mm_hidden_markov.md).

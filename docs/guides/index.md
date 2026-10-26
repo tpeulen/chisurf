@@ -54,6 +54,7 @@ saving_projects
 101_photon_data_tools
 102_mmfdb_admin
 109_zenodo_deposit
+113_metadata_editor
 ```
 
 ## smFRET: efficiency, stoichiometry and corrections
@@ -61,6 +62,7 @@ saving_projects
 ```{toctree}
 :maxdepth: 1
 
+112_fret_check
 14_multiparameter_es
 41_accurate_fret
 82_fret_lines
@@ -277,6 +279,8 @@ irf_estimation
 | [HydroPro: diffusion coefficients from a structure](79_hydropro.md) | `hydropro` plugin, HYDROPRO / HYDRO++ |
 | [QuEst: predicting dye quenching at a labelling site](80_quenching_estimator.md) | `quenching_estimator` |
 | [QuEst Analysis: quench scale and stickiness from measured site lifetimes](111_quenching_analysis.md) | `quenching_estimator` (Analysis page), `csc quest analyse`, `quest.analysis.*` RPC |
+| [Checking an smFRET measurement](112_fret_check.md) | `fret_check` (Spectroscopy › Single-Molecule › FRET check), `fret_check.analyse` / `fret_check.qc` RPC |
+| [Editing a metadata record](113_metadata_editor.md) | `metadata_editor` (File › Data › Metadata Editor), embedded in Burst Selection and the Zenodo deposit |
 | [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](81_trajectory_tools.md) | `traj_align`, `traj_convert`, `traj_fret`, ... (Structure → Trajectory, one button each), `core.structure.trajectory_data` |
 | [FRET lines: static, dynamic and model lines for the E–lifetime plot](82_fret_lines.md) | `fret_line` (Tools › Calculators), `core.fluorescence.fret.lines` |
 | [Spectra, overlap integrals and R₀](83_spectra_and_r0.md) | `spectra_downloader` (Tools → Calculators), Förster calculator (TCSPC FRET κ² row → calc R0) |

@@ -16,7 +16,9 @@ result and reports the numbers.
 
 It is not a chatbot bolted onto the side: it drives the same session you are
 looking at, so anything it creates appears in your windows and is saved in
-your project.
+your project. How it decides, what it may touch and what it reports:
+{doc}`../concepts/workflow_agent`. The panel is the **Agent** plugin
+(`chisurf/plugins/core/agent/`), opened from the Tools menu.
 
 :::{note}
 If your question is *"what does this mean?"* rather than *"do this for me"*,
@@ -38,24 +40,30 @@ provider, a model, and an API key.
 | Local (Ollama, LM Studio) | `http://localhost:11434/v1` | your machine | no key needed |
 | OpenAI | `https://api.openai.com/v1` | US (unless zero-retention/EU terms) | platform.openai.com/api-keys |
 | OpenRouter | `https://openrouter.ai/api/v1` | routes to many, varies per model | openrouter.ai/keys |
+| Z.ai (GLM) | `https://api.z.ai/api/paas/v4` | outside the EEA (Zhipu AI) | z.ai/manage-apikey/apikey-list |
 
-A key can also come from the environment. ChiSurf accepts the usual spellings,
-so `MISTRAL_API_KEY`, `MISTRAL_KEY`, `MISTRAL_API_TOKEN` and `MISTRAL_TOKEN`
-all work (and likewise for the other providers).
+The key is stored in the AI settings (`ai_api_settings.json` in the ChiSurf
+settings folder), never in a project or a script. It can also come from the
+environment; ChiSurf accepts the usual spellings, so `MISTRAL_API_KEY`,
+`MISTRAL_KEY`, `MISTRAL_API_TOKEN` and `MISTRAL_TOKEN` all work (likewise
+`ZAI_API_KEY` and the others). The settings store wins when both are set.
 
 Any model with tool-calling support works; models without it fall back to a
-text protocol and are noticeably less reliable. Good starting points are
-`mistral-small-latest`, `gpt-4o-mini`, or a local `llama3.2`.
+text protocol and are noticeably less reliable. The defaults are
+`mistral-large-latest`, `gpt-4o`, `glm-5.3-flash` (Z.ai) and a local
+`llama3.2`.
 
 ## Things to ask it
 
-Every prompt below is shipped with ChiSurf and **run as a test** against a
-real model, so none of them is aspirational — see
-`python -m chisurf.core.agent --list-examples`, and
-`--example <id>` to run one.
+Every prompt below is shipped with ChiSurf with the data it runs on and the
+tools it must call, and is run as a test — offline on every build (the data
+scenario is built and checked), against a real model when
+`CHISURF_AGENT_TEST_LIVE=1` is set. See
+`python -m chisurf.core.agent --list-examples`, and `--example <id>` to run one.
 
 | Ask it | What it does |
 | --- | --- |
+| *“do a burstwise analysis of the data located in xy. select the fret active species and do a fluorescence decay analysis using gaussians to get the distance distribution.”* | Asks first — which file, R0, the donor-only lifetime, how many Gaussians, which gate — then finds the bursts, gates the FRET-active species, pools their photons into a sub-ensemble decay and fits the Gaussian distance distribution, stating the assumptions. Walked step by step below. |
 | *“What is in this folder?”* | Lists the files, says what kind of measurement each one is, and points out which are instrument-response references rather than samples — without loading or changing anything. |
 | *“What do I have open at the moment?”* | Summarises the datasets and fits in the session, with their indices and reduced chi-squares. |
 | *“I measured a fluorescence decay here. Fit it properly and tell me the lifetimes.”* | Loads the decay and its instrument response, attaches the IRF, adds lifetime components until the reduced chi-square stops improving, and reports the lifetimes with uncertainties. Reaches chi2r ~1.03 on the sample data. |
@@ -74,9 +82,10 @@ user does not have to guess what the thing can do.
 
 ## Using it in the GUI
 
-The assistant lives in the **🤖 AI Assistant** panel of the code editor
-(*Tools → System → Code Editor*, then **🤖 Agent**). The mode selector in its
-header decides how much it may touch:
+Open **🤖 Agent** from the Tools menu. The same panel is docked in the code
+editor (*Tools → System → Code Editor*, then **🤖 Agent**). The provider
+selector picks the backend; the green dot says it is configured (hover for
+why not). The mode selector decides how much it may touch:
 
 | Mode | What it can do |
 | --- | --- |
@@ -116,6 +125,78 @@ on which model the machine has configured, so the figure could not otherwise be
 re-taken. The layout, the tool-call rendering and the mode selector are ChiSurf's.
 ```
 
+## Walkthrough: from bursts to a distance distribution
+
+The shipped example `burstwise-distance-distribution`, in **ChiSurf tools**
+mode, on a measurement with one FRET population.
+
+**1. Ask.** Type the request as you would say it — here the verbatim example
+prompt. The assistant loads the matching skills (`burst-search`,
+`fit-decay`, `fret-from-decays`) and, because the request leaves choices
+open that change the result, calls `ask_user` instead of guessing. Nothing
+has run yet.
+
+```{figure} figures/40_agent_clarify.png
+:width: 80%
+
+The clarification round: one `ask_user` call (its badge `[ok]`), then its five
+questions as the assistant's message — the file, R0, τ_D0, the number of
+Gaussians and the gate — each with options and a default. The run waits for
+the reply; the input box is free. The model's turns are scripted (`docs/guides/screenshots/agent_shot.py`)
+so the figure is reproducible without a provider; the tools and the data are
+real.
+```
+
+**2. Answer.** Type the reply in the input box and send it; it resumes the same
+conversation, so the questions and their answers stay together. One message
+answers all of them: *"The file is smfret.ht3.
+R0 = 52 A, donor-only lifetime 4.0 ns, one Gaussian component, gate on E in
+[0.5, 1.0], fit the width."* There is no second round — if something is still
+open the assistant takes the best-supported choice and says so.
+
+**3. The chain runs.** Each step is a tool call in the transcript; open a badge
+to see its arguments and result.
+
+| Step | Tool | What to read in its result |
+| --- | --- | --- |
+| Detect the experiment | `detect_smfret` | cw / PIE / µs-ALEX, donor and acceptor channels, warnings to confirm |
+| Find the bursts | `run_burst_analysis` | number of bursts, E/S distributions, `factors_used`, the `.pto` the burst table was written to |
+| Look at them | `inspect_bursts` | the summary the gate will be chosen from |
+| Gate the species | `select_species` | how many bursts the gate keeps |
+| Sub-ensemble decay | `extract_subensemble_decay` | photons and bursts pooled, the dataset it registered |
+| Fit | `fit_distance_distribution` | mean distance, width, efficiency, donor-only fraction, χ²ᵣ, `stated_assumptions` |
+
+```{figure} figures/40_agent_chain.png
+:width: 80%
+
+After the answers: six tool calls from detection to the distance fit, each
+badge `[ok]`, then the report with the numbers of the fit that ran (simulation truth E = 0.75,
+R = 43.3 Å at R0 = 52 Å) and the assumptions used. Scripted model, real tools
+and data, as above.
+```
+
+**4. Check it.** The burst table and the decay sit in the measurement's `.pto`,
+the fit in the session's fit list — open them as you would your own. The
+correction factors default to no correction unless you give them or ask for
+auto-calibration; on PIE data the fitted distance runs ~6 % short (the donor
+window truncates the decay). Both are in
+{doc}`../concepts/workflow_agent`.
+
+## From another chat client (MCP)
+
+If you already work in a chat client that speaks the Model Context Protocol,
+point it at ChiSurf instead of using the panel:
+
+```bash
+python -m chisurf.core.agent.mcp_server
+```
+
+The client launches this command and talks to it over stdio. Every `read` and
+`write` tool — the burst chain, the fits, `record_finding` — appears as a
+tool of the client's own model; code execution and other dangerous tools are
+not served. Editors that speak the Agent Client Protocol use
+`python -m chisurf.core.agent --acp` instead.
+
 ## Using it from a terminal
 
 ```bash
@@ -128,7 +209,8 @@ python -m chisurf.core.agent --example fit-one-decay -C ./data
 ```
 
 Useful flags: `-C/--directory` sets what relative paths mean, `--safety
-read|write|dangerous` caps what it may do, `-y/--yes` approves dangerous actions
+read|write|dangerous` caps what it may do (default `dangerous`, each such call
+confirmed on the terminal), `-y/--yes` approves dangerous actions
 without prompting, `--provider`/`--model` override the configured ones, and
 `--json` prints a machine-readable result.
 
@@ -198,6 +280,15 @@ documentation, so a skill can stay a short procedure and point at the
 background rather than repeat it. It is deliberately separate from the `okf/`
 bundle in the repository, which describes how ChiSurf is *built* rather than
 what the measurements *mean*.
+
+### What it remembers about you
+
+The assistant keeps its own notes in an OKF bundle in your home folder,
+`~/.chisurf/okf/`: a dated `log.md` of finished tasks and one page per topic
+under `concepts/`. It writes there with `record_finding` (a conclusion worth
+keeping — chosen parameters, a quirk of your setup) and turns a procedure you
+want repeated into your own skill with `save_skill`, so later sessions load it
+when a request matches. Both are plain markdown you can read, edit or delete.
 
 ### Writing your own
 

@@ -216,6 +216,13 @@
     "sha256": "1d84ad409282fa19bd094bb9447483b3752f8739357f3c09bf3a2132383d8e78",
     "status": "ai-reviewed"
   },
+  "fret_check.md": {
+    "date": "2026-10-26",
+    "reviewer": "claude",
+    "reviewer_kind": "ai",
+    "sha256": "530740ea2a9ec11cd0b9b7a114b2e38b8a03588a6e32fbdc401f16e10e8d4c39",
+    "status": "ai-reviewed"
+  },
   "games.md": {
     "date": "2026-10-20",
     "reviewer": "agent",
@@ -266,10 +273,10 @@
     "status": "ai-reviewed"
   },
   "index.md": {
-    "date": "2026-10-20",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "1ce7e06cfe4a5463e72cdd3012a372907c9824903aa7d6b9bf05f80aa5a32a0e",
+    "sha256": "31389a42f39ef17f167d536463e6333a241e79312f42b602d5fe04c69bc5183c",
     "status": "ai-reviewed"
   },
   "intensity_traces.md": {
@@ -284,6 +291,13 @@
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "518bb2b53971c20f1c0508a9267a5ff4bfef0e56c8381c1aec32fe2fab5edcbb",
+    "status": "ai-reviewed"
+  },
+  "legacy_export.md": {
+    "date": "2026-10-26",
+    "reviewer": "claude",
+    "reviewer_kind": "ai",
+    "sha256": "9e97d368b7de44c949bbb9222083c5e1afdf229b9d7ab5067e1f01f614986e19",
     "status": "ai-reviewed"
   },
   "live_streaming_analysis.md": {
@@ -305,6 +319,13 @@
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "102b345dc791d815a6183428d07a58f6dbed6b632c8bb38f3ed48dfcf783e20c",
+    "status": "ai-reviewed"
+  },
+  "metadata_editor.md": {
+    "date": "2026-10-26",
+    "reviewer": "claude",
+    "reviewer_kind": "ai",
+    "sha256": "86734699823a6675cd2d7345e43d2d49de5f2db54d6b1692c0925f7a0f08d583",
     "status": "ai-reviewed"
   },
   "mfd_fitting.md": {
@@ -501,6 +522,13 @@
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "cee473f060e2d991db1f8d3d774ae9b6c12ff9dd56eeeedbc01fd9f2efb72be5",
+    "status": "ai-reviewed"
+  },
+  "workflow_agent.md": {
+    "date": "2026-10-26",
+    "reviewer": "claude",
+    "reviewer_kind": "ai",
+    "sha256": "6dc339264d2ba93814de7194a3247c3270984b445ae5dc2fa11ce230c59707f4",
     "status": "ai-reviewed"
   }
 }

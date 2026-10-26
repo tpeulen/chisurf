@@ -67,6 +67,7 @@ frap
 
 intensity_traces
 smfret_bursts
+fret_check
 us_alex
 accurate_fret
 burst_2cde
@@ -126,6 +127,8 @@ tttr_stream_tools
 detector_setup
 measurement_database
 data_deposition
+metadata_editor
+legacy_export
 microtime_shift
 live_streaming_analysis
 ```
@@ -170,6 +173,7 @@ games
 application_identity
 application_shell
 code_editor
+workflow_agent
 terminal
 flrcif_vocabulary
 ```
