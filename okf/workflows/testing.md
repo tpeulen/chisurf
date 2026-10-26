@@ -76,6 +76,7 @@ blocked; short targeted files stay local. `build_tools/remote_test.sh` does it:
 ```bash
 build_tools/remote_test.sh start                 # HEAD, `pixi run -e test test`
 build_tools/remote_test.sh start --dirty -- pixi run -e test test-gui
+build_tools/remote_test.sh start --sha HEAD~3 --slot 2 -- pixi run -e docs docs-release
 build_tools/remote_test.sh status | wait | log -f | fetch | stop | list
 ```
 
@@ -88,21 +89,36 @@ in (`modules/tttrlib`, `mmfdb`, `chimol`, `imp-tricks` -> `~/dev/<name>`) are mi
 way at the same paths: their committed HEAD is pushed and checked out detached, and `meta.txt`
 records each sibling's sha and whether local edits were left behind. Pixi envs are detached into the
 pixi cache, so the checkout stays clean. Each run is a systemd user unit (linger is on,
-so it survives a dropped ssh) and `start` refuses while another run is active — one
-suite at a time. Output (`meta.txt`, `log.txt`, `junit.xml`, `exit_code`) lands in
-`build/remote-test/<id>/` there and at the same path here after `fetch`. The remote
+so it survives a dropped ssh).
+
+Slots: the remote keeps CHISURF_REMOTE_SLOTS (default 3) full mirrors — slot 0 is `~/dev`,
+slot N is `~/dev-slot<N>` with the same layout (chisurf, its submodule, the siblings and the
+overlays), seeded once by a local clone of slot 0 and pointed at the same origins. Each slot has
+its own pixi environment (pixi keys detached environments by project path; the package cache is
+shared, so a new slot's env is mostly a link step). A new slot's env has no tttrlib until
+`pixi run -e test build-extensions` has run there (the gate command starts with it; a short ad-hoc
+run in a fresh slot that imports tttrlib must too). Runs without `--dirty` use the *committed*
+`build_tools/` scripts of the commit under test, not the workstation's edits. Runs in one slot share its checkout and must
+be on the same commit; `start` takes the slot already on the commit, else a free one, else refuses
+(`--slot N` forces one). The choice is atomic on the remote (a lock plus a claim file, so a run
+still being set up counts as busy), so runs on different commits — the gate on HEAD, a docs build
+on an older commit, a retry — go at once. `--sha REV` tests any committed revision. Output
+(`meta.txt` with the `slot:`, `log.txt`, `junit.xml`, `exit_code`) lands in the slot's
+`chisurf/build/remote-test/<id>/`; `status`/`wait`/`log`/`fetch`/`stop`/`list` find a run in any
+slot, and `fetch` copies it to `build/remote-test/<id>/` here. The remote
 gate uses the locked env (emtk from the lock), not the workstation's editable emtk —
 the workstation's newer emtk and IMP.bff reach the run as overlays instead (below).
 
 Overlays: `~/dev/emtk` (CHISURF_REMOTE_OVERLAYS) is mirrored and put first on PYTHONPATH;
-`~/dev/imp.bff` (CHISURF_REMOTE_BUILT_OVERLAYS) is mirrored, built once per commit into
-`~/.cache/chisurf-remote/imp.bff/<sha>/site` with the test env's Python
-(`build_tools/remote_overlay_build.sh`, locked against concurrent builds, newest three kept) and
-put first on PYTHONPATH. Set either variable empty to test the locked env alone. Every run gets
+`~/dev/imp.bff` (CHISURF_REMOTE_BUILT_OVERLAYS) is mirrored, built once per commit and
+environment into `~/.cache/chisurf-remote/imp.bff/<sha>-<env hash>/site` with the slot's test
+env (no build isolation, absolute RPATH into that env; `build_tools/remote_overlay_build.sh`,
+locked against concurrent builds, newest six kept, a build counts only once it imports), and
+put first on PYTHONPATH by the run's `prepare.sh`. Set either variable empty to test the locked env alone. Every run gets
 its own CHISURF_SETTINGS_DIR / MMFDB_SETTINGS_DIR under `$RUN/settings`. `--jobs N` on
 `build_tools/dev_utils/run_tests_chunked.py` runs N chunks at once (`--retry-serial` re-runs the
 failing ones alone; tests marked `timing` run in one serial chunk after the parallel pass);
-several runs may go at once on the same commit.
+several runs may go at once on the same commit, and on different commits in different slots.
 
 # Single test
 

@@ -7,16 +7,22 @@
 # clone over ssh as refs/remote-test/<id> (no branch is touched, no GitHub
 # round trip) and checked out detached. Pixi environments are detached into
 # the pixi cache, so the checkout stays clean. Each run is a systemd user
-# unit (survives a dropped ssh connection). Several runs may go at once, but
-# only on the same commit (they share the checkout); `start` refuses otherwise.
-# Run output lands in build/remote-test/<id> on the remote and, after `fetch`,
-# at the same path here. Sibling checkouts the
+# unit (survives a dropped ssh connection).
+#
+# Slots: the remote keeps CHISURF_REMOTE_SLOTS (default 3) full mirrors -- slot 0 is ~/dev
+# (~/dev/chisurf, ~/dev/tttrlib, ...), slot N is ~/dev-slot<N> with the same layout, each
+# with its own pixi environment (pixi keys detached environments by project path). Runs
+# in one slot share its checkout, so they must be on the same commit; `start` takes the
+# slot already on the commit, else a free one, else refuses (--slot N forces one). So
+# runs on different commits go at once. Run output lands in
+# <slot>/chisurf/build/remote-test/<id> on the remote (meta.txt names the slot) and,
+# after `fetch`, in build/remote-test/<id> here. Sibling checkouts the
 # tree links in (modules/<name> -> ~/dev/<name>: tttrlib, mmfdb, chimol, ...)
 # are mirrored the same way: their committed HEAD is pushed to the same path
 # on the remote and checked out detached (their uncommitted edits are not
 # sent; meta.txt records each sibling's sha and whether it was dirty).
 #
-#   build_tools/remote_test.sh start [--dirty] [--id ID] [-- CMD...]
+#   build_tools/remote_test.sh start [--dirty | --sha REV] [--slot N] [--id ID] [-- CMD...]
 #   build_tools/remote_test.sh status [ID]      # state + log tail
 #   build_tools/remote_test.sh wait [ID]        # block until done, exit with its code
 #   build_tools/remote_test.sh log [ID] [-f]    # whole log (or follow)
@@ -37,12 +43,12 @@
 # installed editable, newer than pixi.lock (the lock moves at the release cut). Set
 # CHISURF_REMOTE_OVERLAYS= to test the locked env alone. Compiled overlays
 # (CHISURF_REMOTE_BUILT_OVERLAYS, default "imp.bff") are mirrored too, built once per
-# commit into ~/.cache/chisurf-remote/<name>/<sha> on the remote
+# commit and environment into ~/.cache/chisurf-remote/<name>/<sha>-<env> on the remote
 # (build_tools/remote_overlay_build.sh) and put first on PYTHONPATH.
 # Every run gets its own CHISURF_SETTINGS_DIR / MMFDB_SETTINGS_DIR under $RUN/settings.
 #
 # Environment: CHISURF_REMOTE_HOST (default: home), CHISURF_REMOTE_OVERLAYS,
-# CHISURF_REMOTE_BUILT_OVERLAYS.
+# CHISURF_REMOTE_BUILT_OVERLAYS, CHISURF_REMOTE_SLOTS (default 3).
 
 set -euo pipefail
 
@@ -50,42 +56,133 @@ HOST="${CHISURF_REMOTE_HOST:-home}"
 SUBMODULE="modules/ndxplorer"
 OVERLAYS="${CHISURF_REMOTE_OVERLAYS-emtk}"
 BUILT_OVERLAYS="${CHISURF_REMOTE_BUILT_OVERLAYS-imp.bff}"
+SLOTS="${CHISURF_REMOTE_SLOTS:-3}"
 KEEP_REFS=20
 REPO="$(git -C "$(dirname "$0")/.." rev-parse --show-toplevel)"
 case "$REPO" in
-    "$HOME"/*) DIR="${REPO#"$HOME"/}" ;;
-    *) echo "the checkout must live under \$HOME to be mirrored: $REPO" >&2; exit 2 ;;
+    "$HOME"/dev/*) DIR="${REPO#"$HOME"/}" ;;
+    *) echo "the checkout must live under \$HOME/dev to be mirrored: $REPO" >&2; exit 2 ;;
 esac
+#: The local runs folder (fetch target); on the remote it sits in the run's slot.
 RUNS="$DIR/build/remote-test"
+#: Slot 0 is the workstation's own layout; the slot a run uses is chosen in cmd_start.
+BASE="dev"
+#: Every slot's runs folder on the remote, for finding a run by id.
+ALL_RUNS="\$HOME/dev/${DIR#dev/}/build/remote-test \$HOME/dev-slot*/${DIR#dev/}/build/remote-test"
 
-remote() { ssh -o BatchMode=yes "$HOST" "$@"; }
+# Run every remote command in bash (the remote login shell may be zsh, which aborts on an
+# unmatched glob).
+remote() { ssh -o BatchMode=yes "$HOST" "bash -c $(printf '%q' "$*")"; }
+
+#: A path under the local ~/dev mapped into the slot's tree (dev/x -> <base>/x).
+in_slot() { local rel="$1"; case "$rel" in dev/*) echo "$BASE/${rel#dev/}" ;; *) echo "$rel" ;; esac; }
+
+slot_base() { if [[ "$1" == 0 ]]; then echo dev; else echo "dev-slot$1"; fi; }
+
+#: The remote run directory of *id* (searched across slots).
+run_dir() {
+    local d
+    d="$(remote "shopt -s nullglob; for r in $ALL_RUNS; do [ -d \$r/$1 ] && { echo \$r/$1; break; }; done")"
+    [[ -n "$d" ]] || { echo "no run $1 on $HOST" >&2; exit 2; }
+    echo "$d"
+}
 
 resolve_id() {
     local id="${1:-}"
-    [[ -n "$id" ]] || id="$(remote "ls -1t $RUNS 2>/dev/null | head -1")"
+    [[ -n "$id" ]] || id="$(remote "shopt -s nullglob; ls -1dt $(printf '%s/*/ ' $ALL_RUNS) 2>/dev/null | head -1 | xargs -r basename")"
     [[ -n "$id" ]] || { echo "no runs on $HOST" >&2; exit 2; }
     echo "$id"
 }
 
 ensure_remote() {
-    local origin
+    local origin dir
     origin="$(git -C "$REPO" remote get-url origin)"
+    dir="$(in_slot "$DIR")"
+    # A new slot is seeded from slot 0's clone on the remote (no second download), then
+    # pointed at the same origin.
     remote "set -e
         [ -x ~/.pixi/bin/pixi ] || { curl -fsSL https://pixi.sh/install.sh | PIXI_NO_PATH_UPDATE=1 bash >/dev/null; }
         ~/.pixi/bin/pixi config set --global detached-environments true >/dev/null 2>&1
-        if [ ! -d $DIR/.git ]; then
-            mkdir -p \$(dirname $DIR)
-            git clone -q $origin $DIR
+        if [ ! -d $dir/.git ]; then
+            mkdir -p \$(dirname $dir)
+            if [ -d $DIR/.git ] && [ $dir != $DIR ]; then
+                git -c advice.detachedHead=false clone -q $DIR $dir && git -C $dir remote set-url origin $origin
+            else
+                git -c advice.detachedHead=false clone -q $origin $dir
+            fi
         fi
-        cd $DIR
+        cd $dir
         git -c protocol.file.allow=always submodule update -q --init $SUBMODULE 2>/dev/null || true"
 }
 
+#: Make the remote repository *rel* (under the slot) exist, seeded from slot 0's copy.
+ensure_repo() {
+    local rel="$1" slot0="$2" origin="$3"
+    remote "set -e
+        if [ ! -d $rel/.git ]; then
+            mkdir -p \$(dirname $rel)
+            if [ -d $slot0/.git ] && [ $rel != $slot0 ]; then
+                git -c advice.detachedHead=false clone -q $slot0 $rel && git -C $rel remote set-url origin $origin
+            else
+                mkdir -p $rel && git -C $rel init -q && git -C $rel remote add origin $origin
+            fi
+        fi"
+}
+
+#: Run a bash script given on stdin on the remote, with positional arguments.
+remote_script() { ssh -o BatchMode=yes "$HOST" "bash -s -- $(printf '%q ' "$@")"; }
+
+#: Pick and claim the slot for *sha* on the remote, atomically (a lock around the choice,
+#: a claim file so a run still being set up counts as busy): the slot already on the
+#: commit, else a free one; refuse otherwise. Prints the slot's base (dev, dev-slot1, ...).
+choose_slot() {
+    remote_script "$1" "${2:-}" "$SLOTS" "${DIR#dev/}" <<'SLOT_EOF'
+set -euo pipefail
+sha="$1"; forced="$2"; slots="$3"; repo="$4"
+state="$HOME/.cache/chisurf-remote"; mkdir -p "$state/claims"
+exec 8>"$state/slots.lock"; flock 8
+base_of() { if [ "$1" = 0 ]; then echo dev; else echo "dev-slot$1"; fi; }
+# "<base> <sha>" for every active run and every fresh claim (< 15 min)
+busy=$(
+  for u in $(systemctl --user list-units --state=active,activating --no-legend --plain 'chisurf-test-*' | awk '{print $1}'); do
+    id=${u#chisurf-test-}; id=${id%.service}
+    for r in "$HOME"/dev/"$repo"/build/remote-test "$HOME"/dev-slot*/"$repo"/build/remote-test; do
+      m="$r/$id/meta.txt"; [ -f "$m" ] || continue
+      b=$(sed -n 's/^slot: //p' "$m"); s=$(sed -n 's/^sha: //p' "$m"); echo "${b:-dev} $s"; break
+    done
+  done
+  now=$(date +%s)
+  for c in "$state"/claims/*; do
+    [ -f "$c" ] || continue
+    read -r csha ctime < "$c" || continue
+    [ $((now - ctime)) -lt 900 ] && echo "$(basename "$c") $csha"
+  done
+)
+shas_of() { awk -v b="$1" '$1==b{print $2}' <<<"$busy" | sort -u; }
+pick=""
+if [ -n "$forced" ]; then
+  b=$(base_of "$forced"); s=$(shas_of "$b")
+  if [ -n "$s" ] && [ "$s" != "$sha" ]; then echo "slot $forced ($b) is busy on another commit ($s)" >&2; exit 3; fi
+  pick=$b
+else
+  for ((n = 0; n < slots; n++)); do b=$(base_of $n); [ "$(shas_of "$b")" = "$sha" ] && { pick=$b; break; }; done
+  if [ -z "$pick" ]; then
+    for ((n = 0; n < slots; n++)); do b=$(base_of $n); [ -z "$(shas_of "$b")" ] && { pick=$b; break; }; done
+  fi
+fi
+if [ -z "$pick" ]; then echo "all $slots slots are busy:" >&2; echo "$busy" >&2; exit 3; fi
+echo "$sha $(date +%s)" > "$state/claims/$pick"
+echo "$pick"
+SLOT_EOF
+}
+
 cmd_start() {
-    local dirty=0 id="" cmd=()
+    local dirty=0 id="" cmd=() rev="" slot=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --dirty) dirty=1; shift ;;
+            --sha) rev="$2"; shift 2 ;;
+            --slot) slot="$2"; shift 2 ;;
             --id) id="$2"; shift 2 ;;
             --) shift; cmd=("$@"); break ;;
             *) echo "unknown option: $1" >&2; exit 2 ;;
@@ -96,21 +193,24 @@ cmd_start() {
     cd "$REPO"
     local sha="" label="HEAD"
     if [[ $dirty -eq 1 ]]; then sha="$(git stash create "remote_test snapshot")"; fi
-    if [[ -n "$sha" ]]; then label="dirty"; else sha="$(git rev-parse HEAD)"; fi
-
-    # Runs share the one checkout: several may run at once (the box has the cores), but
-    # only on the same commit -- checking out another would change the tree under them.
-    local busy
-    busy="$(remote "for u in \$(systemctl --user list-units --state=active,activating --no-legend --plain 'chisurf-test-*' | awk '{print \$1}'); do
-        id=\${u#chisurf-test-}; id=\${id%.service}; sed -n 's/^sha: //p' $RUNS/\$id/meta.txt 2>/dev/null; done | sort -u")"
-    if [[ -n "$busy" && "$busy" != "$sha" ]]; then
-        echo "runs on another commit are active on $HOST ($busy); wait or stop them" >&2
-        exit 3
+    if [[ -n "$sha" ]]; then
+        label="dirty"
+    elif [[ -n "$rev" ]]; then
+        sha="$(git rev-parse --verify "$rev^{commit}")"; label="$rev"
+    else
+        sha="$(git rev-parse HEAD)"
     fi
+
+    # Runs in one slot share its checkout, so they must be on the same commit; a run on
+    # another commit takes another slot (choose_slot).
+    BASE="$(choose_slot "$sha" "$slot")"
+    local rdir rruns
+    rdir="$(in_slot "$DIR")"
+    rruns="$rdir/build/remote-test"
     [[ -n "$id" ]] || id="$(date +%Y%m%d-%H%M%S)-$(git rev-parse --short "$sha")"
 
     ensure_remote
-    git push -q "$HOST:$DIR" "+$sha:refs/remote-test/$id"
+    git push -q "$HOST:$rdir" "+$sha:refs/remote-test/$id"
 
     # Siblings: modules/<link> -> a git checkout elsewhere under $HOME.
     local link target top rel ssha sdirty siblings="" sibmeta=""
@@ -121,14 +221,11 @@ cmd_start() {
         case "$top" in "$HOME"/*) rel="${top#"$HOME"/}" ;; *) continue ;; esac
         ssha="$(git -C "$top" rev-parse HEAD)"
         sdirty="clean"; [[ -z "$(git -C "$top" status --porcelain --untracked-files=no)" ]] || sdirty="dirty (not sent)"
-        remote "set -e
-            if [ ! -d $rel/.git ]; then
-                mkdir -p $rel && git -C $rel init -q
-                git -C $rel remote add origin $(git -C "$top" remote get-url origin 2>/dev/null || echo none)
-            fi"
+        ensure_repo "$(in_slot "$rel")" "$rel" "$(git -C "$top" remote get-url origin 2>/dev/null || echo none)"
+        rel="$(in_slot "$rel")"
         git -C "$top" push -q "$HOST:$rel" "+$ssha:refs/remote-test/$id"
         # an untracked link (local convenience) is recreated as it is here
-        remote "[ -e $DIR/modules/${link##*/} ] || ln -sn $(readlink "$link") $DIR/modules/${link##*/}"
+        remote "[ -e $rdir/modules/${link##*/} ] || ln -sn $(readlink "$link") $rdir/modules/${link##*/}"
         siblings="$siblings $rel:$ssha"
         sibmeta="${sibmeta}sibling: $rel $ssha $sdirty"$'\n'
     done
@@ -137,10 +234,10 @@ cmd_start() {
     for name in $OVERLAYS; do
         top="$HOME/dev/$name"
         [[ -d "$top/.git" ]] || continue
-        rel="dev/$name"
         ssha="$(git -C "$top" rev-parse HEAD)"
         sdirty="clean"; [[ -z "$(git -C "$top" status --porcelain --untracked-files=no)" ]] || sdirty="dirty (not sent)"
-        remote "[ -d $rel/.git ] || { mkdir -p $rel && git -C $rel init -q; }"
+        ensure_repo "$(in_slot "dev/$name")" "dev/$name" "$(git -C "$top" remote get-url origin 2>/dev/null || echo none)"
+        rel="$(in_slot "dev/$name")"
         git -C "$top" push -q "$HOST:$rel" "+$ssha:refs/remote-test/$id"
         siblings="$siblings $rel:$ssha"
         sibmeta="${sibmeta}overlay: $rel $ssha $sdirty (first on PYTHONPATH)"$'\n'
@@ -152,19 +249,21 @@ cmd_start() {
     for name in $BUILT_OVERLAYS; do
         top="$HOME/dev/$name"
         [[ -d "$top/.git" ]] || continue
-        rel="dev/$name"
         ssha="$(git -C "$top" rev-parse HEAD)"
         sdirty="clean"; [[ -z "$(git -C "$top" status --porcelain --untracked-files=no)" ]] || sdirty="dirty (not sent)"
-        remote "[ -d $rel/.git ] || { mkdir -p $rel && git -C $rel init -q; }"
+        ensure_repo "$(in_slot "dev/$name")" "dev/$name" "$(git -C "$top" remote get-url origin 2>/dev/null || echo none)"
+        rel="$(in_slot "dev/$name")"
         git -C "$top" push -q "$HOST:$rel" "+$ssha:refs/remote-test/$id"
         siblings="$siblings $rel:$ssha"
         sibmeta="${sibmeta}built overlay: $rel $ssha $sdirty (built, first on PYTHONPATH)"$'\n'
-        pypath="\$HOME/.cache/chisurf-remote/$name/$ssha/site${pypath:+:$pypath}"
-        prepare="${prepare:+$prepare && }bash \$HOME/$DIR/build_tools/remote_overlay_build.sh $name $ssha >/dev/null"
+        # The build prints its site directory (cache keyed by commit and the slot's
+        # environment); prepare.sh puts it first on PYTHONPATH.
+        prepare="${prepare}site=\$(bash \$HOME/$rdir/build_tools/remote_overlay_build.sh $name $ssha $BASE) || return 1"$'\n'
+        prepare="${prepare}export PYTHONPATH=\"\$site\${PYTHONPATH:+:\$PYTHONPATH}\""$'\n'
     done
     local subsha=""
     if subsha="$(git rev-parse "$sha:$SUBMODULE" 2>/dev/null)"; then
-        git -C "$SUBMODULE" push -q "$HOST:$DIR/$SUBMODULE" "+$subsha:refs/remote-test/$id"
+        git -C "$SUBMODULE" push -q "$HOST:$rdir/$SUBMODULE" "+$subsha:refs/remote-test/$id"
     fi
 
     # A JUnit report for the pytest tasks (pixi run [-e ENV] test*), at an absolute
@@ -172,12 +271,12 @@ cmd_start() {
     local quoted extra="" task="${cmd[2]:-}"
     [[ "$task" == "-e" ]] && task="${cmd[4]:-}"
     if [[ "${cmd[0]}" == "pixi" && "${cmd[1]:-}" == "run" && "$task" == test* ]]; then
-        extra=" --junitxml=\$HOME/$RUNS/$id/junit.xml"
+        extra=" --junitxml=\$HOME/$rruns/$id/junit.xml"
     fi
     printf -v quoted '%q ' "${cmd[@]}"
 
     remote "set -e
-        cd $DIR
+        cd $rdir
         git checkout -q -f --detach $sha
         if [ -n '$subsha' ]; then git -C $SUBMODULE checkout -q -f --detach $subsha; fi
         for pair in $siblings; do
@@ -188,9 +287,10 @@ cmd_start() {
             git -C \$repo for-each-ref --sort=-refname --format='%(refname)' refs/remote-test/ \
                 | tail -n +$((KEEP_REFS + 1)) | xargs -r -n1 git -C \$repo update-ref -d
         done
-        RUN=\$HOME/$RUNS/$id; mkdir -p \$RUN
+        RUN=\$HOME/$rruns/$id; mkdir -p \$RUN
         cat > \$RUN/meta.txt <<EOF
 id: $id
+slot: $BASE
 sha: $sha
 tree: $label
 submodule: $subsha
@@ -201,6 +301,10 @@ EOF
         cat > \$RUN/cmd.sh <<'CMD_EOF'
 $quoted$extra
 CMD_EOF
+        # the compiled overlays' builds, sourced by run.sh (their site dirs go on PYTHONPATH)
+        cat > \$RUN/prepare.sh <<'PREP_EOF'
+$prepare
+PREP_EOF
         cat > \$RUN/run.sh <<EOF
 #!/bin/bash
 export PATH=\$HOME/.pixi/bin:/usr/local/bin:/usr/bin:/bin
@@ -208,8 +312,8 @@ export RUN=\$RUN
 export PYTHONPATH=$pypath
 # per-run user state: nothing a run does lands in the remote's real ~/.chisurf
 export CHISURF_SETTINGS_DIR=\$RUN/settings MMFDB_SETTINGS_DIR=\$RUN/settings
-cd \$HOME/$DIR
-{ true ${prepare:+&& $prepare}; } > \$RUN/log.txt 2>&1 || { echo 1 > \$RUN/exit_code; date -Is > \$RUN/finished; exit 1; }
+cd \$HOME/$rdir
+. \$RUN/prepare.sh > \$RUN/log.txt 2>&1 || { echo 1 > \$RUN/exit_code; date -Is > \$RUN/finished; exit 1; }
 bash \$RUN/cmd.sh >> \$RUN/log.txt 2>&1
 rc=\\\$?
 echo \\\$rc > \$RUN/exit_code
@@ -217,14 +321,16 @@ date -Is > \$RUN/finished
 exit \\\$rc
 EOF
         chmod +x \$RUN/run.sh
-        systemd-run --user --quiet --collect --unit=chisurf-test-$id --nice=10 \$RUN/run.sh"
+        systemd-run --user --quiet --collect --unit=chisurf-test-$id --nice=10 \$RUN/run.sh
+        # the unit now marks the slot busy; the setup claim is no longer needed
+        rm -f \$HOME/.cache/chisurf-remote/claims/$BASE"
     echo "$id"
-    echo "started on $HOST: $label $sha (${cmd[*]})" >&2
+    echo "started on $HOST in $BASE: $label $sha (${cmd[*]})" >&2
 }
 
 cmd_status() {
-    local id; id="$(resolve_id "${1:-}")"
-    remote "RUN=$RUNS/$id
+    local id run; id="$(resolve_id "${1:-}")"; run="$(run_dir "$id")"
+    remote "RUN=$run
         cat \$RUN/meta.txt
         if [ -f \$RUN/exit_code ]; then echo \"state: finished, exit \$(cat \$RUN/exit_code) at \$(cat \$RUN/finished)\";
         elif systemctl --user is-active -q chisurf-test-$id; then echo 'state: running';
@@ -233,25 +339,25 @@ cmd_status() {
 }
 
 cmd_wait() {
-    local id; id="$(resolve_id "${1:-}")"
-    while ! remote "test -f $RUNS/$id/exit_code"; do
+    local id run; id="$(resolve_id "${1:-}")"; run="$(run_dir "$id")"
+    while ! remote "test -f $run/exit_code"; do
         remote "systemctl --user is-active -q chisurf-test-$id" || { cmd_status "$id"; exit 4; }
         sleep 60
     done
     cmd_status "$id"
-    exit "$(remote "cat $RUNS/$id/exit_code")"
+    exit "$(remote "cat $run/exit_code")"
 }
 
 cmd_log() {
-    local id; id="$(resolve_id "${1:-}")"
-    if [[ "${2:-}" == "-f" ]]; then remote "tail -n 50 -f $RUNS/$id/log.txt"
-    else remote "cat $RUNS/$id/log.txt"; fi
+    local id run; id="$(resolve_id "${1:-}")"; run="$(run_dir "$id")"
+    if [[ "${2:-}" == "-f" ]]; then remote "tail -n 50 -f $run/log.txt"
+    else remote "cat $run/log.txt"; fi
 }
 
 cmd_fetch() {
-    local id; id="$(resolve_id "${1:-}")"
+    local id run; id="$(resolve_id "${1:-}")"; run="$(run_dir "$id")"
     mkdir -p "$HOME/$RUNS"
-    rsync -a "$HOST:$RUNS/$id" "$HOME/$RUNS/"
+    rsync -a "$HOST:$run" "$HOME/$RUNS/"
     echo "$HOME/$RUNS/$id"
 }
 
@@ -261,7 +367,12 @@ cmd_stop() {
 }
 
 cmd_list() {
-    remote "cd $RUNS 2>/dev/null && for r in \$(ls -1t); do printf '%s  %s\n' \$r \"\$(cat \$r/exit_code 2>/dev/null || echo running/dead)\"; done"
+    remote "shopt -s nullglob; for r in \$(ls -1dt $(printf '%s/*/ ' $ALL_RUNS) 2>/dev/null); do
+        r=\${r%/}; id=\$(basename \$r)
+        if [ -f \$r/exit_code ]; then st=\"exit \$(cat \$r/exit_code)\"
+        elif systemctl --user is-active -q chisurf-test-\$id; then st=running
+        else st=dead; fi
+        printf '%-36s %-11s %s\n' \$id \$(sed -n 's/^slot: //p' \$r/meta.txt 2>/dev/null | grep . || echo dev) \"\$st\"; done"
 }
 
 sub="${1:-}"; shift || true
@@ -273,5 +384,5 @@ case "$sub" in
     fetch) cmd_fetch "$@" ;;
     stop) cmd_stop "$@" ;;
     list) cmd_list ;;
-    *) sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    *) sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac
