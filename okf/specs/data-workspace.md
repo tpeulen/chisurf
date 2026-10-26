@@ -60,14 +60,24 @@ Fit-only paths (model choice, "+ Analysis", `build_fit_group`) take the fittable
 `PhotonStreamDataset(ExperimentalData)` (`core/data.py`): `address`, `size_bytes`, `sha256`, the header
 JSON, the routing channels; the photons open lazily through `staging.open_tttr(address)`. In the `.cs.pto`:
 
-* **embedded** (default, self-contained project): the raw file streamed into the project container as an
-  object of kind `tttr_photon_stream` (ptolib `add_file`, the way `Measurement.create` embeds), never through
-  JSON or `ResourceContext.sources`; the dataset's address becomes `project.cs.pto/<dataset>`;
-* **referenced** (above a size limit in the settings, or by choice): relative path + size + sha256, the
-  `Measurement._record_sidecar_raw` scheme; a changed or missing file is reported on open, not silently
-  re-read.
+* **linked** (default — owner 2026-10-26: the project stays slim and never duplicates measurements when
+  many TTTR files are processed): a ptolib **file link** object — the target's path relative to the
+  container, its size and sha256 (and the tttr header for listing without opening). The dataset's address
+  is `project.cs.pto/<dataset>`; resolution follows the link transparently. A missing or changed target is
+  reported on open (size/hash mismatch), never silently re-read; a moved project re-finds targets by the
+  relative path, then by name beside the project.
+* **embedded** (explicit "Pack project", for sharing or a deposit): the target's bytes streamed into the
+  container in place of the link (ptolib `add_file`), never through JSON or `ResourceContext.sources`.
+  Unpack writes them back out and restores the links.
 
-Autosave must not re-hash embedded photon objects (they are immutable once written).
+Autosave never re-hashes link targets or packed photon objects (immutable once recorded); hashing happens
+once, at import.
+
+**File links in ptolib** (canonical, re-vendored into tttrlib and imp.bff): a first-class object kind, not
+an application convention — `add_link(path, …)` records relative path + size + sha256; `stream`/`extract`/
+`open_address` follow it; `verify` reports missing/changed targets; `compact` keeps links links (98497f1);
+`pack`/`unpack` convert between linked and embedded. The present `external_payload_path` hook and
+tttrlib's `add_sidecar_file` / chisurf's `_mmfdb_sidecar.*` tags map onto it (one mechanism).
 
 ## One way in
 
