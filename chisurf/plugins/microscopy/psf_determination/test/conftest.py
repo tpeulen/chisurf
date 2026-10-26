@@ -21,3 +21,14 @@ def hermetic_user_state(tmp_path_factory, monkeypatch):
     except Exception:  # pragma: no cover
         pass
     yield
+
+
+@pytest.fixture(autouse=True)
+def workspace_restored():
+    """The Datasets workspace as it was: a test's rows do not leak into the next test."""
+    from chisurf.core.api import dataset_container
+
+    held = dataset_container()
+    before = list(held)
+    yield
+    held[:] = before

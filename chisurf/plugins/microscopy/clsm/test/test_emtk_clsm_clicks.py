@@ -31,6 +31,30 @@ def hermetic(tmp_path, monkeypatch):
     monkeypatch.setenv("MMFDB_DATABASE_PATH", str(tmp_path / "m.sqlite"))
 
 
+@pytest.fixture(autouse=True)
+def workspace_restored():
+    """The Datasets workspace as it was: a test's rows do not leak into the next test."""
+    from chisurf.core.api import dataset_container
+
+    held = dataset_container()
+    before = list(held)
+    yield
+    held[:] = before
+
+
+def pick(ui, name, path, kind="photons"):
+    """Put *path* in the Datasets workspace (as a drop does) and pick it in Input section *name*."""
+    from chisurf.core.plugin.workspace_input import register_result
+
+    named = ui.app.inputs[name]
+    register_result(str(path), kind=kind)
+    rows = [r for r in named.workspace_input_rows() if r.get("address") == str(path)]
+    assert rows, f"{path} is not offered by the {name!r} Input section"
+    named.workspace_input_selected(rows[-1])
+    assert not named.workspace_input_status.startswith("Could not"), named.workspace_input_status
+    return True
+
+
 def settle(ui, timeout=180):
     end = time.monotonic() + timeout
     while (
@@ -51,7 +75,7 @@ def empty():
 @pytest.fixture()
 def built():
     ui = Ui(ClsmApp(), (1200, 800))
-    assert ui.drop(SP5)
+    assert pick(ui, "data", SP5)
     settle(ui)
     ui.click("Build CLSM")
     settle(ui)
@@ -61,18 +85,12 @@ def built():
     ui.app.close()
 
 
-def test_open_dialog_every_way_out_then_pick_loads_and_fills_the_markers(empty):
+def test_the_data_picked_from_the_workspace_loads_and_fills_the_markers(empty):
     ui = empty
-    ui.click("Open TTTR / imaging")
-    assert ui.dialog_open
-    ui.press_text("Cancel")
-    assert not ui.dialog_open and ui.app.model.tttr_data is None
-    ui.click("Open TTTR / imaging")
-    ui.press_text("×")
-    assert not ui.dialog_open
-    ui.click("Open TTTR / imaging")
-    ui.app.dialog.enter(str(SP5.parent))
-    ui.dialog_pick(SP5.name)
+    ui.draw(2)
+    assert "Open TTTR / imaging" in ui.app.item_rects  # the Input section stands where Open was
+    assert not hasattr(ui.app, "on_files_dropped") and not hasattr(ui.app, "picker")
+    pick(ui, "data", SP5)
     settle(ui)
     assert ui.app.model.tttr_data is not None and ui.app.model.setup.frame_marker_text == "4,6"
     assert ui.shown("Leica_SP5.ptu")
@@ -228,17 +246,19 @@ def test_save_region_name_typed_compute_decay_and_exports(built, tmp_path):
     assert (tmp_path / "image_out.tif").exists()
 
 
-def test_settings_round_trip_through_the_dialogs(empty, tmp_path):
+def test_settings_saved_through_the_dialog_come_back_through_the_workspace(empty, tmp_path):
+    from chisurf.core.fio.classify import classify
+
     ui = empty
     ui.type_into("size", "13")
     ui.click("Save settings")
     ui.save_dialog_type_name(str(tmp_path / "clsm_state.json"))
     ui.press_text("Save")
-    assert json.loads((tmp_path / "clsm_state.json").read_text())["brush"]["size"] == 13
+    saved = tmp_path / "clsm_state.json"
+    assert json.loads(saved.read_text())["brush"]["size"] == 13
+    assert classify(saved) == "setup"  # a drop puts the settings in the workspace
     ui.type_into("size", "3")
-    ui.click("Load settings")
-    ui.app.dialog.enter(str(tmp_path))
-    ui.dialog_pick("clsm_state.json")
+    pick(ui, "settings", saved, kind="setup")
     assert ui.app.model.brush.size == 13
 
 
@@ -287,7 +307,7 @@ def test_layout_at_both_sizes(size):
     from test.gui.emtk_layout_checks import assert_texts_apart
 
     ui = Ui(ClsmApp(), size)
-    ui.drop(SP5)
+    pick(ui, "data", SP5)
     settle(ui)
     ui.click("Build CLSM")
     settle(ui)

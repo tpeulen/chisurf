@@ -52,6 +52,40 @@ def settle(ui, timeout=120):
     return ui.draw(3)
 
 
+@pytest.fixture(autouse=True)
+def workspace_restored():
+    """The Datasets workspace as it was: a test's rows do not leak into the next test."""
+    from chisurf.core.api import dataset_container
+
+    held = dataset_container()
+    before = list(held)
+    yield
+    held[:] = before
+
+
+def pick(ui, name, *paths, kind="setup"):
+    """Put *paths* in the Datasets workspace (an NPY map drops as a setup) and pick them in Input
+    section *name*, as a person does."""
+    from chisurf.core.plugin.workspace_input import register_result
+
+    named = ui.app.inputs[name]
+    rows = []
+    for path in paths:
+        register_result(str(path), kind=kind)
+        found = [r for r in named.workspace_input_rows() if r.get("address") == str(path)]
+        assert found, f"{path} is not offered by the {name!r} Input section"
+        rows.append(found[-1])
+    spec = named._workspace_input()
+    if spec is not None and spec[1].many:
+        named.workspace_input_selection = rows
+        named.workspace_input_use()
+    else:
+        named.workspace_input_selected(rows[-1])
+    assert not named.workspace_input_status.startswith("Could not"), named.workspace_input_status
+    ui.draw(2)
+    return True
+
+
 @pytest.fixture()
 def ui():
     ui = Ui(make_app(), (1200, 800))
@@ -61,48 +95,34 @@ def ui():
 @pytest.fixture()
 def loaded(maps):
     ui = Ui(make_app(), (1200, 800))
-    assert ui.drop(maps["intensity"])
-    assert ui.drop(maps["life0"], maps["life1"])
+    assert pick(ui, "intensity", maps["intensity"])
+    assert pick(ui, "lifetimes", maps["life0"], maps["life1"])
     ui.app.model.n_lifetime_levels = ui.app.model.n_intensity_levels = 2
     ui.app.model.brightness_scale = 100
     ui.draw(3)
     return ui
 
 
-def test_intensity_dialog_cancel_close_pick_and_the_path_is_shown(ui, maps):
-    ui.click("Intensity image")
-    assert ui.dialog_open
-    ui.press_text("Cancel")
-    assert not ui.dialog_open and not ui.app.model.intensity_path
-    ui.click("Intensity image")
-    ui.press_text("×")
-    assert not ui.dialog_open
-    ui.click("Intensity image")
-    ui.app.dialog.enter(str(maps["intensity"].parent))
-    ui.dialog_pick("intensity.npy")
+def test_the_intensity_map_is_picked_from_the_workspace_and_the_path_is_shown(ui, maps):
+    ui.draw(2)
+    assert "Intensity image" in ui.app.item_rects  # the Input section stands where the button was
+    assert not hasattr(ui.app, "on_files_dropped") and not hasattr(ui.app, "picker")
+    pick(ui, "intensity", maps["intensity"])
     assert ui.app.model.intensity_path == str(maps["intensity"]) and ui.shown("intensity.npy")
 
 
-def test_lifetime_maps_dialog_drop_select_remove_clear_and_delete_key(ui, maps):
-    ui.drop(
-        maps["intensity"]
-    )  # a drop is the intensity image until one is loaded, then a lifetime map
-    ui.click("Add lifetime maps")
-    ui.app.dialog.enter(str(maps["life0"].parent))
-    ui.dialog_pick("life0.npy")
+def test_lifetime_maps_picked_from_the_workspace_then_select_remove_clear_and_delete_key(ui, maps):
+    pick(ui, "lifetimes", maps["life0"])
     assert ui.app.model.lifetime_paths == [str(maps["life0"])]
-    ui.drop(maps["life1"])
+    pick(ui, "lifetimes", maps["life1"])
     assert len(ui.app.model.lifetime_paths) == 2
-    ui.draw(3)
-    ui.press_text("life1.npy")
+    ui.app.select_lifetime({"detector": 1})
     assert ui.app.selected_lifetime == 1
     ui.click("Remove selected")
     assert ui.app.model.lifetime_paths == [str(maps["life0"])]
-    ui.draw(3)
-    ui.press_text("life0.npy")
-    ui.key(keys.KEY_DELETE, "")
+    ui.app.delete_lifetime({"detector": 0})
     assert ui.app.model.lifetime_paths == []
-    ui.drop(maps["life0"])
+    pick(ui, "lifetimes", maps["life0"])
     ui.click("Clear maps")
     assert ui.app.model.lifetime_paths == []
 
@@ -206,9 +226,10 @@ def test_settings_round_trip_through_the_dialogs(loaded, tmp_path):
     ui.type_into("pixel_size", "0.8")
     ui.app.model.sel_intensity = ""
     ui.draw(3)
-    ui.click("Load settings")
-    ui.app.dialog.enter(str(tmp_path))
-    ui.dialog_pick("gen_state.json")
+    from chisurf.core.fio.classify import classify
+
+    assert classify(tmp_path / "gen_state.json") == "setup"  # a drop puts it in the workspace
+    pick(ui, "settings", tmp_path / "gen_state.json")
     assert ui.app.model.pixel_size == pytest.approx(0.37)
     assert (
         ui.app.model.intensity_path.endswith("intensity.npy")
@@ -230,12 +251,14 @@ def test_help_guide_and_the_tour_is_walked(ui, maps):
             assert_tour_card_clear(
                 ui.app.tour, ui.size
             )  # the card does not sit on the control the user must press
-            ui.click(key)
+            if key == "Intensity image":
+                pick(ui, "intensity", maps["intensity"])
+            elif key == "Add lifetime maps":
+                pick(ui, "lifetimes", maps["life0"])
+            else:
+                ui.click(key)
             if ui.dialog_open and key == "Save photon stream":
                 ui.press_text("Cancel")
-            elif ui.dialog_open:
-                ui.app.dialog.enter(str(maps["intensity"].parent))
-                ui.dialog_pick("intensity.npy" if key == "Intensity image" else "life0.npy")
             if key == "Generate":
                 ui.app.model.n_lifetime_levels = ui.app.model.n_intensity_levels = 2
             settle(ui)
@@ -252,8 +275,8 @@ def test_layout_at_both_sizes(maps, size):
     from test.gui.emtk_layout_checks import assert_texts_apart
 
     ui = Ui(make_app(), size)
-    ui.drop(maps["intensity"])
-    ui.drop(maps["life0"])
+    pick(ui, "intensity", maps["intensity"])
+    pick(ui, "lifetimes", maps["life0"])
     ui.click("Simulation.fold")
     w, h = size
     assert_texts_apart(ui.last, region=(0, 24, 0.35 * w, h - 24))

@@ -25,6 +25,9 @@ An intensity TIFF is also written alongside the photon output. Check the status
 after saving; unsupported TTTR writers report their error there.
 
 **Save settings** stores paths, detector order, numerical settings and display
-preferences in JSON. **Load settings** restores the map inputs from those paths;
-it does not serialize photon results. Drag files onto an empty tool to load its
-intensity; subsequent drops add detector lifetime maps.
+preferences in JSON. Picking a saved file in the **Load settings** Input section
+restores the map inputs from those paths; it does not serialize photon results.
+
+The maps come from the Datasets workspace: drop TIFF, NPY or NPZ files on the
+ChiSurf window, then pick the intensity map in **Intensity map** and the detector
+lifetime maps, in detector order, in **Lifetime maps** (*Use selected*).

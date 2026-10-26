@@ -87,10 +87,9 @@ class _FlcModel:
         self.spectrum2d: dict[str, Any] | None = None
         self.kinetics = None
         # Window state of a drawn (native) host; the Qt tool ignores these.
-        self.status_text = "Open a TTTR file to begin."
+        self.status_text = "Pick a photon stream in the Input section to begin."
         self.error_text = ""
         self.busy = False
-        self.dialog = ""
         self.folder = ""
         self._observers: list = []
         #: Called with every status line (the Qt tool shows it in its status bar).
@@ -215,14 +214,6 @@ class _FlcModel:
         if name == "request_run":
             return self.tttr is not None
         return True
-
-    def request_open(self) -> None:
-        """Button action: ask the window for a photon-stream file dialog."""
-        self.dialog = "open_tttr"
-
-    def request_open_irf(self) -> None:
-        """Button action: ask the window for an IRF file dialog."""
-        self.dialog = "open_irf"
 
     def load_example(self) -> None:
         """Button action (*Load example*): announce that the example stream should be simulated."""

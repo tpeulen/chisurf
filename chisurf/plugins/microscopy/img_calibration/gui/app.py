@@ -19,13 +19,10 @@ from pathlib import Path
 import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
-from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
-from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
@@ -59,17 +56,22 @@ class CalibrationApp(TourTarget, ImApp):
         self.apply_error = ""
         self._messages = queue.SimpleQueue()
         self._failed_signature = None
-        self.dialog = None
-        self.dialog_window = None
-        self.dialog_action = ""
         self.file_selection = -1
         self.item_rects = {}
+        #: Which tab (``controls`` or ``data``) holds a tour target: the tour brings it forward.
+        self._window_of = {"open_source": "data", "add_irf": "data"}
         primary = json.loads((HERE / "calibration.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(primary, (1100, 720))
         self.spec = _controls_spec(primary)
         self.form = FormState()
         self.form.custom["path_list"] = self.draw_irf_files
-        self.dataset_picker = DatasetPicker(on_paths=self.add_irfs)
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: The source and the IRF files come from the Datasets workspace (Input sections).
+        self.inputs = {
+            name: NamedWorkspaceInput("img_calibration", name, self, height=72)
+            for name in ("source", "irf")
+        }
         self.plot_limits = None
         self.help = EmTkHelpWindow(
             title="IRF & BG — Help",
@@ -84,10 +86,14 @@ class CalibrationApp(TourTarget, ImApp):
             wait_for_controls=True,
         )
         self.form.on_used = self.tour.notify_used
+        self.inputs["source"].workspace_input_on_used = lambda _k: self.tour.notify_used(
+            "open_source"
+        )
         self.docks = DockManager(Split("h", 0.32, Region("controls"), Region("plot")))
         self.docks.add_window(
             "controls", label("Calibration"), self.controls, dock="controls", closable=False
         )
+        self.docks.add_window("data", label("Data"), self.data, dock="controls", closable=False)
         self.docks.add_window("plot", label("Decay & IRF"), self.plot, dock="plot", closable=False)
         self.native_layouts = {"main": self.docks}
         super().__init__(self.render, continuous=False)
@@ -95,21 +101,33 @@ class CalibrationApp(TourTarget, ImApp):
     def start_guide(self):
         self.tour.start()
 
-    def choose(self, action):
-        self.dialog_action = action
-        self.dialog = FileDialog(
-            label("Open TTTR" if action == "source" else "Add IRF"),
-            mode="open",
-            filters=[
-                ("Photon data", ["*.pto", "*.ptu", "*.ht3", "*.spc", "*.pt3"]),
-                ("All files", ["*"]),
-            ],
-            multiselect=action == "irf",
-        )
-        self.dialog_window = DialogWindow(
-            self.dialog.title, size=(700, 540), key="calibration_file"
-        )
-        self.dialog_window.show()
+    def data(self, box):
+        """The Data tab: the source photon data and this detector's IRF files, picked from the
+        Datasets workspace."""
+        im.text_disabled(label("Open source photon data"))
+        self.draw_input("source", "open_source")
+        im.text_disabled(label("IRF files"))
+        im.set_item_tooltip(label("Add photon files; dropped files are summed"))
+        self.draw_input("irf", "add_irf")
+        for key in ("open_source", "add_irf"):
+            self._window_of[key] = "data"
+
+    def _follow_tour(self):
+        """Bring forward the tab (Calibration or Data) that holds the tour step's control."""
+        if not (self.tour.active and self.tour.steps):
+            return
+        key = self.tour._target_key(self.tour.steps[self.tour.step_idx].get("target"))
+        window = self._window_of.get(key, "controls" if key else None)
+        if window and self.docks.active_tab("controls") != window:
+            self.docks.focus(window)
+
+    def draw_input(self, name, key):
+        """The Input section *name*; its rows are the tour target *key*."""
+        named = self.inputs[name]
+        draw_form(named.spec, named, named.form)
+        rect = named.form.rects.get("workspace_input_rows")
+        if rect is not None:
+            self.item_rects[key] = tuple(rect)
 
     def add_irfs(self, paths):
         if not self.model.display_detector:
@@ -122,14 +140,6 @@ class CalibrationApp(TourTarget, ImApp):
                 current.append(path)
         self.model.sel_irf_files = current
         return True
-
-    def files_dropped(self, paths):
-        """Files dropped on the window (the hook the hosts call) go to this detector's IRF list."""
-        self.add_irfs(paths) if paths else None
-
-    def on_files_dropped(self, paths):
-        """The hub's spelling of the same hook: the answer says whether the files were taken."""
-        return self.add_irfs(paths) if paths else False
 
     def apply_setup_settings(self, payload):
         self.model.apply_setup_settings(copy.deepcopy(payload))
@@ -214,12 +224,6 @@ class CalibrationApp(TourTarget, ImApp):
             (None, self.start_guide, None, "guide"),
             (None, self.help.show, None, "help"),
             (
-                "Open TTTR…",
-                lambda: self.choose("source"),
-                "Open the source photon data whose decay is shown.",
-                "open_source",
-            ),
-            (
                 "Refresh",
                 self.retry,
                 "Bin the histograms again after correcting the source files.",
@@ -228,6 +232,7 @@ class CalibrationApp(TourTarget, ImApp):
         )
         self.button_row(toolbar)
         im.text_wrapped(self.model.filename or label("Choose source photon data"))
+        im.set_item_tooltip(label("Open source photon data"))
         im.separator()
         if not self.model.window_names():
             im.text_wrapped(label("Configure detector windows in Imaging Tools"))
@@ -251,18 +256,6 @@ class CalibrationApp(TourTarget, ImApp):
         im.text(str(section.get("title") or "IRF files"))
         self.button_row(
             (
-                (
-                    "Files…",
-                    lambda: self.choose("irf"),
-                    "Add IRF photon files for this detector; they are summed.",
-                    "add_irf",
-                ),
-                (
-                    "Database…",
-                    self.dataset_picker.open,
-                    "Pick IRF files from the MMFDB object store.",
-                    "database_irf",
-                ),
                 ("Remove", self.remove_irf, "Remove the selected IRF file.", "remove_irf"),
                 (
                     "Clear",
@@ -363,9 +356,7 @@ class CalibrationApp(TourTarget, ImApp):
         self.model._hist_cache.clear()
 
     def close(self):
-        """Close the dataset picker; the binning worker is a daemon thread whose result is dropped."""
-        self.dialog = None
-        self.dataset_picker.close()
+        """Nothing to release: the binning worker is a daemon thread whose result is dropped."""
 
     def animating(self):
         return super().animating() or self.busy
@@ -373,20 +364,14 @@ class CalibrationApp(TourTarget, ImApp):
     def render(self):
         self.poll()
         vp = im.get_main_viewport()
+        self._follow_tour()
         self.docks.draw((0, 0, *vp.size))
-        if self.dialog:
-            pressed = self.dialog_window.begin((0, 0, *vp.size))
-            result = self.dialog.draw()
-            if result:
-                if self.dialog_action == "source":
-                    self.model.apply_pipeline_context({"source": str(result[0])})
-                else:
-                    self.add_irfs(result)
-                self.dialog = None
-            elif result is False or pressed == "close":
-                self.dialog = None
-            self.dialog_window.end()
-        self.dataset_picker.render((0, 0, *vp.size))
+        if self.docks.active_tab("controls") != "data":
+            # The Data tab is behind Calibration: a step about the inputs points at its tab.
+            tab = self.docks.tab_rect("data")
+            if tab is not None:
+                for key in ("open_source", "add_irf"):
+                    self.item_rects[key] = tuple(tab)
         self.help.draw((0, 0, *vp.size))
         self.tour.draw(*vp.size)
 
@@ -399,3 +384,22 @@ def make_app(**kwargs):
     install()
     install_translations()
     return CalibrationApp(**kwargs)
+
+
+def receive_source(app, payload):
+    """The source photon data picked in the workspace (``accepts[].from_workspace``)."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("source")
+    if not address:
+        return False
+    app.model.apply_pipeline_context({"source": read_address(str(address))})
+    return True
+
+
+def receive_irf(app, payload):
+    """IRF photon files picked in the workspace, added to the selected detector's list."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    paths = [read_address(str(a)) for a in payload.get("irf") or ()]
+    return bool(paths) and app.add_irfs(paths)

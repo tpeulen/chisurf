@@ -15,7 +15,6 @@ from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
@@ -128,6 +127,10 @@ class GenerationJob(SnapshotJob):
         return False
 
 
+#: The schema saved settings carry (a setup of the Datasets workspace).
+SETTINGS_SCHEMA = "chisurf.tool/clsm_generator/1"
+
+
 class ClsmGeneratorApp(ImApp):
     def __init__(self, model=None):
         self.model = model or ClsmGeneratorViewModel()
@@ -141,11 +144,18 @@ class ClsmGeneratorApp(ImApp):
         self.error = ""
         self.item_rects = {}
         self._image = None
-        self.picker = DatasetPicker(
-            formats=["tif", "tiff", "npy", "npz"],
-            kinds=["raw_data", "raw_measurement", "image_data", "external_reference"],
-            on_paths=lambda paths: self.load_maps(paths, lifetime=True),
-        )
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: The maps and saved settings come from the Datasets workspace (Input sections). An NPY/NPZ
+        #: map is listed as a setup (the workspace's kind for arrays), so the map inputs take both.
+        self.inputs = {
+            name: NamedWorkspaceInput("clsm_generator", name, self, height=72)
+            for name in ("intensity", "lifetimes", "settings")
+        }
+        for name, key in (("intensity", "Intensity image"), ("lifetimes", "Add lifetime maps")):
+            self.inputs[name].workspace_input_on_used = (
+                lambda _k, key=key: self.tour.notify_used(key)
+            )
         spec = json.loads(Path(__file__).with_name("generator.view.json").read_text())
         self.window_size = window_size(spec, (1100, 720))
         self.parameters = spec["sections"][0]["sections"][0]["sections"][3]["sections"]
@@ -187,34 +197,29 @@ class ClsmGeneratorApp(ImApp):
             self.tour.notify_used(label)
 
     def choose(self, action):
+        """Where the photon stream (``save``) or the settings (``save_settings``) are written."""
         if self.job.busy:
             return
         self.dialog_action = action
-        save = action in ("save", "save_settings")
-        settings = action in ("save_settings", "load_settings")
-        filters = (
-            "JSON (*.json)"
-            if settings
-            else (
-                "Photon stream (*.pto *.npz *.ptu *.spc *.ht3)"
-                if save
-                else "Maps (*.tif *.tiff *.npy *.npz);;All files (*)"
-            )
-        )
-        filename = (
-            "clsm_generator.json" if settings else "clsm_sim" + self.output_format if save else ""
-        )
+        settings = action == "save_settings"
+        filters = "JSON (*.json)" if settings else "Photon stream (*.pto *.npz *.ptu *.spc *.ht3)"
+        filename = "clsm_generator.json" if settings else "clsm_sim" + self.output_format
         self.dialog = FileDialog(
-            action.replace("_", " ").title(),
-            mode="save" if save else "open",
-            filters=filters,
-            filename=filename,
-            multiselect=action == "lifetime",
+            action.replace("_", " ").title(), mode="save", filters=filters, filename=filename
         )
         self.file_window = DialogWindow(
             self.dialog.title, size=(700, 540), key=f"clsm_file_{id(self)}"
         )
         self.file_window.show()
+
+    def draw_input(self, name, key, caption):
+        """The Input section *name* under *caption*; its rows are the tour target *key*."""
+        im.text_disabled(tr(caption))
+        named = self.inputs[name]
+        draw_form(named.spec, named, named.form)
+        rect = named.form.rects.get("workspace_input_rows")
+        if rect is not None:
+            self.item_rects[key] = tuple(rect)
 
     def load_maps(self, paths, *, lifetime=False):
         if self.job.busy:
@@ -232,9 +237,6 @@ class ClsmGeneratorApp(ImApp):
         if failed:
             self.error = "Could not load map: " + ", ".join(failed)
         return not failed
-
-    def on_files_dropped(self, paths):
-        return self.load_maps(paths, lifetime=self.model._intensity_in is not None)
 
     def validate(self):
         ok, reason = self.model.can_generate()
@@ -294,7 +296,7 @@ class ClsmGeneratorApp(ImApp):
             self.remove_lifetime()
 
     def enabled(self, name):
-        return not (self.job.busy or self.dialog is not None or self.picker.is_open)
+        return not (self.job.busy or self.dialog is not None)
 
     def controls(self, box):
         pressed = button_row(
@@ -308,25 +310,12 @@ class ClsmGeneratorApp(ImApp):
             self.help_window.show()
         elif pressed == "Guide":
             self.tour.start()
-        busy = self.job.busy or self.dialog is not None or self.picker.is_open
+        busy = self.job.busy or self.dialog is not None
         im.begin_disabled(busy)
+        self.draw_input("intensity", "Intensity image", "Intensity map")
+        self.draw_input("lifetimes", "Add lifetime maps", "Lifetime maps (detector order)")
         pressed = button_row(
             [
-                {
-                    "label": "Intensity image",
-                    "key": "Intensity image",
-                    "tip": "Load the relative pixel brightness from TIFF, NPY or NPZ.",
-                },
-                {
-                    "label": "Add lifetime maps",
-                    "key": "Add lifetime maps",
-                    "tip": "Add one fluorescence lifetime map in ns per detector, in detector order.",
-                },
-                {
-                    "label": "Database lifetime maps",
-                    "key": "Database lifetime maps",
-                    "tip": "Select registered lifetime map datasets from MMFDB in detector order.",
-                },
                 {
                     "label": "Remove selected",
                     "key": "Remove selected",
@@ -342,13 +331,7 @@ class ClsmGeneratorApp(ImApp):
             ],
             remember=self.remember,
         )
-        if pressed == "Intensity image":
-            self.choose("intensity")
-        elif pressed == "Add lifetime maps":
-            self.choose("lifetime")
-        elif pressed == "Database lifetime maps":
-            self.picker.open()
-        elif pressed == "Remove selected":
+        if pressed == "Remove selected":
             self.remove_lifetime()
         elif pressed == "Clear maps":
             self.model.sel_lifetime_files = []
@@ -385,11 +368,6 @@ class ClsmGeneratorApp(ImApp):
                     "key": "Save settings",
                     "tip": "Save paths, acquisition settings, detector order and map display preferences as JSON.",
                 },
-                {
-                    "label": "Load settings",
-                    "key": "Load settings",
-                    "tip": "Restore saved map inputs, detector order, acquisition and display preferences.",
-                },
             ],
             remember=self.remember,
         )
@@ -399,10 +377,9 @@ class ClsmGeneratorApp(ImApp):
             self.choose("save")
         elif pressed == "Save settings":
             self.choose("save_settings")
-        elif pressed == "Load settings":
-            self.choose("load_settings")
         if pressed:
             self.tour.notify_used(pressed)
+        self.draw_input("settings", "Load settings", "Load settings")
         im.text(tr("Output format"))
         im.same_line(120)
         im.set_next_item_width(120)
@@ -522,7 +499,7 @@ class ClsmGeneratorApp(ImApp):
     restore_settings = apply_state
 
     def animating(self):
-        return self.job.busy or self.picker.is_open or super().animating()
+        return self.job.busy or super().animating()
 
     def render(self):
         self.job.poll()
@@ -534,16 +511,12 @@ class ClsmGeneratorApp(ImApp):
             if result:
                 try:
                     path = Path(result[0])
-                    if self.dialog_action in ("intensity", "lifetime"):
-                        self.load_maps(result, lifetime=self.dialog_action == "lifetime")
-                    elif self.dialog_action == "save":
+                    if self.dialog_action == "save":
                         self.save(path)
                     elif self.dialog_action == "save_settings":
-                        path.with_suffix(".json").write_text(
-                            json.dumps(self.state_dict(), indent=2)
-                        )
-                    elif self.dialog_action == "load_settings":
-                        self.apply_state(json.loads(path.read_text()))
+                        # The schema makes the file a setup the workspace hands back here.
+                        state = {"schema": SETTINGS_SCHEMA, **self.state_dict()}
+                        path.with_suffix(".json").write_text(json.dumps(state, indent=2))
                     self.dialog = None
                 except Exception as exc:
                     self.error = str(exc)
@@ -554,7 +527,6 @@ class ClsmGeneratorApp(ImApp):
                 self.dialog = None
         if self.help_window.open:
             self.help_window.draw((0, 0, *vp.size))
-        self.picker.render((0, 0, *vp.size))
         if self.tour.active:
             self.tour.draw(*vp.size)
 
@@ -567,3 +539,33 @@ def make_app(**kwargs):
 
     install_translations()
     return ClsmGeneratorApp(model=kwargs.get("model"))
+
+
+def _paths(addresses):
+    from chisurf.core.plugin.workspace_input import read_address
+
+    return [read_address(str(a)) for a in addresses or ()]
+
+
+def receive_intensity(app, payload):
+    """The intensity map picked in the workspace (``accepts[].from_workspace``)."""
+    paths = _paths([payload["intensity"]] if payload.get("intensity") else [])
+    return bool(paths) and app.load_maps(paths, lifetime=False)
+
+
+def receive_lifetimes(app, payload):
+    """Lifetime maps picked in the workspace, appended in the order picked (detector order)."""
+    paths = _paths(payload.get("lifetimes"))
+    return bool(paths) and app.load_maps(paths, lifetime=True)
+
+
+def receive_settings(app, payload):
+    """Saved settings from the workspace (a setup row); a bad file is the error line."""
+    paths = _paths([payload["settings"]] if payload.get("settings") else [])
+    if not paths:
+        return False
+    try:
+        return bool(app.apply_state(json.loads(Path(paths[0]).read_text(encoding="utf-8"))))
+    except Exception as exc:  # noqa: BLE001 - shown to the user
+        app.error = str(exc)
+        return False

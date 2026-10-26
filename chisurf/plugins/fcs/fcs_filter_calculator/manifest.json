@@ -11,7 +11,7 @@
     "Fluorescence Correlation Spectroscopy",
     "Correlation"
   ],
-  "icon": "\ud83c\udf9a\ufe0f",
+  "icon": "🎚️",
   "state_namespace": "fcs_filter_calculator",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -37,7 +37,72 @@
       "name": "fcs_correlator_files",
       "summary": "Read the FCS correlator's checked files as the mixed decay, on its micro-time binning.",
       "receive": "chisurf.plugins.fcs.fcs_filter_calculator.gui.app:receive_correlator_files",
-      "required": ["files"]
+      "required": [
+        "files"
+      ]
+    },
+    {
+      "name": "mixed",
+      "summary": "The measured mixed decay: photon streams or decay curves of the workspace.",
+      "receive": "chisurf.plugins.fcs.fcs_filter_calculator.gui.app:receive_mixed",
+      "required": [
+        "mixed"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons",
+          "decay"
+        ],
+        "many": true,
+        "key": "mixed"
+      }
+    },
+    {
+      "name": "reference",
+      "summary": "Measured reference decays of one species, added as a component.",
+      "receive": "chisurf.plugins.fcs.fcs_filter_calculator.gui.app:receive_reference",
+      "required": [
+        "reference"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons",
+          "decay"
+        ],
+        "many": true,
+        "key": "reference"
+      }
+    },
+    {
+      "name": "irf",
+      "summary": "A measured IRF (photon stream or decay curve) for the selected detector row.",
+      "receive": "chisurf.plugins.fcs.fcs_filter_calculator.gui.app:receive_irf",
+      "required": [
+        "irf"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons",
+          "decay"
+        ],
+        "many": false,
+        "key": "irf"
+      }
+    },
+    {
+      "name": "project",
+      "summary": "A saved filter-calculator project (a setup row of the workspace).",
+      "receive": "chisurf.plugins.fcs.fcs_filter_calculator.gui.app:receive_project",
+      "required": [
+        "project"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "project"
+      }
     }
   ],
   "entrypoints": {

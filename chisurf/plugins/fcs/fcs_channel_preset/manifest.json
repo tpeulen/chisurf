@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "display_name": "Setup:FCS Definitions",
   "description": "Define which detector channels are correlated with which, per detector setup.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Setup"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Setup"
+  ],
   "icon": "📡",
   "menu_hidden": true,
   "statefulness": {
@@ -16,5 +20,22 @@
   },
   "entrypoints": {
     "emtk": "chisurf.plugins.fcs.fcs_channel_preset.gui.app:create_app"
-  }
+  },
+  "accepts": [
+    {
+      "name": "presets",
+      "summary": "A channel preset library (a setup row of the Datasets workspace) to import.",
+      "receive": "chisurf.plugins.fcs.fcs_channel_preset.gui.app:receive_presets",
+      "required": [
+        "presets"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "presets"
+      }
+    }
+  ]
 }

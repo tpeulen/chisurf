@@ -18,7 +18,6 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.core.datastore import rows_from_table
 from chisurf.core.roi import RegionCollection
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.calculator.native_form import plain
 from chisurf.plugins.emtk_layout import (
@@ -186,6 +185,10 @@ def _spin(sections):
         _spin(sec.get("sections", []))
 
 
+#: The schema saved settings carry (a setup of the Datasets workspace).
+SETTINGS_SCHEMA = "chisurf.tool/spot_finder/1"
+
+
 class SpotFinderApp(ImApp):
     def __init__(self, model=None):
         self.model = model or SpotFinderViewModel()
@@ -227,9 +230,13 @@ class SpotFinderApp(ImApp):
             k: FormState(on_used=lambda n: self.tour.notify_used(n))
             for k in ("files", "main", "detector", "input", "tables")
         }
-        self.picker = DatasetPicker(
-            formats=["tif", "tiff", "ptu", "pto", "ht3", "spc", "pt3"], on_paths=self.open_paths
-        )
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: The recordings and saved settings come from the Datasets workspace (Input sections).
+        self.inputs = {
+            name: NamedWorkspaceInput("spot_finder", name, self, height=72)
+            for name in ("files", "settings")
+        }
         self.help_window = EmTkHelpWindow(
             title="Spot Finder — Help", resource=Path(__file__).with_name("help.md"), owner=self
         )
@@ -268,17 +275,20 @@ class SpotFinderApp(ImApp):
                 self.model.files.append(value)
         self.model.notify("settings")
 
-    def on_files_dropped(self, paths):
-        self.open_paths(paths)
-        return not self.job.busy
+    def draw_input(self, name, key):
+        """The Input section *name*; its rows are the tour/test target *key*."""
+        named = self.inputs[name]
+        draw_form(named.spec, named, named.form)
+        rect = named.form.rects.get("workspace_input_rows")
+        if rect is not None:
+            self.item_rects[key] = tuple(rect)
 
     def choose(self, action):
+        """A save dialog for an export, or -- ``load_regions`` -- a region file of this tool."""
         self.dialog_action = action
-        opens = action in ("add_files", "load_regions", "load_settings")
+        opens = action == "load_regions"
         filters = (
-            "Imaging (*.pto *.ptu *.ht3 *.spc *.pt3 *.tif *.tiff);;All files (*)"
-            if action == "add_files"
-            else "Tables (*.tsv *.csv)"
+            "Tables (*.tsv *.csv)"
             if action == "export_results"
             else "Regions (*.json *.tif *.tiff *.npy);;All files (*)"
             if "regions" in action
@@ -293,12 +303,12 @@ class SpotFinderApp(ImApp):
             if action == "save_settings"
             else ""
         )
+        # not-input: exports are saved; a region file is this tool's own state, not data.
         self.dialog = FileDialog(
             action.replace("_", " ").title(),
             mode="open" if opens else "save",
             filename=filename,
             filters=filters,
-            multiselect=action == "add_files",
         )
         self.file_window = DialogWindow(self.dialog.title, size=(700, 540), key=f"file_{id(self)}")
         self.file_window.show()
@@ -399,7 +409,7 @@ class SpotFinderApp(ImApp):
         self.model.write_results = bool(value)
 
     def enabled(self, name):
-        return not (self.job.busy or self.dialog is not None or self.picker.is_open)
+        return not (self.job.busy or self.dialog is not None)
 
     def controls(self, box):
         pressed = button_row(
@@ -413,20 +423,11 @@ class SpotFinderApp(ImApp):
             self.help_window.show()
         elif pressed == "guide":
             self.tour.start()
-        busy = self.job.busy or self.dialog is not None or self.picker.is_open
+        busy = self.job.busy or self.dialog is not None
         im.begin_disabled(busy)
+        self.draw_input("files", "Add files")
         pressed = button_row(
             [
-                {
-                    "label": "Add files",
-                    "key": "Add files",
-                    "tip": "Select photon or camera imaging files for preview and batch detection.",
-                },
-                {
-                    "label": "MMFDB datasets",
-                    "key": "MMFDB datasets",
-                    "tip": "Select registered photon/camera datasets from the MMFDB catalog.",
-                },
                 {
                     "label": "Remove file",
                     "key": "Remove file",
@@ -442,11 +443,7 @@ class SpotFinderApp(ImApp):
             ],
             remember=self.remember,
         )
-        if pressed == "Add files":
-            self.choose("add_files")
-        elif pressed == "MMFDB datasets":
-            self.picker.open()
-        elif pressed == "Remove file":
+        if pressed == "Remove file":
             self.remove_file(self.file_index)
         elif pressed == "Clear files":
             self.model.files.clear()
@@ -508,12 +505,6 @@ class SpotFinderApp(ImApp):
                 lambda: self.choose("save_settings"),
                 True,
             ),
-            (
-                "Load settings",
-                "Restore the complete analysis configuration from JSON.",
-                lambda: self.choose("load_settings"),
-                True,
-            ),
         ]
         im.begin_disabled(busy)
         pressed = button_row(
@@ -537,6 +528,14 @@ class SpotFinderApp(ImApp):
         if pressed and not busy:
             dict((l, a) for l, _t, a, _e in actions)[pressed]()
             self.tour.notify_used(pressed)
+        im.text_disabled("Load settings")
+        im.set_item_tooltip(
+            "Pick saved settings (a setup row of the Datasets workspace) to restore the complete "
+            "analysis configuration."
+        )
+        im.begin_disabled(busy)
+        self.draw_input("settings", "Load settings")
+        im.end_disabled()
         summary = plain(self.model.summary()).strip()
         status = self.job.progress if self.job.busy else self.model.status_text
         if summary and summary != plain(status).strip():
@@ -600,8 +599,8 @@ class SpotFinderApp(ImApp):
             analysis=self.model.regions,
             on_change=self.model.apply_regions,
             on_pick=self.pick_spot,
-            pick_enabled=not self.job.busy and self.dialog is None and not self.picker.is_open,
-            analysis_editable=not self.job.busy and self.dialog is None and not self.picker.is_open,
+            pick_enabled=not self.job.busy and self.dialog is None,
+            analysis_editable=not self.job.busy and self.dialog is None,
         )
         self.item_rects["Regions"] = self.canvas.rect
         self.item_rects["Pick by clicking"] = self.canvas.rect
@@ -695,7 +694,7 @@ class SpotFinderApp(ImApp):
         self._apply_context("apply_calibration", payload)
 
     def animating(self):
-        return self.job.busy or self.picker.is_open or super().animating()
+        return self.job.busy or super().animating()
 
     def render(self):
         self.job.poll()
@@ -716,18 +715,14 @@ class SpotFinderApp(ImApp):
             if result:
                 try:
                     path = Path(result[0])
-                    if self.dialog_action == "add_files":
-                        self.open_paths(result)
-                    elif self.dialog_action == "export_results":
+                    if self.dialog_action == "export_results":
                         if path.suffix.lower() not in (".tsv", ".csv"):
                             path = path.with_suffix(".tsv")
                         self.start("export_results", str(path))
                     elif self.dialog_action == "save_settings":
-                        path.with_suffix(".json").write_text(
-                            json.dumps(self.state_dict(), indent=2)
-                        )
-                    elif self.dialog_action == "load_settings":
-                        self.apply_state(json.loads(path.read_text()))
+                        # The schema makes the file a setup the workspace hands back here.
+                        state = {"schema": SETTINGS_SCHEMA, **self.state_dict()}
+                        path.with_suffix(".json").write_text(json.dumps(state, indent=2))
                     elif self.dialog_action == "save_regions":
                         self.regions.save(path)
                     elif self.dialog_action == "load_regions":
@@ -740,7 +735,6 @@ class SpotFinderApp(ImApp):
             self.file_window.end()
             if pressed == "close":
                 self.dialog = None
-        self.picker.render((0, 0, *vp.size))
         if self.help_window.open:
             self.help_window.draw((0, 0, *vp.size))
         if self.tour.active:
@@ -752,3 +746,29 @@ def make_app(**kwargs):
 
     install()
     return SpotFinderApp(model=kwargs.get("model"))
+
+
+def receive_files(app, payload):
+    """Recordings picked in the workspace (``accepts[].from_workspace``): added to the batch."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    paths = [read_address(str(a)) for a in payload.get("files") or ()]
+    if not paths or app.job.busy:
+        return False
+    app.open_paths(paths)
+    return True
+
+
+def receive_settings(app, payload):
+    """Saved settings picked in the workspace (a setup row); a bad file is the error line."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("settings")
+    if not address:
+        return False
+    try:
+        app.apply_state(json.loads(Path(read_address(str(address))).read_text(encoding="utf-8")))
+    except Exception as exc:  # noqa: BLE001 - shown to the user
+        app.error = str(exc)
+        return False
+    return True

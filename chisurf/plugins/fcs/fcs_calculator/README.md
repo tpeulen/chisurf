@@ -27,7 +27,7 @@ This plugin provides an interactive **FCS confocal diffusion/volume calculator**
   - Cylinder (Hansen 2004 approximation)
 - **Settings persistence**:
   - Export current state to JSON file
-  - Import JSON to restore a previous calculator configuration
+  - Pick an exported settings file from the Datasets workspace (drop it on the ChiSurf window) to restore a previous calculator configuration
 
 ## Underlying Models
 

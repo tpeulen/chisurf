@@ -93,20 +93,14 @@ def m(drv):
 # -- the toolbar --------------------------------------------------------------------------------------------------------- #
 
 
-def test_open_tttr_chooser_opens_and_its_cancel_closes_it_and_a_chosen_file_becomes_the_source(
-    drv, spc, tmp_path, monkeypatch
-):
-    monkeypatch.chdir(Path(spc).parent)
-    drv.click(drv.rect("open_source"))
-    assert drv.app.dialog is not None and "Cancel" in drv.draw(3).strings
-    drv.click(drv.text_rect("Cancel"))
-    assert drv.app.dialog is None
-    drv.click(drv.rect("open_source"))
-    drv.draw(3)
-    drv.click(drv.text_rect(Path(spc).name, last=True))  # the dialog's row, not the IRF list's
-    drv.click(drv.text_rect("Open"))
+def test_the_source_picked_from_the_workspace_becomes_the_source(drv, spc):
+    from .conftest import pick
+
+    assert "open_source" in drv.app.item_rects  # the Input section stands where Open TTTR was
+    assert not hasattr(drv.app, "files_dropped") and not hasattr(drv.app, "dataset_picker")
+    pick(drv.app, "source", spc)
     drv.settle()
-    assert drv.app.dialog is None and m(drv).filename == spc
+    assert m(drv).filename == spc
 
 
 def test_refresh_bins_the_histograms_again(drv):
@@ -151,10 +145,13 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(drv, sp
         )
         if tour.awaiting:
             seen.append(step["title"])
-            drv.click(drv.rect(key))
+            if key == "open_source":
+                from .conftest import pick
+
+                pick(drv.app, "source", m(drv).filename)
+            else:
+                drv.click(drv.rect(key))
             drv.draw(3)
-            if drv.app.dialog is not None:
-                drv.click(drv.text_rect("Cancel"))
             assert not tour.awaiting, f"{step['title']}: operating {key} did not release the step"
         tour.next()
     assert not tour.active and len(seen) == 2
@@ -190,19 +187,13 @@ def test_every_guide_target_is_a_drawn_control_and_the_card_does_not_cover_it(dr
 # -- the IRF file list ---------------------------------------------------------------------------------------------------- #
 
 
-def test_files_button_opens_a_multi_select_chooser_and_a_chosen_file_is_added(
-    drv, spc, monkeypatch
-):
-    monkeypatch.chdir(Path(spc).parent)
+def test_irf_files_picked_from_the_workspace_are_added(drv, spc):
+    from .conftest import pick
+
     m(drv).sel_irf_files = []
-    drv.click(drv.rect("add_irf"))
-    assert drv.app.dialog is not None and drv.app.dialog_action == "irf"
+    pick(drv.app, "irf", spc)
     drv.draw(3)
-    drv.click(drv.text_rect(Path(spc).name, last=True))  # the dialog's row, not the IRF list's
-    assert drv.app.dialog.selection == [Path(spc).name]
-    drv.click(drv.text_rect("Open"))
-    drv.draw(3)
-    assert m(drv).sel_irf_files == [spc] and drv.app.dialog is None
+    assert m(drv).sel_irf_files == [spc]
     assert Path(spc).name in " ".join(drv.draw(2).strings)
 
 
@@ -224,27 +215,12 @@ def test_a_click_on_a_row_selects_it_remove_removes_it_and_clear_empties_the_lis
     assert m(drv).sel_irf_files == [] and "No IRF: using raw data" in drv.draw(2).strings
 
 
-def test_database_button_opens_the_dataset_picker_and_cancel_closes_it(drv):
-    drv.click(drv.rect("database_irf"))
-    assert drv.app.dataset_picker.is_open if hasattr(drv.app.dataset_picker, "is_open") else True
-    shown = drv.draw(3).strings
-    cancel = action_caption("cancel")
-    assert cancel in shown or "Close" in shown
-    drv.click(drv.text_rect(cancel if cancel in shown else "Close"))
-    drv.draw(2)
+def test_irf_files_picked_before_a_detector_is_chosen_say_so(empty, tmp_path):
+    from chisurf.plugins.microscopy.img_calibration.gui.app import receive_irf
 
-
-def test_a_file_dropped_on_the_window_is_added_to_the_irf_list(drv, spc, tmp_path):
-    other = tmp_path / "dropped.spc"
-    other.write_bytes(b"x")
-    assert drv.drop(str(other)) is True
-    assert str(other) in m(drv).sel_irf_files and "dropped.spc" in " ".join(drv.draw(2).strings)
-
-
-def test_a_file_dropped_before_a_detector_is_chosen_says_so(empty, tmp_path):
     other = tmp_path / "x.spc"
     other.write_bytes(b"x")
-    empty.drop(str(other))
+    assert not receive_irf(empty.app, {"irf": [str(other)]})
     assert "Choose a detector first" in " ".join(empty.draw(3).strings)
 
 

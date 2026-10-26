@@ -28,7 +28,6 @@ SPEC = json.loads((HERE / "filter_emtk.view.json").read_text(encoding="utf-8"))
 #: The guide's and the tests' names for the tables (a form records a table under its source).
 #: The names the shared guide.json gives the toolbar actions.
 TOUR_NAMES = {
-    "load_mixed": "Mixed",
     "autofit": "Auto-fit",
     "unmix": "Unmix",
     "save_project": "Project",
@@ -87,8 +86,19 @@ class FilterApp(TourTarget, ImApp):
             "Component definition", size=(520.0, 560.0), key="component_definition"
         )
         self.item_rects = {}
+        #: Which tab (``sources`` or ``data``) holds a tour target: the tour brings it forward.
+        self._window_of = {}
         self.forms = {}
         self.panel = FilterPanel(self)
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: The mixed decay, measured references, an IRF and saved projects come from the Datasets
+        #: workspace through these Input sections.
+        self.inputs = {
+            name: NamedWorkspaceInput("fcs_filter_calculator", name, self, height=72)
+            for name in ("mixed", "reference", "irf", "project")
+        }
+        self.inputs["mixed"].workspace_input_on_used = lambda _key: self._used("Mixed")
         self.setup = ChannelDefinitionWidget(
             settings=self.model._detector_settings, on_changed=self._setup_changed, host_app=self
         )
@@ -121,6 +131,7 @@ class FilterApp(TourTarget, ImApp):
         )
         for key, title, draw, dock in (
             ("sources", "Sources", self.draw_sources, "controls"),
+            ("data", "Data", self.draw_data, "controls"),
             ("setup", "Detector setup", self.draw_setup, "controls"),
             ("autofit", "Auto-fit", self.draw_autofit, "controls"),
             ("instrument", "Instrument", self.draw_instrument, "controls"),
@@ -207,20 +218,12 @@ class FilterApp(TourTarget, ImApp):
 
         return self.job.start(work, publish, lambda exc: setattr(self.model, "message", str(exc)))
 
-    def choose(
-        self,
-        title,
-        callback,
-        mode="open",
-        multiple=False,
-        filters="Decay (*.pto *.txt *.dat *.csv *.spc *.ptu *.ht3 *.tttr);;All files (*)",
-        filename="",
-    ):
+    def choose_save(self, title, callback, filters, filename):
+        """Where an output is written (a project, the filters). Inputs come from the Datasets
+        workspace, so this dialog only ever saves."""
         if self.job.running:
             return
-        self.dialog = FileDialog(
-            title, mode=mode, multiselect=multiple, filters=filters, filename=filename
-        )
+        self.dialog = FileDialog(title, mode="save", filters=filters, filename=filename)
         self.file_window.title = title
         self.file_window.show()
         self.dialog_callback = callback
@@ -422,6 +425,51 @@ class FilterApp(TourTarget, ImApp):
             if action in state.rects:
                 self.item_rects[tour_name] = state.rects[action]
 
+    def draw_input(self, name, caption, tip):
+        """One Input section with its caption; its rows are the tour target *caption*."""
+        im.text_disabled(tr(caption))
+        im.set_item_tooltip(tr(tip))
+        named = self.inputs[name]
+        draw_form(named.spec, named, named.form)
+        rect = named.form.rects.get("workspace_input_rows")
+        if rect is not None:
+            self.item_rects[f"input_{name}"] = tuple(rect)
+
+    def _follow_tour(self):
+        """Bring forward the tab (Sources or Data) that holds the tour step's control."""
+        if not (self.tour.active and self.tour.steps):
+            return
+        key = self.tour._target_key(self.tour.steps[self.tour.step_idx].get("target"))
+        window = self._window_of.get(key)
+        if window and self.docks.active_tab("controls") != window:
+            self.docks.focus(window)
+
+    def draw_data(self, box):
+        """The Data tab: what this tool reads, picked from the Datasets workspace."""
+        self.draw_input(
+            "mixed",
+            "Mixed decay",
+            "Pick the measured mixed decay: photon streams or decay curves of the workspace.",
+        )
+        if "input_mixed" in self.item_rects:
+            self.item_rects["Mixed"] = self.item_rects["input_mixed"]
+        for key in ("Mixed", "input_mixed", "input_reference", "input_irf", "input_project"):
+            self._window_of[key] = "data"
+        self.draw_input(
+            "reference",
+            "Measured pattern",
+            "Pick reference decays of one species; they are added as a measured component.",
+        )
+        self.draw_input(
+            "irf",
+            "IRF of the selected detector",
+            "Pick a measured IRF (photon stream or decay) for the detector row selected in Sources.",
+        )
+        self.draw_input(
+            "project", "Project", "Pick a saved project (a setup row of the Datasets workspace)."
+        )
+        self.remember("data", tuple(box))
+
     def draw_sources(self, box):
         self.form("toolbar")
         if self.job.running:
@@ -447,6 +495,11 @@ class FilterApp(TourTarget, ImApp):
             )
         self.remember("sources", tuple(box))
         self.item_rects["Decay sources"] = tuple(box)
+        for state in self.forms.values():
+            for key in state.rects:
+                self._window_of.setdefault(key, "sources")
+        for key in (*TOUR_NAMES.values(), *ALIASES.values(), "Decay sources"):
+            self._window_of.setdefault(key, "sources")
 
     def refresh_saved_setups(self):
         self.setup.model.refresh_setups()
@@ -676,7 +729,13 @@ class FilterApp(TourTarget, ImApp):
         if getattr(self, "_layout_width", None) != width:
             self._layout_width = width
             self.docks.layout.ratio = max(0.34, min(0.55, MIN_CONTROLS / max(width, 1.0)))
+        self._follow_tour()
         self.docks.draw(frame)
+        if self.docks.active_tab("controls") != "data":
+            # The Data tab is behind Sources: a tour step about the mixed decay points at its tab.
+            tab = self.docks.tab_rect("data")
+            if tab is not None:
+                self.item_rects["Mixed"] = tuple(tab)
         if self.help.open:
             self.help.draw(frame)
         if self.tour.active:
@@ -708,16 +767,6 @@ class FilterApp(TourTarget, ImApp):
         if fingerprint != self.last_settings and not self.job.running:
             self.last_settings = fingerprint
             self.submit(lambda model: model.compute(), replace=False)
-
-    def files_dropped(self, paths):
-        self.on_paths_dropped(paths)
-
-    def on_paths_dropped(self, paths):
-        if paths:
-            if len(paths) == 1 and str(paths[0]).lower().endswith(".json"):
-                self.submit(lambda model: model.load_project(paths[0]))
-            else:
-                self.load_total(paths)
 
     def export_state(self):
         return self.model.export_state()
@@ -774,3 +823,55 @@ def receive_correlator_files(app, payload: dict) -> None:
 
 def create_app(workflow_context=None, parameter_linker=None):
     return FilterApp(workflow_context=workflow_context, parameter_linker=parameter_linker)
+
+
+def _input_files(addresses):
+    """Files the decay reader takes for workspace *addresses* (a curve read into the session is
+    written as two columns first)."""
+    from .decay_io import workspace_file
+
+    return [workspace_file(str(a)) for a in addresses or ()]
+
+
+def receive_mixed(app, payload):
+    """The mixed decay picked in the workspace: read and computed in the worker."""
+    files = _input_files(payload.get("mixed"))
+    if not files:
+        return False
+    app.load_total(files)
+    return True
+
+
+def receive_reference(app, payload):
+    """Measured reference decays picked in the workspace: one new measured component."""
+    files = _input_files(payload.get("reference"))
+    if not files:
+        return False
+    app.add_measured(files)
+    return True
+
+
+def receive_irf(app, payload):
+    """A measured IRF picked in the workspace, for the selected detector row."""
+    row = app.selected_detector_row
+    if row is None:
+        app.model.message = "Select a detector row first, then pick its IRF."
+        return False
+    files = _input_files([payload.get("irf")] if payload.get("irf") else [])
+    if not files:
+        return False
+    app.set_irf(row["_detector"], row["_role"], files[0])
+    app.submit(lambda model: model.compute(), replace=False)
+    return True
+
+
+def receive_project(app, payload):
+    """A saved project picked in the workspace (a setup row): restored and computed."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("project")
+    if not address:
+        return False
+    path = read_address(str(address))
+    app.submit(lambda model: model.load_project(path))
+    return True

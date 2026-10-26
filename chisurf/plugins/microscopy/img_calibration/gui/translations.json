@@ -42,7 +42,8 @@
     "Clear": "Clear",
     "Clear IRF files for this detector": "Clear IRF files for this detector",
     "Refresh": "Refresh",
-    "Reload histograms after correcting source files": "Reload histograms after correcting source files"
+    "Reload histograms after correcting source files": "Reload histograms after correcting source files",
+    "Data": "Data"
   },
   "de": {
     "Calibration": "Kalibrierung",
@@ -87,7 +88,8 @@
     "Clear": "Leeren",
     "Clear IRF files for this detector": "IRF-Dateien dieses Detektors leeren",
     "Refresh": "Aktualisieren",
-    "Reload histograms after correcting source files": "Histogramme nach Korrektur der Quelldateien neu laden"
+    "Reload histograms after correcting source files": "Histogramme nach Korrektur der Quelldateien neu laden",
+    "Data": "Daten"
   },
   "fr": {
     "Calibration": "Étalonnage",
@@ -132,7 +134,8 @@
     "Clear": "Effacer",
     "Clear IRF files for this detector": "Effacer les fichiers IRF de ce détecteur",
     "Refresh": "Actualiser",
-    "Reload histograms after correcting source files": "Recharger les histogrammes après correction des fichiers"
+    "Reload histograms after correcting source files": "Recharger les histogrammes après correction des fichiers",
+    "Data": "Données"
   },
   "es": {
     "Calibration": "Calibración",
@@ -177,7 +180,8 @@
     "Clear": "Vaciar",
     "Clear IRF files for this detector": "Vaciar archivos IRF de este detector",
     "Refresh": "Actualizar",
-    "Reload histograms after correcting source files": "Recargar histogramas después de corregir archivos"
+    "Reload histograms after correcting source files": "Recargar histogramas después de corregir archivos",
+    "Data": "Datos"
   },
   "pt": {
     "Calibration": "Calibração",
@@ -222,7 +226,8 @@
     "Clear": "Limpar",
     "Clear IRF files for this detector": "Limpar arquivos IRF deste detector",
     "Refresh": "Atualizar",
-    "Reload histograms after correcting source files": "Recarregar histogramas após corrigir os arquivos"
+    "Reload histograms after correcting source files": "Recarregar histogramas após corrigir os arquivos",
+    "Data": "Dados"
   },
   "ru": {
     "Calibration": "Калибровка",
@@ -267,6 +272,7 @@
     "Clear": "Очистить",
     "Clear IRF files for this detector": "Очистить файлы IRF этого детектора",
     "Refresh": "Обновить",
-    "Reload histograms after correcting source files": "Перезагрузить гистограммы после исправления исходных файлов"
+    "Reload histograms after correcting source files": "Перезагрузить гистограммы после исправления исходных файлов",
+    "Data": "Данные"
   }
 }

@@ -15,9 +15,7 @@ from typing import Any, Callable
 import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
-from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
-from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
@@ -34,7 +32,6 @@ HERE = Path(__file__).resolve().parents[1]
 TTTR_FILTER = "TTTR files (" + " ".join(f"*{e}" for e in FILE_EXTENSIONS) + ");;All files (*)"
 #: Height of the Input section under the file list (its header, a compact table and the hint).
 INPUT_HEIGHT = 120.0
-LIFETIME_FILTER = "Lifetime filters (*.json *.npy *.npz);;All files (*)"
 #: Correlation curve colours (one per chunk / species), RGBA.
 CURVES = [
     (228, 26, 28, 255),
@@ -71,38 +68,6 @@ def _same_line_if_fits(label: str, used: float) -> float:
     return width
 
 
-class _Dialogs:
-    """A file dialog drawn over the step, and the callback that takes its choice."""
-
-    def __init__(self) -> None:
-        self.dialog: FileDialog | None = None
-        self.window: DialogWindow | None = None
-        self._on_pick: Callable[[list[str]], Any] | None = None
-
-    def ask(self, title: str, mode: str, filters: str, on_pick, multiselect: bool = False) -> None:
-        kwargs = {"multiselect": True} if multiselect else {}
-        self.dialog = FileDialog(title, mode=mode, filters=filters, **kwargs)
-        self.window = DialogWindow(title, size=(720, 520))
-        self._on_pick = on_pick
-
-    def draw(self, frame) -> None:
-        dialog, window = self.dialog, self.window
-        if dialog is None or window is None:
-            return
-        pressed = window.begin(frame)
-        result = dialog.draw()
-        window.end()
-        if result:
-            self.dialog, pick = None, self._on_pick
-            if pick is not None:
-                pick([str(p) for p in result])
-        elif result is False or pressed == "close":
-            self.dialog = None
-
-
-# ── 2. Files & Steps ─────────────────────────────────────────────────────────
-
-
 class FilesStepApp(ImApp):
     """The checked file list (filled from the workspace's Input section; All, None, Remove, Clear), the optional steps, and the
     count-rate trace of each file to draw its time regions on (only photons inside them are correlated)."""
@@ -125,7 +90,6 @@ class FilesStepApp(ImApp):
         self.per_file = False
         self.on_change = on_change
         self.client = client
-        self.dialogs = _Dialogs()
         self.item_rects: dict[str, tuple] = {}
         #: The workspace datasets the files were picked from (results become their children).
         self.source_datasets: list[str] = []
@@ -401,12 +365,10 @@ class FilesStepApp(ImApp):
     def render(self) -> None:
         w, h = im.get_main_viewport().size
         frame = (0.0, 0.0, w, h)
-        blocked = self.dialogs.dialog is not None
         if im.begin(
             "Files & Steps", frame, flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
         ):
             _body("files_body")
-            im.begin_disabled(blocked)
             im.text(tr("Files:"))
             im.set_item_tooltip(
                 tr("TTTR files (or folders of them) to correlate; only the ticked ones are used.")
@@ -517,10 +479,8 @@ class FilesStepApp(ImApp):
             self.item_rects["per_file"] = im.get_item_rect()
             if self.paths:
                 self._draw_regions()
-            im.end_disabled()
             im.end_child()
         im.end()
-        self.dialogs.draw(frame)
 
     def _row_rects(self) -> None:
         """``check.i`` / ``row.i``: the Use and File cells of the i-th added path, where the table drew them."""
@@ -801,7 +761,6 @@ class CorrelatorStepApp(ImApp):
         #: says whether it can be opened now (no window to open it in greys the button).
         self.open_tool = open_tool
         self.tool_available = tool_available
-        self.dialogs = _Dialogs()
         self.status = "No data loaded."
         self.filter_status = ""
         self.preset = ""
@@ -826,6 +785,9 @@ class CorrelatorStepApp(ImApp):
         self.docks = DockManager(Split("h", 0.42, Region("controls"), Region("plot")))
         self.docks.add_window(
             "controls", "Controls", self._draw_controls, dock="controls", closable=False
+        )
+        self.docks.add_window(
+            "filters", "Lifetime filters", self._draw_filters_tab, dock="controls", closable=False
         )
         self.docks.add_window(
             "plot", "FCS Correlation", self._draw_plot, dock="plot", closable=False
@@ -910,22 +872,26 @@ class CorrelatorStepApp(ImApp):
         )
         self.item_rects["fcs_preset"] = im.get_item_rect()
 
-    def _draw_filter_controls(self, section, model, state, width) -> None:
-        if im.button(tr("Load filters...")):
-            self.dialogs.ask(
-                "Load lifetime filters", "open", LIFETIME_FILTER, lambda p: self.load_filters(p[0])
-            )
-        im.set_item_tooltip(
+    def _draw_filters_tab(self, box) -> None:
+        """The Lifetime filters tab: filters picked from the Datasets workspace."""
+        im.text_wrapped(
             tr(
-                "Load lifetime (FLCS) filters from a Filter-Calculator JSON, or a .npy/.npz filter "
-                "matrix. Correlation then gives species auto-/cross-correlations; A/B pick species."
+                "Pick lifetime (FLCS) filters -- a Filter-Calculator export or a .npy/.npz filter "
+                "matrix -- from the Datasets workspace. Correlation then gives species "
+                "auto-/cross-correlations; A/B pick species."
             )
         )
-        self.item_rects["load_filters"] = im.get_item_rect()
-        used = _same_line_if_fits(
-            "Unload",
-            im.calc_text_size(tr("Load filters..."))[0] + 2 * im.get_style().frame_padding[0],
-        )
+        named = getattr(self, "filter_input", None)
+        if named is not None:
+            draw_form(named.spec, named, named.form)
+            rect = named.form.rects.get("workspace_input_rows")
+            if rect is not None:
+                self.item_rects["load_filters"] = tuple(rect)
+        if self.filter_status:
+            im.text_wrapped(self.filter_status)
+
+    def _draw_filter_controls(self, section, model, state, width) -> None:
+        used = im.calc_text_size(tr("Unload"))[0] + 2 * im.get_style().frame_padding[0]
         im.begin_disabled(not self.model.filter_mode)
         if im.button(tr("Unload")):
             self.model.clear_lifetime_filter()
@@ -1026,10 +992,12 @@ class CorrelatorStepApp(ImApp):
     def render(self) -> None:
         w, h = im.get_main_viewport().size
         frame = (0.0, 0.0, w, h)
-        im.begin_disabled(self.dialogs.dialog is not None)
         self.docks.draw(frame)
-        im.end_disabled()
-        self.dialogs.draw(frame)
+        if self.docks.active_tab("controls") != "filters":
+            # The filters tab is behind Controls: a step about loading filters points at its tab.
+            tab = self.docks.tab_rect("filters")
+            if tab is not None:
+                self.item_rects["load_filters"] = tuple(tab)
 
 
 def _walk(sections):

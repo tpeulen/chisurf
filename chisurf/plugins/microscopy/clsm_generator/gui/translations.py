@@ -5,20 +5,6 @@ from emtk.i18n import add_translations
 # Order: German, French, Spanish, Portuguese, Russian. Shared controls and tours
 # retain ChiSurf/EMTK's existing catalogs; these are the generator-specific terms.
 VOCABULARY = {
-    "Database lifetime maps": [
-        "Lebensdauerkarten aus Datenbank",
-        "Cartes de durée de vie de la base",
-        "Mapas de tiempo de vida de la base",
-        "Mapas de tempo de vida do banco",
-        "Карты времени жизни из базы",
-    ],
-    "Select registered lifetime map datasets from MMFDB in detector order.": [
-        "Registrierte Lebensdauerkarten aus MMFDB in Detektorreihenfolge auswählen.",
-        "Choisir les cartes enregistrées dans MMFDB dans l’ordre des détecteurs.",
-        "Seleccionar mapas registrados en MMFDB en orden de detectores.",
-        "Selecionar mapas registrados no MMFDB na ordem dos detectores.",
-        "Выбрать зарегистрированные карты из MMFDB по порядку детекторов.",
-    ],
     "Expand the acquisition and lifetime/intensity quantization parameters.": [
         "Aufnahmeparameter und Quantisierung für Lebensdauer und Intensität anzeigen.",
         "Afficher les paramètres d’acquisition et de quantification durée de vie/intensité.",
@@ -55,6 +41,20 @@ VOCABULARY = {
         "Входные данные и моделирование",
     ],
     "Maps": ["Karten", "Cartes", "Mapas", "Mapas", "Карты"],
+    "Intensity map": [
+        "Intensitätskarte",
+        "Carte d’intensité",
+        "Mapa de intensidad",
+        "Mapa de intensidade",
+        "Карта интенсивности",
+    ],
+    "Lifetime maps (detector order)": [
+        "Lebensdauerkarten (Detektorreihenfolge)",
+        "Cartes de durée de vie (ordre des détecteurs)",
+        "Mapas de tiempo de vida (orden de detectores)",
+        "Mapas de tempo de vida (ordem dos detectores)",
+        "Карты времени жизни (по порядку детекторов)",
+    ],
     "Map": ["Karte", "Carte", "Mapa", "Mapa", "Карта"],
     "Intensity image": [
         "Intensitätsbild",

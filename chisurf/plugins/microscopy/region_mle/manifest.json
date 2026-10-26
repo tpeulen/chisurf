@@ -82,5 +82,41 @@
     "mle_common": "*"
   },
   "optional_requires": {},
-  "menu_hidden": true
+  "menu_hidden": true,
+  "accepts": [
+    {
+      "name": "files",
+      "summary": "Confocal (CLSM) photon recordings to analyse: photon streams or photon images.",
+      "receive": "chisurf.plugins.microscopy.region_mle.gui.app:receive_files",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons",
+          "image"
+        ],
+        "representations": [
+          "photons"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    },
+    {
+      "name": "irf",
+      "summary": "The IRF photon measurement (its micro-time histogram is the instrument response).",
+      "receive": "chisurf.plugins.microscopy.region_mle.gui.app:receive_irf",
+      "required": [
+        "irf"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons"
+        ],
+        "many": false,
+        "key": "irf"
+      }
+    }
+  ]
 }

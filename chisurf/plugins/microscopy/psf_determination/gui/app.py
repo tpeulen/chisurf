@@ -14,7 +14,6 @@ from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
     LabelColumn,
@@ -31,6 +30,10 @@ from .jobs import SnapshotJob
 from .view_model import PsfViewModel
 
 HERE = Path(__file__).parent
+
+
+#: The schema saved settings carry (a setup of the Datasets workspace).
+SETTINGS_SCHEMA = "chisurf.tool/psf_determination/1"
 
 
 class BeadNavigator:
@@ -95,7 +98,13 @@ class PsfDeterminationApp(TourTarget, ImApp):
         )
         for form in self.forms.values():
             form.on_used = self.tour.notify_used
-        self.picker = DatasetPicker(formats=["tiff", "tif"], on_paths=self.open_paths)
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: The stack and saved settings come from the Datasets workspace (the Data tab).
+        self.inputs = {
+            name: NamedWorkspaceInput("psf_determination", name, self, height=72)
+            for name in ("stack", "settings")
+        }
         self.docks = DockManager(
             Split(
                 "h",
@@ -112,6 +121,7 @@ class PsfDeterminationApp(TourTarget, ImApp):
         self.docks.add_window(
             "controls", "Controls", self.controls, dock="controls", closable=False
         )
+        self.docks.add_window("data", "Data", self.data, dock="controls", closable=False)
         self.docks.add_window("stack", "Bead stack", self.stack_view, dock="stack", closable=False)
         self.docks.add_window(
             "profiles", "x / y / z profiles", self.profiles, dock="profiles", closable=False
@@ -166,11 +176,20 @@ class PsfDeterminationApp(TourTarget, ImApp):
         )
         return out
 
-    def on_files_dropped(self, paths):
-        if self.job.busy:
-            return False
-        self.open_paths(paths)
-        return bool(paths)
+    def data(self, box):
+        """The Data tab: the bead stack and saved settings, picked from the Datasets workspace."""
+        for name, caption, tip in (
+            ("stack", "Bead stack", "A 2-D TIFF image or a 3-D TIFF bead stack."),
+            ("settings", "Load settings",
+             "Saved settings; the stored source stack is reopened when it is in the workspace."),
+        ):
+            im.text_disabled(caption)
+            im.set_item_tooltip(tip)
+            named = self.inputs[name]
+            draw_form(named.spec, named, named.form)
+            rect = named.form.rects.get("workspace_input_rows")
+            if rect is not None:
+                self.item_rects[f"input_{name}"] = tuple(rect)
 
     def open_paths(self, paths):
         if paths:
@@ -200,28 +219,16 @@ class PsfDeterminationApp(TourTarget, ImApp):
         self.start("fit_selected")
 
     def choose(self, action):
+        """Where the batch CSV (``export_csv``) or the settings (``save_settings``) are written."""
         self.dialog_action = action
-        load = action in ("load_stack", "load_settings")
-        filters = (
-            "TIFF (*.tif *.tiff);;All files (*)"
-            if action == "load_stack"
-            else "CSV (*.csv)"
-            if action == "export_csv"
-            else "JSON (*.json)"
-        )
-        filename = (
-            "psf_batch_results.csv"
-            if action == "export_csv"
-            else "psf_settings.json"
-            if action == "save_settings"
-            else ""
-        )
+        filters = "CSV (*.csv)" if action == "export_csv" else "JSON (*.json)"
+        filename = "psf_batch_results.csv" if action == "export_csv" else "psf_settings.json"
         directory = self.last_dir or (
             str(Path(self.model.filename).parent) if self.model.filename else None
         )
         self.dialog = FileDialog(
             action.replace("_", " ").title(),
-            mode="open" if load else "save",
+            mode="save",
             filters=filters,
             filename=filename,
             directory=directory,
@@ -239,14 +246,11 @@ class PsfDeterminationApp(TourTarget, ImApp):
     def do(self, key):
         _m = self.model
         {
-            "load_stack": lambda: self.choose("load_stack"),
-            "mmfdb": self.picker.open,
             "detect_beads": lambda: self.start("detect_beads"),
             "fit_selected": lambda: self.start("fit_selected"),
             "fit_all": lambda: self.start("fit_all"),
             "export_csv": lambda: self.choose("export_csv"),
             "save_settings": lambda: self.choose("save_settings"),
-            "load_settings": lambda: self.choose("load_settings"),
             "help": self.help_window.show,
             "guide": self.tour.start,
         }[key]()
@@ -265,26 +269,14 @@ class PsfDeterminationApp(TourTarget, ImApp):
 
     def controls(self, box):
         m = self.model
-        idle = not (self.job.busy or self.dialog is not None or self.picker.is_open)
+        idle = not (self.job.busy or self.dialog is not None)
         pressed = button_row(
             [
-                {
-                    "label": "Load stack",
-                    "key": "load_stack",
-                    "enabled": idle,
-                    "tip": "Load a 2-D TIFF image or a 3-D TIFF bead stack (or drop the file on the window).",
-                },
                 {
                     "label": action_caption("example"),
                     "key": "load_example",
                     "enabled": idle,
                     "tip": "Replace the stack by a generated one with five beads of known size (a demo, not data).",
-                },
-                {
-                    "label": "MMFDB dataset",
-                    "key": "mmfdb",
-                    "enabled": idle,
-                    "tip": "Select a registered TIFF dataset from the MMFDB catalog.",
                 },
                 {
                     "label": "Detect",
@@ -316,12 +308,6 @@ class PsfDeterminationApp(TourTarget, ImApp):
                     "enabled": idle,
                     "tip": "Save calibration, ROI, detection and display settings to JSON.",
                 },
-                {
-                    "label": "Load settings",
-                    "key": "load_settings",
-                    "enabled": idle,
-                    "tip": "Restore settings and reopen the stored source stack when available.",
-                },
                 {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
                 {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
             ],
@@ -336,7 +322,10 @@ class PsfDeterminationApp(TourTarget, ImApp):
             im.text_wrapped(self.job.progress)
         if self.error or self.job.error:
             im.text_wrapped("Error: " + (self.error or self.job.error))
-        im.text_wrapped(m.filename or ("Demo stack" if m.stack is not None else "No stack loaded."))
+        im.text_wrapped(
+            m.filename
+            or ("Demo stack" if m.stack is not None else "No stack loaded: pick one in the Data tab.")
+        )
         im.text_disabled(f"{len(m.detected_beads)} detected beads")
         im.separator()
         self.form("psf")
@@ -350,7 +339,7 @@ class PsfDeterminationApp(TourTarget, ImApp):
             markers=self.model.detected_beads,
             on_pick=self.pick_bead,
             fit_circle=self.model.fit_circle(),
-            pick_enabled=not self.job.busy and self.dialog is None and not self.picker.is_open,
+            pick_enabled=not self.job.busy and self.dialog is None,
         )
         self.model.colormap = self.canvas.colormap
         self.item_rects["stack"] = self.canvas.rect
@@ -448,7 +437,7 @@ class PsfDeterminationApp(TourTarget, ImApp):
             self.apply_settings(data)
 
     def animating(self):
-        return self.job.busy or self.picker.is_open or super().animating()
+        return self.job.busy or super().animating()
 
     def render(self):
         changed = self.job.poll()
@@ -475,13 +464,11 @@ class PsfDeterminationApp(TourTarget, ImApp):
                     path = Path(result[0])
                     self.last_dir = str(path.parent)
                     if self.dialog_action == "save_settings":
-                        path.with_suffix(".json").write_text(json.dumps(self.settings(), indent=2))
-                    elif self.dialog_action == "load_settings":
-                        self.apply_settings(json.loads(path.read_text()))
+                        # The schema makes the file a setup the workspace hands back here.
+                        state = {"schema": SETTINGS_SCHEMA, **self.settings()}
+                        path.with_suffix(".json").write_text(json.dumps(state, indent=2))
                     else:
-                        if self.dialog_action == "export_csv":
-                            path = path.with_suffix(".csv")
-                        self.start(self.dialog_action, str(path))
+                        self.start(self.dialog_action, str(path.with_suffix(".csv")))
                     self.dialog = None
                 except Exception as exc:
                     self.error = str(exc)
@@ -490,7 +477,6 @@ class PsfDeterminationApp(TourTarget, ImApp):
             self.file_window.end()
             if pressed == "close":
                 self.dialog = None
-        self.picker.render((0, 0, *vp.size))
         self.help_window.draw((0.0, 0.0, *vp.size))
         self.tour.draw(*vp.size)
 
@@ -500,3 +486,28 @@ def make_app(**kwargs):
 
     install()
     return PsfDeterminationApp(model=kwargs.get("model"))
+
+
+def receive_stack(app, payload):
+    """The stack picked in the workspace (``accepts[].from_workspace``): loaded in the worker."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("stack")
+    if not address:
+        return False
+    return bool(app.start("load_stack", read_address(str(address))))
+
+
+def receive_settings(app, payload):
+    """Saved settings picked in the workspace (a setup row); a damaged file is the error line."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("settings")
+    if not address:
+        return False
+    try:
+        app.apply_settings(json.loads(Path(read_address(str(address))).read_text(encoding="utf-8")))
+    except Exception as exc:  # noqa: BLE001 - shown to the user
+        app.error = str(exc)
+        return False
+    return True

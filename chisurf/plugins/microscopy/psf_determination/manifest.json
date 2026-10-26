@@ -82,5 +82,40 @@
       "topic": "psf_determination.state.*",
       "description": "State patch events"
     }
+  ],
+  "accepts": [
+    {
+      "name": "stack",
+      "summary": "A 2-D TIFF image or 3-D TIFF bead stack of the workspace.",
+      "receive": "chisurf.plugins.microscopy.psf_determination.gui.app:receive_stack",
+      "required": [
+        "stack"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "image"
+        ],
+        "representations": [
+          "intensity"
+        ],
+        "many": false,
+        "key": "stack"
+      }
+    },
+    {
+      "name": "settings",
+      "summary": "PSF settings saved by Save settings (a setup row of the workspace).",
+      "receive": "chisurf.plugins.microscopy.psf_determination.gui.app:receive_settings",
+      "required": [
+        "settings"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "settings"
+      }
+    }
   ]
 }

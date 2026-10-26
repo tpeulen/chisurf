@@ -114,12 +114,20 @@ class FcsHubApp(ToolHubApp):
         return FilterStepApp(self.filter_model, on_used=self.tour.notify_used)
 
     def _make_correlator(self):
-        return CorrelatorStepApp(
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        correlator = CorrelatorStepApp(
             self.correlator_model,
             open_tool=self._open_tool,
             on_used=self.tour.notify_used,
             tool_available=handoffs.available,
         )
+        #: Lifetime filters come from the Datasets workspace (a setup row).
+        correlator.filter_input = NamedWorkspaceInput("fcs_correlator", "filters", self, height=72)
+        correlator.filter_input.workspace_input_on_used = lambda _key: self.tour.notify_used(
+            "load_filters"
+        )
+        return correlator
 
     def files_payload(self) -> dict[str, Any]:
         """What the Filter Calculator gets: the checked files (folders expanded) and the micro-time binning, so its
@@ -219,6 +227,19 @@ def receive_files(app: FcsHubApp, payload: dict[str, Any]) -> bool:
         files.source_datasets = datasets
     app.goto_role("files") if hasattr(app, "goto_role") else None
     return added > 0
+
+
+def receive_filters(app: FcsHubApp, payload: dict[str, Any]) -> bool:
+    """Lifetime filters picked in the workspace (a setup row): loaded into the Correlator step,
+    which switches to species-resolved correlation."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("filters")
+    correlator = app.ensure_child("correlator")
+    if not address or correlator is None:
+        return False
+    correlator.load_filters(read_address(str(address)))
+    return correlator.model.filter_mode
 
 
 def make_app(**_kwargs) -> FcsHubApp:

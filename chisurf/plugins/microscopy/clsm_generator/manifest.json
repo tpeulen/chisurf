@@ -25,5 +25,60 @@
   },
   "operation_types": [
     "measurement_import"
+  ],
+  "accepts": [
+    {
+      "name": "intensity",
+      "summary": "The intensity map (relative pixel brightness): a TIFF image, or an NPY/NPZ array the workspace lists as a setup.",
+      "receive": "chisurf.plugins.microscopy.clsm_generator.gui.app:receive_intensity",
+      "required": [
+        "intensity"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "image",
+          "setup"
+        ],
+        "representations": [
+          "intensity"
+        ],
+        "many": false,
+        "key": "intensity"
+      }
+    },
+    {
+      "name": "lifetimes",
+      "summary": "Lifetime maps in ns, one per detector in detector order (TIFF images or NPY/NPZ arrays).",
+      "receive": "chisurf.plugins.microscopy.clsm_generator.gui.app:receive_lifetimes",
+      "required": [
+        "lifetimes"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "image",
+          "setup"
+        ],
+        "representations": [
+          "intensity"
+        ],
+        "many": true,
+        "key": "lifetimes"
+      }
+    },
+    {
+      "name": "settings",
+      "summary": "Simulator settings saved by Save settings (a setup row of the workspace).",
+      "receive": "chisurf.plugins.microscopy.clsm_generator.gui.app:receive_settings",
+      "required": [
+        "settings"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "settings"
+      }
+    }
   ]
 }

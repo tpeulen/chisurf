@@ -135,12 +135,14 @@ def test_validation_paths_detectors_settings_and_output(tmp_path):
         app.apply_state(bad_state)
 
 
-def test_mmfdb_lifetime_selection_uses_shared_dataset_paths(tmp_path):
+def test_lifetime_maps_from_the_workspace_keep_the_picked_order(tmp_path):
+    from chisurf.plugins.microscopy.clsm_generator.gui.app import receive_lifetimes
+
     app = populated(tmp_path)
     app.model.sel_lifetime_files = []
-    assert "image_data" in app.picker.kinds
-    assert {"tif", "tiff", "npy", "npz"} == set(app.picker.formats)
-    app.picker.on_paths([tmp_path / "life1.npy", tmp_path / "life0.npy"])
+    assert receive_lifetimes(
+        app, {"lifetimes": [str(tmp_path / "life1.npy"), str(tmp_path / "life0.npy")]}
+    )
     assert app.model.lifetime_paths == [str(tmp_path / "life1.npy"), str(tmp_path / "life0.npy")]
     np.testing.assert_array_equal(app.model._lifetime_in[0], np.full((8, 8), 3.0))
 
@@ -226,13 +228,10 @@ def test_all_six_locales_translate_generator_labels_and_tooltips():
             set_locale(locale)
             painter = RecordingPainter()
             app.draw(painter, 0, 0, 1200, 800)
-            assert tr("Add lifetime maps") in painter.strings
+            assert tr("Lifetime maps (detector order)") in painter.strings
             assert tr("Output format") in painter.strings
             if locale != "en":
-                assert tr("Add lifetime maps") != "Add lifetime maps"
-                assert (
-                    tr("Load the relative pixel brightness from TIFF, NPY or NPZ.")
-                    != "Load the relative pixel brightness from TIFF, NPY or NPZ."
-                )
+                assert tr("Lifetime maps (detector order)") != "Lifetime maps (detector order)"
+                assert tr("Intensity map") != "Intensity map"
     finally:
         set_locale("en")

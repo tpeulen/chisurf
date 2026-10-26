@@ -47,6 +47,19 @@ NOT_INPUT = {
         "Titration export: the CSV the fitted series is written to, an output (the titration's "
         "burst runs come from the workspace)."
     ),
+    "chisurf/plugins/microscopy/clsm/gui/app.py": (
+        "CLSM exports (TIFF image, decay CSV, saved regions, settings) are saved; Load regions reads "
+        "this tool's own region file (its state, not measurement data, as the imaging base's saved "
+        "regions)."
+    ),
+    "chisurf/plugins/microscopy/region_mle/gui/app.py": (
+        "Region MLE exports a region table (saved); Open results and Load regions reopen this "
+        "tool's own output (a results table) and region file, not measurement data."
+    ),
+    "chisurf/plugins/microscopy/spot_finder/gui/app.py": (
+        "Spot Finder exports (region table, regions, settings) are saved; Load regions reads this "
+        "tool's own region file (its state, not measurement data)."
+    ),
     "chisurf/plugins/microscopy/imaging_emtk/app_base.py": (
         "The imaging tools' dialogs: save dialogs (exports, HDF5, regions) and a tool's own state "
         "files (STATE_DIALOGS: saved regions); a request for measurement data is refused -- it comes "
@@ -55,6 +68,13 @@ NOT_INPUT = {
     "chisurf/plugins/core/project_data/gui/app.py": (
         "Locate missing data: 'Search in folder…' / 'Use this file' find the moved original of a "
         "linked dataset -- a repair of the project, not data entering it."
+    ),
+    "chisurf/plugins/fluorescence_decay/maxent_decay/gui/app.py": (
+        "Export / Sample: the folder the MEM result or the sampling chains are written to, an output."
+    ),
+    "chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/app.py": (
+        "Spectra / corrected IRFs: a saved spectrum is the tool's own component list (its state, "
+        "like a saved region), the rest are outputs; the polarized decays come from the workspace."
     ),
     "chisurf/plugins/fluorescence_decay/lltf/gui/app.py": (
         "Output directory: where the fit's JSON and plot are written, an output."

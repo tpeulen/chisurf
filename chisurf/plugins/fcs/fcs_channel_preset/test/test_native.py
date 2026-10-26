@@ -9,7 +9,7 @@ import sys
 
 import pytest
 
-from chisurf.plugins.fcs.fcs_channel_preset.gui.app import create_app
+from chisurf.plugins.fcs.fcs_channel_preset.gui.app import PresetApp, create_app, receive_presets
 from chisurf.plugins.fcs.fcs_channel_preset.gui.view_model import FCSChannelViewModel
 
 
@@ -264,3 +264,29 @@ assert not any(k.split('.')[0] in {'qtpy','PyQt5','PyQt6','PySide6'} for k in sy
         check=True,
         timeout=30,
     )
+
+
+def test_a_library_is_imported_from_the_workspace_and_exported_through_a_save_dialog(
+    files, tmp_path
+):
+    from chisurf.core.fio.classify import classify
+    from chisurf.core.plugin.workspace_input import register_result
+
+    app = app_for(files)
+    add(app)
+    app.save()
+    exported = tmp_path / "export.json"
+    app.model.export_presets(exported)
+    assert classify(exported) == "setup"  # a drop puts the library in the workspace
+    app.browse()
+    assert app.dialog is not None and app.dialog.mode == "save"
+    app.dialog = None
+    fresh = PresetApp(FCSChannelViewModel(detector_file=files[0], preset_file=tmp_path / "p.json"))
+    register_result(str(exported), kind="setup")
+    named = fresh.workspace_input
+    rows = [r for r in named.workspace_input_rows() if r.get("address") == str(exported)]
+    assert rows, "the exported library is offered by the Input section"
+    named.workspace_input_selected(rows[-1])
+    assert "bench" in json.loads((tmp_path / "p.json").read_text())["setups"]
+    assert not receive_presets(fresh, {"presets": str(tmp_path / "missing.json")})
+    assert fresh.message

@@ -7,7 +7,7 @@ widths in nanometres.
 
 ## What you do
 
-1. **Load stack** (a 3-D TIFF, or drop it on the window) or **Demo stack** for a generated stack with a known answer.
+1. Pick a 3-D TIFF in the **Data** tab (drop it on the ChiSurf window to add it to the Datasets workspace first), or **Load example** for a generated stack with a known answer.
    Browse the slices with the z slider; the colormap, gamma and levels change only the display.
 2. Set **Pixel (nm)** and **Z step (nm)** from your acquisition: they turn the fitted sigmas (in pixels and slices)
    into physical widths. A wrong z step scales the axial width by the same factor, and nothing in the fit will object.
@@ -31,7 +31,7 @@ widths in nanometres.
 
 The region of interest (*ROI xy*, *ROI z*) is the box cut around a bead for the fit: large enough for the tails,
 small enough to exclude neighbours. **Save settings** writes calibration, ROI, detection and display settings to JSON
-and **Load settings** restores them and reopens the stored stack when it still exists.
+and picking a saved file in the **Data** tab (**Load settings**) restores them and reopens the stored stack when it still exists.
 
 ## Further reading
 

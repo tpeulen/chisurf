@@ -55,8 +55,8 @@ loop for validation.
 ### The Filter Calculator
 
 The calculator opens at 1100 × 720. The window layout is remembered; the
-analysis is not — **Save project...** / **Load project...** keep it across
-restarts. Hover a truncated legend label to read its full name.
+analysis is not — **Save project...** keeps it across restarts (pick the saved project in
+the **Data** tab to restore it). Hover a truncated legend label to read its full name.
 
 ```{figure} figures/fcs_filter_primary_window.png
 :name: fig-filter-calculator-primary-window
@@ -68,15 +68,19 @@ convolved lifetime example with filter, reconstruction and residual plots.
 
 **Spectroscopy ▸ Correlation ▸ FCS**, then **Filter Calc** under *Tools* in its rail,
 opens with a built-in example (two lifetimes,
-scatter and afterpulsing) so the panel is never empty; **Mixed...** replaces
-it with a measured decay (`.pto`, TTTR, or a text histogram). The window has a **Sources** tab, a **Detector setup** tab (the shared detector editor), **Auto-fit**, **Instrument** and **Info** tabs on the left and the three plots on the right:
+scatter and afterpulsing) so the panel is never empty; a measured decay (`.pto`, TTTR, or a
+text histogram) picked in the **Data** tab replaces it — drop the file on the ChiSurf window to
+put it in the Datasets workspace first. The window has a **Sources** tab, a **Data** tab, a **Detector setup** tab (the shared detector editor), **Auto-fit**, **Instrument** and **Info** tabs on the left and the three plots on the right:
 
-- **Sources** — the toolbar (**Mixed...**, **Auto-fit**, **Unmix**, **Compute filters**, **Save project...**, **Load project...**, **Export results...**, **Load example**, **Guide**, **Help**), *Inputs* (**Pol** for parallel/perpendicular filters,
+- **Sources** — the toolbar (**Auto-fit**, **Unmix**, **Compute filters**, **Save project...**, **Export results...**, **Load example**, **Guide**, **Help**), *Inputs* (**Pol** for parallel/perpendicular filters,
   **IRF**, **AP** afterpulse/constant nuisance), the **Detectors** of the
   selected setup with a per-detector IRF *Width*, *Skew*, *Shift* and IRF file
-  (**Browse IRF...**), **Global (stacked) detectors**, the **Mixed decay** with
+  (picked in the **Data** tab for the selected row), **Global (stacked) detectors**, the **Mixed decay** with
   **Fit start / Fit stop** (TAC bins; the two lines on the reconstruction plot drag them), and the
   **Components** table (**Use** ticks one, double-click the name to rename it; select a row and press **Edit**, **Duplicate** or **Remove**; the **Add ...** buttons open a form of the component's model);
+- **Data** — what the tool reads, picked from the Datasets workspace: the **Mixed decay**
+  (photon streams or decay curves, several at once), a **Measured pattern** (reference decays
+  added as a component), the **IRF of the selected detector**, and a saved **Project**;
 - **Lifetime filters**, **Weighted residuals**, **Reconstruction / decay** —
   the filters per component and detector, the residuals of the non-negative
   unmixing, and data vs. reconstruction;
@@ -87,7 +91,8 @@ it with a measured decay (`.pto`, TTTR, or a text histogram). The window has a *
 
 **Auto-fit** decomposes the mixed decay into *N* components and adds them as
 species; **Unmix** fits their non-negative amplitudes and computes the
-filters. **Save project...** / **Load project...** save and restore the whole state and **Export results...** writes the filters.
+filters. **Save project...** saves the whole state (picking the project in the **Data** tab
+restores it) and **Export results...** writes the filters.
 
 ```{figure} figures/17_filter_calculator.png
 :name: fig-17-filter-calculator

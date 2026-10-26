@@ -17,6 +17,9 @@ from ..core import algorithms as physics
 SHAPES = ("Sphere", "Ellipsoid", "Cylinder")
 #: The field each constraint makes the input; the other two are computed.
 CONSTRAINED = {"D": "D_um2_s", "rh": "rh_nm", "V": "veff_fL"}
+#: The schema an exported settings file carries (a setup of the Datasets workspace).
+SETTINGS_SCHEMA = "chisurf.tool/fcs_calculator/1"
+
 NUMBERS = (
     "tau_us",
     "D_um2_s",
@@ -201,7 +204,9 @@ class ConfocalModel:
 
     def export_json(self, path):
         path = Path(path)
-        path.write_text(json.dumps(self.settings(), indent=2, sort_keys=True), encoding="utf-8")
+        # The schema makes the file a setup the workspace hands back to this tool.
+        data = {"schema": SETTINGS_SCHEMA, **self.settings()}
+        path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
         self.error, self.status = "", f"Settings saved to {path}."
         return path
 

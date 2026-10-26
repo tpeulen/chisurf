@@ -21,7 +21,8 @@ molecules in the focus; the lag where the curve falls is the time a molecule nee
    background do not dominate the curve. The plots show what is kept; drag the blue lines to set min / max dMT.
 4. **Correlator**: routing channels and micro-time windows of A and B (empty = all detectors), multi-tau **Bins** and
    **Cascades**, **Splits** (the stream is cut into pieces correlated separately: their spread is the error, an odd
-   one flags a bubble or bleaching), **Fine** for the micro-time-resolved grid. **Load filters...** switches to
+   one flags a bubble or bleaching), **Fine** for the micro-time-resolved grid. Picking filters under **Lifetime filters** (a
+   Filter Calculator export or a `.npy`/`.npz` matrix from the Datasets workspace) switches to
    lifetime-filtered (FLCS) species correlation.
 5. **FCS Merger**: untick the pieces that do not belong; the mean and its standard error are saved as `.cor` or added
    to ChiSurf for fitting. Every `.cor` gets

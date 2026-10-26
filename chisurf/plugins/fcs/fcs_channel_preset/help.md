@@ -14,8 +14,8 @@ active and calls the host's correlator callback when connected; otherwise tools
 read the active preset when they reload. Delete preset removes only these FCS
 definitions, never the underlying detector setup.
 
-Public sharing can be changed only by the preset owner. Import JSON reads and
-persists a library; Export JSON includes the current draft. The native host state
+Public sharing can be changed only by the preset owner. A preset library picked from the Datasets workspace (drop its JSON on the ChiSurf window) is read
+and persisted; Export JSON includes the current draft. The native host state
 preserves selection, drafts and dock layout. Reload deliberately discards drafts
 and rereads saved definitions. Close asks the native host to end this tool; host
 state is separate from saved scientific definitions.

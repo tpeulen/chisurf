@@ -88,3 +88,30 @@ def load_vector(
             # Fallback for unexpected binary files
             data = np.fromfile(path, dtype=np.float64)
             return data.ravel().astype(float)
+
+
+def workspace_file(address: str) -> str:
+    """A file :func:`load_vector` reads for the workspace row *address*.
+
+    A photon stream or a curve file is read where it is (a linked dataset's local copy); a curve
+    that lives only in the session is written as one column of counts (``load_vector`` reads a
+    text file as a flat vector of counts) into the temporary folder.
+    """
+    import tempfile
+
+    from chisurf.core.plugin.workspace_input import read_address, resolve_dataset
+
+    dataset = resolve_dataset(address)
+    if dataset is None:
+        return read_address(address)
+    for source in (getattr(dataset, "read_address", ""), getattr(dataset, "filename", "")):
+        if source and pathlib.Path(str(source)).is_file():
+            return str(source)
+    if pathlib.Path(read_address(address)).is_file():
+        return read_address(address)
+    folder = pathlib.Path(tempfile.gettempdir()) / "chisurf-filter-inputs"
+    folder.mkdir(parents=True, exist_ok=True)
+    name = str(getattr(dataset, "name", "") or "curve").replace("/", "_")
+    target = folder / f"{pathlib.Path(name).stem or 'curve'}_{abs(hash(address)) % 10**8}.txt"
+    np.savetxt(target, np.asarray(dataset.y, dtype=float))
+    return str(target)

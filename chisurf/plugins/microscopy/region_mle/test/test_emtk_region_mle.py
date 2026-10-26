@@ -301,14 +301,27 @@ def test_the_analysis_region_is_dragged_on_the_image(workdir, monkeypatch):
     assert mask is not None and (mask.x0, mask.x1) == (5.0, 30.0)
 
 
-def test_dropped_files_join_the_imaging_list(workdir):
+def test_files_picked_from_the_workspace_join_the_imaging_list(workdir):
+    from chisurf.core.api import dataset_container
+    from chisurf.core.plugin.workspace_input import register_result
     from chisurf.plugins.microscopy.region_mle.gui.app import make_app
 
-    app = make_app()
-    assert app.files_dropped([str(workdir / "spot_demo_mixture.ptu")]) is True
-    assert app.model.files == [str(workdir / "spot_demo_mixture.ptu")]
-    app.on_paths_dropped([str(workdir / "spot_demo_mixture.ptu")])
-    assert len(app.model.files) == 1  # a duplicate is skipped
+    held = dataset_container()
+    before = list(held)
+    try:
+        app = make_app()
+        assert not hasattr(app, "files_dropped") and not hasattr(app, "picker")
+        path = str(workdir / "spot_demo_mixture.ptu")
+        register_result(path, kind="photons")
+        named = app.inputs["sel_files"]
+        rows = [r for r in named.workspace_input_rows() if r.get("address") == path]
+        assert rows, "the recording is offered by the Input section"
+        for _ in range(2):  # picking it twice: the duplicate is skipped
+            named.workspace_input_selection = rows[-1:]
+            named.workspace_input_use()
+        assert app.model.files == [path]
+    finally:
+        held[:] = before
 
 
 # 6. no Qt, no chisurf.gui

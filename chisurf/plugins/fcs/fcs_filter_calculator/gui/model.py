@@ -67,6 +67,10 @@ class Detectors:
             self.values[field] = dict(state.get(field, {}))
 
 
+#: The schema a saved project carries (a setup of the Datasets workspace).
+PROJECT_SCHEMA = "chisurf.tool/fcs_filter_calculator/1"
+
+
 class FilterModel(ScientificOperations):
     def __init__(self, example=True):
         self.components = []
@@ -462,7 +466,9 @@ class FilterModel(ScientificOperations):
         self._routing_cache.clear()
 
     def save_project(self, path):
-        Path(path).write_text(json.dumps(self.export_state(), indent=2))
+        # The schema makes the file a setup the workspace hands back to this tool.
+        state = {"schema": PROJECT_SCHEMA, **self.export_state()}
+        Path(path).write_text(json.dumps(state, indent=2))
 
     def load_project(self, path):
         self.restore_state(json.loads(Path(path).read_text()))

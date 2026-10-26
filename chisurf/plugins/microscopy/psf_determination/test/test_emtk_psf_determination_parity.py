@@ -68,6 +68,18 @@ def tiff(tmp_path):
     return str(path)
 
 
+def pick_input(app, name, path, kind="image"):
+    """Put *path* in the Datasets workspace (as a drop does) and pick it in Input section *name*."""
+    from chisurf.core.plugin.workspace_input import register_result
+
+    named = app.inputs[name]
+    register_result(str(path), kind=kind)
+    rows = [r for r in named.workspace_input_rows() if r.get("address") == str(path)]
+    assert rows, f"{path} is not offered by the {name!r} Input section"
+    named.workspace_input_selected(rows[-1])
+    return named.workspace_input_status
+
+
 class UI(Driver):
     def settle(self, timeout=120.0):
         end = time.monotonic() + timeout
@@ -223,36 +235,19 @@ def test_the_empty_window_asks_for_a_stack_and_greys_the_actions(ui):
     assert ui.app.model.stack is None
 
 
-def test_load_stack_through_the_dialog_reads_the_tiff_on_a_job(ui, tiff):
+def test_a_stack_picked_from_the_workspace_is_read_on_a_job(ui, tiff):
     ui.app.model.pixel_size_nm = 100.0
-    ui.click_name("load_stack")
-    assert ui.app.dialog is not None
-    # the dialog opens in the plugin's start folder: go to the file's folder through the app (as the Qt dialog did)
-    ui.app.dialog.directory = str(Path(tiff).parent)
-    ui.app.dialog.refresh()
-    ui.click_text("beads.tif")
-    ui.click_text("Open")
+    assert not hasattr(ui.app, "on_files_dropped") and not hasattr(ui.app, "picker")
+    pick_input(ui.app, "stack", tiff)
     m = ui.settle()
     assert m.stack.shape == (21, 110, 100) and m.filename == tiff
     assert any("beads.tif" in t[5] for t in ui.draw().texts)
 
 
-def test_the_dialog_cancel_and_close_load_nothing(ui):
-    for closer in ("Cancel", "×"):
-        ui.click_name("load_stack")
-        assert ui.app.dialog is not None
-        ui.click_text(closer)
-        assert ui.app.dialog is None
-    assert ui.app.model.stack is None
-
-
-def test_a_dropped_tiff_is_loaded_and_a_dropped_junk_file_is_reported(ui, tiff, tmp_path):
-    assert ui.drop(tiff) is True
-    m = ui.settle()
-    assert m.filename == tiff
+def test_a_junk_file_picked_as_a_stack_is_reported(ui, tmp_path):
     junk = tmp_path / "junk.tif"
     junk.write_text("not a tiff")
-    ui.drop(junk)
+    pick_input(ui.app, "stack", junk)
     ui.draw(1)
     end = time.monotonic() + 30
     while ui.app.job.busy and time.monotonic() < end:
@@ -260,7 +255,6 @@ def test_a_dropped_tiff_is_loaded_and_a_dropped_junk_file_is_reported(ui, tiff, 
         time.sleep(0.01)
     ui.draw(3)
     assert ui.app.job.error and any("Error:" in t[5] for t in ui.draw().texts)
-    assert ui.drop() is False
 
 
 def test_the_demo_button_loads_a_generated_stack_labelled_as_a_demo(demo):
@@ -271,16 +265,6 @@ def test_the_demo_button_loads_a_generated_stack_labelled_as_a_demo(demo):
         100.0,
         300.0,
     )
-
-
-def test_the_mmfdb_button_opens_the_dataset_picker_and_cancel_closes_it(ui):
-    ui.click_name("mmfdb")
-    assert ui.app.picker.is_open
-    assert "Select MMFDB dataset" in [t[5] for t in ui.draw(3).texts]
-    ui.click_name("load_stack")  # greyed while the picker is open
-    assert ui.app.dialog is None
-    ui.click_text(action_caption("cancel"))
-    assert not ui.app.picker.is_open
 
 
 # ───────────────────────────────────── detection, picking, fitting ───────────────────────────────────── #
@@ -465,7 +449,7 @@ def test_the_wheel_zooms_the_image_and_a_drag_pans_it(demo):
 def test_save_and_load_settings_round_trip_through_the_dialogs_and_reopen_the_stack(
     ui, tiff, tmp_path
 ):
-    ui.drop(tiff)
+    pick_input(ui.app, "stack", tiff)
     ui.settle()
     _m = ui.app.model
     type_value(ui, "pixel_size_nm", "65")
@@ -488,11 +472,10 @@ def test_save_and_load_settings_round_trip_through_the_dialogs_and_reopen_the_st
     other = UI(make_app())
     other.draw(3)
     other.app.dialog = None
-    other.click_name("load_settings")
-    other.app.dialog.directory = str(tmp_path)
-    other.app.dialog.refresh()
-    other.click_text("mine.json")
-    other.click_text("Open")
+    from chisurf.core.fio.classify import classify
+
+    assert classify(tmp_path / "mine.json") == "setup"  # a drop puts the settings in the workspace
+    pick_input(other.app, "settings", tmp_path / "mine.json", kind="setup")
     om = other.settle()
     assert (
         om.pixel_size_nm == 65.0
@@ -504,15 +487,12 @@ def test_save_and_load_settings_round_trip_through_the_dialogs_and_reopen_the_st
 
 
 def test_a_damaged_settings_file_is_reported(ui, tmp_path):
+    from chisurf.plugins.microscopy.psf_determination.gui.app import receive_settings
+
     bad = tmp_path / "bad.json"
     bad.write_text("{nope")
-    ui.click_name("load_settings")
-    ui.app.dialog.directory = str(tmp_path)
-    ui.app.dialog.refresh()
-    ui.click_text("bad.json")
-    ui.click_text("Open")
-    assert ui.app.error and ui.app.dialog is not None
-
+    assert not receive_settings(ui.app, {"settings": str(bad)})
+    assert ui.app.error
 
 def test_the_host_settings_seam_round_trips(demo):
     m = demo.app.model

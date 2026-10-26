@@ -1,16 +1,14 @@
 {
- "window": {"width": 1100, "height": 720},
+ "window": {
+  "width": 1100,
+  "height": 720
+ },
  "toolbar": {
   "sections": [
    {
     "type": "button_row",
     "description": "The main actions.",
     "buttons": [
-     {
-      "action": "load_mixed",
-      "label": "Mixed...",
-      "description": "Open a measured mixed decay histogram or TTTR/BST files."
-     },
      {
       "action": "autofit",
       "label": "Auto-fit",
@@ -49,11 +47,6 @@
       "action": "save_project",
       "label": "Save project...",
       "description": "Save inputs, definitions, detector IRFs, options and computed filters."
-     },
-     {
-      "action": "load_project",
-      "label": "Load project...",
-      "description": "Restore a Qt or native Filter Calculator project."
      },
      {
       "action": "export_results",
@@ -135,13 +128,8 @@
      },
      {
       "type": "button_row",
-      "description": "Load the mixed decay.",
+      "description": "Adopt the correlator's files (or pick the mixed decay in the Input section below).",
       "buttons": [
-       {
-        "action": "load_decay",
-        "label": "Load...",
-        "description": "Open a measured mixed decay histogram or TTTR/BST files."
-       },
        {
         "action": "from_correlator",
         "label": "From correlator",
@@ -254,11 +242,6 @@
       "action": "add_distance_distribution",
       "label": "Add distance distribution",
       "description": "Add a Gaussian distance distribution."
-     },
-     {
-      "action": "add_measured",
-      "label": "Add measured pattern...",
-      "description": "Load one or more reference decay files as a component."
      }
     ]
    }
@@ -278,17 +261,6 @@
     "fit_columns": true,
     "selected_call": "select_detector_row",
     "description": "Detectors of the active setup with their IRF: width, skew and shift of the synthetic IRF, or a measured IRF file."
-   },
-   {
-    "type": "button_row",
-    "description": "IRF file of the selected detector.",
-    "buttons": [
-     {
-      "action": "browse_irf",
-      "label": "Browse IRF...",
-      "description": "Choose a measured IRF decay histogram for the selected detector row."
-     }
-    ]
    }
   ]
  },

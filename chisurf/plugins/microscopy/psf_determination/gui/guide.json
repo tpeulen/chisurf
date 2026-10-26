@@ -11,7 +11,7 @@
       "name": "load_example"
     },
     "await": {
-      "hint": "Press 🧪 Load example (or Load stack to use your own file)."
+      "hint": "Press 🧪 Load example (or pick your own stack in the <b>Data</b> tab)."
     }
   },
   {

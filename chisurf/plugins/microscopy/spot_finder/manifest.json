@@ -150,5 +150,38 @@
     "mle_common": "*",
     "psf_determination": "*"
   },
-  "menu_hidden": true
+  "menu_hidden": true,
+  "accepts": [
+    {
+      "name": "files",
+      "summary": "Photon or camera imaging recordings for preview and batch detection (photon streams, photon images, intensity images).",
+      "receive": "chisurf.plugins.microscopy.spot_finder.gui.app:receive_files",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons",
+          "image"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    },
+    {
+      "name": "settings",
+      "summary": "Spot Finder settings saved by Save settings (a setup row of the workspace).",
+      "receive": "chisurf.plugins.microscopy.spot_finder.gui.app:receive_settings",
+      "required": [
+        "settings"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "settings"
+      }
+    }
+  ]
 }

@@ -71,6 +71,23 @@ def decay_file(tmp_path, name="mixed.txt", n=128, tau=20.0, scale=2000.0):
     return path
 
 
+def pick(drv, name, path, kind="decay"):
+    """Put *path* in the Datasets workspace (as a drop does) and pick it in Input section *name*."""
+    from chisurf.core.plugin.workspace_input import register_result
+
+    named = drv.app.inputs[name]
+    register_result(str(path), kind=kind)
+    rows = [r for r in named.workspace_input_rows() if r.get("address") == str(path)]
+    assert rows, f"{path} is not offered by the {name!r} Input section"
+    spec = named._workspace_input()
+    if spec is not None and spec[1].many:
+        named.workspace_input_selection = rows[-1:]
+        named.workspace_input_use()
+    else:
+        named.workspace_input_selected(rows[-1])
+    return named.workspace_input_status
+
+
 # -- the toolbar ------------------------------------------------------------------------------------------------------ #
 
 
@@ -111,23 +128,23 @@ def test_the_example_button_restores_the_example_after_a_change(drv):
     )
 
 
-def test_save_project_dialog_writes_the_project_and_load_project_restores_it(drv, tmp_path):
+def test_save_project_dialog_writes_the_project_and_the_workspace_restores_it(drv, tmp_path):
+    from chisurf.core.fio.classify import classify
+
     model(drv).components[0].enabled = False
     drv.settle()
     drv.click("save_project")
-    assert drv.app.dialog is not None
+    assert drv.app.dialog is not None and drv.app.dialog.mode == "save"
     drv.click_text("Save", last=True)
     drv.settle()
     files = list(tmp_path.glob("*.json"))
     assert len(files) == 1
     data = json.loads(files[0].read_text())
     assert data["component_enabled"] == [False, True]
+    assert classify(files[0]) == "setup"  # a drop puts the project in the workspace
     model(drv).components[0].enabled = True
     drv.settle()
-    drv.click("load_project")
-    drv.draw(4)
-    drv.click_text(files[0].name)
-    drv.click_text("Open", last=True)
+    pick(drv, "project", files[0], kind="setup")
     drv.settle()
     assert model(drv).components[0].enabled is False
 
@@ -301,13 +318,9 @@ def test_the_fit_range_follows_the_qt_tools_default_for_the_example(drv):
 # -- the mixed decay ----------------------------------------------------------------------------------------------------- #
 
 
-def test_the_mixed_dialog_loads_a_decay_file_and_names_it(drv, tmp_path):
+def test_the_mixed_decay_is_picked_from_the_workspace_and_named(drv, tmp_path):
     path = decay_file(tmp_path)
-    drv.click("load_mixed")
-    assert drv.app.dialog is not None
-    drv.draw(4)
-    drv.click_text(path.name)
-    drv.click_text("Open", last=True)
+    pick(drv, "mixed", path)
     drv.settle()
     assert (
         model(drv)._total_paths == [path]
@@ -317,21 +330,10 @@ def test_the_mixed_dialog_loads_a_decay_file_and_names_it(drv, tmp_path):
     assert model(drv)._current_n_bins() == 128
 
 
-def test_a_dropped_decay_file_is_loaded_and_a_dropped_project_is_restored(drv, tmp_path):
-    path = decay_file(tmp_path, "dropped.txt")
-    drv.drop(str(path))
-    drv.settle()
-    assert model(drv)._total_paths == [path]
-    project = tmp_path / "p.json"
-    other = create_app()
-    try:
-        other.model.populate_example()
-        other.model.save_project(project)
-    finally:
-        other.close()
-    drv.drop(str(project))
-    drv.settle()
-    assert model(drv).total_label.startswith("Convolved example")
+def test_files_enter_through_the_workspace_not_a_drop(drv):
+    assert not hasattr(drv.app, "files_dropped") and not hasattr(drv.app, "on_paths_dropped")
+    for action in ("load_mixed", "load_decay", "load_project", "add_measured", "browse_irf"):
+        assert action not in drv.app.item_rects, action
 
 
 def test_from_correlator_without_a_correlator_says_so(drv):
@@ -481,11 +483,9 @@ def test_editing_a_component_replaces_its_definition(drv):
     assert model(drv).components[0].source["lifetime"] == 2.0 and len(model(drv).components) == 2
 
 
-def test_add_measured_pattern_dialog_adds_a_reference_component(drv, tmp_path):
+def test_a_measured_pattern_picked_from_the_workspace_adds_a_reference_component(drv, tmp_path):
     ref = decay_file(tmp_path, "ref.txt", n=256, tau=40.0)
-    drv.click("add_measured")
-    drv.click_text(ref.name)
-    drv.click_text("Open", last=True)
+    pick(drv, "reference", ref)
     drv.settle()
     assert len(model(drv).components) == 3 and model(drv).components[-1].name == "ref.txt"
 
@@ -517,20 +517,21 @@ def test_the_last_detector_cannot_be_unticked(drv):
     assert model(drv).detectors.selected == ["green"]
 
 
-def test_the_irf_path_is_typed_and_browsed(drv, tmp_path):
+def test_the_irf_is_picked_from_the_workspace_and_typed_away(drv, tmp_path):
     ref = decay_file(tmp_path, "irf.txt", n=256, tau=1.5, scale=500.0)
     drv.click_cell("detector_rows", 0, "name")
-    drv.click("browse_irf")
-    drv.click_text(ref.name)
-    drv.click_text("Open", last=True)
+    pick(drv, "irf", ref)
     assert model(drv).detectors.irf_path("green") == str(ref)
     assert edit(drv, "detector_rows", 0, "irf", "")
     assert model(drv).detectors.irf_path("green") == ""
 
 
-def test_browse_irf_is_greyed_without_a_selected_detector(drv):
-    drv.click("browse_irf")
-    assert drv.app.dialog is None
+def test_an_irf_without_a_selected_detector_is_refused_with_a_reason(drv, tmp_path):
+    ref = decay_file(tmp_path, "irf.txt", n=256, tau=1.5, scale=500.0)
+    drv.app.selected_detector_row = None
+    pick(drv, "irf", ref)
+    assert model(drv).detectors.irf_path("green") == ""
+    assert "Select a detector row" in model(drv).message
 
 
 def test_polarization_resolved_detectors_get_a_row_per_role(drv):

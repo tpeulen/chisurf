@@ -44,6 +44,13 @@ class ConfocalApp(ImApp):
         self.dialog_window = None
         self.form = FormState()
         self.form.custom["confocal_json"] = self.draw_json
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: Settings come back from the Datasets workspace (a setup row Export JSON wrote).
+        self.workspace_input = NamedWorkspaceInput("fcs_calculator", "settings", self, height=72)
+        self.workspace_input.workspace_input_on_used = lambda _key: self.tour.notify_used(
+            "import_json"
+        )
         self.help_window = EmTkHelpWindow(
             title=tr("FCS confocal calculator — help"),
             resource=PLUGIN / "help.md",
@@ -96,38 +103,34 @@ class ConfocalApp(ImApp):
     def start_guide(self):
         self.tour.start()
 
-    def choose_file(self, save):
-        title = tr("Save FCS Calculator Settings") if save else tr("Load FCS Calculator Settings")
+    def choose_file(self, save=True):
+        """*Export JSON*: where the settings are written (settings come back through the
+        workspace, so this dialog only ever saves)."""
+        title = tr("Save FCS Calculator Settings")
         self.dialog = FileDialog(
-            title,
-            mode="save" if save else "open",
-            filename="fcs_calculator.json" if save else "",
-            filters=tr(JSON_FILTERS),
+            title, mode="save", filename="fcs_calculator.json", filters=tr(JSON_FILTERS)
         )
         self.dialog_window = DialogWindow(title, size=(720, 520))
 
     def file_chosen(self, path):
-        """Write or read the settings file the dialog returned; a failure is the red error line."""
-        save = self.dialog is not None and self.dialog.mode == "save"
+        """Write the settings file the dialog returned; a failure is the red error line."""
         self.dialog = None
         try:
-            (self.model.export_json if save else self.model.import_json)(path)
+            self.model.export_json(path)
         except Exception as exc:  # noqa: BLE001 - shown to the user
             self.model.error = tr("{action} {name} failed: {error}").format(
-                action=tr("Saving") if save else tr("Loading"), name=Path(path).name, error=exc
+                action=tr("Saving"), name=Path(path).name, error=exc
             )
 
-    def files_dropped(self, paths):
-        """A dropped .json file is imported, as Import JSON does."""
-        path = next((str(p) for p in paths or () if str(p).lower().endswith(".json")), None)
-        if path is None:
-            return False
+    def import_settings(self, path):
+        """Settings picked in the workspace are applied; a failure is the red error line."""
         try:
             self.model.import_json(path)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 - shown to the user
             self.model.error = tr("Loading {name} failed: {error}").format(
                 name=Path(path).name, error=exc
             )
+            return False
         return True
 
     def close(self):
@@ -137,28 +140,18 @@ class ConfocalApp(ImApp):
 
     # -- drawing -----------------------------------------------------------------------
     def draw_json(self, section, model, state, width):
-        for index, (label, save, tip) in enumerate(
-            (
-                (
-                    "Export JSON",
-                    True,
-                    "Save every value, the constraint, the reference and the shape to a JSON file.",
-                ),
-                (
-                    "Import JSON",
-                    False,
-                    "Load calculator settings from a JSON file (unknown entries are ignored).",
-                ),
-            )
-        ):
-            if index:
-                im.same_line()
-            # One id per button: two labels sharing "##confocal_json" are one ImGui id, and the
-            # second button never fires.
-            if im.button(f"{tr(label)}##confocal_json_{'export' if save else 'import'}"):
-                self.choose_file(save)
-            im.set_item_tooltip(tr(tip))
-            state.rects["export_json" if save else "import_json"] = tuple(im.get_item_rect())
+        """*Export JSON*, and the Input section the settings come back through (the workspace)."""
+        if im.button(f"{tr('Export JSON')}##confocal_json_export"):
+            self.choose_file(True)
+        im.set_item_tooltip(
+            tr("Save every value, the constraint, the reference and the shape to a JSON file.")
+        )
+        state.rects["export_json"] = tuple(im.get_item_rect())
+        named = self.workspace_input
+        draw_form(named.spec, named, named.form)
+        rect = named.form.rects.get("workspace_input_rows")
+        if rect is not None:
+            state.rects["import_json"] = tuple(rect)
 
     def toolbar(self, width):
         actions = (("guide", self.start_guide), ("help", self.help_window.show))
@@ -208,6 +201,16 @@ class ConfocalApp(ImApp):
             self.dialog_window.end()
         self.help_window.draw(box)
         self.tour.draw(*viewport.size)
+
+
+def receive_settings(app, payload):
+    """Settings from the workspace (``accepts[].from_workspace``): applied to the calculator."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("settings")
+    if not address:
+        return False
+    return app.import_settings(read_address(str(address)))
 
 
 def make_app(**kwargs):

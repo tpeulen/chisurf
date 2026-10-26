@@ -26,24 +26,23 @@ from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
-from emtk.view_form import FormState, draw_sections
+from emtk.view_form import FormState, draw_form, draw_sections
 
 from chisurf.core.roi import EllipseROI
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.emtk.regions import RegionControls
 from chisurf.plugins.emtk_layout import action_button, window_size
 
-from .model import PHOTON_FILE_FILTER, RegionMleModel
+from .model import RegionMleModel
 
 HERE = Path(__file__).parent
 
-#: Dialog requests the model/regions can make -> (title, mode, filters, file name).
+#: Dialog requests the model/regions can make -> (title, mode, filters, file name). The photon
+#: files and the IRF come from the Datasets workspace; what opens here is this tool's own output
+#: (a results table) and region file.
 DIALOGS = {
-    "add_files": ("Add imaging files", "open", PHOTON_FILE_FILTER, ""),
-    "add_irf": ("Choose the IRF file", "open", PHOTON_FILE_FILTER, ""),
     "export": ("Export region table", "save", "Tables (*.tsv *.csv)", "regions.tsv"),
     "open_results": ("Open results", "open", "Tables (*.tsv *.csv);;All files (*)", ""),
     "save_regions": ("Save regions", "save", "Regions (*.json *.tif *.tiff *.npy)", "regions.json"),
@@ -86,10 +85,14 @@ class RegionMleApp(ImApp):
         self.controls = RegionControls(
             self.model, self._request_dialog, get_image=self.model.segmentation_image
         )
-        self.picker = DatasetPicker(
-            formats=["ptu", "pto", "ht3", "spc", "pt3"], on_paths=self._picked_paths
-        )
-        self.picker_target = "sel_files"
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: The photon files and the IRF come from the Datasets workspace (Input sections in the
+        #: file lists, keyed by the list they fill).
+        self.inputs = {
+            "sel_files": NamedWorkspaceInput("region_mle", "files", self, height=72),
+            "sel_irf_files": NamedWorkspaceInput("region_mle", "irf", self, height=72),
+        }
         self.dialog: FileDialog | None = None
         self.dialog_kind = ""
         self.item_rects: dict[str, tuple] = {}
@@ -152,7 +155,7 @@ class RegionMleApp(ImApp):
 
     def animating(self) -> bool:
         """Keep drawing while a worker runs, so its result appears."""
-        return self.job.busy or self.picker.is_open or super().animating()
+        return self.job.busy or super().animating()
 
     # ── one frame ──────────────────────────────────────────────────────
     def render(self) -> None:
@@ -172,7 +175,6 @@ class RegionMleApp(ImApp):
         self._follow_tour()
         self.docks.draw(box)
         self._draw_dialog(box)
-        self.picker.render(box)
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
 
@@ -247,33 +249,22 @@ class RegionMleApp(ImApp):
         start = im.get_item_rect()
         paths = list(getattr(model, target))
         index = min(self.selected.get(target, 0), max(len(paths) - 1, 0))
+        named = self.inputs[target]
+        draw_form(named.spec, named, named.form)
+        rect = named.form.rects.get("workspace_input_rows")
+        if rect is not None:
+            self.item_rects[f"input_{target}"] = tuple(rect)
         if not paths:
-            im.text_disabled(tr("No file. Add or drop one."))
+            im.text_disabled(tr("No file. Pick one in the workspace above."))
         for i, path in enumerate(paths):
             if im.selectable(f"{Path(path).name}##{target}{i}", index == i):
                 self.selected[target] = index = i
             im.set_item_tooltip(path)
         self.item_rects[title] = state.rects[target] = start
-        busy = model.busy or self.dialog is not None or self.picker.is_open
+        busy = model.busy or self.dialog is not None
         room = im.get_content_region_avail()[0]
         used = 0.0
         for label, tip, needs_files, act in (
-            (
-                "Add files",
-                "Choose photon files to add."
-                if target == "sel_files"
-                else "Choose the IRF measurement.",
-                False,
-                lambda: setattr(
-                    self.model, "dialog", section.get("options", {}).get("add", "add_files")
-                ),
-            ),
-            (
-                "Database",
-                "Pick a registered photon dataset from the MMFDB catalogue.",
-                False,
-                lambda: self._open_picker(target),
-            ),
             (
                 "Remove",
                 "Remove the selected file from the list.",
@@ -297,10 +288,6 @@ class RegionMleApp(ImApp):
             im.set_item_tooltip(tip)
             im.end_disabled()
 
-    def _open_picker(self, target: str) -> None:
-        self.picker_target = target
-        self.picker.open()
-
     def _remove_path(self, target: str, index: int) -> None:
         paths = list(getattr(self.model, target))
         setattr(self.model, target, [p for i, p in enumerate(paths) if i != index])
@@ -311,9 +298,6 @@ class RegionMleApp(ImApp):
         setattr(self.model, target, [])
         self.selected[target] = 0
         self.model.notify("settings")
-
-    def _picked_paths(self, paths: Any) -> None:
-        self.model.add_paths(self.picker_target, [str(p) for p in paths])
 
     # ── custom section: the analysis region ────────────────────────────
     def _draw_region_list(
@@ -388,7 +372,7 @@ class RegionMleApp(ImApp):
         else:
             im.text_disabled(tr("No regions yet. Run or Preview, or open saved results."))
         im.text_wrapped(view["info"])
-        editable = not model.busy and self.dialog is None and not self.picker.is_open
+        editable = not model.busy and self.dialog is None
         self.canvas.draw(
             view["image"],
             markers=view["marker"],
@@ -472,12 +456,12 @@ class RegionMleApp(ImApp):
             self.model.status_text = "No regions to export."
             return
         title, mode, filters, name = DIALOGS[kind]
+        # not-input: exports are saved; a results table or region file is this tool's own output.
         self.dialog = FileDialog(
             title,
             mode=mode,
             filename=name or None,
             filters=filters,
-            multiselect=kind == "add_files",
             directory=self.model.folder or None,
         )
         self.dialog_kind = kind
@@ -499,11 +483,7 @@ class RegionMleApp(ImApp):
         self.error = ""
         self.model.folder = str(Path(paths[0]).parent)
         try:
-            if kind == "add_files":
-                self.model.add_paths("sel_files", paths)
-            elif kind == "add_irf":
-                self.model.add_paths("sel_irf_files", paths)
-            elif kind == "export":
+            if kind == "export":
                 path = Path(paths[0])
                 if path.suffix.lower() not in (".tsv", ".csv"):
                     path = path.with_suffix(".tsv")
@@ -516,18 +496,6 @@ class RegionMleApp(ImApp):
                 self.controls.load(paths[0])
         except Exception as exc:  # noqa: BLE001 - shown in the window
             self.error = f"{Path(paths[0]).name}: {exc}"
-
-    # ── files dropped on the window ────────────────────────────────────
-    def on_paths_dropped(self, paths: Any) -> None:
-        """Add dropped photon files to the imaging list (ignored while a worker runs)."""
-        if not self.job.busy:
-            self.model.add_paths("sel_files", [str(p) for p in paths])
-
-    def files_dropped(self, paths: Any) -> bool:
-        self.on_paths_dropped(paths)
-        return bool(paths)
-
-    on_files_dropped = files_dropped
 
     # ── persistence ────────────────────────────────────────────────────
     def export_settings(self) -> dict:
@@ -552,3 +520,27 @@ def make_app(coordinator=None) -> RegionMleApp:
     The Imaging Tools hub passes itself as ``coordinator`` and registers it on the app afterwards.
     """
     return RegionMleApp()
+
+
+def _paths(addresses: Any) -> list[str]:
+    from chisurf.core.plugin.workspace_input import read_address
+
+    return [read_address(str(a)) for a in addresses or ()]
+
+
+def receive_files(app: RegionMleApp, payload: dict) -> bool:
+    """CLSM recordings picked in the workspace (``accepts[].from_workspace``): added to the list."""
+    paths = _paths(payload.get("files"))
+    if not paths or app.job.busy:
+        return False
+    app.model.add_paths("sel_files", paths)
+    return True
+
+
+def receive_irf(app: RegionMleApp, payload: dict) -> bool:
+    """The IRF measurement picked in the workspace: the IRF list."""
+    paths = _paths([payload["irf"]] if payload.get("irf") else [])
+    if not paths or app.job.busy:
+        return False
+    app.model.add_paths("sel_irf_files", paths)
+    return True

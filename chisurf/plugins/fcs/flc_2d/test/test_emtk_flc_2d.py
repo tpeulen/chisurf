@@ -175,20 +175,15 @@ def test_model_produces_the_reference_result(short_app, long_app, monkeypatch):
 
 # 2. the model's actions
 def test_actions_change_state_and_report_errors(tmp_path):
-    from chisurf.plugins.fcs.flc_2d.gui.app import make_app
+    from chisurf.plugins.fcs.flc_2d.gui.app import make_app, receive_stream
 
     app = make_app()
     model = app.model
     events = []
     model.add_observer(events.append)
     assert not model.enabled("request_run")  # no stream yet
-    assert model.enabled("request_open") and model.enabled("load_example")
-    model.request_open()
-    assert model.dialog == "open_tttr"
-    model.dialog = ""
-    model.request_open_irf()
-    assert model.dialog == "open_irf"
-    model.dialog = ""
+    assert model.enabled("load_example")
+    assert not hasattr(model, "request_open")  # the stream and the IRF come from the workspace
     model.request_run()  # the app turns the announcement into work; with no stream it does nothing
     settle(app)
     assert "start_run" in events and model.spectrum_image() is None
@@ -198,13 +193,13 @@ def test_actions_change_state_and_report_errors(tmp_path):
     with pytest.raises(RuntimeError, match="not found"):
         model.open_tttr(str(tmp_path / "missing.ptu"))
     assert model.tttr is None
-    app._dialog_done("open_tttr", [str(tmp_path / "missing.ptu")])
+    receive_stream(app, {"file": str(tmp_path / "missing.ptu")})
     settle(app)
     assert "not found" in model.error_text and model.status_line() == model.error_text
     assert model.tttr is None
-    # the app's Open for a real file works and clears the error
+    # a real stream picked from the workspace works and clears the error
     copy = Path(shutil.copy(REAL_STREAM, tmp_path / "stream.spc"))
-    app._dialog_done("open_tttr", [str(copy)])
+    receive_stream(app, {"file": str(copy)})
     settle(app)
     assert model.error_text == "" and model.tttr is not None
     assert model.folder == str(tmp_path)
@@ -289,7 +284,7 @@ def test_app_draws_empty_and_populated(size, short_app):
     for _ in range(3):
         painter = RecordingPainter()
         empty.draw(painter, 0, 0, *size)
-    assert any("Open a TTTR file to begin." in s for s in painter.strings)
+    assert any("Pick a photon stream in the Input section to begin." in s for s in painter.strings)
     for title in ("Settings", "2D-FLCS map", "L-curve", "IRF"):
         assert any(title in s for s in painter.strings), title
     # the populated app: every result window, in front in turn
@@ -312,15 +307,27 @@ def test_app_draws_empty_and_populated(size, short_app):
     assert any(short_app.model.status_text in s for s in painter.strings)
 
 
+def _pick(app, name, path):
+    """Put *path* in the Datasets workspace (as a drop does) and pick it in Input section *name*."""
+    from chisurf.core.plugin.workspace_input import register_result
+
+    named = app.inputs[name]
+    register_result(str(path), kind="photons")
+    rows = [r for r in named.workspace_input_rows() if r.get("address") == str(path)]
+    assert rows, f"{path} is not offered by the {name!r} Input section"
+    named.workspace_input_selected(rows[-1])
+    assert not named.workspace_input_status.startswith("Could not"), named.workspace_input_status
+
+
 # 5. the workflow through the UI path
 def test_main_action_end_to_end(tmp_path):
     from chisurf.plugins.fcs.flc_2d.gui.app import make_app
 
     app = make_app()
-    # a real measurement opened by dropping it on the window (a temp copy: the run is read-only
-    # but the repository's test data is never the working copy)
+    # a real measurement picked in the Input section, as the workspace hands it over (a temp
+    # copy: the run is read-only but the repository's test data is never the working copy)
     copy = Path(shutil.copy(REAL_STREAM, tmp_path / "BH_SPC132.spc"))
-    app.on_paths_dropped([str(copy)])
+    _pick(app, "stream", copy)
     settle(app)
     m = app.model
     assert m.tttr is not None and m.tttr.n_photons == 183657
@@ -335,7 +342,7 @@ def test_main_action_end_to_end(tmp_path):
     assert m.lifetime_series() and m.irf_series()
     # opening an IRF switches the IRF source to the file, and the run then uses it
     irf_copy = Path(shutil.copy(REAL_STREAM, tmp_path / "irf.spc"))
-    app._dialog_done("open_irf", [str(irf_copy)])
+    _pick(app, "irf", irf_copy)
     settle(app)
     assert m.irf_mode == "file" and m.irf_file.size == 4096
     assert m.status_text.startswith("Loaded IRF from irf.spc")

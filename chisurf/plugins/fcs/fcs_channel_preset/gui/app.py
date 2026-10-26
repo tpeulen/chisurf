@@ -10,6 +10,7 @@ from emtk import im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.view_form import draw_form
 
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -40,6 +41,13 @@ class PresetApp(ImApp):
         self.help = EmTkHelpWindow(title="FCS channel definitions", resource=root / "help.md")
         self.tour = EmTkGuidedTour(
             steps=root / "guide.json", get_target_rect=self.item_rects.get, wait_for_controls=True
+        )
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: A preset library comes from the Datasets workspace (a setup row), not a file dialog.
+        self.workspace_input = NamedWorkspaceInput("fcs_channel_preset", "presets", self, height=72)
+        self.workspace_input.workspace_input_on_used = lambda _key: self.tour.notify_used(
+            "Import JSON"
         )
         self.docks = DockManager(Split("h", 0.34, Region("setup"), Region("pairs")))
         self.docks.add_window("setup", tr("Detector setup"), self.draw_setup, dock="setup")
@@ -109,14 +117,19 @@ class PresetApp(ImApp):
         self.selected = -1
         self.message = "Saved detector setups and FCS presets reloaded."
 
-    def browse(self, action):
-        self.dialog_action = action
+    def browse(self, action="export"):
+        """*Export JSON*: where the library is written (imports come from the workspace)."""
+        self.dialog_action = "export"
         self.dialog = FileDialog(
             tr("Channel pairs"),
-            mode="save" if action == "export" else "open",
-            filename="fcs_channel_setups.json" if action == "export" else "",
+            mode="save",
+            filename="fcs_channel_setups.json",
             filters=[("JSON", ["*.json"])],
         )
+
+    def import_library(self, path):
+        """Import the preset library a workspace setup row holds; the message says why not."""
+        return self.run_action(lambda: self.model.import_presets(path))
 
     def button(self, label, tip, callback, role=None):
         """Draw action *label* in emtk button *role*; its rectangle is the tour target *label*."""
@@ -211,15 +224,20 @@ class PresetApp(ImApp):
             role="danger",
         )
         self.button(
-            "Import JSON",
-            "Import and persist a channel preset library from JSON.",
-            lambda: self.browse("import"),
-        )
-        self.button(
             "Export JSON",
             "Export the full library including this current editing draft.",
-            lambda: self.browse("export"),
+            self.browse,
         )
+        im.text_disabled(tr("Import a library"))
+        im.set_item_tooltip(
+            tr("Pick a channel preset library (a setup row of the Datasets workspace) to import "
+               "and persist it.")
+        )
+        named = self.workspace_input
+        draw_form(named.spec, named, named.form)
+        rect = named.form.rects.get("workspace_input_rows")
+        if rect is not None:
+            self.item_rects["Import JSON"] = rect
         self.action("help", "Help", self.help.show)
         self.action("guide", "Guide", self.tour.start)
         self.action(
@@ -362,10 +380,7 @@ class PresetApp(ImApp):
             if im.begin(tr("Channel preset file")):
                 result = self.dialog.draw()
                 if result:
-                    if self.dialog_action == "import":
-                        self.run_action(lambda: self.model.import_presets(result[0]))
-                    else:
-                        self.run_action(lambda: self.model.export_presets(result[0]))
+                    self.run_action(lambda: self.model.export_presets(result[0]))
                     self.dialog = None
                 elif result is False:
                     self.dialog = None
@@ -374,6 +389,16 @@ class PresetApp(ImApp):
             self.help.draw((0, 0, *vp.size))
         if self.tour.active:
             self.tour.draw(*vp.size)
+
+
+def receive_presets(app, payload):
+    """A preset library from the workspace (``accepts[].from_workspace``): imported."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("presets")
+    if not address:
+        return False
+    return bool(app.import_library(read_address(str(address))))
 
 
 def create_app(*, db_path=None, detector_file=None, preset_file=None, apply_callback=None):

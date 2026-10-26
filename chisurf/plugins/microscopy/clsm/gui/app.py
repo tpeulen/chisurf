@@ -17,7 +17,6 @@ from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
@@ -112,6 +111,10 @@ MARKER_SPEC = layout_spec(
 )
 
 
+#: The schema saved settings carry (a setup of the Datasets workspace).
+SETTINGS_SCHEMA = "chisurf.tool/clsm/1"
+
+
 class ClsmApp(TourTarget, ImApp):
     def __init__(self, model=None):
         self.model = model or ClsmViewModel()
@@ -123,7 +126,15 @@ class ClsmApp(TourTarget, ImApp):
             on_change=self.apply_regions,
             get_image=lambda: self.model.current_image,
         )
-        self.picker = DatasetPicker(on_paths=self.open_paths)
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: Photon data and saved settings come from the Datasets workspace (Input sections).
+        self.inputs = {
+            name: NamedWorkspaceInput("clsm", name, self, height=72) for name in ("data", "settings")
+        }
+        self.inputs["data"].workspace_input_on_used = lambda _key: self.tour.notify_used(
+            "Open TTTR / imaging"
+        )
         self.dialog = None
         self.file_window = None
         self.action = ""
@@ -194,11 +205,13 @@ class ClsmApp(TourTarget, ImApp):
         self.tour.notify_used("load_example")
         return True
 
-    def on_files_dropped(self, paths):
-        if self.job.busy:
-            return False
-        self.open_paths(paths)
-        return bool(paths)
+    def draw_input(self, name, key):
+        """The Input section *name*; its rows are the tour/test target *key*."""
+        named = self.inputs[name]
+        draw_form(named.spec, named, named.form)
+        rect = named.form.rects.get("workspace_input_rows")
+        if rect is not None:
+            self.item_rects[key] = tuple(rect)
 
     def start(self, method, *args):
         if self.job.busy:
@@ -290,12 +303,11 @@ class ClsmApp(TourTarget, ImApp):
         return True
 
     def choose(self, action):
+        """A save dialog for an export, or -- ``load_regions`` -- a region file of this tool."""
         self.action = action
-        load = action in ("load_file", "load_regions", "load_settings")
+        load = action == "load_regions"
         filt = (
-            "TTTR / Imaging (*.ptu *.pto *.ht3 *.spc *.pt3 *.h5 *.hdf5);;All files (*)"
-            if action == "load_file"
-            else "Regions (*.json *.tif *.tiff *.npy)"
+            "Regions (*.json *.tif *.tiff *.npy)"
             if "regions" in action
             else "TIFF (*.tif *.tiff)"
             if action == "image"
@@ -303,6 +315,7 @@ class ClsmApp(TourTarget, ImApp):
             if action == "decay"
             else "JSON (*.json)"
         )
+        # not-input: exports are saved; a region file is this tool's own state, not measurement data.
         self.dialog = FileDialog(
             action.replace("_", " ").title(),
             mode="open" if load else "save",
@@ -347,7 +360,7 @@ class ClsmApp(TourTarget, ImApp):
         return out
 
     def controls(self, box):
-        busy = self.job.busy or self.dialog is not None or self.picker.is_open
+        busy = self.job.busy or self.dialog is not None
         pressed = button_row(
             [
                 {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
@@ -373,19 +386,8 @@ class ClsmApp(TourTarget, ImApp):
         elif pressed == "load_example":
             self.load_example()
         im.begin_disabled(busy)
+        self.draw_input("data", "Open TTTR / imaging")
         actions = [
-            (
-                "Open TTTR / imaging",
-                "Load photon data or follow an imaging HDF5 source reference.",
-                lambda: self.choose("load_file"),
-                True,
-            ),
-            (
-                "MMFDB dataset",
-                "Resolve registered photon data to a local input file.",
-                self.picker.open,
-                True,
-            ),
             (
                 "Build CLSM",
                 "Reconstruct and fill a scanner image using the acquisition settings.",
@@ -572,16 +574,17 @@ class ClsmApp(TourTarget, ImApp):
                     "key": "Save settings",
                     "tip": "Persist acquisition, brush and representation settings plus region geometry.",
                 },
-                {
-                    "label": "Load settings",
-                    "key": "Load settings",
-                    "tip": "Restore acquisition, brush and representation settings plus region geometry.",
-                },
             ],
             remember=self.remember,
         )
         if pressed:
-            self.choose("save_settings" if pressed == "Save settings" else "load_settings")
+            self.choose("save_settings")
+        im.text_disabled(tr("Load settings"))
+        im.set_item_tooltip(
+            tr("Pick saved settings (a setup row of the Datasets workspace) to restore acquisition, "
+               "brush and representation settings plus region geometry.")
+        )
+        self.draw_input("settings", "Load settings")
         im.end_disabled()
 
     def settings_changed(self):
@@ -615,7 +618,7 @@ class ClsmApp(TourTarget, ImApp):
             selection_version=self.selection_version,
             analysis=self.model.regions,
             on_change=self.apply_regions,
-            pick_enabled=not self.job.busy and self.dialog is None and not self.picker.is_open,
+            pick_enabled=not self.job.busy and self.dialog is None,
             analysis_editable=not self.job.busy,
             on_brush=self.brush if self.paint else None,
         )
@@ -689,7 +692,7 @@ class ClsmApp(TourTarget, ImApp):
             self.job.busy
             or self._future is not None
             or self._decay_deadline is not None
-            or self.picker.is_open
+
             or super().animating()
         )
 
@@ -744,9 +747,7 @@ class ClsmApp(TourTarget, ImApp):
             if result:
                 try:
                     path = Path(result[0])
-                    if self.action == "load_file":
-                        self.start("load_file", str(path))
-                    elif self.action == "image":
+                    if self.action == "image":
                         from chisurf.core.fio.image import imwrite
 
                         if self.model.current_image is None:
@@ -768,11 +769,9 @@ class ClsmApp(TourTarget, ImApp):
                     elif self.action == "load_regions":
                         self.regions.load(path)
                     elif self.action == "save_settings":
-                        path.with_suffix(".json").write_text(
-                            json.dumps(self.state_dict(), indent=2)
-                        )
-                    elif self.action == "load_settings":
-                        self.apply_state(json.loads(path.read_text()))
+                        # The schema makes the file a setup the workspace hands back here.
+                        state = {"schema": SETTINGS_SCHEMA, **self.state_dict()}
+                        path.with_suffix(".json").write_text(json.dumps(state, indent=2))
                     self.dialog = None
                 except Exception as exc:
                     # A file that cannot be used must not leave the chooser open: it would stay
@@ -782,7 +781,6 @@ class ClsmApp(TourTarget, ImApp):
             elif result is False or pressed == "close":
                 self.dialog = None
             self.file_window.end()
-        self.picker.render((0, 0, *vp.size))
         if self.help.open:
             self.help.draw((0, 0, *vp.size))
         if self.tour.active:
@@ -794,3 +792,28 @@ def make_app(**kwargs):
 
     install()
     return ClsmApp(model=kwargs.get("model"))
+
+
+def receive_data(app, payload):
+    """The workspace's photon data (``accepts[].from_workspace``): opened in the worker."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("file")
+    if not address:
+        return False
+    return bool(app.start("load_file", read_address(str(address))))
+
+
+def receive_settings(app, payload):
+    """Saved settings from the workspace (a setup row): applied; a bad file is the error line."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("settings")
+    if not address:
+        return False
+    try:
+        app.apply_state(json.loads(Path(read_address(str(address))).read_text(encoding="utf-8")))
+    except Exception as exc:  # noqa: BLE001 - shown to the user
+        app.error = str(exc)
+        return False
+    return True

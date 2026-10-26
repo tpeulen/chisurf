@@ -151,17 +151,17 @@ def test_every_spec_field_is_drawn_with_its_description(spc, monkeypatch):
 def test_the_irf_list_adds_removes_and_clears(spc, tmp_path):
     app = _loaded(spc)
     try:
-        app.choose("irf")
-        assert app.dialog.multiselect and app.dialog.filters[0][0] == "Photon data"
+        from chisurf.plugins.microscopy.img_calibration.gui.app import receive_irf
+
         other = tmp_path / "second.spc"
         other.write_bytes(Path(spc).read_bytes())
-        app.dialog.draw = lambda: [str(other)]
+        assert receive_irf(app, {"irf": [str(other)]})  # picked in the IRF Input section
         _draw(app, n=1)
         assert app.model.sel_irf_files == [spc, str(other)]
         app.file_selection = 1
         app.remove_irf()
         assert app.model.sel_irf_files == [spc]
-        app.on_files_dropped([str(other)])  # a drop adds to this detector's IRF
+        assert receive_irf(app, {"irf": [str(other)]})  # picking it again adds it again
         assert app.model.sel_irf_files == [spc, str(other)]
         app.model.sel_irf_files = []
         assert "No IRF: using raw data" in _draw(app).strings
@@ -232,6 +232,8 @@ def test_the_guide_points_at_real_controls_and_waits(spc):
 
         published = []
         app.model.publish = published.append
+        from chisurf.core.plugin.workspace_input import register_result
+
         for key in ("open_source", "apply"):
             index = next(
                 i for i, s in enumerate(steps) if app.tour._target_key(s.get("target")) == key
@@ -241,9 +243,14 @@ def test_the_guide_points_at_real_controls_and_waits(spc):
                 _draw(app, size, n=1).strings
             )
             _draw(app, size, n=1, painter=PixelPainter)
-            press(key)
+            if key == "open_source":  # the source is picked in its Input section
+                named = app.inputs["source"]
+                register_result(spc, kind="photons")
+                rows = [r for r in named.workspace_input_rows() if r.get("address") == spc]
+                named.workspace_input_selected(rows[-1])
+            else:
+                press(key)
             assert not app.tour.awaiting, key
-            app.dialog = None
         assert len(published) == 1  # the Apply press applied
     finally:
         app.tour.active = False
@@ -292,7 +299,6 @@ def test_draws_empty_and_populated(spc, size, monkeypatch):
             "open_source",
             "refresh",
             "add_irf",
-            "database_irf",
             "remove_irf",
             "clear_irf",
         ):

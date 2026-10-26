@@ -1,6 +1,6 @@
 {
  "window": {"width": 640, "height": 480},
-  "_comment": "FCS confocal calculator, drawn by emtk.view_form over ConfocalModel (gui/model.py). The fields and descriptions of fcs_calculator.view.json (the Qt tool's spec); its custom constraint, dye and shape sections are spec sections here (radio choices, a dye choice, value fields, buttons). Computed fields are read-only through ConfocalModel.enabled. The custom section confocal_json (Export / Import JSON with file dialogs) is drawn by gui/app.py.",
+  "_comment": "FCS confocal calculator, drawn by emtk.view_form over ConfocalModel (gui/model.py). The fields and descriptions of fcs_calculator.view.json (the Qt tool's spec); its custom constraint, dye and shape sections are spec sections here (radio choices, a dye choice, value fields, buttons). Computed fields are read-only through ConfocalModel.enabled. The custom section confocal_json (Export JSON with a save dialog, and the Input section saved settings come back through from the Datasets workspace) is drawn by gui/app.py.",
   "sections": [
     {
       "type": "panel",
@@ -304,7 +304,7 @@
         {
           "type": "custom",
           "key": "confocal_json",
-          "description": "Export or import the calculator's settings as JSON."
+          "description": "Export the calculator's settings as JSON; pick saved settings (a setup row of the Datasets workspace) to load them."
         }
       ]
     }

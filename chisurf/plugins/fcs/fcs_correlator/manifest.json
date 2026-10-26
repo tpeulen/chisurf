@@ -1,40 +1,55 @@
 {
-  "id": "fcs_correlator",
-  "version": "1.0.0",
-  "display_name": "Spectroscopy:Correlation:FCS",
-  "icon": "〰️",
-  "description": "The FCS workflow: multi-tau correlation of TTTR photon streams in five steps -- channel definitions (detectors and PIE windows), files, optional photon/burst filter, correlation, and screening and merging of the curves. Filter Calc... hands the files to the fFCS Filter Calculator.",
-  "authors": [
-    "Thomas-Otavio Peulen"
-  ],
-  "categories": [
-    "Spectroscopy",
-    "Fluorescence Correlation Spectroscopy",
-    "Correlation"
-  ],
-  "entrypoints": {
-    "emtk": "chisurf.plugins.fcs.fcs_correlator.gui.app:make_app"
+ "id": "fcs_correlator",
+ "version": "1.0.0",
+ "display_name": "Spectroscopy:Correlation:FCS",
+ "icon": "〰️",
+ "description": "The FCS workflow: multi-tau correlation of TTTR photon streams in five steps -- channel definitions (detectors and PIE windows), files, optional photon/burst filter, correlation, and screening and merging of the curves. Filter Calc... hands the files to the fFCS Filter Calculator.",
+ "authors": [
+  "Thomas-Otavio Peulen"
+ ],
+ "categories": [
+  "Spectroscopy",
+  "Fluorescence Correlation Spectroscopy",
+  "Correlation"
+ ],
+ "entrypoints": {
+  "emtk": "chisurf.plugins.fcs.fcs_correlator.gui.app:make_app"
+ },
+ "optional_requires": {
+  "fcs_channel_preset": "*",
+  "fcs_filter_calculator": "*",
+  "fcs_merger": "*"
+ },
+ "accepts": [
+  {
+   "name": "files",
+   "summary": "Photon streams (TTTR files or a container's streams) to correlate; only the ticked ones are used.",
+   "receive": "chisurf.plugins.fcs.fcs_correlator.gui.app:receive_files",
+   "required": [
+    "files"
+   ],
+   "from_workspace": {
+    "kinds": [
+     "photons"
+    ],
+    "many": true,
+    "key": "files"
+   }
   },
-  "optional_requires": {
-    "fcs_channel_preset": "*",
-    "fcs_filter_calculator": "*",
-    "fcs_merger": "*"
-  },
-  "accepts": [
-    {
-      "name": "files",
-      "summary": "Photon streams (TTTR files or a container's streams) to correlate; only the ticked ones are used.",
-      "receive": "chisurf.plugins.fcs.fcs_correlator.gui.app:receive_files",
-      "required": [
-        "files"
-      ],
-      "from_workspace": {
-        "kinds": [
-          "photons"
-        ],
-        "many": true,
-        "key": "files"
-      }
-    }
-  ]
+  {
+   "name": "filters",
+   "summary": "Lifetime (FLCS) filters: a Filter Calculator export or a .npy/.npz filter matrix (a setup row of the workspace).",
+   "receive": "chisurf.plugins.fcs.fcs_correlator.gui.app:receive_filters",
+   "required": [
+    "filters"
+   ],
+   "from_workspace": {
+    "kinds": [
+     "setup"
+    ],
+    "many": false,
+    "key": "filters"
+   }
+  }
+ ]
 }

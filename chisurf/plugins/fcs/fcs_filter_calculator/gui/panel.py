@@ -162,8 +162,6 @@ class FilterPanel:
             return name != "export_results" or bool(self.m.results())
         if name in ("edit_component", "duplicate_component", "remove_component"):
             return 0 <= self.app.selected_component < len(self.m.components)
-        if name == "browse_irf":
-            return self.app.selected_detector_row is not None
         if name in ("unlink_parameter",):
             return (
                 self.app.selected_parameter is not None
@@ -487,12 +485,6 @@ class FilterPanel:
         return f"Reduced chi2: {result.get('chi2_reduced', '?')}" if result else "No auto-fit yet."
 
     # -- actions ---------------------------------------------------------------------------------------------- #
-    def load_mixed(self):
-        self.app.choose("Mixed decay", self.app.load_total, multiple=True)
-
-    def load_decay(self):
-        self.load_mixed()
-
     def from_correlator(self):
         self.app.from_correlator()
 
@@ -506,26 +498,17 @@ class FilterPanel:
         self.app.submit(lambda model: model._auto_fit_components())
 
     def save_project(self):
-        self.app.choose(
+        self.app.choose_save(
             "Save project",
             lambda paths: self.app.submit(lambda model: model.save_project(paths[0])),
-            mode="save",
             filters="Project (*.json)",
             filename="filter_project.json",
         )
 
-    def load_project(self):
-        self.app.choose(
-            "Load project",
-            lambda paths: self.app.submit(lambda model: model.load_project(paths[0])),
-            filters="Project (*.json)",
-        )
-
     def export_results(self):
-        self.app.choose(
+        self.app.choose_save(
             "Export filters",
             lambda paths: self.app.submit(lambda model: model.export_results(paths[0])),
-            mode="save",
             filters="Filters (*.json)",
             filename="filters.json",
         )
@@ -558,9 +541,6 @@ class FilterPanel:
     def add_distance_distribution(self):
         self.app.new_component("gaussian_distance")
 
-    def add_measured(self):
-        self.app.choose("Species reference", self.app.add_measured, multiple=True)
-
     def edit_component(self):
         self.app.edit_selected_component()
 
@@ -573,13 +553,6 @@ class FilterPanel:
         if 0 <= i < len(self.m.components):
             self.m.components.pop(i)
             self.app.selected_component = -1
-
-    def browse_irf(self):
-        row = self.app.selected_detector_row
-        if row is not None:
-            self.app.choose(
-                "IRF", lambda paths: self.app.set_irf(row["_detector"], row["_role"], paths[0])
-            )
 
     def link_parameter(self):
         if self.app.selected_parameter is not None:

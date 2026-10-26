@@ -28,6 +28,8 @@ __all__ = [
     "IMAGE_EXTENSIONS",
     "SETUP_EXTENSIONS",
     "SETUP_JSON_KEYS",
+    "TOOL_SCHEMA_PREFIX",
+    "LEGACY_TOOL_SETTINGS_KEYS",
     "STRUCTURE_EXTENSIONS",
     "BURST_RUN_OPERATIONS",
     "classify",
@@ -50,11 +52,24 @@ SETUP_EXTENSIONS: tuple[str, ...] = (".lut", ".npz", ".npy")
 #: scheme, an IRF or background pattern) rather than something else (a project, a curve export).
 SETUP_JSON_KEYS: frozenset[str] = frozenset(
     {"detectors", "channels", "routing", "windows", "setups", "rate_matrix", "scheme", "states",
-     "transitions", "irf", "background", "patterns", "lut", "luts", "shifts"}
+     "transitions", "irf", "background", "patterns", "lut", "luts", "shifts",
+     # a photophysical scheme of the FCS saturation calculator
+     "dark_rates", "exc_rates"}
 )
 
 #: The ``schema`` prefix of an acquisition settings file (the Record tool's settings document).
 ACQUISITION_SCHEMA_PREFIX = "chisurf.acquisition/"
+
+#: The ``schema`` prefix a tool writes into its own settings or project file
+#: (``chisurf.tool/<plugin id>/<version>``): such a file is a setup the tool reads back.
+TOOL_SCHEMA_PREFIX = "chisurf.tool/"
+
+#: Settings files tools wrote before they carried :data:`TOOL_SCHEMA_PREFIX`, recognised by keys
+#: only that tool writes together (all of a set must be present).
+LEGACY_TOOL_SETTINGS_KEYS: tuple[frozenset[str], ...] = (
+    frozenset({"fix_mode", "shape_type"}),  # FCS calculator settings
+    frozenset({"species_patterns", "total_path"}),  # FCS filter calculator project
+)
 
 
 #: Operations whose burst-grain ``<run>/bursts`` table is a burst run of the workspace: the
@@ -99,9 +114,14 @@ def _is_setup_json(path: Path) -> bool:
         return False
     if not isinstance(data, dict):
         return False
-    # An acquisition settings file (device, laser, experiment, run) is read by the Record tool.
-    return bool(SETUP_JSON_KEYS & set(data)) or str(data.get("schema", "")).startswith(
-        ACQUISITION_SCHEMA_PREFIX
+    # An acquisition settings file (device, laser, experiment, run) is read by the Record tool; a
+    # tool's own settings or project file is read back by that tool.
+    keys = set(data)
+    schema = str(data.get("schema", ""))
+    return (
+        bool(SETUP_JSON_KEYS & keys)
+        or schema.startswith((ACQUISITION_SCHEMA_PREFIX, TOOL_SCHEMA_PREFIX))
+        or any(signature <= keys for signature in LEGACY_TOOL_SETTINGS_KEYS)
     )
 
 

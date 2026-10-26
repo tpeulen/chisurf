@@ -148,5 +148,41 @@
   "menu_hidden": true,
   "optional_requires": {
     "img_flow": "*"
-  }
+  },
+  "accepts": [
+    {
+      "name": "data",
+      "summary": "The photon data of a scanning confocal recording (a photon stream or a photon image).",
+      "receive": "chisurf.plugins.microscopy.clsm.gui.app:receive_data",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons",
+          "image"
+        ],
+        "representations": [
+          "photons"
+        ],
+        "many": false,
+        "key": "file"
+      }
+    },
+    {
+      "name": "settings",
+      "summary": "CLSM settings saved by Save settings (a setup row of the workspace).",
+      "receive": "chisurf.plugins.microscopy.clsm.gui.app:receive_settings",
+      "required": [
+        "settings"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "settings"
+      }
+    }
+  ]
 }

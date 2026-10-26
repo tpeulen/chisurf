@@ -20,19 +20,8 @@
             },
             {
               "type": "button_row",
-              "description": "Open a photon stream, open an IRF, simulate a stream, run the analysis, or open the help and the guided tour.",
+              "description": "Simulate a stream, run the analysis, or open the help and the guided tour.",
               "buttons": [
-                {
-                  "action": "request_open",
-                  "label": "Open…",
-                  "icon": "📂",
-                  "description": "Open TTTR photon stream file."
-                },
-                {
-                  "action": "request_open_irf",
-                  "label": "IRF",
-                  "description": "Load an instrument-response TTTR file."
-                },
                 {
                   "action": "load_example",
                   "label": "Load example",

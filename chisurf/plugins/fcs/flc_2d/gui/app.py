@@ -21,24 +21,17 @@ import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
-from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
-from emtk.view_form import FormState, draw_sections
+from emtk.view_form import FormState, draw_form, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.plugins.emtk_layout import window_size
 
-from .model import PHOTON_FILE_FILTER, FlcModel
+from .model import FlcModel
 
 HERE = Path(__file__).parent
-
-#: Dialog requests the model can make -> (title, mode, filters).
-DIALOGS = {
-    "open_tttr": ("Open TTTR file", "open", PHOTON_FILE_FILTER),
-    "open_irf": ("Open IRF (TTTR) file", "open", PHOTON_FILE_FILTER),
-}
 
 #: Series colours of the model's plot sources (single-letter colour codes -> RGBA).
 COLOURS = {
@@ -90,11 +83,15 @@ class FlcApp(ImApp):
             series_plot=self._draw_series_plot,
             lcurve=self._draw_lcurve,
         )
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: The stream and the IRF come from the Datasets workspace (their Input sections).
+        self.inputs = {
+            name: NamedWorkspaceInput("flc-2d", name, self, height=72) for name in ("stream", "irf")
+        }
         self._settings_keys = _spec_keys(self.windows[1])
         self.canvases: dict[str, ImageCanvas] = {}
         self._image_ids: dict[str, int] = {}
-        self.dialog: FileDialog | None = None
-        self.dialog_kind = ""
         self.item_rects: dict[str, tuple] = {}
         self.error = ""
         self._reported_error = ""
@@ -119,6 +116,9 @@ class FlcApp(ImApp):
                 dock="bar" if key == "toolbar" else "main",
                 closable=False,
             )
+        # The stream and the IRF are picked in a Data tab beside Settings: the toolbar keeps only
+        # the status line and the actions.
+        self.docks.add_window("data", tr("Data"), self._draw_data, dock="main", closable=False)
         super().__init__(self.render, continuous=False)
 
     # ── jobs ───────────────────────────────────────────────────────────
@@ -162,10 +162,8 @@ class FlcApp(ImApp):
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)
         self.form.rects.clear()
-        self._open_requested_dialog()
         self._follow_tour()
         self.docks.draw(box)
-        self._draw_dialog(box)
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
 
@@ -196,8 +194,8 @@ class FlcApp(ImApp):
         """Name the controls by the labels the guide points at."""
         rects = self.form.rects
         for key, name in (
-            ("Open", "request_open"),
-            ("IRF", "request_open_irf"),
+            ("Open", "workspace_input_stream"),
+            ("IRF", "workspace_input_irf"),
             ("load_example", "load_example"),
             ("Run", "request_run"),
             ("help", "request_help"),
@@ -319,47 +317,33 @@ class FlcApp(ImApp):
 
         load_into(self)
 
-    # ── file dialogs ───────────────────────────────────────────────────
-    def _open_requested_dialog(self) -> None:
-        """Turn the model's ``dialog`` request into a :class:`FileDialog`."""
-        kind, self.model.dialog = self.model.dialog, ""
-        if not kind or self.dialog is not None or kind not in DIALOGS:
-            return
-        title, mode, filters = DIALOGS[kind]
-        self.dialog = FileDialog(
-            title, mode=mode, filters=filters, directory=self.model.folder or None
-        )
-        self.dialog_kind = kind
+    # ── the workspace inputs ───────────────────────────────────────────
+    def _draw_data(self, box: Any) -> None:
+        """The Data tab: the photon stream and the IRF, picked from the Datasets workspace."""
+        for name, caption, tip in (
+            ("stream", "Photon stream",
+             "Pick the photon stream from the Datasets workspace (drop photon files on the ChiSurf "
+             "window to add them there)."),
+            ("irf", "IRF",
+             "Pick a photon stream of the instrument response; its micro-time histogram becomes "
+             "the IRF (IRF source: File)."),
+        ):
+            im.text_disabled(tr(caption))
+            im.set_item_tooltip(tr(tip))
+            named = self.inputs[name]
+            draw_form(named.spec, named, named.form)
+            rect = named.form.rects.get("workspace_input_rows")
+            if rect is not None:
+                self.form.rects[f"workspace_input_{name}"] = rect
 
-    def _draw_dialog(self, box: Any) -> None:
-        if self.dialog is None:
-            return
-        if im.begin(self.dialog.title):
-            result = self.dialog.draw()
-            if result:
-                kind, self.dialog = self.dialog_kind, None
-                self._dialog_done(kind, [str(p) for p in result])
-            elif result is False:
-                self.dialog = None
-        im.end()
-
-    def _dialog_done(self, kind: str, paths: list[str]) -> None:
-        """Act on what a dialog returned; a failure is shown, never raised."""
+    def open_input(self, kind: str, path: str) -> bool:
+        """Open the picked stream (``open_tttr``) or IRF (``open_irf``) in the worker; a failure
+        is shown, never raised. Ignored while a worker runs."""
+        if self.job.busy:
+            return False
         self.error = ""
-        self.model.folder = str(Path(paths[0]).parent)
-        self.start_job("open_irf" if kind == "open_irf" else "open_tttr", paths[0])
-
-    # ── files dropped on the window ────────────────────────────────────
-    def on_paths_dropped(self, paths: Any) -> None:
-        """Open a dropped photon file as the stream (ignored while a worker runs)."""
-        if paths and not self.job.busy:
-            self._dialog_done("open_tttr", [str(paths[0])])
-
-    def files_dropped(self, paths: Any) -> bool:
-        self.on_paths_dropped(paths)
-        return bool(paths)
-
-    on_files_dropped = files_dropped
+        self.model.folder = str(Path(path).parent)
+        return self.start_job(kind, path)
 
     # ── persistence ────────────────────────────────────────────────────
     def export_settings(self) -> dict:
@@ -372,6 +356,22 @@ class FlcApp(ImApp):
 
     def close(self) -> None:
         """Nothing to release: workers are daemon threads and no file stays open."""
+
+
+def receive_stream(app: FlcApp, payload: dict) -> bool:
+    """The workspace's photon stream (``accepts[].from_workspace``): opened for the analysis."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("file")
+    return bool(address) and app.open_input("open_tttr", read_address(str(address)))
+
+
+def receive_irf(app: FlcApp, payload: dict) -> bool:
+    """The workspace's IRF stream: its micro-time histogram becomes the instrument response."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("irf")
+    return bool(address) and app.open_input("open_irf", read_address(str(address)))
 
 
 def make_app() -> FlcApp:

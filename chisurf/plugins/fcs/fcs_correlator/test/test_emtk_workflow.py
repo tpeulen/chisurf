@@ -271,7 +271,7 @@ def test_the_files_come_from_the_workspace_and_the_list_buttons_edit_them(tmp_pa
     hub.draw(2)
     hub.click("clear")
     assert files.paths == []
-    assert files.dialogs.dialog is None
+    assert not hasattr(files, "dialogs")  # files come from the workspace, no dialog opens
     hub.app.close()
 
 
@@ -294,11 +294,21 @@ def test_lifetime_filters_presets_and_filter_calc(tmp_path, host):
     hub = _hub()
     hub.nav("correlator")
     corr = hub.child
-    hub.click("load_filters")
-    corr.dialogs.dialog.enter(str(tmp_path))
+    from chisurf.core.api import dataset_container
+    from chisurf.core.fio.classify import classify
+    from chisurf.core.plugin.workspace_input import register_result
+
+    assert classify(tmp_path / "filters.json") == "setup"  # a drop puts the filters there
+    held = dataset_container()
+    before = list(held)
+    register_result(str(tmp_path / "filters.json"), kind="setup")
     hub.draw(2)
-    hub.press_text("filters.json")
-    hub.press_text("Open")
+    assert "load_filters" in corr.item_rects  # the Input section stands where the button was
+    named = corr.filter_input
+    rows = [r for r in named.workspace_input_rows() if r.get("address") == str(tmp_path / "filters.json")]
+    named.workspace_input_selected(rows[-1])
+    held[:] = before
+    hub.draw(2)
     assert corr.model.filter_mode and hub.shown("Species mode: filters.json (2 species).")
     assert hub.shown("Species A:")
     hub.click("combo_b")

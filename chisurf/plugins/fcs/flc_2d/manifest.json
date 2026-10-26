@@ -3,7 +3,9 @@
   "version": "1.1.0",
   "display_name": "Spectroscopy:Correlation:2D-FLCS",
   "description": "Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 2D fluorescence-decay correlation maps from TTTR photon streams and resolve lifetime species and exchange dynamics.",
-  "authors": ["Thomas-Otavio Peulen"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
   "categories": [
     "Spectroscopy",
     "Fluorescence Correlation Spectroscopy",
@@ -15,10 +17,27 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-      "tttr_path": {"type": ["string", "null"]},
-      "irf_path": {"type": ["string", "null"]},
-      "settings": {"type": "object"},
-      "last_result_summary": {"type": ["object", "null"]}
+      "tttr_path": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "irf_path": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "settings": {
+        "type": "object"
+      },
+      "last_result_summary": {
+        "type": [
+          "object",
+          "null"
+        ]
+      }
     }
   },
   "statefulness": {
@@ -87,5 +106,37 @@
   "dependencies": {},
   "experimental": true,
   "experimental_message": "2D-FLCS is experimental; validate settings and results on known controls before using it for production analysis.",
-  "deprecated": false
+  "deprecated": false,
+  "accepts": [
+    {
+      "name": "stream",
+      "summary": "The photon stream whose two-dimensional decay correlation is analysed.",
+      "receive": "chisurf.plugins.fcs.flc_2d.gui.app:receive_stream",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons"
+        ],
+        "many": false,
+        "key": "file"
+      }
+    },
+    {
+      "name": "irf",
+      "summary": "A photon stream of the instrument response (its micro-time histogram is the IRF).",
+      "receive": "chisurf.plugins.fcs.flc_2d.gui.app:receive_irf",
+      "required": [
+        "irf"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons"
+        ],
+        "many": false,
+        "key": "irf"
+      }
+    }
+  ]
 }

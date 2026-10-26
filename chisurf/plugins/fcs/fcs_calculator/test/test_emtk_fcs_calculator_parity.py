@@ -170,7 +170,10 @@ def test_settings_round_trip_and_tolerant_import(qt, tmp_path):
             m.constraint = a
             m.recompute()
     path = m.export_json(tmp_path / "calc.json")
-    assert json.loads(path.read_text()) == m.settings()
+    # The Qt keys, plus the schema that makes the file a workspace setup of this tool.
+    from chisurf.plugins.fcs.fcs_calculator.gui.model import SETTINGS_SCHEMA
+
+    assert json.loads(path.read_text()) == {"schema": SETTINGS_SCHEMA, **m.settings()}
     restored = ConfocalModel()
     restored.import_json(path)
     assert restored.settings().keys() == m.settings().keys()
@@ -191,25 +194,34 @@ def test_settings_round_trip_and_tolerant_import(qt, tmp_path):
     _same(other.settings(), qt["imported"])
 
 
-# 3. the dialogs: export and import through the buttons; failures are reported, not swallowed
-def test_export_and_import_through_the_dialogs(tmp_path):
+# 3. export through its save dialog; settings come back through the workspace (a setup row);
+# failures are reported, not swallowed
+def test_export_and_import_through_the_workspace(tmp_path):
+    from chisurf.core.fio.classify import classify
+    from chisurf.core.plugin.workspace_input import register_result
+    from chisurf.plugins.fcs.fcs_calculator.gui.app import receive_settings
+
     app = ConfocalApp()
     try:
         app.form.folds["Settings JSON"] = True
         _click(app, "export_json")
         assert app.dialog is not None and app.dialog.mode == "save"
-        app.file_chosen(str(tmp_path / "out.json"))
-        assert app.dialog is None and (tmp_path / "out.json").exists() and not app.model.error
+        out = tmp_path / "out.json"
+        app.file_chosen(str(out))
+        assert app.dialog is None and out.exists() and not app.model.error
+        assert classify(out) == "setup"  # a drop puts the exported settings in the workspace
         _commit(app.model, "tau_us", 300.0)
-        _click(app, "import_json")
-        assert app.dialog.mode == "open"
-        app.file_chosen(str(tmp_path / "out.json"))
-        assert app.model.tau_us == pytest.approx(70.0)
+        register_result(str(out), kind="setup")
+        named = app.workspace_input
+        rows = [r for r in named.workspace_input_rows() if r.get("address") == str(out)]
+        assert rows, "the exported settings are offered by the Input section"
+        named.workspace_input_selected(rows[-1])
+        assert app.model.tau_us == pytest.approx(70.0) and not app.model.error
         (tmp_path / "bad.json").write_text("[1, 2]")
-        app.files_dropped([str(tmp_path / "bad.json")])
+        assert not receive_settings(app, {"settings": str(tmp_path / "bad.json")})
         assert "failed" in app.model.error
         assert any("failed" in s for s in _draw(app).strings)
-        assert not app.files_dropped([str(tmp_path / "a.txt")])  # only settings files
+        assert not hasattr(app, "files_dropped")  # files enter through the workspace only
     finally:
         app.close()
 
@@ -289,7 +301,6 @@ def test_draws_with_every_panel_open(size):
             "Apply Dref",
             "Apply shape→D",
             "Export JSON",
-            "Import JSON",
             "Apply with Temp/η scaling",
             action_caption("guide"),
             action_caption("help"),
