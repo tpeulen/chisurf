@@ -355,6 +355,24 @@ adds an element or changes framing.
 | The reading seam | `chisurf/core/fio/staging.py::open_tttr` |
 | Tests | `test/fio/test_pto.py` |
 
+# Addressing what is inside (owner decision 2026-10-26)
+
+Data inside a container is addressed as a path: `<path>[/<member>...]` --
+`m000.pto/m001.ptu`, `m000.pto/<run>/<table>`, `project.cs.pto/<dataset>` or `/@<uid>`,
+nested `project.cs.pto/m000.pto/<run>`. The container is the **shortest leading prefix
+that is an existing regular file** (a directory never is); the rest is the member.
+ChiSurf's one resolver is `chisurf/core/fio/address.py` (`split_address`,
+`split_address_lexical` for containers still to be written, `container_of`,
+`join_address`); `analysis_path.split_container_path` / `is_container_path`,
+`staging.open_tttr`, `DataCurve` container load/save, `Measurement.source` and the CLI's
+`BurstTableParam` go through it. The old `path|member` selector is gone; the one exception
+is `staging._tttrlib_source`, a dated shim that still hands an older tttrlib its `|` form
+until the lock carries a tttrlib exporting `split_address`. Conformance:
+`test/data/address_cases.json`, a byte-identical copy of ptolib's
+`tests/data/address_cases.json` (ptolib, tttrlib and ChiSurf all run it), tested in
+`test/fio/test_address.py`. API and CLI file interfaces accept addresses wherever they
+accept paths; the UI does not offer file dialogs for inputs (PRD-154 item 14).
+
 # Three things that decide the design
 
 **The instrument file is the truth.** It is embedded verbatim as the *first*

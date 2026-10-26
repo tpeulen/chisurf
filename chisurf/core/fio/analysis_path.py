@@ -69,9 +69,10 @@ _FOLDER_ISMS = frozenset({"bi4_bur", "bur"})
 def is_container_path(path) -> bool:
     """Return whether *path* names a container, or something inside one.
 
-    Cheap: a walk up the path's components looking for the suffix, never a
-    parse and never a stat — a run inside a container is not a file on disk, so
-    asking the filesystem answers about the wrong thing.
+    Follows the container-address rule (:mod:`chisurf.core.fio.address`): an existing
+    container is found by asking the filesystem for its file -- a run inside it is not a
+    file, and a directory named ``*.pto`` is not a container -- and a container still to
+    be written is recognised by its suffix.
 
     Parameters
     ----------
@@ -104,10 +105,12 @@ def split_container_path(path) -> tuple[pathlib.Path | None, str]:
     Returns
     -------
     container : pathlib.Path or None
-        The `.pto` file, or ``None`` when *path* does not name one. The file is
-        **not** required to exist — resolving a name is not opening it.
+        The `.pto` file, or ``None`` when *path* does not name one. A container that
+        does not exist yet is recognised by its suffix -- resolving a name is not
+        opening it.
     run : str
-        The part below the container, or ``""`` for the container itself.
+        The part below the container, or ``""`` for the container itself; the folder
+        layout's ``bi4_bur`` levels are not part of a run's name.
 
     Examples
     --------
@@ -120,14 +123,15 @@ def split_container_path(path) -> tuple[pathlib.Path | None, str]:
     >>> split_container_path("a/folder")[0] is None
     True
     """
-    path = pathlib.Path(path)
-    parts = list(path.parts)
-    for index, part in enumerate(parts):
-        if part.lower().endswith(SUFFIX):
-            container = pathlib.Path(*parts[: index + 1])
-            below = [p for p in parts[index + 1 :] if p not in _FOLDER_ISMS]
-            return container, SEPARATOR.join(below)
-    return None, ""
+    from chisurf.core.fio.address import split_address, split_address_lexical
+
+    found, member = split_address(path)
+    if found is None:
+        found, member = split_address_lexical(path)
+    if found is None or not found.name.lower().endswith(SUFFIX):
+        return None, ""
+    below = [p for p in (member or "").split(SEPARATOR) if p and p not in _FOLDER_ISMS]
+    return found, SEPARATOR.join(below)
 
 
 def artifact_name(run: str, table: str) -> str:

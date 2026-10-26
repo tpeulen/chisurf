@@ -121,8 +121,21 @@ by a factor of a million — with no error anywhere.
 from chisurf.core.data import DataCurve
 
 curve.save("measurement.pto")     # into the measurement it came from
-curve.load("measurement.pto")     # or "measurement.pto|decay" to name one
+curve.load("measurement.pto")     # or "measurement.pto/decay" to name one
 ```
+
+(concept-container-address)=
+## Addressing what is inside
+
+Anything inside a container is named like a file in a folder:
+`measurement.pto/m001.ptu` is a photon stream, `measurement.pto/burstwise/bursts` a run's
+table, `project.cs.pto/decay_green` a dataset of a project (`project.cs.pto/@<uid>` the same
+dataset by its uid, which survives a rename), and addresses nest:
+`project.cs.pto/m000.pto/burstwise/bursts`. The rule: the container is the shortest leading
+part of the address that is an existing file — a folder never is — and the rest is the member.
+Every reader, the API and the command line take an address wherever they take a path
+({py:mod}`chisurf.core.fio.address`). ptolib and tttrlib are moving to the same rule; until the
+installed tttrlib has it, ChiSurf translates the address where it hands a member to tttrlib.
 
 ## Where did this number come from
 

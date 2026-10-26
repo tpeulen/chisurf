@@ -92,18 +92,18 @@ class DidYouMeanGroup(DidYouMeanMixin, click.Group):
 
 
 class BurstTableParam(click.Path):
-    """A burst table that may live inside a ``.pto`` (``m000.pto/<run>``) — not a path on disk.
+    """A burst table that may live inside a container (``m000.pto/<run>``) — not a path on disk.
 
     The burst pipeline's output is a container run, and the burst-table readers open one;
-    plain ``click.Path(exists=True)`` refused the path before any reader saw it. A value whose
-    ``.pto`` ancestor exists is passed through; anything else is checked as an ordinary path.
+    plain ``click.Path(exists=True)`` refused the address before any reader saw it. An address
+    inside an existing container (:mod:`chisurf.core.fio.address`) is passed through; anything
+    else is checked as an ordinary path.
     """
 
     def convert(self, value, param, ctx):
-        path = pathlib.Path(str(value))
-        node = path
-        while node.suffix.lower() != ".pto" and node.parent != node:
-            node = node.parent
-        if node.suffix.lower() == ".pto" and node.exists():
+        from chisurf.core.fio.address import split_address
+
+        container, member = split_address(str(value))
+        if container is not None and member:
             return str(value)
         return super().convert(value, param, ctx)

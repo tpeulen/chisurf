@@ -35,16 +35,17 @@ from __future__ import annotations
 import collections
 import contextlib
 import logging
+import os
 import shutil
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from time import perf_counter
 
+from chisurf.core.fio.address import container_of, split_address
 from chisurf.core.fio.decimate import DEFAULT_MAX_POINTS as _DECIMATE_DEFAULT_MAX_POINTS
 
 __all__ = [
-    "CONTAINER_SELECTOR",
     "CancelCallback",
     "ProgressCallback",
     "StagingCancelled",
@@ -54,7 +55,6 @@ __all__ = [
     "format_rate",
     "import_measurement",
     "open_tttr",
-    "split_container_spec",
     "stage_path_if_slow",
     "staged_source",
 ]
@@ -368,34 +368,21 @@ def staged_source(
             shutil.rmtree(local.parent, ignore_errors=True)
 
 
-#: Separates a container path from the member inside it, as ``tttrlib`` spells
-#: it: ``"run.pto|m001.ptu"``.
-CONTAINER_SELECTOR = "|"
+def _tttrlib_source(local: Path, member: str) -> str:
+    """What the installed ``tttrlib`` accepts for *member* of the container *local*.
 
-
-def split_container_spec(src) -> tuple[Path, str]:
-    """Split ``"<path>|<member>"`` into the path and the member.
-
-    A photon container holds several objects, so a caller may name which one to
-    read. Everything that touches the filesystem — staging, existence checks,
-    size probes — must use the path alone; only the reader understands the
-    selector.
-
-    Parameters
-    ----------
-    src : str or pathlib.Path
-        A path, or a path followed by a member name.
-
-    Returns
-    -------
-    tuple of (pathlib.Path, str)
-        The path, and the member name (``""`` when none was given).
+    Addresses are ``<container>/<member>`` (:mod:`chisurf.core.fio.address`). A tttrlib
+    that exports ``split_address`` reads that form itself.
     """
-    text = str(src)
-    if CONTAINER_SELECTOR not in text:
-        return Path(text), ""
-    path, _, selector = text.partition(CONTAINER_SELECTOR)
-    return Path(path), selector
+    if not member:
+        return str(local)
+    import tttrlib
+
+    # SHIM (2026-10-26): a tttrlib from before the address change spells a member
+    # "run.pto|m001.ptu". Delete this branch once pixi.lock carries a tttrlib that
+    # exports split_address -- this is the only place the old selector may appear.
+    separator = "/" if hasattr(tttrlib, "split_address") else "|"
+    return f"{local}{separator}{member}"
 
 
 #: Default RNG seed for LUT dithering. tttrlib's ``apply_luts_and_shifts``
@@ -498,10 +485,12 @@ def open_tttr(
     # to auto-detection, before it gets that far.
     container = resolve_container_type(routine)
 
-    # A photon container may name the member to read -- "run.pto|m001.ptu".
-    # Only the part before the separator is a path, so staging must not see the
-    # selector or it stages a file that does not exist.
-    path, selector = split_container_spec(src)
+    # A photon container may name the member to read -- "run.pto/m001.ptu".
+    # Only the container is a file, so staging must not see the member or it
+    # stages a file that does not exist.
+    found, member = split_address(src)
+    path = found if found is not None else Path(os.fspath(src))
+    selector = member or ""
 
     # A `.pto` names its own members' formats. The routine a caller carries is
     # the detector setup's *vendor* type ("SPC-130"), which describes the file
@@ -535,7 +524,7 @@ def open_tttr(
             return cached
 
     with staged_source(path, progress_cb=progress_cb, cancel_cb=cancel_cb, **stage_kwargs) as local:
-        spec = f"{local}|{selector}" if selector else str(local)
+        spec = _tttrlib_source(local, selector)
         if container is None:
             tttr = tttrlib.TTTR(spec)
         else:
@@ -741,7 +730,7 @@ def import_measurement(src, *, out_dir=None, create: bool | None = None):
     """
     from chisurf.core.fio.pto import SUFFIX, Measurement, is_measurement
 
-    path, _ = split_container_spec(src)
+    path = container_of(src)
     if is_measurement(path):
         return path
 

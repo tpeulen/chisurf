@@ -59,8 +59,8 @@ from chisurf.core.fio.staging import import_measurement, open_tttr
 container = import_measurement("measurement.ptu")   # -> measurement.pto
 photons = open_tttr(container)                      # the same photons
 
-# one member of a container, by name
-photons = open_tttr("measurement.pto|measurement.ptu")
+# one member of a container, by its address (see {ref}`concept-container-address`)
+photons = open_tttr("measurement.pto/measurement.ptu")
 ```
 
 ## Converting on drop

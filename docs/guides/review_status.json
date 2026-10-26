@@ -175,10 +175,10 @@
     "status": "ai-reviewed"
   },
   "12_handling_tttr_files.md": {
-    "date": "2026-10-19",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "6b83a9a05ee20072f4cf5492e1bd196a18ac39da86643f45db614fc87110ca34",
+    "sha256": "6ddd99f8d2e6aeef79b599b25875b7304c32fd10871429d76da4f1632aa0467e",
     "status": "ai-reviewed"
   },
   "13_burst_identification.md": {

@@ -14,15 +14,14 @@ import chisurf.core.curve
 import chisurf.core.fio
 import chisurf.core.fio.ascii
 from chisurf import typing
+from chisurf.core.fio.address import container_of, split_address
 from chisurf.core.fio.pto import SUFFIX
 from chisurf.core.fio.pto import is_measurement as _is_measurement
-from chisurf.core.fio.staging import CONTAINER_SELECTOR
 
 
 def _is_container(filename) -> bool:
-    """Whether *filename* names a photon container, member selector and all."""
-    path, _, _ = str(filename).partition(CONTAINER_SELECTOR)
-    return _is_measurement(path)
+    """Whether *filename* names a photon container or a member inside one."""
+    return _is_measurement(container_of(filename))
 
 
 from typing import TYPE_CHECKING
@@ -587,7 +586,9 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData, _FitDatasetBase):
         """Read this curve back out of a container."""
         from chisurf.core.fio.pto import Measurement
 
-        path, _, member = str(filename).partition(CONTAINER_SELECTOR)
+        found, member = split_address(filename)
+        path = found if found is not None else pathlib.Path(filename)
+        member = member or ""
         with Measurement.open(path) as m:
             names = [
                 o.name

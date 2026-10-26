@@ -748,9 +748,12 @@ class Measurement:
         Returns
         -------
         str
-            Either ``"<path>"`` or ``"<path>|<member>"``.
+            The container's address, ``"<path>"``, or its member's,
+            ``"<path>/<member>"`` (:mod:`chisurf.core.fio.address`).
         """
-        return f"{self._path}|{member}" if member else str(self._path)
+        from chisurf.core.fio.address import join_address
+
+        return join_address(self._path, member) if member else str(self._path)
 
     def is_sidecar(self, ref: int | str = 0) -> bool:
         """Return whether an object (by default the primary instrument) is an external sidecar.

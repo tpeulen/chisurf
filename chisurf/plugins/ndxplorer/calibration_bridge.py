@@ -156,11 +156,11 @@ def _artifacts(measurement):
 
 
 def _container_of(source):
-    """Walk a run path up to the ``.pto`` it lives in, or ``None``."""
-    path = pathlib.Path(str(source))
-    while path.suffix.lower() != ".pto" and path.parent != path:
-        path = path.parent
-    return path if path.suffix.lower() == ".pto" and path.is_file() else None
+    """The existing ``.pto`` a run address lives in (or that it is), or ``None``."""
+    from chisurf.core.fio.address import split_address
+
+    container, _ = split_address(source)
+    return container if container is not None and container.suffix.lower() == ".pto" else None
 
 
 def background_from_container(source) -> dict:
@@ -209,10 +209,8 @@ def calibration_from_container(source) -> dict:
     """
     from chisurf.core.fio.pto import Measurement
 
-    path = pathlib.Path(str(source))
-    while path.suffix.lower() != ".pto" and path.parent != path:
-        path = path.parent
-    if path.suffix.lower() != ".pto" or not path.is_file():
+    path = _container_of(source)
+    if path is None:
         return {}
 
     factors: dict[str, float] = {}

@@ -165,20 +165,22 @@ def test_photons_read_out_of_the_container_match_the_vendor_file(tmp_path: Path,
 
 def test_the_reading_seam_accepts_a_container_and_a_member(tmp_path: Path, measurement: Path):
     """``open_tttr`` is the one seam every reader goes through, so a container
-    has to work there and not only through ``tttrlib`` directly. The selector
-    form is the part that needed care: only the text before the separator is a
-    path, and staging must not try to copy the whole spec.
+    has to work there and not only through ``tttrlib`` directly. The address
+    form is the part that needed care: only the container is a file, and
+    staging must not try to copy the whole address.
     """
-    from chisurf.core.fio.staging import open_tttr, split_container_spec
+    from chisurf.core.fio.address import split_address
+    from chisurf.core.fio.staging import open_tttr
 
     direct = open_tttr(str(tmp_path / "m000.ptu"))
-    for spec in (str(measurement), f"{measurement}|m000.ptu"):
-        got = open_tttr(spec)
+    for spec in (str(measurement), f"{measurement}/m000.ptu"):
+        got = open_tttr(spec, cache=False)
         np.testing.assert_array_equal(got.macro_times, direct.macro_times)
 
-    path, member = split_container_spec(f"{measurement}|m000.ptu")
-    assert path == measurement and member == "m000.ptu"
-    assert split_container_spec(measurement) == (measurement, "")
+    assert split_address(f"{measurement}/m000.ptu") == (measurement, "m000.ptu")
+    assert split_address(measurement) == (measurement, "")
+    with Measurement.open(measurement) as m:
+        assert m.source("m000.ptu") == f"{measurement}/m000.ptu"
 
 
 def test_it_identifies_itself(measurement: Path, tmp_path: Path):
