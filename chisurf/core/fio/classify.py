@@ -53,6 +53,9 @@ SETUP_JSON_KEYS: frozenset[str] = frozenset(
      "transitions", "irf", "background", "patterns", "lut", "luts", "shifts"}
 )
 
+#: The ``schema`` prefix of an acquisition settings file (the Record tool's settings document).
+ACQUISITION_SCHEMA_PREFIX = "chisurf.acquisition/"
+
 
 #: Operations whose burst-grain ``<run>/bursts`` table is a burst run of the workspace: the
 #: search itself (a fusion of a search is stored as one), and an imported burst selection (BID).
@@ -94,7 +97,12 @@ def _is_setup_json(path: Path) -> bool:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError, UnicodeDecodeError):
         return False
-    return isinstance(data, dict) and bool(SETUP_JSON_KEYS & set(data))
+    if not isinstance(data, dict):
+        return False
+    # An acquisition settings file (device, laser, experiment, run) is read by the Record tool.
+    return bool(SETUP_JSON_KEYS & set(data)) or str(data.get("schema", "")).startswith(
+        ACQUISITION_SCHEMA_PREFIX
+    )
 
 
 def _suffix(path: Path) -> str:
