@@ -53,8 +53,14 @@ def same_coordinates(xyz, summary: dict, atol: float = 1e-4) -> bool:
     return bool(np.allclose(sample, np.asarray(summary["sample"]), atol=atol))
 
 
+#: The checkout the Qt answers were recorded in: its paths in the references are rebased onto
+#: the checkout running the tests, so the recorded file names compare on any machine.
+RECORDED_REPO = "/Users/tpeulen/dev/chisurf"
+REPO = Path(__file__).resolve().parents[5]
+
+
 def load_reference(test_dir) -> dict:
-    """Load ``qt_reference.json`` beside a plugin's tests.
+    """Load ``qt_reference.json`` beside a plugin's tests, its repository paths rebased here.
 
     Parameters
     ----------
@@ -65,4 +71,5 @@ def load_reference(test_dir) -> dict:
     -------
     dict
     """
-    return json.loads((Path(test_dir) / "qt_reference.json").read_text())
+    text = (Path(test_dir) / "qt_reference.json").read_text()
+    return json.loads(text.replace(RECORDED_REPO, REPO.as_posix()))

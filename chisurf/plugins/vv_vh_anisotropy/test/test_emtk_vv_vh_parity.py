@@ -217,7 +217,10 @@ def test_save_outputs_and_its_error_path(app, files, tmp_path):
         ("NotADirectoryError", "FileExistsError", "OSError")
     )
     assert app.model.has_data
-    assert any(app.model.message in s for s in _draw(app).strings)
+    # The message names the target path, so it wraps onto several drawn lines when the
+    # path is long; the status shows it when a drawn line starts with its error prefix.
+    prefix = app.model.message.split(":", 1)[0]
+    assert any(s.startswith(prefix) for s in _draw(app).strings)
 
 
 def test_cancelling_a_dialog_changes_nothing(app, files):
@@ -541,11 +544,10 @@ def test_guide_waits_for_the_user_and_points_at_drawn_controls(app, files):
         key = tour._target_key(step["target"])
         assert key in app.item_rects or key in app.form.rects, step["title"]
     tour.start(0)
-    assert tour.awaiting and tour.steps[0]["target"] == {"action": "request_load"}
+    assert tour.awaiting and tour.steps[0]["target"] == {"name": "load_example"}
     tour.notify_used("request_save")  # another control: still waiting
     assert tour.awaiting
-    app.model.request_load()
-    app.form.on_used("request_load")  # what the form reports on a press
+    app.form.on_used("load_example")  # what the form reports on a press of Load example
     assert not tour.awaiting
     tour.next()
     app.model.g_factor = 1.2

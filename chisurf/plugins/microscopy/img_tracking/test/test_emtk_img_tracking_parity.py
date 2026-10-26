@@ -271,6 +271,25 @@ def _plain(value):
     return json.loads(json.dumps(value, default=default))
 
 
+def _close(native, recorded, rel=1e-8):
+    """Equal structures, floats within *rel* (lists and dicts compared element by element)."""
+    if isinstance(recorded, dict):
+        return (
+            isinstance(native, dict)
+            and native.keys() == recorded.keys()
+            and all(_close(native[k], recorded[k], rel) for k in recorded)
+        )
+    if isinstance(recorded, list):
+        return (
+            isinstance(native, list)
+            and len(native) == len(recorded)
+            and all(_close(a, b, rel) for a, b in zip(native, recorded))
+        )
+    if isinstance(recorded, float):
+        return native == pytest.approx(recorded, rel=rel, abs=1e-12)
+    return native == recorded
+
+
 SCENARIOS = {
     "defaults": {},
     "quantile detector": {"method": "quantile"},
@@ -287,10 +306,14 @@ def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(app, d
     m = tracked(app, drv, **settings)
     assert m.results_text == qt["results_text"]
     assert m.status_line == qt["bar"]
-    assert m.result.fit.diffusion_coefficient == qt["D"]
+    # D and the MSD curve come from sums over the tracks: their last digits follow the platform's
+    # summation order (Linux vs macOS differ near 1e-10), the printed results above do not.
+    assert m.result.fit.diffusion_coefficient == pytest.approx(qt["D"], rel=1e-8)
     assert [r["track"] for r in m.track_rows()] == qt["tracks"]
-    assert m.track_series() and _plain(m.track_series()) == qt["track_series"]
-    assert _plain(m.msd_series()) == qt["msd"] and _plain(m.length_series()) == qt["length"]
+    assert m.track_series() and _close(_plain(m.track_series()), qt["track_series"])
+    assert _close(_plain(m.msd_series()), qt["msd"]) and _close(
+        _plain(m.length_series()), qt["length"]
+    )
     emtk_cells = [
         [str(r["track"]), str(r["length"]), r["frames"], f"{r['net']:.2f}"]
         for r in m.track_table_rows()

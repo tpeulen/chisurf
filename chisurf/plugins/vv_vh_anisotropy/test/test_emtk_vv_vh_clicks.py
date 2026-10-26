@@ -262,15 +262,18 @@ def test_help_button_opens_the_help_window_and_close_help_closes_it(ui, files):
     assert not ui.app.help_window.open
 
 
-def test_guide_button_starts_the_tour_which_waits_for_the_load_button(ui, files):
+def test_guide_button_starts_the_tour_which_waits_for_the_load_example_button(
+    ui, files, monkeypatch
+):
+    loaded = []
+    monkeypatch.setattr(ui.app.model, "load_example", lambda: loaded.append(True))
     ui.click(action_caption("guide"))
     assert (
-        ui.app.tour.active and ui.drawn("Close Tour") and ui.drawn("Step 1 of 7: Load a VV/VH file")
+        ui.app.tour.active and ui.drawn("Close Tour") and ui.drawn("Step 1 of 7: Load an example")
     )
-    assert ui.app.tour.awaiting  # step 1 waits for Load
-    ui.click("Load VV/VH file…")  # the awaited control
-    assert not ui.app.tour.awaiting and ui.app.dialog is not None
-    ui.click("Cancel")
+    assert ui.app.tour.awaiting  # step 1 waits for Load example
+    ui.click(action_caption("example"))  # the awaited control
+    assert loaded and not ui.app.tour.awaiting
     ui.click("Close Tour")
     assert not ui.app.tour.active
 

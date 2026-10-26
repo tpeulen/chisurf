@@ -93,6 +93,25 @@ QT = json.loads((Path(__file__).with_name("qt_reference.json")).read_text(encodi
 # -- numbers: the same graph, the same catalogue, the same results ------------------------------------------ #
 
 
+def _close(native, recorded, rel=1e-9):
+    """Equal structures, floats within *rel* (lists and dicts compared element by element)."""
+    if isinstance(recorded, dict):
+        return (
+            isinstance(native, dict)
+            and native.keys() == recorded.keys()
+            and all(_close(native[k], recorded[k], rel) for k in recorded)
+        )
+    if isinstance(recorded, (list, tuple)):
+        return (
+            isinstance(native, (list, tuple))
+            and len(native) == len(recorded)
+            and all(_close(a, b, rel) for a, b in zip(native, recorded))
+        )
+    if isinstance(recorded, float) and not isinstance(recorded, bool):
+        return native == pytest.approx(recorded, rel=rel)
+    return native == recorded
+
+
 def test_the_qt_tool_and_the_native_window_simulate_the_same_graph_to_the_same_numbers(
     app, catalogue
 ):
@@ -100,9 +119,12 @@ def test_the_qt_tool_and_the_native_window_simulate_the_same_graph_to_the_same_n
     assert [n.type for n in app.controller.document.nodes] == QT["nodes"]
     assert len(app.controller.probes) == QT["probes"] == 7
     native = app.controller.result
-    assert native["detector_signals"] == QT["signals"]
+    # The intensities are spectral integrals (numpy sums over the dye, filter and detector
+    # curves); summation order differs between platforms in the last digits, so numbers compare
+    # at 1e-9 relative and everything else exactly.
+    assert _close(native["detector_signals"], QT["signals"])
     for kind in ("excitation", "emission", "detected"):
-        assert native["crosstalk_matrices"][kind]["rows"] == QT["matrices"][kind]["rows"]
+        assert _close(native["crosstalk_matrices"][kind]["rows"], QT["matrices"][kind]["rows"])
         assert native["crosstalk_matrices"][kind]["columns"] == QT["matrices"][kind]["columns"]
 
 

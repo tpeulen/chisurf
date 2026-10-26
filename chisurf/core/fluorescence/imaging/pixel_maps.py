@@ -99,11 +99,12 @@ import threading  # noqa: E402
 from collections import OrderedDict  # noqa: E402
 
 _logger = _logging.getLogger(__name__)
-_TTTR_CACHE: OrderedDict[str, Any] = OrderedDict()
 _CLSM_CACHE: OrderedDict[tuple, Any] = OrderedDict()
 _CACHE_LOCK = threading.RLock()  # cache is touched by the UI + a prefill thread
-_TTTR_MAX = 3
 _CLSM_MAX = 16
+#: The windowed images of at most this many files are kept: the tools work on one measurement
+#: at a time, and a per-entry bound let 16 images of 16 different scans pile up in the worker.
+_CLSM_FILES = 2
 
 
 def get_tttr(filename: str) -> Any:
@@ -116,22 +117,14 @@ def get_tttr(filename: str) -> Any:
     TAC-linearization LUTs. Reaching past it meant every per-pixel lifetime and
     phasor map was computed from *un-linearized* micro-times whenever the
     measurement had a LUT: not a failure, just quietly the wrong number.
+
+    The reader caches what it opens under a byte budget, so this keeps no cache of its own: a
+    second one held three readers here regardless of their size, and kept every one of them
+    alive after the budgeted cache had let it go.
     """
-    key = str(filename)
-    with _CACHE_LOCK:
-        tttr = _TTTR_CACHE.get(key)
-        if tttr is not None:
-            _TTTR_CACHE.move_to_end(key)
-            return tttr
-    # Load outside the lock (slow) so a prefill load never blocks the UI thread.
     from chisurf.core.fio.staging import open_tttr
 
-    tttr = open_tttr(key)
-    with _CACHE_LOCK:
-        _TTTR_CACHE[key] = tttr
-        while len(_TTTR_CACHE) > _TTTR_MAX:
-            _TTTR_CACHE.popitem(last=False)
-    return tttr
+    return open_tttr(str(filename))
 
 
 def cached_clsm(filename: str, channels, micro_time_ranges=None) -> Any:
@@ -153,6 +146,9 @@ def cached_clsm(filename: str, channels, micro_time_ranges=None) -> Any:
     clsm = build_clsm_windowed(get_tttr(filename), list(chs), list(mtr))
     with _CACHE_LOCK:
         _CLSM_CACHE[key] = clsm
+        recent = list(dict.fromkeys(k[0] for k in reversed(_CLSM_CACHE)))[:_CLSM_FILES]
+        for stale in [k for k in _CLSM_CACHE if k[0] not in recent]:
+            del _CLSM_CACHE[stale]
         while len(_CLSM_CACHE) > _CLSM_MAX:
             _CLSM_CACHE.popitem(last=False)
     return clsm
@@ -186,9 +182,11 @@ def prefill_windows(filename: str, windows: dict) -> None:
 
 def clear_imaging_cache() -> None:
     """Drop all cached TTTR/CLSM objects (free memory / force a fresh rebuild)."""
+    from chisurf.core.fio.staging import clear_tttr_cache
+
     with _CACHE_LOCK:
-        _TTTR_CACHE.clear()
         _CLSM_CACHE.clear()
+    clear_tttr_cache()
 
 
 # --- worker process for GIL-holding reads -------------------------------------

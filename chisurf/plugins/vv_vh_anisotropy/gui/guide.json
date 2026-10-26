@@ -2,16 +2,6 @@
   "_comment": "Guided tour of the VV/VH anisotropy tool. Steps point at real controls; the ones the user must use wait for them.",
   "steps": [
     {
-      "title": "Set the G-factor",
-      "text": "r(t) = (VV - g VH) / (VV + 2 g VH). The G-factor corrects the different sensitivity of the two detection channels; a wrong g tilts the whole curve, so take it from a reference measurement.",
-      "target": {
-        "attr": "g_factor"
-      },
-      "await": {
-        "hint": "Change <b>G-factor</b> and press Enter; watch r(t) and r∞ move."
-      }
-    },
-    {
       "title": "Load an example",
       "text": "The file holds the parallel decay (VV) followed by the perpendicular decay (VH). Press <b>Load example</b> to generate reference decays with a known r(t) in the settings cache — it loads the slow protein's and queues all four for the batch. Press <b>Load VV/VH file…</b> (or drop a file on the window) for a real measurement. Both decays and r(t) appear at once.",
       "target": {
@@ -19,6 +9,16 @@
       },
       "await": {
         "hint": "Press <b>Load example</b>."
+      }
+    },
+    {
+      "title": "Set the G-factor",
+      "text": "r(t) = (VV - g VH) / (VV + 2 g VH). The G-factor corrects the different sensitivity of the two detection channels; a wrong g tilts the whole curve, so take it from a reference measurement.",
+      "target": {
+        "attr": "g_factor"
+      },
+      "await": {
+        "hint": "Change <b>G-factor</b> and press Enter; watch r(t) and r∞ move."
       }
     },
     {

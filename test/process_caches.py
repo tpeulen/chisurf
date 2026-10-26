@@ -33,3 +33,10 @@ def release_process_caches() -> None:
             ctypes.CDLL("/usr/lib/libSystem.B.dylib").malloc_zone_pressure_relief(None, 0)
         except (OSError, AttributeError):
             pass
+    elif sys.platform.startswith("linux"):
+        # glibc keeps freed heap pages too; the resource guard counts them as the process's
+        # until malloc_trim hands them back.
+        try:
+            ctypes.CDLL("libc.so.6").malloc_trim(0)
+        except (OSError, AttributeError):
+            pass

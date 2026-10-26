@@ -635,8 +635,9 @@ def test_configure_luts_channel_combo_and_region_fields(make):
     ui.click((x + 150, y + 12))  # the channel combo
     ui.click("8", nth=-1)
     assert app.page.selected_channel == 8
-    start = [t for t in ui.painter.texts if t[5] == "Linear region start"][0]
-    ui.click((start[0] - 60, start[1] + start[3] / 2))  # the field is left of its caption
+    # An int field is an emtk spinbox: a double-click opens it for typing (one click only focuses it).
+    x, y, w, h = app.page.item_rects["lut_start"]
+    ui.double_click((x + w / 2, y + h / 2))
     clear(ui)
     ui.type("123")
     ui.enter()
@@ -650,8 +651,9 @@ def test_adjust_shifts_needs_a_calibration_then_shifts_channels_and_ok_or_cancel
     read_sample(ui)
     ui.click("Adjust shifts...")
     assert app.page.shift_window.open and ui.drawn("ch 8") and ui.drawn("Adjust micro-time shifts")
-    ch8 = [t for t in ui.painter.texts if t[5] == "ch 8"][0]
-    ui.click((ch8[0] + 80, ch8[1] + ch8[3] / 2))  # the shift field of channel 8
+    # The shift field of channel 8, an emtk spinbox: a double-click opens it for typing.
+    x, y, w, h = app.page.item_rects["shift_8"]
+    ui.double_click((x + w / 2, y + h / 2))
     clear(ui)
     ui.type("12")
     ui.enter()
@@ -661,8 +663,8 @@ def test_adjust_shifts_needs_a_calibration_then_shifts_channels_and_ok_or_cancel
     ui.click(action_caption("cancel"), nth=-1)
     assert not app.page.shift_window.open and app.model.data["channel_shifts"] == {}
     ui.click("Adjust shifts...")
-    ch8 = [t for t in ui.painter.texts if t[5] == "ch 8"][0]
-    ui.click((ch8[0] + 80, ch8[1] + ch8[3] / 2))
+    x, y, w, h = app.page.item_rects["shift_8"]
+    ui.double_click((x + w / 2, y + h / 2))
     clear(ui)
     ui.type("7")
     ui.enter()

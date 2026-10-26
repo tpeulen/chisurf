@@ -346,31 +346,29 @@ class TestAssistantAcpFlow:
         started = client.start()
         assert started is True
 
+        # A fresh interpreter importing ChiSurf answers in ~0.5 s on an idle machine and several
+        # seconds on a loaded one; the handshake is what is tested, so wait up to 30 s for it.
+        def wait_for(condition, timeout=30.0):
+            end = time.monotonic() + timeout
+            while not condition() and time.monotonic() < end:
+                time.sleep(0.05)
+
         # Wait for initialize response
-        for _ in range(100):
-            if client.is_ready:
-                break
-            time.sleep(0.05)
+        wait_for(lambda: client.is_ready)
 
         assert client.is_ready is True
         assert "ChiSurf" in client.agent_info.get("name", "")
 
         # Create session
         client.new_session()
-        for _ in range(100):
-            if client.session_id is not None:
-                break
-            time.sleep(0.05)
+        wait_for(lambda: client.session_id is not None)
 
         assert client.session_id is not None
         assert client.current_mode_id == "chisurf_tools"
 
         # Switch mode
         client.set_mode("full_control")
-        for _ in range(100):
-            if client.current_mode_id == "full_control":
-                break
-            time.sleep(0.05)
+        wait_for(lambda: client.current_mode_id == "full_control")
 
         assert client.current_mode_id == "full_control"
 

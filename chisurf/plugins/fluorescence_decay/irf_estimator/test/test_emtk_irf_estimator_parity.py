@@ -99,6 +99,16 @@ def _loaded(**kwargs):
 
 
 # 1. the Qt tool's numbers, texts and control states, reached through the real buttons
+def _number(text):
+    """The number a result row starts with."""
+    return float(text.split()[0])
+
+
+def _unit(text):
+    """What follows the number in a result row (its unit, or nothing)."""
+    return text.split(maxsplit=1)[1:]
+
+
 def test_load_and_estimate_match_the_qt_tool(qt):
     app = IRFEstimatorApp()
     try:
@@ -119,11 +129,17 @@ def test_load_and_estimate_match_the_qt_tool(qt):
         assert app.future is not None
         _wait(app)
         assert _states(app) == qt["states"][2] == [True, True, True]
-        assert [text for _, text in app.model.result_rows()] == qt["results"]
+        rows = [text for _, text in app.model.result_rows()]
+        # The four results are a least-squares fit of the tail: across platforms they agree to
+        # the optimiser's stopping tolerance (~2e-5 relative), not to the last printed digit.
+        assert [_number(text) for text in rows] == pytest.approx(
+            [_number(text) for text in qt["results"]], rel=1e-4
+        )
+        assert [_unit(text) for text in rows] == [_unit(text) for text in qt["results"]]
         np.testing.assert_allclose(app.model.irf_data, qt["irf"], rtol=1e-6, atol=1e-9)
         assert app.model.status == qt["status"]
         strings = _draw(app).strings
-        assert all(text in strings for text in qt["results"]) and qt["time"] in " ".join(strings)
+        assert all(text in strings for text in rows) and qt["time"] in " ".join(strings)
     finally:
         app.close()
 

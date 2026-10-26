@@ -726,7 +726,7 @@ def test_parameter_table_and_in_place_editing(ui, files):
     # Reference parameters table: rho, tau, r0, bg_vv, bg_vh per sample
     ref_rows = m.reference_rows()
     assert len(ref_rows) >= 2
-    r_keys = ref_rows[0].param_keys()
+    r_keys = ref_rows[0].keys()
     assert "rho_ns" in r_keys
     assert "tau_ns" in r_keys
     assert "r0" in r_keys

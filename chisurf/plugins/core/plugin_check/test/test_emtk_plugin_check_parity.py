@@ -163,6 +163,7 @@ REPAIRED_DECLARATIONS = {
     "Pixel-wise MLE",
     "Pong",
     "QuEst",
+    "Region MLE",
     "Spot Finder",
     "Styles",
     "Switch User",
