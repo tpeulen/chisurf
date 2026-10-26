@@ -32,12 +32,18 @@
 #
 # The command sees \$RUN, its run directory (for extra output, e.g. --out \$RUN/chunks).
 #
-# Environment: CHISURF_REMOTE_HOST (default: home).
+# Overlays: the ~/dev/<name> checkouts in CHISURF_REMOTE_OVERLAYS (default "emtk") are
+# mirrored like the siblings and put first on PYTHONPATH -- the workstation has them
+# installed editable, newer than pixi.lock (the lock moves at the release cut). Set
+# CHISURF_REMOTE_OVERLAYS= to test the locked env alone.
+#
+# Environment: CHISURF_REMOTE_HOST (default: home), CHISURF_REMOTE_OVERLAYS.
 
 set -euo pipefail
 
 HOST="${CHISURF_REMOTE_HOST:-home}"
 SUBMODULE="modules/ndxplorer"
+OVERLAYS="${CHISURF_REMOTE_OVERLAYS-emtk}"
 KEEP_REFS=20
 REPO="$(git -C "$(dirname "$0")/.." rev-parse --show-toplevel)"
 case "$REPO" in
@@ -120,6 +126,20 @@ cmd_start() {
         siblings="$siblings $rel:$ssha"
         sibmeta="${sibmeta}sibling: $rel $ssha $sdirty"$'\n'
     done
+    # Overlays: mirrored the same way, then imported from source ahead of the locked env.
+    local name pypath=""
+    for name in $OVERLAYS; do
+        top="$HOME/dev/$name"
+        [[ -d "$top/.git" ]] || continue
+        rel="dev/$name"
+        ssha="$(git -C "$top" rev-parse HEAD)"
+        sdirty="clean"; [[ -z "$(git -C "$top" status --porcelain --untracked-files=no)" ]] || sdirty="dirty (not sent)"
+        remote "[ -d $rel/.git ] || { mkdir -p $rel && git -C $rel init -q; }"
+        git -C "$top" push -q "$HOST:$rel" "+$ssha:refs/remote-test/$id"
+        siblings="$siblings $rel:$ssha"
+        sibmeta="${sibmeta}overlay: $rel $ssha $sdirty (first on PYTHONPATH)"$'\n'
+        pypath="${pypath:+$pypath:}\$HOME/$rel"
+    done
     local subsha=""
     if subsha="$(git rev-parse "$sha:$SUBMODULE" 2>/dev/null)"; then
         git -C "$SUBMODULE" push -q "$HOST:$DIR/$SUBMODULE" "+$subsha:refs/remote-test/$id"
@@ -163,6 +183,7 @@ CMD_EOF
 #!/bin/bash
 export PATH=\$HOME/.pixi/bin:/usr/local/bin:/usr/bin:/bin
 export RUN=\$RUN
+export PYTHONPATH=$pypath
 cd \$HOME/$DIR
 bash \$RUN/cmd.sh > \$RUN/log.txt 2>&1
 rc=\\\$?
