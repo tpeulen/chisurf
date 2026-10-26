@@ -8,6 +8,7 @@
   documented residual, Z.ai GLM is a provider, and no feature commit of the lane touched `pixi.lock`/`pixi.toml`/`pyproject.toml` (this one edits only the marker text).
   Found on the way: the live example-prompt tests had no opt-in and called the provider whenever a key was in
   the settings; the `CHISURF_AGENT_TEST_LIVE=1` gate now sits on the `live_llm` marker (`test/agent/conftest.py`).
+- Heavy test runs move to the remote box (owner): `build_tools/remote_test.sh` pushes the commit under test into a mirrored `~/dev/chisurf` clone on `ssh home` (refs/remote-test/<id>, submodule included, detached pixi envs), runs the suite as a systemd user unit, one at a time, and fetches log + JUnit back to `build/remote-test/<id>`. Documented in [testing](workflows/testing.md); PRD-154 item 6's gate run goes there.
 
 ## 2026-10-25
 

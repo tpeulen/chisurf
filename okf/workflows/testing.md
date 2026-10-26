@@ -67,6 +67,30 @@ back by the autouse fixtures of the root `conftest.py`
 All `test*` tasks `depends-on` `build-extensions`, so the
 [compiled modules](/subsystems/compiled-modules.md) are built first.
 
+# Heavy suites run on the remote box, not the workstation
+
+Full gates (`pixi run -e test test`, `test-gui`, `test-e2e`, `test-slow`) and long
+click-all runs go to `ssh home` (Linux x86_64, 48 cores) so the workstation is not
+blocked; short targeted files stay local. `build_tools/remote_test.sh` does it:
+
+```bash
+build_tools/remote_test.sh start                 # HEAD, `pixi run -e test test`
+build_tools/remote_test.sh start --dirty -- pixi run -e test test-gui
+build_tools/remote_test.sh status | wait | log -f | fetch | stop | list
+```
+
+The remote mirrors the local layout: `~/dev/chisurf` there is a plain clone of the same
+origin with `modules/ndxplorer` in place. The commit under test is pushed straight into
+it as `refs/remote-test/<id>` (no branch moves, no GitHub round trip; the newest 20 refs
+are kept) and checked out detached; `--dirty` sends a `git stash create` snapshot of the
+tracked changes (untracked files are not included). Pixi envs are detached into the
+pixi cache, so the checkout stays clean. Each run is a systemd user unit (linger is on,
+so it survives a dropped ssh) and `start` refuses while another run is active — one
+suite at a time. Output (`meta.txt`, `log.txt`, `junit.xml`, `exit_code`) lands in
+`build/remote-test/<id>/` there and at the same path here after `fetch`. The remote
+gate uses the locked env (emtk from the lock), not the workstation's editable emtk —
+a run that needs newer emtk needs the relock first.
+
 # Single test
 
 Run one test directly with pytest, e.g.
