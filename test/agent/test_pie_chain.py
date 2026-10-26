@@ -152,9 +152,11 @@ def test_the_agent_can_script_the_pipeline_over_the_plugin_apis(context, pie_fil
         "import chisurf as cs\n"
         "curve = cs.imported_datasets[ds]\n"
         "y = np.asarray(curve.y); x = np.asarray(curve.x)\n"
+        # The width is fitted, as the agent's tool does: with it held, the converged
+        # mean distance carries the held-width bias (32.5 A here, truth 43.3 A).
         "f = fit_fret_model(y, bin_width=float(x[1]-x[0]), n_states=1,\n"
         "                   donor_lifetime=4.0, forster_radius=52.0,\n"
-        "                   start_bin=int(np.argmax(y)))\n"
+        "                   start_bin=int(np.argmax(y)), fit_sigma=True)\n"
         "result = float(f['distances'][0])\n"
         "print('pipeline distance (A):', result)\n"
     )

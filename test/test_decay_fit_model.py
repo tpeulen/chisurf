@@ -231,6 +231,68 @@ def test_fits_the_generated_irf_when_none_is_measured():
     assert abs(result["irf_skew"]) < 0.2, "a symmetric prompt must not fit as skewed"
 
 
+def test_the_fit_runs_to_convergence_and_says_so():
+    """The free fit repeats until nothing moves; the result reports passes and convergence.
+
+    One free pass used to be all: the optimiser stopped on its own step tolerance while the
+    parameters still moved, so where a fit ended depended on the platform.
+    """
+    y, irf = _simulate()
+    measured = fit_lifetime_model(
+        y, bin_width=DT, irf=irf, n_components=2, initial_lifetimes=(8.0, 0.4)
+    )
+    assert measured["converged"] and measured["passes"] >= 2
+    assert measured["irf_width_identified"] is None  # the prompt width was not fitted
+    again = fit_lifetime_model(
+        y, bin_width=DT, irf=irf, n_components=2, initial_lifetimes=(8.0, 0.4)
+    )
+    np.testing.assert_allclose(again["lifetimes"], measured["lifetimes"], rtol=1e-6)
+
+
+def test_a_determined_prompt_width_is_reported_as_identified():
+    """A sharp decay against a 0.25 ns prompt determines the fitted width."""
+    y, _ = _simulate()
+    result = fit_lifetime_model(
+        y,
+        bin_width=DT,
+        irf=None,
+        n_components=2,
+        initial_lifetimes=(8.0, 0.4),
+        tau_bounds=(0.05, 20.0),
+        fit_background=True,
+        fit_irf=True,
+        irf_width=0.2,
+    )
+    assert result["converged"]
+    assert result["irf_width_identified"] is True
+    assert result["irf_width_error"] < result["irf_width"]
+
+
+def test_an_undetermined_prompt_width_is_reported_not_hidden():
+    """An ideal decay with no prompt at all leaves the fitted width on a flat direction.
+
+    The fit still converges and the lifetimes are right; the width's error exceeds the width,
+    and the result says so instead of presenting an arbitrary number as measured.
+    """
+    t = np.arange(256) * 0.05
+    y = (
+        60000.0 * np.exp(-t / 1.2) / np.exp(-t / 1.2).sum()
+        + 40000.0 * np.exp(-t / 4.0) / np.exp(-t / 4.0).sum()
+    )
+    result = fit_lifetime_model(
+        y,
+        bin_width=0.05,
+        irf=None,
+        n_components=2,
+        tau_bounds=(0.2, 8.0),
+        fit_irf=True,
+        irf_width=0.16,
+    )
+    assert result["converged"]
+    np.testing.assert_allclose(result["lifetimes"], [1.2, 4.0], rtol=0.02)
+    assert result["irf_width_identified"] is False
+
+
 def _parameters(fit):
     return {
         p.canonical_id: p for p in fit.model.parameters_all if not getattr(p, "is_output", False)

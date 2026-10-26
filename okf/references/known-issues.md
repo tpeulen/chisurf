@@ -58,7 +58,10 @@ reports `width_mode`. The model sees the FRET rate averaged over the distance di
 steeper than the rate at the mean: with the width held at 5 A the simulated E = 0.75 species came
 out as E_fit = 0.836 / R = 39.7 A; freeing the width puts the mean at 42.9–44.7 A (truth 43.29).
 Held-width fits remain available and are what the GUI's current default does — the bias belongs to
-that mode, not to the model.
+that mode, not to the model. Measured again 2026-10-26 after the fitter iterates to convergence (it used to
+stop after one free pass): on the PIE scenario of `test/agent/test_pie_chain.py` the held-width (6 A) mean
+distance converges to 32.45 A (one pass had stopped at 38.44 A, lower chi2 now), while the fitted width
+gives 39.96 A (sigma 4.3 A) either way — the stopped fit had been hiding part of the bias.
 
 ## `test/plugins/burst_selection/test_export_guards.py` fails on this branch, before the agent changes (found 2026-10-25)
 

@@ -121,15 +121,38 @@ def _hold_instrument(
         parameters[canonical].fixed = not is_free
 
 
-def _run(fit, *, irf, fit_irf) -> None:
-    """Optimise *fit*; a generated prompt is aligned before its shape is released.
+#: The free fit is repeated until no free parameter and not chi2 moves by more than this
+#: (relative), at most ``_MAX_PASSES`` times. A pass ends on the optimiser's own budget, so a
+#: badly conditioned model (two FRET states against an ideal decay) needs ~120 passes.
+_RTOL = 1e-6
+_MAX_PASSES = 200
+
+
+def _state(fit) -> np.ndarray:
+    """The free parameters' values and the reduced chi2, the quantities convergence watches."""
+    free = [float(p.value) for p in _parameters(fit.model).values() if not p.fixed]
+    return np.array([*free, _misfit(fit.model)["chi2_reduced"]], dtype=float)
+
+
+def _run(fit, *, irf, fit_irf) -> dict:
+    """Optimise *fit* to convergence; a generated prompt is aligned before its shape is released.
 
     Freeing the prompt's width and skew together with its position from the first step is the
     badly conditioned start: the width is by far the most sensitive parameter, the position is
     still channels off, and Levenberg-Marquardt finds every trial step worse, shrinks its trust
     region below tolerance and returns the start unchanged, with no error. So the first pass
-    leaves width and skew at their starting values (timing, lifetimes and amplitudes are fitted),
-    the second frees them.
+    leaves width and skew at their starting values (timing, lifetimes and amplitudes are fitted).
+
+    One free pass after that was not enough: the optimiser stops on its own step tolerance while
+    the parameters still move (a third pass took a fitted prompt width from 0.062 to 0.042 ns, and
+    where it stopped differed between platforms). So the free fit is repeated until no free
+    parameter and not the reduced chi2 changes by more than ``_RTOL`` relative, at most
+    ``_MAX_PASSES`` times; hitting the cap is reported, never hidden.
+
+    Returns
+    -------
+    dict
+        ``{"passes": int, "converged": bool}`` for the free fit.
     """
     shape = ("instrument.irf_width", "instrument.irf_shape")
     if fit_irf and irf is None:
@@ -139,11 +162,30 @@ def _run(fit, *, irf, fit_irf) -> None:
         fit.run()
         for canonical in shape:
             parameters[canonical].fixed = False
-    fit.run()
+    previous = None
+    for passes in range(1, _MAX_PASSES + 1):
+        fit.run()
+        fit.model.update()
+        current = _state(fit)
+        if previous is not None and current.shape == previous.shape:
+            scale = np.maximum(np.maximum(np.abs(current), np.abs(previous)), 1e-12)
+            if np.all(np.abs(current - previous) <= _RTOL * scale):
+                return {"passes": passes, "converged": True}
+        previous = current
+    import warnings
+
+    warnings.warn(
+        f"the decay fit did not converge in {_MAX_PASSES} passes (relative change above "
+        f"{_RTOL:g}); the result is the last pass",
+        RuntimeWarning,
+        stacklevel=3,
+    )
+    return {"passes": _MAX_PASSES, "converged": False}
 
 
-def _irf_report(model, *, irf, bin_width) -> dict:
-    value = {k: float(p.value) for k, p in _parameters(model).items()}
+def _irf_report(model, *, irf, bin_width, fitted=False) -> dict:
+    parameters = _parameters(model)
+    value = {k: float(p.value) for k, p in parameters.items()}
     shift = value["instrument.timeshift"]
     irf_peak = None
     if irf is None:
@@ -161,7 +203,24 @@ def _irf_report(model, *, irf, bin_width) -> dict:
         "irf_skew": value["instrument.irf_shape"],
         "irf_shift": shift,
         "irf_peak": irf_peak,
+        **_width_identification(parameters["instrument.irf_width"], fitted=fitted),
     }
+
+
+def _width_identification(width, *, fitted: bool) -> dict:
+    """Whether the data determine a fitted prompt width.
+
+    A decay much slower than its prompt barely depends on the prompt's width: the fit converges,
+    but along a flat direction, and the width it lands on is arbitrary (two platforms converged
+    to 0.041 and 0.043 ns with identical lifetimes). Reported, not hidden: the width counts as
+    determined only when its error estimate is smaller than the width itself.
+    """
+    if not fitted:
+        return {"irf_width_error": None, "irf_width_identified": None}
+    error = float(getattr(width, "error_estimate", float("nan")) or float("nan"))
+    magnitude = abs(float(width.value))
+    identified = bool(np.isfinite(error) and error < magnitude)
+    return {"irf_width_error": error, "irf_width_identified": identified}
 
 
 def _misfit(model) -> dict:
@@ -324,10 +383,14 @@ def fit_lifetime_model(
     dict
         ``{lifetimes, amplitudes, lifetime_spectrum, reconstruction,
         weighted_residuals, chi2_reduced, lifetime_errors, amplitude_errors,
-        background, scatter, irf_width, irf_skew, irf_shift, irf_peak, fit,
-        model}``. ``lifetimes`` and ``amplitudes`` are sorted by lifetime,
-        matching ``fit_lifetime_components``. ``irf_shift`` is in channels and
-        ``irf_peak`` is where the (shifted) generated prompt peaks, in ns.
+        background, scatter, irf_width, irf_skew, irf_shift, irf_peak,
+        irf_width_error, irf_width_identified, passes, converged, fit, model}``.
+        ``lifetimes`` and ``amplitudes`` are sorted by lifetime, matching
+        ``fit_lifetime_components``. ``irf_shift`` is in channels and ``irf_peak``
+        is where the (shifted) generated prompt peaks, in ns. ``passes`` and
+        ``converged`` describe the free fit, repeated to convergence;
+        ``irf_width_identified`` (``None`` unless the prompt width was fitted) is
+        False when the data leave the width undetermined (its error exceeds it).
 
         ``amplitudes`` are **pre-exponential**, not the photon fractions
         ``fit_lifetime_components`` reports; convert with
@@ -350,7 +413,7 @@ def fit_lifetime_model(
         irf_skew=irf_skew,
         period=period,
     )
-    _run(fit, irf=irf, fit_irf=fit_irf)
+    convergence = _run(fit, irf=irf, fit_irf=fit_irf)
     m = fit.model
     m.update()
     n = max(1, int(n_components))
@@ -381,7 +444,8 @@ def fit_lifetime_model(
         "lifetime_errors": tau_err,
         "amplitude_errors": amp_err,
         **_misfit(m),
-        **_irf_report(m, irf=irf, bin_width=bin_width),
+        **_irf_report(m, irf=irf, bin_width=bin_width, fitted=fit_irf and irf is None),
+        **convergence,
         "fit": fit,
         "model": m,
     }
@@ -534,13 +598,15 @@ def fit_fret_model(decay, **kwargs) -> dict:
     -------
     dict
         ``{distances, sigmas, fractions, efficiencies, donor_only_fraction,
-        forster_radius, donor_lifetime, reconstruction, weighted_residuals,
-        chi2_reduced, fit, model}``, sorted by distance. ``efficiencies`` are
+        forster_radius, donor_lifetime, the IRF report as for
+        :func:`fit_lifetime_model`, reconstruction, weighted_residuals,
+        chi2_reduced, passes, converged, fit, model}``, sorted by distance. ``efficiencies`` are
         derived from the fitted distances as ``1/(1+(R/R0)**6)`` — the mean-
         distance efficiency of each state, not the distribution-averaged one.
     """
     fit = build_fret_fit(decay, **kwargs)
-    _run(fit, irf=kwargs.get("irf"), fit_irf=bool(kwargs.get("fit_irf", False)))
+    fit_irf = bool(kwargs.get("fit_irf", False))
+    convergence = _run(fit, irf=kwargs.get("irf"), fit_irf=fit_irf)
     m = fit.model
     m.update()
     n = max(1, int(kwargs.get("n_states", 2)))
@@ -565,8 +631,14 @@ def fit_fret_model(decay, **kwargs) -> dict:
         "donor_lifetime": value["fret.tau0"],
         # Same IRF reporting as the lifetime fit, so callers can write the fitted
         # prompt back to a detector regardless of which fit produced it.
-        **_irf_report(m, irf=kwargs.get("irf"), bin_width=kwargs["bin_width"]),
+        **_irf_report(
+            m,
+            irf=kwargs.get("irf"),
+            bin_width=kwargs["bin_width"],
+            fitted=fit_irf and kwargs.get("irf") is None,
+        ),
         **_misfit(m),
+        **convergence,
         "fit": fit,
         "model": m,
     }

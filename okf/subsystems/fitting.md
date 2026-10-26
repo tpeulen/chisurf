@@ -899,6 +899,16 @@ the value in `np.array` and are broken); autoscaling is enabled by *fixing*
 `n0`; and lifetime bounds are off by default. `build_lifetime_fit` centralises
 all of it.
 
+**The fit runs to convergence** (2026-10-26). A generated prompt is aligned with its width and skew held
+for one pass; then the free fit repeats until no free parameter and not the reduced chi2 moves by more
+than 1e-6 relative (`_RTOL`), at most 200 passes (`_MAX_PASSES`, a `RuntimeWarning` when hit). One free
+pass used to be all, and it stopped on the optimiser's own budget while parameters still moved: a third
+pass took a fitted prompt width from 0.062 to 0.042 ns, and the stopping point differed between macOS and
+Linux. Results carry `passes` / `converged`, and — when the prompt width is fitted —
+`irf_width_error` / `irf_width_identified`: a decay much slower than its prompt leaves the width on a
+flat direction (error larger than the width; two platforms converged to 0.041 and 0.043 ns with
+identical lifetimes), which the result states instead of presenting an arbitrary number as measured.
+
 `build_fret_fit` / `fit_fret_model` do the same for FRET, driving a
 `GaussianModel`: each state is a Gaussian donor–acceptor distance with fitted
 mean/width/fraction plus the donor-only fraction `xDOnly`, and efficiencies
