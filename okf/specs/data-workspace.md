@@ -57,6 +57,22 @@ A small central vocabulary (`chisurf/core/data_kinds.py`), emitted as `kind` on 
 
 Fit-only paths (model choice, "+ Analysis", `build_fit_group`) take the fittable kinds only.
 
+## Experiments for the non-curve data (owner 2026-10-26)
+
+Declared in `experiment_configs.yaml` like the others, without fit models:
+
+* **Single photon counting** (kind `photons`) — TTTR files and photon members of containers. What an
+  analysis of it produces (burst runs, their tables, sub-ensemble decays) is a **result of this dataset**,
+  embedded in its container and shown as **child rows** of it in the workspace (`m000.pto/<run>[/<table>]`);
+  there is no separate burst experiment. Kind `bursts` remains only as what burst consumers declare to take.
+* **Imaging** — one experiment, two representations, both supported: **photon images** (photon events
+  with position: photon-counting detectors such as EIGER, scanning CLSM from a TTTR stream with markers),
+  which keep their photons (linked/embedded like photon streams; the image is built on demand at a chosen
+  binning), and **intensity images** (frames/stacks). The reader detects which; a row says which; plugins
+  declare which they accept.
+* **Instrument setup** (kind `setup`) — detector/channel setups, LUTs, kinetic schemes, IRF/background
+  patterns: the inputs a tool reads that are not measurements.
+
 ## Photon datasets in the project
 
 `PhotonStreamDataset(ExperimentalData)` (`core/data.py`): `address`, `size_bytes`, `sha256`, the header
