@@ -207,6 +207,29 @@ by quality review must be closed first.
 | `ui_state.py` | Supported window state; geometry is separate from essential science. |
 | `ui_layout.py` | The window layout in toolkit-neutral terms + per-front-end hints; backend registry (Qt adapter: `chisurf/gui/layout_state.py`). |
 
+## The temporary project (owner, 2026-10-26)
+
+A session starts with a blank `.cs.pto` (profile `ChiSurf.Project`) so data can be embedded from the
+first drop (`chisurf/core/project/temp_project.py`, `ShellProject.start_temporary` once the undo baseline
+exists). Until the user chooses a location it lives in `<tmp>/chisurf-projects/untitled-<stamp>.cs.pto`
+(0700; `CHISURF_PROJECT_TEMP_DIR` redirects it — the root `conftest.py` sends tests to the hermetic
+folder), beside a marker `<name>.cs.pto.session` naming the owning process and whether it has content.
+
+* The autosave tick writes the temporary project **in place** (embedded data lands in it) when the
+  science changed, without moving the saved baseline: it stays unsaved work.
+* **Save** on a temporary project asks for a location (Save As); after the verified save the temporary
+  file and marker are deleted. Open Project replaces it (deleted after the guard); Close Project deletes
+  it and starts a new one; a confirmed quit deletes it (Don't Save, or nothing in it).
+* A temporary project with content always counts as unsaved (quit and close ask once).
+* At start, temporary projects whose process is gone are deleted when empty or older than 14 days; the
+  others (a session that died with work) are listed in Recent for recovery.
+* The window title names the project file first (`• name.cs.pto (temporary — not saved) — ChiSurf`, via
+  emtk's `window_title` host hook); the menu bar's right end and the Start page show it too, amber while
+  temporary or unsaved. Measure: `test/native_emtk/test_emtk_temp_project.py` (6).
+* Open: the web page's in-process session has no project channel, so it starts no temporary project
+  (project actions are unavailable there, as before); a browser-file-system temporary project needs that
+  channel first.
+
 ## Autosave
 
 `chisurf/core/project/lifecycle.py: Autosave(interval_s, enabled)` decides *when* and

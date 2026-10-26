@@ -424,16 +424,19 @@ def test_the_fit_window_close_asks_then_removes_the_fit(shell):
     assert data.session.api.list_fits() == []
 
 
-def test_autosave_writes_a_silent_copy(shell, isolated):
+def test_autosave_writes_the_temporary_project_silently(shell, isolated):
+    """The session's temporary project is the working copy: autosave writes it in place."""
     driver = Driver(shell, size=(1400, 900))
     driver.frame(2)
     project = shell.project
+    _settle(driver, lambda: project.temporary and _idle(shell), "the temporary project")
+    target = Path(project.document.path)
     _demo_fit(driver, shell)
+    before = target.stat().st_mtime_ns
     project.autosave_now()
-    target = isolated / "autosave" / "untitled.autosave.cs.pto"
-    _settle(driver, lambda: _idle(shell) and target.is_file(), "the autosave copy")
+    _settle(driver, lambda: _idle(shell) and target.stat().st_mtime_ns != before, "the autosave")
     assert not project.dialogs.modal, "autosave never asks"
-    assert project.document.path is None, "autosave is not a save"
+    assert project.temporary and project.dirty, "autosave is not a save: the work stays unsaved"
     mtime = target.stat().st_mtime_ns
     project.autosave_now()
     _settle(driver, lambda: _idle(shell), "the second tick")

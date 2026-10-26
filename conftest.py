@@ -38,6 +38,9 @@ _REAL_SETTINGS_DIR = pathlib.Path.home() / ".chisurf"
 _HERMETIC_SETTINGS_DIR = pathlib.Path(tempfile.mkdtemp(prefix="chisurf-test-settings-"))
 os.environ["CHISURF_SETTINGS_DIR"] = str(_HERMETIC_SETTINGS_DIR)
 os.environ["MMFDB_SETTINGS_DIR"] = str(_HERMETIC_SETTINGS_DIR)
+# The session's temporary projects (chisurf.core.project.temp_project) go there too, not to the
+# real temp folder.
+os.environ.setdefault("CHISURF_PROJECT_TEMP_DIR", str(_HERMETIC_SETTINGS_DIR / "temp-projects"))
 # One directory per pytest process, tens of MB each (the user database): without this a day of
 # runs fills the disk, and a full disk makes every later test fail with ENOSPC.
 atexit.register(shutil.rmtree, _HERMETIC_SETTINGS_DIR, ignore_errors=True)

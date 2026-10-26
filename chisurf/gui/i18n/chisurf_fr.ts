@@ -71873,6 +71873,14 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
             <source>Look for an object with the dataset's checksum in your MMFDB database (signed in with Switch User): the store is content-addressed, so a match is the same file. Using it links the dataset to the MMFDB copy; it is fetched into the local cache.</source>
             <translation>Chercher dans votre base MMFDB (connecté via Changer d'utilisateur) un objet ayant la somme de contrôle du jeu de données : le stockage est adressé par contenu, une correspondance est donc le même fichier. L'utiliser lie le jeu de données à la copie MMFDB ; elle est récupérée dans le cache local.</translation>
         </message>
+        <message>
+            <source>Preparing the project…</source>
+            <translation>Préparation du projet…</translation>
+        </message>
+        <message>
+            <source>(temporary — not saved)</source>
+            <translation>(temporaire — non enregistré)</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

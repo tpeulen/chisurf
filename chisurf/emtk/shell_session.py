@@ -338,6 +338,13 @@ class ShellProject:
         #: Set once the user has agreed to quit; the window's close then goes through.
         self.quit_confirmed = False
         self._quitting = False
+        #: Whether the document is the session's temporary project (:mod:`~chisurf.core.project.temp_project`):
+        #: a blank ``.cs.pto`` in the temp folder until the user saves it somewhere.
+        self.temporary = False
+        #: Temporary projects of earlier sessions that ended with unsaved work (offered in Recent).
+        self.recoverable: list[Path] = []
+        #: The science last written into the temporary project (its fingerprint).
+        self._temp_written: str | None = None
 
     # ── plumbing ──────────────────────────────────────────────────────────
 
@@ -433,6 +440,74 @@ class ShellProject:
 
     def _history_ready(self) -> None:
         self.history_ready = True
+        if self.document.path is None and self.document.backend == "file":
+            self.start_temporary()
+
+    # ── the temporary project ─────────────────────────────────────────────
+
+    def start_temporary(self) -> bool:
+        """Make a blank ``.cs.pto`` in the temp folder the session's project (data embeds there).
+
+        Also cleans the temporary projects earlier sessions abandoned and lists the ones that hold
+        work in *Recent* for recovery.
+        """
+        from chisurf.core.project import storage, temp_project
+
+        def call() -> tuple[Any, Path, list[Path]]:
+            kept = temp_project.clean_abandoned()
+            path = temp_project.new_path()
+            project = self._live_channel.capture(display_name(path.name))
+            saved = Path(storage.save_file(project, path))
+            temp_project.mark(saved, has_content=False)
+            return project, saved, kept
+
+        def after(result: tuple[Any, Path, list[Path]]) -> None:
+            project, saved, kept = result
+            self.document.record_file_save(project, saved)
+            self.temporary = True
+            self.recoverable = kept
+            for path in kept:
+                if str(path) not in self.recent:
+                    self.recent = [str(path), *self.recent]
+            if kept:
+                _log.info("unsaved projects of earlier sessions kept for recovery: %s", kept)
+            self.shell.request_frame()
+
+        return self._run(tr("Preparing the project…"), call, after, quiet=True)
+
+    def _drop_temporary(self, path: Path | None = None) -> None:
+        """Delete the temporary project file (the user saved it elsewhere or gave it up)."""
+        from chisurf.core.project import temp_project
+
+        target = path if path is not None else self.document.path
+        if target is not None and temp_project.is_temporary(target):
+            temp_project.remove(target)
+        if path is None:
+            self.temporary = False
+
+    @property
+    def dirty(self) -> bool:
+        """Whether the science changed since the last save (cheap: the recorded fingerprints)."""
+        saved = self.document._saved_fingerprint
+        return (
+            self._last_fingerprint is not None
+            and saved is not None
+            and self._last_fingerprint != saved
+        )
+
+    def title_text(self) -> str:
+        """The window title: the project file first -- ``• name.cs.pto (temporary) — ChiSurf``."""
+        path = self.document.path
+        if path is not None:
+            name = Path(path).name
+        elif self.document.backend == "mmfdb":
+            name = f"{self.document.name} (MMFDB)"
+        else:
+            name = f"{self.document.name}{PROJECT_SUFFIX}"
+        text = f"{'• ' if self.dirty else ''}{name}"
+        if self.temporary:
+            text += " " + tr("(temporary — not saved)")
+        return f"{text} — ChiSurf"
 
     @property
     def _live_channel(self) -> ProjectChannel:
@@ -586,6 +661,8 @@ class ShellProject:
         """Worker: ``(has content, modified since the last save)``."""
         if not self._live_channel.content():
             return False, False
+        if self.temporary:
+            return True, True  # nothing the user chose holds it yet
         try:
             project = self._live_channel.capture(self.document.name)
             return True, self.document.is_modified(project)
@@ -642,10 +719,12 @@ class ShellProject:
             return False
         if backend == "mmfdb":
             return self._ask_database_save(then)
-        if not save_as and self.document.path is not None:
+        if not save_as and self.document.path is not None and not self.temporary:
             return self._save_file(Path(self.document.path), then)
         title = tr("Export Project as .cs.pto") if save_as else tr("Save Project")
-        name = display_name(self.document.name if self.document.name != "untitled" else None)
+        name = display_name(
+            None if self.temporary or self.document.name == "untitled" else self.document.name
+        )
         self.open_file_dialog(
             title,
             "save",
@@ -690,6 +769,10 @@ class ShellProject:
             before = self.document.clone()
             self.document.record_file_save(project, saved)
             self._discard_autosave(before, self.document)
+            if self.temporary and before.path is not None and Path(before.path) != Path(saved):
+                # Saved where the user chose: the temporary file has done its job.
+                self._drop_temporary(Path(before.path))
+                self.temporary = False
             self._add_recent(saved)
             self.status = tr("Saved {path}.").format(path=saved)
             if exported:
@@ -824,7 +907,11 @@ class ShellProject:
         def after(project: Any) -> None:
             import chisurf
 
+            previous = self.document.path if self.temporary else None
             self.document.record_file_save(project, path)
+            if previous is not None and Path(previous) != path:
+                self._drop_temporary(Path(previous))
+            self.temporary = False
             self._add_recent(path)
             chisurf.working_path = path.parent
             self._refresh_docks()
@@ -932,8 +1019,11 @@ class ShellProject:
                 return result
 
             def after(_result: Any) -> None:
+                if self.temporary:
+                    self._drop_temporary()
                 self.document.reset()
                 self._refresh_docks()
+                self.start_temporary()
                 if reinitialize:
                     self.dialogs.message(
                         tr("Reinitialization Complete"),
@@ -995,6 +1085,20 @@ class ShellProject:
         if not self.autosave.enabled or not self._live_channel.content():
             return None
         project = self._live_channel.capture(display_name(self.document.name))
+        if self.temporary and self.document.path is not None:
+            # The temporary project is the working copy: written in place (embedded data lands in
+            # it), its baseline untouched -- it stays unsaved until the user chooses a location.
+            # An unchanged session is not written again.
+            from chisurf.core.project import temp_project
+            from chisurf.core.project.lifecycle import snapshot_fingerprint
+
+            fingerprint = snapshot_fingerprint(project)
+            if fingerprint == self._temp_written:
+                return None
+            saved = Path(storage.save_file(project, Path(self.document.path)))
+            temp_project.mark(saved, has_content=True)
+            self._temp_written = fingerprint
+            return saved
         return self.autosave.run(
             project, storage.save_file, self.document, _working_path(), time.monotonic()
         )
@@ -1016,6 +1120,8 @@ class ShellProject:
 
         def confirmed() -> None:
             self.quit_confirmed = True
+            if self.temporary:
+                self._drop_temporary()
             self.shell.request_close()
 
         if not self.guard(confirmed, quitting=True):

@@ -1099,6 +1099,33 @@ class EmtkShellApp(ImApp):
         im.end()
         return height
 
+    @property
+    def window_title(self) -> str:
+        """The native window's title (read by every emtk host after each frame): the project file first."""
+        project = getattr(self, "project", None)
+        return project.title_text() if project is not None else "ChiSurf"
+
+    def _draw_project_badge(self) -> None:
+        """The project file on the menu bar's right: its name, marked when temporary or unsaved."""
+        project = getattr(self, "project", None)
+        if project is None:
+            return
+        document = project.document
+        name = str(document.path).replace("\\", "/").rsplit("/", 1)[-1] if document.path else f"{document.name}.cs.pto"
+        text = f"{'• ' if project.dirty else ''}📁 {name}"
+        if project.temporary:
+            text += "  " + tr("(temporary — not saved)")
+        width = im.calc_text_size(text)[0] + 16.0
+        im.same_line()  # stay on the menu row: a cursor move alone starts a new line
+        avail = im.get_content_region_avail()[0]
+        if avail > width:
+            im.set_cursor_pos_x(im.get_cursor_pos_x() + avail - width)
+        colour = (1.0, 0.78, 0.35, 1.0) if project.temporary or project.dirty else (0.55, 0.85, 1.0, 1.0)
+        im.text_colored(colour, text)
+        self.item_rects["project_badge"] = im.get_item_rect()
+        if document.path:
+            im.set_item_tooltip(str(document.path))
+
     def _draw_menu_bar(self, width: float) -> None:
         im.set_next_window_pos((0.0, 0.0), im.Cond.ALWAYS)
         im.set_next_window_size((width, MENU_BAR), im.Cond.ALWAYS)
@@ -1125,6 +1152,7 @@ class EmtkShellApp(ImApp):
                     self._draw_actions(actions)
                     self._draw_plugin_entries(plugins.get(menu, {}), separate=bool(actions))
                     im.end_menu()
+            self._draw_project_badge()
             im.end_menu_bar()
         im.end()
 
@@ -1976,7 +2004,12 @@ class EmtkShellApp(ImApp):
         self.item_rects["status"] = im.get_item_rect()
         document = self.project.document
         where = str(document.path) if document.path else tr("not saved yet")
-        im.text_disabled(tr("Project: {name} ({where})").format(name=document.name, where=where))
+        line = tr("Project: {name} ({where})").format(name=document.name, where=where)
+        if self.project.temporary:
+            line += " " + tr("(temporary — not saved)")
+        if self.project.dirty:
+            line = "• " + line
+        im.text_colored((1.0, 0.78, 0.35, 1.0) if self.project.temporary else (0.55, 0.85, 1.0, 1.0), line)
         self.item_rects["project"] = im.get_item_rect()
         if self.project.status:
             im.text_disabled(self.project.status)

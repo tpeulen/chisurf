@@ -33,6 +33,7 @@ KNOWN_GAPS: set[str] = set()
 #: Qt controls that are present under another spelling or chrome the dock manager replaces.
 RENAMED = {
     "dropfileshere.": "the File field's placeholder",
+    "datatype": "the Datasets column is Experiment now, beside the new Kind column (the data workspace)",
     "fcs(general:diffusi...-kristine_with_error": "the fit window's tab title, not elided",
     "−": "MDI minimise: dock windows float, tab and close instead",
     "□": "MDI maximise: dock windows float, tab and close instead",
@@ -249,7 +250,9 @@ def _emtk_inventory(driver: Driver, shell) -> set[str]:
         if s.get("type") == "choice"
     )
     options += list(noise.get("labels") or [])
-    options += [load_view("read_data")["sections"][2]["placeholder"]]
+    options += [
+        next(s for s in load_view("read_data")["sections"] if s.get("attr") == "path")["placeholder"]
+    ]
     # The model editor's hidden panels (the inactive diffusion presets) and the controller's
     # 2-D range pair (hidden for 1-D data): present, as the Qt inventory counts hidden widgets.
     options += sorted(data.editor.inventory())

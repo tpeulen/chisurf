@@ -71735,6 +71735,14 @@ fortgesetzt werden.
             <source>Look for an object with the dataset's checksum in your MMFDB database (signed in with Switch User): the store is content-addressed, so a match is the same file. Using it links the dataset to the MMFDB copy; it is fetched into the local cache.</source>
             <translation>In Ihrer MMFDB-Datenbank (angemeldet über Benutzer wechseln) nach einem Objekt mit der Prüfsumme des Datensatzes suchen: Der Speicher ist inhaltsadressiert, ein Treffer ist also dieselbe Datei. Wird er verwendet, wird der Datensatz mit der MMFDB-Kopie verknüpft; sie wird in den lokalen Zwischenspeicher geholt.</translation>
         </message>
+        <message>
+            <source>Preparing the project…</source>
+            <translation>Projekt wird vorbereitet…</translation>
+        </message>
+        <message>
+            <source>(temporary — not saved)</source>
+            <translation>(temporär — nicht gespeichert)</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>
