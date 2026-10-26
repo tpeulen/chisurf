@@ -271,6 +271,10 @@ class TestWgslSource:
         "hiz_pyramid.wgsl": "raw",
         "temporal.wgsl": "raw",
         "postlight.wgsl": "raw",
+        # PRD-128 WP5/WP10: the multishadow bake (compute), and the 3-D label
+        # vertex stage, which is appended to emtk's ui.wgsl as ui.wgsl is.
+        "multishadow.wgsl": "raw",
+        "label3d.wgsl": "raw",
     }
 
     def test_every_shader_is_classified(self):

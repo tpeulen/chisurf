@@ -122,16 +122,14 @@ def test_a_preset_needing_nothing_extra_reports_no_gap(session):
     assert not any("not applied" in m for m in messages)
 
 
-def test_soft_and_gentle_are_identical_until_multishadow_exists(session):
-    """Not a bug: in ChimeraX they differ *only* in multishadow map size and
-    depth bias, neither of which can be applied yet. Pinned so that when
-    multishadow lands, this test fails and forces the difference to be real.
-    """
+def test_soft_and_gentle_differ_now_that_multishadow_exists(session):
+    """They differ only in multishadow parameters (map size, depth bias);
+    multishadow landed with PRD-128 WP5, so the two presets must now differ."""
     viewer, _shared, do, _messages, _errors = session
     do("lighting soft")
     soft = _state(viewer)
     do("lighting gentle")
-    assert _state(viewer) == soft
+    assert _state(viewer) != soft
 
 
 # --------------------------------------------------------------------------- #

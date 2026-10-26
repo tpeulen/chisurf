@@ -190,10 +190,11 @@ def test_a_distance_label_reaches_the_frame():
             f"{[o.id for o in win.viewer._scene.objects]} {_messages[-2:]}"
         )
         assert renderer._labels[0].text.replace(".", "").isdigit()
-        chrome = renderer._chrome_quads()
-        under = renderer._with_screen_overlays(None)
-        assert under is not None and len(under), "the labels drew no glyphs"
-        assert chrome is not None and len(chrome) >= len(under)
+        # PRD-128 WP10: labels are scene overlays now, drawn by the renderer
+        # from the frame's arguments rather than riding in the chrome quads.
+        labels = renderer.frame_arguments()["labels"]
+        assert labels, "the frame carried no labels to draw"
+        assert labels[0].text.replace(".", "").isdigit()
     finally:
         win.close()
 
