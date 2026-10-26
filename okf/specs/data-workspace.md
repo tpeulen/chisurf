@@ -170,6 +170,22 @@ section (a choice or table of workspace rows of the declared kinds, from a shell
 `RUN_PICKER_SECTION` / `with_run_picker` pattern generalised), so the plugin never draws its own file
 buttons. Hubs feed steps from their context by declared kind instead of hand-written `_to_<role>` adapters.
 
+## Acceptance (owner 2026-10-26: "the user does not open files; one file entry point in the UI")
+
+* **One entry point.** The shell drop (and its one "Add data…" equivalent for keyboard users) is the only
+  place the UI asks for an *input* file. Saving/exporting *outputs* keeps its save dialogs.
+* **Every input is a workspace item.** Measurements (photons, containers, curves, images, structures) and the
+  settings a tool reads (detector/channel setups, LUTs, kinetic schemes, IRF/background patterns) — kind
+  `setup` — enter through the drop and live in the project.
+* **Results go back into the project.** What a tool writes (burst runs, decays, correlations, maps, fits)
+  becomes a workspace item of its kind, so the next step picks it from the workspace, never from disk.
+* **Guard.** A test fails on any input file dialog, input drop hook or MMFDB-picker-to-local-path in a
+  plugin UI; its allowlist starts as today's inventory and only shrinks, to empty.
+* **Proof.** Workspace journeys extend `test/e2e/test_pto_journeys.py`: every file-based workflow of the
+  [workflow matrix](pto-workflow-matrix.md) and of the plugin inventory (photon tools, burst chain, FCS,
+  decays, imaging, structures) is walked in the real UI from one drop into a `.cs.pto` project; opening an
+  input file dialog during the walk fails the test.
+
 ## Order of work
 
 1. Kinds + DTO `kind` + rows keep kind/source; the photon dataset; project storage (embedded/referenced).
