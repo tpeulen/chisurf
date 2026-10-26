@@ -803,7 +803,7 @@
                                     "description": "Why Upload draft is grey, if it is."
                                 }
                             ],
-                            "tooltip": "The Zenodo record files: what will be deposited."
+                            "description": "The Zenodo record files: what will be deposited."
                         },
                         {
                             "type": "panel",
@@ -866,7 +866,7 @@
                                     ]
                                 }
                             ],
-                            "tooltip": "Deposit settings: access right, licence and community curation."
+                            "description": "Deposit settings: access right, licence and community curation."
                         }
                     ]
                 },

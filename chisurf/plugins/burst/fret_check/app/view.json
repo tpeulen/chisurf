@@ -41,12 +41,14 @@
                         {
                             "action": "show_help",
                             "label": "Help",
-                            "description": "What the page does, every check and setting, and how to read the plots."
+                            "description": "Open the help for this window.",
+                            "icon": "❓"
                         },
                         {
                             "action": "start_guide",
                             "label": "Guide",
-                            "description": "A step-by-step tour: open data, read the quality verdict, look at E/S, go further in advanced mode."
+                            "description": "Start a step-by-step tour that points at the real controls.",
+                            "icon": "📖"
                         }
                     ]
                 },
@@ -80,7 +82,7 @@
                             "attr": "demo",
                             "label": "Example",
                             "options_source": "demo_names",
-                            "description": "A simulated measurement (tttrlib's photon simulator): cw, PIE or \u00b5sALEX, with or without polarization, noise channels, one colour."
+                            "description": "A simulated measurement (tttrlib's photon simulator): cw, PIE or µsALEX, with or without polarization, noise channels, one colour."
                         },
                         {
                             "type": "button_row",
@@ -116,7 +118,8 @@
                         {
                             "action": "cancel",
                             "label": "Cancel",
-                            "description": "Stop the running analysis. The results shown before stay."
+                            "description": "Stop the running analysis. The results shown before stay.",
+                            "icon": "✕"
                         }
                     ]
                 },
@@ -143,7 +146,7 @@
                         "cw",
                         "ALEX / PIE"
                     ],
-                    "description": "Detected from the data: alternating when a micro-time (PIE) or macro-time (\u00b5sALEX) window leaves the donor detectors dark."
+                    "description": "Detected from the data: alternating when a micro-time (PIE) or macro-time (µsALEX) window leaves the donor detectors dark."
                 },
                 {
                     "type": "value",
@@ -168,7 +171,7 @@
                         "attr": "excitation",
                         "equals": "cw"
                     },
-                    "description": "Donor-excitation window, 'start-stop' in micro-time channels (for \u00b5sALEX: in alternation-phase ticks)."
+                    "description": "Donor-excitation window, 'start-stop' in micro-time channels (for µsALEX: in alternation-phase ticks)."
                 },
                 {
                     "type": "value",
@@ -179,7 +182,7 @@
                         "attr": "excitation",
                         "equals": "cw"
                     },
-                    "description": "Acceptor-excitation window, 'start-stop' in micro-time channels (for \u00b5sALEX: in alternation-phase ticks)."
+                    "description": "Acceptor-excitation window, 'start-stop' in micro-time channels (for µsALEX: in alternation-phase ticks)."
                 },
                 {
                     "type": "button_row",
@@ -234,18 +237,18 @@
                     "minimum": 1.0,
                     "maximum": 100000.0,
                     "decimals": 1,
-                    "suffix": " \u00b5s",
+                    "suffix": " µs",
                     "description": "... arriving within T microseconds belong to a burst."
                 },
                 {
                     "type": "value",
                     "attr": "cde_tau_us",
-                    "label": "2CDE \u03c4",
+                    "label": "2CDE τ",
                     "kind": "float",
                     "minimum": 1.0,
                     "maximum": 10000.0,
                     "decimals": 1,
-                    "suffix": " \u00b5s",
+                    "suffix": " µs",
                     "description": "Kernel width of FRET-2CDE and ALEX-2CDE."
                 },
                 {
@@ -286,12 +289,12 @@
                     "type": "toggle",
                     "attr": "auto_calibrate",
                     "label": "Auto-calibrate",
-                    "description": "ALEX/PIE: all factors from the measurement (tttrlib.auto_calibrate). cw: the leakage \u03b1 from the donor-only bursts; \u03b3, \u03b2 and \u03b4 need a reference and stay as typed."
+                    "description": "ALEX/PIE: all factors from the measurement (tttrlib.auto_calibrate). cw: the leakage α from the donor-only bursts; γ, β and δ need a reference and stay as typed."
                 },
                 {
                     "type": "value",
                     "attr": "gamma",
-                    "label": "\u03b3",
+                    "label": "γ",
                     "kind": "float",
                     "minimum": 0.01,
                     "maximum": 20.0,
@@ -301,7 +304,7 @@
                 {
                     "type": "value",
                     "attr": "alpha",
-                    "label": "\u03b1 (leakage)",
+                    "label": "α (leakage)",
                     "kind": "float",
                     "minimum": 0.0,
                     "maximum": 1.0,
@@ -311,7 +314,7 @@
                 {
                     "type": "value",
                     "attr": "delta",
-                    "label": "\u03b4 (dir. exc.)",
+                    "label": "δ (dir. exc.)",
                     "kind": "float",
                     "minimum": 0.0,
                     "maximum": 1.0,
@@ -321,7 +324,7 @@
                 {
                     "type": "value",
                     "attr": "beta",
-                    "label": "\u03b2",
+                    "label": "β",
                     "kind": "float",
                     "minimum": 0.01,
                     "maximum": 20.0,

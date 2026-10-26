@@ -45,7 +45,7 @@
         {"type": "button_row",
          "description": "Add or remove input files.",
          "buttons": [
-           {"action": "load_example", "label": "Load example",
+           {"action": "load_example", "label": "Load example", "icon": "🧪",
             "description": "Generate the deterministic demonstration stream (two detectors with distinct micro-time decays) in the settings cache and read it."},
            {"action": "request_add_files", "label": "Files",
             "description": "Load uniform-illumination (or, on the settings tab, preview) TTTR files."},

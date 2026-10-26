@@ -140,3 +140,36 @@ def test_intrinsic_help_translates_templates_before_formatting_bounds(monkeypatc
         "Saisissez un entier. Validez avec Entrée ou en cliquant ailleurs. "
         "Les valeurs sont limitées entre 0 et 10."
     )
+
+
+class PairApp(ImApp):
+    """A from/to pair on one row, each field given 120 px by its caller."""
+
+    def __init__(self):
+        self.buffers = {}
+        self.rects = {}
+        super().__init__(self.render)
+        self.io.wall_clock = False
+
+    def render(self):
+        """Draw the pair the way a range control does."""
+        context = im.get_current_context()
+        im.begin("Pair", context.box)
+        for key in ("from", "to"):
+            if key == "to":
+                im.same_line()
+            im.set_next_item_width(120)
+            typed_field.typed_number_field(key, 5, self.buffers)
+            self.rects[key] = im.get_item_rect()
+        im.end()
+
+
+def test_a_width_set_by_the_caller_is_the_whole_field_and_the_pair_stays_on_the_row():
+    """set_next_item_width before the field sizes text + arrows; it no longer fills the row."""
+    app = PairApp()
+    driver = Driver(app, (600, 200))
+    driver.frame(2)
+    x0, _, w0, _ = app.rects["from"]
+    x1, _, w1, _ = app.rects["to"]
+    assert w0 < 120 and w1 < 120, (w0, w1)
+    assert x0 + w0 < x1 < 600 - w1, (app.rects, "the 'to' field must be on screen beside 'from'")

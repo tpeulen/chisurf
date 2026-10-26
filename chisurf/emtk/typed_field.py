@@ -61,10 +61,13 @@ def typed_number_field(
     flags = int(im.InputTextFlags.ENTER_RETURNS_TRUE) | int(im.InputTextFlags.AUTO_SELECT_ALL)
     shown = buffers.get(key, format(value, "d" if integer else "g"))
     # Reserve the row's end for the two step arrows, so the text field and the
-    # arrows share one row and the label keeps its place.
+    # arrows share one row and the label keeps its place. A width the caller set
+    # (set_next_item_width / push_item_width) is the whole field's, arrows included;
+    # overriding it made a "from" field fill the row and push its "to" off the edge.
     avail, _ = im.get_content_region_avail()
+    total = get_current_context().take_next_item_width() or avail
     frame = im.get_frame_height()
-    im.set_next_item_width(max(avail - 2.0 * frame - 8.0, 40.0))
+    im.set_next_item_width(max(total - 2.0 * frame - 8.0, 40.0))
     entered, typed = im.input_text(str(label) + "##" + str(key), shown, "", flags)
     input_rect = im.get_item_rect()
     input_hovered = im.is_item_hovered()

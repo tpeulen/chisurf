@@ -690,7 +690,7 @@ class AudifierApp(TourTarget, ImApp):
         pressed = button_row(
             [
                 {
-                    "label": "Load example",
+                    "label": action_caption("example"),
                     "key": "load_example",
                     "tip": "Generate the deterministic demonstration stream (a µs-ALEX measurement with bursts on two detectors) and load it.",
                 },
