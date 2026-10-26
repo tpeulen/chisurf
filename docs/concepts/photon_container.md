@@ -138,6 +138,8 @@ Every reader, the API and the command line take an address wherever they take a 
 installed tttrlib has it, ChiSurf translates the address where it hands a member to tttrlib.
 
 (concept-mmfdb-links)=
+A ChiSurf project links its photon streams, images and burst containers this way by default; the Project data window (`chisurf/plugins/core/project_data/`, {doc}`../guides/114_project_data`) lists the links, finds moved originals by name and checksum, and embeds them before a project is shared.
+
 ## Links to MMFDB objects
 
 A dataset may also link a measurement that lives in an MMFDB database instead of a local file:

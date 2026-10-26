@@ -3080,12 +3080,12 @@ guides/figures/games_number_quest_header.png:
 
 guides/figures/hmm_window.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/hmm_shot.py::main
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/92_hmm_binned_traces.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/hmm_window.png.
+    From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d)
+    MMFDB_SETTINGS_DIR=$(mktemp -d) python docs/guides/screenshots/hmm_shot.py. Opens the Hidden
+    Markov model tool at 1200x800 (RealisticDriver, real painter), presses Load example (the
+    three-state two-channel trace), scans one to five states, fits three; read the PNG.
   pages:
   - docs/guides/92_hmm_binned_traces.md
 
@@ -4242,3 +4242,124 @@ guides/figures/console_dock.png:
   recipe: >-
     Same script as 110_terminal_panes.png. Builds the emtk shell (no session, no plugins loaded) at
     1440x900, focuses the Console dock and runs 2 + 40 in its Python pane.
+guides/figures/112_fret_check_quality.png:
+  caption: 'FRET check in simple mode after Simulate on the PIE 2c example, with the Quality window: checks
+    table, 1 s count-rate trace and gap histogram with its Poisson fit.'
+  kind: screenshot
+  origin: docs/guides/screenshots/fret_check_shot.py::main
+  pages:
+  - docs/guides/112_fret_check.md
+  recipe: From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
+    -d) python docs/guides/screenshots/fret_check_shot.py. The script drives the real plugin headlessly
+    (RealisticDriver, real painter) into the state the caption describes and writes the PNG; read it after.
+guides/figures/112_fret_check_es.png:
+  caption: 'The same simulated PIE run with the E / S window in front: the joint burst histogram and its
+    marginals.'
+  kind: screenshot
+  origin: docs/guides/screenshots/fret_check_shot.py::main
+  pages:
+  - docs/guides/112_fret_check.md
+  recipe: From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
+    -d) python docs/guides/screenshots/fret_check_shot.py. The script drives the real plugin headlessly
+    (RealisticDriver, real painter) into the state the caption describes and writes the PNG; read it after.
+guides/figures/112_fret_check_channels.png:
+  caption: 'Advanced mode: the Channels window (detected donor/acceptor channels and excitation windows
+    over the micro-time histogram) beside the Bursts window.'
+  kind: screenshot
+  origin: docs/guides/screenshots/fret_check_shot.py::main
+  pages:
+  - docs/guides/112_fret_check.md
+  recipe: From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
+    -d) python docs/guides/screenshots/fret_check_shot.py. The script drives the real plugin headlessly
+    (RealisticDriver, real painter) into the state the caption describes and writes the PNG; read it after.
+guides/figures/112_fret_check_trace.png:
+  caption: 'Advanced mode: the Corrections window with Subtract background on, beside the photon trace
+    with one band per burst.'
+  kind: screenshot
+  origin: docs/guides/screenshots/fret_check_shot.py::main
+  pages:
+  - docs/guides/112_fret_check.md
+  recipe: From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
+    -d) python docs/guides/screenshots/fret_check_shot.py. The script drives the real plugin headlessly
+    (RealisticDriver, real painter) into the state the caption describes and writes the PNG; read it after.
+guides/figures/113_metadata_editor_flrcif.png:
+  caption: 'The flrCIF schema over an opened metadata.json: typed fields filled, an invalid number reported,
+    the extras below the schema fields.'
+  kind: screenshot
+  origin: docs/guides/screenshots/metadata_editor_shot.py::flrcif_file
+  pages:
+  - docs/guides/113_metadata_editor.md
+  recipe: From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
+    -d) python docs/guides/screenshots/metadata_editor_shot.py. The script drives the real plugin headlessly
+    (RealisticDriver, real painter) into the state the caption describes and writes the PNG; read it after.
+guides/figures/113_metadata_editor_zenodo.png:
+  caption: 'The Zenodo schema on a new record: upload type, date, license and access filled, the two required
+    fields still empty and reported.'
+  kind: screenshot
+  origin: docs/guides/screenshots/metadata_editor_shot.py::zenodo_fresh
+  pages:
+  - docs/guides/113_metadata_editor.md
+  recipe: From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
+    -d) python docs/guides/screenshots/metadata_editor_shot.py. The script drives the real plugin headlessly
+    (RealisticDriver, real painter) into the state the caption describes and writes the PNG; read it after.
+guides/figures/34_legacy_export_folder.png:
+  caption: 'Legacy Export after Export burst folder on the Burst Selection demo container: the .bur, the
+    BVA companion and the BVA table written.'
+  kind: screenshot
+  origin: docs/guides/screenshots/legacy_export_shot.py::legacy_export_figures
+  pages:
+  - docs/guides/34_exporting_burst_data.md
+  recipe: From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
+    -d) python docs/guides/screenshots/legacy_export_shot.py. The script drives the real plugin headlessly
+    (RealisticDriver, real painter) into the state the caption describes and writes the PNG; read it after.
+guides/figures/34_legacy_export_alex.png:
+  caption: 'Legacy Export after Write ALEX-Suite CSVs on the burst-search run: the four default CSV files
+    listed.'
+  kind: screenshot
+  origin: docs/guides/screenshots/legacy_export_shot.py::legacy_export_figures
+  pages:
+  - docs/guides/34_exporting_burst_data.md
+  recipe: From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
+    -d) python docs/guides/screenshots/legacy_export_shot.py. The script drives the real plugin headlessly
+    (RealisticDriver, real painter) into the state the caption describes and writes the PNG; read it after.
+guides/figures/40_agent_clarify.png:
+  caption: 'The Agent panel after the shipped burstwise prompt (scripted model, real tools and data):
+    the clarification round''s five questions as an assistant message.'
+  kind: screenshot
+  origin: docs/guides/screenshots/agent_shot.py::main
+  pages:
+  - docs/guides/40_ai_assistant.md
+  recipe: From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
+    -d) python docs/guides/screenshots/agent_shot.py. The script drives the real plugin headlessly (RealisticDriver,
+    real painter) into the state the caption describes and writes the PNG; read it after.
+guides/figures/40_agent_chain.png:
+  caption: 'After the answers: six tool calls from detection to the distance fit and the fit report (scripted
+    model, real tools and simulated data).'
+  kind: screenshot
+  origin: docs/guides/screenshots/agent_shot.py::main
+  pages:
+  - docs/guides/40_ai_assistant.md
+  recipe: From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
+    -d) python docs/guides/screenshots/agent_shot.py. The script drives the real plugin headlessly (RealisticDriver,
+    real painter) into the state the caption describes and writes the PNG; read it after.
+guides/figures/114_project_data_located.png:
+  caption: 'The demonstration project: two files found, c missing; a folder search lists both files named
+    c.tif, the one with the recorded size first.'
+  kind: screenshot
+  origin: docs/guides/screenshots/project_data_shot.py::main
+  pages:
+  - docs/guides/114_project_data.md
+  recipe: From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
+    -d) python docs/guides/screenshots/project_data_shot.py. Loads the plugin's demonstration project
+    (one file moved, a same-name decoy), searches the backup folder, then uses the candidate, makes the
+    project self-contained and saves; read the PNGs.
+guides/figures/114_project_data_self_contained.png:
+  caption: 'After Use candidate, Make self-contained and Save project: every dataset stored in the project.'
+  kind: screenshot
+  origin: docs/guides/screenshots/project_data_shot.py::main
+  pages:
+  - docs/guides/114_project_data.md
+  recipe: From the repository root (arm64 env), IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
+    -d) python docs/guides/screenshots/project_data_shot.py. Loads the plugin's demonstration project
+    (one file moved, a same-name decoy), searches the backup folder, then uses the candidate, makes the
+    project self-contained and saves; read the PNGs.

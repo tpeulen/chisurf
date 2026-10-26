@@ -114,13 +114,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Max components | `max_components` | int |  | 1 … 50 | Largest number of components tried by Auto components. |
 | Covariance regularisation | `reg_covar` | float |  | 0.0 … 1.0 | Added to the covariance diagonal for stability. |
 
-### Metadata
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Key | `metadata_key` | choice |  | choices: `metadata_keys` | A metadata key (the common ones first, then the PDBx keys). |
-| Value | `metadata_value` | str |  |  | Its value. |
-
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |

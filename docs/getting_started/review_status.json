@@ -1,9 +1,9 @@
 {
   "index.md": {
-    "date": "2026-10-20",
-    "reviewer": "agent",
+    "date": "2026-10-26",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "32219f123a109812753f5c254cc75c3d57019f48007ca41fe7b4a3f1665772b8",
+    "sha256": "03579363789ebec7e6a107a6d8c53c9d9eff5c804cbcd54e92ea5db65a4350f9",
     "status": "ai-reviewed"
   },
   "settings.md": {

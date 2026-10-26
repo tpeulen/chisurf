@@ -55,6 +55,7 @@ saving_projects
 102_mmfdb_admin
 109_zenodo_deposit
 113_metadata_editor
+114_project_data
 ```
 
 ## smFRET: efficiency, stoichiometry and corrections
@@ -281,6 +282,7 @@ irf_estimation
 | [QuEst Analysis: quench scale and stickiness from measured site lifetimes](111_quenching_analysis.md) | `quenching_estimator` (Analysis page), `csc quest analyse`, `quest.analysis.*` RPC |
 | [Checking an smFRET measurement](112_fret_check.md) | `fret_check` (Spectroscopy › Single-Molecule › FRET check), `fret_check.analyse` / `fret_check.qc` RPC |
 | [Editing a metadata record](113_metadata_editor.md) | `metadata_editor` (File › Data › Metadata Editor), embedded in Burst Selection and the Zenodo deposit |
+| [Linked data in a project — find moved files, make a project self-contained](114_project_data.md) | `project_data` (File › Data › Project data), `chisurf.core.project.link_repair` |
 | [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](81_trajectory_tools.md) | `traj_align`, `traj_convert`, `traj_fret`, ... (Structure → Trajectory, one button each), `core.structure.trajectory_data` |
 | [FRET lines: static, dynamic and model lines for the E–lifetime plot](82_fret_lines.md) | `fret_line` (Tools › Calculators), `core.fluorescence.fret.lines` |
 | [Spectra, overlap integrals and R₀](83_spectra_and_r0.md) | `spectra_downloader` (Tools → Calculators), Förster calculator (TCSPC FRET κ² row → calc R0) |

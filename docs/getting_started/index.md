@@ -52,6 +52,14 @@ windows open; a tool opens as a tab beside the Workspace tab. **Log** and
 **Console** share the bottom edge. See
 [Multiple document interface](../manual/multiple_document_interface.md).
 
+Data enters through one place: drop files anywhere on the window (or use **Read data**).
+ChiSurf sorts each file by kind — photon streams, containers, curves, images, structures, setups —
+and adds it to **Datasets**, the workspace every tool picks its input from. **Add as** on the
+Read data page decides whether a large file is *linked* (the project records its path, size and
+checksum and stays small; the default) or *embedded* in the project file; see
+{doc}`../guides/114_project_data`. The **Show** filter above the Datasets table narrows it to one
+kind of data.
+
 Docks are yours to rearrange: drag one out of the stack to another edge,
 resize it, or close it. The arrangement is saved when ChiSurf exits and
 restored on the next start.

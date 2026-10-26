@@ -41,7 +41,7 @@ This plugin's window is an EMTK app without declarative parameter sections: its 
 
 ## Theory and workflow
 
-- **Theory** — [Code Editor: scripts and notebooks inside the analysis session](/concepts/code_editor.md)
+- **Theory** — [Code Editor: scripts and notebooks inside the analysis session](/concepts/code_editor.md), [The workflow agent — driving ChiSurf in plain words](/concepts/workflow_agent.md)
 - **Workflow** — [Driving ChiSurf from its console](/guides/59_console.md), [Notebooks that run inside ChiSurf](/guides/64_notebooks.md)
 
 ## Source

@@ -27,14 +27,14 @@ Review a deposition record item by item -- every measurement folder, calibration
 
 Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
 
-### Step 1 · New record
+### New record
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Name | `new_name` | str |  |  | Folder and archive name: lower case, digits, '.', '_' or '-', e.g. t4l-unfolding-smfret-k60-n132c. |
 | Title | `new_title` | str |  |  | The Zenodo title (you can change it in step 3). |
 
-### Step 2 · Add data
+### Add data
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
@@ -43,29 +43,13 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Group | `add_group` | str |  |  | The calibration group: the setup and day it calibrates, e.g. 2014-08-12_pq-hydraharp. |
 | record_tree | `record_tree` | code_editor |  |  | What the record holds now: every item with its file count and size. |
 
-### Step 3 · Zenodo metadata
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Title | `meta_title` | str |  |  | The record title. |
-| Type | `meta_upload_type` | choice |  | choices: `UPLOAD_TYPES` | Zenodo upload type; measurement data is a dataset. |
-| Date | `meta_publication_date` | str |  |  | Publication date, YYYY-MM-DD. |
-| Version | `meta_version` | str |  |  | Optional version, e.g. 1.0. |
-| Access | `meta_access_right` | choice |  | choices: `ACCESS_RIGHTS` | open, embargoed (with a date), restricted or closed. |
-| License | `meta_license` | choice |  | choices: `LICENSES` | Needed for open and embargoed access; data is usually cc-by-4.0. Pick one or type any Zenodo licence id (e.g. odbl-1.0). |
-| Embargo until | `meta_embargo_date` | str |  |  | When an embargoed record opens, YYYY-MM-DD. |
-| Creators | `meta_creators` | text |  |  | One per line: Family, Given; Affiliation; ORCID (affiliation and ORCID optional). |
-| Description | `meta_description` | text |  |  | What the data are and how they were measured (HTML allowed: &lt;p>, &lt;ul>, &lt;a>). |
-| Keywords | `meta_keywords` | str |  |  | Comma separated, e.g. smFRET, T4 lysozyme, urea unfolding. |
-| Related | `meta_related` | text |  |  | One per line: relation and identifier, e.g. isSupplementTo 10.1101/2026.01.01.123456 (the paper). |
-
 ### Sent to Zenodo (JSON)
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | metadata_json | `metadata_json` | code_editor |  |  | Exactly the deposition metadata the upload sends. |
 
-### Advanced · Build from a project script
+### Build from a project script
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
@@ -73,25 +57,32 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | config_edit | `config_edit` | code_editor |  |  | The selected build config, or the example: edit it here and Save config (keys starting with _ are notes, ignored by the build). |
 | build_log | `build_log` | code_editor |  |  | What the last build printed: per container the burst tables, sidecars, encodings and checks, and VERIFY_OK or what failed. |
 
-### 1 · Review
+### 2 · Review
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Note | `note` | str |  |  | Stored with your decision, e.g. which file you looked at or why you rejected the item. |
-| preview_json | `preview_json` | code_editor |  |  | The selected JSON file, read-only. |
-| preview_cif | `preview_cif` | code_editor |  |  | The selected flrCIF/mmCIF file, read-only, highlighted: tags, loops and text fields. |
-| Show | `md_mode` | choice |  | choices: Preview, Source | Preview: the Markdown rendered, roughly as Zenodo shows it. Source: the text as it is in the file. |
-| preview_md | `preview_md` | code_editor |  |  | The selected Markdown file's source, read-only. |
-| preview_txt | `preview_txt` | code_editor |  |  | The selected file's text, read-only. |
 
-### 2 · Upload
+### Before upload
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Build the metadata separate | `separate_metadata` | bool |  |  | Keep every metadata file out of the raw archive: the editable README.md and metadata.cif AND the provenance (origins.json, manifest_sha256.csv) are uploaded beside it as sidecars, so correcting or regenerating any of them later is a metadata-only swap and never re-sends the raw data. |
+
+### Draft
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | zenodo_description | `zenodo_description` | code_editor |  |  | The record description as it will appear on Zenodo (HTML). |
+| Deposit these projects without their linked data (they cannot be reopened with their data from the deposit) | `accept_linked_data` | bool |  |  | Tick to allow the override, then press Confirm. Without the data a reader of the deposit cannot reopen these projects' measurements. |
+
+### DOI & publish
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
 | Trial run on the Zenodo sandbox | `sandbox` | bool |  |  | Upload to sandbox.zenodo.org instead of zenodo.org. The sandbox needs its own token (Zenodo token tab). |
 
-### Zenodo token
+### Token
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |

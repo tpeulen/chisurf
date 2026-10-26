@@ -10,7 +10,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **124 plugins**, **91** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the controls of the others are described in each plugin's guide, and every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **128 plugins**, **91** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the controls of the others are described in each plugin's guide, and every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -19,7 +19,7 @@ Of the **124 plugins**, **91** build their interface from declarative AutoForm s
 *
 ```
 
-**124 plugins** across 26 categories.
+**128 plugins** across 26 categories.
 
 ## Core
 
@@ -33,10 +33,13 @@ Of the **124 plugins**, **91** build their interface from declarative AutoForm s
 | --- | --- |
 | [BID→Analysis](bid_to_analysis.md) | Turn burst-ID files (first/last photon index per burst) into burst tables of the matching TTTR measurement: a bursts table in its .pto, or a legacy .bur + .mti, SL5 mask or HDF5 table. Scriptable as convert_bid_file(path). |
 | [Burstwise→PTO](burstwise_import.md) | Convert legacy burstwise analysis folders (bi4_bur/bg4/br4/BIDs/Info/.mti) to PTO.MFDB containers. |
+| [Legacy Export](legacy_export.md) | The dedicated way out of the .pto world: unpack a container into the Seidel/Margarita legacy burst folder (bi4_bur/*.bur plus one companion directory per analysis), and write the five ALEX-Suite CSVs from a container run. The workflow tools read and write .pto only; legacy formats are reached from here. |
 | [MFD Prepare](mfd_prepare.md) | Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report. |
+| [Metadata Editor](metadata_editor.md) | The one metadata editor: a schema of typed fields plus free-form extras, validated, shared by every plugin that has metadata (burst selection's flrCIF metadata, the Zenodo deposit, ...). Standalone it edits a JSON metadata file. |
 | [PTO Inspector](pto_inspector.md) | Inspect a .pto photon container: every object in it, the provenance graph that says how each came to be, the payload as a table or a curve, and the settings that are the recipe. Double-click a step to open the tool that performs it. |
+| [Project data](project_data.md) | The data files a project links instead of copying: which are found, which are missing or changed, where a moved original is now (search a folder by name, confirm by checksum, or point at the file), and Make self-contained, which stores every linked file inside the project so it needs no other file -- before sharing or depositing it. |
 | [Split/Convert](tttr_splitter.md) | Split a TTTR file into files of a fixed photon count, convert it to another container format, or bin its micro-times; one file or a batch. |
-| [TTTR Header editor](tttr_header_edit.md) | View and edit the header tags of any TTTR file tttrlib reads (PTU, HT3, SPC, Photon-HDF5): change, add or remove tags and save the photons unchanged into a new PTU file, the only container that keeps arbitrary tags. |
+| [TTTR Inspector](tttr_header_edit.md) | Inspect any TTTR file tttrlib reads (PTU, HT3, SPC, Photon-HDF5): the photon table -- first events with routing channel, macro and micro time -- and the header tags as an editable table. Edited headers save into a new PTU file, the only container that keeps arbitrary tags, with the photons copied unchanged. |
 | [TTTR→Time-Window BIDs](tttr_time_windows.md) | Split TTTR files into fixed-duration time-window BID (.bst) files. |
 | [Zenodo deposit](zenodo_deposit.md) | Review a deposition record item by item -- every measurement folder, calibration folder and metadata file, with where it came from and why it is flagged -- then upload it as a Zenodo draft and check the draft against the local package. Nothing is uploaded until every item is approved at its current content; publishing needs its own approval of the exact package. |
 | [⇄ .pto](tttr_to_pto.md) | Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Drop a vendor file to pack it into a .pto beside it; drop a .pto to unpack the vendor file(s) it embeds back out. Whichever direction, the dropped file is kept and the result is verified byte-for-byte before anything is ever deleted. Packing is also offered as a one-time nag wherever a plugin drops a vendor file to load it as the working measurement. |
@@ -101,7 +104,7 @@ Of the **124 plugins**, **91** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [CLSM Generator](clsm_generator.md) | Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s). |
+| [CLSM Simulator](clsm_generator.md) | Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s). |
 | [CLSM-Draw](clsm.md) *(hidden)* | Create CLSM-TTTR image representations, select pixels interactively, and export fluorescence-decay histograms. |
 | [Colocalization](img_coloc.md) *(hidden)* | Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) on TIFF stacks and photon-stream images, with an interactive intensity scatter gate. |
 | [Drift Correction](img_drift.md) | Measure and remove inter-frame sample drift in TIFF stacks and photon-stream images. Photon streams are corrected photon by photon, so lifetimes and correlations stay valid. |
@@ -141,7 +144,7 @@ Of the **124 plugins**, **91** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [2CDE](burst_2cde.md) *(hidden)* | FRET-2CDE / ALEX-2CDE per-burst dynamics feature (Tomov et al. 2012). |
-| [ALEX Suite](alex_suite.md) | The classic ALEX-Suite workflow, as a linear ChiSurf pipeline: files, µs-ALEX alternation, burst search, background, accurate FRET, E-S. Plus the titration/stack-plot analysis and the ALEX-Suite CSV export. Writes the same .pto container and burst companions as the PIE burst workflow. |
+| [ALEX Suite](alex_suite.md) | The classic ALEX-Suite workflow, as a linear ChiSurf pipeline: files, µs-ALEX alternation, burst search, background, accurate FRET, E-S. Plus the titration/stack-plot analysis; the old ALEX-Suite CSV export is the converter command (csc alex-suite export-legacy), not a pipeline step. Writes the same .pto container and burst companions as the PIE burst workflow. |
 | [BVA](burst_bva.md) *(hidden)* | Burst Variance Analysis for single-molecule FRET experiments. |
 | [Burst Analysis](burst_analysis.md) | Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, and background estimation. |
 | [Burst Background Estimation](burst_background.md) *(hidden)* | Estimate detector background rates from TTTR burst data. |
@@ -150,6 +153,7 @@ Of the **124 plugins**, **91** build their interface from declarative AutoForm s
 | [Burst IRF & Background](burst_irf_bg.md) *(hidden)* | Extract a per-detector IRF and background rate from the non-burst photons of a single-molecule measurement, and feed them to the burst MLE lifetime fit. |
 | [Burst MLE](burst_mle_analysis.md) *(hidden)* | Maximum likelihood lifetime analysis for single-molecule burst data. |
 | [Burst Selection](burst_selection.md) *(hidden)* | Burst selection and FRET analysis for single-molecule fluorescence data. |
+| [FRET check](fret_check.md) | The single-button measurement check: drop a TTTR file, get a verdict. Is the measurement usable (burst density, multi-molecule events, stability, background)? Which bursts are suspicious? Works with or without ALEX/PIE; cw two-colour is a full citizen. Simple mode is one drop-zone and the verdict; advanced mode exposes editable detection, burst search and corrections, and hands off to ndX and burst analysis. Ported from smfret-web (peulen.xyz/smfret), now at home in ChiSurf. |
 | [H2MM](burst_h2mm.md) *(hidden)* | Photon-by-photon Hidden Markov Model (H2MM) analysis of single-molecule FRET burst data, with BIC/ICL state selection and Viterbi dwell/transition analysis. |
 | [Intensity trace](intensity_trace.md) | Bin a TTTR photon stream into intensity traces per detector, histogram the counts per bin, and find discrete states with a hidden Markov model, with dwell-time histograms of each state. |
 | [Photon-by-photon kinetics](burst_gs.md) *(hidden)* | Gopich-Szabo photon-by-photon maximum likelihood: continuous-time rate constants and per-state FRET efficiencies fitted directly to photon arrival times and colours, for two- and three-colour data, with a transition-time scan and an H2MM cross-check. |
@@ -174,7 +178,7 @@ Of the **124 plugins**, **91** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [ChiMOL](chimol.md) | Molecular structure viewer and protein analysis plugin for ChiSurf. |
+| [ChiMOL](chimol.md) | Molecular structure viewer and protein analysis plugin for ChiSurf; its labelling editor builds fps.json plans (Tools > Labelling), and its RPC checks plans and fetches structures headlessly. |
 
 ## Structure → Trajectory
 
@@ -231,7 +235,7 @@ Of the **124 plugins**, **91** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [ALEX Creator](ptu_alex_creator.md) | Convert ALEX macro-time modulation into micro-time (single, batch or merged), for PIE-style analysis of .sm and other TTTR files. |
+| [ALEX Creator](ptu_alex_creator.md) | Convert ALEX macro-time modulation into micro-time (single, batch or merged) — the one ALEX→PIE converter — writing TTTR files or .pto containers, for PIE-style analysis of .sm and other TTTR files. |
 | [Audifier](tttr_audifier.md) | Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfall preview. |
 | [Count Rate Analysis](tttr_count_rate_analysis.md) | Count rates per detector channel across many TTTR files, with mean/std and a per-file plot. |
 | [Microtime Shifter](microtime_shifter.md) | Apply global and per-channel micro-time shifts to TTTR files. |
@@ -241,6 +245,7 @@ Of the **124 plugins**, **91** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
+| [Agent](agent.md) | Drive ChiSurf in plain words: the agent runs the analysis tools of the loaded session, asks when a request is ambiguous, and scripts pipelines over the plugin and core APIs. |
 | [Code Editor](code_editor.md) | Shared multi-document code/text editor with project navigation, symbols, diagnostics, and optional Python LSP integration. |
 | [MMFDB Admin](mmfdb_admin.md) | Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives. |
 | [Python Terminal](python_terminal.md) | ChiSurf's built-in Python console as a terminal pane: tmux-style tabs, splits and floating windows around the console engine. |

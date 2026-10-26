@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: ALEX Suite
-description: 'The classic ALEX-Suite workflow, as a linear ChiSurf pipeline: files, µs-ALEX alternation, burst search, background, accurate FRET, E-S. Plus the titration/stack-plot analysis and the ALEX-Suite CSV export. Writes the same .pto container and burst companions as the PIE burst workflow.'
+description: 'The classic ALEX-Suite workflow, as a linear ChiSurf pipeline: files, µs-ALEX alternation, burst search, background, accurate FRET, E-S. Plus the titration/stack-plot analysis; the old ALEX-Suite CSV export is the converter command (csc alex-suite export-legacy), not a pipeline step. Writes the same .pto container and burst companions as the PIE burst workflow.'
 resource: chisurf/plugins/burst/alex_suite/
 tags: [reference, plugins, alex-suite, spectroscopy, single-molecule, fret]
 anchor: plugin-alex_suite
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-alex_suite)=
 # ALEX Suite
 
-The classic ALEX-Suite workflow, as a linear ChiSurf pipeline: files, µs-ALEX alternation, burst search, background, accurate FRET, E-S. Plus the titration/stack-plot analysis and the ALEX-Suite CSV export. Writes the same .pto container and burst companions as the PIE burst workflow.
+The classic ALEX-Suite workflow, as a linear ChiSurf pipeline: files, µs-ALEX alternation, burst search, background, accurate FRET, E-S. Plus the titration/stack-plot analysis; the old ALEX-Suite CSV export is the converter command (csc alex-suite export-legacy), not a pipeline step. Writes the same .pto container and burst companions as the PIE burst workflow.
 
 ## Identity
 
@@ -50,7 +50,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Theory** — [µs-ALEX — alternating excitation, and the titration it enables](/concepts/us_alex.md)
+- **Theory** — [Legacy export: the burst folder and the ALEX-Suite CSVs as views of a container](/concepts/legacy_export.md), [µs-ALEX — alternating excitation, and the titration it enables](/concepts/us_alex.md)
 - **Workflow** — [Coming from ALEX-Suite](/guides/66_alex_suite.md)
 
 ## Source

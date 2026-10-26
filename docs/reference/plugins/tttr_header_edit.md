@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
-title: TTTR Header editor
-description: 'View and edit the header tags of any TTTR file tttrlib reads (PTU, HT3, SPC, Photon-HDF5): change, add or remove tags and save the photons unchanged into a new PTU file, the only container that keeps arbitrary tags.'
+title: TTTR Inspector
+description: 'Inspect any TTTR file tttrlib reads (PTU, HT3, SPC, Photon-HDF5): the photon table -- first events with routing channel, macro and micro time -- and the header tags as an editable table. Edited headers save into a new PTU file, the only container that keeps arbitrary tags, with the photons copied unchanged.'
 resource: chisurf/plugins/tttr/tttr_header_edit/
 tags: [reference, plugins, tttr-header-edit, file, data]
 anchor: plugin-tttr_header_edit
@@ -9,16 +9,16 @@ generator: build_tools/docs/generate_plugin_docs.py
 ---
 
 (plugin-tttr_header_edit)=
-# TTTR Header editor
+# TTTR Inspector
 
-View and edit the header tags of any TTTR file tttrlib reads (PTU, HT3, SPC, Photon-HDF5): change, add or remove tags and save the photons unchanged into a new PTU file, the only container that keeps arbitrary tags.
+Inspect any TTTR file tttrlib reads (PTU, HT3, SPC, Photon-HDF5): the photon table -- first events with routing channel, macro and micro time -- and the header tags as an editable table. Edited headers save into a new PTU file, the only container that keeps arbitrary tags, with the photons copied unchanged.
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
 | Plugin id | `tttr_header_edit` |
-| Menu path | File → Data → **TTTR Header editor** |
+| Menu path | File → Data → **TTTR Inspector** |
 | Categories | File, Data |
 | Version | 1.0.0 |
 | Surfaces | emtk, script |

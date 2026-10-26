@@ -430,7 +430,7 @@
     "date": "2026-10-26",
     "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "04d071d3b366d2c8d7041447a49abc25cad57efbb9d7834bbde3aa713a6e15bc",
+    "sha256": "3841d83a6969cb88e6378d2ae1462009c1e33204c9750be3bebf1202918aa9d1",
     "status": "ai-reviewed"
   },
   "photophysics_simulation.md": {

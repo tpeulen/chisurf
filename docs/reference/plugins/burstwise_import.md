@@ -36,7 +36,7 @@ This plugin's window is an EMTK app without declarative parameter sections: its 
 
 ## Theory and workflow
 
-- **Theory** — [File tools: operations on the container, not the measurement](/concepts/file_tools.md)
+- **Theory** — [File tools: operations on the container, not the measurement](/concepts/file_tools.md), [Legacy export: the burst folder and the ALEX-Suite CSVs as views of a container](/concepts/legacy_export.md)
 - **Workflow** — [Exporting burst data](/guides/34_exporting_burst_data.md)
 
 ## Source

@@ -167,6 +167,13 @@
     "sha256": "6a98f55a58e4dbf366252cd5d4abbe6fc68a4e24f5153aaabfad9e5d16a47f3c",
     "status": "ai-reviewed"
   },
+  "114_project_data.md": {
+    "date": "2026-10-26",
+    "reviewer": "claude",
+    "reviewer_kind": "ai",
+    "sha256": "1e5e15b987defc1509c2de06c9ac7f0693bc6e97de2fda16a2a47a1d93fc14f1",
+    "status": "ai-reviewed"
+  },
   "11_pda2c.md": {
     "date": "2026-10-14",
     "reviewer": "agent",
@@ -801,7 +808,7 @@
     "date": "2026-10-26",
     "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "766e34350c3f6078011bfaf9beb4db217442b73436a1ffa7d955ff3ba3db75f5",
+    "sha256": "280127e8096e7c71eb2a23c9de1766094c2b06237e0fb695fd64acc335c4d88d",
     "status": "ai-reviewed"
   },
   "irf_estimation.md": {

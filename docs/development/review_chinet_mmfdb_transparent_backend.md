@@ -19,8 +19,8 @@ Scope reviewed:
 - `chisurf/core/mmfdb/chinet_adapter.py`
 - `chisurf/core/mmfdb/api.py`
 - `chisurf/plugins/core/mmfdb_admin/*`
-- {src}`test/fio/test_mmfdb_chinet_adapter.py`
-- {src}`test/fio/test_mmfdb_chinet_fit_archive.py`
+- {src}`test/fio/test_mmfdb_graph_session_adapter.py`
+- {src}`test/fio/test_mmfdb_graph_session_fit_archive.py`
 
 Out of scope for this review:
 
@@ -513,7 +513,7 @@ Required tests before merge:
 - `modules/chinet/test/test_session_schema.py` (since removed)
   - destructive and non-destructive restore modes.
   - scalar/vector round trips.
-- {src}`test/fio/test_mmfdb_chinet_adapter.py`
+- {src}`test/fio/test_mmfdb_graph_session_adapter.py`
   - explicit session save/load.
   - fast mode skips node artifacts.
   - transaction rollback on operation/artifact/parameter/edge failure.
@@ -522,7 +522,7 @@ Required tests before merge:
   - standalone node/port unsupported behavior.
   - all connection forms, including `uri_string`.
   - backend context manager cleanup and nested restore.
-- {src}`test/fio/test_mmfdb_chinet_fit_archive.py`
+- {src}`test/fio/test_mmfdb_graph_session_fit_archive.py`
   - no live port mutation.
   - one parameter row per logical fit parameter.
   - both chinet and fit metadata retained.
