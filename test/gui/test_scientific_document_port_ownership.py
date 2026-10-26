@@ -15,7 +15,7 @@ pytest.importorskip("IMP.bff")
 
 from chisurf.core.project.session import capture_session, restore_session
 from chisurf.core.project.storage import load_file, save_file
-from test.gui.test_classic_tcspc_editor import _fit
+from test.gui.tcspc_fixtures import _fit
 
 
 def test_tcspc_display_scalar_survives_a_project_round_trip(tmp_path):

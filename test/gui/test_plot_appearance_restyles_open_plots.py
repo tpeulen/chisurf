@@ -39,7 +39,7 @@ def model(monkeypatch, tmp_path):
 def page(model):
     """An open fit plot, drawn once, as a fit window holds it."""
     from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
-    from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
+    from test.gui.tcspc_fixtures import _simulated_fit
 
     plot = LinePlot(_simulated_fit())
     plot.update()
@@ -144,7 +144,7 @@ def test_a_dropped_plot_does_not_keep_the_subscriber_list_alive(model):
 
     from chisurf.core.plotting import appearance
     from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
-    from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
+    from test.gui.tcspc_fixtures import _simulated_fit
 
     count = len(appearance._subscribers)
     plot = LinePlot(_simulated_fit())
@@ -157,7 +157,7 @@ def test_a_dropped_plot_does_not_keep_the_subscriber_list_alive(model):
 
 def test_the_residual_page_restyles_too(model):
     from chisurf.emtk.fit_pages.pages.wr_plot import ResidualPlot
-    from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
+    from test.gui.tcspc_fixtures import _simulated_fit
 
     plot = ResidualPlot(_simulated_fit())
     try:
@@ -170,7 +170,7 @@ def test_the_residual_page_restyles_too(model):
 def test_the_distribution_page_restyles_too(model):
     from chisurf.emtk.fit_pages.pages.distribution import DistributionPlot
     from chisurf.emtk.fit_pages.plots import model_plot_specs
-    from test.gui.test_classic_tcspc_editor import _fit
+    from test.gui.tcspc_fixtures import _fit
 
     fit, tcspc_model = _fit("tcspc_fret_acceptor_density")
     tcspc_model.update()

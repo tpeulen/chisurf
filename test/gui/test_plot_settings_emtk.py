@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 
 from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
-from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
+from test.gui.tcspc_fixtures import _simulated_fit
 
 
 def _draw_settings(page, width: float = 440.0, height: float = 640.0) -> set:

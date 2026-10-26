@@ -270,7 +270,7 @@ def test_declared_tcspc_dependencies_publish_at_actual_api_owner(monkeypatch):
     from chisurf.core.api import ChiSurfAPI
     from chisurf.core.base import Base
     from chisurf.core.project.session import _local_fits
-    from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
+    from test.gui.tcspc_fixtures import _simulated_fit
 
     monkeypatch.setattr(cs, "cs", None)
     fit = _simulated_fit()

@@ -23,7 +23,7 @@ def plot(monkeypatch):
 
 def _lineplot():
     from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
-    from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
+    from test.gui.tcspc_fixtures import _simulated_fit
 
     page = LinePlot(_simulated_fit())
     page.update()

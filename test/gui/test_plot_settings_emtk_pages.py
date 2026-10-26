@@ -116,7 +116,7 @@ def test_the_distribution_options_are_a_generated_form():
 
 def test_the_distribution_page_reads_its_settings():
     from chisurf.emtk.fit_pages.pages.distribution import DistributionPlot
-    from test.gui.test_classic_tcspc_editor import _fit  # noqa: PLC0415
+    from test.gui.tcspc_fixtures import _fit  # noqa: PLC0415
 
     fit, model = _fit("tcspc_fret_acceptor_density")
     model.update()
