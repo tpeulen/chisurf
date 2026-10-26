@@ -195,6 +195,35 @@ stage that drives it, and the A/B guard against `burst_selection` on the recorde
 - **Recorded:** the full laser state (module map, serials, every setting, the derived PIE scheme) as
   metadata on the measurement, in PTU tags and the project record.
 
+## Device layer (owner 2026-10-26)
+
+The device layer is CMC's own driver stack, not PicoQuant's libraries: `pqusb` (Python reference
+implementation, `~/dev/cmc/tools/pqusb`) and **rustytime** (`~/dev/cmc/tools/rustytime`, the Rust
+implementation: SymPhoTime-compatible acquisition, native PicoQuant device control, continuous T2/T3
+streaming to PTU). Both are developed in the CMC repository by the owner. ChiSurf consumes them through
+one source interface in the Record tool (`chisurf/plugins/core/acq/live/`); it never talks to USB itself.
+ChiSurf uses pqusb today and switches to rustytime when rustytime exposes what ChiSurf needs (a Python
+binding or a streaming interface); the switch is a backend choice, not a rewrite.
+
+## Imaging acquisition (owner 2026-10-26)
+
+The Record tool also acquires **images**, like SymPhoTime: a scanner (piezo stage first, then whatever
+SymPhoTime supports — galvo/LSM integration via line/frame markers) moves the focus while the TCSPC
+device records photons with frame/line/pixel markers.
+
+- **Scanner control** is a device-layer job (rustytime): scan area, pixels, dwell time, line/frame
+  rates, bidirectional scanning, z-stacks, point measurements at chosen positions, marker generation.
+  ChiSurf drives it through the same source interface as the TCSPC device.
+- **Live view:** the image builds up line by line from the marker stream (tttrlib's CLSM image
+  reconstruction): intensity, mean arrival time (fast FLIM), per-channel and per-PIE-window images;
+  the FRET quality panel does not apply, an imaging quality panel does (count rate per pixel, pile-up,
+  marker consistency).
+- **Recording:** the photons with markers go into the project like any recording (embedded in the
+  .cs.pto, a photons dataset with representation `photons`, experiment Imaging); the imaging tools take
+  it from the workspace.
+- **Until rustytime has a scanner:** a simulated scanner (tttrlib SimEngine `run_scan`, CLSM raster with
+  markers) behind the same interface, so the whole path is built and tested now.
+
 ## The Record tool (UI)
 
 The `acq` plugin, as an emtk AutoForm `view.json`:
