@@ -19,7 +19,7 @@
     },
     {
       "title": "The photon files and the IRF",
-      "text": "With your own data, <b>Add files</b> opens a chooser that takes several confocal TTTR files (PTU/HT3/...); <b>Database</b> picks a registered dataset; files can be dropped on the window. The <b>IRF</b> is the instrument response measurement, the first file is used; without it the decay cannot be deconvolved.",
+      "text": "With your own data, drop the confocal TTTR files (PTU/HT3/...) on the ChiSurf window and pick them in the <b>Input</b> sections above the lists (several at once). The <b>IRF</b> is the instrument response measurement, the first file is used; without it the decay cannot be deconvolved.",
       "target": {
         "name": "files",
         "action": "CLSM imaging files"

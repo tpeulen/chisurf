@@ -25,6 +25,9 @@ class EmtkModelMixin:
         Folder of the last file chosen, where the next dialog opens.
     """
 
+    #: The uid of the workspace dataset the input was picked from (results become its children).
+    source_dataset: str = ""
+
     SETTINGS: tuple[str, ...] = ()
     runner: Callable[[str], bool] | None = None
     dialog: str = ""

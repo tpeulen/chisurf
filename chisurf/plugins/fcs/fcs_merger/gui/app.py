@@ -24,7 +24,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import window_size
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
-from .model import MergerModel, read_folder
+from .model import MergerModel, read_files, read_folder
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -73,12 +73,6 @@ class _Form:
             return bool(m.correlations or m.folder)
         return True
 
-    def folder_entered(self, value):
-        self._app.load_folder(value)
-
-    def request_open(self):
-        self._app.choose("folder")
-
     def request_clear(self):
         self._app.clear()
 
@@ -120,6 +114,14 @@ class MergerApp(ImApp):
         self.form_model = _Form(self)
         self.form = FormState(on_used=self._used)
         self.form.custom["status"] = self.draw_status
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: The Input section: the workspace's correlation curves (manifest ``accepts`` "curves").
+        self.workspace_input = NamedWorkspaceInput("fcs_merger", "curves", self, height=60)
+        self.workspace_input.workspace_input_on_used = lambda _key: self._used(
+            "workspace_input_rows"
+        )
+        self.form.custom["workspace_input"] = lambda s, m, st, w: self._draw_input()
         self.help = EmTkHelpWindow(
             title="FCS curve merger — help",
             resource=PLUGIN / "help.md",
@@ -230,7 +232,20 @@ class MergerApp(ImApp):
         except OSError as exc:
             self._fail(f"Could not write the example: {exc}")
             return False
+        self._example_into_workspace(folder)
         return self.load_folder(str(folder), example=True)
+
+    def _example_into_workspace(self, folder):
+        """The example curves are workspace datasets, as dropped .cor files would be."""
+        import logging
+
+        from chisurf.core.plugin.workspace_input import register_result
+
+        for path in sorted(Path(folder).glob("*.cor")):
+            try:
+                register_result(str(path), kind="correlation")
+            except Exception:  # noqa: BLE001 - the example is loaded; its rows are a convenience
+                logging.getLogger(__name__).exception("adding %s to the workspace failed", path)
 
     def save(self, filename=None, add=False):
         """Write the merge on the worker; with *add*, then add it to ChiSurf as an FCS dataset."""
@@ -267,34 +282,54 @@ class MergerApp(ImApp):
             lambda exc: self._fail(f"Saving failed: {exc}"),
         )
 
-    def choose(self, mode):
-        title = "Correlation folder" if mode == "folder" else "Save merged correlation"
+    def choose(self, mode="save"):
+        """The save dialog of the merged curve (the curves themselves come from the workspace)."""
+        title = "Save merged correlation"
         self.dialog = FileDialog(
             title,
-            mode=mode,
+            mode="save",
             filters="Correlation (*.cor);;All files (*)",
-            filename=Path(self.model.output).name if mode == "save" and self.model.output else "",
+            filename=Path(self.model.output).name if self.model.output else "",
         )
         self.dialog_window = DialogWindow(title, size=(720, 520))
-        self.dialog_mode = mode
+        self.dialog_mode = "save"
 
     def path_chosen(self, path):
         self.dialog = None
-        if self.dialog_mode == "folder":
-            self.model.folder = str(path)
-            self.load_folder(path)
-        else:
-            self.model.output = str(path)
-            self.save(path)
+        self.model.output = str(path)
+        self.save(path)
 
-    def files_dropped(self, paths):
-        """A dropped folder is read, as on the Qt page's folder field; a dropped file reads its folder."""
-        if not paths or self.job.running:
+    def _draw_input(self):
+        named = self.workspace_input
+        draw_form(named.spec, named, named.form)
+        if "workspace_input_rows" in named.form.rects:
+            self.item_rects["workspace_input_rows"] = named.form.rects["workspace_input_rows"]
+
+    def load_files(self, files):
+        """Read the curve files *files* on the worker; their curves replace the list."""
+        files = [str(f) for f in files if str(f).strip()]
+        if self.job.running or not files:
             return False
-        path = Path(str(paths[0]))
-        folder = path if path.is_dir() else path.parent
-        self.model.folder = str(folder)
-        return self.load_folder(folder)
+        folder = str(Path(files[0]).parent)
+        self.model.folder = folder
+        self.model.error, self.model.status = "", f"Reading {len(files)} curve file(s)…"
+
+        def publish(result):
+            curves, paths, skipped = result
+            if not curves:
+                self._fail("No readable .cor or .json.gz curve among the picked datasets.")
+                return
+            self.model.set_correlations(curves, folder, paths)
+            self.model.status = f"Loaded {len(curves)} curves." + (
+                f" Skipped: {'; '.join(skipped)}" if skipped else ""
+            )
+            self.tour.notify_used("lineEdit")
+
+        return self.job.start(
+            lambda: read_files(files),
+            publish,
+            lambda exc: self._fail(f"Could not read the curves: {exc}"),
+        )
 
     def clear(self):
         self.job.stop()
@@ -393,6 +428,14 @@ class MergerApp(ImApp):
             self.dialog_window.end()
         self.help.draw(frame)
         self.tour.draw(*vp.size)
+
+
+def receive_curves(app, payload):
+    """The workspace's correlation curves (``accepts[].from_workspace``) replace the list."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    files = [read_address(str(a)) for a in payload.get("files") or []]
+    return bool(app.load_files(files))
 
 
 def create_app(add_dataset=None):

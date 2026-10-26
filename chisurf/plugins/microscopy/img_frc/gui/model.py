@@ -113,24 +113,6 @@ class FrcModel(EmtkModelMixin, FrcViewModel):
     def commit_second_filename(self, value: str) -> None:
         self.open_second_path(str(value))
 
-    def on_paths_dropped(self, paths) -> bool:
-        """Files dropped on the window. Qt routed a drop to the field under the pointer; a drop here carries no position, so: with the two-file
-        split and a first file already chosen the file is the second one, otherwise the first; two files fill both."""
-        paths = [str(p) for p in paths if p]
-        if not paths:
-            return False
-        if self.split == "two_files" and (self.filename or len(paths) > 1):
-            if not self.filename:
-                self.open_second_path(
-                    paths[1]
-                )  # before the worker starts: it hands its snapshot back over the model
-                self.open_path(paths[0])
-            else:
-                self.open_second_path(paths[0])
-            return True
-        self.open_path(paths[0])
-        return True
-
     # -- measuring --------------------------------------------------------------- #
     def measure(self) -> None:
         """Correlate the two halves and read the resolution off the crossing (the Qt Measure)."""

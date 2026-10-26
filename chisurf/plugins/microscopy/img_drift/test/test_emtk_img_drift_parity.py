@@ -23,6 +23,7 @@ from chisurf.plugins.microscopy.imaging_emtk.testing import (
     dialog_open,
     hermetic_env,
     numeric_ticks,
+    pick_from_workspace,
     walk,
 )
 from chisurf.plugins.microscopy.img_drift import core
@@ -68,8 +69,8 @@ def tiff(tmp_path):
 
 
 def measured(app, drv, path):
-    """Choose *path* the way a person does (type it, Enter) and wait for the automatic measurement."""
-    drv.type_into("filename", str(path))
+    """Choose *path* the way a person does (pick it in the Input section) and wait for the automatic measurement."""
+    pick_from_workspace(app, path)
     drv.settle()
     return app.model
 
@@ -221,55 +222,6 @@ def test_the_qt_choice_lists_equal_the_emtk_choice_lists(app):
 # ── 3. choosing a file: typed, Browse, Database, drop ─────────────────────────────────────────────────────── #
 
 
-def test_a_typed_path_is_measured_on_enter(app, drv, tiff):
-    drv.type_into("filename", str(tiff), enter=False)
-    assert app.model.filename == ""
-    drv.enter()
-    drv.settle()
-    assert Path(app.model.filename) == tiff and app.model.result is not None
-
-
-def test_a_path_typed_and_clicked_away_is_taken(app, drv, tiff):
-    drv.type_into("filename", str(tiff), enter=False)
-    drv.click("smooth", fx=0.3) if "smooth" in app.form.rects else drv.click("Estimator.fold")
-    drv.settle()
-    assert Path(app.model.filename) == tiff and app.model.result is not None
-
-
-def test_browse_opens_the_dialog_and_a_chosen_file_is_measured(app, drv, tiff):
-    app.model.folder = str(tiff.parent)
-    drv.click("open_file")
-    assert dialog_open(drv) and app.dialog.title == "Open image"
-    drv.click_text("drift.tif")
-    drv.click_text("Open", last=True)
-    drv.settle()
-    assert (
-        Path(app.model.filename) == tiff
-        and app.model.status_line == QT_VALUES["tiff_default"]["status"]
-    )
-    assert not dialog_open(drv) and app.model.folder == str(tiff.parent)
-
-
-def test_browse_cancel_changes_nothing(app, drv, tiff):
-    app.model.folder = str(tiff.parent)
-    drv.click("open_file")
-    drv.click_text("Cancel")
-    assert app.model.filename == "" and not dialog_open(drv) and not app.job.busy
-
-
-def test_the_file_dialog_window_has_a_title_and_a_close_button_and_escape_cancels(app, drv, tiff):
-    app.model.folder = str(tiff.parent)
-    drv.click("open_file")
-    assert dialog_open(drv) and "Open image" in drv.draw(1).strings  # the window's title bar
-    drv.click_text("\u00d7")
-    assert not dialog_open(drv) and app.model.filename == ""
-    drv.click("open_file")
-    assert dialog_open(drv)
-    drv.hover(500, 350)  # Escape closes the window under the pointer
-    drv.escape()
-    assert not dialog_open(drv) and app.model.filename == "" and not app.job.busy
-
-
 class FakeClient:
     """A database client that lists one dataset and resolves it to a local file."""
 
@@ -306,73 +258,6 @@ def open_picker(app, drv, tiff):
         time.sleep(0.02)
 
 
-def test_the_database_button_opens_the_picker_and_a_dataset_is_selected_and_measured(
-    app, drv, tiff
-):
-    open_picker(app, drv, tiff)
-    drv.click_text("stored_drift.tif [raw_data] (tif)")
-    assert app.picker.selection is not None and app.picker.selection.artifact_id == "a1"
-    assert (
-        app.picker.accept()
-    )  # the picker's own accept: what the "Open selected" button would call (see the xfail below)
-    drv.settle()
-    assert (
-        Path(app.model.filename) == tiff and app.model.result is not None and not app.picker.is_open
-    )
-
-
-def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, tiff):
-    import time
-
-    open_picker(app, drv, tiff)
-    drv.click_text("stored_drift.tif [raw_data] (tif)")
-    drv.click_text("Open selected")
-    end = time.monotonic() + 5
-    while app.picker.is_open and time.monotonic() < end:
-        time.sleep(0.02)
-        drv.draw(1)
-    assert not app.picker.is_open
-
-
-def test_the_database_picker_window_close_button_closes_it_and_loads_nothing(app, drv, tiff):
-    open_picker(app, drv, tiff)
-    drv.click_text("\u00d7")
-    assert not app.picker.is_open and app.model.filename == ""
-
-
-def test_the_cancel_button_of_the_database_picker_can_be_pressed(app, drv, tiff):
-    open_picker(app, drv, tiff)
-    drv.click_text(action_caption("cancel"))
-    assert not app.picker.is_open
-
-
-def test_dropping_a_file_on_the_window_loads_and_measures_it(app, drv, tiff):
-    assert drv.drop(tiff) is True
-    drv.settle()
-    assert Path(app.model.filename) == tiff and app.model.result is not None
-    assert app.files_dropped([]) is False
-
-
-def test_dropping_while_a_measurement_runs_is_refused(app, drv, tiff):
-    app.model.open_path(str(tiff))
-    assert app.job.busy
-    assert app.files_dropped([str(tiff)]) is False
-    drv.settle()
-
-
-def test_the_native_host_delivers_a_dropped_file_to_the_app(app, tiff):
-    """A file dropped on the window opens in the app.
-
-    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
-    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
-    the Qt half.
-    """
-    from emtk.app import ControlSurface
-
-    assert ControlSurface(app).on_files_dropped([str(tiff)]) is True
-    assert Path(app.model.filename) == tiff
-
-
 # ── 4. errors ──────────────────────────────────────────────────────────────────────────────────────────────── #
 
 
@@ -386,7 +271,7 @@ def test_measure_with_nothing_loaded_says_so_where_the_qt_tool_stayed_silent(app
 def test_a_corrupt_file_reports_the_reason(app, drv, tmp_path):
     bad = tmp_path / "bad.tif"
     bad.write_bytes(b"not a tiff")
-    drv.type_into("filename", str(bad))
+    pick_from_workspace(app, bad)
     drv.settle()
     assert app.model.status_line.startswith("Could not read the image:")
     assert app.model.status_line == app.model.status and app.model.result is None
@@ -398,7 +283,7 @@ def test_a_corrupt_file_reports_the_reason(app, drv, tmp_path):
 def test_a_single_frame_file_is_refused_with_the_qt_message(app, drv, tmp_path):
     one = tmp_path / "one.tif"
     imwrite(one, np.zeros((16, 16), dtype=np.float32))
-    drv.type_into("filename", str(one))
+    pick_from_workspace(app, one)
     drv.settle()
     assert (
         app.model.status_line
@@ -408,21 +293,12 @@ def test_a_single_frame_file_is_refused_with_the_qt_message(app, drv, tmp_path):
     assert app.model.result is None
 
 
-def test_a_missing_file_leaves_no_image_loaded(app, drv, tmp_path):
-    drv.type_into("filename", str(tmp_path / "missing.tif"))
-    drv.settle()
-    assert (
-        app.model.status_line == QT_VALUES["missing"]["model_status"] == "No image loaded."
-        and app.model.result is None
-    )
-
-
 def test_a_new_bad_file_clears_the_previous_result(app, drv, tiff, tmp_path):
     measured(app, drv, tiff)
     assert app.model.result is not None
     bad = tmp_path / "bad.tif"
     bad.write_bytes(b"nope")
-    drv.type_into("filename", str(bad))
+    pick_from_workspace(app, bad)
     drv.settle()
     assert (
         app.model.result is None
@@ -779,7 +655,7 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
                 drv.click("load_example")
                 drv.settle()
             elif target.get("attr") == "filename":
-                drv.type_into("filename", str(tiff))
+                pick_from_workspace(app, tiff)
                 drv.settle()
             elif target.get("name") == "computed":
                 drv.click("measure")
@@ -807,9 +683,7 @@ def test_the_load_step_explains_and_a_file_chosen_in_the_dialog_loads(app, tiff)
     )
     drv.draw(2)
     assert not app.tour.awaiting  # Load example already loaded a stack; your own is optional
-    drv.click("open_file")
-    drv.click_text("drift.tif")
-    drv.click_text("Open", last=True)
+    pick_from_workspace(app, tiff)
     drv.settle()
     assert app.model.filename.endswith("drift.tif")
 
@@ -886,8 +760,6 @@ def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv, tiff):
             "Measure",
             "Export stack",
             "Export shifts",
-            "📂  Browse…",
-            "Database",
         } <= set(drv.draw(3, size).strings)
     measured(app, drv, tiff)
     for size in ((1200, 800), (800, 600)):
@@ -896,7 +768,7 @@ def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv, tiff):
 
 def test_the_idle_window_does_not_ask_for_frames(app, drv):
     drv.draw(3)
-    assert not app.job.busy and not app.picker.is_open
+    assert not app.job.busy
 
 
 # ── 9. the spec, the tooltips, no Qt ───────────────────────────────────────────────────────────────────────── #

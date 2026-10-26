@@ -76,7 +76,10 @@ def test_the_browsers_file_opens_in_clsm_draw_and_the_spot_finder(tmp_path):
                 or browser.model.wanted_image()
             )
 
-        assert drv.drop(str(scan))  # the host drops the folder on the hub; the Browser opens it
+        from chisurf.plugins.microscopy.imaging_tools.gui.app import receive_for_step
+
+        # The scan is in the workspace; handed to the hub, the Browser opens it (its folder).
+        assert receive_for_step(app, {"file": source})
         wait(drv, browser_busy)
         drv.click_text(SP8.name)  # the file row
         wait(drv, browser_busy)

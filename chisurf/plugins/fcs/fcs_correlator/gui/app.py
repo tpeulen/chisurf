@@ -96,12 +96,19 @@ class FcsHubApp(ToolHubApp):
 
     # step factories (the steps the workflow owns the models of)
     def _make_files(self):
-        return FilesStepApp(
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        files = FilesStepApp(
             on_change=self._files_changed,
             on_used=self.tour.notify_used,
             regions=self.workflow.regions,
             reader=self.workflow.read_for_trace,
         )
+        files.workspace_input = NamedWorkspaceInput("fcs_correlator", "files", self, height=60)
+        files.workspace_input.workspace_input_on_used = lambda _key: self.tour.notify_used(
+            "workspace_input_rows"
+        )
+        return files
 
     def _make_filter(self):
         return FilterStepApp(self.filter_model, on_used=self.tour.notify_used)
@@ -196,6 +203,22 @@ class FcsHubApp(ToolHubApp):
             elif folder is not None and Path(folder).is_dir():
                 child.model.folder = str(folder)
                 child.load_folder(folder)
+
+
+def receive_files(app: FcsHubApp, payload: dict[str, Any]) -> bool:
+    """The workspace's photon streams (``accepts[].from_workspace``): added to the Files step and
+    ticked, read through their container when they are one's members."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    files = app.ensure_child("files")
+    if files is None:
+        return False
+    added = files.add_paths([read_address(str(a)) for a in payload.get("files") or []])
+    datasets = [str(d) for d in payload.get("datasets") or [] if d]
+    if datasets:
+        files.source_datasets = datasets
+    app.goto_role("files") if hasattr(app, "goto_role") else None
+    return added > 0
 
 
 def make_app(**_kwargs) -> FcsHubApp:

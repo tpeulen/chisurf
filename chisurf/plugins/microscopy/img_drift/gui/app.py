@@ -25,8 +25,9 @@ class ImgDriftApp(ImagingToolApp):
     TITLE = "Drift correction"
     HELP_TITLE = "Drift correction - Help"
     LAYOUT = Split("h", 0.40, Region("settings"), Region("views"))
+    #: The corrected stack is a new image of the same field: it joins the workspace.
+    RESULTS = {"export_stack": "image"}
     DIALOGS = {
-        "open": ("Open image", "open", IMAGE_FILE_FILTER, "open_path"),
         "export_stack": ("Export corrected stack", "save", "TIFF (*.tif *.tiff)", "write_stack"),
         "export_shifts": ("Export drift shifts", "save", "CSV (*.csv)", "write_shifts"),
     }

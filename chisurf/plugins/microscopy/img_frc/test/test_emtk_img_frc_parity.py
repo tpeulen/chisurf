@@ -25,6 +25,7 @@ from chisurf.plugins.microscopy.imaging_emtk.testing import (
     dialog_open,
     hermetic_env,
     numeric_ticks,
+    pick_from_workspace,
     walk,
 )
 from chisurf.plugins.microscopy.img_frc import core
@@ -77,8 +78,8 @@ def stack_b(tmp_path):
 
 
 def loaded(app, drv, path):
-    """Choose *path* the way a person does (type it, Enter) and wait for the worker that reads its channels."""
-    drv.type_into("filename", str(path))
+    """Choose *path* the way a person does (pick it in the Input section) and wait for the worker that reads its channels."""
+    pick_from_workspace(app, path)
     drv.settle()
     return app.model
 
@@ -161,7 +162,7 @@ def test_the_calibrated_and_the_other_criteria_give_the_qt_numbers(app, drv, sta
 def test_two_files_give_the_qt_numbers(app, drv, stack_a, stack_b):
     loaded(app, drv, stack_a)
     app.model.pixel_size_nm = 25.0
-    drv.type_into("second_filename", str(stack_b))
+    pick_from_workspace(app, stack_b, "second")
     assert Path(app.model.second_filename) == stack_b
     check(measure(app, drv, split="two_files"), "two_files")
 
@@ -246,7 +247,7 @@ def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(
     qt = QT_REF["scenarios"][scenario]
     m = loaded(app, drv, stack_a)
     if settings.get("split") == "two_files":
-        drv.type_into("second_filename", str(stack_b))
+        pick_from_workspace(app, stack_b, "second")
     measure(app, drv, **settings)
     assert m.status_line == qt["bar"] == qt["status"]
     for a, b in zip(curve_of(m), qt["curve"]):
@@ -319,62 +320,6 @@ def test_choosing_a_file_reads_its_channels_and_does_not_measure(app, drv, stack
     assert m.status_line == QT_VALUES["tiff_loaded"]["model_status"]
 
 
-def test_a_typed_path_is_taken_on_enter_and_on_click_away_but_not_before(app, drv, stack_a):
-    drv.type_into("filename", str(stack_a), enter=False)
-    assert app.model.filename == ""
-    drv.click("pixel_size_nm", fx=0.3)
-    drv.settle()
-    assert Path(app.model.filename) == stack_a and app.model.channel_names == ["ch0"]
-
-
-def test_browse_opens_the_dialog_and_a_chosen_file_is_loaded(app, drv, stack_a):
-    app.model.folder = str(stack_a.parent)
-    drv.click("open_file")
-    assert (
-        dialog_open(drv)
-        and app.dialog.title == "Open image"
-        and "Open image" in drv.draw(1).strings
-    )
-    drv.click_text("a.tif")
-    drv.click_text("Open", last=True)
-    drv.settle()
-    assert (
-        Path(app.model.filename) == stack_a
-        and app.model.folder == str(stack_a.parent)
-        and not dialog_open(drv)
-    )
-
-
-def test_browse_cancel_the_window_close_button_and_escape_change_nothing(app, drv, stack_a):
-    app.model.folder = str(stack_a.parent)
-    drv.click("open_file")
-    drv.click_text("Cancel")
-    assert not dialog_open(drv) and app.model.filename == ""
-    drv.click("open_file")
-    drv.click_text("×")
-    assert not dialog_open(drv)
-    drv.click("open_file")
-    drv.hover(500, 350)
-    drv.escape()
-    assert not dialog_open(drv) and app.model.filename == "" and not app.job.busy
-
-
-def test_the_second_file_is_typed_browsed_and_clicked_away(app, drv, stack_a, stack_b):
-    drv.type_into("second_filename", str(stack_b), enter=False)
-    assert app.model.second_filename == ""
-    drv.click("pixel_size_nm", fx=0.3)
-    assert (
-        Path(app.model.second_filename) == stack_b and app.model.status_line == "Second file: b.tif"
-    )
-    app.model.second_filename = ""
-    app.model.folder = str(stack_b.parent)
-    drv.click("open_second_file")
-    assert dialog_open(drv) and app.dialog.title == "Open second image"
-    drv.click_text("b.tif")
-    drv.click_text("Open", last=True)
-    assert Path(app.model.second_filename) == stack_b and not dialog_open(drv)
-
-
 class FakeClient:
     """A database client that lists one dataset and resolves it to a local file."""
 
@@ -413,73 +358,6 @@ def open_picker(app, drv, button, path):
     assert app.picker.selection is not None
 
 
-def test_the_database_buttons_pick_the_first_and_the_second_acquisition(app, drv, stack_a, stack_b):
-    open_picker(app, drv, "open_database", stack_a)
-    assert (
-        app.picker.accept()
-    )  # the picker's own accept: what the "Open selected" button would call (see the xfail below)
-    drv.settle()
-    assert Path(app.model.filename) == stack_a and app.model.channel_names == ["ch0"]
-    open_picker(app, drv, "open_second_database", stack_b)
-    assert app.picker.accept()
-    assert Path(app.model.second_filename) == stack_b and Path(app.model.filename) == stack_a
-
-
-def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, stack_a):
-    import time
-
-    open_picker(app, drv, "open_database", stack_a)
-    drv.click_text("Open selected")
-    end = time.monotonic() + 5
-    while app.picker.is_open and time.monotonic() < end:
-        time.sleep(0.02)
-        drv.draw(1)
-    assert not app.picker.is_open
-
-
-def test_the_database_picker_window_close_button_closes_it(app, drv, stack_a):
-    open_picker(app, drv, "open_database", stack_a)
-    drv.click_text("×")
-    assert not app.picker.is_open and app.model.filename == ""
-
-
-def test_a_drop_loads_the_first_file_and_with_the_two_file_split_the_second_one(
-    app, drv, stack_a, stack_b
-):
-    assert drv.drop(stack_a) is True
-    drv.settle()
-    assert Path(app.model.filename) == stack_a and app.model.second_filename == ""
-    app.model.split = "two_files"
-    assert drv.drop(stack_b) is True
-    assert (
-        Path(app.model.second_filename) == stack_b and Path(app.model.filename) == stack_a
-    )  # routed by what is missing
-    app.model.filename, app.model.second_filename = "", ""
-    assert drv.drop(stack_a, stack_b) is True
-    drv.settle()
-    assert Path(app.model.filename) == stack_a and Path(app.model.second_filename) == stack_b
-    assert app.files_dropped([]) is False
-
-
-def test_dropping_while_a_worker_runs_is_refused(app, drv, stack_a):
-    app.model.open_path(str(stack_a))
-    assert app.job.busy and app.files_dropped([str(stack_a)]) is False
-    drv.settle()
-
-
-def test_the_native_host_delivers_a_dropped_file_to_the_app(app, stack_a):
-    """A file dropped on the window opens in the app.
-
-    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
-    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
-    the Qt half.
-    """
-    from emtk.app import ControlSurface
-
-    assert ControlSurface(app).on_files_dropped([str(stack_a)]) is True
-    assert Path(app.model.filename) == stack_a
-
-
 # ── 4. errors ──────────────────────────────────────────────────────────────────────────────────────────────── #
 
 
@@ -515,35 +393,11 @@ def test_an_unknown_channel_name_reports_the_qt_reason(app, drv, stack_a):
     assert app.model.status_line == QT_VALUES["tiff_axis_frames_channel_split"]["model_status"]
 
 
-def test_a_corrupt_a_one_frame_and_a_missing_file_report_the_qt_reasons(app, drv, tmp_path):
-    bad = tmp_path / "bad.tif"
-    bad.write_bytes(b"not a tiff")
-    drv.type_into("filename", str(bad))
-    drv.settle()
-    assert app.model.status_line == "No image loaded." or app.model.status_line.startswith(
-        "Could not read the image"
-    )
-    measure(app, drv)
-    assert (
-        app.model.status_line.startswith("FRC failed: could not read image")
-        and app.model.result is None
-    )
-    one = tmp_path / "one.tif"
-    imwrite(one, np.ones((32, 32), dtype=np.float32))
-    drv.type_into("filename", str(one))
-    drv.settle()
-    measure(app, drv)
-    assert app.model.status_line == QT_VALUES["one_frame"]["model_status"]
-    app.model.filename = str(tmp_path / "missing.tif")
-    measure(app, drv)
-    assert app.model.status_line.startswith("FRC failed: no such file") and app.model.result is None
-
-
 def test_a_new_file_clears_the_previous_result(app, drv, stack_a, stack_b):
     loaded(app, drv, stack_a)
     measure(app, drv)
     assert app.model.result is not None
-    drv.type_into("filename", str(stack_b))
+    pick_from_workspace(app, stack_b)
     drv.settle()
     assert (
         app.model.result is None
@@ -922,7 +776,7 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
                 drv.click("load_example")
                 drv.settle()
             elif target.get("attr") == "filename":
-                drv.type_into("filename", str(stack_a))
+                pick_from_workspace(app, stack_a)
                 drv.settle()
             elif target.get("name") == "computed":
                 drv.click("measure")
@@ -950,9 +804,7 @@ def test_the_load_step_explains_and_a_file_chosen_in_the_dialog_loads(app, stack
     )
     drv.draw(2)
     assert not app.tour.awaiting  # Load example already loaded a stack; your own is optional
-    drv.click("open_file")
-    drv.click_text("a.tif")
-    drv.click_text("Open", last=True)
+    pick_from_workspace(app, stack_a)
     drv.settle()
     assert app.model.filename.endswith("a.tif")
 
@@ -1028,8 +880,6 @@ def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv, stack_a):
             "Settings",
             "Measure",
             "Export CSV",
-            "📂  Browse…",
-            "Database",
             "Resolution",
         } <= set(drv.draw(3, size).strings)
     loaded(app, drv, stack_a)
@@ -1040,7 +890,7 @@ def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv, stack_a):
 
 def test_the_idle_window_does_not_ask_for_frames(app, drv):
     drv.draw(3)
-    assert not app.job.busy and not app.picker.is_open
+    assert not app.job.busy
 
 
 # ── 9. the spec, the tooltips, no Qt ───────────────────────────────────────────────────────────────────────── #

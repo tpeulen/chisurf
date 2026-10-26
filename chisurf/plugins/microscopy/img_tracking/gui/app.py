@@ -23,7 +23,6 @@ class ImgTrackingApp(ImagingToolApp):
     TITLE = "Particle tracking"
     HELP_TITLE = "Particle tracking - Help"
     DIALOGS = {
-        "open": ("Open image stack", "open", IMAGE_FILE_FILTER, "open_path"),
         "export": ("Export tracks", "save", "CSV (*.csv)", "write_export"),
     }
     #: model event -> the control a tour step waits for

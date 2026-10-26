@@ -26,8 +26,6 @@ class PixelMleApp(ImagingToolApp):
     CANCELLABLE = True
     LAYOUT = Split("h", 0.38, Region("settings"), Region("views"))
     DIALOGS = {
-        "add_files": ("Add imaging files", "open", PHOTON_FILE_FILTER, "add_files", True),
-        "add_irf": ("Choose the IRF file", "open", PHOTON_FILE_FILTER, "add_irf", True),
         "roi": ("Choose a region", "open", REGION_FILE_FILTER, "set_roi_file"),
     }
     OUTCOMES = {
@@ -95,14 +93,6 @@ class PixelMleApp(ImagingToolApp):
         self.model.restore_settings(state)
         if state.get("colormap") in ("magma", "inferno", "viridis", "gray"):
             self.model.colormap = state["colormap"]
-
-    def files_dropped(self, paths: Any) -> bool:
-        """Dropped photon files are added to the list (the Qt path list took drops)."""
-        paths = [str(p) for p in paths]
-        if not paths or self.job.busy or self.model.busy:
-            return False
-        self.model.add_files(paths)
-        return True
 
 
 def make_app(coordinator=None) -> PixelMleApp:

@@ -15,7 +15,12 @@ import pytest
 
 from chisurf.plugins.microscopy.imaging_emtk import pixel_checks as C
 from chisurf.plugins.microscopy.imaging_emtk import pixel_testing as data
-from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, hermetic_env, walk
+from chisurf.plugins.microscopy.imaging_emtk.testing import (
+    Driver,
+    hermetic_env,
+    pick_from_workspace,
+    walk,
+)
 from chisurf.plugins.microscopy.img_pixel_micro_time.gui.app import MicroTimeApp, make_app
 from chisurf.plugins.microscopy.img_pixel_micro_time.gui.model import MicroTimeModel
 from chisurf.plugins.microscopy.img_pixel_micro_time.gui.view_model import MicroTimeViewModel
@@ -189,36 +194,16 @@ def test_a_micro_time_range_selects_the_photons_of_the_window(app, drv, flim):
 # ── 2. the file ─────────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_a_typed_path_is_taken_on_enter(app, drv, flim):
-    C.typed_path_is_taken_on_enter(app, drv, flim)
+def test_the_file_field_shows_the_pick_and_cannot_be_typed(app, drv, flim):
+    C.the_file_field_shows_the_pick_and_cannot_be_typed(app, drv, flim)
 
 
-def test_a_typed_path_is_taken_on_click_away_but_not_before(app, drv, flim):
-    C.typed_path_is_taken_on_click_away_but_not_before(app, drv, flim)
+def test_input_section_pick_selects_the_file(app, drv, flim):
+    C.input_section_pick_selects_the_file(app, drv, flim)
 
 
-def test_browse_opens_the_dialog_and_a_chosen_file_is_selected(app, drv, flim):
-    C.browse_opens_the_dialog_and_a_chosen_file_is_selected(app, drv, flim)
-
-
-def test_browse_cancel_the_window_close_button_and_escape_change_nothing(app, drv, flim):
-    C.browse_cancel_the_window_close_button_and_escape_change_nothing(app, drv, flim)
-
-
-def test_the_database_button_picks_a_dataset(app, drv, flim):
-    C.database_button_picks_a_dataset(app, drv, flim)
-
-
-def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flim):
-    C.open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flim)
-
-
-def test_the_database_picker_window_close_button_closes_it(app, drv, flim):
-    C.database_picker_window_close_button_closes_it(app, drv, flim)
-
-
-def test_a_drop_loads_and_runs_the_file_and_a_drop_while_a_worker_runs_is_refused(app, drv, flim):
-    C.drop_loads_and_runs_the_file_and_a_drop_while_a_worker_runs_is_refused(app, drv, flim)
+def test_an_input_dialog_request_is_refused(app, drv, flim):
+    C.an_input_dialog_request_is_refused(app, drv, flim)
 
 
 # ── 3. running ──────────────────────────────────────────────────────────────────────────────────────────────── #
@@ -242,8 +227,8 @@ def test_cancel_is_idle_when_nothing_runs(app, drv):
     C.cancel_is_idle_when_nothing_runs(app, drv)
 
 
-def test_a_failing_run_is_reported_and_leaves_the_model_unchanged(app, drv, tmp_path):
-    C.failed_run_is_reported_and_leaves_the_model_unchanged(app, drv, tmp_path)
+def test_a_failing_run_is_reported_and_leaves_the_model_unchanged(app, drv, tmp_path, flim):
+    C.failed_run_is_reported_and_leaves_the_model_unchanged(app, drv, tmp_path, flim)
 
 
 # ── 4. the window and the detectors ─────────────────────────────────────────────────────────────────────────── #
@@ -356,9 +341,7 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
 
     def choose():
         app.model.folder = str(stream.parent)
-        drv.click("open_file")
-        drv.click_text(stream.name)
-        drv.click_text("Open", last=True)
+        pick_from_workspace(app, stream)
 
     def hdf5():
         app.model.folder = str(out)

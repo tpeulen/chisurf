@@ -2,12 +2,10 @@
   "window": {"width": 1100, "height": 720},
   "_comment": "Photon counting histogram tool. Drawn by emtk.view_form over PchModel (gui/model.py); the two plots are hand-drawn in gui/app.py.",
   "sections": [
-    {"type": "panel", "title": "Actions", "description": "Load a photon stream, compute and fit the histogram, and export the results.", "sections": [
+    {"type": "panel", "title": "Actions", "description": "Load the example, compute and fit the histogram, and export the results.", "sections": [
       {"type": "button_row", "buttons": [
         {"action": "load_example", "label": "Load example", "icon": "🧪",
          "description": "Load a simulated photon stream of one diffusing species with a known brightness (3 photons per molecule per 20 µs bin), and set the channel and bin time to match."},
-        {"action": "load", "label": "Load TTTR",
-         "description": "Choose a photon-stream file (PTU, HT3, T2R, T3R, PTO, SPC) to analyse."},
         {"action": "compute", "label": "Compute PCH",
          "role": "primary",
          "description": "Bin the photons of the loaded file into counting intervals and histogram the counts per bin."},
@@ -18,9 +16,11 @@
       ]}
     ]},
     {"type": "panel", "title": "Data settings", "description": "File, detector channels and bin time (us) from which the photon counting histogram is built.", "sections": [
+      {"type": "custom", "key": "workspace_input",
+       "description": "Pick the photon stream from the Datasets workspace (drop TTTR files on the ChiSurf window to add them there)."},
       {"type": "value", "attr": "filename", "label": "File", "kind": "str",
        "read_only": true, "elide": "start",
-       "description": "The photon-stream file that is loaded. Use Load TTTR or drop a file on the window."},
+       "description": "The photon-stream file that is loaded: the one picked in the Input section above."},
       {"type": "value", "attr": "channels", "label": "Channels", "kind": "str",
        "description": "Comma-separated routing channels whose photons are counted, for example 0,2. Empty uses all channels."},
       {"type": "value", "attr": "bin_time_us", "label": "Bin time", "kind": "float",

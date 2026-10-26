@@ -38,5 +38,27 @@
       "summary": "Track a simulated movie of Brownian particles with a known D.",
       "long_running": true
     }
+  ],
+  "accepts": [
+    {
+      "name": "image",
+      "summary": "The image stack whose particles are tracked.",
+      "receive": "chisurf.plugins.microscopy.imaging_emtk.app_base:receive_input",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "image",
+          "photons"
+        ],
+        "many": false,
+        "key": "file",
+        "representations": [
+          "photons",
+          "intensity"
+        ]
+      }
+    }
   ]
 }

@@ -29,5 +29,26 @@
   "requires": {
     "imaging_common": "*"
   },
-  "menu_hidden": true
+  "menu_hidden": true,
+  "accepts": [
+    {
+      "name": "image",
+      "summary": "The photon image whose number and brightness are mapped.",
+      "receive": "chisurf.plugins.microscopy.imaging_emtk.app_base:receive_input",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "image",
+          "photons"
+        ],
+        "many": false,
+        "key": "file",
+        "representations": [
+          "photons"
+        ]
+      }
+    }
+  ]
 }

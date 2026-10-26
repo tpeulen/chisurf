@@ -50,8 +50,20 @@ def read_folder(folder):
     folder = Path(folder)
     if not folder.is_dir():
         raise ValueError(f"{folder} is not a folder.")
+    curves, paths, skipped = read_files(
+        sorted(folder.glob("*.json.gz")) + sorted(folder.glob("*.cor"))
+    )
+    if not curves:
+        raise ValueError(f"No readable .cor or .json.gz curves in {folder}.")
+    return curves, paths, skipped
+
+
+def read_files(files):
+    """``(curves, paths, skipped)`` of the ``.json.gz`` / ``.cor`` curve files *files*, in order."""
+    from chisurf.core.fio.zipped import open_maybe_zipped
+
     curves, paths, skipped = [], [], []
-    for path in sorted(folder.glob("*.json.gz")) + sorted(folder.glob("*.cor")):
+    for path in (Path(f) for f in files):
         try:
             if path.name.endswith(".json.gz"):
                 with open_maybe_zipped(path) as stream:
@@ -63,9 +75,8 @@ def read_folder(folder):
             continue
         curves.append(curve)
         paths.append(str(path))
-    if not curves:
-        raise ValueError(f"No readable .cor or .json.gz curves in {folder}.")
-    validate(curves)
+    if curves:
+        validate(curves)
     return curves, paths, skipped
 
 

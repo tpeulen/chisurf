@@ -21,6 +21,7 @@ from chisurf.plugins.microscopy.imaging_emtk.testing import (
     dialog_open,
     hermetic_env,
     numeric_ticks,
+    pick_from_workspace,
     walk,
 )
 from chisurf.plugins.microscopy.img_coloc.gui.app import ColocApp, make_app
@@ -130,7 +131,7 @@ def drv(app):
 def computed(app, drv, path, **settings):
     for k, v in settings.items():
         setattr(app.model, k, v)
-    drv.type_into("filename", str(path))
+    pick_from_workspace(app, path)
     drv.settle(timeout=300)
     assert not app.job.error, app.job.error
     return app.model
@@ -265,73 +266,10 @@ def test_a_photon_stream_uses_the_detector_windows_as_channels(app, drv, stream_
 # ── 2. the file ─────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_a_typed_path_is_loaded_and_run_on_enter_but_not_before(app, drv, pair):
-    drv.type_into("filename", str(pair), enter=False)
-    assert app.model.filename == ""
-    drv.enter()
-    drv.settle(timeout=120)
-    assert Path(app.model.filename) == pair and app.model.metric_rows()
-
-
-def test_a_typed_path_is_taken_on_click_away(app, drv, pair):
-    drv.type_into("filename", str(pair), enter=False)
-    drv.click_text("Channel A")
-    drv.settle(timeout=120)
-    assert Path(app.model.filename) == pair and app.model.metric_rows()
-
-
-def test_browse_opens_the_dialog_and_a_chosen_file_is_loaded_and_run(app, drv, pair):
-    app.model.folder = str(pair.parent)
-    drv.click("open_file")
-    assert dialog_open(drv) and app.dialog.title == "Open image"
-    drv.click_text("pair.tif")
-    drv.click_text("Open", last=True)
-    drv.settle(timeout=120)
-    assert Path(app.model.filename) == pair and app.model.metric_rows() and not dialog_open(drv)
-
-
-def test_browse_cancel_the_close_button_and_escape_change_nothing(app, drv, pair):
-    app.model.folder = str(pair.parent)
-    drv.click("open_file")
-    drv.click_text("Cancel", last=True)
-    assert not dialog_open(drv) and app.model.filename == ""
-    drv.click("open_file")
-    drv.click_text("×")
-    assert not dialog_open(drv)
-    drv.click("open_file")
-    drv.hover(500, 350)
-    drv.escape()
-    assert not dialog_open(drv) and app.model.filename == "" and not app.job.busy
-
-
 def test_the_database_button_picks_a_dataset_and_runs_it(app, drv, pair):
-    C.database_button_picks_a_dataset(app, drv, pair)
+    C.an_input_dialog_request_is_refused(app, drv, pair)
     drv.settle(timeout=120)
     assert app.model.metric_rows()
-
-
-def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, pair):
-    C.open_selected_button_of_the_database_picker_can_be_pressed(app, drv, pair)
-
-
-def test_the_database_picker_window_close_button_closes_it(app, drv, pair):
-    C.database_picker_window_close_button_closes_it(app, drv, pair)
-
-
-def test_a_drop_loads_and_runs_the_file_and_a_drop_while_a_worker_runs_is_refused(app, drv, pair):
-    from chisurf.emtk import job_gate
-
-    # Hold the worker open: the small image computes faster than the drop's frames draw.
-    job_gate.arm()
-    try:
-        assert drv.drop(pair) is True
-        assert Path(app.model.filename) == pair and app.job.busy
-        assert app.files_dropped([str(pair)]) is False
-        job_gate.release()
-        drv.settle(timeout=120)
-    finally:
-        job_gate.disarm()
-    assert app.model.metric_rows() and app.files_dropped([]) is False
 
 
 # ── 3. running, background, export ─────────────────────────────────────────────────────────────────────── #
@@ -358,7 +296,7 @@ def test_run_is_greyed_without_an_image_computes_with_one_and_is_greyed_while_it
 def test_a_failing_run_is_reported_and_leaves_no_result(app, drv, tmp_path):
     bad = tmp_path / "bad.tif"
     bad.write_bytes(b"not an image")
-    drv.type_into("filename", str(bad))
+    pick_from_workspace(app, bad)
     drv.settle(timeout=60)
     assert app.model.metric_rows() == [] and app.model.status_line.startswith("Failed:")
 

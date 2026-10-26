@@ -123,14 +123,6 @@ class PixelModelMixin(EmtkModelMixin, _Host):
         self.status_line = "File selected. Press Run to compute the maps."
         self.notify("file")
 
-    def on_paths_dropped(self, paths: list[str]) -> bool:
-        """A dropped file is loaded and run, as the Qt tool did."""
-        if not paths:
-            return False
-        self.select_file(str(paths[0]))
-        self.run_maps()
-        return True
-
     # -- running ------------------------------------------------------------- #
     def run_maps(self) -> None:
         """Compute every detector window in the background (the Qt Run)."""

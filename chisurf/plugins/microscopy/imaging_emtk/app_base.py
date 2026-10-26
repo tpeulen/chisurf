@@ -19,9 +19,8 @@ from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
-from emtk.view_form import FormState, draw_sections
+from emtk.view_form import FormState, draw_form, draw_sections
 
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.plugins.emtk_layout import action_button, window_size
@@ -31,8 +30,58 @@ from .views import ImagePanel, QuiverPanel, draw_series_plot
 #: Where the three kinds of window go: the form on the left, the report above the views on the right.
 LAYOUT = Split("h", 0.40, Region("settings"), Split("v", 0.30, Region("report"), Region("views")))
 
-#: Suffixes the Database picker offers.
-PICKER_FORMATS = ["ptu", "pto", "ht3", "spc", "pt3", "tif", "tiff"]
+#: Spec actions that used to open an input (a file dialog or the MMFDB picker) -> the ``accepts``
+#: entry whose generated Input section takes their place (``None``: the button just goes; its
+#: entry's section stands in for it already).
+INPUT_ACTIONS: dict[str, str | None] = {
+    "open_file": "image",
+    "open_database": None,
+    "open_second_file": "second",
+    "open_second_database": None,
+    "open_irf": "irf",
+}
+#: A path list's ``add`` dialog kind -> the ``accepts`` entry that fills the list instead.
+PATH_LIST_INPUTS: dict[str, str] = {"add_files": "files", "add_irf": "irf_files"}
+#: Payload key of a workspace input -> the model method that takes it (a list for ``many``).
+RECEIVERS: dict[str, str] = {
+    "file": "open_path",
+    "second": "open_second_path",
+    "irf": "open_irf_path",
+    "files": "add_files",
+    "irf_files": "add_irf",
+}
+#: ``value`` fields whose commit took a typed input path: shown read only.
+TYPED_PATHS = frozenset({"commit_filename", "commit_second_filename"})
+#: Dialog kinds that still open for reading: a tool's own state files, never measurement data.
+STATE_DIALOGS = frozenset({"load_regions", "roi"})
+
+
+def receive_input(app: Any, payload: dict) -> bool:
+    """The receive hook of every imaging tool's workspace inputs (``accepts[].receive``).
+
+    Each payload key the tool's :data:`RECEIVERS` knows is read to a local path (a container member
+    through its container) and handed to the model method -- the path a picked file always took.
+    """
+    from chisurf.core.plugin.workspace_input import read_address
+
+    model = getattr(app, "model", app)
+    receivers = getattr(type(app), "RECEIVERS", RECEIVERS)
+    datasets = [str(d) for d in payload.get("datasets") or [] if d]
+    if datasets:
+        model.source_dataset = datasets[0]
+    taken = False
+    for key, method in receivers.items():
+        if key not in payload or not hasattr(model, method):
+            continue
+        value = payload[key]
+        if isinstance(value, (list, tuple)):
+            getattr(model, method)([read_address(str(v)) for v in value])
+        else:
+            getattr(model, method)(read_address(str(value)))
+        taken = True
+    if taken and hasattr(app, "request_frame"):
+        app.request_frame()
+    return taken
 
 
 class ImagingToolApp(ImApp):
@@ -55,6 +104,14 @@ class ImagingToolApp(ImApp):
     HELP_TITLE: str = ""
     DIALOGS: dict[str, tuple] = {}
     OUTCOMES: dict[str, str] = {}
+    INPUT_ACTIONS = INPUT_ACTIONS
+    PATH_LIST_INPUTS = PATH_LIST_INPUTS
+    RECEIVERS = RECEIVERS
+    #: Save-dialog kinds whose file is a result of the input -> its workspace kind: it comes back
+    #: as a row, a child of the dataset the input was picked from.
+    RESULTS: dict[str, str] = {}
+    #: The workspace kind *Load example*'s file enters as.
+    EXAMPLE_KIND = "image"
 
     def __init__(self, model: Any) -> None:
         self.model = model
@@ -63,21 +120,25 @@ class ImagingToolApp(ImApp):
         model.add_observer(self._on_event)
         specification = json.loads((self.GUI_DIR / self.SPEC).read_text(encoding="utf-8"))
         self.window_size = window_size(specification, (1100, 720))
-        self.spec = self.prepare_spec(specification)
+        #: One generated Input section per ``accepts`` entry that reads from the workspace.
+        self.inputs = self._workspace_inputs()
+        self.spec = self._workspace_spec(self.prepare_spec(specification))
         self.form = FormState()
         self.item_rects: dict[str, tuple] = {}
         self.dialog: FileDialog | None = None
         self.dialog_window: DialogWindow | None = None
         self.dialog_kind = ""
         self.panels: dict[str, Any] = {}
-        self.picker_target = "main"
-        self.picker = DatasetPicker(formats=PICKER_FORMATS, on_paths=self._picked)
         self.form.custom.update(
             series_plot=lambda s, m, st, w: draw_series_plot(s, m, self),
             image_panel=lambda s, m, st, w: self._draw_image_panel(s),
             image_pair=lambda s, m, st, w: self._draw_image_pair(s),
             quiver=lambda s, m, st, w: self._draw_quiver(s),
         )
+        for name, named in self.inputs.items():
+            self.form.custom[f"workspace_input:{name}"] = lambda s, m, st, w, name=name: (
+                self._draw_input(name)
+            )
         self.tour = EmTkGuidedTour(
             steps=self.GUI_DIR / "guide.json",
             owner=self,
@@ -91,6 +152,8 @@ class ImagingToolApp(ImApp):
             on_start_guide=self.tour.start,
         )
         self.form.on_used = self.tour.notify_used
+        for name, named in self.inputs.items():
+            named.workspace_input_on_used = lambda _key, name=name: self._input_used(name)
         self._reported_error = ""
         self.docks = DockManager(self.LAYOUT)
         self.windows: dict[str, dict] = {}
@@ -110,6 +173,100 @@ class ImagingToolApp(ImApp):
     def prepare_spec(self, spec: dict) -> dict:
         """Hook: the spec as loaded (a subclass may lay it out or extend it)."""
         return spec
+
+    # -- the workspace inputs ------------------------------------------------- #
+    def _workspace_inputs(self) -> dict[str, Any]:
+        """``name -> Input section model`` for every ``accepts`` entry reading from the workspace."""
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        path = self.GUI_DIR.parent / "manifest.json"
+        if not path.is_file():
+            return {}
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        inputs: dict[str, Any] = {}
+        for entry in manifest.get("accepts") or []:
+            if entry.get("from_workspace") and entry.get("name"):
+                inputs[str(entry["name"])] = NamedWorkspaceInput(
+                    str(manifest["id"]), str(entry["name"]), self, height=60
+                )
+        return inputs
+
+    def _workspace_spec(self, spec: dict) -> dict:
+        """The spec with every input button replaced by its generated Input section.
+
+        A button whose action opened an input (``INPUT_ACTIONS``) goes; the Input section of its
+        ``accepts`` entry is drawn where its row was. A path list filled by a dialog shows the entry's
+        section above it and loses its Add/Database buttons.
+        """
+        placed: set[str] = set()
+
+        def custom(name: str) -> dict:
+            placed.add(name)
+            return {
+                "type": "custom",
+                "key": f"workspace_input:{name}",
+                "description": "Pick the data this tool works on from the Datasets workspace "
+                "(drop files on the ChiSurf window to add them there).",
+            }
+
+        def walk(sections: list) -> list:
+            out: list = []
+            for section in sections:
+                if not isinstance(section, dict):
+                    out.append(section)
+                    continue
+                if isinstance(section.get("sections"), list):
+                    section["sections"] = walk(section["sections"])
+                buttons = section.get("buttons")
+                if isinstance(buttons, list):
+                    gone = [b for b in buttons if b.get("action") in self.INPUT_ACTIONS]
+                    names = [
+                        self.INPUT_ACTIONS[b["action"]]
+                        for b in gone
+                        if self.INPUT_ACTIONS[b["action"]] in self.inputs
+                        and self.INPUT_ACTIONS[b["action"]] not in placed
+                    ]
+                    out.extend(custom(n) for n in dict.fromkeys(names))
+                    section["buttons"] = [b for b in buttons if b not in gone]
+                    if not section["buttons"]:
+                        continue
+                if section.get("type") == "value" and section.get("call") in TYPED_PATHS:
+                    # A typed path was an input route too: the field now shows what was picked.
+                    section.pop("call")
+                    section["read_only"] = True
+                    section["placeholder"] = "picked in the Input section"
+                    section["description"] = (
+                        "The file picked in the Input section (the Datasets workspace)."
+                    )
+                options = section.get("options") if section.get("type") == "custom" else None
+                if isinstance(options, dict) and section.get("key") == "path_list":
+                    name = self.PATH_LIST_INPUTS.get(str(options.get("add", "add_files")))
+                    if name in self.inputs:
+                        options["workspace"] = True
+                        if name not in placed:
+                            out.append(custom(name))
+                out.append(section)
+            return out
+
+        spec["sections"] = walk(spec.get("sections", []))
+        return spec
+
+    def _draw_input(self, name: str) -> None:
+        named = self.inputs[name]
+        draw_form(named.spec, named, named.form)
+        rect = named.form.rects.get("workspace_input_rows")
+        if rect is not None:
+            self.item_rects[f"input_{name}"] = rect
+            # Guide steps written for the buttons this section replaced point at it.
+            for action, target in self.INPUT_ACTIONS.items():
+                if target == name:
+                    self.item_rects[action] = rect
+
+    def _input_used(self, name: str) -> None:
+        self.tour.notify_used(f"input_{name}")
+        for action, target in self.INPUT_ACTIONS.items():
+            if target == name:
+                self.tour.notify_used(action)
 
     def _demo_module(self):
         """The plugin's demo module when it ships one (the *Load example* affordance)."""
@@ -133,7 +290,21 @@ class ImagingToolApp(ImApp):
         if demo is None:
             self.model.status_line = "This tool has no example data."
             return
-        demo.load_into(self)
+        path = demo.load_into(self)
+        if path:
+            self._example_into_workspace(path)
+
+    def _example_into_workspace(self, path: Any) -> None:
+        """The example file enters the Datasets workspace, as a dropped file would."""
+        from chisurf.core.plugin.workspace_input import register_result
+
+        try:
+            row = register_result(str(path), kind=self.EXAMPLE_KIND)
+            self.model.source_dataset = str(getattr(row, "unique_identifier", "") or "")
+        except Exception:  # noqa: BLE001 - the example is loaded; its row is a convenience
+            import logging
+
+            logging.getLogger(__name__).exception("adding the example to the workspace failed")
 
     def _draw_main(self, box: tuple) -> None:
         """Hook: what fills the frame under the dialogs (the dock windows)."""
@@ -158,7 +329,7 @@ class ImagingToolApp(ImApp):
 
     def animating(self) -> bool:
         playing = any(getattr(p, "playing", False) for p in self.panels.values())
-        return bool(self.job.busy or self.picker.is_open or playing or super().animating())
+        return bool(self.job.busy or playing or super().animating())
 
     def _on_event(self, event: str) -> None:
         """The model announced something: tell the tour when it is an outcome a step waits for."""
@@ -183,7 +354,6 @@ class ImagingToolApp(ImApp):
         self._follow_tour()
         self._draw_main(box)
         self._draw_dialog(box)
-        self.picker.render(box)
         for event, control in self.OUTCOMES.items():
             if control in self.form.rects:
                 self.item_rects[event] = self.form.rects[control]
@@ -328,14 +498,15 @@ class ImagingToolApp(ImApp):
     # -- file dialogs -------------------------------------------------------- #
     def _open_requested_dialog(self) -> None:
         kind, self.model.dialog = self.model.dialog, ""
-        if not kind or self.dialog is not None or self.picker.is_open:
-            return
-        if kind.startswith("database"):
-            self.picker_target = "second" if kind == "database_second" else "main"
-            self.picker.open()
+        if not kind or self.dialog is not None or kind not in self.DIALOGS:
             return
         title, mode, filters, _handler, *rest = self.DIALOGS[kind]
+        if mode != "save" and kind not in STATE_DIALOGS:
+            # Measurement data comes from the Datasets workspace, never from a file dialog.
+            self.model.status_line = "Pick the data in the Input section (the Datasets workspace)."
+            return
         name_for = getattr(self.model, "dialog_filename", None)
+        # not-input: only save dialogs and a tool's own state files (STATE_DIALOGS) open here.
         self.dialog = FileDialog(
             title,
             mode=mode,
@@ -364,27 +535,25 @@ class ImagingToolApp(ImApp):
                 if len(self.DIALOGS[kind]) > 4 and self.DIALOGS[kind][4]
                 else result[0]
             )
+            if kind in self.RESULTS:
+                self._result_into_workspace(str(result[0]), self.RESULTS[kind])
         elif result is False or pressed == "close":
             self.dialog = None
 
-    def _picked(self, paths: Any) -> None:
-        if getattr(self, "picker_target", "main") == "second":
-            self.model.open_second_path(str(paths[0]))
-        else:
-            self.model.open_path(str(paths[0]))
+    def _result_into_workspace(self, path: str, kind: str) -> None:
+        """A file the tool wrote enters the workspace as a child of the dataset it came from."""
+        from chisurf.core.plugin.workspace_input import register_result
 
-    # -- drops, settings, hub contract --------------------------------------- #
-    def files_dropped(self, paths: Any) -> bool:
-        """Files dropped on the window: the first one becomes the input, as the Qt data-source field did."""
-        paths = [str(p) for p in paths]
-        if not paths or self.job.busy or self.model.busy:
-            return False
-        route = getattr(self.model, "on_paths_dropped", None)
-        if callable(route):
-            return bool(route(paths))
-        self.model.open_path(paths[0])
-        return True
+        try:
+            register_result(
+                path, kind=kind, result_of=str(getattr(self.model, "source_dataset", ""))
+            )
+        except Exception:  # noqa: BLE001 - the file is written; its row is a convenience
+            import logging
 
+            logging.getLogger(__name__).exception("adding %s to the workspace failed", path)
+
+    # -- settings, hub contract ------------------------------------------------ #
     def export_settings(self) -> dict:
         return self.model.export_settings()
 
@@ -403,4 +572,3 @@ class ImagingToolApp(ImApp):
 
     def close(self) -> None:
         """Workers are daemon threads and no file stays open."""
-        self.picker.close()

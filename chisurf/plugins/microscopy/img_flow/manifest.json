@@ -24,7 +24,9 @@
     "cli": "img-flow=chisurf.plugins.microscopy.img_flow.cli:cli",
     "services": "chisurf.plugins.microscopy.img_flow.backend.services:register_services"
   },
-  "operation_types": ["flow_field_estimation"],
+  "operation_types": [
+    "flow_field_estimation"
+  ],
   "rpc_methods": [
     {
       "name": "img_flow.map.compute",
@@ -163,5 +165,27 @@
   ],
   "events": [],
   "dependencies": {},
-  "menu_hidden": true
+  "menu_hidden": true,
+  "accepts": [
+    {
+      "name": "image",
+      "summary": "The image stack whose flow is measured.",
+      "receive": "chisurf.plugins.microscopy.imaging_emtk.app_base:receive_input",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "image",
+          "photons"
+        ],
+        "many": false,
+        "key": "file",
+        "representations": [
+          "photons",
+          "intensity"
+        ]
+      }
+    }
+  ]
 }

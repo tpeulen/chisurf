@@ -3,8 +3,13 @@
   "version": "2.0.0",
   "display_name": "Spectroscopy:Correlation:PCH",
   "description": "Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. Compute PCH histograms from TTTR files and fit multi-species models to extract molecular brightness and occupancy.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Correlation"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Correlation"
+  ],
   "icon": "📊",
   "state_namespace": "pch",
   "statefulness": {
@@ -27,20 +32,49 @@
       "params_schema": {
         "type": "object",
         "properties": {
-          "filename": {"type": "string", "description": "Path of the TTTR file to open (PTU, HT3, SPC, ...)."},
-          "channels": {"type": "array", "items": {"type": "integer"}, "description": "Routing channels to restrict the metadata scan to; all channels when omitted."}
+          "filename": {
+            "type": "string",
+            "description": "Path of the TTTR file to open (PTU, HT3, SPC, ...)."
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Routing channels to restrict the metadata scan to; all channels when omitted."
+          }
         },
-        "required": ["filename"]
+        "required": [
+          "filename"
+        ]
       },
       "result_schema": {
         "type": "object",
         "properties": {
-          "filename": {"type": "string"},
-          "n_photons": {"type": "integer"},
-          "routing_channels": {"type": "array", "items": {"type": "integer"}},
-          "macro_time_resolution": {"type": "number"},
-          "micro_time_range": {"type": "array", "items": {"type": "integer"}},
-          "has_micro_times": {"type": "boolean"}
+          "filename": {
+            "type": "string"
+          },
+          "n_photons": {
+            "type": "integer"
+          },
+          "routing_channels": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "macro_time_resolution": {
+            "type": "number"
+          },
+          "micro_time_range": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "has_micro_times": {
+            "type": "boolean"
+          }
         }
       }
     },
@@ -51,24 +85,58 @@
       "params_schema": {
         "type": "object",
         "properties": {
-          "filename": {"type": "string", "description": "Path of the TTTR file to analyse."},
-          "channels": {"type": "array", "items": {"type": "integer"}, "description": "Routing channels to include; all channels when omitted."},
-          "bin_time_us": {"type": "number", "description": "Counting bin width in microseconds."},
-          "micro_time_min": {"type": "integer", "description": "Lower micro-time gate (channel index); no lower gate when omitted."},
-          "micro_time_max": {"type": "integer", "description": "Upper micro-time gate (channel index); no upper gate when omitted."}
+          "filename": {
+            "type": "string",
+            "description": "Path of the TTTR file to analyse."
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Routing channels to include; all channels when omitted."
+          },
+          "bin_time_us": {
+            "type": "number",
+            "description": "Counting bin width in microseconds."
+          },
+          "micro_time_min": {
+            "type": "integer",
+            "description": "Lower micro-time gate (channel index); no lower gate when omitted."
+          },
+          "micro_time_max": {
+            "type": "integer",
+            "description": "Upper micro-time gate (channel index); no upper gate when omitted."
+          }
         },
-        "required": ["filename"]
+        "required": [
+          "filename"
+        ]
       },
       "result_schema": {
         "type": "object",
         "properties": {
-          "k_vals": {"type": "array"},
-          "p_exp": {"type": "array"},
-          "hist_counts": {"type": "array"},
-          "total_bins": {"type": "integer"},
-          "trace_t": {"type": "array"},
-          "trace_counts": {"type": "array"},
-          "settings": {"type": "object"}
+          "k_vals": {
+            "type": "array"
+          },
+          "p_exp": {
+            "type": "array"
+          },
+          "hist_counts": {
+            "type": "array"
+          },
+          "total_bins": {
+            "type": "integer"
+          },
+          "trace_t": {
+            "type": "array"
+          },
+          "trace_counts": {
+            "type": "array"
+          },
+          "settings": {
+            "type": "object"
+          }
         }
       }
     },
@@ -79,28 +147,91 @@
       "params_schema": {
         "type": "object",
         "properties": {
-          "k_vals": {"type": "array", "description": "Photon-count axis k of the experimental histogram."},
-          "p_exp": {"type": "array", "description": "Experimental PCH probabilities P(k), same length as k_vals."},
-          "n_components": {"type": "integer", "description": "Number of molecular species in the model."},
-          "initial_epsilons": {"type": "array", "items": {"type": "number"}, "description": "Starting molecular brightness per species (counts per bin per molecule)."},
-          "initial_Ns": {"type": "array", "items": {"type": "number"}, "description": "Starting mean number of molecules per species."},
-          "fit_low": {"type": "integer", "description": "Lowest k included in the fit."},
-          "fit_high": {"type": "integer", "description": "Highest k included in the fit."}
+          "k_vals": {
+            "type": "array",
+            "description": "Photon-count axis k of the experimental histogram."
+          },
+          "p_exp": {
+            "type": "array",
+            "description": "Experimental PCH probabilities P(k), same length as k_vals."
+          },
+          "n_components": {
+            "type": "integer",
+            "description": "Number of molecular species in the model."
+          },
+          "initial_epsilons": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Starting molecular brightness per species (counts per bin per molecule)."
+          },
+          "initial_Ns": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Starting mean number of molecules per species."
+          },
+          "fit_low": {
+            "type": "integer",
+            "description": "Lowest k included in the fit."
+          },
+          "fit_high": {
+            "type": "integer",
+            "description": "Highest k included in the fit."
+          }
         },
-        "required": ["k_vals", "p_exp"]
+        "required": [
+          "k_vals",
+          "p_exp"
+        ]
       },
       "result_schema": {
         "type": "object",
         "properties": {
-          "epsilons": {"type": "array"},
-          "avg_Ns": {"type": "array"},
-          "fractions": {"type": "array"},
-          "chi2": {"type": "number"},
-          "reduced_chi2": {"type": "number"},
-          "dof": {"type": "integer"},
-          "p_fit": {"type": "array"},
-          "n_components": {"type": "integer"}
+          "epsilons": {
+            "type": "array"
+          },
+          "avg_Ns": {
+            "type": "array"
+          },
+          "fractions": {
+            "type": "array"
+          },
+          "chi2": {
+            "type": "number"
+          },
+          "reduced_chi2": {
+            "type": "number"
+          },
+          "dof": {
+            "type": "integer"
+          },
+          "p_fit": {
+            "type": "array"
+          },
+          "n_components": {
+            "type": "integer"
+          }
         }
+      }
+    }
+  ],
+  "accepts": [
+    {
+      "name": "file",
+      "summary": "The photon stream whose counting histogram is built.",
+      "receive": "chisurf.plugins.pch.gui.app:receive_file",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons"
+        ],
+        "many": false,
+        "key": "file"
       }
     }
   ]

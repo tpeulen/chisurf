@@ -245,13 +245,19 @@ def test_steps_switch_the_filter_and_merger_on_and_off():
     hub.app.close()
 
 
-def test_file_list_buttons_and_dialogs(tmp_path):
+def test_the_files_come_from_the_workspace_and_the_list_buttons_edit_them(tmp_path):
+    """The photon streams come from the workspace's Input section; the list ticks and edits them."""
+    from chisurf.plugins.fcs.fcs_correlator.gui.app import receive_files
+
     demo = make_demo(tmp_path / "data")
-    (tmp_path / "data" / "notes.txt").write_text("x")
     hub = _hub()
     files = hub.child
-    assert hub.app.on_files_dropped([str(demo), str(tmp_path / "data" / "notes.txt")])
-    assert files.paths == [str(demo.resolve())]  # a non-TTTR file is not added
+    hub.draw(2)
+    assert "workspace_input_rows" in files.item_rects
+    assert not {"add_files", "add_folder", "database"} & set(files.item_rects)
+    assert receive_files(hub.app, {"files": [str(demo)]})
+    assert files.paths == [str(demo.resolve())]
+    hub.draw(2)
     hub.click("check.0")
     assert files.checked_files == []
     hub.click("all")
@@ -261,23 +267,11 @@ def test_file_list_buttons_and_dialogs(tmp_path):
     hub.click("row.0", fx=0.6)
     hub.click("remove")
     assert files.paths == []
-    hub.click("add_folder")
-    assert files.dialogs.dialog is not None
-    files.dialogs.dialog.enter(str(tmp_path))
+    assert receive_files(hub.app, {"files": [str(demo)]})
     hub.draw(2)
-    hub.press_text("[data]")
-    hub.press_text("Choose")
-    assert files.paths == [str((tmp_path / "data").resolve())]
     hub.click("clear")
     assert files.paths == []
-    hub.click("add_files")
-    files.dialogs.dialog.enter(str(tmp_path / "data"))
-    hub.draw(2)
-    hub.press_text(demo.name)
-    hub.press_text("Open")
-    assert files.paths == [str(demo.resolve())]
-    hub.click("database")
-    assert files.picker is not None and files.picker.is_open
+    assert files.dialogs.dialog is None
     hub.app.close()
 
 

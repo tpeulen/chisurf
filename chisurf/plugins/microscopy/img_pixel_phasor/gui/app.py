@@ -24,7 +24,6 @@ class PhasorApp(PixelToolApp):
     LAYOUT = Split("h", 0.32, Region("settings"), Region("views"))
     DIALOGS = {
         **PixelToolApp.DIALOGS,
-        "irf": ("Open IRF photon file", "open", PHOTON_FILE_FILTER, "open_irf_path"),
     }
 
     def __init__(

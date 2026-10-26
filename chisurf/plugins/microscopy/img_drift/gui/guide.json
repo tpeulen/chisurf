@@ -14,7 +14,7 @@
     },
     {
       "title": "Load the stack",
-      "text": "Your own data goes here: a frame stack or a photon stream (Browse, a drop, or a typed path and Enter). It needs enough structure to correlate: a nearly empty field of view has no peak to find. Choosing a file measures it at once.",
+      "text": "Your own data goes here: a frame stack or a photon stream (drop it on the ChiSurf window, then pick it in the <b>Input</b> section (the Datasets workspace)). It needs enough structure to correlate: a nearly empty field of view has no peak to find. Picking a file measures it at once.",
       "target": {"attr": "filename"}
     },
     {

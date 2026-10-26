@@ -38,5 +38,23 @@
   },
   "requires": {
     "setup_channel_definition": "*"
-  }
+  },
+  "accepts": [
+    {
+      "name": "image",
+      "summary": "A photon stream or image for the tool that is open (the Browser, a pixel map, Resolution, Flow, Colocalization, …).",
+      "receive": "chisurf.plugins.microscopy.imaging_tools.gui.app:receive_for_step",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "image",
+          "photons"
+        ],
+        "many": false,
+        "key": "file"
+      }
+    }
+  ]
 }

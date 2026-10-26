@@ -50,7 +50,7 @@ class ImagingMapViewModel:
         self._by_window: dict[str, dict[str, np.ndarray]] = {}
         #: Flat, HDF5-ready columns (MFD-named intensity + '<key> (win)').
         self._columns: dict[str, np.ndarray] = {}
-        self.results_text: str = "Load a TTTR imaging file (or drop one) and press Run."
+        self.results_text: str = "Pick a TTTR imaging file in the Input section and press Run."
         self._observers: list[Callable[[str], None]] = []
         # ── shared pipeline context (set by the imaging_tools coordinator) ──
         #: Remembered imaging-HDF5 for the current image (enrichment target).

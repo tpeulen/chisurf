@@ -85,8 +85,10 @@ def run(app: Any, drv: Driver) -> None:
 
 
 def loaded(app: Any, drv: Driver, path: Any) -> Any:
-    """Choose *path* the way a person does: type it into the file field and press Enter."""
-    drv.type_into("filename", str(path))
+    """Choose *path* the way a person does: pick it in the Input section (the workspace)."""
+    from .testing import pick_from_workspace
+
+    pick_from_workspace(app, path)
     drv.draw(2)
     return app.model
 
@@ -98,19 +100,6 @@ def computed(app: Any, drv: Driver, path: Any) -> Any:
     return app.model
 
 
-def open_picker(app: Any, drv: Driver, path: Any, fmt: str = "ptu") -> None:
-    app.picker.client = FakeClient(path, fmt)
-    drv.click("open_database")
-    drv.draw(2)
-    assert app.picker.is_open
-    label = f"stored.{fmt} [raw_data] ({fmt})"
-    end = time.monotonic() + 10
-    while label not in drv.draw(1).strings and time.monotonic() < end:
-        time.sleep(0.02)
-    drv.click_text(label)
-    assert app.picker.selection is not None
-
-
 def cursor_free(app: Any) -> None:
     """Park the pointer off the window (no hover tooltip over a screenshot)."""
     app.pointer_move(-1.0, -1.0)
@@ -119,7 +108,10 @@ def cursor_free(app: Any) -> None:
 # -- the file: typed, Browse, Database, drops -------------------------------------------------------------- #
 
 
-def typed_path_is_taken_on_enter(app: Any, drv: Driver, path: Any) -> None:
+def input_section_pick_selects_the_file(app: Any, drv: Driver, path: Any) -> None:
+    """The file comes from the Datasets workspace: picking its row selects it (Run computes)."""
+    drv.draw(2)
+    assert "input_image" in app.item_rects, "the Input section is drawn"
     loaded(app, drv, path)
     assert Path(app.model.filename) == Path(path) and app.model._columns == {}
     assert (
@@ -128,92 +120,22 @@ def typed_path_is_taken_on_enter(app: Any, drv: Driver, path: Any) -> None:
     )
 
 
-def typed_path_is_taken_on_click_away_but_not_before(app: Any, drv: Driver, path: Any) -> None:
-    drv.type_into("filename", str(path), enter=False)
-    assert app.model.filename == ""
-    drv.click_text("Detector window")
+def the_file_field_shows_the_pick_and_cannot_be_typed(app: Any, drv: Driver, path: Any) -> None:
+    loaded(app, drv, path)
+    from .testing import walk
+
+    field = next(s for s in walk(app.spec["sections"]) if s.get("attr") == "filename")
+    assert field.get("read_only") and "call" not in field, "a typed path is no input route"
     assert Path(app.model.filename) == Path(path)
 
 
-def browse_opens_the_dialog_and_a_chosen_file_is_selected(
-    app: Any, drv: Driver, path: Any, title: str = "Open photon image"
-) -> None:
-    path = Path(path)
-    app.model.folder = str(path.parent)
-    drv.click("open_file")
-    assert dialog_open(drv) and app.dialog.title == title and title in drv.draw(1).strings
-    drv.click_text(path.name)
-    drv.click_text("Open", last=True)
-    drv.draw(3)
-    assert (
-        Path(app.model.filename) == path
-        and app.model.folder == str(path.parent)
-        and not dialog_open(drv)
-    )
-    assert not app.job.busy, "Browse only selects: the maps are computed when Run is pressed"
-
-
-def browse_cancel_the_window_close_button_and_escape_change_nothing(
-    app: Any, drv: Driver, path: Any
-) -> None:
-    app.model.folder = str(Path(path).parent)
-    drv.click("open_file")
-    drv.click_text("Cancel", last=True)
-    assert not dialog_open(drv) and app.model.filename == ""
-    drv.click("open_file")
-    drv.click_text("×")
-    assert not dialog_open(drv)
-    drv.click("open_file")
-    drv.hover(500, 350)
-    drv.escape()
-    assert not dialog_open(drv) and app.model.filename == "" and not app.job.busy
-
-
-def database_button_picks_a_dataset(app: Any, drv: Driver, path: Any) -> None:
-    open_picker(app, drv, path)
-    assert app.picker.accept()  # the picker's own accept: what "Open selected" calls (that button never fires: emtk gap, see the xfail)
-    drv.draw(3)
+def an_input_dialog_request_is_refused(app: Any, drv: Driver, path: Any) -> None:
+    """No file dialog opens for reading data: a request is answered with a pointer to the Input."""
+    loaded(app, drv, path)
+    app.model.request_dialog("open")
+    drv.draw(2)
+    assert not dialog_open(drv) and app.dialog is None
     assert Path(app.model.filename) == Path(path)
-
-
-def open_selected_button_of_the_database_picker_can_be_pressed(
-    app: Any, drv: Driver, path: Any
-) -> None:
-    open_picker(app, drv, path)
-    drv.click_text("Open selected")
-    end = time.monotonic() + 5
-    while app.picker.is_open and time.monotonic() < end:
-        time.sleep(0.02)
-        drv.draw(1)
-    assert not app.picker.is_open
-
-
-def database_picker_window_close_button_closes_it(app: Any, drv: Driver, path: Any) -> None:
-    open_picker(app, drv, path)
-    drv.click_text("×")
-    assert not app.picker.is_open and app.model.filename == ""
-
-
-def drop_loads_and_runs_the_file_and_a_drop_while_a_worker_runs_is_refused(
-    app: Any, drv: Driver, path: Any
-) -> None:
-    from chisurf.emtk import job_gate
-
-    # Hold the worker open: a small file computes faster than the drop's frames draw,
-    # and the "refused while running" half needs a run still in flight.
-    job_gate.arm()
-    try:
-        assert drv.drop(path) is True
-        assert Path(app.model.filename) == Path(path) and app.job.busy
-        assert app.files_dropped([str(path)]) is False
-        job_gate.release()
-        drv.settle()
-    finally:
-        job_gate.disarm()
-    assert app.model._columns and app.files_dropped([]) is False
-
-
-# -- running -------------------------------------------------------------------------------------------------- #
 
 
 def run_without_a_file_does_nothing_and_with_one_computes_and_a_second_run_says_it_is_up_to_date(
@@ -271,11 +193,16 @@ def cancel_is_idle_when_nothing_runs(app: Any, drv: Driver) -> None:
 
 
 def failed_run_is_reported_and_leaves_the_model_unchanged(
-    app: Any, drv: Driver, tmp_path: Path
+    app: Any, drv: Driver, tmp_path: Path, path: Any
 ) -> None:
-    bad = tmp_path / "bad.ptu"
-    bad.write_bytes(b"not a photon stream")
-    loaded(app, drv, bad)
+    """A linked file that is broken by the time Run reads it (a corrupt workspace dataset is
+    refused at the drop, so it is damaged after it was picked) is reported, nothing computed."""
+    import shutil
+
+    copy = tmp_path / f"broken{Path(path).suffix}"
+    shutil.copy(path, copy)
+    loaded(app, drv, copy)
+    copy.write_bytes(b"not a photon stream")
     run(app, drv)
     assert app.model._columns == {} and app.model.status_line.startswith("Failed:")
 

@@ -201,25 +201,9 @@ def test_the_wheel_over_the_tool_reaches_it_and_over_the_list_does_not(drv):
     assert not [e for e in app.child.events[n:] if e[0] == "wheel"]
 
 
-def test_keys_go_to_the_open_tool_and_a_file_dropped_on_the_window_goes_to_it(drv, tmp_path):
+def test_keys_go_to_the_open_tool(drv):
     drv.key(0x41, "a")
     assert ("key", 0x41, "a") in drv.app.child.events
-    path = tmp_path / "x.ptu"
-    path.write_bytes(b"x")
-    assert drv.drop(str(path)) is True
-    assert drv.app.child.dropped == [[str(path)]]
-
-
-def test_a_tool_without_a_drop_handler_ignores_a_dropped_file(tmp_path):
-    class Plain(Child):
-        on_files_dropped = None
-
-    app = ImagingToolsApp(client=Client(), factories={"browser": Plain})
-    d = HubDriver(app, BIG)
-    d.draw(3)
-    d.drop(str(tmp_path / "y.ptu"))
-    assert app.files_dropped([str(tmp_path / "y.ptu")]) is False and app.child.dropped == []
-    app.close()
 
 
 def test_the_source_and_hdf5_lines_follow_the_shared_context(drv):
@@ -336,9 +320,10 @@ def test_the_whole_flow_works_in_the_small_window_too():
     app.close()
 
 
-def test_a_file_dropped_on_the_hub_reaches_a_real_step_that_answers_files_dropped(tmp_path):
-    """The pixel steps answer ``files_dropped`` (not ``on_files_dropped``); a drop on the hub must still load the file."""
+def test_a_dataset_handed_to_the_hub_reaches_the_open_step(tmp_path):
+    """*Open in…* on the hub hands the dataset to the step shown, through that step's own input."""
     from chisurf.plugins.microscopy.imaging_emtk import pixel_testing as data
+    from chisurf.plugins.microscopy.imaging_tools.gui.app import receive_for_step
 
     source = Path(data.flim_ptu(tmp_path / "flim.ptu"))
     app = ImagingToolsApp(client=Client())
@@ -346,7 +331,7 @@ def test_a_file_dropped_on_the_hub_reaches_a_real_step_that_answers_files_droppe
     d.draw(3)
     try:
         click_entry(d, "pixel_intensity")
-        assert d.drop(str(source)) is True
+        assert receive_for_step(app, {"file": str(source)}) is True
         assert app.children["pixel_intensity"].model.filename == str(source)
     finally:
         app.close()

@@ -420,55 +420,6 @@ def test_the_settings_form_is_greyed_while_a_run_is_in_flight(app, drv):
     assert app.model.result is not None
 
 
-def test_open_button_opens_the_file_dialog_and_a_chosen_file_becomes_the_movie(app, drv, tiff):
-    app.model.folder = str(tiff.parent)
-    drv.click("open_file")
-    assert dialog_open(drv) and app.dialog.title == "Open image stack"
-    drv.click_text("movie.tif")
-    drv.click_text("Open", last=True)
-    assert Path(app.model.filename) == tiff
-    assert app.model.status_line == "Loaded movie.tif. Press Track."
-    assert not dialog_open(drv)
-    assert app.model.folder == str(tiff.parent)
-
-
-def test_open_dialog_cancel_changes_nothing(app, drv, tiff):
-    app.model.folder = str(tiff.parent)
-    drv.click("open_file")
-    drv.click_text("Cancel")
-    assert app.model.filename == "" and not dialog_open(drv)
-
-
-def test_a_path_typed_into_the_field_is_taken_on_enter(app, drv, tiff):
-    drv.type_into("filename", str(tiff))
-    assert Path(app.model.filename) == tiff
-    assert app.model.status_line.startswith("Loaded movie.tif")
-
-
-def test_a_path_typed_but_not_confirmed_is_not_taken(app, drv, tiff):
-    drv.type_into("filename", str(tiff), enter=False)
-    assert app.model.filename == ""
-    drv.click(
-        "max_frames", fx=0.3
-    )  # clicking away commits, as the Qt line edit did on losing focus
-    assert Path(app.model.filename) == tiff
-
-
-def test_dropping_a_file_on_the_window_loads_it(app, drv, tiff):
-    assert drv.drop(tiff) is True
-    assert Path(app.model.filename) == tiff
-    assert app.files_dropped([]) is False  # nothing dropped
-    assert Path(app.model.filename) == tiff
-
-
-def test_dropping_while_a_run_is_in_flight_is_refused(app, drv, tiff):
-    use(app, **SMALL)
-    drv.click("track")
-    assert app.job.busy
-    assert app.files_dropped([str(tiff)]) is False and app.model.filename == ""
-    drv.settle()
-
-
 def test_export_without_a_result_says_so(app, drv):
     drv.click("request_export")
     assert app.model.status_line == "Run the tracker first." and not dialog_open(drv)
@@ -981,7 +932,7 @@ def test_a_standalone_tool_takes_no_imaging_pipeline_context(app, drv):
 def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv):
     for size in ((1200, 800), (800, 600)):
         strings = set(drv.draw(3, size).strings)
-        assert {"Settings", "Report", "Track", "📂  Open…", "Export CSV"} <= strings
+        assert {"Settings", "Report", "Track", "Export CSV"} <= strings
     tracked(app, drv)
     for size in ((1200, 800), (800, 600)):
         strings = set(drv.draw(3, size).strings)
@@ -1124,19 +1075,6 @@ def test_port_is_qt_free():
 
     result = qt_free("img_tracking")
     assert result["ok"], result["output"]
-
-
-def test_the_native_host_delivers_a_dropped_file_to_the_app(app, tiff):
-    """A file dropped on the window opens in the app.
-
-    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
-    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
-    the Qt half.
-    """
-    from emtk.app import ControlSurface
-
-    assert ControlSurface(app).on_files_dropped([str(tiff)]) is True
-    assert Path(app.model.filename) == tiff
 
 
 def test_independent_msd_oracle_rejects_wrong_transport_parameters():

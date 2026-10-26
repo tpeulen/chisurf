@@ -23,5 +23,27 @@
     "cli": "img-coloc=chisurf.plugins.microscopy.img_coloc.cli:cli",
     "emtk": "chisurf.plugins.microscopy.img_coloc.gui.app:make_app"
   },
-  "menu_hidden": true
+  "menu_hidden": true,
+  "accepts": [
+    {
+      "name": "image",
+      "summary": "The two-channel image whose colocalization is measured.",
+      "receive": "chisurf.plugins.microscopy.imaging_emtk.app_base:receive_input",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "image",
+          "photons"
+        ],
+        "many": false,
+        "key": "file",
+        "representations": [
+          "photons",
+          "intensity"
+        ]
+      }
+    }
+  ]
 }

@@ -9,6 +9,7 @@ import pytest
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.pch.gui.app import receive_file
 
 HERE = Path(__file__).parent
 REPO = HERE.parents[3]
@@ -95,18 +96,14 @@ def test_model_produces_the_reference_result():
 def test_actions_change_state_and_report_errors(tmp_path):
     model = make_model()
     assert not model.enabled("compute") and not model.enabled("fit") and not model.enabled("save")
-    assert model.enabled("load")
 
     model.compute()
-    assert model.status_line() == "Load a TTTR file first."
+    assert model.status_line() == "Pick a photon stream first."
     model.fit()
     assert model.status_line() == "Compute the histogram first."
     model.save()
     assert model.status_line() == "Compute the histogram first."
     assert model.dialog == ""
-
-    model.load()
-    assert model.dialog == "open"
 
     # a bad file: readable error, nothing half-loaded
     assert not model.load_path(str(tmp_path / "missing.ptu"))
@@ -153,13 +150,6 @@ def test_actions_change_state_and_report_errors(tmp_path):
     assert not model.save_to(str(tmp_path / "no_such_dir" / "out"))
     assert model.status_line().startswith("Saving failed")
 
-    # drops: a photon file loads, anything else is reported
-    fresh = make_model()
-    assert not fresh.on_paths_dropped([tmp_path / "notes.txt"])
-    assert fresh.status_line().startswith("Drop a photon-stream file")
-    assert fresh.on_paths_dropped([tmp_path / "notes.txt", DATA])
-    assert fresh.filename == str(DATA) and fresh.error_text == ""
-
     # moving the fit range recomputes the chi2 of an existing fit
     model.set_n_components(1)
     model.fit_now()
@@ -201,7 +191,7 @@ def test_app_draws_empty_and_populated(size):
         painter = RecordingPainter()
         app.draw(painter, 0, 0, *size)
     empty = " ".join(painter.strings)
-    assert "Load TTTR" in empty and "Ready. Load a TTTR file to begin." in empty
+    assert "Ready. Pick a photon stream in the Input section." in empty
     assert "Comp1" not in empty
 
     model = app.model
@@ -228,14 +218,10 @@ def test_main_action_end_to_end(tmp_path):
     model = app.model
     assert model.runner is not None  # work goes through the app's job, not the draw thread
 
-    # Load TTTR opens the dialog
-    model.load()
+    # the Input section is drawn; a stream picked there (the workspace) loads in the job
     app.draw(RecordingPainter(), 0, 0, 1200, 800)
-    assert isinstance(app.dialog, FileDialog) and app.dialog_kind == "open"
-    app.dialog = None
-
-    # a dropped file loads in the job
-    app.on_paths_dropped([str(DATA)])
+    assert "workspace_input_rows" in app.item_rects and app.dialog is None
+    receive_file(app, {"file": str(DATA)})
     pump(app)
     assert model.filename == str(DATA) and model.enabled("compute")
 
@@ -285,7 +271,6 @@ def test_every_control_has_a_tooltip():
         action_caption("help"),
         action_caption("guide"),
         action_caption("example"),
-        "Load TTTR",
         "Compute PCH",
         "Fit Model",
         "Save Results",
@@ -363,7 +348,7 @@ def test_guide_targets_are_drawn_and_awaits_release(tmp_path):
 
     app.tour.start(2)  # your own file: informational, the dialog is not an outcome
     assert not app.tour.awaiting
-    app.on_paths_dropped([str(DATA)])
+    receive_file(app, {"file": str(DATA)})
     pump(app)
     assert model.filename == str(DATA)
 

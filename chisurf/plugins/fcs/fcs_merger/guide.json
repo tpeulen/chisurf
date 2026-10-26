@@ -18,7 +18,7 @@
     },
     {
       "title": "Or point it at your own correlation folder",
-      "text": "Drop a folder of correlation files here, or browse to one. Every curve it finds is loaded, plotted and listed.",
+      "text": "Drop correlation files (.cor) on the ChiSurf window, then pick them in the <b>Input</b> section above. Every curve picked is loaded, plotted and listed; the folder field shows where they are.",
       "target": {
         "name": "lineEdit"
       }

@@ -31,7 +31,6 @@ class ImgFlowApp(ImagingToolApp):
         Split("v", 0.20, Region("report"), Split("h", 0.5, Region("field"), Region("diag"))),
     )
     DIALOGS = {
-        "open": ("Open image", "open", IMAGE_FILE_FILTER, "open_path"),
         "export": ("Export flow map", "save", "CSV (*.csv)", "write_export"),
     }
     #: model event -> the control a tour step waits for

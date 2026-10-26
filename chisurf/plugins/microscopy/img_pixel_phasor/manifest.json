@@ -11,7 +11,7 @@
     "Imaging",
     "Phasor-FLIM"
   ],
-  "icon": "\u25d0",
+  "icon": "◐",
   "state_namespace": "img_pixel_phasor",
   "statefulness": {
     "enabled": true,
@@ -185,7 +185,7 @@
           },
           "roi": {
             "type": "object",
-            "description": "A serialised region gating the phasor plane \u2014 a polygon round a cluster, or a combination of cursors. Replaces center/kind."
+            "description": "A serialised region gating the phasor plane — a polygon round a cluster, or a combination of cursors. Replaces center/kind."
           }
         },
         "required": [
@@ -261,5 +261,45 @@
   "requires": {
     "imaging_common": "*"
   },
-  "menu_hidden": true
+  "menu_hidden": true,
+  "accepts": [
+    {
+      "name": "image",
+      "summary": "The photon image whose pixel phasors are mapped.",
+      "receive": "chisurf.plugins.microscopy.imaging_emtk.app_base:receive_input",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "image",
+          "photons"
+        ],
+        "many": false,
+        "key": "file",
+        "representations": [
+          "photons"
+        ]
+      }
+    },
+    {
+      "name": "irf",
+      "summary": "The IRF photon stream the phasors are referenced to.",
+      "receive": "chisurf.plugins.microscopy.imaging_emtk.app_base:receive_input",
+      "required": [
+        "irf"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "image",
+          "photons"
+        ],
+        "many": false,
+        "key": "irf",
+        "representations": [
+          "photons"
+        ]
+      }
+    }
+  ]
 }

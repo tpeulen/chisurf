@@ -8,7 +8,7 @@
     },
     {
       "title": "Choose the photon file",
-      "text": "A PTU or HT3 file with line and frame markers: the scanner geometry is read from its header. Type a path and press Enter, press <b>Browse</b> or <b>Database</b>, or drop a file on the window (a dropped file is loaded and run at once).",
+      "text": "A PTU or HT3 file with line and frame markers: the scanner geometry is read from its header. Your own data: drop it on the ChiSurf window, then pick it in the <b>Input</b> section (the Datasets workspace).",
       "target": {"name": "file", "action": "TTTR file"},
       "await": {"hint": "Select a photon file. Nothing is computed until you press Run."}
     },

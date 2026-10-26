@@ -16,7 +16,13 @@ import pytest
 
 from chisurf.plugins.microscopy.imaging_emtk import pixel_checks as C
 from chisurf.plugins.microscopy.imaging_emtk import pixel_testing as data
-from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, dialog_open, hermetic_env, walk
+from chisurf.plugins.microscopy.imaging_emtk.testing import (
+    Driver,
+    dialog_open,
+    hermetic_env,
+    pick_from_workspace,
+    walk,
+)
 from chisurf.plugins.microscopy.img_pixel_mle import core as mle_core
 from chisurf.plugins.microscopy.img_pixel_mle.gui.app import PixelMleApp, make_app
 from chisurf.plugins.microscopy.img_pixel_mle.gui.model import PixelMleModel
@@ -190,37 +196,19 @@ def test_run_is_greyed_and_says_why_until_everything_is_given(app, drv, files):
 # ── 2. the file lists ───────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_add_files_opens_the_chooser_and_a_chosen_file_is_listed(app, drv, files):
-    app.model.folder = str(files[0].parent)
-    drv.click("sel_files.add")
-    assert dialog_open(drv) and app.dialog.title == "Add imaging files"
-    drv.click_text("scan.ptu")
-    drv.click_text("Open", last=True)
+def test_the_files_and_the_irf_come_from_the_workspace(app, drv, files):
+    """Both lists are filled from the Datasets workspace (their Input sections); no chooser opens."""
+    drv.draw(3)
+    assert {"input_files", "input_irf_files"} <= set(app.item_rects)
+    assert "sel_files.add" not in app.item_rects and "sel_irf_files.add" not in app.item_rects
+    pick_from_workspace(app, files[0], "files")
     drv.draw(3)
     assert app.model.files == [str(files[0])] and not dialog_open(drv)
     assert "scan.ptu" in drv.draw(2).strings
-
-
-def test_add_irf_takes_one_file_and_a_second_replaces_it(app, drv, files):
-    app.model.folder = str(files[0].parent)
-    drv.click("sel_irf_files.add")
-    assert dialog_open(drv) and app.dialog.title == "Choose the IRF file"
-    drv.click_text("irf.ptu")
-    drv.click_text("Open", last=True)
-    drv.draw(3)
+    pick_from_workspace(app, files[1], "irf_files")
     assert app.model.irf_files == [str(files[1])]
     app.model.add_irf([str(files[0])])
     assert app.model.irf_files == [str(files[0])]
-
-
-def test_the_chooser_cancel_and_close_buttons_add_nothing(app, drv, files):
-    app.model.folder = str(files[0].parent)
-    drv.click("sel_files.add")
-    drv.click_text("Cancel", last=True)
-    assert not dialog_open(drv) and app.model.files == []
-    drv.click("sel_files.add")
-    drv.click_text("×")
-    assert not dialog_open(drv) and app.model.files == []
 
 
 def test_remove_and_clear_edit_the_list_without_deleting_files(app, drv, files, scan):
@@ -235,54 +223,6 @@ def test_remove_and_clear_edit_the_list_without_deleting_files(app, drv, files, 
     drv.click("sel_files.clear")
     assert m.files == [] and files[0].exists()
     assert app.model.enabled("x") is not False
-
-
-def test_the_database_buttons_pick_a_file_and_an_irf(app, drv, files):
-    C.open_picker(app, drv, files[0]) if False else None
-    app.picker.client = C.FakeClient(files[0])
-    drv.click("sel_files.database")
-    drv.draw(2)
-    assert app.picker.is_open
-    end = time.monotonic() + 10
-    while "stored.ptu [raw_data] (ptu)" not in drv.draw(1).strings and time.monotonic() < end:
-        time.sleep(0.02)
-    drv.click_text("stored.ptu [raw_data] (ptu)")
-    assert app.picker.accept()
-    drv.draw(3)
-    assert app.model.files == [str(files[0])]
-    app.picker.client = C.FakeClient(files[1])
-    drv.click("sel_irf_files.database")
-    drv.draw(2)
-    end = time.monotonic() + 10
-    while "stored.ptu [raw_data] (ptu)" not in drv.draw(1).strings and time.monotonic() < end:
-        time.sleep(0.02)
-    drv.click_text("stored.ptu [raw_data] (ptu)")
-    assert app.picker.accept()
-    drv.draw(3)
-    assert app.model.irf_files == [str(files[1])]
-
-
-def test_a_drop_adds_the_files_and_a_drop_while_a_worker_runs_is_refused(app, drv, files):
-    assert drv.drop(files[0]) is True
-    assert app.model.files == [str(files[0])]
-    ready(app, files)
-    drv.click("request_run")
-    assert app.job.busy and app.files_dropped([str(files[1])]) is False
-    drv.settle(timeout=300)
-    assert app.files_dropped([]) is False
-
-
-def test_the_native_host_delivers_a_dropped_file_to_the_app(app, files):
-    """A file dropped on the window opens in the app.
-
-    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
-    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
-    the Qt half.
-    """
-    from emtk.app import ControlSurface
-
-    assert ControlSurface(app).on_files_dropped([str(files[0])]) is True
-    assert app.model.files == [str(files[0])]
 
 
 # ── 3. the settings ─────────────────────────────────────────────────────────────────────────────────────── #

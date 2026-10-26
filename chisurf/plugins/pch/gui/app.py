@@ -23,7 +23,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.plugins.emtk_layout import action_button, window_size
 
-from .model import TTTR_FILE_FILTER, PchModel
+from .model import PchModel
 
 HERE = Path(__file__).parent
 
@@ -41,6 +41,12 @@ class PchApp(ImApp):
         self.spec = json.loads((HERE / "pch.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(self.spec, (1100, 720))
         self.form = FormState()
+        from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
+
+        #: The Input section: the workspace's photon streams (manifest ``accepts`` "file").
+        self.workspace_input = NamedWorkspaceInput("pch", "file", self, height=60)
+        self.workspace_input.workspace_input_on_used = lambda _key: self.tour.notify_used("load")
+        self.form.custom["workspace_input"] = lambda s, m, st, w: self._draw_input()
         self.dialog: FileDialog | None = None
         self.dialog_kind = ""
         self.item_rects: dict[str, tuple] = {}
@@ -92,11 +98,12 @@ class PchApp(ImApp):
     def _tour_outcomes(self) -> None:
         """Tell the tour when a file is loaded, a histogram computed or a fit done.
 
-        The tour waits for the outcome, not the button press: pressing *Load
-        TTTR* only opens a dialog. Each outcome step is highlighted on the button
-        that produces it.
+        The tour waits for the outcome, not the press. Each outcome step is highlighted on
+        what produces it: the Input section (a picked stream), Compute, Fit.
         """
-        for key, button in (("file_loaded", "load"), ("computed", "compute"), ("fitted", "fit")):
+        if "workspace_input_rows" in self.item_rects:
+            self.item_rects["file_loaded"] = self.item_rects["workspace_input_rows"]
+        for key, button in (("computed", "compute"), ("fitted", "fit")):
             if button in self.form.rects:
                 self.item_rects[key] = self.form.rects[button]
         model = self.model
@@ -175,6 +182,13 @@ class PchApp(ImApp):
         )
         self.item_rects["region"] = im.get_item_rect()
 
+    def _draw_input(self) -> None:
+        named = self.workspace_input
+        draw_form(named.spec, named, named.form)
+        if "workspace_input_rows" in named.form.rects:
+            self.item_rects["workspace_input_rows"] = named.form.rects["workspace_input_rows"]
+            self.item_rects["load"] = named.form.rects["workspace_input_rows"]
+
     # ── file dialog ────────────────────────────────────────────────────
     def _open_requested_dialog(self) -> None:
         """Turn the model's ``dialog`` request into a :class:`FileDialog`."""
@@ -182,18 +196,15 @@ class PchApp(ImApp):
         if not kind or self.dialog is not None:
             return
         directory = self.model.folder or None
-        if kind == "open":
-            self.dialog = FileDialog(
-                "Open TTTR", mode="open", filters=TTTR_FILE_FILTER, directory=directory
-            )
-        else:
-            self.dialog = FileDialog(
-                "Save Base Name",
-                mode="save",
-                filename="results",
-                filters="All Files (*)",
-                directory=directory,
-            )
+        if kind != "save":
+            return  # the photon stream comes from the workspace (the Input section)
+        self.dialog = FileDialog(
+            "Save Base Name",
+            mode="save",
+            filename="results",
+            filters="All Files (*)",
+            directory=directory,
+        )
         self.dialog_kind = kind
 
     def _draw_dialog(self, box: Any) -> None:
@@ -202,23 +213,11 @@ class PchApp(ImApp):
         if im.begin(self.dialog.title):
             result = self.dialog.draw()
             if result:
-                kind, self.dialog = self.dialog_kind, None
-                if kind == "open":
-                    self.tour.notify_used("load")
-                    self.model.open_file(result[0])
-                else:
-                    self.model.save_to(result[0])
+                self.dialog = None
+                self.model.save_to(result[0])
             elif result is False:
                 self.dialog = None
         im.end()
-
-    # ── files dropped on the window ────────────────────────────────────
-    def on_paths_dropped(self, paths: Any) -> None:
-        self.model.on_paths_dropped(list(paths))
-
-    def files_dropped(self, paths: Any) -> bool:
-        self.on_paths_dropped(paths)
-        return bool(paths)
 
     # ── persistence ────────────────────────────────────────────────────
     def export_settings(self) -> dict:
@@ -229,6 +228,16 @@ class PchApp(ImApp):
 
     def close(self) -> None:
         """Nothing to release: workers are daemon threads and no file stays open."""
+
+
+def receive_file(app: Any, payload: dict) -> bool:
+    """The workspace's photon stream (``accepts[].from_workspace``): loaded for the histogram."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("file")
+    if not address:
+        return False
+    return bool(app.model.open_file(read_address(str(address))))
 
 
 def make_app() -> PchApp:

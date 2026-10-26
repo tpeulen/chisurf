@@ -56,7 +56,7 @@ class DriftModel(EmtkModelMixin, DriftViewModel):
         self.request_dialog("database")
 
     def open_path(self, path: str) -> None:
-        """Select *path* and measure it, as the Qt tool did when a file was chosen or dropped."""
+        """Select *path* and measure it, as the Qt tool did when a file was chosen (now: picked in the workspace)."""
         if not path:
             return
         self.remember_folder(path)

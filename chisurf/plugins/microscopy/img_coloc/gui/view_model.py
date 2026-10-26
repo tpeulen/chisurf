@@ -80,7 +80,7 @@ class ColocViewModel:
         self._result: ColocalizationResult | None = None
         self._metrics: dict = {}
         self.results_text: str = (
-            "Load a TIFF stack or photon-stream image (or drop one) and press Run."
+            "Pick a TIFF stack or photon-stream image in the Input section and press Run."
         )
         self._observers: list[Callable[[str], None]] = []
 

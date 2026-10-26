@@ -200,7 +200,7 @@ def workspace_rows(spec: WorkspaceInput, dtos: Iterable[dict] | None = None) -> 
             continue
         address = address_of(dto)
         found = KINDS.get(str(dto.get("kind") or ""))
-        label = f"{found.icon} {found.label}" if found else ""
+        label = f"{found.icon}  {found.label}" if found else ""
         if dto.get("representation"):
             label = f"{label} · {dto['representation']}"
         source = "" if address.startswith(SESSION_PREFIX) else address.replace("\\", "/")

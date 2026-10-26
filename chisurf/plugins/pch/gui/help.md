@@ -3,7 +3,7 @@
 The photon counting histogram P(k) is how often a counting interval (a time bin) contains exactly k photons. Its shape carries what the mean intensity cannot: the molecular brightness ε (counts per bin per molecule) and the mean number ⟨N⟩ of molecules in the detection volume. One species broadens the histogram beyond a Poisson distribution of the same mean; a mixture broadens it further. For the theory see [Photon-counting histogram (PCH) and FIDA](docs/concepts/pch_fida.md); for a worked example and the known limits of this tool's fit see [FIDA — photon-counting histograms](docs/guides/04_fida_pch.md).
 
 ## How it works
-1. Press Load TTTR and choose a photon-stream file (PTU, HT3, T2R, T3R, PTO, SPC), or drop the file on the window.
+1. Drop a photon-stream file (PTU, HT3, T2R, T3R, PTO, SPC) on the ChiSurf window, then pick its stream in the **Input** section.
 2. Set Channels to your detectors, Bin time (μs) and, if needed, the Micro time gate.
 3. Press Compute PCH. The intensity trace (top) and the histogram P(k) (bottom, logarithmic) are drawn.
 4. Set Components and the starting values of ε and ⟨N⟩ in the table (double click a cell to edit).

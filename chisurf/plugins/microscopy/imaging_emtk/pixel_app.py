@@ -33,7 +33,6 @@ class PixelToolApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
     #: show the shared detector editor as a window (the tools compute one map set per detector window)
     DETECTOR_EDITOR = True
     DIALOGS = {
-        "open": ("Open photon image", "open", PHOTON_FILE_FILTER, "open_path"),
         "hdf5": ("Create imaging HDF5", "save", HDF5_FILE_FILTER, "write_hdf5"),
     }
     OUTCOMES = {"file": "filename", "run": "run_maps", "saved": "request_hdf5", "ndx": "open_ndx"}

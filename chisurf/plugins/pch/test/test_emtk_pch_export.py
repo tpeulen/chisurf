@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 from emtk.testing import Driver, RecordingPainter
 
+from chisurf.plugins.pch.gui.app import receive_file
+
 HERE = Path(__file__).parent
 DATA = HERE.parents[3] / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
 
@@ -30,7 +32,7 @@ def test_save_results_button_writes_both_pictures(tmp_path):
     app = make_app()
     drv = Driver(app, (1200, 800))
     drv.draw(3)
-    app.on_paths_dropped([str(DATA)])
+    receive_file(app, {"file": str(DATA)})
     _wait(drv)
     app.model.channels, app.model.bin_time_us = "0,8", 50.0
     drv.click("compute")

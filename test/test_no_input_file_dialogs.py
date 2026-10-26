@@ -47,6 +47,11 @@ NOT_INPUT = {
         "Titration export: the CSV the fitted series is written to, an output (the titration's "
         "burst runs come from the workspace)."
     ),
+    "chisurf/plugins/microscopy/imaging_emtk/app_base.py": (
+        "The imaging tools' dialogs: save dialogs (exports, HDF5, regions) and a tool's own state "
+        "files (STATE_DIALOGS: saved regions); a request for measurement data is refused -- it comes "
+        "from the workspace."
+    ),
     "chisurf/plugins/core/project_data/gui/app.py": (
         "Locate missing data: 'Search in folder…' / 'Use this file' find the moved original of a "
         "linked dataset -- a repair of the project, not data entering it."

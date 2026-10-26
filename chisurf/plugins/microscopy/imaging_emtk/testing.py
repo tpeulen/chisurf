@@ -248,3 +248,36 @@ def assert_fingerprint(array: Any, recorded: dict, rtol: float = 1e-9) -> None:
         np.testing.assert_allclose(got[key], recorded[key], rtol=rtol, atol=1e-12)
     if "blocks" in recorded:
         np.testing.assert_allclose(got["blocks"], recorded["blocks"], rtol=rtol, atol=1e-12)
+
+
+#: Suffixes a drop files as photon streams (the rest of the inputs are images).
+_PHOTON_SUFFIXES = (".ptu", ".pto", ".ht3", ".pt3", ".spc", ".phu")
+
+
+def pick_from_workspace(
+    app: Any, path: Any, name: str = "image", *, kind: str | None = None
+) -> Any:
+    """Choose *path* the way a person does now: the file is in the Datasets workspace (as a drop
+    puts it there) and its row is picked in the tool's Input section *name*.
+
+    Returns the model.
+    """
+    from chisurf.core.plugin.workspace_input import register_result
+
+    path = str(path)
+    if kind is None:
+        kind = "photons" if path.lower().endswith(_PHOTON_SUFFIXES) else "image"
+    named = app.inputs[name]
+    rows = [r for r in named.workspace_input_rows() if r.get("address") == path]
+    if not rows:
+        register_result(path, kind=kind)
+        rows = [r for r in named.workspace_input_rows() if r.get("address") == path]
+    assert rows, f"{path} is not offered by the {name!r} Input section"
+    spec = named._workspace_input()
+    if spec is not None and spec[1].many:
+        named.workspace_input_selection = rows[-1:]
+        named.workspace_input_use()
+    else:
+        named.workspace_input_selected(rows[-1])
+    assert not named.workspace_input_status.startswith("Could not"), named.workspace_input_status
+    return app.model

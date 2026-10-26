@@ -31,7 +31,7 @@ pch/
 ## Usage
 
 1. From the ChiSurf menu: **Plugins > Spectroscopy > Single-Molecule > PCH**
-2. Click **Load TTTR** to select a file (or drop it on the window)
+2. Drop the file on the ChiSurf window and pick its stream in the **Input** section
 3. Adjust channels, bin time, micro-time range in the Data Settings panel
 4. Click **Compute PCH** to build the histogram
 5. Set number of species and initial guesses in Model Fit

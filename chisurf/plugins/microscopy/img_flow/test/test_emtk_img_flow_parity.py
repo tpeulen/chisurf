@@ -23,6 +23,7 @@ from chisurf.plugins.microscopy.imaging_emtk.testing import (
     dialog_open,
     hermetic_env,
     numeric_ticks,
+    pick_from_workspace,
     walk,
 )
 from chisurf.plugins.microscopy.img_flow import core, demo
@@ -115,8 +116,8 @@ def use(app, **settings):
 
 
 def loaded(app, drv, path):
-    """Choose *path* the way a person does (type it, Enter) and wait for the worker that reads its channels."""
-    drv.type_into("filename", str(path))
+    """Choose *path* the way a person does (pick it in the Input section) and wait for the worker that reads its channels."""
+    pick_from_workspace(app, path)
     drv.settle()
     return app.model
 
@@ -336,46 +337,6 @@ def test_choosing_a_file_reads_its_channels_and_does_not_map(app, drv, flow_tif)
     )
 
 
-def test_a_typed_path_is_taken_on_enter_and_on_click_away_but_not_before(app, drv, flow_tif):
-    drv.type_into("filename", str(flow_tif), enter=False)
-    assert app.model.filename == ""
-    drv.click("tile", fx=0.3)
-    drv.settle()
-    assert Path(app.model.filename) == flow_tif and app.model.channel_names() == ["ch0"]
-
-
-def test_browse_opens_the_dialog_and_a_chosen_file_is_loaded(app, drv, flow_tif):
-    app.model.folder = str(flow_tif.parent)
-    drv.click("open_file")
-    assert (
-        dialog_open(drv)
-        and app.dialog.title == "Open image"
-        and "Open image" in drv.draw(1).strings
-    )
-    drv.click_text("flow.tif")
-    drv.click_text("Open", last=True)
-    drv.settle()
-    assert (
-        Path(app.model.filename) == flow_tif
-        and app.model.folder == str(flow_tif.parent)
-        and not dialog_open(drv)
-    )
-
-
-def test_browse_cancel_the_window_close_button_and_escape_change_nothing(app, drv, flow_tif):
-    app.model.folder = str(flow_tif.parent)
-    drv.click("open_file")
-    drv.click_text("Cancel")
-    assert not dialog_open(drv) and app.model.filename == ""
-    drv.click("open_file")
-    drv.click_text("×")
-    assert not dialog_open(drv)
-    drv.click("open_file")
-    drv.hover(500, 350)
-    drv.escape()
-    assert not dialog_open(drv) and app.model.filename == "" and not app.job.busy
-
-
 class FakeClient:
     """A database client that lists one dataset and resolves it to a local file."""
 
@@ -414,60 +375,6 @@ def open_picker(app, drv, path):
     assert app.picker.selection is not None
 
 
-def test_the_database_button_picks_a_dataset(app, drv, flow_tif):
-    open_picker(app, drv, flow_tif)
-    assert (
-        app.picker.accept()
-    )  # the picker's own accept: what the "Open selected" button would call (see the xfail below)
-    drv.settle()
-    assert Path(app.model.filename) == flow_tif and app.model.channel_names() == ["ch0"]
-
-
-def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flow_tif):
-    import time
-
-    open_picker(app, drv, flow_tif)
-    drv.click_text("Open selected")
-    end = time.monotonic() + 5
-    while app.picker.is_open and time.monotonic() < end:
-        time.sleep(0.02)
-        drv.draw(1)
-    assert not app.picker.is_open
-
-
-def test_the_database_picker_window_close_button_closes_it(app, drv, flow_tif):
-    open_picker(app, drv, flow_tif)
-    drv.click_text("×")
-    assert not app.picker.is_open and app.model.filename == ""
-
-
-def test_a_drop_loads_the_file_and_a_drop_while_a_worker_runs_is_refused(app, drv, flow_tif):
-    from chisurf.emtk import job_gate
-
-    job_gate.arm()  # hold the load open: a small file loads within the drop's own frames
-    try:
-        assert drv.drop(flow_tif) is True
-        assert app.job.busy and app.files_dropped([str(flow_tif)]) is False
-        job_gate.release()
-        drv.settle()
-    finally:
-        job_gate.disarm()
-    assert Path(app.model.filename) == flow_tif and app.files_dropped([]) is False
-
-
-def test_the_native_host_delivers_a_dropped_file_to_the_app(app, flow_tif):
-    """A file dropped on the window opens in the app.
-
-    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
-    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
-    the Qt half.
-    """
-    from emtk.app import ControlSurface
-
-    assert ControlSurface(app).on_files_dropped([str(flow_tif)]) is True
-    assert Path(app.model.filename) == flow_tif
-
-
 # ── 4. errors ──────────────────────────────────────────────────────────────────────────────────────────────── #
 
 
@@ -480,7 +387,7 @@ def test_map_flow_with_nothing_loaded_says_so(app, drv):
     assert "Load an image first." in drv.strings()
 
 
-def test_a_corrupt_and_a_missing_file_report_the_qt_reasons(app, drv, tmp_path):
+def test_a_corrupt_file_reports_the_qt_reasons(app, drv, tmp_path):
     bad = tmp_path / "bad.tif"
     bad.write_bytes(b"not a tiff")
     loaded(app, drv, bad)
@@ -489,14 +396,6 @@ def test_a_corrupt_and_a_missing_file_report_the_qt_reasons(app, drv, tmp_path):
     drv.click("map_flow")
     drv.settle()
     assert app.model.status_line.startswith("Flow map failed:") and app.model.result is None
-    loaded(app, drv, tmp_path / "missing.tif")
-    assert app.model.status_line.startswith("Could not read the file:")
-    drv.click("map_flow")
-    drv.settle()
-    assert (
-        app.model.status_line.startswith("Flow map failed:")
-        and "missing.tif" in app.model.status_line
-    )
 
 
 def test_too_few_frames_are_refused_with_the_qt_messages(app, drv, tmp_path):
@@ -961,7 +860,7 @@ def test_every_guide_target_is_a_drawn_control_or_window(app, drv, flow_tif):
     } <= seen
 
 
-def test_a_file_chosen_in_the_dialog_does_not_release_the_demo_step_but_the_demo_does(
+def test_a_file_picked_in_the_workspace_does_not_release_the_demo_step_but_the_demo_does(
     app, flow_tif
 ):
     drv = Driver(app, BIG)
@@ -970,9 +869,7 @@ def test_a_file_chosen_in_the_dialog_does_not_release_the_demo_step_but_the_demo
     app.tour.next()
     drv.draw(2)
     assert app.tour.awaiting
-    drv.click("open_file")
-    drv.click_text("flow.tif")
-    drv.click_text("Open", last=True)
+    pick_from_workspace(app, flow_tif)
     drv.settle()
     assert app.tour.awaiting  # the step waits for the demo, not for any file
     app.model.notify("demo")
@@ -1059,8 +956,6 @@ def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv, flow_tif):
             "Map flow",
             "🧪  Load example",
             "Export CSV",
-            "📂  Browse…",
-            "Database",
             "Flow",
         } <= set(drv.draw(3, size).strings)
     mapped(app, drv, flow_tif)
@@ -1070,7 +965,7 @@ def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv, flow_tif):
 
 def test_the_idle_window_does_not_ask_for_frames(app, drv):
     drv.draw(3)
-    assert not app.job.busy and not app.picker.is_open
+    assert not app.job.busy
 
 
 # ── 9. the spec, the tooltips, no Qt ───────────────────────────────────────────────────────────────────────── #

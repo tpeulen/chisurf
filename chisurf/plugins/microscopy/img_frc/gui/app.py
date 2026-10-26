@@ -31,8 +31,6 @@ class ImgFrcApp(ImagingToolApp):
         Split("v", 0.22, Region("report"), Split("h", 0.42, Region("plot"), Region("diag"))),
     )
     DIALOGS = {
-        "open": ("Open image", "open", IMAGE_FILE_FILTER, "open_path"),
-        "open_second": ("Open second image", "open", IMAGE_FILE_FILTER, "open_second_path"),
         "export": ("Export FRC curve", "save", "CSV (*.csv)", "write_export"),
     }
     #: model event -> the control a tour step waits for

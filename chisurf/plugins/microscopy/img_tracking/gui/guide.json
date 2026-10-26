@@ -14,7 +14,7 @@
     },
     {
       "title": "Start with a movie whose answer you know",
-      "text": "Another way to a known answer: the <b>Simulate instead</b> panel generates Brownian particles with a diffusion coefficient you choose, so the result can be checked against a number. Any TIFF stack or photon stream works the same way via <b>Open</b> or a drop on the window.",
+      "text": "Another way to a known answer: the <b>Simulate instead</b> panel generates Brownian particles with a diffusion coefficient you choose, so the result can be checked against a number. Any TIFF stack or photon stream works the same way once dropped on the ChiSurf window and picked in the <b>Input</b> section.",
       "target": {"name": "Simulate instead.fold"}
     },
     {

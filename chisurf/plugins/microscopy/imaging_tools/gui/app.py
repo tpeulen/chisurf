@@ -839,17 +839,37 @@ class ImagingToolsApp(ImApp):
                 return True
         return taken
 
-    def files_dropped(self, paths):
-        """Hand a dropped file to the shown step."""
-        for name in ("files_dropped", "on_files_dropped", "on_paths_dropped"):
-            handler = getattr(self.child, name, None) if self.child is not None else None
-            if callable(handler):
-                result = handler(list(paths))
-                return True if result is None else bool(result)
-        return False
 
-    on_files_dropped = files_dropped
-    on_paths_dropped = files_dropped
+def receive_for_step(app, payload: dict) -> bool:
+    """The hub's workspace input: the data goes to the step shown, through that step's own input.
+
+    *Open in…* on the hub (or a drag onto it) hands the picked dataset to whichever tool is open,
+    exactly as that tool's own Input section would: its plugin's ``accepts[].from_workspace`` names
+    the payload key and whether it takes one dataset or several.
+    """
+    import json as _json
+    from pathlib import Path
+
+    from chisurf.core.plugin.handoff import deliver, specs_of
+
+    child = app.child
+    folder = next((entry[1] for entry in PANELS if entry[0] == app.selected), None)
+    if child is None or folder is None:
+        return False
+    manifest = Path(__file__).resolve().parents[3] / folder / "manifest.json"
+    specs = [
+        s for s in specs_of(_json.loads(manifest.read_text(encoding="utf-8"))) if s.from_workspace
+    ]
+    address = payload.get("file")
+    if not specs or not address:
+        return False
+    spec = specs[0]
+    key = spec.from_workspace.key
+    data = {key: [address] if spec.from_workspace.many else address}
+    if payload.get("datasets"):
+        data["datasets"] = list(payload["datasets"])
+    deliver(child, spec, data)
+    return True
 
 
 def make_app(**kwargs):

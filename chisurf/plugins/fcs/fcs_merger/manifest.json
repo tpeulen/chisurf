@@ -11,7 +11,7 @@
     "Fluorescence Correlation Spectroscopy",
     "Correlation"
   ],
-  "icon": "\ud83d\udd00",
+  "icon": "🔀",
   "state_namespace": "fcs_merger",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -66,5 +66,22 @@
   "deprecated": false,
   "requires": {
     "tttr_splitter": "*"
-  }
+  },
+  "accepts": [
+    {
+      "name": "curves",
+      "summary": "Correlation curves (.cor or .json.gz) to screen and merge.",
+      "receive": "chisurf.plugins.fcs.fcs_merger.gui.app:receive_curves",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "correlation"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    }
+  ]
 }

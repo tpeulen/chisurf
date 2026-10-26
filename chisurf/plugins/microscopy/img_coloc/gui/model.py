@@ -161,12 +161,6 @@ class ColocModel(EmtkModelMixin, ColocViewModel):
         if value:
             self.open_path(value)
 
-    def on_paths_dropped(self, paths: list[str]) -> bool:
-        if not paths:
-            return False
-        self.open_path(str(paths[0]))
-        return True
-
     def apply_pipeline_context(self, payload: dict) -> None:
         source = (payload or {}).get("source")
         if source and str(source) != self.filename:

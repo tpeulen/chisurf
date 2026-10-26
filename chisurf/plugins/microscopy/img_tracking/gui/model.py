@@ -86,7 +86,7 @@ class TrackingModel(EmtkModelMixin, ImgTrackingViewModel):
         self.request_dialog("open")
 
     def open_path(self, path: str) -> None:
-        """Select *path* as the movie (a dialog, a drop or a typed path); it is read when Track runs."""
+        """Select *path* as the movie (picked in the Input section); it is read when Track runs."""
         if not path:
             return
         self.remember_folder(path)

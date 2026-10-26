@@ -11,7 +11,7 @@
     "Imaging",
     "Lifetime"
   ],
-  "icon": "\ud83d\udd2c",
+  "icon": "🔬",
   "state_namespace": "img_pixel_mle",
   "statefulness": {
     "enabled": true,
@@ -77,5 +77,45 @@
   "menu_hidden": true,
   "optional_requires": {
     "img_pixel_nb": "*"
-  }
+  },
+  "accepts": [
+    {
+      "name": "files",
+      "summary": "The CLSM photon images fitted pixel by pixel.",
+      "receive": "chisurf.plugins.microscopy.imaging_emtk.app_base:receive_input",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "image",
+          "photons"
+        ],
+        "many": true,
+        "key": "files",
+        "representations": [
+          "photons"
+        ]
+      }
+    },
+    {
+      "name": "irf_files",
+      "summary": "The IRF photon streams of the fit.",
+      "receive": "chisurf.plugins.microscopy.imaging_emtk.app_base:receive_input",
+      "required": [
+        "irf_files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "image",
+          "photons"
+        ],
+        "many": true,
+        "key": "irf_files",
+        "representations": [
+          "photons"
+        ]
+      }
+    }
+  ]
 }

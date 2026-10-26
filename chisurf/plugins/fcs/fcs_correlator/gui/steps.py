@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import Any, Callable
 
 import numpy as np
 from emtk import im, implot
@@ -30,11 +30,10 @@ from ..regions import TimeRegions, count_rate_trace
 from ..workflow import FILE_EXTENSIONS, expand_paths, filter_step_allowed
 from .handoffs import FILTER_CALCULATOR
 
-if TYPE_CHECKING:
-    from chisurf.emtk.dataset_picker import DatasetPicker
-
 HERE = Path(__file__).resolve().parents[1]
 TTTR_FILTER = "TTTR files (" + " ".join(f"*{e}" for e in FILE_EXTENSIONS) + ");;All files (*)"
+#: Height of the Input section under the file list (its header, a compact table and the hint).
+INPUT_HEIGHT = 120.0
 LIFETIME_FILTER = "Lifetime filters (*.json *.npy *.npz);;All files (*)"
 #: Correlation curve colours (one per chunk / species), RGBA.
 CURVES = [
@@ -105,7 +104,7 @@ class _Dialogs:
 
 
 class FilesStepApp(ImApp):
-    """The checked file list (Files..., Folder..., Database, All, None, Remove, Clear), the optional steps, and the
+    """The checked file list (filled from the workspace's Input section; All, None, Remove, Clear), the optional steps, and the
     count-rate trace of each file to draw its time regions on (only photons inside them are correlated)."""
 
     def __init__(
@@ -127,8 +126,11 @@ class FilesStepApp(ImApp):
         self.on_change = on_change
         self.client = client
         self.dialogs = _Dialogs()
-        self.picker: DatasetPicker | None = None
         self.item_rects: dict[str, tuple] = {}
+        #: The workspace datasets the files were picked from (results become their children).
+        self.source_datasets: list[str] = []
+        #: The Input section: the workspace's photon streams (manifest ``accepts`` entry "files").
+        self.workspace_input: Any = None
         #: Time regions per file (the workflow's), and how a file is read for its trace.
         self.regions = regions if regions is not None else TimeRegions()
         self.reader = reader
@@ -359,22 +361,13 @@ class FilesStepApp(ImApp):
 
     def load_example(self) -> None:
         """The demonstration photon stream (:mod:`..demo`), cached in the settings demos folder, added and ticked."""
+        from chisurf.plugins.tttr.workspace_io import add_photons
+
         from ..demo import demo_folder, make_demo
 
-        self.add_paths([make_demo(demo_folder())])
-
-    def open_database(self) -> None:
-        from chisurf.emtk.dataset_picker import DatasetPicker
-
-        def picked(paths: list[Path]) -> None:
-            self.add_paths(paths)
-
-        picker = DatasetPicker(client=self.client, kinds=["tttr"], on_paths=picked)
-        self.picker = picker
-        picker.open()
-
-    def on_paths_dropped(self, paths) -> bool:
-        return self.add_paths(paths) > 0
+        path = make_demo(demo_folder())
+        add_photons(str(path))  # the example is a workspace dataset, as a dropped file would be
+        self.add_paths([path])
 
     def export_settings(self) -> dict:
         return {
@@ -408,7 +401,7 @@ class FilesStepApp(ImApp):
     def render(self) -> None:
         w, h = im.get_main_viewport().size
         frame = (0.0, 0.0, w, h)
-        blocked = self.dialogs.dialog is not None or bool(self.picker and self.picker.is_open)
+        blocked = self.dialogs.dialog is not None
         if im.begin(
             "Files & Steps", frame, flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
         ):
@@ -420,10 +413,11 @@ class FilesStepApp(ImApp):
             )
             x, y = im.get_cursor_screen_pos()
             regions_h = REGIONS_HEIGHT if self.paths else 0.0
-            list_h = max(80.0, im.get_content_region_avail()[1] - 90.0 - regions_h)
+            input_h = INPUT_HEIGHT if self.workspace_input is not None else 0.0
+            list_h = max(80.0, im.get_content_region_avail()[1] - 90.0 - regions_h - input_h)
             if not self.paths:
                 im.begin_child("files_list", (im.get_content_region_avail()[0], list_h))
-                im.text_disabled(tr("No file. Add files or a folder, or drop them here."))
+                im.text_disabled(tr("No file: pick photon streams in the Input section below."))
                 im.end_child()
             else:
                 from emtk.widgets.data_table import draw_table
@@ -431,33 +425,18 @@ class FilesStepApp(ImApp):
                 draw_table(self._table_binding(), "fcs_files", height=list_h)
                 self._row_rects()
             self.item_rects["files"] = (x, y, im.get_content_region_avail()[0], list_h)
+            if self.workspace_input is not None:
+                # The input: the workspace's photon streams (files dropped on ChiSurf land there).
+                from emtk.view_form import draw_form
+
+                named = self.workspace_input
+                draw_form(named.spec, named, named.form)
+                if "workspace_input_rows" in named.form.rects:
+                    self.item_rects["workspace_input_rows"] = named.form.rects[
+                        "workspace_input_rows"
+                    ]
             used = 0.0
             for label, key, tip, enabled, act in (
-                (
-                    "Files...",
-                    "add_files",
-                    "Add TTTR files.",
-                    True,
-                    lambda: self.dialogs.ask(
-                        "Add TTTR files", "open", TTTR_FILTER, self.add_paths, multiselect=True
-                    ),
-                ),
-                (
-                    "Folder...",
-                    "add_folder",
-                    "Add a folder: its TTTR files are correlated.",
-                    True,
-                    lambda: self.dialogs.ask(
-                        "Add a folder", "folder", "All files (*)", self.add_paths
-                    ),
-                ),
-                (
-                    "Database",
-                    "database",
-                    "Add a TTTR dataset registered in the database.",
-                    True,
-                    self.open_database,
-                ),
                 (
                     action_caption("example"),
                     "load_example",
@@ -542,8 +521,6 @@ class FilesStepApp(ImApp):
             im.end_child()
         im.end()
         self.dialogs.draw(frame)
-        if self.picker is not None:
-            self.picker.render(frame)
 
     def _row_rects(self) -> None:
         """``check.i`` / ``row.i``: the Use and File cells of the i-th added path, where the table drew them."""

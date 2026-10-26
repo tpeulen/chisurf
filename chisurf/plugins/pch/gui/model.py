@@ -115,7 +115,7 @@ class PchModel:
         self.trace_x = np.zeros(0)
         self.trace_y = np.zeros(0)
         self.results_text = ""
-        self.status_text = "Ready. Load a TTTR file to begin."
+        self.status_text = "Ready. Pick a photon stream in the Input section."
         self.error_text = ""
 
     # ── observers (SnapshotJob) ────────────────────────────────────────
@@ -207,10 +207,6 @@ class PchModel:
         return [float(r["n_mean"]) for r in self.species]
 
     # ── actions (buttons) ──────────────────────────────────────────────
-    def load(self) -> None:
-        """Ask the app to show the open-file dialog."""
-        self.dialog = "open"
-
     def load_example(self) -> None:
         """Load the simulated one-species stream (off the draw thread when the app has a job)."""
         self.error_text = ""
@@ -225,6 +221,7 @@ class PchModel:
         except Exception as exc:
             self._fail(f"Cannot build the example: {exc}")
             return
+        self._example_into_workspace(path)
         if self.load_path(str(path)):
             self.channels = "0"
             self.bin_time_us = float(DEMO["bin_time_us"])
@@ -233,10 +230,16 @@ class PchModel:
                 "per bin. Press Compute PCH."
             )
 
+    def _example_into_workspace(self, path: Any) -> None:
+        """The example stream is a workspace dataset, as a dropped file would be."""
+        from chisurf.plugins.tttr.workspace_io import add_photons
+
+        add_photons(str(path))
+
     def compute(self) -> None:
         """Bin the loaded file into the histogram (off the draw thread when the app has a job)."""
         if not self.filename:
-            self._fail("Load a TTTR file first.")
+            self._fail("Pick a photon stream first.")
             return
         self.error_text = ""
         self._run("compute_now")
@@ -290,15 +293,6 @@ class PchModel:
     def load_pending(self) -> None:
         """Worker: load the file :meth:`open_file` was asked for."""
         self.load_path(self.pending_path)
-
-    def on_paths_dropped(self, paths: list[Any]) -> bool:
-        """Load the first dropped photon-stream file; say so when none is one."""
-        for path in paths:
-            if Path(str(path)).suffix.lower() in TTTR_SUFFIXES:
-                return self.open_file(path)
-        if paths:
-            self.error_text = "Drop a photon-stream file (" + ", ".join(TTTR_SUFFIXES) + ")."
-        return False
 
     def parse_channels(self) -> list[int] | None:
         """The channel list typed in the form; ``None`` when it is empty."""

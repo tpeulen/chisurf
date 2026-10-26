@@ -29,7 +29,6 @@ class ColocApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
     CANCELLABLE = False
     LAYOUT = Split("h", 0.34, Region("settings"), Region("views"))
     DIALOGS = {
-        "open": ("Open image", "open", IMAGE_FILE_FILTER, "open_path"),
         "export": ("Export colocalization results", "save", "CSV (*.csv)", "write_export"),
         "save_regions": ("Save regions", "save", "JSON (*.json)", "save_regions"),
         "load_regions": ("Load regions", "open", "JSON (*.json)", "load_regions"),

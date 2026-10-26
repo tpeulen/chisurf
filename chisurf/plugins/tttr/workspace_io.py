@@ -79,7 +79,8 @@ def _plugin_dir(plugin: str) -> Path:
     import json
 
     plugins = Path(__file__).resolve().parents[1]
-    for manifest in plugins.glob("*/*/manifest.json"):
+    # Plugins live one or two folders deep (chisurf/plugins/pch, chisurf/plugins/tttr/audifier).
+    for manifest in [*plugins.glob("*/manifest.json"), *plugins.glob("*/*/manifest.json")]:
         try:
             if json.loads(manifest.read_text(encoding="utf-8")).get("id") == plugin:
                 return manifest.parent

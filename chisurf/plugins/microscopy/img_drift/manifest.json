@@ -25,5 +25,27 @@
   },
   "operation_types": [
     "drift_correction"
+  ],
+  "accepts": [
+    {
+      "name": "image",
+      "summary": "The image stack (TIFF or photon image) whose drift is removed.",
+      "receive": "chisurf.plugins.microscopy.imaging_emtk.app_base:receive_input",
+      "required": [
+        "file"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "image",
+          "photons"
+        ],
+        "many": false,
+        "key": "file",
+        "representations": [
+          "photons",
+          "intensity"
+        ]
+      }
+    }
   ]
 }

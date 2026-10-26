@@ -19,5 +19,22 @@
     "fcs_channel_preset": "*",
     "fcs_filter_calculator": "*",
     "fcs_merger": "*"
-  }
+  },
+  "accepts": [
+    {
+      "name": "files",
+      "summary": "Photon streams (TTTR files or a container's streams) to correlate; only the ticked ones are used.",
+      "receive": "chisurf.plugins.fcs.fcs_correlator.gui.app:receive_files",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    }
+  ]
 }

@@ -31,7 +31,16 @@ class PathListView:
         paths = list(getattr(model, target))
         index = min(self.selected.get(target, 0), max(len(paths) - 1, 0))
         if not paths:
-            im.text_disabled(str(options.get("empty", "No file. Add or drop one.")))
+            im.text_disabled(
+                str(
+                    options.get(
+                        "empty",
+                        "No file. Pick one in the Input section."
+                        if options.get("workspace")
+                        else "No file.",
+                    )
+                )
+            )
         for i, path in enumerate(paths):
             if im.selectable(f"{Path(path).name}##{target}{i}", index == i):
                 self.selected[target] = index = i
@@ -83,6 +92,9 @@ class PathListView:
                     self.actions["folder"],
                 ),
             )
+        if options.get("workspace"):
+            # The list is filled from the Datasets workspace (the Input section above it).
+            buttons = [b for b in buttons if b[0] not in ("add", "database", "folder")]
         for key, label, tip, needs_files, act in buttons:
             label, tip = tr(label), tr(tip)
             width = im.calc_text_size(label)[0] + 16.0

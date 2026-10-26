@@ -14,7 +14,7 @@
     },
     {
       "title": "Your own photon stream",
-      "text": "With your own data press <b>Load TTTR</b> and choose a PTU, HT3, T2R, T3R, PTO or SPC file, or drop it on the window.",
+      "text": "With your own data drop a PTU, HT3, T2R, T3R, PTO or SPC file on the ChiSurf window and pick its stream in the <b>Input</b> section.",
       "target": {"name": "file_loaded"}
     },
     {

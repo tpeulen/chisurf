@@ -106,9 +106,22 @@ def _cell(app, row, key):
     return x - 4, y
 
 
+def _curve_files(folder):
+    """The folder's curves as the workspace lists them (legacy .json.gz first, then .cor)."""
+    folder = Path(folder)
+    return [str(p) for p in sorted(folder.glob("*.json.gz")) + sorted(folder.glob("*.cor"))]
+
+
+def _picked(app, folder):
+    """Pick the folder's curves in the Input section (the workspace hands them over)."""
+    from chisurf.plugins.fcs.fcs_merger.gui.app import receive_curves
+
+    return receive_curves(app, {"files": _curve_files(folder)})
+
+
 def _loaded(folder, **kwargs):
     app = MergerApp(**kwargs)
-    app.files_dropped([str(folder)])
+    _picked(app, folder)
     _wait(app)
     return app
 
@@ -223,28 +236,23 @@ def test_buttons_follow_the_state(folder):
         )
         _draw(app)
         assert not app.animating()  # at rest: no frames
-        app.files_dropped([str(folder)])
-        assert app.job.running and not app.form_model.enabled("request_open")
+        _picked(app, folder)
+        assert app.job.running and not app.form_model.enabled("request_save")
         assert app.form_model.busy and app.animating()
         _wait(app)
         assert not app.animating() and app.form_model.enabled("request_add")
         _click(app, "request_clear")
         assert app.model.correlations == [] and app.model.folder == ""
-        app.files_dropped([str(folder / "chnk-0003.cor")])  # a dropped chunk reads its folder
-        _wait(app)
-        assert len(app.model.correlations) == 6 and app.model.folder == str(folder)
     finally:
         app.close()
 
 
-# 4. dialogs, typed folder, Add to ChiSurf
+# 4. the workspace's curves, Save as, Add to ChiSurf
 def test_open_save_as_and_add(folder, tmp_path):
     added = []
     app = MergerApp(add_dataset=added.append)
     try:
-        _click(app, "request_open")
-        assert app.dialog is not None and app.dialog_mode == "folder"
-        app.path_chosen(str(folder))
+        _picked(app, folder)
         _wait(app)
         assert len(app.model.correlations) == 6
         _click(app, "request_save_as")
@@ -264,12 +272,6 @@ def test_open_save_as_and_add(folder, tmp_path):
             f"added={added!r} error={app.model.error!r} status={app.model.status!r} "
             f"enabled={app.form_model.enabled('request_add')} rect={app.item_rects.get('request_add')}"
         )
-        other = MergerApp()
-        other.form_model.folder = str(folder)
-        other.form_model.folder_entered(str(folder))  # what Enter in the folder field does
-        _wait(other)
-        assert len(other.model.correlations) == 6
-        other.close()
     finally:
         app.close()
 
@@ -318,7 +320,6 @@ def test_draws_inside_the_window(folder, size):
     try:
         strings = _draw(app, size).strings
         for text in (
-            "📂 Open folder…",
             action_caption("save"),
             "Use",
             "File",
@@ -331,7 +332,7 @@ def test_draws_inside_the_window(folder, size):
             assert text in strings, text
         x0, y0, w0, h0 = app.item_rects["files"]
         for name in (
-            "request_open",
+            "workspace_input_rows",
             "request_help",
             "folder",
             "curve_rows",
