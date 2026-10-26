@@ -73,10 +73,30 @@ JSON, the routing channels; the photons open lazily through `staging.open_tttr(a
 Autosave never re-hashes link targets or packed photon objects (immutable once recorded); hashing happens
 once, at import.
 
+**The user decides, in the UI** (owner 2026-10-26):
+
+* *Embed or link* — a project setting (default: link) and a choice at import (the drop offers "Link" /
+  "Embed" for the batch, remembering the last answer); a dataset's context menu switches it later
+  ("Embed in project" / "Link to file").
+* *Make project self-contained* — one tool (File › Project › Make self-contained…) embeds every link. Before
+  it starts it checks every target; unresolved ones go to the next tool first.
+* *Locate missing data* — lists every link that does not resolve or no longer matches (missing, size or hash
+  changed), with where it was. "Search in folder…" walks a folder the user picks and proposes candidates by
+  name, then confirms by size and sha256; "Replace with…" lets the user point at a file explicitly (a moved
+  or renamed original). A replacement whose hash differs is shown as a different file and needs an explicit
+  "Use anyway", which records the new hash. The tool also opens on its own when a project opens with
+  unresolved links.
+* *Export gate* — any export that leaves the machine (Zenodo deposit first; also project export/share)
+  checks the project: linked data and unresolved links are flagged with a warning that names them. The
+  Zenodo export is refused while the project is not self-contained unless the user gives an explicit
+  override (a deliberate checkbox naming the consequence, then a confirm); the override is recorded in the
+  deposit's metadata. "Make self-contained" is offered right there.
+
 **File links in ptolib** (canonical, re-vendored into tttrlib and imp.bff): a first-class object kind, not
 an application convention — `add_link(path, …)` records relative path + size + sha256; `stream`/`extract`/
 `open_address` follow it; `verify` reports missing/changed targets; `compact` keeps links links (98497f1);
-`pack`/`unpack` convert between linked and embedded. The present `external_payload_path` hook and
+`pack`/`unpack` convert between linked and embedded; `relink(uid, path)` points a link at a new target
+(size + sha256 checked, a mismatch refused unless forced) — the repair step of *Locate missing data*. The present `external_payload_path` hook and
 tttrlib's `add_sidecar_file` / chisurf's `_mmfdb_sidecar.*` tags map onto it (one mechanism).
 
 ## One way in
