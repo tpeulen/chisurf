@@ -11,7 +11,7 @@
     "Imaging",
     "Simulation"
   ],
-  "icon": "🔬",
+  "icon": "🧫",
   "state_namespace": "clsm_generator",
   "statefulness": {
     "enabled": true,

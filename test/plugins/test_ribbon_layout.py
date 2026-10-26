@@ -69,6 +69,7 @@ EXPECTED = {
         "Single-Molecule": [
             "ALEX Suite",
             "Burst Analysis",
+            "FRET check",
             "Intensity trace",
             "Trace Browser",
             "ebFRET",
@@ -119,7 +120,7 @@ EXPECTED = {
         ],
         "Wizards": ["Anisotropy Wizard", "Batch Analysis"],
         "Views": ["Acquisition", "Global View", "ndX"],
-        "System": ["Code Editor", "MMFDB Admin", "Python Terminal", "Terminal"],
+        "System": ["Agent", "Code Editor", "MMFDB Admin", "Python Terminal", "Terminal"],
         "Games": ["Breakout", "Minesweeper", "Number Quest", "Pong", "Tetris"],
     },
 }

@@ -179,10 +179,15 @@ def saved():
 # 1. model defaults and the provider table equal the Qt widget's
 # --------------------------------------------------------------------------- #
 def test_provider_options_and_defaults_equal_the_qt_tool():
-    """The emtk provider list is the retired Qt choice's list; a fresh model equals its model (recorded)."""
+    """Every provider of the retired Qt choice is offered, in its order; a fresh model equals its
+    model (recorded). Providers added since the Qt tool are named here: parity forbids losing one,
+    not gaining one."""
+    added_since_qt = {"Z.ai (GLM)"}
     qt = json.loads((HERE / "qt_reference.json").read_text())
     app = make_app()
-    assert [label for _key, label in app.model.available_providers()] == qt["labels"]
+    labels = [label for _key, label in app.model.available_providers()]
+    assert [label for label in labels if label not in added_since_qt] == qt["labels"]
+    assert added_since_qt <= set(labels)
     for attr, value in qt["defaults"].items():
         assert getattr(app.model, attr) == value, attr
     assert app.model.provider == "mistral"
