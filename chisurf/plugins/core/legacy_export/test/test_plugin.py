@@ -18,11 +18,11 @@ from chisurf.core.fio.fluorescence.burst_container import (
 PTU = Path(__file__).resolve().parents[5] / "test" / "data" / "clsm" / "Leica_SP5.ptu"
 N = 12
 
-pytestmark = pytest.mark.skipif(not PTU.exists(), reason="no instrument test data")
-
 
 @pytest.fixture
 def container(tmp_path: Path) -> Path:
+    if not PTU.exists():
+        pytest.skip("no instrument test data")
     raw = tmp_path / "m000.ptu"
     shutil.copy(PTU, raw)
     interleaved = np.zeros(2 * N + 1)
@@ -56,7 +56,22 @@ def test_the_plan_names_run_operation_and_ending(container: Path):
     by_op = {row["operation"]: row for row in rows}
     assert by_op["burst_selection"]["ending"] == "bur"
     assert by_op["burst_variance_analysis"]["ending"] == "bv4"
+    # The run is reported beside the table: ``m000.pto/<run>`` opens the run, not the table.
+    assert by_op["burst_selection"]["run"] == "bi4_bur/m000.bur"
+    assert by_op["burst_selection"]["container_run"] == "run"
+    assert by_op["burst_variance_analysis"]["container_run"] == ""
     assert core.export_plan(container.parent / "nowhere.pto") == []
+
+
+def test_the_model_offers_burst_search_runs_for_the_alex_csvs(container: Path):
+    """The Run choice lists run names of burst tables, and picks one by default."""
+    from chisurf.plugins.core.legacy_export.gui.app import LegacyExportModel
+
+    model = LegacyExportModel()
+    assert "burst-search run" in model.export_alex_csvs()
+    model.set_file(str(container))
+    assert model.alex_runs() == ["run"]
+    assert model.alex_run == "run"
 
 
 def test_burst_folder_export_writes_bur_and_companions(container: Path, tmp_path: Path):
@@ -102,3 +117,105 @@ def test_the_manifest_loads():
 
     m = load_manifest(Path(__file__).resolve().parents[1] / "manifest.json")
     assert m is not None and m.entrypoints.emtk and m.entrypoints.cli
+
+
+# -- the demo container: a real burst search + BVA of the Burst Selection demo stream -- #
+
+
+@pytest.fixture(scope="module")
+def demo_container(tmp_path_factory) -> Path:
+    pytest.importorskip("tttrlib")
+    from chisurf.plugins.core.legacy_export import demo
+
+    return demo.make_demo(tmp_path_factory.mktemp("legacy_demo"))
+
+
+def test_the_demo_is_cached_and_holds_a_burst_search_and_a_companion(demo_container: Path):
+    from chisurf.plugins.core.legacy_export import core, demo
+
+    stamp = demo_container.stat().st_mtime_ns
+    assert demo.make_demo(demo_container.parent) == demo_container
+    assert demo_container.stat().st_mtime_ns == stamp  # reused, not rewritten
+    by_op = {row["operation"]: row for row in core.export_plan(demo_container)}
+    assert by_op["burst_selection"]["container_run"] == "burstwise"
+    assert by_op["burst_variance_analysis"]["ending"] == "bv4"
+
+
+def test_the_cli_writes_the_alex_csvs_from_a_container_run(demo_container: Path, tmp_path: Path):
+    """``alex-csvs m000.pto/<run>``: the container form the docstring promises."""
+    from chisurf.plugins.core.legacy_export.cli.main import cli
+
+    out = CliRunner().invoke(
+        cli, ["alex-csvs", f"{demo_container}/burstwise", str(tmp_path / "csv" / "bs_demo")]
+    )
+    assert out.exit_code == 0, out.output
+    written = sorted(p.name for p in (tmp_path / "csv").iterdir())
+    assert len(written) == 4 and all(name.endswith(".csv") for name in written), written
+
+
+def _window(tmp_path: Path, demo_container: Path, monkeypatch):
+    from emtk.testing import Driver
+
+    from chisurf.plugins.core.legacy_export import demo
+    from chisurf.plugins.core.legacy_export.gui.app import make_app
+
+    monkeypatch.setattr(demo, "demo_folder", lambda: demo_container.parent)
+    app = make_app()
+    driver = Driver(app, (1000, 900))
+    driver.frame(2)
+    return app, driver
+
+
+def test_the_window_exports_the_folder_and_the_alex_csvs(
+    demo_container: Path, tmp_path: Path, monkeypatch
+):
+    """Load example -> Export burst folder -> Write ALEX-Suite CSVs, all by their ids."""
+    app, driver = _window(tmp_path, demo_container, monkeypatch)
+    driver.click("load_example")
+    driver.frame(2)
+    assert app.model.filename == str(demo_container)
+    assert app.model.alex_run == "burstwise"
+    app.model.out_folder = str(tmp_path / "legacy")
+    driver.frame(1)
+    driver.click("export")
+    driver.frame(2)
+    assert any(p.endswith("bs_demo.bur") for p in app.model.written), app.model.status
+    assert any(p.endswith(".bv4") for p in app.model.written), app.model.status
+    driver.click("write_alex")
+    driver.frame(2)
+    assert "Wrote 4 ALEX-Suite CSV(s)" in app.model.status, app.model.status
+    assert all(Path(p).exists() for p in app.model.written)
+
+
+def test_every_tour_target_is_drawn_and_the_awaits_wait_for_real_clicks(
+    demo_container: Path, tmp_path: Path, monkeypatch
+):
+    app, driver = _window(tmp_path, demo_container, monkeypatch)
+    tour = app.tour
+    assert tour.steps and tour.wait_for_controls
+    awaited = [tour._target_key(s["target"]) for s in tour.steps if s.get("await")]
+    assert awaited == ["load_example", "export", "write_alex"]
+    driver.click("guide")
+    driver.frame(1)
+    assert tour.active and tour.step_idx == 0
+    tour.next()
+    assert tour.awaiting  # Load example: the card waits, Next does nothing
+    tour.next()
+    assert tour.step_idx == 1
+    driver.click("load_example")
+    driver.frame(2)
+    assert not tour.awaiting
+    app.model.out_folder = str(tmp_path / "legacy")
+    driver.frame(2)
+    drawn = set(driver.ids())
+    targets = {tour._target_key(s.get("target")) for s in tour.steps} - {""}
+    assert targets <= drawn, sorted(targets - drawn)
+    for key in ("export", "write_alex"):
+        tour.step_idx = next(
+            i for i, s in enumerate(tour.steps) if tour._target_key(s.get("target")) == key
+        )
+        tour._step_used = False
+        assert tour.awaiting
+        driver.click(key)
+        driver.frame(2)
+        assert not tour.awaiting, key

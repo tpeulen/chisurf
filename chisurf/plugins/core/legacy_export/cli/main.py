@@ -6,6 +6,8 @@ import pathlib
 
 import click
 
+from chisurf.core.cli.support import BurstTableParam
+
 
 @click.group("legacy-export")
 def cli() -> None:
@@ -27,7 +29,7 @@ def burst_folder(container: str, out_dir: str | None) -> None:
 
 
 @cli.command("alex-csvs")
-@click.argument("burst_table", type=click.Path(exists=True))
+@click.argument("burst_table", type=BurstTableParam(exists=True))
 @click.argument("stem", type=click.Path())
 @click.option("--sample", default="", help="Sample description written into the _meta file.")
 @click.option("--buffer", "buffer_", default="", help="Buffer description written into the _meta file.")

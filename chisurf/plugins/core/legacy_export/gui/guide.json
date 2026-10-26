@@ -1,34 +1,53 @@
 {
-    "_comment": "Guided tour for the legacy export tool.",
+    "_comment": "Guided tour for the legacy export window. Steps point at the controls the window registers (item_rects) and wait for the user to press them; the tour never presses a button itself.",
     "steps": [
         {
             "title": "What this does",
-            "text": "Legacy export writes the old formats (Seidel/Margarita .bur/.bg4, burst-wise CSV) out of a .pto project or a burst result — the bridge colleagues without ChiSurf still need.",
+            "text": "The workflow tools read and write <b>.pto</b> containers only. This window writes the layouts older tools still read: the Seidel/Margarita burst folder (<b>bi4_bur/*.bur</b> plus one companion folder per analysis) and the five ALEX-Suite CSV files. The container stays the record; the export is a view of it.",
             "target": {}
         },
         {
-            "title": "Choose the source",
-            "text": "The list shows what the running session holds: the open project and its burst-selection results. Pick the one to export.",
-            "target": {
-                "name": "source"
-            }
+            "title": "Start with a container whose contents are known",
+            "text": "The example is the Burst Selection demo stream (12 planted bursts) with two runs: a burst search, <b>burstwise</b>, and a burst variance analysis, <b>bva</b>. Your own container goes in through <b>Open…</b> or by dropping it on the window.",
+            "target": {"name": "load_example"},
+            "await": {"hint": "Press <b>Load example</b>."}
         },
         {
-            "title": "Choose the format",
-            "text": "<b>Format</b> picks the target: .bur/.bg4 for the Seidel/Margarita tools, CSV for spreadsheets.",
-            "target": {
-                "name": "format"
-            }
+            "title": "The plan: what each run becomes",
+            "text": "One row per analysis in the container: its run, the table inside it, the operation that wrote it, and the companion ending it becomes. The burst search becomes <b>bi4_bur/bs_demo.bur</b>, the BVA the companion <b>bv4/bs_demo.bv4</b>. A dash means no registered companion: that analysis is skipped, never guessed.",
+            "target": {"name": "plan"}
         },
         {
-            "title": "Export",
-            "text": "Press <b>Export</b> and choose where to write. The .pto project stays the record — the export is a view for one colleague, not a backup.",
-            "target": {
-                "name": "export"
-            },
-            "await": {
-                "hint": "Press <b>Export</b>."
-            }
+            "title": "Where to write",
+            "text": "The burst folder is written below this folder, one subfolder per burst-search run. It defaults to the container's folder.",
+            "target": {"name": "out_folder"}
+        },
+        {
+            "title": "Write the burst folder",
+            "text": "Every companion is merged by <b>position</b>, one row per burst, so a skipped burst is a zero row, not a missing one. The files written are listed under the status line.",
+            "target": {"name": "export"},
+            "await": {"hint": "Press <b>Export burst folder</b>."}
+        },
+        {
+            "title": "ALEX-Suite CSVs: pick the burst search",
+            "text": "The CSVs are E/S histograms over the bursts of one burst-search run. Only runs that hold a burst table are offered.",
+            "target": {"name": "alex_run"}
+        },
+        {
+            "title": "Which tables",
+            "text": "<b>meta</b> carries sample and buffer, <b>hist_E</b>, <b>hist_S</b> and <b>hist_2D</b> the histograms, <b>original_bursts</b> the burst table itself. The thresholds are the defaults and the corrections neutral; the files carry no fit curves.",
+            "target": {"name": "part_meta"}
+        },
+        {
+            "title": "Write the CSVs",
+            "text": "The files are written beside the container's name with the suffix <b>_alex</b> in the output folder.",
+            "target": {"name": "write_alex"},
+            "await": {"hint": "Press <b>Write ALEX-Suite CSVs</b>."}
+        },
+        {
+            "title": "Further reading",
+            "text": "<b>?</b> opens the help: what the export keeps, what it leaves out, and why the .pto stays the record.",
+            "target": {"name": "help"}
         }
     ]
 }

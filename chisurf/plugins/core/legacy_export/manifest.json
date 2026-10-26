@@ -12,10 +12,13 @@
   ],
   "icon": "\ud83d\udce4",
   "entrypoints": {
-    "cli": "csc_legacy_export=chisurf.plugins.core.legacy_export.cli.main:cli",
+    "cli": "legacy-export=chisurf.plugins.core.legacy_export.cli.main:cli",
     "emtk": "chisurf.plugins.core.legacy_export.gui.app:make_app"
   },
   "optional_requires": {
-    "alex_suite": "*"
+    "alex_suite": "*",
+    "burst_bva": "*",
+    "burst_selection": "*",
+    "fret_check": "*"
   }
 }

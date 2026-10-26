@@ -199,7 +199,9 @@ def plan_legacy(container) -> list[dict]:
     Returns
     -------
     list of dict
-        ``run`` (display name), ``operation``, ``ending`` (``""`` = skipped).
+        ``run`` (display name: the table inside its run), ``container_run`` (the
+        run the table belongs to -- what ``m000.pto/<run>`` opens; ``""`` for a
+        table stored outside any run), ``operation``, ``ending`` (``""`` = skipped).
     """
     from chisurf.core.fio.analysis_path import split_artifact_name, split_container_path
     from chisurf.core.fio.pto import Measurement, is_measurement
@@ -213,7 +215,8 @@ def plan_legacy(container) -> list[dict]:
             operation = str(m.tag(obj.uid, _OPERATION) or "")
             if not operation:
                 continue
-            name = split_artifact_name(obj.name)[1] or str(obj.name)
+            container_run, table = split_artifact_name(obj.name)
+            name = table or str(obj.name)
             if _is_burst_table(name, operation):
                 ending = "bur"
             elif operation in _NOT_COMPANIONS or operation not in COMPANIONS:
@@ -223,7 +226,14 @@ def plan_legacy(container) -> list[dict]:
                 ending = "/".join(
                     sorted(set(mapped.values())) if isinstance(mapped, Mapping) else (mapped,)
                 )
-            rows.append({"run": name, "operation": operation, "ending": ending})
+            rows.append(
+                {
+                    "run": name,
+                    "container_run": container_run,
+                    "operation": operation,
+                    "ending": ending,
+                }
+            )
     rows.sort(key=lambda r: (r["ending"] == "", r["run"]))
     return rows
 

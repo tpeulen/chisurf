@@ -15,11 +15,12 @@ in the group class without dragging in the plugin-registration machinery of
 from __future__ import annotations
 
 import difflib
+import pathlib
 import typing
 
 import click
 
-__all__ = ["DidYouMeanMixin", "DidYouMeanGroup"]
+__all__ = ["BurstTableParam", "DidYouMeanGroup", "DidYouMeanMixin"]
 
 
 if typing.TYPE_CHECKING:
@@ -88,3 +89,21 @@ class DidYouMeanMixin(_Host):
 
 class DidYouMeanGroup(DidYouMeanMixin, click.Group):
     """Click group that suggests close matches for an unknown subcommand."""
+
+
+class BurstTableParam(click.Path):
+    """A burst table that may live inside a ``.pto`` (``m000.pto/<run>``) — not a path on disk.
+
+    The burst pipeline's output is a container run, and the burst-table readers open one;
+    plain ``click.Path(exists=True)`` refused the path before any reader saw it. A value whose
+    ``.pto`` ancestor exists is passed through; anything else is checked as an ordinary path.
+    """
+
+    def convert(self, value, param, ctx):
+        path = pathlib.Path(str(value))
+        node = path
+        while node.suffix.lower() != ".pto" and node.parent != node:
+            node = node.parent
+        if node.suffix.lower() == ".pto" and node.exists():
+            return str(value)
+        return super().convert(value, param, ctx)

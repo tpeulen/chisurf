@@ -16,6 +16,8 @@ import pathlib
 import click
 import numpy as np
 
+from chisurf.core.cli.support import BurstTableParam
+
 
 def _channels(text: str) -> list[int] | None:
     """Parse a ``"0,8"`` channel list; ``"auto"`` means "work it out"."""
@@ -23,23 +25,6 @@ def _channels(text: str) -> list[int] | None:
     if not stripped or stripped == "auto":
         return None
     return [int(part) for part in stripped.replace(";", ",").split(",") if part.strip()]
-
-
-class BurstTableParam(click.Path):
-    """A burst table that may live inside a ``.pto`` (``m000.pto/<run>``) — not a path on disk.
-
-    The pipeline's output is a container run, and ``es_histograms``/``read_burst_table`` open one;
-    plain ``click.Path(exists=True)`` refused the path before any reader saw it.
-    """
-
-    def convert(self, value, param, ctx):
-        path = pathlib.Path(str(value))
-        node = path
-        while node.suffix.lower() != ".pto" and node.parent != node:
-            node = node.parent
-        if node.suffix.lower() == ".pto" and node.exists():
-            return str(value)
-        return super().convert(value, param, ctx)
 
 
 @click.group("alex-suite")

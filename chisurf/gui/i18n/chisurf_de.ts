@@ -70859,6 +70859,130 @@ fortgesetzt werden.
             <source>Which stretches of each measurement are correlated. Select a file in the table, switch on Draw and drag on its count-rate trace; a file without regions is used whole.</source>
             <translation type="unfinished"/>
         </message>
+        <message>
+            <source>A dash means no registered companion: that analysis is skipped, never guessed.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>ALEX export failed: {}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>ALEX-Suite CSVs (optional)</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Buffer description written into the _meta file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose a .pto container to export from.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Choose the output folder first.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Companion</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Could not write the example: {}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Export failed: {}</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Include this table in the export.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>No analysis runs in this container -- nothing to export.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a .pto container first.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a container with a burst-search run first.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a container with a burst-search run to write the ALEX CSVs.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open a demo container: 12 planted bursts, a burst search and a BVA run.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Open photon container</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Re-read the container from disk.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Sample description written into the _meta file.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Table</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The burst-search run whose bursts the CSVs histogram.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>The dedicated way out: workflows read and write .pto only; the legacy burst folder and the ALEX-Suite CSVs are written from here.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Unpack the container into the Seidel/Margarita burst folder (.bur/.bg4).</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Where the burst folder and the CSVs are written.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write ALEX-Suite CSVs</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Write the ALEX-Suite CSV tables of the selected run.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Wrote {} ALEX-Suite CSV(s) beside {}.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>Wrote {} file(s) into {}.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>free text</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>no container</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>{} run(s); the endings above are what the export writes.</source>
+            <translation type="unfinished"/>
+        </message>
+        <message>
+            <source>📤 Export burst folder</source>
+            <translation type="unfinished"/>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>
