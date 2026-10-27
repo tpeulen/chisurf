@@ -540,11 +540,11 @@ marker and is still compiled.
 | 517 | `python` | 6. Try it on data whose answer you know | 10 | compiled | [docs/guides/57_mfd_fitting.md](/guides/57_mfd_fitting.md) |
 | 518 | `text` | 1. Open the step | 6 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
 | 519 | `text` | 2. Look at the curve before choosing a threshold | 4 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
-| 520 | `text` | 5. Write the fused folder | 5 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
-| 521 | `text` | 5. Write the fused folder | 4 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
-| 522 | `text` | 5. Write the fused folder | 5 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
+| 520 | `text` | 5. Write the fused run | 4 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
+| 521 | `text` | 5. Write the fused run | 4 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
+| 522 | `text` | 5. Write the fused run | 4 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
 | 523 | `bash` | Headless | 5 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
-| 524 | `python` | Headless | 8 | compiled | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
+| 524 | `python` | Headless | 14 | compiled | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
 | 525 | `python` | Headless | 6 | compiled | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
 | 526 | `text` | Driving ChiSurf from its console | 5 | — | [docs/guides/59_console.md](/guides/59_console.md) |
 | 527 | `python` | The first thing to know | 1 | compiled | [docs/guides/59_console.md](/guides/59_console.md) |
@@ -804,13 +804,13 @@ marker and is still compiled.
 | 781 | `text` | Crosstalk-induced correlations | 1 | — | [docs/manual/crosstalkinduced_correlations.md](/manual/crosstalkinduced_correlations.md) |
 | 782 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
 | 783 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 784 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 785 | `text` | Data import | 2 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 786 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 787 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 788 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 789 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 790 | `text` | Data import | 3 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 784 | `text` | One way in: dropping files | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 785 | `text` | One way in: dropping files | 2 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 786 | `text` | One way in: dropping files | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 787 | `text` | One way in: dropping files | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 788 | `text` | One way in: dropping files | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 789 | `text` | One way in: dropping files | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 790 | `text` | One way in: dropping files | 3 | — | [docs/manual/data_import.md](/manual/data_import.md) |
 | 791 | `text` | Data input and file format | 12 | — | [docs/manual/data_input_and_file_format.md](/manual/data_input_and_file_format.md) |
 | 792 | `text` | Data input and file format | 5 | — | [docs/manual/data_input_and_file_format.md](/manual/data_input_and_file_format.md) |
 | 793 | `shell` | Data input and file format | 1 | — | [docs/manual/data_input_and_file_format.md](/manual/data_input_and_file_format.md) |

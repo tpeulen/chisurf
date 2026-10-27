@@ -199,7 +199,8 @@ def main(argv=None) -> int:
         print(f"{chunk} ...", flush=True)
         if chunk == TIMING:
             markers = f"timing and ({MARKERS})"
-            targets = [t for c in todo for t in _targets(c)]
+            # `todo` holds TIMING itself once it has run; its name is not a path.
+            targets = [t for c in todo if c != TIMING for t in _targets(c)]
         else:
             markers = f"({MARKERS}) and not timing" if split_timing else MARKERS
             targets = _targets(chunk)

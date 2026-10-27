@@ -360,6 +360,13 @@ class Walk:
         assert not hosted.error, f"{plugin_id} failed to build: {hosted.error}"
         app = hosted.app
         names = {Path(str(r.get("address") or "")).name for r in rows if r.get("address")}
+        # A run (``m000.pto/<run>``) may be held as its container: ndX loads the container and picks
+        # the run's table by name, keeping the container path.
+        names |= {
+            Path(str(r["address"])).parent.name
+            for r in rows
+            if r.get("address") and Path(str(r["address"])).parent.suffix == ".pto"
+        }
         if names:
             self.wait_for(
                 lambda: _holds(app, names), timeout, f"{plugin_id} to hold {sorted(names)}"
@@ -372,8 +379,12 @@ class Walk:
             raise InputRouteUsed("input routes taken:\n  " + "\n  ".join(self.violations))
 
 
-def _holds(app, names: set[str], depth: int = 3) -> bool:
-    """Whether *app* (its model/controller, a few levels down) holds a reference to *names*."""
+def _holds(app, names: set[str], depth: int = 4) -> bool:
+    """Whether *app* (its model/controller, a few levels down) holds a reference to *names*.
+
+    Four levels: tools keep their inputs in a session under the model
+    (``app.model.session.bur_files[i]`` for Burst MLE).
+    """
     seen: set[int] = set()
 
     def walk(obj, level: int) -> bool:
@@ -433,9 +444,10 @@ def leg_burst_chain(walk: Walk) -> dict:
     tool = walk.feed("burst_selection", photons)
     m = getattr(tool, "model", tool)
     m.set_setup({**demo.SETUP, "setup_name": ""})
-    assert m.prepare_run() is None, m.blocked_reason()
-    m.run()
-    walk.wait_for(lambda: m.n_bursts == demo.N_BURSTS, 300, f"{demo.N_BURSTS} bursts")
+    # Run as the Run button does: the window's job, whose completion registers the run as a child
+    # of the photons dataset (a bare model.run() bypasses that hand-over).
+    assert tool.run(), m.status_text
+    walk.wait_for(lambda: m.n_bursts == demo.N_BURSTS and not tool.running, 300, f"{demo.N_BURSTS} bursts")
     parent = str(photons[0].get("uid"))
     runs = walk.wait_for(
         lambda: [r for r in walk.rows("bursts") if str(r.get("parent")) == parent] or None,

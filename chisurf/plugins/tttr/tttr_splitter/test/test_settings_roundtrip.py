@@ -20,14 +20,21 @@ def test_options_roundtrip():
         restored.close()
 
 
-def test_dropped_file_goes_to_the_input(monkeypatch, tmp_path):
-    """A file dropped on the window is loaded as the input."""
+def test_the_input_comes_from_the_workspace_not_a_drop(monkeypatch, tmp_path):
+    """The split input is handed over from the Datasets workspace (``receive_split``); the window
+    takes no file drops of its own -- the shell's drop adds files to the workspace."""
+    from chisurf.plugins.tttr.tttr_splitter.gui.controller import receive_split
+
     app = create_app()
     try:
+        target = tmp_path / "x.ptu"
+        target.write_bytes(b"")
         seen = []
-        monkeypatch.setattr(app.tool, "load_input", seen.append)
-        assert app.files_dropped([tmp_path / "x.ptu"]) is True
-        assert seen == [str(tmp_path / "x.ptu")]
-        assert app.files_dropped([]) is False
+        monkeypatch.setattr(
+            app.tool, "load_input", lambda address, source="": seen.append((address, source))
+        )
+        receive_split(app, {"file": str(target), "datasets": ["uid-1"]})
+        assert seen == [(str(target), "uid-1")]
+        assert not hasattr(app, "files_dropped")
     finally:
         app.close()

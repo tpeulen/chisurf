@@ -145,6 +145,14 @@ def settings_of(**changes):
 # ── 1. the numbers ──────────────────────────────────────────────────────────────────────────────────────────── #
 
 
+def _same_vectors(got, want):
+    """The flow vectors of the recording, up to float rounding (it was made on macOS)."""
+    assert len(got) == len(want)
+    for a, b in zip(got, want):
+        assert a.keys() == b.keys()
+        np.testing.assert_allclose([a[k] for k in a], [b[k] for k in a], rtol=1e-12, atol=1e-12)
+
+
 def test_the_map_gives_the_numbers_the_qt_window_showed(app, drv, flow_tif):
     m = loaded(app, drv, flow_tif)
     assert (
@@ -161,7 +169,8 @@ def test_the_map_gives_the_numbers_the_qt_window_showed(app, drv, flow_tif):
     np.testing.assert_allclose(np.nan_to_num(np.asarray(r.vx), nan=-999), qt["vx"], rtol=1e-12)
     np.testing.assert_allclose(np.nan_to_num(np.asarray(r.vy), nan=-999), qt["vy"], rtol=1e-12)
     np.testing.assert_allclose(r.quality, qt["quality"], rtol=1e-12)
-    assert m.flow_vectors() == qt["vectors"] and list(m.flow_extent()) == qt["extent"]
+    _same_vectors(m.flow_vectors(), qt["vectors"])
+    assert list(m.flow_extent()) == qt["extent"]
     assert [{k: f"{v:.4g}" for k, v in row.items()} for row in m.tile_table_rows()] == [
         {k: v for k, v in row.items()} for row in qt["vector_rows"]
     ]
@@ -250,13 +259,15 @@ def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(
     m = app.model
     assert m.status_line == qt["bar"] == qt["status"]
     for name in ("vx", "vy", "quality", "x", "y"):
-        np.testing.assert_array_equal(_nn(getattr(m.result, name)), qt[name], err_msg=name)
+        np.testing.assert_allclose(
+            _nn(getattr(m.result, name)), qt[name], rtol=1e-12, atol=1e-12, err_msg=name
+        )  # macOS recording: rounding only
     assert m.result.n_escaped == qt["n_escaped"] and m.summary_html() == qt["summary"]
-    assert json.loads(json.dumps(m.flow_vectors())) == qt["vectors"]
+    _same_vectors(json.loads(json.dumps(m.flow_vectors())), qt["vectors"])
     assert list(m.flow_extent()) == qt["extent"]
     assert [s["name"] for s in m.profile_series()] == [s["name"] for s in qt["profile"]]
     for a, b in zip(m.profile_series(), qt["profile"]):
-        np.testing.assert_array_equal(_nn(a["y"]), b["y"])
+        np.testing.assert_allclose(_nn(a["y"]), b["y"], rtol=1e-12, atol=1e-12)
     cells = [
         [f"{r[k]:.4g}" for k in ("x", "y", "vx", "vy", "speed", "angle", "quality")]
         for r in m.tile_table_rows()
@@ -283,7 +294,7 @@ def test_the_demo_is_loaded_and_mapped_as_the_qt_tool_did(app, drv, with_demo):
     drv.click("map_flow")
     drv.settle()
     assert m.status_line == qt["after_status"] and m.result.n_escaped == qt["n_escaped"]
-    np.testing.assert_array_equal(_nn(m.result.vx), qt["vx"])
+    np.testing.assert_allclose(_nn(m.result.vx), qt["vx"], rtol=1e-12, atol=1e-12)
 
 
 @needs_simulator
@@ -589,6 +600,19 @@ def test_export_without_a_result_says_so(app, drv):
     ] == "Nothing to export yet" and not dialog_open(drv)
 
 
+def _same_csv(got: str, want: str) -> None:
+    """The Qt tool's CSV: same header and shape, numbers up to float rounding (it was written on
+    macOS; the Linux gate differs in the last printed digit)."""
+    g, w = got.splitlines(), want.splitlines()
+    assert g[0] == w[0] and len(g) == len(w)
+    np.testing.assert_allclose(
+        [[float(v) for v in row.split(",")] for row in g[1:]],
+        [[float(v) for v in row.split(",")] for row in w[1:]],
+        rtol=1e-12,
+        atol=1e-12,
+    )
+
+
 def test_export_csv_writes_the_file_the_qt_tool_wrote(app, drv, flow_tif, tmp_path):
     mapped(app, drv, flow_tif)
     drv.click("request_export")
@@ -600,7 +624,7 @@ def test_export_csv_writes_the_file_the_qt_tool_wrote(app, drv, flow_tif, tmp_pa
     )
     drv.click_text("Save", last=True)
     written = tmp_path / "flow_map.csv"
-    assert written.read_text() == QT_CSV
+    _same_csv(written.read_text(), QT_CSV)
     assert app.model.status_line == f"Wrote {written}" and not dialog_open(drv)
 
 

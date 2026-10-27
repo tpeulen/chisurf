@@ -27,10 +27,10 @@ Primary source areas:
 
 Reference-only source areas:
 
-- {src}`/Users/tpeulen/dev/imp/modules/pmi/pyext/src/output.py`
-- {src}`/Users/tpeulen/dev/imp/modules/pmi/pyext/src/topology/__init__.py`
-- {src}`/Users/tpeulen/dev/imp/modules/pmi/pyext/src/dof/__init__.py`
-- {src}`/Users/tpeulen/dev/imp/modules/pmi/pyext/src/macros.py`
+- [`modules/pmi/pyext/src/output.py`](https://github.com/salilab/imp/blob/develop/modules/pmi/pyext/src/output.py)
+- [`modules/pmi/pyext/src/topology/__init__.py`](https://github.com/salilab/imp/blob/develop/modules/pmi/pyext/src/topology/__init__.py)
+- [`modules/pmi/pyext/src/dof/__init__.py`](https://github.com/salilab/imp/blob/develop/modules/pmi/pyext/src/dof/__init__.py)
+- [`modules/pmi/pyext/src/macros.py`](https://github.com/salilab/imp/blob/develop/modules/pmi/pyext/src/macros.py)
 - `thirdparty/rmf_chimerax/src/io.py`
 - `thirdparty/rmf_chimerax/src/tool.py`
 - `thirdparty/rmf_chimerax/src/cmd.py`
@@ -182,7 +182,7 @@ Tasks:
 
 Reference behavior:
 
-- {src}`/Users/tpeulen/dev/imp/modules/pmi/pyext/src/output.py`, methods `init_rmf()` and `write_rmf()`.
+- [`modules/pmi/pyext/src/output.py`](https://github.com/salilab/imp/blob/develop/modules/pmi/pyext/src/output.py), methods `init_rmf()` and `write_rmf()`.
 
 Pseudo-API:
 

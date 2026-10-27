@@ -134,6 +134,16 @@ def test_the_list_equals_the_qt_trees_rows_in_the_same_order(discovered):
 #: moved to id tables lost children they no longer reach, tools that import ``tttr_splitter`` or
 #: the games hub gained it). Their cells now follow the manifests, not the retired tool.
 REPAIRED_DECLARATIONS = {
+    # The trajectory tools' demos run on fret_docking's shipped NMSim trajectory: an
+    # optional_requires edge declared 2026-10-26.
+    "Align",
+    "Convert",
+    "Energy Calculator",
+    "FRET",
+    "Join",
+    "Remove Clashed",
+    "Rotate/Translate",
+    "Save Topol",
     "ALEX Creator",
     "Audifier",
     "Breakout",

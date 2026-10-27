@@ -188,6 +188,9 @@ def test_example_hmm_and_results_by_pointer_and_keyboard(size):
 
 
 @pytest.mark.slow  # scans 15 HMM state counts over the whole example trace: about 200 s, over the 120 s default timeout
+# The 1-15 state BIC scan is CPU-bound and waited for within 300 s: on the gate box at load 49
+# (2026-10-26) it ran past that. Wall-clock dependent, so it runs with the serial timing tests.
+@pytest.mark.timing
 def test_bic_elbow_and_the_save_dialogs(tmp_path):
     ui = Ui(make_app())
     ui.click("load_example")

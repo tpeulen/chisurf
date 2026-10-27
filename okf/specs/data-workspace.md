@@ -15,25 +15,25 @@ scripts and the agent need them); in the UI they degrade the UX and go.
 
 ## Where to pick this up
 
-1. **Migrate the rest, family by family.** Measure: `python -c "import sys; sys.path.insert(0,'.');
-   from test.test_no_input_file_dialogs import allowed_entries; print(len(allowed_entries()))"` — **185**
-   lines (dialog/drop/mmfdb) after the three worked examples, from 193. A line is one route in one file,
+1. Measure: **Migrate the rest, family by family.** `python -c "import sys; sys.path.insert(0,'.');
+   from test.test_no_input_file_dialogs import allowed_entries; print(len(allowed_entries()))"` — **111**
+   lines (dialog/drop/mmfdb) at fb0ca5879 (TTTR and burst families done), from 193. A line is one route in one file,
    so a plugin often holds 2–3. Order: TTTR-file tools (photons ~40), burst consumers (container runs —
    a legacy burst *folder* cannot be a workspace row: links refuse a directory, so consumers must take
    `m000.pto/<run>`), curve tools, images, structures. Recipe: [plugin architecture
    §3.1.5](../../docs/development/plugin_architecture.md).
-2. **Hubs.** alex_suite / burst_analysis take their photons and setup from the workspace and hand the
+2. Open: **Hubs.** alex_suite / burst_analysis take their photons and setup from the workspace and hand the
    later steps a container run (no legacy folder); the hubs still call their own `_to_<role>` adapters
    rather than each step's declared input.
-3. **Setups as input.** `with_setup` is implemented (a `setup` row's address travels as `setup`) but no
+3. Open: **Setups as input.** `with_setup` is implemented (a `setup` row's address travels as `setup`) but no
    plugin declares it yet; intensity_trace still picks detector setups from its own setups store — the
    next photon tool should take its setup from the workspace.
-4. **Curves dropped with a file type chosen for another experiment** keep that choice (the user's
+4. Open: **Curves dropped with a file type chosen for another experiment** keep that choice (the user's
    selection wins over `classify.curve_reader`); only an empty selection, or the same experiment, takes
    the sniffed settings (`skiprows`, `x_on`, `dt`, `is_vv_vh`). A PyCorrFit CSV sniffs as FCS-CSV.
-5. **Journeys** (`test/e2e/test_workspace_journeys.py`) are the acceptance proof; run on `ssh home`
+5. Measure: **Journeys** (`test/e2e/test_workspace_journeys.py`) are the acceptance proof; run on `ssh home`
    (`build_tools/remote_test.sh`), never on the laptop.
-6. **Burst family, on the project model** (§ Burst results live in the project). Migrated (2026-10-26):
+6. Open: **Burst family, on the project model** (§ Burst results live in the project). Migrated (2026-10-26):
    BVA, 2CDE, GS, H2MM (per-photon tables into the run's container), MLE, burst browser, burst FCS
    correlator, burst_selection, burst_background, burst_irf_bg, fret_check, bid_to_analysis,
    burstwise_import (a dropped legacy burstwise folder is classified `burst_folder` and handed to its

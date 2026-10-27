@@ -91,7 +91,12 @@ def _rows(golden, state="APO", site=72, linker=20.12):
 #: The golden rows were recorded on arm64 macOS. The lifetimes are numpy reductions over ~1e5
 #: voxels, whose pairwise sums follow the SIMD width (NEON vs AVX), so other CPUs agree to
 #: rounding, not to the bit: 4e-17 relative on a lifetime, 1e-14 on the exposure (x86 Linux).
-ROUNDING = 1e-13
+#: Agreement across platforms and builds, not the golden table's printed rounding. The site
+#: tables are computed multithreaded (summation order follows the core count) by the installed
+#: IMP.bff: on the Linux gate (2026-10-26, 48 cores, IMP.bff 790956d) they differed from the macOS
+#: recording by up to 7.8e-11 relative on lifetimes, 2e-10 on exposures and 3.4e-9 on Cy3B's
+#: smallest component. 1e-8 is ~3x that and still pins the geometry.
+ROUNDING = 1e-8
 
 
 def test_the_shipped_table_gives_the_golden_rows_to_rounding(golden, shipped):
@@ -144,11 +149,11 @@ def test_todays_geometry_is_pinned(golden, tmp_path):
     assert lib.site("APO", 72, 20.12) is site
     for stage, theta, row in _rows(golden):
         out = site.lifetime(theta, row["tau0"], row["water"])
-        assert np.allclose(out, REPIN_APO72[(stage, row["solvent"])], rtol=0, atol=1e-12)
+        assert np.allclose(out, REPIN_APO72[(stage, row["solvent"])], rtol=ROUNDING, atol=0)
     theta = golden["site_lifetimes"]["Atto655 in D2O and H2O"]["theta"]
     e = site.exposure_profile(theta, golden["TAU0"]["Atto655 D2O"])
     assert np.allclose(
-        (e["visible"], e["reachable"], e["dark_fraction"]), REPIN_EXPOSURE_72, rtol=0, atol=1e-12
+        (e["visible"], e["reachable"], e["dark_fraction"]), REPIN_EXPOSURE_72, rtol=ROUNDING, atol=0
     )
     # points and predict: one Site per (state, site, linker), water per row
     rows = [dict(dye="Atto655", state="APO", site=72)] * 2
@@ -237,7 +242,7 @@ def test_every_stage_on_todays_geometry(golden, tmp_path):
             dark.append(out[1])
         dev = np.asarray(dev)
         got = (np.sqrt((dev**2).mean()), np.median(np.abs(dev)), np.mean(dark))
-        assert np.allclose(got, REPIN_STAGES[stage], rtol=1e-9, atol=0), stage
+        assert np.allclose(got, REPIN_STAGES[stage], rtol=ROUNDING, atol=0), stage
 
 
 def test_unique_rows_equals_numpy_unique(shipped):

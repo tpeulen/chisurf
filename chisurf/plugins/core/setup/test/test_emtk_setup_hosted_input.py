@@ -99,7 +99,11 @@ def test_a_drag_pans_the_preview_plot(hub):
     assert axis_ticks(hub) != zoomed
 
 
-def test_a_dropped_photon_file_reaches_the_lut_tools_panel(hub, tmp_path):
+def test_the_lut_tools_panel_takes_photons_from_the_workspace_not_a_drop(hub, tmp_path):
+    """Photon files reach the hosted LUT tools through the workspace hand-off; a drop is declined
+    (the shell's drop adds files to the Datasets workspace, which then feeds the tool)."""
+    from chisurf.plugins.tttr.tttr_lut_tools.gui.app import receive_photons
+
     source = REPO / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
     if not source.exists():
         pytest.skip("sample photon file not present")
@@ -108,7 +112,9 @@ def test_a_dropped_photon_file_reaches_the_lut_tools_panel(hub, tmp_path):
     hub.app.select("lut")
     hub.draw(3)
     child = hub.app.child
-    assert hub.drop(target)
+    # Declined, or no drop handler at all: either way a drop does not feed the tool.
+    assert getattr(hub.app, "files_dropped", lambda _paths: False)([str(target)]) is False
+    receive_photons(child, {"files": [str(target)]})
     import time
 
     end = time.monotonic() + 60
@@ -120,7 +126,7 @@ def test_a_dropped_photon_file_reaches_the_lut_tools_panel(hub, tmp_path):
 
 def test_a_dropped_file_on_a_panel_without_a_drop_handler_is_declined(hub):
     hub.app.select("check")
-    assert hub.app.files_dropped(["/tmp/x.dat"]) is False
+    assert getattr(hub.app, "files_dropped", lambda _paths: False)(["/tmp/x.dat"]) is False
 
 
 # --------------------------------------------------------------------------------------- helpers for hosted forms

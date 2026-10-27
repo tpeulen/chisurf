@@ -183,7 +183,8 @@ grab that covers the text underneath it. Render the sheet and read it:
 python -m chisurf.plugins.chimol.test.widget_gallery
 ```
 
-One PNG per family lands in `chisurf/plugins/chimol/test/renders/widget_gallery/`.
+One PNG per family lands in a `widget_gallery/` folder under chimol's test `renders/`
+directory, created by the run.
 There is no golden image to diff — the point is that a person looks. Adding a
 control means adding a row to `_BUILDERS` in that module.
 

@@ -19,7 +19,7 @@ from test.gui.burst_workspace import (
     settle,
 )
 
-SHOTS = Path(os.environ.get("CHISURF_SHOTS", "/private/tmp/chisurf-native-gpu"))
+SHOTS = Path(os.environ.get("CHISURF_NATIVE_SCREENSHOTS", "/private/tmp/chisurf-native-gpu"))
 
 
 @pytest.fixture(autouse=True)

@@ -82,8 +82,16 @@ class Ui:
         return self.last.strings
 
     def shown(self, text):
-        """Whether *text* is part of a string drawn in the last frame."""
-        return any(text in s for s in self.last.strings)
+        """Whether *text* is part of a string drawn in the last frame, also across a wrapped line.
+
+        Where a long status line wraps depends on the font's advances, which differ between
+        platforms (on the Linux gate "... configure the fit, then run" broke before "then"), so
+        the frame's strings are also searched as one space-joined text.
+        """
+        if any(text in s for s in self.last.strings):
+            return True
+        flowing = " ".join(" ".join(str(s).split()) for s in self.last.strings)
+        return " ".join(text.split()) in flowing
 
     def settle(self, timeout=120.0):
         """Draw until the worker has finished (``app.running`` clears) and the result is on screen."""

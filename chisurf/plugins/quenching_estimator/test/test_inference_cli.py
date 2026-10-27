@@ -133,6 +133,9 @@ def test_bad_arguments_are_usage_errors(fake_sites, args, needle):
     assert result.exit_code == 2 and needle in result.output
 
 
+# Builds the 18 Atto655 site tables in a fresh settings folder (minutes on a loaded gate box, past
+# the gate's 120 s per-test timeout): the end-to-end run belongs to `pixi run test-slow`.
+@pytest.mark.slow
 def test_csc_quest_analyse_on_the_shipped_male_data(tmp_path):
     """The real command on the real data: stage B, a one-search fit, the declared tables."""
     out = tmp_path / "out"

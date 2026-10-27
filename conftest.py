@@ -45,6 +45,14 @@ os.environ.setdefault("CHISURF_PROJECT_TEMP_DIR", str(_HERMETIC_SETTINGS_DIR / "
 # runs fills the disk, and a full disk makes every later test fail with ENOSPC.
 atexit.register(shutil.rmtree, _HERMETIC_SETTINGS_DIR, ignore_errors=True)
 
+# Where render tests save the screenshots a reviewer reads. The tests default to macOS's
+# /private/tmp/chisurf-native-gpu, which does not exist on Linux (the remote gate failed with
+# PermissionError: '/private'); elsewhere the folder goes under the system temp directory.
+if sys.platform != "darwin":
+    os.environ.setdefault(
+        "CHISURF_NATIVE_SCREENSHOTS", str(pathlib.Path(tempfile.gettempdir()) / "chisurf-native-gpu")
+    )
+
 # Matplotlib must not open windows during a test run. The default backend on
 # macOS is ``macosx``, a native GUI backend, so any test that draws a figure
 # pops a real window onto the user's screen — and a run that is meant to be

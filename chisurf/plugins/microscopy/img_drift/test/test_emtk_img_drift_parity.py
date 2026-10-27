@@ -173,12 +173,12 @@ def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(app, d
     drv.click("measure")
     drv.settle()
     assert m.status_line == qt["bar"] == qt["status"]
-    np.testing.assert_array_equal(shifts_of(m), qt["shifts"])
+    np.testing.assert_allclose(shifts_of(m), qt["shifts"], rtol=1e-12, atol=1e-12)  # macOS recording
     assert_fingerprint(m.before_image(), qt["before"])
     assert_fingerprint(m.after_image(), qt["after"])
     assert len(m.drift_series()) == len(qt["series"])
     for a, b in zip(m.drift_series(), qt["series"]):
-        np.testing.assert_array_equal(a["y"], b["y"])
+        np.testing.assert_allclose(a["y"], b["y"], rtol=1e-12, atol=1e-12)
         assert a["name"] == b["name"] and a["color"] == b["color"]
     cells = [
         [str(r["frame"]), f"{r['dx']:+.2f}", f"{r['dy']:+.2f}", f"{r['magnitude']:.2f}"]
@@ -192,7 +192,7 @@ def test_the_recorded_qt_result_and_the_emtk_app_agree_on_the_photon_stream(app,
     qt = QT_REF["photon_stream"]
     m = measured(app, drv, HT3)
     assert m.status_line == qt["status"] and m.channel_names == qt["channel_names"]
-    np.testing.assert_array_equal(shifts_of(m), qt["shifts"])
+    np.testing.assert_allclose(shifts_of(m), qt["shifts"], rtol=1e-12, atol=1e-12)
     assert_fingerprint(m.before_image(), qt["before"])
 
 
@@ -405,7 +405,7 @@ def test_the_estimator_panel_opens_and_smoothing_and_subpixel_give_the_qt_measur
     drv.click("measure")
     drv.settle()
     qt = QT_REF["scenarios"]["no smoothing, subpixel"]
-    np.testing.assert_array_equal(shifts_of(app.model), qt["shifts"])
+    np.testing.assert_allclose(shifts_of(app.model), qt["shifts"], rtol=1e-12, atol=1e-12)
     assert not np.array_equal(
         shifts_of(app.model), default
     )  # sub-pixel refinement moved the answer off the whole pixels

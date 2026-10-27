@@ -63,6 +63,19 @@ def _setups() -> dict:
         return {"setups": {}}
 
 
+def _compact_input_rows(spec, height: int) -> None:
+    """Give the generated Input section's row table *height* px, wherever it sits in *spec*."""
+    if isinstance(spec, dict):
+        options = spec.get("options")
+        if isinstance(options, dict) and options.get("source") == "workspace_input_rows":
+            options["height"] = height
+        for value in spec.values():
+            _compact_input_rows(value, height)
+    elif isinstance(spec, list):
+        for value in spec:
+            _compact_input_rows(value, height)
+
+
 class _Form(WorkspaceInputMixin):
     """What the spec reads and writes: the model's fields, the app's settings and actions; the
     Input section's rows are the workspace's photon streams (:class:`WorkspaceInputMixin`)."""
@@ -201,6 +214,10 @@ class IntensityTraceApp(ImApp):
         found = spec_for(json.loads((PLUGIN / "manifest.json").read_text(encoding="utf-8")))
         if found is not None:
             self.spec["file"] = with_workspace_input(self.spec["file"], found[1])
+            # One full row and its header (the table scrolls): at the default 1100x720 the 110 px
+            # table pushed the HMM tab's BIC Elbow button below the Controls dock's visible edge,
+            # and 56 px cut the one row in half (its centre fell outside the table).
+            _compact_input_rows(self.spec["file"], 70)
         self.form_model = _Form(self)
         self.forms = {name: FormState(on_used=self._used) for name in self.spec}
         self.forms["processing"].custom["detectors"] = self._draw_detectors

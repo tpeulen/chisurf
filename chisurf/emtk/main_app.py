@@ -47,6 +47,7 @@ from functools import partial
 from typing import Any, Callable, Sequence
 
 from emtk import accents, im, overlays
+from emtk import style as _style
 from emtk.app import ImApp
 from emtk.docking import MIN_TILE, DockManager, Region, Split, tile_grid
 from emtk.i18n import mark, tr
@@ -458,6 +459,16 @@ class EmtkShellApp(ImApp):
         self.frames_drawn = 0
         self.entries = menu_entries(catalog)
         self.by_id = {entry.plugin_id: entry for entry in self.entries}
+        # A tool kept off the menus (``menu_hidden``: a hub's step, e.g. burst_selection inside Burst
+        # Analysis) is still a tool: the workspace hands it data (Open in…, a drag, a hub's hand-off),
+        # so it can be opened -- it only gets no menu entry or ribbon button.
+        hidden = {
+            pid: {**data, "menu_hidden": False}
+            for pid, data in catalog.items()
+            if data.get("menu_hidden") and (data.get("entrypoints") or {}).get("emtk")
+        }
+        for entry in menu_entries(hidden):
+            self.by_id.setdefault(entry.plugin_id, entry)
         from chisurf.emtk.shell_ribbon import ShellRibbon, menu_tree
 
         #: ``{menu: {caption: [MenuEntry]}}``: the plugin menus and the Tools tree, in ribbon order.
@@ -1171,7 +1182,7 @@ class EmtkShellApp(ImApp):
         avail = im.get_content_region_avail()[0]
         if avail > width:
             im.set_cursor_pos_x(im.get_cursor_pos_x() + avail - width)
-        colour = (1.0, 0.78, 0.35, 1.0) if project.temporary or project.dirty else (0.55, 0.85, 1.0, 1.0)
+        colour = _style.TEXT_WARNING if project.temporary or project.dirty else _style.TEXT_NOTE
         im.text_colored(colour, text)
         self.item_rects["project_badge"] = im.get_item_rect()
         if document.path:
@@ -2060,7 +2071,7 @@ class EmtkShellApp(ImApp):
             line += " " + tr("(temporary — not saved)")
         if self.project.dirty:
             line = "• " + line
-        im.text_colored((1.0, 0.78, 0.35, 1.0) if self.project.temporary else (0.55, 0.85, 1.0, 1.0), line)
+        im.text_colored(_style.TEXT_WARNING if self.project.temporary else _style.TEXT_NOTE, line)
         self.item_rects["project"] = im.get_item_rect()
         if self.project.status:
             im.text_disabled(self.project.status)

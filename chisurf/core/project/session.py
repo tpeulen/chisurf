@@ -123,6 +123,17 @@ _TCSPC_FIELDS = _READER_FIELDS[("chisurf.core.experiments.tcspc.reader", "TCSPCR
 _READER_FIELDS.update(
     {
         ("chisurf.core.experiments.tcspc.sdt_reader", "SDTReader"): (*_TCSPC_FIELDS, "curve_nbr"),
+        # The reader-only experiments link an address; the link record lives on the dataset.
+        **{
+            ("chisurf.core.experiments.linked", name): ("filename",)
+            for name in (
+                "LinkedDataReader",
+                "PhotonStreamReader",
+                "BurstRunReader",
+                "ImageStackReader",
+                "InstrumentSetupReader",
+            )
+        },
         ("chisurf.core.experiments.tcspc.tttr_reader", "TCSPCTTTRReader"): (
             *_TCSPC_FIELDS,
             "channel_numbers",

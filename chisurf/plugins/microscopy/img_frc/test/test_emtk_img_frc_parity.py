@@ -251,14 +251,14 @@ def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(
     measure(app, drv, **settings)
     assert m.status_line == qt["bar"] == qt["status"]
     for a, b in zip(curve_of(m), qt["curve"]):
-        np.testing.assert_array_equal(a, b)
+        np.testing.assert_allclose(a, b, rtol=1e-12, atol=1e-12)  # macOS recording: rounding only
     assert m.result.resolution == qt["resolution"] and m.result.crossed == qt["crossed"]
     assert_fingerprint(m.half_1_image(), qt["half1"])
     assert_fingerprint(m.half_2_image(), qt["half2"])
     assert m.summary_html() == qt["summary"]
     assert [s["name"] for s in m.frc_series()] == [s["name"] for s in qt["series"]]
     for a, b in zip(m.frc_series(), qt["series"]):
-        np.testing.assert_array_equal(a["y"], b["y"])
+        np.testing.assert_allclose(a["y"], b["y"], rtol=1e-12, atol=1e-12)
     cells = [
         [
             f"{r['frequency']:.5g}",
@@ -279,11 +279,11 @@ def test_the_recorded_qt_results_and_the_emtk_app_agree_on_the_photon_stream_and
     qt = QT_REF["photon_stream"]
     m = loaded(app, drv, HT3)
     measure(app, drv)
-    np.testing.assert_array_equal(curve_of(m)[1], qt["curve"][1])
+    np.testing.assert_allclose(curve_of(m)[1], qt["curve"][1], rtol=1e-12, atol=1e-12)
     assert m.status_line == qt["status"] and m.channel_names == qt["channel_names"]
     qt = QT_REF["photon_channels"]
     measure(app, drv, split="channels", channel="ch0", channel_2="ch1")
-    np.testing.assert_array_equal(curve_of(m)[1], qt["curve"][1])
+    np.testing.assert_allclose(curve_of(m)[1], qt["curve"][1], rtol=1e-12, atol=1e-12)
     assert m.status_line == qt["status"]
 
 
@@ -406,15 +406,30 @@ def test_a_new_file_clears_the_previous_result(app, drv, stack_a, stack_b):
     )
 
 
-def test_the_actions_and_the_form_are_greyed_while_a_worker_runs(app, drv, stack_a):
+def test_the_actions_and_the_form_are_greyed_while_a_worker_runs(app, drv, stack_a, monkeypatch):
+    import threading
+
+    # Hold the load on the worker until the clicks are done: a fast machine finished it within
+    # the click's frames, which re-enabled Measure correctly and failed the test (gate, 3/3).
+    release = threading.Event()
+    real_load = type(app.model).load_job
+
+    def held_load(self):
+        assert release.wait(30), "the test never released the load"
+        return real_load(self)
+
+    monkeypatch.setattr(type(app.model), "load_job", held_load)
     app.model.open_path(str(stack_a))
     assert app.job.busy
     runs = []
     app.model.measure = lambda: runs.append(1)
-    drv.click("measure")
-    assert runs == []
-    drv.click("split")
-    assert "Two files" not in drv.draw(1).strings
+    try:
+        drv.click("measure")
+        assert runs == []
+        drv.click("split")
+        assert "Two files" not in drv.draw(1).strings
+    finally:
+        release.set()
     drv.settle()
 
 

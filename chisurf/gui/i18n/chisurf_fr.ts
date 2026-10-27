@@ -75982,6 +75982,530 @@ Background (kHz): {bg}</source>
             <source>Pick a VV/VH file in the Input section, set the correction and choose the region that defines r-infinity.</source>
             <translation>Choisir un fichier VV/VH dans la section Entrée, régler la correction et choisir la région qui définit r-infini.</translation>
         </message>
+        <message>
+            <source>&lt;b&gt;Filter Calc...&lt;/b&gt; opens the fFCS Filter Calculator in a window of its own and hands it these files, on the same micro-time binning, as its mixed decay. The filters it saves — dropped on the ChiSurf window and picked under &lt;b&gt;Lifetime filters&lt;/b&gt; — switch to species-resolved correlation. The other FCS tools (2D-FLCS, the lifetime-FCS simulator, burst-wise FCS and the diffusion / volume calculator) are buttons of their own in the ribbon's &lt;b&gt;Spectroscopy › Correlation&lt;/b&gt; group.</source>
+            <translation>&lt;b&gt;Filter Calc...&lt;/b&gt; ouvre le calculateur de filtres fFCS dans sa propre fenêtre et lui transmet ces fichiers, avec le même regroupement de micro-temps, comme déclin mixte. Les filtres qu'il enregistre – déposés sur la fenêtre ChiSurf et choisis sous &lt;b&gt;Lifetime filters&lt;/b&gt; – passent à la corrélation résolue par espèce. Les autres outils FCS (2D-FLCS, le simulateur de FCS de durée de vie, la FCS par burst et le calculateur de diffusion / volume) ont leurs propres boutons dans le groupe &lt;b&gt;Spectroscopy › Correlation&lt;/b&gt; du ruban.</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Mode&lt;/b&gt; chooses a single-molecule measurement at one spot (Point: bursts, E–S, the running trace) or a scan (Image: the image builds up line by line). Keep &lt;b&gt;Point&lt;/b&gt; for this tour.</source>
+            <translation>&lt;b&gt;Mode&lt;/b&gt; choisit une mesure de molécule unique en un point (Point : bursts, E–S, la trace défilante) ou un balayage (Image : l'image se construit ligne par ligne). Garder &lt;b&gt;Point&lt;/b&gt; pour cette visite.</translation>
+        </message>
+        <message>
+            <source>A 2-D TIFF image or 3-D TIFF bead stack of the workspace.</source>
+            <translation>Une image TIFF 2-D ou une pile TIFF 3-D de billes de l'espace de travail.</translation>
+        </message>
+        <message>
+            <source>A channel preset library (a setup row of the Datasets workspace) to import.</source>
+            <translation>Une bibliothèque de préréglages de canaux (une ligne de configuration de l'espace de travail Datasets) à importer.</translation>
+        </message>
+        <message>
+            <source>A measured IRF (photon stream or decay curve) for the selected detector row.</source>
+            <translation>Une IRF mesurée (flux de photons ou courbe de déclin) pour la ligne de détecteur sélectionnée.</translation>
+        </message>
+        <message>
+            <source>A photon stream of the instrument response (its micro-time histogram is the IRF).</source>
+            <translation>Un flux de photons de la réponse instrumentale (son histogramme de micro-temps est l'IRF).</translation>
+        </message>
+        <message>
+            <source>A saved filter-calculator project (a setup row of the workspace).</source>
+            <translation>Un projet enregistré du calculateur de filtres (une ligne de configuration de l'espace de travail).</translation>
+        </message>
+        <message>
+            <source>A scatter or reflection measurement for this detector. Several files are summed. No file: the raw data are used. Pick them in the &lt;b&gt;Data&lt;/b&gt; tab.</source>
+            <translation>Une mesure de diffusion ou de réflexion pour ce détecteur. Plusieurs fichiers sont additionnés. Sans fichier, les données brutes sont utilisées. Les choisir dans l'onglet &lt;b&gt;Data&lt;/b&gt;.</translation>
+        </message>
+        <message>
+            <source>A simulated scan: beads of two lifetimes (1.0 and 3.5 ns) on a dim cell outline, 64 × 64 pixels, 3 frames. Press Start.</source>
+            <translation>Un balayage simulé : des billes de deux durées de vie (1,0 et 3,5 ns) sur le contour faible d'une cellule, 64 × 64 pixels, 3 images. Appuyer sur Start.</translation>
+        </message>
+        <message>
+            <source>Adopt the correlator's files (or pick the mixed decay in the Input section below).</source>
+            <translation>Reprendre les fichiers du corrélateur (ou choisir le déclin mixte dans la section d'entrée ci-dessous).</translation>
+        </message>
+        <message>
+            <source>Arrange the windows</source>
+            <translation>Disposer les fenêtres</translation>
+        </message>
+        <message>
+            <source>Beads</source>
+            <translation>Billes</translation>
+        </message>
+        <message>
+            <source>Bidirectional</source>
+            <translation>Bidirectionnel</translation>
+        </message>
+        <message>
+            <source>Bin (ms)</source>
+            <translation>Bin (ms)</translation>
+        </message>
+        <message>
+            <source>Bin width of the running trace. Default 1 ms (bursts last a few ms).</source>
+            <translation>Largeur de bin de la trace défilante. Par défaut 1 ms (les bursts durent quelques ms).</translation>
+        </message>
+        <message>
+            <source>Bright beads on the dim outline of a cell; half of them with each lifetime.</source>
+            <translation>Billes brillantes sur le contour faible d'une cellule ; la moitié avec chaque durée de vie.</translation>
+        </message>
+        <message>
+            <source>CLSM settings saved by Save settings (a setup row of the workspace).</source>
+            <translation>Réglages CLSM enregistrés par Save settings (une ligne de configuration de l'espace de travail).</translation>
+        </message>
+        <message>
+            <source>Calculator settings saved by Export JSON (a setup row of the Datasets workspace).</source>
+            <translation>Réglages du calculateur enregistrés par Export JSON (une ligne de configuration de l'espace de travail Datasets).</translation>
+        </message>
+        <message>
+            <source>Choose an image of the workspace first.</source>
+            <translation>Choisir d'abord une image de l'espace de travail.</translation>
+        </message>
+        <message>
+            <source>Confocal (CLSM) TTTR image file(s) to analyse, picked from the Datasets workspace (drop the files on the ChiSurf window to add them there).</source>
+            <translation>Fichier(s) d'image TTTR confocale (CLSM) à analyser, choisis dans l'espace de travail Datasets (déposer les fichiers sur la fenêtre ChiSurf pour les y ajouter).</translation>
+        </message>
+        <message>
+            <source>Confocal (CLSM) photon recordings to analyse: photon streams or photon images.</source>
+            <translation>Enregistrements de photons confocaux (CLSM) à analyser : flux de photons ou images de photons.</translation>
+        </message>
+        <message>
+            <source>Decays appear during a run.</source>
+            <translation>Les déclins apparaissent pendant une mesure.</translation>
+        </message>
+        <message>
+            <source>Distance between the planes of a z stack.</source>
+            <translation>Distance entre les plans d'une pile z.</translation>
+        </message>
+        <message>
+            <source>Donor up, acceptor down. Span and bin width: Analysis › Running trace.</source>
+            <translation>Donneur en haut, accepteur en bas. Durée et largeur de bin : Analysis › Running trace.</translation>
+        </message>
+        <message>
+            <source>Drag a window's title to float it or dock it elsewhere (several in one place become tabs), resize it from any edge, double-click a title to fold it. &lt;b&gt;Reset layout&lt;/b&gt; puts everything back.</source>
+            <translation>Faire glisser le titre d'une fenêtre pour la rendre flottante ou l'ancrer ailleurs (plusieurs au même endroit deviennent des onglets), la redimensionner depuis n'importe quel bord, double-cliquer sur un titre pour la replier. &lt;b&gt;Reset layout&lt;/b&gt; remet tout en place.</translation>
+        </message>
+        <message>
+            <source>Dwell (ms)</source>
+            <translation>Temps de pause (ms)</translation>
+        </message>
+        <message>
+            <source>Each finished burst lands in the type's histograms -- for the PIE example two clusters at E 0.2 and 0.8, both at S 0.5; &lt;b&gt;Histogram&lt;/b&gt; picks which is shown.</source>
+            <translation>Chaque burst terminé arrive dans les histogrammes du type – pour l'exemple PIE deux amas à E 0,2 et 0,8, tous deux à S 0,5 ; &lt;b&gt;Histogram&lt;/b&gt; choisit celui qui est affiché.</translation>
+        </message>
+        <message>
+            <source>Export the calculator's settings as JSON; pick saved settings (a setup row of the Datasets workspace) to load them.</source>
+            <translation>Exporter les réglages du calculateur en JSON ; choisir des réglages enregistrés (une ligne de configuration de l'espace de travail Datasets) pour les charger.</translation>
+        </message>
+        <message>
+            <source>Frame {f} · line {l}/{n}</source>
+            <translation>Image {f} · ligne {l}/{n}</translation>
+        </message>
+        <message>
+            <source>Frames per plane; their photons add up in the live image.</source>
+            <translation>Images par plan ; leurs photons s'additionnent dans l'image en direct.</translation>
+        </message>
+        <message>
+            <source>Height (µm)</source>
+            <translation>Hauteur (µm)</translation>
+        </message>
+        <message>
+            <source>How many seconds the running trace shows: the most recent ones, scrolling. Default 1 s.</source>
+            <translation>Combien de secondes la trace défilante montre : les plus récentes, en défilement. Par défaut 1 s.</translation>
+        </message>
+        <message>
+            <source>IRF TTTR measurement (the first file is used), picked from the Datasets workspace.</source>
+            <translation>Mesure TTTR de l'IRF (le premier fichier est utilisé), choisie dans l'espace de travail Datasets.</translation>
+        </message>
+        <message>
+            <source>IRF photon files for the selected detector; they are summed into its IRF.</source>
+            <translation>Fichiers de photons de l'IRF pour le détecteur sélectionné ; ils sont additionnés pour former son IRF.</translation>
+        </message>
+        <message>
+            <source>Image (scan)</source>
+            <translation>Image (balayage)</translation>
+        </message>
+        <message>
+            <source>Import a library</source>
+            <translation>Importer une bibliothèque</translation>
+        </message>
+        <message>
+            <source>In Datasets as an image, {how}.</source>
+            <translation>Dans Datasets comme image, {how}.</translation>
+        </message>
+        <message>
+            <source>Last {w:g} s · {b:g} ms bins</source>
+            <translation>Dernières {w:g} s · bins de {b:g} ms</translation>
+        </message>
+        <message>
+            <source>Lifetime (FLCS) filters: a Filter Calculator export or a .npy/.npz filter matrix (a setup row of the workspace).</source>
+            <translation>Filtres de durée de vie (FLCS) : un export du calculateur de filtres ou une matrice de filtres .npy/.npz (une ligne de configuration de l'espace de travail).</translation>
+        </message>
+        <message>
+            <source>Lifetime maps in ns, one per detector in detector order (TIFF images or NPY/NPZ arrays).</source>
+            <translation>Cartes de durée de vie en ns, une par détecteur dans l'ordre des détecteurs (images TIFF ou tableaux NPY/NPZ).</translation>
+        </message>
+        <message>
+            <source>Lifetime of the first bead kind (mostly on detector 0).</source>
+            <translation>Durée de vie du premier type de billes (surtout sur le détecteur 0).</translation>
+        </message>
+        <message>
+            <source>Lifetime of the second bead kind (mostly on detector 1).</source>
+            <translation>Durée de vie du second type de billes (surtout sur le détecteur 1).</translation>
+        </message>
+        <message>
+            <source>Lines per frame.</source>
+            <translation>Lignes par image.</translation>
+        </message>
+        <message>
+            <source>Measured reference decays of one species, added as a component.</source>
+            <translation>Déclins de référence mesurés d'une espèce, ajoutés comme composante.</translation>
+        </message>
+        <message>
+            <source>Micro-time histograms per detector, with the windows of the setup.</source>
+            <translation>Histogrammes de micro-temps par détecteur, avec les fenêtres de la configuration.</translation>
+        </message>
+        <message>
+            <source>No file. Pick one in the workspace above.</source>
+            <translation>Aucun fichier. En choisir un dans l'espace de travail ci-dessus.</translation>
+        </message>
+        <message>
+            <source>No image in the workspace</source>
+            <translation>Aucune image dans l'espace de travail</translation>
+        </message>
+        <message>
+            <source>Not an image</source>
+            <translation>Pas une image</translation>
+        </message>
+        <message>
+            <source>Odd lines are scanned right to left (faster; needs a well-aligned scanner).</source>
+            <translation>Les lignes impaires sont balayées de droite à gauche (plus rapide ; nécessite un scanner bien aligné).</translation>
+        </message>
+        <message>
+            <source>Open the &lt;b&gt;Data&lt;/b&gt; tab and pick the measurement in &lt;b&gt;Open source photon data&lt;/b&gt;.</source>
+            <translation>Ouvrir l'onglet &lt;b&gt;Data&lt;/b&gt; et choisir la mesure dans &lt;b&gt;Open source photon data&lt;/b&gt;.</translation>
+        </message>
+        <message>
+            <source>PSF settings saved by Save settings (a setup row of the workspace).</source>
+            <translation>Réglages PSF enregistrés par Save settings (une ligne de configuration de l'espace de travail).</translation>
+        </message>
+        <message>
+            <source>Photon or camera imaging recordings for preview and batch detection (photon streams, photon images, intensity images).</source>
+            <translation>Enregistrements d'imagerie par photons ou caméra pour l'aperçu et la détection par lots (flux de photons, images de photons, images d'intensité).</translation>
+        </message>
+        <message>
+            <source>Photon rate of one emitter at the focus centre (a bead is a few emitters). Too bright piles up: watch the Pile-up light.</source>
+            <translation>Taux de photons d'un émetteur au centre du foyer (une bille compte quelques émetteurs). Trop brillant provoque l'empilement : surveiller le voyant Pile-up.</translation>
+        </message>
+        <message>
+            <source>Pick a channel preset library (a setup row of the Datasets workspace) to import and persist it.</source>
+            <translation>Choisir une bibliothèque de préréglages de canaux (une ligne de configuration de l'espace de travail Datasets) pour l'importer et la conserver.</translation>
+        </message>
+        <message>
+            <source>Pick an image to replay</source>
+            <translation>Choisir une image à rejouer</translation>
+        </message>
+        <message>
+            <source>Pick at least one lifetime map in the &lt;b&gt;Lifetime maps&lt;/b&gt; Input section and press &lt;b&gt;Use selected&lt;/b&gt;.</source>
+            <translation>Choisir au moins une carte de durée de vie dans la section d'entrée &lt;b&gt;Lifetime maps&lt;/b&gt; et appuyer sur &lt;b&gt;Use selected&lt;/b&gt;.</translation>
+        </message>
+        <message>
+            <source>Pick lifetime (FLCS) filters -- a Filter-Calculator export or a .npy/.npz filter matrix -- from the Datasets workspace. Correlation then gives species auto-/cross-correlations; A/B pick species.</source>
+            <translation>Choisir des filtres de durée de vie (FLCS) – un export du calculateur de filtres ou une matrice de filtres .npy/.npz – dans l'espace de travail Datasets. La corrélation donne alors les auto-/intercorrélations par espèce ; A/B choisissent les espèces.</translation>
+        </message>
+        <message>
+            <source>Pick saved settings (a setup row of the Datasets workspace) to restore acquisition, brush and representation settings plus region geometry.</source>
+            <translation>Choisir des réglages enregistrés (une ligne de configuration de l'espace de travail Datasets) pour restaurer les réglages d'acquisition, de pinceau et de représentation ainsi que la géométrie des régions.</translation>
+        </message>
+        <message>
+            <source>Pick your intensity map in the &lt;b&gt;Intensity map&lt;/b&gt; Input section (drop the file on the ChiSurf window to add it to the workspace).</source>
+            <translation>Choisir votre carte d'intensité dans la section d'entrée &lt;b&gt;Intensity map&lt;/b&gt; (déposer le fichier sur la fenêtre ChiSurf pour l'ajouter à l'espace de travail).</translation>
+        </message>
+        <message>
+            <source>Pixels per line.</source>
+            <translation>Pixels par ligne.</translation>
+        </message>
+        <message>
+            <source>Pixels x</source>
+            <translation>Pixels x</translation>
+        </message>
+        <message>
+            <source>Pixels y</source>
+            <translation>Pixels y</translation>
+        </message>
+        <message>
+            <source>Planes of a z stack (1: one plane).</source>
+            <translation>Plans d'une pile z (1 : un plan).</translation>
+        </message>
+        <message>
+            <source>Point (smFRET)</source>
+            <translation>Point (smFRET)</translation>
+        </message>
+        <message>
+            <source>Point or Image</source>
+            <translation>Point ou image</translation>
+        </message>
+        <message>
+            <source>Point: a single-molecule measurement at one spot (smFRET, FCS) -- bursts, E-S and the running trace. Image: a scan -- the image builds up line by line from the scanner's markers, with fast-FLIM maps.</source>
+            <translation>Point : une mesure de molécule unique en un point (smFRET, FCS) – bursts, E-S et la trace défilante. Image : un balayage – l'image se construit ligne par ligne à partir des marqueurs du scanner, avec des cartes fast-FLIM.</translation>
+        </message>
+        <message>
+            <source>Point: the running smFRET trace of the last seconds -- donor up, acceptor (FRET and directly excited) down. Image: count rate per detector.</source>
+            <translation>Point : la trace smFRET défilante des dernières secondes – donneur en haut, accepteur (FRET et excitation directe) en bas. Image : taux de comptage par détecteur.</translation>
+        </message>
+        <message>
+            <source>Press Load example, then Start: a simulated scan builds up line by line.</source>
+            <translation>Appuyer sur Load example, puis Start : un balayage simulé se construit ligne par ligne.</translation>
+        </message>
+        <message>
+            <source>Press 🧪 Load example (or pick your own stack in the &lt;b&gt;Data&lt;/b&gt; tab).</source>
+            <translation>Appuyer sur 🧪 Load example (ou choisir votre propre pile dans l'onglet &lt;b&gt;Data&lt;/b&gt;).</translation>
+        </message>
+        <message>
+            <source>Put every window back where the Record tool puts it.</source>
+            <translation>Remettre chaque fenêtre là où l'outil Record la place.</translation>
+        </message>
+        <message>
+            <source>Raster</source>
+            <translation>Trame</translation>
+        </message>
+        <message>
+            <source>Replay an image</source>
+            <translation>Rejouer une image</translation>
+        </message>
+        <message>
+            <source>Replayed; nothing new was recorded.</source>
+            <translation>Rejoué ; rien de nouveau n'a été enregistré.</translation>
+        </message>
+        <message>
+            <source>Replaying…</source>
+            <translation>Lecture…</translation>
+        </message>
+        <message>
+            <source>Running trace</source>
+            <translation>Trace défilante</translation>
+        </message>
+        <message>
+            <source>Save every value, the constraint, the reference and the shape to a JSON file.</source>
+            <translation>Enregistrer chaque valeur, la contrainte, la référence et la forme dans un fichier JSON.</translation>
+        </message>
+        <message>
+            <source>Scanner (needs CMC rustytime — not available yet)</source>
+            <translation>Scanner (nécessite CMC rustytime – pas encore disponible)</translation>
+        </message>
+        <message>
+            <source>Scanning hardware comes with CMC's rustytime; use the simulator meanwhile.</source>
+            <translation>Le matériel de balayage arrive avec rustytime de CMC ; en attendant, utiliser le simulateur.</translation>
+        </message>
+        <message>
+            <source>Scanning…</source>
+            <translation>Balayage…</translation>
+        </message>
+        <message>
+            <source>Simulate a stream, run the analysis, or open the help and the guided tour.</source>
+            <translation>Simuler un flux, lancer l'analyse, ou ouvrir l'aide et la visite guidée.</translation>
+        </message>
+        <message>
+            <source>Simulated molecules</source>
+            <translation>Molécules simulées</translation>
+        </message>
+        <message>
+            <source>Simulated sample</source>
+            <translation>Échantillon simulé</translation>
+        </message>
+        <message>
+            <source>Simulator (scan)</source>
+            <translation>Simulateur (balayage)</translation>
+        </message>
+        <message>
+            <source>Simulator settings saved by Save settings (a setup row of the workspace).</source>
+            <translation>Réglages du simulateur enregistrés par Save settings (une ligne de configuration de l'espace de travail).</translation>
+        </message>
+        <message>
+            <source>Span (s)</source>
+            <translation>Durée (s)</translation>
+        </message>
+        <message>
+            <source>Spot Finder settings saved by Save settings (a setup row of the workspace).</source>
+            <translation>Réglages de Spot Finder enregistrés par Save settings (une ligne de configuration de l'espace de travail).</translation>
+        </message>
+        <message>
+            <source>Start a run: the bursts build up here.</source>
+            <translation>Lancer une mesure : les bursts s'accumulent ici.</translation>
+        </message>
+        <message>
+            <source>Start a scan: the image builds up here.</source>
+            <translation>Lancer un balayage : l'image se construit ici.</translation>
+        </message>
+        <message>
+            <source>Start measuring.</source>
+            <translation>Démarrer la mesure.</translation>
+        </message>
+        <message>
+            <source>Stop measuring.</source>
+            <translation>Arrêter la mesure.</translation>
+        </message>
+        <message>
+            <source>Switch every laser output off now (always available).</source>
+            <translation>Éteindre immédiatement toutes les sorties laser (toujours disponible).</translation>
+        </message>
+        <message>
+            <source>The IRF photon measurement (its micro-time histogram is the instrument response).</source>
+            <translation>La mesure de photons de l'IRF (son histogramme de micro-temps est la réponse instrumentale).</translation>
+        </message>
+        <message>
+            <source>The Record tool measures single molecules (Point) or scans an image (Image) and analyses the data while the measurement runs. Every part sits in its own window -- Acquisition, Laser, Analysis, Quality and one per plot -- which you can dock, tab, float, resize and fold; &lt;b&gt;Start&lt;/b&gt;, &lt;b&gt;Stop&lt;/b&gt; and &lt;b&gt;Laser off&lt;/b&gt; stay in the bar on top. Until a device is connected it measures the &lt;b&gt;simulator&lt;/b&gt;.</source>
+            <translation>L'outil Record mesure des molécules uniques (Point) ou balaie une image (Image) et analyse les données pendant la mesure. Chaque partie a sa propre fenêtre – Acquisition, Laser, Analysis, Quality et une par graphique – que l'on peut ancrer, mettre en onglets, rendre flottante, redimensionner et replier ; &lt;b&gt;Start&lt;/b&gt;, &lt;b&gt;Stop&lt;/b&gt; et &lt;b&gt;Laser off&lt;/b&gt; restent dans la barre du haut. Tant qu'aucun appareil n'est connecté, il mesure le &lt;b&gt;simulateur&lt;/b&gt;.</translation>
+        </message>
+        <message>
+            <source>The image building up line by line from the scan's markers.</source>
+            <translation>L'image qui se construit ligne par ligne à partir des marqueurs du balayage.</translation>
+        </message>
+        <message>
+            <source>The intensity map (relative pixel brightness): a TIFF image, or an NPY/NPZ array the workspace lists as a setup.</source>
+            <translation>La carte d'intensité (luminosité relative des pixels) : une image TIFF, ou un tableau NPY/NPZ que l'espace de travail liste comme configuration.</translation>
+        </message>
+        <message>
+            <source>The last second of photons in 1 ms bins: the donor under donor excitation up (green), the acceptor down -- FRET (red) and directly excited acceptor (magenta). A FRET burst is a green spike over a red one. Span and bin width are in &lt;b&gt;Analysis › Running trace&lt;/b&gt;.</source>
+            <translation>La dernière seconde de photons en bins de 1 ms : le donneur sous excitation du donneur en haut (vert), l'accepteur en bas – FRET (rouge) et accepteur excité directement (magenta). Un burst FRET est un pic vert au-dessus d'un pic rouge. Durée et largeur de bin se trouvent dans &lt;b&gt;Analysis › Running trace&lt;/b&gt;.</translation>
+        </message>
+        <message>
+            <source>The measured mixed decay: photon streams or decay curves of the workspace.</source>
+            <translation>Le déclin mixte mesuré : flux de photons ou courbes de déclin de l'espace de travail.</translation>
+        </message>
+        <message>
+            <source>The micro-time decays of each detector with the excitation windows marked -- a window in the wrong place shows here first.</source>
+            <translation>Les déclins de micro-temps de chaque détecteur avec les fenêtres d'excitation marquées – une fenêtre mal placée apparaît ici en premier.</translation>
+        </message>
+        <message>
+            <source>The photon data of a scanning confocal recording (a photon stream or a photon image).</source>
+            <translation>Les données de photons d'un enregistrement confocal à balayage (un flux de photons ou une image de photons).</translation>
+        </message>
+        <message>
+            <source>The photon stream whose two-dimensional decay correlation is analysed.</source>
+            <translation>Le flux de photons dont la corrélation bidimensionnelle des déclins est analysée.</translation>
+        </message>
+        <message>
+            <source>The running trace</source>
+            <translation>La trace défilante</translation>
+        </message>
+        <message>
+            <source>The running trace appears during a run.</source>
+            <translation>La trace défilante apparaît pendant une mesure.</translation>
+        </message>
+        <message>
+            <source>The scan of the replayed file, read from its header (ImgHdr tags).</source>
+            <translation>Le balayage du fichier rejoué, lu dans son en-tête (balises ImgHdr).</translation>
+        </message>
+        <message>
+            <source>The scan simulator needs pqusb (CMC), not installed.</source>
+            <translation>Le simulateur de balayage nécessite pqusb (CMC), non installé.</translation>
+        </message>
+        <message>
+            <source>The scanned height.</source>
+            <translation>La hauteur balayée.</translation>
+        </message>
+        <message>
+            <source>The scanned width; a pixel is width / pixels wide.</source>
+            <translation>La largeur balayée ; un pixel mesure largeur / pixels.</translation>
+        </message>
+        <message>
+            <source>The selected histogram of the bursts, building up live (2-D with both marginals).</source>
+            <translation>L'histogramme choisi des bursts, qui se construit en direct (2-D avec les deux marginales).</translation>
+        </message>
+        <message>
+            <source>The source photon data whose decay is calibrated (a photon stream or a photon image).</source>
+            <translation>Les données de photons sources dont le déclin est calibré (un flux de photons ou une image de photons).</translation>
+        </message>
+        <message>
+            <source>Time on one pixel. A line takes pixels x dwell; the line rate follows.</source>
+            <translation>Temps passé sur un pixel. Une ligne dure pixels x temps de pause ; la fréquence de ligne en découle.</translation>
+        </message>
+        <message>
+            <source>Traffic lights: the quality checks of the measurement type, the worst one overall. Hover a line for what it means and what to do.</source>
+            <translation>Feux de signalisation : les contrôles de qualité du type de mesure, le pire comme verdict global. Survoler une ligne pour sa signification et quoi faire.</translation>
+        </message>
+        <message>
+            <source>Which map: intensity (all detectors), mean arrival time (fast FLIM), a single detector, or a micro-time window (PIE).</source>
+            <translation>Quelle carte : intensité (tous les détecteurs), temps d'arrivée moyen (fast FLIM), un seul détecteur ou une fenêtre de micro-temps (PIE).</translation>
+        </message>
+        <message>
+            <source>Width (µm)</source>
+            <translation>Largeur (µm)</translation>
+        </message>
+        <message>
+            <source>Z planes</source>
+            <translation>Plans Z</translation>
+        </message>
+        <message>
+            <source>Z step (µm)</source>
+            <translation>Pas Z (µm)</translation>
+        </message>
+        <message>
+            <source>bidirectional</source>
+            <translation>bidirectionnel</translation>
+        </message>
+        <message>
+            <source>one direction</source>
+            <translation>un sens</translation>
+        </message>
+        <message>
+            <source>photons per bin</source>
+            <translation>photons par bin</translation>
+        </message>
+        <message>
+            <source>x (pixel)</source>
+            <translation>x (pixel)</translation>
+        </message>
+        <message>
+            <source>y (line)</source>
+            <translation>y (ligne)</translation>
+        </message>
+        <message>
+            <source>{batches} batches, {dropped} dropped, {queued} buffered.</source>
+            <translation>{batches} lots, {dropped} perdus, {queued} en mémoire tampon.</translation>
+        </message>
+        <message>
+            <source>{nx} × {ny} px · {t:.2f} s per frame</source>
+            <translation>{nx} × {ny} px · {t:.2f} s par image</translation>
+        </message>
+        <message>
+            <source>{photons:,} photons in {t:.1f} s</source>
+            <translation>{photons:,} photons en {t:.1f} s</translation>
+        </message>
+        <message>
+            <source>{photons:,} photons, {lines} lines</source>
+            <translation>{photons:,} photons, {lines} lignes</translation>
+        </message>
+        <message>
+            <source>{reason}: {frames} frame(s), {photons:,} photons</source>
+            <translation>{reason} : {frames} image(s), {photons:,} photons</translation>
+        </message>
+        <message>
+            <source>{w:.1f} × {h:.1f} µm, dwell {dwell:.3f} ms, {frames} frame(s), {planes} plane(s), {direction}; markers: line start {ls}, line stop {le}, frame {fr}</source>
+            <translation>{w:.1f} × {h:.1f} µm, temps de pause {dwell:.3f} ms, {frames} image(s), {planes} plan(s), {direction} ; marqueurs : début de ligne {ls}, fin de ligne {le}, image {fr}</translation>
+        </message>
+        <message>
+            <source>Workspace…</source>
+            <translation>Espace de travail…</translation>
+        </message>
+        <message>
+            <source>From the workspace</source>
+            <translation>Depuis l’espace de travail</translation>
+        </message>
+        <message>
+            <source>No trajectory or topology among the picked rows.</source>
+            <translation>Aucune trajectoire ni topologie parmi les lignes choisies.</translation>
+        </message>
+        <message>
+            <source>nothing picked</source>
+            <translation>rien de choisi</translation>
+        </message>
+        <message>
+            <source>no settings picked</source>
+            <translation>aucun réglage choisi</translation>
+        </message>
+        <message>
+            <source>no structure picked</source>
+            <translation>aucune structure choisie</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

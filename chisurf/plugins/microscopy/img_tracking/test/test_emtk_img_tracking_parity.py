@@ -206,7 +206,7 @@ def test_the_fit_alpha_checkbox_gives_the_qt_numbers_for_the_anomalous_fit(app, 
     assert app.model.status_line == qt["status"] == "6 tracks, D = 0.5256 ± 0.13"
     fit = app.model.result.fit
     assert not fit.alpha_fixed
-    np.testing.assert_array_equal(fit.msd, qt["fit"]["msd"])
+    np.testing.assert_allclose(fit.msd, qt["fit"]["msd"], rtol=1e-12, atol=1e-12)
     assert_msd_minimum(fit, app.model.frame_interval)
 
 
@@ -271,8 +271,11 @@ def _plain(value):
     return json.loads(json.dumps(value, default=default))
 
 
-def _close(native, recorded, rel=1e-8):
-    """Equal structures, floats within *rel* (lists and dicts compared element by element)."""
+def _close(native, recorded, rel=2e-7):
+    """Equal structures, floats within *rel* (lists and dicts compared element by element).
+
+    2e-7: the MSD series carry the fitted curve, which moves with D (see the D comparison).
+    """
     if isinstance(recorded, dict):
         return (
             isinstance(native, dict)
@@ -307,8 +310,10 @@ def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(app, d
     assert m.results_text == qt["results_text"]
     assert m.status_line == qt["bar"]
     # D and the MSD curve come from sums over the tracks: their last digits follow the platform's
-    # summation order (Linux vs macOS differ near 1e-10), the printed results above do not.
-    assert m.result.fit.diffusion_coefficient == pytest.approx(qt["D"], rel=1e-8)
+    # summation order (Linux vs macOS differ near 1e-10), the printed results above do not. D is
+    # also a fitted value, so where the optimiser stops moves it further: on the Linux gate
+    # (2026-10-26) by 6.5e-8 relative ("anomalous fit") and 1.1e-8 ("tight link"); 2e-7 is ~3x.
+    assert m.result.fit.diffusion_coefficient == pytest.approx(qt["D"], rel=2e-7)
     assert [r["track"] for r in m.track_rows()] == qt["tracks"]
     assert m.track_series() and _close(_plain(m.track_series()), qt["track_series"])
     assert _close(_plain(m.msd_series()), qt["msd"]) and _close(
