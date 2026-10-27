@@ -25,6 +25,7 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -50,8 +51,9 @@ __all__ = [
     "settings_form",
 ]
 
-#: phacq drivers that are TCSPC units (the Sepia II laser driver is :mod:`.laser`'s).
-TCSPC_DRIVERS = ("picoquant", "bh")
+#: phacq drivers that are TCSPC units (the Sepia II laser driver is :mod:`.laser`'s). The
+#: TimeHarp 260 is listed and identified; phacq cannot measure with it (its connect says why).
+TCSPC_DRIVERS = ("picoquant", "bh", "th260")
 
 #: Events per FIFO read.
 _CHUNK_EVENTS = 1 << 16
@@ -340,7 +342,12 @@ class DeviceSource(PhotonSource):
                 writer.set_tag_float(key, float(value))
             else:
                 writer.set_tag(key, str(value))
-        return _PtuRecorder(writer, self)
+        spc = None
+        if getattr(self.device, "phacq_driver", "") == "bh":
+            # B&H's own files beside the PTU: .spc (FIFO_32) and its .set (the card's settings)
+            spc = (phacq.SpcWriter(str(Path(path).with_suffix(".spc")),
+                                   self.info.macro_clock_s, True), Path(path).with_suffix(".set"))
+        return _PtuRecorder(writer, self, spc, title=name)
 
 
 #: phacq setting -> PicoQuant PTU tag (the time-tagged file format's tag dictionary); per-input
@@ -396,15 +403,25 @@ def hardware_tags(dev) -> list[tuple[str, Any, int]]:
 
 
 class _PtuRecorder:
-    def __init__(self, writer, source: DeviceSource):
+    """The PTU of a device run, and for a B&H card its .spc + .set as well."""
+
+    def __init__(self, writer, source: DeviceSource, spc=None, title: str = ""):
         self.writer = writer
         self.source = source
+        self.spc = spc
+        self.title = title
 
     def write(self, batch: PhotonBatch) -> bool:
         if batch.raw is not None and len(batch.raw):
-            self.writer.write_raw(np.ascontiguousarray(batch.raw).tobytes())
+            raw = np.ascontiguousarray(batch.raw).tobytes()
+            self.writer.write_raw(raw)
+            if self.spc is not None:
+                self.spc[0].write_raw(raw)
         return True
 
     def close(self) -> None:
         acq_s = time.monotonic() - self.source._started if self.source._started else 0.0
         self.writer.close(acq_s, float(self.source.sync_rate_hz))
+        if self.spc is not None:
+            self.spc[0].close()
+            phacq.write_bh_set(str(self.spc[1]), self.source.device, self.title)

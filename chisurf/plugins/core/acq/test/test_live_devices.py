@@ -163,3 +163,20 @@ def test_a_recording_carries_the_device_settings_as_ptu_hardware_tags(tmp_path):
                                                  if k != settings_file.CHISURF_SETTINGS_TAG})
     inputs = {c["channel"]: c for c in doc["device"]["inputs"]}
     assert inputs[1]["level_mv"] == -120 and inputs[1]["edge"] == "rising"
+
+
+def test_a_bh_run_also_writes_spc_and_set(tmp_path):
+    """A B&H card's run keeps B&H's own files beside the PTU: the .spc holds the same events
+    (tttrlib reads it), the .set the card's settings."""
+    dev = _fake(duration_s=0.2)
+    dev.phacq_driver = "bh"  # a B&H card, as far as the recording is concerned
+    source = devices.DeviceSource(dev)
+    session = RecordSession(source, duration_s=0.2, ptu_path=tmp_path / "bh.ptu", name="bh")
+    session.start()
+    assert session.wait(30) is not None
+    ptu = tttrlib.TTTR(str(tmp_path / "bh.ptu"))
+    spc = tttrlib.TTTR(str(tmp_path / "bh.spc"), "SPC-130")
+    assert (tmp_path / "bh.set").read_bytes()[32:34] == b"UU"  # header_valid 0x5555
+    assert len(spc) == len(ptu) > 1000
+    assert np.array_equal(np.asarray(spc.macro_times), np.asarray(ptu.macro_times))
+    assert np.array_equal(np.asarray(spc.routing_channels), np.asarray(ptu.routing_channels))
