@@ -86,7 +86,7 @@
   "accepts": [
     {
       "name": "stack",
-      "summary": "A 2-D TIFF image or 3-D TIFF bead stack of the workspace.",
+      "summary": "A 2-D TIFF image, a 3-D TIFF bead stack or a photon image (a recorded bead scan) of the workspace.",
       "receive": "chisurf.plugins.microscopy.psf_determination.gui.app:receive_stack",
       "required": [
         "stack"
@@ -96,7 +96,8 @@
           "image"
         ],
         "representations": [
-          "intensity"
+          "intensity",
+          "photons"
         ],
         "many": false,
         "key": "stack"

@@ -645,7 +645,8 @@ def test_no_crossing_is_reported_as_an_answer_not_an_error(app, drv, tmp_path):
     loaded(app, drv, flat)
     measure(app, drv)
     assert app.model.result is not None and not app.model.result.crossed
-    assert app.model.status_line == "The FRC never crosses its threshold — see the help."
+    # six identical frames: the halves agree at every ring, so the answer is "finer than 2 px"
+    assert app.model.status_line.startswith("No crossing: the halves still agree at the pixel limit")
     assert any("No crossing." in s for s in drv.draw(2).strings)
 
 

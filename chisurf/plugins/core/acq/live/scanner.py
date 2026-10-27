@@ -657,7 +657,8 @@ if _PQUSB:
 
         def _poll(self, st) -> bool:
             st.sync_rate = int(round(self.sync_rate_hz))
-            return self._t0 is not None and self._elapsed() < self._tacq_s
+            # measurement time delivered, not wall time: a slow simulation delays the end
+            return self._t0 is not None and self._sent_s < self._tacq_s
 
         def _elapsed(self) -> float:
             return (time.monotonic() - self._t0) * self.speed if self._t0 is not None else 0.0
@@ -752,6 +753,100 @@ if _PQUSB:
 
 else:
     ImageSimDevice = None  # type: ignore[assignment]
+
+
+class ImageSimSource:
+    """A simulated scan without a device layer: the photons and markers :func:`simulate_frame`
+    makes, delivered as :class:`~.sources.PhotonBatch` es at measurement pace.
+
+    :class:`ImageSimDevice` runs the same simulation through CMC's pqusb device path (records,
+    the FIFO, the decoder) when pqusb is installed; this source is what a scan simulates with
+    when it is not -- the analysis sees the same photons and markers either way.
+    """
+
+    #: the clocks of :class:`ImageSimDevice` (a 32 ns sync period in 1600 micro-time channels)
+    MICRO_RES_NS = 0.02
+    N_MICRO = 1600
+    #: each read delivers at most this much measurement time (the image builds line by line)
+    SLICE_S = 0.05
+
+    def __init__(self, scan: ScanSettings, sample: ImagingSample, realism: Realism, *,
+                 speed: float = 1.0, realtime: bool = True):
+        from .sources import SourceInfo
+
+        self.scan, self.sample, self.realism = scan, sample, realism
+        self.period_s = self.N_MICRO * self.MICRO_RES_NS * 1e-9
+        self.speed, self.realtime = float(speed), bool(realtime)
+        self.info = SourceInfo(
+            name="Simulator (scan)",
+            macro_clock_s=self.period_s,
+            micro_res_s=self.MICRO_RES_NS * 1e-9,
+            n_micro=self.N_MICRO,
+        )
+        self._t0: float | None = None
+        self._stopped = False
+        self._sent_s = 0.0
+        self._frames_done = 0
+        self._held: list[tuple] = []
+        self._total_s = scan.total_s + scan.line_s
+
+    def start(self) -> None:
+        self._t0 = time.monotonic()
+        self._stopped = False
+
+    def stop(self) -> None:
+        self._stopped = True
+
+    @property
+    def finished(self) -> bool:
+        return self._stopped or self._sent_s >= self._total_s
+
+    def status(self) -> dict[str, Any]:
+        return {"queued": 0, "dropped": 0, "error": ""}
+
+    def _simulate_until(self, upto_s: float) -> None:
+        scan = self.scan
+        while self._frames_done < scan.total_frames and self._frames_done * scan.frame_s <= upto_s:
+            k = self._frames_done
+            frame = simulate_frame(
+                self.sample, scan, self.realism, frame=k % max(1, scan.frames),
+                plane=k // max(1, scan.frames), n_micro=self.N_MICRO,
+                micro_res_ns=self.MICRO_RES_NS,
+            )  # fmt: skip
+            self._held.append((frame.t + k * scan.frame_s, frame.channel, frame.micro, frame.event))
+            self._frames_done += 1
+
+    def read(self, timeout: float = 0.2):
+        from .sources import PhotonBatch
+
+        if self.finished or self._t0 is None:
+            if not self._stopped:
+                time.sleep(min(timeout, 0.01))
+            return None
+        allowed = (time.monotonic() - self._t0) * self.speed if self.realtime else float("inf")
+        upto = min(allowed, self._total_s, self._sent_s + self.SLICE_S)
+        if upto <= self._sent_s:
+            time.sleep(min(timeout, 0.005))
+            return None
+        self._simulate_until(upto)
+        parts, keep = [], []
+        for t, c, m, e in self._held:
+            cut = int(np.searchsorted(t, upto, side="right"))
+            parts.append((t[:cut], c[:cut], m[:cut], e[:cut]))
+            if cut < len(t):
+                keep.append((t[cut:], c[cut:], m[cut:], e[cut:]))
+        self._held = keep
+        self._sent_s = upto
+        if not parts:
+            return None
+        t = np.concatenate([p[0] for p in parts])
+        order = np.argsort(t, kind="stable")
+        macro = np.floor(t[order] / self.period_s).astype(np.uint64)
+        # the dtypes the recording writer takes (as the point simulator's batches)
+        channel = np.concatenate([p[1] for p in parts])[order].astype(np.int8)
+        micro = np.concatenate([p[2] for p in parts])[order].astype(np.uint16)
+        event = np.concatenate([p[3] for p in parts])[order].astype(np.int8)
+        return PhotonBatch(macro, micro, channel, event=event)
 
 
 def _emit_overflow(out: list, n: int) -> None:

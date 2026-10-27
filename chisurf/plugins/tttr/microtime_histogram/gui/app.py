@@ -441,7 +441,13 @@ class HistogramApp(TourTarget, ImApp):
             model.save(target)
             model.message = f"Saved {target}"
 
-        return self.run(operation)
+        def saved():
+            # in a workspace the decay is also a Datasets row, ready to fit or to hand on
+            name = "" if self.add_dataset else self.to_workspace()
+            if name:
+                self.model.message = f"Saved {target}; added to Datasets: {name}."
+
+        return self.run(operation, on_complete=saved)
 
     def save_as(self):
         self.choose_save(
@@ -457,7 +463,32 @@ class HistogramApp(TourTarget, ImApp):
         else:
             self.run(lambda model: model.save(model.output), on_complete=self.transfer_loaded)
 
+    def to_workspace(self) -> str:
+        """The computed decay into Datasets: a TCSPC decay row, a child of the photons it came
+        from. Returns its name, or ``""`` outside a workspace."""
+        model = self.model
+        if model.cumulative_ps is None:
+            return ""
+        from chisurf.plugins.curve_input import add_curve
+
+        counts = np.asarray(model.cumulative_ps, dtype=float)
+        x = np.arange(counts.size, dtype=float) * float(model.dt_ns)
+        uids = [u for u in self.sources.values() if u]
+        name = f"Decay · {Path(str(model.files[0] if model.files else model.output)).stem}"
+        added = add_curve(
+            x, counts, name=name, kind="decay", result_of=uids[0] if uids else "",
+            experiment="TCSPC", ey=np.sqrt(np.maximum(counts, 1.0)),
+        )  # fmt: skip
+        return name if added is not None else ""
+
     def transfer_loaded(self):
+        """Hand the saved decay on: to the injected *add_dataset*, else into Datasets, else
+        through the legacy action path (the saved file)."""
+        if not self.add_dataset:
+            name = self.to_workspace()
+            if name:
+                self.model.message = f"Added to Datasets: {name}."
+                return
         params = {
             "is_vv_vh": self.model.polarized,
             "use_header": False,

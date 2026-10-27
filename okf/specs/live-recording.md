@@ -17,6 +17,34 @@ PC runs **Windows**, and recording must **also work on Linux and macOS**.
 acquisition engine. This spec does not redesign it: it decides how ChiSurf uses it and lists what each side
 must add. Where CMC's bundle documents something, this page links it instead of restating it.
 
+## Where to pick this up (acquisition journeys, 2026-10-27)
+
+The Record tool's acquisitions are driven end to end through the emtk shell by
+`test/e2e/test_acq_journeys.py` (one process per leg, verdict JSON + a PNG per step in
+`test/e2e/acq_journeys/<leg>/`). Run the legs on `ssh home` (`build_tools/remote_test.sh start --dirty
+--slot 1 ...`), never all at once on the laptop. Open front, in order:
+
+1. **Companion tables are not rows yet.** `chisurf.core.project.analysis.container_changed` is the one
+   notification every container writer sends (`write_container`, `write_tables`); it lists new
+   *runs* at once (`sync_runs`). A companion table (BVA, 2CDE, H2MM, MLE, background) changes no
+   row: it needs a view-only kind under its run (a `LinkedDataset` kind beside `bursts` in
+   `chisurf.core.experiments.linked`, never offered to "Open in…"). Nothing subscribes via
+   `on_container_changed` yet -- the PTO inspector and Project data should.
+   Measured 2026-10-27 (`smfret_pie` leg): BVA, Burst MLE, H2MM and 2CDE run on the new run but
+   send **0** container notifications -- their results do not reach the `.pto` (2CDE reports
+   "Unchanged -- kept the previous 2CDE result"), and 2CDE's input list shows `live_bursts`
+   twice (the Record tool's live run and the `sync_runs` copy disagree on the address string;
+   unverified).
+2. **Matrix legs not written:** FCS merger, filtered FCS (filter calculator), FLC 2D, ALEX,
+   sub-ensemble decay -> fit, image replay of a real PTU, burst fusion. The leg pattern is
+   `leg_<name>(w)` in the test file plus a `LEGS` entry.
+3. **FCS fit needs the user's two settings** (documented in `leg_fcs`): the focus fixed to its
+   calibration (left free, `w_z` collapses onto `w_r`), and First past the detector dead time
+   (the 10-30 ns lags sit at G ~ 0.15). A default fit range that skips a dead-time dip would
+   remove the second.
+4. Traps: the laptop resource guard refuses pytest below 4 GB free disk; pytest rotates its temp
+   dirs, so copy a recording out (`~/acqj/`) before analysing it by hand.
+
 ## Decisions
 
 1. **CMC is the device layer; ChiSurf does not drive hardware itself.** CMC's backends already cover

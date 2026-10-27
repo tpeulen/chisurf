@@ -3,6 +3,7 @@
 ## 2026-10-27
 
 - Input-file allowlist 46 -> 4: burst tools' Load settings become setup rows (chisurf.tool/<plugin>/1); accurate_fret takes burst tables as the new 'table' kind; QuEst takes its structure and its three measurement tables from the workspace; HydroPRO, FRET docking/pair selection take structures; the trajectory tools take the new 'trajectory' kind and structures (only output folders keep a dialog); batch analysis queues workspace rows; fret_line binds imported curves only; drop hooks removed from lightpath, f_test, project browser, zenodo, setup hub, channel definition; project management, software, styles, plugin packages, configuration and outputs marked not-input with reasons. Left: legacy_export and metadata_editor (another session's edits), ndxplorer's MMFDB burst-selection picker.
+- Acquisition journeys: test/e2e/test_acq_journeys.py drives the Record tool (scan, smFRET PIE/two-colour, FCS) through the emtk shell into every downstream tool with truth checks; fixed FRC on the simulated scan (undersampled example, header pixel size, no-crossing reason), FCS mode + live correlator, simulated-device timing, correlator/microtime results into Datasets, result_of for curves, burst inner-search form polluting the request, PSF on planar images, container_changed notification. Resume point in specs/live-recording.md.
 
 ## 2026-10-26
 

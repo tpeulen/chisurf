@@ -877,6 +877,9 @@ def _curve_record(curve: Any) -> dict[str, Any]:
         "experiment": experiment_state,
         "reader": reader_state,
     }
+    if getattr(curve, "result_of", ""):
+        # a result curve (a fit, a transferred decay, a correlation) stays its source's child
+        record["result_of"] = str(curve.result_of)
     if is_structure:
         from chisurf.core.models.structure.snapshot import capture_structure
 
@@ -1841,6 +1844,8 @@ def restore_session(
             curve.filename = record.get("filename", "")
             curve.meta_data.update(_restore_scientific_value(record.get("metadata") or {}))
             restore_auxiliary(curve, record.get("auxiliary", {}))
+            if record.get("result_of"):
+                curve.result_of = str(record["result_of"])
             curve._project_resources = project.resources
             if reader is not None:
                 reader._project_resources = project.resources

@@ -122,6 +122,8 @@ def test_saved_settings_load_back_into_the_form_the_device_and_the_laser(model, 
     doc = settings_file.load(saved)
     assert doc["laser"]["backend"] == "simulated" and doc["experiment"]["preset"] == "pie"
 
+    if devices.PieSimDevice is None:  # the simulated device runs behind pqusb (CMC)
+        pytest.skip("pqusb (CMC) is not installed")
     other = RecordModel(output_dir=tmp_path / "rec2", realtime=False)
     other.laser_kind = "simulated"
     other.connect_laser()

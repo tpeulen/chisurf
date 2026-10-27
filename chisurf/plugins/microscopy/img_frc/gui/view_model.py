@@ -220,6 +220,9 @@ class FrcViewModel:
             return False
         if progress:
             progress(0.1, "Reading image…")
+        if not float(self.pixel_size_nm or 0.0):
+            # the file says its pixel size (a recorded scan's header): show what is used
+            self.pixel_size_nm = _core.header_pixel_size_nm(self.filename) or 0.0
         try:
             self._result = _core.analyse(
                 self.filename,
@@ -244,7 +247,7 @@ class FrcViewModel:
 
         result = self._result
         if not result.crossed:
-            self._status = "The FRC never crosses its threshold — see the help."
+            self._status = _core.NO_CROSSING_TEXT[_core.no_crossing_reason(result)]
         else:
             self._status = f"Resolution {result.resolution:.4g} {result.unit} ({result.criterion})."
         return True

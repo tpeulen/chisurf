@@ -24,7 +24,9 @@ _log = logging.getLogger(__name__)
 
 __all__ = [
     "EXTRA_KEY",
+    "container_changed",
     "container_dir",
+    "on_container_changed",
     "containers",
     "derived_datasets",
     "is_derived",
@@ -149,3 +151,55 @@ def derived_datasets() -> list:
                 dataset.data_reader = reader
                 out.append(dataset)
     return out
+
+
+#: Called with the container's path after any write into an analysis container (or a dropped
+#: measurement's .pto): the Datasets view, the PTO inspector, Project data.
+_LISTENERS: list = []
+
+
+def on_container_changed(callback) -> None:
+    """Call *callback(path)* after every container write (:func:`container_changed`)."""
+    if callback not in _LISTENERS:
+        _LISTENERS.append(callback)
+
+
+def container_changed(path: Any = None) -> None:
+    """The one notification every container writer sends after it wrote (a burst search, a
+    fusion, a companion table, an import, a recording's live run): the runs the analysis
+    containers hold that the workspace does not list yet become rows now -- a child of their
+    photon dataset -- and the listeners are told. A writer never calls a view itself."""
+    try:
+        sync_runs()
+    except Exception:  # noqa: BLE001 - the write stands; the rows come with the next restore
+        _log.exception("listing the new runs of %s failed", path)
+    for callback in list(_LISTENERS):
+        try:
+            callback(path)
+        except Exception:  # noqa: BLE001 - one listener never breaks a writer
+            _log.exception("a container listener failed")
+
+
+def sync_runs() -> list:
+    """Add every run of the analysis containers that the workspace does not list yet.
+
+    Returns
+    -------
+    list
+        The run datasets that were added.
+    """
+    if not containers():
+        return []
+    from chisurf.core.api import dataset_objects
+    from chisurf.core.plugin.workspace_input import register_result
+
+    listed = {str(getattr(d, "address", "")) for d in dataset_objects()}
+    added = []
+    for run in derived_datasets():
+        address = str(getattr(run, "address", ""))
+        if address and address not in listed:
+            register_result(run, result_of=str(getattr(run, "result_of", "") or ""))
+            listed.add(address)
+            added.append(run)
+    return added
+

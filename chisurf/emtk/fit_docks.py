@@ -390,7 +390,10 @@ class DatasetsModel:
         # A member of a group stands for its group: a fit, a removal or a save acts on whole datasets.
         tops: dict[str, dict] = {}
         for r in chosen:
-            row = live.get(str(r.get("parent") or r["uid"]))
+            # only a group's member stands for its group; a result row (a correlation, decay or
+            # burst run under the photons it came from) is a dataset of its own
+            parent = live.get(str(r.get("parent") or ""))
+            row = parent if parent is not None and parent.get("group") else live.get(str(r["uid"]))
             if row is not None:
                 tops.setdefault(str(row["uid"]), row)
         return list(tops.values())

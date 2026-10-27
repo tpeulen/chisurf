@@ -24,7 +24,13 @@ import numpy as np
 
 from .intensity import clsm_intensity_counts
 
-__all__ = ["ImageStack", "TTTR_SUFFIXES", "is_photon_stream", "load_image_stack"]
+__all__ = [
+    "ImageStack",
+    "TTTR_SUFFIXES",
+    "header_pixel_size_nm",
+    "is_photon_stream",
+    "load_image_stack",
+]
 
 #: File suffixes read as photon streams (confocal scan) rather than as images.
 TTTR_SUFFIXES = frozenset({".ptu", ".ht3", ".pt3", ".pt2", ".t3r", ".spc", ".hdf", ".ht2"})
@@ -249,6 +255,43 @@ def _stack_from_tttr(path: str, channels, windows) -> tuple[np.ndarray, list[str
     except (AttributeError, KeyError, StopIteration, TypeError, ValueError):
         pass
     return stack, names, {"n_photons": int(len(tttr))}
+
+
+def header_pixel_size_nm(filename: str) -> float | None:
+    """The pixel size a photon-stream image file records (``ImgHdr_PixResol``, um), in nm.
+
+    A scan written by a PicoQuant system or by ChiSurf's Record tool carries it, so a
+    resolution or a PSF width comes out in nm without the user typing what the file already
+    says. ``None``
+    for a TIFF, a file without the tag, or one that cannot be read.
+
+    Parameters
+    ----------
+    filename : str
+        The image file.
+
+    Returns
+    -------
+    float or None
+    """
+    if pathlib.Path(filename).suffix.lower() not in (".ptu", ".pto"):
+        return None
+    try:
+        import json
+
+        import tttrlib
+
+        header = json.loads(tttrlib.TTTR(str(filename)).header.json)
+    except Exception:  # noqa: BLE001 - no readable header: the size stays unknown
+        return None
+    for tag in header.get("tags", []):
+        if tag.get("name") == "ImgHdr_PixResol":
+            try:
+                value = float(tag.get("value"))
+            except (TypeError, ValueError):
+                return None
+            return value * 1e3 if value > 0 else None
+    return None
 
 
 def load_image_stack(

@@ -122,12 +122,21 @@ class FcsHubApp(ToolHubApp):
             on_used=self.tour.notify_used,
             tool_available=handoffs.available,
         )
+        #: where the photons came from: the correlation goes back into Datasets as its child
+        correlator.source_of = self._correlation_source
         #: Lifetime filters come from the Datasets workspace (a setup row).
         correlator.filter_input = NamedWorkspaceInput("fcs_correlator", "filters", self, height=72)
         correlator.filter_input.workspace_input_on_used = lambda _key: self.tour.notify_used(
             "load_filters"
         )
         return correlator
+
+    def _correlation_source(self) -> tuple[str, str]:
+        """The workspace dataset the photons came from (its uid) and its file's name."""
+        files = self.ensure_child("files")
+        uids = list(getattr(files, "source_datasets", []) or [])
+        names = [str(p) for p in self.workflow.expanded_files()]
+        return (uids[0] if uids else ""), (names[0] if names else "")
 
     def files_payload(self) -> dict[str, Any]:
         """What the Filter Calculator gets: the checked files (folders expanded) and the micro-time binning, so its

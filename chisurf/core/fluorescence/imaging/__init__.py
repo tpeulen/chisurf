@@ -28,7 +28,7 @@ from .frap import (
     recovery_curve,
     rfrap_model,
 )
-from .image_source import ImageStack, is_photon_stream, load_image_stack
+from .image_source import ImageStack, header_pixel_size_nm, is_photon_stream, load_image_stack
 from .intensity import clsm_intensity_counts
 from .number_brightness import (
     GAMMA_3D_GAUSSIAN,
@@ -108,6 +108,7 @@ __all__ = [
     "costes_threshold",
     "cross_correlation_2d",
     "estimate_background",
+    "header_pixel_size_nm",
     "is_photon_stream",
     "joint_histogram",
     "li_icq",

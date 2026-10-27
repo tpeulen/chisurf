@@ -260,3 +260,19 @@ def test_empty_model_has_no_invented_data(hermetic):
         m.export_flr_cif("x.cif")
     assert isinstance(np.asarray(m.feature_data("Duration (ms)")), np.ndarray)
     assert json.loads(m.result_json())["settings"]["photon_filter"]["used_filter"] == "tttrlib"
+
+
+def test_reading_the_inner_search_form_leaves_the_request_alone():
+    """Drawing the coincident search's inner form for another search must not add an empty
+    ``parameters`` to the request: tttrlib rejects it ("sliding_window does not take
+    ['parameters']"), and every search run after the form was drawn failed."""
+    from chisurf.plugins.burst.burst_selection.gui.model import BurstSelectionModel
+
+    model = BurstSelectionModel()
+    model.set_algorithm("sliding_window")
+    before = dict(model.parameters)
+    for name in ("L", "m", "T", "algorithm", "parameters"):
+        getattr(model.inner_search, name)
+    assert model.parameters == before
+    settings = model.analysis_settings()
+    assert "parameters" not in settings.photon_filter.tttrlib_search.parameters

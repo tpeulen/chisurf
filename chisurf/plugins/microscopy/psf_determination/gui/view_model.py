@@ -169,6 +169,11 @@ class PsfViewModel:
     def load_stack(self, path: str) -> None:
         """Load a 3-D image stack from *path* and reset detection/fit state."""
         arr = _psf.load_stack(path)
+        from chisurf.core.fluorescence.imaging import header_pixel_size_nm
+
+        pixel_nm = header_pixel_size_nm(path)  # a recorded scan says its pixel size
+        if pixel_nm:
+            self.pixel_size_nm = pixel_nm
 
         self.filename = path
         self.stack = arr

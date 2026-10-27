@@ -219,10 +219,20 @@ class SearchParameters:
         object.__setattr__(self, "_model", model)
         object.__setattr__(self, "_path", path)
 
-    def _values(self) -> dict[str, Any]:
+    def _values(self, create: bool = False) -> dict[str, Any]:
+        """The parameter dict at *path*; only a write (*create*) adds a missing nested dict.
+
+        A read must not: drawing the inner-search form of a search without one (every search
+        but the coincident one) would otherwise put an empty ``parameters`` into the request,
+        which tttrlib rejects ("sliding_window does not take ['parameters']").
+        """
         values = self._model.parameters
         for key in self._path:
-            values = values.setdefault(key, {})
+            if create:
+                values = values.setdefault(key, {})
+            else:
+                nested = values.get(key)
+                values = nested if isinstance(nested, dict) else {}
         return values
 
     def _schema(self) -> dict[str, Any]:
@@ -250,7 +260,7 @@ class SearchParameters:
             value = float(value)
         elif kind == "boolean":
             value = bool(value)
-        values = self._values()
+        values = self._values(create=True)
         if values.get(name) == value:
             return
         values[name] = value

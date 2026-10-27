@@ -57,7 +57,7 @@
           "label": "Mode",
           "options_source": "mode_options",
           "call": "mode_changed",
-          "description": "Point: a single-molecule measurement at one spot (smFRET, FCS) -- bursts, E-S and the running trace. Image: a scan -- the image builds up line by line from the scanner's markers, with fast-FLIM maps."
+          "description": "Point: a single-molecule measurement at one spot -- bursts, E-S and the running trace. FCS: a point measurement for fluorescence correlation -- the correlation curve builds up live. Image: a scan -- the image builds up line by line from the scanner's markers, with fast-FLIM maps."
         },
         {
           "type": "choice",
@@ -71,7 +71,7 @@
           "title": "Simulated molecules",
           "hidden_when": {
             "attr": "mode",
-            "equals": "image"
+            "not_equals": "point"
           },
           "sections": [
             {
@@ -148,6 +148,53 @@
                 "not_equals": "simulator"
               },
               "description": "Molecules of each population in the simulation box. Higher means more bursts per second, and more coincident molecules."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Simulated FCS sample",
+          "hidden_when": {
+            "attr": "mode",
+            "not_equals": "fcs"
+          },
+          "description": "One freely diffusing dye under the green laser, so the FCS fit has a known answer: the number of molecules in the focus and the diffusion coefficient (diffusion time = w0² / 4D).",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "fcs_n",
+              "label": "Molecules in focus N",
+              "kind": "float",
+              "minimum": 0.05,
+              "maximum": 200.0,
+              "step": 0.5,
+              "decimals": 2,
+              "style": "spin",
+              "description": "Mean number of molecules in the focal volume (the inverse amplitude of the correlation curve)."
+            },
+            {
+              "type": "value",
+              "attr": "fcs_d_um2_per_s",
+              "label": "D (µm²/s)",
+              "kind": "float",
+              "minimum": 1.0,
+              "maximum": 1000.0,
+              "step": 10.0,
+              "decimals": 1,
+              "style": "spin",
+              "description": "Diffusion coefficient of the dye; with the simulated focus it sets the diffusion time."
+            },
+            {
+              "type": "value",
+              "attr": "fcs_brightness_khz",
+              "label": "Brightness (kHz)",
+              "kind": "float",
+              "minimum": 1.0,
+              "maximum": 2000.0,
+              "step": 10.0,
+              "decimals": 0,
+              "style": "spin",
+              "description": "Photons per millisecond of one molecule at the focus centre."
             }
           ]
         },
@@ -876,7 +923,7 @@
           "description": "How the setup is read: single colour, two colour, PIE, µs-ALEX, MFD or three-colour PIE. 'From the setup' takes the type the setup describes. The type decides the quantities (proximity ratio, stoichiometry, anisotropy), the live histograms and which quality checks apply.",
           "hidden_when": {
             "attr": "mode",
-            "equals": "image"
+            "not_equals": "point"
           }
         },
         {
@@ -912,7 +959,7 @@
           "description": "A burst needs at least this many photons (L).",
           "hidden_when": {
             "attr": "mode",
-            "equals": "image"
+            "not_equals": "point"
           }
         },
         {
@@ -927,7 +974,7 @@
           "description": "The sliding window: this many consecutive photons (m) ...",
           "hidden_when": {
             "attr": "mode",
-            "equals": "image"
+            "not_equals": "point"
           }
         },
         {
@@ -943,7 +990,7 @@
           "description": "... arriving within this time (T) belong to a burst. The same criterion as Burst Selection's sliding-window search, so the run can be re-analysed offline with identical bursts.",
           "hidden_when": {
             "attr": "mode",
-            "equals": "image"
+            "not_equals": "point"
           }
         },
         {
@@ -1233,7 +1280,7 @@
           "description": "Which of the measurement type's histograms to show: E–S (with its marginals) for PIE and ALEX, the proximity ratio for two colour, anisotropy and proximity ratio for MFD, burst size and duration for a single colour.",
           "hidden_when": {
             "attr": "mode",
-            "equals": "image"
+            "not_equals": "point"
           }
         },
         {

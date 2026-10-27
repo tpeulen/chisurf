@@ -147,7 +147,7 @@ def write_container(
     """
     from chisurf.core.fio.analysis_path import bur_artifact_name
 
-    return write_burst_artifact(
+    written = write_burst_artifact(
         source,
         df,
         # The name a `.bur` would have had in the folder, and the table exactly
@@ -165,6 +165,10 @@ def write_container(
         out_dir=out_dir,
         raw_data=raw_data,
     )
+    from chisurf.core.project.analysis import container_changed
+
+    container_changed(written)  # the new run shows in Datasets at once
+    return written
 
 
 def get_unique_folder_path(base_path: Path) -> Path:

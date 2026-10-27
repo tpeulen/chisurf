@@ -41,7 +41,18 @@ from chisurf.plugins.core.acq.live.imaging import (
 from chisurf.plugins.core.acq.live.project import recording_dir, workspace_datasets
 from chisurf.plugins.core.acq.live.realism import PRESETS as REALISM_PRESETS
 from chisurf.plugins.core.acq.live.realism import REALISTIC, Realism
-from chisurf.plugins.core.acq.live.scanner import ImageSimDevice, ImagingSample, ScanSettings
+from chisurf.plugins.core.acq.live.scanner import (
+    ImageSimDevice,
+    ImageSimSource,
+    ImagingSample,
+    ScanSettings,
+)
+from chisurf.plugins.core.acq.live.fcs import (
+    FcsRecordSession,
+    fcs_realism,
+    fcs_truth,
+    population_for,
+)
 from chisurf.plugins.core.acq.live.session import RecordSession
 from chisurf.plugins.core.acq.live.setups import (
     PRESET_LABELS,
@@ -107,6 +118,10 @@ class RecordModel(LaserSettingsMixin):
         self.plot_choice = ""
         # -- Point (smFRET) or Image (a scan) -------------------------------------------------
         self.mode = "point"
+        # -- the simulated FCS sample: one diffusing species with a known answer -----------------
+        self.fcs_n = 4.0
+        self.fcs_d_um2_per_s = 80.0
+        self.fcs_brightness_khz = 150.0
         self.set_scan(ScanSettings())
         self.img_beads = 24
         self.img_tau_1_ns = 1.0
@@ -161,7 +176,11 @@ class RecordModel(LaserSettingsMixin):
                     "bidirectional", "z_planes", "z_step_um")
 
     def mode_options(self) -> list:
-        return [("point", tr("Point (smFRET)")), ("image", tr("Image (scan)"))]
+        return [
+            ("point", tr("Point (smFRET)")),
+            ("fcs", tr("FCS (point)")),
+            ("image", tr("Image (scan)")),
+        ]
 
     def mode_changed(self, _value=None) -> None:
         """A mode's sources differ: a replay must pick a file of the new kind again."""
@@ -171,6 +190,8 @@ class RecordModel(LaserSettingsMixin):
         self.status_detail = (
             tr("Press Load example, then Start: a simulated scan builds up line by line.")
             if self.mode == "image"
+            else tr("Press Load example, then Start: the correlation curve builds up.")
+            if self.mode == "fcs"
             else tr("Press Load example, then Start.")
         )
 
@@ -429,10 +450,6 @@ class RecordModel(LaserSettingsMixin):
             raise SourceUnavailable(
                 tr("Scanning hardware comes with CMC's rustytime; use the simulator meanwhile.")
             )
-        if not devices.PQUSB or ImageSimDevice is None:
-            raise SourceUnavailable(tr("The scan simulator needs pqusb (CMC), not installed."))
-        import pqusb
-
         scan = self.scan_settings()
         problems = scan.validate()
         if problems:
@@ -443,6 +460,13 @@ class RecordModel(LaserSettingsMixin):
             bead_brightness=float(self.img_brightness),
             seed=int(self.sim_seed),
         )
+        if not devices.PQUSB or ImageSimDevice is None:
+            # no device layer (CMC's pqusb): the same simulated photons and markers, directly
+            return ImageSimSource(
+                scan, sample, self.realism(), speed=float(self.speed), realtime=self.realtime
+            )
+        import pqusb
+
         dev = ImageSimDevice(
             scan, sample, realism=self.realism(),
             speed=float(self.speed) if self.realtime else 1000.0,
@@ -451,14 +475,26 @@ class RecordModel(LaserSettingsMixin):
         dev.set_sync_div(1)
         return devices.DeviceSource(dev)
 
+    def fcs_sample(self) -> tuple[Realism, float]:
+        """The simulated FCS sample: its realism (the instrument's, no FRET extras) and the
+        simulator's population that puts ``fcs_n`` molecules in the focus."""
+        real = fcs_realism(self.realism(), float(self.fcs_d_um2_per_s))
+        return real, population_for(float(self.fcs_n), real)
+
     def make_source(self):
         if self.mode == "image":
             return self.make_image_source()
         if self.source_kind == "simulator":
+            scheme, realism = self.sim_scheme, self.realism()
             pops = (
                 Population(self.sim_e_low, self.sim_s, self.sim_concentration),
                 Population(self.sim_e_high, self.sim_s, self.sim_concentration),
             )
+            if self.mode == "fcs":
+                # one species in the green channel (E = 0), green laser only
+                realism, population = self.fcs_sample()
+                pops = (Population(0.0, 1.0, population, float(self.fcs_brightness_khz)),)
+                scheme = "two_color"
             if devices.PQUSB:
                 import pqusb
 
@@ -467,8 +503,8 @@ class RecordModel(LaserSettingsMixin):
                     pops,
                     seed=int(self.sim_seed),
                     speed=float(self.speed) if self.realtime else 1000.0,
-                    scheme=self.sim_scheme,
-                    realism=self.realism(),
+                    scheme=scheme,
+                    realism=realism,
                 )
                 dev.initialize(pqusb.MODE_T3)
                 self.apply_device_settings(dev, self.make_experiment(400))
@@ -480,8 +516,8 @@ class RecordModel(LaserSettingsMixin):
                 seed=int(self.sim_seed),
                 speed=float(self.speed),
                 realtime=self.realtime,
-                scheme=self.sim_scheme,
-                realism=self.realism(),
+                scheme=scheme,
+                realism=realism,
             )
         if self.source_kind == "replay":
             if not self.replay_address:
@@ -498,6 +534,8 @@ class RecordModel(LaserSettingsMixin):
         return devices.DeviceSource(self.device)
 
     def _default_preset(self) -> str:
+        if self.mode == "fcs" and self.source_kind == "simulator":
+            return "two_color"  # the FCS sample is simulated under the green laser only
         if self.source_kind == "simulator":
             return self.sim_scheme
         return "pie"
@@ -571,10 +609,24 @@ class RecordModel(LaserSettingsMixin):
         return True
 
     def load_example(self) -> None:
+        if self.mode == "fcs":
+            self.source_kind = "simulator"
+            self.fcs_n, self.fcs_d_um2_per_s, self.fcs_brightness_khz = 4.0, 80.0, 150.0
+            self.duration_s = 30.0
+            self.realism_preset = "realistic"
+            self._set_realism(REALISTIC)
+            self.status_text = tr("Example ready")
+            self.status_detail = tr(
+                "FCS: one freely diffusing dye, N ≈ 4 in the focus, D = 80 µm²/s "
+                "(τD ≈ 0.28 ms), 150 kHz per molecule. Press Start."
+            )
+            return
         if self.mode == "image":
             self.source_kind = "simulator"
-            self.set_scan(ScanSettings(pixels_x=64, pixels_y=64, area_x_um=16.0, area_y_um=16.0,
-                                       dwell_ms=0.1, frames=3))
+            # Nyquist-sampled: 100 nm pixels under the simulator's 0.25 um (1/e^2) focus, so an
+            # FRC of the recording has a crossing to find; 4 frames give two even/odd halves.
+            self.set_scan(ScanSettings(pixels_x=64, pixels_y=64, area_x_um=6.4, area_y_um=6.4,
+                                       dwell_ms=0.1, frames=4))
             self.img_beads, self.img_tau_1_ns, self.img_tau_2_ns = 24, 1.0, 3.5
             self.img_brightness = 40.0
             self.realism_preset = "realistic"
@@ -582,7 +634,7 @@ class RecordModel(LaserSettingsMixin):
             self.status_text = tr("Example ready")
             self.status_detail = tr(
                 "A simulated scan: beads of two lifetimes (1.0 and 3.5 ns) on a dim cell outline, "
-                "64 × 64 pixels, 3 frames. Press Start."
+                "64 × 64 pixels of 100 nm, 4 frames. Press Start."
             )
             return
         self.source_kind = "simulator"
@@ -616,6 +668,8 @@ class RecordModel(LaserSettingsMixin):
         name = name or time.strftime("record_%Y%m%d_%H%M%S")
         if self.mode == "image":
             return self._start_image(source, experiment, name)
+        if self.mode == "fcs":
+            return self._start_fcs(source, experiment, name)
         self.saved_path = recording_dir(self.output_dir) / f"{name}.ptu"
         self.session = RecordSession(
             source,
@@ -638,6 +692,38 @@ class RecordModel(LaserSettingsMixin):
         self._registered = False
         self.snapshot = None
         self.plot_choice = ""
+        self.status_text = tr("Recording…")
+        self.status_detail = str(self.saved_path)
+        return True
+
+    def _start_fcs(self, source, experiment, name: str) -> bool:
+        """Start an FCS point measurement: the correlation builds up; the photons are recorded."""
+        self.saved_path = recording_dir(self.output_dir) / f"{name}.ptu"
+        truth = None
+        if self.source_kind == "simulator":
+            real, population = self.fcs_sample()
+            truth = fcs_truth(real, population)
+        self.session = FcsRecordSession(
+            source,
+            experiment,
+            truth=truth,
+            duration_s=self.duration_s or None,
+            ptu_path=self.saved_path,
+            name=name,
+            embed=self.recording_store == "embed",
+            settings=self._run_settings(),
+            trace_window_s=float(self.trace_window_s),
+            trace_bin_s=float(self.trace_bin_ms) / 1e3,
+        )
+        try:
+            self.session.start()
+        except OSError as exc:
+            self.status_text = tr("Cannot start")
+            self.status_detail = str(exc)
+            self.session = None
+            return False
+        self._registered = False
+        self.snapshot = None
         self.status_text = tr("Recording…")
         self.status_detail = str(self.saved_path)
         return True
@@ -741,6 +827,13 @@ class RecordModel(LaserSettingsMixin):
                 )
             except Exception as exc:  # noqa: BLE001 - the file is written either way
                 self.status_detail = tr("On disk; not added to Datasets: {e}").format(e=exc)
+            if isinstance(session, FcsRecordSession):
+                snap = self.snapshot or {}
+                self.status_text = tr("{reason}: {photons:,} photons, N ≈ {n:.2g}, {t:.0f} s").format(
+                    reason=result.stop_reason.capitalize(), photons=result.photons,
+                    n=float(snap.get("n_focus", float("nan"))), t=result.elapsed_s,
+                )
+                return
             self.status_text = tr("{reason}: {bursts} bursts, {t:.0f} s").format(
                 reason=result.stop_reason.capitalize(), bursts=result.bursts, t=result.elapsed_s
             )
@@ -776,6 +869,22 @@ class RecordModel(LaserSettingsMixin):
         if self.device is not None:
             self.disconnect_device()
         self.disconnect_laser()
+
+
+def _plot_correlation(corr: dict, height: float) -> None:
+    """The live correlation curve G(tau) - 1 on a logarithmic lag axis."""
+    from emtk import implot
+
+    tau = np.asarray(corr.get("tau_s", ()), dtype=float)
+    g = np.asarray(corr.get("g", ()), dtype=float)
+    width = im.get_content_region_avail()[0]
+    if implot.begin_plot("##correlation", (width, height), implot.FLAGS_NO_TITLE):
+        implot.setup_axes(tr("lag time τ (s)"), tr("G(τ) − 1"))
+        implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
+        keep = (tau > 0) & np.isfinite(g)
+        if keep.any():
+            implot.plot_line(tr("correlation"), tau[keep], g[keep])
+        implot.end_plot()
 
 
 def _plot_histogram(hist: dict, height: float) -> None:
@@ -1244,6 +1353,22 @@ class RecordApp(ImApp):
             self._placeholder(state, "live_view", tr("Start a run: the bursts build up here."), width)
             return
         top = im.get_cursor_screen_pos()
+        if model.mode == "fcs" or "correlation" in snap:
+            _short_line(
+                tr("N ≈ {n:.2g} · {b:.1f} kHz per molecule").format(
+                    n=float(snap.get("n_focus", float("nan"))),
+                    b=float(snap.get("brightness_hz", 0.0)) / 1e3,
+                ),
+                tr("{photons:,} photons in {t:.1f} s, {r:.0f} kHz").format(
+                    photons=snap["photons"], t=snap["elapsed_s"],
+                    r=float(snap.get("count_rate_hz", 0.0)) / 1e3,
+                ),
+            )
+            _w, h = self._avail()
+            _plot_correlation(snap.get("correlation") or {}, h)
+            bottom = im.get_cursor_screen_pos()
+            state.rects["live_view"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
+            return
         _short_line(
             f"{tr('Bursts')}: {snap['bursts']:,} · {snap['burst_rate_hz']:.1f} Hz",
             tr("{photons:,} photons in {t:.1f} s").format(photons=snap["photons"],

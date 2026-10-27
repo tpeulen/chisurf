@@ -30,7 +30,7 @@ from typing import Any
 import numpy as np
 
 from chisurf.core.fluorescence.imaging import frc as frc_mod
-from chisurf.core.fluorescence.imaging import load_image_stack
+from chisurf.core.fluorescence.imaging import header_pixel_size_nm, load_image_stack
 
 #: How the one acquisition is cut into two independent halves.
 SPLITS = ("even_odd", "halves", "channels", "two_files")
@@ -106,6 +106,7 @@ class FrcAnalysis:
             "resolution": None if not np.isfinite(self.resolution) else float(self.resolution),
             "crossing": None if not np.isfinite(self.crossing) else float(self.crossing),
             "crossed": bool(self.crossed),
+            "no_crossing": no_crossing_reason(self),
             "criterion": self.criterion,
             "unit": self.unit,
             "channel_names": list(self.channel_names),
@@ -291,6 +292,8 @@ def analyse(
         windows=windows,
         axis_order=axis_order,
     )
+    if not pixel_size_nm:
+        pixel_size_nm = header_pixel_size_nm(filename)
     curve = frc_mod.frc_curve(half_1, half_2, bin_width=bin_width, pixel_size=pixel_size_nm)
     result = frc_mod.resolve(curve, criterion, smooth=smooth)
     return FrcAnalysis(
@@ -310,6 +313,47 @@ def analyse(
         source=info["source"],
         n_frames=info["n_frames"],
     )
+
+
+def no_crossing_reason(analysis: FrcAnalysis) -> str:
+    """Why a curve never crossed: ``"undersampled"``, ``"uncorrelated"`` or ``""`` (it did cross).
+
+    Without a crossing the curve tells which of the two it is. Still above the threshold at the
+    pixel limit, the halves agree on every frequency the pixels can carry: the image is resolved
+    finer than two pixels and only smaller pixels can measure it. Below the threshold from the
+    first rings on, the halves never agree: too few photons, or halves that are not independent
+    copies of the same field.
+
+    Parameters
+    ----------
+    analysis : FrcAnalysis
+        A measurement.
+
+    Returns
+    -------
+    str
+    """
+    if analysis.crossed:
+        return ""
+    corr = np.nan_to_num(np.asarray(analysis.correlation, dtype=float))
+    thr = np.asarray(analysis.threshold, dtype=float)
+    if corr.size < 2:
+        return "uncorrelated"
+    tail = max(1, corr.size // 4)  # the outermost quarter of the rings, up to the pixel limit
+    return "undersampled" if np.mean(corr[-tail:] - thr[-tail:]) > 0 else "uncorrelated"
+
+
+#: What a missing crossing means, said to the user (GUI status line and CLI).
+NO_CROSSING_TEXT = {
+    "undersampled": (
+        "No crossing: the halves still agree at the pixel limit, so the resolution is finer than "
+        "two pixels. Record with smaller pixels (Nyquist: pixel ≤ resolution / 2) to measure it."
+    ),
+    "uncorrelated": (
+        "No crossing: the halves never agree. Too few photons, or a split whose halves are not "
+        "independent images of the same field."
+    ),
+}
 
 
 def write_csv(analysis: FrcAnalysis, path: str) -> str:
@@ -341,6 +385,9 @@ __all__ = [
     "analyse",
     "channel_axis_for",
     "halves",
+    "header_pixel_size_nm",
+    "no_crossing_reason",
+    "NO_CROSSING_TEXT",
     "write_csv",
 ]
 

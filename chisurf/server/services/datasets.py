@@ -123,14 +123,15 @@ def _dataset_dto(
         dto["link_status"] = str(link_status)
         dto["link_problem"] = str(getattr(dataset, "link_problem", "") or "")
         dto["embedded"] = bool((getattr(dataset, "link", None) or {}).get("embedded"))
-        # A result of another dataset (a burst run of a photon stream) is shown as its child.
-        result_of = str(getattr(dataset, "result_of", "") or "")
-        if result_of:
-            dto["result_of"] = result_of
         # An image says which representation it is: photon events, or intensity frames.
         representation = getattr(dataset, "representation", None)
         if representation:
             dto["representation"] = str(representation)
+    # A result of another dataset (a burst run of a photon stream, a correlation or a decay
+    # computed from photons, a fitted curve) is shown as its child -- linked or not.
+    result_of = str(getattr(dataset, "result_of", "") or "")
+    if result_of:
+        dto["result_of"] = result_of
     if include_length:
         dto["length"] = (
             None
@@ -604,6 +605,8 @@ def _restore_cached_dataset(
         curve.filename = record.get("filename", "")
         curve.meta_data.update(record["metadata"])
         restore_auxiliary(curve, record.get("auxiliary") or {})
+        if record.get("result_of"):
+            curve.result_of = str(record["result_of"])  # a result row stays its source's child
         if uid:
             curves[uid] = curve
         return curve

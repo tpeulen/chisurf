@@ -8,6 +8,7 @@ AutoForm panel draws; the Qt-only custom sections are drawn here. The hand-over 
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from pathlib import Path
 from typing import Any, Callable
@@ -768,6 +769,9 @@ class CorrelatorStepApp(ImApp):
         self._worker: threading.Thread | None = None
         self._stop = False
         self._done = 0
+        #: ``source_of() -> (uid, name)`` of the photons' workspace dataset (set by the hub): a
+        #: correlation is added to Datasets as its child, ready to fit
+        self.source_of: Callable[[], tuple[str, str]] | None = None
         spec = json.loads((HERE / "correlator.view.json").read_text(encoding="utf-8"))
         dock = spec["sections"][0]
         controls = next(s for s in dock["sections"] if s.get("title") == "Controls")
@@ -820,6 +824,8 @@ class CorrelatorStepApp(ImApp):
                     if go
                     else "Stopped before it started."
                 )
+                if go:
+                    self._to_workspace()
             self.request_frame()
 
         self.status = "Computing correlations..."
@@ -830,6 +836,31 @@ class CorrelatorStepApp(ImApp):
 
     def stop(self) -> None:
         self._stop = True
+
+    def _to_workspace(self) -> None:
+        """The averaged correlation into Datasets, a child of the photons it came from."""
+        corrs = list(getattr(self.model, "_correlations", []) or [])
+        if not corrs or self.source_of is None:
+            return
+        try:
+            from chisurf.plugins.fcs.fcs_correlator.workspace_result import register_correlation
+
+            uid, name = self.source_of()
+            seconds = float(sum(float(c.get("duration", 0.0)) for c in corrs))
+            counts = float(sum(float((c.get("channel_a") or {}).get("counts", 0.0)) for c in corrs))
+            added = register_correlation(
+                corrs,
+                source_uid=uid,
+                source_name=name,
+                acquisition_s=seconds,
+                count_rate_khz=counts / seconds / 1e3 if seconds > 0 else 0.0,
+            )
+            if added is not None:
+                self.status = f"{self.status} " + tr("Added to Datasets: {name}.").format(
+                    name=getattr(added, "name", "")
+                )
+        except Exception:  # noqa: BLE001 - the curves stand; the workspace row is the hand-off
+            logging.getLogger(__name__).exception("adding the correlation to Datasets failed")
 
     def run_step(self) -> bool:
         """The step's run for the hub's Next / fast-forward: Correlate (only when there are photons)."""

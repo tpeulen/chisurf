@@ -384,7 +384,9 @@ if PQUSB:
 
         def _poll(self, st) -> bool:
             st.sync_rate = int(round(self.sync_rate_hz))
-            return self._t0 is not None and self._elapsed() < self._tacq_s
+            # the acquisition time is measurement time delivered, not wall time: a simulation that
+            # runs slower than the requested speed delays the end, it never shortens the run
+            return self._t0 is not None and self._sent_s < self._tacq_s
 
         def _elapsed(self) -> float:
             return (time.monotonic() - self._t0) * self.speed if self._t0 is not None else 0.0
@@ -394,7 +396,7 @@ if PQUSB:
                 # at most _MAX_READ_S of measurement per read: a consumer that fell behind at a high
                 # speed must not make one read synthesise seconds of records at once (memory)
                 upto = min(self._elapsed(), self._tacq_s, self._sent_s + _MAX_READ_S)
-                if upto - self._sent_s >= 0.005:
+                if upto - self._sent_s >= 0.005 or (upto >= self._tacq_s > self._sent_s):
                     self._pending = np.concatenate([self._pending, self._records_until(upto)])
                     self._sent_s = upto
             if self._pending.size == 0:
@@ -415,7 +417,15 @@ if PQUSB:
                 if self._buffer is None or len(self._buffer) == 0:
                     self._buffer = self._photons.read(timeout=5.0)
                     if self._buffer is None:
-                        break
+                        # the simulator is still computing this stretch: wait for it (a device
+                        # cannot skip time it measured) unless it has finished or failed
+                        if (
+                            self._t0 is None  # stopped
+                            or self._photons.finished
+                            or self._photons.status().get("error")
+                        ):
+                            break
+                        continue
                 cut = int(np.searchsorted(self._buffer.macro, limit))
                 b = self._buffer
                 parts.append((b.macro[:cut], b.micro[:cut], b.channel[:cut]))

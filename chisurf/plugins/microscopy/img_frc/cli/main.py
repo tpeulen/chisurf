@@ -6,6 +6,7 @@ import json
 
 import click
 
+from .. import core as _core
 from ..client import FrcClient
 
 
@@ -145,10 +146,9 @@ def cli(
     click.echo(f"{result['source']} ({result['kind']}, {result['n_frames']} frames)")
     click.echo(f"channels: {', '.join(result['channel_names'])}")
     if not result["crossed"]:
+        reason = result.get("no_crossing") or "uncorrelated"
         raise click.ClickException(
-            "the FRC never crosses its threshold — the halves either agree "
-            "everywhere (resolution beyond this sampling) or nowhere (too few "
-            "photons, or a split whose halves are not independent)"
+            "the FRC never crosses its threshold. " + _core.NO_CROSSING_TEXT[reason]
         )
     click.echo(f"criterion: {result['criterion']}")
     click.echo(f"crossing:  {result['crossing']:.6g} 1/{unit}")

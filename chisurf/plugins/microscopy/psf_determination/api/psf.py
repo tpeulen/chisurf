@@ -21,21 +21,28 @@ def load_stack(path: str) -> np.ndarray:
     """Read an image stack from *path* into a ``(z, y, x)`` ``float32`` array.
 
     Reads multi-page TIFFs as a 3-D volume (the usual bead-scan format). A 2-D
-    image becomes a 1-slice stack.
+    image becomes a 1-slice stack, as does a photon image (a confocal scan of beads,
+    ``.ptu`` and the other photon streams), summed over its frames and channels.
 
     Parameters
     ----------
     path:
-        Path to a TIFF image/volume.
+        Path to a TIFF image/volume or a photon image.
 
     Returns
     -------
     numpy.ndarray
         3-D array with axes ``(z, y, x)``.
     """
-    from chisurf.core.fio.image import read_labelled
+    from chisurf.core.fluorescence.imaging import is_photon_stream, load_image_stack
 
-    arr, _ = read_labelled(path)
+    if is_photon_stream(path):
+        # a recorded scan of beads (a photon image): its frames and channels summed, one slice
+        arr = load_image_stack(path).data.sum(axis=(0, 1))
+    else:
+        from chisurf.core.fio.image import read_labelled
+
+        arr, _ = read_labelled(path)
     arr = np.asarray(arr, dtype=np.float32)
     if arr.ndim == 2:
         arr = arr[np.newaxis, ...]
@@ -65,6 +72,13 @@ def gaussian_3d(coords: np.ndarray, params: np.ndarray | list) -> np.ndarray:
         ((z - z_c) / sigma_z) ** 2 + ((y - y_c) / sigma_y) ** 2 + ((x - x_c) / sigma_x) ** 2
     )
     return amplitude * np.exp(exponent) + offset
+
+
+def is_planar(stack: np.ndarray, roi_z: int) -> bool:
+    """Whether *stack* is a plane rather than a z-stack: thinner than the z-ROI (a 2-D image, a
+    confocal scan of beads, or a few slices). Its beads are found and fitted laterally; the
+    axial width is not measured (a 3-D fit along one slice would report its bound)."""
+    return int(stack.shape[0]) < int(roi_z)
 
 
 def extract_roi(
@@ -101,6 +115,8 @@ def extract_roi(
     half_z = roi_z // 2
 
     z_min, z_max = z0 - half_z, z0 + half_z + 1
+    if is_planar(stack, roi_z):
+        z_min, z_max = 0, nz  # a plane: the ROI is the bead's patch in every slice there is
     y_min, y_max = y0 - half_xy, y0 + half_xy + 1
     x_min, x_max = x0 - half_xy, x0 + half_xy + 1
 
@@ -150,15 +166,11 @@ def fit_3d_gaussian(roi: np.ndarray) -> dict:
     def residuals(params: np.ndarray) -> np.ndarray:
         return gaussian_3d(coords, params) - data_flat
 
-    result = least_squares(
-        residuals,
-        p0,
-        bounds=(
-            [0, 0, 0, 0.5, 0.5, 0.5, 0, -np.inf],
-            [nz, ny, nx, nz, ny, nx, np.inf, np.inf],
-        ),
-        max_nfev=500,
-    )
+    lower = [0, 0, 0, 0.5, 0.5, 0.5, 0, -np.inf]
+    upper = [nz, ny, nx, max(nz, 1.0), ny, nx, np.inf, np.inf]
+    # a thin ROI (one slice: nz / 5 < 0.5) starts outside the bounds, which least_squares refuses
+    p0 = np.clip(np.asarray(p0, dtype=float), lower, upper)
+    result = least_squares(residuals, p0, bounds=(lower, upper), max_nfev=500)
 
     return {"params": result.x, "success": bool(result.success), "cost": float(result.cost)}
 
@@ -218,10 +230,15 @@ def detect_beads(
     step_z = max(4, roi_z // 4)
 
     beads: list[tuple[int, int, int]] = []
-    z_start = half_z + 2
-    z_end = nz - half_z - 2
+    planar = is_planar(stack, roi_z)
+    if planar:
+        # one plane: its brightest slice (a z-scan needs a stack deeper than the z-ROI)
+        slices = [int(np.argmax(np.nansum(stack.reshape(nz, -1), axis=1)))]
+    else:
+        z_start = half_z + 2
+        slices = list(range(z_start, max(z_start, nz - half_z - 2), step_z))
 
-    for z in range(z_start, max(z_start, z_end), step_z):
+    for z in slices:
         frame = stack[z]
         if not np.any(np.isfinite(frame)):
             continue
@@ -245,7 +262,7 @@ def detect_beads(
                 continue
             if row < half_xy or row >= ny - half_xy:
                 continue
-            if z < half_z or z >= nz - half_z:
+            if not planar and (z < half_z or z >= nz - half_z):
                 continue
             beads.append((z, row, col))
 
@@ -338,6 +355,8 @@ def fit_all_beads(
         sigma_xy = (sigma_x + sigma_y) / 2.0
         fwhm_x_nm = 2.355 * sigma_x * pixel_nm
         fwhm_y_nm = 2.355 * sigma_y * pixel_nm
+        if is_planar(stack, roi_z):
+            sigma_z = math.nan  # one plane holds no axial profile
         fwhm_z_nm = 2.355 * sigma_z * z_step_nm
         fwhm_xy_nm = (fwhm_x_nm + fwhm_y_nm) / 2.0
         sigma_xy_nm = sigma_xy * pixel_nm

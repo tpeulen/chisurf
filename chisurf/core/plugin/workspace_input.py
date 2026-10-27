@@ -484,6 +484,24 @@ def register_result(
 
     Returns the dataset that was added.
     """
+    address = (
+        str(result)
+        if isinstance(result, (str, bytes)) or hasattr(result, "__fspath__")
+        else str(getattr(result, "address", "") or "")
+    )
+    if address:
+        # one row per address: a run listed by the container notification is not added again
+        # by the tool that wrote it (and the other way round)
+        try:
+            from chisurf.core.api import dataset_objects
+
+            listed = next(
+                (d for d in dataset_objects() if str(getattr(d, "address", "")) == address), None
+            )
+        except Exception:  # noqa: BLE001 - no workspace to ask: add it
+            listed = None
+        if listed is not None:
+            return listed
     dataset = result
     if isinstance(result, (str, bytes)) or hasattr(result, "__fspath__"):
         from chisurf.core.experiments.linked import reader_for_kind

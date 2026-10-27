@@ -465,6 +465,9 @@ def write_tables(
             parameters=parameters,
             derived_from=(),
         )
+    from chisurf.core.project.analysis import container_changed
+
+    container_changed(target)  # companion tables show under their run at once
     return target
 
 
