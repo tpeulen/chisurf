@@ -151,7 +151,7 @@ def device_label(dev) -> str:
     return " ".join(x for x in (info.vendor, info.model, info.serial_number) if x)
 
 
-def settings_form(dev, values: dict | None = None, on_change=None):
+def settings_form(dev, values: dict | None = None, on_change=None, *, folded: bool = True):
     """The device's complete settings form: every setting phacq describes, grouped as the driver
     groups them (sync, inputs one panel each, timing, markers ...).
 
@@ -166,13 +166,15 @@ def settings_form(dev, values: dict | None = None, on_change=None):
         Initial values; defaults to what the device holds now (``dev.settings()``).
     on_change : callable, optional
         Called with no argument after an edit.
+    folded : bool
+        Start with every group folded (the default: a TCSPC unit has dozens of settings).
     """
     from chisurf.core.registry.tttrlib import entry_form_view_for
 
     current = dict(dev.settings())
     if values:
         current.update({k: v for k, v in values.items() if k in current})
-    return entry_form_view_for(dev.schema(), values=current, on_change=on_change)
+    return entry_form_view_for(dev.schema(), values=current, on_change=on_change, folded=folded)
 
 
 def apply_settings(dev, values: dict) -> list[str]:

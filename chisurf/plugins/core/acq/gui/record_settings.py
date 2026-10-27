@@ -156,8 +156,9 @@ class LaserSettingsMixin:
         from chisurf.plugins.core.acq.live import devices
 
         self._laser_sent = dict(dev.settings())
+        # open: the laser's switches are the quick controls
         self.laser_form = devices.settings_form(dev, self._laser_sent,
-                                                on_change=self.laser_settings_edited)
+                                                on_change=self.laser_settings_edited, folded=False)
 
     def _laser_follow_device(self) -> None:
         """The laser's controls show the laser's values (read-only ones included), in place."""

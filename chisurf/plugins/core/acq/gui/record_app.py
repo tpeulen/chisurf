@@ -1392,7 +1392,9 @@ class RecordApp(ImApp):
             spec = native_reader_spec(form.view_spec())
             # every setting sits in a group: the entry's own (title) panel is empty
             spec["sections"] = [p for p in spec["sections"] if p.get("sections")]
-            cached = (form, spec, FormState())
+            # the form state outlives a rebuilt form: folds opened stay open
+            state_kept = cached[2] if cached is not None else FormState()
+            cached = (form, spec, state_kept)
             cached[2].on_used = self.form.on_used
             self._sub_forms[key] = cached
         # emtk's in-place form reads ``getattr(model, attr)``: the bound parameter group itself

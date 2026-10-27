@@ -154,7 +154,7 @@ def _first_panel(view):
     return panel
 
 
-def _group_sections(sections, properties, title, description):
+def _group_sections(sections, properties, title, description, folded=False):
     """Split one flat parameter list into foldable panels.
 
     A search with a dozen parameters is unreadable as a single column, and which
@@ -199,7 +199,7 @@ def _group_sections(sections, properties, title, description):
                 n_col=1,
                 # Advanced parameters are the ones a user should not have to see to
                 # get a sensible result, so that panel starts folded.
-                collapsed=(name == ADVANCED_GROUP),
+                collapsed=folded or (name == ADVANCED_GROUP),
                 sections=tuple(members),
             )
         )
@@ -214,7 +214,7 @@ class GroupedEntryView:
     unchanged, so this only affects layout.
     """
 
-    def __init__(self, category, name, values=None, on_change=None, *, entry=None):
+    def __init__(self, category, name, values=None, on_change=None, *, entry=None, folded=False):
         from chisurf.core.dataspec import ModelView
         from chisurf.core.dataspec.rpc import RpcMethodView
 
@@ -234,6 +234,7 @@ class GroupedEntryView:
                 (spec.get("params_schema") or {}).get("properties") or {},
                 panel.title,
                 panel.description,
+                folded=folded,
             )
         )
 
@@ -256,16 +257,20 @@ def entry_form_view_for(
     entry: typing.Mapping[str, typing.Any],
     values: typing.Mapping[str, typing.Any] | None = None,
     on_change: typing.Callable | None = None,
+    *,
+    folded: bool = False,
 ):
     """A grouped form model for a registry entry given directly rather than by name.
 
     For entries that live outside tttrlib's table but speak its dialect -- a device's
     settings, which libphacq publishes per opened device (``Device.parameter_schema``).
+    ``folded`` starts every group folded (a device has dozens of settings; the panel opens
+    with their group names only).
     """
     if not entry.get("params_schema"):
         raise ValueError(f"{entry.get('name', '?')} publishes no parameters, so it has no form")
     return GroupedEntryView("", str(entry.get("name", "")), values=values, on_change=on_change,
-                            entry=entry)
+                            entry=entry, folded=folded)
 
 
 def _linked_property(spec: typing.Mapping) -> tuple[str, str, str] | None:

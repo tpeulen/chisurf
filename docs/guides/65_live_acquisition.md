@@ -33,8 +33,8 @@ removed; there is one acquisition window, Record.
 itself — names, units, ranges, choices, which are per input — and Record builds
 the device's panel from that description, so nothing is left out and a setting
 a newer phacq adds appears without a ChiSurf change. Connect a device under
-**Acquisition → TCSPC device**: the sync, each input on its own fold, timing,
-markers and outputs (for a B&H card its CFD, sync, TAC, timers and FIFO mode).
+**Acquisition → TCSPC device**: its settings start folded by group — the sync,
+each input on its own fold, timing, markers and outputs (for a B&H card its CFD, sync, TAC, timers and FIFO mode).
 An edit is sent at once, between runs; a value the device refuses is named in
 the status line and nothing of that edit is applied. The values are saved in
 the acquisition settings file (``device.settings``, phacq's names).
@@ -43,8 +43,8 @@ the acquisition settings file (``device.settings``, phacq's names).
 :name: fig-65-record-device
 :width: 60%
 
-A MultiHarp 150 8N in Record's TCSPC device panel: the sync, the inputs'
-common hysteresis, timing and markers, then one fold per input (below the crop).
+A MultiHarp 150 8N in Record's TCSPC device panel: its settings start folded
+by group — sync, timing, markers, outputs, then one fold per input.
 ```
 
 **The laser.** Under **Laser**, a Sepia II shows its own switches, which act at
