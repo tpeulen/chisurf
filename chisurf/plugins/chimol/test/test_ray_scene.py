@@ -92,7 +92,8 @@ def test_text_is_the_kind_that_cannot_be_traced():
     # `cylinders` is here because bonds became analytic cylinders on the GPU and
     # the tracer was taught them in the same change -- a rasteriser primitive
     # missing from this list is a `ray` that refuses the representation.
-    assert set(TRACEABLE_KINDS) == {"points", "mesh", "line", "cylinders"}
+    # `ellipsoids` since PRD-128 round 4: ANISOU ellipsoids are traced too.
+    assert set(TRACEABLE_KINDS) == {"points", "mesh", "line", "cylinders", "ellipsoids"}
 
 
 def test_an_empty_scene_counts_nothing():

@@ -214,7 +214,7 @@ def test_one_full_contour_per_drag_and_no_scene_rebuilds(loaded):
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize(
     "mode,kind",
-    [("surface", "mesh"), ("mesh", "line"), ("solid", "mesh")],
+    [("surface", "mesh"), ("mesh", "line")],
 )
 def test_each_mode_builds_its_own_geometry(loaded, mode, kind):
     """`mesh` looked identical to `surface` because nothing asked for a wireframe.
@@ -416,14 +416,13 @@ def test_solid_is_translucent_unlit_fog_not_boxes(loaded):
     assert viewer.set_volume_mode("solid", object_id=object_id)
     assert viewer.get_volume_mode(object_id) == "solid"
 
+    # PRD-128 round 4, one volume renderer: solid is the GPU raymarch the
+    # `.tomo.pto` containers use -- one composited view per map, no geometry
+    # in the scene at all (the CPU plane stack is only the fallback).
     drawn = [obj for obj in viewer._scene.objects if "volume" in obj.id]
-    assert len(drawn) == 1, "solid mode is one composited pass, not one per level"
-    solid = drawn[0]
-    assert solid.render_mode == "transparent"
-    assert solid.geometry.meta.get("unlit"), "fog must not be lit like a surface"
-    alphas = solid.geometry.colors[:, 3]
-    assert float(alphas.max()) < 1.0, "a transfer function never reaches solid"
-    assert float(alphas.std()) > 0.0, "opacity must follow the data"
+    assert drawn == [], "solid mode draws through the raymarch, not boxes or planes"
+    views = viewer.__dict__.get("_map_volume_views") or {}
+    assert object_id in views, "the map has no raymarch view"
 
 
 def test_the_legacy_voxel_spelling_still_selects_solid(loaded):

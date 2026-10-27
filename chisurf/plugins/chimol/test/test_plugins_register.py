@@ -41,6 +41,7 @@ ONE_COMMAND_PER_PLUGIN = {
     "scores": "scores",
     "annotations": "annotations_load",
     "smlm": "smlm_npc",
+    "pseudobonds": "pbond_load",  # PRD-128 round 4
 }
 
 #: Plugins that register no command at all -- what each contributes is named

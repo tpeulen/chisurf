@@ -262,6 +262,8 @@ class TestWgslSource:
         "vol_composite.wgsl": "render",
         # PRD-128 WP11: ANISOU ellipsoids, an analytic quadric impostor.
         "ellipsoid.wgsl": "render",
+        # PRD-128 round 4: the live-stereo composite (full-screen, own layout).
+        "stereo.wgsl": "raw",
         # The hierarchical depth buffer the container culls chunks against.
         # Read raw: its compute layout has no room for the render prelude's
         # uniform block at group 0.
