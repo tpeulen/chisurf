@@ -859,6 +859,7 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, pair
         "Significance / profile.fold",
     ):
         drv.click(fold)
+    C.cursor_free(app)  # the last fold's tooltip would sit over the texts checked next
     for tab in TABS:
         app.docks.focus(tab)
         C.texts_apart(
@@ -877,8 +878,7 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, pair
         "estimate_background",
         "request_export",
         "filename",
-        "open_file",
-        "open_database",
+        # open_file / open_database are gone: the data comes from the Input section.
         "channel_a",
         "channel_b",
         "frame",

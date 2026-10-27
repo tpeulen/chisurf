@@ -144,7 +144,9 @@ def test_region_geometry_persistence_and_recipe_state(tmp_path):
     assert app.model.workflow == state["settings"]["workflow"]
     assert len(app.model.regions) == 4
     assert app.model.regions[0].invert
-    assert app.on_files_dropped(["first.tif", "first.tif"])
+    from chisurf.plugins.microscopy.spot_finder.gui.app import receive_files
+
+    assert receive_files(app, {"files": ["first.tif", "first.tif"]})  # as the workspace hands them
     assert app.model.files == ["first.tif"]
 
 

@@ -76506,6 +76506,158 @@ Background (kHz): {bg}</source>
             <source>no structure picked</source>
             <translation>aucune structure choisie</translation>
         </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; loads T4 lysozyme (PDB 148L), puts the dye on the Cβ of Ser 36 and sets a short run. It ships with ChiSurf, so nothing has to be downloaded. With your own structure, drop it on ChiSurf and pick it in the &lt;b&gt;Structure&lt;/b&gt; input; a valid attachment site is picked for you.</source>
+            <translation>&lt;b&gt;Load example&lt;/b&gt; charge le lysozyme T4 (PDB 148L), place le colorant sur le Cβ de Ser 36 et règle une courte simulation. Il est livré avec ChiSurf, rien à télécharger. Avec votre propre structure : la déposer sur ChiSurf et la choisir dans l'entrée &lt;b&gt;Structure&lt;/b&gt; ; un site d'attache valide est choisi pour vous.</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; loads the MalE data set that ships with ChiSurf: nine sites, the dyes AF488, Cy3B and Atto655, apo and holo, in normal and heavy water. It also chooses the quick preset. With your own data, drop the same three tables on ChiSurf and pick them in the input below.</source>
+            <translation>&lt;b&gt;Load example&lt;/b&gt; charge le jeu de données MalE livré avec ChiSurf : neuf sites, les colorants AF488, Cy3B et Atto655, apo et holo, dans l'eau normale et lourde. Il choisit aussi le préréglage rapide. Avec vos propres données : déposer les trois mêmes tableaux sur ChiSurf et les choisir dans l'entrée ci-dessous.</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Project or FPS plan&lt;/b&gt; takes the labelling and distance file (fps.json) from the Datasets workspace: drop it on the ChiSurf window, then pick it here. A saved docking project picked here loads the structures, the plan and the parameters. Build a plan in ChiMOL's labelling editor (&lt;b&gt;Tools › Labelling&lt;/b&gt;).</source>
+            <translation>&lt;b&gt;Project or FPS plan&lt;/b&gt; prend le fichier de marquage et de distances (fps.json) dans l'espace de travail Datasets : le déposer sur la fenêtre ChiSurf, puis le choisir ici. Un projet de docking enregistré choisi ici charge les structures, le plan et les paramètres. Construire un plan dans l'éditeur de marquage de ChiMOL (&lt;b&gt;Tools › Labelling&lt;/b&gt;).</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Trajectory&lt;/b&gt; takes the conformations (a DCD, XTC or similar) from the Datasets workspace: pick the trajectory, and with a DCD also the PDB that names its atoms (the topology), in the input above.</source>
+            <translation>&lt;b&gt;Trajectory&lt;/b&gt; prend les conformations (un DCD, XTC ou similaire) dans l'espace de travail Datasets : choisir la trajectoire et, pour un DCD, aussi le PDB qui nomme ses atomes (la topologie), dans l'entrée ci-dessus.</translation>
+        </message>
+        <message>
+            <source>A QuEst project JSON of the workspace: the forward model's complete form.</source>
+            <translation>Un JSON de projet QuEst de l'espace de travail : la forme complète du modèle direct.</translation>
+        </message>
+        <message>
+            <source>A docking project or an FPS labelling plan (fps.json) of the workspace for Docking &amp; Screening.</source>
+            <translation>Un projet de docking ou un plan de marquage FPS (fps.json) de l'espace de travail pour Docking &amp; Screening.</translation>
+        </message>
+        <message>
+            <source>A photon stream whose routing channels and micro times the definition reads.</source>
+            <translation>Un flux de photons dont la définition lit les canaux de routage et les micro-temps.</translation>
+        </message>
+        <message>
+            <source>A setups library (becomes the library) or a LUT table (for the selected channel row).</source>
+            <translation>Une bibliothèque de configurations (devient la bibliothèque) ou une table LUT (pour la ligne de canal sélectionnée).</translation>
+        </message>
+        <message>
+            <source>A structure of the workspace as the topology Pair Selection reads its trajectory with.</source>
+            <translation>Une structure de l'espace de travail comme topologie avec laquelle Pair Selection lit sa trajectoire.</translation>
+        </message>
+        <message>
+            <source>Burst Selection settings saved with Save settings (a setup row of the Datasets workspace).</source>
+            <translation>Réglages de Burst Selection enregistrés avec Save settings (une ligne de configuration de l'espace de travail Datasets).</translation>
+        </message>
+        <message>
+            <source>Burst-MLE settings saved with Save settings (a setup row of the Datasets workspace).</source>
+            <translation>Réglages de Burst-MLE enregistrés avec Save settings (une ligne de configuration de l'espace de travail Datasets).</translation>
+        </message>
+        <message>
+            <source>Calibrate accurate FRET on a burst run of a measurement container or a burst table (CSV/TSV/BUR/NPZ) of the workspace.</source>
+            <translation>Calibrer l'accurate FRET sur une série de bursts d'un conteneur de mesure ou une table de bursts (CSV/TSV/BUR/NPZ) de l'espace de travail.</translation>
+        </message>
+        <message>
+            <source>Correlator settings saved with Save settings (a setup row of the Datasets workspace).</source>
+            <translation>Réglages du corrélateur enregistrés avec Save settings (une ligne de configuration de l'espace de travail Datasets).</translation>
+        </message>
+        <message>
+            <source>Decays, correlations, histograms, traces or photon streams of the Datasets workspace; a pick adds them to the files to process.</source>
+            <translation>Déclins, corrélations, histogrammes, traces ou flux de photons de l'espace de travail Datasets ; un choix les ajoute aux fichiers à traiter.</translation>
+        </message>
+        <message>
+            <source>Files are loaded one by one and fitted after the loaded datasets. Pick them from the workspace: drop measurements on ChiSurf first, then choose rows here.</source>
+            <translation>Les fichiers sont chargés un par un et ajustés après les jeux de données chargés. Les choisir dans l'espace de travail : déposer d'abord les mesures sur ChiSurf, puis choisir les lignes ici.</translation>
+        </message>
+        <message>
+            <source>Files that are loaded one by one and fitted after the loaded datasets: pick them in the workspace rows below.</source>
+            <translation>Fichiers chargés un par un et ajustés après les jeux de données chargés : les choisir dans les lignes de l'espace de travail ci-dessous.</translation>
+        </message>
+        <message>
+            <source>Fusion settings saved with Save settings (a setup row of the Datasets workspace).</source>
+            <translation>Réglages de Fusion enregistrés avec Save settings (une ligne de configuration de l'espace de travail Datasets).</translation>
+        </message>
+        <message>
+            <source>H2MM settings saved with Save settings (a setup row of the Datasets workspace).</source>
+            <translation>Réglages de H2MM enregistrés avec Save settings (une ligne de configuration de l'espace de travail Datasets).</translation>
+        </message>
+        <message>
+            <source>Load a graph, or an Easy Mode preset, from a JSON file.</source>
+            <translation>Charger un graphe, ou un préréglage du mode Easy, depuis un fichier JSON.</translation>
+        </message>
+        <message>
+            <source>Load the example, choose the HYDRO program; the structures come from the workspace below.</source>
+            <translation>Charger l'exemple, choisir le programme HYDRO ; les structures viennent de l'espace de travail ci-dessous.</translation>
+        </message>
+        <message>
+            <source>Load the shipped MalE measurements; your own come from the workspace (the three tables).</source>
+            <translation>Charger les mesures MalE livrées ; les vôtres viennent de l'espace de travail (les trois tableaux).</translation>
+        </message>
+        <message>
+            <source>Measurements of the Datasets workspace loaded one by one and fitted with the template.</source>
+            <translation>Mesures de l'espace de travail Datasets chargées une par une et ajustées avec le modèle.</translation>
+        </message>
+        <message>
+            <source>One job per PDB file: drop your structures on ChiSurf and pick them in the workspace rows here. Remove crystal waters, ligands and alternate conformations first: every non-hydrogen atom except water oxygens becomes part of the body.</source>
+            <translation>Une tâche par fichier PDB : déposer vos structures sur ChiSurf et les choisir ici dans les lignes de l'espace de travail. Retirer d'abord l'eau cristalline, les ligands et les conformations alternatives : chaque atome non hydrogène sauf les oxygènes de l'eau fait partie du corps.</translation>
+        </message>
+        <message>
+            <source>One structure per rigid body, in the order of their body ids. The &lt;b&gt;Structures&lt;/b&gt; input adds one from the Datasets workspace (drop a .pdb on the ChiSurf window first). The same file twice is a homodimer.</source>
+            <translation>Une structure par corps rigide, dans l'ordre de leurs identifiants. L'entrée &lt;b&gt;Structures&lt;/b&gt; en ajoute une depuis l'espace de travail Datasets (déposer d'abord un .pdb sur la fenêtre ChiSurf). Le même fichier deux fois est un homodimère.</translation>
+        </message>
+        <message>
+            <source>Pick saved settings (a setup row of the Datasets workspace) to restore the complete analysis configuration.</source>
+            <translation>Choisir des réglages enregistrés (une ligne de configuration de l'espace de travail Datasets) pour restaurer la configuration d'analyse complète.</translation>
+        </message>
+        <message>
+            <source>Pick the fps.json in the &lt;b&gt;Project or FPS plan&lt;/b&gt; input.</source>
+            <translation>Choisir le fps.json dans l'entrée &lt;b&gt;Project or FPS plan&lt;/b&gt;.</translation>
+        </message>
+        <message>
+            <source>Pick the trajectory in the input above (drop it on the ChiSurf window first).</source>
+            <translation>Choisir la trajectoire dans l'entrée ci-dessus (la déposer d'abord sur la fenêtre ChiSurf).</translation>
+        </message>
+        <message>
+            <source>Remove the selected file or clear the list.</source>
+            <translation>Retirer le fichier sélectionné ou vider la liste.</translation>
+        </message>
+        <message>
+            <source>Starting the session… {names} will be added then.</source>
+            <translation>Démarrage de la session… {names} seront ajoutés ensuite.</translation>
+        </message>
+        <message>
+            <source>Structures (PDB or bead coordinates) of the workspace whose hydrodynamic properties are computed.</source>
+            <translation>Structures (PDB ou coordonnées de billes) de l'espace de travail dont les propriétés hydrodynamiques sont calculées.</translation>
+        </message>
+        <message>
+            <source>Structures of the workspace as the rigid bodies of Docking &amp; Screening.</source>
+            <translation>Structures de l'espace de travail comme corps rigides de Docking &amp; Screening.</translation>
+        </message>
+        <message>
+            <source>The structure (PDB/mmCIF) the forward model labels and simulates.</source>
+            <translation>La structure (PDB/mmCIF) que le modèle direct marque et simule.</translation>
+        </message>
+        <message>
+            <source>The three measurement tables (tcspc_fit_results.csv, amino_acid_quenching_flt.csv, titration_summary.csv) as table rows of the workspace; pick them to analyse their folder.</source>
+            <translation>Les trois tableaux de mesure (tcspc_fit_results.csv, amino_acid_quenching_flt.csv, titration_summary.csv) comme lignes de tableau de l'espace de travail ; les choisir pour analyser leur dossier.</translation>
+        </message>
+        <message>
+            <source>The three measurement tables of an analysis (tcspc_fit_results.csv, amino_acid_quenching_flt.csv, titration_summary.csv).</source>
+            <translation>Les trois tableaux de mesure d'une analyse (tcspc_fit_results.csv, amino_acid_quenching_flt.csv, titration_summary.csv).</translation>
+        </message>
+        <message>
+            <source>The trajectory, its topology and an optional FPS plan of the workspace for Pair Selection.</source>
+            <translation>La trajectoire, sa topologie et un plan FPS optionnel de l'espace de travail pour Pair Selection.</translation>
+        </message>
+        <message>
+            <source>Trajectories and structures (the topology) of the Datasets workspace for the tool's input rows.</source>
+            <translation>Trajectoires et structures (la topologie) de l'espace de travail Datasets pour les lignes d'entrée de l'outil.</translation>
+        </message>
+        <message>
+            <source>VV/VH decays picked in the Input section; remove or clear them without deleting their files.</source>
+            <translation>Déclins VV/VH choisis dans la section d'entrée ; les retirer ou vider sans supprimer leurs fichiers.</translation>
+        </message>
+        <message>
+            <source>press Load example, or pick the three tables</source>
+            <translation>appuyer sur Load example, ou choisir les trois tableaux</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

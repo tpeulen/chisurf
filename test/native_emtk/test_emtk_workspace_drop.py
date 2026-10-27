@@ -144,3 +144,24 @@ def test_a_dropped_legacy_burst_folder_goes_to_burstwise_import(shell, tmp_path)
     assert shell.on_files_dropped([str(folder)]), shell.data.status
     assert handed == [("burstwise_import", "legacy_folder", {"folder": str(folder)})]
     assert not [r for r in shell.data.datasets.datasets if r.get("kind") == "curve"]
+
+
+def test_a_file_dropped_while_the_session_starts_is_added_once_it_is_up(shell, tmp_path):  # noqa: F811
+    """A drop during start-up is kept (the status line says so) and added when the session is
+    adopted -- it used to be dropped silently, before the session existed."""
+    from types import SimpleNamespace
+
+    driver = Driver(shell, (1300, 900))
+    driver.frame(2)
+    session, starting = shell.data.session, shell.data._starting
+    target = tmp_path / "early.spc"
+    shutil.copy(SPC, target)
+    shell.data.session, shell.data._starting = None, SimpleNamespace(busy=True)
+    try:
+        assert shell.on_files_dropped([str(target)])
+        assert "early.spc" in shell.data.status and not _photon_rows(shell)
+    finally:
+        shell.data._starting = starting
+    shell.data.adopt(session)  # the session comes up: the kept drop goes in
+    _settle(driver, lambda: _idle(shell) and _photon_rows(shell), "the early drop")
+    assert [r["source_address"] for r in _photon_rows(shell)] == [str(target)]

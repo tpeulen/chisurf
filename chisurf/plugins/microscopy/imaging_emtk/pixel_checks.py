@@ -97,6 +97,9 @@ def computed(app: Any, drv: Driver, path: Any) -> Any:
     loaded(app, drv, path)
     run(app, drv)
     assert not app.job.error, app.job.error
+    # The pointer rests where Run was pressed; its tooltip would sit over whatever the layout
+    # checks draw next.
+    cursor_free(app)
     return app.model
 
 

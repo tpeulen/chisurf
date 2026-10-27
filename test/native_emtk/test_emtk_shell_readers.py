@@ -59,11 +59,16 @@ def fake_setups(monkeypatch):
 
 
 def test_every_reader_but_the_known_gaps_has_a_native_settings_form(experiments, fake_setups):
+    from chisurf.core.experiments.linked import LinkedDataReader
     from chisurf.emtk.reader_settings import reader_settings_app
 
     missing = set()
     for experiment in experiments.values():
         for reader in getattr(experiment, "readers", None) or []:
+            # A linked reader (photon stream, burst run, image stack, setup file) links the file
+            # into the workspace and reads nothing into memory: it has nothing to set, so no form.
+            if isinstance(reader, LinkedDataReader):
+                continue
             try:
                 reader_settings_app(reader, context=object()).close()
             except Exception:  # noqa: BLE001 - recorded, compared below
@@ -600,11 +605,8 @@ def test_the_pda_form_has_the_qt_controls(shell, monkeypatch):
         for section in panel.get("sections", []):
             options += [str(label) for label in section.get("labels") or []]
     options += [s.get("placeholder", "") for s in load_spec("pda_detector")["sections"]]
-    options += [
-        json.loads((REPO / "chisurf/emtk/views/read_data.view.json").read_text())["sections"][2][
-            "placeholder"
-        ]
-    ]
+    read_data = json.loads((REPO / "chisurf/emtk/views/read_data.view.json").read_text())
+    options += [next(s["placeholder"] for s in read_data["sections"] if s.get("attr") == "path")]
     found |= {_normalize_control_text(t) for t in options}
 
     qt = set(before["controls"])

@@ -48,7 +48,7 @@ for size in [(900,650),(1200,800)]:
     painter=ImageRecorder()
     app.draw(painter,0,0,*size)
     assert any(call[0] == "image" for call in painter.calls)
-    assert 'Load stack' in painter.strings
+    assert 'Data' in painter.strings  # the stack comes from the Data dock's workspace input
 assert 'qtpy' not in sys.modules
 """
     result = subprocess.run(

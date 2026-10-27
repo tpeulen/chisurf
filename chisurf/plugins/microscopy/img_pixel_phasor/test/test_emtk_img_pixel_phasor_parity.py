@@ -656,8 +656,7 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, flim
         "open_ndx",
         "next_step",
         "filename",
-        "open_file",
-        "open_database",
+        # open_file / open_database are gone: the data comes from the Input section.
         "display_window",
     )
     rects = {k: app.form.rects[k] for k in names}

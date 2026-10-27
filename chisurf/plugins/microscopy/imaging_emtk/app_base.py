@@ -186,10 +186,10 @@ class ImagingToolApp(ImApp):
         inputs: dict[str, Any] = {}
         for entry in manifest.get("accepts") or []:
             if entry.get("from_workspace") and entry.get("name"):
-                # 72 px holds the filter box, the header and one row; at 60 px the row was drawn
-                # over the hint under the table (the layout checks caught it).
+                # A compact pick list: 60 px holds the header and a row, not a filter box as well
+                # (with one, the row was drawn over the hint under the table).
                 inputs[str(entry["name"])] = NamedWorkspaceInput(
-                    str(manifest["id"]), str(entry["name"]), self, height=72
+                    str(manifest["id"]), str(entry["name"]), self, height=60, filter_box=False
                 )
         return inputs
 

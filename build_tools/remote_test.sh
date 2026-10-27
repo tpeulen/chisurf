@@ -155,7 +155,9 @@ busy=$(
   for c in "$state"/claims/*; do
     [ -f "$c" ] || continue
     read -r csha ctime < "$c" || continue
-    [ $((now - ctime)) -lt 900 ] && echo "$(basename "$c") $csha"
+    # An if, not `test && echo`: under set -e an expired claim made the loop -- and with it
+    # this whole script -- fail silently, so every later start was refused without a word.
+    if [ $((now - ctime)) -lt 900 ]; then echo "$(basename "$c") $csha"; fi
   done
 )
 shas_of() { awk -v b="$1" '$1==b{print $2}' <<<"$busy" | sort -u; }

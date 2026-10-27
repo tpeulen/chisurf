@@ -14,7 +14,7 @@ import pytest
 from emtk import keys
 
 from chisurf.plugins.emtk_layout import help_close_caption
-from chisurf.plugins.microscopy.spot_finder.gui.app import make_app
+from chisurf.plugins.microscopy.spot_finder.gui.app import make_app, receive_files
 from chisurf.plugins.microscopy.spot_finder.tests.test_native_app import write_field
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
 
@@ -41,35 +41,33 @@ def settle(ui, timeout=120):
 def ui(tmp_path):
     path = write_field(tmp_path / "field.tif")
     ui = Ui(make_app(), (1200, 800))
-    assert ui.drop(path)
+    assert pick(ui, path)
     ui.path = path
     ui.tmp = tmp_path
     yield ui
     ui.app.close() if hasattr(ui.app, "close") else None
 
 
-def test_drop_add_files_dialog_remove_and_clear(tmp_path):
+def pick(ui, *paths) -> bool:
+    """Hand files over as the Datasets workspace does (the Input section, *Open in…*, a drag)."""
+    accepted = receive_files(ui.app, {"files": [str(p) for p in paths]})
+    ui.draw(2)
+    return accepted
+
+
+def test_workspace_files_are_added_removed_and_cleared(tmp_path):
+    """Files come from the workspace (the tool opens none itself); Remove and Clear still work."""
     a, b = write_field(tmp_path / "a.tif"), write_field(tmp_path / "b.tif")
     ui = Ui(make_app(), (1200, 800))
-    ui.click("Add files")
-    assert ui.dialog_open and ui.shown("Add Files")
-    ui.press_text("Cancel")
-    assert not ui.dialog_open and not ui.app.model.files
-    ui.click("Add files")
-    ui.press_text("×")
-    assert not ui.dialog_open
-    ui.click("Add files")
-    ui.app.dialog.enter(str(tmp_path))
-    ui.dialog_pick("a.tif")
-    assert ui.app.model.files == [a]
-    assert ui.drop(b) and ui.app.model.files == [a, b]
+    assert not ui.shown("Add files")  # no input file dialog in the tool
+    assert pick(ui, a) and ui.app.model.files == [a]
+    assert pick(ui, b) and ui.app.model.files == [a, b]
     ui.press_text("b.tif")
     assert ui.app.file_index == 1
     ui.click("Remove file")
     assert ui.app.model.files == [a]
     ui.click("Clear files")
     assert ui.app.model.files == []
-    assert ui.shown("0 rows") or ui.shown("No ") or True
 
 
 def test_workflow_choice_replaces_the_detector_fields_and_name_is_typed(ui):
@@ -157,9 +155,10 @@ def test_export_through_the_dialog_and_settings_round_trip(ui, tmp_path):
     state = json.loads((tmp_path / "state.json").read_text())
     assert state["name"] == "roundtrip"
     ui.type_into("name", "other")
-    ui.click("Load settings")
-    ui.app.dialog.enter(str(tmp_path))
-    ui.dialog_pick("state.json")
+    # Saved settings come back as a setup row of the workspace (its Input section), not a dialog.
+    from chisurf.plugins.microscopy.spot_finder.gui.app import receive_settings
+
+    receive_settings(ui.app, {"settings": str(tmp_path / "state.json")})
     assert ui.app.model.name == "roundtrip"
 
 
@@ -238,13 +237,13 @@ def test_layout_at_both_sizes(tmp_path, size):
 
     path = write_field(tmp_path / "f.tif")
     ui = Ui(make_app(), size)
-    ui.drop(path)
+    pick(ui, path)
     ui.click("Detect")
     settle(ui)
     w, h = size
     left = (0, 24, 0.34 * w, h - 24)
     assert_texts_apart(ui.last, region=left)
-    for key in ("Add files", "Detect", "Preview", "Export"):
+    for key in ("Detect", "Preview", "Export"):  # files come from the Input section, no Add files
         x, y, bw, bh = ui.app.item_rects[key]
         assert x >= 0 and x + bw <= 0.34 * w + 4, key
 

@@ -6,6 +6,7 @@ from emtk.testing import Driver
 
 from chisurf.emtk.state import attach_native_state
 from chisurf.plugins.burst.mfd_prepare.gui import app as owner
+from chisurf.plugins.burst.mfd_prepare.gui.app import receive_bursts
 from chisurf.plugins.burst.mfd_prepare.gui.model import MfdPrepareModel
 
 FIXTURE = (
@@ -54,7 +55,8 @@ def test_measured_preparation_survives_default_and_narrow():
             model.source_rows(),
             model.summary_rows(),
         )
-        assert {"browse", "prepare", "report"} <= app.item_rects.keys()
+        # The burst run comes from the Datasets workspace (its Input section), not a Browse button.
+        assert {"workspace_input_rows", "prepare", "report"} <= app.item_rects.keys()
 
 
 def test_saved_geometry_wins(tmp_path, monkeypatch):
@@ -79,7 +81,8 @@ def test_narrow_report_reaches_the_last_detector_line():
     app = owner.MfdPrepareApp(model)
     driver = Driver(app, (736, 552))
     driver.draw(3)
-    driver.wheel(-20, at=(720, 520))
+    x, y, w, h = app.item_rects["report"]
+    driver.wheel(-20, at=(x + w / 2, y + h / 2))  # inside the report, wherever the layout put it
     painter = driver.draw(3)
     last = model.report.splitlines()[-1]
     matches = [t for t in painter.texts if t[5].strip() == last.strip()]
@@ -89,11 +92,11 @@ def test_narrow_report_reaches_the_last_detector_line():
 
 
 def test_actual_prepare_button_publishes_measured_results():
-    """A real drop/click and SnapshotJob produce the local API's measured report."""
+    """A workspace hand-off, a real click and the SnapshotJob produce the measured report."""
     app = owner.make_app()
     try:
         driver = Driver(app, (1100, 720))
-        assert app.files_dropped([str(FIXTURE)])
+        receive_bursts(app, {"folder": str(FIXTURE)})  # as the Input section / Open in… hand it
         driver.draw(3)
         driver.click("prepare")
         driver.settle(timeout=20)

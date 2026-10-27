@@ -73,12 +73,19 @@ def _form_point(rects: dict, key: str) -> tuple[float, float]:
 # ── a drop goes to the dock under the pointer ─────────────────────────────────
 
 
-def test_a_file_dropped_on_a_plugin_dock_goes_to_the_dock_under_the_pointer(tmp_path):
-    """Imaging QA: open Image Tools, pick *1. Intensity*, click elsewhere, drop a .ptu on it unclicked."""
+def test_a_file_dropped_on_a_plugin_dock_enters_the_workspace_and_feeds_the_open_step(tmp_path):
+    """Imaging QA: open Image Tools, pick *1. Intensity*, click elsewhere, drop a .ptu on its dock.
+
+    A drop is the one way files enter ChiSurf: even over a tool's dock it lands in the Datasets
+    workspace (tools take no files themselves); the open step then gets the row from there.
+    """
+    from chisurf.emtk.session import start_session
     from chisurf.plugins.microscopy.imaging_emtk import pixel_testing as data
+    from chisurf.server.session import SessionState
 
     source = Path(data.flim_ptu(tmp_path / "flim.ptu"))
     shell = EmtkShellApp(console_history=False, console_session_file=False)
+    shell.data.adopt(start_session(state=SessionState()))  # the workspace needs a session
     driver = _driver(shell)
     try:
         hosted = shell.open_plugin("imaging_tools")
@@ -90,7 +97,17 @@ def test_a_file_dropped_on_a_plugin_dock_goes_to_the_dock_under_the_pointer(tmp_
         assert shell._focus is None
         driver.drop_files([str(source)], _child_point(shell, "imaging_tools", "source"))
         step = hosted.app.children["pixel_intensity"]
-        _wait(driver, lambda: step.model.filename == str(source), "the step to take the file")
+
+        def dropped_rows():
+            return [
+                r for r in shell.data.datasets.datasets
+                if str(source) in str(r.get("source_address") or r.get("source") or "")
+            ]
+
+        _wait(driver, lambda: bool(dropped_rows()), "the drop to reach the workspace")
+        assert step.model.filename != str(source), "a tool takes no dropped file itself"
+        shell.feed_from_workspace("imaging_tools", dropped_rows()[:1])
+        _wait(driver, lambda: step.model.filename == str(source), "the step to take the row")
         _shot(driver, "drop_on_imaging")
     finally:
         shell.close()

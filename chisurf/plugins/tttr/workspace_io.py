@@ -35,7 +35,15 @@ class NamedWorkspaceInput(WorkspaceInputMixin):
     state.
     """
 
-    def __init__(self, plugin: str, name: str, app: Any, *, height: float | None = None) -> None:
+    def __init__(
+        self,
+        plugin: str,
+        name: str,
+        app: Any,
+        *,
+        height: float | None = None,
+        filter_box: bool = True,
+    ) -> None:
         import json
 
         from emtk.view_form import FormState
@@ -51,10 +59,12 @@ class NamedWorkspaceInput(WorkspaceInputMixin):
             if entry.get("name") == name and entry.get("from_workspace"):
                 self._raw = entry
                 section = input_section(parse(entry["from_workspace"]), title="")
-                if height is not None:
-                    for part in section.get("sections", []):
-                        if (part.get("options") or {}).get("source") == "workspace_input_rows":
+                for part in section.get("sections", []):
+                    if (part.get("options") or {}).get("source") == "workspace_input_rows":
+                        if height is not None:
                             part["options"]["height"] = height
+                        if not filter_box:  # a compact list too short for a filter box
+                            part["options"]["filter"] = False
                 self.spec = {"sections": [section]}
                 break
         else:
