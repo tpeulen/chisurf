@@ -4,23 +4,6 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
-## Doc render sweep: inline code spans overlap the text after them (found 2026-10-25, open)
-
-status: open — owner: emtk (`emtk/widgets/markdown.py` inline layout, the atlas text path).
-`chisurf/plugins/core/help/test/test_emtk_doc_render_sweep.py` reports 18 overlaps at 800x600, every
-one an inline code span against the punctuation or text right after it (`chisurf/plugins/core/about/`
-drawn 189 px where the layout reserved 184 px before `).`; even one-letter spans, `b` against `/`).
-Same 18 at emtk c4c8940, so not the 2026-10-26 font work. Established: layout (`_layout_inline` →
-`warm`) and draw (`add_text` at `x0 + pad`) push the same `face(("code", False))` and both measure
-through the painter; the realistic recorder measures through the real painter too; the
-`font family 'monospace' is not available` warning comes only from `_code_face_available`'s probe
-(`font_render._face` has no case for the baked family) and is harmless. Tried and rejected: "measured
-in one face, drawn in another" — every painter maps `monospace` to the atlas on both paths. Next:
-trace one page (`concepts/application_identity.md`) at 800x600 and compare, for the code run, the
-layout's `measure(run)[0]` with the recorder's `measured_bounds` width; the ~0.19 px/char excess
-suggests per-glyph rounding on the draw/record side versus a scaled whole-string advance on the
-layout side.
-
 ## Code ahead of the pins: relock before the release cut (found 2026-10-26)
 
 status: open — owner: release cut (the lock moves only then, by convention).
@@ -41,6 +24,23 @@ molecules) `tttrlib.auto_calibrate` returns α = 0.0 while β (0.80) comes out p
 biased by the uncorrected leakage. Measure: run the scenario with `auto_calibrate=True` through
 `chisurf.plugins.burst.fret_check.jobs.analyse` and print `factors_used`; compare with the simulator's
 `Scenario` leakage. Blocks: trusting auto-calibrated α on PIE; explicit factors are unaffected.
+
+## Doc render sweep: inline code spans overlap the text after them (found 2026-10-25, open)
+
+status: open — owner: emtk (`emtk/widgets/markdown.py` inline layout, the atlas text path).
+`chisurf/plugins/core/help/test/test_emtk_doc_render_sweep.py` reports 18 overlaps at 800x600, every
+one an inline code span against the punctuation or text right after it (`chisurf/plugins/core/about/`
+drawn 189 px where the layout reserved 184 px before `).`; even one-letter spans, `b` against `/`).
+Same 18 at emtk c4c8940, so not the 2026-10-26 font work. Established: layout (`_layout_inline` →
+`warm`) and draw (`add_text` at `x0 + pad`) push the same `face(("code", False))` and both measure
+through the painter; the realistic recorder measures through the real painter too; the
+`font family 'monospace' is not available` warning comes only from `_code_face_available`'s probe
+(`font_render._face` has no case for the baked family) and is harmless. Tried and rejected: "measured
+in one face, drawn in another" — every painter maps `monospace` to the atlas on both paths. Next:
+trace one page (`concepts/application_identity.md`) at 800x600 and compare, for the code run, the
+layout's `measure(run)[0]` with the recorder's `measured_bounds` width; the ~0.19 px/char excess
+suggests per-glyph rounding on the draw/record side versus a scaled whole-string advance on the
+layout side.
 
 ## kappa2_dist's kappasq returns negative kappa-squared for reachable anisotropies (found 2026-10-25)
 
