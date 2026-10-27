@@ -279,6 +279,8 @@ class TestWgslSource:
         # temporal resolve and the quality-lighting post pass (full-screen,
         # their own bind layouts) -- none takes the render prelude.
         "gpu_cull.wgsl": "raw",
+        # PRD-129 N3: the mesh cluster cut and cull (compute).
+        "mesh_cull.wgsl": "raw",
         "hiz_pyramid.wgsl": "raw",
         "temporal.wgsl": "raw",
         "postlight.wgsl": "raw",
