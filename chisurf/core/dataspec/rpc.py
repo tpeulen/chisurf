@@ -238,6 +238,8 @@ class RpcMethodView:
                 maximum=prop.get("maximum"),
                 step=prop.get("multipleOf"),
                 read_only=read_only,
+                # a number steps: arrows and the wheel (``multipleOf`` is the step)
+                style="" if read_only else "spin",
                 target=target,
                 attr=name,
                 description=description,
@@ -250,7 +252,8 @@ class RpcMethodView:
                 maximum=prop.get("maximum"),
                 step=prop.get("multipleOf"),
                 read_only=read_only,
-                decimals=6,
+                style="" if read_only else "spin",
+                decimals=3 if read_only else 6,
                 target=target,
                 attr=name,
                 description=description,
