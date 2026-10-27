@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import sys
-
 import pytest
 
 from chisurf.plugins.core.acq.live import laser as L
@@ -99,14 +97,35 @@ def test_a_disabled_output_gives_no_window() -> None:
 
 
 def test_sepia_backend_reports_why_it_is_unavailable(monkeypatch) -> None:
-    monkeypatch.setattr(L, "_candidate_libraries", lambda explicit=None: [])
+    monkeypatch.setattr(L, "_sepia_units", lambda: [])
     ok, why = L.sepia_available()
     assert not ok and why.startswith("not available")
-    if sys.platform == "darwin":
-        assert "Windows only" in why
     with pytest.raises(L.LaserError, match="not available"):
         L.SepiaBackend().open()
     assert isinstance(L.open_laser("auto"), L.SimLaser)
+
+
+def test_sepia_backend_drives_the_phacq_simulator(monkeypatch) -> None:
+    """The Sepia II backend over libphacq, on phacq's simulated unit: outputs locked after open,
+    the head's pulse switch, repetition rate and intensity, emission on and off."""
+    devices = pytest.importorskip("chisurf.plugins.core.acq.live.devices")
+    if not devices.PHACQ:
+        pytest.skip("libphacq is not installed")
+    unit = devices.DeviceEntry("sepia", "sim:", "PicoQuant", "Sepia II")
+    monkeypatch.setattr(L, "_sepia_units", lambda: [unit])
+    laser = L.open_laser("sepia")
+    st = laser.open()
+    assert st.emission_blocked and st.library == "libphacq" and st.oscillator is None
+    slot = st.heads[0].slot
+    laser.set_head(slot, intensity_pct=30, pulsed=False, trigger_index=3)
+    head = laser.state().heads[0]
+    assert (head.intensity_pct, head.pulsed, head.trigger_index) == (30.0, False, 3)
+    laser.set_emission(True)
+    assert not laser.state().emission_blocked
+    with pytest.raises(L.LaserError, match="oscillator"):
+        laser.set_oscillator(divider=2)
+    assert laser.state().emission_blocked  # an error switches the outputs off
+    laser.close()
 
 
 def test_frequency_parsing_of_the_decoded_mode() -> None:

@@ -128,6 +128,17 @@ class RpcMethodView:
         """Return the derived editor description (one panel per RPC method)."""
         return self._view
 
+    def update_values(self, values: typing.Mapping[str, typing.Any]) -> None:
+        """Show *values* (known parameters only) without counting them as edits and without
+        ``on_change`` -- the form following what the callee now holds, e.g. a device whose
+        read-only values changed after an edit."""
+        for key, value in values.items():
+            if key in self._values:
+                if key in self._json_props and not isinstance(value, str):
+                    value = json.dumps(value)
+                self._values[key] = value
+                self._explicit.add(key)
+
     # -- values ---------------------------------------------------------------
     def params(self) -> typing.Dict[str, typing.Any]:
         """Return the current parameter values, ready to pass to the RPC call.
@@ -189,15 +200,35 @@ class RpcMethodView:
             description = tr("(required)")
         target = "_params_group"
 
+        # tttrlib's registry dialect on top of JSON Schema: ``enum_labels`` names the
+        # ``enum`` values (``unit`` is not repeated: the dialect's titles carry it), ``readOnly`` (standard)
+        # shows a value without letting it be edited, ``multipleOf`` (standard) is the
+        # spin step.
+        read_only = bool(prop.get("readOnly", False))
         if "enum" in prop:
             self._enums[name] = tuple(prop["enum"])
             options = tuple(str(v) for v in prop["enum"])
+            raw_labels = prop.get("enum_labels") or ()
+            labels = (
+                tuple(tr(str(v)) for v in raw_labels) if len(raw_labels) == len(options) else ()
+            )
+            if read_only:
+                return ValueSection(
+                    label=label, kind="str", read_only=True, target=target, attr=name,
+                    description=description,
+                )
             return ChoiceSection(
-                label=label, options=options, target=target, attr=name, description=description
+                label=label, options=options, labels=labels, target=target, attr=name,
+                description=description,
             )
 
         kind = prop.get("type")
         if kind == "boolean":
+            if read_only:
+                return ValueSection(
+                    label=label, kind="str", read_only=True, target=target, attr=name,
+                    description=description,
+                )
             return ToggleSection(label=label, target=target, attr=name, description=description)
         if kind == "integer":
             return ValueSection(
@@ -205,6 +236,8 @@ class RpcMethodView:
                 kind="int",
                 minimum=prop.get("minimum"),
                 maximum=prop.get("maximum"),
+                step=prop.get("multipleOf"),
+                read_only=read_only,
                 target=target,
                 attr=name,
                 description=description,
@@ -215,6 +248,8 @@ class RpcMethodView:
                 kind="float",
                 minimum=prop.get("minimum"),
                 maximum=prop.get("maximum"),
+                step=prop.get("multipleOf"),
+                read_only=read_only,
                 decimals=6,
                 target=target,
                 attr=name,

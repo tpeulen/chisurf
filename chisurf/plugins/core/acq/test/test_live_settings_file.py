@@ -20,7 +20,7 @@ def _doc() -> dict:
     return S.new_settings(
         name="PIE smFRET",
         device={
-            "backend": "pqusb",
+            "backend": "phacq",
             "mode": "T3",
             "sync": {"divider": 1, "level_mv": -60, "edge": "falling", "offset_ps": 1200},
             "inputs": [
@@ -95,37 +95,68 @@ def test_validation_lists_every_problem_with_its_path(tmp_path) -> None:
         S.loads("{broken")
 
 
-def test_apply_and_capture_on_the_simulated_tcspc_unit_and_laser() -> None:
-    pqusb = pytest.importorskip("pqusb")
-    dev = pqusb.SimDevice(inputs=2, nchan=4, seed=1)
+def _fake_unit(channels: int = 3):
+    """phacq's simulated TCSPC unit (sync on channel 0) with its described settings."""
+    phacq = pytest.importorskip("phacq")
+    cfg = phacq.FakeConfig()
+    cfg.number_of_channels = channels
+    cfg.rates_cps = phacq.VectorDouble([20e6] + [1e3] * (channels - 1))
+    drv = phacq.FakeDriver()
+    drv.add_device(cfg)
+    dev = drv.open("")
+    dev.initialize(phacq.MeasurementMode.T3, phacq.ReferenceClock.Internal)
+    dev.phacq_driver = "fake"
+    dev._keep_driver = drv
+    return dev
+
+
+def _unit_doc() -> dict:
+    doc = _doc()
+    doc["device"] = {
+        "backend": "phacq",
+        "mode": "T3",
+        "sync": {"divider": 2},
+        "inputs": [
+            {"channel": 1, "level_mv": -80, "edge": "rising", "offset_ps": 350, "enabled": False}
+        ],
+        "binning": 2,
+        "settings": {"input_level_mv[2]": -120},
+    }
+    return doc
+
+
+def test_apply_and_capture_on_a_phacq_unit_and_laser() -> None:
+    dev = _fake_unit()
     sim = SimLaser()
     sim.open()
-    notes = S.apply(_doc(), device=dev, laser=sim)
+    notes = S.apply(_unit_doc(), device=dev, laser=sim)
     assert notes == []
-    assert dev.mode == pqusb.MODE_T3
-    assert dev.settings.sync.offset_ps == 1200 and dev.settings.binning == 2
-    assert dev.settings.inputs[1].edge == 1 and dev.settings.inputs[1].enabled is False
+    s = dev.settings()
+    assert s["sync_divider"] == 2 and s["binning"] == 2 and s["input_level_mv[2]"] == -120
+    assert s["input_edge[1]"] == 1 and s["input_offset_ps[1]"] == 350
+    assert s["input_enable[1]"] is False
     assert sim.state().emission_blocked, "applying settings never switches the laser on"
-    got = S.capture(device=dev, laser=sim, base=_doc())
+    got = S.capture(device=dev, laser=sim, base=_unit_doc())
     assert S.validate(got) == []
-    assert got["device"]["inputs"][1] == {
-        "channel": 1,
-        "level_mv": -80,
-        "edge": "rising",
-        "offset_ps": 350,
-        "enabled": False,
-    }
-    assert got["device"]["sync"]["offset_ps"] == 1200
+    assert got["device"]["backend"] == "phacq" and got["device"]["driver"] == "fake"
+    assert got["device"]["settings"] == s, "every setting of the unit is captured"
+    assert S.device_settings(got["device"])["input_level_mv[1]"] == -80
     assert got["laser"]["oscillator"]["divider"] == 4
     assert got["experiment"] == _doc()["experiment"], "sections the hardware does not hold are kept"
 
 
-def test_an_input_the_device_lacks_is_a_note_not_a_failure() -> None:
-    pqusb = pytest.importorskip("pqusb")
-    dev = pqusb.SimDevice(inputs=1, nchan=1, seed=1)
-    doc = _doc()
-    notes = S.apply(doc, device=dev)
-    assert any("input 1" in n for n in notes)
+def test_a_setting_the_device_lacks_is_a_note_not_a_failure() -> None:
+    dev = _fake_unit(channels=2)
+    notes = S.apply(_unit_doc(), device=dev)
+    assert any("input_level_mv[2]" in n for n in notes)
+    assert dev.settings()["sync_divider"] == 2, "the settings it has are applied"
+
+
+def test_a_readable_device_section_translates_to_phacq_names() -> None:
+    flat = S.device_settings(_doc()["device"])
+    assert flat["sync_level_mv"] == -60 and flat["sync_offset_ps"] == 1200
+    assert flat["input_edge[1]"] == 1 and flat["input_enable[1]"] is False
+    assert flat["binning"] == 2 and flat["offset_ns"] == 0
 
 
 @pytest.mark.skipif(not SP5_PTU.exists(), reason="CLSM test data not present")

@@ -1,95 +1,46 @@
-# BH SPC Acquisition Plugin
+# Acquisition plugin
 
-This plugin provides tools for acquiring single molecule data, e.g., using a Becker & Hickl SPC 830 TCSPC board.
-It displays fluorescence decays of user-defined channels (up to 4) and correlation curves.
-Data is acquired into RAM and saved at the end of data acquisition.
+Record single-molecule photon streams and watch the analysis build up live (decay,
+correlation, count rate, bursts, E-S histogram). The window is the native Record tool
+(`gui/record_app.py`, the manifest's `emtk` entrypoint).
 
-## Features
+## Sources
 
-- Acquisition of time-tagged time-resolved (TTTR) data from BH SPC 830
-- Display of fluorescence decays for up to 4 user-defined channels
-- Display of correlation curves
-- Configurable acquisition time
-- RAM usage monitoring
-- Data saving at the end of acquisition
-- Manufacturer-agnostic wrapper for future extension to other hardware (e.g., Picoquant)
-- **Built-in help system** with integrated documentation viewer
-- **Command-line interface** for advanced users and automation
-
-## Requirements
-
-- Becker & Hickl SPC-830 TCSPC board (optional, simulation mode available)
-- Becker & Hickl SPCM-DLL (part of the TCSPC Package or SPCM Data Acquisition Software)
-- Python packages:
-  - numpy
-  - psutil
-  - tttrlib
+- **TCSPC hardware through phacq.** Devices are driven by the phacq library: native drivers
+  for PicoQuant MultiHarp / PicoHarp 330 / HydraHarp 500, Becker & Hickl SPC cards and the
+  PicoQuant Sepia II laser, with no vendor libraries. The vendor-library device session of
+  earlier versions (BH SPCM-DLL, PicoQuant, BrickMic wrappers) has been removed.
+- **The tttrlib photon simulator** (`tcspc_devices/simulation/`): diffusion through a confocal
+  focus with N-state photophysics/FRET, anisotropy and pulsed excitation; also exposed as the
+  `acq.simulation.run` RPC method and the headless CLI below.
+- **Replay** of a workspace photon stream.
 
 ## Acquisition fit window
 
-Inside ChiSurf the plugin simulates a demo stream (`demo.py`), registers it as an
-`AcquisitionDataset` (`dataset.py`) and opens a fit window with the `Acquisition`
+Inside ChiSurf the plugin can simulate a demo stream (`demo.py`), register it as an
+`AcquisitionDataset` (`dataset.py`) and open a fit window with the `Acquisition`
 model (`chisurf/core/models/acquisition`) whose pages (`chisurf/emtk/fit_pages/pages/acquisition.py`)
-are the live decay, correlation, MCS and macro-time plots. The Qt tool is gone.
+are the live decay, correlation, MCS and macro-time plots.
 
-## Usage
+## Command line
 
-### Native acquisition mode
-
-The manifest's native emtk entrypoint (`chisurf.plugins.core.acq.gui.app:make_app`) preserves
-the physical session workflow without importing a vendor wrapper until the operator explicitly
-chooses a hardware source and clicks **Initialize device**. It supports Simulation,
-Becker-Hickl, PicoQuant, and BrickMic selection; Start streams device FIFO records through
-`AcquisitionPipeline`, and Stop cancels safely and flushes result state. Missing drivers,
-failed initialization, and no-active-card states are shown truthfully; the app never changes a
-hardware selection into simulation.
-
-Set a positive time and/or photon stop condition, map all four routing channels, and optionally
-choose an output folder. The path is passed only to Simulation and BrickMic backends that expose
-an output capability; it is not a blanket promise that every device writes raw data. Settings
-save/load uses a chosen JSON file and does not initialize hardware. Simulation provides both
-basic controls and a full advanced parameter JSON editor validated by the real simulator engine.
-All native result tabs derive count, decay/intensity, correlation, burst/phasor, macrotime, and
-MCS state from the pipeline rather than fabricated display data. **Device Setup…** opens the
-selected device's setup card in the app: B&H SPC (card detection, active modules, CFD, Sync, TAC,
-Timing and Mode parameters, Read values, Save/Load JSON, Apply), PicoQuant (firmware-owned mode
-and reference, maximum photons, device status), BrickMic (counter window, acquisition rate, buffer
-size, photons per SPC file) and the simulator (species, kinetics, decay editor).
-
-### GUI Mode
-
-1. Launch the plugin from the ChiSurf menu: Single-Molecule > BH SPC Acquisition
-2. Click the blue **"Help"** button in the acquisition dock for integrated documentation
-3. Initialize the device (in simulation mode or hardware mode)
-4. Configure the acquisition parameters:
-   - Set the acquisition time
-   - Select the channels to display (up to 4)
-5. Start the acquisition
-6. Monitor the fluorescence decays and correlation curves in real-time
-7. Save the data when the acquisition is complete
-
-### Command Line Mode
-
-The `acq` plugin can be started as a **single entry point**
-that supports both GUI and headless simulation CLI.
-
-#### Unified module entry point
+### Unified module entry point
 
 From the repository root:
 
 ```bash
-# Start SM Acquisition (native window)
+# Start the Record window
 python -m chisurf.plugins.core.acq
 
 # Force standalone GUI window (without starting full chisurf)
 python -m chisurf.plugins.core.acq --standalone
 ```
 
-#### Headless simulation CLI
+### Headless simulation CLI
 
 The same entry point exposes the simulation CLI when you pass `--cli`.
-This uses the Burbulator DLL and the same parameter structure as the
-enhanced simulation setup dialog.
+This uses the tttrlib photon simulator and the same parameter structure as the
+simulation setup dialog.
 
 ```bash
 # 1) Generate a simple JSON config
@@ -129,7 +80,7 @@ Then run the simulation as above with the `run` subcommand.
 `tcspc_devices/simulation/CLI_README.md` for detailed documentation of
 all CLI options, JSON structure, and additional FRET/FCS presets.
 
-#### Typical CLI workflow (including JSON editing)
+### Typical CLI workflow (including JSON editing)
 
 1. **Generate a base JSON configuration**
 
@@ -190,28 +141,3 @@ all CLI options, JSON structure, and additional FRET/FCS presets.
    …) into the chosen output folder. These can be opened in downstream
    tools (e.g. FCS, burst analysis, or the GUI) for further analysis.
 
-## Data Format
-
-The plugin saves data in the following formats:
-
-1. Raw data: Binary file (.bin) containing the 32-bit records from the TCSPC board
-2. Decay data: NPZ file (.decay.npz) containing the fluorescence decay histograms for each channel
-3. Decay data: CSV files (.ch{channel}.csv) containing the time and counts data for each channel
-4. FCS curves: Kristine files (.cor) containing the correlation times, amplitudes, mean countrate, and the actual acquisition time (measured during data collection)
-
-## Extending to Other Hardware
-
-The plugin uses a manufacturer-agnostic wrapper (`TCSPCDevice` class) from the `chisurf.plugins.bh_spc_wrapper` module 
-that can be extended to support other TCSPC hardware, such as Picoquant. To add support for a new hardware type:
-
-1. Add a new device type to the `TCSPCDevice` class in the `chisurf.plugins.bh_spc_wrapper.wrapper` module
-2. Implement the device-specific methods for initialization, measurement control, and data acquisition
-3. Update the UI to include the new device type in the device selection dropdown
-
-## License
-
-This plugin is part of the ChiSurf package and is distributed under the same license.
-
-## Author
-
-This plugin was created as part of the ChiSurf project.

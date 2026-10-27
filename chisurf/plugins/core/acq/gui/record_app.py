@@ -5,12 +5,12 @@
 session's worker thread; the window takes a snapshot of its accumulators about five times a second
 and draws from that (:meth:`RecordApp._draw_live`), never from photons. The measurement type is
 the Experiment setup's preset (single colour, two colour, PIE, µs-ALEX, MFD, three-colour PIE); the
-histograms shown are the ones the analyzer keeps for it. The device session of
-earlier versions stays reachable as *Device session…* (``app.AcquisitionApp``).
+histograms shown are the ones the analyzer keeps for it.
 
-Devices are CMC's ``pqusb`` (PicoQuant over libusb). The simulator is a simulated MultiHarp
-(``live.devices.PieSimDevice``), so a simulated run takes the hardware path from the FIFO on; without
-pqusb the photon-level simulator stands in.
+Devices are libphacq's (``live.devices``): PicoQuant MultiHarp / PicoHarp 330 / HydraHarp 500 and
+Becker & Hickl SPC cards, natively. Their settings panel is generated from what the connected
+device describes (``Device.parameter_schema``), so every setting the driver has is offered; the
+Sepia II laser likewise (``live.laser``). The simulator is tttrlib's photon-level simulator.
 """
 
 from __future__ import annotations
@@ -33,6 +33,12 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.core.acq.gui.record_settings import SETTINGS_SETUP, LaserSettingsMixin
 from chisurf.plugins.core.acq.live import devices
 from chisurf.plugins.core.acq.live.analyzer import PRESETS
+from chisurf.plugins.core.acq.live.fcs import (
+    FcsRecordSession,
+    fcs_realism,
+    fcs_truth,
+    population_for,
+)
 from chisurf.plugins.core.acq.live.imaging import (
     ImageRecordSession,
     image_replay_source,
@@ -42,16 +48,9 @@ from chisurf.plugins.core.acq.live.project import recording_dir, workspace_datas
 from chisurf.plugins.core.acq.live.realism import PRESETS as REALISM_PRESETS
 from chisurf.plugins.core.acq.live.realism import REALISTIC, Realism
 from chisurf.plugins.core.acq.live.scanner import (
-    ImageSimDevice,
     ImageSimSource,
     ImagingSample,
     ScanSettings,
-)
-from chisurf.plugins.core.acq.live.fcs import (
-    FcsRecordSession,
-    fcs_realism,
-    fcs_truth,
-    population_for,
 )
 from chisurf.plugins.core.acq.live.session import RecordSession
 from chisurf.plugins.core.acq.live.setups import (
@@ -99,7 +98,7 @@ class RecordModel(LaserSettingsMixin):
     """
 
     def __init__(self, output_dir: str | Path | None = None, *, realtime: bool = True):
-        from chisurf.plugins.core.acq.gui.app import default_acquisition_output_path
+        from chisurf.plugins.core.acq.output_paths import default_acquisition_output_path
 
         self.output_dir = Path(output_dir or default_acquisition_output_path())
         self.realtime = bool(realtime)
@@ -150,24 +149,20 @@ class RecordModel(LaserSettingsMixin):
         self.snapshot: dict[str, Any] | None = None
         self._last_snapshot = 0.0
         self._registered = False
-        self._open_classic = False
-        # -- the TCSPC device (pqusb) ----------------------------------------------------------
-        self.device_index = "0"
+        # -- the TCSPC device (libphacq) ----------------------------------------------------------
+        #: ``driver:serial`` of the chosen device
+        self.device_index = ""
         self.device = None
-        self._found: list[str] = []
+        self._found: list = []
         self._found_at = -1e9
         self.device_text = tr("No device connected.")
         self._rates_at = 0.0
-        self.sync_div = 1
-        self.sync_level_mv = -50
-        self.sync_edge = "0"
-        self.sync_offset_ps = 0
-        self.input_level_mv = -50
-        self.input_edge = "0"
-        self.donor_offset_ps = 0
-        self.acceptor_offset_ps = 0
-        self.binning = 0
-        self.offset_ns = 0
+        #: the device settings the panel edits, phacq's flat ``{name or name[input]: value}``;
+        #: kept while disconnected (a settings file can bring them before the device is there)
+        self.device_values: dict[str, Any] = {}
+        #: the generated settings form of the connected device (``devices.settings_form``)
+        self.device_form = None
+        self._device_sent: dict[str, Any] = {}
         # -- the laser and the acquisition settings file (record_settings) --------------------
         self._init_laser_settings()
 
@@ -260,9 +255,9 @@ class RecordModel(LaserSettingsMixin):
             ("replay", tr("Replay a photon stream")),
             (
                 "device",
-                tr("PicoQuant device (USB)")
-                if devices.PQUSB
-                else tr("PicoQuant device (pqusb not installed)"),
+                tr("TCSPC device (PicoQuant, Becker & Hickl)")
+                if devices.PHACQ
+                else tr("TCSPC device (libphacq not installed)"),
             ),
         ]
 
@@ -316,8 +311,10 @@ class RecordModel(LaserSettingsMixin):
         names = list((self.snapshot or {}).get("histograms", {}).keys())
         return [(n, n) for n in names] or [("", tr("Start a run: its histograms appear here"))]
 
-    def attached(self) -> list[str]:
+    def attached(self) -> list:
         """The attached devices, enumerated at most every two seconds (not on every frame)."""
+        if self.device is not None:  # never enumerate (open) units while one is driven
+            return self._found
         now = time.monotonic()
         if now - self._found_at > 2.0:
             self._found, self._found_at = devices.attached_devices(), now
@@ -329,31 +326,73 @@ class RecordModel(LaserSettingsMixin):
             return [
                 (
                     "",
-                    tr("No PicoQuant device found")
-                    if devices.PQUSB
-                    else tr("pqusb is not installed"),
+                    tr("No TCSPC device found")
+                    if devices.PHACQ
+                    else tr("libphacq is not installed"),
                 )
             ]
-        return [(str(i), str(name)) for i, name in enumerate(found)]
+        return [(e.key, e.label) for e in found]
+
+    @property
+    def sync_offset_ps(self) -> float:
+        """The sync channel offset the device applies (ps; 0 where it has none)."""
+        return float(self.device_values.get("sync_offset_ps") or 0)
 
     # -- the device --------------------------------------------------------------------------------
     def connect_device(self) -> bool:
-        if self.device is not None or not devices.PQUSB:
+        if self.device is not None or not devices.PHACQ:
+            return False
+        entry = devices.find_device(self.device_index)
+        if entry is None:
+            self.device_text = tr("Cannot connect: the device is not attached any more.")
             return False
         try:
-            import pqusb
-
-            dev = pqusb.open_device(int(self.device_index or 0))
-            ident = dev.initialize(pqusb.MODE_T3, 0)
+            dev = devices.open_device(entry)
         except Exception as exc:  # noqa: BLE001 - busy, no permission, unsupported model
             self.device_text = tr("Cannot connect: {e}").format(e=exc)
             return False
         self.device = dev
-        self.device_text = tr("{model} {serial}, {n} inputs, T3 mode.").format(
-            model=ident.model, serial=ident.serial, n=getattr(dev, "nchan", "?")
+        self.device_index = entry.key
+        notes = devices.apply_settings(dev, self.device_values) if self.device_values else []
+        self._device_form_from_device()
+        info = dev.information()
+        self.device_text = tr("{name}, {n} inputs.").format(
+            name=devices.device_label(dev), n=info.number_of_channels
         )
+        if notes:
+            self.device_text += " " + tr("Not applied: {notes}").format(notes="; ".join(notes))
         self._update_rates(force=True)
         return True
+
+    def _device_form_from_device(self) -> None:
+        """Re-read every setting from the device and rebuild its form."""
+        self.device_values = dict(self.device.settings())
+        self._device_sent = dict(self.device_values)
+        self.device_form = devices.settings_form(
+            self.device, self.device_values, on_change=self.device_settings_edited
+        )
+
+    def device_settings_edited(self) -> None:
+        """An edit in the device settings form: send what changed (between runs only)."""
+        if self.device is None or self.device_form is None:
+            return
+        values = self.device_form.params()
+        changed = {k: v for k, v in values.items() if self._device_sent.get(k) != v}
+        self.device_values.update(values)
+        if not changed or self.running:
+            return
+        notes = devices.apply_settings(self.device, changed)
+        head = self.device_text.split(" — ")[0]
+        if notes:
+            # nothing of the edit reached the device: show the device's values again
+            self.device_text = f"{head} — " + "; ".join(notes)
+            self._device_form_from_device()
+            return
+        # the panel follows the device (read-only and derived values included), in place
+        self.device_values = dict(self.device.settings())
+        self._device_sent = dict(self.device_values)
+        self.device_form.update_values(self.device_values)
+        self.device_text = head
 
     def disconnect_device(self) -> bool:
         if self.device is None or self.running:
@@ -362,26 +401,16 @@ class RecordModel(LaserSettingsMixin):
             self.device.close()
         finally:
             self.device = None
+            self.device_form = None
             self.device_text = tr("No device connected.")
         return True
 
     def apply_device_settings(self, dev, exp: Experiment) -> None:
-        """Send the TCSPC settings to *dev* (before a run)."""
-        dev.set_sync_div(int(self.sync_div))
-        dev.set_sync_edge_trg(int(self.sync_level_mv), int(self.sync_edge))
-        dev.set_sync_channel_offset(int(self.sync_offset_ps))
-        for ch in range(int(getattr(dev, "nchan", 0) or 0)):
-            dev.set_input_edge_trg(ch, int(self.input_level_mv), int(self.input_edge))
-        offsets = {}
-        for role, ps in (("donor", self.donor_offset_ps), ("acceptor", self.acceptor_offset_ps)):
-            chs = exp.channels(role)
-            if chs:
-                offsets[chs[0]] = ps
-        for ch, ps in offsets.items():
-            if 0 <= int(ch) < int(getattr(dev, "nchan", 0) or 0):
-                dev.set_input_channel_offset(int(ch), int(ps))
-        dev.set_binning(int(self.binning))
-        dev.set_offset(int(self.offset_ns))
+        """Send every device setting the panel holds to *dev* (before a run)."""
+        notes = devices.apply_settings(dev, self.device_values)
+        if notes:
+            raise RuntimeError("; ".join(notes))
+        self._device_sent = dict(self.device_values)
 
     def _update_rates(self, force: bool = False) -> None:
         """Count rates of the connected device while it does not measure (about once a second)."""
@@ -392,17 +421,25 @@ class RecordModel(LaserSettingsMixin):
             return
         self._rates_at = now
         try:
-            sync, inputs = self.device.count_rates()
+            rates = list(self.device.count_rates())
         except Exception as exc:  # noqa: BLE001 - shown, the device stays connected
             self.device_text = (
                 self.device_text.split(" — ")[0] + " — " + tr("rates: {e}").format(e=exc)
             )
             return
-        rates = ", ".join(f"{i + 1}: {r / 1e3:.1f} kHz" for i, r in enumerate(inputs))
         head = self.device_text.split(" — ")[0]
-        self.device_text = f"{head} — " + tr("sync {sync:.2f} MHz; inputs {rates}").format(
-            sync=sync / 1e6, rates=rates
-        )
+        if not rates:
+            self.device_text = head
+            return
+        if getattr(self.device, "phacq_driver", "") == "bh":  # sync, CFD, TAC, ADC
+            names = (tr("sync"), tr("CFD"), tr("TAC"), tr("ADC"))
+            text = ", ".join(f"{n} {r / 1e3:.1f} kHz" for n, r in zip(names, rates))
+        else:  # sync, then the inputs
+            inputs = ", ".join(f"{i + 1}: {r / 1e3:.1f} kHz" for i, r in enumerate(rates[1:]))
+            text = tr("sync {sync:.2f} MHz; inputs {rates}").format(
+                sync=rates[0] / 1e6, rates=inputs
+            )
+        self.device_text = f"{head} — {text}"
 
     def photon_options(self) -> list:
         kind = "image" if self.mode == "image" else "photons"
@@ -460,20 +497,9 @@ class RecordModel(LaserSettingsMixin):
             bead_brightness=float(self.img_brightness),
             seed=int(self.sim_seed),
         )
-        if not devices.PQUSB or ImageSimDevice is None:
-            # no device layer (CMC's pqusb): the same simulated photons and markers, directly
-            return ImageSimSource(
-                scan, sample, self.realism(), speed=float(self.speed), realtime=self.realtime
-            )
-        import pqusb
-
-        dev = ImageSimDevice(
-            scan, sample, realism=self.realism(),
-            speed=float(self.speed) if self.realtime else 1000.0,
+        return ImageSimSource(
+            scan, sample, self.realism(), speed=float(self.speed), realtime=self.realtime
         )
-        dev.initialize(pqusb.MODE_T3)
-        dev.set_sync_div(1)
-        return devices.DeviceSource(dev)
 
     def fcs_sample(self) -> tuple[Realism, float]:
         """The simulated FCS sample: its realism (the instrument's, no FRET extras) and the
@@ -495,21 +521,6 @@ class RecordModel(LaserSettingsMixin):
                 realism, population = self.fcs_sample()
                 pops = (Population(0.0, 1.0, population, float(self.fcs_brightness_khz)),)
                 scheme = "two_color"
-            if devices.PQUSB:
-                import pqusb
-
-                # A simulated MultiHarp: the run takes the hardware path from the FIFO on.
-                dev = devices.PieSimDevice(
-                    pops,
-                    seed=int(self.sim_seed),
-                    speed=float(self.speed) if self.realtime else 1000.0,
-                    scheme=scheme,
-                    realism=realism,
-                )
-                dev.initialize(pqusb.MODE_T3)
-                self.apply_device_settings(dev, self.make_experiment(400))
-                dev.set_sync_div(1)
-                return devices.DeviceSource(dev)
             return SimulatedPieSource(
                 pops,
                 duration_s=None,
@@ -525,10 +536,8 @@ class RecordModel(LaserSettingsMixin):
             return FileReplaySource(
                 self.replay_address, speed=float(self.speed), realtime=self.realtime
             )
-        if not devices.PQUSB:
-            raise SourceUnavailable(
-                tr("PicoQuant devices need pqusb (CMC), which is not installed.")
-            )
+        if not devices.PHACQ:
+            raise SourceUnavailable(tr("TCSPC devices need libphacq, which is not installed."))
         if self.device is None:
             raise SourceUnavailable(tr("Connect the device first."))
         return devices.DeviceSource(self.device)
@@ -599,12 +608,12 @@ class RecordModel(LaserSettingsMixin):
                 return False  # scanners come with CMC's rustytime
             return not self.running and (self.source_kind != "device" or self.device is not None)
         if action == "connect_device":
-            return devices.PQUSB and self.device is None and bool(self.attached())
+            return devices.PHACQ and self.device is None and bool(self.attached())
         if action == "disconnect_device":
             return self.device is not None and not self.running
         if action == "stop":
             return self.running
-        if action in ("load_example", "open_classic"):
+        if action == "load_example":
             return not self.running
         return True
 
@@ -794,9 +803,6 @@ class RecordModel(LaserSettingsMixin):
                 subprocess.Popen(["xdg-open", str(path.parent)])
         except OSError:
             pass
-
-    def open_classic(self) -> None:
-        self._open_classic = True
 
     def poll(self, force: bool = False) -> None:
         """Take a snapshot at the display rate; register the run once it ended."""
@@ -1147,21 +1153,24 @@ class RecordApp(ImApp):
             ("laser_status", self._draw_laser_status),
             ("laser_rate", self._draw_laser_rate),
             ("settings_status", self._draw_settings_status),
+            ("device_settings", self._draw_device_settings),
+            ("laser_settings", self._draw_laser_settings),
         ):
             self.form.custom[key] = draw
+        #: the generated device / laser forms: their own form state, their spec per form
+        self._sub_forms: dict[str, tuple[Any, dict, FormState]] = {}
         self.save_dialog = None
         self.save_window = None
         self.help_window = EmTkHelpWindow(
-            title="Record help", resource=HERE / "record_help.md", owner=self
+            title="Record help", resource=HERE / "help.md", owner=self
         )
         self.tour = EmTkGuidedTour(
-            steps=HERE / "record_guide.json",
+            steps=HERE / "guide.json",
             owner=self,
             wait_for_controls=True,
             get_target_rect=lambda key: self.form.rects.get(key),
         )
         self.form.on_used = self.tour.notify_used
-        self.classic = None
         self.docks = DockManager(_layout())
         for key, title, region in DOCKS:
             self.docks.add_window(key, tr(title), self._dock_drawer(key), dock=region)
@@ -1338,6 +1347,36 @@ class RecordApp(ImApp):
         _short_line(model.settings_text, model.settings_detail, (0.7, 0.7, 0.7, 1.0))
         state.rects["settings_status"] = (*top, width, 20.0)
 
+    def _draw_generated(self, key: str, form, state: FormState, width: float, empty: str) -> None:
+        """Draw a form generated from a device's settings schema (``live.devices.settings_form``)
+        in place, under its own form state; the spec is converted once per form."""
+        top = im.get_cursor_screen_pos()
+        if form is None:
+            _short_line(empty, "", (0.7, 0.7, 0.7, 1.0))
+            state.rects[key] = (*top, width, 20.0)
+            return
+        cached = self._sub_forms.get(key)
+        if cached is None or cached[0] is not form:
+            from chisurf.emtk.reader_settings import native_reader_spec
+
+            spec = native_reader_spec(form.view_spec())
+            # every setting sits in a group: the entry's own (title) panel is empty
+            spec["sections"] = [p for p in spec["sections"] if p.get("sections")]
+            cached = (form, spec, FormState())
+            cached[2].on_used = self.form.on_used
+            self._sub_forms[key] = cached
+        # emtk's in-place form reads ``getattr(model, attr)``: the bound parameter group itself
+        draw_sections(cached[1]["sections"], form._params_group, cached[2])
+        state.rects[key] = (*top, width, im.get_cursor_screen_pos()[1] - top[1])
+
+    def _draw_device_settings(self, section, model: RecordModel, state: FormState, width: float):
+        self._draw_generated("device_settings", model.device_form, state, width,
+                             tr("Connect a device: all its settings appear here."))
+
+    def _draw_laser_settings(self, section, model: RecordModel, state: FormState, width: float):
+        self._draw_generated("laser_settings", model.laser_form, state, width,
+                             tr("The simulated laser is set in the program below."))
+
     def _avail(self, minimum=(200.0, 120.0)) -> tuple[float, float]:
         w, h = im.get_content_region_avail()[:2]
         return max(minimum[0], w), max(minimum[1], h - 4.0)
@@ -1493,22 +1532,6 @@ class RecordApp(ImApp):
         self.model.poll()
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)
-        if self.model._open_classic:
-            if self.classic is None:
-                from chisurf.plugins.core.acq.gui.app import AcquisitionApp
-
-                self.classic = AcquisitionApp()
-            self.classic.render()
-            im.set_next_window_pos((vp.pos[0] + vp.size[0] - 190, vp.pos[1] + 4), im.Cond.ALWAYS)
-            if im.begin(
-                "##back_to_record",
-                None,
-                im.WindowFlags.NO_DECORATION | im.WindowFlags.ALWAYS_AUTO_RESIZE,
-            ):
-                if im.button(f"⏺ {tr('Back to Record')}"):
-                    self.model._open_classic = False
-            im.end()
-            return
         self.form.rects.clear()
         self._sync_docks_to_mode()
         self._follow_tour()
@@ -1555,8 +1578,6 @@ class RecordApp(ImApp):
 
     def close(self) -> None:
         self.model.close()
-        if self.classic is not None:
-            self.classic.close()
 
 
 def make_app() -> RecordApp:

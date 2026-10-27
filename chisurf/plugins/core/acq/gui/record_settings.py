@@ -33,8 +33,6 @@ from chisurf.plugins.core.acq.live.realism import Realism
 #: ``setup_address`` of the channel setup a settings document brought.
 SETTINGS_SETUP = "settings"
 _OUTPUTS = laser_mod.SEQUENCER_OUTPUTS
-_EDGE = {"0": "falling", "1": "rising"}
-_EDGE_BACK = {"falling": "0", "rising": "1"}
 
 
 def _short(problems: list[str], n: int = 3) -> str:
@@ -65,25 +63,46 @@ class LaserSettingsMixin:
         self.save_settings_requested = False
         self._emission_on = False
         self._laser_rate_hz: float | None = None
+        #: the connected laser driver's own settings form (Sepia II through libphacq)
+        self.laser_form = None
+        self._laser_sent: dict = {}
 
     # -- the laser -------------------------------------------------------------------------------
     @property
     def laser_connected(self) -> bool:
         return self.laser is not None and self.laser.is_open
 
+    @property
+    def laser_program_shown(self) -> bool:
+        """The head table / sequencer program: for a laser without direct controls (the simulated
+        one). A Sepia II through libphacq is set with its own controls, which act at once."""
+        return self.laser_connected and self.laser_form is None
+
+    def _sepia_status(self) -> tuple[bool, str]:
+        """Whether a Sepia II is there, checked at most every two seconds and never while a laser
+        is connected (an options list is drawn every frame; enumerating USB on each would stall
+        the window, and must not touch a unit this tool is driving)."""
+        if self.laser_connected:
+            return True, getattr(self, "_sepia_seen", (True, ""))[1]
+        now = time.monotonic()
+        if now - getattr(self, "_sepia_at", -1e9) > 2.0:
+            self._sepia_at = now
+            self._sepia_seen = laser_mod.sepia_available()
+        return self._sepia_seen
+
     def laser_options(self) -> list:
-        ok, why = laser_mod.sepia_available()
+        ok, why = self._sepia_status()
         sepia = tr("Sepia II") if ok else tr("Sepia II (not available)")
         self._sepia_reason = "" if ok else why
         return [
             ("auto", tr("Auto (Sepia II, else simulated)")),
-            ("sepia2", sepia),
+            ("sepia", sepia),
             ("simulated", tr("Simulated laser")),
         ]
 
     def _new_laser(self) -> laser_mod.LaserBackend:
         if self.laser_kind == "simulated" or (
-            self.laser_kind == "auto" and not laser_mod.sepia_available()[0]
+            self.laser_kind == "auto" and not self._sepia_status()[0]
         ):
             # the simulated driver pulses in step with the simulated measurement (one pulse per
             # half period: PIE)
@@ -94,8 +113,9 @@ class LaserSettingsMixin:
     def connect_laser(self) -> bool:
         if self.laser_connected:
             return False
-        if self.laser_kind == "sepia2":
-            ok, why = laser_mod.sepia_available()
+        if self.laser_kind in ("sepia", "sepia2"):
+            self._sepia_at = -1e9  # look again now
+            ok, why = self._sepia_status()
             if not ok:
                 self.laser_text, self.laser_detail = tr("Sepia II not available"), why
                 return False
@@ -108,6 +128,7 @@ class LaserSettingsMixin:
             return False
         self.laser = backend
         self.laser_program = backend.capture()
+        self._laser_form_from_device()
         self.laser_divider = int((self.laser_program.get("oscillator") or {}).get("divider", 1))
         self.laser_applied = False
         self._laser_status()
@@ -120,9 +141,53 @@ class LaserSettingsMixin:
             self.laser.close()
         finally:
             self.laser = None
+            self.laser_form = None
             self.laser_applied = self._emission_on = False
             self.laser_text, self.laser_detail = tr("No laser connected"), ""
         return True
+
+    def _laser_form_from_device(self) -> None:
+        """The laser driver's own controls, generated from what it describes (pulsed switch,
+        repetition rate, intensity per head; the soft lock), when the backend is a device."""
+        dev = getattr(self.laser, "device", None)
+        if dev is None:
+            self.laser_form = None
+            return
+        from chisurf.plugins.core.acq.live import devices
+
+        self._laser_sent = dict(dev.settings())
+        self.laser_form = devices.settings_form(dev, self._laser_sent,
+                                                on_change=self.laser_settings_edited)
+
+    def _laser_follow_device(self) -> None:
+        """The laser's controls show the laser's values (read-only ones included), in place."""
+        dev = getattr(self.laser, "device", None)
+        if dev is None or self.laser_form is None:
+            return
+        self._laser_sent = dict(dev.settings())
+        self.laser_form.update_values(self._laser_sent)
+
+    def laser_settings_edited(self) -> None:
+        """An edit of the laser's own controls: send what changed now."""
+        dev = getattr(self.laser, "device", None)
+        if dev is None or self.laser_form is None:
+            return
+        from chisurf.plugins.core.acq.live import devices
+
+        values = self.laser_form.params()
+        changed = {k: v for k, v in values.items() if self._laser_sent.get(k) != v}
+        if not changed:
+            return
+        notes = devices.apply_settings(dev, changed)
+        if notes:
+            self.laser_text, self.laser_detail = tr("The laser refused"), "; ".join(notes)
+            self._laser_form_from_device()
+            return
+        self._laser_follow_device()
+        if "soft_lock" in changed:
+            self._emission_on = not bool(changed["soft_lock"])
+        self.laser_program = self.laser.capture()
+        self._laser_status()
 
     def laser_off(self) -> None:
         """Block all emission now (never fails)."""
@@ -171,6 +236,8 @@ class LaserSettingsMixin:
         self.laser_detail = "\n".join(
             [f"{st.model} {st.serial} ({self.laser.kind})", heads] + list(st.warnings)
         )
+        # the laser's own controls show what it holds now (the soft lock after Laser off ...)
+        self._laser_follow_device()
 
     def laser_light(self) -> str:
         if not self.laser_connected:
@@ -282,7 +349,7 @@ class LaserSettingsMixin:
             info = session.source.info
             return int(info.n_micro), float(info.micro_res_s)
         if self.source_kind == "device" and self.device is not None:
-            res = float(self.device.resolution_s())
+            res = float(self.device.information().base_resolution_ps) * 1e-12
             period = 0.0
             if self.laser_connected:
                 osc = self.laser.state().oscillator
@@ -447,25 +514,13 @@ class LaserSettingsMixin:
         if run.get("project_data") in settings_file.PROJECT_DATA:
             self.recording_store = run["project_data"]
         dev = doc.get("device") or {}
-        sync = dev.get("sync") or {}
-        self.sync_div = int(sync.get("divider", self.sync_div))
-        self.sync_level_mv = int(sync.get("level_mv", self.sync_level_mv))
-        self.sync_edge = _EDGE_BACK.get(sync.get("edge", ""), self.sync_edge)
-        self.sync_offset_ps = int(sync.get("offset_ps", self.sync_offset_ps))
-        inputs = {int(c["channel"]): c for c in dev.get("inputs") or [] if "channel" in c}
-        if inputs:
-            first = inputs[min(inputs)]
-            self.input_level_mv = int(first.get("level_mv", self.input_level_mv))
-            self.input_edge = _EDGE_BACK.get(first.get("edge", ""), self.input_edge)
-        for role, attr in (("donor", "donor_offset_ps"), ("acceptor", "acceptor_offset_ps")):
-            try:
-                chs = self.make_experiment(400).channels(role)
-            except Exception:  # noqa: BLE001 - a setup without the role
-                chs = []
-            if chs and int(chs[0]) in inputs and "offset_ps" in inputs[int(chs[0])]:
-                setattr(self, attr, int(inputs[int(chs[0])]["offset_ps"]))
-        self.binning = int(dev.get("binning", self.binning))
-        self.offset_ns = int(dev.get("offset_ns", self.offset_ns))
+        if dev:
+            # the device panel's values in phacq's names (readable sync/inputs keys translated)
+            self.device_values.update(settings_file.device_settings(dev))
+            if dev.get("driver") and dev.get("serial"):
+                self.device_index = f"{dev['driver']}:{dev['serial']}"
+            if self.device is not None:
+                self._device_form_from_device()
         if doc.get("laser"):
             self.laser_program = {**self.laser_program, **doc["laser"]}
             self.laser_divider = int((self.laser_program.get("oscillator") or {}).get("divider", 1))
@@ -511,25 +566,13 @@ class LaserSettingsMixin:
         doc = settings_file.new_settings(
             name=self.settings_name or (self.run_name or "Record"),
             device={
-                "backend": "pqusb",
-                "mode": "T3",
-                "sync": {
-                    "divider": int(self.sync_div),
-                    "level_mv": int(self.sync_level_mv),
-                    "edge": _EDGE.get(str(self.sync_edge), "falling"),
-                    "offset_ps": int(self.sync_offset_ps),
-                },
-                "inputs": [
-                    {
-                        "channel": ch,
-                        "level_mv": int(self.input_level_mv),
-                        "edge": _EDGE.get(str(self.input_edge), "falling"),
-                        "offset_ps": int(ps),
-                    }
-                    for ch, ps in self._input_offsets(setup).items()
-                ],
-                "binning": int(self.binning),
-                "offset_ns": int(self.offset_ns),
+                "backend": "phacq",
+                **(
+                    {"driver": self.device_index.partition(":")[0],
+                     "serial": self.device_index.partition(":")[2]}
+                    if self.device_index else {}
+                ),
+                "settings": dict(self.device_values),
             },
             experiment=experiment,
             run={
@@ -562,17 +605,9 @@ class LaserSettingsMixin:
                 }
         return doc
 
-    def _input_offsets(self, setup: dict | None) -> dict[int, int]:
-        out: dict[int, int] = {}
-        dets = (setup or {}).get("detectors") or {}
-        for role, ps in (("green", self.donor_offset_ps), ("red", self.acceptor_offset_ps)):
-            for ch in (dets.get(role) or {}).get("chs") or []:
-                out.setdefault(int(ch), int(ps))
-        return out
-
     def current_settings(self) -> dict:
         """The form's settings with what the connected device and laser report on top."""
-        device = self.device if getattr(self.device, "settings", None) is not None else None
+        device = self.device
         try:
             return settings_file.capture(
                 device=device,

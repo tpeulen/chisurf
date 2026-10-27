@@ -45,10 +45,10 @@ def test_simulation_setup_dialog_renders_autoform():
     """The setup dialog renders its AutoForm view.json and hands its parameters to OK."""
     from emtk.testing import RecordingPainter
 
-    from chisurf.plugins.core.acq.gui.app import AcquisitionApp, AcquisitionNativeModel
     from chisurf.plugins.core.acq.gui.sim_setup import SimulationSetupDialog
+    from chisurf.plugins.core.acq.test.sim_setup_host import SimSetupHost
 
-    app = AcquisitionApp(AcquisitionNativeModel())
+    app = SimSetupHost()
     applied = []
     try:
         dialog = SimulationSetupDialog(None, on_apply=applied.append)

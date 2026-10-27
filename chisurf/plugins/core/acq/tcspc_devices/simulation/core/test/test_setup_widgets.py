@@ -2,7 +2,7 @@
 
 These behaviours were asserted against the Qt ``EnhancedSimulationSetupDialog`` /
 ``DecaySettingsDialog`` before those were retired; they now drive the emtk dialog of the
-acquisition app (``chisurf.plugins.core.acq.gui.sim_setup``) -- through the pointer and
+``chisurf.plugins.core.acq.gui.sim_setup`` (hosted by ``acq/test/sim_setup_host.py``) -- through the pointer and
 keyboard where a control is involved, through its edit model where the Qt test set a value
 programmatically too.
 """
@@ -18,18 +18,11 @@ W, H = 900, 1000
 
 
 def _driver(**params):
-    """The acquisition app with its simulation setup dialog open on *params*."""
-    from chisurf.plugins.core.acq.gui.app import AcquisitionApp, AcquisitionNativeModel
-    from chisurf.plugins.core.acq.gui.sim_setup import SimulationSetupDialog
+    """The simulation setup dialog open on *params*, in a minimal host."""
+    from chisurf.plugins.core.acq.test.sim_setup_host import SimSetupHost
 
-    app = AcquisitionApp(AcquisitionNativeModel())
+    app = SimSetupHost(params)
     ui = Driver(app, (W, H))
-    ui.draw(3)
-    base = app.model._editor_params()
-    base.update(params)
-    app.setup_kind = "SIMULATION"
-    app.sim_setup = SimulationSetupDialog(base, on_apply=app.model.apply_simulation_setup)
-    app.sim_setup.show()
     ui.draw(3)
     return ui
 
@@ -212,24 +205,3 @@ def test_the_decay_editor_opens_on_the_species_it_was_asked_for(make):
     dialog.open_decay(99)
     assert dialog.decay.cur == 2
 
-
-def test_picoquant_status_lists_each_device():
-    """The PicoQuant card lists every detected device and its status, as the Qt dialog did."""
-    from chisurf.plugins.core.acq.gui.setup_models import PicoQuantSetupModel
-
-    class Api:
-        def detect_devices(self):
-            return [
-                {"device_id": "MultiHarp150-1", "status": "ready"},
-                {"device_id": "MultiHarp150-2", "status": "busy"},
-            ]
-
-    class Device:
-        api = Api()
-
-    setup = PicoQuantSetupModel(Device(), 100_000)
-    setup.detect_status()
-    lines = setup.status.splitlines()
-    assert lines[0] == "PicoQuant API reports 2 device(s):"
-    assert lines[1] == "Device: MultiHarp150-1  Status: ready"
-    assert lines[2] == "Device: MultiHarp150-2  Status: busy"

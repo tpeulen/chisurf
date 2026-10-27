@@ -2175,8 +2175,8 @@ guides/figures/18_sim_setup.png:
   origin: docs/guides/screenshots/guides_15_25.py::_grab_18_sim_setup
   recipe: >-
     Run the function named in origin; it opens the emtk Simulation setup dialog
-    of the Acquisition tool headlessly (two species, green + red, Kinetics fold
-    open) and writes the PNG here.
+    headlessly in a minimal host (two species, green + red, Kinetics fold open)
+    and writes the PNG here.
   pages:
   - docs/guides/18_tttr_simulation.md
 
@@ -4107,9 +4107,9 @@ images/acq_live_decay.png:
   origin: docs/guides/screenshots/guides_56_65.py::_grab_65_live_plots
   recipe: >-
     From docs/guides/screenshots (arm64 env, QT_QPA_PLATFORM=offscreen, CHISURF_SETTINGS_DIR on a
-    scratch folder) run `python -c "import guides_56_65 as g; g._grab_65_live_plots()"`. It runs the native
-    Acquisition window's own simulator (default species, pulsed excitation) for 300 000 photons at
-    1000x1300 and writes the Decay, Correlation and MCS tabs, each cropped to the Pipeline results block.
+    scratch folder) run `python -c "import guides_56_65 as g; g._grab_65_live_plots()"`. It streams the
+    acquisition simulator (one species, pulsed excitation, 300 000 photons) through the pipeline into
+    the live plots, hosted alone at 1000x760, and writes the Decay, Correlation and MCS tabs.
   pages:
   - docs/guides/65_live_acquisition.md
 
@@ -4119,9 +4119,9 @@ images/acq_live_correlation.png:
   origin: docs/guides/screenshots/guides_56_65.py::_grab_65_live_plots
   recipe: >-
     From docs/guides/screenshots (arm64 env, QT_QPA_PLATFORM=offscreen, CHISURF_SETTINGS_DIR on a
-    scratch folder) run `python -c "import guides_56_65 as g; g._grab_65_live_plots()"`. It runs the native
-    Acquisition window's own simulator (default species, pulsed excitation) for 300 000 photons at
-    1000x1300 and writes the Decay, Correlation and MCS tabs, each cropped to the Pipeline results block.
+    scratch folder) run `python -c "import guides_56_65 as g; g._grab_65_live_plots()"`. It streams the
+    acquisition simulator (one species, pulsed excitation, 300 000 photons) through the pipeline into
+    the live plots, hosted alone at 1000x760, and writes the Decay, Correlation and MCS tabs.
   pages:
   - docs/guides/65_live_acquisition.md
 
@@ -4131,9 +4131,9 @@ images/acq_live_mcs.png:
   origin: docs/guides/screenshots/guides_56_65.py::_grab_65_live_plots
   recipe: >-
     From docs/guides/screenshots (arm64 env, QT_QPA_PLATFORM=offscreen, CHISURF_SETTINGS_DIR on a
-    scratch folder) run `python -c "import guides_56_65 as g; g._grab_65_live_plots()"`. It runs the native
-    Acquisition window's own simulator (default species, pulsed excitation) for 300 000 photons at
-    1000x1300 and writes the Decay, Correlation and MCS tabs, each cropped to the Pipeline results block.
+    scratch folder) run `python -c "import guides_56_65 as g; g._grab_65_live_plots()"`. It streams the
+    acquisition simulator (one species, pulsed excitation, 300 000 photons) through the pipeline into
+    the live plots, hosted alone at 1000x760, and writes the Decay, Correlation and MCS tabs.
   pages:
   - docs/guides/65_live_acquisition.md
 
@@ -4361,3 +4361,29 @@ guides/figures/114_project_data_self_contained.png:
     -d) python docs/guides/screenshots/project_data_shot.py. Loads the plugin's demonstration project
     (one file moved, a same-name decoy), searches the backup folder, then uses the candidate, makes the
     project self-contained and saves; read the PNGs.
+
+guides/figures/65_record_device.png:
+  caption: Record's TCSPC device panel for a MultiHarp 150 8N, generated from what libphacq describes.
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_65_record_devices
+  recipe: >-
+    From docs/guides/screenshots (arm64 env with libphacq installed, QT_QPA_PLATFORM=offscreen,
+    CHISURF_SETTINGS_DIR on a scratch folder) run `python -c "import guides_56_65 as g;
+    g._grab_65_record_devices()"`. The MultiHarp is phacq's replay of a recorded session with the
+    real unit (libphacq tests/data/mh150_t3_live.txt), the Sepia II phacq's simulated unit; both
+    panels are cropped from a 1500x1100 Record window.
+  pages:
+  - docs/guides/65_live_acquisition.md
+
+guides/figures/65_record_laser.png:
+  caption: Record's Laser panel for a Sepia II: soft lock, pulsed switch, repetition rate, intensity.
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_65_record_devices
+  recipe: >-
+    From docs/guides/screenshots (arm64 env with libphacq installed, QT_QPA_PLATFORM=offscreen,
+    CHISURF_SETTINGS_DIR on a scratch folder) run `python -c "import guides_56_65 as g;
+    g._grab_65_record_devices()"`. The MultiHarp is phacq's replay of a recorded session with the
+    real unit (libphacq tests/data/mh150_t3_live.txt), the Sepia II phacq's simulated unit; both
+    panels are cropped from a 1500x1100 Record window.
+  pages:
+  - docs/guides/65_live_acquisition.md

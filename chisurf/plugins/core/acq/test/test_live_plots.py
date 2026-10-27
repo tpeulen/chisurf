@@ -33,7 +33,7 @@ SIM = {
 
 
 class PlotsApp(ImApp):
-    """Hosts the live plots form the way AcquisitionApp will, polling snapshots."""
+    """Hosts the live plots form the way a recording window does, polling snapshots."""
 
     def __init__(self, plots: LivePlots):
         self.model = plots
@@ -219,44 +219,6 @@ def test_mcs_bin_width_reaches_pipeline_and_macrotime_type_switches():
     plots.set_snapshot(pipeline.snapshot())
     ui.draw(2)
     assert plots.drawn["macro"][0][0] == "t"
-
-
-def test_real_app_simulation_fills_decay_plot_mid_run_and_persists_settings():
-    """Start button in the real app: the decay plot has photons before the run ends."""
-    import time
-
-    from chisurf.plugins.core.acq.gui.app import AcquisitionApp, AcquisitionNativeModel
-
-    model = AcquisitionNativeModel()
-    model.photon_limit = 20000
-    model.advanced_settings_text = __import__("json").dumps({**SIM, "N_ph_max": 20000})
-    app = AcquisitionApp(model)
-    try:
-        ui = Driver(app, (1200, 900))
-        ui.draw(3)
-        ui.click("start")
-        seen_mid = False
-        end = time.monotonic() + 60
-        while time.monotonic() < end:
-            ui.draw(1)
-            drawn = model.live.drawn.get("decay") or []
-            if model.running and drawn and sum(float(y.sum()) for _l, _x, y in drawn) > 0:
-                seen_mid = True
-            if not model.running and model.snapshot is not None and seen_mid:
-                break
-            time.sleep(0.02)
-        assert seen_mid, "decay plot never held photons while the run was still going"
-        ui.draw(3)
-        assert not model.running and model.snapshot["total_photons"] > 1000
-        final = model.live.drawn["decay"]
-        assert sum(float(y.sum()) for _l, _x, y in final) <= model.snapshot["total_photons"]
-        model.live.rate_binning = 4
-        saved = app.export_settings()
-        assert saved["live_plots"]["rate_binning"] == 4
-        app.restore_settings({**saved, "live_plots": {**saved["live_plots"], "rate_binning": 9}})
-        assert model.live.rate_binning == 9
-    finally:
-        app.close()
 
 
 def test_the_burst_and_phasor_line_stays_visible_under_the_decay_plot():

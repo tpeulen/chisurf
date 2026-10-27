@@ -1,6 +1,6 @@
 """Simulator exports, loaded lazily around the Qt-free core.
 
-The setup dialog is the acquisition app's emtk ``SimulationSetupDialog``
+The setup dialog is the emtk ``SimulationSetupDialog``
 (``chisurf.plugins.core.acq.gui.sim_setup``).
 """
 

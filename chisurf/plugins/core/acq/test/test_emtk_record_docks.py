@@ -69,7 +69,7 @@ def test_the_layout_round_trips(app):
 
 
 def test_every_tour_target_is_drawn_when_its_step_is_shown(app):
-    steps = json.loads((HERE / "record_guide.json").read_text(encoding="utf-8"))["steps"]
+    steps = json.loads((HERE / "guide.json").read_text(encoding="utf-8"))["steps"]
     ui = Driver(app, SIZE)
     model = app.model
     ui.click("load_example")

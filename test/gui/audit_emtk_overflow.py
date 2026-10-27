@@ -11,8 +11,8 @@ For each plugin whose ``manifest.json`` declares ``entrypoints.gui`` *and*
    ``end_child`` / ``end`` are spied so non-scrollable children and windows whose
    content outgrew them are listed as well;
 4. drag-only numeric fields -- ``im.input_int(`` / ``im.input_float(`` calls in the
-   plugin's GUI sources that are not inside a typed-field helper (the fixed pattern
-   is ``acq/gui/app.py::_typed_field``);
+   plugin's GUI sources that are not inside a typed-field helper (a ``_typed_field``
+   wrapper, as the retired classic acquisition window had);
 5. click smoke -- ``imaging_emtk.testing.Driver(app, (1200, 800)).draw(3)``.
 
 Every plugin runs in its own interpreter (a crash, hang or GL context cannot take

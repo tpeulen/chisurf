@@ -11,13 +11,13 @@ channel ``1 << (n - 1)`` of an event of type 1 -- exactly what tttrlib's CLSM re
 * :class:`ScanSettings` -- the scan (area, pixels, dwell time, frames, z planes, points) and its
   ``ImgHdr_*`` header tags, both ways.
 * :class:`ScannerBackend` -- what a scanner offers the Record tool. The real ones (piezo stages and
-  the rest SymPhoTime drives) come with CMC's device layer (rustytime); :class:`SimScanner` is the
+  the rest SymPhoTime drives) are not driven by phacq yet; :class:`SimScanner` is the
   simulated one.
 * :class:`ImagingSample` -- a simulated specimen (beads with two lifetimes on a dim cell outline,
   two detectors, background, IRF), scanned by tttrlib's ``SimEngine`` (``run_scan``), which emits
   the photons and the markers.
-* :class:`ImageSimDevice` -- a MultiHarp that measures that sample: generic-T3 records, markers
-  included, delivered through the same pqusb device path the smFRET simulator uses.
+* :class:`ImageSimSource` -- that sample measured: its photons and markers as photon batches at
+  measurement pace.
 """
 
 from __future__ import annotations
@@ -33,7 +33,6 @@ from .realism import Realism
 
 __all__ = [
     "IMGHDR_TYPES",
-    "ImageSimDevice",
     "ImagingSample",
     "ScanSettings",
     "ScannerBackend",
@@ -535,236 +534,12 @@ def _frame_arrays(eng) -> _Scan:
     return _Scan(t[order], channel[order], micro[order], event[order])
 
 
-# -- the simulated imaging device ------------------------------------------------------------------
-try:
-    from pqusb.device import MODE_T3, DeviceError, Identity, InputSettings, TcspcDevice
-    from pqusb.records import RT_GENERIC_T3
-
-    _PQUSB = True
-except Exception:  # noqa: BLE001 - optional dependency
-    _PQUSB = False
-    TcspcDevice = object  # type: ignore[misc,assignment]
-
-#: Measurement time synthesised per FIFO read at most (memory at high replay speeds).
-_MAX_READ_S = 0.05
-
-if _PQUSB:
-
-    class ImageSimDevice(TcspcDevice):
-        """A MultiHarp whose scanner scans a simulated sample: generic-T3 photon **and marker**
-        records, frame by frame, at measurement pace (``speed`` times real time).
-
-        Parameters
-        ----------
-        scan : ScanSettings
-        sample : ImagingSample
-        realism : Realism
-            The instrument's IRF and background (the smFRET-specific settings are not used).
-        speed : float
-        """
-
-        hw_type = "MultiHarp"
-        record_types = {MODE_T3: RT_GENERIC_T3}
-        base_res_ps = 80
-        #: the simulation's micro-time grid (ns per channel, channels per laser period)
-        MICRO_RES_NS = 0.02
-        N_MICRO = 1600
-
-        def __init__(
-            self,
-            scan: ScanSettings,
-            sample: ImagingSample | None = None,
-            *,
-            realism: Realism | None = None,
-            speed: float = 1.0,
-        ):
-            super().__init__()
-            from .realism import IDEAL
-
-            self.scanner = SimScanner(scan)
-            self.scan = scan
-            self.sample = sample or ImagingSample()
-            self.realism = realism or IDEAL
-            self.speed = float(speed)
-            self.period_s = self.N_MICRO * self.MICRO_RES_NS * 1e-9
-            self.sync_rate_hz = 1.0 / self.period_s
-            self._t0: float | None = None
-            self._tacq_s = 0.0
-            self._sent_s = 0.0
-            self._frames_done = 0
-            self._held: list = []  # simulated, not yet delivered: (t, channel, dtime, special)
-            self._wrap = 0
-            self._pending = np.zeros(0, np.uint32)
-            self._recent = np.zeros(2, np.int64)
-
-        def initialize(self, mode: int = MODE_T3, refsource: int = 0) -> Identity:
-            if mode != MODE_T3:
-                raise DeviceError("the imaging simulator measures in T3 mode")
-            self.mode, self.nchan = mode, 2
-            self.settings.inputs = [InputSettings() for _ in range(self.nchan)]
-            self.identity = Identity(
-                model="MultiHarp (simulated scan)", serial="SIMIMG01", partno="sim"
-            )
-            return self.identity
-
-        def set_sync_div(self, div):
-            self.settings.sync_div = int(div)
-
-        def set_sync_edge_trg(self, level_mv, edge):
-            self.settings.sync.level_mv, self.settings.sync.edge = level_mv, edge
-
-        def set_sync_channel_offset(self, ps):
-            self.settings.sync.offset_ps = ps
-
-        def set_input_edge_trg(self, ch, level_mv, edge):
-            s = self.settings.inputs[ch]
-            s.level_mv, s.edge = level_mv, edge
-
-        def set_input_channel_offset(self, ch, ps):
-            self.settings.inputs[ch].offset_ps = ps
-
-        def set_input_channel_enable(self, ch, en):
-            self.settings.inputs[ch].enabled = bool(en)
-
-        def set_binning(self, code):
-            self.settings.binning = int(code)
-
-        def set_offset(self, ns):
-            self.settings.offset_ns = int(ns)
-
-        def count_rates(self) -> tuple[int, list[int]]:
-            return int(round(self.sync_rate_hz)), [int(r) for r in self._recent]
-
-        # -- measurement hooks ------------------------------------------------------------------
-        def start(self, tacq_ms: int) -> None:
-            if int(self.settings.sync_div) != 1:
-                raise DeviceError("the imaging simulator runs with sync divider 1")
-            self.scanner.configure(self.scan)
-            self.scanner.start()
-            self._t0 = time.monotonic()
-            # the scan ends the measurement: at most the time all frames take
-            self._tacq_s = min(tacq_ms / 1000.0, self.scan.total_s + self.scan.line_s)
-            self._sent_s, self._frames_done, self._wrap = 0.0, 0, 0
-            self._held = []
-            self._pending = np.zeros(0, np.uint32)
-
-        def stop(self) -> None:
-            self._t0 = None
-            self.scanner.stop()
-
-        def close(self) -> None:
-            self.stop()
-
-        def _poll(self, st) -> bool:
-            st.sync_rate = int(round(self.sync_rate_hz))
-            # measurement time delivered, not wall time: a slow simulation delays the end
-            return self._t0 is not None and self._sent_s < self._tacq_s
-
-        def _elapsed(self) -> float:
-            return (time.monotonic() - self._t0) * self.speed if self._t0 is not None else 0.0
-
-        def _fifo_read(self, buf, timeout_ms: int) -> int:
-            if self._t0 is not None:
-                upto = min(self._elapsed(), self._tacq_s, self._sent_s + _MAX_READ_S)
-                if upto - self._sent_s >= 0.002 or upto >= self._tacq_s:
-                    words = self._records_until(upto)
-                    self._pending = np.concatenate([self._pending, words])
-                    self._sent_s = upto
-            if self._pending.size == 0:
-                time.sleep(min(0.005, timeout_ms / 1000.0))
-                return 0
-            n = min(self._pending.size, len(buf) // 4)
-            memoryview(buf)[: 4 * n] = memoryview(self._pending[:n].tobytes())
-            self._pending = self._pending[n:]
-            return 4 * n
-
-        # -- record synthesis -------------------------------------------------------------------
-        def _simulate_until(self, upto_s: float) -> None:
-            scan = self.scan
-            while (
-                self._frames_done < scan.total_frames and self._frames_done * scan.frame_s <= upto_s
-            ):
-                k = self._frames_done
-                frame = simulate_frame(
-                    self.sample,
-                    scan,
-                    self.realism,
-                    frame=k % max(1, scan.frames),
-                    plane=k // max(1, scan.frames),
-                    n_micro=self.N_MICRO,
-                    micro_res_ns=self.MICRO_RES_NS,
-                )
-                self._held.append(
-                    (frame.t + k * scan.frame_s, frame.channel, frame.micro, frame.event)
-                )
-                self._frames_done += 1
-
-        def _records_until(self, upto_s: float) -> np.ndarray:
-            self._simulate_until(upto_s)
-            take_t, take_c, take_m, take_e = [], [], [], []
-            keep = []
-            for t, c, m, e in self._held:
-                cut = int(np.searchsorted(t, upto_s, side="right"))
-                take_t.append(t[:cut])
-                take_c.append(c[:cut])
-                take_m.append(m[:cut])
-                take_e.append(e[:cut])
-                if cut < len(t):
-                    keep.append((t[cut:], c[cut:], m[cut:], e[cut:]))
-            self._held = keep
-            t = np.concatenate(take_t) if take_t else np.zeros(0)
-            channel = np.concatenate(take_c).astype(np.int64) if take_c else np.zeros(0, np.int64)
-            micro = np.concatenate(take_m).astype(np.int64) if take_m else np.zeros(0, np.int64)
-            event = np.concatenate(take_e).astype(np.int64) if take_e else np.zeros(0, np.int64)
-            res = self.resolution_s()
-            nbins = max(1, int(round(self.period_s / res)))
-            dtime = np.minimum((micro * self.MICRO_RES_NS * 1e-9 / res).astype(np.int64), nbins - 1)
-            nsync = np.floor(t / self.period_s).astype(np.int64)
-            photons = event == 0
-            span = max(upto_s - self._sent_s, 1e-9)
-            for k in range(2):
-                self._recent[k] = int(np.sum(photons & (channel == k)) / span)
-            words = np.where(
-                photons,
-                ((channel & 0x3F) << 25) | ((dtime & 0x7FFF) << 10) | (nsync & 0x3FF),
-                (1 << 31) | ((channel & 0x3F) << 25) | (nsync & 0x3FF),
-            )
-            return self._with_overflows(words, nsync, upto_s)
-
-        def _with_overflows(self, words, nsync, upto_s: float) -> np.ndarray:
-            """Interleave an overflow record before each word whose 1024-sync block is new."""
-            wrap = nsync // 1024
-            out: list[int] = []
-            last = self._wrap
-            change = np.flatnonzero(np.diff(np.concatenate([[last], wrap])) > 0)
-            start = 0
-            for i in change:
-                out.extend(words[start:i].tolist())
-                _emit_overflow(out, int(wrap[i]) - last)
-                last = int(wrap[i])
-                start = i
-            out.extend(words[start:].tolist())
-            end_wrap = int(np.floor(upto_s / self.period_s)) // 1024
-            if end_wrap > last:
-                _emit_overflow(out, end_wrap - last)
-                last = end_wrap
-            self._wrap = last
-            return np.asarray(out, dtype=np.uint32)
-
-else:
-    ImageSimDevice = None  # type: ignore[assignment]
-
-
 class ImageSimSource:
-    """A simulated scan without a device layer: the photons and markers :func:`simulate_frame`
-    makes, delivered as :class:`~.sources.PhotonBatch` es at measurement pace.
-
-    :class:`ImageSimDevice` runs the same simulation through CMC's pqusb device path (records,
-    the FIFO, the decoder) when pqusb is installed; this source is what a scan simulates with
-    when it is not -- the analysis sees the same photons and markers either way.
+    """A simulated scan: the photons and markers :func:`simulate_frame` makes, delivered as
+    :class:`~.sources.PhotonBatch` es at measurement pace.
     """
 
-    #: the clocks of :class:`ImageSimDevice` (a 32 ns sync period in 1600 micro-time channels)
+    #: the clocks of a MultiHarp-like unit (a 32 ns sync period in 1600 micro-time channels)
     MICRO_RES_NS = 0.02
     N_MICRO = 1600
     #: each read delivers at most this much measurement time (the image builds line by line)

@@ -1,4 +1,4 @@
-"""The emtk simulation setup dialog: every edit reaches the simulation the tool runs.
+"""The emtk simulation setup dialog: every edit reaches the simulation its parameters drive.
 
 The tests drive the real pointer path (double-click a table cell, type, Enter, press OK) and then
 check the simulated words, not just the settings dictionary: an edit that only changes a number
@@ -17,13 +17,11 @@ W, H = 900, 1000
 
 @pytest.fixture
 def drv():
-    """The acquisition app with its simulation setup dialog open."""
-    from chisurf.plugins.core.acq.gui.app import AcquisitionApp, AcquisitionNativeModel
+    """The simulation setup dialog, open in a minimal host."""
+    from chisurf.plugins.core.acq.test.sim_setup_host import SimSetupHost
 
-    app = AcquisitionApp(AcquisitionNativeModel())
+    app = SimSetupHost()
     ui = Driver(app, (W, H))
-    ui.draw(3)
-    ui.click("open_simulation_setup")
     ui.draw(3)
     assert app.sim_setup is not None and app.sim_setup.open
     yield ui
@@ -173,12 +171,12 @@ def test_edits_reach_the_simulated_photons(drv):
     drv.draw(3)
     assert not dialog.open
 
-    params = app.model._editor_params()
+    params = dict(app.params)
     assert params["N_species"] == 2
     assert params["M"][0] == 7.0
     assert params["q"][:2] == [300.0, 0.0]
     assert params["k_rad"] == [0.0, 2.5, 0.0, 0.0]
-    assert "Simulation setup applied" in app.model.status
+    assert app.status == ""
 
     params["N_ph_max"] = 400
     counts = channel_counts(params)
@@ -191,42 +189,8 @@ def test_edits_reach_the_simulated_photons(drv):
     assert set(channel_counts(again)) == {9}
 
 
-def test_start_runs_the_dialogs_values(drv):
-    """The tool's Start path simulates the dialog's parameters, not the ones it opened with."""
-    from chisurf.plugins.core.acq.gui import app as app_module
-
-    app = drv.app
-    edit_cell(drv, "species_rows", 0, "q0", "0")
-    edit_cell(drv, "species_rows", 0, "q1", "250")
-    drv.click("sim_ok")
-    drv.draw(3)
-    seen = {}
-    real = app_module.generate_spc132_uint32
-
-    def spy(params):
-        seen.update(params)
-        return real(params)
-
-    app_module.generate_spc132_uint32 = spy
-    try:
-        app.model.photon_limit = 300
-        assert app.model.start()
-        for _ in range(400):
-            drv.draw(1)
-            app.model.poll()
-            if not app.model.running:
-                break
-            import time
-
-            time.sleep(0.02)
-    finally:
-        app_module.generate_spc132_uint32 = real
-    assert seen["q"][:2] == [0.0, 250.0]
-    assert app.model.snapshot is not None and app.model.snapshot["total_photons"] > 0
-
-
 def test_emission_seed_survives_apply(drv):
-    """The dialog's emission seed is not overwritten by the tool's seed field."""
+    """The emission seed typed into the dialog is the one *OK* hands over."""
     app = drv.app
     drv.click("seed_emission")
     drv.select_all()
@@ -235,8 +199,7 @@ def test_emission_seed_survives_apply(drv):
     drv.draw(2)
     drv.click("sim_ok")
     drv.draw(3)
-    assert app.model._editor_params()["rmt2seed"] == 777
-    assert app.model.apply_tool_fields(app.model._editor_params())["rmt2seed"] == 777
+    assert app.params["rmt2seed"] == 777
 
 
 def test_decay_editor_writes_lifetimes_back_on_ok_only(drv):
@@ -268,16 +231,17 @@ def test_decay_editor_writes_lifetimes_back_on_ok_only(drv):
 
 def test_apply_is_refused_when_the_engine_rejects_it(drv, monkeypatch):
     """A parameter set the engine cannot build keeps the dialog open and says so."""
-    from chisurf.plugins.core.acq.gui import app as app_module
+    from chisurf.plugins.core.acq.tcspc_devices.simulation.core import algorithms
 
     def reject(_params):
         raise ValueError("no engine")
 
-    monkeypatch.setattr(app_module, "build_engine", reject)
+    monkeypatch.setattr(algorithms, "build_engine", reject)
     drv.click("sim_ok")
     drv.draw(3)
     assert drv.app.sim_setup.open
-    assert "rejected" in drv.app.model.status.lower()
+    assert "rejected" in drv.app.status.lower()
+    assert "rejected" in drv.app.sim_setup.model.status.lower()
 
 
 def test_view_json_shows_what_the_simulator_receives(drv):
@@ -312,14 +276,12 @@ def test_save_and_load_json_round_trip(drv, tmp_path):
 def test_dialog_is_translated(locale, title, decay):
     """The dialog's title, section text and table headers come out in German and French."""
     from chisurf.emtk import i18n
-    from chisurf.plugins.core.acq.gui.app import AcquisitionApp, AcquisitionNativeModel
+    from chisurf.plugins.core.acq.test.sim_setup_host import SimSetupHost
 
     i18n.install(locale)
-    app = AcquisitionApp(AcquisitionNativeModel())
+    app = SimSetupHost()
     try:
         ui = Driver(app, (W, H))
-        ui.draw(3)
-        ui.click("open_simulation_setup")
         shown = set(ui.draw(3).strings)
         assert any(title in s for s in shown), sorted(shown)[:40]
         assert decay in shown

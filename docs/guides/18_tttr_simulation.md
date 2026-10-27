@@ -68,14 +68,13 @@ the static cross-correlation (green) is flat at 1. Filter condition number 3.3.
 
 ### Setting up species and kinetics in the GUI
 
-The acquisition simulator is the *Simulation* device of **Tools ▸ Views ▸
-Acquisition**. Press **Simulation setup…** (or **Device Setup…** with the
-Simulation source selected) to open its setup dialog, an emtk window declared as
-an AutoForm spec. **OK** merges the dialog over the tool's current simulator
-parameters, validates the result by constructing the simulator engine, and uses
-it for the next **Start**; a set the engine rejects keeps the dialog open and says
-why on the status line. **Cancel** changes nothing. *Advanced simulation
-parameters* still shows the same dictionary as raw JSON.
+The acquisition simulator's setup dialog
+(`chisurf/plugins/core/acq/gui/sim_setup.py`) is an emtk window declared as an
+AutoForm spec. **OK** merges the dialog over the host's current simulator
+parameters and validates the result by constructing the simulator engine; a set
+the engine rejects keeps the dialog open and says why on the status line.
+**Cancel** changes nothing. The scalar parameters are also on **Setup ▸ Settings ▸
+Acquisition**, and **View JSON** shows the whole dictionary as raw JSON.
 
 ```{figure} figures/18_sim_setup.png
 :name: fig-18-sim-setup

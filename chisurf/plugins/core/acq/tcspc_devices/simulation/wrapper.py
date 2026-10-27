@@ -11,8 +11,8 @@ from datetime import datetime
 
 import numpy as np
 
-from ..abc import Signal, TCSPCDeviceABC
 from .core.streaming import TttrlibSimulator
+from .device_base import Signal, TCSPCDeviceABC
 
 logger = logging.getLogger(__name__)
 

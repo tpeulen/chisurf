@@ -214,11 +214,13 @@ class GroupedEntryView:
     unchanged, so this only affects layout.
     """
 
-    def __init__(self, category, name, values=None, on_change=None):
+    def __init__(self, category, name, values=None, on_change=None, *, entry=None):
         from chisurf.core.dataspec import ModelView
         from chisurf.core.dataspec.rpc import RpcMethodView
 
-        spec = describe(category, name)
+        # ``entry``: a registry entry of the same dialect that is not in a registry -- a
+        # device's settings as libphacq describes them (``Device.parameter_schema``).
+        spec = entry if entry is not None else describe(category, name)
         self._inner_view = RpcMethodView(
             spec,
             values=values or None,
@@ -244,6 +246,26 @@ class GroupedEntryView:
 
     def params(self):
         return self._inner_view.params()
+
+    def update_values(self, values):
+        """Show *values* without an edit (see ``RpcMethodView.update_values``)."""
+        self._inner_view.update_values(values)
+
+
+def entry_form_view_for(
+    entry: typing.Mapping[str, typing.Any],
+    values: typing.Mapping[str, typing.Any] | None = None,
+    on_change: typing.Callable | None = None,
+):
+    """A grouped form model for a registry entry given directly rather than by name.
+
+    For entries that live outside tttrlib's table but speak its dialect -- a device's
+    settings, which libphacq publishes per opened device (``Device.parameter_schema``).
+    """
+    if not entry.get("params_schema"):
+        raise ValueError(f"{entry.get('name', '?')} publishes no parameters, so it has no form")
+    return GroupedEntryView("", str(entry.get("name", "")), values=values, on_change=on_change,
+                            entry=entry)
 
 
 def _linked_property(spec: typing.Mapping) -> tuple[str, str, str] | None:

@@ -7,12 +7,14 @@ simulator -- in plain JSON that a person can read and edit::
     {
       "schema": "chisurf.acquisition/1",
       "name": "PIE smFRET, 485/640",
-      "device": {"backend": "pqusb", "model": "MultiHarp", "mode": "T3", "refsource": 0,
+      "device": {"backend": "phacq", "driver": "picoquant", "model": "MultiHarp 150 8N",
+                 "mode": "T3",
                  "sync": {"divider": 1, "level_mv": -50, "edge": "falling", "offset_ps": 0},
                  "inputs": [{"channel": 0, "level_mv": -50, "edge": "falling", "offset_ps": 0,
                              "enabled": true}],
-                 "binning": 0, "offset_ns": 0},
-      "laser": {"backend": "sepia2", "heads": [{"slot": 200, "output": 0, "enabled": true,
+                 "binning": 0, "offset_ns": 0,
+                 "settings": {"input_dead_time_ps[0]": 800, "marker_holdoff_ns": 0}},
+      "laser": {"backend": "sepia", "heads": [{"slot": 200, "output": 0, "enabled": true,
                                                  "intensity_pct": 40.0}],
                 "oscillator": {"divider": 4, "burst_lengths": [1, 1, 0, 0, 0, 0, 0, 0],
                                "output_enabled": [true, true, false, false, false, false, false, false]}},
@@ -23,6 +25,10 @@ simulator -- in plain JSON that a person can read and edit::
                "frames": 1, "bidirectional": false, "z_planes": 1},
       "simulator": {}
     }
+
+The ``device`` section is libphacq's: the readable ``sync`` / ``inputs`` keys, and ``settings``
+holding any of the device's own settings by phacq name (``capture_device`` writes all of them) --
+see :func:`device_settings`.
 
 Every section is optional; keys this module does not know are kept as they are, so a file written by
 a newer ChiSurf survives a round trip through an older one. :func:`validate` lists every problem with
@@ -167,6 +173,8 @@ def validate(doc: Any) -> list[str]:
                 if ch["channel"] in seen:
                     p.append(f"{where}.channel: {ch['channel']} appears twice")
                 seen.add(ch["channel"])
+    if "settings" in dev and not isinstance(dev["settings"], dict):
+        p.append("device.settings: expected an object {setting: value}")
     if "binning" in dev:
         _num(p, "device.binning", dev["binning"], 0, 24, integer=True)
     if "offset_ns" in dev:
@@ -272,107 +280,102 @@ def save(doc: dict, path: str | Path) -> Path:
 
 
 # ---------------------------------------------------------------------------------------------
-# Device (a pqusb TcspcDevice, duck-typed -- pqusb is not imported here)
+# Device (a phacq.Device, duck-typed -- phacq is not imported here)
 # ---------------------------------------------------------------------------------------------
-def apply_device(dev: Any, device: dict, *, initialize: bool = True) -> list[str]:
-    """Apply the ``device`` section to a pqusb ``TcspcDevice``.
-
-    Initializes the device first (mode, reference source) unless *initialize* is false. Settings
-    the device does not implement are skipped and returned as notes rather than failing the run.
-    """
-    notes: list[str] = []
-    if initialize:
-        dev.initialize(MODES.get(device.get("mode", "T3"), 3), int(device.get("refsource", 0)))
-
-    def call(name: str, *args) -> None:
-        fn = getattr(dev, name, None)
-        if fn is None:
-            notes.append(f"{name}: not offered by {type(dev).__name__}")
-            return
-        try:
-            fn(*args)
-        except Exception as e:  # pqusb raises DeviceError for unsupported setters
-            notes.append(f"{name}{args}: {e}")
-
-    sync = device.get("sync") or {}
-    if "divider" in sync:
-        call("set_sync_div", int(sync["divider"]))
-    if "level_mv" in sync or "edge" in sync:
-        call(
-            "set_sync_edge_trg", int(sync.get("level_mv", -50)), EDGES[sync.get("edge", "falling")]
-        )
-    if "offset_ps" in sync:
-        call("set_sync_channel_offset", int(sync["offset_ps"]))
-    if sync.get("dead_time_ps") is not None:
-        call("set_sync_dead_time", True, int(sync["dead_time_ps"]))
-    nchan = int(getattr(dev, "nchan", 0) or 0)
-    for ch in device.get("inputs") or []:
-        c = int(ch["channel"])
-        if nchan and c >= nchan:
-            notes.append(f"input {c}: the device has {nchan} inputs")
-            continue
-        if "level_mv" in ch or "edge" in ch:
-            call(
-                "set_input_edge_trg",
-                c,
-                int(ch.get("level_mv", -50)),
-                EDGES[ch.get("edge", "falling")],
-            )
-        if "offset_ps" in ch:
-            call("set_input_channel_offset", c, int(ch["offset_ps"]))
-        if "enabled" in ch:
-            call("set_input_channel_enable", c, bool(ch["enabled"]))
-        if ch.get("dead_time_ps") is not None:
-            call("set_input_dead_time", c, True, int(ch["dead_time_ps"]))
-    if "binning" in device:
-        call("set_binning", int(device["binning"]))
-    if "offset_ns" in device:
-        call("set_offset", int(device["offset_ns"]))
-    markers = device.get("markers") or {}
-    if markers.get("edges"):
-        call("set_marker_edges", *[EDGES.get(e, e) for e in markers["edges"]])
-    if markers.get("enabled"):
-        call("set_marker_enable", *[int(bool(x)) for x in markers["enabled"]])
-    if "holdoff_ns" in markers:
-        call("set_marker_holdoff", int(markers["holdoff_ns"]))
-    return notes
+def _bits(values: list, true=lambda v: bool(v)) -> int:
+    return sum(1 << i for i, v in enumerate(values) if true(v))
 
 
 def _edge_name(e: int) -> str:
     return "rising" if int(e) else "falling"
 
 
+def device_settings(device: dict) -> dict:
+    """The ``device`` section as phacq's flat settings ``{name or name[input]: value}``.
+
+    The readable ``sync`` / ``inputs`` / ``binning`` / ``offset_ns`` / ``markers`` keys (what a
+    person writes and what :func:`from_ptu_tags` recovers from a PicoQuant header) are translated;
+    a ``settings`` object holds phacq's own names verbatim (what :func:`capture_device` writes,
+    every setting the device has) and wins where both say something.
+    """
+    flat: dict[str, Any] = {}
+
+    def trigger(prefix: str, suffix: str, t: dict) -> None:
+        if t.get("discriminator") == "cfd":
+            flat[f"{prefix}trigger_mode{suffix}"] = 1
+            if "level_mv" in t:
+                flat[f"{prefix}cfd_discr_mv{suffix}"] = int(t["level_mv"])
+            if "zero_cross_mv" in t:
+                flat[f"{prefix}cfd_zerox_mv{suffix}"] = int(t["zero_cross_mv"])
+        else:
+            if "level_mv" in t:
+                flat[f"{prefix}level_mv{suffix}"] = int(t["level_mv"])
+            if "edge" in t:
+                flat[f"{prefix}edge{suffix}"] = EDGES.get(t["edge"], t["edge"])
+        if "offset_ps" in t:
+            flat[f"{prefix}offset_ps{suffix}"] = int(t["offset_ps"])
+        if t.get("dead_time_ps") is not None:
+            flat[f"{prefix}dead_time_ps{suffix}"] = int(t["dead_time_ps"])
+
+    sync = device.get("sync") or {}
+    if "divider" in sync:
+        flat["sync_divider"] = int(sync["divider"])
+    trigger("sync_", "", sync)
+    for ch in device.get("inputs") or []:
+        c = int(ch["channel"])
+        trigger("input_", f"[{c}]", ch)
+        if "enabled" in ch:
+            flat[f"input_enable[{c}]"] = bool(ch["enabled"])
+    if "binning" in device:
+        flat["binning"] = int(device["binning"])
+    if "offset_ns" in device:
+        flat["offset_ns"] = int(device["offset_ns"])
+    markers = device.get("markers") or {}
+    if markers.get("edges"):
+        flat["marker_edges"] = _bits(markers["edges"], lambda e: EDGES.get(e, e) == 1)
+    if markers.get("enabled"):
+        flat["marker_enable"] = _bits(markers["enabled"])
+    if "holdoff_ns" in markers:
+        flat["marker_holdoff_ns"] = int(markers["holdoff_ns"])
+    flat.update(device.get("settings") or {})
+    return flat
+
+
+def apply_device(dev: Any, device: dict, *, initialize: bool = True) -> list[str]:
+    """Apply the ``device`` section to a phacq device; returns notes.
+
+    Re-initializes the device in the section's ``mode`` first unless *initialize* is false (B&H
+    cards always measure in their FIFO mode). Settings this device does not have are returned as
+    notes rather than failing; phacq validates the rest as a whole before it sends anything, so a
+    rejected value leaves the device as it was and the note names the setting and the rule.
+    """
+    from chisurf.plugins.core.acq.live import devices
+
+    if initialize and device.get("mode") and getattr(dev, "phacq_driver", "") != "bh":
+        import phacq
+
+        mode = {"T2": phacq.MeasurementMode.T2, "T3": phacq.MeasurementMode.T3}.get(
+            str(device["mode"]), phacq.MeasurementMode.T3
+        )
+        dev.initialize(mode, phacq.ReferenceClock.Internal)
+    return devices.apply_settings(dev, device_settings(device))
+
+
 def capture_device(dev: Any) -> dict:
-    """The device's current settings as a ``device`` section (what the driver last sent)."""
-    s = dev.settings
-    ident = getattr(dev, "identity", None)
-    mode = {v: k for k, v in MODES.items()}.get(getattr(dev, "mode", None), "T3")
+    """The device's current settings as a ``device`` section: identity, mode, resolution and every
+    setting phacq has for it (``settings``)."""
+    info = dev.information()
+    features = list(info.features)
+    mode = "T2" if "t2" in features else "T3"
     out = {
-        "backend": "pqusb",
-        "model": getattr(ident, "model", "") or getattr(dev, "hw_type", ""),
-        "serial": getattr(ident, "serial", ""),
+        "backend": "phacq",
+        "driver": str(getattr(dev, "phacq_driver", "")),
+        "model": str(info.model),
+        "serial": str(info.serial_number),
         "mode": mode,
-        "sync": {
-            "divider": int(s.sync_div),
-            "level_mv": int(s.sync.level_mv),
-            "edge": _edge_name(s.sync.edge),
-            "offset_ps": int(s.sync.offset_ps),
-        },
-        "inputs": [
-            {
-                "channel": i,
-                "level_mv": int(ch.level_mv),
-                "edge": _edge_name(ch.edge),
-                "offset_ps": int(ch.offset_ps),
-                "enabled": bool(ch.enabled),
-            }
-            for i, ch in enumerate(s.inputs)
-        ],
-        "binning": int(s.binning),
-        "offset_ns": int(s.offset_ns),
+        "resolution_ps": round(float(info.base_resolution_ps), 6),
+        "settings": dict(dev.settings()),
     }
-    with _suppress():
-        out["resolution_ps"] = round(dev.resolution_s() * 1e12, 6)
     return out
 
 
@@ -449,7 +452,7 @@ def _mode_from(tags: dict) -> str | None:
 def from_ptu_tags(tags: dict | list) -> tuple[dict, list[str]]:
     """A settings document from PicoQuant header tags, and the fields the header did not record.
 
-    *tags* is ``{"Name": value, "Name(idx)": value}`` (pqusb's ``read_header``, :func:`read_ptu_tags`)
+    *tags* is ``{"Name": value, "Name(idx)": value}`` (:func:`read_ptu_tags`)
     or tttrlib's header JSON tag list. A ``ChiSurf_AcquisitionSettings`` tag, when present, is the
     document itself and is returned as written.
     """
@@ -462,7 +465,7 @@ def from_ptu_tags(tags: dict | list) -> tuple[dict, list[str]]:
             if is_acquisition_settings(doc):
                 return doc, []
     missing: list[str] = []
-    dev: dict = {"backend": "pqusb"}
+    dev: dict = {"backend": "phacq", "driver": "picoquant"}
     hw = tags.get("HW_Type")
     if hw:
         dev["model"] = str(hw)
@@ -587,7 +590,7 @@ def _laser_from_tags(tags: dict) -> dict | None:
     )
     if not soms and not slms:
         return None
-    laser: dict = {"backend": "sepia2", "heads": []}
+    laser: dict = {"backend": "sepia", "heads": []}
     if tags.get("Sep2_SerialNo"):
         laser["serial"] = str(tags["Sep2_SerialNo"])
     if tags.get("Sep2_FirmwareVersion"):

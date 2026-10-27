@@ -238,13 +238,11 @@ def _grab_18_sim_setup():
     """Acquisition simulator setup dialog (emtk): two species, green+red, a 2x2 rate grid."""
     from emtk.testing import Driver
 
-    from chisurf.plugins.core.acq.gui.app import AcquisitionApp, AcquisitionNativeModel
+    from chisurf.plugins.core.acq.test.sim_setup_host import SimSetupHost
 
     width, height = 880, 830
-    app = AcquisitionApp(AcquisitionNativeModel(settings={}))
+    app = SimSetupHost()  # the dialog alone, open on the simulator's default parameters
     driver = Driver(app, (width, height))
-    driver.frame(2)
-    app.model.open_simulation_setup()  # the same request the "Simulation setup..." button makes
     driver.frame(2)
     dialog = app.sim_setup
     dialog.model.apply_parameters(
@@ -264,8 +262,8 @@ def _grab_18_sim_setup():
     driver.frame(3)
     print("params k_rad", dialog.model.to_parameters()["k_rad"], "N", dialog.model.n_species)
     driver.screenshot(FIG / "18_sim_setup.png")
-    # The dialog keeps a margin inside the viewport (its box is narrower than the window), so the tool
-    # behind it shows as a strip at the right and bottom edge: crop to the dialog's own box.
+    # The dialog keeps a margin inside the viewport (its box is narrower than the window): crop to
+    # the dialog's own box.
     from PIL import Image
 
     x, y, w, h = (int(v) for v in dialog.window.box)

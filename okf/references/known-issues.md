@@ -1056,6 +1056,8 @@ status: resolved 2026-10-13
   `data_table` with a *Use* column. Nothing stays hand-drawn. Before/after (hand-drawn vs spec, same state): BH
   90 → 95, BrickMic 61 → 63, PicoQuant 58 → 58 controls, lost [];
   spec and `BH_PARAMETERS` / `BrickMicSetupModel.FIELDS` kept equal by `acq/test/test_setup_specs.py`.
+  *Superseded 2026-10-27:* the cards, their models and the classic device session were deleted (devices come
+  through phacq; see [core tools](../plugins/core-tools.md#acquisition-is-a-stream)).
 - ~~Three `test_emtk_lightpath_clicks.py` tests fail~~ — **resolved 2026-10-13**: not MMFDB isolation. The
   window announced a finished backend call only when a frame had seen `controller.running` go True → False, so a
   call that started and finished between two frames (an empty MMFDB list) was never announced — a real defect,
@@ -2021,7 +2023,8 @@ the emtk shell and Qt-hosted; 14/46 hosted in both shells; PDA through the emtk 
 * HMM plots listed every series twice and had unit-less time axes; MaxEnt never showed χ² or the L-curve corner and
   printed raw progress dicts; Settings → Acquisition never reached the Acquisition tool (Pulsed mode, brightness, seed
   ignored); a red-at-HEAD acq test clicked a removed "×". Tests under `core/hmm/test`, `maxent_decay/test`,
-  `core/acq/test/test_settings_reach_the_tool.py`.
+  `core/acq/test/test_settings_reach_the_tool.py` (deleted 2026-10-27 with the classic acquisition window it
+  tested).
 * Stale guides corrected: 11, 12, 14, 15, 20, 27, 28, 29, 33, 34, 35, 46, 49, 52, 53, 54, 58, 62, 65, 85 (menu paths,
   button captions, numbers, removed known-defect boxes for fixed items); figures regenerated natively and read.
 

@@ -1,482 +1,351 @@
-"""PicoQuant devices as Record sources: one live path for the hardware and the simulator.
+"""TCSPC devices as Record sources -- every device through libphacq.
 
-The device layer is CMC's ``pqusb`` package (PicoQuant TCSPC devices over libusb, without
-PicoQuant's libraries). A :class:`DeviceSource` wraps any of its ``TcspcDevice`` objects: it runs the
-device's continuous stream, decodes the raw records with tttrlib (``decode_records`` with a
-carried ``TTTRDecodeState``, the same decoding a PTU file gets) and records the raw words through
-pqusb's ``PtuWriter``, so the PTU holds exactly the bytes the device sent.
+libphacq drives the hardware natively (no vendor library, no vendor kernel driver): PicoQuant
+MultiHarp 150/160, PicoHarp 330 and HydraHarp 500 over USB, and Becker & Hickl SPC cards
+(130/131/132/140/15x/16x/830/930) over PCI. One ``phacq.Device`` API for all of them:
 
-The PIE smFRET simulator is such a device too (:class:`PieSimDevice`): it turns the photons of
-tttrlib's ``SimEngine`` into MultiHarp generic-T3 records, so a simulated run walks the hardware
-code path from the FIFO read on -- the decoding, the recording and the analysis are the ones a
-MultiHarp run uses.
+* :func:`attached_devices` lists what is connected, :func:`open_device` opens and initialises one
+  in its time-tagged mode (PicoQuant T3, B&H FIFO).
+* Every setting a device has is described by the device itself
+  (``Device.parameter_schema()``: a registry entry in tttrlib's dialect -- JSON Schema with titles,
+  units, ranges, choices and groups, one property per input for per-input settings). The Record
+  tool renders that schema with :func:`settings_form`, so no setting is left out and a new driver
+  setting appears without code here. Values travel as one flat dict (``Device.settings()`` /
+  ``Device.apply()``), which is also what an acquisition settings file stores.
+* :class:`DeviceSource` streams the device's events (packed ``phacq.EVENT_DTYPE`` records) into
+  :class:`~chisurf.plugins.core.acq.live.sources.PhotonBatch` es and records them to a PTU with
+  phacq's ``PtuWriter``.
 
-pqusb is optional: :data:`PQUSB` says whether it imports.
+phacq is optional at import: :data:`PHACQ` says whether it is installed; without it the Record tool
+offers the simulator and replay only.
 """
 
 from __future__ import annotations
 
 import threading
 import time
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-import tttrlib
 
-from .sources import (
-    PhotonBatch,
-    PhotonSource,
-    Population,
-    SimulatedPieSource,
-    SourceInfo,
-    SourceUnavailable,
-)
+from .sources import PhotonBatch, PhotonSource, SourceInfo, SourceUnavailable
 
-# pqusb from ~/dev/cmc/tools/pqusb until it is packaged (2026-10-26): installed editable into the
-# environment; without it the Record tool offers the photon-level simulator only.
 try:
-    import pqusb
-    from pqusb.device import MODE_T3, TACQ_MAX_MS, DeviceError, Identity, InputSettings, TcspcDevice
-    from pqusb.records import RT_GENERIC_T3
+    import phacq
 
-    PQUSB = True
+    PHACQ = True
 except Exception:  # noqa: BLE001 - optional dependency
-    pqusb = None
-    PQUSB = False
-    TcspcDevice = object  # type: ignore[misc,assignment]
+    phacq = None
+    PHACQ = False
 
-__all__ = ["PQUSB", "DeviceSource", "PieSimDevice", "attached_devices", "tttr_record_type"]
+__all__ = [
+    "PHACQ",
+    "TCSPC_DRIVERS",
+    "DeviceEntry",
+    "DeviceSource",
+    "attached_devices",
+    "device_label",
+    "open_device",
+    "settings_form",
+]
 
+#: phacq drivers that are TCSPC units (the Sepia II laser driver is :mod:`.laser`'s).
+TCSPC_DRIVERS = ("picoquant", "bh")
 
-#: PicoQuant TTResultFormat_TTTRRecType -> tttrlib record type of the same layout.
-_TTTR_RECORD = {
-    0x00010303: "RECORD_PHT3",  # PicoHarp 300 T3
-    0x00010203: "RECORD_PHT2",
-    0x00010304: "RECORD_HHT3v1",  # HydraHarp 400 V1
-    0x00010204: "RECORD_HHT2v1",
-    0x01010304: "RECORD_HHT3v2",  # HydraHarp 400 V2
-    0x01010204: "RECORD_HHT2v2",
-    0x00010305: "RECORD_HHT3v2",  # TimeHarp 260 N (V2 layout)
-    0x00010205: "RECORD_HHT2v2",
-    0x00010306: "RECORD_HHT3v2",  # TimeHarp 260 P
-    0x00010206: "RECORD_HHT2v2",
-    0x00010307: "RECORD_GENERIC_T3",  # MultiHarp 150/160, PicoHarp 330
-    0x00010207: "RECORD_GENERIC_T2",
-}
+#: Events per FIFO read.
+_CHUNK_EVENTS = 1 << 16
 
 
-def tttr_record_type(pq_rectype: int) -> int:
-    """tttrlib's record type for a PicoQuant one; raises for a layout tttrlib does not decode."""
-    name = _TTTR_RECORD.get(int(pq_rectype))
-    if name is None or not hasattr(tttrlib, name):
-        raise SourceUnavailable(f"tttrlib decodes no PicoQuant record type {int(pq_rectype):#010x}")
-    return int(getattr(tttrlib, name))
+@dataclass(frozen=True)
+class DeviceEntry:
+    """One connected device as phacq enumerates it."""
+
+    driver: str
+    serial: str
+    vendor: str = ""
+    model: str = ""
+
+    @property
+    def key(self) -> str:
+        """``driver:serial`` -- what a settings file and the device chooser store."""
+        return f"{self.driver}:{self.serial}"
+
+    @property
+    def label(self) -> str:
+        """What the device chooser shows."""
+        name = " ".join(x for x in (self.vendor, self.model) if x) or self.driver
+        return f"{name} {self.serial}".strip()
 
 
-def attached_devices() -> list[str]:
-    """PicoQuant devices libusb sees (``[index] description``); empty without pqusb or devices."""
-    if not PQUSB:
+def _registry():
+    return phacq.DriverRegistry.instance()
+
+
+def attached_devices(drivers: tuple[str, ...] = TCSPC_DRIVERS) -> list[DeviceEntry]:
+    """The connected devices of *drivers*; empty without phacq, without devices, or without
+    access (no USB permission, no PCI access)."""
+    if not PHACQ:
         return []
-    try:
-        return list(pqusb.list_devices())
-    except Exception:  # noqa: BLE001 - no libusb backend: no devices
-        return []
+    out: list[DeviceEntry] = []
+    loaded = set(_registry().driver_names())
+    for name in drivers:
+        if name not in loaded:
+            continue
+        try:
+            found = _registry().driver(name).enumerate()
+        except Exception:  # noqa: BLE001 - a driver without hardware access lists nothing
+            continue
+        for info in found:
+            out.append(DeviceEntry(name, str(info.serial_number), str(info.vendor), str(info.model)))
+    return out
 
 
-class DeviceSource(PhotonSource):
-    """A pqusb ``TcspcDevice`` streaming T3 records, decoded live and recorded raw.
+def find_device(key: str, drivers: tuple[str, ...] = TCSPC_DRIVERS) -> DeviceEntry | None:
+    """The attached device ``driver:serial`` (or the first one for an empty *key*)."""
+    for entry in attached_devices(drivers):
+        if not key or entry.key == key:
+            return entry
+    return None
+
+
+def time_tag_mode(driver: str):
+    """The time-tagged mode the Record tool measures in: T3 on PicoQuant units, the FIFO (TTTR)
+    mode on B&H cards."""
+    return phacq.MeasurementMode.TTTR if driver == "bh" else phacq.MeasurementMode.T3
+
+
+def open_device(entry: DeviceEntry | str, *, mode=None):
+    """Open and initialise a device for time-tagged measurement.
 
     Parameters
     ----------
-    device : TcspcDevice
-        Opened and initialised in T3 mode, settings applied.
+    entry : DeviceEntry or str
+        A listed device, or ``driver:serial`` (``driver:`` opens the driver's first device; the
+        drivers also accept their test inputs, e.g. ``picoquant:replay:<file>``,
+        ``sepia:sim:``).
+    mode : phacq.MeasurementMode, optional
+        Defaults to :func:`time_tag_mode`.
+
+    Returns
+    -------
+    phacq.Device
+    """
+    if not PHACQ:
+        raise SourceUnavailable("libphacq is not installed")
+    if isinstance(entry, DeviceEntry):
+        driver, serial = entry.driver, entry.serial
+    else:
+        driver, _, serial = str(entry).partition(":")
+    dev = _registry().driver(driver).open(serial)
+    if driver != "sepia":  # a laser driver has no measurement mode
+        dev.initialize(mode if mode is not None else time_tag_mode(driver),
+                       phacq.ReferenceClock.Internal)
+    dev.phacq_driver = driver  # where it came from, for the settings file
+    return dev
+
+
+def device_label(dev) -> str:
+    """``vendor model serial`` of an opened device."""
+    info = dev.information()
+    return " ".join(x for x in (info.vendor, info.model, info.serial_number) if x)
+
+
+def settings_form(dev, values: dict | None = None, on_change=None):
+    """The device's complete settings form: every setting phacq describes, grouped as the driver
+    groups them (sync, inputs one panel each, timing, markers ...).
+
+    The schema is a registry entry in tttrlib's dialect, so it renders through the same grouped
+    form as tttrlib's own registry entries. ``form.params()`` is the flat ``{name: value}`` dict
+    ``dev.apply`` takes.
+
+    Parameters
+    ----------
+    dev : phacq.Device
+    values : dict, optional
+        Initial values; defaults to what the device holds now (``dev.settings()``).
+    on_change : callable, optional
+        Called with no argument after an edit.
+    """
+    from chisurf.core.registry.tttrlib import entry_form_view_for
+
+    current = dict(dev.settings())
+    if values:
+        current.update({k: v for k, v in values.items() if k in current})
+    return entry_form_view_for(dev.schema(), values=current, on_change=on_change)
+
+
+def apply_settings(dev, values: dict) -> list[str]:
+    """Apply a flat settings dict, the editable keys only; returns problems (empty when it all
+    applied). phacq validates everything before it sends anything, so on a problem nothing of
+    *values* reached the device and the message names the offending setting."""
+    props = dev.schema()["params_schema"]["properties"]
+    editable = {
+        k: v for k, v in values.items()
+        if k in props and not props[k].get("readOnly") and v is not None
+    }
+    unknown = sorted(set(values) - set(props))
+    notes = [f"{k}: not a setting of {device_label(dev)}" for k in unknown]
+    try:
+        dev.apply(editable)
+    except Exception as e:  # noqa: BLE001 - phacq.Error carries the setting and the rule
+        notes.append(str(e))
+    return notes
+
+
+# ---------------------------------------------------------------------------------------------
+# streaming
+# ---------------------------------------------------------------------------------------------
+class DeviceSource(PhotonSource):
+    """A phacq device streaming time-tagged events, decoded into photon batches and recorded.
+
+    Parameters
+    ----------
+    device : phacq.Device
+        Opened and initialised (:func:`open_device`), settings applied.
     duration_s : float or None
-        The device's acquisition timer; ``None`` measures until :meth:`stop`.
-    chunk_bytes : int
-        Bytes per FIFO read.
+        The device's acquisition time; ``None`` measures until :meth:`stop`.
+    chunk_events : int
+        Events per read.
 
     Notes
     -----
-    The device's timer ends a timed run (``stops_itself``), so the recording and the analysis cover
-    the same records.
+    A timed run ends on the device (``stops_itself``), and the device keeps delivering what it
+    acquired after the end (``measuring()`` stays true until its FIFO is empty), so the recording
+    and the analysis cover the same events.
     """
 
     stops_itself = True
 
-    def __init__(self, device, *, duration_s: float | None = None, chunk_bytes: int = 1 << 16):
-        if not PQUSB:
-            raise SourceUnavailable("pqusb is not installed")
-        if device.mode != MODE_T3:
-            raise SourceUnavailable("the Record tool measures in T3 mode")
+    def __init__(self, device, *, duration_s: float | None = None,
+                 chunk_events: int = _CHUNK_EVENTS):
+        if not PHACQ:
+            raise SourceUnavailable("libphacq is not installed")
         self.device = device
         self.duration_s = duration_s
-        self.chunk_bytes = int(chunk_bytes)
-        sync = self._sync_rate()
-        if sync <= 0:
-            raise SourceUnavailable("no sync signal: connect the laser's sync output")
-        self.sync_rate_hz = sync
-        period = 1.0 / sync
-        res = float(device.resolution_s())
-        ident = device.identity
+        self.chunk_events = int(chunk_events)
+        info = device.information()
+        self.sync_rate_hz = self._sync_rate()
+        micro = float(info.base_resolution_ps) * 1e-12
+        if info.macro_resolution_ps > 0:  # a macro clock of its own (B&H FIFO, T2)
+            macro = float(info.macro_resolution_ps) * 1e-12
+            n_micro = 4096 if getattr(device, "phacq_driver", "") == "bh" else max(
+                1, int(round(macro / micro)) if micro else 1)
+        else:  # T3: the macro time counts sync periods
+            if self.sync_rate_hz <= 0:
+                raise SourceUnavailable("no sync signal: connect the laser's sync output")
+            macro = self._divider() / self.sync_rate_hz
+            # micro times travel as 16 bit (PhotonBatch); real units span a few hundred to a few
+            # thousand bins per period, a slow simulated sync can exceed that
+            n_micro = min(1 << 16, max(1, int(round(macro / micro)))) if micro else 1
+        if micro <= 0:
+            raise SourceUnavailable(f"{device_label(device)} reports no time resolution")
         self.info = SourceInfo(
-            name=f"{getattr(ident, 'model', 'device')} {getattr(ident, 'serial', '')}".strip(),
-            macro_clock_s=period,
-            micro_res_s=res,
-            n_micro=max(1, int(round(period / res))),
+            name=device_label(device), macro_clock_s=macro, micro_res_s=micro, n_micro=n_micro
         )
-        self._record_type = tttr_record_type(device.record_type())
-        self._gen = None
-        self._state = None
         self._stop = threading.Event()
         self._done = threading.Event()
         self._started = 0.0
-        self._reader: int | None = None
+        self._gaps = 0
+        self._error = ""
+
+    def _divider(self) -> int:
+        try:
+            return max(1, int(self.device.get_parameter("sync_divider", -1)))
+        except Exception:  # noqa: BLE001 - B&H calls it sync_freq_div, others have none
+            try:
+                return max(1, int(self.device.get_parameter("sync_freq_div", -1)))
+            except Exception:  # noqa: BLE001
+                return 1
 
     def _sync_rate(self) -> float:
         try:
-            sync, _inputs = self.device.count_rates()
-        except Exception:  # noqa: BLE001 - devices without a rate query state theirs
-            sync = getattr(self.device, "sync_rate_hz", 0.0)
-        div = max(1, int(getattr(self.device.settings, "sync_div", 1) or 1))
-        return float(sync) / div if sync else 0.0
+            rates = list(self.device.count_rates())
+        except Exception:  # noqa: BLE001 - a device without rate counters
+            return 0.0
+        return float(rates[0]) if rates else 0.0
 
     # -- the source interface -----------------------------------------------------------------
     def start(self) -> None:
         self._stop.clear()
         self._done.clear()
-        self._state = tttrlib.TTTRDecodeState()
-        tacq_ms = int(self.duration_s * 1000) if self.duration_s else TACQ_MAX_MS
-        self._gen = self.device.stream(
-            self.chunk_bytes, tacq_ms=tacq_ms, restart=self.duration_s is None
-        )
+        self._gaps = 0
+        self._error = ""
+        self.device.start(float(self.duration_s) if self.duration_s else 0.0)
         self._started = time.monotonic()
 
     def stop(self) -> None:
-        """Stop measuring. From the reading thread the stream closes now; from any other thread
-        (the UI) the reader closes it on its next read -- a generator closes in its own thread."""
+        """Stop measuring; what the device acquired is still read out (``finished`` follows)."""
         self._stop.set()
-        if threading.get_ident() == self._reader:
-            self._close()
-
-    def _close(self) -> None:
-        if self._gen is not None:
-            gen, self._gen = self._gen, None
-            gen.close()  # stops the measurement and joins pqusb's reader thread
-        self._done.set()
+        try:
+            self.device.stop()
+        except Exception as e:  # noqa: BLE001 - shown in the status line
+            self._error = str(e)
 
     @property
     def finished(self) -> bool:
         return self._done.is_set()
 
     def status(self) -> dict[str, Any]:
-        st = self.device.stats
-        error = repr(st.error) if getattr(st, "error", None) else ""
-        return {
-            "queued": 0,
-            "dropped": int(getattr(st, "fifo_full", 0)),
-            "stalls": int(getattr(st, "consumer_stalls", 0)),
-            "error": error,
-        }
+        return {"queued": 0, "dropped": int(self._gaps), "stalls": 0, "error": self._error}
 
     def read(self, timeout: float = 0.2) -> PhotonBatch | None:
-        """The next chunk of records, decoded (called by the session's worker thread only)."""
-        self._reader = threading.get_ident()
-        if self._gen is None:
-            return None
-        if self._stop.is_set():
-            self._close()
+        """The next events, decoded (called by the session's worker thread only)."""
+        if self._done.is_set():
             return None
         try:
-            words = next(self._gen)  # pqusb sends a heartbeat every 0.5 s without data
-        except StopIteration:
-            self._close()
+            raw = self.device.read_events_raw(self.chunk_events)
+        except Exception as e:  # noqa: BLE001 - a device error ends the run, shown
+            self._error = str(e)
+            self._done.set()
             return None
-        if len(words) == 0:
+        if not raw:
+            if not self.device.measuring():
+                self._done.set()
+            else:
+                time.sleep(min(0.005, max(0.0, timeout)))
             return None
-        raw = np.frombuffer(words, dtype=np.uint32)
-        data = tttrlib.TTTR()
-        tttrlib.decode_records(raw, self._record_type, self._state, data)
-        if len(data) == 0:
-            return PhotonBatch(
-                np.zeros(0, np.uint64), np.zeros(0, np.uint16), np.zeros(0, np.int8), raw=raw
-            )
+        events = np.frombuffer(raw, dtype=phacq.EVENT_DTYPE)
+        flags = events["flags"]
+        self._gaps += int(np.count_nonzero(flags & phacq.kEventFlagOverflow))
+        marker = (flags & phacq.kEventFlagMarker) != 0
         return PhotonBatch(
-            np.asarray(data.macro_times).astype(np.uint64),
-            np.asarray(data.micro_times).astype(np.uint16),
-            np.asarray(data.routing_channels).astype(np.int8),
-            raw=raw,
-            event=np.asarray(data.event_types).astype(np.int8),
+            events["macro_time"].astype(np.uint64),
+            events["micro_time"].astype(np.uint16),
+            events["channel"].astype(np.int8),
+            raw=events,
+            event=marker.astype(np.int8),
         )
 
     # -- recording -----------------------------------------------------------------------------
     def make_recorder(self, path, name: str = "", extra: dict | None = None):
-        """A PTU writer for the device's raw records (pqusb's, with the device's header and the
-        *extra* tags -- the run's acquisition settings, and a scan's ``ImgHdr_*`` tags). String
-        values are string tags; bool, int and float values keep their PicoQuant type."""
-        typed = {k: v for k, v in (extra or {}).items() if not isinstance(v, str)}
-        cls = _typed_writer(typed) if typed else pqusb.PtuWriter
-        return _RawPtuRecorder(cls.for_device(str(path), self.device, extra=extra), self)
-
-
-_UNSET = object()
-
-
-def _typed_writer(typed: dict):
-    """pqusb's ``PtuWriter`` writing the named *extra* tags with their type (pqusb writes every
-    extra tag as a string; a scan's ImgHdr tags must be numbers and booleans for readers)."""
-
-    class _TypedPtuWriter(pqusb.PtuWriter):
-        _TYPED = dict(typed)
-
-        def _s(self, name, s, idx=-1):
-            value = self._TYPED.get(name, _UNSET)
-            if value is _UNSET:
-                return super()._s(name, s, idx)
+        """A PTU writer for the device's events, with the device header and the *extra* tags (the
+        run's acquisition settings, a scan's ``ImgHdr_*`` tags). str values are string tags; bool,
+        int and float keep their PicoQuant type."""
+        mode = phacq.MeasurementMode.T3
+        writer = phacq.PtuWriter(str(path), self.device.information(), mode)
+        for key, value in (extra or {}).items():
             if isinstance(value, bool):
-                return self._b(name, value, idx)
-            if isinstance(value, (int, np.integer)):
-                return self._i(name, int(value), idx)
-            return self._f(name, float(value), idx)
+                writer.set_tag_bool(key, value)
+            elif isinstance(value, (int, np.integer)):
+                writer.set_tag_int(key, int(value))
+            elif isinstance(value, (float, np.floating)):
+                writer.set_tag_float(key, float(value))
+            else:
+                writer.set_tag(key, str(value))
+        return _PtuRecorder(writer, self)
 
-    return _TypedPtuWriter
 
-
-class _RawPtuRecorder:
+class _PtuRecorder:
     def __init__(self, writer, source: DeviceSource):
         self.writer = writer
         self.source = source
 
     def write(self, batch: PhotonBatch) -> bool:
         if batch.raw is not None and len(batch.raw):
-            self.writer.write(batch.raw.tobytes())
+            self.writer.write_raw(np.ascontiguousarray(batch.raw).tobytes())
         return True
 
     def close(self) -> None:
-        acq_ms = (
-            int((time.monotonic() - self.source._started) * 1000) if self.source._started else 0
-        )
-        self.writer.close(acq_ms=acq_ms, sync_rate_hz=int(round(self.source.sync_rate_hz)))
-
-
-#: Measurement time the simulated device synthesises per FIFO read at most.
-_MAX_READ_S = 0.05
-
-if PQUSB:
-
-    class PieSimDevice(TcspcDevice):
-        """A MultiHarp that measures a simulated PIE smFRET sample.
-
-        Records are MultiHarp generic-T3 words built from the photons of
-        :class:`~chisurf.plugins.core.acq.live.sources.SimulatedPieSource` (tttrlib's ``SimEngine``):
-        one sync per laser period, the micro time in the device's bins, overflow records every 1024
-        syncs, delivered at measurement pace through the device FIFO hooks pqusb's ``acquire``
-        and ``stream`` read.
-
-        Parameters
-        ----------
-        populations : sequence of Population
-        background_khz : (float, float)
-        seed : int
-        speed : float
-            1 is real time.
-        """
-
-        hw_type = "MultiHarp"
-        record_types = {MODE_T3: RT_GENERIC_T3}
-        base_res_ps = 80
-
-        def __init__(
-            self,
-            populations=(Population(0.2), Population(0.8)),
-            *,
-            background_khz=(0.5, 0.5),
-            seed: int = 1,
-            speed: float = 1.0,
-            scheme: str = "pie",
-            realism=None,
-        ):
-            super().__init__()
-            self.scheme = scheme
-            self.realism = realism
-            self.populations = tuple(populations)
-            self.background_khz = tuple(background_khz)
-            self.seed = int(seed)
-            self.speed = float(speed)
-            self._photons: SimulatedPieSource | None = None
-            self.period_s = 32e-9
-            self.sync_rate_hz = 1.0 / self.period_s
-            self._t0: float | None = None
-            self._tacq_s = 0.0
-            self._sent_s = 0.0
-            self._wrap = 0
-            self._pending = np.zeros(0, np.uint32)
-            self._buffer: PhotonBatch | None = None
-            self._recent = np.zeros(2, np.int64)
-
-        def initialize(self, mode: int = MODE_T3, refsource: int = 0) -> Identity:
-            if mode != MODE_T3:
-                raise DeviceError("the PIE simulator measures in T3 mode")
-            self.mode, self.nchan = mode, 2
-            self.settings.inputs = [InputSettings() for _ in range(self.nchan)]
-            what = "PIE smFRET" if self.scheme == "pie" else "two-colour smFRET"
-            self.identity = Identity(
-                model=f"MultiHarp (simulated {what})", serial="SIMPIE01", partno="sim"
-            )
-            return self.identity
-
-        # settings: remembered (they go into the PTU header), as pqusb's SimDevice does
-        def set_sync_div(self, div):
-            self.settings.sync_div = int(div)
-
-        def set_sync_edge_trg(self, level_mv, edge):
-            self.settings.sync.level_mv, self.settings.sync.edge = level_mv, edge
-
-        def set_sync_channel_offset(self, ps):
-            self.settings.sync.offset_ps = ps
-
-        def set_input_edge_trg(self, ch, level_mv, edge):
-            s = self.settings.inputs[ch]
-            s.level_mv, s.edge = level_mv, edge
-
-        def set_input_channel_offset(self, ch, ps):
-            self.settings.inputs[ch].offset_ps = ps
-
-        def set_input_channel_enable(self, ch, en):
-            self.settings.inputs[ch].enabled = bool(en)
-
-        def set_binning(self, code):
-            self.settings.binning = int(code)
-
-        def set_offset(self, ns):
-            self.settings.offset_ns = int(ns)
-
-        def count_rates(self) -> tuple[int, list[int]]:
-            """Sync and per-input rates (Hz) over the last delivered second."""
-            return int(round(self.sync_rate_hz)), [int(r) for r in self._recent]
-
-        # -- measurement hooks ------------------------------------------------------------------
-        def start(self, tacq_ms: int) -> None:
-            if int(self.settings.sync_div) != 1:
-                raise DeviceError("the PIE simulator runs with sync divider 1")
-            self._photons = SimulatedPieSource(
-                self.populations,
-                duration_s=None,
-                background_khz=self.background_khz,
-                seed=self.seed,
-                realtime=False,
-                scheme=self.scheme,
-                **({"realism": self.realism} if self.realism is not None else {}),
-            )
-            self._photons.start()
-            self._t0 = time.monotonic()
-            self._tacq_s = tacq_ms / 1000.0
-            self._sent_s, self._wrap = 0.0, 0
-            self._pending = np.zeros(0, np.uint32)
-            self._buffer = None
-
-        def stop(self) -> None:
-            self._t0 = None
-            if self._photons is not None:
-                self._photons.stop()
-
-        def close(self) -> None:
-            self.stop()
-
-        def _poll(self, st) -> bool:
-            st.sync_rate = int(round(self.sync_rate_hz))
-            # the acquisition time is measurement time delivered, not wall time: a simulation that
-            # runs slower than the requested speed delays the end, it never shortens the run
-            return self._t0 is not None and self._sent_s < self._tacq_s
-
-        def _elapsed(self) -> float:
-            return (time.monotonic() - self._t0) * self.speed if self._t0 is not None else 0.0
-
-        def _fifo_read(self, buf, timeout_ms: int) -> int:
-            if self._t0 is not None:
-                # at most _MAX_READ_S of measurement per read: a consumer that fell behind at a high
-                # speed must not make one read synthesise seconds of records at once (memory)
-                upto = min(self._elapsed(), self._tacq_s, self._sent_s + _MAX_READ_S)
-                if upto - self._sent_s >= 0.005 or (upto >= self._tacq_s > self._sent_s):
-                    self._pending = np.concatenate([self._pending, self._records_until(upto)])
-                    self._sent_s = upto
-            if self._pending.size == 0:
-                time.sleep(min(0.005, timeout_ms / 1000.0))
-                return 0
-            n = min(self._pending.size, len(buf) // 4)
-            memoryview(buf)[: 4 * n] = memoryview(self._pending[:n].tobytes())
-            self._pending = self._pending[n:]
-            return 4 * n
-
-        # -- record synthesis -------------------------------------------------------------------
-        def _take_photons(self, upto_s: float):
-            """The simulator's photons with arrival time below *upto_s* (seconds)."""
-            clock = self._photons.info.macro_clock_s
-            limit = np.uint64(int(upto_s / clock))
-            parts = []
-            while True:
-                if self._buffer is None or len(self._buffer) == 0:
-                    self._buffer = self._photons.read(timeout=5.0)
-                    if self._buffer is None:
-                        # the simulator is still computing this stretch: wait for it (a device
-                        # cannot skip time it measured) unless it has finished or failed
-                        if (
-                            self._t0 is None  # stopped
-                            or self._photons.finished
-                            or self._photons.status().get("error")
-                        ):
-                            break
-                        continue
-                cut = int(np.searchsorted(self._buffer.macro, limit))
-                b = self._buffer
-                parts.append((b.macro[:cut], b.micro[:cut], b.channel[:cut]))
-                if cut < len(b):
-                    self._buffer = PhotonBatch(
-                        b.macro[cut:], b.micro[cut:], b.channel[cut:], b.truth[cut:]
-                    )
-                    break
-                self._buffer = None
-            if not parts:
-                return np.zeros(0), np.zeros(0, np.int64), np.zeros(0, np.int64)
-            t = np.concatenate([p[0] for p in parts]).astype(np.float64) * clock
-            micro = np.concatenate([p[1] for p in parts]).astype(np.int64)
-            channel = np.concatenate([p[2] for p in parts]).astype(np.int64)
-            return t, micro, channel
-
-        def _records_until(self, upto_s: float) -> np.ndarray:
-            t, micro, channel = self._take_photons(upto_s)
-            src_res = self._photons.info.micro_res_s
-            res = self.resolution_s()
-            nbins = max(1, int(round(self.period_s / res)))
-            dtime = np.minimum((micro * src_res / res).astype(np.int64), nbins - 1)
-            nsync = np.floor(t / self.period_s).astype(np.int64)
-            for k in range(2):
-                self._recent[k] = int(np.sum(channel == k) / max(upto_s - self._sent_s, 1e-9))
-            # an overflow record before each photon whose 1024-sync block is new
-            wrap = nsync // 1024
-            out: list[int] = []
-            words = ((channel & 0x3F) << 25) | ((dtime & 0x7FFF) << 10) | (nsync & 0x3FF)
-            last = self._wrap
-            change = np.flatnonzero(np.diff(np.concatenate([[last], wrap])) > 0)
-            start = 0
-            for i in change:
-                out.extend(words[start:i].tolist())
-                self._emit_overflow(out, int(wrap[i]) - last)
-                last = int(wrap[i])
-                start = i
-            out.extend(words[start:].tolist())
-            end_wrap = int(np.floor(upto_s / self.period_s)) // 1024
-            if end_wrap > last:  # overflows keep coming without photons, as the hardware's do
-                self._emit_overflow(out, end_wrap - last)
-                last = end_wrap
-            self._wrap = last
-            return np.asarray(out, dtype=np.uint32)
-
-        @staticmethod
-        def _emit_overflow(out: list, n: int) -> None:
-            while n > 0:
-                k = min(n, 1023)
-                out.append(0xFE000000 | k)
-                n -= k
-
-else:
-    PieSimDevice = None  # type: ignore[assignment]
+        acq_s = time.monotonic() - self.source._started if self.source._started else 0.0
+        self.writer.close(acq_s, float(self.source.sync_rate_hz))

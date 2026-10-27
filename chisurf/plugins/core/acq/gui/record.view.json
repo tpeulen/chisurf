@@ -538,7 +538,7 @@
             "attr": "source_kind",
             "not_equals": "device"
           },
-          "description": "The PicoQuant devices connected over USB (driven through CMC's pqusb, without PicoQuant's libraries). Connect opens and initialises it in T3 mode."
+          "description": "The TCSPC devices connected (PicoQuant MultiHarp, PicoHarp 330, HydraHarp 500 over USB; Becker & Hickl SPC cards over PCI), driven natively by libphacq. Connect opens and initialises it (PicoQuant: T3 mode, B&H: FIFO mode)."
         },
         {
           "type": "button_row",
@@ -550,7 +550,7 @@
             {
               "action": "connect_device",
               "label": "Connect",
-              "description": "Open and initialise the device in T3 mode (internal reference clock) and show its identity and count rates. Nothing is recorded until Start."
+              "description": "Open and initialise the device and show its identity, count rates and every setting it has. Nothing is recorded until Start."
             },
             {
               "action": "disconnect_device",
@@ -568,160 +568,13 @@
           }
         },
         {
-          "type": "value",
-          "attr": "sync_div",
-          "label": "Sync divider",
-          "kind": "int",
+          "type": "custom",
+          "key": "device_settings",
           "hidden_when": {
             "attr": "source_kind",
             "not_equals": "device"
           },
-          "description": "Divides the laser's sync pulses. Keep 1 for PIE: the micro-time must span one full laser period, both pulses.",
-          "style": "spin",
-          "minimum": 1,
-          "maximum": 16,
-          "step": 1
-        },
-        {
-          "type": "value",
-          "attr": "sync_level_mv",
-          "label": "Sync level (mV)",
-          "kind": "int",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "device"
-          },
-          "description": "Trigger level of the sync input.",
-          "style": "spin",
-          "minimum": -1200,
-          "maximum": 1200,
-          "step": 10
-        },
-        {
-          "type": "choice",
-          "options": [
-            "0",
-            "1"
-          ],
-          "labels": [
-            "falling",
-            "rising"
-          ],
-          "attr": "sync_edge",
-          "label": "Sync edge",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "device"
-          },
-          "description": "Which edge of the sync signal triggers."
-        },
-        {
-          "type": "value",
-          "attr": "sync_offset_ps",
-          "label": "Sync offset (ps)",
-          "kind": "int",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "device"
-          },
-          "description": "Shifts all micro-times; use it to place the prompt pulse at the start of the period.",
-          "style": "spin",
-          "minimum": -99999,
-          "maximum": 99999,
-          "step": 100
-        },
-        {
-          "type": "value",
-          "attr": "input_level_mv",
-          "label": "Input level (mV)",
-          "kind": "int",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "device"
-          },
-          "description": "Trigger level of the detector inputs (all inputs).",
-          "style": "spin",
-          "minimum": -1200,
-          "maximum": 1200,
-          "step": 10
-        },
-        {
-          "type": "choice",
-          "options": [
-            "0",
-            "1"
-          ],
-          "labels": [
-            "falling",
-            "rising"
-          ],
-          "attr": "input_edge",
-          "label": "Input edge",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "device"
-          },
-          "description": "Which edge of the detector pulses triggers (all inputs)."
-        },
-        {
-          "type": "value",
-          "attr": "donor_offset_ps",
-          "label": "Donor input offset (ps)",
-          "kind": "int",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "device"
-          },
-          "description": "Delay of the donor detector's input (the first donor channel of the setup), to align it with the acceptor's.",
-          "style": "spin",
-          "minimum": -99999,
-          "maximum": 99999,
-          "step": 100
-        },
-        {
-          "type": "value",
-          "attr": "acceptor_offset_ps",
-          "label": "Acceptor input offset (ps)",
-          "kind": "int",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "device"
-          },
-          "description": "Delay of the acceptor detector's input (the first acceptor channel of the setup).",
-          "style": "spin",
-          "minimum": -99999,
-          "maximum": 99999,
-          "step": 100
-        },
-        {
-          "type": "value",
-          "attr": "binning",
-          "label": "Binning",
-          "kind": "int",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "device"
-          },
-          "description": "T3 micro-time bin width = base resolution x 2^binning.",
-          "style": "spin",
-          "minimum": 0,
-          "maximum": 24,
-          "step": 1
-        },
-        {
-          "type": "value",
-          "attr": "offset_ns",
-          "label": "Offset (ns)",
-          "kind": "int",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "device"
-          },
-          "description": "T3 offset of the micro-time window (ns).",
-          "style": "spin",
-          "minimum": 0,
-          "maximum": 100000000,
-          "step": 1
+          "description": "Every setting of the connected device, as its driver describes it: sync, each input on its own panel, timing, markers. An edit is sent to the device at once (between runs); a value the device refuses is named here and the panel shows the device's values again."
         }
       ],
       "hidden_when": {
@@ -769,11 +622,20 @@
           "key": "laser_status"
         },
         {
+          "type": "custom",
+          "key": "laser_settings",
+          "hidden_when": {
+            "attr": "laser_connected",
+            "equals": false
+          },
+          "description": "The connected laser driver's own controls: per laser head the pulsed / continuous switch, the repetition rate (its own oscillator or an external trigger) and the intensity; the soft lock switches all outputs. Changes reach the laser at once."
+        },
+        {
           "type": "panel",
           "title": "Program",
           "collapsible": true,
           "hidden_when": {
-            "attr": "laser_connected",
+            "attr": "laser_program_shown",
             "equals": false
           },
           "description": "What Apply sends to the laser. Any change switches the outputs off until Apply.",
@@ -1251,11 +1113,6 @@
               "icon": "⏹",
               "role": "danger",
               "description": "Stop measuring. The open burst is closed, the recording finished, and both enter the project: the photons as a dataset, its bursts as a run below it."
-            },
-            {
-              "action": "open_classic",
-              "label": "Device session…",
-              "description": "The device session of earlier versions (Becker-Hickl, PicoQuant, BrickMic setup cards, routing, decay and correlation plots)."
             }
           ]
         },

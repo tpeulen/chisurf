@@ -168,9 +168,6 @@ NOT_INPUT = {
     "chisurf/plugins/core/zenodo_deposit/gui/app.py": (
         "Files packed into a Zenodo deposit (publication of results), not data an analysis reads."
     ),
-    "chisurf/plugins/core/acq/gui/app.py": (
-        "Device session (the classic acquisition window): the output folder and the device/simulator configuration files (instrument state, not measurement data)."
-    ),
     "chisurf/plugins/modelling/hydropro/app.py": (
         "The HYDRO program to run (software) and the CSV/log outputs; the structures come from the workspace."
     ),

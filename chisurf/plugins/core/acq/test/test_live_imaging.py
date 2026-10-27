@@ -1,4 +1,4 @@
-"""Imaging acquisition: the scan, the simulated scanning device, the live image, its quality lights,
+"""Imaging acquisition: the scan, the simulated scan, the live image, its quality lights,
 the recording and the replay of an image file -- the live image equals tttrlib's CLSMImage."""
 
 from __future__ import annotations
@@ -18,15 +18,15 @@ from chisurf.plugins.core.acq.live.imaging import (
     imaging_qc,
     scan_of_file,
 )
+from chisurf.plugins.core.acq.live.realism import REALISTIC
 from chisurf.plugins.core.acq.live.scanner import (
-    ImageSimDevice,
+    ImageSimSource,
+    ImagingSample,
     ScanSettings,
     marker_bit,
     scan_from_tags,
 )
 from chisurf.plugins.core.acq.live.sources import SourceUnavailable
-
-pqusb = pytest.importorskip("pqusb")
 
 
 def _data(rel: str) -> Path:
@@ -46,12 +46,9 @@ def _clsm_sum(path) -> np.ndarray:
 
 
 def _record(tmp_path, scan, **kw):
-    from chisurf.plugins.core.acq.live.devices import DeviceSource
-
-    dev = ImageSimDevice(scan, speed=200.0, **kw)
-    dev.initialize(pqusb.MODE_T3)
+    source = ImageSimSource(scan, ImagingSample(**kw), REALISTIC, speed=200.0, realtime=False)
     session = ImageRecordSession(
-        DeviceSource(dev),
+        source,
         scan,
         duration_s=scan.total_s + 0.01,
         ptu_path=tmp_path / "scan.ptu",
@@ -59,7 +56,8 @@ def _record(tmp_path, scan, **kw):
     )
     session.start()
     result = session.wait(120)
-    assert result is not None and result.stop_reason == "duration reached"
+    # the simulated scan ends with its last frame, or the duration ends it: the whole scan either way
+    assert result is not None and result.stop_reason in ("duration reached", "source finished")
     return session, result
 
 
@@ -108,7 +106,6 @@ def test_a_file_without_image_tags_is_not_a_scan():
 
 
 # -- the simulated scan, live and recorded ----------------------------------------------------------
-@pytest.mark.skipif(ImageSimDevice is None, reason="pqusb not installed")
 def test_the_live_image_equals_clsmimage_of_the_recording(tmp_path):
     scan = ScanSettings(
         pixels_x=32, pixels_y=24, area_x_um=8.0, area_y_um=6.0, dwell_ms=0.05, frames=3
@@ -133,7 +130,6 @@ def test_the_live_image_equals_clsmimage_of_the_recording(tmp_path):
     assert is_photon_image(result.ptu)
 
 
-@pytest.mark.skipif(ImageSimDevice is None, reason="pqusb not installed")
 def test_the_imaging_lights(tmp_path):
     scan = ScanSettings(
         pixels_x=32, pixels_y=24, area_x_um=8.0, area_y_um=6.0, dwell_ms=0.05, frames=2
@@ -148,9 +144,9 @@ def test_the_imaging_lights(tmp_path):
     snap = session.snapshot()
     # far too bright: the brightest pixel near the laser rate piles up
     hot = imaging_qc(
-        {**snap, "max_pixel_rate_hz": 0.3 / ImageSimDevice.N_MICRO / 2e-11},
+        {**snap, "max_pixel_rate_hz": 0.3 / ImageSimSource.N_MICRO / 2e-11},
         scan,
-        sync_rate_hz=1 / (ImageSimDevice.N_MICRO * 2e-11),
+        sync_rate_hz=1 / (ImageSimSource.N_MICRO * 2e-11),
     )
     assert {c["name"]: c["light"] for c in hot["checks"]}["Pile-up"] == "red"
     # a lost line marker: a frame with too few lines turns its light red
@@ -159,7 +155,6 @@ def test_the_imaging_lights(tmp_path):
     assert broken["level"] == "red"
 
 
-@pytest.mark.skipif(ImageSimDevice is None, reason="pqusb not installed")
 def test_settings_round_trip_with_the_scan(tmp_path):
     scan = ScanSettings(pixels_x=16, pixels_y=12, area_x_um=4.0, area_y_um=3.0, dwell_ms=0.05)
     _session, result = _record(tmp_path, scan)
@@ -211,7 +206,6 @@ def test_a_photon_stream_without_a_scan_is_refused():
         image_replay_source(str(path), realtime=False)
 
 
-@pytest.mark.skipif(ImageSimDevice is None, reason="pqusb not installed")
 def test_a_replay_records_nothing(tmp_path):
     path = _data(BEADS)
     source, scan = image_replay_source(str(path), realtime=False)

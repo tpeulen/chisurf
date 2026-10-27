@@ -4,14 +4,16 @@ Uses FIG and _pump from common.py. Each
 function saves into FIG. Run each in its own subprocess with a timeout: the
 acquisition and main-window grabs start threads and servers.
 """
-import pathlib, tempfile, time
+import pathlib
+import tempfile
+import time
 
 from common import FIG, _pump  # noqa: F401
+
 
 def _grab_55_flow():
     """The native Flow maps tool on its own demo (simulated Poiseuille flow, peak 2 µm/s), mapped with defaults."""
     from emtk.testing import Driver
-
     from emtk_shot import app_from, wait
 
     app = app_from("img_flow")
@@ -33,7 +35,6 @@ def _grab_55_flow():
 def _grab_56_fcs_saturation():
     """The saturation calculator (emtk window, FCS curve tab) on its default Rhodamine 6G scheme at 2 mW."""
     from emtk.testing import Driver
-
     from emtk_shot import app_from, render
 
     app = app_from("fcs_saturation")
@@ -59,7 +60,6 @@ def _grab_65_acquisition_settings():
     import os
 
     from emtk.testing import Driver
-
     from emtk_shot import app_from
 
     os.environ["CHISURF_SETTINGS_DIR"] = tempfile.mkdtemp(prefix="acq_settings_")
@@ -116,7 +116,6 @@ def _grab_59_console():
     transcript has the room.
     """
     import os
-    import time
 
     import numpy as np
     from emtk.testing import Driver
@@ -188,57 +187,48 @@ def _grab_59_console_inline_plot():
     )
 
 
-def _grab_65_live_plots():
-    """The native Acquisition window's live Decay, Correlation and MCS tabs after a pulsed simulator run.
+def _grab_65_live_plots(out=None):
+    """The live Decay, Correlation and MCS plots after a pulsed simulator run of 300 000 photons.
 
-    The tool's own simulator (its default single species, switched to pulsed excitation), 300 000
-    photons; each grab is the window cropped to its *Pipeline results* block. Written to docs/images.
+    The tool's simulator (one species, pulsed excitation) streamed through the acquisition pipeline into
+    :class:`~chisurf.plugins.core.acq.gui.live_plots.LivePlots`, hosted alone; one grab per tab.
+    Written to docs/images (or *out*).
     """
-    import time
-
     from emtk.testing import Driver
-    from PIL import Image
 
-    from chisurf.plugins.core.acq.gui.app import AcquisitionApp, AcquisitionNativeModel
+    from chisurf.plugins.core.acq.gui.live_plots import LivePlots, stream_words
+    from chisurf.plugins.core.acq.pipeline import AcquisitionPipeline, PipelineConfig
+    from chisurf.plugins.core.acq.tcspc_devices.simulation.core.algorithms import (
+        generate_spc132_uint32,
+    )
+    from chisurf.plugins.core.acq.test.test_live_plots import SIM, PlotsApp
 
-    images = FIG.parent.parent / "images"
-    model = AcquisitionNativeModel()
-    params = model.simulation_params()
-    params.update({"pulsed_exc": 1, "N_ph_max": 300000})
-    model.stored_simulation = params
-    model.photon_limit = 300000
-    model.show_mcs = True
-    app = AcquisitionApp(model)
-    size = (1000, 1300)
+    images = pathlib.Path(out) if out else FIG.parent.parent / "images"
+    words = generate_spc132_uint32({**SIM, "pulsed_exc": 1, "N_ph_max": 300000})
+    plots = LivePlots()
+    pipeline = AcquisitionPipeline(plots.apply_to_config(PipelineConfig(photon_limit=300000)))
+    app = PlotsApp(plots)
+    stream_words(pipeline, words, app.events, every=8)
+    pipeline.flush()
+    app.events.put(("snapshot", pipeline.snapshot()))
+    size = (1000, 760)
     driver = Driver(app, size)
-    driver.frame(3)
-    model.start()
-    end = time.monotonic() + 600
-    while model.running and time.monotonic() < end:
-        driver.frame(1)
-        time.sleep(0.01)
-    model.poll()
     driver.frame(5)
-    print(model.status, "|", model.live.qc_text(), flush=True)
+    print(plots.qc_text(), flush=True)
     for tab, name in (("Decay", "acq_live_decay.png"), ("Correlation", "acq_live_correlation.png"),
                       ("MCS", "acq_live_mcs.png")):
         driver.click(f"(0,).{tab}")
         driver.frame(5)
-        path = images / name
-        driver.screenshot(path)
-        x, y, w, h = app.form.rects["pipeline_results"]
-        image = Image.open(path)
-        image.crop((0, max(0, int(y) - 22), size[0], min(image.height, int(y + h) + 40))).save(path)
-        print("wrote", path.name, flush=True)
-    app.close()
+        driver.screenshot(images / name)
+        print("wrote", name, flush=True)
 
 
 def _grab_67_nb():
     """Number & Brightness on its own demo: the Brightness ε map, then the parameter plane gated on the dimers."""
     from emtk.testing import Driver
+    from emtk_shot import app_from, wait
 
     from chisurf.core.roi import RectangleROI
-    from emtk_shot import app_from, wait
 
     app = app_from("img_pixel_nb")
     model = app.model
@@ -270,3 +260,54 @@ def _grab_67_nb():
     print("wrote nb_parameter_plane.png", flush=True)
     app.close()
 
+
+
+def _grab_65_record_devices(out=None):
+    """Record's TCSPC device panel (a MultiHarp 150 8N as libphacq describes it) and its Laser
+    panel (a Sepia II's own controls), cropped to the settings column.
+
+    The MultiHarp is phacq's replay of a recorded session with the real unit (libphacq
+    ``tests/data/mh150_t3_live.txt``), shown under the unit's name; the Sepia II is phacq's
+    simulated unit. Written to docs/guides/figures (or *out*).
+    """
+    from emtk.export import save_png
+    from PIL import Image
+
+    from chisurf.plugins.core.acq.gui.record_app import RecordApp, RecordModel
+    from chisurf.plugins.core.acq.live import devices
+    from chisurf.plugins.core.acq.live import laser as laser_mod
+    from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
+
+    out = pathlib.Path(out or FIG)
+    replay = pathlib.Path.home() / "dev" / "libphacq" / "tests" / "data" / "mh150_t3_live.txt"
+    mh = devices.DeviceEntry("picoquant", f"replay:{replay}", "PicoQuant", "MultiHarp 150 8N")
+    sepia = devices.DeviceEntry("sepia", "sim:", "PicoQuant", "Sepia II")
+    devices.attached_devices = lambda drivers=devices.TCSPC_DRIVERS: (
+        [mh] if "picoquant" in drivers else [sepia]
+    )
+    laser_mod._sepia_units = lambda: [sepia]
+    size = (1500, 1100)
+    with tempfile.TemporaryDirectory() as tmp:
+        model = RecordModel(output_dir=tmp, realtime=False)
+        model.device_options = lambda: [(mh.key, "PicoQuant MultiHarp 150 8N 1035690")]
+        model._update_rates = lambda force=False: None  # a replay has no live rates
+        app = RecordApp(model)
+        try:
+            ui = Driver(app, size)
+            model.source_kind, model.device_index = "device", mh.key
+            ui.draw(2)
+            assert model.connect_device(), model.device_text
+            app.focus_dock("acquisition")
+            ui.draw(4)
+            full = out / "_record_full.png"
+            save_png(app, str(full), size=size)
+            Image.open(full).crop((0, 218, 450, 560)).save(out / "65_record_device.png")
+            model.laser_kind = "sepia"
+            assert model.connect_laser(), model.laser_detail
+            app.focus_dock("laser")
+            ui.draw(4)
+            save_png(app, str(full), size=size)
+            Image.open(full).crop((0, 30, 450, 330)).save(out / "65_record_laser.png")
+            full.unlink()
+        finally:
+            app.close()

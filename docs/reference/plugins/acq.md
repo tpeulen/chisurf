@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: Acquisition
-description: 'Single-molecule fluorescence acquisition: stream photons from real TCSPC hardware or the built-in tttrlib Sim* photon simulator (confocal diffusion with FRET, anisotropy and photophysics).'
+description: 'Record single-molecule measurements with pulsed interleaved excitation and watch the E–S histogram build up live: bursts are searched, counted into DD/DA/AA and placed in E and S while the photons arrive, written to a PTU, and the run lands in the project (photons dataset with its burst run). Sources: the built-in tttrlib photon simulator (PIE smFRET with known E/S), replay of a workspace photon stream, and TCSPC hardware through the phacq library (native drivers for PicoQuant MultiHarp/PicoHarp 330/HydraHarp 500, Becker & Hickl SPC cards and the PicoQuant Sepia II laser; no vendor libraries).'
 resource: chisurf/plugins/core/acq/
 tags: [reference, plugins, acq, tools, views, acquisition]
 anchor: plugin-acq
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-acq)=
 # Acquisition
 
-Single-molecule fluorescence acquisition: stream photons from real TCSPC hardware or the built-in tttrlib Sim* photon simulator (confocal diffusion with FRET, anisotropy and photophysics).
+Record single-molecule measurements with pulsed interleaved excitation and watch the E–S histogram build up live: bursts are searched, counted into DD/DA/AA and placed in E and S while the photons arrive, written to a PTU, and the run lands in the project (photons dataset with its burst run). Sources: the built-in tttrlib photon simulator (PIE smFRET with known E/S), replay of a workspace photon stream, and TCSPC hardware through the phacq library (native drivers for PicoQuant MultiHarp/PicoHarp 330/HydraHarp 500, Becker & Hickl SPC cards and the PicoQuant Sepia II laser; no vendor libraries).
 
 ## Identity
 
@@ -27,115 +27,6 @@ Single-molecule fluorescence acquisition: stream photons from real TCSPC hardwar
 ## Parameters
 
 Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
-
-### Device session
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Device type | `device_type` | choice |  | choices: SIMULATION, BH_SPC, PICOQUANT, BRICKMIC | Selection alone never loads, scans, or contacts a physical device. |
-| Time limit (s) | `time_limit_s` | float |  | 0.0 … 36000.0 (step 1.0) | Wall-clock stop condition. Set zero to disable it; retain a positive photon limit. |
-| Photon limit | `photon_limit` | int |  | 0 … 1000000000 (step 1) | Decoded-photon stop condition. Set zero only when a positive time limit is configured. |
-
-### Routing and output
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Routing channel 1 | `channel_0` | int |  | 0 … 4095 (step 1) | Device routing channel for pipeline decay window 1. |
-| Routing channel 2 | `channel_1` | int |  | 0 … 4095 (step 1) | Device routing channel for pipeline decay window 2. |
-| Routing channel 3 | `channel_2` | int |  | 0 … 4095 (step 1) | Device routing channel for pipeline decay window 3. |
-| Routing channel 4 | `channel_3` | int |  | 0 … 4095 (step 1) | Device routing channel for pipeline decay window 4. |
-| Output folder | `output_folder` | str |  |  | Optional path passed only to compatible simulation or BrickMic backends; this UI never claims every device writes raw files. |
-
-### Simulator configuration
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Peak brightness | `brightness_khz` | float |  | 1.0 … 2000.0 (step 10.0) | Simulator brightness used to build encoded records; never a hardware detector setting. |
-| Deterministic seed | `seed` | int |  | 0 … 2147483647 (step 1) | Simulator random seed for reproducible encoded records. |
-
-### Result visibility
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Decay plot | `show_decay` | bool |  |  | Show the live decay plot tab. |
-| Correlation plot | `show_correlation` | bool |  |  | Show the live correlation plot tab. |
-| Count-rate plot | `show_count_rate` | bool |  |  | Show the live count-rate plot tab. |
-| Macrotime plot | `show_macrotime` | bool |  |  | Show the live macrotime plot tab. |
-| MCS plot | `show_mcs` | bool |  |  | Show the live MCS trace tab. |
-
-### General
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Simulation mode | `simulation_mode` | bool |  |  | Use simulated BH card detection; turn this off to request physical-card detection. |
-| Maximum photons | `max_photons` | int |  | 1000 … 10000000 | Photons after which the acquisition stops, 1,000 to 10,000,000. Press Enter or click elsewhere to commit; Apply makes it the acquisition's stop limit. |
-| Species | `species` | int |  | 1 … 999 | Which species' decay is being edited. Switching keeps each species' edits; OK writes them all back. |
-| Decay pattern file | `pattern_path` | str |  |  | Measured or saved decay pattern (.npy or text) that replaces the lifetimes for this species; empty = use the lifetimes. |
-| Gaussian FWHM (ns) | `irf_fwhm_ns` | float |  | 0.0 … 1000.0 | Full width at half maximum of the Gaussian instrument response shared by all species; 0 = no IRF convolution. |
-
-### CFD
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| CFD Limit Low (mV) | `CFD_LIMIT_LOW` | float |  | -1000 … 1000 | CFD Limit Low (mV), -1000 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| CFD Limit High (mV) | `CFD_LIMIT_HIGH` | float |  | -1000 … 1000 | CFD Limit High (mV), -1000 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| CFD Zero Cross Level (mV) | `CFD_ZC_LEVEL` | float |  | -100 … 100 | CFD Zero Cross Level (mV), -100 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| CFD Holdoff (ns) | `CFD_HOLDOFF` | float |  | 0 … 100 | CFD Holdoff (ns), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-
-### Sync
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Sync Zero Cross Level (mV) | `SYNC_ZC_LEVEL` | float |  | -100 … 100 | Sync Zero Cross Level (mV), -100 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| Sync Frequency Divider | `SYNC_FREQ_DIV` | int |  | 1 … 16 | Sync Frequency Divider, 1 to 16 (a whole number). Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| Sync Holdoff (ns) | `SYNC_HOLDOFF` | float |  | 0 … 100 | Sync Holdoff (ns), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| Sync Threshold (mV) | `SYNC_THRESHOLD` | float |  | -1000 … 1000 | Sync Threshold (mV), -1000 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-
-### TAC
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| TAC Range (ns) | `TAC_RANGE` | float |  | 0 … 1000 | TAC Range (ns), 0 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| TAC Gain | `TAC_GAIN` | choice |  | choices: 1, 2, 4, 8 | TAC Gain: one of the supported hardware values. Apply writes this choice to the selected BH module. |
-| TAC Offset (%) | `TAC_OFFSET` | float |  | 0 … 100 | TAC Offset (%), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| TAC Limit Low (%) | `TAC_LIMIT_LOW` | float |  | 0 … 100 | TAC Limit Low (%), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| TAC Limit High (%) | `TAC_LIMIT_HIGH` | float |  | 0 … 100 | TAC Limit High (%), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| TAC Enable Hold (ns) | `TAC_ENABLE_HOLD` | float |  | 0 … 100 | TAC Enable Hold (ns), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-
-### Timing
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Collection Time (s) | `COLLECT_TIME` | float |  | 0.001 … 1000 | Collection Time (s), 0.001 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| Display Time (s) | `DISPLAY_TIME` | float |  | 0.001 … 1000 | Display Time (s), 0.001 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| Repeat Time (s) | `REPEAT_TIME` | float |  | 0.001 … 1000 | Repeat Time (s), 0.001 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| Stop on Time | `STOP_ON_TIME` | choice |  | choices: 0, 1 | Stop on Time: one of the supported hardware values. Apply writes this choice to the selected BH module. |
-| Stop on Overflow | `STOP_ON_OVFL` | choice |  | choices: 0, 1 | Stop on Overflow: one of the supported hardware values. Apply writes this choice to the selected BH module. |
-| Rate Count Time (s) | `RATE_COUNT_TIME` | float |  | 0.001 … 10 | Rate Count Time (s), 0.001 to 10. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module. |
-| Macro Time Clock | `MACRO_TIME_CLK` | choice |  | choices: 0, 1, 2, 3, 4, 5, 6, 7 | Macro Time Clock: one of the supported hardware values. Apply writes this choice to the selected BH module. |
-
-### Mode
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Mode | `MODE` | choice |  | choices: 0, 1, 2, 3 | Mode: one of the supported hardware values. Apply writes this choice to the selected BH module. |
-| Routing Mode | `ROUTING_MODE` | choice |  | choices: 0, 1, 2 | Routing Mode: one of the supported hardware values. Apply writes this choice to the selected BH module. |
-| ADC Resolution | `ADC_RESOLUTION` | choice |  | choices: 6, 8, 10, 12, 14, 16 | ADC Resolution: one of the supported hardware values. Apply writes this choice to the selected BH module. |
-
-### Hardware acquisition
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Start counter index | `start_ctr` | int |  | 0 … 31 (step 1) | Start counter index, 0 to 31. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend. |
-| End counter index | `end_ctr` | int |  | 0 … 31 (step 1) | End counter index, 0 to 31. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend. |
-| Acquisition rate (Hz) | `acquisition_rate` | int |  | 1000 … 5000000 (step 100000) | Acquisition rate (Hz), 1,000 to 5,000,000. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend. |
-| Buffer size / channel | `buffer_size` | int |  | 10000 … 20000000 (step 100000) | Buffer size / channel, 10,000 to 20,000,000. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend. |
-
-### SPC file output
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Photons per .spc file | `N_ph_per_file` | int |  | 1000 … 1000000000 (step 10000) | Photons per .spc file, 1,000 to 1,000,000,000. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend. |
 
 ### Decay
 
@@ -205,6 +96,163 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Plot type | `macro_type` | choice |  | choices: dt, absolute | dt plots the inter-photon time against time; absolute plots the photon time stamps against photon index. |
 | Update every (snapshots) | `macro_every` | int |  | 1 … 1000 (step 1) | Redraw this plot only on every N-th published snapshot (a snapshot is one data chunk batch); raise it to spare the CPU on fast streams. |
 
+### Settings
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| From | `settings_address` | choice |  | choices: `settings_options` | A settings file (⚙) or a measurement (⏱) of the workspace. Settings files enter ChiSurf through the drop, like every input. |
+
+### Source
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Mode | `mode` | choice |  | choices: `mode_options` | Point: a single-molecule measurement at one spot -- bursts, E-S and the running trace. FCS: a point measurement for fluorescence correlation -- the correlation curve builds up live. Image: a scan -- the image builds up line by line from the scanner's markers, with fast-FLIM maps. |
+| Source | `source_kind` | choice |  | choices: `source_options` | Where the photons come from: the simulator (a MultiHarp measuring a PIE smFRET sample with a known answer — its records go through the same device path as a real measurement), a photon stream from the Datasets workspace played back at measurement speed, or a PicoQuant device connected over USB. |
+| Seed | `sim_seed` | int |  | 0 … 2147483647 (step 1) | Seeds diffusion and emission, so a run is reproducible. |
+| Photon stream | `replay_address` | choice |  | choices: `photon_options` | A photons dataset of the Datasets workspace, played back at measurement speed. Drop the file on the ChiSurf window to add it. |
+| Speed | `speed` | float |  | 0.1 … 100.0 (step 1.0) | How fast simulated or replayed photons arrive: 1 is the pace of the real measurement, 10 ten times faster. |
+
+### Simulated molecules
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Excitation | `sim_scheme` | choice |  | choices: `scheme_options` | How the simulated sample is excited: PIE (a green and a red pulse per period, so stoichiometry is measured) or two colour (the green laser only). |
+| Population 1: E | `sim_e_low` | float |  | 0.0 … 1.0 (step 0.05) | FRET efficiency of the first simulated population. Each molecule carries donor and acceptor; its photons are split into donor and acceptor channel by this E. |
+| Population 2: E | `sim_e_high` | float |  | 0.0 … 1.0 (step 0.05) | FRET efficiency of the second simulated population. |
+| Stoichiometry S | `sim_s` | float |  | 0.1 … 0.9 (step 0.05) | Stoichiometry of both populations: the share of donor-excited photons in all photons of a molecule (0.5 = equally bright under both lasers). |
+| Concentration | `sim_concentration` | float |  | 0.1 … 20.0 (step 0.5) | Molecules of each population in the simulation box. Higher means more bursts per second, and more coincident molecules. |
+
+### Simulated FCS sample
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Molecules in focus N | `fcs_n` | float |  | 0.05 … 200.0 (step 0.5) | Mean number of molecules in the focal volume (the inverse amplitude of the correlation curve). |
+| D (µm²/s) | `fcs_d_um2_per_s` | float |  | 1.0 … 1000.0 (step 10.0) | Diffusion coefficient of the dye; with the simulated focus it sets the diffusion time. |
+| Brightness (kHz) | `fcs_brightness_khz` | float |  | 1.0 … 2000.0 (step 10.0) | Photons per millisecond of one molecule at the focus centre. |
+
+### Sample & instrument realism
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Preset | `realism_preset` | choice |  | choices: `realism_options` | Realistic: what a confocal smFRET measurement shows (donor-/acceptor-only molecules, bleaching, blinking, crosstalk, background, IRF, dead time). Ideal: everything off — the clean stream for teaching and exact tests. Editing a value makes it Custom. |
+| Donor-only | `real_donor_only_fraction` | float |  | 0 … 1 (step 0.05) | Fraction of molecules without an active acceptor: an island at stoichiometry ≈ 1 and E ≈ 0. |
+| Acceptor-only | `real_acceptor_only_fraction` | float |  | 0 … 1 (step 0.05) | Fraction of molecules without a donor: an island at stoichiometry ≈ 0. |
+| Aggregates | `real_aggregate_fraction` | float |  | 0 … 0.1 (step 0.002) | Fraction of bright, slowly diffusing particles: rare bright spikes and long bursts. |
+| Brightness spread | `real_brightness_cv` | float |  | 0 … 1 (step 0.05) | Molecule-to-molecule brightness spread (coefficient of variation): broadens burst sizes and the clusters. |
+| Diffusion (µm²/s) | `real_diffusion_um2_per_s` | float |  | 1 … 1000 (step 10) | Translational diffusion coefficient; with the focus it sets the burst duration (80 µm²/s ≈ a 30 kDa protein). |
+| γ | `real_gamma` | float |  | 0.1 … 5 (step 0.05) | Detection-efficiency × quantum-yield ratio of acceptor to donor. γ ≠ 1 shifts raw E; the corrected E uses it. |
+| α (leakage) | `real_alpha` | float |  | 0 … 0.5 (step 0.01) | Donor emission leaking into the acceptor channel: raises raw E, most visibly for donor-only molecules. |
+| δ (direct exc.) | `real_delta` | float |  | 0 … 0.5 (step 0.01) | Direct excitation of the acceptor by the donor laser (relative to its own laser): raises raw E. |
+| Donor lifetime (ns) | `real_tau_donor_ns` | float |  | 0.5 … 10 (step 0.1) | Donor lifetime without FRET; a FRET population decays with τ_D (1 − E). |
+| Acceptor lifetime (ns) | `real_tau_acceptor_ns` | float |  | 0.5 … 10 (step 0.1) | Acceptor lifetime: decay of the directly excited acceptor and the delay of sensitised emission. |
+| IRF FWHM (ns) | `real_irf_fwhm_ns` | float |  | 0 … 2 (step 0.05) | Instrument response width, with a small exponential tail and per-detector timing jitter. |
+| Background donor (kHz) | `real_background_donor_khz` | float |  | 0 … 20 (step 0.1) | Uncorrelated background of the donor detector (dark counts, ambient light), flat in micro time. |
+| Background acceptor (kHz) | `real_background_acceptor_khz` | float |  | 0 … 20 (step 0.1) | Uncorrelated background of the acceptor detector. |
+| Scatter (kHz) | `real_scatter_donor_khz` | float |  | 0 … 20 (step 0.1) | Scattered and Raman light of the donor laser in the donor detector: prompt window, instrument response only. |
+| Afterpulsing | `real_afterpulse_probability` | float |  | 0 … 0.1 (step 0.001) | Probability that a detection repeats on the same detector shortly after (detector afterpulsing). |
+| Dead time (ns) | `real_dead_time_ns` | float |  | 0 … 500 (step 5) | Detector dead time: a photon arriving within it after another is lost (count-rate saturation). |
+| Acceptor bleaching (/ms) | `real_acceptor_bleach_per_ms` | float |  | 0 … 5 (step 0.01) | Acceptor photobleaching rate at the focus centre: bursts end as donor only — tails towards high S and low E. |
+| Donor bleaching (/ms) | `real_donor_bleach_per_ms` | float |  | 0 … 5 (step 0.01) | Donor photobleaching rate at the focus centre: bursts end as acceptor only — tails towards low S. |
+| Acceptor blinking (/ms) | `real_acceptor_blink_per_ms` | float |  | 0 … 20 (step 0.05) | Rate into the acceptor's dark state (it returns after ~0.2 ms): FRET drops for a while within a burst. |
+| Drift (per min) | `real_drift_per_minute` | float |  | -0.5 … 0.5 (step 0.01) | Slow relative intensity change per minute (focus, laser power, evaporation). |
+
+### TCSPC device
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Device | `device_index` | choice |  | choices: `device_options` | The PicoQuant devices connected over USB (driven through CMC's pqusb, without PicoQuant's libraries). Connect opens and initialises it in T3 mode. |
+| Sync divider | `sync_div` | int |  | 1 … 16 (step 1) | Divides the laser's sync pulses. Keep 1 for PIE: the micro-time must span one full laser period, both pulses. |
+| Sync level (mV) | `sync_level_mv` | int |  | -1200 … 1200 (step 10) | Trigger level of the sync input. |
+| Sync edge | `sync_edge` | choice |  | choices: 0, 1 | Which edge of the sync signal triggers. |
+| Sync offset (ps) | `sync_offset_ps` | int |  | -99999 … 99999 (step 100) | Shifts all micro-times; use it to place the prompt pulse at the start of the period. |
+| Input level (mV) | `input_level_mv` | int |  | -1200 … 1200 (step 10) | Trigger level of the detector inputs (all inputs). |
+| Input edge | `input_edge` | choice |  | choices: 0, 1 | Which edge of the detector pulses triggers (all inputs). |
+| Donor input offset (ps) | `donor_offset_ps` | int |  | -99999 … 99999 (step 100) | Delay of the donor detector's input (the first donor channel of the setup), to align it with the acceptor's. |
+| Acceptor input offset (ps) | `acceptor_offset_ps` | int |  | -99999 … 99999 (step 100) | Delay of the acceptor detector's input (the first acceptor channel of the setup). |
+| Binning | `binning` | int |  | 0 … 24 (step 1) | T3 micro-time bin width = base resolution x 2^binning. |
+| Offset (ns) | `offset_ns` | int |  | 0 … 100000000 (step 1) | T3 offset of the micro-time window (ns). |
+
+### Laser
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Laser | `laser_kind` | choice |  | choices: `laser_options` | Auto uses the Sepia II driver when its library is installed, else the simulated laser. Why Sepia II is not available is shown on the status line. |
+
+### Program
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Divider | `laser_divider` | int |  | 1 … 65535 (step 1) | The oscillator's base frequency is divided by this to give the pulse rate the sequencer distributes. |
+
+### Experiment setup
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Instrument setup | `setup_address` | choice |  | choices: `setup_options` | Which detector is donor and which acceptor, and the excitation windows: a setup row of the Datasets workspace (drop a detector setup JSON on the window), or the default for the measurement type — routing channel 0 donor, 1 acceptor; PIE splits the laser period into prompt and delay halves. A setup with gamma, beta, alpha and delta gives corrected FRET efficiency and stoichiometry. |
+| Measurement type | `preset` | choice |  | choices: `preset_options` | How the setup is read: single colour, two colour, PIE, µs-ALEX, MFD or three-colour PIE. 'From the setup' takes the type the setup describes. The type decides the quantities (proximity ratio, stoichiometry, anisotropy), the live histograms and which quality checks apply. |
+| Alternation period (µs) | `alex_period_us` | float |  | 1.0 … 10000.0 (step 10.0) | µs-ALEX only: the laser alternation period; the first half excites the donor, the second the acceptor. |
+| Minimum photons | `min_photons` | int |  | 5 … 10000 (step 5) | A burst needs at least this many photons (L). |
+| Window photons | `window_photons` | int |  | 2 … 1000 (step 1) | The sliding window: this many consecutive photons (m) ... |
+| Window time (ms) | `window_time_ms` | float |  | 0.01 … 100.0 (step 0.05) | ... arriving within this time (T) belong to a burst. The same criterion as Burst Selection's sliding-window search, so the run can be re-analysed offline with identical bursts. |
+
+### Running trace
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Span (s) | `trace_window_s` | float |  | 0.01 … 600.0 (step 0.5) | How many seconds the running trace shows: the most recent ones, scrolling. Default 1 s. |
+| Bin (ms) | `trace_bin_ms` | float |  | 0.01 … 1000.0 (step 0.5) | Bin width of the running trace. Default 1 ms (bursts last a few ms). |
+
+### Raster
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Pixels x | `scan_pixels_x` | int |  | 1 … 4096 (step 8) | Pixels per line. |
+| Pixels y | `scan_pixels_y` | int |  | 1 … 4096 (step 8) | Lines per frame. |
+| Width (µm) | `scan_area_x_um` | float |  | 0.01 … 1000.0 (step 1.0) | The scanned width; a pixel is width / pixels wide. |
+| Height (µm) | `scan_area_y_um` | float |  | 0.01 … 1000.0 (step 1.0) | The scanned height. |
+| Dwell (ms) | `scan_dwell_ms` | float |  | 0.001 … 100.0 (step 0.01) | Time on one pixel. A line takes pixels x dwell; the line rate follows. |
+| Frames | `scan_frames` | int |  | 1 … 10000 (step 1) | Frames per plane; their photons add up in the live image. |
+| Bidirectional | `scan_bidirectional` | bool |  |  | Odd lines are scanned right to left (faster; needs a well-aligned scanner). |
+| Z planes | `scan_z_planes` | int |  | 1 … 1000 (step 1) | Planes of a z stack (1: one plane). |
+| Z step (µm) | `scan_z_step_um` | float |  | 0.01 … 100.0 (step 0.1) | Distance between the planes of a z stack. |
+
+### Simulated sample
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Beads | `img_beads` | int |  | 0 … 500 (step 1) | Bright beads on the dim outline of a cell; half of them with each lifetime. |
+| τ₁ (ns) | `img_tau_1_ns` | float |  | 0.05 … 20.0 (step 0.1) | Lifetime of the first bead kind (mostly on detector 0). |
+| τ₂ (ns) | `img_tau_2_ns` | float |  | 0.05 … 20.0 (step 0.1) | Lifetime of the second bead kind (mostly on detector 1). |
+| Brightness | `img_brightness` | float |  | 0.1 … 10000.0 (step 5.0) | Photon rate of one emitter at the focus centre (a bead is a few emitters). Too bright piles up: watch the Pile-up light. |
+
+### Run
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Duration (s) | `duration_s` | float |  | 0.0 … 86400.0 (step 10.0) | Stop after this much measurement time; 0 measures until you press Stop. |
+| Name | `run_name` | str |  |  | The recording's name: its file in the project's recordings folder and its row in Datasets. |
+| Store photons | `recording_store` | choice |  | choices: `store_options` | Embed (default): the photons are stored inside the project's .cs.pto when the run stops, so the project carries its data. Link: the project records the file's path and checksum only. Written beside the project while measuring, so a crash leaves the photons on disk. |
+
+### Histogram
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Histogram | `plot_choice` | choice |  | choices: `plot_options` | Which of the measurement type's histograms to show: E–S (with its marginals) for PIE and ALEX, the proximity ratio for two colour, anisotropy and proximity ratio for MFD, burst size and duration for a single colour. |
+
+### Image
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Map | `image_map` | choice |  | choices: `image_map_options` | Which map: intensity (all detectors), mean arrival time (fast FLIM), a single detector, or a micro-time window (PIE). |
+
+### General
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Species | `species` | int |  | 1 … 999 | Which species' decay is being edited. Switching keeps each species' edits; OK writes them all back. |
+| Decay pattern file | `pattern_path` | str |  |  | Measured or saved decay pattern (.npy or text) that replaces the lifetimes for this species; empty = use the lifetimes. |
+| Gaussian FWHM (ns) | `irf_fwhm_ns` | float |  | 0.0 … 1000.0 | Full width at half maximum of the Gaussian instrument response shared by all species; 0 = no IRF convolution. |
+
 ### Acquisition
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
@@ -268,16 +316,13 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Streaming analysis: computing on photons that have not arrived yet](/concepts/live_streaming_analysis.md)
-- **Workflow** — [Live acquisition: watching a measurement while it happens](/guides/65_live_acquisition.md)
+- **Workflow** — [TTTR simulation of diffusing particles](/guides/18_tttr_simulation.md), [Live acquisition: watching a measurement while it happens](/guides/65_live_acquisition.md)
 
 ## Source
 
 - Plugin package: `chisurf/plugins/core/acq/`
 - Manifest: {src}`chisurf/plugins/core/acq/manifest.json`
-- UI spec: {src}`chisurf/plugins/core/acq/gui/acq_emtk.view.json`
-- UI spec: {src}`chisurf/plugins/core/acq/gui/bh_setup.view.json`
-- UI spec: {src}`chisurf/plugins/core/acq/gui/brickmic_setup.view.json`
 - UI spec: {src}`chisurf/plugins/core/acq/gui/live_plots.view.json`
-- UI spec: {src}`chisurf/plugins/core/acq/gui/picoquant_setup.view.json`
+- UI spec: {src}`chisurf/plugins/core/acq/gui/record.view.json`
 - UI spec: {src}`chisurf/plugins/core/acq/gui/sim_decay_emtk.view.json`
 - UI spec: {src}`chisurf/plugins/core/acq/gui/sim_setup_emtk.view.json`

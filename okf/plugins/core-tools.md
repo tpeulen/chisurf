@@ -110,7 +110,7 @@ The window is one emtk surface since 2026-09-23 (below). Open, in order:
 | `core/database_connector` | Core:Database Connector | Source/user DB resolution, migration, backup/reset, FLR CIF import/export. |
 | `core/project_browser` | Tools:Open Project | Browse, save, restore, export/import projects via MMFDB with version control. |
 | `core/updater` | Setup:Updates & Packages | Update checker/installer and conda package manager (panels inside Settings). |
-| `core/acq` | Main:Tools:Acquisition | Single-molecule acquisition from TCSPC hardware or the built-in tttrlib photon simulator — push-based, see [below](#acquisition-is-a-stream). |
+| `core/acq` | Main:Tools:Acquisition | The Record tool: single-molecule acquisition from TCSPC hardware (through phacq) or the built-in tttrlib photon simulator — push-based, see [below](#acquisition-is-a-stream). |
 | `core/batch_analysis` | Main:Tools:Batch-Analysis | Apply one template fit to many datasets/files and export consolidated results. |
 | `core/globalview` | Main:Tools:Global View | Interactive network graph of parameter relationships across fits — see [below](#global-view-the-parameter-network). |
 | `core/help` | Help:Documentation | Documentation browser and editor (Markdown + the reStructuredText user manual), with human-review sign-off tracking. |
@@ -130,6 +130,21 @@ plugins, it exercises the same discovery/lifecycle rules the [Plugins target](/s
 demands of feature code.
 
 ## Acquisition is a stream
+
+**Devices come through phacq** (2026-10-27, owner: "the old stuff for acq can go all is phacq
+now"). phacq is a separate C++/Python acquisition library with native drivers — no vendor
+libraries — for PicoQuant MultiHarp / PicoHarp 330 / HydraHarp 500, Becker & Hickl SPC cards and
+the PicoQuant Sepia II laser. The classic device-session window (`acq/gui/app.py`, its
+B&H / PicoQuant / BrickMic *Device Setup* cards `gui/{bh,picoquant,brickmic}_setup.view.json`
+over `setup_forms.py` / `setup_models.py`) and the vendor wrappers under
+`acq/tcspc_devices/{bh_spc,picoquant,brickmic}` with `device_factory.py` were deleted; the Record
+tool (`gui/record_app.py`) is the only window. What stays: `pipeline.py`, `gui/live_plots.py`
+(the Acquisition fit window's pages), `dataset.py`/`demo.py`, the tttrlib simulator
+`tcspc_devices/simulation/` (RPC `acq.simulation.run`, `photon-acquisition --cli`) and its emtk
+setup dialog `gui/sim_setup.py` (tests host it alone via `acq/test/sim_setup_host.py`). The
+output-folder helpers moved to `acq/output_paths.py`. The simulated device's FIFO interface
+(`TCSPCDeviceABC`, `Signal`) moved with it to `tcspc_devices/simulation/device_base.py`;
+`SimulationDevice` has no consumer left since the device factory went.
 
 `core/acq` drives every device through one seam — `read_fifo(max_words)` returns
 raw `uint32` records — and everything that happens to a photon after that lives

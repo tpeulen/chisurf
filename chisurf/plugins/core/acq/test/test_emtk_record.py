@@ -93,7 +93,7 @@ def test_every_guide_step_points_at_a_drawn_control(app):
     dock forward, so every target is drawn while its step is shown."""
     ui = Driver(app, SIZE)
     ui.draw(3)
-    steps = json.loads((HERE / "record_guide.json").read_text(encoding="utf-8"))["steps"]
+    steps = json.loads((HERE / "guide.json").read_text(encoding="utf-8"))["steps"]
     app.tour.start()
     for k, step in enumerate(steps):
         app.tour.step_idx = k

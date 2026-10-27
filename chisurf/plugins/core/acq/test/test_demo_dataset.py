@@ -86,35 +86,6 @@ def test_open_demo_registers_dataset_and_a_fit_naming_the_five_pages(monkeypatch
         api.clear_datasets()
 
 
-def test_load_example_button_opens_the_dataset_and_fit(monkeypatch, tmp_path):
-    """A pointer click on Load example registers the demo dataset and its Acquisition fit."""
-    from chisurf.core.api import ChiSurfAPI
-    from chisurf.plugins.core.acq.gui.app import AcquisitionApp
-    from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
-
-    monkeypatch.setattr(demo, "demo_folder", lambda: tmp_path)
-    api = ChiSurfAPI(mode="local")
-    app = AcquisitionApp()
-    try:
-        ui = Driver(app, (1200, 800))
-        ui.draw(3)
-        assert app.model.dataset is None
-        ui.click("load_example")
-        assert app.model.dataset is not None
-        assert [f["name"] for f in api.list_fits()][-1] == "Acquisition"
-        assert app.model.enabled("load_example")
-        deadline = time.monotonic() + 30
-        while app.model.dataset.streaming and time.monotonic() < deadline:
-            ui.draw(1)
-            time.sleep(0.05)
-        ui.draw(2)
-        assert app.model.dataset.snapshot["total_photons"] > 10_000
-    finally:
-        app.close()
-        api.clear_fits()
-        api.clear_datasets()
-
-
 def test_count_rate_page_draws_the_rate_and_a_mean_line_on_request(monkeypatch, tmp_path):
     """The fit window's Count rate page shows what the native window's did: the curve and the mean lines."""
     from chisurf.core.api import ChiSurfAPI

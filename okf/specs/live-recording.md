@@ -56,10 +56,18 @@ no tttrlib), never all at once on the laptop. Open front, in order:
 6. Measure: **FCS fit needs the user's two settings** (documented in `leg_fcs`): the focus fixed to its
    calibration (left free, `w_z` collapses onto `w_r`), and First past the detector dead time (the
    10-30 ns lags sit at G ~ 0.15). A default fit range that skips a dead-time dip would remove the second.
-7. Blocked: **Real hardware.** MultiHarp/Sepia through CMC's `pqusb` (Python) and `rustytime` (Rust), both
-   the owner's work in `~/dev/cmc/tools/`; real scanners wait for rustytime's scanner backend
-   (`ScannerBackend` in `acq/live/scanner.py`). Sepia II on macOS has no library unless CMC's
-   `cmc_sepia2` is built.
+7. Open: **Hardware through libphacq (2026-10-27, owner: "all is phacq now").** Devices and the Sepia II
+   run through libphacq (`~/dev/libphacq`, private `tpeulen/libphacq`): `acq/live/devices.py` (TCSPC
+   source, settings form from `Device.parameter_schema`), `acq/live/laser.py` (`SepiaBackend`), see
+   *Device layer* below. Verified: the Sepia II (s/n 1027040) live through the Record model and a
+   headless Record window (connect, soft lock, pulsed, rate, intensity, reconnect at 2-3 ms/frame);
+   the MultiHarp's panel on phacq's replay of the real unit. **Not yet:** a live Record run on the
+   MultiHarp (it was unplugged; phacq itself is live-verified on it), any B&H card, phacq's Sepia SOM 828
+   sequencer (`set_oscillator` raises; PIE windows from the laser need it), real scanners
+   (`ScannerBackend`). **Trap:** never enumerate USB per frame or while a unit is driven (an options list
+   is drawn every frame; on macOS a libusb kernel-driver detach captures a unit another handle drives and
+   froze the window) -- `RecordModel.attached` / `_sepia_status` throttle and gate it; and restart ChiSurf
+   after reinstalling phacq (its dylibs are replaced under a running process).
 8. Measure: **Traps.** The laptop resource guard refuses pytest below 4 GB free disk and the 16 GB laptop
    swaps hard with a VM running -- run heavy files on home; pytest rotates its temp dirs, so copy a
    recording out (`~/acqj/`) before analysing it by hand.
@@ -72,9 +80,10 @@ no tttrlib), never all at once on the laptop. Open front, in order:
    ([tttr](../../../cmc/okf/backends/tttr.md)) behind one `IBackend`
    ([backend interface](../../../cmc/okf/architecture/backend-interface.md)), and CMC already reproduces the
    Sepia2 API ([cmc-sepia2-api](../../../cmc/okf/backends/cmc-sepia2-api.md)). ChiSurf's `acq` plugin
-   carries a second snAPI ctypes wrapper (`chisurf/plugins/core/acq/tcspc_devices/picoquant/wrapper.py`,
-   "duplicating snAPI functionality"). That duplicate is **retired** once the CMC path has run on hardware,
-   since two drivers for one device drift. *Reason:* one driver per device, owned where the hardware work
+   carried a second snAPI ctypes wrapper (`acq/tcspc_devices/picoquant/wrapper.py`,
+   "duplicating snAPI functionality"). **Retired 2026-10-27** with the rest of the classic device session
+   (B&H / PicoQuant / BrickMic wrappers and setup cards): hardware now comes through phacq, see
+   [core tools](../plugins/core-tools.md#acquisition-is-a-stream). *Reason:* one driver per device, owned where the hardware work
    already happens.
 2. **The ChiSurf `acq` plugin becomes the Record tool.** It is not a new plugin: `acq` already has the
    streaming pipeline the live view needs (`chisurf/plugins/core/acq/pipeline.py`: one decode path through
@@ -227,12 +236,12 @@ stage that drives it, and the A/B guard against `burst_selection` on the recorde
 
 ## Laser control (Sepia II)
 
-- **Path:** PicoQuant's Sepia2_Lib through ctypes. PicoQuant ships a Python wrapper and demos (PQLaserDrv
-  repository; CMC used them as interface documentation only, see
-  [cmc-sepia2-api](../../../cmc/okf/backends/cmc-sepia2-api.md)). It runs on Windows natively and on Linux
-  under Wine (PQLaserDrv `Linux/README.md`). The ChiSurf service talks to it through the same `LaserBackend`
-  shape CMC uses: `make_cmctdc_backend` for CMC's device, and a new Sepia2_Lib-backed implementation for
-  the real Sepia.
+- **Path (2026-10-27):** libphacq's native `sepia` driver (USB, no PicoQuant library, Linux / macOS /
+  Windows) behind `LaserBackend` (`acq/live/laser.py: SepiaBackend`). It drives the main board's soft lock
+  and each laser driver module (SLM: repetition rate or external trigger, pulsed / CW, intensity), shown in
+  the Laser panel as the unit's own controls generated from its schema. The oscillator module (SOM 828
+  sequencer) is not driven by phacq yet. *Superseded:* the Sepia2_Lib/ctypes path below this line was the
+  2026-10-26 plan and has been removed.
 - **What ChiSurf sets:** oscillator, pre-divider, the SOM 828-D sequencer (bursts per channel, which
   output fires in which slot, delays, sync source), the per-head intensity, and laser on/off (SCM soft
   lock). CMC's page maps SOM 828-D semantics precisely. The ChiSurf UI writes the same model.
@@ -242,15 +251,26 @@ stage that drives it, and the A/B guard against `burst_selection` on the recorde
 - **Recorded:** the full laser state (module map, serials, every setting, the derived PIE scheme) as
   metadata on the measurement, in PTU tags and the project record.
 
-## Device layer (owner 2026-10-26)
+## Device layer (owner 2026-10-27: "the old stuff for acq can go all is phacq now")
 
-The device layer is CMC's own driver stack, not PicoQuant's libraries: `pqusb` (Python reference
-implementation, `~/dev/cmc/tools/pqusb`) and **rustytime** (`~/dev/cmc/tools/rustytime`, the Rust
-implementation: acquisition compatible with the vendor's acquisition software, native PicoQuant device control, continuous T2/T3
-streaming to PTU). Both are developed in the CMC repository by the owner. ChiSurf consumes them through
-one source interface in the Record tool (`chisurf/plugins/core/acq/live/`); it never talks to USB itself.
-ChiSurf uses pqusb today and switches to rustytime when rustytime exposes what ChiSurf needs (a Python
-binding or a streaming interface); the switch is a backend choice, not a rewrite.
+The device layer is **libphacq** (`~/dev/libphacq`): native drivers, no vendor library or vendor kernel
+driver, for PicoQuant MultiHarp 150/160, PicoHarp 330, HydraHarp 500 (USB), Becker & Hickl SPC
+130/131/132/140/15x/16x/830/930 (PCI) and the Sepia II; on Windows its one KMDF driver `phacq.sys`
+(test-signed). ChiSurf consumes it in `acq/live/devices.py`:
+
+- **Every setting, described by the device.** `Device.parameter_schema()` is a registry entry in
+  tttrlib's dialect (JSON Schema with `title`, `unit`, `group`, `enum` + `enum_labels`, `readOnly`;
+  per-input settings as `name[input]` grouped "Input n"). `devices.settings_form` renders it through
+  `chisurf.core.registry.tttrlib.entry_form_view_for` (the grouped `RpcMethodView` form), so the TCSPC
+  panel and the Sepia's controls have no hand-written fields and pick up new driver settings on their
+  own. Values travel as phacq's flat dict (`Device.settings()` / `Device.apply()`, validated whole before
+  anything is sent), which is also the settings file's `device.settings`.
+- **Streaming:** `DeviceSource` reads packed events (`read_events_raw`, `phacq.EVENT_DTYPE`) into
+  `PhotonBatch`es and records them with phacq's `PtuWriter` (typed `ImgHdr_*` tags).
+- **Removed:** CMC's pqusb (and its simulated MultiHarps `PieSimDevice` / `ImageSimDevice`), the
+  Sepia2_Lib/ctypes laser backend, the vendor wrappers under `tcspc_devices/` and the classic device
+  session. The simulators are tttrlib's photon-level ones; tests use phacq's `fake` unit (described
+  settings, remembered) and Sepia simulator.
 
 ## Imaging acquisition (owner 2026-10-26)
 

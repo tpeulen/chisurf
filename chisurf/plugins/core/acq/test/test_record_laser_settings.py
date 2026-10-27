@@ -1,6 +1,6 @@
 """The Record tool's Laser and Settings panels with the simulated laser and the simulated MultiHarp.
 
-Never the real hardware: the laser is ``live.laser.SimLaser``, the TCSPC unit ``PieSimDevice``.
+Never the real hardware: the laser is ``live.laser.SimLaser``, the TCSPC unit phacq's ``fake``.
 The rules checked are the safety ones (outputs off after Connect and after any edit, Emission on
 only after Apply, Laser off always there, the laser closed when a run ends) and the round trips: a
 saved settings file loads back into the form, the device and the laser; a recording carries its
@@ -114,7 +114,8 @@ def test_saved_settings_load_back_into_the_form_the_device_and_the_laser(model, 
     _pie_program(model)
     model.apply_laser_program()
     model.min_photons, model.window_time_ms, model.duration_s = 45, 0.5, 30.0
-    model.sync_offset_ps = 1200
+    # the device panel's values (phacq names), held while no device is connected
+    model.device_values = {"sync_divider": 2, "input_level_mv[1]": -120}
     model.real_gamma = 0.7
     model.realism_edited()
     saved = model.save_settings_to(tmp_path / "pie")
@@ -122,15 +123,20 @@ def test_saved_settings_load_back_into_the_form_the_device_and_the_laser(model, 
     doc = settings_file.load(saved)
     assert doc["laser"]["backend"] == "simulated" and doc["experiment"]["preset"] == "pie"
 
-    if devices.PieSimDevice is None:  # the simulated device runs behind pqusb (CMC)
-        pytest.skip("pqusb (CMC) is not installed")
+    assert doc["device"]["settings"] == {"sync_divider": 2, "input_level_mv[1]": -120}
+
+    phacq = pytest.importorskip("phacq")
     other = RecordModel(output_dir=tmp_path / "rec2", realtime=False)
     other.laser_kind = "simulated"
     other.connect_laser()
-    dev = devices.PieSimDevice(seed=1)
-    import pqusb
-
-    dev.initialize(pqusb.MODE_T3)
+    cfg = phacq.FakeConfig()
+    cfg.number_of_channels = 3
+    cfg.rates_cps = phacq.VectorDouble([20e6, 1e3, 1e3])
+    drv = phacq.FakeDriver()
+    drv.add_device(cfg)
+    dev = drv.open("")
+    dev.initialize(phacq.MeasurementMode.T3, phacq.ReferenceClock.Internal)
+    dev.phacq_driver = "fake"
     other.device = dev
     rows = [SimpleNamespace(address=str(saved), name=saved.name, data_kind="setup")]
     record_settings.workspace_datasets = lambda kind: rows if kind == "setup" else []
@@ -143,7 +149,8 @@ def test_saved_settings_load_back_into_the_form_the_device_and_the_laser(model, 
 
         record_settings.workspace_datasets = workspace_datasets
     assert (other.min_photons, other.window_time_ms, other.duration_s) == (45, 0.5, 30.0)
-    assert other.sync_offset_ps == 1200 and dev.settings.sync.offset_ps == 1200  # on the device
+    assert dev.settings()["input_level_mv[1]"] == -120 and dev.settings()["sync_divider"] == 2
+    assert other.device_form is not None  # the panel shows the device's settings
     assert other.realism().gamma == pytest.approx(0.7)
     assert other.setup_address == record_settings.SETTINGS_SETUP
     st = other.laser.state()  # on the laser, emission off
@@ -228,7 +235,7 @@ def test_the_laser_section_renders(tmp_path):
 
 
 def test_the_photon_level_recorder_writes_the_settings_tag_too(tmp_path):
-    """Without pqusb the session writes the PTU through tttrlib: the same tag, the same document."""
+    """A photon-level source's PTU is written through tttrlib: the same tag, the same document."""
     from chisurf.plugins.core.acq.live.session import RecordSession
     from chisurf.plugins.core.acq.live.sources import SimulatedPieSource
 
@@ -242,3 +249,35 @@ def test_the_photon_level_recorder_writes_the_settings_tag_too(tmp_path):
     session.start()
     session.wait(60)
     assert settings_file.from_address(str(tmp_path / "a.ptu")) == (doc, [])
+
+
+def test_a_sepia_shows_its_own_controls_and_an_edit_reaches_it(tmp_path, monkeypatch):
+    """The Sepia II (phacq's simulated unit): its soft lock and, per head, the pulsed switch, the
+    repetition rate and the intensity are the Laser panel's controls, and act at once."""
+    from chisurf.plugins.core.acq.live import laser as laser_mod
+
+    if not devices.PHACQ:
+        pytest.skip("libphacq is not installed")
+    unit = devices.DeviceEntry("sepia", "sim:", "PicoQuant", "Sepia II")
+    monkeypatch.setattr(laser_mod, "_sepia_units", lambda: [unit])
+    model = RecordModel(output_dir=tmp_path / "rec", realtime=False)
+    model.laser_kind = "sepia"
+    assert model.connect_laser(), model.laser_detail
+    try:
+        assert model.laser_form is not None and not model.laser_program_shown
+        group = model.laser_form._params_group
+        assert getattr(group, "soft_lock") is True  # outputs off after connect
+        setattr(group, "pulse_mode[0]", False)
+        setattr(group, "frequency_index[0]", "2")  # a choice commits its option text
+        setattr(group, "intensity_permille[0]", 250)
+        dev = model.laser.device
+        s = dev.settings()
+        assert s["pulse_mode[0]"] is False and s["frequency_index[0]"] == 2
+        assert s["intensity_permille[0]"] == 250 and s["rep_rate_mhz[0]"] == 20.0
+        setattr(group, "soft_lock", False)
+        assert not model.laser.state().emission_blocked and model.laser_emission_on is not None
+        model.laser_off()
+        assert dev.settings()["soft_lock"] is True
+        assert getattr(model.laser_form._params_group, "soft_lock") is True  # the panel follows
+    finally:
+        model.close()

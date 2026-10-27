@@ -7,31 +7,73 @@ tags: [guides, tcspc, photons, python, gui]
 
 # Live acquisition: watching a measurement while it happens
 
-**Tools → Views → Acquisition** streams photons from a TCSPC card — Becker &
-Hickl SPC-130/150/160/180, PicoQuant, BrickMic — or from the built-in photon
-simulator, and analyses them *while they arrive*: a decay per detector, an FCS
-correlation, count rates, an MCS trace and inter-photon times, all updated per
-chunk. Nothing here re-reads the photons it has already seen, so the display
-costs the same at minute 30 as at minute 1 (see
+**Tools → Views → Acquisition** opens the **Record** tool. It streams photons
+from TCSPC hardware, from the built-in photon simulator or from a replayed
+photon stream, and analyses them *while they arrive*: bursts, the histograms of
+the measurement type (E–S for PIE), a decay per detector, an FCS correlation,
+count rates, an MCS trace and inter-photon times, all updated per chunk. Nothing
+here re-reads the photons it has already seen, so the display costs the same at
+minute 30 as at minute 1 (see
 {doc}`Streaming analysis </concepts/live_streaming_analysis>`).
 
-Opening the plugin also starts a **demo stream** and opens an **Acquisition fit
-window** next to the control window (see [The Acquisition fit window](#the-acquisition-fit-window)).
+You do not need hardware to follow this guide: the **simulator** is a full
+confocal photon simulator — diffusion through a focus, FRET states, anisotropy,
+photophysics — and its records take the same path a device's do.
 
-You do not need hardware to follow this guide: **Simulation** is a full confocal
-photon simulator — diffusion through a focus, FRET states, anisotropy,
-photophysics — and produces the same B&H records a card does.
+## Devices: phacq
+
+Hardware is driven through **phacq**, a separate C++/Python acquisition library
+with native drivers — no vendor libraries — for PicoQuant MultiHarp, PicoHarp
+330 and HydraHarp 500, Becker & Hickl SPC cards, and the PicoQuant Sepia II
+laser. The vendor-library device session of earlier versions (B&H SPCM-DLL,
+PicoQuant and BrickMic wrappers with their *Device Setup* cards) has been
+removed; there is one acquisition window, Record.
+
+**Every setting a device has is offered.** The driver describes its settings
+itself — names, units, ranges, choices, which are per input — and Record builds
+the device's panel from that description, so nothing is left out and a setting
+a newer phacq adds appears without a ChiSurf change. Connect a device under
+**Acquisition → TCSPC device**: the sync, each input on its own fold, timing,
+markers and outputs (for a B&H card its CFD, sync, TAC, timers and FIFO mode).
+An edit is sent at once, between runs; a value the device refuses is named in
+the status line and nothing of that edit is applied. The values are saved in
+the acquisition settings file (``device.settings``, phacq's names).
+
+```{figure} figures/65_record_device.png
+:name: fig-65-record-device
+:width: 60%
+
+A MultiHarp 150 8N in Record's TCSPC device panel: the sync, the inputs'
+common hysteresis, timing and markers, then one fold per input (below the crop).
+```
+
+**The laser.** Under **Laser**, a Sepia II shows its own switches, which act at
+once: the **Soft lock** (on: every output off) and, per laser head, **Pulsed**
+(off: continuous wave), the **Repetition rate** (the head's own oscillator, 80
+MHz / 2ⁿ, or an external trigger edge) and the **Intensity**. Connecting locks
+the outputs; **Laser off** always works. An oscillator module (SOM 828
+sequencer) is not driven by phacq yet.
+
+```{figure} figures/65_record_laser.png
+:name: fig-65-record-laser
+:width: 60%
+
+A Sepia II in Record's Laser panel (phacq's simulated unit): soft lock, and the
+first laser head's pulsed switch, repetition rate and intensity.
+```
 
 ## Running one
 
-1. Open **Setup → Settings → Acquisition** and pick the **Active Device Type**.
-   With *Simulation*, the simulator's scalar parameters (excitation mode,
-   photon counts, seeds, geometry, micro time, performance) are listed below
-   the device picker. Set **Acquisition → Mode** to *Pulsed* if you want to see
-   a decay: the default is CW, whose micro times are all zero, so the decay
-   window shows a single spike at 0 ns and the phasor reads (1, 0). Every change
-   is stored at once, and the Acquisition tool starts from what is stored: its
-   **Device type**, and its simulator.
+Its windows (Acquisition, Laser, Analysis, Quality, the plots), sources, laser
+program, settings files and measurement types are described in the tool's own
+**Help** and walked through by its **Guide**. In short:
+
+1. Open **Setup → Settings → Acquisition** to set the defaults the tool starts
+   from: the simulator's scalar parameters (excitation mode, photon counts,
+   seeds, geometry, micro time, performance) and the standard **output folder**.
+   Set **Acquisition → Mode** to *Pulsed* if you want to see a decay: with CW
+   excitation every micro time is zero, so the decay is a single spike at 0 ns
+   and the phasor reads (1, 0). Every change is stored at once.
 
    ```{figure} figures/65_acquisition_settings.png
    :name: fig-65-acquisition-settings
@@ -40,42 +82,24 @@ photophysics — and produces the same B&H records a card does.
    Setup → Settings → Acquisition with the simulator selected and switched to
    pulsed excitation. The per-species table (molecules in the box M, diffusion
    coefficient D, brightness per detector), the kinetics and the decay
-   lifetimes have no form here: they are part of the parameter JSON the
-   Acquisition tool shows under **Advanced simulation parameters**.
+   lifetimes are edited in the simulation setup dialog
+   ({doc}`guide 18 </guides/18_tttr_simulation>`).
    ```
-2. In the acquisition window, set the **stop conditions**: **Time limit (s)** and
-   **Photon limit**, or both. At least one must be non-zero — an acquisition with
-   neither would never stop on its own. The photon condition is checked per
-   chunk, so a run overshoots it by up to one chunk (**Chunk Size** in the
-   settings page, 16384 photons by default).
-3. The four **routing channels** are the detector numbers the card emits, and
-   window *i* of the decay and count-rate displays is channel *i* of that list.
-   They default to 8, 0, 9, 1; the simulator's green detectors are 8 and 9
-   (parallel and perpendicular, B&H numbering), so with the defaults its photons
-   land in windows 1 and 3. The four fields are in the window's *Routing and
-   output* section.
-4. Optionally set an **Output folder**. On devices that support it, raw vendor
-   words are written there during the run; the simulator writes `mNNN.spc`
-   files plus `simulation_config.json` and `simulation_info.txt`. The field is
-   pre-filled with the standard output folder of Setup → Settings → Acquisition when
-   one is set; empty means nothing is written.
-5. For a card, press **Initialize device** first — nothing touches the hardware
-   before that click; the simulator needs no initialisation. Then press
-   **Start**. **Peak brightness** and **Deterministic seed** (section
-   *Simulator configuration*) apply to the next simulated run: the brightness
-   scales every species' brightness so that the largest is the value you set.
-
-The line above the live plots reports the photon count, the elapsed time, the mean
-count rate in kHz and the progress towards the photon limit.
+2. In Record, choose the **source** (simulator, replay, or a phacq device) and,
+   for a device, connect it first — nothing touches the hardware before that.
+3. Bound the run with a time and/or photon limit. The photon condition is
+   checked per chunk, so a run overshoots it by up to one chunk.
+4. Press **Start**; **Stop** ends the run early. The run lands in the project as
+   a photons dataset with its burst run.
 
 ## The Acquisition fit window
 
-Opening the plugin simulates a 20 s two-species stream (a donor-dominated species
+The acquisition demo (`open_demo()`, below) simulates a 20 s two-species stream (a donor-dominated species
 with a 3.4 ns donor lifetime and a high-FRET species with 1.1 ns, two detection
 channels; `chisurf/plugins/core/acq/demo.py`, cached under `<settings>/demos/acq`),
 registers it as a dataset and opens a fit window named **Acquisition**. Its model
 has no parameters. Its pages are the live plots: **Decay**, **Correlation**,
-**Count rate** (with the mean lines of the native window), **MCS** and **Macro time**;
+**Count rate** (with its mean lines), **MCS** and **Macro time**;
 they fill while the stream runs.
 
 ```{figure} figures/65_acquisition_fit_window.png
@@ -88,10 +112,6 @@ pairs, MCS bin width and range, macro-time plot type, update rate) are in the
 main window's *Plot settings* dock while the page is current.
 ```
 
-The count rate keeps its own tab in the acquisition window. A run started from the
-acquisition window (simulator or card) feeds the same dataset, so the fit window
-shows it too.
-
 From Python, headless:
 
 ```python
@@ -103,9 +123,9 @@ dataset.refresh()                # newest pipeline snapshot -> dataset.y, datase
 
 ## What the plots show
 
-The plots sit under *Pipeline results* in the acquisition window, one tab each;
-the *Result visibility* boxes choose which tabs exist (Decay, Correlation and
-Count rate by default, Macrotime and MCS on request).
+The live plots (`chisurf/plugins/core/acq/gui/live_plots.py`) are one tab each:
+Decay, Correlation, Count rate, MCS and Macrotime. They are the pages of the
+Acquisition fit window.
 
 **Fluorescence decays** — one micro-time histogram per routing channel,
 identical to a `bincount` of the saved micro times. The x axis is nanoseconds
@@ -143,12 +163,11 @@ Poissonian or structured.
 
 ## Saving
 
-The live path analyses; it does not yet write a self-contained file. On devices
-that drip raw vendor words, an **output folder** captures them and the run can be
-re-analysed offline; without one, the photons reach the display and nowhere else,
-and the status line says so when the run ends rather than implying a save. A
-native `.pto` sink written *during* the measurement — clocks and channel map as
-header tags, surviving a crash — is the tracked next step.
+Record writes the measurement while it runs and adds it to the project as a
+photons dataset; every recording carries its acquisition settings in its header,
+so a measurement can be repeated from the file. The simulator, run on its own
+(CLI below or `acq.simulation.run`), writes `mNNN.spc` files plus
+`simulation_config.json` and `simulation_info.txt` into its output folder.
 
 ## Without a GUI
 
@@ -217,8 +236,8 @@ the answer without changing anything you can see.
   time is zero — CW excitation, or a card whose TAC is not running.
 - A photon stop condition overshoots by up to one chunk; for an exact count,
   cut the saved raw words afterwards.
-- Set the output folder deliberately: a configured standard folder is prefilled, so
-  a quick test run leaves `mNNN.spc` files there.
+- Set the output folder deliberately: the standard folder of Setup → Settings →
+  Acquisition is where runs are written.
 
 ## Known behaviour
 
@@ -238,9 +257,8 @@ The live plots are drawn from `AcquisitionPipeline.snapshot()`
 - **MCS**: Bin width (ms), Rollaround (s), Manual Y range.
 - **Macrotime**: dt or absolute times.
 
-Routing channels, correlation pairs, MCS bin width and rollaround are fixed when the
-pipeline is built, so they apply from the next Start; everything else acts on the
-running plot. All settings are saved with the plugin settings.
+Correlation pairs, MCS bin width and rollaround are fixed when the pipeline is
+built, so they apply from the next run; everything else acts on the running plot.
 
 ## Related
 

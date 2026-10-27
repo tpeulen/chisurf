@@ -1,7 +1,9 @@
-"""
-Abstract Base Class for TCSPC Device Wrappers
+"""Streaming-device interface of the simulated TCSPC device.
 
-This module defines the common interface that all TCSPC device wrappers must implement.
+:class:`TCSPCDeviceABC` is the FIFO-style surface (initialize / start / read_fifo / stop) that
+:class:`~chisurf.plugins.core.acq.tcspc_devices.simulation.wrapper.SimulationDevice` implements,
+and :class:`Signal` is its Qt-free ``connect`` / ``emit`` signal. Real hardware no longer goes
+through this interface: it is driven by the phacq library.
 """
 
 from abc import abstractmethod

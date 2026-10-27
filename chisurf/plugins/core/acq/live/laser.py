@@ -12,12 +12,10 @@ excitation), the sync output to the TCSPC unit, and a status line. Two rules hol
 
 Backends:
 
-* :class:`SepiaBackend` -- PicoQuant's Sepia II (PDL 828) through the *public* ``Sepia2_Lib`` C API
-  (the documented PQLaserDrv API and its Python ctypes wrapper), loaded with :mod:`ctypes`. The
-  library is found in this order: an explicit path, ``$CHISURF_SEPIA2_LIB``, PicoQuant's
-  ``Sepia2_Lib`` (Windows; Linux only through Wine), then CMC's ``cmc_sepia2`` (same API, see CMC's
-  ``okf/backends/cmc-sepia2-api.md``; ``CMC_SEPIA2_SIM=1`` makes it simulate one device). On macOS
-  without ``cmc_sepia2`` the backend is unavailable and :func:`sepia_available` says why.
+* :class:`SepiaBackend` -- PicoQuant's Sepia II (PDL 828) through libphacq's native ``sepia``
+  driver (USB, no PicoQuant library, Linux / macOS / Windows). Every setting phacq has for the unit
+  is reachable through the backend's ``device``; the oscillator module (SOM 828 sequencer) is not
+  driven by phacq yet. :func:`sepia_available` says whether a unit is connected.
 * :class:`SimLaser` -- the same interface in pure Python, for tests and for the UI without hardware.
 
 :func:`propose_pie_windows` turns a laser program into the micro-time windows of an Experiment setup:
@@ -28,14 +26,9 @@ part of it.
 from __future__ import annotations
 
 import contextlib
-import ctypes
-import ctypes.util
-import os
 import re
-import sys
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
-from pathlib import Path
 
 #: Sequencer outputs of a Sepia II oscillator module (SOM 828 / SOM 828-D).
 SEQUENCER_OUTPUTS = 8
@@ -400,346 +393,126 @@ class SimLaser(LaserBackend):
 
 
 # ---------------------------------------------------------------------------------------------
-# Sepia II through the public Sepia2_Lib API
+# Sepia II through libphacq
 # ---------------------------------------------------------------------------------------------
-def _candidate_libraries(explicit: str | os.PathLike | None = None) -> list[Path]:
-    out: list[Path] = []
-    for p in (explicit, os.environ.get("CHISURF_SEPIA2_LIB"), os.environ.get("CMC_SEPIA2_LIB")):
-        if p:
-            out.append(Path(p))
-    if sys.platform == "win32":
-        for name in ("Sepia2_Lib.dll", "Sepia2_Lib64.dll"):
-            found = ctypes.util.find_library(name)
-            out.append(Path(found) if found else Path(name))
-        pf = Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
-        out += [pf / "PicoQuant" / "PQLaserDrv" / "Sepia2_Lib.dll"]
-    for name in ("cmc_sepia2", "libcmc_sepia2"):
-        found = ctypes.util.find_library(name)
-        if found:
-            out.append(Path(found))
-    cmc = Path(os.environ.get("CMC_ROOT", Path.home() / "dev" / "cmc"))
-    ext = {"darwin": ".dylib", "win32": ".dll"}.get(sys.platform, ".so")
-    out += [cmc / "bin" / f"libcmc_sepia2{ext}", cmc / "bin" / f"cmc_sepia2{ext}"]
-    return out
+def _sepia_units() -> list:
+    from chisurf.plugins.core.acq.live import devices
+
+    return devices.attached_devices(("sepia",))
 
 
-def sepia_available(explicit: str | os.PathLike | None = None) -> tuple[bool, str]:
-    """Whether a Sepia2 library can be loaded here, and which (or why not)."""
-    for path in _candidate_libraries(explicit):
-        if path.is_absolute() and not path.exists():
-            continue
-        try:
-            _load(path)
-        except OSError:
-            continue
-        return True, str(path)
-    if sys.platform == "darwin":
-        return False, (
-            "not available: no Sepia2 library for this platform (PicoQuant ships Sepia2_Lib "
-            "for Windows only; build CMC's cmc_sepia2 or use the simulated laser)"
-        )
-    return (
-        False,
-        "not available: no Sepia2 library found (install PQLaserDrv or set CHISURF_SEPIA2_LIB)",
-    )
+def sepia_available() -> tuple[bool, str]:
+    """Whether a Sepia II can be opened here, and which (or why not)."""
+    from chisurf.plugins.core.acq.live import devices
 
-
-def _load(path: Path):
-    if sys.platform == "win32":
-        return ctypes.WinDLL(str(path))
-    return ctypes.CDLL(str(path))
+    if not devices.PHACQ:
+        return False, "not available: libphacq is not installed"
+    units = _sepia_units()
+    if not units:
+        return False, "not available: no Sepia II connected (USB, VID 0x0E0D PID 0x0007)"
+    return True, ", ".join(u.label for u in units)
 
 
 class SepiaBackend(LaserBackend):
-    """Sepia II (PDL 828) over the public Sepia2_Lib C API -- no access below the documented API."""
+    """Sepia II (PDL 828) through libphacq's native ``sepia`` driver -- no PicoQuant library.
 
-    kind = "sepia2"
+    phacq drives the main board (soft lock) and the laser driver modules (SLM: repetition rate or
+    external trigger, pulsed / CW, intensity); every setting it has is reachable through
+    :attr:`device` (``device.schema()`` / ``device.settings()`` / ``device.apply()``), which the
+    Record tool renders as a whole. An oscillator module (SOM 828 sequencer) is not driven by
+    phacq yet: :attr:`LaserState.oscillator` stays ``None`` and setting one raises.
+    """
 
-    def __init__(self, library: str | os.PathLike | None = None) -> None:
+    kind = "sepia"
+
+    def __init__(self, serial: str = "") -> None:
         super().__init__()
-        self._library_hint = library
-        self._lib = None
-        self._dev = -1
-        self._scm = -1
-        self._som = -1
-        self._somd = False
-        self._slms: list[int] = []
+        self._serial = str(serial)
+        self.device = None
+        self._slots: list[int] = []
 
     @classmethod
     def available(cls) -> tuple[bool, str]:
         return sepia_available()
 
-    # -- library plumbing ----------------------------------------------------------------------
-    def _call(self, name: str, *args) -> None:
-        rc = getattr(self._lib, f"SEPIA2_{name}")(*args)
-        if rc != 0:
-            buf = ctypes.create_string_buffer(64)
-            with contextlib.suppress(Exception):
-                self._lib.SEPIA2_LIB_DecodeError(rc, buf)
-            text = buf.value.decode("latin-1", "replace") or str(rc)
-            raise LaserError(f"Sepia2 {name}: {text} ({rc})")
-
     def _open_device(self, index: int) -> None:
-        ok, where = sepia_available(self._library_hint)
-        if not ok:
-            raise LaserError(where)
-        self._lib = _load(Path(where))
-        self._library_path = where
-        model = ctypes.create_string_buffer(64)
-        serial = ctypes.create_string_buffer(64)
-        self._call("USB_OpenDevice", index, model, serial)
-        self._dev = index
-        self._model = model.value.decode("latin-1", "replace")
-        self._serial = serial.value.decode("latin-1", "replace")
-        count = ctypes.c_int()
-        self._call("FWR_GetModuleMap", self._dev, 0, ctypes.byref(count))
-        self._slms = []
-        for i in range(count.value):
-            slot, primary, back, uptime = (
-                ctypes.c_int(),
-                ctypes.c_ubyte(),
-                ctypes.c_ubyte(),
-                ctypes.c_ubyte(),
-            )
-            self._call(
-                "FWR_GetModuleInfoByMapIdx",
-                self._dev,
-                i,
-                ctypes.byref(slot),
-                ctypes.byref(primary),
-                ctypes.byref(back),
-                ctypes.byref(uptime),
-            )
-            mtype = ctypes.c_int()
-            self._call("COM_GetModuleType", self._dev, slot.value, 1, ctypes.byref(mtype))
-            if mtype.value == _SCM:
-                self._scm = slot.value
-            elif mtype.value in (_SOM, _SOMD):
-                self._som, self._somd = slot.value, mtype.value == _SOMD
-            elif mtype.value == _SLM:
-                self._slms.append(slot.value)
-        if self._scm < 0:
-            raise LaserError(
-                "Sepia2: no controller module (SCM) -- emission cannot be blocked safely"
-            )
+        from chisurf.plugins.core.acq.live import devices
+
+        units = _sepia_units()
+        if self._serial:
+            units = [u for u in units if u.serial == self._serial] or units
+        if not units or index >= len(units):
+            raise LaserError(sepia_available()[1])
+        self.device = devices.open_device(units[index])
+        settings = self.device.settings()
+        n = int(self.device.schema().get("channels", 0))
+        self._slots = [int(settings.get(f"slot[{c}]") or 0) for c in range(n)]
 
     def _close_device(self) -> None:
-        with contextlib.suppress(Exception):
-            self._call("FWR_FreeModuleMap", self._dev)
-        with contextlib.suppress(Exception):
-            self._call("USB_CloseDevice", self._dev)
+        if self.device is not None:
+            self.device.close()
+        self.device = None
 
-    def _p(self, name: str) -> str:
-        return ("SOMD_" if self._somd else "SOM_") + name
+    def _channel(self, slot: int) -> int:
+        try:
+            return self._slots.index(int(slot))
+        except ValueError:
+            raise LaserError(f"no laser driver in slot {slot} (slots {self._slots})") from None
 
     def _read_state(self) -> LaserState:
-        st = LaserState(model=self._model, serial=self._serial, library=self._library_path)
-        lock = ctypes.c_ubyte()
-        self._call("SCM_GetLaserSoftLock", self._dev, self._scm, ctypes.byref(lock))
-        st.emission_blocked = bool(lock.value)
-        with contextlib.suppress(Exception):
-            locked = ctypes.c_ubyte()
-            self._call("SCM_GetLaserLocked", self._dev, self._scm, ctypes.byref(locked))
-            st.hardware_locked = bool(locked.value)
-            if st.hardware_locked:
-                st.warnings.append("hardware interlock or key switch locks the laser")
-        if self._som >= 0:
-            st.oscillator = self._read_oscillator()
-        for i, slot in enumerate(self._slms):
-            freq, mode, htype = ctypes.c_int(), ctypes.c_ubyte(), ctypes.c_int()
-            self._call(
-                "SLM_GetPulseParameters",
-                self._dev,
-                slot,
-                ctypes.byref(freq),
-                ctypes.byref(mode),
-                ctypes.byref(htype),
-            )
-            inten = ctypes.c_ushort()
-            self._call("SLM_GetIntensityFineStep", self._dev, slot, ctypes.byref(inten))
-            serial = ctypes.create_string_buffer(64)
-            with contextlib.suppress(Exception):
-                self._call("COM_GetSerialNumber", self._dev, slot, 1, serial)
-            kind = {0: "failure", 1: "led", 2: "laser", 3: "none"}.get(htype.value, "laser")
-            if kind == "failure":
-                st.warnings.append(f"laser head in slot {slot} reports a failure")
-            st.heads.append(
+        s = self.device.settings()
+        info = self.device.information()
+        heads = []
+        for c, slot in enumerate(self._slots):
+            heads.append(
                 HeadState(
                     slot=slot,
-                    kind=kind,
-                    serial=serial.value.decode("latin-1", "replace"),
-                    output=i,
-                    pulsed=bool(mode.value),
-                    intensity_pct=inten.value / 10.0,
-                    trigger_index=freq.value,
+                    name=f"SLM {slot}",
+                    kind="laser",
+                    output=-1,
+                    pulsed=bool(s.get(f"pulse_mode[{c}]", 1)),
+                    intensity_pct=float(s.get(f"intensity_permille[{c}]") or 0) / 10.0,
+                    trigger_index=int(s.get(f"frequency_index[{c}]") or 0),
                 )
             )
-        return st
-
-    def _read_oscillator(self) -> OscillatorState:
-        o = OscillatorState(slot=self._som)
-        idx = ctypes.c_int()
-        if self._somd:
-            sync = ctypes.c_ubyte()
-            self._call(
-                "SOMD_GetFreqTrigMode", self._dev, self._som, ctypes.byref(idx), ctypes.byref(sync)
-            )
-        else:
-            self._call("SOM_GetFreqTrigMode", self._dev, self._som, ctypes.byref(idx))
-        text = ctypes.create_string_buffer(64)
-        with contextlib.suppress(Exception):
-            if self._somd:
-                self._call("SOMD_DecodeFreqTrigMode", self._dev, self._som, idx.value, text)
-            else:
-                self._call("SOM_DecodeFreqTrigMode", self._dev, self._som, idx.value, text)
-        o.trigger_mode = text.value.decode("latin-1", "replace") or f"mode {idx.value}"
-        hz = _parse_frequency(o.trigger_mode)
-        if hz:
-            o.base_hz = hz
-        div, pre, mask = ctypes.c_ushort(), ctypes.c_ubyte(), ctypes.c_ubyte()
-        self._call(
-            self._p("GetBurstValues"),
-            self._dev,
-            self._som,
-            ctypes.byref(div),
-            ctypes.byref(pre),
-            ctypes.byref(mask),
+        return LaserState(
+            model=str(info.model),
+            serial=str(info.serial_number),
+            library="libphacq",
+            heads=heads,
+            oscillator=None,
+            emission_blocked=bool(s.get("soft_lock", True)),
+            warnings=list(self._state.warnings),
         )
-        o.divider, o.pre_sync, o.sync_mask = div.value, pre.value, mask.value
-        lens = [ctypes.c_int() for _ in range(SEQUENCER_OUTPUTS)]
-        self._call(
-            self._p("GetBurstLengthArray"), self._dev, self._som, *[ctypes.byref(x) for x in lens]
-        )
-        o.burst_lengths = [x.value for x in lens]
-        out_en, sync_en, inv = ctypes.c_ubyte(), ctypes.c_ubyte(), ctypes.c_ubyte()
-        self._call(
-            self._p("GetOutNSyncEnable"),
-            self._dev,
-            self._som,
-            ctypes.byref(out_en),
-            ctypes.byref(sync_en),
-            ctypes.byref(inv),
-        )
-        o.output_enabled = [bool(out_en.value >> i & 1) for i in range(SEQUENCER_OUTPUTS)]
-        o.sync_enabled = [bool(sync_en.value >> i & 1) for i in range(SEQUENCER_OUTPUTS)]
-        o.sync_inverse = bool(inv.value)
-        if self._somd:
-            for i in range(SEQUENCER_OUTPUTS):
-                d, f, c, m = ctypes.c_ubyte(), ctypes.c_ubyte(), ctypes.c_ubyte(), ctypes.c_ubyte()
-                coarse, fine = ctypes.c_double(), ctypes.c_ubyte()
-                with contextlib.suppress(LaserError):
-                    self._call(
-                        "SOMD_GetSeqOutputInfos",
-                        self._dev,
-                        self._som,
-                        i,
-                        ctypes.byref(d),
-                        ctypes.byref(f),
-                        ctypes.byref(c),
-                        ctypes.byref(m),
-                        ctypes.byref(coarse),
-                        ctypes.byref(fine),
-                    )
-                    o.delays_ns[i] = coarse.value if d.value else 0.0
-        return o
 
     def _set_emission(self, on: bool) -> None:
-        self._call("SCM_SetLaserSoftLock", self._dev, self._scm, 0 if on else 1)
+        self.device.apply({"soft_lock": not on})
 
     def _set_head(self, slot, enabled, intensity_pct, pulsed, trigger_index) -> None:
-        if slot not in self._slms:
-            raise LaserError(f"no laser driver module in slot {slot}")
+        c = self._channel(slot)
+        values: dict = {}
         if intensity_pct is not None:
-            self._call(
-                "SLM_SetIntensityFineStep", self._dev, slot, int(round(float(intensity_pct) * 10))
-            )
-        if pulsed is not None or trigger_index is not None:
-            freq, mode, htype = ctypes.c_int(), ctypes.c_ubyte(), ctypes.c_int()
-            self._call(
-                "SLM_GetPulseParameters",
-                self._dev,
-                slot,
-                ctypes.byref(freq),
-                ctypes.byref(mode),
-                ctypes.byref(htype),
-            )
-            self._call(
-                "SLM_SetPulseParameters",
-                self._dev,
-                slot,
-                int(trigger_index if trigger_index is not None else freq.value),
-                int(pulsed if pulsed is not None else mode.value),
-            )
-        if enabled is not None and self._som >= 0:
-            out = self._slms.index(slot)
-            o = self._read_oscillator()
-            o.output_enabled[out] = bool(enabled)
-            self._write_enables(o)
-
-    def _write_enables(self, o: OscillatorState) -> None:
-        out_mask = sum(1 << i for i, x in enumerate(o.output_enabled) if x)
-        sync_mask = sum(1 << i for i, x in enumerate(o.sync_enabled) if x)
-        self._call(
-            self._p("SetOutNSyncEnable"),
-            self._dev,
-            self._som,
-            out_mask,
-            sync_mask,
-            int(o.sync_inverse),
-        )
+            values[f"intensity_permille[{c}]"] = int(round(float(intensity_pct) * 10.0))
+        if pulsed is not None:
+            values[f"pulse_mode[{c}]"] = int(bool(pulsed))
+        if trigger_index is not None:
+            values[f"frequency_index[{c}]"] = int(trigger_index)
+        if enabled is not None and not enabled:
+            # A head is switched by its oscillator output; without an oscillator module the soft
+            # lock is the switch (all heads).
+            note = f"slot {slot}: no oscillator output to disable it; the soft lock switches all"
+            if note not in self._state.warnings:
+                self._state.warnings.append(note)
+        if values:
+            self.device.apply(values)
 
     def _set_oscillator(
         self, base_hz, divider, burst_lengths, output_enabled, sync_enabled, sync_inverse, delays_ns
     ) -> None:
-        if self._som < 0:
-            raise LaserError(
-                "Sepia2: no oscillator module (SOM) -- repetition rate and sequencer are fixed"
-            )
-        o = self._read_oscillator()
-        if base_hz is not None and abs(float(base_hz) - o.base_hz) > 1.0:
-            raise LaserError(
-                f"the base oscillator runs at {o.base_hz / 1e6:g} MHz; choosing another "
-                "oscillator is done on the device (set the divider instead)"
-            )
-        if divider is not None or sync_inverse is not None:
-            self._call(
-                self._p("SetBurstValues"),
-                self._dev,
-                self._som,
-                int(divider if divider is not None else o.divider),
-                o.pre_sync,
-                o.sync_mask,
-            )
-        if burst_lengths is not None:
-            self._call(
-                self._p("SetBurstLengthArray"),
-                self._dev,
-                self._som,
-                *[int(n) for n in burst_lengths],
-            )
-        if output_enabled is not None:
-            o.output_enabled = [bool(x) for x in output_enabled]
-        if sync_enabled is not None:
-            o.sync_enabled = [bool(x) for x in sync_enabled]
-        if sync_inverse is not None:
-            o.sync_inverse = bool(sync_inverse)
-        if output_enabled is not None or sync_enabled is not None or sync_inverse is not None:
-            self._write_enables(o)
-        if delays_ns is not None and any(delays_ns):
-            if not self._somd:
-                raise LaserError("per-output delays need an SOM 828-D oscillator module")
-            for i, ns in enumerate(delays_ns):
-                self._call(
-                    "SOMD_SetSeqOutputInfos",
-                    self._dev,
-                    self._som,
-                    i,
-                    int(ns > 0),
-                    1 << i,
-                    0,
-                    float(ns),
-                    0,
-                )
+        raise LaserError(
+            "phacq does not drive a Sepia II oscillator module (SOM 828) yet; "
+            "the laser drivers run on their own oscillator or an external trigger"
+        )
 
 
 def _parse_frequency(text: str) -> float | None:
@@ -751,13 +524,14 @@ def _parse_frequency(text: str) -> float | None:
 
 
 def open_laser(kind: str = "auto", **kwargs) -> LaserBackend:
-    """A backend by kind: ``"sepia2"``, ``"simulated"`` or ``"auto"`` (Sepia2 when available)."""
+    """A backend by kind: ``"sepia"`` (libphacq; ``"sepia2"`` in older settings files),
+    ``"simulated"`` or ``"auto"`` (a connected Sepia II, else the simulator)."""
     if kind == "simulated":
         return SimLaser(**kwargs)
-    if kind == "sepia2":
+    if kind in ("sepia", "sepia2"):
         return SepiaBackend(**kwargs)
     if kind == "auto":
-        return SepiaBackend(**kwargs) if sepia_available(kwargs.get("library"))[0] else SimLaser()
+        return SepiaBackend(**kwargs) if sepia_available()[0] else SimLaser()
     raise ValueError(f"unknown laser backend {kind!r}")
 
 

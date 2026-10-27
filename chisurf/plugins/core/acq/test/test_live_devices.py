@@ -1,114 +1,142 @@
-"""The device path: a simulated MultiHarp's records, decoded and recorded as a real one's are.
+"""The device path through libphacq: a simulated TCSPC unit's events, decoded and recorded as a real
+one's are, and its settings described, edited and applied as one flat dict.
 
-The owner's MultiHarp may be attached and in use: nothing here opens a real device.
+Nothing here opens real hardware: the units are phacq's ``fake`` device (a 20 MHz sync, two
+inputs) and the Sepia II simulator.
 """
 
 from __future__ import annotations
 
-import threading
 import time
 
 import numpy as np
 import pytest
 import tttrlib
 
-from chisurf.core.fluorescence.burst import burst_filter
 from chisurf.plugins.core.acq.live import devices
-from chisurf.plugins.core.acq.live.analyzer import analyze_offline
 from chisurf.plugins.core.acq.live.session import RecordSession
 
-pqusb = pytest.importorskip("pqusb")
+phacq = pytest.importorskip("phacq")
 
 
-def _sim(speed=1000.0, seed=3):
-    dev = devices.PieSimDevice(seed=seed, speed=speed)
-    dev.initialize(pqusb.MODE_T3)
+def _fake(duration_s=2.0, seed=7):
+    """A fake unit: sync 20 MHz on channel 0, two detector inputs at 40 kHz each, 16 ps bins."""
+    cfg = phacq.FakeConfig()
+    cfg.number_of_channels = 3
+    cfg.sync_channel = 0
+    cfg.rates_cps = phacq.VectorDouble([20e6, 40e3, 40e3])
+    cfg.base_resolution_ps = 16.0
+    cfg.micro_time_range = 4096
+    cfg.duration_s = duration_s
+    cfg.seed = seed
+    cfg.serial_number = "FAKE-REC"
+    drv = phacq.FakeDriver()
+    drv.add_device(cfg)
+    dev = drv.open("FAKE-REC")
+    dev.initialize(phacq.MeasurementMode.T3, phacq.ReferenceClock.Internal)
+    dev.phacq_driver = "fake"
+    dev._keep_driver = drv  # the device must not outlive the driver object
     return dev
 
 
-def test_the_simulated_multiharp_speaks_generic_t3_that_both_decoders_read_alike():
-    dev = _sim()
-    chunks = []
-    stream = dev.stream(chunk_bytes=1 << 14)
-    try:
-        for words in stream:
-            if len(words):
-                chunks.append(np.frombuffer(words, dtype=np.uint32).copy())
-            if sum(map(len, chunks)) > 20000:
-                break
-    finally:
-        stream.close()  # stops the measurement and its reader thread
-    assert dev.record_type() == 0x00010307
-    state, data = tttrlib.TTTRDecodeState(), tttrlib.TTTR()
-    for c in chunks:
-        tttrlib.decode_records(c, devices.tttr_record_type(dev.record_type()), state, data)
-    dec = pqusb.Decoder(dev.record_type())
-    photons = [e for c in chunks for e in dec.feed(c.tolist()) if e[0] == "photon"]
-    assert len(data) == len(photons) > 1000
-    assert np.array_equal(np.asarray(data.macro_times), [p[2] for p in photons])
-    assert np.array_equal(np.asarray(data.micro_times), [p[3] for p in photons])
-    assert np.array_equal(np.asarray(data.routing_channels), [p[1] for p in photons])
+def test_the_source_takes_its_clocks_from_the_device():
+    source = devices.DeviceSource(_fake())
+    assert source.info.macro_clock_s == pytest.approx(1 / 20e6)  # T3: one sync period
+    assert source.info.micro_res_s == pytest.approx(16e-12)
+    assert source.info.n_micro == round(50e-9 / 16e-12)
+
+
+def test_a_device_without_sync_is_refused():
+    cfg = phacq.FakeConfig()
+    cfg.number_of_channels = 2
+    cfg.rates_cps = phacq.VectorDouble([0.0, 1e3])
+    drv = phacq.FakeDriver()
+    drv.add_device(cfg)
+    dev = drv.open("")
+    dev.initialize(phacq.MeasurementMode.T3, phacq.ReferenceClock.Internal)
+    with pytest.raises(devices.SourceUnavailable):
+        devices.DeviceSource(dev)
 
 
 @pytest.fixture(scope="module")
 def device_run(tmp_path_factory):
     out = tmp_path_factory.mktemp("dev")
-    source = devices.DeviceSource(_sim(seed=7))
-    session = RecordSession(source, duration_s=6.0, ptu_path=out / "sim.ptu", name="sim")
+    source = devices.DeviceSource(_fake(duration_s=1.0))
+    session = RecordSession(source, duration_s=1.0, ptu_path=out / "fake.ptu", name="fake")
     session.start()
-    result = session.wait(120)
+    result = session.wait(60)
     assert result is not None and not session.error, session.error
     return session, result
 
 
-def test_the_device_timer_ends_the_run_and_the_ptu_holds_its_records(device_run):
-    session, result = device_run
-    assert result.stop_reason == "duration reached"
-    tttr = tttrlib.TTTR(str(result.ptu))
-    assert len(tttr) == result.photons
-    assert tttr.header.macro_time_resolution == pytest.approx(32e-9)
-    assert tttr.header.micro_time_resolution == pytest.approx(80e-12)
-    assert session.source.info.n_micro == 400
-    assert session.source.status()["stalls"] == 0
-
-
-def test_live_equals_offline_and_burst_selection_on_the_device_recording(device_run):
+def test_the_device_ends_the_run_and_the_ptu_holds_its_events(device_run):
     session, result = device_run
     tttr = tttrlib.TTTR(str(result.ptu))
-    exp = session.experiment
-    p = exp.burst
-    off = analyze_offline(
-        tttr,
-        exp.setup,
-        exp.preset,
-        min_photons=p.min_photons,
-        window_photons=p.window_photons,
-        window_time=p.window_time_s,
-    )
-    assert np.array_equal(off["First Photon"], result.table["First Photon"])
-    assert np.allclose(off["Proximity Ratio"], result.table["Proximity Ratio"])
-    mask = burst_filter(tttr, p.min_photons, p.window_photons, p.window_time_s)
-    live = np.zeros(len(tttr), bool)
-    for a, b in zip(result.table["First Photon"], result.table["Last Photon"]):
-        live[a : b + 1] = True
-    assert np.array_equal(mask, live)
-    e = result.table["Proximity Ratio"][result.table["Number of Photons"] >= 40]
-    assert np.median(e[e < 0.5]) == pytest.approx(0.2, abs=0.06)
-    assert np.median(e[e >= 0.5]) == pytest.approx(0.8, abs=0.06)
+    # every event the unit delivered is recorded (two inputs, 40 kHz each, 1 s); the analysis
+    # counts the photons of the experiment's detector channels among them
+    assert len(tttr) == pytest.approx(80e3, rel=0.05)
+    assert 1000 < result.photons <= len(tttr)
+    assert tttr.header.macro_time_resolution == pytest.approx(50e-9)
+    assert tttr.header.micro_time_resolution == pytest.approx(16e-12)
+    assert set(np.unique(tttr.routing_channels)) <= {1, 2}
+    assert session.source.status()["dropped"] == 0
 
 
-def test_stop_from_another_thread_ends_the_stream_and_its_reader(tmp_path):
-    source = devices.DeviceSource(_sim(speed=1.0))
+def test_stop_from_another_thread_ends_the_run(tmp_path):
+    source = devices.DeviceSource(_fake(duration_s=3.0))
     session = RecordSession(source, ptu_path=tmp_path / "stop.ptu")
     session.start()
-    time.sleep(1.0)
+    time.sleep(0.5)
     session.stop()  # as the UI does
     result = session.wait(30)
-    assert result is not None and result.stop_reason == "stopped"
-    assert not any("pqusb" in t.name for t in threading.enumerate())
-    assert len(tttrlib.TTTR(str(result.ptu))) == result.photons
+    # the fake hands its events out as fast as they are read, so it may be done before the stop
+    assert result is not None and result.stop_reason in ("stopped", "source finished")
+    assert len(tttrlib.TTTR(str(result.ptu))) >= result.photons
 
 
-def test_a_record_type_tttrlib_cannot_decode_is_refused():
-    with pytest.raises(Exception):
-        devices.tttr_record_type(0x12345678)
+def test_every_setting_is_described_and_round_trips():
+    dev = _fake()
+    form = devices.settings_form(dev)
+    props = dev.schema()["params_schema"]["properties"]
+    assert {p["parameter"] for p in props.values()} == set(dev.parameter_names())
+    assert props["input_edge[1]"]["enum_labels"] == ["falling", "rising"]
+    values = form.params()
+    assert set(values) == set(props)
+    values["input_level_mv[1]"] = -120
+    values["sync_divider"] = 4
+    assert devices.apply_settings(dev, values) == []
+    assert dev.settings()["input_level_mv[1]"] == -120 and dev.settings()["sync_divider"] == 4
+
+
+def test_a_refused_value_names_the_setting_and_changes_nothing():
+    dev = _fake()
+    notes = devices.apply_settings(dev, {"input_level_mv[0]": -10, "sync_divider": 3})
+    assert notes and "sync_divider" in notes[0]
+    assert dev.settings()["input_level_mv[0]"] == -50  # validated as a whole first
+    assert devices.apply_settings(dev, {"no_such": 1}) == ["no_such: not a setting of " +
+                                                           devices.device_label(dev)]
+
+
+def test_the_laser_simulator_opens_through_the_same_layer():
+    dev = devices.open_device("sepia:sim:")
+    s = dev.settings()
+    assert "soft_lock" in s and "pulse_mode[0]" in s
+    assert dev.schema()["params_schema"]["properties"]["pulse_mode[0]"]["type"] == "boolean"
+    dev.close()
+
+
+def test_the_record_panel_sends_an_edit_and_reverts_a_refused_one(tmp_path):
+    from chisurf.plugins.core.acq.gui.record_app import RecordModel
+
+    model = RecordModel(output_dir=tmp_path / "rec", realtime=False)
+    model.device = dev = _fake()
+    model._device_form_from_device()  # what Connect does after opening
+    group = model.device_form._params_group
+    setattr(group, "input_level_mv[1]", -150)
+    assert dev.settings()["input_level_mv[1]"] == -150
+    assert model.device_values["input_level_mv[1]"] == -150  # what a settings file saves
+    setattr(group, "input_level_mv[2]", -5000)  # outside -1200..1200: refused as a whole
+    assert dev.settings()["input_level_mv[2]"] == -50
+    assert "input_level_mv[2]" in model.device_text
+    assert getattr(model.device_form._params_group, "input_level_mv[2]") == -50  # panel reverts
+    model.device = None
