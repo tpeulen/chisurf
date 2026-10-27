@@ -853,6 +853,11 @@ class EmtkShellApp(ImApp):
                 out.append((plugin_id, str(entry.label)))
         return out
 
+    def tool_group(self, plugin_id: str) -> str:
+        """The submenu a tool is listed under: its menu group (``"Single-Molecule"``), else its menu."""
+        entry = self.by_id[plugin_id]
+        return entry.group or (entry.menu if len(entry.path) > 1 else "")
+
     def tool_at(self, x: float, y: float) -> str | None:
         """The plugin id of the tool drawn on top at (x, y), ``None`` over anything else."""
         key = self._plugin_at(x, y)

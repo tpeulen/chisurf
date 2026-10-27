@@ -472,11 +472,15 @@ class DatasetsModel:
             return []
         return [
             {
-                "label": tr("Open in {tool}").format(tool=tr(label)),
+                "label": tr(label),
                 "call": (lambda _row, pid=plugin_id: shell.feed_from_workspace(pid, rows)),
                 "description": tr("Give the selected data to {tool}.").format(tool=tr(label)),
+                "group": tr(shell.tool_group(plugin_id)) if hasattr(shell, "tool_group") else "",
             }
-            for plugin_id, label in shell.tools_for_rows(rows)
+            for plugin_id, label in sorted(
+                shell.tools_for_rows(rows),
+                key=lambda t: (getattr(shell, "tool_group", lambda _p: "")(t[0]).lower(), t[1].lower()),
+            )
         ]
 
     def _feed_rows(self, record: Any = None) -> list:
