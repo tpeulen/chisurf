@@ -21,29 +21,48 @@ must add. Where CMC's bundle documents something, this page links it instead of 
 
 The Record tool's acquisitions are driven end to end through the emtk shell by
 `test/e2e/test_acq_journeys.py` (one process per leg, verdict JSON + a PNG per step in
-`test/e2e/acq_journeys/<leg>/`). Run the legs on `ssh home` (`build_tools/remote_test.sh start --dirty
---slot 1 ...`), never all at once on the laptop. Open front, in order:
+`test/e2e/acq_journeys/<leg>/`); 9 legs pass on `ssh home` at 2026-10-27 (image scan → FRC + 13 imaging
+tools; smFRET PIE → burst search → BVA/MLE/H2MM/2CDE/ndX; two-colour; FCS → correlator → fit, PCH; point
+TCSPC → microtime histogram → LLTF/MaxEnt/IRF estimator; FRET check; save/reopen). Run legs on home
+(`build_tools/remote_test.sh start --dirty ...`, `pixi run -e test build-extensions` first — a fresh slot has
+no tttrlib), never all at once on the laptop. Open front, in order:
 
-1. **Companion tables are not rows yet.** `chisurf.core.project.analysis.container_changed` is the one
-   notification every container writer sends (`write_container`, `write_tables`); it lists new
-   *runs* at once (`sync_runs`). A companion table (BVA, 2CDE, H2MM, MLE, background) changes no
-   row: it needs a view-only kind under its run (a `LinkedDataset` kind beside `bursts` in
-   `chisurf.core.experiments.linked`, never offered to "Open in…"). Nothing subscribes via
-   `on_container_changed` yet -- the PTO inspector and Project data should.
-   Measured 2026-10-27 (`smfret_pie` leg): BVA, Burst MLE, H2MM and 2CDE run on the new run but
-   send **0** container notifications -- their results do not reach the `.pto` (2CDE reports
-   "Unchanged -- kept the previous 2CDE result"), and 2CDE's input list shows `live_bursts`
-   twice (the Record tool's live run and the `sync_runs` copy disagree on the address string;
-   unverified).
-2. **Matrix legs not written:** FCS merger, filtered FCS (filter calculator), FLC 2D, ALEX,
-   sub-ensemble decay -> fit, image replay of a real PTU, burst fusion. The leg pattern is
-   `leg_<name>(w)` in the test file plus a `LEGS` entry.
-3. **FCS fit needs the user's two settings** (documented in `leg_fcs`): the focus fixed to its
-   calibration (left free, `w_z` collapses onto `w_r`), and First past the detector dead time
-   (the 10-30 ns lags sit at G ~ 0.15). A default fit range that skips a dead-time dip would
-   remove the second.
-4. Traps: the laptop resource guard refuses pytest below 4 GB free disk; pytest rotates its temp
-   dirs, so copy a recording out (`~/acqj/`) before analysing it by hand.
+1. Open: **Companion tables do not reach the container.** `chisurf.core.project.analysis.container_changed`
+   is the one notification every container writer must send; it lists new *runs* at once (`sync_runs`).
+   Measured 2026-10-27 (`smfret_pie` leg): BVA, Burst MLE, H2MM and 2CDE run on the new run but send **0**
+   notifications, so their tables never reach the `.pto` or Datasets (2CDE says "Unchanged -- kept the
+   previous 2CDE result"; its input list shows `live_bursts` twice -- the live run and the `sync_runs` copy
+   disagree on the address string, unverified). **Partial work left uncommitted** by the stopped lane in
+   `chisurf/core/fio/analysis_path.py`, `chisurf/core/fio/fluorescence/burst_container.py` and
+   `chisurf/plugins/burst/burst_selection/api/io.py`: firing the notification after
+   `write_burst_artifact`'s `with open_measurement(...)` block closes and the container is saved. Review it
+   (`git diff` on those three files), finish or discard, then make each consumer write its table through
+   the shared writer and give companions a view-only kind under their run (a `LinkedDataset` kind beside
+   `bursts` in `chisurf.core.experiments.linked`, never offered to "Open in…").
+2. Open: **Subscribers.** Nothing calls `on_container_changed` yet: the PTO inspector and Project data
+   should refresh; Datasets should expand the recording row when a child appears (the burst-search render
+   shows the new run hidden under a collapsed row).
+3. Open: **Legs not written:** FCS merger, filtered FCS (filter calculator), FLC 2D, ALEX (simulator ALEX
+   mode), sub-ensemble decay → fit, image replay of a real PTU (`~/dev/tttr-data/imaging/pq/
+   Microtime200_HH400/beads.ptu`; copy to home), burst fusion (with a Datasets render of the fused run), a
+   lifetime truth check for point TCSPC. Pattern: `leg_<name>(w)` plus a `LEGS` entry.
+4. Open: **Breakage seen, not fixed:** the 2 microtime-histogram layout tests ("Autosave after compute"
+   overlaps the Compute description; view file identical to HEAD), the fit-panel sampling test ending with
+   convergence warnings, img_flow's demo test (`n_escaped` 7 instead of 0; failing at HEAD before).
+5. Measure: **The full gate** `gate-52146c5af` was started on home on 2026-10-27 and not read before this
+   session stopped: `build_tools/remote_test.sh status gate-52146c5af` and
+   `ssh home 'grep -h "^FAILED\|^ERROR" ~/dev/chisurf/build/remote-test/gate-52146c5af/chunks/*.log'`;
+   later commits (acquisition journeys, Data tab) are not in it -- re-run the gate on HEAD after items 1-4.
+6. Measure: **FCS fit needs the user's two settings** (documented in `leg_fcs`): the focus fixed to its
+   calibration (left free, `w_z` collapses onto `w_r`), and First past the detector dead time (the
+   10-30 ns lags sit at G ~ 0.15). A default fit range that skips a dead-time dip would remove the second.
+7. Blocked: **Real hardware.** MultiHarp/Sepia through CMC's `pqusb` (Python) and `rustytime` (Rust), both
+   the owner's work in `~/dev/cmc/tools/`; real scanners wait for rustytime's scanner backend
+   (`ScannerBackend` in `acq/live/scanner.py`). Sepia II on macOS has no library unless CMC's
+   `cmc_sepia2` is built.
+8. Measure: **Traps.** The laptop resource guard refuses pytest below 4 GB free disk and the 16 GB laptop
+   swaps hard with a VM running -- run heavy files on home; pytest rotates its temp dirs, so copy a
+   recording out (`~/acqj/`) before analysing it by hand.
 
 ## Decisions
 

@@ -20,11 +20,10 @@ scripts and the agent need them); in the UI they degrade the UX and go.
    (2026-10-27, from 193): `core/legacy_export/gui/app.py` (dialog, drop) and
    `core/metadata_editor/gui/app.py` (dialog) hold another session's uncommitted edits and wait for it;
    `ndxplorer/gui/app.py` (mmfdb) opens an MMFDB burst selection with its provenance — it goes when the shell's
-   *Add from MMFDB…* links burst selections (today photons/images only). Two gaps the guard does not see:
-   card-based tools still open input files through `card_shell.open_file` (not in the guard's
-   `DIALOG_HELPERS`): FRET docking's *Add Files*/FPS JSON, Pair Selection's trajectory/FPS rows, QuEst's *Load
-   project*; and the docking/pair-selection cards draw no Input section yet (their `accepts` work through *Open
-   in…* and drags). New kinds this round: `table` (5+ named columns, or an `.npz` of 5+ equal 1-D arrays —
+   *Add from MMFDB…* links burst selections (today photons/images only). The guard also counts `card_shell.open_file`/`open_database` (by call
+   shape) since 2026-10-27; FRET docking, Pair Selection and QuEst's project load were migrated then (Input
+   sections drawn). Still to translate (de/fr): the newest captions ("Project or FPS plan", "Structures",
+   "Project", Pair Selection hints). New kinds this round: `table` (5+ named columns, or an `.npz` of 5+ equal 1-D arrays —
    burst and result tables; curves keep 2–4 columns) and `trajectory` (`.dcd/.xtc/.trr/.nc`). Tool presets
    (`chisurf.tool/<plugin>/1`) come back as setup rows for burst_selection, fusion, H2MM, MLE and the burst FCS
    correlator.
