@@ -56,7 +56,8 @@ the same ones every AV in ChiSurf uses.
    which ships with the plugin (`examples/148l.pdb`).
 2. **Attachment chain / residue / atom**: where the linker starts, usually the
    C$_\beta$ of the labelled residue (for 148L, chain `E`; the demo uses
-   residue 36). After **Load PDB…** a valid site is picked for you.
+   residue 36). After picking a structure in the **Structure** input (drop it on
+   ChiSurf first) a valid site is picked for you.
 
 **Dye** (the accessible volume, {ref}`concept-accessible-volume`)
 

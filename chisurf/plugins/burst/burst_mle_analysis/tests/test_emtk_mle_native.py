@@ -319,12 +319,12 @@ def test_settings_round_trip_through_the_file_dialog(app, tmp_path):
     app.dialog.filename = "s.json"
     drv.click_text("Save")
     assert (tmp_path / "s.json").exists()
+    from chisurf.core.fio.classify import classify
+    from chisurf.plugins.burst.burst_mle_analysis.gui.native import receive_settings
+
+    assert classify(str(tmp_path / "s.json")) == "setup"  # back through the workspace
     app.model.tau = 1.0
-    app.browse("load_settings")
-    drv.draw(3)
-    app.dialog.directory = str(tmp_path)
-    drv.click_text("s.json")
-    drv.click_text("Open")
+    receive_settings(app, {"settings": str(tmp_path / "s.json")})
     assert app.model.tau == 2.5 and app.model.micro_time_stop == 99
 
 

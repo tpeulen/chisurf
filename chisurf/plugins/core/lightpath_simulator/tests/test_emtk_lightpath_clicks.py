@@ -630,27 +630,13 @@ def test_easy_mode_tab_edits_the_graph(drv):
 # -- host drops ---------------------------------------------------------------------------------------------------- #
 
 
-def test_a_dropped_json_graph_replaces_the_document(drv, tmp_path):
+def test_a_dropped_file_leaves_the_document_alone(drv, tmp_path):
+    """Files dropped on ChiSurf go to the workspace through the shell; this tool opens its own
+    graph documents with Load only."""
     drv.app.controller.save_graph(tmp_path / "dropped.json")
-    drv.app.controller.add_node("detector", (1.0, 1.0))
-    assert drv.drop(tmp_path / "dropped.json")
-    assert len(drv.app.controller.document.nodes) == 8
-
-
-def test_a_dropped_non_json_file_changes_nothing(drv, tmp_path):
-    (tmp_path / "x.txt").write_text("x")
     n = len(drv.app.controller.document.nodes)
-    drv.drop(tmp_path / "x.txt")
+    drv.drop(tmp_path / "dropped.json")
     assert len(drv.app.controller.document.nodes) == n
-
-
-def test_a_corrupt_dropped_graph_reports_and_keeps_the_document(drv, tmp_path):
-    (tmp_path / "bad.json").write_text("[1, 2")
-    n = len(drv.app.controller.document.nodes)
-    drv.drop(tmp_path / "bad.json")
-    drv.draw(3)
-    assert len(drv.app.controller.document.nodes) == n
-    assert message(drv).startswith("Load Failed")
 
 
 # -- guide and help ------------------------------------------------------------------------------------------------ #

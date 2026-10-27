@@ -14,7 +14,6 @@ from chisurf.plugins.traj.traj_remove_clashes.app import make_app
 from chisurf.plugins.traj.traj_save_topology.test.real_input import (
     Ui,
     check_action_flow,
-    check_browse_row,
     check_guide_and_help_buttons,
     check_log_scrolls_with_the_wheel,
     check_number_field,
@@ -24,6 +23,7 @@ from chisurf.plugins.traj.traj_save_topology.test.real_input import (
     read_xyz,
     wheel_steps_a_number_field,
 )
+from chisurf.plugins.traj.traj_save_topology.test.workspace_pick import check_browse_row, drop
 
 
 def test_guide_and_help_buttons_are_pressed():
@@ -34,7 +34,7 @@ def test_no_tour_card_button_is_dead_on_any_step():
     assert dead_tour_buttons(make_app) == []
 
 
-def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+def test_the_trajectory_row_has_no_browse_button_it_comes_from_the_workspace(
     small_trajectory, monkeypatch
 ):
     monkeypatch.chdir(small_trajectory)
@@ -48,7 +48,7 @@ def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_
     )
 
 
-def test_the_topology_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+def test_the_topology_row_has_no_browse_button_it_comes_from_the_workspace(
     small_trajectory, monkeypatch
 ):
     monkeypatch.chdir(small_trajectory)
@@ -70,9 +70,9 @@ def test_the_path_rows_do_not_take_typing(row, small_trajectory):
 def test_dropped_files_fill_the_rows_by_type_and_a_foreign_file_is_answered(small_trajectory):
     ui = Ui(make_app())
     try:
-        assert ui.drop(small_trajectory / "notes.txt") is True
-        assert ui.shown("No trajectory or topology file among the dropped paths.")
-        ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
+        assert drop(ui, small_trajectory / "notes.txt") is True
+        assert ui.shown("No trajectory or topology among the picked rows.")
+        drop(ui, small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
         assert ui.app.model.trajectory_filename == str(small_trajectory / "small.dcd")
         assert ui.app.model.topology_filename == str(small_trajectory / "topol.pdb")
         assert not ui.shown("No trajectory or topology")
@@ -142,7 +142,7 @@ def test_filtering_through_the_ui_keeps_exactly_the_frames_without_a_clash(
     assert 0 < keep.sum() < len(keep)  # the threshold splits this trajectory
     ui = Ui(make_app())
     try:
-        ui.drop(source, top)
+        drop(ui, source, top)
         ui.type_into("min_distance", "3.72")
         target = tmp_path / "clash_free.dcd"
         ui.click("save")
@@ -166,7 +166,7 @@ def test_a_selection_that_is_not_a_selection_is_reported_in_the_window_and_write
 ):
     ui = Ui(make_app())
     try:
-        ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
+        drop(ui, small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
         ui.type_into(
             "atom_selection", "name"
         )  # what the Qt parity run feeds the Qt widget: it fails
@@ -193,7 +193,7 @@ def test_the_action_flow_dialog_cancel_close_save_and_replace(small_trajectory, 
         make_app,
         small_trajectory,
         tmp_path,
-        lambda ui: ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb"),
+        lambda ui: drop(ui, small_trajectory / "small.dcd", small_trajectory / "topol.pdb"),
         suggested="small_clash_free.dcd",
         title="Save clash-free trajectory",
         precondition="Open a trajectory first.",

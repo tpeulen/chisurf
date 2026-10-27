@@ -242,11 +242,6 @@ class FretApp(ImApp):
         if self.child and self._inside_child(x, y):
             self.child.wheel(*self._child_xy(x, y), steps, modifiers)
 
-    def on_files_dropped(self, paths):
-        """A drop goes to the visible tool (the window itself takes no files)."""
-        handler = getattr(self.child, "on_files_dropped", None)
-        return bool(handler(paths)) if callable(handler) else False
-
     def key(self, key, text="", modifiers=0):
         return (
             self.child.key(key, text, modifiers)
@@ -292,3 +287,37 @@ def make_app() -> FretApp:
 
 
 __all__ = ["ENTRIES", "FretApp", "make_app"]
+
+
+def _paths(payload: dict, key: str) -> list[str]:
+    from chisurf.core.plugin.workspace_input import read_address
+
+    values = payload.get(key) or []
+    values = values if isinstance(values, list) else [values]
+    return [str(read_address(str(v))) for v in values if v]
+
+
+def receive_structures(app: FretApp, payload: dict) -> bool:
+    """Hand-off receiver (``structures``): workspace structures become the next rigid bodies of
+    Docking & Screening."""
+    paths = _paths(payload, "structures")
+    if not paths:
+        raise ValueError("no structure picked")
+    child = app.select(ENTRIES[0]["name"])
+    if child is None:
+        raise ValueError(app.error or "Docking & Screening is not available")
+    child._add_pdb(paths)
+    return True
+
+
+def receive_topology(app: FretApp, payload: dict) -> bool:
+    """Hand-off receiver (``topology``): a workspace structure becomes Pair Selection's topology."""
+    paths = _paths(payload, "topology")
+    if not paths:
+        raise ValueError("no structure picked")
+    child = app.select(ENTRIES[1]["name"])
+    if child is None:
+        raise ValueError(app.error or "Pair Selection is not available")
+    child.set_path("topology", paths[0])
+    return True
+

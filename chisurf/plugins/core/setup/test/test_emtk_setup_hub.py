@@ -446,7 +446,7 @@ def fake_hub(world, monkeypatch):
     return drv, fake
 
 
-def test_the_hub_forwards_pointer_wheel_keys_focus_loss_and_drops_to_the_hosted_app(fake_hub):
+def test_the_hub_forwards_pointer_wheel_keys_and_focus_loss_to_the_hosted_app(fake_hub):
     drv, fake = fake_hub
     drv.app.select("style")  # a non-file destination: the fake is hosted
     assert drv.app.child is fake
@@ -458,7 +458,7 @@ def test_the_hub_forwards_pointer_wheel_keys_focus_loss_and_drops_to_the_hosted_
     drv.app.wheel(*inside, -2)
     drv.app.key(keys.KEY_DOWN, "")
     drv.app.key_release(keys.KEY_DOWN, "")
-    assert drv.app.files_dropped(["/tmp/x.dat"])
+    assert not hasattr(drv.app, "files_dropped")  # dropped files go to the workspace (the shell)
     drv.app.focus_lost()
     names = [e[0] for e in fake.log]
     for expected in (
@@ -469,7 +469,6 @@ def test_the_hub_forwards_pointer_wheel_keys_focus_loss_and_drops_to_the_hosted_
         "wheel",
         "key",
         "key_release",
-        "drop",
         "focus_lost",
     ):
         assert expected in names, (expected, names)

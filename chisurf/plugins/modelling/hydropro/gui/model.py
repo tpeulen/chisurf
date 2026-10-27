@@ -5,8 +5,8 @@ the combo) joined with everything ``HydroProTool`` and its two dialogs did aroun
 output log and progress, the results table, the CSV export, the "executable required" prompt and the warnings. The
 calculation itself is :func:`..core.run_hydro`, exactly as the Qt tool, the CLI and the RPC service drive it.
 
-A window drawing this model asks the user for files, so the three actions that need a dialog (``select_files``,
-``select_exe``, ``save_csv``/``save_log``) set :attr:`HydroProModel.dialog` and the window opens it; the model never
+The structures come from the Datasets workspace; the actions that need a dialog (``select_exe``,
+``save_csv``/``save_log``) set :attr:`HydroProModel.dialog` and the window opens it; the model never
 draws. :meth:`HydroProModel.poll` drains what the worker thread reported and is called once per frame.
 """
 
@@ -77,7 +77,7 @@ class HydroProModel:
         self._thread: threading.Thread | None = None
         self._pending: tuple | None = None
         # what the window must show next
-        self.dialog: str | None = None  # "files", "exe", "prompt_exe", "csv", "log"
+        self.dialog: str | None = None  # "exe", "prompt_exe", "csv", "log"
         self.notices: list[tuple[str, str]] = []
         self.exe_prompt = False
         self.prompt_path: Path | None = None
@@ -157,9 +157,6 @@ class HydroProModel:
         return self.output_status
 
     # -- file actions (the window opens the dialog) -------------------------------------------------------------------- #
-    def select_files(self) -> None:
-        self.dialog = "files"
-
     def select_exe(self) -> None:
         self.dialog = "exe"
 

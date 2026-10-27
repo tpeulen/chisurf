@@ -163,12 +163,10 @@ def test_a_folder_of_pdbs_is_read_as_consecutive_frames(source, tmp_path):
     out.mkdir()
     app = MDConverterApp()
     try:
+        from chisurf.plugins.traj.emtk_tool import receive_paths
+
         app.model.use_folder = True
-        trajectory_row = next(p for p in app.paths if p.key == "trajectory")
-        app.browse(trajectory_row)
-        assert app.dialog.mode == "folder"  # the row follows the toggle
-        app.dialog.draw = lambda: [str(folder)]
-        _draw(app, n=1)
+        receive_paths(app, {"paths": [str(folder)]})  # the row follows the toggle: a folder
         assert app.model.trajectory == str(folder)
         app.model.set_target_directory(str(out))
         app.model.filename = "joined"
@@ -250,12 +248,15 @@ def test_frames_are_requested_and_the_form_disabled_while_converting(monkeypatch
         app.close()
 
 
-def test_drops_fill_the_trajectory_and_target_rows(tmp_path):
+def test_workspace_rows_fill_the_trajectory_and_topology_rows(tmp_path):
+    """Picked workspace rows fill the input rows; the target folder (an output) keeps its …."""
+    from chisurf.plugins.traj.emtk_tool import receive_paths
+
     app = MDConverterApp()
     try:
-        app.on_paths_dropped([TRAJ, TOP, str(tmp_path)])
+        receive_paths(app, {"paths": [TRAJ, TOP]})
         m = app.model
-        assert (m.trajectory, m.topology_path, m.target_directory) == (TRAJ, TOP, str(tmp_path))
+        assert (m.trajectory, m.topology_path, m.target_directory) == (TRAJ, TOP, "")
     finally:
         app.close()
 

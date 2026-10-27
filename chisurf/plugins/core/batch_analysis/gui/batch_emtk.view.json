@@ -1,5 +1,8 @@
 {
-  "window": {"width": 1200, "height": 800},
+  "window": {
+    "width": 1200,
+    "height": 800
+  },
   "_comment": "Batch Analysis, native emtk window. One panel per wizard step, drawn by emtk.view_form over BatchModel (gui/model.py); 'navigation' is the Back / Next / Finish bar. Same steps, titles and fields as the Qt wizard (../batch.view.json).",
   "title": "Batch Analysis",
   "sections": [
@@ -65,7 +68,7 @@
         {
           "type": "custom",
           "key": "actions",
-          "description": "Load the example session, or re-scan the datasets loaded in ChiSurf.",
+          "description": "Remove the selected file or clear the list.",
           "options": {
             "buttons": [
               {
@@ -133,7 +136,7 @@
           "type": "custom",
           "key": "data_table",
           "title": "Files to process",
-          "description": "Files that are loaded one by one and fitted after the loaded datasets. Drop files or folders on the window to add them.",
+          "description": "Files that are loaded one by one and fitted after the loaded datasets: pick them in the workspace rows below.",
           "options": {
             "source": "file_rows",
             "row_key": "path",
@@ -160,25 +163,16 @@
         },
         {
           "type": "custom",
+          "key": "workspace_files",
+          "title": "From the workspace",
+          "description": "Decays, correlations, histograms, traces or photon streams of the Datasets workspace; a pick adds them to the files to process."
+        },
+        {
+          "type": "custom",
           "key": "actions",
-          "description": "Add files, a folder or a database dataset; remove the selected file or clear the list.",
+          "description": "Remove the selected file or clear the list.",
           "options": {
             "buttons": [
-              {
-                "action": "add_files",
-                "label": "Files",
-                "description": "Add files."
-              },
-              {
-                "action": "add_folder",
-                "label": "Folder",
-                "description": "Add a folder (every file below it, scanned recursively)."
-              },
-              {
-                "action": "add_database",
-                "label": "Database",
-                "description": "Select a dataset from the MMFDB database (including S3-backed object stores)."
-              },
               {
                 "action": "remove_selected",
                 "label": "Remove",
@@ -203,7 +197,7 @@
         {
           "type": "custom",
           "key": "actions",
-          "description": "List the fits of ChiSurf again.",
+          "description": "Remove the selected file or clear the list.",
           "options": {
             "buttons": [
               {
@@ -242,7 +236,7 @@
         {
           "type": "custom",
           "key": "actions",
-          "description": "Choose the CSV file, and run the batch.",
+          "description": "Remove the selected file or clear the list.",
           "options": {
             "buttons": [
               {

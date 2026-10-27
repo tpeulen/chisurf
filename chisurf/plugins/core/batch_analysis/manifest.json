@@ -25,5 +25,26 @@
     "cli": "batch-analysis=chisurf.plugins.core.batch_analysis.cli:cli"
   },
   "rpc_methods": [],
-  "dependencies": {}
+  "dependencies": {},
+  "accepts": [
+    {
+      "name": "files",
+      "summary": "Measurements of the Datasets workspace loaded one by one and fitted with the template.",
+      "receive": "chisurf.plugins.core.batch_analysis.gui.app:receive_files",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "decay",
+          "correlation",
+          "histogram",
+          "trace",
+          "photons"
+        ],
+        "many": true,
+        "key": "files"
+      }
+    }
+  ]
 }

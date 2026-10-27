@@ -345,7 +345,7 @@ class AnalysisModel:
             return not self.busy and self.data is not None
         if name == "write_results":
             return not self.busy and bool(self.result_stages())
-        if name in ("load_example", "choose_folder"):
+        if name in ("load_example",):
             return not self.busy
         return True
 
@@ -468,15 +468,6 @@ class AnalysisModel:
             self.preset = preset
         self.open_folder(str(folder))
 
-    def choose_folder(self) -> None:
-        """Ask the window for a measurement folder."""
-        self.dialog_request = {
-            "kind": "data_folder",
-            "title": tr("Choose a measurement folder"),
-            "mode": "folder",
-            "filters": "",
-        }
-
     def write_results(self) -> None:
         """Ask the window where to write the tables."""
         self.dialog_request = {
@@ -488,9 +479,7 @@ class AnalysisModel:
 
     def finish_dialog(self, kind: str, path: str) -> None:
         """A folder chosen in the window's dialog."""
-        if kind == "data_folder":
-            self.open_folder(path)
-        elif kind == "write_results":
+        if kind == "write_results":
             self.write_to(path)
 
     def open_folder(self, folder: str) -> bool:
@@ -672,7 +661,7 @@ class AnalysisModel:
                 )
             )
             self._used(
-                "load_example" if "demos" in Path(self.data_folder).parts else "choose_folder"
+                "load_example" if "demos" in Path(self.data_folder).parts else "workspace_input_rows"
             )
         elif kind == "sites":
             self.site_models = out
@@ -772,6 +761,7 @@ class AnalysisCard(CardShell):
             wait_for_controls=True,
         )
         self.form = FormState(on_used=self.used)
+        self.form.custom["workspace_tables"] = self._draw_workspace_tables
         self.form.custom["analysis_plot"] = lambda s, m, st, w: self.draw_plot(
             str(s.get("target", "")), s
         )
@@ -845,14 +835,16 @@ class AnalysisCard(CardShell):
             folder=True,
         )
 
-    def take_drop(self, paths: list[str]) -> bool:
-        """A dropped folder (or a file inside one) holding the three tables is the data folder."""
-        for path in paths:
-            folder = path if os.path.isdir(path) else os.path.dirname(path)
-            if all(os.path.isfile(os.path.join(folder, n)) for n in DATA_FILES):
-                return self.model.open_folder(folder)
-        self.model.say(tr("No measurement folder among the dropped paths."), True)
-        return False
+    def _draw_workspace_tables(self, section: dict, model, state, width: float) -> None:
+        """The measurement tables of the workspace; a pick of the three opens their folder."""
+        if getattr(self, "tables_input", None) is None:
+            from chisurf.plugins.curve_input import CurveInput
+
+            self.tables_input = CurveInput(
+                "quenching_estimator", self, name="tables", title="",
+                height=92.0,
+            )
+        self.tables_input.draw(state.rects, on_used=self.used)
 
     # ---- plots
 

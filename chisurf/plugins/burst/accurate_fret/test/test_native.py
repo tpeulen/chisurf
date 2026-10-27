@@ -164,13 +164,15 @@ def test_native_cancel_keeps_previous_result(monkeypatch):
         app.close()
 
 
-def test_native_file_drop_load_calibrate_and_preferences(tmp_path):
+def test_native_workspace_load_calibrate_and_preferences(tmp_path):
     source = tmp_path / "bursts.npz"
     np.savez(source, **columns())
     app = create_app()
     app.model.n_bootstrap = 0
     try:
-        app.on_paths_dropped([str(source)])
+        from chisurf.plugins.burst.accurate_fret.gui.app import receive_bursts
+
+        receive_bursts(app, {"file": str(source)})
         app.controller._future.result(timeout=20)
         app.controller.poll()
         assert app.model.filename == str(source) and app.model.can_run() is None

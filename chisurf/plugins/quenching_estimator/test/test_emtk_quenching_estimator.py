@@ -43,7 +43,7 @@ def test_the_window_builds_and_draws_at_both_sizes(app):
         for _ in range(3):
             painter = RecordingPainter()
             app.draw(painter, 0, 0, *size)
-        assert "Simulate" in painter.strings and "Load PDB..." in painter.strings
+        assert "Simulate" in painter.strings and "Load PDB..." not in painter.strings
 
 
 def test_it_is_qt_free():

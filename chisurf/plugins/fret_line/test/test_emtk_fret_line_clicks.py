@@ -228,55 +228,31 @@ def param_ids(drv):
 def test_the_editor_headers_open_and_close_their_sections(drv):
     drv.click(drv.text_rect("> Input curves"))
     shown = drv.draw(2).strings
-    assert "Load curve file" in shown and "Unload curve" in shown
+    assert "Unload curve" in shown and "Load curve file" not in shown
     drv.click(drv.text_rect("v Input curves"))
-    assert "Load curve file" not in drv.draw(2).strings
+    assert "Unload curve" not in drv.draw(2).strings
     drv.click(drv.text_rect("> Model settings"))
     assert any(s.startswith("v Model settings") for s in drv.draw(2).strings)
 
 
-def test_load_curve_file_opens_a_chooser_whose_cancel_leaves_everything(drv):
-    drv.click(drv.text_rect("> Input curves"))
-    drv.click(drv.text_rect("Load curve file"))
-    assert drv.app.file_dialog is not None and "Cancel" in drv.draw(2).strings
-    drv.click(drv.text_rect("Cancel"))
-    assert drv.app.file_dialog is None and not drv.app.loaded_curves
+def test_a_workspace_curve_is_bound_to_the_model_input_and_unload_removes_it(drv, monkeypatch):
+    """Curves come from the workspace (the session's imported curves): there is no file chooser."""
+    import chisurf
+    from chisurf.core.data import DataCurve
 
-
-def test_a_curve_file_chosen_in_the_chooser_is_bound_to_the_model_input_and_unload_removes_it(
-    drv, tmp_path, monkeypatch
-):
-    monkeypatch.chdir(tmp_path)
     x = np.linspace(0, 50, 200)
-    np.savetxt(tmp_path / "irf.csv", np.c_[x, np.exp(-((x - 10) ** 2) / 4)], delimiter=",")
+    curve = DataCurve(x=x, y=np.exp(-((x - 10) ** 2) / 4), name="irf")
+    monkeypatch.setattr(chisurf, "imported_datasets", [curve], raising=False)
     model = drv.app.model.selected["model"]
     assert getattr(model.datasets, "response", None) is None
     drv.click(drv.text_rect("> Input curves"))
-    drv.click(drv.text_rect("Load curve file", last=False))
-    assert "Load response" in drv.draw(3).strings
-    drv.click(drv.text_rect("irf.csv"))
-    drv.click(drv.text_rect("Open"))
+    drv.click(drv.text_rect("Use selected curve", last=False))
     drv.draw(3)
-    assert getattr(model.datasets, "response", None) is not None and drv.app.file_dialog is None
-    assert any(s.startswith("response: ") and "not loaded" not in s for s in drv.draw(2).strings)
+    assert getattr(model.datasets, "response", None) is curve and drv.app.file_dialog is None
     drv.click(drv.text_rect("Unload curve", last=False))
     assert (
         getattr(model.datasets, "response", None) is None
         and "response: not loaded" in drv.draw(2).strings
-    )
-
-
-def test_a_curve_file_that_is_no_curve_reports_why_in_the_editor(drv, tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    (tmp_path / "bad.csv").write_text("not,a\ncurve,at all\n")
-    drv.click(drv.text_rect("> Input curves"))
-    drv.click(drv.text_rect("Load curve file", last=False))
-    drv.click(drv.text_rect("bad.csv"))
-    drv.click(drv.text_rect("Open"))
-    drv.draw(3)
-    assert (
-        getattr(drv.app.model.selected["model"].datasets, "response", None) is None
-        and drv.app.error
     )
 
 

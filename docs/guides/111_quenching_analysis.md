@@ -23,7 +23,8 @@ and a structure per state.
 
 Press **Load example**. It loads the shipped MalE data set (`examples/male/`): nine sites, the
 dyes AF488, Cy3B and Atto655, apo (PDB 1OMP) and holo (PDB 1ANF), 0–100 % D₂O, and sets the
-*Quick* preset. **Data folder…** reads your own folder with the same layout:
+*Quick* preset. Your own data: drop the three tables on ChiSurf and pick them in the
+tables input (they must sit in one folder, with the same layout):
 
 | file | content |
 |---|---|

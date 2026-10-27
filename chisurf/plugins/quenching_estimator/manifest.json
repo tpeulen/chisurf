@@ -902,5 +902,37 @@
   ],
   "events": [],
   "dependencies": {},
-  "deprecated": false
+  "deprecated": false,
+  "accepts": [
+    {
+      "name": "structure",
+      "summary": "The structure (PDB/mmCIF) the forward model labels and simulates.",
+      "receive": "chisurf.plugins.quenching_estimator.gui.app:receive_structure",
+      "required": [
+        "structure"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "structure"
+        ],
+        "many": false,
+        "key": "structure"
+      }
+    },
+    {
+      "name": "tables",
+      "summary": "The three measurement tables of an analysis (tcspc_fit_results.csv, amino_acid_quenching_flt.csv, titration_summary.csv).",
+      "receive": "chisurf.plugins.quenching_estimator.gui.app:receive_tables",
+      "required": [
+        "tables"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "table"
+        ],
+        "many": true,
+        "key": "tables"
+      }
+    }
+  ]
 }

@@ -780,9 +780,11 @@ class AcquisitionApp(ImApp):
         """Open a native file or folder dialog requested by the model."""
         self.dialog_action = action
         if action == "output_folder":
+            # not-input: device session output folder and device/simulator configuration files (instrument state, not measurement data)
             dialog = FileDialog("Choose acquisition output folder", mode="folder")
         elif action.startswith("sim_setup_"):
             saving = action == "sim_setup_save"
+            # not-input: device session output folder and device/simulator configuration files (instrument state, not measurement data)
             dialog = FileDialog(
                 "Save simulation JSON" if saving else "Load simulation JSON",
                 mode="save" if saving else "open",
@@ -790,6 +792,7 @@ class AcquisitionApp(ImApp):
                 filename="simulation_config.json",
             )
         elif action.startswith("bh_"):
+            # not-input: device session output folder and device/simulator configuration files (instrument state, not measurement data)
             dialog = FileDialog(
                 "Save BH settings" if action == "bh_save" else "Load BH settings",
                 mode="save" if action == "bh_save" else "open",
@@ -797,6 +800,7 @@ class AcquisitionApp(ImApp):
                 filename="bh_spc_settings.json",
             )
         else:
+            # not-input: device session output folder and device/simulator configuration files (instrument state, not measurement data)
             dialog = FileDialog(
                 action.replace("_", " ").title(),
                 mode="save" if action == "save_settings" else "open",

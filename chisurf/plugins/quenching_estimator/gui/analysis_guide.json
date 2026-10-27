@@ -8,7 +8,7 @@
     },
     {
       "title": "Start from the demo",
-      "text": "<b>Load example</b> loads the MalE data set that ships with ChiSurf: nine sites, the dyes AF488, Cy3B and Atto655, apo and holo, in normal and heavy water. It also chooses the quick preset. With your own data, use <b>Data folder…</b> on a folder with the same three tables.",
+      "text": "<b>Load example</b> loads the MalE data set that ships with ChiSurf: nine sites, the dyes AF488, Cy3B and Atto655, apo and holo, in normal and heavy water. It also chooses the quick preset. With your own data, drop the same three tables on ChiSurf and pick them in the input below.",
       "target": {"name": "load_example"},
       "await": {"hint": "Press <b>Load example</b>."}
     },

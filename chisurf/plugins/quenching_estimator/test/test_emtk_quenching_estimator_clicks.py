@@ -53,12 +53,14 @@ def _open_structure_tab(ui):
     ui.draw(3)
 
 
-def test_load_pdb_project_save_and_reload_by_clicks(app, pdb, tmp_path):
+def test_structure_from_the_workspace_project_save_and_reload_by_clicks(app, pdb, tmp_path):
+    from chisurf.plugins.quenching_estimator.gui.app import receive_structure
+
     ui = Ui(app, SIZE)
     ui.draw(3)
-    ui.click("load_pdb")
-    assert ui.dialog_open and ui.shown("Open a structure")
-    ui.dialog_pick(pdb.name)
+    assert not ui.shown("Load PDB...")  # the structure is a workspace row (structure kind)
+    receive_structure(app, {"structure": str(pdb)})
+    ui.draw(2)
     assert app.session.model.project["pdb"] == str(pdb)
 
     saved = tmp_path / "quest_project.json"

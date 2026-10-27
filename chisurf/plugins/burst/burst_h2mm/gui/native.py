@@ -87,7 +87,6 @@ class H2mmNativeApp(TourTarget, ImApp):
     #: Dialog actions: (title, mode, filters).
     DIALOGS = {
         "save_settings": ("Save H2MM settings", "save", [("JSON", ["*.json"])]),
-        "load_settings": ("Load H2MM settings", "open", [("JSON", ["*.json"])]),
         "export_dwells": ("Export dwell table", "save", [("CSV", ["*.csv"])]),
         "export_tables": ("Export H2MM tables", "save", [("JSON", ["*.json"])]),
         "save_plot": ("Save plots", "save", [("PNG", ["*.png"])]),
@@ -249,6 +248,7 @@ class H2mmNativeApp(TourTarget, ImApp):
             "export_tables": "h2mm_result.json",
             "save_plot": "h2mm.png",
         }.get(action, "")
+        # not-input: saved settings, dwell/table exports and plots (outputs)
         self.dialog = FileDialog(
             title,
             mode=mode,
@@ -267,10 +267,6 @@ class H2mmNativeApp(TourTarget, ImApp):
             if action == "save_settings":
                 self.model.save_settings(path)
                 self.model.status_text = f"Settings saved to {path}"
-            elif action == "load_settings":
-                self.model.load_settings(path)
-                self.editor.model.data = copy.deepcopy(self.model.setup)
-                self.model.status_text = f"Settings loaded from {path}"
             elif action == "export_dwells":
                 n = self.model.export_dwells(path)
                 self.model.status_text = f"{n} dwells written to {path}"
@@ -429,12 +425,6 @@ class H2mmNativeApp(TourTarget, ImApp):
                     "tip": "Write the settings and the detector definition to a JSON file.",
                 },
                 {
-                    "label": "Load settings",
-                    "key": "load_settings",
-                    "enabled": not running,
-                    "tip": "Read settings and the detector definition from a JSON file.",
-                },
-                {
                     "label": action_caption("guide"),
                     "key": "guide",
                     "tip": action_tooltip("guide"),
@@ -582,6 +572,20 @@ def create_app(**kwargs) -> H2mmNativeApp:
 
     install()
     return H2mmNativeApp(**kwargs)
+
+
+def receive_settings(app: H2mmNativeApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``settings``): apply saved H2MM settings, a setup
+    row of the Datasets workspace (``payload["settings"]``)."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("settings")
+    if not address:
+        raise ValueError("no settings picked")
+    path = read_address(str(address))
+    app.model.load_settings(path)
+    app.editor.model.data = copy.deepcopy(app.model.setup)
+    app.model.status_text = f"Settings loaded from {path}"
 
 
 def receive_bursts(app: H2mmNativeApp, payload: dict) -> None:

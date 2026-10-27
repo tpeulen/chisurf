@@ -13,7 +13,6 @@ from chisurf.plugins.traj.fret_trajectory.app import make_app
 from chisurf.plugins.traj.traj_save_topology.test.real_input import (
     Ui,
     check_action_flow,
-    check_browse_row,
     check_guide_and_help_buttons,
     check_log_scrolls_with_the_wheel,
     check_number_field,
@@ -22,6 +21,7 @@ from chisurf.plugins.traj.traj_save_topology.test.real_input import (
     read_xyz,
     wheel_steps_a_number_field,
 )
+from chisurf.plugins.traj.traj_save_topology.test.workspace_pick import check_browse_row, drop
 
 SIZE = (800, 700)  # the Process panel and the log are on screen
 
@@ -32,7 +32,7 @@ def _ui():
 
 def _loaded(small_trajectory):
     ui = _ui()
-    ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
+    drop(ui, small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
     ui.draw(3)
     return ui
 
@@ -45,7 +45,7 @@ def test_no_tour_card_button_is_dead_on_any_step():
     assert dead_tour_buttons(make_app, SIZE) == []
 
 
-def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+def test_the_trajectory_row_has_no_browse_button_it_comes_from_the_workspace(
     small_trajectory, monkeypatch
 ):
     monkeypatch.chdir(small_trajectory)
@@ -61,7 +61,7 @@ def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_
     )
 
 
-def test_the_topology_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+def test_the_topology_row_has_no_browse_button_it_comes_from_the_workspace(
     small_trajectory, monkeypatch
 ):
     monkeypatch.chdir(small_trajectory)
@@ -84,14 +84,14 @@ def test_the_path_rows_do_not_take_typing(row, small_trajectory):
 def test_dropped_files_fill_the_rows_by_type_and_either_order_works(small_trajectory):
     ui = _ui()
     try:
-        assert ui.drop(small_trajectory / "notes.txt") is True
-        assert ui.shown("No trajectory or topology file among the dropped paths.")
+        assert drop(ui, small_trajectory / "notes.txt") is True
+        assert ui.shown("No trajectory or topology among the picked rows.")
         assert ui.shown("Choose the trajectory and its topology to pick the atoms.")
-        ui.drop(small_trajectory / "small.dcd")  # the trajectory before its topology
+        drop(ui, small_trajectory / "small.dcd")  # the trajectory before its topology
         assert ui.app.model.pdb is None and ui.shown(
             "Choose the trajectory and its topology to pick the atoms."
         )
-        ui.drop(small_trajectory / "topol.pdb")
+        drop(ui, small_trajectory / "topol.pdb")
         assert ui.app.model.pdb is not None and not ui.shown(
             "Choose the trajectory and its topology"
         )
@@ -313,7 +313,7 @@ def test_the_action_flow_dialog_cancel_close_save_and_replace(small_trajectory, 
         make_app,
         small_trajectory,
         tmp_path,
-        lambda ui: ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb"),
+        lambda ui: drop(ui, small_trajectory / "small.dcd", small_trajectory / "topol.pdb"),
         suggested="small_fret.csv",
         title="Output-file",
         precondition="Open a trajectory first.",

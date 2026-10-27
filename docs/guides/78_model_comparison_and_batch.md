@@ -132,8 +132,8 @@ left out). Hover a row for the file name and a preview of the curve;
 
 ### 3. Files & fit
 
-* **Files to process** — **Files**, **Folder**, **Database**, drag and
-  drop; **Remove**, **Clear**. Each file is loaded with the reader guessed
+* **Files to process** — picked from the Datasets workspace (drop the
+  measurements on ChiSurf first); **Remove**, **Clear**. Each file is loaded with the reader guessed
   from its name, else the reader currently selected in ChiSurf, then fitted.
 * **Template fit** — the fit whose parameters seed every run, listed by fit
   name (e.g. *Lifetime (magic angle only) - Decay_577D*); **Refresh fits**

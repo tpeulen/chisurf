@@ -28,7 +28,8 @@ against 20 distances. The tool list is on the left, the inputs in the middle, th
 1. **Load example** copies the shipped HIV reverse-transcriptase project (`protein_1R0A.pdb`, `dna.pdb`, the
    `hiv_rt.fps.json` with 20 measured distances and `docking_project.json`) into the settings demo folder and fills
    every input; a run then writes there, never into the installed package. **Project** loads a project of your own.
-2. **Add Files** (or drop .pdb files, or **Database** for structures in the MMFDB): one structure per rigid body;
+2. **Add Files** (or pick structures of the Datasets workspace with *Open in…*, or **Database** for structures
+   in the MMFDB): one structure per rigid body;
    the row number is the body id.
 3. **fps.json** chooses the restraints; **Output** the folder (default `dock_out` next to the fps.json).
 4. **Op** (dock, refine, screen, score), **Method** (minimize, mc), **Runs** above 1 repeats from random starts.

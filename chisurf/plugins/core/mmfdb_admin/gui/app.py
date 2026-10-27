@@ -728,6 +728,7 @@ class MMFDBAdminApp(ImApp):
         if model.file_request is not None and self.file_dialog is None:
             title, mode, filename, filters, then = model.file_request
             model.file_request = None
+            # not-input: database administration: CIF import into the MMFDB server and exports, not workspace data
             self.file_dialog = FileDialog(title, mode=mode, filename=filename, filters=filters)
             self._file_then = then
 

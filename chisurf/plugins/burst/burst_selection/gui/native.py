@@ -71,12 +71,10 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
     DIALOGS = {
         "export_cif": ("Export as flrCIF", "save"),
         "save_settings": ("Save Burst Selection settings", "save"),
-        "load_settings": ("Load Burst Selection settings", "open"),
     }
     FILTERS = {
         "export_cif": [("flrCIF", ["*.cif", "*.mmcif"]), ("All files", ["*"])],
         "save_settings": [("JSON", ["*.json"])],
-        "load_settings": [("JSON", ["*.json"])],
     }
 
     def __init__(
@@ -332,6 +330,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             filename = "bursts.cif"
         elif action == "save_settings":
             filename = "burst_selection_settings.json"
+        # not-input: flrCIF export and saved settings (outputs); saved settings come back as setup rows
         self.dialog = FileDialog(title, mode=mode, filename=filename, **options)
         self.dialog_action = action
         window = DialogWindow(title, size=(660.0, 470.0), key="burst-selection-file")
@@ -346,10 +345,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             elif action == "save_settings":
                 self.model.save_settings(result[0])
                 self.model.status_text = f"Settings saved to {result[0]}"
-            elif action == "load_settings":
-                self.model.load_settings(result[0])
-                self.model.status_text = f"Settings loaded from {result[0]}"
-                self._diag_due = time.monotonic()
         except Exception as exc:  # noqa: BLE001 - shown in the status line
             self.model.status_text = f"Error: {exc}"
 
@@ -477,12 +472,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                     "label": "Save settings",
                     "key": "save_settings",
                     "tip": "Write the filter, search, display and GMM settings to a JSON file.",
-                },
-                {
-                    "label": "Load settings",
-                    "key": "load_settings",
-                    "enabled": not busy,
-                    "tip": "Read settings from a JSON file.",
                 },
                 {
                     "label": action_caption("guide"),
@@ -852,6 +841,20 @@ def create_app(**kwargs) -> BurstSelectionNativeApp:
 
     install()
     return BurstSelectionNativeApp(**kwargs)
+
+
+def receive_settings(app: BurstSelectionNativeApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``settings``): apply a saved settings file, a setup
+    row of the Datasets workspace (``payload["settings"]``)."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("settings")
+    if not address:
+        raise ValueError("no settings picked")
+    path = read_address(str(address))
+    app.model.load_settings(path)
+    app.model.status_text = f"Settings loaded from {path}"
+    app._diag_due = time.monotonic()
 
 
 def receive_photons(app: BurstSelectionNativeApp, payload: dict) -> None:

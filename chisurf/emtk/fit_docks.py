@@ -1719,7 +1719,7 @@ class DataDocks:
                 handled = bool(project.open_recent(groups["project"][0])) or handled
         linked = [
             (kind, path)
-            for kind in ("photons", "container", "image", "setup", "trace")
+            for kind in ("photons", "container", "image", "setup", "trace", "table", "trajectory")
             for path in groups.get(kind, [])
         ]
         if linked:

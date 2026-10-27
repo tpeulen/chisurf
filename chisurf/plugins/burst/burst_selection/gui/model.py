@@ -204,6 +204,10 @@ def _cell_text(value: Any) -> str:
     return str(value)
 
 
+
+#: The schema a saved settings file carries (a setup of the Datasets workspace).
+SETTINGS_SCHEMA = "chisurf.tool/burst_selection/1"
+
 class SearchParameters:
     """The selected search's parameters as attributes, so a spec form can bind them (``attr`` = parameter name).
 
@@ -1519,15 +1523,25 @@ class BurstSelectionModel(RunPickerMixin):
         return columns
 
     def run_container(self) -> str:
-        """The ``.pto`` of the file on show, when it has one (what the run picker lists)."""
+        """The ``.pto`` holding the runs of the file on show (what the run picker lists).
+
+        A search writes into the photon dataset's analysis container in the project
+        (:meth:`container_dirs`), the place the window registers the run from; a file that is
+        itself a measurement container (or one written beside it before) is its own.
+        """
         from chisurf.core.fio.fluorescence.burst_container import container_for
         from chisurf.core.fio.pto import is_measurement
 
         path = self.active_file
         if path is None:
             return ""
-        container = container_for(path)
-        return str(container) if container.exists() and is_measurement(container) else ""
+        folder = self.container_dirs().get(str(path))
+        candidates = [Path(folder) / f"{Path(path).stem}.pto"] if folder else []
+        candidates.append(container_for(path))
+        for container in candidates:
+            if container.exists() and is_measurement(container):
+                return str(container)
+        return ""
 
     def decay_selection(self, run_path: str) -> np.ndarray | None:
         """Which bursts of *run_path* the histogram range selects (``None`` = all of them).
@@ -1658,7 +1672,9 @@ class BurstSelectionModel(RunPickerMixin):
         self.settings_changed()
 
     def save_settings(self, path) -> None:
-        Path(path).write_text(json.dumps(self.export_settings(), indent=2, default=str))
+        # The schema makes the file a setup row the workspace hands back to this tool.
+        data = {"schema": SETTINGS_SCHEMA, **self.export_settings()}
+        Path(path).write_text(json.dumps(data, indent=2, default=str))
 
     def load_settings(self, path) -> None:
         self.import_settings(json.loads(Path(path).read_text()))

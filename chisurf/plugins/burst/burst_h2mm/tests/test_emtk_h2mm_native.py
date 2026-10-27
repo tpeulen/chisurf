@@ -451,7 +451,7 @@ def _dialog_save(drv, name):
     assert drv.app.dialog is not None, f"{name} opened no dialog"
 
 
-def test_save_and_load_settings_through_the_file_dialog(app, tmp_path):
+def test_saved_settings_come_back_as_a_setup_row(app, tmp_path):
     drv = Driver(app)
     app.model.restarts = 9
     app.browse("save_settings")
@@ -461,12 +461,12 @@ def test_save_and_load_settings_through_the_file_dialog(app, tmp_path):
     app.dialog.filename = "s.json"
     drv.click_text("Save")
     assert path.exists(), "the Save button of the dialog wrote nothing"
+    from chisurf.core.fio.classify import classify
+    from chisurf.plugins.burst.burst_h2mm.gui.native import receive_settings
+
+    assert classify(str(path)) == "setup"  # the saved file drops into the workspace as a setup
     app.model.restarts = 2
-    app.browse("load_settings")
-    drv.draw(3)
-    app.dialog.directory = str(tmp_path)
-    drv.click_text("s.json")
-    drv.click_text("Open")
+    receive_settings(app, {"settings": str(path)})
     assert app.model.restarts == 9
 
 

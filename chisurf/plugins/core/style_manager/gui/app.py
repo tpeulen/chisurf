@@ -447,6 +447,7 @@ class StyleManagerApp(ImApp):
 
     def request_file(self, operation):
         self.dialog_operation = operation
+        # not-input: style sheets (the app's look), not measurement data
         self.file_dialog = FileDialog(
             "Open style" if operation == "open" else "Save style as",
             mode="open" if operation == "open" else "save",

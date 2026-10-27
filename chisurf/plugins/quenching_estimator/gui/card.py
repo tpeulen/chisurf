@@ -439,14 +439,6 @@ class QuestCard(CardShell):
         self.status_error = self.session.status_error
         self.request_frame()
 
-    def load_structure(self) -> None:
-        self.open_file(
-            "Open a structure",
-            STRUCTURE_FILTER,
-            self._load_structure,
-            current=str(self.session.form.project.get("pdb") or "") if self.session.ready else "",
-        )
-
     def _load_structure(self, path: str) -> None:
         if self.session.load_structure(path):
             self.used("load_pdb")
@@ -497,23 +489,6 @@ class QuestCard(CardShell):
             self.used("simulate")
         self.sync()
 
-    def take_drop(self, paths: list[str]) -> bool:
-        """A dropped ``.json`` is a project, a structure file is the structure (the first of each kind is taken)."""
-        taken = False
-        for path in paths:
-            low = path.lower()
-            if low.endswith(".json") and os.path.isfile(path):
-                taken = self.session.load_project(path)
-            elif low.endswith((".pdb", ".ent", ".cif", ".pdb.gz")) and os.path.isfile(path):
-                taken = self.session.load_structure(path)
-            if taken:
-                break
-        if not taken:
-            self.session.say("No structure or project file among the dropped paths.", True)
-        self.sync()
-        return taken
-
-    # ── frame ─────────────────────────────────────────────────────────────
 
     def before_frame(self) -> None:
         self.serve_dialog_request()
@@ -562,12 +537,6 @@ class QuestCard(CardShell):
                     ),
                 },
                 {
-                    "label": "Load PDB...",
-                    "key": "load_pdb",
-                    "enabled": not running,
-                    "tip": "Choose a structure; a valid attachment site is picked from it.",
-                },
-                {
                     "label": "Load project...",
                     "key": "load_project",
                     "enabled": not running,
@@ -586,7 +555,6 @@ class QuestCard(CardShell):
             "simulate": self.simulate,
             "cancel": self.cancel_simulation,
             "load_example": self.load_example,
-            "load_pdb": self.load_structure,
             "load_project": self.load_project,
             "save_project": self.save_project,
             "guide": self.start_guide,
@@ -597,6 +565,14 @@ class QuestCard(CardShell):
         im.separator()
         self.form.rects.clear()
         im.begin_disabled(running)
+        if getattr(self, "structure_input", None) is None:
+            from chisurf.plugins.curve_input import CurveInput
+
+            #: The structure comes from the Datasets workspace (manifest ``accepts`` ``structure``).
+            self.structure_input = CurveInput(
+                "quenching_estimator", self, name="structure", title="Structure", height=72.0
+            )
+        self.structure_input.draw(self.form.rects, on_used=self.used)
         draw_form(self.spec, s.model, self.form)
         im.end_disabled()
         self.item_rects.update(self.form.rects)

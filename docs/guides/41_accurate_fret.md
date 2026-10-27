@@ -91,8 +91,9 @@ Beta may explicitly report the **1:1 labelling** stoichiometry assumption.
 These labels do not infer which reference class an earlier iteration used
 from the final population masks.
 
-Press **Open burst table** (or drop a file on the window): a generic delimited
-`.csv`, `.tsv` or `.txt`, a legacy `.bur`, or an `.npz` archive. The loaded
+Drop the burst table on ChiSurf and pick it in the **Input** section (a *table* row of
+the workspace, beside the burst runs of measurement containers): a generic delimited
+`.csv`, `.tsv` or `.txt`, a legacy `.bur`, or an `.npz` archive of columns. The loaded
 table has one logical row per burst.
 Alternatively press **From ndX** (under *Data, session and catalogue actions*)
 to take the columns of an open ndX window, so the calibration runs on exactly the bursts currently

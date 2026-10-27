@@ -237,6 +237,7 @@ class ZenodoDepositApp(ImApp):
         """The chooser of step 2: files (several) or one folder, added as the named item."""
         if self.model.pick and self.dialog is None:
             folder = self.model.pick == "folder"
+            # not-input: files packed into a Zenodo deposit (publication), not data an analysis reads
             self.dialog = FileDialog(
                 "Add a folder to the record" if folder else "Add files to the record",
                 mode="folder" if folder else "open",
@@ -258,12 +259,6 @@ class ZenodoDepositApp(ImApp):
         elif result is False or pressed == "close":
             self.dialog = None
             self.model.pick = ""
-
-    def on_files_dropped(self, paths) -> bool:
-        """Files dropped on the window are added as the item named in step 2."""
-        if self.dialog is None and self.model.enabled("add_files"):
-            self.model.add_paths([str(p) for p in paths])
-        return True
 
     def _draw_metadata_editor(self, section, model, state, width: float) -> None:
         """The deposit metadata through the one shared editor (core plugin)."""

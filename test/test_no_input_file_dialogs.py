@@ -108,6 +108,63 @@ NOT_INPUT = {
     "chisurf/plugins/tttr/tttr_time_windows/gui/controller.py": (
         "Output folder: where a new container is written when a vendor file has none, an output."
     ),
+    "chisurf/plugins/burst/burst_fcs_correlator/gui/app.py": (
+        "Save settings / pairs / Export curves: files written, outputs (saved settings and pairs come back as setup rows of the workspace)."
+    ),
+    "chisurf/plugins/burst/burst_fusion/gui/controller.py": (
+        "Save settings / Export fusion report: files written, outputs (saved settings come back as setup rows)."
+    ),
+    "chisurf/plugins/burst/burst_h2mm/gui/native.py": (
+        "Save settings, dwell and table exports, plots: files written, outputs (saved settings come back as setup rows)."
+    ),
+    "chisurf/plugins/burst/burst_mle_analysis/gui/native.py": (
+        "Save settings: a file written, an output (it comes back as a setup row of the workspace)."
+    ),
+    "chisurf/plugins/burst/burst_selection/gui/native.py": (
+        "flrCIF export and Save settings: files written, outputs (saved settings come back as setup rows)."
+    ),
+    "chisurf/plugins/core/code_editor/gui/editor_app.py": (
+        "The code editor opens and saves source documents and its project folder (code, not measurement data)."
+    ),
+    "chisurf/plugins/core/globalview/gui/app.py": (
+        "The global-fit network: its own saved document (tool state) and exports."
+    ),
+    "chisurf/plugins/core/lightpath_simulator/gui/app.py": (
+        "The simulator's own graph documents (Load / Save graph), tool state, not measurement data."
+    ),
+    "chisurf/plugins/core/mmfdb_admin/gui/app.py": (
+        "Database administration: importing a CIF into the MMFDB server and exporting samples, not data entering the workspace."
+    ),
+    "chisurf/plugins/core/plugin_manager/gui/app.py": (
+        "Installing plugins (archive or folder), choosing a plugin icon, exporting the plugin table: software, not measurement data."
+    ),
+    "chisurf/plugins/core/project_browser/gui/app.py": (
+        "Project archives imported into / exported from the project database: project management (as Open Project), not data an analysis reads."
+    ),
+    "chisurf/plugins/core/setup/gui/acq_app.py": (
+        "The acquisition output folder, an output."
+    ),
+    "chisurf/plugins/core/setup/gui/app.py": (
+        "ChiSurf's own configuration file (application settings), not measurement data."
+    ),
+    "chisurf/plugins/core/style_manager/gui/app.py": (
+        "Style sheets: the application's look, not measurement data."
+    ),
+    "chisurf/plugins/core/updater/gui/package_app.py": (
+        "Environment YAML import/export: software packages, not measurement data."
+    ),
+    "chisurf/plugins/core/zenodo_deposit/gui/app.py": (
+        "Files packed into a Zenodo deposit (publication of results), not data an analysis reads."
+    ),
+    "chisurf/plugins/core/acq/gui/app.py": (
+        "Device session (the classic acquisition window): the output folder and the device/simulator configuration files (instrument state, not measurement data)."
+    ),
+    "chisurf/plugins/modelling/hydropro/app.py": (
+        "The HYDRO program to run (software) and the CSV/log outputs; the structures come from the workspace."
+    ),
+    "chisurf/plugins/traj/emtk_tool.py": (
+        "A target folder the trajectory tool writes into (an output row); its trajectories and topology come from the workspace."
+    ),
 }
 
 

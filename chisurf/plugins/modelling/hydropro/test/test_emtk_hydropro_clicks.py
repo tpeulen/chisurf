@@ -118,45 +118,15 @@ def test_a_typed_structure_list_is_committed_when_the_pointer_goes_elsewhere(drv
     assert drv.app.model.struct_files == str(world["files"]["plain"])
 
 
-def test_select_files_opens_the_chooser_and_the_chosen_files_replace_the_list(drv, world):
-    drv.click("select_files")
-    assert (
-        dialog_open(drv)
-        and drv.app.dialog.multiselect
-        and drv.app.dialog.directory == str(world["home"])
-    )
-    drv.click_text("148l.pdb")
-    drv.click_text("small.pdb")
-    drv.click_text("Open")
-    assert not dialog_open(drv)
+def test_the_structures_come_from_the_workspace_and_replace_the_list(drv, world):
+    from chisurf.plugins.modelling.hydropro.app import receive_structures
+
+    assert "Select files…" not in drv.draw(2).strings and not hasattr(drv.app, "files_dropped")
+    files = world["files"]
+    receive_structures(drv.app, {"structures": [str(files["148l"]), str(files["small"])]})
     assert [p.name for p in drv.app.model.struct_list()] == ["148l.pdb", "small.pdb"]
-    # Choosing again replaces the list and empties the result cells.
-    drv.click("select_files")
-    pick(drv, "plain.pdb")
+    receive_structures(drv.app, {"structures": [str(files["plain"])]})  # a pick replaces the list
     assert [p.name for p in drv.app.model.struct_list()] == ["plain.pdb"]
-
-
-def test_the_structure_chooser_cancel_close_and_escape_change_nothing(drv, world):
-    drv.app.model.struct_files = str(world["files"]["148l"])
-    for how in ("cancel", "close", "escape"):
-        drv.click("select_files")
-        assert dialog_open(drv)
-        drv.click_text("small.pdb")
-        if how == "cancel":
-            drv.click_text("Cancel", last=True)  # the output pane has a Cancel too, drawn earlier
-        elif how == "close":
-            drv.click_text("×", last=True)
-        else:
-            drv.escape()
-        assert not dialog_open(drv), how
-        assert drv.app.model.struct_files == str(world["files"]["148l"]), how
-
-
-def test_the_open_button_with_nothing_selected_says_so_and_keeps_the_chooser(drv, world):
-    drv.click("select_files")
-    drv.click_text("Open")
-    assert dialog_open(drv) and drv.app.dialog.error == "Select a file first."
-    drv.click_text("Cancel", last=True)
 
 
 def test_the_executable_button_chooses_one_program(drv, world):
@@ -174,13 +144,6 @@ def test_the_executable_button_chooses_one_program(drv, world):
 def test_download_page_opens_the_web_page(drv, opened):
     drv.click("download_page")
     assert opened and opened[-1].startswith("https://leonardo.inf.um.es/macromol/programs/")
-
-
-def test_files_dropped_on_the_window_replace_the_structure_list(drv, world):
-    assert drv.drop(str(world["files"]["148l"]), str(world["files"]["plain"]))
-    assert [p.name for p in drv.app.model.struct_list()] == ["148l.pdb", "plain.pdb"]
-    drv.drop(str(world["home"] / "no_such_file.pdb"))  # not a file: nothing changes
-    assert [p.name for p in drv.app.model.struct_list()] == ["148l.pdb", "plain.pdb"]
 
 
 # -- parameters ----------------------------------------------------------------------------------------------------------- #
@@ -721,7 +684,7 @@ def test_the_flow_works_in_the_small_window_too(world, opened):
     assert app.model.result_rows()[0]["d"] == "1.047e-06"
     log = [tuple(app.form.rects["output_log"])]
     assert layout_problems(draw_clip(app, SMALL, 3), SMALL, ignore=log) == []
-    d.click("select_files")
+    d.click("select_exe")
     assert dialog_open(d)
     d.click_text("Cancel", last=True)
     app.close()

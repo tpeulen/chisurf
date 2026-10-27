@@ -2,7 +2,7 @@
 
 Hermetic: temporary settings and HOME, a real 8-frame trajectory of the hgbp1 test data, no network. Nothing here
 calls a model method to "click": a pointer is pressed and released at the rectangle a control drew, text is typed,
-the wheel is turned over a field, files are dropped through ``on_files_dropped``.
+the wheel is turned over a field; structures come from the workspace (``receive_topology``).
 """
 
 from __future__ import annotations
@@ -342,20 +342,18 @@ def test_a_path_row_is_read_only(inputs):
     ui.app.close()
 
 
-def test_a_drop_goes_to_the_row_it_fits(inputs):
-    ui = Ui(make_app(), (1200, 800))
-    s = ui.app.session
-    assert ui.drop(inputs / "small.dcd", inputs / "topol.pdb", inputs / "hiv_rt.fps.json")
-    assert (s.trajectory, s.topology, s.fps_json) == tuple(
-        str(inputs / n) for n in ("small.dcd", "topol.pdb", "hiv_rt.fps.json")
-    )
-    s.trajectory = ""
-    assert (
-        ui.drop(inputs / "nothing.dcd")
-        and ui.shown("No file among the dropped paths")
-        and s.trajectory == ""
-    )
-    ui.app.close()
+def test_a_workspace_structure_becomes_the_topology(inputs):
+    """Dropped files go to the workspace (the shell); a structure row picked for Pair Selection is
+    its topology."""
+    from chisurf.plugins.modelling.fret.gui.app import FretApp, receive_topology
+
+    window = FretApp()
+    try:
+        assert receive_topology(window, {"topology": str(inputs / "topol.pdb")})
+        assert window.child.session.topology == str(inputs / "topol.pdb")
+        assert "take_drop" not in type(window.child).__dict__
+    finally:
+        window.close()
 
 
 def test_failures_are_reported_in_a_message_and_the_status_line(inputs):

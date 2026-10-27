@@ -36,4 +36,4 @@ Unlike continuous FCS which computes autocorrelations across an entire photon st
 - **Channel pairs**: a table of pairs (routing channels A and B, micro-time gates); equal sides give an auto-correlation. **Pairs of the setup** (Detector setup tab) builds them from a detector setup.
 - **Curves**: every burst and pair with its diffusion time; filter by file or pair name and select a row to plot it. **Export curves...** writes JSON.
 - **Fit window**: drag the two vertical lines on the correlation plot (or type **t_min** and **t_max**) to constrain the fit; the wheel zooms a plot.
-- **Settings files**: **Load settings...** and **Save settings...** read and write the correlator and fit settings as JSON.
+- **Settings files**: **Save settings...** writes the correlator and fit settings as JSON; drop a saved file on ChiSurf and pick it (a setup row) to load it back. **Save pairs...** does the same for the channel pairs.

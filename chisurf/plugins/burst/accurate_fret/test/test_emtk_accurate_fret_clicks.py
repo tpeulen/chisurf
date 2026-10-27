@@ -91,13 +91,11 @@ def rect_of(app, name):
 
 
 def load_by_clicks(app, bursts, size=SIZE):
-    """Open burst table -> the file dialog -> the file entry -> Open."""
+    """A burst table picked in the workspace Input section (the hand-off receiver)."""
+    from chisurf.plugins.burst.accurate_fret.gui.app import receive_bursts
+
     draw(app, size, frames=3)
-    click(app, rect_of(app, "filename"), size)
-    painter = draw(app, size)
-    assert {"Open", "Cancel", bursts.name} <= set(painter.strings), "the dialog did not open"
-    click(app, text_rect(painter, bursts.name), size)
-    click(app, text_rect(draw(app, size), "Open"), size)
+    receive_bursts(app, {"file": str(bursts)})
     wait(app, size)
 
 
@@ -143,47 +141,36 @@ def test_open_burst_table_dialog_loads_the_file_the_user_clicks(app, bursts):
     )
 
 
-def test_the_dialog_cancel_button_closes_it_and_loads_nothing(app, bursts):
-    draw(app, frames=3)
-    click(app, rect_of(app, "filename"))
-    assert app.controller.dialog is not None
-    click(app, text_rect(draw(app), "Cancel"))
-    assert (
-        app.controller.dialog is None
-        and app.model.filename in ("", None)
-        and "Cancel" not in draw(app).strings
-    )
+def test_a_burst_table_that_cannot_be_read_says_so_and_the_app_is_not_stuck(app, tmp_path):
+    from chisurf.plugins.burst.accurate_fret.gui.app import receive_bursts
 
-
-def test_a_burst_table_that_cannot_be_read_says_so_and_the_dialog_is_not_stuck(app, tmp_path):
     bad = tmp_path / "not_a_burst_table.csv"
     bad.write_text("this,is,not\nnumeric,data,at all\n")
     draw(app, frames=3)
-    click(app, rect_of(app, "filename"))
-    painter = draw(app)
-    click(app, text_rect(painter, bad.name))
-    click(app, text_rect(draw(app), "Open"))
+    receive_bursts(app, {"file": str(bad)})
     wait(app)
     assert app.controller.status.startswith("Error:") and "Error:" in " ".join(draw(app).strings)
-    assert app.controller.dialog is None and not app.model.filename.endswith(
-        "not_a_burst_table.csv"
-    )
-    # and the app still works: the next, good file loads
+    assert not app.model.filename.endswith("not_a_burst_table.csv")
     assert app.controller.running is False
 
 
-def test_a_file_dropped_on_the_window_loads_like_the_dialog(app, bursts):
-    draw(app, frames=3)
-    app.on_paths_dropped([str(bursts)])
+def test_a_burst_table_comes_from_the_workspace_not_a_dialog_or_drop(app, bursts):
+    from chisurf.core.fio.classify import classify
+    from chisurf.plugins.burst.accurate_fret.gui.app import receive_bursts
+
+    strings = draw(app, frames=3).strings
+    assert "Open burst table" not in strings and "MMFDB burst datasets" not in strings
+    assert not hasattr(app, "on_paths_dropped") and classify(bursts) in ("table", "setup")
+    receive_bursts(app, {"file": str(bursts)})
     wait(app)
     assert app.model.filename == str(bursts) and app.controller.status == "Burst table loaded."
 
 
-def test_a_dropped_path_that_does_not_exist_is_reported(app):
-    app.on_paths_dropped(["/no/such/bursts.npz"])
-    assert "does not exist" in app.controller.status and "does not exist" in " ".join(
-        draw(app).strings
-    )
+def test_a_picked_address_that_does_not_exist_is_refused(app):
+    from chisurf.plugins.burst.accurate_fret.gui.app import receive_bursts
+
+    with pytest.raises(ValueError):
+        receive_bursts(app, {"file": "/no/such/bursts.npz"})
 
 
 # ── channels, calibration, stop, result tabs ------------------------------------------------------------------ #
@@ -472,22 +459,6 @@ def test_the_database_path_field_takes_typed_text(app, tmp_path):
         draw(app, frames=1)
     draw(app, frames=2)
     assert app.model.database_path == "/tmp/spectra.db"
-
-
-def test_the_datasets_button_opens_the_database_window_and_it_can_be_closed(app):
-    draw(app, frames=3)
-    press_text(app, "MMFDB burst datasets")
-    painter = draw(app)
-    assert (
-        any(
-            "dataset" in s.lower() or "mmfdb" in s.lower()
-            for s in painter.strings
-            if s != "MMFDB burst datasets"
-        )
-        or app.controller.datasets is not None
-    )
-    app.key(keys.KEY_ESCAPE, "")
-    draw(app, frames=2)
 
 
 def test_select_detector_setup_button_brings_the_detector_setup_dock_forward(app):

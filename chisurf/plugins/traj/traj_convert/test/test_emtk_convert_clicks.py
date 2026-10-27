@@ -13,7 +13,6 @@ from emtk import keys
 from chisurf.plugins.traj.traj_convert.app import make_app
 from chisurf.plugins.traj.traj_save_topology.test.real_input import (
     Ui,
-    check_browse_row,
     check_guide_and_help_buttons,
     check_log_scrolls_with_the_wheel,
     check_number_field,
@@ -24,6 +23,7 @@ from chisurf.plugins.traj.traj_save_topology.test.real_input import (
     read_xyz,
     wheel_steps_a_number_field,
 )
+from chisurf.plugins.traj.traj_save_topology.test.workspace_pick import check_browse_row, drop
 
 SIZE = (800, 700)  # both panels fit: the Output panel's controls must be reachable
 
@@ -40,7 +40,7 @@ def test_no_tour_card_button_is_dead_on_any_step():
     assert dead_tour_buttons(make_app, SIZE) == []
 
 
-def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+def test_the_trajectory_row_has_no_browse_button_it_comes_from_the_workspace(
     small_trajectory, monkeypatch
 ):
     monkeypatch.chdir(small_trajectory)
@@ -55,7 +55,7 @@ def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_
     )
 
 
-def test_the_topology_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+def test_the_topology_row_has_no_browse_button_it_comes_from_the_workspace(
     small_trajectory, monkeypatch
 ):
     monkeypatch.chdir(small_trajectory)
@@ -105,23 +105,15 @@ def test_the_target_folder_dialog_lists_folders_only_and_chooses_the_selected_or
         ui.app.close()
 
 
-def test_the_folder_checkbox_turns_the_trajectory_row_into_a_folder_chooser(
-    small_trajectory, monkeypatch
-):
-    monkeypatch.chdir(small_trajectory)
+def test_the_folder_checkbox_turns_the_trajectory_row_into_a_folder_of_pdbs(small_trajectory):
+    """In folder mode the trajectory row takes a folder: a picked folder, or the folder of a picked
+    structure once the topology is set; there is no ``…`` on input rows."""
     ui = _ui()
     try:
         ui.click("use_folder")
-        assert ui.app.model.use_folder is True
-        ui.click("trajectory_browse")
-        assert ui.app.dialog.mode == "folder" and ui.shown("[sub]") and not ui.shown("small.dcd")
-        ui.press_text("[sub]")
-        ui.press_text("Choose")
+        assert ui.app.model.use_folder is True and "trajectory_browse" not in ui.app.item_rects
+        drop(ui, small_trajectory / "sub")
         assert ui.app.model.trajectory == str(small_trajectory / "sub")
-        ui.click("use_folder")
-        assert ui.app.model.use_folder is False
-        ui.click("trajectory_browse")
-        assert ui.app.dialog.mode == "open" and ui.shown("small.dcd")
     finally:
         ui.app.close()
 
@@ -131,15 +123,15 @@ def test_dropped_files_and_folders_fill_the_rows_by_type_and_a_foreign_file_is_a
 ):
     ui = _ui()
     try:
-        assert ui.drop(small_trajectory / "notes.txt") is True
-        assert ui.shown("No topology or trajectory or target folder file among the dropped paths.")
-        ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
+        assert drop(ui, small_trajectory / "notes.txt") is True
+        assert ui.shown("No topology or trajectory among the picked rows.")
+        drop(ui, small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
         assert ui.app.model.trajectory == str(small_trajectory / "small.dcd")
         assert ui.app.model.topology_path == str(small_trajectory / "topol.pdb")
-        ui.drop(small_trajectory / "sub")  # a folder: the target folder row
-        assert ui.app.model.target_directory == str(small_trajectory / "sub")
+        drop(ui, small_trajectory / "sub")  # a folder: no file row takes it (the target has its …)
+        assert not ui.app.model.target_directory
         ui.click("use_folder")
-        ui.drop(small_trajectory)  # in folder mode the folder row first
+        drop(ui, small_trajectory)  # in folder mode the folder row first
         assert ui.app.model.trajectory == str(small_trajectory)
     finally:
         ui.app.close()
@@ -229,7 +221,7 @@ def test_convert_says_what_is_missing_before_it_runs(small_trajectory):
     try:
         ui.click("convert")
         assert ui.shown("Choose a trajectory first.") and not ui.app.running
-        ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
+        drop(ui, small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
         ui.click("convert")
         assert ui.shown("Choose a target folder first.") and not ui.app.running
     finally:
@@ -239,7 +231,8 @@ def test_convert_says_what_is_missing_before_it_runs(small_trajectory):
 def _prepare(ui, small_trajectory, tmp_path):
     out = tmp_path / "out"
     out.mkdir()
-    ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb", out)
+    drop(ui, small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
+    ui.app.model.set_target_directory(str(out))  # the output folder (chosen with its …)
     return out
 
 
@@ -355,7 +348,8 @@ def test_a_folder_of_pdbs_is_converted_as_consecutive_frames(small_trajectory, t
     ui = _ui()
     try:
         ui.click("use_folder")
-        ui.drop(folder, out)
+        drop(ui, folder)
+        ui.app.model.set_target_directory(str(out))  # the output folder (chosen with its …)
         assert ui.app.model.trajectory == str(folder) and ui.app.model.target_directory == str(out)
         ui.type_into("filename", "joined")
         ui.click("convert")

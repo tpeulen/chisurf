@@ -15,13 +15,19 @@ scripts and the agent need them); in the UI they degrade the UX and go.
 
 ## Where to pick this up
 
-1. Measure: **Migrate the rest, family by family.** `python -c "import sys; sys.path.insert(0,'.');
-   from test.test_no_input_file_dialogs import allowed_entries; print(len(allowed_entries()))"` — **111**
-   lines (dialog/drop/mmfdb) at fb0ca5879 (TTTR and burst families done), from 193. A line is one route in one file,
-   so a plugin often holds 2–3. Order: TTTR-file tools (photons ~40), burst consumers (container runs —
-   a legacy burst *folder* cannot be a workspace row: links refuse a directory, so consumers must take
-   `m000.pto/<run>`), curve tools, images, structures. Recipe: [plugin architecture
-   §3.1.5](../../docs/development/plugin_architecture.md).
+1. Measure: **The last allowlist lines.** `python -c "import sys; sys.path.insert(0,'.');
+   from test.test_no_input_file_dialogs import allowed_entries; print(len(allowed_entries()))"` — **4**
+   (2026-10-27, from 193): `core/legacy_export/gui/app.py` (dialog, drop) and
+   `core/metadata_editor/gui/app.py` (dialog) hold another session's uncommitted edits and wait for it;
+   `ndxplorer/gui/app.py` (mmfdb) opens an MMFDB burst selection with its provenance — it goes when the shell's
+   *Add from MMFDB…* links burst selections (today photons/images only). Two gaps the guard does not see:
+   card-based tools still open input files through `card_shell.open_file` (not in the guard's
+   `DIALOG_HELPERS`): FRET docking's *Add Files*/FPS JSON, Pair Selection's trajectory/FPS rows, QuEst's *Load
+   project*; and the docking/pair-selection cards draw no Input section yet (their `accepts` work through *Open
+   in…* and drags). New kinds this round: `table` (5+ named columns, or an `.npz` of 5+ equal 1-D arrays —
+   burst and result tables; curves keep 2–4 columns) and `trajectory` (`.dcd/.xtc/.trr/.nc`). Tool presets
+   (`chisurf.tool/<plugin>/1`) come back as setup rows for burst_selection, fusion, H2MM, MLE and the burst FCS
+   correlator.
 2. Open: **Hubs.** alex_suite / burst_analysis take their photons and setup from the workspace and hand the
    later steps a container run (no legacy folder); the hubs still call their own `_to_<role>` adapters
    rather than each step's declared input.

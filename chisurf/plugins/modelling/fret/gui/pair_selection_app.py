@@ -303,28 +303,6 @@ class PairSelectionCard(CardShell):
         self.session.export(str(path))
         self.used("export")
 
-    def take_drop(self, paths: list[str]) -> bool:
-        """A PDB goes to Topology, a .json to FPS JSON, any other file to Trajectory."""
-        taken = False
-        for path in paths:
-            if not os.path.isfile(path):
-                continue
-            low = path.lower()
-            attr = (
-                "topology"
-                if low.endswith(TOPOLOGY_SUFFIXES)
-                else "fps_json"
-                if low.endswith(".json")
-                else "trajectory"
-            )
-            setattr(self.session, attr, path)
-            taken = True
-        self.session.say(
-            "Dropped files taken." if taken else "No file among the dropped paths.", not taken
-        )
-        return taken
-
-    # -- frame ----------------------------------------------------------------------------------------------- #
     def before_frame(self) -> None:
         if self.session.poll():
             self.status, self.status_error = self.session.status, self.session.status_error

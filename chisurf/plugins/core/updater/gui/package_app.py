@@ -158,6 +158,7 @@ class PackagePanel:
             home = str(Path.home())
             if request == "export":
                 self.dialog, self.dialog_purpose = (
+                    # not-input: environment YAML (software packages), not measurement data
                     FileDialog(
                         "Export Environment",
                         mode="save",
@@ -169,6 +170,7 @@ class PackagePanel:
                 )
             elif request == "import":
                 self.dialog, self.dialog_purpose = (
+                    # not-input: environment YAML (software packages), not measurement data
                     FileDialog(
                         "Import Environment", directory=home, filters="YAML files (*.yaml *.yml)"
                     ),

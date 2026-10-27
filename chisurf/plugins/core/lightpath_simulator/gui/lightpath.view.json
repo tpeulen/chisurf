@@ -16,7 +16,7 @@
           {
             "action": "load_graph",
             "label": "Load Graph",
-            "description": "Load a graph, or an Easy Mode preset, from a JSON file. You can also drop the file on the window."
+            "description": "Load a graph, or an Easy Mode preset, from a JSON file."
           },
           {
             "action": "save_preset",

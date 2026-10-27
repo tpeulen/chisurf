@@ -42,7 +42,7 @@ TABLE = "result_rows"
 #: The Qt guide names its targets by the Qt button's text; the native controls answer to the same names.
 ALIASES = {
     "Executable": "select_exe",
-    "Select files": "select_files",
+    "Select files": "workspace_input_rows",
     "Run": "run",
     "Save CSV": "save_csv",
 }
@@ -77,6 +77,15 @@ def build_spec(extra: dict | None = None) -> dict:
             # Its own grid: a button row sharing the fields' grid starts under their value column and overruns a narrow window.
             panel["sections"].append(
                 {"type": "panel", "title": "", "sections": [extra["input_buttons"]]}
+            )
+            # The structures come from the Datasets workspace (manifest ``accepts`` ``structures``).
+            panel["sections"].append(
+                {
+                    "type": "custom",
+                    "key": "workspace_structures",
+                    "description": "Structures of the Datasets workspace; a pick replaces the list "
+                    "in 'Structures'.",
+                }
             )
         panels.append(panel)
     spec = {"params": panels, "results": extra["results"], "output": extra["output"]}
@@ -146,6 +155,7 @@ class HydroProApp(ImApp):
         self.output_sections = spec["output"]
         self.form = FormState(on_used=self._used)
         self.form.custom["output_log"] = self._draw_log
+        self.form.custom["workspace_structures"] = self._draw_workspace_structures
         self.item_rects: dict[str, tuple] = {}
         self._log_editor = TextEditor("")
         self._log_editor.config.show_line_numbers = False
@@ -254,16 +264,8 @@ class HydroProApp(ImApp):
     def _open_chooser(self, kind: str) -> None:
         home = str(Path.home())
         model = self.model
-        if kind == "files":
-            self.dialog = FileDialog(
-                tr("Select structural files"),
-                mode="open",
-                multiselect=True,
-                directory=home,
-                filters=STRUCT_FILTER,
-            )
-            self.dialog_callback = lambda paths: model.files_chosen(paths)
-        elif kind in ("exe", "prompt_exe"):
+        if kind in ("exe", "prompt_exe"):
+            # not-input: the HYDRO program (software to run), not measurement data
             self.dialog = FileDialog(
                 tr("Select HYDRO executable"), mode="open", directory=home, filters=EXE_FILTER
             )
@@ -357,6 +359,14 @@ class HydroProApp(ImApp):
     def draw_output(self, box: Any) -> None:
         draw_sections(self.output_sections, self.model, self.form, titles=False)
 
+    def _draw_workspace_structures(self, section: dict, model: Any, state: FormState, width: float) -> None:
+        """The structures of the workspace (structure kind); a pick replaces the list."""
+        if getattr(self, "structures_input", None) is None:
+            from chisurf.plugins.curve_input import CurveInput
+
+            self.structures_input = CurveInput("hydropro", self, name="structures", title="", height=72.0)
+        self.structures_input.draw(state.rects, on_used=self._used)
+
     def _draw_log(self, section: dict, model: Any, state: FormState, width: float) -> None:
         char = max(1.0, float(im.calc_text_size("M" * 20)[0]) / 20.0)
         columns = max(20, int((width - 44.0) / char))
@@ -376,16 +386,6 @@ class HydroProApp(ImApp):
 
         open_link(url)
 
-    def files_dropped(self, paths) -> bool:
-        """Structure files dropped on the window replace the list (the Qt window accepted drops and ignored them)."""
-        files = [str(p) for p in paths if Path(p).is_file()]
-        if not files:
-            return False
-        self.model.files_chosen(files)
-        return True
-
-    on_files_dropped = files_dropped
-
     def animating(self) -> bool:
         return self.model.running or super().animating()
 
@@ -402,3 +402,17 @@ def make_app() -> HydroProApp:
 
 
 __all__ = ["HydroProApp", "HydroProModel", "build_spec", "make_app", "DOWNLOAD_URL"]
+
+
+def receive_structures(app, payload: dict) -> bool:
+    """Hand-off receiver (``structures``): workspace structures replace the list in 'Structures'."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    values = payload.get("structures") or []
+    values = values if isinstance(values, list) else [values]
+    paths = [str(read_address(str(v))) for v in values if v]
+    if not paths:
+        raise ValueError("no structure picked")
+    app.model.files_chosen(paths)
+    return True
+

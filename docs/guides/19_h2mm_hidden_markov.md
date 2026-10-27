@@ -65,7 +65,7 @@ Analysis** (no menu entry of its own; `python -m chisurf.emtk --plugin burst_h2m
 opens it alone). The left dock has two tabs.
 **H2MM settings** has the action buttons (**Browse folder**, **Run H2MM**,
 **Restart**, **Stop**, **Bootstrap**, **LL scan**, **Save plot**, **Dwells in
-ndX**, **Export dwells**, **Save settings**, **Load settings**, **Guide**,
+ndX**, **Export dwells**, **Save settings** (a saved file comes back as a *setup* row of the workspace), **Guide**,
 **Help**) above the settings form: *Data* (the **Burst folder**, and which
 detector is the **Donor detector**, the **Acceptor detector** and the optional
 **Aex detector**),

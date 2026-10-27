@@ -73,10 +73,11 @@ def wait_run(drv, timeout=20.0):
 
 
 def add_through_the_dialog(drv, *names):
-    drv.click_name("add_files")
-    for name in names:
-        drv.click_text(name)
-    drv.click_text("Open")
+    """Queue files as a pick in the workspace Input section does (the hand-off receiver)."""
+    from chisurf.plugins.core.batch_analysis.gui.app import receive_files
+
+    receive_files(drv.app, {"files": [str(Path(n).resolve()) for n in names]})
+    drv.draw(2)
 
 
 # -- the step list and Back / Next / Finish ------------------------------------------------------------------------------ #
@@ -181,78 +182,31 @@ def test_an_empty_session_says_so_instead_of_an_empty_list():
 # -- files ------------------------------------------------------------------------------------------------------------- #
 
 
-def test_files_and_folders_dropped_on_the_window_are_added_and_a_repeat_is_ignored(drv, folder):
+def test_files_come_from_the_workspace_not_dialogs_or_drops(drv, folder):
+    """No Files / Folder / Database buttons and no drop hook: workspace rows are queued, a repeat is
+    ignored, and a dropped file goes to the shell (the workspace), not to this window."""
     to_step(drv, "files")
-    assert drv.drop(str(folder / "run_01.sm")) is True
-    assert drv.drawn("run_01.sm") and len(drv.app.model.files) == 1
-    assert drv.drop(str(folder / "run_01.sm")) is False
-    (folder / "sub").mkdir()
-    (folder / "sub" / "deep.sm").write_text("x")
-    assert drv.drop(str(folder)) is True
-    assert sorted(Path(p).name for p in drv.app.model.files) == [
-        "deep.sm",
-        "run_01.sm",
-        "run_02.sm",
-        "run_03.sm",
-    ]
-    assert drv.drop() is False
-
-
-def test_files_button_opens_a_dialog_that_cancels_and_adds_the_chosen_files(drv):
-    to_step(drv, "files")
-    assert not drv.app.model.files
-    drv.click_name("add_files")
-    assert drv.app.dialog is not None and drv.drawn("Cancel") and drv.drawn("Open")
-    drv.click_text("Cancel")
-    assert drv.app.dialog is None and drv.app.model.files == []
+    assert not drv.drawn("Database") and not drv.drawn("Files")
+    assert not hasattr(drv.app, "files_dropped") and not hasattr(drv.app, "on_files_dropped")
     add_through_the_dialog(drv, "run_01.sm", "run_03.sm")
-    assert [Path(p).name for p in drv.app.model.files] == [
-        "run_01.sm",
-        "run_03.sm",
-    ] and drv.app.dialog is None
+    assert [Path(p).name for p in drv.app.model.files] == ["run_01.sm", "run_03.sm"]
     assert drv.drawn("run_01.sm") and drv.drawn("run_03.sm")
+    add_through_the_dialog(drv, "run_01.sm")
+    assert len(drv.app.model.files) == 2
 
 
-def test_the_file_dialog_is_a_window_that_closes_with_its_x_and_with_escape(drv):
-    to_step(drv, "files")
-    drv.click_name("add_files")
+def test_the_results_dialog_is_a_window_that_closes_with_its_x_and_with_escape(drv):
+    to_step(drv, "run")
+    drv.click_name("browse_results")
     x, y, w, h = drv.app._dialog_window.box
     assert w < BIG[0] and h < BIG[1]
     drv.click((x + w - 14.0, y + 13.0, 0.0, 0.0), 0, 0)
     assert drv.app.dialog is None
-    drv.click_name("add_files")
+    drv.click_name("browse_results")
     drv.app.pointer_move(x + w / 2, y + h / 2)
     drv.draw(1)
     drv.escape()
-    assert drv.app.dialog is None and drv.app.model.files == []
-
-
-def test_folder_button_adds_every_file_below_the_chosen_folder(drv, folder):
-    (folder / "sub").mkdir()
-    (folder / "sub" / "deep.sm").write_text("x")
-    to_step(drv, "files")
-    drv.click_name("add_folder")
-    assert drv.app.dialog is not None
-    drv.click_text("Choose")
-    assert sorted(Path(p).name for p in drv.app.model.files) == [
-        "deep.sm",
-        "run_01.sm",
-        "run_02.sm",
-        "run_03.sm",
-    ]
-
-
-def test_database_button_opens_the_dataset_picker_and_a_picked_path_is_added(
-    drv, monkeypatch, folder
-):
-    opened = []
-    monkeypatch.setattr(drv.app.picker, "open", lambda: opened.append(1))
-    to_step(drv, "files")
-    drv.click_name("add_database")
-    assert opened == [1]
-    drv.app.picker.on_paths([folder / "run_02.sm"])
-    drv.draw(2)
-    assert [Path(p).name for p in drv.app.model.files] == ["run_02.sm"] and drv.drawn("run_02.sm")
+    assert drv.app.dialog is None
 
 
 def test_a_row_is_selected_by_a_click_removed_by_the_button_and_the_delete_key_and_cleared(
@@ -284,7 +238,7 @@ def test_the_wheel_scrolls_a_long_file_list(drv, folder):
     for i in range(60):
         (folder / f"many_{i:02d}.sm").write_text("x")
     to_step(drv, "files")
-    drv.drop(str(folder))
+    add_through_the_dialog(drv, *sorted(p.name for p in folder.glob("*.sm")))
     x, y, w, h = drv.rect("file_rows")
 
     def first():
@@ -334,7 +288,7 @@ def test_run_without_data_or_a_fit_says_why_in_red(drv):
 
 
 def test_the_csv_path_is_typed_and_used_by_the_run(drv, folder, tmp_path):
-    drv.drop(str(folder))
+    add_through_the_dialog(drv, "run_01.sm", "run_02.sm", "run_03.sm")
     to_step(drv, "run")
     target = tmp_path / "typed" / "out.csv"
     drv.type_into_name("save_path", str(target))
@@ -346,7 +300,7 @@ def test_the_csv_path_is_typed_and_used_by_the_run(drv, folder, tmp_path):
 
 
 def test_run_without_a_csv_path_asks_for_one_and_goes_on_when_it_is_chosen(drv, folder):
-    drv.drop(str(folder))
+    add_through_the_dialog(drv, "run_01.sm", "run_02.sm", "run_03.sm")
     to_step(drv, "run")
     drv.click_name("run")
     assert drv.app.dialog is not None and drv.drawn("Save") and not drv.app.model.running
@@ -359,7 +313,7 @@ def test_run_without_a_csv_path_asks_for_one_and_goes_on_when_it_is_chosen(drv, 
 
 
 def test_a_cancelled_save_dialog_drops_the_pending_run(drv, folder):
-    drv.drop(str(folder))
+    add_through_the_dialog(drv, "run_01.sm", "run_02.sm", "run_03.sm")
     to_step(drv, "run")
     drv.click_name("run")
     drv.click_text("Cancel")
@@ -391,7 +345,7 @@ def test_the_buttons_are_greyed_while_the_batch_runs_and_the_bar_reports_the_ite
         return real(name, payload)
 
     session.dispatch = slow
-    drv.drop(str(folder))
+    add_through_the_dialog(drv, "run_01.sm", "run_02.sm", "run_03.sm")
     drv.app.model.save_path = str(folder.parent / "r.csv")
     to_step(drv, "run")
     drv.click_name("run")
@@ -411,7 +365,7 @@ def test_the_buttons_are_greyed_while_the_batch_runs_and_the_bar_reports_the_ite
 
 
 def test_the_results_step_shows_the_table_that_sorts_filters_and_scrolls(drv, folder, tmp_path):
-    drv.drop(str(folder))
+    add_through_the_dialog(drv, "run_01.sm", "run_02.sm", "run_03.sm")
     drv.app.model.selected_dataset_indices = [0, 1, 2]
     drv.app.model.reload_datasets()
     drv.app.model.save_path = str(tmp_path / "r.csv")
@@ -474,8 +428,7 @@ def test_the_help_text_names_the_controls(drv):
         "Results CSV",
         "Run batch",
         "Chi2r",
-        "Folder",
-        "Database",
+        "workspace",
     ):
         assert word in shown, word
 
@@ -499,7 +452,7 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_awaited_cont
     app = BatchAnalysisApp(BatchModel(session=FakeSession(fits=("Template fit", "Second fit"))))
     drv = Driver(app, size)
     drv.draw(3)
-    drv.drop(str(folder))
+    add_through_the_dialog(drv, "run_01.sm", "run_02.sm", "run_03.sm")
     app.model.save_path = str(folder.parent / "tour.csv")
     tour = app.tour
     drv.click_name("guide")
@@ -561,7 +514,9 @@ def test_the_whole_flow_works_in_the_small_window_too(folder, tmp_path):
     d.click(checkboxes(d)[1])
     assert app.model.selected_dataset_indices == [1]
     d.click_name("go_next")
-    assert d.drop(str(folder)) is True
+    from chisurf.plugins.core.batch_analysis.gui.app import receive_files
+
+    assert receive_files(app, {"files": [str(folder / n) for n in ("run_01.sm", "run_02.sm")]})
     d.click_name("go_next")
     d.type_into_name("save_path", str(tmp_path / "small.csv"))
     d.click_name("run")

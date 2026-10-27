@@ -142,27 +142,21 @@ def test_a_dcd_without_its_topology_fails_in_the_window_not_silently(tmp_path):
         app.close()
 
 
-def test_the_rows_take_existing_files_from_their_dialogs_and_from_drops(tmp_path):
+def test_the_rows_take_existing_files_from_the_workspace(tmp_path):
+    """Input rows have no dialog: workspace rows fill them by type; a stray file is answered."""
+    from chisurf.plugins.traj.emtk_tool import receive_paths
+
     app = SaveTopologyApp()
     try:
-        trajectory, topology = app.paths
+        trajectory, _topology = app.paths
         app.browse(trajectory)
-        assert app.dialog.title == "Open trajectory" and app.dialog.filters == [
-            ("Trajectories", ["*.dcd"])
-        ]
-        _pick(app, TRAJ)
-        assert app.model.trajectory_filename == TRAJ
-        app.browse(topology)
-        assert app.dialog.title == "Open topology"
-        assert app.dialog.filters == [("Structures", ["*.pdb", "*.cif", "*.ent"])]
-        _pick(app, tmp_path / "gone.pdb")  # not a file: the row keeps its value
-        assert app.model.topology_filename == ""
-        app.on_paths_dropped([TOP])  # a structure goes to Topology
-        assert app.model.topology_filename == TOP
+        assert app.dialog is None
+        receive_paths(app, {"paths": [TRAJ, TOP]})
+        assert app.model.trajectory_filename == TRAJ and app.model.topology_filename == TOP
         stray = tmp_path / "notes.txt"
         stray.write_text("x")
-        app.on_paths_dropped([str(stray)])
-        assert app.status == "No trajectory or topology file among the dropped paths."
+        assert not app.take_paths([str(stray)])
+        assert app.status == "No trajectory or topology among the picked rows."
     finally:
         app.close()
 

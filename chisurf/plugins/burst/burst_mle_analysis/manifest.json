@@ -64,6 +64,21 @@
         "many": true,
         "key": "files"
       }
+    },
+    {
+      "name": "settings",
+      "summary": "Burst-MLE settings saved with Save settings (a setup row of the Datasets workspace).",
+      "receive": "chisurf.plugins.burst.burst_mle_analysis.gui.native:receive_settings",
+      "required": [
+        "settings"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "settings"
+      }
     }
   ],
   "entrypoints": {

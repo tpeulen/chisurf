@@ -266,6 +266,7 @@ class AcquisitionSettingsApp(ImApp):
     def _requests(self, box: Any) -> None:
         request, self.model.request = self.model.request, ""
         if request == "output" and self.dialog is None:
+            # not-input: the acquisition output folder, an output
             self.dialog = FileDialog(
                 "Select acquisition output folder", mode="folder", directory=self.model.output_path
             )

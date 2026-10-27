@@ -305,30 +305,6 @@ class DockingCard(CardShell):
     def _database_paths(self, paths) -> None:
         self._add_pdb([str(p) for p in paths])
 
-    def take_drop(self, paths: list[str]) -> bool:
-        """Dropped files: a ``.pdb`` becomes the next rigid body, a ``.json`` / ``.txt`` the fps file (a docking
-        project .json that has ``pdb_paths`` is loaded as a project)."""
-        taken = False
-        for path in paths:
-            low = path.lower()
-            if low.endswith((".pdb", ".ent")) and os.path.isfile(path):
-                self.session.add_pdbs([path])
-                taken = True
-            elif low.endswith((".json", ".txt")) and os.path.isfile(path):
-                if low.endswith(".json") and _is_project(path):
-                    taken = self.session.load_project(path) or taken
-                else:
-                    self.session.fps_json = path
-                    taken = True
-        self.session.say(
-            "Dropped files taken."
-            if taken
-            else "No PDB, fps.json or project file among the dropped paths.",
-            not taken,
-        )
-        self.sync()
-        return taken
-
     def run(self) -> None:
         if self.session.start():
             self.used("run")

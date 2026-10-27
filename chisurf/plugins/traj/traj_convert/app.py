@@ -70,6 +70,7 @@ PATHS = [
         setter="set_target_directory",
         filters=STRUCTURE_FILTERS,
         folder=True,
+        output=True,
         dialog_title="Choose Target-Folder",
         placeholder="Folder the converted file(s) are written to",
         tooltip="Output directory the converted file(s) are written to.",

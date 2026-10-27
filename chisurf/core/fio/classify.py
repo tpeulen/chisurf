@@ -21,6 +21,11 @@ sorted here by what it holds, not by which reader happens to be selected:
   session or SMD file, an SF-Tracer ``.tsv``, an SMD ``.json``/``.json.gz``): linked into the
   workspace, read by the tool that takes it (a raw ``.dat`` series cannot be told from a curve and
   is read as one);
+* ``"trajectory"`` — a molecular-dynamics trajectory (:data:`TRAJECTORY_EXTENSIONS`): linked, read
+  by the trajectory tools with a structure as its topology;
+* ``"table"`` — a table of named columns a tool reads (a burst table, an analysis's result
+  table): a delimited text file whose first line names five or more columns, or an ``.npz`` of
+  as many equal-length 1-D arrays (:func:`is_table`); linked, read by the tool;
 * ``"curve"`` — anything else: read by the selected reader, as before.
 """
 
@@ -32,6 +37,7 @@ __all__ = [
     "IMAGE_EXTENSIONS",
     "SETUP_EXTENSIONS",
     "TRACE_EXTENSIONS",
+    "TRAJECTORY_EXTENSIONS",
     "SETUP_JSON_KEYS",
     "TOOL_SCHEMA_PREFIX",
     "LEGACY_TOOL_SETTINGS_KEYS",
@@ -42,11 +48,14 @@ __all__ = [
     "is_burst_folder",
     "curve_reader",
     "is_photon_image",
+    "is_table",
 ]
 
 #: Molecular structures a workspace drop reads as a structure.
 STRUCTURE_EXTENSIONS: tuple[str, ...] = (".pdb", ".ent", ".cif", ".mmcif", ".pdb.gz", ".cif.gz")
 
+#: Molecular-dynamics trajectories a workspace drop links as a trajectory.
+TRAJECTORY_EXTENSIONS: tuple[str, ...] = (".dcd", ".xtc", ".trr", ".nc", ".netcdf")
 #: Image stacks a workspace drop links as an image.
 IMAGE_EXTENSIONS: tuple[str, ...] = (".tif", ".tiff")
 
@@ -196,13 +205,72 @@ def classify(path: str | Path) -> str:
         return "image" if is_photon_image(path) else "photons"
     if suffix in STRUCTURE_EXTENSIONS:
         return "structure"
+    if suffix in TRAJECTORY_EXTENSIONS:
+        return "trajectory"
     if suffix in IMAGE_EXTENSIONS:
         return "image"
     if suffix in TRACE_EXTENSIONS or (suffix in (".json", ".json.gz") and _is_smd_json(Path(path))):
         return "trace"
+    if is_table(path):
+        return "table"
     if suffix in SETUP_EXTENSIONS or (suffix == ".json" and _is_setup_json(Path(path))):
         return "setup"
     return "curve"
+
+
+#: The fewest named columns a table has (burst and result tables have 7-14; a curve has 2-4).
+TABLE_MIN_COLUMNS = 5
+#: Text files a table of named columns can be (a burst table, a result table).
+TABLE_TEXT_EXTENSIONS: tuple[str, ...] = (".csv", ".tsv", ".txt", ".bur", ".dat")
+
+
+def is_table(path: str | Path) -> bool:
+    """Whether *path* is a table of named columns rather than a curve: a delimited text file whose
+    first non-comment line is a header naming :data:`TABLE_MIN_COLUMNS` or more columns (not all
+    numbers) over numeric rows, or an ``.npz`` of as many equal-length 1-D arrays. A curve has two
+    to four columns (x, y, error, weight) even with a header, and an ``.npz`` LUT or pattern has
+    fewer arrays or other shapes: both stay what they were."""
+    p = Path(path)
+    suffix = _suffix(p)
+    if not p.is_file():
+        return False
+    if suffix == ".npz":
+        try:
+            import numpy as np
+
+            with np.load(p, allow_pickle=False) as data:
+                arrays = [data[name] for name in data.files]
+        except Exception:  # noqa: BLE001 - not a readable archive: not a table
+            return False
+        if len(arrays) < TABLE_MIN_COLUMNS or any(a.ndim != 1 for a in arrays):
+            return False
+        return len({a.shape[0] for a in arrays}) == 1 and not SETUP_JSON_KEYS & set(data.files)
+    if suffix not in TABLE_TEXT_EXTENSIONS:
+        return False
+    try:
+        with open(p, "rb") as fh:
+            head = fh.read(_CURVE_PROBE_BYTES).decode("utf-8", errors="replace").splitlines()
+    except OSError:
+        return False
+    lines = [line for line in head if line.strip() and not line.lstrip().startswith(("#", "%", "!"))]
+    if len(lines) < 2:
+        return False
+    sep = "\t" if "\t" in lines[0] else ("," if "," in lines[0] else (";" if ";" in lines[0] else None))
+    header = [f.strip() for f in (lines[0].split(sep) if sep else lines[0].split())]
+    if len(header) < TABLE_MIN_COLUMNS:
+        return False
+
+    def number(field: str) -> bool:
+        try:
+            float(field)
+        except ValueError:
+            return False
+        return True
+
+    if all(number(f) for f in header if f):
+        return False  # numbers in the first line: data, a curve
+    row = [f.strip() for f in (lines[1].split(sep) if sep else lines[1].split())]
+    return len(row) >= TABLE_MIN_COLUMNS and sum(number(f) for f in row) >= max(1, len(row) // 2)
 
 
 #: Curve files a correlator writes, by extension: ``(experiment, reader)``.

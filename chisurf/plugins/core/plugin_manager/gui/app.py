@@ -224,6 +224,7 @@ class PluginManagerApp(ImApp):
             if request == "install":
                 self._open_dialog(
                     "install_archive",
+                    # not-input: plugin archives/folders and icons to install, not measurement data
                     FileDialog(
                         "Choose a plugin archive",
                         filters="Plugin archive (*.zip);;All files (*)",
@@ -233,6 +234,7 @@ class PluginManagerApp(ImApp):
             elif request == "icon_file":
                 self._open_dialog(
                     "icon",
+                    # not-input: plugin archives/folders and icons to install, not measurement data
                     FileDialog(
                         "Choose an icon image",
                         filters="Images (*.png *.jpg *.jpeg *.ico);;All files (*)",
@@ -242,6 +244,7 @@ class PluginManagerApp(ImApp):
             elif request == "export":
                 self._open_dialog(
                     "export",
+                    # not-input: plugin archives/folders and icons to install, not measurement data
                     FileDialog(
                         "Export plugins as CSV",
                         mode="save",
@@ -277,6 +280,7 @@ class PluginManagerApp(ImApp):
                 # As in the Qt tool: no archive chosen, so offer a folder instead.
                 self._open_dialog(
                     "install_folder",
+                    # not-input: plugin archives/folders and icons to install, not measurement data
                     FileDialog(
                         "Choose a plugin folder",
                         mode="folder",

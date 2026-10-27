@@ -61,7 +61,6 @@ def test_native_renders_all_controls():
         "Full diffusion tensor",
         "▶ Run",
         "Save CSV",
-        "Select files…",
     ):
         assert expected in painter.strings, expected
 

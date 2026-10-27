@@ -61,5 +61,37 @@
   ],
   "events": [],
   "dependencies": {},
-  "deprecated": false
+  "deprecated": false,
+  "accepts": [
+    {
+      "name": "structures",
+      "summary": "Structures of the workspace as the rigid bodies of Docking & Screening.",
+      "receive": "chisurf.plugins.modelling.fret.gui.app:receive_structures",
+      "required": [
+        "structures"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "structure"
+        ],
+        "many": true,
+        "key": "structures"
+      }
+    },
+    {
+      "name": "topology",
+      "summary": "A structure of the workspace as the topology Pair Selection reads its trajectory with.",
+      "receive": "chisurf.plugins.modelling.fret.gui.app:receive_topology",
+      "required": [
+        "topology"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "structure"
+        ],
+        "many": false,
+        "key": "topology"
+      }
+    }
+  ]
 }

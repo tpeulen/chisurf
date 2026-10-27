@@ -18,7 +18,7 @@ class FusionController:
         self._cancel = Event()
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="burst-fusion")
         self._future = None
-        self.action = "load"
+        self.action = "save"
         self.dialog = None
         self.channel_text = json.dumps(
             {"detectors": model.detectors, "windows": model.windows}, indent=2
@@ -148,7 +148,8 @@ class FusionController:
         self.status = "Detector and PIE window definitions applied."
 
     def save_settings(self, path):
-        data = self.model.settings.to_dict()
+        # The schema makes the file a setup row the workspace hands back to this tool.
+        data = {"schema": "chisurf.tool/burst_fusion/1", **self.model.settings.to_dict()}
         data.update(detectors=self.model.detectors, windows=self.model.windows)
         Path(path).write_text(json.dumps(data, indent=2))
         self.status = "Fusion settings saved."
@@ -194,13 +195,12 @@ class FusionController:
 
     #: Per action: the dialog's title, mode and file filters.
     DIALOGS = {
-        "load": ("Load fusion settings", "open", [("JSON", ["*.json"])]),
         "save": ("Save fusion settings", "save", [("JSON", ["*.json"])]),
         "export": ("Export fusion report", "save", [("JSON", ["*.json"])]),
     }
 
-    def browse(self, action="load"):
-        """Open the file dialog for *action* (load, save, export)."""
+    def browse(self, action="save"):
+        """Open the file dialog for *action* (save, export); saved settings come back as setup rows."""
         from emtk.dialog_window import DialogWindow
         from emtk.file_dialog import FileDialog
 
@@ -208,6 +208,7 @@ class FusionController:
         self.action = action
         options = {"filters": filters} if filters else {}
         filename = {"save": "fusion.json", "export": "fusion_report.json"}.get(action)
+        # not-input: saved settings and the fusion report (outputs)
         self.dialog = FileDialog(title, mode=mode, filename=filename, **options)
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-fusion-file")
         self._dialog_window.show()
@@ -273,9 +274,7 @@ class FusionController:
             self._dialog_window.end()
             if result:
                 try:
-                    if self.action == "load":
-                        self.load_settings(result[0])
-                    elif self.action == "save":
+                    if self.action == "save":
                         self.save_settings(result[0])
                     else:
                         self.export_summary(result[0])

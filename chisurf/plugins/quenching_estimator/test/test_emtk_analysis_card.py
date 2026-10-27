@@ -98,7 +98,7 @@ def test_the_page_draws_at_default_and_narrow_sizes(app, size):
     ui = _open(app, size)
     for name in (
         "load_example",
-        "choose_folder",
+        "workspace_input_rows",
         "run_analysis",
         "cancel_analysis",
         "write_results",
@@ -282,3 +282,21 @@ def test_a_site_table_row_reads_the_site_model_arrays(app):
     assert row["exposure"] == pytest.approx((0.2 + 0.4 + 1.0) / 3)
     model.select_site_table(row)
     assert len(model.selected_site_exposure()) == 3
+
+
+def test_the_three_tables_picked_in_the_workspace_open_their_folder(app, tmp_path):
+    """The measurement tables are table rows of the workspace; picking the three opens the folder
+    that holds them (the Data folder… dialog is gone)."""
+    from chisurf.core.fio.classify import classify
+    from chisurf.plugins.quenching_estimator.gui.analysis_card import DATA_FILES
+    from chisurf.plugins.quenching_estimator.gui.app import receive_tables
+
+    folder = Path(__file__).resolve().parents[1] / "examples" / "male"
+    tables = [str(folder / name) for name in DATA_FILES]
+    assert {classify(t) for t in tables} == {"table"}
+    assert receive_tables(app, {"tables": tables})
+    assert app.page == "analysis" and app.analysis.model.data_folder == str(folder)
+    lone = tmp_path / DATA_FILES[0]
+    lone.write_bytes(Path(tables[0]).read_bytes())
+    with pytest.raises(ValueError):  # a table without its two siblings: no analysis folder
+        receive_tables(app, {"tables": [str(lone)]})

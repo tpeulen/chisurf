@@ -131,17 +131,23 @@ def test_docking_repeats_give_one_row_per_trial(inputs, tmp_path):
     s.close()
 
 
-def test_docking_missing_input_and_drop(inputs, tmp_path):
+def test_docking_missing_input_and_workspace_structures(inputs, tmp_path):
+    from chisurf.plugins.modelling.fret.gui.app import FretApp, receive_structures
+
     app = make_dock()
     ui = Ui(app, (800, 600))
     ui.click("run")
     assert ui.shown("Add at least one PDB file")
-    assert (
-        ui.drop(tmp_path / "dna.pdb", inputs)
-        and app.session.pdb_files
-        and app.session.fps_json == str(inputs)
-    )
+    assert "take_drop" not in type(app).__dict__  # dropped files go to the workspace (the shell)
     app.close()
+    window = FretApp()
+    try:
+        pdb = tmp_path / "dna.pdb"
+        pdb.write_text("ATOM\n")
+        assert receive_structures(window, {"structures": [str(pdb)]})
+        assert window.child.session.pdb_files == [str(pdb)]
+    finally:
+        window.close()
 
 
 def test_load_example_copies_the_hiv_rt_project_and_fills_the_inputs(tmp_path, monkeypatch):

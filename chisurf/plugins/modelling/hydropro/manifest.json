@@ -35,5 +35,22 @@
     }
   ],
   "dependencies": {},
-  "deprecated": false
+  "deprecated": false,
+  "accepts": [
+    {
+      "name": "structures",
+      "summary": "Structures (PDB or bead coordinates) of the workspace whose hydrodynamic properties are computed.",
+      "receive": "chisurf.plugins.modelling.hydropro.app:receive_structures",
+      "required": [
+        "structures"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "structure"
+        ],
+        "many": true,
+        "key": "structures"
+      }
+    }
+  ]
 }

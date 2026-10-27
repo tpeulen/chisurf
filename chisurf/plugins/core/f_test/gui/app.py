@@ -146,14 +146,6 @@ class FTestApp(ImApp):
         )
         self.tour.notify_used("load_example")
 
-    def on_paths_dropped(self, paths) -> None:
-        if paths:
-            self.status = "The F-test calculator takes no dropped files."
-
-    def files_dropped(self, paths) -> bool:
-        self.on_paths_dropped(paths)
-        return bool(paths)
-
     def draw_toolbar(self) -> None:
         """The Qt toolbar: the From fit menu, Guide and ?."""
         im.begin_menu_bar()

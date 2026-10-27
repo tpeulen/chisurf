@@ -151,12 +151,6 @@ class SetupChannelDefinitionApp(ImApp):
         """The complete working definition (windows, detectors, reading, LUTs, optical setup)."""
         return self.model.get_settings()
 
-    def files_dropped(self, paths) -> bool:
-        """Files dropped on the window (see :meth:`ChannelDefinitionWidget.files_dropped`)."""
-        return self.page.files_dropped(paths)
-
-    on_files_dropped = files_dropped
-
     def load_data_into_tables(self, data: dict) -> None:
         """Replace the working definition by *data*, keeping the stores and the change callback."""
         self.page.load_definition(data)
@@ -181,6 +175,30 @@ class SetupChannelDefinitionApp(ImApp):
     def close(self) -> None:
         """Stop a running read."""
         self.page.close()
+
+
+def _take(app: SetupChannelDefinitionApp, payload: dict, key: str) -> bool:
+    """Hand the picked workspace rows to the page as it reads files (a measurement's channels, a
+    setups library, a LUT for the selected row)."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    values = payload.get(key) or []
+    values = values if isinstance(values, list) else [values]
+    paths = [str(read_address(str(v))) for v in values if v]
+    if not paths:
+        raise ValueError("nothing picked")
+    return bool(app.page.files_dropped(paths))
+
+
+def receive_measurement(app: SetupChannelDefinitionApp, payload: dict) -> bool:
+    """Hand-off receiver (``measurement``): read the channels and micro times of a photon stream."""
+    return _take(app, payload, "measurement")
+
+
+def receive_setup(app: SetupChannelDefinitionApp, payload: dict) -> bool:
+    """Hand-off receiver (``setup``): a setups library becomes the library, a LUT goes to the
+    selected channel row."""
+    return _take(app, payload, "setup")
 
 
 def make_app(**kwargs: Any) -> SetupChannelDefinitionApp:

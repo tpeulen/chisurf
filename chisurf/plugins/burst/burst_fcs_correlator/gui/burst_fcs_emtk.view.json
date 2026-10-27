@@ -229,11 +229,6 @@
     "description": "Settings files.",
     "buttons": [
      {
-      "action": "load_settings",
-      "label": "Load settings...",
-      "description": "Load the correlator and fitting settings from JSON."
-     },
-     {
       "action": "save_settings",
       "label": "Save settings...",
       "description": "Save the correlator and fitting settings as JSON."
@@ -273,11 +268,6 @@
       "label": "Remove pair",
       "role": "danger",
       "description": "Remove the selected channel pair."
-     },
-     {
-      "action": "load_pairs",
-      "label": "Load pairs...",
-      "description": "Load channel pairs, or a detector setup, from JSON."
      },
      {
       "action": "save_pairs",

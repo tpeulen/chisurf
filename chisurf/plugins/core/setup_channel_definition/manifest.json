@@ -9,7 +9,7 @@
   "categories": [
     "Setup"
   ],
-  "icon": "\ud83d\udd22",
+  "icon": "🔢",
   "menu_hidden": true,
   "statefulness": {
     "enabled": false,
@@ -19,5 +19,37 @@
   },
   "entrypoints": {
     "emtk": "chisurf.plugins.core.setup_channel_definition.gui.app:make_app"
-  }
+  },
+  "accepts": [
+    {
+      "name": "measurement",
+      "summary": "A photon stream whose routing channels and micro times the definition reads.",
+      "receive": "chisurf.plugins.core.setup_channel_definition.gui.app:receive_measurement",
+      "required": [
+        "measurement"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "photons"
+        ],
+        "many": false,
+        "key": "measurement"
+      }
+    },
+    {
+      "name": "setup",
+      "summary": "A setups library (becomes the library) or a LUT table (for the selected channel row).",
+      "receive": "chisurf.plugins.core.setup_channel_definition.gui.app:receive_setup",
+      "required": [
+        "setup"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "setup"
+      }
+    }
+  ]
 }

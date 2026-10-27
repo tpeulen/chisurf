@@ -3,8 +3,8 @@
 Left window: the step list (a check mark for a completed step) with Back / Next / Finish and Help / Guide. Right window:
 the header of the current step and its page. Every page is a panel of the view spec ``batch_emtk.view.json`` drawn by
 :func:`emtk.view_form.draw_sections`; the three tables (loaded datasets, files, results) are ``data_table`` sections. Only
-what a spec cannot draw is drawn here: the Markdown texts, the coloured outcome line and the in-app choosers (files,
-folder, results CSV, the dataset picker of the database). All state is in :class:`~.model.BatchModel`; the numbers are the
+what a spec cannot draw is drawn here: the Markdown texts, the coloured outcome line, the workspace Input section (the
+files to process) and the results CSV's save dialog. All state is in :class:`~.model.BatchModel`; the numbers are the
 Qt wizard's, from :mod:`..core.runner`. Nothing here imports Qt.
 """
 
@@ -21,7 +21,6 @@ from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_sections
 
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button, button_row, icon_label, window_size
 from chisurf.plugins.emtk_wizard import draw_steps
@@ -58,10 +57,14 @@ class BatchAnalysisApp(ImApp):
         self.form.custom["notice"] = self._draw_notice
         self.form.custom["run_message"] = self._draw_run_message
         self.form.custom["actions"] = self._draw_actions
+        self.form.custom["workspace_files"] = self._draw_workspace_files
+        from chisurf.plugins.curve_input import CurveInput
+
+        #: The files to process come from the Datasets workspace (manifest ``accepts`` ``files``).
+        self.files_input = CurveInput("batch_analysis", self, name="files", title="", height=92.0)
         self.item_rects: dict[str, tuple] = {}
         self.dialog: FileDialog | None = None
         self.dialog_kind = ""
-        self.picker = DatasetPicker(on_paths=self._picked)
         self._dialog_window = DialogWindow("File", size=(640.0, 460.0), key="batch_file")
         self._closing = False
         #: Where the file dialogs open next: the folder of the last file added.
@@ -98,8 +101,6 @@ class BatchAnalysisApp(ImApp):
         self._sync_tables()
         self._open_requested_dialog()
         self._draw_dialog(box)
-        if self.picker.is_open:
-            self.picker.render(box)
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
         if self.model.finished and not self._closing:
@@ -205,29 +206,20 @@ class BatchAnalysisApp(ImApp):
 
     # -- choosers ----------------------------------------------------------------------------------- #
     def _open_requested_dialog(self) -> None:
-        """Turn the model's ``dialog_request`` into a file dialog or the database picker."""
+        """Turn the model's ``dialog_request`` into the results CSV's save dialog (files come from
+        the workspace)."""
         kind, self.model.dialog_request = self.model.dialog_request, ""
-        if not kind or self.dialog is not None or self.picker.is_open:
-            return
-        if kind == "database":
-            self.picker.open()
+        if kind != "results" or self.dialog is not None:
             return
         self.dialog_kind = kind
         start = self.last_folder or None
-        if kind == "files":
-            self.dialog = FileDialog(
-                "Add files", multiselect=True, filters=[("All files (*)", ["*"])], directory=start
-            )
-        elif kind == "folder":
-            self.dialog = FileDialog("Add a folder", mode="folder", directory=start)
-        else:
-            current = Path(self.model.save_path).parent if self.model.save_path else None
-            self.dialog = FileDialog(
-                "Save results",
-                mode="save",
-                filters=_CSV,
-                directory=str(current) if current and current.is_dir() else start,
-            )
+        current = Path(self.model.save_path).parent if self.model.save_path else None
+        self.dialog = FileDialog(
+            "Save results",
+            mode="save",
+            filters=_CSV,
+            directory=str(current) if current and current.is_dir() else start,
+        )
         self._dialog_window.title = self.dialog.title
         self._dialog_window.show()
 
@@ -245,26 +237,14 @@ class BatchAnalysisApp(ImApp):
                 if not Path(path).suffix:
                     path += ".csv"
                 self.model.choose_results(path)
-            else:
-                self.last_folder = str(
-                    Path(result[0]) if kind == "folder" else Path(result[0]).parent
-                )
-                self.model.add_paths([str(p) for p in result])
         elif result is False or pressed == "close":
             self.dialog = None
             self._dialog_window.hide()
             self.model.cancel_dialog()
 
-    def _picked(self, paths: list) -> None:
-        self.model.add_paths([str(p) for p in paths])
-
-    # -- host hooks --------------------------------------------------------------------------------- #
-    def files_dropped(self, paths: Any) -> bool:
-        """Host hook (native, web and Qt hosts): queue the dropped files and folders (a drop adds to the list)."""
-        return self.model.add_paths([str(p) for p in paths or []]) > 0
-
-    on_files_dropped = files_dropped
-    on_paths_dropped = files_dropped
+    def _draw_workspace_files(self, section: dict, model: Any, state: FormState, width: float) -> None:
+        """The workspace rows to process: a pick is queued like the files it names."""
+        self.files_input.draw(state.rects, on_used=self.tour.notify_used)
 
     # -- frames only while something moves ---------------------------------------------------------- #
     def animating(self) -> bool:
@@ -281,7 +261,6 @@ class BatchAnalysisApp(ImApp):
         self.docks.restore(settings.get("docks"))
 
     def close(self) -> None:
-        self.picker.close()
         self.model.close()
 
 
@@ -294,3 +273,19 @@ def make_app() -> BatchAnalysisApp:
 
 
 __all__ = ["BatchAnalysisApp", "make_app"]
+
+
+def receive_files(app: BatchAnalysisApp, payload: dict) -> bool:
+    """Hand-off receiver (manifest ``accepts`` ``files``): queue workspace rows for the batch; a
+    curve held only in the session is written to the cache first (the runner reads paths)."""
+    from chisurf.core.settings.path_utils import get_path
+    from chisurf.plugins.curve_input import curve_file
+
+    values = payload.get("files") or []
+    values = values if isinstance(values, list) else [values]
+    folder = get_path("settings") / "batch_analysis" / "workspace"
+    paths = [curve_file(str(v), folder) for v in values if v]
+    if not paths:
+        raise ValueError("nothing picked")
+    return app.model.add_paths(paths) > 0
+

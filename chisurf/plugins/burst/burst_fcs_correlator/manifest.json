@@ -11,7 +11,7 @@
     "Fluorescence Correlation Spectroscopy",
     "Correlation"
   ],
-  "icon": "\ud83c\udf00",
+  "icon": "🌀",
   "state_namespace": "burst_fcs_correlator",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -63,6 +63,21 @@
           "setup"
         ],
         "key": "file"
+      }
+    },
+    {
+      "name": "settings",
+      "summary": "Correlator settings saved with Save settings (a setup row of the Datasets workspace).",
+      "receive": "chisurf.plugins.burst.burst_fcs_correlator.gui.app:receive_settings",
+      "required": [
+        "settings"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "settings"
       }
     }
   ],

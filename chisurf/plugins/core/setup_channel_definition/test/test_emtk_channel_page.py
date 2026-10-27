@@ -686,11 +686,13 @@ def test_optical_setup_button_opens_the_light_path_editor_and_the_close_button_c
 def test_dropping_a_measurement_reads_it_and_a_json_file_becomes_the_setups_library(
     make, folder, tmp_path
 ):
-    from emtk.app import ControlSurface
+    from chisurf.plugins.core.setup_channel_definition.gui.app import (
+        receive_measurement,
+        receive_setup,
+    )
 
     app, ui = make()
-    surface = ControlSurface(app)
-    assert surface.on_files_dropped([str(folder / "BH_SPC132.spc")]) is True
+    assert receive_measurement(app, {"measurement": str(folder / "BH_SPC132.spc")}) is True
     driver.finish_read(app)
     ui.frame(2)
     assert sorted(app.model.preview) == [0, 1, 8, 9]
@@ -708,23 +710,23 @@ def test_dropping_a_measurement_reads_it_and_a_json_file_becomes_the_setups_libr
             }
         )
     )
-    assert surface.on_files_dropped([str(library)]) is True
+    assert receive_setup(app, {"setup": str(library)}) is True
     ui.frame(2)
     assert str(app.model.file_path) == str(library) and app.toolbar.names == ["From file"]
     app.page.status = ""
-    surface.on_files_dropped([])  # nothing dropped: nothing happens
+    with pytest.raises(ValueError):
+        receive_setup(app, {"setup": []})  # nothing picked: refused, nothing happens
     assert app.page.status == ""
 
 
 def test_dropping_a_lut_table_assigns_it_to_the_selected_row(make, folder):
-    from emtk.app import ControlSurface
+    from chisurf.plugins.core.setup_channel_definition.gui.app import receive_setup
 
     app, ui = make()
-    surface = ControlSurface(app)
-    surface.on_files_dropped([str(folder / "channel.npy")])
+    receive_setup(app, {"setup": str(folder / "channel.npy")})
     assert "select a channel row first" in app.page.status
     ui.click("— none —", nth=3)
-    surface.on_files_dropped([str(folder / "channel.npy")])
+    receive_setup(app, {"setup": str(folder / "channel.npy")})
     assert "3" in app.model.data["channel_luts"] and app.model.data["apply_lut"] is True
 
 

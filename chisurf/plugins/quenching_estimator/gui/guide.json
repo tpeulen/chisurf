@@ -8,7 +8,7 @@
     },
     {
       "title": "Start from the demo",
-      "text": "<b>Load example</b> loads T4 lysozyme (PDB 148L), puts the dye on the Cβ of Ser 36 and sets a short run. It ships with ChiSurf, so nothing has to be downloaded. With your own structure use <b>Load PDB...</b> instead; a valid attachment site is picked for you.",
+      "text": "<b>Load example</b> loads T4 lysozyme (PDB 148L), puts the dye on the Cβ of Ser 36 and sets a short run. It ships with ChiSurf, so nothing has to be downloaded. With your own structure, drop it on ChiSurf and pick it in the <b>Structure</b> input; a valid attachment site is picked for you.",
       "target": {"name": "load_example"},
       "await": {"hint": "Press <b>Load example</b>."}
     },

@@ -35,8 +35,8 @@ populations the $E$–$S$ plot isolates.
 
 **Spectroscopy → Single-Molecule → Burst Analysis**, step **Accurate FRET**
 (on its own: `python -m chisurf.emtk --plugin accurate_fret`) finds all four
-factors from one burst table. Press **Open burst table** (or drop the table on
-the window), check the columns **Channels** guessed — **I_DD (donor)**,
+factors from one burst table. Drop the table on ChiSurf and pick it in the tool's
+**Input** section (a burst table is a *table* row of the workspace), check the columns **Channels** guessed — **I_DD (donor)**,
 **I_DA (FRET)**, **I_AA (acceptor)** and optionally **Donor lifetime** — and press
 **Calibrate**. The tool classifies donor-only, acceptor-only and doubly labelled
 bursts with a Gaussian mixture in $S$, takes α from the donor-only and δ from the

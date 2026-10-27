@@ -20,8 +20,8 @@ nothing more from you. Click a step, or use **Back** and **Next**; **Finish**
 
 - **Loaded data** — tick datasets already loaded in ChiSurf (optional). Hover a
   row for its file; **Refresh** re-scans the loaded datasets.
-- **Files & fit** — **Files**, **Folder** (everything below it) and
-  **Database** add files, and you can drop files or folders on the window;
+- **Files & fit** — pick measurements from the Datasets workspace (drop
+  them on ChiSurf first) to add them;
   select a row and press **Remove** (or Delete) to drop it, **Clear** empties
   the list. Choose the **Template fit**. Loaded datasets run first, then files.
 - **Run** — choose **Results CSV** (type a path or **Browse...**) and press

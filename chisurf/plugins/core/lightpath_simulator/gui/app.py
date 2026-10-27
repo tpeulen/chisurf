@@ -279,6 +279,7 @@ class FileChooser(_Modal):
         super().__init__(title)
         from emtk.file_dialog import FileDialog
 
+        # not-input: the simulator's own graph document (tool state), not measurement data
         self.dialog = FileDialog(
             title, mode=mode, filters=[("JSON", ["*.json"])], filename=filename
         )
@@ -734,16 +735,7 @@ class LightPathApp(TourTarget, ImApp):
         else:
             super().release()
 
-    def files_dropped(self, paths):
-        """A dropped ``.json`` graph replaces the document (the Qt tool's drop handler); anything else is ignored."""
-        path = next((str(p) for p in paths if str(p).endswith(".json")), "")
-        if not path or self.controller.running:
-            return False
-        self.panel._try("Load Failed", self.controller.load_graph, path)
-        self.graph_control.fit()
-        return True
 
-    on_paths_dropped = files_dropped
 
     def close(self):
         self.controller.close()

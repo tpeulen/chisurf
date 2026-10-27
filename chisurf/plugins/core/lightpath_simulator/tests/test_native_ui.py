@@ -63,22 +63,11 @@ def test_the_module_helpers_for_the_headless_consumers():
     assert back["curve"].dtype == np.float64
 
 
-def test_a_dropped_graph_file_loads(app, tmp_path, monkeypatch):
-    """Dropping a .json graph file replaces the editor's document."""
-    graph = {
-        "nodes": [
-            {"id": "src", "type": "light_source", "x": 50, "y": 60},
-            {"id": "det", "type": "detector", "x": 300, "y": 60},
-        ],
-        "edges": [],
-    }
-    graph_file = tmp_path / "path.json"
-    graph_file.write_text(json.dumps(graph))
-
-    loaded: list = []
-    monkeypatch.setattr(app.controller, "load_graph", lambda path: loaded.append(path))
-    assert app.on_paths_dropped([str(graph_file)])
-    assert loaded == [str(graph_file)]
+def test_the_window_has_no_drop_route(app):
+    """Dropped files go to the workspace through the shell; graphs open with Load only."""
+    assert not hasattr(type(app), "on_paths_dropped") or getattr(type(app), "on_paths_dropped") is getattr(
+        type(app).__mro__[1], "on_paths_dropped", None
+    )
 
 
 def test_the_catalogue_auto_loads_on_the_first_frame(app, monkeypatch):

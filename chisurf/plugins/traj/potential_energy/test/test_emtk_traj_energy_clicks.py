@@ -18,7 +18,6 @@ from chisurf.plugins.traj.potential_energy.potential_specs import get_spec, pote
 from chisurf.plugins.traj.traj_save_topology.test.real_input import (
     Ui,
     check_action_flow,
-    check_browse_row,
     check_guide_and_help_buttons,
     check_log_scrolls_with_the_wheel,
     check_number_field,
@@ -26,6 +25,7 @@ from chisurf.plugins.traj.traj_save_topology.test.real_input import (
     dead_tour_buttons,
     wheel_steps_a_number_field,
 )
+from chisurf.plugins.traj.traj_save_topology.test.workspace_pick import check_browse_row, drop
 
 from .test_emtk_traj_energy_parity import POTENTIALS
 from .test_view_model import _peptide_trajectory
@@ -61,7 +61,7 @@ def test_no_tour_card_button_is_dead_on_any_step():
     assert dead_tour_buttons(make_app, SIZE) == []
 
 
-def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+def test_the_trajectory_row_has_no_browse_button_it_comes_from_the_workspace(
     folder, monkeypatch
 ):
     monkeypatch.chdir(folder)
@@ -77,7 +77,7 @@ def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_
     )
 
 
-def test_the_topology_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+def test_the_topology_row_has_no_browse_button_it_comes_from_the_workspace(
     folder, monkeypatch
 ):
     monkeypatch.chdir(folder)
@@ -100,9 +100,9 @@ def test_the_path_rows_do_not_take_typing(row, folder):
 def test_dropped_files_fill_the_rows_by_type_and_a_foreign_file_is_answered(folder):
     ui = _ui()
     try:
-        assert ui.drop(folder / "notes.txt") is True
-        assert ui.shown("No trajectory or topology file among the dropped paths.")
-        ui.drop(folder / "pep.dcd", folder / "pep.pdb")
+        assert drop(ui, folder / "notes.txt") is True
+        assert ui.shown("No trajectory or topology among the picked rows.")
+        drop(ui, folder / "pep.dcd", folder / "pep.pdb")
         assert ui.app.model.trajectory_file == str(folder / "pep.dcd")
         assert ui.app.model.topology_filename == str(folder / "pep.pdb")
         assert not ui.shown("No trajectory or topology")
@@ -215,9 +215,14 @@ def test_the_parameters_of_a_type_survive_choosing_another_and_return_to_their_d
         ui.app.close()
 
 
-def test_a_potential_file_field_is_typed_and_its_browse_button_picks_a_file(folder, monkeypatch):
+def test_a_potential_file_field_is_typed_or_picked_from_the_workspace_setups(folder, monkeypatch):
+    """The parameter file is typed, or picked among the workspace's setup rows (a dropped .npy):
+    there is no file dialog."""
+    from chisurf.plugins.traj.potential_energy import app as energy_app
+
     np.save(folder / "table.npy", np.zeros(3))
-    monkeypatch.chdir(folder)
+    rows = [{"name": "table.npy", "address": str(folder / "table.npy"), "kind": "setup"}]
+    monkeypatch.setattr(energy_app, "workspace_setup_rows", lambda: rows)
     ui = _ui()
     try:
         default = ui.app.editor.potential
@@ -225,21 +230,8 @@ def test_a_potential_file_field_is_typed_and_its_browse_button_picks_a_file(fold
         ui.type_into("potential", str(folder / "typed.npy"))
         assert ui.app.editor.potential == str(folder / "typed.npy")
         ui.click("potential_browse")
-        assert (
-            ui.dialog_open
-            and ui.shown("Open Potential")
-            and ui.shown("table.npy")
-            and not ui.shown("notes.txt")
-        )
         ui.press_text("table.npy")
-        ui.press_text("Open")
         assert not ui.dialog_open and ui.app.editor.potential == str(folder / "table.npy")
-        ui.click("potential_browse")
-        ui.press_text("Cancel")
-        assert ui.app.editor.potential == str(folder / "table.npy")
-        ui.click("potential_browse")
-        ui.press_text("×")
-        assert not ui.dialog_open
     finally:
         ui.app.close()
 
@@ -339,7 +331,7 @@ def test_process_says_what_is_missing_before_it_asks_for_a_file(folder):
     try:
         ui.click("process")
         assert not ui.dialog_open and ui.shown("Open a trajectory first.")
-        ui.drop(folder / "pep.dcd", folder / "pep.pdb")
+        drop(ui, folder / "pep.dcd", folder / "pep.pdb")
         ui.click("process")
         assert not ui.dialog_open and ui.shown("Add at least one potential.")
         _pick_type(ui, "Radius of Gyration")
@@ -365,7 +357,7 @@ def test_processing_through_the_ui_writes_the_energies_the_qt_widgets_model_wrot
     dcd, pdb, _tmp = trajectory
     ui = _ui()
     try:
-        ui.drop(dcd, pdb)
+        drop(ui, dcd, pdb)
         for name, weight in POTENTIALS:
             _pick_type(ui, name)
             ui.type_into("potential_weight", str(weight))
@@ -390,7 +382,7 @@ def test_the_process_dialog_cancel_close_and_replace_buttons(folder, tmp_path):
     pytest.importorskip("IMP.cgmol")
 
     def load(ui):
-        ui.drop(folder / "pep.dcd", folder / "pep.pdb")
+        drop(ui, folder / "pep.dcd", folder / "pep.pdb")
         _pick_type(ui, "Radius of Gyration")
         ui.click("add")
 

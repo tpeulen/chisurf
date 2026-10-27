@@ -14,13 +14,13 @@ from chisurf.plugins.traj.traj_save_topology.test.real_input import (
     DATA,
     Ui,
     check_action_flow,
-    check_browse_row,
     check_guide_and_help_buttons,
     check_log_scrolls_with_the_wheel,
     check_row_is_read_only,
     dead_tour_buttons,
     read_xyz,
 )
+from chisurf.plugins.traj.traj_save_topology.test.workspace_pick import check_browse_row, drop
 
 
 def test_guide_and_help_buttons_are_pressed():
@@ -31,7 +31,7 @@ def test_no_tour_card_button_is_dead_on_any_step():
     assert dead_tour_buttons(make_app) == []
 
 
-def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+def test_the_trajectory_row_has_no_browse_button_it_comes_from_the_workspace(
     small_trajectory, monkeypatch
 ):
     monkeypatch.chdir(small_trajectory)
@@ -45,7 +45,7 @@ def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_
     )
 
 
-def test_the_topology_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+def test_the_topology_row_has_no_browse_button_it_comes_from_the_workspace(
     small_trajectory, monkeypatch
 ):
     monkeypatch.chdir(small_trajectory)
@@ -68,18 +68,18 @@ def test_dropped_files_fill_the_rows_by_type_and_a_foreign_file_is_answered(smal
     ui = Ui(make_app())
     try:
         assert (
-            ui.drop(small_trajectory / "notes.txt") is True
+            drop(ui, small_trajectory / "notes.txt") is True
         )  # the host repaints: the answer is on screen
-        assert ui.shown("No trajectory or topology file among the dropped paths.")
+        assert ui.shown("No trajectory or topology among the picked rows.")
         assert ui.app.model.trajectory_filename == ""
-        ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
+        drop(ui, small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
         assert ui.app.model.trajectory_filename == str(small_trajectory / "small.dcd")
         assert ui.app.model.topology_filename == str(small_trajectory / "topol.pdb")
         assert not ui.shown("No trajectory or topology")
-        ui.drop(small_trajectory / "other.dcd")  # both rows full: the first matching row again
+        drop(ui, small_trajectory / "other.dcd")  # both rows full: the first matching row again
         assert ui.app.model.trajectory_filename == str(small_trajectory / "other.dcd")
-        assert ui.drop(small_trajectory / "sub") is True  # a folder is no file for either row
-        assert ui.shown("No trajectory or topology file among the dropped paths.")
+        assert drop(ui, small_trajectory / "sub") is True  # a folder is no file for either row
+        assert ui.shown("No trajectory or topology among the picked rows.")
     finally:
         ui.app.close()
 
@@ -88,7 +88,7 @@ def test_save_writes_frame_zero_as_the_typed_pdb_and_asks_before_replacing_it(
     small_trajectory, tmp_path
 ):
     def load(ui):
-        ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
+        drop(ui, small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
 
     def verify(path):
         from chisurf.core.structure import trajectory_data as md

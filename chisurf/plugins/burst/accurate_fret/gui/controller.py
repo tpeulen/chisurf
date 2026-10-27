@@ -10,7 +10,6 @@ import numpy as np
 
 from chisurf.core.fluorescence.fret.calibration import SETUP_CALIBRATION_FIELD, calibration_to_setup
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
-from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.session_sources import sources
 
 
@@ -39,14 +38,11 @@ class AccurateFretController:
         self._calibrate_next = False  # Calibrate was pressed during a read
         self._cancel = Event()
         self.dialog = None
-        self.dialog_action = "load"
+        self.dialog_action = "export"
         self.channel_definition = ChannelDefinitionWidget(
             model=setup_model,
             on_changed=self.apply_setup,
             host_app=None,
-        )
-        self.datasets = DatasetPicker(
-            kinds=["burst_data", "analysis_result", "raw_data"], on_paths=self.on_paths_dropped
         )
         self.dyes_loaded = False
         self.lightpaths_loaded = False
@@ -265,20 +261,17 @@ class AccurateFretController:
         self.model.export_csv(str(path))
         self.status = f"Per-burst accurate values exported: {path}"
 
-    def browse(self, action="load"):
+    def browse(self, action="export"):
+        """Export the per-burst values (the burst data come from the workspace)."""
         from emtk.file_dialog import FileDialog
 
-        self.dialog_action = action
+        self.dialog_action = "export"
         self.dialog = FileDialog(
-            "Accurate FRET burst table / export",
-            mode="open" if action == "load" else "save",
-            filters=[("Burst tables", ["*.csv", "*.tsv", "*.txt", "*.bur", "*.npz", "*.pto"])],
-            filename="accurate_fret.csv" if action != "load" else None,
+            "Accurate FRET export",
+            mode="save",
+            filters=[("CSV", ["*.csv"])],
+            filename="accurate_fret.csv",
         )
-
-    def on_paths_dropped(self, paths):
-        if paths:
-            self.load(paths[0])
 
     def draw_dialogs(self, frame):
         from emtk import im
@@ -288,17 +281,13 @@ class AccurateFretController:
                 result = self.dialog.draw()
                 if result:
                     try:
-                        if self.dialog_action == "load":
-                            self.load(result[0])
-                        else:
-                            self.export(result[0])
+                        self.export(result[0])
                     except Exception as exc:
                         self.status = f"Error: {exc}"
                     self.dialog = None
                 elif result is False:
                     self.dialog = None
             im.end()
-        self.datasets.render(frame)
         self.channel_definition.draw_dialogs(frame)
 
     def close(self):

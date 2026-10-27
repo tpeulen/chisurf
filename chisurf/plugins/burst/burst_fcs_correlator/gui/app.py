@@ -30,7 +30,6 @@ WHITE, RED, YELLOW = (255, 255, 255, 255), (230, 40, 40, 255), (250, 204, 21, 25
 #: Width the controls get at least in a narrow window.
 MIN_CONTROLS = 430.0
 DIALOGS = {
-    "load_settings": ("Load settings", "open", False, "Settings (*.json)", ""),
     "save_settings": (
         "Save settings",
         "save",
@@ -38,7 +37,6 @@ DIALOGS = {
         "Settings (*.json)",
         "burst_fcs_settings.json",
     ),
-    "load_pairs": ("Load channel pairs or detector setup", "open", False, "JSON (*.json)", ""),
     "save_pairs": ("Save channel pairs", "save", False, "JSON (*.json)", "burst_fcs_pairs.json"),
     "export_curves": ("Export curves", "save", False, "JSON (*.json)", "burst_fcs_curves.json"),
 }
@@ -149,6 +147,7 @@ class BurstFcsApp(TourTarget, ImApp):
     def choose(self, action):
         title, mode, multiple, filters, filename = DIALOGS[action]
         self.dialog_action = action
+        # not-input: saved settings, pairs and exported curves (outputs); they come back as setups
         self.dialog = FileDialog(
             title, mode=mode, multiselect=multiple, filters=filters, filename=filename
         )
@@ -158,12 +157,8 @@ class BurstFcsApp(TourTarget, ImApp):
     def _answer(self, paths):
         c, action = self.controller, self.dialog_action
         try:
-            if action == "load_settings":
-                c.load_settings(paths[0])
-            elif action == "save_settings":
+            if action == "save_settings":
                 c.save_settings(self._suffix(paths[0]))
-            elif action == "load_pairs":
-                c.apply_pairs(Path(paths[0]).read_text())
             elif action == "save_pairs":
                 c.save_pairs(self._suffix(paths[0]))
             elif action == "export_curves":
@@ -426,6 +421,17 @@ def receive_bursts(app, payload: dict) -> None:
     files = [read_address(str(f)) for f in (files if isinstance(files, list) else [files])]
     app.controller.add_files(files)
     app.controller.status = f"{len(app.controller.files)} input(s) listed."
+
+
+def receive_settings(app, payload: dict) -> None:
+    """Hand-off receiver (``settings``): apply saved correlator settings, a setup row of the
+    Datasets workspace (``payload["settings"]``)."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("settings")
+    if not address:
+        raise ValueError("no settings picked")
+    app.controller.load_settings(read_address(str(address)))
 
 
 def receive_pairs(app, payload: dict) -> None:

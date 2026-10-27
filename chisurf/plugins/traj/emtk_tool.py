@@ -78,6 +78,9 @@ class PathField:
     folder : bool or callable
         The row takes a folder instead of a file -- always, or when
         ``folder(model)`` says so (a toggle that switches the input kind).
+    output : bool
+        The row names where the tool writes (a target folder): chosen with a dialog. An input row
+        (the default) is filled from the Datasets workspace -- its trajectories and structures.
     """
 
     key: str
@@ -90,6 +93,7 @@ class PathField:
     browse_tooltip: str
     dialog_title: str
     folder: Any = False
+    output: bool = False
 
     def takes_folder(self, model) -> bool:
         return bool(self.folder(model) if callable(self.folder) else self.folder)
@@ -299,14 +303,17 @@ class TrajToolApp(TourTarget, ImApp):
         return True
 
     def browse(self, path_field: PathField) -> None:
-        """Open the row's file dialog; the pick goes into the row."""
+        """Open the output row's folder dialog; the pick goes into the row (input rows are filled
+        from the workspace)."""
+        if not path_field.output:
+            return
         current = getattr(self.model, path_field.attr) or ""
-        folder = path_field.takes_folder(self.model)
-        start = current if folder and os.path.isdir(current) else os.path.dirname(current)
+        start = current if os.path.isdir(current) else os.path.dirname(current)
         self._open_dialog(
+            # not-input: the folder the tool writes into, an output
             FileDialog(
                 path_field.dialog_title,
-                mode="folder" if folder else "open",
+                mode="folder",
                 filters=path_field.filters,
                 directory=start or None,
             ),
@@ -366,35 +373,47 @@ class TrajToolApp(TourTarget, ImApp):
         self.dialog_window.title = dialog.title
         self.dialog_window.show()
 
-    def on_files_dropped(self, paths: Sequence[str]) -> bool:
-        """The host's drop verb (the Qt and the glfw host both call it): see :meth:`on_paths_dropped`.
-
-        Always True: a drop nothing took still has an answer (the status line) the host must repaint.
-        """
-        self.on_paths_dropped(paths)
-        return True
-
-    def on_paths_dropped(self, paths: Sequence[str]) -> bool:
-        """A drop fills the row whose filter matches each file (an empty row first); True when one was taken."""
+    def take_paths(self, paths: Sequence[str]) -> bool:
+        """Workspace rows (trajectories, structures) fill the input row whose filter matches each
+        file (an empty row first); a structure no file row takes fills a folder input row with its
+        folder (a folder of PDBs). True when one was taken."""
+        inputs = [p for p in self.paths if not p.output]
         taken = False
         for path in paths:
             if os.path.isdir(path):
-                rows = [p for p in self.paths if p.takes_folder(self.model)]
+                rows = [p for p in inputs if p.takes_folder(self.model)]
             elif os.path.isfile(path):
                 rows = [
                     p
-                    for p in self.paths
+                    for p in inputs
                     if not p.takes_folder(self.model) and _matches(path, p.filters)
                 ]
+                if not rows or all(getattr(self.model, p.attr) for p in rows):
+                    folder_rows = [p for p in inputs if p.takes_folder(self.model)]
+                    if folder_rows:
+                        rows, path = folder_rows, os.path.dirname(path)
             else:
                 continue
             rows.sort(key=lambda p: bool(getattr(self.model, p.attr)))
             if rows and self.set_path(rows[0], path):
                 taken = True
         if not taken:
-            names = " or ".join(p.label.lower() for p in self.paths)
-            self.status = f"No {names} file among the dropped paths."
+            names = " or ".join(p.label.lower() for p in inputs)
+            self.status = f"No {names} among the picked rows."
         return taken
+
+    def _draw_workspace_input(self) -> None:
+        """The trajectories and structures of the Datasets workspace; a pick fills the rows."""
+        if getattr(self, "workspace_input", None) is None:
+            try:
+                plugin = json.loads((self.folder / "manifest.json").read_text(encoding="utf-8"))["id"]
+                from chisurf.plugins.curve_input import CurveInput
+
+                self.workspace_input = CurveInput(plugin, self, name="paths", title="", height=72.0)
+            except (OSError, KeyError, ValueError):
+                self.workspace_input = False
+        if self.workspace_input:
+            self.workspace_input.draw(self.item_rects, on_used=self.tour.notify_used)
 
     # ── drawing ───────────────────────────────────────────────────────────
 
@@ -485,12 +504,14 @@ class TrajToolApp(TourTarget, ImApp):
             )
             im.set_item_tooltip(path_field.tooltip)
             self.remember(path_field.key)
-            im.same_line()
-            if im.button(f"…##{path_field.key}.browse", (button_w, 0)):
-                self.tour.notify_used(path_field.key)
-                self.browse(path_field)
-            im.set_item_tooltip(path_field.browse_tooltip)
-            self.remember(f"{path_field.key}_browse")
+            if path_field.output:
+                im.same_line()
+                if im.button(f"…##{path_field.key}.browse", (button_w, 0)):
+                    self.tour.notify_used(path_field.key)
+                    self.browse(path_field)
+                im.set_item_tooltip(path_field.browse_tooltip)
+                self.remember(f"{path_field.key}_browse")
+        self._draw_workspace_input()
         self.draw_extra_io(width)
 
     def load_example(self) -> None:
@@ -622,3 +643,19 @@ __all__ = [
     "topology_field",
     "trajectory_field",
 ]
+
+
+def receive_paths(app: TrajToolApp, payload: dict) -> bool:
+    """Hand-off receiver (manifest ``accepts`` ``paths``): workspace trajectories and structures fill
+    the tool's input rows."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    values = payload.get("paths") or []
+    values = values if isinstance(values, list) else [values]
+    paths = [str(read_address(str(v))) for v in values if v]
+    if not paths:
+        raise ValueError("nothing picked")
+    if not app.take_paths(paths):
+        raise ValueError(app.status or "no row takes the picked data")
+    return True
+

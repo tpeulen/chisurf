@@ -162,11 +162,6 @@ def make_app():
             ]
             return min(times) if times else None
 
-        def on_files_dropped(self, paths) -> bool:
-            if self.page == "analysis":
-                return self.analysis.on_files_dropped(paths)
-            return super().on_files_dropped(paths)
-
         def export_settings(self) -> dict:
             return {
                 **super().export_settings(),
@@ -240,3 +235,43 @@ def make_app():
 
     install()
     return QuEstWindow()
+
+
+def _paths(payload: dict, key: str) -> list[str]:
+    from chisurf.core.plugin.workspace_input import read_address
+
+    values = payload.get(key) or []
+    values = values if isinstance(values, list) else [values]
+    return [str(read_address(str(v))) for v in values if v]
+
+
+def receive_structure(app, payload: dict) -> bool:
+    """Hand-off receiver (``structure``): the structure of the forward model (Load PDB once)."""
+    paths = _paths(payload, "structure")
+    if not paths:
+        raise ValueError("no structure picked")
+    if hasattr(app, "show_page"):
+        app.show_page("forward")
+    if not app.session.load_structure(paths[0]):
+        raise ValueError(app.session.message or f"cannot read {paths[0]}")
+    app.used("load_pdb")
+    app.sync()
+    return True
+
+
+def receive_tables(app, payload: dict) -> bool:
+    """Hand-off receiver (``tables``): the analysis reads the folder that holds the three picked
+    measurement tables."""
+    import os
+
+    from chisurf.plugins.quenching_estimator.gui.analysis_card import DATA_FILES
+
+    paths = _paths(payload, "tables")
+    for folder in dict.fromkeys(os.path.dirname(p) for p in paths):
+        if all(os.path.isfile(os.path.join(folder, n)) for n in DATA_FILES):
+            if hasattr(app, "show_page"):
+                app.show_page("analysis")
+            analysis = getattr(app, "analysis", app)
+            return bool(analysis.model.open_folder(folder))
+    raise ValueError("the picked tables are not the three measurement tables of one folder")
+

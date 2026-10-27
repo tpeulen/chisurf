@@ -10,7 +10,7 @@ What differs from the Qt model is what a Qt-free app must do differently:
 
 * the run goes through a worker thread and reports ``i/total: name`` in a progress bar instead of a modal progress dialog,
   and every message the Qt run showed in a message box (no data, no fit, batch complete, failure) is a line in the window;
-* the file choosers (add files, add folder, the results CSV, the database) are requests the app answers with its in-app
+* the results CSV's chooser is a request the app answers with its in-app
   dialogs;
 * the session (datasets, fit client, action dispatcher, a per-run screenshot) is injectable, so a test runs a whole batch
   against fakes; without one the process-global ChiSurf session is used exactly as the Qt tool uses it;
@@ -154,7 +154,7 @@ class BatchModel(Stepper, BatchViewModel):
         self.message_ok = True
         #: Output files of the last run (CSV, DOCX, ZIP).
         self.outputs: list[str] = []
-        #: ``""`` or the chooser the app should open: ``files``, ``folder``, ``results``, ``database``.
+        #: ``""`` or the chooser the app should open: ``results`` (the files come from the workspace).
         self.dialog_request = ""
         self._run_after_dialog = False
         self._events: queue.SimpleQueue = queue.SimpleQueue()
@@ -341,21 +341,9 @@ class BatchModel(Stepper, BatchViewModel):
         self.update()
 
     def request_dialog(self, kind: str) -> None:
-        """Ask the app to open a chooser (``files``, ``folder``, ``results`` or ``database``)."""
+        """Ask the app to open a chooser (``results``)."""
         if not self.running:
             self.dialog_request = kind
-
-    def add_files(self) -> None:
-        """Files button."""
-        self.request_dialog("files")
-
-    def add_folder(self) -> None:
-        """Folder button."""
-        self.request_dialog("folder")
-
-    def add_database(self) -> None:
-        """Database button."""
-        self.request_dialog("database")
 
     def browse_results(self) -> None:
         """The ``...`` button of the CSV field."""
@@ -395,7 +383,7 @@ class BatchModel(Stepper, BatchViewModel):
             return bool(self.selected_file) and not self.running
         if action in ("clear_files",):
             return bool(self.files) and not self.running
-        if action in ("add_files", "add_folder", "add_database", "browse_results", "run"):
+        if action in ("browse_results", "run"):
             return not self.running
         return True
 

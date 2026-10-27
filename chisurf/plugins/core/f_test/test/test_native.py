@@ -42,8 +42,6 @@ def test_native_fit_loading_targets_and_no_files():
     assert app.model.conf_level == pytest.approx(0.5)
     assert app.load_fit_into(0, "chi2max")
     assert (app.model.chi2_min, app.model.npars, app.model.dof) == (1.2, 3, 117)
-    assert app.files_dropped(["ignored.ptu"])
-    assert "no dropped files" in app.status
     assert not app.load_fit_into(1, "model1")
     assert "No such open fit" in app.status
 

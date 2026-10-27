@@ -310,14 +310,8 @@ class BurstFcsPanel:
         self.c.clear()
         self.app.selected_file = None
 
-    def load_settings(self):
-        self.app.choose("load_settings")
-
     def save_settings(self):
         self.app.choose("save_settings")
-
-    def load_pairs(self):
-        self.app.choose("load_pairs")
 
     def save_pairs(self):
         self.app.choose("save_pairs")

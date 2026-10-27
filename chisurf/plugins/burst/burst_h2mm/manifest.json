@@ -33,6 +33,21 @@
         ],
         "key": "folder"
       }
+    },
+    {
+      "name": "settings",
+      "summary": "H2MM settings saved with Save settings (a setup row of the Datasets workspace).",
+      "receive": "chisurf.plugins.burst.burst_h2mm.gui.native:receive_settings",
+      "required": [
+        "settings"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "settings"
+      }
     }
   ],
   "entrypoints": {

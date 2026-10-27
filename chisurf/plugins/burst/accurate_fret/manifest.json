@@ -11,7 +11,7 @@
     "FRET",
     "Single-Molecule"
   ],
-  "icon": "\ud83c\udfaf",
+  "icon": "🎯",
   "state_namespace": "accurate_fret",
   "statefulness": {
     "enabled": true,
@@ -23,14 +23,15 @@
   "accepts": [
     {
       "name": "bursts",
-      "summary": "Calibrate accurate FRET on a burst run of a measurement container.",
+      "summary": "Calibrate accurate FRET on a burst run of a measurement container or a burst table (CSV/TSV/BUR/NPZ) of the workspace.",
       "receive": "chisurf.plugins.burst.accurate_fret.gui.app:receive_bursts",
       "required": [
         "file"
       ],
       "from_workspace": {
         "kinds": [
-          "bursts"
+          "bursts",
+          "table"
         ],
         "key": "file"
       }

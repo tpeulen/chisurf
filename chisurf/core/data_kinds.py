@@ -111,6 +111,24 @@ KINDS: dict[str, Kind] = {
             "camera recording) or an intensity stack.",
         ),
         Kind(
+            "trajectory",
+            "Trajectory",
+            "Trajectories",
+            "🎞️",
+            False,
+            "A molecular-dynamics trajectory: the coordinates of a structure over time (DCD, XTC, "
+            "TRR, NetCDF); its topology is a structure.",
+        ),
+        Kind(
+            "table",
+            "Table",
+            "Tables",
+            "🧮",
+            False,
+            "A table of named columns a tool reads: a burst table (CSV/TSV/BUR, NPZ of columns) or "
+            "the result tables of an analysis.",
+        ),
+        Kind(
             "setup",
             "Setup",
             "Setups",

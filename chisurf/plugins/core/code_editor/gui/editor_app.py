@@ -1779,6 +1779,7 @@ class CodeEditorGui:
         self._dialog_document = None
         self._dialog_operation = "open"
         self._dialog_error = ""
+        # not-input: editor documents and folders (source code), not measurement data
         self._file_dialog = FileDialog(
             "Open document", directory=str(self.model.project_root), multiselect=True
         )
@@ -1797,6 +1798,7 @@ class CodeEditorGui:
         self._dialog_close_after = close_after
         self._dialog_error = ""
         self._overwrite_path = None
+        # not-input: editor documents and folders (source code), not measurement data
         self._file_dialog = FileDialog(
             "Save document",
             mode="save",
@@ -1812,6 +1814,7 @@ class CodeEditorGui:
         self._dialog_close_after = False
         self._dialog_error = ""
         self._overwrite_path = None
+        # not-input: editor documents and folders (source code), not measurement data
         self._file_dialog = FileDialog(
             "Export notebook Python source",
             mode="save",
@@ -2125,6 +2128,7 @@ class CodeEditorGui:
         self._dialog_document = None
         self._dialog_operation = "folder"
         self._dialog_error = ""
+        # not-input: editor documents and folders (source code), not measurement data
         self._file_dialog = FileDialog(
             "Open folder", mode="folder", directory=str(self.model.project_root)
         )

@@ -151,6 +151,7 @@ class ProjectBrowserApp(ImApp):
         else:
             title, mode, filename = "Import Project", "open", ""
         self.file_action = action
+        # not-input: project archives imported into the project database (project management, like Open Project), and exports
         self.dialog = FileDialog(
             title,
             mode=mode,
@@ -502,13 +503,6 @@ class ProjectBrowserApp(ImApp):
             "show_status": self.show_status,
         }
 
-    def files_dropped(self, paths):
-        """A project archive dropped on the window starts the import preview (the Import Project button's flow)."""
-        archive = next((str(p) for p in paths if str(p).endswith((".cs.pto", ".csp"))), "")
-        if not archive or self.jobs.future is not None or self.modal:
-            return False
-        self.error(lambda: self.import_preview(archive))
-        return True
 
 
 def make_app():

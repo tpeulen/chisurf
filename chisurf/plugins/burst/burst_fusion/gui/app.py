@@ -50,7 +50,7 @@ from .view_model import FusionViewModel
 if TYPE_CHECKING:
     from .controller import FusionController
 
-__all__ = ["BurstFusionApp", "BurstFusionGui", "WINDOW_BG", "receive_bursts"]
+__all__ = ["BurstFusionApp", "BurstFusionGui", "WINDOW_BG", "receive_bursts", "receive_settings"]
 
 PLUGIN = pathlib.Path(__file__).resolve().parents[1]
 
@@ -320,11 +320,6 @@ class BurstFusionGui(TourTarget):
         files = button_row(
             [
                 {
-                    "label": "Load settings",
-                    "key": "load",
-                    "tip": "Load a saved fusion parameter JSON file.",
-                },
-                {
                     "label": "Save settings",
                     "key": "save",
                     "tip": "Save current fusion parameters as JSON.",
@@ -568,6 +563,15 @@ def create_app(**kwargs):
 
     install()
     return BurstFusionApp(**kwargs)
+
+
+def receive_settings(app: BurstFusionApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``settings``): apply saved fusion settings, a setup
+    row of the Datasets workspace (``payload["settings"]``)."""
+    address = payload.get("settings")
+    if not address:
+        raise ValueError("no settings picked")
+    app.controller.load_settings(read_address(str(address)))
 
 
 def receive_bursts(app: BurstFusionApp, payload: dict) -> None:

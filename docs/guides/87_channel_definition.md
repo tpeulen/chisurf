@@ -74,7 +74,8 @@ keeps the old value and says so in the status line.
    ([guide 37](37_tttr_microtime_lut.md)) and tick **Apply TAC linearization (LUT) when reading**.
 4. **Save**, give the setup a name. Every tool that offers a **Setup** choice lists it.
 
-A drop works too: drop a measurement on the window to read it, a `.json` file to switch to that setups library.
+From the Datasets workspace: a photon stream picked for the tool is read, a setups
+library (a *setup* row) becomes the library.
 
 ### Save a setup, export a definition or export a library
 

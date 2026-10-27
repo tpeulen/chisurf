@@ -14,7 +14,6 @@ from chisurf.plugins.traj.traj_rotate_translate.app import make_app
 from chisurf.plugins.traj.traj_save_topology.test.real_input import (
     Ui,
     check_action_flow,
-    check_browse_row,
     check_guide_and_help_buttons,
     check_log_scrolls_with_the_wheel,
     check_number_field,
@@ -23,6 +22,7 @@ from chisurf.plugins.traj.traj_save_topology.test.real_input import (
     read_xyz,
     wheel_steps_a_number_field,
 )
+from chisurf.plugins.traj.traj_save_topology.test.workspace_pick import check_browse_row, drop
 
 
 def test_guide_and_help_buttons_are_pressed():
@@ -33,7 +33,7 @@ def test_no_tour_card_button_is_dead_on_any_step():
     assert dead_tour_buttons(make_app) == []
 
 
-def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+def test_the_trajectory_row_has_no_browse_button_it_comes_from_the_workspace(
     small_trajectory, monkeypatch
 ):
     monkeypatch.chdir(small_trajectory)
@@ -47,7 +47,7 @@ def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_
     )
 
 
-def test_the_topology_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+def test_the_topology_row_has_no_browse_button_it_comes_from_the_workspace(
     small_trajectory, monkeypatch
 ):
     monkeypatch.chdir(small_trajectory)
@@ -69,9 +69,9 @@ def test_the_path_rows_do_not_take_typing(row, small_trajectory):
 def test_dropped_files_fill_the_rows_by_type_and_a_foreign_file_is_answered(small_trajectory):
     ui = Ui(make_app())
     try:
-        assert ui.drop(small_trajectory / "notes.txt") is True
-        assert ui.shown("No trajectory or topology file among the dropped paths.")
-        ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
+        assert drop(ui, small_trajectory / "notes.txt") is True
+        assert ui.shown("No trajectory or topology among the picked rows.")
+        drop(ui, small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
         assert ui.app.model.trajectory_filename == str(small_trajectory / "small.dcd")
         assert ui.app.model.topology_filename == str(small_trajectory / "topol.pdb")
         assert not ui.shown("No trajectory or topology")
@@ -166,7 +166,7 @@ def test_rotating_and_translating_through_the_ui_writes_R_x_plus_t(small_traject
     R, T = [[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]], [10.0, 0.0, 0.0]
     ui = Ui(make_app())
     try:
-        ui.drop(source, top)
+        drop(ui, source, top)
         for index, value in ((0, "0"), (1, "-1"), (3, "1"), (4, "0")):
             type_cell(ui, "rotation_matrix", index, value)
         type_cell(ui, "translation", 0, "10")
@@ -202,7 +202,7 @@ def test_the_action_flow_dialog_cancel_close_save_and_replace(small_trajectory, 
         make_app,
         small_trajectory,
         tmp_path,
-        lambda ui: ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb"),
+        lambda ui: drop(ui, small_trajectory / "small.dcd", small_trajectory / "topol.pdb"),
         suggested="small_moved.dcd",
         title="Save trajectory",
         precondition="Open a trajectory first.",

@@ -29,9 +29,9 @@
     },
     {
       "title": "Or add files",
-      "text": "Files are loaded one by one and fitted after the loaded datasets. <b>Files</b>, <b>Folder</b> (everything below it) and <b>Database</b> add them; you can also drop files on the window.",
+      "text": "Files are loaded one by one and fitted after the loaded datasets. Pick them from the workspace: drop measurements on ChiSurf first, then choose rows here.",
       "page": "files",
-      "target": {"name": "add_files"}
+      "target": {"name": "workspace_input_rows"}
     },
     {
       "title": "Choose the template",

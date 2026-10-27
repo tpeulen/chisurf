@@ -25,5 +25,23 @@
   },
   "optional_requires": {
     "fret_docking": "*"
-  }
+  },
+  "accepts": [
+    {
+      "name": "paths",
+      "summary": "Trajectories and structures (the topology) of the Datasets workspace for the tool's input rows.",
+      "receive": "chisurf.plugins.traj.emtk_tool:receive_paths",
+      "required": [
+        "paths"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "trajectory",
+          "structure"
+        ],
+        "many": true,
+        "key": "paths"
+      }
+    }
+  ]
 }

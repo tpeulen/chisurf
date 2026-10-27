@@ -67,6 +67,21 @@
         "many": true,
         "key": "files"
       }
+    },
+    {
+      "name": "settings",
+      "summary": "Burst Selection settings saved with Save settings (a setup row of the Datasets workspace).",
+      "receive": "chisurf.plugins.burst.burst_selection.gui.native:receive_settings",
+      "required": [
+        "settings"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "settings"
+      }
     }
   ],
   "entrypoints": {

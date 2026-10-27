@@ -91,6 +91,7 @@ class GlobalViewApp(GlobalViewSurface):
         name = {"export_parameters": "parameters.csv", "save_network": "network.gml"}.get(
             action, ""
         )
+        # not-input: the global fit's own saved network (tool state) and exports
         self.dialog = FileDialog(title, mode=mode, filename=name, filters=file_filter)
         self._dialog_action = action
         self.file_window.title = title

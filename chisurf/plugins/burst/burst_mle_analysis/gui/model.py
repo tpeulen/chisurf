@@ -992,8 +992,12 @@ class MleViewModel(RunPickerMixin):
 
     # -- settings file --------------------------------------------------------------------------------------- #
     def save_settings(self, path: str | Path) -> None:
+        # The schema makes the file a setup row the workspace hands back to this tool.
         payload = dict(
-            self.session.settings_payload(), kind=SETTINGS_KIND, auto_patterns=self.auto_patterns
+            self.session.settings_payload(),
+            schema="chisurf.tool/burst_mle_analysis/1",
+            kind=SETTINGS_KIND,
+            auto_patterns=self.auto_patterns,
         )
         Path(path).write_text(
             json.dumps(payload, indent=2, cls=engine.NumpyEncoder), encoding="utf-8"

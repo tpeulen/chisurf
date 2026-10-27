@@ -118,6 +118,7 @@ class ConfigurationApp(ImApp):
 
     def choose(self, action):
         self.action = action
+        # not-input: ChiSurf's own configuration file (application settings), not measurement data
         self.dialog = FileDialog(
             "Open configuration" if action == "open" else "Save configuration as",
             mode="open" if action == "open" else "save",
@@ -830,15 +831,6 @@ class UnifiedSettingsApp(ImApp):
                 lost()
         self._child_focus = False
         self._press_in_child = False
-
-    def files_dropped(self, paths):
-        for name in ("files_dropped", "on_files_dropped"):
-            handler = getattr(self.child, name, None)
-            if callable(handler):
-                return bool(handler(paths))
-        return False
-
-    on_files_dropped = files_dropped
 
     def animating(self):
         child = self.child

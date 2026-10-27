@@ -196,11 +196,7 @@ class AccurateFretGui(TourTarget):
             self.remember(key)
 
     def _input_section(self, section, model, state, width):
-        """The generated Input section: the workspace's burst runs (a pick loads one).
-
-        Burst-table files (CSV/TSV/NPZ/.bur) still come through the field below: the workspace has
-        no kind for a plain table yet (okf/specs/data-workspace.md).
-        """
+        """The generated Input section: the workspace's burst runs and burst tables (a pick loads one)."""
         from emtk.view_form import FormState, draw_form
 
         from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput, input_spec
@@ -218,17 +214,6 @@ class AccurateFretGui(TourTarget):
             self.item_rects[name] = tuple(rect)
 
     def _file_section(self, section, model, state, width):
-        self._button(
-            "Open burst table",
-            "Choose CSV/TSV/TXT/BUR/NPZ burst data with consistent channel units.",
-            lambda: self.controller.browse("load"),
-            "filename",
-        )
-        self._button(
-            "MMFDB burst datasets",
-            "Resolve a burst table from the database.",
-            self.controller.datasets.open,
-        )
         im.text_wrapped(self.model.filename or "No burst table loaded.")
 
     def _setup_section(self, section, model, state, width):
@@ -535,9 +520,6 @@ class AccurateFretApp(ImApp):
         self.accurate_gui.draw(width, height)
         self.controller.draw_dialogs((0.0, 0.0, float(width), float(height)))
 
-    def on_paths_dropped(self, paths):
-        self.controller.on_paths_dropped(paths)
-
     def export_settings(self):
         fields = (
             "column_i_dd",
@@ -600,10 +582,12 @@ def create_app(**kwargs):
 
 
 def receive_bursts(app, payload: dict) -> None:
-    """Hand-off receiver (manifest ``accepts`` ``bursts``): load the burst run ``payload["file"]``.
+    """Hand-off receiver (manifest ``accepts`` ``bursts``): load the burst run or burst table
+    ``payload["file"]``.
 
-    ``file`` is an address -- a run of a measurement container (``m000.pto/<run>``) -- as the
-    Input section, *Open in…* or a drag from the Datasets view hands it.
+    ``file`` is an address -- a run of a measurement container (``m000.pto/<run>``) or a burst-table
+    file (a ``table`` row) -- as the Input section, *Open in…* or a drag from the Datasets view
+    hands it.
     """
     from chisurf.core.plugin.workspace_input import read_address
 

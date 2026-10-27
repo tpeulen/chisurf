@@ -14,6 +14,8 @@ from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
 from ..core import algorithms as core
 from .view_model import _BurstFcsModel
 
+#: The schema this tool's saved settings and pairs files carry (setups of the Datasets workspace).
+SETTINGS_SCHEMA = "chisurf.tool/burst_fcs_correlator/1"
 
 class BurstFcsController(RunPickerMixin):
     """Files, pairs and computation of the window.
@@ -166,13 +168,17 @@ class BurstFcsController(RunPickerMixin):
         return f"{curve.get('file', '')} - b{curve.get('burst_index', 0)} - {curve.get('pair_name', '')}"
 
     def save_pairs(self, path):
-        Path(path).write_text(json.dumps(self._pair_presets, indent=2))
+        # The schema makes the file a setup row the workspace hands back to this tool.
+        data = {"schema": SETTINGS_SCHEMA, "fcs_pairs": self._pair_presets}
+        Path(path).write_text(json.dumps(data, indent=2))
         self.status = f"Channel pairs saved: {path}"
 
     def apply_pairs(self, text):
         try:
             data = json.loads(text)
-            if isinstance(data, dict) and "detectors" in data:
+            if isinstance(data, dict) and "fcs_pairs" in data and "detectors" not in data:
+                data = data["fcs_pairs"]  # a pairs file saved by this tool
+            elif isinstance(data, dict) and "detectors" in data:
                 detectors = data["detectors"]
                 configured = data.get("fcs") or data.get("fcs_pairs")
                 if configured:
@@ -375,7 +381,8 @@ class BurstFcsController(RunPickerMixin):
             self.status = "Stopping burst FCS …"
 
     def save_settings(self, path):
-        Path(path).write_text(json.dumps(self._model.to_settings().to_dict(), indent=2))
+        data = {"schema": SETTINGS_SCHEMA, **self._model.to_settings().to_dict()}
+        Path(path).write_text(json.dumps(data, indent=2))
         self.status = "Settings saved."
 
     def load_settings(self, path):

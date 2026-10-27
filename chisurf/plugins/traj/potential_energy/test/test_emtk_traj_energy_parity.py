@@ -92,13 +92,8 @@ def test_browse_and_process_ask_for_files(trajectory):
     app = make_app()
     try:
         trajectory_row = next(p for p in app.paths if p.key == "trajectory")
-        app.browse(trajectory_row)
-        assert (
-            app.dialog is not None
-            and app.dialog.mode == "open"
-            and app.dialog.title == "Open trajectory"
-        )
-        app.dialog = None
+        app.browse(trajectory_row)  # an input row: no dialog, the workspace fills it
+        assert app.dialog is None
         app.model.set_trajectory(dcd)
         app.model.set_topology(pdb)
         app.model.add_potential(

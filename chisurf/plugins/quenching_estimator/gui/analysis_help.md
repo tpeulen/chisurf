@@ -8,7 +8,7 @@ If you have not used it before, press **Guide**. **Load example** loads the ship
 
 | Control | Meaning |
 |---|---|
-| **Load example** / **Data folder…** | A folder with the three measurement tables: `tcspc_fit_results.csv` (lifetimes per site and D₂O fraction), `amino_acid_quenching_flt.csv` (titration points) and `titration_summary.csv` (free-dye lifetimes). `examples/male` has this layout. |
+| **Load example** / the tables input | The three measurement tables (table rows of the workspace, from one folder): `tcspc_fit_results.csv` (lifetimes per site and D₂O fraction), `amino_acid_quenching_flt.csv` (titration points) and `titration_summary.csv` (free-dye lifetimes). `examples/male` has this layout. |
 | **Preset** | *Quick* runs 8 searches with short iterations: about 20 minutes on a desktop, and its numbers are less reliable. *Full* runs 64 searches, as the stored analysis did, and takes hours on a desktop (the stored run took 24 minutes on 44 cores). |
 | **Stages** | *all*, or one stage plus whatever it needs. |
 | **Workers** | Worker processes for the searches. 0 means every CPU. The numbers do not depend on it. |

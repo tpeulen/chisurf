@@ -254,15 +254,6 @@ class FRETLineApp(ImApp):
             self.file_window.title = tr("Save FRET lines")
             self.file_window.show()
 
-    def choose_input(self, slot: str) -> None:
-        self.file_dialog = FileDialog(
-            tr("Load {slot}").format(slot=slot),
-            mode="open",
-            filters=tr("Curves (*.csv *.txt *.dat *.tsv *.pto);;All files (*)"),
-        )
-        self.file_purpose = ("input", self.model.selected["model"], slot)
-        self.file_window.title = tr("Load {slot}").format(slot=slot)
-        self.file_window.show()
 
     def _draw_file_dialog(self, box: Any) -> None:
         if self.file_dialog is None:
@@ -276,13 +267,6 @@ class FRETLineApp(ImApp):
             try:
                 if purpose[0] == "save":
                     self.model.write_csv(result[0])
-                else:
-                    from chisurf.core.data import DataCurve
-
-                    curve = DataCurve(filename=str(result[0]))
-                    self.model.bind_input(purpose[2], curve, model=purpose[1])
-                    self.loaded_curves.append(curve)
-                    self.error = ""
             except Exception as exc:
                 self.error = str(exc)
                 self.model.message = tr("Failed: {error}").format(error=exc)
@@ -344,10 +328,6 @@ class FRETLineApp(ImApp):
                 if im.button(tr("Use selected curve")):
                     self._guarded(self.model.bind_input, slot, curves[index])
                 im.set_item_tooltip(tr("Bind this experimental curve to the model input."))
-            if im.button(tr("Load curve file")):
-                self.choose_input(slot)
-            im.set_item_tooltip(tr("Read a measured curve with the ChiSurf DataCurve loader."))
-            im.same_line()
             im.begin_disabled(source is None)
             if im.button(tr("Unload curve")):
                 self.model.unload_input(slot)

@@ -39,7 +39,7 @@ def test_actions_are_wrapped_rows(drawn):
     rects = app.item_rects
     assert_disjoint(
         rects,
-        ["toolAction_run", "toolAction_refresh", "Stop", "load", "save", "export", "guide", "help"],
+        ["toolAction_run", "toolAction_refresh", "Stop", "save", "export", "guide", "help"],
     )
     run_row = {round(rects[n][1]) for n in ("toolAction_run", "toolAction_refresh", "Stop")}
     assert len(run_row) <= 2

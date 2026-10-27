@@ -524,7 +524,9 @@ class H2mmViewModel(RunPickerMixin):
         return {name: getattr(self, name) for name in SETTING_FIELDS}
 
     def save_settings(self, path: str | pathlib.Path) -> None:
-        pathlib.Path(path).write_text(json.dumps(self.settings_dict(), indent=2), encoding="utf-8")
+        # The schema makes the file a setup row the workspace hands back to this tool.
+        data = {"schema": "chisurf.tool/burst_h2mm/1", **self.settings_dict()}
+        pathlib.Path(path).write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     def load_settings(self, path: str | pathlib.Path) -> None:
         data = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))

@@ -57,7 +57,8 @@ open the dialog below.
    decides which input format is written: a name containing `hydropro` gets a
    HYDROPRO `hydropro.dat`, and anything else is treated as HYDRO++ (see
    [Known defects](#known-defects)).
-2. **Structures**: one or more PDB files, set with **Select files…**. Each
+2. **Structures**: one or more PDB files, picked from the Datasets workspace
+   (drop them on ChiSurf first). Each
    one becomes a separate job. Remove crystal waters, ligands and alternate
    conformations first: HYDROPRO models every non-hydrogen `ATOM` and `HETATM`
    except water oxygens.

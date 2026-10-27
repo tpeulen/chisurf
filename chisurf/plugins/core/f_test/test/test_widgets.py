@@ -177,19 +177,11 @@ def test_tool_opens_no_database_connection():
     assert {name for name in sys.modules if name.startswith("mmfdb")} == loaded
 
 
-def test_dropped_path_is_reported_not_swallowed(tmp_path):
-    """A dropped path raises a standing message instead of doing nothing."""
+def test_a_dropped_path_changes_nothing(tmp_path):
+    """Files dropped on ChiSurf go to the workspace through the shell; the calculator takes none."""
     from chisurf.plugins.core.f_test.gui.app import make_app
 
     dropped = tmp_path / "run.ptu"
     dropped.write_bytes(b"")
-
     app = make_app()
-    app.status = ""
-    assert app.files_dropped([dropped]) is True
-    assert app.status == "The F-test calculator takes no dropped files."
-
-    # a drop carrying no usable path says nothing
-    app.status = ""
-    assert app.files_dropped([]) is False
-    assert app.status == ""
+    assert not hasattr(app, "files_dropped") and not hasattr(app, "on_paths_dropped")

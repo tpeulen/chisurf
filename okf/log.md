@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-27
+
+- Input-file allowlist 46 -> 4: burst tools' Load settings become setup rows (chisurf.tool/<plugin>/1); accurate_fret takes burst tables as the new 'table' kind; QuEst takes its structure and its three measurement tables from the workspace; HydroPRO, FRET docking/pair selection take structures; the trajectory tools take the new 'trajectory' kind and structures (only output folders keep a dialog); batch analysis queues workspace rows; fret_line binds imported curves only; drop hooks removed from lightpath, f_test, project browser, zenodo, setup hub, channel definition; project management, software, styles, plugin packages, configuration and outputs marked not-input with reasons. Left: legacy_export and metadata_editor (another session's edits), ndxplorer's MMFDB burst-selection picker.
+
 ## 2026-10-26
 
 - **PRD-154 item 12 closed: the natural-language workflow agent.** `test/agent` 595 passed, 25 skipped; the

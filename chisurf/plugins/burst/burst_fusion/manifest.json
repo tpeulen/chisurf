@@ -10,7 +10,7 @@
     "Spectroscopy",
     "Single-Molecule"
   ],
-  "icon": "\ud83d\udd17",
+  "icon": "🔗",
   "state_namespace": "burst_fusion",
   "statefulness": {
     "enabled": true,
@@ -110,6 +110,21 @@
           "bursts"
         ],
         "key": "folder"
+      }
+    },
+    {
+      "name": "settings",
+      "summary": "Fusion settings saved with Save settings (a setup row of the Datasets workspace).",
+      "receive": "chisurf.plugins.burst.burst_fusion.gui.app:receive_settings",
+      "required": [
+        "settings"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "settings"
       }
     }
   ]

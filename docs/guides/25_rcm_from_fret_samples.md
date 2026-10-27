@@ -56,7 +56,7 @@ tuple in the donor-only order `(dd, da, aa)` does not fail — it returns
 ### In the Accurate FRET tool
 
 **Spectroscopy ▸ FRET ▸ Accurate FRET** does the same from a burst table:
-**Open burst table**, map its columns under *Channels* (**I_DD (donor)**,
+pick the burst table in its **Input** section (drop it on ChiSurf first), map its columns under *Channels* (**I_DD (donor)**,
 **I_DA (FRET)**, **I_AA (acceptor)**, optional **Donor lifetime**), optionally
 fill *Dyes (database)*, *Photophysics*, *Background*, *Optics prior (light path)*
 and *Procedure*, and press **Calibrate**. It finds the donor-only,

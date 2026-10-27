@@ -26,9 +26,9 @@
     },
     {
       "title": "Choose the structures",
-      "text": "One job per PDB file. Remove crystal waters, ligands and alternate conformations first: every non-hydrogen atom except water oxygens becomes part of the body.",
+      "text": "One job per PDB file: drop your structures on ChiSurf and pick them in the workspace rows here. Remove crystal waters, ligands and alternate conformations first: every non-hydrogen atom except water oxygens becomes part of the body.",
       "target": {
-        "action": "Select files"
+        "name": "workspace_input_rows"
       }
     },
     {

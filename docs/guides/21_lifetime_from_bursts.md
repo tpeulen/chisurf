@@ -135,9 +135,9 @@ Step *6. Burst MLE* of **Spectroscopy ▸ Single-Molecule ▸ Burst Analysis** (
 entry of its own; `python -m chisurf.emtk --plugin burst_mle_analysis` opens it alone).
 Tabs on the left: **Burst MLE** (input files, runs, detector, fit window and the
 editable parameter table), **IRF** (pattern settings), **IRF/BG files** (measured
-patterns) and **Detector setup** (the shared channel editor). **Save settings** /
-**Load settings** carry the selected model and its per-model edits into another
-analysis.
+patterns) and **Detector setup** (the shared channel editor). **Save settings**
+writes the selected model and its per-model edits; drop the file on ChiSurf and pick it
+(a *setup* row) to carry them into another analysis.
 
 Select **Fit model** before running the preview or batch:
 

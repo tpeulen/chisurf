@@ -192,7 +192,6 @@ def test_the_settings_dialogs_and_a_workspace_run(tmp_path):
     app = create_app()
     try:
         for action, (title, mode) in {
-            "load": ("Load fusion settings", "open"),
             "save": ("Save fusion settings", "save"),
             "export": ("Export fusion report", "save"),
         }.items():

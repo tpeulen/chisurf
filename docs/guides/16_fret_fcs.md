@@ -77,7 +77,8 @@ on its own it is `python -m chisurf.emtk --plugin burst_fcs_correlator`.
   **FCS channel pairs** table
   (tick the pairs to compute — GG, RR and the GR cross term for FRET-FCS; double-click
   a cell to edit the channels or the micro-time gates; **Add pair**, **Remove
-  pair**, **Load pairs...**, **Save pairs...**, **Show JSON**);
+  pair**, **Save pairs...**, **Show JSON**; saved pairs and detector setups come back
+  as *setup* rows of the workspace);
   A measurement's `.pto` can be added instead of a `.bur`/`.bst` (drop it, or
   **Files...**): its burst searches are listed in **Runs**, and the run you click
   is the burst table that is correlated, over the photons stored in the same
@@ -92,7 +93,7 @@ on its own it is `python -m chisurf.emtk --plugin burst_fcs_correlator`.
   explicitly requesting a data-dependent automatic bound) and the fit window **t_min /
   t_max** in ms (the GUI defaults to **t_min = 0.002 ms**, **t_max = 0**, with
   zero meaning no bound; the two vertical lines on the correlation plot drag
-  it); **Load settings...** / **Save settings...**;
+  it); **Save settings...** (a saved file comes back as a *setup* row of the workspace);
 - **Detector setup** — the shared detector editor; **Use setup for pairs** turns
   the setup (its stored FCS pairs, else one auto-correlation per detector) into
   channel pairs.

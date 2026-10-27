@@ -183,12 +183,14 @@ def test_one_file_and_a_cancel_answer_as_the_qt_widget_does(qt):
         app.close()
 
 
-def test_two_dropped_trajectories_fill_both_rows(tmp_path):
+def test_two_picked_trajectories_fill_both_rows(tmp_path):
     second = tmp_path / "second.dcd"
     second.write_bytes(Path(TRAJ).read_bytes())
     app = JoinTrajectoriesApp()
     try:
-        app.on_paths_dropped([TRAJ, str(second), TOP])
+        from chisurf.plugins.traj.emtk_tool import receive_paths
+
+        receive_paths(app, {"paths": [TRAJ, str(second), TOP]})
         m = app.model
         assert (m.trajectory_filename_1, m.trajectory_filename_2, m.topology_filename) == (
             TRAJ,

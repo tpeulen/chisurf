@@ -367,12 +367,13 @@ def test_save_pairs_load_pairs_and_show_json(drv, tmp_path):
     drv.click_text("burst_fcs_pairs.json")
     drv.click_text("Save", last=True)
     saved = tmp_path / "burst_fcs_pairs.json"
-    assert json.loads(saved.read_text())[0]["pair_name"] == "ACF_0"
+    assert json.loads(saved.read_text())["fcs_pairs"][0]["pair_name"] == "ACF_0"
     ctrl(drv).apply_pairs(json.dumps([{"pair_name": "x", "chs_a": [0], "chs_b": [0]}]))
-    drv.click("load_pairs")
-    drv.draw(4)
-    drv.click_text("burst_fcs_pairs.json")
-    drv.click_text("Open", last=True)
+    from chisurf.core.fio.classify import classify
+    from chisurf.plugins.burst.burst_fcs_correlator.gui.app import receive_pairs
+
+    assert classify(str(saved)) == "setup"  # the saved pairs come back as a workspace setup row
+    receive_pairs(drv.app, {"file": str(saved), "datasets": []})
     assert [p["pair_name"] for p in ctrl(drv)._pair_presets] == ["ACF_0", "ACF_1", "cross_01"]
     drv.click("show_pairs")
     assert drv.app.pairs_window.open and "ACF_0" in " ".join(drv.draw(3).strings)
@@ -505,10 +506,12 @@ def test_save_and_load_settings_dialogs_round_trip(drv, tmp_path):
         and data["maxent_reg"] == pytest.approx(0.01)
     )
     drv.type_into("n_bins", "9")
-    drv.click("load_settings")
-    drv.draw(4)
-    drv.click_text("burst_fcs_settings.json")
-    drv.click_text("Open", last=True)
+    from chisurf.core.fio.classify import classify
+    from chisurf.plugins.burst.burst_fcs_correlator.gui.app import receive_settings
+
+    settings = tmp_path / "burst_fcs_settings.json"
+    assert classify(str(settings)) == "setup"  # back through the workspace, not a Load dialog
+    receive_settings(drv.app, {"settings": str(settings)})
     assert (
         model(drv).n_bins == 6
         and model(drv).fit_mode == "maxent"
@@ -520,10 +523,12 @@ def test_save_and_load_settings_dialogs_round_trip(drv, tmp_path):
 def test_loading_a_broken_settings_file_reports(drv, tmp_path):
     (tmp_path / "bad_settings.json").write_text(json.dumps({"n_bins": 0}))
     drv.tab("Settings")
-    drv.click("load_settings")
-    drv.draw(4)
-    drv.click_text("bad_settings.json")
-    drv.click_text("Open", last=True)
+    from chisurf.plugins.burst.burst_fcs_correlator.gui.app import receive_settings
+
+    try:
+        receive_settings(drv.app, {"settings": str(tmp_path / "bad_settings.json")})
+    except ValueError as exc:
+        ctrl(drv).status = f"Error: {exc}"
     assert ctrl(drv).status.startswith("Error:") and model(drv).n_bins == 3
 
 

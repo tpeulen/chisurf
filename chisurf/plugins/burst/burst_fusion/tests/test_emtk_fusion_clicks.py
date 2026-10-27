@@ -483,12 +483,15 @@ def test_save_settings_writes_the_json_and_load_settings_reads_it_back(app, tmp_
     data = json.loads(written.read_text())
     assert data["threshold"] == 0.75 and data["max_gap_ms"] == 3.0 and "detectors" in data
     assert "Fusion settings saved." in shown(app) and "Cancel" not in draw(app).strings
+    assert data["schema"] == "chisurf.tool/burst_fusion/1"
     type_into(app, "threshold", "0.2")
     type_into(app, "max_gap_ms", "9")
-    press_text(app, "Load settings")
-    assert "Load fusion settings" in draw(app).strings
-    click(app, text_rect(draw(app), "mine.json"))
-    click(app, text_rect(draw(app), "Open"))
+    # The saved file comes back as a setup row of the workspace (no Load dialog).
+    from chisurf.core.fio.classify import classify
+    from chisurf.plugins.burst.burst_fusion.gui.app import receive_settings
+
+    assert classify(str(written)) == "setup"
+    receive_settings(app, {"settings": str(written)})
     assert app.model.settings.threshold == 0.75 and app.model.settings.max_gap_ms == 3.0
     assert "Fusion settings loaded." in shown(app)
 
@@ -496,9 +499,12 @@ def test_save_settings_writes_the_json_and_load_settings_reads_it_back(app, tmp_
 def test_loading_a_broken_settings_file_says_so_and_changes_nothing(app, tmp_path):
     (tmp_path / "bad.json").write_text(json.dumps({"threshold": 3.0}))
     threshold = app.model.settings.threshold
-    press_text(app, "Load settings")
-    click(app, text_rect(draw(app), "bad.json"))
-    click(app, text_rect(draw(app), "Open"))
+    from chisurf.plugins.burst.burst_fusion.gui.app import receive_settings
+
+    try:
+        receive_settings(app, {"settings": str(tmp_path / "bad.json")})
+    except ValueError as exc:
+        app.controller.status = f"Error: {exc}"
     assert (
         "Error: Invalid fusion parameters." in shown(app)
         and app.model.settings.threshold == threshold
@@ -527,7 +533,7 @@ def test_export_report_needs_an_analysis_then_writes_the_statistics(app, tmp_pat
 
 
 def test_the_settings_dialogs_cancel_and_close_buttons_write_nothing(app, tmp_path):
-    for opener in ("Save settings", "Export fusion report", "Load settings"):
+    for opener in ("Save settings", "Export fusion report"):
         press_text(app, opener)
         click(app, text_rect(draw(app), "Cancel"))
         assert "Cancel" not in draw(app).strings

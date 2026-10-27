@@ -52,7 +52,6 @@ class MleNativeApp(TourTarget, ImApp):
 
     DIALOGS = {
         "save_settings": ("Save burst-MLE settings", "save", [("JSON", ["*.json"])]),
-        "load_settings": ("Load burst-MLE settings", "open", [("JSON", ["*.json"])]),
     }
 
     def __init__(self, model: MleViewModel | None = None) -> None:
@@ -232,6 +231,7 @@ class MleNativeApp(TourTarget, ImApp):
             else:
                 options["directory"] = str(first.parents[2] if pattern else first.parent)
         filename = "burst_mle_settings.json" if action == "save_settings" else ""
+        # not-input: saved settings (an output); they come back as setup rows of the workspace
         self.dialog = FileDialog(title, mode=mode, filename=filename, **options)
         self.dialog_action = action
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-mle-file")
@@ -243,16 +243,6 @@ class MleNativeApp(TourTarget, ImApp):
             if action == "save_settings":
                 self.model.save_settings(result[0])
                 self.model.status_text = f"Settings saved to {result[0]}"
-            elif action == "load_settings":
-                self.model.load_settings(result[0])
-                self.editor.model.data = copy.deepcopy(
-                    {
-                        "detectors": self.model.session.detectors,
-                        "windows": {},
-                        "tttr_reading": {"file_type": self.model.session.file_type},
-                    }
-                )
-                self.model.status_text = f"Settings loaded from {result[0]}"
         except Exception as exc:
             self.model.status_text = f"Error: {exc}"
 
@@ -380,12 +370,6 @@ class MleNativeApp(TourTarget, ImApp):
                     "label": "Save settings",
                     "key": "save_settings",
                     "tip": "Write the settings and the detector definition to a JSON file.",
-                },
-                {
-                    "label": "Load settings",
-                    "key": "load_settings",
-                    "enabled": not running,
-                    "tip": "Read settings and detectors from a JSON file.",
                 },
                 {
                     "label": action_caption("guide"),
@@ -690,6 +674,26 @@ def _receive(app: MleNativeApp, payload: dict, add: str) -> None:
     ]
     if getattr(app.model, add)(addresses) <= 0:
         raise ValueError(app.model.status_text or "nothing new to add")
+
+
+def receive_settings(app: MleNativeApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``settings``): restore saved burst-MLE settings, a
+    setup row of the Datasets workspace (``payload["settings"]``)."""
+    from chisurf.core.plugin.workspace_input import read_address
+
+    address = payload.get("settings")
+    if not address:
+        raise ValueError("no settings picked")
+    path = read_address(str(address))
+    app.model.load_settings(path)
+    app.editor.model.data = copy.deepcopy(
+        {
+            "detectors": app.model.session.detectors,
+            "windows": {},
+            "tttr_reading": {"file_type": app.model.session.file_type},
+        }
+    )
+    app.model.status_text = f"Settings loaded from {path}"
 
 
 def receive_bursts(app: MleNativeApp, payload: dict) -> None:

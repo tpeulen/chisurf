@@ -478,16 +478,11 @@ def test_import_of_a_file_that_is_no_archive_reports_the_error(drv, tmp_path):
     assert status(drv).startswith("Error:") and drv.app.modal == ""
 
 
-def test_a_dropped_archive_starts_the_same_import_preview(drv, tmp_path):
+def test_a_dropped_archive_is_left_to_the_shell(drv, tmp_path):
+    """A dropped project goes to the shell's one drop (which opens it); the browser imports through
+    Import Project only."""
     export_decay(drv)
     drv.drop(tmp_path / "decay_export.cs.pto")
-    drv.settle()
-    assert drv.app.modal == "import"
-
-
-def test_a_dropped_non_archive_is_ignored(drv, tmp_path):
-    (tmp_path / "notes.txt").write_text("x")
-    drv.drop(tmp_path / "notes.txt")
     drv.settle()
     assert drv.app.modal == ""
 

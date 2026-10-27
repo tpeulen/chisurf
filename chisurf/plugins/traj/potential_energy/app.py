@@ -12,12 +12,12 @@ chosen (the Qt editor was rebuilt on every change) and the table also removes th
 
 from __future__ import annotations
 
-import functools
 import os
 import pathlib
 from typing import Any
 
 from emtk import im
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, topology_field, trajectory_field
@@ -29,7 +29,6 @@ from .view_model import PotentialEnergyViewModel
 install_translations()
 
 HERE = pathlib.Path(__file__).parent
-FILE_FILTERS = [("NumPy", ["*.npy"]), ("All files", ["*"])]
 ENERGY_FILTERS = [("CSV-name file", ["*.txt"]), ("All files", ["*"])]
 
 
@@ -281,10 +280,10 @@ class PotentialEnergyApp(TrajToolApp):
         def draw(section, model, state, width) -> None:
             values = self._editor_values.setdefault(self.editor.potential_type, {})
             label_w = self.label_column()
-            button_w = im.get_frame_height() + 6.0
+            picker_w = 4.0 * (im.get_frame_height() + 6.0)  # the workspace picker beside the path
             im.text(param.label)
             im.same_line(label_w)
-            im.set_next_item_width(max(80.0, width - label_w - button_w - 8.0))
+            im.set_next_item_width(max(80.0, width - label_w - picker_w - 8.0))
             changed, text = im.input_text(
                 f"##{param.attr}", str(values.get(param.attr, param.default)), elide_start=True
             )
@@ -293,20 +292,21 @@ class PotentialEnergyApp(TrajToolApp):
             if changed:
                 values[param.attr] = text
             im.same_line()
-            if im.button(f"…##{param.attr}.browse", (button_w, 0)):
-                current = str(values.get(param.attr, param.default) or "")
-                from emtk.file_dialog import FileDialog
+            # The parameter file is a setup row of the Datasets workspace (a dropped .npy).
+            rows = workspace_setup_rows()
+            im.set_next_item_width(picker_w)
+            changed, index = im.combo(
+                f"##{param.attr}.workspace", 0, [tr("Workspace…")] + [r["name"] for r in rows]
+            )
+            if changed and index > 0:
+                from chisurf.core.plugin.workspace_input import read_address
 
-                self._open_dialog(
-                    FileDialog(
-                        f"Open {param.label}",
-                        mode="open",
-                        filters=FILE_FILTERS,
-                        directory=os.path.dirname(current) or None,
-                    ),
-                    functools.partial(self._store_editor_value, param.attr),
-                )
-            im.set_item_tooltip(f"Choose the {param.label.lower()} file.")
+                self._store_editor_value(param.attr, str(read_address(rows[index - 1]["address"])))
+                self.tour.notify_used(f"{param.attr}_browse")
+            im.set_item_tooltip(
+                f"Pick the {param.label.lower()} file among the setups of the Datasets workspace "
+                "(drop the .npy on ChiSurf first)."
+            )
             self.remember(f"{param.attr}_browse")
 
         return draw
@@ -344,3 +344,14 @@ def make_app(**kwargs) -> PotentialEnergyApp:
 
 
 __all__ = ["EditorModel", "PotentialEnergyApp", "editor_spec", "make_app"]
+
+
+def workspace_setup_rows() -> list[dict]:
+    """The setup rows of the Datasets workspace (where a potential's parameter file comes from)."""
+    from chisurf.core.plugin.workspace_input import parse, workspace_rows
+
+    try:
+        return workspace_rows(parse({"kinds": ["setup"]}))
+    except Exception:  # noqa: BLE001 - no workspace (a standalone window): nothing to pick
+        return []
+
