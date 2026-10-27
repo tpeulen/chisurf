@@ -57,7 +57,7 @@ no tttrlib), never all at once on the laptop. Open front, in order:
    calibration (left free, `w_z` collapses onto `w_r`), and First past the detector dead time (the
    10-30 ns lags sit at G ~ 0.15). A default fit range that skips a dead-time dip would remove the second.
 7. Open: **Hardware through libphacq (2026-10-27, owner: "all is phacq now").** Devices and the Sepia II
-   run through libphacq (`~/dev/libphacq`, private `tpeulen/libphacq`): `acq/live/devices.py` (TCSPC
+   run through libphacq (`~/dev/libphacq`, private GitHub `tpeulen/phacq`): `acq/live/devices.py` (TCSPC
    source, settings form from `Device.parameter_schema`), `acq/live/laser.py` (`SepiaBackend`), see
    *Device layer* below. Verified: the Sepia II (s/n 1027040) live through the Record model and a
    headless Record window (connect, soft lock, pulsed, rate, intensity, reconnect at 2-3 ms/frame);
