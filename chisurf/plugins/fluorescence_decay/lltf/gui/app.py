@@ -149,6 +149,9 @@ class LLTFApp(TourTarget, ImApp):
         self.input_form = FormState()
         #: The workspace dataset of the decay: the fit registers as its child.
         self.source_uid = ""
+        #: The workspace address picked for each role (``decay``, ``vh``, ``irf``, ``irf_vh``);
+        #: the files the fit reads are written from these.
+        self.input_addresses: dict[str, str] = {}
         self.results_form = FormState()
         resources = Path(__file__).parent.parent
         self.help_window = EmTkHelpWindow(
@@ -616,17 +619,24 @@ def receive_decays(app: LLTFApp, payload: dict) -> None:
     if not irfs and len(decays) >= 2:
         irfs = [decays.pop(1)]
     m = app.model
+    # What the tool works on is the workspace address of each curve; a curve read into the session
+    # is written to a file only because the fit runs on files (``decay_file`` and friends).
+    addresses_by_role = app.input_addresses
     if decays:
         main = next((p for p in decays if not is_vh(p[1])), decays[0])
         m.decay_file = _curve_file(main[0], folder)
+        addresses_by_role["decay"] = main[0]
         app.source_uid = main[2]
         vh = next((p for p in decays if p is not main and is_vh(p[1])), None)
         if vh is not None:
             m.vh_file = _curve_file(vh[0], folder)
+            addresses_by_role["vh"] = vh[0]
     if irfs:
         irf = next((p for p in irfs if not is_vh(p[1])), irfs[0])
         m.irf_file = _curve_file(irf[0], folder)
+        addresses_by_role["irf"] = irf[0]
         irf_vh = next((p for p in irfs if p is not irf and is_vh(p[1])), None)
         if irf_vh is not None:
             m.irf_vh_file = _curve_file(irf_vh[0], folder)
+            addresses_by_role["irf_vh"] = irf_vh[0]
     app.arrays = None

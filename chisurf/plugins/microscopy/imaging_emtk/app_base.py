@@ -42,6 +42,17 @@ INPUT_ACTIONS: dict[str, str | None] = {
 }
 #: A path list's ``add`` dialog kind -> the ``accepts`` entry that fills the list instead.
 PATH_LIST_INPUTS: dict[str, str] = {"add_files": "files", "add_irf": "irf_files"}
+#: The title (and window key) of the tab a ``DATA_TAB`` tool draws its inputs in.
+DATA_TAB_TITLE = "Data"
+
+
+def _flatten(section: dict) -> list[dict]:
+    """*section* and every section nested in it."""
+    out = [section]
+    for child in section.get("sections") or []:
+        if isinstance(child, dict):
+            out.extend(_flatten(child))
+    return out
 #: Payload key of a workspace input -> the model method that takes it (a list for ``many``).
 RECEIVERS: dict[str, str] = {
     "file": "open_path",
@@ -112,6 +123,10 @@ class ImagingToolApp(ImApp):
     RESULTS: dict[str, str] = {}
     #: The workspace kind *Load example*'s file enters as.
     EXAMPLE_KIND = "image"
+    #: Draw the Input sections, the file lists they fill and the picked-path fields in a tab of
+    #: their own (*Data*, beside the first settings window) instead of inline: a tool with several
+    #: inputs otherwise pushes its settings below the bottom edge of a small window.
+    DATA_TAB = False
 
     def __init__(self, model: Any) -> None:
         self.model = model
@@ -201,6 +216,22 @@ class ImagingToolApp(ImApp):
         section above it and loses its Add/Database buttons.
         """
         placed: set[str] = set()
+        #: With ``DATA_TAB``: the sections that move to the *Data* tab, and the keys tour steps use
+        #: to point at them (the tab is brought forward for those).
+        data: list = []
+        self._data_keys: set[str] = set()
+        self._window_keys: set[str] = set()
+        self._data_dock = ""
+        self._settings_title = ""
+
+        def to_data(section: dict) -> None:
+            data.append(section)
+            for field in ("key", "attr", "title"):
+                if section.get(field):
+                    self._data_keys.add(str(section[field]))
+            target = (section.get("options") or {}).get("target")
+            if target:
+                self._data_keys.add(str(target))
 
         def custom(name: str) -> dict:
             placed.add(name)
@@ -228,7 +259,8 @@ class ImagingToolApp(ImApp):
                         if self.INPUT_ACTIONS[b["action"]] in self.inputs
                         and self.INPUT_ACTIONS[b["action"]] not in placed
                     ]
-                    out.extend(custom(n) for n in dict.fromkeys(names))
+                    for n in dict.fromkeys(names):
+                        (to_data if self.DATA_TAB else out.append)(custom(n))
                     section["buttons"] = [b for b in buttons if b not in gone]
                     if not section["buttons"]:
                         continue
@@ -240,17 +272,53 @@ class ImagingToolApp(ImApp):
                     section["description"] = (
                         "The file picked in the Input section (the Datasets workspace)."
                     )
+                    if self.DATA_TAB:
+                        to_data(section)
+                        continue
                 options = section.get("options") if section.get("type") == "custom" else None
                 if isinstance(options, dict) and section.get("key") == "path_list":
                     name = self.PATH_LIST_INPUTS.get(str(options.get("add", "add_files")))
                     if name in self.inputs:
                         options["workspace"] = True
+                        if self.DATA_TAB:
+                            if name not in placed:
+                                to_data(custom(name))
+                            to_data(section)
+                            continue
                         if name not in placed:
                             out.append(custom(name))
                 out.append(section)
             return out
 
         spec["sections"] = walk(spec.get("sections", []))
+        if data:
+            panels = spec["sections"]
+            dock = str(panels[0].get("dock", "settings")) if panels else "settings"
+            self._data_dock = dock
+            self._settings_title = str(panels[0].get("title", "")) if panels else ""
+            # Controls of the views (maps, plots) are not on the settings dock: never refocus for them.
+            self._window_keys = {
+                str(f.get(k))
+                for panel in panels
+                if str(panel.get("dock", "")) != dock
+                for f in _flatten(panel)
+                for k in ("key", "attr", "title")
+                if f.get(k)
+            }
+            for name in placed:
+                self._data_keys.update({name, f"input_{name}"})
+                self._data_keys.update(a for a, t in self.INPUT_ACTIONS.items() if t == name)
+            panels.insert(
+                1,
+                {
+                    "type": "panel",
+                    "title": DATA_TAB_TITLE,
+                    "dock": dock,
+                    "description": "The data this tool works on, picked from the Datasets "
+                    "workspace (drop files on the ChiSurf window to add them there).",
+                    "sections": data,
+                },
+            )
         return spec
 
     def _draw_input(self, name: str) -> None:
@@ -368,6 +436,15 @@ class ImagingToolApp(ImApp):
             key = self.tour._target_key(self.tour.steps[self.tour.step_idx].get("target"))
             if key in self.windows:
                 self.docks.focus(key)
+            elif DATA_TAB_TITLE in self.windows and key:
+                if key in self._data_keys:
+                    # The step points at an input, the file list it fills or its old button.
+                    self.docks.focus(DATA_TAB_TITLE)
+                elif key not in self._window_keys and self.docks.active_tab(
+                    self._data_dock
+                ) == DATA_TAB_TITLE:
+                    # Any other control of the settings dock sits on the settings tab.
+                    self.docks.focus(self._settings_title)
 
     # -- windows ----------------------------------------------------------- #
     def _draw_window(self, panel: dict) -> None:

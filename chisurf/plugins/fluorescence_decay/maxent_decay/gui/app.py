@@ -67,6 +67,8 @@ class MaxentApp(ImApp):
         }
         #: The workspace dataset of the decay: the reconstruction is computed from it.
         self.source_uid = ""
+        #: The workspace address picked for each role (``decay``, ``irf``, ``prior``, ``donor``).
+        self.input_addresses: dict[str, str] = {}
         self.dialog = None
         self.file_window = None
         self.file_action = ""
@@ -610,10 +612,12 @@ def receive_decays(app: MaxentApp, payload: dict) -> None:
     """
     from types import SimpleNamespace
 
-    curves = app.error(lambda: _curves(_addresses(payload.get("decays"))))
+    addresses = _addresses(payload.get("decays"))
+    curves = app.error(lambda: _curves(addresses))
     uids = [str(u) for u in payload.get("datasets") or [] if str(u)]
     if not curves:
         return
+    address_of = dict(zip((id(c) for c in curves), addresses))
     named_irf = [c for c in curves if any(w in c[0].lower() for w in ("irf", "prompt"))]
     others = [c for c in curves if c not in named_irf]
     irf = named_irf[0] if named_irf else (others[1] if len(others) > 1 else None)
@@ -624,15 +628,18 @@ def receive_decays(app: MaxentApp, payload: dict) -> None:
         if decay is not None:
             m.set_data(decay[1], decay[2], decay[0])
             app.source_uid = uids[curves.index(decay)] if curves.index(decay) < len(uids) else ""
+            app.input_addresses["decay"] = address_of.get(id(decay), "")
         if irf is not None:
             m.select_irf(SimpleNamespace(x=irf[1], y=irf[2], name=irf[0]))
+            app.input_addresses["irf"] = address_of.get(id(irf), "")
 
     app.error(load)
 
 
 def receive_prior(app: MaxentApp, payload: dict) -> None:
     """Hand-off receiver (manifest ``accepts`` ``prior``): the prior distribution of the grid."""
-    curves = app.error(lambda: _curves(_addresses(payload.get("prior"))))
+    addresses = _addresses(payload.get("prior"))
+    curves = app.error(lambda: _curves(addresses))
     if curves:
         name, x, y = curves[0]
 
@@ -640,6 +647,7 @@ def receive_prior(app: MaxentApp, payload: dict) -> None:
             if not np.isfinite(y).all() or not y.size:
                 raise ValueError("Prior must contain finite values.")
             app.model.priors[app.model.settings.mode] = (x, y)
+            app.input_addresses["prior"] = addresses[0]
 
         app.error(load)
 
@@ -647,7 +655,8 @@ def receive_prior(app: MaxentApp, payload: dict) -> None:
 def receive_donor(app: MaxentApp, payload: dict) -> None:
     """Hand-off receiver (manifest ``accepts`` ``donor``): the donor-only lifetime spectrum, a
     curve with lifetimes on x and amplitudes on y (interleaved as amplitude/lifetime pairs)."""
-    curves = app.error(lambda: _curves(_addresses(payload.get("donor"))))
+    addresses = _addresses(payload.get("donor"))
+    curves = app.error(lambda: _curves(addresses))
     if curves:
         from chisurf.core.fluorescence.decay import validate_lifetime_spectrum
 
@@ -655,5 +664,6 @@ def receive_donor(app: MaxentApp, payload: dict) -> None:
 
         def load():
             app.model.donor = validate_lifetime_spectrum(np.column_stack([y, x]).ravel())
+            app.input_addresses["donor"] = addresses[0]
 
         app.error(load)

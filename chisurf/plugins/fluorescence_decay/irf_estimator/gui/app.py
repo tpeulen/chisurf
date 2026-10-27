@@ -137,6 +137,8 @@ class IRFEstimatorApp(ImApp):
         self.dataset_sink = dataset_sink
         #: The workspace dataset the decay came from: the estimated IRF registers as its child.
         self.source_uid = ""
+        #: The workspace address of the decay the estimate is made from.
+        self.decay_address = ""
         self.dialog = None
         self.file_window = None
         self.file_action = ""
@@ -229,6 +231,7 @@ class IRFEstimatorApp(ImApp):
             return True
 
         if self.guard(load):
+            self.decay_address = str(address)
             self.tour.notify_used("Load Decay")
             return True
         m.source_text = f"Error: {self.error}"

@@ -25,6 +25,9 @@ class PixelMleApp(ImagingToolApp):
     ROLE = "pixel_mle"
     CANCELLABLE = True
     LAYOUT = Split("h", 0.38, Region("settings"), Region("views"))
+    #: Two inputs and the file lists they fill push the fit settings below a small window's
+    #: bottom edge: they get a tab of their own.
+    DATA_TAB = True
     DIALOGS = {
         "roi": ("Choose a region", "open", REGION_FILE_FILTER, "set_roi_file"),
     }

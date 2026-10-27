@@ -206,6 +206,11 @@ def test_a_curve_that_lives_in_the_session_is_written_for_the_command_line(ui, t
     written = np.loadtxt(ui.app.model.decay_file)
     assert written.shape == (64, 2) and np.allclose(written[:, 1], np.exp(-x))
     assert ui.app.model.irf_file == str(IRF)
+    # The tool works on the workspace curve: it keeps the address, the file is only for the fit.
+    assert ui.app.input_addresses == {
+        "decay": f"@{curve.unique_identifier}",
+        "irf": str(IRF),
+    }
 
 
 def test_the_output_directory_dialog_chooses_a_folder(ui):

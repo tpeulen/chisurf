@@ -197,7 +197,9 @@ def test_run_is_greyed_and_says_why_until_everything_is_given(app, drv, files):
 
 
 def test_the_files_and_the_irf_come_from_the_workspace(app, drv, files):
-    """Both lists are filled from the Datasets workspace (their Input sections); no chooser opens."""
+    """Both lists are filled from the Datasets workspace (their Input sections, on the Data tab);
+    no chooser opens."""
+    app.docks.focus("Data")
     drv.draw(3)
     assert {"input_files", "input_irf_files"} <= set(app.item_rects)
     assert "sel_files.add" not in app.item_rects and "sel_irf_files.add" not in app.item_rects
@@ -216,6 +218,7 @@ def test_remove_and_clear_edit_the_list_without_deleting_files(app, drv, files, 
     extra = files[0].with_name("second.ptu")
     extra.write_bytes(files[0].read_bytes())
     m.add_files([str(files[0]), str(extra)])
+    app.docks.focus("Data")
     drv.draw(3)
     drv.click("sel_files.1")
     drv.click("sel_files.remove")
@@ -680,7 +683,7 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, file
     fitted(app, drv, files)
     for fold in ("IRF preparation.fold", "Fit flags.fold", "Background.fold", "Performance.fold"):
         drv.click(fold)
-    for tab in ("Lifetime map", "Settings"):
+    for tab in ("Lifetime map", "Data", "Settings"):
         app.docks.focus(tab)
         C.texts_apart(draw(app, size), ignore=tuple(str(p) for p in files))
     # Pressing the folds scrolled the Settings form to reach them; the controls that sit above are checked from the top.
@@ -701,8 +704,17 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, file
         )
         if k in app.form.rects
     }
+    # Every setting is reachable in the Settings tab, from Run down to the fit model.
+    assert {"request_run", "channels_parallel_text", "min_photons", "fit_model"} <= set(rects)
     assert_inside(rects, size)
     assert_icons_clear(draw(app, size))
+    # The inputs and the lists they fill are on the Data tab, inside the window too.
+    app.docks.focus("Data")
+    drv.draw(3)
+    data = {k: app.form.rects[k] for k in ("sel_files", "sel_irf_files") if k in app.form.rects}
+    data.update({k: app.item_rects[k] for k in ("input_files", "input_irf_files")})
+    assert len(data) == 4, sorted(data)
+    assert_inside(data, size)
 
 
 def test_the_map_gets_the_space_and_the_settings_stay_beside_it(app, drv, files, size):
