@@ -241,6 +241,9 @@ class TestWgslSource:
         # children, splatted. Render prelude, same shade() -- a level change
         # must not also be a change of material.
         "chunk_gauss.wgsl": "render",
+        # PRD-130 L3: the compute rasteriser for sub-pixel container rows, and its resolve.
+        "chunk_raster_cs.wgsl": "raw",
+        "chunk_raster.wgsl": "render",
         "shade_atoms.wgsl": "compute",
         "occlusion.wgsl": "compute",
         "shadow_rays.wgsl": "compute",
