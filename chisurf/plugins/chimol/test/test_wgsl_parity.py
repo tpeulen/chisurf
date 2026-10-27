@@ -264,6 +264,9 @@ class TestWgslSource:
         "ellipsoid.wgsl": "render",
         # PRD-128 round 4: the live-stereo composite (full-screen, own layout).
         "stereo.wgsl": "raw",
+        # PRD-128 round 5: the progressive trace's GPU mean -- the accumulate
+        # kernel and the blit into the scene column, own layouts.
+        "ray_accumulate.wgsl": "raw",
         # The hierarchical depth buffer the container culls chunks against.
         # Read raw: its compute layout has no room for the render prelude's
         # uniform block at group 0.
