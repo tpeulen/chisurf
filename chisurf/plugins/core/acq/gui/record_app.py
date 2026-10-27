@@ -70,8 +70,10 @@ from chisurf.plugins.core.acq.live.sources import (
 HERE = Path(__file__).resolve().parent
 DEFAULT_SETUP = "default"
 AUTO_PRESET = "auto"
-#: How often the window takes a snapshot of the running analysis.
-SNAPSHOT_INTERVAL_S = 0.2
+#: How often the window takes a snapshot of the session's accumulators. A snapshot costs well under a
+#: millisecond, so the plots follow the measurement at display rate (at most 30 times a second)
+#: instead of jumping every 200 ms.
+SNAPSHOT_INTERVAL_S = 1.0 / 30.0
 _COLOURS = [
     (0.17, 0.63, 0.17, 1.0),
     (0.84, 0.15, 0.16, 1.0),
@@ -977,6 +979,30 @@ def _plot_rates(snap: dict, exp: Experiment | None, size) -> None:
         implot.end_plot()
 
 
+def _to_pixels(x: np.ndarray, y: np.ndarray, columns: float, how: str = "max"):
+    """*x*, *y* reduced to at most *columns* points (the live plots pass one per two pixels).
+
+    A live plot is redrawn many times a second, and the renderer emits primitives per point: a
+    1 ms trace or a 4096-channel decay drawn at full length into a few hundred pixels made the
+    window stutter. ``max`` keeps a burst's peak (the trace), ``mean`` a curve's level (a decay).
+    Up to one point per column nothing changes.
+    """
+    n = int(y.size)
+    cols = max(int(columns), 16)
+    if n <= cols:
+        return x, y
+    k = -(-n // cols)  # points per column, rounded up
+    m = n // k * k
+    head = y[:m].reshape(-1, k)
+    reduced = head.max(axis=1) if how == "max" else head.mean(axis=1)
+    xs = x[:m:k]
+    if m < n:  # the remainder is one more column
+        tail = y[m:]
+        reduced = np.append(reduced, tail.max() if how == "max" else tail.mean())
+        xs = np.append(xs, x[m])
+    return xs, reduced
+
+
 def _plot_decays(snap: dict, exp: Experiment | None, size) -> None:
     from emtk import implot
 
@@ -990,7 +1016,8 @@ def _plot_decays(snap: dict, exp: Experiment | None, size) -> None:
             if y.size == 0:
                 continue
             implot.set_next_line_style(_COLOURS[k % len(_COLOURS)])
-            implot.plot_line(name, np.arange(y.size, dtype=float), np.maximum(y, 0.5))
+            xs, ys = _to_pixels(np.arange(y.size, dtype=float), y, size[0] / 2, "mean")
+            implot.plot_line(name, xs, np.maximum(ys, 0.5))
         windows = (exp.setup.get("windows") or {}) if exp is not None else {}
         if windows:
             edges = sorted({float(v) for r in windows.values() for v in r})
@@ -1087,12 +1114,15 @@ def _plot_mirrored_trace(trace: dict, size) -> None:
             st for st in ordered if st["sign"] > 0
         ]
         for stream in ordered:
-            y = np.asarray(stream["counts"], dtype=float)
+            # the peak of each pixel column, sign kept (acceptor streams point down)
+            y = np.asarray(stream["counts"], dtype=float) * stream["sign"]
+            ts, ys = _to_pixels(t, y, size[0] / 2, "max")
+            ys = ys * stream["sign"]
             implot.set_next_line_style(stream["colour"])
             implot.set_next_fill_style(stream["colour"], 0.35)
-            implot.plot_shaded(tr(stream["name"]), t, y, yref=0.0)
+            implot.plot_shaded(tr(stream["name"]), ts, ys, yref=0.0)
             implot.set_next_line_style(stream["colour"])
-            implot.plot_stairs(f"##{stream['name']}", t, y)
+            implot.plot_stairs(f"##{stream['name']}", ts, ys)
         implot.set_next_line_style((0.6, 0.6, 0.6, 1.0))
         implot.plot_line("##zero", np.asarray([t[0], t[-1]]), np.zeros(2))
         implot.end_plot()
