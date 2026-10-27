@@ -151,7 +151,8 @@ def test_every_transforming_spec_round_trips():
         if spec.stored is None and spec.shown is None:
             continue
         assert spec.stored is not None and spec.shown is not None, name
-        # A choice setting's domain is its choices (PRD-128: cartoon/stereo styles).
+        # A choice setting's domain is its choices (the renderer rework (okf/specs/chimol.md):
+        # cartoon/stereo styles).
         domain = getattr(spec.stored, "choices", None) or probes.get(spec.kind, (0.0, 1.0))
         for probe in domain:
             back = spec.from_config(spec.to_config(probe))

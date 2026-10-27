@@ -260,25 +260,30 @@ class TestWgslSource:
         "vol_slice.wgsl": "render",
         "vol_ray.wgsl": "render",
         "vol_composite.wgsl": "render",
-        # PRD-128 WP11: ANISOU ellipsoids, an analytic quadric impostor.
+        # the renderer rework (okf/specs/chimol.md): ANISOU ellipsoids, an analytic quadric
+        # impostor.
         "ellipsoid.wgsl": "render",
-        # PRD-128 round 4: the live-stereo composite (full-screen, own layout).
+        # the renderer rework (okf/specs/chimol.md): the live-stereo composite (full-screen, own
+        # layout).
         "stereo.wgsl": "raw",
-        # PRD-128 round 5: the progressive trace's GPU mean -- the accumulate
+        # the renderer rework (okf/specs/chimol.md): the progressive trace's GPU mean -- the
+        # accumulate
         # kernel and the blit into the scene column, own layouts.
         "ray_accumulate.wgsl": "raw",
         # The hierarchical depth buffer the container culls chunks against.
         # Read raw: its compute layout has no room for the render prelude's
         # uniform block at group 0.
         "hiz.wgsl": "raw",
-        # PRD-128: GPU cluster culling and its depth pyramid (compute), the
+        # the renderer rework (okf/specs/chimol.md): GPU cluster culling and its depth pyramid
+        # (compute), the
         # temporal resolve and the quality-lighting post pass (full-screen,
         # their own bind layouts) -- none takes the render prelude.
         "gpu_cull.wgsl": "raw",
         "hiz_pyramid.wgsl": "raw",
         "temporal.wgsl": "raw",
         "postlight.wgsl": "raw",
-        # PRD-128 WP5/WP10: the multishadow bake (compute), and the 3-D label
+        # the renderer rework (okf/specs/chimol.md): the multishadow bake (compute), and the 3-D
+        # label
         # vertex stage, which is appended to emtk's ui.wgsl as ui.wgsl is.
         "multishadow.wgsl": "raw",
         "label3d.wgsl": "raw",

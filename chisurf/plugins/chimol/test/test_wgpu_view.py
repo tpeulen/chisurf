@@ -176,7 +176,8 @@ class TestChrome:
         renderer._labels = [Label(np.zeros(3, dtype=float), "ALA", (1.0, 1.0, 1.0, 1.0))]
         try:
             assert renderer._chrome_image() is None
-            # PRD-128 WP10: the label is a scene overlay -- in the frame's
+            # the renderer rework (okf/specs/chimol.md): the label is a scene overlay -- in the
+            # frame's
             # arguments, drawn as glyph quads by the renderer -- and the
             # chrome no longer carries it.
             assert [lab.text for lab in renderer.frame_arguments()["labels"]] == ["ALA"]

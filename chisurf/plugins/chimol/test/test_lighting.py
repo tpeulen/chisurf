@@ -124,7 +124,8 @@ def test_a_preset_needing_nothing_extra_reports_no_gap(session):
 
 def test_soft_and_gentle_differ_now_that_multishadow_exists(session):
     """They differ only in multishadow parameters (map size, depth bias);
-    multishadow landed with PRD-128 WP5, so the two presets must now differ."""
+    multishadow landed with the renderer rework (okf/specs/chimol.md), so the two presets must now
+    differ."""
     viewer, _shared, do, _messages, _errors = session
     do("lighting soft")
     soft = _state(viewer)

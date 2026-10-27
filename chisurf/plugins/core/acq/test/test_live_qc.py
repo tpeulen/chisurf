@@ -34,7 +34,7 @@ def crowded():
 
 
 def test_too_high_occupancy_turns_the_occupancy_light_red_with_the_checkers_text(crowded):
-    from chisurf.plugins.burst.fret_check.report import _ISSUE_ACTION
+    from chisurf.plugins.burst.fret_check.report import ISSUE_ACTION
 
     _session, result = crowded
     qc = result.qc
@@ -42,7 +42,7 @@ def test_too_high_occupancy_turns_the_occupancy_light_red_with_the_checkers_text
     checks = {c["name"]: c for c in qc["checks"]}
     density = checks["burst density"]
     assert density["light"] == "red"
-    assert density["action"] == _ISSUE_ACTION["burst density"]
+    assert density["action"] == ISSUE_ACTION["burst density"]
     assert checks["multi-molecule events"]["light"] == "red"
     assert "dilute" in checks["multi-molecule events"]["action"]
 

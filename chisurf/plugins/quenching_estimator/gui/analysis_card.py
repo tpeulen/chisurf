@@ -827,6 +827,7 @@ class AnalysisCard(CardShell):
             self.used(kind)
             self.request_frame()
 
+        # not-input: the folder the results are written to (write_results), an output.
         self.open_file(
             request["title"],
             request.get("filters", ""),

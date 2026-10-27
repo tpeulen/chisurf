@@ -8,6 +8,7 @@
   "experimental_message": "Development status: devices are not connected to the Record tool yet — it measures the built-in simulator or replays a recorded stream. The device session of earlier versions is untested on real hardware.",
   "categories": ["Tools", "Views", "Acquisition"],
   "icon": "📷",
+  "optional_requires": {"burst_selection": "*", "fret_check": "*"},
   "state_namespace": "acq",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",

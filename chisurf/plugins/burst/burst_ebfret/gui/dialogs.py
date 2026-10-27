@@ -174,7 +174,9 @@ class WorkspaceTraces(Dialog):
             self.section.workspace_input_status
         ).startswith("Could not"):
             self.close()
-        if im.button(tr("Close") + "##workspace_traces", (BUTTON_W, 0)):
+        from chisurf.plugins.emtk_layout import action_button
+
+        if action_button("close", id="workspace_traces", size=(BUTTON_W, 0)):
             gui.track("dialog.cancel")
             self.close()
 

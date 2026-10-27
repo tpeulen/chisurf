@@ -2900,12 +2900,10 @@ guides/figures/fcs_correlator_step.png:
 
 guides/figures/fcs_filter_primary_window.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_17_primary_window
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/17_filtered_fcs.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/fcs_filter_primary_window.png.
+    Run the script named in origin (see the function that saves fcs_filter_primary_window.png);
+    from docs/guides/screenshots: python guides_15_25.py _grab_17_primary_window.
   pages:
   - docs/guides/17_filtered_fcs.md
 

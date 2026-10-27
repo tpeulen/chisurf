@@ -7,8 +7,9 @@ each is the pair that most reduces the mean RMSD between the conformations the c
 
 ## Inputs
 
-* **Trajectory**: the conformations. Choose the file with the **...** button or drop it on the window. The window
-  reads every **Stride**-th frame.
+* **Trajectory**: the conformations, picked in the Input section from the Datasets workspace (drop the file on the
+  ChiSurf window first; a picked PDB is the topology once a trajectory is set). The window reads every
+  **Stride**-th frame.
 * **Topology (optional)**: a PDB naming the atoms. A DCD stores coordinates only, so it needs one.
 * **FPS JSON (optional)**: when given, its labelling positions are the sites and its distances the candidate pairs.
   Without it, every pair of the residues listed under *Candidate sites from residues* is a candidate: **Chain**,

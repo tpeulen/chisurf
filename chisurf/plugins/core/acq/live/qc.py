@@ -38,9 +38,9 @@ _NOT_COMPUTED = ("FRET-2CDE > 30", "ALEX-2CDE > 30")
 
 def _issue_actions() -> dict[str, str]:
     try:  # the checker's issue texts (its report's Issues section)
-        from chisurf.plugins.burst.fret_check.report import _ISSUE_ACTION
+        from chisurf.plugins.burst.fret_check.report import ISSUE_ACTION
 
-        return dict(_ISSUE_ACTION)
+        return dict(ISSUE_ACTION)
     except Exception:  # noqa: BLE001 - fall back to each check's own explanation
         return {}
 

@@ -933,6 +933,21 @@
         "many": true,
         "key": "tables"
       }
+    },
+    {
+      "name": "project",
+      "summary": "A QuEst project JSON of the workspace: the forward model's complete form.",
+      "receive": "chisurf.plugins.quenching_estimator.gui.app:receive_project",
+      "required": [
+        "project"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "project"
+      }
     }
   ]
 }

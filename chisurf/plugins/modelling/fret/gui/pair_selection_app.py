@@ -49,9 +49,9 @@ PATH_ROWS = (
         "trajectory",
         "Open Trajectory",
         TRAJ_FILTER,
-        "The trajectory to select pairs from. Choose it with ... or drop it on the window.",
+        "The trajectory to select pairs from, picked in the Input section above.",
         "Choose the trajectory file.",
-        "Drop a trajectory here or browse...",
+        "Pick a trajectory in the Input section",
     ),
     (
         "topology",
@@ -260,11 +260,6 @@ class PairSelectionCard(CardShell):
         return docks
 
     # -- actions --------------------------------------------------------------------------------------------- #
-    def browse(self, row: tuple) -> None:
-        key, _caption, attr, title, filters = row[:5]
-        current = getattr(self.session, attr)
-        self.open_file(title, filters, lambda path: self.set_path(attr, path), current=current)
-
     def set_path(self, attr: str, path: str) -> None:
         setattr(self.session, attr, str(path))
         self.used(attr)
@@ -325,12 +320,11 @@ class PairSelectionCard(CardShell):
 
     def _draw_paths(self, section, model, state, width) -> None:
         label_w = self.label_column()
-        button_w = im.get_frame_height() + 6.0
         for row in PATH_ROWS:
-            key, caption, attr, _title, _filters, tip, browse_tip, hint = row
+            key, caption, attr, _title, _filters, tip, _browse_tip, hint = row
             im.text(caption)
             im.same_line(label_w)
-            im.set_next_item_width(max(80.0, width - label_w - button_w - 8.0))
+            im.set_next_item_width(max(80.0, width - label_w))
             im.input_text(
                 f"##{key}",
                 getattr(self.session, attr) or "",
@@ -340,11 +334,6 @@ class PairSelectionCard(CardShell):
             )
             im.set_item_tooltip(tip)
             self.remember(key)
-            im.same_line()
-            if im.button(f"...##{key}.browse", (button_w, 0)) and not self.session.running:
-                self.browse(row)
-            im.set_item_tooltip(browse_tip)
-            self.remember(f"{key}_browse")
 
     def _draw_inputs(self, box) -> None:
         s = self.session
@@ -379,10 +368,24 @@ class PairSelectionCard(CardShell):
             self.remember("working")
         self.status_line()
         im.separator()
+        # The Input section is a form of its own: drawn before (not inside) the main form.
+        if getattr(self, "files_input", None) is None:
+            from chisurf.plugins.curve_input import CurveInput
+
+            #: The trajectory, its topology and an FPS plan come from the Datasets workspace.
+            self.files_input = CurveInput("fret_docking", self, name="pair_inputs", title="", height=72.0)
+        im.begin_disabled(s.running)
+        rects: dict = {}
+        self.files_input.draw(rects, on_used=lambda _k: self.used("pair_inputs"))
+        im.end_disabled()
         self.form.rects.clear()
         self.label_column()
         draw_form(self.spec, s, self.form)
         self.item_rects.update(self.form.rects)
+        if rects:
+            self.item_rects["pair_inputs"] = rects.get("workspace_input_rows") or next(
+                iter(rects.values())
+            )
 
     def _draw_results(self, box) -> None:
         s = self.session

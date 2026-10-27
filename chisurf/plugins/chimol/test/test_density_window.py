@@ -416,7 +416,7 @@ def test_solid_is_translucent_unlit_fog_not_boxes(loaded):
     assert viewer.set_volume_mode("solid", object_id=object_id)
     assert viewer.get_volume_mode(object_id) == "solid"
 
-    # PRD-128 round 4, one volume renderer: solid is the GPU raymarch the
+    # the renderer rework (okf/specs/chimol.md), one volume renderer: solid is the GPU raymarch the
     # `.tomo.pto` containers use -- one composited view per map, no geometry
     # in the scene at all (the CPU plane stack is only the fallback).
     drawn = [obj for obj in viewer._scene.objects if "volume" in obj.id]

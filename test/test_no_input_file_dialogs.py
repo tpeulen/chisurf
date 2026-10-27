@@ -40,9 +40,21 @@ DIALOG_HELPERS = {
     "ask_path", "_open_dialog", "open_dialog", "_dialog",
 }
 INPUT_MODES = {"open", "folder"}
+#: Card tools (chisurf/emtk/card_shell.py) open an input file through these, without a mode.
+CARD_OPEN_HELPERS = {"open_file"}
+#: ... and the MMFDB picker through this.
+CARD_DATABASE_HELPERS = {"open_database"}
 PRAGMA = "# not-input:"
 #: Files whose ``# not-input:`` dialogs are allowed for good, with the reason. Not a worklist.
 NOT_INPUT = {
+    "chisurf/plugins/modelling/fret/gui/docking_card.py": (
+        "Docking output directory: where the docking results are written, an output (the structures "
+        "and the project or FPS plan come from the workspace)."
+    ),
+    "chisurf/plugins/quenching_estimator/gui/analysis_card.py": (
+        "Write results: the folder the analysis tables are written to, an output (the measurement "
+        "tables come from the workspace)."
+    ),
     "chisurf/plugins/burst/alex_suite/gui/step_apps.py": (
         "Titration export: the CSV the fitted series is written to, an output (the titration's "
         "burst runs come from the workspace)."
@@ -217,7 +229,9 @@ def findings_of(path: pathlib.Path, *, pragmas: list[int] | None = None) -> set[
         if not isinstance(node, ast.Call):
             continue
         name = _name(node.func)
-        if name in ("FileDialog", *DIALOG_HELPERS) and _pragma(lines, node.lineno):
+        if name in ("FileDialog", *DIALOG_HELPERS, *CARD_OPEN_HELPERS, *CARD_DATABASE_HELPERS) and _pragma(
+            lines, node.lineno
+        ):
             if pragmas is not None:
                 pragmas.append(node.lineno)
             continue
@@ -229,7 +243,11 @@ def findings_of(path: pathlib.Path, *, pragmas: list[int] | None = None) -> set[
             mode = _mode_of(node, 1)
             if mode in INPUT_MODES:
                 found.add("dialog")
-        elif name == "DatasetPicker":
+        elif name in CARD_OPEN_HELPERS and len(node.args) >= 3:
+            # A card tool's own open dialog (chisurf/emtk/card_shell.py: title, filters, on_pick):
+            # always for reading. A one-argument ``open_file(path)`` loads a path, no dialog.
+            found.add("dialog")
+        elif (name in CARD_DATABASE_HELPERS and len(node.args) >= 2) or name == "DatasetPicker":
             found.add("mmfdb")
     return found
 

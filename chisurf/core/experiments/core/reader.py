@@ -242,6 +242,24 @@ class ExperimentReader(chisurf.core.base.Base):
         state.update(chisurf.core.base.to_elementary(self.__dict__.copy(), skip_qt_widgets=True))
         return state
 
+    def reads_table(self, path: str | pathlib.Path) -> bool:
+        """Whether this reader takes the table file *path* itself.
+
+        A file of named columns is linked into the workspace as a table, unless the reader chosen
+        in Read data reads that kind of file (the PDA readers read ``.bur`` burst tables).
+
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            The dropped file.
+
+        Returns
+        -------
+        bool
+            ``False`` here; readers that read tables override it.
+        """
+        return False
+
     @abc.abstractmethod
     def read(
         self, filename: str | None = None, *args, **kwargs

@@ -69,6 +69,18 @@ _log = logging.getLogger("chisurf.emtk.shell")
 _ACTIVE_SHELL: Any = None
 
 
+def active_shell() -> Any:
+    """The ChiSurf shell open in this process, or ``None`` (standalone plugins, tests, the CLI).
+
+    Returns
+    -------
+    EmtkShellApp or None
+        The open shell; ``None`` once it has closed.
+    """
+    shell = _ACTIVE_SHELL() if _ACTIVE_SHELL is not None else None
+    return None if shell is None or getattr(shell, "_shell_closed", False) else shell
+
+
 def parse_shortcut(text: str) -> tuple[int, int] | None:
     """``"Ctrl+Shift+S"`` as ``(key, modifiers)`` of :mod:`emtk.keys` / :mod:`emtk.events`.
 

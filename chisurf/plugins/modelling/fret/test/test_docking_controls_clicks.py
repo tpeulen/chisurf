@@ -28,9 +28,7 @@ CANVAS = (1600, 1200)
 INPUT_TOOLBAR = frozenset(
     {
         "load_example",
-        "project",
         "save",
-        "fps_pick",
         "out_pick",
         "run",
         "stop",
@@ -39,7 +37,9 @@ INPUT_TOOLBAR = frozenset(
         "help",
     }
 )
-RIGID_BODY_TOOLBAR = frozenset({"add_pdb", "database_pdb", "remove_pdb", "clear_pdb"})
+RIGID_BODY_TOOLBAR = frozenset({"remove_pdb", "clear_pdb"})
+#: The project or FPS plan and the structures come from the workspace (two Input sections).
+WORKSPACE_INPUTS = frozenset({"setup_input", "structures_input"})
 FORM_CONTROLS = frozenset(
     {
         "fps_json",
@@ -194,22 +194,24 @@ def test_docking_tour_next_caption_click_advances_at_supported_viewport_sizes(ca
 
 
 def test_input_toolbar_and_rigid_body_controls_click_through_real_ui(inputs):
-    """Project/file/modal, run/stop, guide/help and rigid-body toolbar events reach the card."""
+    """Workspace inputs, save/output dialogs, run/stop, guide/help and rigid-body controls reach the card."""
     client = OfflineStructureClient(inputs["pdbs"][3])
     session = DockingSession()
     session.fps_json = str(inputs["fps_a"])
     app = make_app(session=session, mmfdb_client=client)
     ui = Ui(app, CANVAS)
     try:
+        from chisurf.plugins.modelling.fret.gui.app import (
+            receive_docking_setup,
+            receive_structures,
+        )
+
         rendered = set(app.item_rects)
         assert INPUT_TOOLBAR <= rendered and RIGID_BODY_TOOLBAR <= rendered
-        ui.click("project")
-        assert (
-            ui.dialog_open
-            and ui.shown("Load docking project")
-            and app.dialog.directory == str(inputs["project"].parent)
-        )
-        ui.dialog_pick(inputs["project"].name)
+        assert WORKSPACE_INPUTS <= rendered
+        assert not {"project", "fps_pick", "add_pdb", "database_pdb"} & rendered
+        receive_docking_setup(app, {"setup": str(inputs["project"])})  # a docking project
+        ui.draw(2)
         assert session.pdb_files == [str(inputs["pdbs"][0]), str(inputs["pdbs"][1])]
 
         saved = inputs["project"].parent / "saved-from-toolbar.json"
@@ -223,13 +225,8 @@ def test_input_toolbar_and_rigid_body_controls_click_through_real_ui(inputs):
         ui.press_text("Save")
         assert saved.exists() and session.status == f"saved {saved.name}"
 
-        ui.click("fps_pick")
-        assert (
-            ui.dialog_open
-            and ui.shown("Select fps.json or FPS LPs .txt")
-            and app.dialog.directory == str(inputs["fps_b"].parent)
-        )
-        ui.dialog_pick(inputs["fps_b"].name)
+        receive_docking_setup(app, {"setup": str(inputs["fps_b"])})  # an FPS plan
+        ui.draw(2)
         assert session.fps_json == str(inputs["fps_b"])
 
         ui.click("out_pick")
@@ -248,33 +245,13 @@ def test_input_toolbar_and_rigid_body_controls_click_through_real_ui(inputs):
         _wait_for(ui, lambda: not session.running, timeout=15)
         assert not session.running and session.status == "stopped"
 
-        ui.click("add_pdb")
-        assert (
-            ui.dialog_open
-            and ui.shown("Add PDB file")
-            and app.dialog.directory == str(inputs["pdbs"][2].parent)
-        )
-        ui.dialog_pick(inputs["pdbs"][2].name)
+        receive_structures(app, {"structures": [str(inputs["pdbs"][2])]})
+        ui.draw(2)
         assert str(inputs["pdbs"][2]) in session.pdb_files
-
-        ui.click("database_pdb")
-        _wait_for(
-            ui,
-            lambda: (
-                app.pickers
-                and app.pickers[0]._pending is None
-                and ui.shown(f"{inputs['pdbs'][3].name} [structure] (pdb)")
-            ),
-        )
-        ui.press_text(f"{inputs['pdbs'][3].name} [structure] (pdb)")
-        assert app.pickers[0].selection is not None
-        ui.press_text("Open selected")
-        _wait_for(ui, lambda: not app.pickers)
+        receive_structures(app, {"structures": [str(inputs["pdbs"][3])]})
+        ui.draw(2)
         assert session.pdb_files == [str(path) for path in inputs["pdbs"]]
-        assert [call[0] for call in client.calls] == [
-            "mmfdb.datasets.browse",
-            "mmfdb.datasets.open",
-        ]
+        assert client.calls == []  # structures come from the workspace, not an MMFDB picker
 
         pdb_table = app.pdb_form.tables["pdb_rows"].control
         _click_first_table_row(ui, pdb_table)

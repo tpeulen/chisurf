@@ -217,10 +217,10 @@
     "status": "ai-reviewed"
   },
   "17_filtered_fcs.md": {
-    "date": "2026-10-14",
-    "reviewer": "agent",
+    "date": "2026-10-27",
+    "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "ad79972ee88070c8958269699b68fb27698a16dc0b4b369ec2d13fe63acee3b6",
+    "sha256": "e6ac5402ad5485d8061939e8d89186ee19e9fb9ff97323cb64e9dae3bab76648",
     "status": "ai-reviewed"
   },
   "18_tttr_simulation.md": {
@@ -476,10 +476,10 @@
     "status": "ai-reviewed"
   },
   "54_hidden_markov_models.md": {
-    "date": "2026-10-26",
+    "date": "2026-10-27",
     "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "f38cd411e6d04e0a811243d3a964badfca5b3f730e0546967ac571554ff62609",
+    "sha256": "72007324c69fed020cbce443287c14e17bc2f0dd1ce37feb043881772149dfa9",
     "status": "ai-reviewed"
   },
   "55_pair_correlation.md": {
@@ -728,10 +728,10 @@
     "status": "ai-reviewed"
   },
   "92_hmm_binned_traces.md": {
-    "date": "2026-10-26",
+    "date": "2026-10-27",
     "reviewer": "claude",
     "reviewer_kind": "ai",
-    "sha256": "61b5c05dca0c836e14916d43c8ca8fbc5731b4f33cef1ad18eaaa2de06020019",
+    "sha256": "90acf74e80ac652ebd78eac44a4596455adf4c5b959ac8c3c6fd14b563687d76",
     "status": "ai-reviewed"
   },
   "93_psf_determination.md": {

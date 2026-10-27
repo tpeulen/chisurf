@@ -193,6 +193,30 @@ def _grab_17_filter_calculator():
     return app
 
 
+def _grab_17_primary_window():
+    """FCS Filter Calculator (emtk) at its declared tool size (1100 x 720) on the built-in example:
+    the Sources tab with filters computed (the measured decay, patterns and IRF are picked in the
+    Data tab from the workspace)."""
+    from emtk.testing import PixelPainter, png_encode
+    from emtk_shot import app_from
+
+    from chisurf.plugins.fcs.fcs_filter_calculator.test.driving import FilterDriver
+
+    width, height = 1100, 720
+    app = app_from("fcs_filter_calculator")
+    driver = FilterDriver(app, (width, height))
+    driver.settle()
+    for _ in range(2):
+        painter = PixelPainter(width, height)
+        app.draw(painter, 0, 0, width, height)
+    (FIG / "fcs_filter_primary_window.png").write_bytes(
+        png_encode(painter.width, painter.height, painter.px)
+    )
+    print("wrote fcs_filter_primary_window.png")
+    app.close()
+    return app
+
+
 # ---------------------------------------------------------------- guide 18
 def _grab_18_lfcs_sim():
     """Lifetime-FCS simulator after *Simulate* with its default two species."""

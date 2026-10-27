@@ -211,14 +211,6 @@ class DockingCard(CardShell):
         self.status, self.status_error = self.session.status, self.session.status_error
         self.request_frame()
 
-    def load_project(self) -> None:
-        self.open_file(
-            "Load docking project",
-            PROJECT_FILTER,
-            self._load_project,
-            current=self.session.fps_json,
-        )
-
     def _load_project(self, path: str) -> None:
         if self.session.load_project(path):
             self.used("project")
@@ -255,20 +247,13 @@ class DockingCard(CardShell):
         self.session.save_project(path)
         self.sync()
 
-    def pick_fps(self) -> None:
-        self.open_file(
-            "Select fps.json or FPS LPs .txt",
-            FPS_FILTER,
-            self._set_fps,
-            current=self.session.fps_json,
-        )
-
     def _set_fps(self, path: str) -> None:
         self.session.fps_json = path
         self.used("fps_json")
         self.sync()
 
     def pick_output(self) -> None:
+        # not-input: the directory the docking results are written to, an output.
         self.open_file(
             "Output directory",
             "All files (*)",
@@ -282,14 +267,6 @@ class DockingCard(CardShell):
         self.used("output_dir")
         self.sync()
 
-    def add_pdbs(self) -> None:
-        self.open_file(
-            "Add PDB file",
-            PDB_FILTER,
-            lambda p: self._add_pdb([p]),
-            current=self.session.pdb_files[-1] if self.session.pdb_files else "",
-        )
-
     def _add_pdb(self, paths: list[str]) -> None:
         self.session.add_pdbs(paths)
         self.session.say(
@@ -297,13 +274,6 @@ class DockingCard(CardShell):
         )
         self.used("pdb")
         self.sync()
-
-    def add_from_database(self) -> None:
-        """The Database button: pick a structure of the MMFDB database as the next rigid body (as the Qt list's does)."""
-        self.open_database(["structure"], self._database_paths, client=self.mmfdb_client)
-
-    def _database_paths(self, paths) -> None:
-        self._add_pdb([str(p) for p in paths])
 
     def run(self) -> None:
         if self.session.start():
@@ -347,24 +317,12 @@ class DockingCard(CardShell):
                     ),
                 },
                 {
-                    "label": "Project",
-                    "key": "project",
-                    "enabled": not running,
-                    "tip": "Load a docking project (.json): PDBs, fps.json and parameters.",
-                },
-                {
                     "label": action_caption("save"),
                     "key": "save",
                     "enabled": not running,
                     "tip": action_tooltip(
                         "save", "Save the current inputs and parameters as a docking project."
                     ),
-                },
-                {
-                    "label": "fps.json",
-                    "key": "fps_pick",
-                    "enabled": not running,
-                    "tip": "Choose the labelling/distance fps.json (or FPS LPs .txt) file.",
                 },
                 {
                     "label": "Output",
@@ -398,9 +356,7 @@ class DockingCard(CardShell):
         {
             None: lambda: None,
             "load_example": self.load_example,
-            "project": self.load_project,
             "save": self.save_project,
-            "fps_pick": self.pick_fps,
             "out_pick": self.pick_output,
             "run": self.run,
             "stop": s.stop,
@@ -413,21 +369,27 @@ class DockingCard(CardShell):
             self.remember("progress")
         self.status_line()
         im.separator()
+        if getattr(self, "setup_input", None) is None:
+            from chisurf.plugins.curve_input import CurveInput
+
+            #: A docking project or an FPS plan, and the structures, come from the workspace.
+            self.setup_input = CurveInput(
+                "fret_docking", self, name="docking_setup", title="Project or FPS plan", height=56.0
+            )
+            self.structures_input = CurveInput(
+                "fret_docking", self, name="structures", title="Structures", height=72.0
+            )
+        im.begin_disabled(running)
+        for key, section in (("setup_input", self.setup_input), ("structures_input", self.structures_input)):
+            rects: dict = {}
+            section.draw(rects, on_used=lambda _k, key=key: self.used(key))
+            # Both sections name their controls alike; the tour knows them by section.
+            if rects:
+                self.item_rects[key] = rects.get("workspace_input_rows") or next(iter(rects.values()))
+        im.end_disabled()
         im.text(tr("PDB rigid bodies (one per body)"))
         pressed = self.toolbar(
             [
-                {
-                    "label": "Add Files",
-                    "key": "add_pdb",
-                    "enabled": not running,
-                    "tip": "Add a structure file as the next rigid body (a dropped .pdb does the same).",
-                },
-                {
-                    "label": "Database",
-                    "key": "database_pdb",
-                    "enabled": not running,
-                    "tip": "Add a structure from the MMFDB database as the next rigid body.",
-                },
                 {
                     "label": "Remove",
                     "key": "remove_pdb",
@@ -442,11 +404,7 @@ class DockingCard(CardShell):
                 },
             ]
         )
-        if pressed == "add_pdb":
-            self.add_pdbs()
-        elif pressed == "database_pdb":
-            self.add_from_database()
-        elif pressed == "remove_pdb":
+        if pressed == "remove_pdb":
             self.view.delete_pdb({"body": self.view.pdb_selected})
             self.sync()
         elif pressed == "clear_pdb":

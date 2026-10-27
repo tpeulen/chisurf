@@ -528,10 +528,12 @@ class SpotFinderApp(ImApp):
         if pressed and not busy:
             dict((l, a) for l, _t, a, _e in actions)[pressed]()
             self.tour.notify_used(pressed)
-        im.text_disabled("Load settings")
+        im.text_disabled(tr("Load settings"))
         im.set_item_tooltip(
-            "Pick saved settings (a setup row of the Datasets workspace) to restore the complete "
-            "analysis configuration."
+            tr(
+                "Pick saved settings (a setup row of the Datasets workspace) to restore the complete "
+                "analysis configuration."
+            )
         )
         im.begin_disabled(busy)
         self.draw_input("settings", "Load settings")

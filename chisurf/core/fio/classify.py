@@ -83,6 +83,9 @@ TOOL_SCHEMA_PREFIX = "chisurf.tool/"
 LEGACY_TOOL_SETTINGS_KEYS: tuple[frozenset[str], ...] = (
     frozenset({"fix_mode", "shape_type"}),  # FCS calculator settings
     frozenset({"species_patterns", "total_path"}),  # FCS filter calculator project
+    frozenset({"fret_docking_project_version", "pdb_paths"}),  # FRET docking project
+    frozenset({"Positions", "Distances"}),  # FPS labelling plan (fps.json)
+    frozenset({"amino_acid_interactions", "av_parameter"}),  # QuEst project
 )
 
 

@@ -305,32 +305,23 @@ def test_controls_that_do_nothing_are_greyed(inputs):
 
 
 @pytest.mark.parametrize("row", [r[0] for r in PATH_ROWS])
-def test_browse_rows_open_the_dialog_and_take_the_pick(inputs, row):
+def test_workspace_picks_fill_the_path_rows(inputs, row):
+    """No ``...`` per row: the files come from the workspace Input section, sorted by kind."""
+    from chisurf.plugins.modelling.fret.gui.app import receive_pair_inputs
+
     ui = Ui(make_app(), (1200, 800))
     app = ui.app
-    spec = next(r for r in PATH_ROWS if r[0] == row)
-    pick = {"trajectory": "small.dcd", "topology": "topol.pdb", "fps_json": "hiv_rt.fps.json"}[row]
-    ui.click(f"{row}_browse")
-    assert ui.dialog_open and ui.shown(spec[3]) and ui.shown("Cancel")
-    app.dialog.enter(str(inputs))
-    ui.draw(2)
-    assert ui.shown(pick)
-    ui.press_text("Cancel")
-    assert not ui.dialog_open and not getattr(app.session, row)
-    ui.click(f"{row}_browse")
-    ui.press_text("×")
-    assert not ui.dialog_open and not getattr(app.session, row)
-    ui.click(f"{row}_browse")
-    app.dialog.enter(str(inputs))
-    ui.dialog_pick(pick)
-    assert getattr(app.session, row) == str(inputs / pick)
-    ui.click(f"{row}_browse")
-    app.dialog.enter(str(inputs))
-    ui.draw(2)
-    ui.press_text(pick, clicks=2)  # a double click takes it at once
-    assert not ui.dialog_open and getattr(app.session, row) == str(inputs / pick)
-    app.close()
-
+    try:
+        ui.draw(3)
+        assert "pair_inputs" in app.item_rects and f"{row}_browse" not in app.item_rects
+        pick = {"trajectory": "small.dcd", "topology": "topol.pdb", "fps_json": "hiv_rt.fps.json"}[row]
+        if row == "topology":
+            receive_pair_inputs(app, {"files": [str(inputs / "small.dcd")]})
+        receive_pair_inputs(app, {"files": [str(inputs / pick)]})
+        ui.draw(2)
+        assert getattr(app.session, row) == str(inputs / pick)
+    finally:
+        app.close()
 
 def test_a_path_row_is_read_only(inputs):
     ui = ready(inputs)
@@ -419,13 +410,15 @@ def test_the_tour_is_walked_by_the_user(inputs):
     steps = len(app.tour.steps)
     assert steps == 6 and app.tour.active and ui.shown(f"Step 1 of {steps}")
     ui.press_text("Next ►")
-    assert app.tour.step_idx == 1  # the trajectory step awaits the "..." row
+    assert app.tour.step_idx == 1  # the trajectory step awaits a pick in the Input section
     for step in app.tour.steps:
         key = step.get("target", {}).get("key")
         assert not key or key in app.item_rects or key in ("run", "export"), key
-    ui.click("trajectory_browse")  # use the awaited control: dialog opens, pick a file
-    app.dialog.enter(str(inputs))
-    ui.dialog_pick("small.dcd")
+    # Use the awaited control: a pick in the Input section hands the file over and reports it.
+    from chisurf.plugins.modelling.fret.gui.app import receive_pair_inputs
+
+    receive_pair_inputs(app, {"files": [str(inputs / "small.dcd")]})
+    app.used("pair_inputs")
     ui.draw(3)
     assert app.tour._step_used, "the await step did not complete when the awaited control was used"
     ui.press_text("Next ►")

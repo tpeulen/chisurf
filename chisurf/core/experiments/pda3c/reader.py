@@ -133,6 +133,10 @@ class Pda3cBurstTableReader(ExperimentReader):
 
         return load_view_spec(pathlib.Path(__file__).with_name("burst_table.view.json"))
 
+    def reads_table(self, path) -> bool:
+        """Chosen in Read data, this reader takes every dropped burst table."""
+        return True
+
     def read(self, filename=None, *args, **kwargs):
         """Read one or more burst tables into an experiment data group."""
         group = chisurf.core.data.ExperimentDataCurveGroup([])

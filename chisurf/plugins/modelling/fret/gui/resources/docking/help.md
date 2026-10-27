@@ -10,8 +10,9 @@ If you have not used it before, press **Guide** for the walk-through.
 
 | Input | Meaning |
 |---|---|
+| **Structures** | Structures of the Datasets workspace (drop a .pdb on the ChiSurf window, then pick it): each pick is the next rigid body. |
 | **PDB rigid bodies** | One structure per rigid body; the row number is the body id. The same file twice is a homodimer. |
-| **fps.json** | Labelling positions and measured distances (build them in ChiMOL's labelling window: ChiMOL › Tools › Labelling › Positions…), or an FPS LPs `.txt` file. |
+| **Project or FPS plan** | A setup row of the workspace: an fps.json with the labelling positions and measured distances (build one in ChiMOL's labelling window: ChiMOL › Tools › Labelling › Positions…), or a saved docking project. |
 | **Output** | Where the docked structures, the score file and the traces are written (`dock_out` next to the fps.json when left empty). |
 | **Op** | `dock` rigid-body docking; `refine` conservative minimisation; `screen` ranks a library of structures; `score` scores one structure. |
 | **Method** | `minimize` is fast conjugate-gradient minimisation; `mc` is replica-exchange Monte Carlo. |
@@ -25,7 +26,7 @@ One row per result, best score first; runs accumulate until **Clear**. The **Sco
 
 ## Projects
 
-**Project** and **Save** read and write a docking project: the structures, the fps.json, the output folder, the operation and the sampling parameters in one JSON file. A project that holds docked poses resumes from them (the **Resume** option).
+A docking project picked in **Project or FPS plan** is read, **Save** writes one: the structures, the fps.json, the output folder, the operation and the sampling parameters in one JSON file. A project that holds docked poses resumes from them (the **Resume** option).
 
 ## Limits
 

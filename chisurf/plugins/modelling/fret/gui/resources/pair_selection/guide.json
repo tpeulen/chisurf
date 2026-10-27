@@ -8,14 +8,14 @@
     },
     {
       "title": "The trajectory",
-      "text": "<b>Trajectory</b> takes the conformations (a DCD, XTC or similar; dropping the file on the window works too). A DCD stores coordinates only, so give the <b>Topology</b> PDB that names the atoms.",
-      "target": {"key": "trajectory_browse"},
-      "await": {"hint": "Press <b>...</b> next to Trajectory and choose the file, or drop it on the window."}
+      "text": "<b>Trajectory</b> takes the conformations (a DCD, XTC or similar) from the Datasets workspace: pick the trajectory, and with a DCD also the PDB that names its atoms (the topology), in the input above.",
+      "target": {"key": "pair_inputs"},
+      "await": {"hint": "Pick the trajectory in the input above (drop it on the ChiSurf window first)."}
     },
     {
       "title": "Where the sites come from",
       "text": "Either list the residues of one chain (the <b>Candidate sites from residues</b> group: every pair of them is a candidate), or give an <b>FPS JSON</b> whose labelling positions and distances are the candidates. With an FPS JSON the residue fields are not used.",
-      "target": {"key": "fps_json_browse"}
+      "target": {"key": "fps_json"}
     },
     {
       "title": "How efficiency is computed",

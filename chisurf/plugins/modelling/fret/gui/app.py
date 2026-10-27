@@ -297,27 +297,82 @@ def _paths(payload: dict, key: str) -> list[str]:
     return [str(read_address(str(v))) for v in values if v]
 
 
-def receive_structures(app: FretApp, payload: dict) -> bool:
+def _tool(app, index: int):
+    """The card a hand-off goes to: the plugin window's card *index* (opened if needed), or *app*
+    itself when the card draws the Input section (it is the card)."""
+    if not hasattr(app, "select"):
+        return app
+    child = app.select(ENTRIES[index]["name"])
+    if child is None:
+        raise ValueError(app.error or f"{ENTRIES[index]['name']} is not available")
+    return child
+
+
+def _kind(address: str) -> str:
+    """The workspace kind of *address*'s file (``structure``, ``trajectory``, ``setup``, ...)."""
+    from chisurf.core.fio.classify import classify
+
+    return classify(address)
+
+
+def receive_structures(app, payload: dict) -> bool:
     """Hand-off receiver (``structures``): workspace structures become the next rigid bodies of
     Docking & Screening."""
     paths = _paths(payload, "structures")
     if not paths:
         raise ValueError("no structure picked")
-    child = app.select(ENTRIES[0]["name"])
-    if child is None:
-        raise ValueError(app.error or "Docking & Screening is not available")
-    child._add_pdb(paths)
+    _tool(app, 0)._add_pdb(paths)
     return True
 
 
-def receive_topology(app: FretApp, payload: dict) -> bool:
+def receive_docking_setup(app, payload: dict) -> bool:
+    """Hand-off receiver (``docking_setup``): a docking project loads into Docking & Screening, an
+    FPS labelling plan (fps.json) becomes its distances."""
+    import json
+
+    paths = _paths(payload, "setup")
+    if not paths:
+        raise ValueError("no setup picked")
+    card = _tool(app, 0)
+    try:
+        with open(paths[0], encoding="utf-8") as handle:
+            keys = set(json.load(handle))
+    except (OSError, ValueError, TypeError):
+        keys = set()
+    if "fret_docking_project_version" in keys:
+        card._load_project(paths[0])
+    else:
+        card._set_fps(paths[0])
+    return True
+
+
+def receive_topology(app, payload: dict) -> bool:
     """Hand-off receiver (``topology``): a workspace structure becomes Pair Selection's topology."""
     paths = _paths(payload, "topology")
     if not paths:
         raise ValueError("no structure picked")
-    child = app.select(ENTRIES[1]["name"])
-    if child is None:
-        raise ValueError(app.error or "Pair Selection is not available")
-    child.set_path("topology", paths[0])
+    _tool(app, 1).set_path("topology", paths[0])
+    return True
+
+
+def receive_pair_inputs(app, payload: dict) -> bool:
+    """Hand-off receiver (``pair_inputs``): Pair Selection's files from the workspace, by kind -- a
+    trajectory is the trajectory, a structure its topology (or the trajectory itself when no
+    trajectory is picked or set), a setup row the FPS plan."""
+    paths = _paths(payload, "files")
+    if not paths:
+        raise ValueError("nothing picked")
+    card = _tool(app, 1)
+    kinds = {path: _kind(path) for path in paths}
+    trajectories = [p for p in paths if kinds[p] == "trajectory"]
+    structures = [p for p in paths if kinds[p] == "structure"]
+    setups = [p for p in paths if kinds[p] not in ("trajectory", "structure")]
+    if trajectories:
+        card.set_path("trajectory", trajectories[0])
+    if structures:
+        has_trajectory = bool(trajectories or getattr(card.session, "trajectory", ""))
+        card.set_path("topology" if has_trajectory else "trajectory", structures[0])
+    if setups:
+        card.set_path("fps_json", setups[0])
     return True
 

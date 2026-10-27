@@ -34,7 +34,9 @@
     "img_pixel_phasor": "*",
     "region_mle": "*",
     "spot_finder": "*",
-    "tttr_image_browser": "*"
+    "tttr_image_browser": "*",
+    "help": "*",
+    "setup": "*"
   },
   "requires": {
     "setup_channel_definition": "*"

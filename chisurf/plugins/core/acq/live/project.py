@@ -24,13 +24,10 @@ __all__ = [
 def active_shell() -> Any:
     """The ChiSurf shell open in this process, if any (the plugin also runs standalone)."""
     try:
-        from chisurf.emtk import main_app
-
-        ref = main_app._ACTIVE_SHELL
-        shell = ref() if ref is not None else None
-        return None if shell is None or getattr(shell, "_shell_closed", False) else shell
-    except Exception:  # noqa: BLE001 - no shell: standalone
+        from chisurf.emtk.main_app import active_shell as _active_shell
+    except Exception:  # noqa: BLE001 - no shell available: standalone
         return None
+    return _active_shell()
 
 
 def workspace_datasets(kind: str) -> list[Any]:
@@ -99,7 +96,7 @@ def add_to_workspace(datasets: list, label: str = "Adding the recording") -> boo
     shell = active_shell()
     data = getattr(shell, "data", None)
     api = getattr(getattr(data, "session", None), "api", None)
-    if data is None or api is None or not hasattr(data, "_start"):
+    if data is None or api is None or not hasattr(data, "run_job"):
         from chisurf.core.plugin.workspace_input import register_result
 
         for dataset in datasets:
@@ -113,5 +110,5 @@ def add_to_workspace(datasets: list, label: str = "Adding the recording") -> boo
                 return result
         return {"ok": True}
 
-    data._start(label, add, lambda _result: autosave())
+    data.run_job(label, add, lambda _result: autosave())
     return True

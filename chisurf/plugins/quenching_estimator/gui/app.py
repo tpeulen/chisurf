@@ -259,6 +259,21 @@ def receive_structure(app, payload: dict) -> bool:
     return True
 
 
+def receive_project(app, payload: dict) -> bool:
+    """Hand-off receiver (``project``): a QuEst project JSON fills the forward model's form."""
+    paths = _paths(payload, "project")
+    if not paths:
+        raise ValueError("no project picked")
+    if hasattr(app, "show_page"):
+        app.show_page("forward")
+    card = getattr(app, "forward", app)
+    if not card.session.load_project(paths[0]):
+        raise ValueError(card.session.message or f"cannot read {paths[0]}")
+    card.used("load_project")
+    card.sync()
+    return True
+
+
 def receive_tables(app, payload: dict) -> bool:
     """Hand-off receiver (``tables``): the analysis reads the folder that holds the three picked
     measurement tables."""

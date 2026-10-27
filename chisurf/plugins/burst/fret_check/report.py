@@ -23,8 +23,9 @@ except ImportError:  # pragma: no cover - the bundle guarantees ndxplorer
 _LEVEL_COLOR = {"ok": "#1b5e20", "warn": "#6b4300", "bad": "#b71c1c", "": "#333333"}
 
 
-#: What a flagged check means for the measurement, in one breath.
-_ISSUE_ACTION = {
+#: What a flagged check means for the measurement, in one breath (public: the live
+#: acquisition quality panel shows the same advice).
+ISSUE_ACTION = {
     "bursts": "too few bursts: measure longer or raise concentration",
     "burst density": "occupancy near the comfort-zone edge: dilute if high, measure longer if low",
     "multi-molecule events": "bursts overlap in focus: dilute the sample",
@@ -40,6 +41,8 @@ _ISSUE_ACTION = {
     "FRET-2CDE > 30": "FRET changes within bursts: dynamics or two molecules",
     "ALEX-2CDE > 30": "stoichiometry changes within bursts: blinking or two molecules",
 }
+#: The former private name, kept until 2027-04 for callers outside this module.
+_ISSUE_ACTION = ISSUE_ACTION
 
 
 def _fmt(x: Any, digits: int = 3) -> str:
@@ -486,7 +489,7 @@ def build_pdf_report(session) -> bytes:
         y = 0.385
         table.text(0.02, y, "Issues", color="#111111", align="left")
         if flagged:
-            parts = [f"{c.name}: {_ISSUE_ACTION.get(c.name, c.detail)}" for c in flagged]
+            parts = [f"{c.name}: {ISSUE_ACTION.get(c.name, c.detail)}" for c in flagged]
             for chunk in _wrap(parts, width=84):
                 if y - pitch < 0.10:  # the values line keeps its baseline
                     break

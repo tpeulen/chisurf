@@ -450,12 +450,6 @@ class QuestCard(CardShell):
             self.used("load_example")
         self.sync()
 
-    def load_project(self) -> None:
-        """Ask for a project file: the model requests the dialog, this window opens it."""
-        if self.session.model is not None:
-            self.session.model.load_project_dialog()
-            self.serve_dialog_request()
-
     def save_project(self) -> None:
         """Ask where to write the project: the model requests the dialog, this window opens it."""
         if self.session.model is not None:
@@ -477,12 +471,13 @@ class QuestCard(CardShell):
                 self.used(kind)
             self.sync()
 
-        if request.get("mode") == "save":
-            self.save_file(
-                request["title"], request["filters"], picked, filename=request.get("filename", "")
-            )
-        else:
-            self.open_file(request["title"], request["filters"], picked)
+        if request.get("mode") != "save":
+            # A project to read comes from the workspace (the Project input), never a dialog.
+            self.say("Pick the project in the Project input (a setup row of the workspace).", True)
+            return
+        self.save_file(
+            request["title"], request["filters"], picked, filename=request.get("filename", "")
+        )
 
     def simulate(self) -> None:
         if self.session.simulate():
@@ -537,12 +532,6 @@ class QuestCard(CardShell):
                     ),
                 },
                 {
-                    "label": "Load project...",
-                    "key": "load_project",
-                    "enabled": not running,
-                    "tip": "Read a QuEst project JSON written by any surface.",
-                },
-                {
                     "label": "Save project...",
                     "key": "save_project",
                     "tip": "Write the form as project JSON, the file the quest command line reads.",
@@ -555,7 +544,6 @@ class QuestCard(CardShell):
             "simulate": self.simulate,
             "cancel": self.cancel_simulation,
             "load_example": self.load_example,
-            "load_project": self.load_project,
             "save_project": self.save_project,
             "guide": self.start_guide,
             "help": self.show_help,
@@ -573,6 +561,14 @@ class QuestCard(CardShell):
                 "quenching_estimator", self, name="structure", title="Structure", height=72.0
             )
         self.structure_input.draw(self.form.rects, on_used=self.used)
+        if getattr(self, "project_input", None) is None:
+            from chisurf.plugins.curve_input import CurveInput
+
+            #: A saved project comes from the workspace too (``accepts`` ``project``).
+            self.project_input = CurveInput(
+                "quenching_estimator", self, name="project", title="Project", height=56.0
+            )
+        self.project_input.draw(self.form.rects, on_used=self.used)
         draw_form(self.spec, s.model, self.form)
         im.end_disabled()
         self.item_rects.update(self.form.rects)

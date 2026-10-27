@@ -178,6 +178,10 @@ class Pda2cReader(ExperimentReader):
         """Replace the file list by *value* (a path, ``|``-joined paths, or a sequence)."""
         self.files = [{"use": True, "path": path} for path in split_filenames(value)]
 
+    def reads_table(self, path) -> bool:
+        """A ``.bur``/``.bid``/``.bst`` burst table is read here, not linked as a table."""
+        return pathlib.Path(path).suffix.lower() in BURST_EXTENSIONS
+
     def resolve_inputs(self, filename=None, progress=None) -> ResolvedInputs:
         """The TTTR files and burst intervals *filename* (default: :attr:`filename`) stands for.
 

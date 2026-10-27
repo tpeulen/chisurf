@@ -18,19 +18,19 @@
     },
     {
       "title": "The rigid bodies",
-      "text": "One structure per rigid body, in the order of their body ids. <b>Add Files</b> adds one (so does dropping a .pdb on the window). The same file twice is a homodimer.",
+      "text": "One structure per rigid body, in the order of their body ids. The <b>Structures</b> input adds one from the Datasets workspace (drop a .pdb on the ChiSurf window first). The same file twice is a homodimer.",
       "target": {
         "key": "pdb_rows"
       }
     },
     {
       "title": "The restraints",
-      "text": "<b>fps.json</b> chooses the labelling and distance file. Build one in ChiMOL's labelling editor (<b>Tools › Labelling</b>).",
+      "text": "<b>Project or FPS plan</b> takes the labelling and distance file (fps.json) from the Datasets workspace: drop it on the ChiSurf window, then pick it here. A saved docking project picked here loads the structures, the plan and the parameters. Build a plan in ChiMOL's labelling editor (<b>Tools › Labelling</b>).",
       "target": {
-        "key": "fps_pick"
+        "key": "setup_input"
       },
       "await": {
-        "hint": "Press <b>fps.json</b> and choose the file."
+        "hint": "Pick the fps.json in the <b>Project or FPS plan</b> input."
       }
     },
     {

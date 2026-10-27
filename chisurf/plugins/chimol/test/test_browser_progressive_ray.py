@@ -1,4 +1,4 @@
-"""The progressive ray tracer runs in the page (PRD-128 round 5).
+"""The progressive ray tracer runs in the page (the renderer rework (okf/specs/chimol.md)).
 
 ``render_mode quality`` traces the still view one jittered sample per frame
 and shows the running mean over the scene column. Until round 5 the mean was

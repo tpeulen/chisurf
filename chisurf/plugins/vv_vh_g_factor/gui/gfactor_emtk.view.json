@@ -383,12 +383,11 @@
           "key": "path_list",
           "target": "batch_files",
           "title": "VV/VH files",
-          "description": "Queue files from disk, a folder or the database; remove or clear inputs without deleting their files.",
+          "description": "VV/VH decays picked in the Input section; remove or clear them without deleting their files.",
           "options": {
             "target": "batch_files",
             "add_tip": "Choose VV/VH decay files to add.",
-            "empty": "No VV/VH decays queued. Pick them in the Input section.",
-            "workspace": true
+            "empty": "No VV/VH decays queued. Pick them in the Input section."
           }
         },
         {

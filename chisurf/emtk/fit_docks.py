@@ -764,6 +764,8 @@ class DataDocks:
         self._reader_apps: dict[int, Any] = {}
         self._reader_errors: dict[int, str] = {}
         self._starting = BackgroundBuild(wake=self.request_frame)
+        #: Files dropped before the session was up; :meth:`adopt` adds them.
+        self._pending_drops: list[str] = []
         self._session_factory = session_factory
         self._job_queue: list[tuple[str, Callable[[], Any], Any, Any]] = []
         #: Running imports (hashing, header reads) beside the job queue, with their progress.
@@ -859,6 +861,9 @@ class DataDocks:
             self.read.experiment_changed(self.read.experiment)
         self._dirty |= {"datasets", "fits", "current", "windows"}
         self.status = tr("Ready")
+        pending, self._pending_drops = self._pending_drops, []
+        if pending:
+            self.drop(pending)  # files dropped while the session was starting
 
     def poll(self) -> None:
         """Once per frame, before drawing: adopt the session, finish calls, handle events, re-read."""
@@ -927,6 +932,25 @@ class DataDocks:
                 state=state or "?", error=status.get("error", "")
             )
         self._dirty |= {"current"}
+
+    def run_job(self, label: str, call: Callable[[], Any], after=None, failed=None) -> bool:
+        """Run *call* on the shell's worker with *label* in the status line, one job at a time.
+
+        Parameters
+        ----------
+        label : str
+            What the status line shows while the job runs.
+        call : callable
+            The work; it may return ``{"ok": False, "error": ...}`` to report a failure.
+        after, failed : callable, optional
+            Called on the UI thread with the result, or with the error text.
+
+        Returns
+        -------
+        bool
+            ``False`` when the shell has no session to run on.
+        """
+        return self._start(label, call, after, failed)
 
     def _start(self, label: str, call: Callable[[], Any], after=None, failed=None) -> bool:
         """Run *call* on the worker; one at a time, queueing if already busy."""
@@ -1705,13 +1729,29 @@ class DataDocks:
         worker (hashing is done once, there); structures and curve files are read -- a structure
         by the structure reader, a curve by the selected file type, as before.
         """
-        if not paths or self.session is None:
+        if not paths:
+            return False
+        if self.session is None:
+            if self._starting.busy:
+                # The session is still starting: keep the files and add them once it is up
+                # (adopt), rather than losing a drop made during start-up.
+                self._pending_drops.extend(str(path) for path in paths)
+                self.status = tr("Starting the session… {names} will be added then.").format(
+                    names=", ".join(Path(p).name for p in self._pending_drops[:3])
+                )
+                return True
+            self.status = self.session_status()
             return False
         from chisurf.core.fio.classify import classify
 
         groups: dict[str, list[str]] = {}
+        chosen = self.read.reader()
         for path in paths:
-            groups.setdefault(classify(path), []).append(str(path))
+            kind = classify(path)
+            # A table the chosen reader reads itself (PDA and its .bur burst tables) goes to it.
+            if kind == "table" and chosen is not None and chosen.reads_table(path):
+                kind = "curve"
+            groups.setdefault(kind, []).append(str(path))
         handled = False
         if groups.get("project"):
             project = getattr(self.shell, "project", None)

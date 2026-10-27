@@ -74,9 +74,12 @@ def test_structure_from_the_workspace_project_save_and_reload_by_clicks(app, pdb
 
     app.session.model.n_photons = 4321
     ui.draw(2)
-    ui.click("load_project")
-    assert ui.dialog_open and ui.shown("Load project")
-    ui.dialog_pick(saved.name)
+    # The saved project comes back from the workspace (the Project input), not an open dialog.
+    from chisurf.plugins.quenching_estimator.gui.app import receive_project
+
+    assert "load_project" not in app.item_rects
+    receive_project(app, {"project": str(saved)})
+    ui.draw(2)
     assert app.session.model.project["n_photons"] == on_disk["n_photons"]
     assert "Loaded quest_project.json" in app.session.message
 

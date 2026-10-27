@@ -92,6 +92,38 @@
         "many": false,
         "key": "topology"
       }
+    },
+    {
+      "name": "docking_setup",
+      "summary": "A docking project or an FPS labelling plan (fps.json) of the workspace for Docking & Screening.",
+      "receive": "chisurf.plugins.modelling.fret.gui.app:receive_docking_setup",
+      "required": [
+        "setup"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "setup"
+        ],
+        "many": false,
+        "key": "setup"
+      }
+    },
+    {
+      "name": "pair_inputs",
+      "summary": "The trajectory, its topology and an optional FPS plan of the workspace for Pair Selection.",
+      "receive": "chisurf.plugins.modelling.fret.gui.app:receive_pair_inputs",
+      "required": [
+        "files"
+      ],
+      "from_workspace": {
+        "kinds": [
+          "trajectory",
+          "structure",
+          "setup"
+        ],
+        "many": true,
+        "key": "files"
+      }
     }
   ]
 }

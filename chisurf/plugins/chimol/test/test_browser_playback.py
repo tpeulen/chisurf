@@ -78,7 +78,8 @@ def page(server):
 
 
 _FRAME = "() => globalThis.emtkApp.view.get_frame_position()"
-#: The movie's own clock. `animating()` is wider since PRD-128 WP6: a still
+#: The movie's own clock. `animating()` is wider since the renderer rework (okf/specs/chimol.md): a
+#: still
 #: view also asks for frames while TAA accumulates, then stops once converged.
 _RUNNING = "() => globalThis.emtkApp.view.playback.running"
 _ANIMATING = "() => globalThis.emtkApp.animating()"
