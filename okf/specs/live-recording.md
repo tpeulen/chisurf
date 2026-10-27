@@ -246,7 +246,7 @@ stage that drives it, and the A/B guard against `burst_selection` on the recorde
 
 The device layer is CMC's own driver stack, not PicoQuant's libraries: `pqusb` (Python reference
 implementation, `~/dev/cmc/tools/pqusb`) and **rustytime** (`~/dev/cmc/tools/rustytime`, the Rust
-implementation: SymPhoTime-compatible acquisition, native PicoQuant device control, continuous T2/T3
+implementation: acquisition compatible with the vendor's acquisition software, native PicoQuant device control, continuous T2/T3
 streaming to PTU). Both are developed in the CMC repository by the owner. ChiSurf consumes them through
 one source interface in the Record tool (`chisurf/plugins/core/acq/live/`); it never talks to USB itself.
 ChiSurf uses pqusb today and switches to rustytime when rustytime exposes what ChiSurf needs (a Python
@@ -254,8 +254,8 @@ binding or a streaming interface); the switch is a backend choice, not a rewrite
 
 ## Imaging acquisition (owner 2026-10-26)
 
-The Record tool also acquires **images**, like SymPhoTime: a scanner (piezo stage first, then whatever
-SymPhoTime supports — galvo/LSM integration via line/frame markers) moves the focus while the TCSPC
+The Record tool also acquires **images**, like the vendor's acquisition software: a scanner (piezo stage first, then whatever
+that software supports — galvo/LSM integration via line/frame markers) moves the focus while the TCSPC
 device records photons with frame/line/pixel markers.
 
 - **Scanner control** is a device-layer job (rustytime): scan area, pixels, dwell time, line/frame
