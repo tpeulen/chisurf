@@ -326,6 +326,11 @@ class DeviceSource(PhotonSource):
         int and float keep their PicoQuant type."""
         mode = phacq.MeasurementMode.T3
         writer = phacq.PtuWriter(str(path), self.device.information(), mode)
+        for key, value, index in hardware_tags(self.device):
+            if isinstance(value, bool):
+                writer.set_tag_bool(key, value, index)
+            else:
+                writer.set_tag_int(key, int(value), index)
         for key, value in (extra or {}).items():
             if isinstance(value, bool):
                 writer.set_tag_bool(key, value)
@@ -336,6 +341,58 @@ class DeviceSource(PhotonSource):
             else:
                 writer.set_tag(key, str(value))
         return _PtuRecorder(writer, self)
+
+
+#: phacq setting -> PicoQuant PTU tag (the time-tagged file format's tag dictionary); per-input
+#: settings become indexed tags. What a reader such as SymPhoTime or ChiSurf's settings recovery
+#: (``settings_file.from_ptu_tags``) takes the instrument state from.
+_SYNC_TAGS = {
+    "sync_divider": "HWSync_Divider",
+    "sync_level_mv": "HWSync_TrgLevel",
+    "sync_edge": "HWSync_TrgEdge",
+    "sync_offset_ps": "HWSync_Offset",
+    "sync_cfd_discr_mv": "HWSync_CFDLevel",
+    "sync_cfd_zerox_mv": "HWSync_CFDZeroCross",
+}
+_INPUT_TAGS = {
+    "input_level_mv": "HWInpChan_TrgLevel",
+    "input_edge": "HWInpChan_TrgEdge",
+    "input_offset_ps": "HWInpChan_Offset",
+    "input_enable": "HWInpChan_Enabled",
+    "input_cfd_discr_mv": "HWInpChan_CFDLevel",
+    "input_cfd_zerox_mv": "HWInpChan_CFDZeroCross",
+}
+
+
+def hardware_tags(dev) -> list[tuple[str, Any, int]]:
+    """The device's settings as PTU header tags ``(name, value, index)``; index -1 = not indexed.
+
+    Only settings the device has and reports are written: a PicoQuant unit fills them, a B&H
+    card (other names) writes none of these.
+    """
+    try:
+        s = dict(dev.settings())
+    except Exception:  # noqa: BLE001 - a device that cannot report: no hardware tags
+        return []
+    out: list[tuple[str, Any, int]] = []
+    for name, tag in _SYNC_TAGS.items():
+        if s.get(name) is not None:
+            out.append((tag, s[name], -1))
+    for key, value in s.items():
+        base, _, rest = key.partition("[")
+        if value is None or not rest or base not in _INPUT_TAGS:
+            continue
+        out.append((_INPUT_TAGS[base], value, int(rest.rstrip("]"))))
+    if s.get("offset_ns") is not None:
+        out.append(("MeasDesc_Offset", s["offset_ns"], -1))
+    if s.get("marker_enable") is not None:
+        enable, edges = int(s["marker_enable"]), int(s.get("marker_edges") or 0)
+        for i in range(4):
+            out.append(("HWMarkers_Enabled", bool(enable >> i & 1), i))
+            out.append(("HWMarkers_RisingEdge", bool(edges >> i & 1), i))
+        if s.get("marker_holdoff_ns") is not None:
+            out.append(("HWMarkers_HoldOff", s["marker_holdoff_ns"], -1))
+    return out
 
 
 class _PtuRecorder:

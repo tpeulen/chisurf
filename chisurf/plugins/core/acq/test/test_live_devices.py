@@ -140,3 +140,26 @@ def test_the_record_panel_sends_an_edit_and_reverts_a_refused_one(tmp_path):
     assert "input_level_mv[2]" in model.device_text
     assert getattr(model.device_form._params_group, "input_level_mv[2]") == -50  # panel reverts
     model.device = None
+
+
+def test_a_recording_carries_the_device_settings_as_ptu_hardware_tags(tmp_path):
+    """The PTU header holds the device's identity and settings under PicoQuant's tag names, so
+    a reader (SymPhoTime, ChiSurf's settings recovery) gets the instrument state back."""
+    from chisurf.plugins.core.acq.live import settings_file
+
+    dev = _fake(duration_s=0.2)
+    dev.apply({"input_level_mv[1]": -120, "input_edge[1]": 1, "input_enable[2]": False})
+    source = devices.DeviceSource(dev)
+    session = RecordSession(source, duration_s=0.2, ptu_path=tmp_path / "tags.ptu", name="tags")
+    session.start()
+    assert session.wait(30) is not None
+    tags = settings_file.read_ptu_tags(tmp_path / "tags.ptu")
+    info = dev.information()
+    assert tags["HW_Type"] == info.model                    # the device, not the maker
+    assert tags["HW_InpChannels"] == info.number_of_channels  # inputs, without the sync
+    assert tags["HWInpChan_TrgLevel(1)"] == -120 and tags["HWInpChan_TrgEdge(1)"] == 1
+    assert tags["HWInpChan_Enabled(2)"] is False
+    doc, _missing = settings_file.from_ptu_tags({k: v for k, v in tags.items()
+                                                 if k != settings_file.CHISURF_SETTINGS_TAG})
+    inputs = {c["channel"]: c for c in doc["device"]["inputs"]}
+    assert inputs[1]["level_mv"] == -120 and inputs[1]["edge"] == "rising"
