@@ -40,10 +40,18 @@ detour: on Windows phacq opens it through its own WinUSB binding.
 **Every setting a device has is offered.** The driver describes its settings
 itself — names, units, ranges, choices, which are per input — and Record builds
 the device's panel from that description, so nothing is left out and a setting
-a newer phacq adds appears without a ChiSurf change. The thresholds, shifts,
-timing and markers are behind **Advanced** (off by default): a loaded settings
-file or profile sets them, and they stay as calibrated. Connect a device under
-**Acquisition → TCSPC device** and tick **Advanced** to see them: its settings start folded by group — the sync,
+a newer phacq adds appears without a ChiSurf change.
+
+**Simple or Advanced — one switch for all the hardware.** **Advanced**, under the
+settings choice at the top of **Acquisition**, is off by default: the simple view
+shows what a measurement needs — the laser's intensity, pulsed switch and soft
+lock, the shutters' checkboxes and the power-diode reading, the run. Ticking it
+adds, everywhere at once, the settings each phacq driver marks as expert
+(``"advanced": true`` in its schema): the TCSPC unit's thresholds, shifts, timing
+and markers; the laser's repetition rate, head type and slot; the shutters'
+reported state and the diode averaging; the simulator's sample and instrument
+realism. A loaded settings file or profile sets them either way, and they stay as
+calibrated. With **Advanced** on, the TCSPC device's settings start folded by group — the sync,
 each input on its own fold, timing, markers and outputs (for a B&H card its CFD, sync, TAC, timers and FIFO mode).
 An edit is sent at once, between runs; a value the device refuses is named in
 the status line and nothing of that edit is applied. The values are saved in

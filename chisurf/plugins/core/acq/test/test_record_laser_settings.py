@@ -370,3 +370,31 @@ def test_the_laser_button_toggles_and_changes_colour(model):
     assert (model.laser_toggle_label(), model.laser_toggle_role()) == ("Laser off", "danger")
     assert model.laser_toggle() and model.laser.events[-1] == "emission off"
     assert model.laser_toggle_label() == "Laser on"
+
+
+def test_advanced_is_one_switch_for_all_the_hardware(tmp_path):
+    """Simple (the default) leaves out what the drivers mark advanced -- here the shutters'
+    reported state and diode averaging; Advanced brings them back, for every form at once."""
+    _need_shutters_driver()
+    from chisurf.plugins.core.acq.gui.record_app import RecordApp, RecordModel
+    from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
+
+    model = RecordModel(output_dir=tmp_path / "rec", realtime=False)
+    app = RecordApp(model)
+    try:
+        assert model.connect_shutters(SIM_SHUTTERS)
+        assert "open_excitation" in model.shutter_form.params()
+        assert "reported_excitation" not in model.shutter_form.params()
+        ui = Driver(app, (1500, 1100))
+        app.focus_dock("acquisition")
+        ui.draw(3)
+        ui.click_text("Advanced")                   # the switch sits under the settings choice
+        ui.draw(2)
+        assert model.advanced
+        assert "reported_excitation" in model.shutter_form.params()
+        assert not model.device_form_hidden or model.source_kind != "device"
+        model.advanced = False
+        model.advanced_changed()
+        assert "diode_mark" not in model.shutter_form.params()
+    finally:
+        app.close()

@@ -42,6 +42,17 @@ def _method_field(method: typing.Any, key: str, default: typing.Any = None) -> t
     return getattr(method, key, default)
 
 
+#: The attribute a read-only choice is shown through: its value's label.
+SHOWN_SUFFIX = "__shown"
+
+
+def _number_text(value: typing.Any) -> str:
+    """``0.0`` -> ``"0"``: a device reports a choice as a float, the schema lists integers."""
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
+
+
 class _ParamsGroup(_SettingsGroup):
     """A :class:`_SettingsGroup` that records which parameters were edited.
 
@@ -50,9 +61,20 @@ class _ParamsGroup(_SettingsGroup):
     untouched ``micro_time_max: 0`` would gate away every photon).
     """
 
-    def __init__(self, data, on_change, touched: typing.Set[str]):
+    def __init__(self, data, on_change, touched: typing.Set[str],
+                 shown: typing.Optional[typing.Dict[str, typing.Dict[str, str]]] = None):
         super().__init__(data, on_change)
         object.__setattr__(self, "_touched", touched)
+        object.__setattr__(self, "_shown", shown or {})
+
+    def __getattr__(self, name):
+        # a read-only choice shows its value's label ("closed"), not the value (0)
+        if name.endswith(SHOWN_SUFFIX):
+            key = name[: -len(SHOWN_SUFFIX)]
+            value = super().__getattr__(key)
+            labels = object.__getattribute__(self, "_shown").get(key, {})
+            return labels.get(str(value), labels.get(_number_text(value), str(value)))
+        return super().__getattr__(name)
 
     def __setattr__(self, name, value):
         object.__getattribute__(self, "_touched").add(name)
@@ -97,6 +119,8 @@ class RpcMethodView:
         self._json_props: typing.Set[str] = set()
         #: Original enum values per property (choice widgets commit strings).
         self._enums: typing.Dict[str, typing.Tuple[typing.Any, ...]] = {}
+        #: Read-only choices: value text -> label, shown in place of the value.
+        self._shown: typing.Dict[str, typing.Dict[str, str]] = {}
 
         self._values: typing.Dict[str, typing.Any] = {}
         #: Parameters carrying a real value from the start (schema default or
@@ -115,7 +139,7 @@ class RpcMethodView:
 
         # AutoForm resolves each section's ``target`` via ``getattr(model, target)``;
         # the sections all point at this one live binding group.
-        self._params_group = _ParamsGroup(self._values, on_change, self._touched)
+        self._params_group = _ParamsGroup(self._values, on_change, self._touched, self._shown)
         panel = PanelSection(
             title=title if title is not None else self.method_name,
             description=self.description or self.summary,
@@ -213,9 +237,11 @@ class RpcMethodView:
                 tuple(tr(str(v)) for v in raw_labels) if len(raw_labels) == len(options) else ()
             )
             if read_only:
+                if labels:
+                    self._shown[name] = dict(zip(options, labels))
                 return ValueSection(
-                    label=label, kind="str", read_only=True, target=target, attr=name,
-                    description=description,
+                    label=label, kind="str", read_only=True, target=target,
+                    attr=name + SHOWN_SUFFIX if labels else name, description=description,
                 )
             return ChoiceSection(
                 label=label, options=options, labels=labels, target=target, attr=name,

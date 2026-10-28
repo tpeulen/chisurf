@@ -171,7 +171,8 @@ class LaserSettingsMixin:
         self._laser_sent = dict(dev.settings())
         # open: the laser's switches are the quick controls
         self.laser_form = devices.settings_form(dev, self._laser_sent,
-                                                on_change=self.laser_settings_edited, folded=False)
+                                                on_change=self.laser_settings_edited, folded=False,
+                                                advanced=self.advanced)
 
     def _laser_follow_device(self) -> None:
         """The laser's controls show the laser's values (read-only ones included), in place."""
@@ -472,12 +473,28 @@ class LaserSettingsMixin:
             return False
         self.shutter_section = dict(section)
         self.shutter_text = tr("Shutters: {names}").format(names=", ".join(self._shutter_names()))
+        self._shutter_form_from_device()
+        return True
+
+    def _shutter_form_from_device(self) -> None:
         from chisurf.plugins.core.acq.live import devices
 
         self.shutter_form = devices.settings_form(self.shutters, dict(self.shutters.settings()),
                                                   on_change=self.shutter_settings_edited,
-                                                  folded=False)
-        return True
+                                                  folded=False, advanced=self.advanced)
+
+    def advanced_changed(self, _value: bool | None = None) -> None:
+        """Simple / Advanced, for every piece of hardware at once: the device's settings, the
+        laser's and the shutters' forms are rebuilt with or without their expert settings."""
+        if getattr(self.laser, "device", None) is not None and self.laser_form is not None:
+            self._laser_form_from_device()
+        if self.shutters is not None:
+            self._shutter_form_from_device()
+
+    @property
+    def realism_hidden(self) -> bool:
+        """The simulator's sample & instrument realism: an expert's knobs, Advanced only."""
+        return self.source_kind != "simulator" or not self.advanced
 
     def shutter_settings_edited(self) -> None:
         """A checkbox in the shutters' form: send what changed."""

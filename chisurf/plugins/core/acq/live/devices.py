@@ -176,7 +176,8 @@ def device_label(dev) -> str:
     return " ".join(x for x in (info.vendor, info.model, info.serial_number) if x)
 
 
-def settings_form(dev, values: dict | None = None, on_change=None, *, folded: bool = True):
+def settings_form(dev, values: dict | None = None, on_change=None, *, folded: bool = True,
+                  advanced: bool = True):
     """The device's complete settings form: every setting phacq describes, grouped as the driver
     groups them (sync, inputs one panel each, timing, markers ...).
 
@@ -193,13 +194,31 @@ def settings_form(dev, values: dict | None = None, on_change=None, *, folded: bo
         Called with no argument after an edit.
     folded : bool
         Start with every group folded (the default: a TCSPC unit has dozens of settings).
+    advanced : bool
+        Show the settings the driver marks advanced (``"advanced": true`` in its schema);
+        off, the form is the simple view without them.
     """
     from chisurf.core.registry.tttrlib import entry_form_view_for
 
     current = dict(dev.settings())
     if values:
         current.update({k: v for k, v in values.items() if k in current})
-    return entry_form_view_for(dev.schema(), values=current, on_change=on_change, folded=folded)
+    schema = dev.schema()
+    if not advanced:
+        schema = simple_schema(schema)
+        current = {k: v for k, v in current.items()
+                   if k in schema["params_schema"]["properties"]}
+    return entry_form_view_for(schema, values=current, on_change=on_change, folded=folded)
+
+
+def simple_schema(schema: dict) -> dict:
+    """*schema* without the settings its driver marks ``advanced``."""
+    params = dict(schema.get("params_schema") or {})
+    props = {k: v for k, v in (params.get("properties") or {}).items() if not v.get("advanced")}
+    params["properties"] = props
+    if "required" in params:
+        params["required"] = [k for k in params["required"] if k in props]
+    return {**schema, "params_schema": params}
 
 
 def apply_settings(dev, values: dict) -> list[str]:

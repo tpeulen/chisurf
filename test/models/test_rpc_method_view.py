@@ -171,3 +171,18 @@ def test_non_string_enum_values_round_trip():
     group = view._params_group
     setattr(group, "order", "4")  # a choice widget commits the string label
     assert view.params()["order"] == 4
+
+
+def test_a_read_only_choice_shows_its_label():
+    """A device reports a read-only choice as a number (0.0); the form shows its label."""
+    from chisurf.core.dataspec.rpc import SHOWN_SUFFIX, RpcMethodView
+
+    view = RpcMethodView({"name": "box", "params_schema": {"properties": {
+        "state": {"type": "integer", "enum": [-1, 0, 1], "enum_labels": ["—", "closed", "open"],
+                  "readOnly": True}}}}, values={"state": 0.0})
+    section = view.view_spec().sections[0].sections[0]
+    assert section.attr == "state" + SHOWN_SUFFIX
+    assert getattr(view._params_group, section.attr) == "closed"
+    view.update_values({"state": 1})
+    assert getattr(view._params_group, section.attr) == "open"
+    assert view.params()["state"] == 1

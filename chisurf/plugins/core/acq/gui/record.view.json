@@ -15,6 +15,13 @@
           "description": "A settings file (⚙), a profile (★) or a measurement (⏱) of the workspace. Choosing a settings file or profile loads it at once: it connects the device and the laser it names and applies its settings (the laser's emission stays off). Settings files enter ChiSurf through the drop, like every input."
         },
         {
+          "type": "toggle",
+          "attr": "advanced",
+          "label": "Advanced",
+          "description": "Simple (off) or Advanced (on), for all the hardware at once. Simple shows what a measurement needs: the laser's intensity and on/off, the shutters, the run. Advanced adds the expert settings each driver marks: the TCSPC unit's thresholds (CFD levels), shifts (sync and input offsets), timing and markers; the laser's repetition rate and head details; the shutters' reported state and the diode averaging; the simulator's realism. A loaded settings file sets them all either way.",
+          "call": "advanced_changed"
+        },
+        {
           "type": "progress",
           "attr": "connect_fraction",
           "text_source": "connect_text",
@@ -269,8 +276,8 @@
       "collapsible": true,
       "collapsed": true,
       "hidden_when": {
-        "attr": "source_kind",
-        "not_equals": "simulator"
+        "attr": "realism_hidden",
+        "equals": "true"
       },
       "sections": [
         {
@@ -585,16 +592,6 @@
             "attr": "source_kind",
             "not_equals": "device"
           }
-        },
-        {
-          "type": "toggle",
-          "attr": "advanced",
-          "label": "Advanced",
-          "hidden_when": {
-            "attr": "source_kind",
-            "not_equals": "device"
-          },
-          "description": "Show the device's thresholds (CFD levels), shifts (sync and input offsets), timing and markers. Off by default: a loaded settings file or profile sets them, and they stay as calibrated."
         },
         {
           "type": "custom",

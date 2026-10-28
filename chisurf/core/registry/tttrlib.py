@@ -168,11 +168,14 @@ def _group_sections(sections, properties, title, description, folded=False):
 
     Returns a tuple of :class:`PanelSection`, the entry's own panel first.
     """
+    from chisurf.core.dataspec.rpc import SHOWN_SUFFIX
+
     from chisurf.core.dataspec import PanelSection
 
     main, grouped = [], {}
     for section in sections:
-        prop = properties.get(getattr(section, "attr", None) or "", {})
+        attr = (getattr(section, "attr", None) or "").removesuffix(SHOWN_SUFFIX)
+        prop = properties.get(attr, {})
         name = prop.get("group") or (ADVANCED_GROUP if prop.get("advanced") else None)
         if name is None:
             main.append(section)
