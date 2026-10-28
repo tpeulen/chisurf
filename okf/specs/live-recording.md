@@ -27,18 +27,23 @@ TCSPC → microtime histogram → LLTF/MaxEnt/IRF estimator; FRET check; save/re
 (`build_tools/remote_test.sh start --dirty ...`, `pixi run -e test build-extensions` first — a fresh slot has
 no tttrlib), never all at once on the laptop. Open front, in order:
 
-0. Open: **Point measurements in the Record tool (MT200).** Headless part done 2026-10-28:
-   `live/points.py` -- `PiScanner` (libphacq `pi` driver: rasters with line triggers, settled point
-   moves, observed from SymPhoTime; libphacq `docs/pi_e725_scanner.md`), `BleachDetector`,
-   `PointRecordSession` (point in the PTU header `ChiSurf_Point_*`), `PointSequence` (one PTU per
-   point, fixed time or until bleached); tests `acq/test/test_live_points.py` (simulated bleaching
-   molecule, PI simulator). Next: the GUI -- click on the live/last image to place points (emtk
-   implot `is_plot_hovered` + `get_plot_mouse_pos` + `is_mouse_clicked`, `drag_point` to move
-   them; pixel -> stage via the scan's x0/y0 and pixel size), a "Points" mode with point time and
-   *until bleached*, and the PI stage as the image mode's scanner. Measured on the instrument: SymPhoTime streams ~11 s per point with 1.5 s
-   gaps for the moves although the owner set 3 s -- check what the per-point time really was.
-   Not yet run on hardware: the E-725 is bound to PI's USB driver on the Windows PC (use
-   `tcp:<host>` or a Mac/Linux host).
+0. Open: **Imaging and point measurements on the real MT200.** Built and tested on simulators
+   2026-10-28 (chisurf 565c1f214, libphacq 7011f4e/dc7c8e6): Image mode with the PI E-725
+   (`live/scanning.py` `ScannedSource`), picking and Auto-pick (spot finder `single_molecule`), the
+   Points dock, `PointSequence` with per-molecule trace analysis (`live/molecules.py`: shared HMM via
+   `IntensityTraceModel`, steps, bleach time, E, tau) and the molecules table in the image's container.
+   phacq reaches the real E-725 on Windows through PI's GCS library (read-only check: POS? 50.002/50.000).
+   Still to check on the instrument (needs the owner's go for laser/sample safety), in this order:
+   (a) the E-725's trigger outputs 1/2 arrive on HydraHarp marker inputs 1/2, rising edge, and fire only
+   during the image, not while learning -- take one 64x64 mono scan with markers and count lines;
+   (b) axis orientation and sign: image x = stage x (fast), rows = stage y increasing -- click a bright
+   spot and check the point measurement lands on it (a wrong sign shows as near-zero counts);
+   (c) point-move settle: libphacq waits ~0.2 s plus a second MOV, SymPhoTime gaps ~1.5 s per point and
+   streamed ~11 s per point although 3 s were set -- compare;
+   (d) Frames > 1 re-learn every frame (slow); find whether SymPhoTime learns once. z planes > 1 are
+   not supported on this path.
+   Known: the shared HMM logs "not converging" during the BIC scan (tests silence it); a dim neighbour
+   still shining after the main bleach counts as a step.
 1. Open: **Companion tables do not reach the container.** `chisurf.core.project.analysis.container_changed`
    is the one notification every container writer must send; it lists new *runs* at once (`sync_runs`).
    Measured 2026-10-27 (`smfret_pie` leg): BVA, Burst MLE, H2MM and 2CDE run on the new run but send **0**
