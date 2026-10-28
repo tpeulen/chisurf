@@ -1,0 +1,60 @@
+{
+  "schema": "chisurf.acquisition/1",
+  "name": "MT200 PIE (blue + red, 40 MHz)",
+  "source": "From SymPhoTime 64 2.8's PIE.pus on the MT200 PC FK03-PC-PC118 (desktop shortcut, 2026-10-28). Sync divider: not in the .pus; at the 40 MHz sync the HydraHarp 400 needs at least 4 (measured). Detectors on HydraHarp inputs 1 and 3 (phacq inputs 0 and 2). SymPhoTime pulse mode 1 (PIE). TCSPC settings are the same in every MT200 profile: 32 ps bins (binning 5, as in the PIE profiles), sync CFD 350 mV / offset 5000 ps, detectors 250 mV with their offsets (input 0: +130 ps from PIE.pus, input 2: -40 ps from Standard.pus).",
+  "device": {
+    "backend": "phacq",
+    "driver": "picoquant",
+    "model": "HydraHarp 400",
+    "mode": "T3",
+    "sync": {
+      "divider": 4,
+      "level_mv": 350,
+      "offset_ps": 5000
+    },
+    "inputs": [
+      {
+        "channel": 0,
+        "level_mv": 250,
+        "offset_ps": 130,
+        "enabled": true
+      },
+      {
+        "channel": 2,
+        "level_mv": 250,
+        "offset_ps": -40,
+        "enabled": true
+      }
+    ],
+    "binning": 5
+  },
+  "laser": {
+    "backend": "sepia",
+    "heads": [
+      {
+        "slot": 200,
+        "name": "Blue",
+        "enabled": true,
+        "intensity_pct": 95.0,
+        "pulsed": true,
+        "trigger_index": 7
+      },
+      {
+        "slot": 300,
+        "name": "Red",
+        "enabled": true,
+        "intensity_pct": 47.0,
+        "pulsed": true,
+        "trigger_index": 7
+      }
+    ],
+    "repetition_rate_hz": 40000000.0,
+    "pie_note": "The SOM-D's PIE sequence for this profile has not been recorded yet; record it when SymPhoTime applies PIE.pus."
+  },
+  "experiment": {
+    "preset": "pie"
+  },
+  "run": {
+    "duration_s": 180
+  }
+}

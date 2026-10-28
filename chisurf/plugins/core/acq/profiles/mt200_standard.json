@@ -1,0 +1,77 @@
+{
+  "schema": "chisurf.acquisition/1",
+  "name": "MT200 Standard (red, 40 MHz)",
+  "source": "From SymPhoTime 64 2.8's Standard.pus on the MT200 PC FK03-PC-PC118 (desktop shortcut, 2026-10-28). Sync divider: not in the .pus; at the 40 MHz sync the HydraHarp 400 needs at least 4 (measured). Detectors on HydraHarp inputs 1 and 3 (phacq inputs 0 and 2). TCSPC settings are the same in every MT200 profile: 32 ps bins (binning 5, as in the PIE profiles), sync CFD 350 mV / offset 5000 ps, detectors 250 mV with their offsets (input 0: +130 ps from PIE.pus, input 2: -40 ps from Standard.pus).",
+  "device": {
+    "backend": "phacq",
+    "driver": "picoquant",
+    "model": "HydraHarp 400",
+    "mode": "T3",
+    "sync": {
+      "divider": 4,
+      "level_mv": 350,
+      "offset_ps": 5000
+    },
+    "inputs": [
+      {
+        "channel": 0,
+        "level_mv": 250,
+        "offset_ps": 130,
+        "enabled": true
+      },
+      {
+        "channel": 2,
+        "level_mv": 250,
+        "offset_ps": -40,
+        "enabled": true
+      }
+    ],
+    "binning": 5
+  },
+  "laser": {
+    "backend": "sepia",
+    "heads": [
+      {
+        "slot": 200,
+        "name": "Blue",
+        "enabled": false,
+        "intensity_pct": 95.0,
+        "pulsed": true,
+        "trigger_index": 7
+      },
+      {
+        "slot": 300,
+        "name": "Red",
+        "enabled": true,
+        "intensity_pct": 47.0,
+        "pulsed": true,
+        "trigger_index": 7
+      }
+    ],
+    "repetition_rate_hz": 40000000.0,
+    "som_recorded": {
+      "note": "The SOM 828-D programme read from the unit on 2026-10-28 while this profile was in use. Kept for reference; applied once phacq drives the SOM-D (libphacq docs/sepia_somd.md).",
+      "freq_trig_mode": 2,
+      "divider": 2,
+      "presync": 0,
+      "masksync": 1,
+      "burst_lengths": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "output_enable_mask": 1,
+      "sync_enable_mask": 1,
+      "sync_inverse": 1,
+      "measured_sync_hz": 32000272
+    }
+  },
+  "experiment": {
+    "preset": "single_color"
+  }
+}

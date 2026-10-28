@@ -62,6 +62,27 @@ A Sepia II in Record's Laser panel (phacq's simulated unit): soft lock, and the
 first laser head's pulsed switch, repetition rate and intensity.
 ```
 
+## Profiles
+
+The **Settings** list starts with ready-made profiles, marked ★, before the
+workspace's own settings files. Each is an ordinary acquisition settings file in
+`chisurf/plugins/core/acq/profiles/`.
+
+The MT200 profiles were made from SymPhoTime's own profiles on that microscope
+(`Standard.pus`, `PIE.pus`, `CY_PIE.pus`):
+* **Standard:** red laser, 40 MHz.
+* **PIE:** blue and red laser.
+* **CY PIE:** PIE with the red laser delayed 4 ns.
+
+They share one TCSPC setting:
+* 32 ps bins;
+* sync CFD 350 mV, sync offset 5000 ps;
+* detectors on HydraHarp inputs 1 and 3, 250 mV, with their offsets (+130 ps and −40 ps).
+
+They differ only in the lasers and the run. They don't set the Sepia's oscillator
+programme yet, because phacq does not drive the SOM 828-D yet. Choose one and press
+**Load**.
+
 ## Running one
 
 Its windows (Acquisition, Laser, Analysis, Quality, the plots), sources, laser

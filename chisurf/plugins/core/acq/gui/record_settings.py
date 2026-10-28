@@ -400,6 +400,8 @@ class LaserSettingsMixin:
         if now - getattr(self, "_settings_rows_at", -1e9) > 2.0:
             self._settings_rows_at = now
             rows = [("", tr("Choose settings or a measurement"))]
+            rows += [(f"profile:{path}", f"★ {name}") for path, name in
+                     settings_file.shipped_profiles()]
             rows += [
                 (f"setup:{d.address}", f"⚙ {getattr(d, 'name', '') or Path(d.address).name}")
                 for d in workspace_datasets("setup")
@@ -418,7 +420,7 @@ class LaserSettingsMixin:
     def load_settings(self) -> bool:
         """Read the chosen settings row and send it to the device and the laser."""
         kind, address = self._picked()
-        if kind != "setup":
+        if kind not in ("setup", "profile"):
             return False
         try:
             doc = settings_file.load(address)
@@ -651,7 +653,7 @@ class LaserSettingsMixin:
         if action == "laser_emission_on":
             return self.laser_connected and self.laser_applied and not self._emission_on
         if action == "load_settings":
-            return self._picked()[0] == "setup" and not running
+            return self._picked()[0] in ("setup", "profile") and not running
         if action == "use_measurement_settings":
             return self._picked()[0] == "photons" and not running
         if action == "use_proposed_windows":

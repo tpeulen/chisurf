@@ -263,6 +263,25 @@ def load(path: str | Path) -> dict:
     return loads(text, str(path))
 
 
+#: Settings files shipped with ChiSurf (``acq/profiles``): ready-made measurement profiles.
+PROFILES_DIR = Path(__file__).resolve().parents[1] / "profiles"
+
+
+def shipped_profiles() -> list[tuple[Path, str]]:
+    """The profiles shipped with ChiSurf as ``(path, name)``, sorted by name.
+
+    Each is an ordinary settings file (``acq/profiles/*.json``); a file that does not load is
+    left out rather than listed broken.
+    """
+    out = []
+    for path in sorted(PROFILES_DIR.glob("*.json")):
+        try:
+            out.append((path, str(load(path).get("name") or path.stem)))
+        except SettingsError:
+            continue
+    return sorted(out, key=lambda pn: pn[1].lower())
+
+
 def dumps(doc: dict) -> str:
     """The document as indented JSON (validated first)."""
     problems = validate(doc)
