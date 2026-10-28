@@ -618,7 +618,8 @@ class RecordModel(LaserSettingsMixin):
                 return False  # scanners come with CMC's rustytime
             return not self.running and (self.source_kind != "device" or self.device is not None)
         if action == "connect_device":
-            return devices.PHACQ and self.device is None and bool(self.attached())
+            return devices.PHACQ and self.device is None and bool(self.attached()) \
+                and not self.connecting
         if action == "disconnect_device":
             return self.device is not None and not self.running
         if action == "stop":
@@ -1608,6 +1609,8 @@ class RecordApp(ImApp):
             "img_tau_1_ns",
             "img_tau_2_ns",
             "img_brightness",
+            "settings_address",
+            "advanced",
         ) + tuple(f"scan_{name}" for name in RecordModel._SCAN_FIELDS)
         return {k: getattr(self.model, k) for k in keys}
 
@@ -1615,6 +1618,10 @@ class RecordApp(ImApp):
         for key, value in (settings or {}).items():
             if hasattr(self.model, key) and not key.startswith("_"):
                 setattr(self.model, key, value)
+        # The settings last used on the hardware are loaded again on start: device and laser
+        # connected, the form filled (only for a device source; a simulation connects nothing).
+        if (settings or {}).get("settings_address") and self.model.source_kind == "device":
+            self.model.settings_chosen()
 
     def close(self) -> None:
         self.model.close()

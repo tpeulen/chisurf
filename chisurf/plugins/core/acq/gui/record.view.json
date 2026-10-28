@@ -11,7 +11,26 @@
           "attr": "settings_address",
           "label": "From",
           "options_source": "settings_options",
-          "description": "A settings file (⚙) or a measurement (⏱) of the workspace. Settings files enter ChiSurf through the drop, like every input."
+          "call": "settings_chosen",
+          "description": "A settings file (⚙), a profile (★) or a measurement (⏱) of the workspace. Choosing a settings file or profile loads it at once: it connects the device and the laser it names and applies its settings (the laser's emission stays off). Settings files enter ChiSurf through the drop, like every input."
+        },
+        {
+          "type": "progress",
+          "attr": "connect_fraction",
+          "text_source": "connect_text",
+          "hidden_when": {
+            "attr": "connecting",
+            "equals": "false"
+          },
+          "description": "Loading the chosen settings onto the hardware: finding and connecting the device, connecting the laser, applying the settings."
+        },
+        {
+          "type": "info",
+          "source": "connect_text",
+          "hidden_when": {
+            "attr": "connecting",
+            "equals": "false"
+          }
         },
         {
           "type": "button_row",
@@ -20,7 +39,7 @@
               "action": "load_settings",
               "label": "Load",
               "icon": "⚙",
-              "description": "Read the chosen settings file, fill the form and send it to the connected device and laser. The laser's emission stays off."
+              "description": "Load the chosen settings file again: connect the device and the laser it names, fill the form and send it to them. The laser's emission stays off."
             },
             {
               "action": "use_measurement_settings",

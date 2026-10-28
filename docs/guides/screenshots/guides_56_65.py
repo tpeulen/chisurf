@@ -295,6 +295,7 @@ def _grab_65_record_devices(out=None):
         try:
             ui = Driver(app, size)
             model.source_kind, model.device_index = "device", mh.key
+            model.advanced = True  # the settings form sits behind Advanced
             ui.draw(2)
             assert model.connect_device(), model.device_text
             app.focus_dock("acquisition")

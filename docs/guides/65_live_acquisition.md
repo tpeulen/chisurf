@@ -96,8 +96,12 @@ programme yet, because phacq does not drive the SOM 828-D yet. Choose one and pr
 
 **Loading connects the hardware.** A settings file says which unit it is for
 (`device.driver`, `device.model`, `device.serial` — the MT200 profiles name
-HydraHarp 400 1032692). **Load** connects that unit if it is attached, and the
-laser the file names, then applies everything. A unit that is not attached is
+HydraHarp 400 1032692). Choosing a file or profile in the list loads it at
+once — **Load** does it again — and a progress bar says what is under way
+(finding and connecting the unit, the laser, applying the settings): it connects
+that unit if it is attached, and the laser the file names, then applies
+everything. The settings last loaded are loaded again when Record opens with a
+TCSPC device as its source. A unit that is not attached is
 named in the notes and nothing else is connected in its place; a file for the
 Sepia II never connects the simulated laser instead.
 

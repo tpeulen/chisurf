@@ -43,6 +43,12 @@ class LaserSettingsMixin:
     """Laser control and acquisition settings files for the Record model."""
 
     def _init_laser_settings(self) -> None:
+        #: a chosen settings file is being loaded onto the hardware (a worker thread)
+        self.connecting = False
+        #: its progress, 0..1 (``None``: under way, length unknown), and what it is doing
+        self.connect_fraction: float | None = None
+        self.connect_text = ""
+        self._connect_thread = None
         self.laser_kind = "auto"
         self.laser: laser_mod.LaserBackend | None = None
         #: the program the head table and sequencer edit (a settings file's ``laser`` section)
@@ -417,6 +423,39 @@ class LaserSettingsMixin:
         kind, _, address = str(self.settings_address).partition(":")
         return kind, address
 
+    def _progress(self, fraction: float | None, text: str) -> None:
+        """Where loading settings onto the hardware is (shown under the settings choice)."""
+        self.connect_fraction, self.connect_text = fraction, text
+
+    def settings_chosen(self) -> bool:
+        """A settings file or profile picked in the list: load it onto the hardware at once,
+        in a worker thread (opening a device takes seconds), with the progress shown."""
+        import threading
+
+        if self._picked()[0] not in ("setup", "profile") or self.connecting or self.running:
+            return False
+        self.connecting = True
+        self._progress(0.0, tr("Reading the settings…"))
+
+        def work():
+            try:
+                self.load_settings()
+            except Exception as exc:  # noqa: BLE001 - shown; the form keeps what it had
+                self.settings_text, self.settings_detail = tr("Not loaded"), str(exc)
+            finally:
+                self.connecting = False
+                self._progress(None, "")
+
+        self._connect_thread = threading.Thread(target=work, name="record-load-settings",
+                                                daemon=True)
+        self._connect_thread.start()
+        return True
+
+    def wait_connected(self, timeout: float | None = None) -> None:
+        """Wait for a :meth:`settings_chosen` load to end (scripts and tests)."""
+        if self._connect_thread is not None:
+            self._connect_thread.join(timeout)
+
     def load_settings(self) -> bool:
         """Read the chosen settings row and send it to the device and the laser."""
         kind, address = self._picked()
@@ -474,6 +513,9 @@ class LaserSettingsMixin:
             from chisurf.plugins.core.acq.live import devices as devices_mod
 
             section = doc["device"]
+            self._progress(0.15, tr("Looking for {name}…").format(
+                name=" ".join(str(section.get(k) or "") for k in ("model", "serial")).strip()
+                or tr("the device")))
             entry = devices_mod.device_for(section)
             if entry is None:
                 wanted = " ".join(str(section.get(k) or "") for k in ("model", "serial")).strip()
@@ -481,6 +523,7 @@ class LaserSettingsMixin:
                     name=wanted or section.get("driver") or tr("the file's device")))
             else:
                 self.device_index = entry.key
+                self._progress(0.3, tr("Connecting to {name}…").format(name=entry.label))
                 if not self.connect_device():
                     notes.append(tr("Device not connected: {why}").format(
                         why=getattr(self, "device_text", "") or entry.label))
@@ -491,9 +534,11 @@ class LaserSettingsMixin:
             # the file is for the Sepia II: never stand the simulated laser in for it
             notes.append(tr("Laser not connected: {why}").format(why=sepia_why))
         elif laser_doc and not self.laser_connected:
+            self._progress(0.6, tr("Connecting the laser…"))
             if not self.connect_laser():
                 notes.append(tr("Laser not connected: {why}").format(
                     why=self.laser_detail or self.laser_text))
+        self._progress(0.8, tr("Applying the settings…"))
         try:
             notes += settings_file.apply(
                 doc, device=self.device, laser=self.laser if self.laser_connected else None
@@ -680,7 +725,8 @@ class LaserSettingsMixin:
         if action == "laser_emission_on":
             return self.laser_connected and self.laser_applied and not self._emission_on
         if action == "load_settings":
-            return self._picked()[0] in ("setup", "profile") and not running
+            return self._picked()[0] in ("setup", "profile") and not running \
+                and not self.connecting
         if action == "use_measurement_settings":
             return self._picked()[0] == "photons" and not running
         if action == "use_proposed_windows":

@@ -162,3 +162,72 @@ def test_the_device_a_section_is_for(monkeypatch):
     assert devices.device_for({"driver": "picoquant", "model": "HydraHarp 400"}).serial == "1032692"
     assert devices.device_for({"driver": "bh"}).serial == "SPC-1"
     assert devices.device_for({"driver": "picoquant", "serial": "nope"}) is None
+
+
+def test_choosing_a_profile_loads_it_with_progress(fake, monkeypatch, tmp_path):
+    """Picking a settings file in the list loads it at once, in a worker thread, and says what
+    it is connecting to."""
+    from chisurf.plugins.core.acq.gui.record_app import RecordModel
+    from chisurf.plugins.core.acq.live import laser as laser_mod
+
+    api, driver = fake
+    entry = devices.DeviceEntry("picoquant", "1032692", "PicoQuant", "HydraHarp 400")
+    monkeypatch.setattr(devices, "attached_devices", lambda drivers=None: [entry])
+
+    def open_device(e, mode=None):
+        dev = driver.open(e.serial)
+        dev.initialize(phacq.MeasurementMode.T3, phacq.ReferenceClock.Internal)
+        dev.phacq_driver = "picoquant"
+        return dev
+
+    monkeypatch.setattr(devices, "open_device", open_device)
+    monkeypatch.setattr(laser_mod, "sepia_available", lambda: (False, "none"))
+    model = RecordModel(output_dir=tmp_path / "rec", realtime=False)
+    model.source_kind = "device"
+    steps = []
+    real = model._progress
+    model._progress = lambda f, t: (steps.append(t), real(f, t))
+    model.settings_address = next(k for k, label in model.settings_options()
+                                  if k.startswith("profile:") and "PIE" in label)
+    assert model.settings_chosen()
+    model.wait_connected(30)
+    assert not model.connecting and model.connect_text == ""
+    assert model.device is not None
+    assert any("Connecting to" in s and "1032692" in s for s in steps)
+    assert any("Applying" in s for s in steps)
+    # a measurement row is not loaded by picking it
+    model.settings_address = "photons:somewhere.ptu"
+    assert not model.settings_chosen()
+
+
+def test_the_last_settings_are_loaded_again_on_start(fake, monkeypatch, tmp_path):
+    from chisurf.plugins.core.acq.gui.record_app import RecordApp, RecordModel
+    from chisurf.plugins.core.acq.live import laser as laser_mod
+
+    api, driver = fake
+    entry = devices.DeviceEntry("picoquant", "1032692", "PicoQuant", "HydraHarp 400")
+    monkeypatch.setattr(devices, "attached_devices", lambda drivers=None: [entry])
+    monkeypatch.setattr(devices, "open_device", lambda e, mode=None: (
+        lambda d: (d.initialize(phacq.MeasurementMode.T3, phacq.ReferenceClock.Internal),
+                   setattr(d, "phacq_driver", "picoquant"), d)[-1])(driver.open(e.serial)))
+    monkeypatch.setattr(laser_mod, "sepia_available", lambda: (False, "none"))
+
+    first = RecordApp(RecordModel(output_dir=tmp_path / "rec", realtime=False))
+    first.model.source_kind = "device"
+    first.model.settings_address = next(k for k, label in first.model.settings_options()
+                                        if k.startswith("profile:") and "PIE" in label)
+    saved = first.export_settings()
+    assert saved["settings_address"].startswith("profile:") and saved["advanced"] is False
+
+    again = RecordApp(RecordModel(output_dir=tmp_path / "rec2", realtime=False))
+    again.restore_settings(saved)
+    again.model.wait_connected(30)
+    assert again.model.device is not None
+    from pathlib import Path
+
+    assert again.model.settings_name == Path(saved["settings_address"].split(":", 1)[1]).name
+
+    # a simulation session restores the choice but connects nothing
+    sim = RecordApp(RecordModel(output_dir=tmp_path / "rec3", realtime=False))
+    sim.restore_settings({**saved, "source_kind": "simulator"})
+    assert not sim.model.connecting and sim.model.device is None
