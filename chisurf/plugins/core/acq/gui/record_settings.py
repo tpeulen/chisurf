@@ -431,32 +431,50 @@ class LaserSettingsMixin:
         return kind, address
 
     # -- shutters and power diode (the settings file's ``shutters`` section) -------------------
-    def connect_shutters(self, section: dict) -> bool:
-        """Open the shutter box a ``shutters`` section defines (phacq.shutterbox)."""
-        try:
-            from phacq import shutterbox
+    @staticmethod
+    def _shutter_key(name: str) -> str:
+        """A shutter's parameter key, as phacq's shutters driver makes it ("Detector 1" ->
+        detector_1)."""
+        import re
 
-            self.shutters = shutterbox.ShutterBox(section)
+        return re.sub(r"[^0-9a-z]+", "_", str(name).lower()).strip("_")
+
+    def _shutter_names(self, role: str | None = None) -> list[str]:
+        return [str(sh["name"]) for sh in (self.shutter_section or {}).get("shutters") or []
+                if role is None or str(sh.get("role", "")) == role]
+
+    def connect_shutters(self, section: dict) -> bool:
+        """Open the shutters a ``shutters`` section defines -- phacq's ``shutters`` driver, a
+        Device like the others; its settings form is generated from its schema."""
+        import json
+
+        try:
+            import phacq
+
+            self.shutters = phacq.DriverRegistry.instance().driver("shutters").open(
+                json.dumps(section))
         except Exception as exc:  # noqa: BLE001 - shown; a run still records
             self.shutters, self.shutter_text = None, str(exc)
             return False
         self.shutter_section = dict(section)
-        self.shutter_text = tr("Shutters: {names}").format(names=", ".join(self.shutters.endpoints))
-        from chisurf.core.registry.tttrlib import entry_form_view_for
+        self.shutter_text = tr("Shutters: {names}").format(names=", ".join(self._shutter_names()))
+        from chisurf.plugins.core.acq.live import devices
 
-        self.shutter_form = entry_form_view_for(self.shutters.schema(),
-                                                values=self.shutters.settings(),
-                                                on_change=self.shutter_settings_edited)
+        self.shutter_form = devices.settings_form(self.shutters, dict(self.shutters.settings()),
+                                                  on_change=self.shutter_settings_edited,
+                                                  folded=False)
         return True
 
     def shutter_settings_edited(self) -> None:
         """A checkbox in the shutters' form: send what changed."""
         if self.shutters is None or self.shutter_form is None:
             return
-        try:
-            self.shutters.apply(self.shutter_form.params())
-        except Exception as exc:  # noqa: BLE001 - shown on the status line
-            self.shutter_text = tr("Shutters: {e}").format(e=exc)
+        from chisurf.plugins.core.acq.live import devices
+
+        notes = devices.apply_settings(self.shutters, {
+            k: v for k, v in self.shutter_form.params().items() if k.startswith("open_")})
+        if notes:
+            self.shutter_text = tr("Shutters: {e}").format(e="; ".join(notes))
 
     def refresh_shutter_form(self, interval_s: float = 0.25) -> None:
         """Show what the hardware reports (and what Start/end of a run did) in the form."""
@@ -465,16 +483,23 @@ class LaserSettingsMixin:
         now = time.monotonic()
         if now - self._shutter_form_at >= interval_s:
             self._shutter_form_at = now
-            self.shutter_form.update_values(self.shutters.settings())
+            try:
+                self.shutter_form.update_values(dict(self.shutters.settings()))
+            except Exception:  # noqa: BLE001 - the next refresh tries again
+                pass
 
     def set_shutter(self, name: str, open_: bool) -> bool:
-        """Open or close one shutter (its checkbox)."""
+        """Open or close one shutter."""
+        return self._set_shutters({name: open_})
+
+    def _set_shutters(self, states: dict) -> bool:
         if self.shutters is None:
             return False
         try:
-            self.shutters.set({name: bool(open_)})
+            self.shutters.apply({"open_" + self._shutter_key(n): bool(v)
+                                 for n, v in states.items()})
         except Exception as exc:  # noqa: BLE001 - shown on the status line
-            self.shutter_text = tr("Shutter {name}: {e}").format(name=name, e=exc)
+            self.shutter_text = tr("Shutters: {e}").format(e=exc)
             return False
         return True
 
@@ -488,47 +513,51 @@ class LaserSettingsMixin:
                 self.shutter_text = tr("No shutters")
 
     def _shutters_at_start(self) -> None:
-        """Before a run: open the shutters the section names (default all), then give the diode
-        a moment to report through the open excitation shutter."""
-        box = self.shutters
-        if box is None:
+        """Before a run: open the shutters the section names (default all), give the diode a
+        moment to report through the open excitation shutter, average it afresh."""
+        if self.shutters is None:
             return
-        names = (self.shutter_section or {}).get("open_at_start") or list(box.bits)
-        try:
-            box.open(names)
-        except Exception as exc:  # noqa: BLE001 - the run goes on; said on the status line
-            self.shutter_text = tr("Shutters did not open: {e}").format(e=exc)
+        names = (self.shutter_section or {}).get("open_at_start") or self._shutter_names()
+        if not self._set_shutters({n: True for n in names}):
             return
         end = time.monotonic() + 0.6
-        while time.monotonic() < end and box.diode_raw is None:
+        while time.monotonic() < end and self._shutter_value("diode_raw") is None:
             time.sleep(0.02)
-        box.mark()
+        try:
+            self.shutters.set_parameter("diode_mark", 1.0)
+        except Exception:  # noqa: BLE001 - a definition without a diode
+            pass
 
     def _shutters_at_end(self) -> None:
         """After a run: close the shutters the section names (default the excitation ones). The
         laser is not touched: the shutter keeps the light off the sample."""
-        box = self.shutters
-        if box is None:
+        if self.shutters is None:
             return
-        names = (self.shutter_section or {}).get("close_at_end") or box.by_role("excitation")
+        names = (self.shutter_section or {}).get("close_at_end") or \
+            self._shutter_names("excitation")
+        self._set_shutters({n: False for n in names})
+
+    def _shutter_value(self, key: str):
+        """A read-only value of the shutters device; ``None`` when it has none (yet)."""
         try:
-            box.close_shutters(names)
-        except Exception as exc:  # noqa: BLE001
-            self.shutter_text = tr("Shutters did not close: {e}").format(e=exc)
+            v = float(self.shutters.get_parameter(key, -1))
+        except Exception:  # noqa: BLE001 - not a parameter of this definition
+            return None
+        return None if v < 0 else v
 
     def run_header_tags(self) -> dict:
         """PTU header tags of the laser, the shutters and the power diode for the run to start."""
         tags = laser_mod.ptu_tags(self.laser if self.laser_connected else None,
                                   self.laser_program)
-        box = self.shutters
-        if box is not None:
-            for name, state in box.state().items():
+        if self.shutters is not None:
+            for name in self._shutter_names():
+                state = self._shutter_value("reported_" + self._shutter_key(name))
                 if state is not None:
                     tags["ChiSurf_ShutterOpen_" + name.replace(" ", "")] = bool(state)
-            raw = box.diode_raw
+            raw = self._shutter_value("diode_raw")
             if raw is not None:
                 tags["ChiSurf_PowerDiodeRaw"] = float(raw)
-                au = box.diode_au(raw)
+                au = self._shutter_value("diode_au")
                 if au is not None:
                     tags["UsrPowerDiode"] = float(au)      # SymPhoTime's name and unit (a.u.)
         return tags
