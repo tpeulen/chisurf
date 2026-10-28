@@ -11,6 +11,7 @@
 - shell: clicks reach the tool in tool-only mode (--app ID / ?app=): _plugin_at searched docks only, so every press in the presented tool landed nowhere; found on the MT200; test_plugin_page_tool_only covers it
 - acq: a T3 device without sync records anyway (flagged 'no sync'; provisional macro step = 2^15 micro bins; the PTU header takes the sync rate measured at close) instead of refusing
 - acq: Record loads settings onto the hardware they name (device_for: driver+serial/model; MT200 profiles carry serial 1032692) and connects the laser, never the simulated one for a Sepia file; device thresholds/shifts behind an Advanced toggle (default off); notes kept; snAPI (Windows) covered by tests; test_emtk_sim_setup reads its spec as UTF-8 (failed on Windows)
+- acq docs: the Sepia II on Windows through its WinUSB binding (phacq 1e87f82), tested on the MT200
 
 ## 2026-10-27
 

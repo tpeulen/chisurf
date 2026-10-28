@@ -34,7 +34,8 @@ removed; there is one acquisition window, Record.
 **On Windows**, PicoQuant's own driver holds PicoQuant units, so phacq reaches
 them through PicoQuant's snAPI package (`pip install snAPI`) instead of its
 native driver. The device, its settings and the recordings are the same; only
-the way in differs. Linux and macOS stay native.
+the way in differs. Linux and macOS stay native. The Sepia II needs no such
+detour: on Windows phacq opens it through its own WinUSB binding.
 
 **Every setting a device has is offered.** The driver describes its settings
 itself — names, units, ranges, choices, which are per input — and Record builds
