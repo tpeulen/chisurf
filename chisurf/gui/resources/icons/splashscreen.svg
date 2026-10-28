@@ -402,12 +402,12 @@
      inkscape:label="splashscreen"
      transform="matrix(1.3333333,0,0,-1.3333333,-227.96907,686.86665)"><path
        id="path369"
-       style="fill:#ce8980;fill-opacity:0.514056;stroke-width:0.550643"
+       style="fill:#e0189c;fill-opacity:0.42;stroke-width:0.550643"
        d="M 233.24023,197.15039 0.65039062,109.31836 V 251.50391 L 232.73535,270.57313 Z"
        transform="matrix(0.75000002,0,0,-0.75000002,170.97681,515.15)"
        sodipodi:nodetypes="ccccc" /><path
        id="path376"
-       style="fill:#00ff00;fill-opacity:0.337349;stroke-width:0.550643"
+       style="fill:#00d4ff;fill-opacity:0.36;stroke-width:0.550643"
        d="M 232.17383,25.847656 0.65039062,106.88477 v 2.43359 L 233.24023,197.15039 Z"
        transform="matrix(0.75000002,0,0,-0.75000002,170.97681,515.15)"
        sodipodi:nodetypes="ccccc" /><g
