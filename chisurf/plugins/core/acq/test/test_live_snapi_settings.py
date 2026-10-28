@@ -231,3 +231,26 @@ def test_the_last_settings_are_loaded_again_on_start(fake, monkeypatch, tmp_path
     sim = RecordApp(RecordModel(output_dir=tmp_path / "rec3", realtime=False))
     sim.restore_settings({**saved, "source_kind": "simulator"})
     assert not sim.model.connecting and sim.model.device is None
+
+
+def test_loaded_settings_are_saved_at_once(fake, monkeypatch, tmp_path):
+    """Not only at a clean close: a killed window must still know what to load next time."""
+    from chisurf.emtk import state
+    from chisurf.plugins.core.acq.gui.record_app import RecordApp, RecordModel
+    from chisurf.plugins.core.acq.live import laser as laser_mod
+
+    monkeypatch.setattr(devices, "attached_devices", lambda drivers=None: [])
+    monkeypatch.setattr(laser_mod, "sepia_available", lambda: (False, "none"))
+    saved = {}
+    monkeypatch.setattr(state, "save_settings", lambda pid, s: saved.update({pid: s}) or True)
+    app = RecordApp(RecordModel(output_dir=tmp_path / "rec", realtime=False))
+    app._native_state_id = "acq"
+    app.model.source_kind = "device"
+    app.model.settings_address = next(k for k, label in app.model.settings_options()
+                                      if k.startswith("profile:") and "Standard" in label)
+    assert app.model.load_settings()
+    app._persist_loaded_settings()
+    assert saved["acq"]["settings_address"] == app.model.settings_address
+    saved.clear()
+    app._persist_loaded_settings()                     # nothing new: not written again
+    assert saved == {}

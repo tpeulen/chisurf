@@ -1571,6 +1571,7 @@ class RecordApp(ImApp):
     # -- one frame ---------------------------------------------------------------------------------
     def render(self) -> None:
         self.model.poll()
+        self._persist_loaded_settings()
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)
         self.form.rects.clear()
@@ -1581,6 +1582,22 @@ class RecordApp(ImApp):
         self._draw_save_dialog(box)
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
+
+    def _persist_loaded_settings(self) -> None:
+        """Save the tool's state as soon as settings were loaded onto the hardware: it is
+        otherwise written only when the tool closes cleanly, and a crashed or killed window
+        would forget what to load on the next start."""
+        model = self.model
+        loaded = (model.settings_address, model.settings_name)
+        if model.connecting or not model.settings_name or loaded == getattr(
+                self, "_persisted_load", None):
+            return
+        self._persisted_load = loaded
+        plugin_id = getattr(self, "_native_state_id", None)
+        if plugin_id:
+            from chisurf.emtk.state import save_settings
+
+            save_settings(plugin_id, self.export_settings())
 
     def export_settings(self) -> dict[str, Any]:
         keys = (
