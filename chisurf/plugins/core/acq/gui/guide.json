@@ -85,8 +85,8 @@
       }
     },
     {
-      "title": "Laser off",
-      "text": "With a laser connected, <b>Laser off</b> blocks all emission at once. It is always there; the end of a run blocks emission too, and the laser stays connected for the next run.",
+      "title": "The laser button",
+      "text": "One button for the laser: red <b>Laser off</b> while it emits blocks all emission at once (always there, never fails); green <b>Laser on</b> switches emission on once a program is applied. The end of a run closes the excitation shutter; the laser itself is not touched.",
       "target": {
         "name": "laser_off",
         "action": "Laser off"

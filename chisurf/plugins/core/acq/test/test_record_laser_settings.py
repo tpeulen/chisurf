@@ -341,7 +341,7 @@ def test_a_shutter_checkbox_opens_and_closes_it(tmp_path):
     try:
         assert model.connect_shutters(SIM_SHUTTERS)
         ui = Driver(app, (1500, 1100))
-        app.focus_dock("laser")
+        app.focus_dock("shutters")
         ui.draw(4)
         # the form is generated from the box's schema: a checkbox per shutter, read-only state
         assert "Excitation" in ui.strings() and "Detector 1" in ui.strings()
@@ -355,3 +355,18 @@ def test_a_shutter_checkbox_opens_and_closes_it(tmp_path):
         assert dev.settings()["open_excitation"] is False
     finally:
         app.close()
+
+
+def test_the_laser_button_toggles_and_changes_colour(model):
+    """Green Laser on (once a program is applied) switches emission on; then it is a red Laser
+    off that blocks it -- always available while the laser emits."""
+    model.connect_laser()
+    assert not model.enabled("laser_toggle")                 # nothing applied yet
+    _pie_program(model)
+    assert model.apply_laser_program()
+    assert model.enabled("laser_toggle")
+    assert (model.laser_toggle_label(), model.laser_toggle_role()) == ("Laser on", "success")
+    assert model.laser_toggle() and model.laser.events[-1] == "emission on"
+    assert (model.laser_toggle_label(), model.laser_toggle_role()) == ("Laser off", "danger")
+    assert model.laser_toggle() and model.laser.events[-1] == "emission off"
+    assert model.laser_toggle_label() == "Laser on"

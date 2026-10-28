@@ -68,7 +68,7 @@ module (SOM 828 sequencer) is not driven yet.
 The **simulated laser** has a **Program** instead (head on/off, intensity, pulsed; the oscillator
 *Divider*; the *Sequencer*'s pulses, outputs and sync per output) that reaches it only with
 **Apply**; light needs **Emission on** after that, and any edit switches the outputs off until the
-next Apply. **Laser off** is always there. The end of a run blocks emission (the laser stays connected with its program, so the next run needs only **Emission on**); closing the window closes the laser.
+next Apply. One laser button: red **Laser off** while the laser emits (always there, never fails), green **Laser on** otherwise (once a program is applied). The end of a run closes the excitation shutter and leaves the laser alone; closing the window closes the laser.
 
 **Windows from laser** turns the applied program into the Experiment setup's micro-time windows: one
 window per enabled excitation, shifted by the sync offset (two give *prompt* and *delayed*: PIE).

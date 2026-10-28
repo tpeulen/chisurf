@@ -1094,6 +1094,7 @@ def _short_line(text: str, tooltip: str, colour=None) -> None:
 DOCKS = (
     ("acquisition", "Acquisition", "settings"),
     ("laser", "Laser", "settings"),
+    ("shutters", "Shutters", "settings"),
     ("analysis", "Analysis", "settings"),
     ("plot_hist", "Histogram", "main"),
     ("plot_image", "Image", "main"),
@@ -1330,12 +1331,21 @@ class RecordApp(ImApp):
             im.text(f"{model.status_text} · {elapsed:.1f} s")
             im.set_item_tooltip(model.status_detail)
             im.same_line()
-            im.push_style_color(im.Col.BUTTON, _LIGHT_COLOURS["red"])
-            if im.small_button(f"⏻ {tr('Laser off')}##bar_laser_off"):
-                model.laser_off()
+            # one laser button: red Laser off while it emits, green Laser on otherwise
+            emitting = model._emission_on
+            can = model.enabled("laser_toggle")
+            im.push_style_color(im.Col.BUTTON, _LIGHT_COLOURS["red" if emitting else "green"])
+            if not can:
+                im.begin_disabled()
+            if im.small_button(f"⏻ {model.laser_toggle_label()}##bar_laser_toggle"):
+                model.laser_toggle()
                 self.tour.notify_used("laser_off")
+            if not can:
+                im.end_disabled()
             im.pop_style_color()
-            im.set_item_tooltip(tr("Switch every laser output off now (always available)."))
+            im.set_item_tooltip(
+                tr("Switch every laser output off now (always available).") if emitting else
+                tr("Switch the laser's emission on (after its program is applied)."))
             self.form.rects["laser_off"] = im.get_item_rect()
             im.same_line()
             if im.small_button(f"📖 {tr('Guide')}"):

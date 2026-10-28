@@ -223,6 +223,20 @@ class LaserSettingsMixin:
         self._laser_status()
         return True
 
+    def laser_toggle(self) -> bool:
+        """The laser button: emission off while it emits, else on (after Apply, as Emission on)."""
+        if self._emission_on:
+            self.laser_off()
+            return True
+        return self.laser_emission_on()
+
+    def laser_toggle_label(self) -> str:
+        return tr("Laser off") if self._emission_on else tr("Laser on")
+
+    def laser_toggle_role(self) -> str:
+        """Red while the laser emits (pressing it blocks emission), green to switch it on."""
+        return "danger" if self._emission_on else "success"
+
     def laser_emission_on(self) -> bool:
         if not (self.laser_connected and self.laser_applied):
             return False
@@ -863,6 +877,9 @@ class LaserSettingsMixin:
             return self.laser is not None and not running
         if action == "laser_off":
             return True
+        if action == "laser_toggle":
+            # off: always; on: only a connected laser with its program applied
+            return self._emission_on or (self.laser_connected and self.laser_applied)
         if action in ("apply_laser_program", "windows_from_laser"):
             return self.laser_connected and not running
         if action == "laser_emission_on":

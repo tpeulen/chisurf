@@ -112,7 +112,7 @@ CAN command frame with its state frame; `i2c_bit`: a bit of an I2C device's
 register, its state from another; `can_word` / `i2c_word`: a reading). Other
 hardware is other endpoints in the file. The MT200 profiles link Excitation,
 Detector 1 and 2 to bits 0–2 of the shutter box on the CAN card. Loading the file
-connects them. The **Shutters** panel (Laser tab) is generated from that section:
+connects them. The **Shutters** tab is generated from that section:
 a checkbox per shutter, what the hardware reports (it differs while a box's own
 buttons have taken over), and the diode. **Start** opens the shutters the file
 names; the end of a run closes the excitation shutter. The laser is not touched.

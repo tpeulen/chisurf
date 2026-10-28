@@ -638,11 +638,12 @@
               "description": "Switch the outputs off and release the laser."
             },
             {
-              "action": "laser_off",
+              "action": "laser_toggle",
               "label": "Laser off",
-              "icon": "■",
-              "role": "danger",
-              "description": "Block all emission now. Always available; never fails."
+              "label_source": "laser_toggle_label",
+              "role_source": "laser_toggle_role",
+              "icon": "⏻",
+              "description": "Red Laser off while the laser emits: blocks all emission now (always available, never fails). Green Laser on otherwise: switches emission on, once a program is applied."
             }
           ]
         },
@@ -810,7 +811,7 @@
           "description": "Generated from the settings file's shutters section (each shutter linked to its own endpoint: a CAN or I2C bus, a bit): a checkbox per shutter (ticked opens it), what the hardware reports (it differs while a box's own buttons have taken over), and the power diode (raw; in a.u. once the settings calibrate it)."
         }
       ],
-      "dock": "laser"
+      "dock": "shutters"
     },
     {
       "type": "panel",
