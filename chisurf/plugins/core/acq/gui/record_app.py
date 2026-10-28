@@ -11,6 +11,11 @@ Devices are libphacq's (``live.devices``): PicoQuant MultiHarp / PicoHarp 330 / 
 Becker & Hickl SPC cards, natively. Their settings panel is generated from what the connected
 device describes (``Device.parameter_schema``), so every setting the driver has is offered; the
 Sepia II laser likewise (``live.laser``). The simulator is tttrlib's photon-level simulator.
+
+Image mode scans with the sample scanner of the settings file (the MT200's PI E-725 through
+libphacq) while the device records the scanner's line markers, or with the simulated scanner; on
+the image the user picks molecules (a click, or *Auto-pick* with the spot finder's single-molecule
+workflow) and measures them one by one (``record_points``).
 """
 
 from __future__ import annotations
@@ -30,6 +35,7 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.core.acq.gui.record_points import ScanPointsMixin
 from chisurf.plugins.core.acq.gui.record_settings import SETTINGS_SETUP, LaserSettingsMixin
 from chisurf.plugins.core.acq.live import devices
 from chisurf.plugins.core.acq.live.analyzer import PRESETS
@@ -88,7 +94,7 @@ def _workspace(kind: str) -> list[Any]:
     return workspace_datasets(kind)
 
 
-class RecordModel(LaserSettingsMixin):
+class RecordModel(LaserSettingsMixin, ScanPointsMixin):
     """The state behind ``record.view.json``.
 
     Parameters
@@ -131,6 +137,10 @@ class RecordModel(LaserSettingsMixin):
         self.img_tau_1_ns = 1.0
         self.img_tau_2_ns = 3.5
         self.img_brightness = 40.0
+        #: the simulated specimen: beads on a cell, or single molecules on a coverslip
+        self.img_sample = "beads"
+        #: mean bleaching time of a simulated emitter under the parked focus (s)
+        self.img_bleach_s = 3.0
         self.image_map = "Intensity"
         #: the scan of the image file a replay plays (read from its header)
         self.replay_scan: ScanSettings | None = None
@@ -170,10 +180,12 @@ class RecordModel(LaserSettingsMixin):
         self._device_sent: dict[str, Any] = {}
         # -- the laser and the acquisition settings file (record_settings) --------------------
         self._init_laser_settings()
+        # -- the scanner, the picked points and their measurements (record_points) ------------
+        self._init_scan_points()
 
     # -- point or image ---------------------------------------------------------------------------
-    _SCAN_FIELDS = ("pixels_x", "pixels_y", "area_x_um", "area_y_um", "dwell_ms", "frames",
-                    "bidirectional", "z_planes", "z_step_um")
+    _SCAN_FIELDS = ("pixels_x", "pixels_y", "area_x_um", "area_y_um", "x0_um", "y0_um",
+                    "dwell_ms", "frames", "bidirectional", "z_planes", "z_step_um")
 
     def mode_options(self) -> list:
         return [
@@ -253,7 +265,8 @@ class RecordModel(LaserSettingsMixin):
             return [
                 ("simulator", tr("Simulator (scan)")),
                 ("replay", tr("Replay an image")),
-                ("device", tr("Scanner (needs CMC rustytime — not available yet)")),
+                ("device", tr("TCSPC device and scanner")
+                 if devices.PHACQ else tr("TCSPC device and scanner (libphacq not installed)")),
             ]
         return [
             ("simulator", tr("Simulator (smFRET)")),
@@ -493,23 +506,42 @@ class RecordModel(LaserSettingsMixin):
             )
             self.replay_scan = scan
             return source
-        if self.source_kind == "device":
-            raise SourceUnavailable(
-                tr("Scanning hardware comes with CMC's rustytime; use the simulator meanwhile.")
-            )
         scan = self.scan_settings()
         problems = scan.validate()
         if problems:
             raise SourceUnavailable("; ".join(problems))
-        sample = ImagingSample(
-            n_beads=int(self.img_beads),
-            tau_ns=(float(self.img_tau_1_ns), float(self.img_tau_2_ns)),
-            bead_brightness=float(self.img_brightness),
-            seed=int(self.sim_seed),
-        )
+        if self.source_kind == "device":
+            # the device records the scanner's line markers; the scanner rasters (live.scanning)
+            from chisurf.plugins.core.acq.live.scanning import ScannedSource, scanner_scan
+
+            if self.device is None:
+                raise SourceUnavailable(tr("Connect the device first."))
+            if self.scanner is None:
+                raise SourceUnavailable(tr("Connect the scanner first (a settings file with a "
+                                           "scanner section connects it)."))
+            return ScannedSource(devices.DeviceSource(self.device), self.scanner,
+                                 scanner_scan(scan))
         return ImageSimSource(
-            scan, sample, self.realism(), speed=float(self.speed), realtime=self.realtime
+            scan, self.imaging_sample(), self.realism(), speed=float(self.speed),
+            realtime=self.realtime
         )
+
+    def img_sample_options(self) -> list:
+        return [("beads", tr("Beads on a cell")),
+                ("molecules", tr("Single molecules (some pairs)"))]
+
+    def imaging_sample(self) -> ImagingSample:
+        """The simulated specimen the Scan panel describes."""
+        taus = (float(self.img_tau_1_ns), float(self.img_tau_2_ns))
+        if self.img_sample == "molecules":
+            sample = ImagingSample.single_molecules(
+                int(self.img_beads), brightness=float(self.img_brightness),
+                seed=int(self.sim_seed), tau_ns=taus)
+            # a few spots hold two molecules: they bleach in two steps
+            sample.per_spot = (1, 3)
+            return sample
+        return ImagingSample(n_beads=int(self.img_beads), tau_ns=taus,
+                             bead_brightness=float(self.img_brightness), seed=int(self.sim_seed))
 
     def fcs_sample(self) -> tuple[Realism, float]:
         """The simulated FCS sample: its realism (the instrument's, no FRET extras) and the
@@ -607,15 +639,18 @@ class RecordModel(LaserSettingsMixin):
     # -- actions ---------------------------------------------------------------------------------
     @property
     def running(self) -> bool:
-        return self.session is not None and self.session.running
+        return (self.session is not None and self.session.running) or self.points_running
 
     def enabled(self, action: str) -> bool:
         mine = self.laser_settings_enabled(action)
         if mine is not None:
             return mine
+        mine = self.points_enabled(action)
+        if mine is not None:
+            return mine
         if action == "start":
-            if self.mode == "image" and self.source_kind == "device":
-                return False  # scanners come with CMC's rustytime
+            if self.mode == "image" and self.source_kind == "device" and self.scanner is None:
+                return False  # a real scan needs the scanner
             return not self.running and (self.source_kind != "device" or self.device is not None)
         if action == "connect_device":
             return devices.PHACQ and self.device is None and bool(self.attached()) \
@@ -646,15 +681,18 @@ class RecordModel(LaserSettingsMixin):
             # Nyquist-sampled: 100 nm pixels under the simulator's 0.25 um (1/e^2) focus, so an
             # FRC of the recording has a crossing to find; 4 frames give two even/odd halves.
             self.set_scan(ScanSettings(pixels_x=64, pixels_y=64, area_x_um=6.4, area_y_um=6.4,
-                                       dwell_ms=0.1, frames=4))
-            self.img_beads, self.img_tau_1_ns, self.img_tau_2_ns = 24, 1.0, 3.5
-            self.img_brightness = 40.0
+                                       x0_um=10.0, y0_um=10.0, dwell_ms=0.1, frames=4))
+            self.img_sample, self.img_beads = "molecules", 16
+            self.img_tau_1_ns, self.img_tau_2_ns = 1.0, 3.5
+            self.img_brightness, self.img_bleach_s = 60.0, 1.5
+            self.point_time_s, self.until_bleached = 5.0, True
             self.realism_preset = "realistic"
             self._set_realism(REALISTIC)
             self.status_text = tr("Example ready")
             self.status_detail = tr(
-                "A simulated scan: beads of two lifetimes (1.0 and 3.5 ns) on a dim cell outline, "
-                "64 × 64 pixels of 100 nm, 4 frames. Press Start."
+                "A simulated scan of single molecules (a few spots hold two) with lifetimes of "
+                "1.0 and 3.5 ns, 64 × 64 pixels of 100 nm, 4 frames. Press Start, then Auto-pick "
+                "and Measure points."
             )
             return
         self.source_kind = "simulator"
@@ -757,13 +795,23 @@ class RecordModel(LaserSettingsMixin):
         existing image and records nothing."""
         scan = self.scan_settings()
         replay = self.source_kind == "replay"
+        real = self.source_kind == "device"
+        if real:
+            from chisurf.plugins.core.acq.live.scanning import scanner_scan
+
+            scan = scanner_scan(scan)
+            note = self._enable_line_markers(scan)
+            if note:
+                self.status_text, self.status_detail = tr("Cannot start"), note
+                return False
         self.saved_path = None if replay else recording_dir(self.output_dir) / f"{name}.ptu"
         windows = (
             dict(experiment.setup.get("windows") or {})
             if self.setup_address not in ("", DEFAULT_SETUP)
             else {}
         )
-        duration = None if replay else (scan.total_s + 2 * scan.line_s)
+        # a real scan ends with the scanner's last frame (learning and turnarounds included)
+        duration = None if (replay or real) else (scan.total_s + 2 * scan.line_s)
         self._shutters_at_start()
         self.session = ImageRecordSession(
             source,
@@ -785,10 +833,33 @@ class RecordModel(LaserSettingsMixin):
             return False
         self._registered = False
         self.snapshot = None
+        self.image_snapshot = None
+        self.image_scan = scan
+        self.image_ptu, self.image_uid = self.saved_path, ""
+        if replay:
+            # the replayed image is a dataset already: its container takes the molecules
+            row = next((d for d in _workspace("image")
+                        if str(getattr(d, "address", "")) == str(self.replay_address)), None)
+            self.image_ptu = Path(str(self.replay_address))
+            self.image_uid = str(getattr(row, "unique_identifier", "") or "")
         self.image_map = "Intensity"
         self.status_text = tr("Replaying…") if replay else tr("Scanning…")
         self.status_detail = str(self.saved_path or self.replay_address)
         return True
+
+    def _enable_line_markers(self, scan) -> str:
+        """The device's marker inputs of the scan's line markers switched on (a HydraHarp 400
+        starts with every marker input off); a note when the device cannot."""
+        values = dict(self.device.settings())
+        if "marker_enable" not in values:
+            return ""
+        bits = (1 << (scan.line_start_marker - 1)) | (1 << (scan.line_stop_marker - 1))
+        wanted = int(values["marker_enable"]) | bits
+        if wanted == int(values["marker_enable"]):
+            return ""
+        notes = devices.apply_settings(self.device, {"marker_enable": wanted})
+        self.device_values["marker_enable"] = wanted
+        return "; ".join(notes)
 
     def _run_settings(self) -> dict | None:
         """The settings document the recording's header carries (``None`` if it cannot be made)."""
@@ -800,6 +871,9 @@ class RecordModel(LaserSettingsMixin):
     def stop(self) -> bool:
         if not self.running:
             return False
+        if self.points_running:
+            self.sequence.stop()
+            return True
         self.session.stop()
         return True
 
@@ -824,6 +898,12 @@ class RecordModel(LaserSettingsMixin):
     def poll(self, force: bool = False) -> None:
         """Take a snapshot at the display rate; register the run once it ended."""
         self._update_rates()
+        if self.sequence is not None and (self.points_running or not self._sequence_finished):
+            now = time.monotonic()
+            if force or now - self._last_snapshot >= SNAPSHOT_INTERVAL_S:
+                self._last_snapshot = now
+                self.poll_points()
+            return
         session = self.session
         if session is None:
             return
@@ -831,6 +911,8 @@ class RecordModel(LaserSettingsMixin):
         if force or now - self._last_snapshot >= SNAPSHOT_INTERVAL_S:
             self.snapshot = session.snapshot()
             self._last_snapshot = now
+            if isinstance(session, ImageRecordSession):
+                self.image_snapshot = self.snapshot
         if not session.running and session.result is not None and not self._registered:
             self._registered = True
             # a run's end closes the shutters the settings name (the excitation one); the laser
@@ -839,6 +921,7 @@ class RecordModel(LaserSettingsMixin):
             self.snapshot = session.snapshot()
             result = session.result
             if isinstance(session, ImageRecordSession):
+                self.image_snapshot = self.snapshot
                 self._finish_image(session, result)
                 return
             try:
@@ -874,6 +957,7 @@ class RecordModel(LaserSettingsMixin):
             return
         try:
             session.register()
+            self.image_uid = str(result.dataset_uid or "")
             self.status_detail = (
                 tr("In Datasets as an image, {how}.").format(
                     how=tr("embedded in the project") if session.embed else tr("linked")
@@ -888,11 +972,16 @@ class RecordModel(LaserSettingsMixin):
         )
 
     def close(self) -> None:
-        if self.running:
+        if self.points_running:
+            self.sequence.stop()
+            self.sequence.wait(10.0)
+        if self.session is not None and self.session.running:
             self.session.stop()
             self.session.wait(5.0)
         if self.device is not None:
             self.disconnect_device()
+        if self.scanner is not None:
+            self.disconnect_scanner()
         self._shutters_at_end()
         self.disconnect_shutters()
         self.disconnect_laser()
@@ -1099,6 +1188,7 @@ DOCKS = (
     ("plot_hist", "Histogram", "main"),
     ("plot_image", "Image", "main"),
     ("quality", "Quality", "side"),
+    ("points", "Points", "side"),
     ("plot_trace", "Trace", "bottom_left"),
     ("plot_decays", "Decays", "bottom_right"),
 )
@@ -1112,7 +1202,7 @@ def _layout():
     return Split(
         "h", 0.30, Region("settings"),
         Split("v", 0.62,
-              Split("h", 0.70, Region("main"), Region("side")),
+              Split("h", 0.56, Region("main"), Region("side")),
               Split("h", 0.5, Region("bottom_left"), Region("bottom_right"))),
     )  # fmt: skip
 
@@ -1148,8 +1238,20 @@ def _plot_mirrored_trace(trace: dict, size) -> None:
         implot.end_plot()
 
 
-def _plot_image(image: np.ndarray, name: str, size) -> None:
-    """One map of the live image, with its colour scale."""
+_POINT_COLOURS = {
+    "picked": (0.35, 0.85, 1.0, 1.0),
+    "measured": (0.4, 1.0, 0.45, 1.0),
+    "selected": (1.0, 1.0, 1.0, 1.0),
+    "measuring": (1.0, 0.25, 0.85, 1.0),
+}
+#: a press that moves less than this (pixels) before it is released is a click, not a pan
+_CLICK_SLOP = 4.0
+_press: dict = {}
+
+
+def _plot_image(image: np.ndarray, name: str, size, overlay=()) -> tuple[float, float] | None:
+    """One map of the live image, with its colour scale and the picked points on it; returns the
+    plot position (pixels) of a click on the image (a press released where it began)."""
     from emtk import implot
 
     img = np.asarray(image, dtype=float)
@@ -1170,11 +1272,134 @@ def _plot_image(image: np.ndarray, name: str, size) -> None:
         rows, cols = shown.shape
         implot.plot_heatmap("##map", np.ascontiguousarray(shown), rows, cols, lo, hi, None,
                             (0.0, float(rows)), (float(cols), 0.0))
+        for kind, colour in _POINT_COLOURS.items():
+            pts = [(x, y, n) for x, y, n, k in overlay if k == kind]
+            if not pts:
+                continue
+            xs = np.asarray([p[0] for p in pts], float)
+            ys = np.asarray([p[1] for p in pts], float)
+            big = kind in ("selected", "measuring")
+            # rings: the molecule under the marker stays visible
+            implot.set_next_marker_style(implot.MARKER_CIRCLE, 9.0 if big else 6.0,
+                                         (0.0, 0.0, 0.0, 0.0), 2.5 if big else 1.5, colour)
+            implot.plot_scatter(f"##points_{kind}", xs, ys)
+            for x, y, n in pts:
+                implot.plot_text(str(n), float(x), float(y), (10.0, -9.0))
+        clicked = None
+        if implot.is_plot_hovered():
+            mouse = im.get_mouse_pos()
+            if im.is_mouse_clicked(0):
+                _press["at"] = tuple(mouse)
+            if im.is_mouse_released(0) and "at" in _press:
+                start = _press.pop("at")
+                if abs(mouse[0] - start[0]) + abs(mouse[1] - start[1]) <= _CLICK_SLOP:
+                    where = implot.get_plot_mouse_pos()
+                    clicked = (float(where.x), float(where.y))
         implot.end_plot()
     im.same_line()
     implot.colormap_scale(tr("ns") if flim else tr("photons"), lo, hi, (scale_w, size[1]),
                           cmap=cmap)
     implot.pop_colormap()
+    return clicked
+
+
+def _plot_point_trace(p: dict, size) -> None:
+    """A point's live trace: count rate per detector and in total, the bleach rule's threshold,
+    and where it called the molecule bleached; under it the FRET efficiency (acceptor over the
+    sum, proximity ratio) and the mean arrival time per bin."""
+    from emtk import implot
+
+    counts = p["counts"]
+    width = float(p["bin_s"])
+    n = max((a.size for a in counts.values()), default=0)
+    if n == 0:
+        im.text(tr("Waiting for photons…"))
+        return
+    t = np.arange(n) * width
+    top_h = max(80.0, size[1] * 0.62)
+    if implot.begin_plot("##point_trace", (size[0], top_h), implot.FLAGS_NO_TITLE):
+        implot.setup_axes(tr("time (s)"), tr("count rate (kHz)"))
+        total = np.zeros(n)
+        for k, (ch, arr) in enumerate(counts.items()):
+            y = np.zeros(n)
+            y[: arr.size] = arr
+            total += y
+            implot.set_next_line_style(_COLOURS[k % len(_COLOURS)])
+            implot.plot_stairs(tr("detector {c}").format(c=ch), t, y / width / 1e3)
+        implot.set_next_line_style((0.85, 0.85, 0.85, 1.0))
+        implot.plot_stairs(tr("total"), t, total / width / 1e3)
+        if p.get("threshold_kcps") is not None:
+            implot.set_next_line_style((1.0, 0.75, 0.2, 1.0), 1.5)
+            implot.plot_inf_lines(tr("bleach threshold"), np.asarray([p["threshold_kcps"]]),
+                                  flags=implot.INF_LINES_FLAGS_HORIZONTAL)
+        if p.get("bleached_at_s") is not None:
+            implot.set_next_line_style((0.95, 0.3, 0.3, 1.0), 2.0)
+            implot.plot_inf_lines(tr("bleached"), np.asarray([p["bleached_at_s"]]))
+        implot.end_plot()
+    if implot.begin_plot("##point_e", (size[0], max(60.0, size[1] - top_h - 6.0)),
+                         implot.FLAGS_NO_TITLE):
+        implot.setup_axes(tr("time (s)"), tr("E"))
+        implot.setup_axis(implot.AXIS_Y2, tr("⟨t⟩ (ns)"), implot.AXIS_FLAGS_OPPOSITE)
+        implot.setup_axis_limits(implot.AXIS_Y1, -0.05, 1.05, implot.COND_ALWAYS)
+        chans = list(counts)
+        if len(chans) >= 2:
+            d = np.zeros(n)
+            a = np.zeros(n)
+            d[: counts[chans[0]].size] = counts[chans[0]]
+            a[: counts[chans[1]].size] = counts[chans[1]]
+            with np.errstate(invalid="ignore", divide="ignore"):
+                e = np.where(d + a > 0, a / (d + a), np.nan)
+            keep = np.isfinite(e)
+            implot.set_next_line_style(_COLOURS[2])
+            implot.plot_line(tr("E (proximity ratio)"), t[keep], e[keep])
+        mean = np.asarray(p.get("mean_arrival_ns"), float)
+        keep = np.isfinite(mean)
+        if keep.any():
+            implot.set_axes(implot.AXIS_X1, implot.AXIS_Y2)
+            implot.set_next_line_style(_COLOURS[4])
+            implot.plot_line(tr("mean arrival"), t[: mean.size][keep], mean[keep])
+        implot.end_plot()
+
+
+def _plot_molecule_trace(m, size) -> None:
+    """An analysed molecule: its trace per detector and the HMM path, its E per bin."""
+    from emtk import implot
+
+    t = np.asarray(m.time_s, float)
+    counts = np.asarray(m.counts, float)
+    if t.size == 0 or counts.size == 0:
+        im.text_wrapped(m.message or tr("No trace."))
+        return
+    width = float(t[1] - t[0]) if t.size > 1 else 1.0
+    top_h = max(80.0, size[1] * 0.62)
+    if implot.begin_plot("##molecule_trace", (size[0], top_h), implot.FLAGS_NO_TITLE):
+        implot.setup_axes(tr("time (s)"), tr("count rate (kHz)"))
+        for k in range(counts.shape[1]):
+            implot.set_next_line_style(_COLOURS[k % len(_COLOURS)])
+            label = m.labels[k] if k < len(m.labels) else f"{k}"
+            implot.plot_stairs(label, t, counts[:, k] / width / 1e3)
+        implot.set_next_line_style((0.6, 0.6, 0.6, 1.0))
+        implot.plot_stairs(tr("total"), t, counts.sum(axis=1) / width / 1e3)
+        if np.asarray(m.path_khz).size == t.size:
+            implot.set_next_line_style((1.0, 0.85, 0.15, 1.0), 3.0)
+            implot.plot_stairs(tr("HMM path"), t, np.asarray(m.path_khz, float))
+        if m.bleach_s is not None:
+            implot.set_next_line_style((0.95, 0.3, 0.3, 1.0), 2.0)
+            implot.plot_inf_lines(tr("bleached"), np.asarray([m.bleach_s]))
+        implot.end_plot()
+    if implot.begin_plot("##molecule_e", (size[0], max(60.0, size[1] - top_h - 6.0)),
+                         implot.FLAGS_NO_TITLE):
+        implot.setup_axes(tr("time (s)"), tr("E"))
+        implot.setup_axis_limits(implot.AXIS_Y1, -0.05, 1.05, implot.COND_ALWAYS)
+        if counts.shape[1] >= 2:
+            total = counts[:, 0] + counts[:, 1]
+            with np.errstate(invalid="ignore", divide="ignore"):
+                e = np.where(total > 0, counts[:, 1] / total, np.nan)
+            on = t < (m.bleach_s if m.bleach_s is not None else np.inf)
+            keep = np.isfinite(e) & on
+            implot.set_next_line_style(_COLOURS[2])
+            implot.plot_line(tr("E (proximity ratio)"), t[keep], e[keep])
+        implot.end_plot()
 
 
 class RecordApp(ImApp):
@@ -1206,6 +1431,7 @@ class RecordApp(ImApp):
             ("device_settings", self._draw_device_settings),
             ("laser_settings", self._draw_laser_settings),
             ("shutter_settings", self._draw_shutter_settings),
+            ("scanner_settings", self._draw_scanner_settings),
         ):
             self.form.custom[key] = draw
         #: the generated device / laser forms: their own form state, their spec per form
@@ -1250,6 +1476,7 @@ class RecordApp(ImApp):
                 walk([panel], panel["dock"])
         out["live_view"] = "plot_hist"
         out["live_image"] = "plot_image"
+        out["point_rows"] = "points"
         return out
 
     def focus_dock(self, key: str) -> None:
@@ -1293,9 +1520,12 @@ class RecordApp(ImApp):
         if mode == "image":
             self.docks.show("plot_image")
             self.docks.hide("plot_hist")
+            self.docks.show("points")
+            self.docks.focus("points")
         else:
             self.docks.show("plot_hist")
             self.docks.hide("plot_image")
+            self.docks.hide("points")
 
     def reset_layout(self) -> None:
         """Every dock back where the tool puts it, the stored layout forgotten."""
@@ -1350,9 +1580,11 @@ class RecordApp(ImApp):
             im.same_line()
             if im.small_button(f"📖 {tr('Guide')}"):
                 self.tour.start()
+            im.set_item_tooltip(tr("A guided tour: it points at each control in turn."))
             im.same_line()
             if im.small_button(f"❓ {tr('Help')}"):
                 self.help_window.open()
+            im.set_item_tooltip(tr("What every window and control does."))
             im.same_line()
             if im.small_button(tr("Reset layout")):
                 self.reset_layout()
@@ -1439,6 +1671,10 @@ class RecordApp(ImApp):
         self._draw_generated("shutter_settings", model.shutter_form, state, width,
                              tr("Load settings with a shutters section: its shutters appear here."))
 
+    def _draw_scanner_settings(self, section, model: RecordModel, state: FormState, width: float):
+        self._draw_generated("scanner_settings", model.scanner_form, state, width,
+                             tr("Connect the scanner: its settings appear here."))
+
     def _draw_laser_settings(self, section, model: RecordModel, state: FormState, width: float):
         self._draw_generated("laser_settings", model.laser_form, state, width,
                              tr("The simulated laser is set in the program below."))
@@ -1492,7 +1728,7 @@ class RecordApp(ImApp):
         state.rects["live_view"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
 
     def _draw_image(self, section, model: RecordModel, state: FormState, width: float) -> None:
-        snap = model.snapshot
+        snap = model.image_snapshot
         images = (snap or {}).get("images") or {}
         if not images:
             self._placeholder(state, "live_image", tr("Start a scan: the image builds up here."),
@@ -1506,13 +1742,56 @@ class RecordApp(ImApp):
             tr("{photons:,} photons, {lines} lines").format(photons=snap["photons"],
                                                            lines=snap["lines_done"]),
         )
-        _plot_image(images[model.image_map], model.image_map, self._avail())
+        picked = _plot_image(images[model.image_map], model.image_map, self._avail(),
+                             overlay=self._image_points(model))
+        if picked is not None:
+            row = model.pick_at_pixel(*picked)
+            if row is not None:
+                self.tour.notify_used("live_image")
         bottom = im.get_cursor_screen_pos()
         state.rects["live_image"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
+
+    def _image_points(self, model: RecordModel) -> list[tuple]:
+        """The picked points in image pixels: ``(px, py, number, kind)``, kind ``measuring`` /
+        ``selected`` / ``measured`` / ``picked``."""
+        seq = model.sequence
+        measuring = seq.current.index if (seq is not None and seq.current is not None) else None
+        out = []
+        for k, p in enumerate(model.points):
+            px, py = model.image_um_to_pixel(p["x_um"], p["y_um"])
+            kind = ("measuring" if measuring == k else "selected"
+                    if model.selected_point == p["index"] else "measured"
+                    if p["index"] in model.molecules else "picked")
+            out.append((px, py, p["index"] + 1, kind))
+        return out
 
     def _draw_trace(self, section, model: RecordModel, state: FormState, width: float) -> None:
         snap = model.snapshot
         top = im.get_cursor_screen_pos()
+        point = (snap or {}).get("point_trace") if model.points_running else None
+        molecule = model.molecules.get(model.selected_point) \
+            if model.selected_point is not None and not model.points_running else None
+        if point is not None or molecule is not None:
+            if point is not None:
+                p = point
+                _short_line(
+                    tr("Point {k} · live").format(k=p["index"] + 1),
+                    tr("Photons per detector in {b:g} ms bins; the dashed line is the bleach "
+                       "rule's threshold, the red line where it called the molecule bleached.")
+                    .format(b=p["bin_s"] * 1e3), (0.7, 0.7, 0.7, 1.0))
+                _plot_point_trace(p, self._avail())
+            else:
+                m = molecule
+                _short_line(
+                    tr("Molecule {k} · {n} states · {s} step(s)").format(
+                        k=m.index + 1, n=m.n_states, s=m.steps),
+                    tr("The recorded trace per detector and the HMM path (the state's rate per "
+                       "bin, black) of the intensity-trace tool's binning and the shared HMM."),
+                    (0.7, 0.7, 0.7, 1.0))
+                _plot_molecule_trace(m, self._avail())
+            bottom = im.get_cursor_screen_pos()
+            state.rects["live_trace"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
+            return
         if snap is None:
             self._placeholder(state, "live_trace", tr("The running trace appears during a run."),
                               width)
@@ -1652,6 +1931,14 @@ class RecordApp(ImApp):
             "img_tau_1_ns",
             "img_tau_2_ns",
             "img_brightness",
+            "img_sample",
+            "img_bleach_s",
+            "point_time_s",
+            "until_bleached",
+            "autopick_max",
+            "autopick_min",
+            "autopick_max_brightness",
+            "scanner_address",
             "settings_address",
             "advanced",
         ) + tuple(f"scan_{name}" for name in RecordModel._SCAN_FIELDS)

@@ -68,7 +68,8 @@
         },
         {
           "type": "custom",
-          "key": "settings_status"
+          "key": "settings_status",
+          "description": "What the loaded settings did: the file's name, and in the tooltip what was applied and what the hardware refused."
         }
       ],
       "dock": "acquisition"
@@ -175,7 +176,8 @@
               },
               "description": "Molecules of each population in the simulation box. Higher means more bursts per second, and more coincident molecules."
             }
-          ]
+          ],
+          "description": "The simulator's two FRET populations (E, S) and their concentration, and the excitation scheme."
         },
         {
           "type": "panel",
@@ -268,7 +270,8 @@
           "description": "How fast simulated or replayed photons arrive: 1 is the pace of the real measurement, 10 ten times faster."
         }
       ],
-      "dock": "acquisition"
+      "dock": "acquisition",
+      "description": "Point (smFRET), FCS or Image, and where the photons come from: the simulator, a replay of a workspace dataset, or the TCSPC device (with the scanner for an image)."
     },
     {
       "type": "panel",
@@ -549,7 +552,8 @@
           "description": "Slow relative intensity change per minute (focus, laser power, evaporation)."
         }
       ],
-      "dock": "acquisition"
+      "dock": "acquisition",
+      "description": "How real the simulated measurement looks: donor-only and acceptor-only molecules, bleaching, crosstalk, background, IRF, dead time, drift. Realistic by default; Advanced only."
     },
     {
       "type": "panel",
@@ -607,7 +611,8 @@
         "attr": "source_kind",
         "not_equals": "device"
       },
-      "dock": "acquisition"
+      "dock": "acquisition",
+      "description": "The connected TCSPC unit through libphacq: choose, connect, its count rates and every setting its driver describes."
     },
     {
       "type": "panel",
@@ -646,7 +651,8 @@
         },
         {
           "type": "custom",
-          "key": "laser_status"
+          "key": "laser_status",
+          "description": "The laser's state: connected, applied, emitting; the tooltip names the unit and its heads."
         },
         {
           "type": "custom",
@@ -702,7 +708,8 @@
                 ],
                 "tooltip_key": "detail",
                 "selection_note": false
-              }
+              },
+              "description": "The laser's heads: on/off, drive intensity and pulsed/CW, edited into the program (Apply sends it)."
             },
             {
               "type": "value",
@@ -718,7 +725,8 @@
             },
             {
               "type": "custom",
-              "key": "laser_rate"
+              "key": "laser_rate",
+              "description": "The laser's repetition rate now, and the program's in the tooltip."
             },
             {
               "type": "panel",
@@ -740,12 +748,14 @@
                       {
                         "key": "output",
                         "title": "Out",
-                        "editable": false
+                        "editable": false,
+                        "tooltip": "Sequencer output (1–8)."
                       },
                       {
                         "key": "head",
                         "title": "Head",
-                        "editable": false
+                        "editable": false,
+                        "tooltip": "The laser head on this output."
                       },
                       {
                         "key": "burst",
@@ -763,7 +773,8 @@
                         "tooltip": "The output contributes to the sync signal."
                       }
                     ]
-                  }
+                  },
+                  "description": "The sequencer: per output its burst length, enable and sync, edited into the program."
                 }
               ]
             },
@@ -931,10 +942,12 @@
               "call": "trace_changed",
               "description": "Bin width of the running trace. Default 1 ms (bursts last a few ms)."
             }
-          ]
+          ],
+          "description": "The span and bin width of the running smFRET trace (Trace window)."
         }
       ],
-      "dock": "analysis"
+      "dock": "analysis",
+      "description": "The Instrument setup (detectors, micro-time windows) read as one measurement type, and the burst rule of the live analysis."
     },
     {
       "type": "panel",
@@ -1003,6 +1016,28 @@
             {
               "type": "value",
               "kind": "float",
+              "attr": "scan_x0_um",
+              "label": "X start (µm)",
+              "minimum": 0.0,
+              "maximum": 100.0,
+              "step": 1.0,
+              "decimals": 2,
+              "description": "The image's corner on the fast axis, in stage coordinates (the MT200's E-725 travels 0–100 µm; SymPhoTime starts its images at 10 µm). Picked points are stage coordinates too."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "scan_y0_um",
+              "label": "Y start (µm)",
+              "minimum": 0.0,
+              "maximum": 100.0,
+              "step": 1.0,
+              "decimals": 2,
+              "description": "The image's corner on the slow axis, in stage coordinates."
+            },
+            {
+              "type": "value",
+              "kind": "float",
               "attr": "scan_dwell_ms",
               "label": "Dwell (ms)",
               "minimum": 0.001,
@@ -1048,7 +1083,8 @@
               "decimals": 2,
               "description": "Distance between the planes of a z stack."
             }
-          ]
+          ],
+          "description": "The scan's geometry and timing: what the scanner rasters and how the image's pixels are laid out."
         },
         {
           "type": "panel",
@@ -1059,14 +1095,21 @@
           },
           "sections": [
             {
+              "type": "choice",
+              "attr": "img_sample",
+              "label": "Sample",
+              "options_source": "img_sample_options",
+              "description": "What the simulated scan sees: beads (a few emitters each) on the dim outline of a cell, or single molecules on a clean coverslip (a few spots hold two molecules, which bleach in two steps) -- the sample to try picking and point measurements on."
+            },
+            {
               "type": "value",
               "kind": "int",
               "attr": "img_beads",
-              "label": "Beads",
+              "label": "Spots",
               "minimum": 0,
               "maximum": 500,
               "step": 1,
-              "description": "Bright beads on the dim outline of a cell; half of them with each lifetime."
+              "description": "Bright spots in the field: beads, or molecules (single, a few pairs); half of them with each lifetime."
             },
             {
               "type": "value",
@@ -1100,10 +1143,69 @@
               "step": 5.0,
               "decimals": 1,
               "description": "Photon rate of one emitter at the focus centre (a bead is a few emitters). Too bright piles up: watch the Pile-up light."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "img_bleach_s",
+              "label": "Bleaching (s)",
+              "minimum": 0.0,
+              "maximum": 600.0,
+              "step": 0.5,
+              "decimals": 2,
+              "description": "Mean time a simulated molecule shines under the parked focus of a point measurement before it bleaches (each molecule on its own; 0 never bleaches)."
+            }
+          ],
+          "description": "The sample the simulated scan sees, and how long its molecules shine under a parked focus."
+        },
+        {
+          "type": "panel",
+          "title": "Scanner",
+          "hidden_when": {
+            "attr": "scanner_hidden",
+            "equals": "true"
+          },
+          "description": "The sample scanner that rasters while the TCSPC device records its line markers: the MT200's PI E-725 piezo stage through libphacq. A settings file's scanner section connects it on load.",
+          "sections": [
+            {
+              "type": "info",
+              "source": "scanner_text"
+            },
+            {
+              "type": "value",
+              "kind": "str",
+              "attr": "scanner_address",
+              "label": "Address",
+              "hidden_when": {
+                "attr": "advanced",
+                "equals": "false"
+              },
+              "description": "What Connect opens without a settings file: empty for the first E-725 on USB, a USB serial, tcp:<host> over the network, sim: the simulator."
+            },
+            {
+              "type": "button_row",
+              "buttons": [
+                {
+                  "action": "connect_scanner",
+                  "label": "Connect",
+                  "description": "Open the scanner the settings name (or the address). Nothing moves until a scan or a point measurement."
+                },
+                {
+                  "action": "disconnect_scanner",
+                  "label": "Disconnect",
+                  "description": "Release the scanner so another program can drive it."
+                }
+              ]
+            },
+            {
+              "type": "custom",
+              "key": "scanner_settings",
+              "description": "The scanner's own settings, as its driver describes them: the stage position (writing it moves the stage) and, in Advanced, the controller's learning time and line turnaround. The raster itself is the Scan panel's."
             }
           ]
         }
-      ]
+      ],
+      "description": "The image's raster -- pixels, area, the corner on the stage, dwell time, frames, bidirectional, z planes -- the simulated sample, and the scanner that rasters it."
     },
     {
       "type": "panel",
@@ -1166,7 +1268,8 @@
           "description": "What the run is doing, and where it was saved (hover for the full path)."
         }
       ],
-      "dock": "acquisition"
+      "dock": "acquisition",
+      "description": "How long to measure, the recording's name, how the photons are stored, and Start / Stop."
     },
     {
       "type": "panel",
@@ -1189,7 +1292,8 @@
           "key": "live_view",
           "description": "The selected histogram of the bursts, building up live (2-D with both marginals)."
         }
-      ]
+      ],
+      "description": "The live histograms of the measurement type (E–S for PIE), building up burst by burst."
     },
     {
       "type": "panel",
@@ -1208,6 +1312,247 @@
           "key": "live_image",
           "description": "The image building up line by line from the scan's markers."
         }
+      ],
+      "description": "The image building up line by line from the scan's markers; a click adds a point (Points)."
+    },
+    {
+      "type": "panel",
+      "title": "Points",
+      "dock": "points",
+      "hidden_when": {
+        "attr": "mode",
+        "not_equals": "image"
+      },
+      "description": "Molecules picked on the image and measured one by one: the focus parks on each point and the TCSPC device records it, for a set time or until the molecule has bleached. Each point's trace is then segmented into states and its results fill the table.",
+      "sections": [
+        {
+          "type": "info",
+          "source": "points_text"
+        },
+        {
+          "type": "progress",
+          "attr": "points_fraction",
+          "text_source": "points_text",
+          "hidden_when": {
+            "attr": "points_running",
+            "equals": "false"
+          },
+          "description": "How far the point measurements are: points done and the time of the current one."
+        },
+        {
+          "type": "toggle",
+          "attr": "pick_on_click",
+          "label": "Click adds a point",
+          "description": "A click on the image (not a drag, which pans it) adds a point there; its position is the stage coordinate under the pointer."
+        },
+        {
+          "type": "panel",
+          "title": "Auto-pick",
+          "collapsible": true,
+          "sections": [
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "autopick_max",
+              "label": "Max molecules",
+              "minimum": 0,
+              "maximum": 1000,
+              "step": 1,
+              "description": "Take at most this many molecules, brightest first (0: every one found)."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "autopick_min",
+              "label": "Min photons",
+              "minimum": 0.0,
+              "maximum": 1000000000.0,
+              "step": 10.0,
+              "decimals": 0,
+              "description": "A spot needs at least this many photons in the image (its summed intensity) to be taken."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "autopick_max_brightness",
+              "label": "Max photons",
+              "minimum": 0.0,
+              "maximum": 1000000000.0,
+              "step": 10.0,
+              "decimals": 0,
+              "description": "Spots brighter than this are left out (aggregates, beads); 0 sets no limit."
+            },
+            {
+              "type": "button_row",
+              "buttons": [
+                {
+                  "action": "autopick",
+                  "label": "Auto-pick",
+                  "icon": "✨",
+                  "description": "Find the molecules in the intensity image with the spot finder's single-molecule workflow (Gaussian smoothing, Otsu threshold, watershed; spots touching the edge dropped) and add them as points, brightest first."
+                }
+              ]
+            }
+          ],
+          "description": "Find the molecules in the image with the spot finder's single-molecule workflow, within a count and brightness limit."
+        },
+        {
+          "type": "panel",
+          "title": "Measurement",
+          "collapsible": true,
+          "sections": [
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "point_time_s",
+              "label": "Time per point (s)",
+              "minimum": 0.1,
+              "maximum": 3600.0,
+              "step": 1.0,
+              "decimals": 1,
+              "description": "The longest a point is recorded."
+            },
+            {
+              "type": "toggle",
+              "attr": "until_bleached",
+              "label": "Until bleached",
+              "description": "End a point early once its molecule has bleached: the count rate stays down near the background (the threshold is drawn in the trace)."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "bleach_background_kcps",
+              "label": "Background (kHz)",
+              "minimum": 0.0,
+              "maximum": 10000.0,
+              "step": 0.5,
+              "decimals": 2,
+              "hidden_when": {
+                "attr": "advanced",
+                "equals": "false"
+              },
+              "description": "The count rate without a molecule, which the bleach rule's threshold sits above (0: the simulator's background, else none)."
+            }
+          ],
+          "description": "How long each point is recorded, and whether it ends once its molecule has bleached."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "action": "measure_points",
+              "label": "Measure points",
+              "icon": "🎯",
+              "role": "primary",
+              "description": "Park the focus on each point in turn and record it (one recording per point, in Datasets). The shutters open as for a run; Stop ends the sequence."
+            },
+            {
+              "action": "clear_points",
+              "label": "Clear",
+              "role": "danger",
+              "description": "Remove every point and its results."
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "description": "The picked points and, once measured, each molecule's results: photons, bleach time, bleaching steps, FRET efficiency, stoichiometry (with alternating excitation only) and lifetime. Select a row to see its trace and states; ✕ or Delete removes a point.",
+          "options": {
+            "source": "point_rows",
+            "row_key": "_index",
+            "selected_attr": "selected_point_row",
+            "delete_call": "delete_point_row",
+            "editable": false,
+            "tooltip_key": "detail",
+            "selection_note": false,
+            "expand": true,
+            "min_height": 120,
+            "columns": [
+              {
+                "key": "index",
+                "title": "#",
+                "format": "%d",
+                "tooltip": "The point's number (its marker on the image).",
+                "width": 26
+              },
+              {
+                "key": "x_um",
+                "title": "x µm",
+                "format": "%.2f",
+                "tooltip": "Stage position, fast axis.",
+                "width": 44
+              },
+              {
+                "key": "y_um",
+                "title": "y µm",
+                "format": "%.2f",
+                "tooltip": "Stage position, slow axis.",
+                "width": 44
+              },
+              {
+                "key": "status",
+                "title": "Status",
+                "tooltip": "Waiting, running, bleached (ended by the bleach rule), done (its full time) or stopped.",
+                "collapse_order": 2,
+                "width": 64
+              },
+              {
+                "key": "kphotons",
+                "title": "Phot.",
+                "format": "%.0fk",
+                "tooltip": "Photons recorded at the point, in thousands.",
+                "width": 46
+              },
+              {
+                "key": "bleach_s",
+                "title": "Bleach",
+                "format": "%.2f",
+                "tooltip": "When the trace reached its final, dimmest level (s; the HMM path).",
+                "width": 50
+              },
+              {
+                "key": "steps",
+                "title": "Steps",
+                "format": "%d",
+                "tooltip": "Bleaching steps: each drop to a level dimmer than every level before (one molecule bleaches in one step).",
+                "width": 44
+              },
+              {
+                "key": "efficiency",
+                "title": "E",
+                "format": "%.2f",
+                "tooltip": "FRET efficiency of the first level (before any bleaching): acceptor over the sum, background subtracted.",
+                "collapse_order": 1,
+                "width": 38
+              },
+              {
+                "key": "stoichiometry",
+                "title": "S",
+                "format": "%.2f",
+                "tooltip": "Stoichiometry: needs alternating excitation (PIE), which a point recording of one colour does not have.",
+                "collapse_order": 1,
+                "width": 30
+              },
+              {
+                "key": "lifetime_ns",
+                "title": "τ ns",
+                "format": "%.2f",
+                "tooltip": "Fast lifetime: the mean arrival time of the photons before the bleach, after the decay's peak.",
+                "collapse_order": 1,
+                "width": 40
+              },
+              {
+                "key": "remove",
+                "title": " ",
+                "display": "button",
+                "call": "remove_point_row",
+                "tooltip": "Remove this point.",
+                "width": 24
+              }
+            ]
+          }
+        }
       ]
     },
     {
@@ -1220,7 +1565,8 @@
           "key": "live_trace",
           "description": "Point: the running smFRET trace of the last seconds -- donor up, acceptor (FRET and directly excited) down. Image: count rate per detector."
         }
-      ]
+      ],
+      "description": "The running trace (Point), the count rates (Image), or a point's live single-molecule trace and an analysed molecule's trace with its HMM path (Points)."
     },
     {
       "type": "panel",
@@ -1232,7 +1578,8 @@
           "key": "live_decays",
           "description": "Micro-time histograms per detector, with the windows of the setup."
         }
-      ]
+      ],
+      "description": "The micro-time decays per detector, with the excitation windows marked."
     },
     {
       "type": "panel",
@@ -1244,7 +1591,8 @@
           "key": "live_qc",
           "description": "Traffic lights: the quality checks of the measurement type, the worst one overall. Hover a line for what it means and what to do."
         }
-      ]
+      ],
+      "description": "The quality checker's traffic lights: FRET (Point) or imaging (Image) checks, worst first, each with what to do."
     }
   ]
 }

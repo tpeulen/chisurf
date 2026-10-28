@@ -101,4 +101,7 @@ def test_every_guide_step_points_at_a_drawn_control(app):
         target = (step.get("target") or {}).get("name")
         if target:
             assert target in app.form.rects, target
+        if "Image (scan)" in (step.get("await") or {}).get("hint", ""):
+            app.model.mode = "image"  # what the user does at this step
+            app.model.mode_changed()
     app.tour.stop()

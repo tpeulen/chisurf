@@ -490,6 +490,8 @@ class LaserSettingsMixin:
             self._laser_form_from_device()
         if self.shutters is not None:
             self._shutter_form_from_device()
+        if getattr(self, "scanner", None) is not None:
+            self._scanner_form_from_device()
 
     @property
     def realism_hidden(self) -> bool:
@@ -708,6 +710,12 @@ class LaserSettingsMixin:
             if not self.connect_laser():
                 notes.append(tr("Laser not connected: {why}").format(
                     why=self.laser_detail or self.laser_text))
+        if isinstance(doc.get("scanner"), dict) and getattr(self, "scanner", None) is None:
+            # the sample scanner: opening it moves nothing
+            self._progress(0.65, tr("Connecting the scanner…"))
+            self.scanner_section = dict(doc["scanner"])
+            if not self.connect_scanner(doc["scanner"]):
+                notes.append(self.scanner_text)
         if doc.get("shutters") and self.shutters is None:
             self._progress(0.7, tr("Connecting the shutters…"))
             if not self.connect_shutters(doc["shutters"]):
@@ -833,6 +841,15 @@ class LaserSettingsMixin:
         )
         if self.mode == "image":
             doc["scan"] = self.scan_settings().to_dict()
+        if self.scanner_section:
+            scanner = dict(self.scanner_section)
+            if self.scanner is not None:
+                from chisurf.plugins.core.acq.live.scanning import SCAN_PANEL_KEYS
+
+                held = dict(self.scanner.device.settings())
+                scanner["settings"] = {k: held[k] for k in ("learn_s", "turn_ms", "flyback_ms")
+                                       if k in held and k not in SCAN_PANEL_KEYS}
+            doc["scanner"] = scanner
         if self.laser_program:
             doc["laser"] = dict(self.laser_program)
         if self.source_kind == "simulator":

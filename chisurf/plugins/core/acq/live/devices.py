@@ -177,7 +177,7 @@ def device_label(dev) -> str:
 
 
 def settings_form(dev, values: dict | None = None, on_change=None, *, folded: bool = True,
-                  advanced: bool = True):
+                  advanced: bool = True, exclude: tuple = ()):
     """The device's complete settings form: every setting phacq describes, grouped as the driver
     groups them (sync, inputs one panel each, timing, markers ...).
 
@@ -197,6 +197,8 @@ def settings_form(dev, values: dict | None = None, on_change=None, *, folded: bo
     advanced : bool
         Show the settings the driver marks advanced (``"advanced": true`` in its schema);
         off, the form is the simple view without them.
+    exclude : tuple of str
+        Settings another panel owns (a scanner's raster comes from the Scan panel).
     """
     from chisurf.core.registry.tttrlib import entry_form_view_for
 
@@ -206,6 +208,14 @@ def settings_form(dev, values: dict | None = None, on_change=None, *, folded: bo
     schema = dev.schema()
     if not advanced:
         schema = simple_schema(schema)
+    if exclude:
+        params = dict(schema.get("params_schema") or {})
+        params["properties"] = {k: v for k, v in (params.get("properties") or {}).items()
+                                if k not in exclude}
+        if "required" in params:
+            params["required"] = [k for k in params["required"] if k in params["properties"]]
+        schema = {**schema, "params_schema": params}
+    if not advanced or exclude:
         current = {k: v for k, v in current.items()
                    if k in schema["params_schema"]["properties"]}
     return entry_form_view_for(schema, values=current, on_change=on_change, folded=folded)

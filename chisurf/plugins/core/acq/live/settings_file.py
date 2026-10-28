@@ -23,6 +23,7 @@ simulator -- in plain JSON that a person can read and edit::
       "run": {"duration_s": 600, "name": "sample_{date}", "project_data": "link"},
       "scan": {"pixels_x": 64, "pixels_y": 64, "area_x_um": 16, "area_y_um": 16, "dwell_ms": 0.1,
                "frames": 1, "bidirectional": false, "z_planes": 1},
+      "scanner": {"driver": "pi", "address": "", "settings": {"learn_s": 5, "turn_ms": 20}},
       "simulator": {}
     }
 
@@ -149,7 +150,8 @@ def validate(doc: Any) -> list[str]:
         p.append(f"schema: {schema!r} is not an acquisition settings file")
     elif str(schema).split("/", 1)[1].split(".")[0] != SCHEMA.split("/", 1)[1]:
         p.append(f"schema: version {schema!r} is newer than this ChiSurf reads ({SCHEMA!r})")
-    for key in ("device", "laser", "experiment", "run", "simulator", "scan", "shutters"):
+    for key in ("device", "laser", "experiment", "run", "simulator", "scan", "shutters",
+                "scanner"):
         if key in doc and not isinstance(doc[key], dict):
             p.append(f"{key}: expected an object")
     shut = doc.get("shutters") if isinstance(doc.get("shutters"), dict) else {}
@@ -186,6 +188,21 @@ def validate(doc: Any) -> list[str]:
             for name in shut.get(key) or []:
                 if str(name) not in names:
                     p.append(f"shutters.{key}: {name!r} is not one of the shutters")
+    scanner = doc.get("scanner") if isinstance(doc.get("scanner"), dict) else {}
+    if scanner:
+        # the sample scanner: libphacq's driver ("pi": the PI E-725) and the address it opens
+        # ("" the first unit on USB, a USB serial, "tcp:host[:port]", "sim:" the simulator)
+        _choice(p, "scanner.driver", scanner.get("driver", "pi"), ("pi",))
+        if not isinstance(scanner.get("address", ""), str):
+            p.append("scanner.address: expected a string (\"\" = the first E-725 on USB)")
+        if "settings" in scanner and not isinstance(scanner["settings"], dict):
+            p.append("scanner.settings: expected an object {setting: value}")
+        for key, (lo, hi) in (("learn_s", (0, 600)), ("turn_ms", (1, 500)),
+                              ("flyback_ms", (5, 2000))):
+            value = (scanner.get("settings") or {}).get(key) \
+                if isinstance(scanner.get("settings"), dict) else None
+            if value is not None:
+                _num(p, f"scanner.settings.{key}", value, lo, hi)
     dev = doc.get("device") if isinstance(doc.get("device"), dict) else {}
     if "mode" in dev:
         _choice(p, "device.mode", dev["mode"], tuple(MODES))

@@ -135,10 +135,101 @@ diode; `ChiSurf_PowerDiodeRaw` always) and the shutters' states. A HydraHarp
 `MeasDesc_BinningFactor`; a point measurement carries SymPhoTime's
 `ImgHdr_Dimensions` 1, `ImgHdr_Ident` 6 and the point as `ImgHdr_X0/Y0`.
 
+**The scanner.** A settings file's `scanner` section names the sample scanner
+(`{"driver": "pi", "address": "", "settings": {"learn_s": 5, "turn_ms": 20}}`):
+the MT200 profiles name the PI E-725 piezo stage, the first one on USB (on the
+MT200 PC it is bound to PI's own USB driver: write `"tcp:<host>"` there), with
+SymPhoTime's "fast" timing; `"sim:"` is libphacq's simulator. Loading the file
+connects it like the device, the laser and the shutters; opening it moves
+nothing.
+
 **No sync, still recorded.** A T3 run without a sync signal (laser off, cable
 out) is recorded anyway and the device is shown as *(no sync)*: the unit still
 time-tags its inputs, the macro step is provisionally the unit's start-stop
 range, and the file's header takes the sync rate measured when it closes.
+
+## Imaging, picking molecules, measuring them point by point
+
+In **Image** mode Record scans like SymPhoTime does. With the source **TCSPC
+device and scanner** the device records while the scanner rasters: the E-725's
+trigger outputs mark each line's start (output 1) and stop (output 2) on the
+HydraHarp's marker inputs 1 and 2, which Start switches on, so the image is built
+from the photon stream alone and the recording carries SymPhoTime's `ImgHdr_*`
+tags (`ImgHdr_LineStart` 1, `ImgHdr_LineStop` 2, no `ImgHdr_Frame`: the E-725
+sends no frame marker, a frame is its lines). The raster -- pixels, area, the
+corner on the stage, dwell time, frames, bidirectional -- is the **Scan** panel's;
+the scanner's own learning time and line turnaround are in **Scan › Scanner**
+(Advanced). Without hardware the **Simulator (scan)** scans a simulated sample:
+beads on a cell, or single molecules of which a few spots hold two.
+
+On the image, **click** to add a point, or press **Auto-pick**: the spot finder's
+single-molecule workflow ({doc}`guide 84 </guides/84_spot_finder>`) finds the
+molecules in the intensity image and adds them, brightest first, within
+*Max molecules* and *Min/Max photons*. **Measure points** parks the focus on each
+point in turn (a settled move) and records it -- for *Time per point*, or until the
+molecule has bleached (*Until bleached*: the count rate stays near the background).
+
+```{figure} figures/65_points_picked.png
+:name: fig-65-points-picked
+:width: 100%
+
+A simulated scan of single molecules: Auto-pick has added the molecules (numbered
+rings) and one point was clicked by hand; the Points table lists them.
+```
+
+While a point records, **Trace** shows its count rate per detector, the bleach
+threshold and the moment the rule called the molecule bleached, and under it the
+FRET efficiency and the mean arrival time per bin.
+
+```{figure} figures/65_points_running.png
+:name: fig-65-points-running
+:width: 100%
+
+Point 3 of 3 recording: its live trace with the bleach threshold; the points done
+already carry their results.
+```
+
+Each point is a recording of its own in Datasets (SymPhoTime's point header:
+`ImgHdr_Dimensions` 1, `ImgHdr_Ident` 6, the stage position) and is analysed when
+it ends with ChiSurf's shared tools -- the intensity-trace tool's binning
+({doc}`guide 74 </guides/74_intensity_traces_and_file_tools>`) and the shared
+Gaussian HMM ({doc}`guide 92 </guides/92_hmm_binned_traces>`) with the state
+count the BIC prefers. Its row then holds the photons, the bleach time, the
+number of bleaching steps (each drop to a level dimmer than all before), the FRET
+efficiency of the first level (background-corrected proximity ratio), S (only with
+alternating excitation) and a fast lifetime. Selecting a row shows that molecule's
+trace and HMM path. When the sequence ends the table of all molecules is written
+into the image dataset's container (`molecules.table`, one row per molecule).
+
+```{figure} figures/65_points_done.png
+:name: fig-65-points-done
+:width: 100%
+
+The sequence done: one row per molecule; the selected molecule's trace per
+detector with its HMM path (yellow) and the bleach time (red), two steps down.
+```
+
+The same from Python, without a window:
+
+```python
+from chisurf.plugins.core.acq.gui.record_app import RecordModel
+
+m = RecordModel(realtime=False)
+m.mode = "image"; m.load_example()
+m.start()
+while m.running:
+    m.poll()
+m.poll(force=True)
+m.autopick()            # the spot finder's single_molecule workflow
+m.measure_points()
+m.wait_points()
+for row in m.point_rows():
+    print(row["index"], row["steps"], row["bleach_s"], row["efficiency"])
+```
+
+To run the scan on the real instrument, load an MT200 profile (it connects the
+HydraHarp, the Sepia II, the shutters and the E-725), set **Source** to *TCSPC
+device and scanner* and press **Start**.
 
 ## Running one
 

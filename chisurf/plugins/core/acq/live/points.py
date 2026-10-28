@@ -45,21 +45,22 @@ class PiScanner(ScannerBackend):
         ``"tcp:host[:port]"``, or ``"sim:"`` (the simulator).
     device : phacq.Device, optional
         An already opened ``pi`` device (``address`` is then ignored).
-    learn_s, turn_ms : float
-        The raster's settling ("learning") time and turnaround (20 ms fast, 35 ms accurate).
+    learn_s, turn_ms : float, optional
+        The raster's settling ("learning") time and turnaround (20 ms fast, 35 ms accurate);
+        ``None`` keeps what the device holds (its settings form, a settings file).
     """
 
     name = "PI E-725 piezo stage"
 
-    def __init__(self, address: str = "", *, device=None, learn_s: float = 5.0,
-                 turn_ms: float = 20.0):
+    def __init__(self, address: str = "", *, device=None, learn_s: float | None = None,
+                 turn_ms: float | None = None):
         if device is None:
             import phacq
 
             device = phacq.DriverRegistry.instance().driver("pi").open(address)
         self.device = device
-        self.learn_s = float(learn_s)
-        self.turn_ms = float(turn_ms)
+        self.learn_s = learn_s
+        self.turn_ms = turn_ms
         self.scan = ScanSettings()
 
     def configure(self, scan: ScanSettings) -> list[str]:
@@ -77,8 +78,17 @@ class PiScanner(ScannerBackend):
             ("dwell_ms", scan.dwell_ms), ("bidirectional", 1 if scan.bidirectional else 0),
             ("learn_s", self.learn_s), ("turn_ms", self.turn_ms),
         ):
-            d.set_parameter(name, float(value))
-        return []
+            if value is not None:
+                d.set_parameter(name, float(value))
+        notes = []
+        if scan.z_planes > 1:
+            notes.append("the E-725 has no z axis here: one plane is scanned")
+        return notes
+
+    @property
+    def frame_s(self) -> float:
+        """One image of the configured raster, learning not included (the controller's plan)."""
+        return float(self.device.get_parameter("frame_s"))
 
     def start(self) -> None:
         """Start the raster (learning, line triggers, image); a point list has nothing to start."""
@@ -182,6 +192,9 @@ class PointRecordSession(RecordSession):
     """One point's recording: a :class:`RecordSession` that carries its point in the header and,
     with a :class:`BleachDetector`, ends itself when the molecule has bleached."""
 
+    #: bin width of the live point trace (s)
+    TRACE_BIN_S = 0.01
+
     def __init__(self, source, *, point: tuple[float, float], index: int,
                  bleach: BleachDetector | None = None, **kwargs):
         tags = dict(kwargs.pop("header_tags", None) or {})
@@ -194,14 +207,65 @@ class PointRecordSession(RecordSession):
         self.point = (float(point[0]), float(point[1]))
         self.index = int(index)
         self.bleach = bleach
+        #: the live single-molecule trace: photons per detector and the micro-time sum per bin
+        self._pt_counts: dict[int, np.ndarray] = {}
+        self._pt_micro = np.zeros(0, np.float64)
+        self._pt_t0: int | None = None
 
     def _push(self, batch) -> None:
         super()._push(batch)
+        photons = batch.photons()
+        if len(photons):
+            clock = self.source.info.macro_clock_s
+            if self._pt_t0 is None:
+                self._pt_t0 = int(photons.macro[0])
+            b = ((photons.macro.astype(np.int64) - self._pt_t0) * clock
+                 / self.TRACE_BIN_S).astype(np.int64)
+            n = int(b.max()) + 1
+            if n > self._pt_micro.size:
+                self._pt_micro = np.concatenate([self._pt_micro, np.zeros(n - self._pt_micro.size)])
+                for c in list(self._pt_counts):
+                    arr = self._pt_counts[c]
+                    self._pt_counts[c] = np.concatenate([arr, np.zeros(n - arr.size, np.int64)])
+            self._pt_micro[:n] += np.bincount(b, weights=photons.micro.astype(np.float64),
+                                              minlength=n)[:n]
+            channel = photons.channel.astype(np.int64)
+            for c in np.unique(channel):
+                arr = self._pt_counts.setdefault(int(c), np.zeros(self._pt_micro.size, np.int64))
+                arr[:n] += np.bincount(b[channel == c], minlength=n)[:n]
         if self.bleach is not None and not self._stop.is_set():
             if self.bleach.push(batch.photons().macro, self.source.info.macro_clock_s):
                 self.stop_reason = "bleached"
                 self._stop.set()
                 self.source.stop()
+
+    def point_trace(self) -> dict[str, Any]:
+        """The live trace of this point: photons per detector per bin, the mean micro time per
+        bin, and the bleach rule's level, threshold and call."""
+        with self._lock:
+            counts = {c: a.copy() for c, a in sorted(self._pt_counts.items())}
+            micro = self._pt_micro.copy()
+        total = sum(counts.values()) if counts else np.zeros(micro.size, np.int64)
+        info = self.source.info
+        with np.errstate(invalid="ignore", divide="ignore"):
+            mean_ns = np.where(total > 0, micro / np.maximum(total, 1) * info.micro_res_s * 1e9,
+                               np.nan)
+        b = self.bleach
+        return {
+            "index": self.index,
+            "point": self.point,
+            "bin_s": self.TRACE_BIN_S,
+            "counts": counts,
+            "mean_arrival_ns": mean_ns,
+            "level_kcps": b.level_kcps if b is not None else None,
+            "threshold_kcps": b.threshold_kcps if b is not None else None,
+            "bleached_at_s": b.bleached_at_s if b is not None else None,
+        }
+
+    def snapshot(self) -> dict[str, Any]:
+        snap = super().snapshot()
+        snap["point_trace"] = self.point_trace()
+        return snap
 
 
 @dataclass
@@ -213,6 +277,8 @@ class PointResult:
     position: tuple[float, float]
     run: RunResult | None
     bleached_at_s: float | None = None
+    #: the point's recording session (its live trace; ``register`` puts it into the project)
+    session: PointRecordSession | None = None
 
 
 class PointSequence:
@@ -316,7 +382,7 @@ class PointSequence:
                 run = session.wait()
                 self.current = None
                 result = PointResult(i, (float(x), float(y)), tuple(position), run,
-                                     detector.bleached_at_s if detector else None)
+                                     detector.bleached_at_s if detector else None, session)
                 self.results.append(result)
                 if self.on_point is not None:
                     self.on_point(result)

@@ -5,22 +5,22 @@
       "text": "The Record tool measures single molecules (Point) or scans an image (Image) and analyses the data while the measurement runs. Every part sits in its own window -- Acquisition, Laser, Analysis, Quality and one per plot -- which you can dock, tab, float, resize and fold; <b>Start</b>, <b>Stop</b> and <b>Laser off</b> stay in the bar on top. Until a device is connected it measures the <b>simulator</b>."
     },
     {
-      "title": "Point or Image",
-      "text": "<b>Mode</b> chooses a single-molecule measurement at one spot (Point: bursts, E–S, the running trace) or a scan (Image: the image builds up line by line). Keep <b>Point</b> for this tour.",
-      "target": {
-        "name": "mode",
-        "attr": "mode"
-      }
-    },
-    {
       "title": "Load the example",
-      "text": "Two populations with E 0.2 and 0.8, both at stoichiometry S 0.5, measured with the default PIE setup.",
+      "text": "Point mode (the default) measures single molecules at one spot. The example: two populations with E 0.2 and 0.8, both at stoichiometry S 0.5, measured with the default PIE setup.",
       "target": {
         "name": "load_example",
         "action": "Load example"
       },
       "await": {
         "hint": "Press <b>Load example</b>."
+      }
+    },
+    {
+      "title": "Point or Image",
+      "text": "<b>Mode</b> chooses a single-molecule measurement at one spot (Point: bursts, E–S, the running trace) or a scan (Image: the image builds up line by line, molecules are picked on it and measured one by one). Keep <b>Point</b> for now; the tour comes back to Image at the end.",
+      "target": {
+        "name": "mode",
+        "attr": "mode"
       }
     },
     {
@@ -97,6 +97,82 @@
       "text": "Drag a window's title to float it or dock it elsewhere (several in one place become tabs), resize it from any edge, double-click a title to fold it. <b>Reset layout</b> puts everything back.",
       "target": {
         "name": "reset_layout"
+      }
+    },
+    {
+      "title": "Image: scan a sample",
+      "text": "Switch <b>Mode</b> to <b>Image (scan)</b>. With a TCSPC device and the scanner of the settings file (the MT200's PI E-725) the device records the scanner's line markers while it rasters; without hardware the simulator scans a sample.",
+      "target": {
+        "name": "mode",
+        "attr": "mode"
+      },
+      "await": {
+        "hint": "Choose <b>Image (scan)</b> as the <b>Mode</b>."
+      }
+    },
+    {
+      "title": "Load the image example",
+      "text": "Single molecules on a coverslip (a few spots hold two), 64 × 64 pixels of 100 nm, four frames.",
+      "target": {
+        "name": "load_example",
+        "action": "Load example"
+      },
+      "await": {
+        "hint": "Press <b>Load example</b>."
+      }
+    },
+    {
+      "title": "Scan",
+      "text": "The image builds up line by line in the <b>Image</b> window, from the line markers in the photon stream.",
+      "target": {
+        "name": "start",
+        "action": "Start"
+      },
+      "await": {
+        "hint": "Press <b>Start</b> and wait for the four frames."
+      }
+    },
+    {
+      "title": "Auto-pick the molecules",
+      "text": "<b>Auto-pick</b> runs the spot finder's single-molecule workflow on the intensity image and adds the molecules it finds as points, brightest first (<b>Max molecules</b>, <b>Min</b>/<b>Max photons</b> limit it). Each point gets a numbered ring on the image and a row in the table.",
+      "target": {
+        "name": "autopick",
+        "action": "Auto-pick"
+      },
+      "await": {
+        "hint": "Press <b>Auto-pick</b>."
+      }
+    },
+    {
+      "title": "Or pick by hand",
+      "text": "A click on the image (not a drag, which pans) adds a point at that stage position; ✕ in a row or Delete removes one.",
+      "target": {
+        "name": "live_image"
+      }
+    },
+    {
+      "title": "Measure the points",
+      "text": "The focus parks on each point in turn and the device records it -- for <b>Time per point</b>, or less with <b>Until bleached</b>: a point ends once its count rate has stepped down to the background. Each point is a recording of its own in Datasets.",
+      "target": {
+        "name": "measure_points",
+        "action": "Measure points"
+      },
+      "await": {
+        "hint": "Press <b>Measure points</b>."
+      }
+    },
+    {
+      "title": "The molecule's trace",
+      "text": "While a point records, <b>Trace</b> shows its count rate per detector with the bleach threshold (dashed) and the moment the rule called it bleached, and under it the FRET efficiency and the mean arrival time per bin.",
+      "target": {
+        "name": "live_trace"
+      }
+    },
+    {
+      "title": "Each molecule's results",
+      "text": "After each point its trace is segmented into states (the intensity-trace tool's binning and the shared HMM): bleaching steps, bleach time, photons, E before any bleaching and a fast lifetime fill its row. Select a row: its trace and HMM path appear in <b>Trace</b> and its ring is highlighted. The table is stored with the image.",
+      "target": {
+        "name": "point_rows"
       }
     }
   ]

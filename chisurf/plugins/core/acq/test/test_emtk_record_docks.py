@@ -83,6 +83,9 @@ def test_every_tour_target_is_drawn_when_its_step_is_shown(app):
         name = (step.get("target") or {}).get("name")
         if name:
             assert app.form.rects.get(name), f"step {k} ({step['title']}): {name!r} not drawn"
+        if "Image (scan)" in (step.get("await") or {}).get("hint", ""):
+            app.model.mode = "image"  # what the user does at this step
+            app.model.mode_changed()
     app.tour.stop()
 
 

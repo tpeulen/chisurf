@@ -125,6 +125,15 @@
     },
     "note": "MT200 shutter box on the PEAK PCAN-PCIe card (libphacq docs/mt200_shutter.md); Det 3 and Det 4 are not fitted. The box's own buttons override software control."
   },
+  "scanner": {
+    "driver": "pi",
+    "address": "",
+    "note": "The MT200's PI E-725 piezo stage through libphacq's pi driver: \"\" opens the first E-725 (on Windows through PI's own USB driver and GCS library, which the unit stays bound to; on macOS and Linux over libusb); \"sim:\" is the simulator. Learning 5 s and a 20 ms turnaround are SymPhoTime's \"fast\" scans (libphacq docs/pi_e725_scanner.md).",
+    "settings": {
+      "learn_s": 5.0,
+      "turn_ms": 20.0
+    }
+  },
   "experiment": {
     "preset": "pie"
   }

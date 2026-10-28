@@ -34,6 +34,7 @@ from .realism import Realism
 __all__ = [
     "IMGHDR_TYPES",
     "ImagingSample",
+    "PointSimSource",
     "ScanSettings",
     "ScannerBackend",
     "SimScanner",
@@ -341,8 +342,22 @@ class SimScanner(ScannerBackend):
 
     def status(self) -> dict[str, Any]:
         running = self._t0 is not None
+        if running and time.monotonic() - self._t0 > self.scan.total_s:
+            self._t0 = None  # the raster is done
+            running = False
         where = self.position_at(time.monotonic() - self._t0) if running else {}
         return {"running": running, **where}
+
+    # -- point measurements: the focus parked ------------------------------------------------------
+    _at = (50.0, 50.0)
+
+    def move_to(self, x_um: float, y_um: float) -> tuple[float, float]:
+        """Park the focus on a point (at once); the position reached."""
+        self._at = (float(x_um), float(y_um))
+        return self._at
+
+    def position(self) -> tuple[float, float]:
+        return self._at
 
 
 def _vd(x) -> Any:
@@ -378,6 +393,18 @@ class ImagingSample:
     green_fraction: tuple = (0.8, 0.2)
     focus_um: float = 0.25
     seed: int = 1
+    #: emitters per spot, ``rng.integers(lo, hi)`` (high exclusive): beads are a few, a single
+    #: molecule ``(1, 2)``
+    per_spot: tuple = (3, 8)
+    #: the dim cell outline under the spots
+    cell: bool = True
+
+    @classmethod
+    def single_molecules(cls, n: int = 24, *, brightness: float = 120.0, seed: int = 1,
+                         tau_ns: tuple = (1.0, 3.5)) -> ImagingSample:
+        """Immobilised single molecules on a clean coverslip: one emitter per spot, no cell."""
+        return cls(n_beads=n, tau_ns=tau_ns, bead_brightness=brightness, seed=seed,
+                   per_spot=(1, 2), cell=False)
 
     def emitters(self, scan: ScanSettings) -> list[tuple[float, float, int]]:
         """Emitter positions (um) and species: beads in clusters, an elliptical cell outline."""
@@ -387,8 +414,10 @@ class ImagingSample:
         out: list[tuple[float, float, int]] = []
         for k in range(int(self.n_beads)):
             cx, cy = x0 + rng.uniform(0.08, 0.92) * ax, y0 + rng.uniform(0.08, 0.92) * ay
-            for _ in range(int(rng.integers(3, 8))):
+            for _ in range(int(rng.integers(int(self.per_spot[0]), int(self.per_spot[1])))):
                 out.append((cx + rng.normal(0, 0.06), cy + rng.normal(0, 0.06), k % 2))
+        if not self.cell:
+            return out
         # the cell: an ellipse of dim emitters (species 2)
         n_cell = int(4 * (ax + ay) / max(self.focus_um, 0.05))
         phi = np.linspace(0, 2 * np.pi, n_cell, endpoint=False)
@@ -629,3 +658,132 @@ def _emit_overflow(out: list, n: int) -> None:
         k = min(n, 1023)
         out.append(0xFE000000 | k)
         n -= k
+
+
+class PointSimSource:
+    """The simulated sample under a parked focus: a point measurement's photons.
+
+    Each :meth:`start` measures where *scanner* stands (``scanner.position()``): every emitter of
+    *sample* (laid out over *scan*, the image the points were picked on) shines with its
+    brightness weighted by the Gaussian focus at its distance, on its detectors (the sample's
+    green fraction) with its lifetime behind the IRF; the background of *realism* comes on top.
+    Each emitter bleaches on its own after an exponential time of mean ``bleach_s`` (seeded by
+    the point), so a spot of two molecules steps down twice -- the known answer the trace
+    analysis must find. :attr:`truth` holds the emitters and bleaching times of the last start.
+
+    Parameters
+    ----------
+    scanner : object with ``position()``
+    scan : ScanSettings
+        The raster the sample is laid out on (its area and origin).
+    sample : ImagingSample
+    realism : Realism
+    bleach_s : float
+        Mean bleaching time per emitter (seconds); ``0`` never bleaches.
+    speed, realtime : as :class:`ImageSimSource`.
+    """
+
+    MICRO_RES_NS = ImageSimSource.MICRO_RES_NS
+    N_MICRO = ImageSimSource.N_MICRO
+    #: measurement time made per read
+    SLICE_S = 0.05
+    #: emitters further than this many focus radii from the point are dark
+    REACH = 3.0
+
+    def __init__(self, scanner, scan: ScanSettings, sample: ImagingSample, realism: Realism, *,
+                 bleach_s: float = 3.0, speed: float = 1.0, realtime: bool = True):
+        from .sources import SourceInfo
+
+        self.scanner, self.scan, self.sample = scanner, scan, sample
+        self.background_hz = (float(realism.background_donor_khz) * 1e3,
+                              float(realism.background_acceptor_khz) * 1e3)
+        self.irf_sigma_ns = max(float(getattr(realism, "irf_fwhm_ns", 0.0) or 0.0),
+                                2 * self.MICRO_RES_NS) / 2.3548
+        self.bleach_s = float(bleach_s)
+        self.speed, self.realtime = float(speed), bool(realtime)
+        self.period_s = self.N_MICRO * self.MICRO_RES_NS * 1e-9
+        self.info = SourceInfo(name="Simulator (point)", macro_clock_s=self.period_s,
+                               micro_res_s=self.MICRO_RES_NS * 1e-9, n_micro=self.N_MICRO)
+        self._emitters = sample.emitters(scan)
+        self.position = (0.0, 0.0)
+        #: the last start's emitters in reach: ``{"rates_hz", "bleach_s", "species"}``
+        self.truth: dict[str, Any] = {}
+        self._t0: float | None = None
+        self._sent_s = 0.0
+        self._stopped = True
+        self._rng = np.random.default_rng(sample.seed)
+
+    def start(self) -> None:
+        x, y = (float(v) for v in self.scanner.position())
+        self.position = (x, y)
+        self._rng = np.random.default_rng(
+            (int(self.sample.seed), int(round(x * 1000)) & 0xFFFFFFFF,
+             int(round(y * 1000)) & 0xFFFFFFFF))
+        w0 = float(self.sample.focus_um)
+        rates, species, bleach = [], [], []
+        for ex, ey, sp in self._emitters:
+            r2 = (ex - x) ** 2 + (ey - y) ** 2
+            if r2 > (self.REACH * w0) ** 2:
+                continue
+            q = self.sample.cell_brightness if sp == 2 else self.sample.bead_brightness
+            rates.append(float(q) * 1e3 * np.exp(-2.0 * r2 / w0**2))
+            species.append(int(sp))
+            bleach.append(float(self._rng.exponential(self.bleach_s)) if self.bleach_s > 0
+                          else float("inf"))
+        self.truth = {"rates_hz": rates, "species": species, "bleach_s": bleach}
+        # every point is a run of its own: the device clock starts at zero, as a device's does
+        self._sent_s = 0.0
+        self._stopped = False
+        self._t0 = time.monotonic()
+
+    def stop(self) -> None:
+        self._stopped = True
+
+    @property
+    def finished(self) -> bool:
+        return self._stopped
+
+    def status(self) -> dict[str, Any]:
+        return {"queued": 0, "dropped": 0, "error": ""}
+
+    def _micro(self, n: int, tau_ns: float) -> np.ndarray:
+        t = self._rng.normal(1.0, self.irf_sigma_ns, n) + self._rng.exponential(tau_ns, n)
+        period_ns = self.N_MICRO * self.MICRO_RES_NS
+        return (np.mod(t, period_ns) / self.MICRO_RES_NS).astype(np.int64)
+
+    def read(self, timeout: float = 0.2):
+        from .sources import PhotonBatch
+
+        if self._stopped or self._t0 is None:
+            return None
+        allowed = (time.monotonic() - self._t0) * self.speed if self.realtime else float("inf")
+        upto = min(allowed, self._sent_s + self.SLICE_S)
+        if upto <= self._sent_s:
+            time.sleep(min(timeout, 0.005))
+            return None
+        t0, rng = self._sent_s, self._rng
+        parts_t, parts_c, parts_m = [], [], []
+        taus = (float(self.sample.tau_ns[0]), float(self.sample.tau_ns[1]),
+                float(np.mean(self.sample.tau_ns)))
+        green = (self.sample.green_fraction[0], self.sample.green_fraction[1], 0.5)
+        for rate, sp, gone in zip(self.truth["rates_hz"], self.truth["species"],
+                                  self.truth["bleach_s"]):
+            end = min(upto, gone)
+            if end <= t0:
+                continue
+            n = int(rng.poisson(rate * (end - t0)))
+            parts_t.append(rng.uniform(t0, end, n))
+            parts_c.append((rng.random(n) >= green[sp]).astype(np.int64))
+            parts_m.append(self._micro(n, taus[sp]))
+        for ch, rate in enumerate(self.background_hz):
+            n = int(rng.poisson(rate * (upto - t0)))
+            parts_t.append(rng.uniform(t0, upto, n))
+            parts_c.append(np.full(n, ch, np.int64))
+            parts_m.append(rng.integers(0, self.N_MICRO, n))
+        self._sent_s = upto
+        t = np.concatenate(parts_t) if parts_t else np.zeros(0)
+        order = np.argsort(t, kind="stable")
+        macro = np.floor(t[order] / self.period_s).astype(np.uint64)
+        channel = (np.concatenate(parts_c)[order] if parts_c else np.zeros(0)).astype(np.int8)
+        micro = (np.concatenate(parts_m)[order] if parts_m else np.zeros(0)).astype(np.uint16)
+        return PhotonBatch(macro, micro, channel, event=np.zeros(len(macro), np.int8))

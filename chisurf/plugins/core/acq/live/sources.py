@@ -8,8 +8,8 @@ Three exist:
   handed out at the pace a real one would arrive. Populations are given by their FRET efficiency
   E and stoichiometry S, so a run has a known answer.
 * :class:`FileReplaySource` -- a recorded measurement played back at measurement speed.
-* a device -- not available yet: the MultiHarp source arrives with the driver being built in CMC
-  and implements this same interface.
+* a device -- :class:`~.devices.DeviceSource`, a TCSPC unit through libphacq, implements this same
+  interface (and :class:`~.scanning.ScannedSource` a device recording while the scanner rasters).
 
 The simulator models two lasers per molecule the way tttrlib does for ALEX (one excitation grid
 and one brightness row per laser, alternating every ``dt``), then places each photon of the red
