@@ -190,3 +190,23 @@ def test_the_survey_on_screen(tmp_path):
         assert all(t.state in ("done", "empty") for t in model.survey_tiles)
     finally:
         app.close()
+
+
+def test_the_spiral_starts_where_the_last_image_was_not_where_the_stage_parked(tmp_path):
+    """After a raster the scanner parks at the stage centre; the focus is the last image."""
+    from chisurf.plugins.core.acq.gui.record_app import RecordModel
+    from chisurf.plugins.core.acq.live.scanner import ScanSettings
+
+    model = RecordModel(output_dir=tmp_path / "rec", realtime=False)
+
+    class Parked:
+        def position(self):
+            return (50.0, 50.0)
+
+    model.scanner = Parked()
+    model.image_scan = ScanSettings(x0_um=10.0, y0_um=20.0, area_x_um=6.4, area_y_um=6.4)
+    assert model._start_position() == pytest.approx((13.2, 23.2))
+    model.image_scan = None
+    assert model._start_position() == (50.0, 50.0)          # no image yet: the stage
+    model.survey_centre = "area"
+    assert model._start_position() is None

@@ -60,7 +60,7 @@ class SurveyMixin:
         return [("spiral", tr("Spiral out from the start")), ("serpentine", tr("Serpentine rows"))]
 
     def survey_centre_options(self) -> list:
-        return [("stage", tr("Where the stage is (last focus)")), ("area", tr("The area's centre"))]
+        return [("stage", tr("Where I focused (the last image)")), ("area", tr("The area's centre"))]
 
     @property
     def survey_custom_hidden(self) -> bool:
@@ -84,9 +84,14 @@ class SurveyMixin:
                 float(self.survey_h_um))
 
     def _start_position(self, ask_stage: bool = True) -> tuple[float, float] | None:
-        """Where the user focused: the stage's position, else the centre of the last image."""
+        """Where the user focused: the centre of the last image taken (the scanner parks at the
+        stage centre after every raster, so its position says nothing about the focus), else the
+        stage's position, else the centre of the Scan panel's raster."""
         if self.survey_centre == "area":
             return None
+        if self.image_scan is not None:
+            scan = self.image_scan
+            return scan.x0_um + scan.area_x_um / 2, scan.y0_um + scan.area_y_um / 2
         if ask_stage and self.scanner is not None:
             try:
                 return tuple(float(v) for v in self.scanner.position())  # type: ignore[return-value]
