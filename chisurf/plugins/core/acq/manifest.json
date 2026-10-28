@@ -1,7 +1,7 @@
 {
   "id": "acq",
   "version": "1.0.0",
-  "display_name": "Tools:Views:Acquisition",
+  "display_name": "Tools:Views:PhAcq",
   "description": "Record single-molecule measurements with pulsed interleaved excitation and watch the E–S histogram build up live: bursts are searched, counted into DD/DA/AA and placed in E and S while the photons arrive, written to a PTU, and the run lands in the project (photons dataset with its burst run). Sources: the built-in tttrlib photon simulator (PIE smFRET with known E/S), replay of a workspace photon stream, and TCSPC hardware through the phacq library (native drivers for PicoQuant MultiHarp/PicoHarp 330/HydraHarp 500, Becker & Hickl SPC cards and the PicoQuant Sepia II laser; no vendor libraries).",
   "authors": ["Thomas-Otavio Peulen"],
   "experimental": true,
@@ -26,7 +26,7 @@
   },
   "entrypoints": {
     "emtk": "chisurf.plugins.core.acq.gui.record_app:make_app",
-    "cli": "photon-acquisition=chisurf.plugins.core.acq.standalone:main",
+    "cli": "phacq=chisurf.plugins.core.acq.standalone:main",
     "services": "chisurf.plugins.core.acq.services:register"
   },
   "rpc_methods": [
