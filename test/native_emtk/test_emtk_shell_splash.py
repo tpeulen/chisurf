@@ -364,3 +364,29 @@ def test_ebfret_opens_in_the_shell_without_errors():
         driver.frame(2)
     finally:
         shell.close()
+
+
+def test_app_starts_chisurf_with_one_tool_alone():
+    """``python -m chisurf --app acq``: Acquisition mode (the tool alone, ChiSurf underneath)."""
+    from chisurf.emtk.main_app import startup_app
+
+    assert startup_app(["--app", "acq"]) == "acq"
+    assert startup_app(["--size", "800x600", "--app=acq"]) == "acq"
+    assert startup_app([]) == "" and startup_app(["--app"]) == ""
+
+
+def test_the_main_window_hands_the_shell_to_on_ready(monkeypatch):
+    import emtk.native
+
+    from chisurf.emtk import splash
+
+    opened = []
+
+    class Host:
+        def __init__(self, shell, size=None, title=""):
+            opened.append(("host", title))
+
+    monkeypatch.setattr(emtk.native, "NativeHost", Host)
+    shell = object()
+    splash._open_main(shell, None, "ChiSurf", lambda s: opened.append(("ready", s is shell)))
+    assert opened == [("host", "ChiSurf"), ("ready", True)]

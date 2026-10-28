@@ -409,10 +409,12 @@ class SplashRun:
 
 
 def run_with_splash(
-    make_app: Callable[..., Any], title: str = "ChiSurf", size: tuple[int, int] | None = None
+    make_app: Callable[..., Any], title: str = "ChiSurf", size: tuple[int, int] | None = None,
+    on_ready: Callable[[Any], Any] | None = None,
 ) -> int:
     """Show the splash window, build the shell behind it, open the main window when ready.
 
+    *on_ready* is called with the shell once its window is open (e.g. to present one tool).
     Returns when the main window closes.
     """
     from emtk.app import ControlSurface
@@ -438,7 +440,7 @@ def run_with_splash(
     run = SplashRun(
         state,
         make_app,
-        open_main=lambda shell: NativeHost(shell, size=size, title=title),
+        open_main=lambda shell: _open_main(shell, size, title, on_ready),
         close_splash=splash.close,
         later=loop.call_soon,
     )
@@ -449,6 +451,16 @@ def run_with_splash(
     elif run.error is not None:
         raise run.error
     return 0
+
+
+def _open_main(shell, size, title, on_ready):
+    """The main window for *shell*; then *on_ready(shell)*."""
+    from emtk.native import NativeHost
+
+    host = NativeHost(shell, size=size, title=title)
+    if on_ready is not None:
+        on_ready(shell)
+    return host
 
 
 __all__ = [

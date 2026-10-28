@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Entry point of the single-molecule acquisition: the Record window or the simulation CLI.
 
-This module starts the plugin's native Record window on its own (``photon-acquisition``;
-``--fullscreen`` for an instrument PC), or forwards ``--cli`` to the simulation CLI.
+This module starts the plugin's native Record window on its own (``photon-acquisition``),
+or forwards ``--cli`` to the simulation CLI.
 """
 
 import logging
@@ -12,14 +12,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def run_standalone(fullscreen: bool = False) -> int:
-    """Run the native Record window as its own application (*fullscreen*: cover the monitor)."""
+def run_standalone() -> int:
+    """Run the native Record window as its own application."""
     from emtk.native import NativeHost
 
     from .gui.record_app import make_app
 
     app = make_app()
-    host = NativeHost(app, title="ChiSurf Acquisition", fullscreen=fullscreen)
+    host = NativeHost(app, title="ChiSurf Acquisition")
     try:
         host.run()
     finally:
@@ -35,8 +35,7 @@ def main() -> int:
     - **CLI mode**: if ``--cli`` is present in the arguments, the remaining
       arguments are forwarded to the simulation CLI (config/run) and no GUI
       is started.
-    - **GUI mode** (default, also ``--standalone``): the native Record window;
-      ``--fullscreen`` covers the whole monitor.
+    - **GUI mode** (default, also ``--standalone``): the native Record window.
     """
     args = sys.argv[1:]
     if "--cli" not in args and ("-h" in args or "--help" in args):
@@ -44,10 +43,10 @@ def main() -> int:
         # window instead of answering would be the wrong move. With `--cli` the
         # flag belongs to the simulation CLI below, not to this wrapper.
         print(
-            "Usage: photon-acquisition [--standalone] [--fullscreen] [--cli SUBCOMMAND ...]\n\n"
+            "Usage: photon-acquisition [--standalone] [--cli SUBCOMMAND ...]\n\n"
             "  (no arguments)   open the Record window\n"
             "  --standalone     the same, spelled out\n"
-            "  --fullscreen     the window covers the whole monitor (instrument PC)\n"
+
             "  --cli ...        forward to the simulation CLI (try: --cli --help)"
         )
         return 0
@@ -62,7 +61,7 @@ def main() -> int:
         #   python standalone.py --cli config --output ...
         sys.argv = [sys.argv[0]] + cli_args
         return simulation_cli_main()
-    return run_standalone(fullscreen="--fullscreen" in args)
+    return run_standalone()
 
 
 if __name__ == "__main__":

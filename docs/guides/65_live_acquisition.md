@@ -7,9 +7,9 @@ tags: [guides, tcspc, photons, python, gui]
 
 # Live acquisition: watching a measurement while it happens
 
-**Tools → Views → Acquisition** opens the **Record** tool. On its own it starts as
-`photon-acquisition`; `photon-acquisition --fullscreen` makes it cover the whole screen, as on an
-instrument PC. It streams photons
+**Tools → Views → Acquisition** opens the **Record** tool. `python -m chisurf --app acq`
+starts ChiSurf in Acquisition mode: the tool is the only thing in the window, as on an
+instrument PC, with ChiSurf running underneath. It streams photons
 from TCSPC hardware, from the built-in photon simulator or from a replayed
 photon stream, and analyses them *while they arrive*: bursts, the histograms of
 the measurement type (E–S for PIE), a decay per detector, an FCS correlation,

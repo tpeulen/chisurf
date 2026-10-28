@@ -2766,9 +2766,26 @@ def main(argv: list[str] | None = None) -> int:
     if "--size" in args and args.index("--size") + 1 < len(args):
         width, _, height = args[args.index("--size") + 1].partition("x")
         size = (int(width), int(height or width))
+    app_id = startup_app(args)
     from chisurf.emtk.splash import run_with_splash
 
-    return run_with_splash(make_app, title="ChiSurf", size=size)
+    return run_with_splash(make_app, title="ChiSurf", size=size,
+                           on_ready=(lambda shell: shell.present_tool(app_id)) if app_id else None)
+
+
+def startup_app(args: list[str]) -> str:
+    """The tool ``--app ID`` asks to show alone (:meth:`EmtkShellApp.present_tool`), or ``""``.
+
+    ``python -m chisurf --app acq`` starts ChiSurf in Acquisition mode: the Acquisition tool is
+    the only thing in the window, with ChiSurf's session and services running underneath --
+    what the ``?app=`` pages do on the web.
+    """
+    for i, a in enumerate(args):
+        if a == "--app" and i + 1 < len(args):
+            return args[i + 1]
+        if a.startswith("--app="):
+            return a.split("=", 1)[1]
+    return ""
 
 
 def _interactive_display() -> bool:
@@ -2790,6 +2807,7 @@ __all__ = [
     "host_in_shell",
     "main",
     "make_app",
+    "startup_app",
     "make_headless_app",
     "menu_entries",
     "tile_grid",

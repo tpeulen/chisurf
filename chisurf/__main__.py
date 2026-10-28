@@ -100,6 +100,7 @@ Open the ChiSurf window (the emtk shell).
 options:
   -h, --help         show this message and exit
   --size WxH         the main window's size in pixels
+  --app ID           show only this tool in the window, e.g. --app acq (Acquisition)
   --screenshot PATH  render one frame of the window offscreen to PATH and exit
   --backend offscreen
                      draw offscreen (implied by --screenshot)

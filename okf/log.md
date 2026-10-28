@@ -6,6 +6,7 @@
 - acq: shipped measurement profiles (acq/profiles/*.json, listed with ★ in Record's Settings): MT200 Standard, PIE and CY PIE from SymPhoTime's .pus profiles on the MT200, with one uniform TCSPC setting (32 ps bins, sync 350 mV / 5000 ps, detectors on inputs 1 and 3 at 250 mV with their offsets); the SOM-D programme is not set until phacq drives it.
 - acq: renamed PhAcq for users: menu Tools → Views → PhAcq, window title PhAcq, command phacq (was photon-acquisition) with --fullscreen (emtk NativeHost fullscreen); the package path stays chisurf.plugins.core.acq (the phacq library is imported as phacq).
 - acq: user-facing names stay Acquisition (menu, window) and photon-acquisition (command); phacq is the library's name only. Kept: photon-acquisition --fullscreen.
+- shell: python -m chisurf --app ID starts ChiSurf with that tool alone in the window (EmtkShellApp.present_tool, as the web ?app= pages), e.g. --app acq = Acquisition mode for the MT200 PC; photon-acquisition loses the --fullscreen flag again (owner: no fullscreen).
 
 ## 2026-10-27
 
