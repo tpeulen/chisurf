@@ -398,6 +398,12 @@ class ImagingSample:
     per_spot: tuple = (3, 8)
     #: the dim cell outline under the spots
     cell: bool = True
+    #: ``(x0, y0, width, height)`` in µm: the spots spread over this stage area instead of the
+    #: scan's (a survey's tiles all see one sample, fixed on the stage)
+    area: tuple | None = None
+    #: planted emitters ``[(x_um, y_um, species), ...]``: the sample is exactly these (a known
+    #: answer), nothing random
+    positions: list | None = None
 
     @classmethod
     def single_molecules(cls, n: int = 24, *, brightness: float = 120.0, seed: int = 1,
@@ -408,9 +414,14 @@ class ImagingSample:
 
     def emitters(self, scan: ScanSettings) -> list[tuple[float, float, int]]:
         """Emitter positions (um) and species: beads in clusters, an elliptical cell outline."""
+        if self.positions is not None:
+            return [(float(x), float(y), int(sp)) for x, y, sp in self.positions]
         rng = np.random.default_rng(self.seed)
-        ax, ay = scan.area_x_um, scan.area_y_um
-        x0, y0 = scan.x0_um, scan.y0_um
+        if self.area is not None:
+            x0, y0, ax, ay = (float(v) for v in self.area)
+        else:
+            ax, ay = scan.area_x_um, scan.area_y_um
+            x0, y0 = scan.x0_um, scan.y0_um
         out: list[tuple[float, float, int]] = []
         for k in range(int(self.n_beads)):
             cx, cy = x0 + rng.uniform(0.08, 0.92) * ax, y0 + rng.uniform(0.08, 0.92) * ay
@@ -465,8 +476,14 @@ class ImagingSample:
             float(getattr(realism, "background_acceptor_khz", 0.0) or 0.0),
         )
         s.set_background(_vd([b * 1e-3 for b in bg]))
+        # emitters far outside the scan cannot be seen: a large surveyed sample is simulated
+        # only around the tile being scanned
+        reach = 3.0 * float(self.focus_um)
+        lo_x, hi_x = scan.x0_um - reach, scan.x0_um + scan.area_x_um + reach
+        lo_y, hi_y = scan.y0_um - reach, scan.y0_um + scan.area_y_um + reach
         for x, y, sp_index in self.emitters(scan):
-            s.add_fluorophore(float(x), float(y), float(z_um), int(sp_index), False)
+            if scan.is_points or (lo_x <= x <= hi_x and lo_y <= y <= hi_y):
+                s.add_fluorophore(float(x), float(y), float(z_um), int(sp_index), False)
         return s
 
 
@@ -543,8 +560,10 @@ def simulate_frame(
             float(scan.dwell_ms),
             px,
             py,
-            float(scan.x0_um),
-            float(scan.y0_um),
+            # the simulated focus parks on a pixel's start; a real raster sweeps the pixel, whose
+            # photons are centred half a pixel further: pixel k is centred on x0 + (k + 1/2) px
+            float(scan.x0_um) + 0.5 * px,
+            float(scan.y0_um) + 0.5 * py,
             markers,
             bool(scan.bidirectional),
         )

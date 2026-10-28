@@ -134,7 +134,9 @@ def test_the_imaging_lights(tmp_path):
     scan = ScanSettings(
         pixels_x=32, pixels_y=24, area_x_um=8.0, area_y_um=6.0, dwell_ms=0.05, frames=2
     )
-    session, _ = _record(tmp_path, scan)
+    # a normal scan: beads well below the pile-up limit (at the default brightness the brightest
+    # pixel sits right at 1 % of the laser rate, where the light turns amber)
+    session, _ = _record(tmp_path, scan, bead_brightness=30.0)
     qc = session.qc
     lights = {c["name"]: c["light"] for c in qc["checks"]}
     assert (

@@ -83,6 +83,38 @@ Select a row: its trace and HMM path appear in **Trace** and its ring is highlig
 When the sequence ends the table of every molecule is stored with the image (in the image dataset's
 container, beside its other imaging results).
 
+## Survey: a larger area, automatically
+
+**Points › Survey** runs the Points workflow by itself, tile after tile: image a tile (the Scan
+panel's raster; a tile is its **Width × Height**), **Auto-pick** it (with its *Max molecules* and
+*Min/Max photons*), **Measure points**, move on -- until **Stop**, a stop condition, or the whole
+area is done. A tile with fewer than **Min molecules** is logged as empty and passed; a tile that
+fails is logged and passed, never the end of the survey.
+
+- **Area:** *Whole piezo range* (default: the scanner's travel as its driver states it, 0–100 µm on
+  the E-725) or a *Custom area*; every tile and every move is kept inside the range.
+- **Order** (Advanced): an **outward spiral** from where you focused -- the tile under the stage's
+  position (*Spiral centre*: or the area's centre), then ring after ring. A coverslip is rarely
+  flat, so the tiles nearest the focused spot, the best focused, are measured first. *Serpentine*
+  rows on request.
+- **Tile overlap** and the **Edge guard** (Advanced, pixels): a spot nearer a tile's edge than the
+  guard is left to the neighbouring tile, which sees it whole; with an overlap of at least twice
+  the guard no molecule falls between tiles, and a molecule measured already is never measured
+  again.
+- **Stop after** tiles, molecules or minutes (0: no limit), and (Advanced) after a number of
+  **empty tiles in a row** -- far out, a ring of empty tiles usually means the sample left the
+  focus.
+- **Re-image after measuring** (Advanced): image each tile again after its molecules were measured,
+  to see what bleached.
+
+The shutters open once when the survey starts and close once when it ends or is stopped; the laser
+is never switched. Every tile image and every molecule's recording enters Datasets as in a single
+run, and **one table of all molecules** (with their tile and stage position) is stored with the
+first tile's image and rewritten after every tile, so a stopped survey keeps its results. The
+**map** under *Start survey* shows the tiles in visiting order (orange now, green measured, dark
+empty, red failed) and the measured molecules; the line above it the tile, the molecules, the time
+so far and the time left; the log is the tooltip of the line under the map.
+
 ## Sources
 
 | Source | What it is |

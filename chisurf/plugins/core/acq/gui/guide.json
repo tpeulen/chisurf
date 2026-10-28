@@ -174,6 +174,34 @@
       "target": {
         "name": "point_rows"
       }
+    },
+    {
+      "title": "Survey a larger area",
+      "text": "Open <b>Survey</b> in the Points window: it does all of the above by itself, tile after tile -- image a tile (the Scan panel's raster; the tile is Width × Height), Auto-pick, Measure points, move on -- until Stop, a stop condition or the whole area (by default the scanner's whole range) is done. Tiles without molecules are passed.",
+      "target": {
+        "name": "Survey.fold"
+      },
+      "await": {
+        "hint": "Open <b>Survey</b>."
+      }
+    },
+    {
+      "title": "Start the survey",
+      "text": "The tiles spiral outward from where you focused (a coverslip is rarely flat: the nearest tiles are the best focused). The shutters open once and close when the survey ends; Stop keeps everything measured so far.",
+      "target": {
+        "name": "survey_start",
+        "action": "Start survey"
+      },
+      "await": {
+        "hint": "Press <b>Start survey</b>."
+      }
+    },
+    {
+      "title": "Follow it on the map",
+      "text": "Each tile in the order it is visited: orange now, green measured, dark empty, red failed; dots are measured molecules. Tile, molecules, elapsed time and the time left are on the line above; the log is the tooltip of the line under the map. One table of all molecules is stored with the first tile's image.",
+      "target": {
+        "name": "survey_map"
+      }
     }
   ]
 }

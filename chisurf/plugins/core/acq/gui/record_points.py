@@ -188,7 +188,7 @@ class ScanPointsMixin:
         return row
 
     def remove_point(self, record: dict) -> None:
-        if self.running:
+        if self.busy:
             return
         index = int(record.get("index", -1))
         self.points = [p for p in self.points if p["index"] != index]
@@ -198,7 +198,7 @@ class ScanPointsMixin:
         self._points_summary()
 
     def clear_points(self) -> None:
-        if self.running:
+        if self.busy:
             return
         self.points, self.molecules, self.selected_point = [], {}, None
         self._next_point = 0
@@ -276,10 +276,10 @@ class ScanPointsMixin:
         self.remove_point_row(record)
 
     # -- auto-pick: the spot finder's single-molecule workflow ---------------------------------------
-    def autopick(self) -> int:
-        """Find molecules in the intensity image with the spot finder's ``single_molecule``
-        workflow and add them as points, brightest first (within the brightness limits, at most
-        *Max molecules*). Returns how many were added."""
+    def find_molecules(self) -> tuple[list[tuple[float, float, float]], int]:
+        """The molecules the spot finder's ``single_molecule`` workflow finds in the intensity
+        image: ``(x_um, y_um, photons)`` within the brightness limits, brightest first, and how
+        many spots it found in all."""
         from chisurf.core.datastore import column_names, numeric_column
         from chisurf.plugins.microscopy.spot_finder.core.spots import (
             SpotFinderSettings,
@@ -289,17 +289,15 @@ class ScanPointsMixin:
 
         image = ((self.image_snapshot or {}).get("images") or {}).get("Intensity")
         if image is None or not np.asarray(image).any():
-            self.points_text = tr("Record or replay an image first: Auto-pick looks at it.")
-            return 0
+            return [], 0
         flow = builtin_workflow(AUTOPICK_WORKFLOW)
         known = SpotFinderSettings.__dataclass_fields__
         settings = SpotFinderSettings(**{k: v for k, v in flow["settings"].items() if k in known},
                                       workflow=AUTOPICK_WORKFLOW)
         result = detect(np.asarray(image, float), settings)
-        table = result.table
         if not result.n_regions:
-            self.points_text = tr("Auto-pick found no molecule in the image.")
-            return 0
+            return [], 0
+        table = result.table
         names = column_names(table)
         ys = numeric_column(table, "region.centroid_weighted_y" if
                             "region.centroid_weighted_y" in names else "region.centroid_y")
@@ -309,24 +307,40 @@ class ScanPointsMixin:
         keep = bright >= float(self.autopick_min)
         if float(self.autopick_max_brightness) > 0:
             keep &= bright <= float(self.autopick_max_brightness)
-        order = [i for i in np.argsort(-bright) if keep[i]]
-        if int(self.autopick_max) > 0:
-            order = order[: int(self.autopick_max)]
+        out = []
+        for i in np.argsort(-bright):
+            if keep[i]:
+                # a label's centroid is a pixel index; the pixel's centre is half a pixel further
+                x, y = self.image_pixel_to_um(float(xs[i]) + 0.5, float(ys[i]) + 0.5)
+                out.append((x, y, float(bright[i])))
+        return out, int(result.n_regions)
+
+    def autopick(self) -> int:
+        """Find molecules in the intensity image with the spot finder's ``single_molecule``
+        workflow and add them as points, brightest first (within the brightness limits, at most
+        *Max molecules*). Returns how many were added."""
+        if ((self.image_snapshot or {}).get("images") or {}).get("Intensity") is None:
+            self.points_text = tr("Record or replay an image first: Auto-pick looks at it.")
+            return 0
+        found, n = self.find_molecules()
+        if not found:
+            self.points_text = tr("Auto-pick found no molecule in the image.")
+            return 0
         taken = [(p["x_um"], p["y_um"]) for p in self.points]
         scan = self.image_scan or self.scan_settings()
         near = 0.5 * max(scan.pixel_um)
         added = 0
-        for i in order:
-            # a label's centroid is a pixel index; the pixel's centre is half a pixel further
-            x, y = self.image_pixel_to_um(float(xs[i]) + 0.5, float(ys[i]) + 0.5)
+        for x, y, bright in found:
+            if int(self.autopick_max) > 0 and added >= int(self.autopick_max):
+                break
             if any((x - a) ** 2 + (y - b) ** 2 < near**2 for a, b in taken):
                 continue
-            self.add_point(x, y, "auto", float(bright[i]))
+            self.add_point(x, y, "auto", bright)
             taken.append((x, y))
             added += 1
         self.points_text = tr(
             "Auto-pick ({flow}): {n} molecule(s) added of {found} found.").format(
-            flow=AUTOPICK_WORKFLOW.replace("_", " "), n=added, found=result.n_regions)
+            flow=AUTOPICK_WORKFLOW.replace("_", " "), n=added, found=n)
         return added
 
     # -- point measurements ------------------------------------------------------------------------
@@ -366,7 +380,7 @@ class ScanPointsMixin:
         from chisurf.plugins.core.acq.live.project import recording_dir
         from chisurf.plugins.core.acq.live.scanner import ScanSettings
 
-        if self.running or not self.points:
+        if self.busy or not self.points:
             return False
         try:
             scanner = self._point_scanner()
@@ -380,7 +394,7 @@ class ScanPointsMixin:
             self.status_detail = self.points_text = str(exc)
             return False
         name = self.run_name.strip().replace("{date}", time.strftime("%Y%m%d_%H%M%S"))
-        name = name or time.strftime("points_%Y%m%d_%H%M%S")
+        name = self.unique_name(name or time.strftime("points_%Y%m%d_%H%M%S"))
         scan = ScanSettings(points=[(p["x_um"], p["y_um"]) for p in self.points],
                             point_ms=float(self.point_time_s) * 1e3)
         background = float(self.bleach_background_kcps)
@@ -399,7 +413,7 @@ class ScanPointsMixin:
                             "header_tags": self.run_header_tags()})
         self._handled_points = 0
         self._sequence_finished = False
-        self._shutters_at_start()
+        self._run_shutters(True)
         self.sequence.start()
         self.snapshot = None
         self.points_fraction = 0.0
@@ -435,8 +449,9 @@ class ScanPointsMixin:
         if not self._sequence_finished and all(not t.is_alive()
                                                for t in self._analysis_threads):
             self._sequence_finished = True
-            self._shutters_at_end()
-            self._store_molecules()
+            self._run_shutters(False)
+            if not self.survey_active:  # a survey stores one table for all its tiles
+                self._store_molecules()
             stopped = len(results) < n
             for p in self.points:
                 if p["status"] in (tr("waiting"), tr("running")):

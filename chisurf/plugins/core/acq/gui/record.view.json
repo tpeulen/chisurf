@@ -1437,6 +1437,220 @@
           "description": "How long each point is recorded, and whether it ends once its molecule has bleached."
         },
         {
+          "type": "panel",
+          "title": "Survey",
+          "collapsible": true,
+          "collapsed": true,
+          "description": "Image a large area tile by tile and measure its molecules automatically: each tile is imaged with the Scan panel's raster (the tile is Width × Height), auto-picked and its molecules measured, then the stage moves on -- outward from where you focused, until Stop, a stop condition or the whole area is done. A tile without molecules is passed.",
+          "sections": [
+            {
+              "type": "progress",
+              "attr": "survey_fraction",
+              "text_source": "survey_text",
+              "hidden_when": {
+                "attr": "survey_active",
+                "equals": "false"
+              },
+              "description": "Tiles done of the survey, molecules measured so far, the time it has run and how long the rest will take at this pace."
+            },
+            {
+              "type": "info",
+              "source": "survey_text"
+            },
+            {
+              "type": "button_row",
+              "buttons": [
+                {
+                  "action": "survey_start",
+                  "label": "Start survey",
+                  "icon": "🗺",
+                  "role": "primary",
+                  "description": "Start the survey: the shutters open once, tiles are imaged, picked and measured until Stop, a stop condition or the end of the area. Stop keeps everything measured so far."
+                }
+              ]
+            },
+            {
+              "type": "custom",
+              "key": "survey_map",
+              "description": "The surveyed area: tiles in visiting order (numbers and the path), grey pending, orange now, green measured, dark empty, red failed; dots are measured molecules. The log is the tooltip of the line under it."
+            },
+            {
+              "type": "choice",
+              "attr": "survey_area_kind",
+              "label": "Area",
+              "options_source": "survey_area_options",
+              "description": "The whole travel of the scanner (the E-725: 0–100 µm on both axes; read from its driver), or a custom area."
+            },
+            {
+              "type": "panel",
+              "title": "Custom area",
+              "hidden_when": {
+                "attr": "survey_custom_hidden",
+                "equals": "true"
+              },
+              "description": "The area to survey, in stage coordinates; it is clamped into the scanner's range.",
+              "sections": [
+                {
+                  "type": "value",
+                  "kind": "float",
+                  "attr": "survey_x0_um",
+                  "label": "X start (µm)",
+                  "minimum": 0.0,
+                  "maximum": 1000.0,
+                  "step": 1.0,
+                  "description": "The area's corner on the fast axis.",
+                  "decimals": 2
+                },
+                {
+                  "type": "value",
+                  "kind": "float",
+                  "attr": "survey_y0_um",
+                  "label": "Y start (µm)",
+                  "minimum": 0.0,
+                  "maximum": 1000.0,
+                  "step": 1.0,
+                  "description": "The area's corner on the slow axis.",
+                  "decimals": 2
+                },
+                {
+                  "type": "value",
+                  "kind": "float",
+                  "attr": "survey_w_um",
+                  "label": "Width (µm)",
+                  "minimum": 0.1,
+                  "maximum": 1000.0,
+                  "step": 5.0,
+                  "description": "The area's width.",
+                  "decimals": 2
+                },
+                {
+                  "type": "value",
+                  "kind": "float",
+                  "attr": "survey_h_um",
+                  "label": "Height (µm)",
+                  "minimum": 0.1,
+                  "maximum": 1000.0,
+                  "step": 5.0,
+                  "description": "The area's height.",
+                  "decimals": 2
+                }
+              ]
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "survey_overlap_um",
+              "label": "Tile overlap (µm)",
+              "minimum": 0.0,
+              "maximum": 100.0,
+              "step": 0.5,
+              "description": "How far neighbouring tiles overlap. With an overlap of at least twice the edge guard a molecule on a tile's edge is measured whole from its neighbour; a molecule measured already is never measured again.",
+              "decimals": 2
+            },
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "survey_min_molecules",
+              "label": "Min molecules",
+              "minimum": 1,
+              "maximum": 10000,
+              "step": 1,
+              "description": "A tile with fewer molecules to measure is logged as empty and passed (Max molecules and Min/Max photons of Auto-pick apply per tile)."
+            },
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "survey_max_tiles",
+              "label": "Stop after tiles",
+              "minimum": 0,
+              "maximum": 100000,
+              "step": 1,
+              "description": "End the survey after this many tiles (0: no limit)."
+            },
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "survey_max_molecules",
+              "label": "Stop after molecules",
+              "minimum": 0,
+              "maximum": 1000000,
+              "step": 10,
+              "description": "End the survey once this many molecules have been measured (0: no limit)."
+            },
+            {
+              "type": "value",
+              "kind": "float",
+              "attr": "survey_max_minutes",
+              "label": "Stop after (min)",
+              "minimum": 0.0,
+              "maximum": 100000.0,
+              "step": 10.0,
+              "description": "End the survey after this much time (0: no limit).",
+              "decimals": 1
+            },
+            {
+              "type": "choice",
+              "attr": "survey_order",
+              "label": "Order",
+              "options_source": "survey_order_options",
+              "hidden_when": {
+                "attr": "advanced",
+                "equals": "false"
+              },
+              "description": "Spiral (default): the start tile, then ring after ring around it -- a coverslip is rarely flat, so the tiles nearest the focused spot come first. Serpentine: row by row, alternating direction."
+            },
+            {
+              "type": "choice",
+              "attr": "survey_centre",
+              "label": "Spiral centre",
+              "options_source": "survey_centre_options",
+              "hidden_when": {
+                "attr": "advanced",
+                "equals": "false"
+              },
+              "description": "Where the spiral starts: where the stage is (the spot you focused and imaged last; default) or the area's centre."
+            },
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "survey_guard_px",
+              "label": "Edge guard (px)",
+              "minimum": 0,
+              "maximum": 100,
+              "step": 1,
+              "description": "Spots closer than this to a tile's edge are left to the neighbouring tile (cut spots have biased positions and brightness).",
+              "hidden_when": {
+                "attr": "advanced",
+                "equals": "false"
+              }
+            },
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "survey_max_empty",
+              "label": "Stop after empty tiles",
+              "minimum": 0,
+              "maximum": 10000,
+              "step": 1,
+              "description": "End the survey after this many empty tiles in a row (0: never) -- a ring of empty tiles far out usually means the sample has left the focus.",
+              "hidden_when": {
+                "attr": "advanced",
+                "equals": "false"
+              }
+            },
+            {
+              "type": "toggle",
+              "attr": "survey_reimage",
+              "label": "Re-image after measuring",
+              "hidden_when": {
+                "attr": "advanced",
+                "equals": "false"
+              },
+              "description": "Image each tile again after its molecules were measured, to see what bleached (a second image dataset per tile)."
+            }
+          ]
+        },
+        {
           "type": "button_row",
           "buttons": [
             {

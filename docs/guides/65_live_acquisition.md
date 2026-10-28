@@ -227,6 +227,41 @@ for row in m.point_rows():
     print(row["index"], row["steps"], row["bleach_s"], row["efficiency"])
 ```
 
+### Survey: a larger area, automatically
+
+**Points › Survey** repeats image → Auto-pick → Measure points tile after tile
+until **Stop**, a stop condition (tiles, molecules, minutes; in Advanced also a
+number of empty tiles in a row) or the whole area is done -- by default the
+scanner's whole range (0–100 µm on the E-725, from its driver). Tiles are the
+Scan panel's Width × Height, visited in an **outward spiral** from the stage's
+position, where you focused (a coverslip is rarely flat; the nearest tiles are
+the best focused), or in serpentine rows. Tiles with fewer than *Min molecules*
+are logged and passed, failed tiles too. An *Edge guard* leaves spots near a
+tile's edge to the neighbour that sees them whole and a molecule measured once is
+never measured again, so overlapping tiles give no doubles. The shutters open
+once at the start and close once at the end or Stop; the laser is not switched.
+One table of all molecules (`survey_molecules.table`: tile, stage position, the
+per-molecule results) is stored with the first tile's image after every tile, so
+a stopped survey keeps what it measured. From Python: `m.survey_start()`, then
+`m.wait_survey()`; `m.survey_table()` is the table.
+
+```{figure} figures/65_survey_running.png
+:name: fig-65-survey-running
+:width: 100%
+
+A survey of 4 × 4 tiles running: the map shows the spiral (numbers and path),
+tile 5 being measured (orange), measured tiles green with their molecules, an
+empty tile dark; the line above it says tile, molecules, elapsed and remaining
+time.
+```
+
+```{figure} figures/65_survey_done.png
+:name: fig-65-survey-done
+:width: 100%
+
+The survey done: every tile visited, 26 molecules measured.
+```
+
 To run the scan on the real instrument, load an MT200 profile (it connects the
 HydraHarp, the Sepia II, the shutters and the E-725), set **Source** to *TCSPC
 device and scanner* and press **Start**.

@@ -37,6 +37,7 @@ from emtk.view_form import FormState, draw_sections
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.core.acq.gui.record_points import ScanPointsMixin
 from chisurf.plugins.core.acq.gui.record_settings import SETTINGS_SETUP, LaserSettingsMixin
+from chisurf.plugins.core.acq.gui.record_survey import SurveyMixin, draw_survey_map
 from chisurf.plugins.core.acq.live import devices
 from chisurf.plugins.core.acq.live.analyzer import PRESETS
 from chisurf.plugins.core.acq.live.fcs import (
@@ -94,7 +95,7 @@ def _workspace(kind: str) -> list[Any]:
     return workspace_datasets(kind)
 
 
-class RecordModel(LaserSettingsMixin, ScanPointsMixin):
+class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
     """The state behind ``record.view.json``.
 
     Parameters
@@ -182,6 +183,8 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin):
         self._init_laser_settings()
         # -- the scanner, the picked points and their measurements (record_points) ------------
         self._init_scan_points()
+        # -- the survey: tile after tile, picked and measured (record_survey) -------------------
+        self._init_survey()
 
     # -- point or image ---------------------------------------------------------------------------
     _SCAN_FIELDS = ("pixels_x", "pixels_y", "area_x_um", "area_y_um", "x0_um", "y0_um",
@@ -531,7 +534,10 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin):
                 ("molecules", tr("Single molecules (some pairs)"))]
 
     def imaging_sample(self) -> ImagingSample:
-        """The simulated specimen the Scan panel describes."""
+        """The simulated specimen the Scan panel describes (a running survey's: one sample fixed
+        on the stage over the surveyed area)."""
+        if self._survey_sample is not None:
+            return self._survey_sample
         taus = (float(self.img_tau_1_ns), float(self.img_tau_2_ns))
         if self.img_sample == "molecules":
             sample = ImagingSample.single_molecules(
@@ -638,14 +644,32 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin):
 
     # -- actions ---------------------------------------------------------------------------------
     @property
-    def running(self) -> bool:
+    def busy(self) -> bool:
+        """A recording or a point sequence is under way (a survey runs them one after another)."""
         return (self.session is not None and self.session.running) or self.points_running
+
+    @property
+    def running(self) -> bool:
+        return self.busy or self.survey_active
+
+    def _run_shutters(self, start: bool) -> None:
+        """A run's shutters: opened at its start, closed at its end -- once for a whole survey,
+        which opens them when it starts and closes them when it ends."""
+        if self.survey_active:
+            return
+        if start:
+            self._shutters_at_start()
+        else:
+            self._shutters_at_end()
 
     def enabled(self, action: str) -> bool:
         mine = self.laser_settings_enabled(action)
         if mine is not None:
             return mine
         mine = self.points_enabled(action)
+        if mine is not None:
+            return mine
+        mine = self.survey_enabled(action)
         if mine is not None:
             return mine
         if action == "start":
@@ -711,7 +735,7 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin):
         )
 
     def start(self) -> bool:
-        if self.running:
+        if self.busy:
             return False
         try:
             if self.source_kind == "device" and self.device is not None:
@@ -723,13 +747,13 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin):
             self.status_detail = str(exc)
             return False
         name = self.run_name.strip().replace("{date}", time.strftime("%Y%m%d_%H%M%S"))
-        name = name or time.strftime("record_%Y%m%d_%H%M%S")
+        name = self.unique_name(name or time.strftime("record_%Y%m%d_%H%M%S"))
         if self.mode == "image":
             return self._start_image(source, experiment, name)
         if self.mode == "fcs":
             return self._start_fcs(source, experiment, name)
         self.saved_path = recording_dir(self.output_dir) / f"{name}.ptu"
-        self._shutters_at_start()
+        self._run_shutters(True)
         self.session = RecordSession(
             source,
             experiment,
@@ -763,7 +787,7 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin):
         if self.source_kind == "simulator":
             real, population = self.fcs_sample()
             truth = fcs_truth(real, population)
-        self._shutters_at_start()
+        self._run_shutters(True)
         self.session = FcsRecordSession(
             source,
             experiment,
@@ -812,7 +836,7 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin):
         )
         # a real scan ends with the scanner's last frame (learning and turnarounds included)
         duration = None if (replay or real) else (scan.total_s + 2 * scan.line_s)
-        self._shutters_at_start()
+        self._run_shutters(True)
         self.session = ImageRecordSession(
             source,
             scan,
@@ -847,6 +871,17 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin):
         self.status_detail = str(self.saved_path or self.replay_address)
         return True
 
+    def unique_name(self, name: str) -> str:
+        """*name*, or *name* with ``_2``, ``_3`` ... when a recording of that name exists already
+        (two runs in one second -- a survey's tiles -- must not overwrite each other)."""
+        folder = recording_dir(self.output_dir)
+        taken = {p.stem for p in folder.glob("*.ptu")} if folder.exists() else set()
+        stem, k = name, 1
+        while stem in taken or f"{stem}_p000" in taken:
+            k += 1
+            stem = f"{name}_{k}"
+        return stem
+
     def _enable_line_markers(self, scan) -> str:
         """The device's marker inputs of the scan's line markers switched on (a HydraHarp 400
         starts with every marker input off); a note when the device cannot."""
@@ -871,6 +906,13 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin):
     def stop(self) -> bool:
         if not self.running:
             return False
+        if self.survey_active:
+            self.survey_stop()  # the tile's run ends; the survey keeps what it has
+            if self.points_running:
+                self.sequence.stop()
+            elif self.busy:
+                self.session.stop()
+            return True
         if self.points_running:
             self.sequence.stop()
             return True
@@ -896,7 +938,12 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin):
             pass
 
     def poll(self, force: bool = False) -> None:
-        """Take a snapshot at the display rate; register the run once it ended."""
+        """Take a snapshot at the display rate; register the run once it ended; advance a
+        survey."""
+        self._poll_runs(force)
+        self.survey_step()
+
+    def _poll_runs(self, force: bool = False) -> None:
         self._update_rates()
         if self.sequence is not None and (self.points_running or not self._sequence_finished):
             now = time.monotonic()
@@ -917,7 +964,7 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin):
             self._registered = True
             # a run's end closes the shutters the settings name (the excitation one); the laser
             # is not touched -- the shutter keeps the light off the sample
-            self._shutters_at_end()
+            self._run_shutters(False)
             self.snapshot = session.snapshot()
             result = session.result
             if isinstance(session, ImageRecordSession):
@@ -972,6 +1019,8 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin):
         )
 
     def close(self) -> None:
+        if self.survey_active:
+            self.survey_stop()
         if self.points_running:
             self.sequence.stop()
             self.sequence.wait(10.0)
@@ -1432,6 +1481,7 @@ class RecordApp(ImApp):
             ("laser_settings", self._draw_laser_settings),
             ("shutter_settings", self._draw_shutter_settings),
             ("scanner_settings", self._draw_scanner_settings),
+            ("survey_map", self._draw_survey_map),
         ):
             self.form.custom[key] = draw
         #: the generated device / laser forms: their own form state, their spec per form
@@ -1477,6 +1527,7 @@ class RecordApp(ImApp):
         out["live_view"] = "plot_hist"
         out["live_image"] = "plot_image"
         out["point_rows"] = "points"
+        out["Survey.fold"] = "points"
         return out
 
     def focus_dock(self, key: str) -> None:
@@ -1674,6 +1725,19 @@ class RecordApp(ImApp):
     def _draw_scanner_settings(self, section, model: RecordModel, state: FormState, width: float):
         self._draw_generated("scanner_settings", model.scanner_form, state, width,
                              tr("Connect the scanner: its settings appear here."))
+
+    def _draw_survey_map(self, section, model: RecordModel, state: FormState, width: float):
+        top = im.get_cursor_screen_pos()
+        model.survey_preview()
+        x0, y0, w, h = model.survey_area()
+        side = max(80.0, min(width - 8.0, 240.0))
+        draw_survey_map(model, side, side * min(2.0, h / max(w, 1e-9)))
+        n = len(model.survey_tiles)
+        _short_line(tr("{n} tile(s) of {w:.1f} × {h:.1f} µm").format(
+            n=n, w=float(model.scan_area_x_um), h=float(model.scan_area_y_um)),
+            "\n".join(model.survey_log[-12:]) or tr("The survey's log appears here."),
+            (0.7, 0.7, 0.7, 1.0))
+        state.rects["survey_map"] = (*top, width, im.get_cursor_screen_pos()[1] - top[1])
 
     def _draw_laser_settings(self, section, model: RecordModel, state: FormState, width: float):
         self._draw_generated("laser_settings", model.laser_form, state, width,
@@ -1939,6 +2003,21 @@ class RecordApp(ImApp):
             "autopick_min",
             "autopick_max_brightness",
             "scanner_address",
+            "survey_area_kind",
+            "survey_x0_um",
+            "survey_y0_um",
+            "survey_w_um",
+            "survey_h_um",
+            "survey_overlap_um",
+            "survey_order",
+            "survey_centre",
+            "survey_guard_px",
+            "survey_min_molecules",
+            "survey_max_tiles",
+            "survey_max_molecules",
+            "survey_max_minutes",
+            "survey_max_empty",
+            "survey_reimage",
             "settings_address",
             "advanced",
         ) + tuple(f"scan_{name}" for name in RecordModel._SCAN_FIELDS)

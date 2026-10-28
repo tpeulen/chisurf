@@ -104,4 +104,6 @@ def test_every_guide_step_points_at_a_drawn_control(app):
         if "Image (scan)" in (step.get("await") or {}).get("hint", ""):
             app.model.mode = "image"  # what the user does at this step
             app.model.mode_changed()
+        if str((step.get("target") or {}).get("name", "")).endswith(".fold"):
+            app.form.folds[step["target"]["name"][:-5]] = True  # the user opens it
     app.tour.stop()
