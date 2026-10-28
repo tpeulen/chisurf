@@ -42,6 +42,10 @@ no tttrlib), never all at once on the laptop. Open front, in order:
    streamed ~11 s per point although 3 s were set -- compare;
    (d) Frames > 1 re-learn every frame (slow); find whether SymPhoTime learns once. z planes > 1 are
    not supported on this path.
+   (e) Survey (93c16f583, Points > Survey: outward spiral from the last image, empty tiles passed):
+   measure the real per-tile overhead (park, MOV to the next tile, learn_s = 5 s every tile) on a
+   3x3 survey; if learning dominates, learn once per raster size and reuse. Focus drift across the
+   100 um field is only caught by "stop after N empty tiles" -- no z/focus lock yet.
    Known: the shared HMM logs "not converging" during the BIC scan (tests silence it); a dim neighbour
    still shining after the main bleach counts as a step.
 1. Open: **Companion tables do not reach the container.** `chisurf.core.project.analysis.container_changed`
