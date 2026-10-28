@@ -100,7 +100,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| From | `settings_address` | choice |  | choices: `settings_options` | A settings file (⚙) or a measurement (⏱) of the workspace. Settings files enter ChiSurf through the drop, like every input. |
+| From | `settings_address` | choice |  | choices: `settings_options` | A settings file (⚙), a profile (★) or a measurement (⏱) of the workspace. Choosing a settings file or profile loads it at once: it connects the device and the laser it names and applies its settings (the laser's emission stays off). Settings files enter ChiSurf through the drop, like every input. |
+| Advanced | `advanced` | bool |  |  | Simple (off) or Advanced (on), for all the hardware at once. Simple shows what a measurement needs: the laser's intensity and on/off, the shutters, the run. Advanced adds the expert settings each driver marks: the TCSPC unit's thresholds (CFD levels), shifts (sync and input offsets), timing and markers; the laser's repetition rate and head details; the shutters' reported state and the diode averaging; the simulator's realism. A loaded settings file sets them all either way. |
 
 ### Source
 
@@ -160,17 +161,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Device | `device_index` | choice |  | choices: `device_options` | The PicoQuant devices connected over USB (driven through CMC's pqusb, without PicoQuant's libraries). Connect opens and initialises it in T3 mode. |
-| Sync divider | `sync_div` | int |  | 1 … 16 (step 1) | Divides the laser's sync pulses. Keep 1 for PIE: the micro-time must span one full laser period, both pulses. |
-| Sync level (mV) | `sync_level_mv` | int |  | -1200 … 1200 (step 10) | Trigger level of the sync input. |
-| Sync edge | `sync_edge` | choice |  | choices: 0, 1 | Which edge of the sync signal triggers. |
-| Sync offset (ps) | `sync_offset_ps` | int |  | -99999 … 99999 (step 100) | Shifts all micro-times; use it to place the prompt pulse at the start of the period. |
-| Input level (mV) | `input_level_mv` | int |  | -1200 … 1200 (step 10) | Trigger level of the detector inputs (all inputs). |
-| Input edge | `input_edge` | choice |  | choices: 0, 1 | Which edge of the detector pulses triggers (all inputs). |
-| Donor input offset (ps) | `donor_offset_ps` | int |  | -99999 … 99999 (step 100) | Delay of the donor detector's input (the first donor channel of the setup), to align it with the acceptor's. |
-| Acceptor input offset (ps) | `acceptor_offset_ps` | int |  | -99999 … 99999 (step 100) | Delay of the acceptor detector's input (the first acceptor channel of the setup). |
-| Binning | `binning` | int |  | 0 … 24 (step 1) | T3 micro-time bin width = base resolution x 2^binning. |
-| Offset (ns) | `offset_ns` | int |  | 0 … 100000000 (step 1) | T3 offset of the micro-time window (ns). |
+| Device | `device_index` | choice |  | choices: `device_options` | The TCSPC devices connected (PicoQuant MultiHarp, PicoHarp 330, HydraHarp 500 over USB; Becker & Hickl SPC cards over PCI), driven natively by libphacq. Connect opens and initialises it (PicoQuant: T3 mode, B&H: FIFO mode). |
 
 ### Laser
 
@@ -210,6 +201,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Pixels y | `scan_pixels_y` | int |  | 1 … 4096 (step 8) | Lines per frame. |
 | Width (µm) | `scan_area_x_um` | float |  | 0.01 … 1000.0 (step 1.0) | The scanned width; a pixel is width / pixels wide. |
 | Height (µm) | `scan_area_y_um` | float |  | 0.01 … 1000.0 (step 1.0) | The scanned height. |
+| X start (µm) | `scan_x0_um` | float |  | 0.0 … 100.0 (step 1.0) | The image's corner on the fast axis, in stage coordinates (the MT200's E-725 travels 0–100 µm; SymPhoTime starts its images at 10 µm). Picked points are stage coordinates too. |
+| Y start (µm) | `scan_y0_um` | float |  | 0.0 … 100.0 (step 1.0) | The image's corner on the slow axis, in stage coordinates. |
 | Dwell (ms) | `scan_dwell_ms` | float |  | 0.001 … 100.0 (step 0.01) | Time on one pixel. A line takes pixels x dwell; the line rate follows. |
 | Frames | `scan_frames` | int |  | 1 … 10000 (step 1) | Frames per plane; their photons add up in the live image. |
 | Bidirectional | `scan_bidirectional` | bool |  |  | Odd lines are scanned right to left (faster; needs a well-aligned scanner). |
@@ -220,10 +213,18 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Beads | `img_beads` | int |  | 0 … 500 (step 1) | Bright beads on the dim outline of a cell; half of them with each lifetime. |
+| Sample | `img_sample` | choice |  | choices: `img_sample_options` | What the simulated scan sees: beads (a few emitters each) on the dim outline of a cell, or single molecules on a clean coverslip (a few spots hold two molecules, which bleach in two steps) -- the sample to try picking and point measurements on. |
+| Spots | `img_beads` | int |  | 0 … 500 (step 1) | Bright spots in the field: beads, or molecules (single, a few pairs); half of them with each lifetime. |
 | τ₁ (ns) | `img_tau_1_ns` | float |  | 0.05 … 20.0 (step 0.1) | Lifetime of the first bead kind (mostly on detector 0). |
 | τ₂ (ns) | `img_tau_2_ns` | float |  | 0.05 … 20.0 (step 0.1) | Lifetime of the second bead kind (mostly on detector 1). |
 | Brightness | `img_brightness` | float |  | 0.1 … 10000.0 (step 5.0) | Photon rate of one emitter at the focus centre (a bead is a few emitters). Too bright piles up: watch the Pile-up light. |
+| Bleaching (s) | `img_bleach_s` | float |  | 0.0 … 600.0 (step 0.5) | Mean time a simulated molecule shines under the parked focus of a point measurement before it bleaches (each molecule on its own; 0 never bleaches). |
+
+### Scanner
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Address | `scanner_address` | str |  |  | What Connect opens without a settings file: empty for the first E-725 on USB, a USB serial, tcp:&lt;host> over the network, sim: the simulator. |
 
 ### Run
 
@@ -244,6 +245,28 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Map | `image_map` | choice |  | choices: `image_map_options` | Which map: intensity (all detectors), mean arrival time (fast FLIM), a single detector, or a micro-time window (PIE). |
+
+### Points
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Click adds a point | `pick_on_click` | bool |  |  | A click on the image (not a drag, which pans it) adds a point there; its position is the stage coordinate under the pointer. |
+
+### Auto-pick
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Max molecules | `autopick_max` | int |  | 0 … 1000 (step 1) | Take at most this many molecules, brightest first (0: every one found). |
+| Min photons | `autopick_min` | float |  | 0.0 … 1000000000.0 (step 10.0) | A spot needs at least this many photons in the image (its summed intensity) to be taken. |
+| Max photons | `autopick_max_brightness` | float |  | 0.0 … 1000000000.0 (step 10.0) | Spots brighter than this are left out (aggregates, beads); 0 sets no limit. |
+
+### Measurement
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Time per point (s) | `point_time_s` | float |  | 0.1 … 3600.0 (step 1.0) | The longest a point is recorded. |
+| Until bleached | `until_bleached` | bool |  |  | End a point early once its molecule has bleached: the count rate stays down near the background (the threshold is drawn in the trace). |
+| Background (kHz) | `bleach_background_kcps` | float |  | 0.0 … 10000.0 (step 0.5) | The count rate without a molecule, which the bleach rule's threshold sits above (0: the simulator's background, else none). |
 
 ### General
 
