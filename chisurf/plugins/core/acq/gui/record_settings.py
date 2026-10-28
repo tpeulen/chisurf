@@ -467,12 +467,39 @@ class LaserSettingsMixin:
             return False
         self._form_from(doc)
         notes: list[str] = []
+        # A settings file is meant for the hardware: connect what it names and is not yet
+        # connected (a failure is a note; the form still holds the values).
+        if doc.get("device") and getattr(self, "device", None) is None \
+                and getattr(self, "source_kind", "device") == "device":
+            from chisurf.plugins.core.acq.live import devices as devices_mod
+
+            section = doc["device"]
+            entry = devices_mod.device_for(section)
+            if entry is None:
+                wanted = " ".join(str(section.get(k) or "") for k in ("model", "serial")).strip()
+                notes.append(tr("Device not connected: {name} is not attached.").format(
+                    name=wanted or section.get("driver") or tr("the file's device")))
+            else:
+                self.device_index = entry.key
+                if not self.connect_device():
+                    notes.append(tr("Device not connected: {why}").format(
+                        why=getattr(self, "device_text", "") or entry.label))
+        laser_doc = doc.get("laser") or {}
+        real = str(laser_doc.get("backend", "")).startswith("sepia") and self.laser_kind == "auto"
+        sepia_ok, sepia_why = self._sepia_status() if real else (True, "")
+        if laser_doc and not self.laser_connected and not sepia_ok:
+            # the file is for the Sepia II: never stand the simulated laser in for it
+            notes.append(tr("Laser not connected: {why}").format(why=sepia_why))
+        elif laser_doc and not self.laser_connected:
+            if not self.connect_laser():
+                notes.append(tr("Laser not connected: {why}").format(
+                    why=self.laser_detail or self.laser_text))
         try:
-            notes = settings_file.apply(
+            notes += settings_file.apply(
                 doc, device=self.device, laser=self.laser if self.laser_connected else None
             )
         except Exception as exc:  # noqa: BLE001 - the form holds them; the hardware said no
-            notes = [str(exc)]
+            notes.append(str(exc))
         if self.laser_connected and doc.get("laser"):
             self.laser_applied = not any("laser" in n.lower() for n in notes)
             self._laser_status()

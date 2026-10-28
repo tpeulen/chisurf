@@ -115,6 +115,24 @@ def find_device(key: str, drivers: tuple[str, ...] = TCSPC_DRIVERS) -> DeviceEnt
     return None
 
 
+def device_for(section: dict, drivers: tuple[str, ...] = TCSPC_DRIVERS) -> DeviceEntry | None:
+    """The attached device a settings file's ``device`` section is for.
+
+    Matched by ``driver`` and ``serial`` when the section names a serial (the unit it was
+    recorded on), else by ``driver`` and ``model``, else the driver's first device. ``None``
+    when that device is not attached -- never another unit in its place.
+    """
+    driver = str(section.get("driver") or "")
+    serial = str(section.get("serial") or "").strip()
+    model = str(section.get("model") or "").strip().lower()
+    found = [e for e in attached_devices(drivers) if not driver or e.driver == driver]
+    if serial:
+        return next((e for e in found if e.serial.strip() == serial), None)
+    if model:
+        return next((e for e in found if e.model.strip().lower() == model), None)
+    return found[0] if found else None
+
+
 def time_tag_mode(driver: str):
     """The time-tagged mode the Record tool measures in: T3 on PicoQuant units, the FIFO (TTTR)
     mode on B&H cards."""

@@ -568,11 +568,21 @@
           }
         },
         {
-          "type": "custom",
-          "key": "device_settings",
+          "type": "toggle",
+          "attr": "advanced",
+          "label": "Advanced",
           "hidden_when": {
             "attr": "source_kind",
             "not_equals": "device"
+          },
+          "description": "Show the device's thresholds (CFD levels), shifts (sync and input offsets), timing and markers. Off by default: a loaded settings file or profile sets them, and they stay as calibrated."
+        },
+        {
+          "type": "custom",
+          "key": "device_settings",
+          "hidden_when": {
+            "attr": "device_form_hidden",
+            "equals": "true"
           },
           "description": "Every setting of the connected device, as its driver describes it: sync, each input on its own panel, timing, markers. An edit is sent to the device at once (between runs); a value the device refuses is named here and the panel shows the device's values again."
         }

@@ -6,6 +6,7 @@
     "backend": "phacq",
     "driver": "picoquant",
     "model": "HydraHarp 400",
+    "serial": "1032692",
     "mode": "T3",
     "sync": {
       "divider": 4,

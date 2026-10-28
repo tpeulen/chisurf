@@ -307,7 +307,8 @@ def test_path_fields_are_declared_as_text():
                 yield from walk(value)
 
     paths = [
-        s for s in walk(json.loads(spec.read_text())) if str(s.get("attr", "")).endswith("_path")
+        s for s in walk(json.loads(spec.read_text(encoding="utf-8")))
+        if str(s.get("attr", "")).endswith("_path")
     ]
     assert paths, "no *_path control found"
     assert all(s.get("kind") == "str" for s in paths), [

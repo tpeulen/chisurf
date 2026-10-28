@@ -31,11 +31,18 @@ laser. The vendor-library device session of earlier versions (B&H SPCM-DLL,
 PicoQuant and BrickMic wrappers with their *Device Setup* cards) has been
 removed; there is one acquisition window, Record.
 
+**On Windows**, PicoQuant's own driver holds PicoQuant units, so phacq reaches
+them through PicoQuant's snAPI package (`pip install snAPI`) instead of its
+native driver. The device, its settings and the recordings are the same; only
+the way in differs. Linux and macOS stay native.
+
 **Every setting a device has is offered.** The driver describes its settings
 itself — names, units, ranges, choices, which are per input — and Record builds
 the device's panel from that description, so nothing is left out and a setting
-a newer phacq adds appears without a ChiSurf change. Connect a device under
-**Acquisition → TCSPC device**: its settings start folded by group — the sync,
+a newer phacq adds appears without a ChiSurf change. The thresholds, shifts,
+timing and markers are behind **Advanced** (off by default): a loaded settings
+file or profile sets them, and they stay as calibrated. Connect a device under
+**Acquisition → TCSPC device** and tick **Advanced** to see them: its settings start folded by group — the sync,
 each input on its own fold, timing, markers and outputs (for a B&H card its CFD, sync, TAC, timers and FIFO mode).
 An edit is sent at once, between runs; a value the device refuses is named in
 the status line and nothing of that edit is applied. The values are saved in
@@ -85,6 +92,18 @@ They differ only in the lasers. None sets a run length: runs are open-ended unti
 you press **Stop**. They don't set the Sepia's oscillator
 programme yet, because phacq does not drive the SOM 828-D yet. Choose one and press
 **Load**.
+
+**Loading connects the hardware.** A settings file says which unit it is for
+(`device.driver`, `device.model`, `device.serial` — the MT200 profiles name
+HydraHarp 400 1032692). **Load** connects that unit if it is attached, and the
+laser the file names, then applies everything. A unit that is not attached is
+named in the notes and nothing else is connected in its place; a file for the
+Sepia II never connects the simulated laser instead.
+
+**No sync, still recorded.** A T3 run without a sync signal (laser off, cable
+out) is recorded anyway and the device is shown as *(no sync)*: the unit still
+time-tags its inputs, the macro step is provisionally the unit's start-stop
+range, and the file's header takes the sync rate measured when it closes.
 
 ## Running one
 

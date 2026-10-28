@@ -119,6 +119,9 @@ class RecordModel(LaserSettingsMixin):
         self.plot_choice = ""
         # -- Point (smFRET) or Image (a scan) -------------------------------------------------
         self.mode = "point"
+        #: Advanced: show the device's thresholds, shifts, timing and markers. Off by default:
+        #: a settings file or profile sets them, and a stray edit spoils a calibrated setup.
+        self.advanced = False
         # -- the simulated FCS sample: one diffusing species with a known answer -----------------
         self.fcs_n = 4.0
         self.fcs_d_um2_per_s = 80.0
@@ -339,6 +342,11 @@ class RecordModel(LaserSettingsMixin):
     def sync_offset_ps(self) -> float:
         """The sync channel offset the device applies (ps; 0 where it has none)."""
         return float(self.device_values.get("sync_offset_ps") or 0)
+
+    @property
+    def device_form_hidden(self) -> bool:
+        """The device's settings form is shown for a device source in Advanced only."""
+        return self.source_kind != "device" or not self.advanced
 
     # -- the device --------------------------------------------------------------------------------
     def connect_device(self) -> bool:
