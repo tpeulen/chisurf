@@ -1204,7 +1204,7 @@ class RecordApp(ImApp):
             ("settings_status", self._draw_settings_status),
             ("device_settings", self._draw_device_settings),
             ("laser_settings", self._draw_laser_settings),
-            ("shutter_controls", self._draw_shutter_controls),
+            ("shutter_settings", self._draw_shutter_settings),
         ):
             self.form.custom[key] = draw
         #: the generated device / laser forms: their own form state, their spec per form
@@ -1352,37 +1352,6 @@ class RecordApp(ImApp):
         im.end()
 
     # -- custom sections ---------------------------------------------------------------------------
-    def _draw_shutter_controls(
-        self, section, model: RecordModel, state: FormState, width: float
-    ) -> None:
-        """A checkbox per shutter (ticked = open), the box's own state beside it, the diode."""
-        box = model.shutters
-        if box is None:
-            return
-        for name in box.bits:
-            commanded = bool(box.command >> box.bits[name] & 1)
-            changed, value = im.checkbox(f"{tr(name)}##shutter.{name}", commanded)
-            state.rects[f"shutter.{name}"] = im.get_item_rect()
-            if changed:
-                model.set_shutter(name, value)
-            reported = box.is_open(name)
-            im.same_line()
-            if reported is None:
-                im.text_disabled(tr("(no state yet)"))
-            elif reported != commanded:
-                im.text_colored((0.95, 0.65, 0.2, 1.0), tr("box: {s} (manual control?)").format(
-                    s=tr("open") if reported else tr("closed")))
-            else:
-                im.text_disabled(tr("open") if reported else tr("closed"))
-        raw = box.diode_raw
-        if box.diode_id is not None:
-            if raw is None:
-                im.text_disabled(tr("Power diode: no reading yet"))
-            else:
-                au = box.diode_au(raw)
-                im.text(tr("Power diode: {raw} raw").format(raw=raw)
-                        + (f" = {au:.1f} a.u." if au is not None else ""))
-
     def _draw_setup_summary(
         self, section, model: RecordModel, state: FormState, width: float
     ) -> None:
@@ -1455,6 +1424,10 @@ class RecordApp(ImApp):
     def _draw_device_settings(self, section, model: RecordModel, state: FormState, width: float):
         self._draw_generated("device_settings", model.device_form, state, width,
                              tr("Connect a device: all its settings appear here."))
+
+    def _draw_shutter_settings(self, section, model: RecordModel, state: FormState, width: float):
+        self._draw_generated("shutter_settings", model.shutter_form, state, width,
+                             tr("Load settings with a shutters section: its shutters appear here."))
 
     def _draw_laser_settings(self, section, model: RecordModel, state: FormState, width: float):
         self._draw_generated("laser_settings", model.laser_form, state, width,
@@ -1613,6 +1586,7 @@ class RecordApp(ImApp):
     # -- one frame ---------------------------------------------------------------------------------
     def render(self) -> None:
         self.model.poll()
+        self.model.refresh_shutter_form()
         self._persist_loaded_settings()
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)

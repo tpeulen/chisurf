@@ -806,8 +806,8 @@
         },
         {
           "type": "custom",
-          "key": "shutter_controls",
-          "description": "One checkbox per shutter: ticked opens it, unticked closes it. Beside it, what the box itself reports: when the box's own buttons have taken over (manual control), it ignores the software and the two differ. Below, the power diode (raw; in a.u. once the settings calibrate it)."
+          "key": "shutter_settings",
+          "description": "Generated from the settings file's shutters section (each shutter linked to its own endpoint: a CAN or I2C bus, a bit): a checkbox per shutter (ticked opens it), what the hardware reports (it differs while a box's own buttons have taken over), and the power diode (raw; in a.u. once the settings calibrate it)."
         }
       ],
       "dock": "laser"

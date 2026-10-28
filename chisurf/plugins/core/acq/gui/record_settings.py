@@ -51,6 +51,9 @@ class LaserSettingsMixin:
         self._connect_thread = None
         #: the shutter box and power diode (phacq.shutterbox) a settings file defines
         self.shutters = None
+        #: the shutters' form, generated from the box's schema (the settings file's section)
+        self.shutter_form = None
+        self._shutter_form_at = 0.0
         self.shutter_section: dict | None = None
         self.shutter_text = tr("No shutters")
         self.laser_kind = "auto"
@@ -438,8 +441,31 @@ class LaserSettingsMixin:
             self.shutters, self.shutter_text = None, str(exc)
             return False
         self.shutter_section = dict(section)
-        self.shutter_text = tr("Shutters: {names}").format(names=", ".join(self.shutters.bits))
+        self.shutter_text = tr("Shutters: {names}").format(names=", ".join(self.shutters.endpoints))
+        from chisurf.core.registry.tttrlib import entry_form_view_for
+
+        self.shutter_form = entry_form_view_for(self.shutters.schema(),
+                                                values=self.shutters.settings(),
+                                                on_change=self.shutter_settings_edited)
         return True
+
+    def shutter_settings_edited(self) -> None:
+        """A checkbox in the shutters' form: send what changed."""
+        if self.shutters is None or self.shutter_form is None:
+            return
+        try:
+            self.shutters.apply(self.shutter_form.params())
+        except Exception as exc:  # noqa: BLE001 - shown on the status line
+            self.shutter_text = tr("Shutters: {e}").format(e=exc)
+
+    def refresh_shutter_form(self, interval_s: float = 0.25) -> None:
+        """Show what the hardware reports (and what Start/end of a run did) in the form."""
+        if self.shutters is None or self.shutter_form is None:
+            return
+        now = time.monotonic()
+        if now - self._shutter_form_at >= interval_s:
+            self._shutter_form_at = now
+            self.shutter_form.update_values(self.shutters.settings())
 
     def set_shutter(self, name: str, open_: bool) -> bool:
         """Open or close one shutter (its checkbox)."""
@@ -458,6 +484,7 @@ class LaserSettingsMixin:
                 self.shutters.close()
             finally:
                 self.shutters = None
+                self.shutter_form = None
                 self.shutter_text = tr("No shutters")
 
     def _shutters_at_start(self) -> None:

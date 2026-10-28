@@ -105,13 +105,17 @@ TCSPC device as its source. A unit that is not attached is
 named in the notes and nothing else is connected in its place; a file for the
 Sepia II never connects the simulated laser instead.
 
-**Shutters and power diode.** A settings file's `shutters` section defines the
-microscope's shutter box (the MT200's, on the PEAK CAN card): the bus, the box's
-IDs, which bit is which shutter, the power diode. Loading the file connects it.
-The **Shutters** panel (Laser tab) has a checkbox per shutter, the state the box
-itself reports beside it (they differ when the box's own buttons have taken
-over), and the diode reading. **Start** opens the shutters the file names; the
-end of a run closes the excitation shutter. The laser is not touched.
+**Shutters and power diode.** A settings file's `shutters` section defines them:
+named `buses` (`type` `can` — PEAK PCAN — or `i2c` — Linux `/dev/i2c-N`), and
+for every shutter and the power diode its own `endpoint` (`can_bit`: a bit of a
+CAN command frame with its state frame; `i2c_bit`: a bit of an I2C device's
+register, its state from another; `can_word` / `i2c_word`: a reading). Other
+hardware is other endpoints in the file. The MT200 profiles link Excitation,
+Detector 1 and 2 to bits 0–2 of the shutter box on the CAN card. Loading the file
+connects them. The **Shutters** panel (Laser tab) is generated from that section:
+a checkbox per shutter, what the hardware reports (it differs while a box's own
+buttons have taken over), and the diode. **Start** opens the shutters the file
+names; the end of a run closes the excitation shutter. The laser is not touched.
 
 **What a recording's header holds.** Besides the device's settings and the
 whole settings file, a recording carries the laser and the diode under the names

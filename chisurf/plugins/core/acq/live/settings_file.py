@@ -154,15 +154,34 @@ def validate(doc: Any) -> list[str]:
             p.append(f"{key}: expected an object")
     shut = doc.get("shutters") if isinstance(doc.get("shutters"), dict) else {}
     if shut:
-        _choice(p, "shutters.backend", shut.get("backend", "pcan"), ("pcan", "sim"))
+        # buses by name (type can / i2c, a backend), an endpoint per shutter and for the diode;
+        # the endpoint types themselves are phacq.shutterbox's
+        buses = shut.get("buses") if isinstance(shut.get("buses"), dict) else {}
+        if not buses:
+            p.append("shutters.buses: expected an object {name: {type, backend, ...}}")
+        for name, bus in buses.items():
+            if not isinstance(bus, dict):
+                p.append(f"shutters.buses.{name}: expected an object")
+            elif "type" in bus:
+                _choice(p, f"shutters.buses.{name}.type", bus["type"], ("can", "i2c"))
         names = set()
+
+        def endpoint(where, ep):
+            if not isinstance(ep, dict) or "type" not in ep or "bus" not in ep:
+                p.append(f"{where}: expected an object with type and bus")
+            elif str(ep["bus"]) not in buses:
+                p.append(f"{where}.bus: {ep['bus']!r} is not one of the buses")
+
         for i, sh in enumerate(shut.get("shutters") or []):
             where = f"shutters.shutters[{i}]"
-            if not isinstance(sh, dict) or "name" not in sh or "bit" not in sh:
-                p.append(f"{where}: expected an object with name and bit")
+            if not isinstance(sh, dict) or "name" not in sh:
+                p.append(f"{where}: expected an object with name and endpoint")
                 continue
-            _num(p, f"{where}.bit", sh["bit"], 0, 7, integer=True)
+            endpoint(f"{where}.endpoint", sh.get("endpoint"))
             names.add(str(sh["name"]))
+        diode = shut.get("power_diode")
+        if isinstance(diode, dict) and "endpoint" in diode:
+            endpoint("shutters.power_diode.endpoint", diode["endpoint"])
         for key in ("open_at_start", "close_at_end"):
             for name in shut.get(key) or []:
                 if str(name) not in names:
