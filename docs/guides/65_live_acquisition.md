@@ -79,7 +79,8 @@ They share one TCSPC setting:
 * sync CFD 350 mV, sync offset 5000 ps;
 * detectors on HydraHarp inputs 1 and 3, 250 mV, with their offsets (+130 ps and −40 ps).
 
-They differ only in the lasers and the run. They don't set the Sepia's oscillator
+They differ only in the lasers. None sets a run length: runs are open-ended until
+you press **Stop**. They don't set the Sepia's oscillator
 programme yet, because phacq does not drive the SOM 828-D yet. Choose one and press
 **Load**.
 

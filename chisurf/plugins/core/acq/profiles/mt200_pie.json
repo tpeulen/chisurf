@@ -53,8 +53,5 @@
   },
   "experiment": {
     "preset": "pie"
-  },
-  "run": {
-    "duration_s": 180
   }
 }

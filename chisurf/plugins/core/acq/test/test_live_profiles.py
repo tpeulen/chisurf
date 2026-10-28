@@ -30,6 +30,8 @@ def test_the_mt200_profiles_carry_symphotime_s_tcspc_settings():
     # one TCSPC setting for every MT200 profile; they differ in the lasers and the run
     assert all(d["device"] == std["device"] for d in by_name.values() if d["name"].startswith("MT200"))
     assert pie["experiment"]["preset"] == "pie" and std["experiment"]["preset"] == "single_color"
+    # runs are open-ended: no profile sets a duration
+    assert all("duration_s" not in (d.get("run") or {}) for d in by_name.values())
     # the SOM-D is not driven yet: no profile asks the laser backend for an oscillator
     assert all("oscillator" not in (d.get("laser") or {}) for d in by_name.values())
 
