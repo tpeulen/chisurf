@@ -827,7 +827,9 @@ class RecordModel(LaserSettingsMixin):
             self._last_snapshot = now
         if not session.running and session.result is not None and not self._registered:
             self._registered = True
-            self.disconnect_laser()  # a run's end closes the laser (outputs off first)
+            # a run's end blocks emission; the laser stays connected with its program applied,
+            # so the next run needs only Emission on (closing the window still closes it)
+            self.laser_off()
             self.snapshot = session.snapshot()
             result = session.result
             if isinstance(session, ImageRecordSession):

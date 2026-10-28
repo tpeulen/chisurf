@@ -2,7 +2,7 @@
 
 Never the real hardware: the laser is ``live.laser.SimLaser``, the TCSPC unit phacq's ``fake``.
 The rules checked are the safety ones (outputs off after Connect and after any edit, Emission on
-only after Apply, Laser off always there, the laser closed when a run ends) and the round trips: a
+only after Apply, Laser off always there, emission blocked when a run ends) and the round trips: a
 saved settings file loads back into the form, the device and the laser; a recording carries its
 settings document in its header, and a measurement gives its settings and windows back.
 """
@@ -98,13 +98,17 @@ def test_windows_from_the_laser_replace_the_setups(model):
     assert "windows from the laser" in exp.name
 
 
-def test_a_run_end_and_the_window_close_close_the_laser(model):
+def test_a_run_end_blocks_emission_and_the_window_close_closes_the_laser(model):
+    """A run's end switches emission off but keeps the laser connected with its program applied
+    (the next run needs only Emission on); closing the window closes it."""
     model.connect_laser()
     laser = model.laser
+    _pie_program(model)
+    assert model.apply_laser_program() and model.laser_emission_on()
     _run(model)
-    assert model.laser is None and not laser.is_open and laser.events[-1] == "close"
-    model.connect_laser()
-    laser = model.laser
+    assert model.laser is laser and laser.is_open             # still connected
+    assert laser.events[-1] == "emission off"                 # emission blocked
+    assert model.laser_applied and model.enabled("laser_emission_on")
     model.close()
     assert not laser.is_open
 

@@ -14,6 +14,7 @@
 - acq docs: the Sepia II on Windows through its WinUSB binding (phacq 1e87f82), tested on the MT200
 - acq Record: choosing a settings file/profile loads it at once in a worker thread with a progress bar and step text; the last one is loaded again on start (device source only); guide screenshot script turns Advanced on
 - acq Record: the tool state is saved as soon as settings were loaded (not only at a clean close), so the last settings load again after a crash or a killed window
+- acq Record: a run's end blocks laser emission instead of disconnecting the laser (program kept; next run needs only Emission on); help and tour updated
 
 ## 2026-10-27
 

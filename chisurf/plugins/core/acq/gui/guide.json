@@ -86,7 +86,7 @@
     },
     {
       "title": "Laser off",
-      "text": "With a laser connected, <b>Laser off</b> blocks all emission at once. It is always there; the end of a run closes the laser too.",
+      "text": "With a laser connected, <b>Laser off</b> blocks all emission at once. It is always there; the end of a run blocks emission too, and the laser stays connected for the next run.",
       "target": {
         "name": "laser_off",
         "action": "Laser off"
