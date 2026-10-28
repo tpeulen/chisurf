@@ -55,3 +55,24 @@ def test_a_shell_opened_tool_sits_under_the_chrome():
         assert y > 0, "the shell-opened tool should sit under the menu bar and ribbon"
     finally:
         shell.close()
+
+
+def test_a_press_in_the_presented_tool_reaches_it():
+    """Input routes to the presented tool: it has no dock, and the hit test once searched
+    only docks, so every click in ``--app <tool>`` landed nowhere."""
+    shell = _shell()
+    try:
+        driver = Driver(shell, (1200, 800))
+        shell.present_tool("fret_check")
+        join_all()
+        driver.frame(5)
+        hosted = shell.hosted["fret_check"]
+        assert shell._plugin_at(600.0, 400.0) == hosted.instance_id
+        pressed = []
+        original = hosted.app.pointer_press
+        hosted.app.pointer_press = lambda *a, **k: (pressed.append(a[:2]), original(*a, **k))
+        shell.pointer_press(600.0, 400.0, 1)
+        shell.pointer_release(600.0, 400.0, 1)
+        assert pressed == [(600.0, 400.0)]
+    finally:
+        shell.close()

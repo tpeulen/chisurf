@@ -2292,6 +2292,13 @@ class EmtkShellApp(ImApp):
         """The child whose drawn content is on top at (x, y): floating windows front to back, then docked tabs."""
         if self._menu_open or self.data.modal_open or self.project.modal:
             return None
+        if self._tool_only:
+            # The presented tool fills the window and has no dock: it is the only child.
+            for child_id, (window_key, _app, box) in self._drawn.items():
+                bx, by, bw, bh = box
+                if window_key == "__tool_only__" and bx <= x < bx + bw and by <= y < by + bh:
+                    return child_id
+            return None
         order = list(reversed(self.docks.floating()))
         order += [self.docks.active_tab(region) for region in self.docks.regions]
         for key in order:
