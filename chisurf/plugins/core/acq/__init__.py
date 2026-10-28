@@ -11,4 +11,4 @@ its *Acquisition* fit window are ``dataset.py`` and ``chisurf.core.models.acquis
 The package is Qt-free to import.
 """
 
-name = "Tools:Views:PhAcq"
+name = "Tools:Views:Acquisition"

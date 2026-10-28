@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Entry point of PhAcq, ChiSurf's acquisition: its window on its own, or the simulation CLI.
+"""Entry point of the single-molecule acquisition: the Record window or the simulation CLI.
 
-This module starts the plugin's native window on its own (``phacq``; ``--fullscreen`` for an
-instrument PC), or forwards ``--cli`` to the simulation CLI.
+This module starts the plugin's native Record window on its own (``photon-acquisition``;
+``--fullscreen`` for an instrument PC), or forwards ``--cli`` to the simulation CLI.
 """
 
 import logging
@@ -13,13 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 def run_standalone(fullscreen: bool = False) -> int:
-    """Run the native PhAcq window as its own application (*fullscreen*: cover the monitor)."""
+    """Run the native Record window as its own application (*fullscreen*: cover the monitor)."""
     from emtk.native import NativeHost
 
     from .gui.record_app import make_app
 
     app = make_app()
-    host = NativeHost(app, title="PhAcq", fullscreen=fullscreen)
+    host = NativeHost(app, title="ChiSurf Acquisition", fullscreen=fullscreen)
     try:
         host.run()
     finally:
@@ -35,17 +35,17 @@ def main() -> int:
     - **CLI mode**: if ``--cli`` is present in the arguments, the remaining
       arguments are forwarded to the simulation CLI (config/run) and no GUI
       is started.
-    - **GUI mode** (default, also ``--standalone``): the native PhAcq window;
+    - **GUI mode** (default, also ``--standalone``): the native Record window;
       ``--fullscreen`` covers the whole monitor.
     """
     args = sys.argv[1:]
     if "--cli" not in args and ("-h" in args or "--help" in args):
-        # Reachable as `csc phacq --help`, where silently opening a
+        # Reachable as `csc photon-acquisition --help`, where silently opening a
         # window instead of answering would be the wrong move. With `--cli` the
         # flag belongs to the simulation CLI below, not to this wrapper.
         print(
-            "Usage: phacq [--standalone] [--fullscreen] [--cli SUBCOMMAND ...]\n\n"
-            "  (no arguments)   open the PhAcq window\n"
+            "Usage: photon-acquisition [--standalone] [--fullscreen] [--cli SUBCOMMAND ...]\n\n"
+            "  (no arguments)   open the Record window\n"
             "  --standalone     the same, spelled out\n"
             "  --fullscreen     the window covers the whole monitor (instrument PC)\n"
             "  --cli ...        forward to the simulation CLI (try: --cli --help)"

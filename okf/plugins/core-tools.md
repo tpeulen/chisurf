@@ -140,7 +140,7 @@ over `setup_forms.py` / `setup_models.py`) and the vendor wrappers under
 `acq/tcspc_devices/{bh_spc,picoquant,brickmic}` with `device_factory.py` were deleted; the Record
 tool (`gui/record_app.py`) is the only window. What stays: `pipeline.py`, `gui/live_plots.py`
 (the Acquisition fit window's pages), `dataset.py`/`demo.py`, the tttrlib simulator
-`tcspc_devices/simulation/` (RPC `acq.simulation.run`, `phacq --cli`) and its emtk
+`tcspc_devices/simulation/` (RPC `acq.simulation.run`, `photon-acquisition --cli`) and its emtk
 setup dialog `gui/sim_setup.py` (tests host it alone via `acq/test/sim_setup_host.py`). The
 output-folder helpers moved to `acq/output_paths.py`. The simulated device's FIFO interface
 (`TCSPCDeviceABC`, `Signal`) moved with it to `tcspc_devices/simulation/device_base.py`;

@@ -5,6 +5,7 @@
 - acq: the T3 macro step comes from the device's macro_sync_divider when it has one (HydraHarp 400 counts every sync whatever its divider, measured on the unit), else the sync divider; first live HydraHarp 400 recording through the Record session (phacq, macOS).
 - acq: shipped measurement profiles (acq/profiles/*.json, listed with ★ in Record's Settings): MT200 Standard, PIE and CY PIE from SymPhoTime's .pus profiles on the MT200, with one uniform TCSPC setting (32 ps bins, sync 350 mV / 5000 ps, detectors on inputs 1 and 3 at 250 mV with their offsets); the SOM-D programme is not set until phacq drives it.
 - acq: renamed PhAcq for users: menu Tools → Views → PhAcq, window title PhAcq, command phacq (was photon-acquisition) with --fullscreen (emtk NativeHost fullscreen); the package path stays chisurf.plugins.core.acq (the phacq library is imported as phacq).
+- acq: user-facing names stay Acquisition (menu, window) and photon-acquisition (command); phacq is the library's name only. Kept: photon-acquisition --fullscreen.
 
 ## 2026-10-27
 
