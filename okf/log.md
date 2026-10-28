@@ -22,6 +22,7 @@
 - 2026-10-28: Record (acq): one global Simple/Advanced switch under the settings choice; phacq drivers mark expert settings (ParameterInfo.advanced -> schema "advanced"), forms for laser and shutters are rebuilt without them in Simple; read-only schema choices show their label (closed/open) not the number.
 - 2026-10-28: Start brands: a plugin that is an app (--app) declares brand {name, logo, icon, app_id} in its manifest; the splash swaps ChiSurf's logo and name for it (chisurf.emtk.brand), the windows take its icon and title, Windows its AppUserModelID. PhAcq (acq) and ChiMOL (chimol, new logo) declare one.
 - 2026-10-28: Splash art: the two wedges are cyan and magenta (were green and red), the ChiSurf default and every app brand; splash.png regenerated from splashscreen.svg.
+- 2026-10-28: No rustytime, now or later (owner): every device goes through libphacq; the live-recording spec no longer names rustytime or pqusb (scanner = phacq's pi driver).
 
 ## 2026-10-27
 

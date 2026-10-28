@@ -35,8 +35,7 @@ no tttrlib), never all at once on the laptop. Open front, in order:
    molecule, PI simulator). Next: the GUI -- click on the live/last image to place points (emtk
    implot `is_plot_hovered` + `get_plot_mouse_pos` + `is_mouse_clicked`, `drag_point` to move
    them; pixel -> stage via the scan's x0/y0 and pixel size), a "Points" mode with point time and
-   *until bleached*, and the PI stage as the image mode's scanner (replaces the "needs CMC
-   rustytime" entry). Measured on the instrument: SymPhoTime streams ~11 s per point with 1.5 s
+   *until bleached*, and the PI stage as the image mode's scanner. Measured on the instrument: SymPhoTime streams ~11 s per point with 1.5 s
    gaps for the moves although the owner set 3 s -- check what the per-point time really was.
    Not yet run on hardware: the E-725 is bound to PI's USB driver on the Windows PC (use
    `tcp:<host>` or a Mac/Linux host).
@@ -280,8 +279,9 @@ driver, for PicoQuant MultiHarp 150/160, PicoHarp 330, HydraHarp 500 (USB), Beck
   anything is sent), which is also the settings file's `device.settings`.
 - **Streaming:** `DeviceSource` reads packed events (`read_events_raw`, `phacq.EVENT_DTYPE`) into
   `PhotonBatch`es and records them with phacq's `PtuWriter` (typed `ImgHdr_*` tags).
-- **Removed:** CMC's pqusb (and its simulated MultiHarps `PieSimDevice` / `ImageSimDevice`), the
-  Sepia2_Lib/ctypes laser backend, the vendor wrappers under `tcspc_devices/` and the classic device
+- **Removed:** the earlier USB device layer outside libphacq (and its simulated MultiHarps
+  `PieSimDevice` / `ImageSimDevice`) -- every device goes through libphacq, there is no other device
+  layer and none is planned -- the Sepia2_Lib/ctypes laser backend, the vendor wrappers under `tcspc_devices/` and the classic device
   session. The simulators are tttrlib's photon-level ones; tests use phacq's `fake` unit (described
   settings, remembered) and Sepia simulator.
 
@@ -291,7 +291,8 @@ The Record tool also acquires **images**, like the vendor's acquisition software
 that software supports — galvo/LSM integration via line/frame markers) moves the focus while the TCSPC
 device records photons with frame/line/pixel markers.
 
-- **Scanner control** is a device-layer job (rustytime): scan area, pixels, dwell time, line/frame
+- **Scanner control** is a device-layer job (libphacq's `pi` driver for the MT200's PI E-725;
+  other scanners are other phacq drivers): scan area, pixels, dwell time, line/frame
   rates, bidirectional scanning, z-stacks, point measurements at chosen positions, marker generation.
   ChiSurf drives it through the same source interface as the TCSPC device.
 - **Live view:** the image builds up line by line from the marker stream (tttrlib's CLSM image
@@ -301,8 +302,8 @@ device records photons with frame/line/pixel markers.
 - **Recording:** the photons with markers go into the project like any recording (embedded in the
   .cs.pto, a photons dataset with representation `photons`, experiment Imaging); the imaging tools take
   it from the workspace.
-- **Until rustytime has a scanner:** a simulated scanner (tttrlib SimEngine `run_scan`, CLSM raster with
-  markers) behind the same interface, so the whole path is built and tested now.
+- **Simulated scanner:** tttrlib SimEngine `run_scan` (CLSM raster with markers) and the phacq `pi`
+  simulator (`open("sim:")`) behind the same interface, so the whole path is tested without hardware.
 
 ## The Record tool (UI)
 
