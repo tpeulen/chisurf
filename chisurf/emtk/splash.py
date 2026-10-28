@@ -410,13 +410,16 @@ class SplashRun:
 
 def run_with_splash(
     make_app: Callable[..., Any], title: str = "ChiSurf", size: tuple[int, int] | None = None,
-    on_ready: Callable[[Any], Any] | None = None,
+    on_ready: Callable[[Any], Any] | None = None, icon: Any = None, app_id: str = "",
 ) -> int:
     """Show the splash window, build the shell behind it, open the main window when ready.
 
     *on_ready* is called with the shell once its window is open (e.g. to present one tool).
+    *icon* (an ``.ico``, ``.svg``, ``.png`` ...) is both windows' icon; *app_id* the Windows
+    AppUserModelID, so the task bar shows the app with that icon rather than ``python.exe``.
     Returns when the main window closes.
     """
+    from emtk.logo import set_app_id, set_window_icon
     from emtk.app import ControlSurface
     from emtk.gpu_atlas import ImageAtlas
     from emtk.native import NativeHost
@@ -433,6 +436,10 @@ def run_with_splash(
         transparent=True,
         centred=True,
     )
+    if app_id:
+        set_app_id(app_id)
+    if icon is not None:
+        set_window_icon(splash.canvas, icon)
     state._wake = app.request_frame
     state.start()
     loop = splash._loop
@@ -440,7 +447,7 @@ def run_with_splash(
     run = SplashRun(
         state,
         make_app,
-        open_main=lambda shell: _open_main(shell, size, title, on_ready),
+        open_main=lambda shell: _open_main(shell, size, title, on_ready, icon),
         close_splash=splash.close,
         later=loop.call_soon,
     )
@@ -453,10 +460,12 @@ def run_with_splash(
     return 0
 
 
-def _open_main(shell, size, title, on_ready):
+def _open_main(shell, size, title, on_ready, icon=None):
     """The main window for *shell*; then *on_ready(shell)*."""
     from emtk.native import NativeHost
 
+    if icon is not None:
+        shell.window_icon = icon
     host = NativeHost(shell, size=size, title=title)
     if on_ready is not None:
         on_ready(shell)

@@ -182,7 +182,7 @@ namespaces = true
     # The games' audio: two archives of ADPCM clips beside the engine.
     "*.zip",
     "*.css", "*.qss",
-    "*.png", "*.svg",
+    "*.png", "*.svg", "*.ico", "*.icns",
     "*.csv", "*.npy", "*.dat",
     "*.dll", "*.so", "*.dylib", "*.pyd", "*.ipynb",
     "*.db", "*.txt", "*.dic",
