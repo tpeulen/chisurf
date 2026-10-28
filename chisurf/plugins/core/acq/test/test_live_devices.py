@@ -46,6 +46,30 @@ def test_the_source_takes_its_clocks_from_the_device():
     assert source.info.n_micro == round(50e-9 / 16e-12)
 
 
+def test_the_t3_macro_step_follows_the_device():
+    """A MultiHarp's T3 macro step is ``sync_divider`` syncs; a HydraHarp 400 counts every sync
+    whatever its divider and says so in ``macro_sync_divider`` (measured on the unit)."""
+
+    class Stub:
+        def __init__(self, **params):
+            self.params = params
+
+        def get_parameter(self, name, channel=-1):
+            if name not in self.params:
+                raise RuntimeError(f"no setting {name}")
+            return self.params[name]
+
+    source = devices.DeviceSource.__new__(devices.DeviceSource)
+    source.device = Stub(sync_divider=4)
+    assert source._divider() == 4
+    source.device = Stub(sync_divider=4, macro_sync_divider=1)
+    assert source._divider() == 1
+    source.device = Stub(sync_freq_div=2)
+    assert source._divider() == 2
+    source.device = Stub()
+    assert source._divider() == 1
+
+
 def test_a_device_without_sync_is_refused():
     cfg = phacq.FakeConfig()
     cfg.number_of_channels = 2

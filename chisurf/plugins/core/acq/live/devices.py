@@ -254,13 +254,15 @@ class DeviceSource(PhotonSource):
         self._error = ""
 
     def _divider(self) -> int:
-        try:
-            return max(1, int(self.device.get_parameter("sync_divider", -1)))
-        except Exception:  # noqa: BLE001 - B&H calls it sync_freq_div, others have none
+        """Sync pulses per T3 macro-time step. A device that counts every sync whatever its
+        divider (HydraHarp 400) says so in ``macro_sync_divider``; otherwise the step is the
+        sync divider (MultiHarp, B&H)."""
+        for name in ("macro_sync_divider", "sync_divider", "sync_freq_div"):
             try:
-                return max(1, int(self.device.get_parameter("sync_freq_div", -1)))
-            except Exception:  # noqa: BLE001
-                return 1
+                return max(1, int(self.device.get_parameter(name, -1)))
+            except Exception:  # noqa: BLE001 - not a setting of this device
+                continue
+        return 1
 
     def _sync_rate(self) -> float:
         try:
