@@ -15,6 +15,7 @@
 - acq Record: choosing a settings file/profile loads it at once in a worker thread with a progress bar and step text; the last one is loaded again on start (device source only); guide screenshot script turns Advanced on
 - acq Record: the tool state is saved as soon as settings were loaded (not only at a clean close), so the last settings load again after a crash or a killed window
 - acq Record: a run's end blocks laser emission instead of disconnecting the laser (program kept; next run needs only Emission on); help and tour updated
+- acq: shutters from the settings file's shutters section (phacq.shutterbox, MT200 PCAN box): checkbox per shutter in a Shutters panel, Start opens, run end closes the excitation shutter, laser untouched; PTU header gains SymPhoTime's Sep2_*/UsrHeadName/UsrPowerDiode, CFD tag names, MeasDesc_BinningFactor, point ImgHdr tags
 
 ## 2026-10-27
 

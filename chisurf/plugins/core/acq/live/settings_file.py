@@ -149,9 +149,24 @@ def validate(doc: Any) -> list[str]:
         p.append(f"schema: {schema!r} is not an acquisition settings file")
     elif str(schema).split("/", 1)[1].split(".")[0] != SCHEMA.split("/", 1)[1]:
         p.append(f"schema: version {schema!r} is newer than this ChiSurf reads ({SCHEMA!r})")
-    for key in ("device", "laser", "experiment", "run", "simulator", "scan"):
+    for key in ("device", "laser", "experiment", "run", "simulator", "scan", "shutters"):
         if key in doc and not isinstance(doc[key], dict):
             p.append(f"{key}: expected an object")
+    shut = doc.get("shutters") if isinstance(doc.get("shutters"), dict) else {}
+    if shut:
+        _choice(p, "shutters.backend", shut.get("backend", "pcan"), ("pcan", "sim"))
+        names = set()
+        for i, sh in enumerate(shut.get("shutters") or []):
+            where = f"shutters.shutters[{i}]"
+            if not isinstance(sh, dict) or "name" not in sh or "bit" not in sh:
+                p.append(f"{where}: expected an object with name and bit")
+                continue
+            _num(p, f"{where}.bit", sh["bit"], 0, 7, integer=True)
+            names.add(str(sh["name"]))
+        for key in ("open_at_start", "close_at_end"):
+            for name in shut.get(key) or []:
+                if str(name) not in names:
+                    p.append(f"shutters.{key}: {name!r} is not one of the shutters")
     dev = doc.get("device") if isinstance(doc.get("device"), dict) else {}
     if "mode" in dev:
         _choice(p, "device.mode", dev["mode"], tuple(MODES))

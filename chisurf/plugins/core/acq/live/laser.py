@@ -635,3 +635,41 @@ def propose_pie_windows(
         "sync_period_s": seq,
         "excitation": [dict(s, window=n) for n, s in zip(names, slots)],
     }
+
+
+def ptu_tags(backend: LaserBackend | None, program: dict | None = None) -> dict:
+    """The laser's state as PTU header tags, under the names SymPhoTime writes for a Sepia II
+    (checked against an MT200 recording): ``Sep2_SerialNo``, per laser driver module
+    ``Sep2_SLM_<slot>_SerialNo/FineIntensity/TriggerIndex/CW_PulseDisable/HeadType``, and the
+    heads' names ``UsrHeadName(<i>)`` from the program. An indexed tag is ``Name(i)``.
+
+    Empty for a backend that is not a phacq device (the simulated laser).
+    """
+    dev = getattr(backend, "device", None)
+    if dev is None:
+        return {}
+    tags: dict = {}
+    try:
+        s = dict(dev.settings())
+        info = dev.information()
+    except Exception:  # noqa: BLE001 - a laser that cannot report: no tags
+        return {}
+    tags["Sep2_SerialNo"] = str(info.serial_number)
+    head_types = {1: "LED", 2: "LASER", 3: "LASER"}
+    c = 0
+    while f"slot[{c}]" in s:
+        slot = int(s.get(f"slot[{c}]") or 0)
+        pre = f"Sep2_SLM_{slot:03d}_"
+        if s.get(f"intensity_permille[{c}]") is not None:
+            tags[pre + "FineIntensity"] = int(round(float(s[f"intensity_permille[{c}]"]) / 10))
+        if s.get(f"frequency_index[{c}]") is not None:
+            tags[pre + "TriggerIndex"] = int(s[f"frequency_index[{c}]"])
+        if s.get(f"pulse_mode[{c}]") is not None:
+            tags[pre + "CW_PulseDisable"] = not bool(s[f"pulse_mode[{c}]"])
+        if s.get(f"head_type[{c}]") is not None:
+            tags[pre + "HeadType"] = head_types.get(int(s[f"head_type[{c}]"]), "LASER")
+        c += 1
+    for i, head in enumerate((program or {}).get("heads") or []):
+        if head.get("name"):
+            tags[f"UsrHeadName({i})"] = str(head["name"])
+    return tags

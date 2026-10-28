@@ -254,3 +254,56 @@ def test_loaded_settings_are_saved_at_once(fake, monkeypatch, tmp_path):
     saved.clear()
     app._persist_loaded_settings()                     # nothing new: not written again
     assert saved == {}
+
+
+def test_the_ptu_hardware_tags_name_the_cfd_as_symphotime_does(fake):
+    api, driver = fake
+    dev = driver.open("")
+    dev.initialize(phacq.MeasurementMode.T3, phacq.ReferenceClock.Internal)
+    dev.apply({"sync_level_mv": 350, "sync_zero_cross_mv": 10, "input_level_mv[2]": 250,
+               "binning": 5})
+    tags = {(name, index): value for name, value, index in devices.hardware_tags(dev)}
+    assert tags[("HWSync_CFDLevel", -1)] == 350 and tags[("HWSync_CFDZeroCross", -1)] == 10
+    assert tags[("HWInpChan_CFDLevel", 2)] == 250
+    assert ("HWSync_TrgLevel", -1) not in tags              # a CFD is not an edge trigger
+    assert tags[("MeasDesc_BinningFactor", -1)] == 32
+
+
+def test_the_laser_tags_are_symphotime_s(monkeypatch):
+    from chisurf.plugins.core.acq.live import laser as laser_mod
+
+    sepia = devices.DeviceEntry("sepia", "sim:", "PicoQuant", "Sepia II")
+    monkeypatch.setattr(laser_mod, "_sepia_units", lambda: [sepia])
+    backend = laser_mod.SepiaBackend()
+    backend.open()
+    try:
+        tags = laser_mod.ptu_tags(backend, {"heads": [{"slot": 200, "name": "Red"}]})
+    finally:
+        backend.close()
+    assert tags["Sep2_SerialNo"]
+    slm = [k for k in tags if k.startswith("Sep2_SLM_")]
+    assert any(k.endswith("_FineIntensity") for k in slm)
+    assert any(k.endswith("_TriggerIndex") for k in slm)
+    assert any(k.endswith("_CW_PulseDisable") for k in slm)
+    assert tags["UsrHeadName(0)"] == "Red"
+
+
+def test_an_indexed_tag_is_written_with_its_index(tmp_path):
+    from chisurf.plugins.core.acq.live.sources import SourceInfo
+
+    cfg = phacq.FakeConfig()
+    cfg.number_of_channels = 2
+    cfg.rates_cps = phacq.VectorDouble([20e6, 1e3])
+    drv = phacq.FakeDriver()
+    drv.add_device(cfg)
+    dev = drv.open("")
+    dev.initialize(phacq.MeasurementMode.T3, phacq.ReferenceClock.Internal)
+    dev._keep_driver = drv
+    source = devices.DeviceSource(dev)
+    rec = source.make_recorder(tmp_path / "x.ptu", "x",
+                               extra={"UsrHeadName(0)": "Blue", "UsrHeadName(1)": "Red",
+                                      "Sep2_SLM_300_FineIntensity": 47})
+    rec.close()
+    tags = settings_file.read_ptu_tags(tmp_path / "x.ptu")
+    assert tags["UsrHeadName(0)"] == "Blue" and tags["UsrHeadName(1)"] == "Red"
+    assert tags["Sep2_SLM_300_FineIntensity"] == 47

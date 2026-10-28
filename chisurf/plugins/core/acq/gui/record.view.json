@@ -797,6 +797,23 @@
     },
     {
       "type": "panel",
+      "title": "Shutters",
+      "description": "The microscope's shutters and power diode, as the loaded settings file defines them (its shutters section: the MT200's shutter box on the CAN card). Start opens the shutters the settings name and the end of a run closes the excitation shutter; the laser is not touched.",
+      "sections": [
+        {
+          "type": "info",
+          "source": "shutter_text"
+        },
+        {
+          "type": "custom",
+          "key": "shutter_controls",
+          "description": "One checkbox per shutter: ticked opens it, unticked closes it. Beside it, what the box itself reports: when the box's own buttons have taken over (manual control), it ignores the software and the two differ. Below, the power diode (raw; in a.u. once the settings calibrate it)."
+        }
+      ],
+      "dock": "laser"
+    },
+    {
+      "type": "panel",
       "title": "Experiment setup",
       "sections": [
         {

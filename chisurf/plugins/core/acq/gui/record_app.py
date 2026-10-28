@@ -691,6 +691,7 @@ class RecordModel(LaserSettingsMixin):
         if self.mode == "fcs":
             return self._start_fcs(source, experiment, name)
         self.saved_path = recording_dir(self.output_dir) / f"{name}.ptu"
+        self._shutters_at_start()
         self.session = RecordSession(
             source,
             experiment,
@@ -699,6 +700,7 @@ class RecordModel(LaserSettingsMixin):
             name=name,
             embed=self.recording_store == "embed",
             settings=self._run_settings(),
+            header_tags=self.run_header_tags(),
             trace_window_s=float(self.trace_window_s),
             trace_bin_s=float(self.trace_bin_ms) / 1e3,
         )
@@ -723,6 +725,7 @@ class RecordModel(LaserSettingsMixin):
         if self.source_kind == "simulator":
             real, population = self.fcs_sample()
             truth = fcs_truth(real, population)
+        self._shutters_at_start()
         self.session = FcsRecordSession(
             source,
             experiment,
@@ -732,6 +735,7 @@ class RecordModel(LaserSettingsMixin):
             name=name,
             embed=self.recording_store == "embed",
             settings=self._run_settings(),
+            header_tags=self.run_header_tags(),
             trace_window_s=float(self.trace_window_s),
             trace_bin_s=float(self.trace_bin_ms) / 1e3,
         )
@@ -760,6 +764,7 @@ class RecordModel(LaserSettingsMixin):
             else {}
         )
         duration = None if replay else (scan.total_s + 2 * scan.line_s)
+        self._shutters_at_start()
         self.session = ImageRecordSession(
             source,
             scan,
@@ -769,6 +774,7 @@ class RecordModel(LaserSettingsMixin):
             name=name,
             embed=self.recording_store == "embed",
             settings=None if replay else self._run_settings(),
+            header_tags=None if replay else self.run_header_tags(),
         )
         try:
             self.session.start()
@@ -827,9 +833,9 @@ class RecordModel(LaserSettingsMixin):
             self._last_snapshot = now
         if not session.running and session.result is not None and not self._registered:
             self._registered = True
-            # a run's end blocks emission; the laser stays connected with its program applied,
-            # so the next run needs only Emission on (closing the window still closes it)
-            self.laser_off()
+            # a run's end closes the shutters the settings name (the excitation one); the laser
+            # is not touched -- the shutter keeps the light off the sample
+            self._shutters_at_end()
             self.snapshot = session.snapshot()
             result = session.result
             if isinstance(session, ImageRecordSession):
@@ -887,6 +893,8 @@ class RecordModel(LaserSettingsMixin):
             self.session.wait(5.0)
         if self.device is not None:
             self.disconnect_device()
+        self._shutters_at_end()
+        self.disconnect_shutters()
         self.disconnect_laser()
 
 
@@ -1196,6 +1204,7 @@ class RecordApp(ImApp):
             ("settings_status", self._draw_settings_status),
             ("device_settings", self._draw_device_settings),
             ("laser_settings", self._draw_laser_settings),
+            ("shutter_controls", self._draw_shutter_controls),
         ):
             self.form.custom[key] = draw
         #: the generated device / laser forms: their own form state, their spec per form
@@ -1343,6 +1352,37 @@ class RecordApp(ImApp):
         im.end()
 
     # -- custom sections ---------------------------------------------------------------------------
+    def _draw_shutter_controls(
+        self, section, model: RecordModel, state: FormState, width: float
+    ) -> None:
+        """A checkbox per shutter (ticked = open), the box's own state beside it, the diode."""
+        box = model.shutters
+        if box is None:
+            return
+        for name in box.bits:
+            commanded = bool(box.command >> box.bits[name] & 1)
+            changed, value = im.checkbox(f"{tr(name)}##shutter.{name}", commanded)
+            state.rects[f"shutter.{name}"] = im.get_item_rect()
+            if changed:
+                model.set_shutter(name, value)
+            reported = box.is_open(name)
+            im.same_line()
+            if reported is None:
+                im.text_disabled(tr("(no state yet)"))
+            elif reported != commanded:
+                im.text_colored((0.95, 0.65, 0.2, 1.0), tr("box: {s} (manual control?)").format(
+                    s=tr("open") if reported else tr("closed")))
+            else:
+                im.text_disabled(tr("open") if reported else tr("closed"))
+        raw = box.diode_raw
+        if box.diode_id is not None:
+            if raw is None:
+                im.text_disabled(tr("Power diode: no reading yet"))
+            else:
+                au = box.diode_au(raw)
+                im.text(tr("Power diode: {raw} raw").format(raw=raw)
+                        + (f" = {au:.1f} a.u." if au is not None else ""))
+
     def _draw_setup_summary(
         self, section, model: RecordModel, state: FormState, width: float
     ) -> None:

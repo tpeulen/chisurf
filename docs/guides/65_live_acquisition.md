@@ -105,6 +105,24 @@ TCSPC device as its source. A unit that is not attached is
 named in the notes and nothing else is connected in its place; a file for the
 Sepia II never connects the simulated laser instead.
 
+**Shutters and power diode.** A settings file's `shutters` section defines the
+microscope's shutter box (the MT200's, on the PEAK CAN card): the bus, the box's
+IDs, which bit is which shutter, the power diode. Loading the file connects it.
+The **Shutters** panel (Laser tab) has a checkbox per shutter, the state the box
+itself reports beside it (they differ when the box's own buttons have taken
+over), and the diode reading. **Start** opens the shutters the file names; the
+end of a run closes the excitation shutter. The laser is not touched.
+
+**What a recording's header holds.** Besides the device's settings and the
+whole settings file, a recording carries the laser and the diode under the names
+SymPhoTime writes: `Sep2_SerialNo`, per laser driver `Sep2_SLM_<slot>_FineIntensity`
+(%), `_TriggerIndex`, `_CW_PulseDisable`, `_HeadType`, the heads' names
+`UsrHeadName(i)`, and `UsrPowerDiode` (a.u., once the file calibrates the
+diode; `ChiSurf_PowerDiodeRaw` always) and the shutters' states. A HydraHarp
+400's discriminators are written as CFD levels (`HWSync_CFDLevel`, …) with
+`MeasDesc_BinningFactor`; a point measurement carries SymPhoTime's
+`ImgHdr_Dimensions` 1, `ImgHdr_Ident` 6 and the point as `ImgHdr_X0/Y0`.
+
 **No sync, still recorded.** A T3 run without a sync signal (laser off, cable
 out) is recorded anyway and the device is shown as *(no sync)*: the unit still
 time-tags its inputs, the macro step is provisionally the unit's start-stop

@@ -138,6 +138,9 @@ def test_points_for_their_full_time_and_the_point_in_the_header(tmp_path):
     assert tags["ChiSurf_Point_Index"] == 1
     assert tags["ChiSurf_Point_X_um"] == pytest.approx(11.0)
     assert tags["ChiSurf_Point_Y_um"] == pytest.approx(21.0)
+    # SymPhoTime's point measurement header
+    assert tags["ImgHdr_Dimensions"] == 1 and tags["ImgHdr_Ident"] == 6
+    assert tags["ImgHdr_X0"] == pytest.approx(11.0) and tags["ImgHdr_Y0"] == pytest.approx(21.0)
 
 
 def test_stop_aborts_the_sequence(tmp_path):

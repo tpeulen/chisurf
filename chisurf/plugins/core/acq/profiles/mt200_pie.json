@@ -52,6 +52,50 @@
     "repetition_rate_hz": 40000000.0,
     "pie_note": "The SOM-D's PIE sequence for this profile has not been recorded yet; record it when SymPhoTime applies PIE.pus."
   },
+  "shutters": {
+    "backend": "pcan",
+    "channel": "PCI_1",
+    "bitrate_kbit": 500,
+    "command_id": "0x200",
+    "state_id": "0x100",
+    "state_bit_means": "closed",
+    "shutters": [
+      {
+        "name": "Excitation",
+        "bit": 0,
+        "role": "excitation"
+      },
+      {
+        "name": "Detector 1",
+        "bit": 1,
+        "role": "detector"
+      },
+      {
+        "name": "Detector 2",
+        "bit": 2,
+        "role": "detector"
+      }
+    ],
+    "open_at_start": [
+      "Excitation",
+      "Detector 1",
+      "Detector 2"
+    ],
+    "close_at_end": [
+      "Excitation"
+    ],
+    "power_diode": {
+      "can_id": "0x101",
+      "bytes": [
+        4,
+        5
+      ],
+      "byte_order": "big",
+      "au_per_raw": null,
+      "note": "raw 234 at 47 % red (CAN, 2026-10-28); SymPhoTime showed 189.5 a.u. there (UsrPowerDiode): the a.u. scale is not calibrated yet"
+    },
+    "note": "MT200 shutter box on the PEAK PCAN-PCIe card (libphacq docs/mt200_shutter.md); Det 3 and Det 4 are not fitted. The box's own buttons override software control."
+  },
   "experiment": {
     "preset": "pie"
   }

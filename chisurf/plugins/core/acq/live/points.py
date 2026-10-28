@@ -186,7 +186,10 @@ class PointRecordSession(RecordSession):
                  bleach: BleachDetector | None = None, **kwargs):
         tags = dict(kwargs.pop("header_tags", None) or {})
         tags.update({"ChiSurf_Point_Index": int(index), "ChiSurf_Point_X_um": float(point[0]),
-                     "ChiSurf_Point_Y_um": float(point[1])})
+                     "ChiSurf_Point_Y_um": float(point[1]),
+                     # SymPhoTime's point measurement: one dimension, ident 6, the stage position
+                     "ImgHdr_Dimensions": 1, "ImgHdr_Ident": 6,
+                     "ImgHdr_X0": float(point[0]), "ImgHdr_Y0": float(point[1])})
         super().__init__(source, header_tags=tags, **kwargs)
         self.point = (float(point[0]), float(point[1]))
         self.index = int(index)

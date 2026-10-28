@@ -2,7 +2,7 @@
 
 Never the real hardware: the laser is ``live.laser.SimLaser``, the TCSPC unit phacq's ``fake``.
 The rules checked are the safety ones (outputs off after Connect and after any edit, Emission on
-only after Apply, Laser off always there, emission blocked when a run ends) and the round trips: a
+only after Apply, Laser off always there, the excitation shutter closed when a run ends) and the round trips: a
 saved settings file loads back into the form, the device and the laser; a recording carries its
 settings document in its header, and a measurement gives its settings and windows back.
 """
@@ -98,19 +98,51 @@ def test_windows_from_the_laser_replace_the_setups(model):
     assert "windows from the laser" in exp.name
 
 
-def test_a_run_end_blocks_emission_and_the_window_close_closes_the_laser(model):
-    """A run's end switches emission off but keeps the laser connected with its program applied
-    (the next run needs only Emission on); closing the window closes it."""
+SIM_SHUTTERS = {
+    "backend": "sim", "command_id": "0x200", "state_id": "0x100", "state_bit_means": "closed",
+    "shutters": [{"name": "Excitation", "bit": 0, "role": "excitation"},
+                 {"name": "Detector 1", "bit": 1, "role": "detector"}],
+    "open_at_start": ["Excitation", "Detector 1"], "close_at_end": ["Excitation"],
+    "power_diode": {"can_id": "0x101", "bytes": [4, 5], "au_per_raw": 0.81},
+}
+
+
+def test_a_run_end_closes_the_excitation_shutter_and_leaves_the_laser_alone(model):
+    """The shutter keeps the light off the sample after a run: Start opens the shutters the
+    settings name, the end closes the excitation shutter, and the laser is not touched (still
+    connected, still emitting); closing the window closes the laser and the shutter."""
+    pytest.importorskip("phacq.shutterbox")
     model.connect_laser()
     laser = model.laser
     _pie_program(model)
     assert model.apply_laser_program() and model.laser_emission_on()
+    assert model.connect_shutters(SIM_SHUTTERS)
+    bus = model.shutters.bus
     _run(model)
-    assert model.laser is laser and laser.is_open             # still connected
-    assert laser.events[-1] == "emission off"                 # emission blocked
-    assert model.laser_applied and model.enabled("laser_emission_on")
+    sent = [data[0] for can_id, data in bus.sent if can_id == 0x200]
+    assert sent[0] == 0b11                                     # Start: both open
+    assert sent[-1] == 0b10                                    # end: excitation closed
+    assert model.laser is laser and laser.is_open
+    assert laser.events[-1] == "emission on"                   # the laser untouched
     model.close()
-    assert not laser.is_open
+    assert not laser.is_open and model.shutters is None
+    assert bus.sent[-1] == (0x200, bytes([0b10]))
+
+
+def test_the_run_header_carries_the_shutters_and_the_power_diode(model):
+    pytest.importorskip("phacq.shutterbox")
+    import time
+
+    assert model.connect_shutters(SIM_SHUTTERS)
+    model._shutters_at_start()
+    end = time.monotonic() + 2
+    while time.monotonic() < end and model.shutters.state().get("Excitation") is not True:
+        time.sleep(0.01)
+    tags = model.run_header_tags()
+    assert tags["ChiSurf_ShutterOpen_Excitation"] is True
+    assert tags["ChiSurf_PowerDiodeRaw"] == 234
+    assert tags["UsrPowerDiode"] == pytest.approx(234 * 0.81)   # SymPhoTime's name, a.u.
+    model.disconnect_shutters()
 
 
 def test_saved_settings_load_back_into_the_form_the_device_and_the_laser(model, tmp_path):
@@ -285,3 +317,29 @@ def test_a_sepia_shows_its_own_controls_and_an_edit_reaches_it(tmp_path, monkeyp
         assert getattr(model.laser_form._params_group, "soft_lock") is True  # the panel follows
     finally:
         model.close()
+
+
+def test_a_shutter_checkbox_opens_and_closes_it(tmp_path):
+    """The Shutters panel: a click on a shutter's checkbox opens it, a second closes it; beside
+    it the state the box reports."""
+    pytest.importorskip("phacq.shutterbox")
+    from chisurf.plugins.core.acq.gui.record_app import RecordApp, RecordModel
+    from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
+
+    model = RecordModel(output_dir=tmp_path / "rec", realtime=False)
+    app = RecordApp(model)
+    try:
+        assert model.connect_shutters(SIM_SHUTTERS)
+        ui = Driver(app, (1500, 1100))
+        app.focus_dock("laser")
+        ui.draw(4)
+        assert "Excitation" in ui.strings() and "Detector 1" in ui.strings()
+        bus = model.shutters.bus
+        ui.click(app.form.rects["shutter.Excitation"])
+        ui.draw(2)
+        assert bus.sent[-1] == (0x200, bytes([0b01]))
+        ui.click(app.form.rects["shutter.Excitation"])
+        ui.draw(2)
+        assert bus.sent[-1] == (0x200, bytes([0b00]))
+    finally:
+        app.close()

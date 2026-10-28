@@ -49,6 +49,10 @@ class LaserSettingsMixin:
         self.connect_fraction: float | None = None
         self.connect_text = ""
         self._connect_thread = None
+        #: the shutter box and power diode (phacq.shutterbox) a settings file defines
+        self.shutters = None
+        self.shutter_section: dict | None = None
+        self.shutter_text = tr("No shutters")
         self.laser_kind = "auto"
         self.laser: laser_mod.LaserBackend | None = None
         #: the program the head table and sequencer edit (a settings file's ``laser`` section)
@@ -423,6 +427,85 @@ class LaserSettingsMixin:
         kind, _, address = str(self.settings_address).partition(":")
         return kind, address
 
+    # -- shutters and power diode (the settings file's ``shutters`` section) -------------------
+    def connect_shutters(self, section: dict) -> bool:
+        """Open the shutter box a ``shutters`` section defines (phacq.shutterbox)."""
+        try:
+            from phacq import shutterbox
+
+            self.shutters = shutterbox.ShutterBox(section)
+        except Exception as exc:  # noqa: BLE001 - shown; a run still records
+            self.shutters, self.shutter_text = None, str(exc)
+            return False
+        self.shutter_section = dict(section)
+        self.shutter_text = tr("Shutters: {names}").format(names=", ".join(self.shutters.bits))
+        return True
+
+    def set_shutter(self, name: str, open_: bool) -> bool:
+        """Open or close one shutter (its checkbox)."""
+        if self.shutters is None:
+            return False
+        try:
+            self.shutters.set({name: bool(open_)})
+        except Exception as exc:  # noqa: BLE001 - shown on the status line
+            self.shutter_text = tr("Shutter {name}: {e}").format(name=name, e=exc)
+            return False
+        return True
+
+    def disconnect_shutters(self) -> None:
+        if self.shutters is not None:
+            try:
+                self.shutters.close()
+            finally:
+                self.shutters = None
+                self.shutter_text = tr("No shutters")
+
+    def _shutters_at_start(self) -> None:
+        """Before a run: open the shutters the section names (default all), then give the diode
+        a moment to report through the open excitation shutter."""
+        box = self.shutters
+        if box is None:
+            return
+        names = (self.shutter_section or {}).get("open_at_start") or list(box.bits)
+        try:
+            box.open(names)
+        except Exception as exc:  # noqa: BLE001 - the run goes on; said on the status line
+            self.shutter_text = tr("Shutters did not open: {e}").format(e=exc)
+            return
+        end = time.monotonic() + 0.6
+        while time.monotonic() < end and box.diode_raw is None:
+            time.sleep(0.02)
+        box.mark()
+
+    def _shutters_at_end(self) -> None:
+        """After a run: close the shutters the section names (default the excitation ones). The
+        laser is not touched: the shutter keeps the light off the sample."""
+        box = self.shutters
+        if box is None:
+            return
+        names = (self.shutter_section or {}).get("close_at_end") or box.by_role("excitation")
+        try:
+            box.close_shutters(names)
+        except Exception as exc:  # noqa: BLE001
+            self.shutter_text = tr("Shutters did not close: {e}").format(e=exc)
+
+    def run_header_tags(self) -> dict:
+        """PTU header tags of the laser, the shutters and the power diode for the run to start."""
+        tags = laser_mod.ptu_tags(self.laser if self.laser_connected else None,
+                                  self.laser_program)
+        box = self.shutters
+        if box is not None:
+            for name, state in box.state().items():
+                if state is not None:
+                    tags["ChiSurf_ShutterOpen_" + name.replace(" ", "")] = bool(state)
+            raw = box.diode_raw
+            if raw is not None:
+                tags["ChiSurf_PowerDiodeRaw"] = float(raw)
+                au = box.diode_au(raw)
+                if au is not None:
+                    tags["UsrPowerDiode"] = float(au)      # SymPhoTime's name and unit (a.u.)
+        return tags
+
     def _progress(self, fraction: float | None, text: str) -> None:
         """Where loading settings onto the hardware is (shown under the settings choice)."""
         self.connect_fraction, self.connect_text = fraction, text
@@ -538,6 +621,10 @@ class LaserSettingsMixin:
             if not self.connect_laser():
                 notes.append(tr("Laser not connected: {why}").format(
                     why=self.laser_detail or self.laser_text))
+        if doc.get("shutters") and self.shutters is None:
+            self._progress(0.7, tr("Connecting the shutters…"))
+            if not self.connect_shutters(doc["shutters"]):
+                notes.append(tr("Shutters not connected: {why}").format(why=self.shutter_text))
         self._progress(0.8, tr("Applying the settings…"))
         try:
             notes += settings_file.apply(

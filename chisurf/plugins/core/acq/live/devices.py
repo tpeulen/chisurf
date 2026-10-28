@@ -22,6 +22,7 @@ offers the simulator and replay only.
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 from dataclasses import dataclass
@@ -365,14 +366,17 @@ class DeviceSource(PhotonSource):
             else:
                 writer.set_tag_int(key, int(value), index)
         for key, value in (extra or {}).items():
+            # an indexed tag is written "Name(i)" (SymPhoTime's UsrHeadName(0), ...)
+            m = re.match(r"^(.*)\((\d+)\)$", str(key))
+            key, index = (m.group(1), int(m.group(2))) if m else (key, -1)
             if isinstance(value, bool):
-                writer.set_tag_bool(key, value)
+                writer.set_tag_bool(key, value, index)
             elif isinstance(value, (int, np.integer)):
-                writer.set_tag_int(key, int(value))
+                writer.set_tag_int(key, int(value), index)
             elif isinstance(value, (float, np.floating)):
-                writer.set_tag_float(key, float(value))
+                writer.set_tag_float(key, float(value), index)
             else:
-                writer.set_tag(key, str(value))
+                writer.set_tag(key, str(value), index)
         spc = None
         if getattr(self.device, "phacq_driver", "") == "bh":
             # B&H's own files beside the PTU: .spc (FIFO_32) and its .set (the card's settings)
@@ -402,6 +406,12 @@ _INPUT_TAGS = {
 }
 
 
+#: A CFD unit's (HydraHarp 400) levels under SymPhoTime's tag names.
+_SYNC_CFD_TAGS = {"sync_level_mv": "HWSync_CFDLevel", "sync_zero_cross_mv": "HWSync_CFDZeroCross"}
+_INPUT_CFD_TAGS = {"input_level_mv": "HWInpChan_CFDLevel",
+                   "input_zero_cross_mv": "HWInpChan_CFDZeroCross"}
+
+
 def hardware_tags(dev) -> list[tuple[str, Any, int]]:
     """The device's settings as PTU header tags ``(name, value, index)``; index -1 = not indexed.
 
@@ -413,14 +423,21 @@ def hardware_tags(dev) -> list[tuple[str, Any, int]]:
     except Exception:  # noqa: BLE001 - a device that cannot report: no hardware tags
         return []
     out: list[tuple[str, Any, int]] = []
-    for name, tag in _SYNC_TAGS.items():
+    # A constant-fraction discriminator (HydraHarp 400: level + zero cross) is written as
+    # SymPhoTime writes it, HWSync_CFDLevel/CFDZeroCross, not as an edge trigger level.
+    cfd = "sync_zero_cross_mv" in s
+    sync_tags = {**_SYNC_TAGS, **(_SYNC_CFD_TAGS if cfd else {})}
+    input_tags = {**_INPUT_TAGS, **(_INPUT_CFD_TAGS if cfd else {})}
+    for name, tag in sync_tags.items():
         if s.get(name) is not None:
             out.append((tag, s[name], -1))
     for key, value in s.items():
         base, _, rest = key.partition("[")
-        if value is None or not rest or base not in _INPUT_TAGS:
+        if value is None or not rest or base not in input_tags:
             continue
-        out.append((_INPUT_TAGS[base], value, int(rest.rstrip("]"))))
+        out.append((input_tags[base], value, int(rest.rstrip("]"))))
+    if s.get("binning") is not None:
+        out.append(("MeasDesc_BinningFactor", int(2 ** int(s["binning"])), -1))
     if s.get("offset_ns") is not None:
         out.append(("MeasDesc_Offset", s["offset_ns"], -1))
     if s.get("marker_enable") is not None:
