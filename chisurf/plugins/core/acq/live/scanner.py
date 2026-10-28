@@ -10,9 +10,9 @@ channel ``1 << (n - 1)`` of an event of type 1 -- exactly what tttrlib's CLSM re
 
 * :class:`ScanSettings` -- the scan (area, pixels, dwell time, frames, z planes, points) and its
   ``ImgHdr_*`` header tags, both ways.
-* :class:`ScannerBackend` -- what a scanner offers the Record tool. The real ones (piezo stages and
-  the rest SymPhoTime drives) are not driven by phacq yet; :class:`SimScanner` is the
-  simulated one.
+* :class:`ScannerBackend` -- what a scanner offers the Record tool. :class:`SimScanner` is the
+  simulated one; the MT200's PI E-725 piezo stage is ``live.points.PiScanner`` (libphacq's ``pi``
+  driver), which also runs point measurements (``live.points.PointSequence``).
 * :class:`ImagingSample` -- a simulated specimen (beads with two lifetimes on a dim cell outline,
   two detectors, background, IRF), scanned by tttrlib's ``SimEngine`` (``run_scan``), which emits
   the photons and the markers.

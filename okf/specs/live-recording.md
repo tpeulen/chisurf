@@ -27,6 +27,19 @@ TCSPC → microtime histogram → LLTF/MaxEnt/IRF estimator; FRET check; save/re
 (`build_tools/remote_test.sh start --dirty ...`, `pixi run -e test build-extensions` first — a fresh slot has
 no tttrlib), never all at once on the laptop. Open front, in order:
 
+0. Open: **Point measurements in the Record tool (MT200).** Headless part done 2026-10-28:
+   `live/points.py` -- `PiScanner` (libphacq `pi` driver: rasters with line triggers, settled point
+   moves, observed from SymPhoTime; libphacq `docs/pi_e725_scanner.md`), `BleachDetector`,
+   `PointRecordSession` (point in the PTU header `ChiSurf_Point_*`), `PointSequence` (one PTU per
+   point, fixed time or until bleached); tests `acq/test/test_live_points.py` (simulated bleaching
+   molecule, PI simulator). Next: the GUI -- click on the live/last image to place points (emtk
+   implot `is_plot_hovered` + `get_plot_mouse_pos` + `is_mouse_clicked`, `drag_point` to move
+   them; pixel -> stage via the scan's x0/y0 and pixel size), a "Points" mode with point time and
+   *until bleached*, and the PI stage as the image mode's scanner (replaces the "needs CMC
+   rustytime" entry). Measured on the instrument: SymPhoTime streams ~11 s per point with 1.5 s
+   gaps for the moves although the owner set 3 s -- check what the per-point time really was.
+   Not yet run on hardware: the E-725 is bound to PI's USB driver on the Windows PC (use
+   `tcp:<host>` or a Mac/Linux host).
 1. Open: **Companion tables do not reach the container.** `chisurf.core.project.analysis.container_changed`
    is the one notification every container writer must send; it lists new *runs* at once (`sync_runs`).
    Measured 2026-10-27 (`smfret_pie` leg): BVA, Burst MLE, H2MM and 2CDE run on the new run but send **0**

@@ -7,6 +7,7 @@
 - acq: renamed PhAcq for users: menu Tools → Views → PhAcq, window title PhAcq, command phacq (was photon-acquisition) with --fullscreen (emtk NativeHost fullscreen); the package path stays chisurf.plugins.core.acq (the phacq library is imported as phacq).
 - acq: user-facing names stay Acquisition (menu, window) and photon-acquisition (command); phacq is the library's name only. Kept: photon-acquisition --fullscreen.
 - shell: python -m chisurf --app ID starts ChiSurf with that tool alone in the window (EmtkShellApp.present_tool, as the web ?app= pages), e.g. --app acq = Acquisition mode for the MT200 PC; photon-acquisition loses the --fullscreen flag again (owner: no fullscreen).
+- acq: point measurements headless (live/points.py: PiScanner via libphacq pi driver, BleachDetector, PointRecordSession, PointSequence) + tests; resume item in okf/specs/live-recording.md
 
 ## 2026-10-27
 
