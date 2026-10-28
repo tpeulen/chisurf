@@ -55,6 +55,10 @@ __all__ = [
 #: TimeHarp 260 is listed and identified; phacq cannot measure with it (its connect says why).
 TCSPC_DRIVERS = ("picoquant", "bh", "th260")
 
+#: Micro-time bins a T3 start-stop time can span (15-bit dtime): the provisional macro step of a
+#: run without a sync.
+NO_SYNC_MICRO_RANGE = 1 << 15
+
 #: Events per FIFO read.
 _CHUNK_EVENTS = 1 << 16
 
@@ -236,16 +240,23 @@ class DeviceSource(PhotonSource):
             n_micro = 4096 if getattr(device, "phacq_driver", "") == "bh" else max(
                 1, int(round(macro / micro)) if micro else 1)
         else:  # T3: the macro time counts sync periods
-            if self.sync_rate_hz <= 0:
-                raise SourceUnavailable("no sync signal: connect the laser's sync output")
-            macro = self._divider() / self.sync_rate_hz
+            if self.sync_rate_hz > 0:
+                macro = self._divider() / self.sync_rate_hz
+            else:
+                # No sync (laser off, cable out): record anyway. The unit still time-tags its
+                # inputs; until a sync is measured the macro step is the unit's whole start-stop
+                # range, and the file's header takes the rate measured at its close.
+                macro = micro * NO_SYNC_MICRO_RANGE if micro else 1e-3
             # micro times travel as 16 bit (PhotonBatch); real units span a few hundred to a few
             # thousand bins per period, a slow simulated sync can exceed that
             n_micro = min(1 << 16, max(1, int(round(macro / micro)))) if micro else 1
         if micro <= 0:
             raise SourceUnavailable(f"{device_label(device)} reports no time resolution")
+        #: no sync was measured when the source was made (the run is recorded anyway)
+        self.no_sync = info.macro_resolution_ps <= 0 and self.sync_rate_hz <= 0
         self.info = SourceInfo(
-            name=device_label(device), macro_clock_s=macro, micro_res_s=micro, n_micro=n_micro
+            name=device_label(device) + (" (no sync)" if self.no_sync else ""),
+            macro_clock_s=macro, micro_res_s=micro, n_micro=n_micro,
         )
         self._stop = threading.Event()
         self._done = threading.Event()
@@ -423,7 +434,11 @@ class _PtuRecorder:
 
     def close(self) -> None:
         acq_s = time.monotonic() - self.source._started if self.source._started else 0.0
-        self.writer.close(acq_s, float(self.source.sync_rate_hz))
+        rate = float(self.source.sync_rate_hz)
+        if rate <= 0:
+            # no sync at the start: the rate now, else the provisional macro step's
+            rate = self.source._sync_rate() or self.source._divider() / self.source.info.macro_clock_s
+        self.writer.close(acq_s, rate)
         if self.spc is not None:
             self.spc[0].close()
             phacq.write_bh_set(str(self.spc[1]), self.source.device, self.title)

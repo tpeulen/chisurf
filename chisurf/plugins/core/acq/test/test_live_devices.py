@@ -70,16 +70,28 @@ def test_the_t3_macro_step_follows_the_device():
     assert source._divider() == 1
 
 
-def test_a_device_without_sync_is_refused():
+def test_a_device_without_sync_records_anyway(tmp_path):
+    """Laser off or sync cable out: the run is recorded, flagged, with a finite file header."""
     cfg = phacq.FakeConfig()
     cfg.number_of_channels = 2
     cfg.rates_cps = phacq.VectorDouble([0.0, 1e3])
+    cfg.base_resolution_ps = 32.0
+    cfg.duration_s = 0.5
     drv = phacq.FakeDriver()
     drv.add_device(cfg)
     dev = drv.open("")
     dev.initialize(phacq.MeasurementMode.T3, phacq.ReferenceClock.Internal)
-    with pytest.raises(devices.SourceUnavailable):
-        devices.DeviceSource(dev)
+    dev._keep_driver = drv
+    source = devices.DeviceSource(dev)
+    assert source.no_sync and "no sync" in source.info.name
+    assert source.info.macro_clock_s == pytest.approx(32e-12 * devices.NO_SYNC_MICRO_RANGE)
+    session = RecordSession(source, duration_s=0.5, ptu_path=tmp_path / "nosync.ptu", name="ns")
+    session.start()
+    result = session.wait(60)
+    assert result is not None and not session.error, session.error
+    assert result.ptu.exists()
+    header = tttrlib.TTTR(str(result.ptu)).header
+    assert np.isfinite(header.macro_time_resolution) and header.macro_time_resolution > 0
 
 
 @pytest.fixture(scope="module")

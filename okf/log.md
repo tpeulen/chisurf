@@ -9,6 +9,7 @@
 - shell: python -m chisurf --app ID starts ChiSurf with that tool alone in the window (EmtkShellApp.present_tool, as the web ?app= pages), e.g. --app acq = Acquisition mode for the MT200 PC; photon-acquisition loses the --fullscreen flag again (owner: no fullscreen).
 - acq: point measurements headless (live/points.py: PiScanner via libphacq pi driver, BleachDetector, PointRecordSession, PointSequence) + tests; resume item in okf/specs/live-recording.md
 - shell: clicks reach the tool in tool-only mode (--app ID / ?app=): _plugin_at searched docks only, so every press in the presented tool landed nowhere; found on the MT200; test_plugin_page_tool_only covers it
+- acq: a T3 device without sync records anyway (flagged 'no sync'; provisional macro step = 2^15 micro bins; the PTU header takes the sync rate measured at close) instead of refusing
 
 ## 2026-10-27
 
