@@ -12,6 +12,12 @@
     "Molecular Viewer"
   ],
   "icon": "🧬",
+  "brand": {
+    "name": "ChiMOL",
+    "logo": "chimol.png",
+    "icon": "chimol.ico",
+    "app_id": "Peulen.ChiMOL"
+  },
   "state_namespace": "chimol",
   "statefulness": {
     "enabled": true,

@@ -33,6 +33,9 @@
         "null"
       ]
     },
+    "brand": {
+      "type": "object"
+    },
     "state_namespace": {
       "type": [
         "string",

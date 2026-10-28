@@ -495,8 +495,9 @@ class ShellProject:
             and self._last_fingerprint != saved
         )
 
-    def title_text(self) -> str:
-        """The window title: the project file first -- ``• name.cs.pto (temporary) — ChiSurf``."""
+    def title_text(self, app: str = "ChiSurf") -> str:
+        """The window title: the project file first -- ``• name.cs.pto (temporary) — ChiSurf``
+        (*app*: the name of the app started, e.g. ``PhAcq``)."""
         path = self.document.path
         if path is not None:
             name = Path(path).name
@@ -507,7 +508,7 @@ class ShellProject:
         text = f"{'• ' if self.dirty else ''}{name}"
         if self.temporary:
             text += " " + tr("(temporary — not saved)")
-        return f"{text} — ChiSurf"
+        return f"{text} — {app}"
 
     @property
     def _live_channel(self) -> ProjectChannel:

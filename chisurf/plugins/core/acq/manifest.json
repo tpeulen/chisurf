@@ -8,6 +8,7 @@
   "experimental_message": "Development status: devices and the Sepia II laser come through libphacq (every setting a device describes is offered); a Record run on real TCSPC hardware has not been made yet, and the Sepia oscillator module (sequencer) is not driven.",
   "categories": ["Tools", "Views", "Acquisition"],
   "icon": "📷",
+  "brand": {"name": "PhAcq", "logo": "gui/phacq.png", "icon": "gui/phacq.ico", "app_id": "Peulen.PhAcq"},
   "optional_requires": {"burst_selection": "*", "fret_check": "*"},
   "state_namespace": "acq",
   "state_schema": {

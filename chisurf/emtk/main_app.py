@@ -1182,7 +1182,8 @@ class EmtkShellApp(ImApp):
     def window_title(self) -> str:
         """The native window's title (read by every emtk host after each frame): the project file first."""
         project = getattr(self, "project", None)
-        return project.title_text() if project is not None else "ChiSurf"
+        app = getattr(self, "app_name", "ChiSurf")
+        return project.title_text(app) if project is not None else app
 
     def _draw_project_badge(self) -> None:
         """The project file on the menu bar's right: its name, marked when temporary or unsaved."""
@@ -2774,30 +2775,13 @@ def main(argv: list[str] | None = None) -> int:
         width, _, height = args[args.index("--size") + 1].partition("x")
         size = (int(width), int(height or width))
     app_id = startup_app(args)
+    from chisurf.emtk.brand import brand_for
     from chisurf.emtk.splash import run_with_splash
 
-    icon, windows_id = app_logo(app_id)
-    return run_with_splash(make_app, title="ChiSurf", size=size,
+    brand = brand_for(app_id)
+    return run_with_splash(make_app, title=brand.name, size=size,
                            on_ready=(lambda shell: shell.present_tool(app_id)) if app_id else None,
-                           icon=icon, app_id=windows_id)
-
-
-#: The logo and Windows AppUserModelID per ``--app``: a tool started alone is its own app
-#: (own task-bar entry, own icon, matching its Start-menu shortcut).
-APP_LOGOS = {
-    "": ("gui/resources/icons/cs_logo.ico", "Peulen.ChiSurf"),
-    "acq": ("plugins/core/acq/gui/phacq.ico", "Peulen.PhAcq"),
-}
-
-
-def app_logo(app_id: str = "") -> tuple["pathlib.Path", str]:
-    """The window icon file and Windows AppUserModelID for ChiSurf started with ``--app app_id``."""
-    import pathlib
-
-    import chisurf
-
-    icon, windows_id = APP_LOGOS.get(app_id, APP_LOGOS[""])
-    return pathlib.Path(chisurf.__file__).parent / icon, windows_id
+                           brand=brand)
 
 
 def startup_app(args: list[str]) -> str:

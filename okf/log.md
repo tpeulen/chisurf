@@ -20,6 +20,7 @@
 - acq shutters go through phacq's shutters driver (libphacq module, a Device opened with the section JSON); the panel is the generic device-settings form of its schema
 - acq Record: Shutters in their own dock; one laser button toggling Laser off (red, while emitting) / Laser on (green, after Apply), in the run bar and the Laser panel (emtk role_source)
 - 2026-10-28: Record (acq): one global Simple/Advanced switch under the settings choice; phacq drivers mark expert settings (ParameterInfo.advanced -> schema "advanced"), forms for laser and shutters are rebuilt without them in Simple; read-only schema choices show their label (closed/open) not the number.
+- 2026-10-28: Start brands: a plugin that is an app (--app) declares brand {name, logo, icon, app_id} in its manifest; the splash swaps ChiSurf's logo and name for it (chisurf.emtk.brand), the windows take its icon and title, Windows its AppUserModelID. PhAcq (acq) and ChiMOL (chimol, new logo) declare one.
 
 ## 2026-10-27
 

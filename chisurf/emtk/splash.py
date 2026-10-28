@@ -182,13 +182,18 @@ class SplashApp:
     state : SplashState
     on_frame : callable, optional
         Called after every frame (the splash's step of :func:`run_with_splash`).
+    brand : chisurf.emtk.brand.Brand, optional
+        Whose logo and name the art shows; ChiSurf's by default.
     """
 
     #: The window opens at the art's natural size.
     window_size = ART_SIZE
 
-    def __init__(self, state: SplashState, on_frame: Callable[[], None] | None = None) -> None:
+    def __init__(self, state: SplashState, on_frame: Callable[[], None] | None = None,
+                 brand: Any = None) -> None:
         self.state = state
+        #: Whose logo and name the art shows (:mod:`chisurf.emtk.brand`); ChiSurf's by default.
+        self.brand = brand
         self.on_frame = on_frame
         self.frames = 0
         self._texture: Any = None
@@ -216,8 +221,10 @@ class SplashApp:
         if self._texture is None and ART.is_file():
             from emtk.texture import Texture
 
+            from chisurf.emtk.brand import CHISURF, splash_art
+
             try:
-                self._texture = Texture.from_file(ART)
+                self._texture = Texture.from_pil(splash_art(ART, self.brand or CHISURF))
             except Exception:  # noqa: BLE001 - the splash still shows its text
                 _log.exception("reading the splash art failed")
                 self._texture = False
@@ -410,22 +417,27 @@ class SplashRun:
 
 def run_with_splash(
     make_app: Callable[..., Any], title: str = "ChiSurf", size: tuple[int, int] | None = None,
-    on_ready: Callable[[Any], Any] | None = None, icon: Any = None, app_id: str = "",
+    on_ready: Callable[[Any], Any] | None = None, brand: Any = None,
 ) -> int:
     """Show the splash window, build the shell behind it, open the main window when ready.
 
     *on_ready* is called with the shell once its window is open (e.g. to present one tool).
-    *icon* (an ``.ico``, ``.svg``, ``.png`` ...) is both windows' icon; *app_id* the Windows
-    AppUserModelID, so the task bar shows the app with that icon rather than ``python.exe``.
+    *brand* (:class:`chisurf.emtk.brand.Brand`, ChiSurf's by default) is whose logo and name the
+    splash shows, both windows' icon and the Windows AppUserModelID, so the task bar shows the
+    app with that icon rather than ``python.exe``.
     Returns when the main window closes.
     """
     from emtk.logo import set_app_id, set_window_icon
+
+    from chisurf.emtk.brand import CHISURF
+
+    brand = brand or CHISURF
     from emtk.app import ControlSurface
     from emtk.gpu_atlas import ImageAtlas
     from emtk.native import NativeHost
 
     state = SplashState()
-    app = SplashApp(state)
+    app = SplashApp(state, brand=brand)
     surface = ControlSurface(app, background=(0, 0, 0, 0), images=ImageAtlas(2048, 2048))
     splash = NativeHost(
         surface,
@@ -436,10 +448,9 @@ def run_with_splash(
         transparent=True,
         centred=True,
     )
-    if app_id:
-        set_app_id(app_id)
-    if icon is not None:
-        set_window_icon(splash.canvas, icon)
+    set_app_id(brand.app_id)
+    if brand.icon is not None:
+        set_window_icon(splash.canvas, brand.icon)
     state._wake = app.request_frame
     state.start()
     loop = splash._loop
@@ -447,7 +458,7 @@ def run_with_splash(
     run = SplashRun(
         state,
         make_app,
-        open_main=lambda shell: _open_main(shell, size, title, on_ready, icon),
+        open_main=lambda shell: _open_main(shell, size, title, on_ready, brand),
         close_splash=splash.close,
         later=loop.call_soon,
     )
@@ -460,12 +471,14 @@ def run_with_splash(
     return 0
 
 
-def _open_main(shell, size, title, on_ready, icon=None):
-    """The main window for *shell*; then *on_ready(shell)*."""
+def _open_main(shell, size, title, on_ready, brand=None):
+    """The main window for *shell*, under *brand*'s name and icon; then *on_ready(shell)*."""
     from emtk.native import NativeHost
 
-    if icon is not None:
-        shell.window_icon = icon
+    if brand is not None:
+        shell.app_name = brand.name
+        if brand.icon is not None:
+            shell.window_icon = brand.icon
     host = NativeHost(shell, size=size, title=title)
     if on_ready is not None:
         on_ready(shell)

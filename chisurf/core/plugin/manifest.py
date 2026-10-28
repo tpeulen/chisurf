@@ -122,6 +122,9 @@ class PluginManifest:
     authors: list[str] = field(default_factory=list)
     categories: list[str] = field(default_factory=list)
     icon: str | None = None
+    #: An app in its own right (``--app <id>``): ``name``, ``logo``, ``icon``, ``app_id`` --
+    #: what its start shows in place of ChiSurf's (:mod:`chisurf.emtk.brand`).
+    brand: dict[str, str] | None = None
 
     state_namespace: str | None = None
     state_schema: dict[str, Any] | None = None
@@ -272,6 +275,7 @@ class PluginManifest:
             authors=data.get("authors", []),
             categories=data.get("categories", []),
             icon=data.get("icon"),
+            brand=data.get("brand"),
             state_namespace=data.get("state_namespace"),
             state_schema=data.get("state_schema"),
             statefulness=cls._parse_statefulness(data),
@@ -320,6 +324,7 @@ class PluginManifest:
             "authors": list(self.authors),
             "categories": list(self.categories),
             "icon": self.icon,
+            "brand": self.brand,
             "state_namespace": self.state_namespace,
             "state_schema": self.state_schema,
             "statefulness": {
@@ -1022,7 +1027,7 @@ def _parse_workspace_input(raw: Any) -> Any:
 
 def _validate_field_shapes(data: dict[str, Any]) -> list[str]:
     """Validate scalar and collection shapes consumed by ``from_dict``."""
-    nullable_fields = {"icon", "state_namespace", "state_schema"}
+    nullable_fields = {"icon", "brand", "state_namespace", "state_schema"}
     errors: list[str] = [
         f"field {key!r} must not be null"
         for key, value in data.items()
@@ -1040,6 +1045,13 @@ def _validate_field_shapes(data: dict[str, Any]) -> list[str]:
             errors.append(f"field {key!r} must be a string or null")
     if data.get("icon") is not None and not isinstance(data["icon"], str):
         errors.append("field 'icon' must be a string or null")
+    brand = data.get("brand")
+    if brand is not None and (
+        not isinstance(brand, dict)
+        or any(k not in ("name", "logo", "icon", "app_id") or not isinstance(v, str)
+               for k, v in brand.items())
+    ):
+        errors.append("field 'brand' must map name/logo/icon/app_id to strings")
     for key in ("authors", "categories", "operation_types"):
         errors.extend(_validate_string_list(data, key))
     for key in ("events",):
