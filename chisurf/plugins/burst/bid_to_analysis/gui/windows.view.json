@@ -1,0 +1,22 @@
+{
+  "_comment": "The excitation-window check of BID → Analysis: the detector setup's PIE windows held against the first queued measurement, and the offer to take the detected ones.",
+  "sections": [
+    {
+      "type": "info",
+      "source": "windows_check_text",
+      "hidden_when": {"attr": "windows_check_quiet", "equals": true},
+      "description": "The detector setup's PIE windows held against the excitation pulses the first queued measurement shows (the check every PIE analysis runs; every converted file is checked again and reported in the log): a warning when a window misses a pulse, cuts one, mixes two or lies outside the data, or a detector gate hides a pulse; a note when only one pulse is seen (donor-only or not PIE)."
+    },
+    {
+      "type": "button_row",
+      "hidden_when": {"attr": "windows_check_offer", "equals": false},
+      "buttons": [
+        {
+          "label": "Use detected windows",
+          "action": "use_detected_windows",
+          "description": "Tabulate the bursts with the windows (and detector gates, and their channel width) detected from this measurement's micro-time decays: they replace the working detector setup's. The saved setup is not changed until you save it in the setup editor."
+        }
+      ]
+    }
+  ]
+}

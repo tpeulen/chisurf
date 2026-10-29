@@ -11,11 +11,75 @@ from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
 from emtk.view_form import draw_form
 
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button
 
 from .. import _find_tttr_by_stem, convert_bid_file
+
+#: The window check's info line and offer (``windows.view.json``).
+WINDOWS_SPEC = Path(__file__).parent / "windows.view.json"
+
+
+class WindowsCheck(WindowsPreflightMixin):
+    """The shared excitation-window pre-flight on the working detector setup.
+
+    The setup editor's model holds the windows; this checks them against the first queued
+    measurement whenever either changes, and *Use detected windows* writes the detected windows,
+    gates and channel width into that working definition (as the editor's Auto-detect does).
+    """
+
+    def __init__(self, setup_model):
+        self.setup_model = setup_model
+        self.windows_check = None
+        #: What the current check was made on: (measurement, windows, detectors).
+        self._key = None
+
+    def preflight_setup(self) -> dict:
+        """The windows and detectors the import tabulates with.
+
+        No channel width is given: the burst table applies the windows as raw channels of the
+        measurement, so that is how they are checked.
+        """
+        settings = self.setup_model.get_settings()
+        return {
+            "windows": dict(settings.get("windows") or {}),
+            "detectors": dict(settings.get("detectors") or {}),
+        }
+
+    def take_preflight_setup(self, setup: dict) -> None:
+        """Write the detected windows, gates and channel width into the working definition."""
+        data = self.setup_model.data
+        for key in ("windows", "detectors", "tttr_reading"):
+            if key in setup:
+                data[key] = setup[key]
+        self.setup_model.changed()
+
+    def refresh(self, tttr_path: str) -> None:
+        """Check the setup against *tttr_path* when the measurement or the setup changed."""
+        import json
+
+        setup = self.preflight_setup()
+        key = (tttr_path, json.dumps(setup, sort_keys=True, default=str))
+        if key == self._key:
+            return
+        self._key = key
+        self.windows_check = None
+        if not tttr_path or not setup["windows"]:
+            return  # no windows given: the import's single window claims no PIE scheme
+        try:
+            from .. import _load_tttr
+
+            self.run_windows_preflight(_load_tttr(Path(tttr_path)))
+        except Exception:  # noqa: BLE001 - a measurement that cannot be read: nothing to say
+            self.windows_check = None
+
+    def use_detected_windows(self) -> bool:
+        """Take the detected windows; the next refresh checks the new setup."""
+        taken = super().use_detected_windows()
+        self._key = None
+        return taken
 
 
 class BidToAnalysisApp(ImApp, TourTarget):
@@ -36,6 +100,13 @@ class BidToAnalysisApp(ImApp, TourTarget):
         self.target_path = "analysis"
         self.analysis_folder = ""
         self.setup = ChannelDefinitionWidget(model=setup_model, host_app=self)
+        #: The excitation-window check of the working setup against the first queued measurement.
+        self.windows_check = WindowsCheck(self.setup.model)
+        from emtk.view_form import FormState
+        from emtk.widgets.view_spec import load_view_spec
+
+        self.windows_spec = load_view_spec(str(WINDOWS_SPEC))
+        self.windows_form = FormState()
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bid-converter")
         self.future = None
         self.cancel = Event()
@@ -199,13 +270,16 @@ class BidToAnalysisApp(ImApp, TourTarget):
 
                 # A workspace stream's import goes into its analysis container in the project.
                 into = container_dir(row["uid"]) if row.get("uid") else None
+                warnings = []
                 output = convert_bid_file(
                     row["bid"],
                     analysis_folder=folder if into is None else into / "analysis",
                     bid_index=index,
                     container_dir=into,
+                    warnings=warnings,
                     **options,
                 )
+                messages.extend(f"Warning: {warning}" for warning in warnings)
                 # The container is the one output: prove it holds what the
                 # import promised before the row is called Done.
                 from chisurf.core.datastore import row_count
@@ -235,6 +309,13 @@ class BidToAnalysisApp(ImApp, TourTarget):
                 self.status = tr("Finished: {done}/{total} files converted.").format(
                     done=count, total=len(self.rows)
                 )
+                warned = [m for m in messages if m.startswith("Warning: ")]
+                if len(warned) == 1:
+                    self.status += " " + warned[0]
+                elif warned:
+                    self.status += " " + tr(
+                        "{n} excitation-window warnings: see the conversion log."
+                    ).format(n=len(warned))
             except Exception as error:
                 self.status = f"Error: {error}"
             self.messages.append(self.status)
@@ -311,6 +392,7 @@ class BidToAnalysisApp(ImApp, TourTarget):
             )
         )
         self.remember("formats")
+        self.draw_windows_check()
         im.separator()
         changed, self.unique_folder = im.checkbox(tr("Unique output folder"), self.unique_folder)
         im.set_item_tooltip(
@@ -356,6 +438,18 @@ class BidToAnalysisApp(ImApp, TourTarget):
             self.help_window.show()
         im.text_wrapped(self.status)
         self.remember("status")
+
+    def first_measurement(self) -> str:
+        """The first queued measurement (what the window check looks at)."""
+        return next((row["tttr"] for row in self.rows if row.get("tttr")), "")
+
+    def draw_windows_check(self):
+        """The excitation-window check's line and *Use detected windows* (``windows.view.json``)."""
+        if not self.running:
+            self.windows_check.refresh(self.first_measurement())
+        self.windows_form.rects.clear()
+        draw_form(self.windows_spec, self.windows_check, self.windows_form)
+        self.item_rects.update(self.windows_form.rects)
 
     def draw_log(self, box):
         for message in self.messages:

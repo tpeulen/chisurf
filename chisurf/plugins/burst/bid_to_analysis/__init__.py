@@ -296,6 +296,30 @@ def zip_output_folder(output_folder: pathlib.Path) -> pathlib.Path | None:
     return zip_path
 
 
+def window_warning(tttr, name: str, windows: dict | None, detectors: dict | None) -> str | None:
+    """The shared excitation-window pre-flight on the measurement a selection indexes into.
+
+    Only windows the caller gave are checked (the default single window over the whole micro
+    time claims no PIE scheme), and they are checked as raw channels of the measurement -- the
+    way the burst table applies them. A mismatch is reported, never corrected here; a
+    donor-only measurement gives a note instead.
+
+    Returns
+    -------
+    str or None
+        ``"<name>: <message>"``, or ``None`` when there is nothing to say.
+    """
+    if not windows:
+        return None
+    from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
+
+    try:
+        message = windows_message(windows_preflight(tttr, windows, detectors=detectors or None))
+    except Exception:  # noqa: BLE001 - a check that cannot run says nothing
+        return None
+    return f"{name}: {message}" if message else None
+
+
 def _per_file_process(
     bid_path: pathlib.Path,
     output_dir: pathlib.Path,
@@ -303,8 +327,12 @@ def _per_file_process(
     detectors: dict | None,
     bid_index: int = 1,
     container_dir: os.PathLike | str | None = None,
+    warnings: list[str] | None = None,
 ) -> tuple[tttrlib.TTTR, dict, dict]:
-    """Import one BID selection: read it, tabulate its bursts, write the container."""
+    """Import one BID selection: read it, tabulate its bursts, write the container.
+
+    The excitation-window pre-flight's line, if any, is logged and appended to *warnings*.
+    """
     bid_path = pathlib.Path(bid_path)
     stem = bid_path.stem
     tttr_path = _find_tttr_by_stem(bid_path.parent, stem)
@@ -314,6 +342,11 @@ def _per_file_process(
         )
     tttr = _load_tttr(tttr_path)
 
+    warning = window_warning(tttr, tttr_path.name, windows, detectors)
+    if warning:
+        logging.warning(warning)
+        if warnings is not None:
+            warnings.append(warning)
     windows, detectors = _infer_windows_detectors(tttr, windows, detectors)
 
     start_stop = _read_bid_start_stop(bid_path)
@@ -444,11 +477,14 @@ def convert_bid_file(
     selected_setup: str | None = None,
     bid_index: int = 1,
     container_dir: os.PathLike | str | None = None,
+    warnings: list[str] | None = None,
 ) -> pathlib.Path:
     """Import a single BID file into its measurement's `.pto` container.
 
     *container_dir* names the folder the container is written into (a photon dataset's analysis
     container in the project, the photons linked); by default it is written beside the TTTR.
+    *warnings*, a list, receives the excitation-window pre-flight's line when the given windows
+    do not hold the measurement's pulses (it is logged either way).
 
     Writes the burst table -- and the `.bid` it was derived from -- into the
     container beside the TTTR, and the analysis ``Info`` metadata into
@@ -484,7 +520,13 @@ def convert_bid_file(
 
     # Process this single file
     tttr, dets, wins = _per_file_process(
-        bid_path, output_dir, windows, detectors, bid_index=bid_index, container_dir=container_dir
+        bid_path,
+        output_dir,
+        windows,
+        detectors,
+        bid_index=bid_index,
+        container_dir=container_dir,
+        warnings=warnings,
     )
 
     # Info files
@@ -513,7 +555,9 @@ def convert_many(
     zip_output: bool = False,
     remove_folder: bool = False,
     selected_setup: str | None = None,
+    warnings: list[str] | None = None,
 ) -> list[pathlib.Path]:
+    """Import several BID files; *warnings* as in :func:`convert_bid_file`."""
     bid_paths = [pathlib.Path(p) for p in bid_files]
     if not bid_paths:
         return []
@@ -537,7 +581,7 @@ def convert_many(
 
     for i, p in enumerate(bid_paths, start=1):
         try:
-            _per_file_process(p, output_dir, windows, detectors, bid_index=i)
+            _per_file_process(p, output_dir, windows, detectors, bid_index=i, warnings=warnings)
             converted.append(p)
             # track tttr path for info listing (found: the file was just converted)
             tttr_path = _find_tttr_by_stem(p.parent, p.stem)
