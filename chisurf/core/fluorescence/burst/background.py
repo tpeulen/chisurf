@@ -294,6 +294,7 @@ def estimate_background_from_bursts(
     binsize_ms: float = 0.1,
     tail_fraction: float = 0.8,
     min_counts: int = 1,
+    warnings: list[str] | None = None,
 ) -> dict[str, float]:
     """Estimate background count rates (kHz) for multiple detector definitions.
 
@@ -320,6 +321,11 @@ def estimate_background_from_bursts(
     min_counts : int, optional
         Minimum number of counts per histogram bin for inclusion in the
         fit.
+    warnings : list of str, optional
+        When given, the excitation-window pre-flight of the detectors'
+        micro-time gates (:func:`gate_warning`) is appended to it: a gate
+        that leaves out an excitation pulse its detector sees counts the
+        wrong photons as background.
 
     Returns
     -------
@@ -327,6 +333,7 @@ def estimate_background_from_bursts(
         Mapping from detector name to estimated background rate in kHz.
         Detectors for which no estimate can be obtained are assigned 0.0.
     """
+    _check_gates(tttr, detectors, warnings)
     macro = np.asarray(tttr.macro_times, dtype=np.int64)
     if macro.size < 2:
         return {name: 0.0 for name in detectors.keys()}
@@ -376,6 +383,56 @@ def estimate_background_from_bursts(
     return results
 
 
+def gate_warning(tttr: Any, detectors: Mapping[str, Mapping[str, Any]]) -> str | None:
+    """The excitation-window pre-flight of the detectors' micro-time gates.
+
+    The background rates take a detector's photons inside its gates
+    (``start <= micro_time < stop`` -- the setup's ``[start, stop)``, as the
+    shared check reads them), so the gates are held against the excitation
+    pulses *tttr* shows (:func:`chisurf.core.fluorescence.excitation.windows_preflight`).
+    Detectors on one routing channel split by their gates (PIE's prompt
+    ``red`` and delayed ``yellow``) are understood.
+
+    Parameters
+    ----------
+    tttr : tttrlib.TTTR
+        The measurement.
+    detectors : Mapping[str, Mapping[str, Any]]
+        ``{name: {"chs": [...], "micro_time_ranges": [[start, stop), ...]}}``.
+
+    Returns
+    -------
+    str or None
+        One line when a gate does not hold the pulses; ``None`` when it does,
+        when no detector is gated or when the photons cannot be checked.
+    """
+    gated = {
+        str(name): {
+            "chs": [int(c) for c in (info.get("chs") or [])],
+            "micro_time_ranges": [[int(r[0]), int(r[1])]
+                                  for r in (info.get("micro_time_ranges") or [])],
+        }
+        for name, info in detectors.items()
+    }
+    if not any(d["micro_time_ranges"] for d in gated.values()):
+        return None
+    from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
+
+    try:
+        return windows_message(windows_preflight(tttr, {}, detectors=gated))
+    except Exception:  # noqa: BLE001 - a stream that cannot be checked says nothing
+        return None
+
+
+def _check_gates(tttr, detectors, warnings) -> None:
+    """Append :func:`gate_warning` to *warnings* (nothing when *warnings* is ``None``)."""
+    if warnings is None:
+        return
+    message = gate_warning(tttr, detectors)
+    if message:
+        warnings.append(message)
+
+
 def _detector_interphoton_times(tttr, det_info, dt_scale):
     """Return the inter-photon times (ms) of one detector's photon stream."""
     rout = np.asarray(tttr.routing_channel)
@@ -404,13 +461,16 @@ def background_diagnostics_from_bursts(
     binsize_ms: float = 0.1,
     tail_fraction: float = 0.8,
     min_counts: int = 1,
+    warnings: list[str] | None = None,
 ) -> dict[str, BackgroundDiagnostics]:
     """Per-detector inter-photon-time histogram + tail fit for diagnostic plots.
 
     The plotting companion of :func:`estimate_background_from_bursts`: returns a
     :class:`BackgroundDiagnostics` per detector (identical rate), carrying the
-    histogram, the fitted model and the tail region.
+    histogram, the fitted model and the tail region. *warnings*, when given,
+    receives the gate pre-flight (:func:`gate_warning`), as there.
     """
+    _check_gates(tttr, detectors, warnings)
     header = tttr.header
     dt_scale = float(getattr(header, "macro_time_resolution", 1.0)) * 1000.0
     out: dict[str, BackgroundDiagnostics] = {}
