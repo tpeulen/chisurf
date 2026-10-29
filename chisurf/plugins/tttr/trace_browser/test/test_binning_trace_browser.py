@@ -100,7 +100,7 @@ def test_selected_names_filter_and_order_detectors(spc):
     assert bin_trace(spc, 0.01, detectors=ALEX["detectors"], selected=["nope"])[2] == []
 
 
-def test_photons_outside_every_window_are_not_counted_and_bounds_are_inclusive():
+def test_photons_outside_every_window_are_not_counted_and_gates_are_half_open():
     # 1 clock = 1 us, window 10 us -> 10 clocks per bin
     macro = [0, 1, 2, 3, 12, 13, 25, 26, 27]
     micro = [5, 99, 100, 200, 201, 300, 150, 151, 5000]
@@ -108,12 +108,13 @@ def test_photons_outside_every_window_are_not_counted_and_bounds_are_inclusive()
     t = FakeTTTR(macro, rc, micro)
     det = {"d": {"chs": [0], "micro_time_ranges": [[100, 200], (300, 300)]}}
     ta, c, labels = bin_trace(t, 10e-6, detectors=det)
-    # photons kept (micro in [100,200] or ==300): macro 2, 3, 13, 25, 26 (micro 100, 200, 300, 150, 151)
+    # gates are the setup's [start, stop): micro 100, 150, 151 are in [100, 200) (macro 2, 25,
+    # 26); micro 200 (the stop) and 300 (an empty [300, 300)) are not
     assert labels == ["d"]
     assert c.shape == (3, 1)
-    assert c[:, 0].tolist() == [2.0, 1.0, 2.0]
+    assert c[:, 0].tolist() == [1.0, 0.0, 2.0]
     # the macro-5000 photon (micro outside) and micro 5, 99, 201 photons are not counted
-    assert c.sum() == 5
+    assert c.sum() == 3
     assert ta.tolist() == pytest.approx([0.0, 10e-6, 20e-6])
 
 

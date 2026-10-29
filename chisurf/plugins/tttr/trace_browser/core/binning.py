@@ -21,6 +21,8 @@ from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
 
+from chisurf.core.fluorescence.excitation import micro_mask
+
 try:  # pragma: no cover - exercised implicitly
     import tttrlib
 except Exception:  # pragma: no cover - tttrlib is an optional dependency here
@@ -90,9 +92,9 @@ def bin_trace(
     detectors
         Detector mapping ``{name: {"chs": [...], "micro_time_ranges": [[lo, hi], ...]}}``.
         A detector counts the photons whose routing channel is in ``chs`` and, when
-        ``micro_time_ranges`` is not empty, whose micro time lies in one of the (inclusive)
-        ranges. A detector without ``chs`` is skipped; a detector without any photon after
-        gating gives an all-zero column. Series are in mapping order.
+        ``micro_time_ranges`` is not empty, whose micro time lies in one of the half-open
+        ``[start, stop)`` ranges (the setup's gates). A detector without ``chs`` is skipped; a
+        detector without any photon after gating gives an all-zero column. Series are in mapping order.
     channels
         Used only when *detectors* is empty or ``None``: routing channels, one series each,
         labelled ``"Ch<n>"`` (the legacy engine's label). A channel without photons gives an
@@ -114,8 +116,9 @@ def bin_trace(
     Differences from the legacy engine, all in cases where it fails: the legacy fallback
     (no detector mapping) raised ``KeyError``/returned an empty trace when called with a
     channel list, because it indexed a dict with ``0``; here an empty or absent mapping uses
-    *channels*, and with neither, all used routing channels. Series values and shapes for a
-    detector mapping and for single channels are identical to the legacy engine.
+    *channels*, and with neither, all used routing channels. Series shapes are identical to the
+    legacy engine; its gates were inclusive, here they are the setup's half-open ranges (one
+    channel less at the upper edge of each gate).
     """
     window_s = float(time_window_s)
     obj = _open(tttr)
@@ -142,19 +145,13 @@ def bin_trace(
                 logger.warning("binning: detector %r has no routing channels", name)
                 continue
             mask = np.isin(rc, np.array(det_chs, dtype=rc.dtype))
-            ranges = info.get("micro_time_ranges", []) or []
+            ranges = [
+                r for r in info.get("micro_time_ranges") or [] if r is not None and len(r) == 2
+            ]
             if ranges:
                 if micro is None:
                     micro = np.asarray(obj.micro_times)
-                gate = np.zeros(mask.shape, dtype=bool)
-                for rng in ranges:
-                    if rng is not None and len(rng) == 2:
-                        try:
-                            lo, hi = int(rng[0]), int(rng[1])
-                        except Exception:
-                            continue
-                        gate |= (micro >= lo) & (micro <= hi)
-                mask &= gate
+                mask &= micro_mask(micro, ranges)
             traces.append(_bin_macro_times(macro[mask], cpb))
             labels.append(str(name))
     else:
