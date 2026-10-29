@@ -16,6 +16,8 @@ from typing import Any
 import numpy as np
 import tttrlib
 
+from chisurf.core.fluorescence.excitation import micro_mask
+
 
 @dataclass
 class BackgroundDiagnostics:
@@ -323,7 +325,7 @@ def estimate_background_from_bursts(
         fit.
     warnings : list of str, optional
         When given, the excitation-window pre-flight of the detectors'
-        micro-time gates (:func:`gate_warning`) is appended to it: a gate
+        micro-time gates (:func:`_check_gates`) is appended to it: a gate
         that leaves out an excitation pulse its detector sees counts the
         wrong photons as background.
 
@@ -356,15 +358,8 @@ def estimate_background_from_bursts(
         # Channel selection
         mask = np.isin(rout, chs)
 
-        # Optional micro-time windowing
-        mt_ranges = det_info.get("micro_time_ranges", []) or []
-        if mt_ranges:
-            mt_mask = np.zeros_like(mask, dtype=bool)
-            for start, stop in mt_ranges:
-                start_i = int(start)
-                stop_i = int(stop)
-                mt_mask |= (micro >= start_i) & (micro < stop_i)
-            mask &= mt_mask
+        # Optional micro-time windowing (the setup's [start, stop) gates)
+        mask &= micro_mask(micro, det_info.get("micro_time_ranges"))
 
         times = macro[mask]
         if times.size < 2:
@@ -383,54 +378,20 @@ def estimate_background_from_bursts(
     return results
 
 
-def gate_warning(tttr: Any, detectors: Mapping[str, Mapping[str, Any]]) -> str | None:
-    """The excitation-window pre-flight of the detectors' micro-time gates.
-
-    The background rates take a detector's photons inside its gates
-    (``start <= micro_time < stop`` -- the setup's ``[start, stop)``, as the
-    shared check reads them), so the gates are held against the excitation
-    pulses *tttr* shows (:func:`chisurf.core.fluorescence.excitation.windows_preflight`).
-    Detectors on one routing channel split by their gates (PIE's prompt
-    ``red`` and delayed ``yellow``) are understood.
-
-    Parameters
-    ----------
-    tttr : tttrlib.TTTR
-        The measurement.
-    detectors : Mapping[str, Mapping[str, Any]]
-        ``{name: {"chs": [...], "micro_time_ranges": [[start, stop), ...]}}``.
-
-    Returns
-    -------
-    str or None
-        One line when a gate does not hold the pulses; ``None`` when it does,
-        when no detector is gated or when the photons cannot be checked.
-    """
-    gated = {
-        str(name): {
-            "chs": [int(c) for c in (info.get("chs") or [])],
-            "micro_time_ranges": [[int(r[0]), int(r[1])]
-                                  for r in (info.get("micro_time_ranges") or [])],
-        }
-        for name, info in detectors.items()
-    }
-    if not any(d["micro_time_ranges"] for d in gated.values()):
-        return None
-    from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
-
-    try:
-        return windows_message(windows_preflight(tttr, {}, detectors=gated))
-    except Exception:  # noqa: BLE001 - a stream that cannot be checked says nothing
-        return None
-
-
 def _check_gates(tttr, detectors, warnings) -> None:
-    """Append :func:`gate_warning` to *warnings* (nothing when *warnings* is ``None``)."""
+    """Append the excitation-window pre-flight of the detectors' micro-time gates to *warnings*
+    (nothing when *warnings* is ``None``).
+
+    The background rates take a detector's photons inside its gates (the setup's
+    ``[start, stop)``), so the gates are held against the excitation pulses *tttr* shows
+    (:func:`chisurf.core.fluorescence.burst.streams.window_warnings`); detectors on one routing
+    channel split by their gates (PIE's prompt ``red`` and delayed ``yellow``) are understood.
+    """
     if warnings is None:
         return
-    message = gate_warning(tttr, detectors)
-    if message:
-        warnings.append(message)
+    from chisurf.core.fluorescence.burst.streams import window_warnings
+
+    warnings.extend(window_warnings({"": tttr}, detectors))
 
 
 def _detector_interphoton_times(tttr, det_info, dt_scale):
@@ -441,13 +402,7 @@ def _detector_interphoton_times(tttr, det_info, dt_scale):
     chs = np.asarray(det_info.get("chs", []), dtype=int)
     if chs.size == 0:
         return np.empty(0)
-    mask = np.isin(rout, chs)
-    mt_ranges = det_info.get("micro_time_ranges", []) or []
-    if mt_ranges:
-        mt_mask = np.zeros_like(mask, dtype=bool)
-        for start, stop in mt_ranges:
-            mt_mask |= (micro >= int(start)) & (micro < int(stop))
-        mask &= mt_mask
+    mask = np.isin(rout, chs) & micro_mask(micro, det_info.get("micro_time_ranges"))
     times = macro[mask]
     if times.size < 2:
         return np.empty(0)
@@ -468,7 +423,7 @@ def background_diagnostics_from_bursts(
     The plotting companion of :func:`estimate_background_from_bursts`: returns a
     :class:`BackgroundDiagnostics` per detector (identical rate), carrying the
     histogram, the fitted model and the tail region. *warnings*, when given,
-    receives the gate pre-flight (:func:`gate_warning`), as there.
+    receives the gate pre-flight (:func:`_check_gates`), as there.
     """
     _check_gates(tttr, detectors, warnings)
     header = tttr.header

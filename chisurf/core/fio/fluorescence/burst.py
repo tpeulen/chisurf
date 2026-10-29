@@ -43,6 +43,7 @@ from chisurf.core.datastore import (
     store_from_arrays,
     write_csv_table,
 )
+from chisurf.core.fluorescence.excitation import micro_mask
 
 #: Sentinel written for a per-detector column a burst has no photons in. Matches
 #: the ``-1.0`` the duration and rate columns already use, so a reader that
@@ -101,37 +102,6 @@ def mean_micro_time_ns(micro_times, indices, ns_per_channel: float) -> float:
     return float(np.mean(micro_times[indices])) * ns_per_channel
 
 
-def _micro_time_mask(micro_times, ranges) -> np.ndarray:
-    """Return the photons a detector's micro-time windows accept.
-
-    **No windows means every micro time**, which is the reading
-    :class:`~chisurf.core.fluorescence.burst.photons.StreamDef` documents and the
-    only one that makes sense: a detector defined by its routing channels alone is
-    ungated, not empty. Accumulating an empty list of windows into a zeroed mask —
-    which is what both writer paths used to do — silently produced an all-zero
-    column for *every* per-detector quantity, so a setup configured without a
-    micro-time gate wrote a burst table in which no detector had ever seen a photon.
-
-    Parameters
-    ----------
-    micro_times : numpy.ndarray
-        Micro times, in raw channels.
-    ranges : sequence of tuple
-        Half-open ``(start, stop)`` windows. Empty accepts everything.
-
-    Returns
-    -------
-    numpy.ndarray
-        Boolean mask over *micro_times*.
-    """
-    if not ranges:
-        return np.ones(len(micro_times), dtype=bool)
-    mask = np.zeros(len(micro_times), dtype=bool)
-    for start, stop in ranges:
-        mask |= (micro_times >= start) & (micro_times < stop)
-    return mask
-
-
 def write_mti_summary(
     filename: pathlib.Path, analysis_dir: pathlib.Path, max_macro_time, append: bool = True
 ):
@@ -170,39 +140,6 @@ def write_mti_summary(
     # Write the filename and max_macro_time to the .mti file
     with open(mti_filename, mode) as mti_file:
         mti_file.write(f"{filename}\t{max_macro_time:.6f}\n")
-
-
-def get_indices_in_ranges(rout, mt, chs, micro_time_ranges):
-    """Find photon indices matching routing channels and micro-time ranges.
-
-    Parameters
-    ----------
-    rout : np.ndarray
-        Routing channel numbers.
-    mt : np.ndarray
-        Micro-time values.
-    chs : list of int
-        Allowed routing channels.
-    micro_time_ranges : list of tuple
-        (start, end) micro-time range pairs.
-
-    Returns
-    -------
-    list of int
-        Matching photon indices.
-    """
-    # Create a boolean mask for the rout values in chs
-    rout_mask = np.isin(rout, chs)
-
-    # Create a boolean mask for the mt values in micro_time_ranges
-    mt_mask = np.zeros(mt.shape, dtype=bool)
-    for start, end in micro_time_ranges:
-        mt_mask |= (mt >= start) & (mt <= end)
-
-    # Get indices where both masks are true
-    indices = np.where(rout_mask & mt_mask)[0]
-
-    return indices.tolist()
 
 
 #: Loaded once; the file is the schema authority (see its own header).
@@ -478,7 +415,7 @@ def generate_burst_dataframe(
     det_global = {}
     for d, info in detectors.items():
         chm = np.isin(rout, info["chs"])
-        det_global[d] = chm & _micro_time_mask(micro, info["micro_time_ranges"])
+        det_global[d] = chm & micro_mask(micro, info["micro_time_ranges"])
 
     win_global = {w: (micro >= r0) & (micro < r1) for w, (r0, r1) in windows.items()}
 

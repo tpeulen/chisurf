@@ -68,13 +68,19 @@ def test_the_pie_split_says_nothing(demo):
 
 def test_ungated_detectors_are_not_checked(demo):
     ungated = {"green": {"chs": [0]}, "red": {"chs": [1], "micro_time_ranges": []}}
-    assert background.gate_warning(demo, ungated) is None
+    warnings: list[str] = []
+    background.estimate_background_from_bursts(demo, ungated, warnings=warnings)
+    assert warnings == []
 
 
 def test_a_donor_only_measurement_gives_no_false_warning(donor_only):
-    assert background.gate_warning(donor_only, PIE) is None
+    warnings: list[str] = []
+    background.estimate_background_from_bursts(donor_only, PIE, warnings=warnings)
+    assert warnings == []
 
 
 def test_without_a_list_nothing_is_checked(demo, monkeypatch):
-    monkeypatch.setattr(background, "gate_warning", lambda *a: pytest.fail("checked"))
+    from chisurf.core.fluorescence.burst import streams
+
+    monkeypatch.setattr(streams, "window_warnings", lambda *a: pytest.fail("checked"))
     background.estimate_background_from_bursts(demo, WRONG)

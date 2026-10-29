@@ -15,12 +15,12 @@ import numpy as np
 
 from chisurf.core.datastore import column_names, numeric_column, row_count
 from chisurf.core.fio.fluorescence.burst import (
-    _micro_time_mask,
     burst_feature_declaration,
     generate_burst_dataframe,
     mean_micro_time_ns,
     micro_time_resolution_ns,
 )
+from chisurf.core.fluorescence.excitation import micro_mask
 
 
 class _Header:
@@ -93,7 +93,7 @@ def _reference_dataframe_cells(start_stop, filename, tttr, windows, detectors):
 
     idx = {c: i for i, c in enumerate(cols)}
     det_global = {
-        d: np.isin(rout, info["chs"]) & _micro_time_mask(micro, info["micro_time_ranges"])
+        d: np.isin(rout, info["chs"]) & micro_mask(micro, info["micro_time_ranges"])
         for d, info in detectors.items()
     }
     win_global = {w: (micro >= r0) & (micro < r1) for w, (r0, r1) in windows.items()}

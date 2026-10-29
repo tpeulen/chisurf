@@ -40,6 +40,7 @@ from chisurf.core.fluorescence.burst.background import (
     estimate_background_from_interphoton_times,
 )
 from chisurf.core.fluorescence.burst.burst import burst_filter
+from chisurf.core.fluorescence.excitation import micro_mask
 from chisurf.core.fluorescence.tcspc.irf import detect_rising_edge
 
 __all__ = [
@@ -353,21 +354,12 @@ def extract_irf_background(
 
     q = float(np.clip(baseline_quantile, 0.0, 1.0))
 
-    def _background_mask(det, det_bg):
-        mt_ranges = det.get("micro_time_ranges", []) or []
-        if not mt_ranges:
-            return det_bg
-        mt_sel = np.zeros_like(keep)
-        for start, stop in mt_ranges:
-            mt_sel |= (micro >= int(start)) & (micro < int(stop))
-        return det_bg & mt_sel
-
     # The non-burst inter-photon times of every detector first: one fit window for all.
     gaps: dict[str, np.ndarray] = {}
     for name, det in detectors.items():
         chs = np.asarray(det.get("chs", []), dtype=int)
         ch_mask = np.isin(rout, chs) if chs.size else np.zeros_like(keep)
-        times = macro[_background_mask(det, ch_mask & keep)]
+        times = macro[ch_mask & keep & micro_mask(micro, det.get("micro_time_ranges"))]
         gaps[name] = (
             np.diff(times.astype(np.float64)) * dt_scale_ms if times.size >= 2 else np.empty(0)
         )

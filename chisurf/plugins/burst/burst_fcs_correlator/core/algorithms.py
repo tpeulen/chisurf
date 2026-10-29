@@ -17,7 +17,7 @@ from typing import Any
 import numpy as np
 import tttrlib
 
-from chisurf.core.fio.fluorescence.burst import _micro_time_mask
+from chisurf.core.fluorescence.excitation import micro_mask
 from chisurf.core.models.fcs.maxent import fcs_maxent
 
 # ----------------------------------------------------------------------
@@ -287,9 +287,9 @@ def correlate_single_burst(
     m_b = mask_b.mask.astype(bool)
 
     if micro_a:
-        m_a = np.logical_and(m_a, _micro_time_mask(tttr.micro_times, micro_a))
+        m_a = np.logical_and(m_a, micro_mask(tttr.micro_times, micro_a))
     if micro_b:
-        m_b = np.logical_and(m_b, _micro_time_mask(tttr.micro_times, micro_b))
+        m_b = np.logical_and(m_b, micro_mask(tttr.micro_times, micro_b))
 
     w1 = np.array(m_a, dtype=np.float64)
     w2 = np.array(m_b, dtype=np.float64)
