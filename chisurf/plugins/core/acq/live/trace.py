@@ -17,6 +17,8 @@ from typing import Any
 
 import numpy as np
 
+from chisurf.core.fluorescence.excitation import micro_mask
+
 __all__ = ["LiveTrace", "TraceStream", "trace_streams"]
 
 #: The trace's default span and bin width.
@@ -190,7 +192,7 @@ class LiveTrace:
         for k, s in enumerate(self.streams):
             sel = np.isin(channel, s.channels)
             if s.window is not None:
-                sel &= (micro >= s.window[0]) & (micro < s.window[1])
+                sel &= micro_mask(micro, [s.window])
             if s.phase is not None and phase is not None:
                 sel &= phase == s.phase
             if np.any(sel):

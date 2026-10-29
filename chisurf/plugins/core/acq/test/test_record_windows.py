@@ -214,15 +214,3 @@ def test_a_gate_that_holds_no_pulse_is_flagged_live():
     live.update(_decays(), windows, RES, N, gates={"red": [[1700, 3000]]})
     assert live.asking
     assert live.check.proposal_gates["red"] == [[0, N]]
-
-
-def test_the_stand_in_reads_the_setup_micro_time_in_ps():
-    """The setup editor writes ``tttr_reading.micro_time_resolution`` in ps (tttrlib's
-    ``from_setup`` reads it so too since the unit fix; Record passes it explicitly either way)."""
-    from chisurf.plugins.core.acq.live.analyzer import StreamingBurstAnalyzer
-
-    setup = {**SPC130, "tttr_reading": {"macro_time_resolution": 12.5,
-                                        "micro_time_resolution": 32.0}}
-    a = StreamingBurstAnalyzer.from_setup(setup, "pie")
-    assert a.micro_time_resolution() == pytest.approx(32e-12)
-    assert a.macro_time_resolution() == pytest.approx(12.5e-9)

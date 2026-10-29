@@ -1,8 +1,8 @@
 """One recording: a source read in a worker thread, analysed live, written to a PTU as it arrives.
 
 :class:`RecordSession` is what the Record tool starts and stops. The worker thread reads batches
-from the source, pushes them into the live burst analyzer (tttrlib's ``StreamingBurstAnalyzer``,
-or its stand-in; the measurement type is the :class:`~.setups.Experiment`'s preset) and into the
+from the source, pushes them into the live burst analyzer (tttrlib's ``StreamingBurstAnalyzer``;
+the measurement type is the :class:`~.setups.Experiment`'s preset) and into the
 recording; the view takes
 :meth:`RecordSession.snapshot` at its own pace (about 5 Hz) and never touches photons. When the run
 ends -- its duration reached, the source exhausted, or :meth:`stop` -- the open burst is closed,

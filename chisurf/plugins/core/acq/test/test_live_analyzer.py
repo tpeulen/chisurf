@@ -1,7 +1,7 @@
 """The live burst analyzer: batch-equal per preset, tttrlib's contract, the known answer comes back.
 
-`make_analyzer` returns tttrlib's StreamingBurstAnalyzer where the installed tttrlib has it, else
-the stand-in; every test here runs against whichever it is, so the same file checks both.
+`make_analyzer` is tttrlib's StreamingBurstAnalyzer.from_setup; the batch reference
+`analyze_offline` holds its tables.
 """
 
 from __future__ import annotations
@@ -12,7 +12,6 @@ import tttrlib
 
 from chisurf.plugins.core.acq.live.analyzer import (
     PRESETS,
-    StreamingBurstAnalyzer,
     analyze_offline,
     make_analyzer,
 )
@@ -156,24 +155,4 @@ def test_the_presets_infer_from_their_setups():
     assert infer_preset(PIE) == "pie" and infer_preset(TWO) == "two_color"
     assert infer_preset(default_setup("single_color", N_MICRO)) == "single_color"
     assert infer_preset({"detectors": {"green_par": {}, "green_perp": {}}}) == "mfd"
-    assert set(PRESETS) == set(StreamingBurstAnalyzer.PRESETS)
-
-
-def test_the_stand_in_keeps_little_in_memory(pie_run):
-    src, data = pie_run
-    a = StreamingBurstAnalyzer.from_setup(
-        PIE,
-        "pie",
-        macro_time_resolution=src.info.macro_clock_s,
-        micro_time_resolution=src.info.micro_res_s,
-    )
-    macro, micro, channel = data
-    for k in range(0, len(macro), 2000):
-        a.push_np(macro[k : k + 2000], micro[k : k + 2000], channel[k : k + 2000])
-    assert len(a._buf_macro) < len(macro) // 10
-
-
-def test_dcbs_is_refused_as_not_implemented():
-    a = StreamingBurstAnalyzer(1e-9, 1e-12)
-    with pytest.raises(ValueError, match="not implemented"):
-        a.set_search_mode("dcbs")
+    assert set(PRESETS) == set(tttrlib.StreamingBurstAnalyzer.PRESETS)

@@ -11,8 +11,8 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
+from tttrlib import StreamingBurstAnalyzer
 
-from chisurf.plugins.core.acq.live.analyzer import StreamingBurstAnalyzer
 from chisurf.plugins.core.acq.live.qc import live_qc
 from chisurf.plugins.core.acq.live.realism import IDEAL, REALISTIC
 from chisurf.plugins.core.acq.live.setups import Experiment, default_setup
