@@ -7,7 +7,25 @@
       "description": "Detector settings of the image series.",
       "collapsed": false,
       "sections": [
-        {"type": "custom", "key": "ics_detector", "description": "Detector channel and geometry used to read the image stack."}
+        {"type": "custom", "key": "ics_detector", "description": "Detector channel and geometry used to read the image stack."},
+        {
+          "type": "info",
+          "source": "windows_check_text",
+          "hidden_when": {"attr": "windows_check_quiet", "equals": true},
+          "description": "The excitation-window check of the last photon file read: the micro-time ranges the stack is filled through (from the detector of the setup) do not hold the measurement's excitation pulses (another TAC range or PIE delay), so the image holds the wrong excitation or nothing. The gate detected in the data is named."
+        },
+        {
+          "type": "button_row",
+          "hidden_when": {"attr": "windows_check_offer", "equals": false},
+          "description": "Take the gate detected in the data.",
+          "buttons": [
+            {
+              "action": "use_detected_windows",
+              "label": "Use detected windows",
+              "description": "Write the micro-time gate detected in this measurement onto the reader (a broken gate is opened to the whole micro-time range); the next read applies it. The saved setup is not changed."
+            }
+          ]
+        }
       ]
     },
     {

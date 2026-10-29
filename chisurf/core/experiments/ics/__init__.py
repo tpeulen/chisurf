@@ -9,6 +9,7 @@ one carpet rather than separate analyses; see
 
 from __future__ import annotations
 
+import logging
 import pathlib
 
 import numpy as np
@@ -17,6 +18,7 @@ import tttrlib
 import chisurf.core.data
 import chisurf.core.fio.image
 from chisurf.core.experiments.core.reader import ExperimentReader
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
 from chisurf.core.fluorescence.imaging.drift import correct_drift
 from chisurf.core.roi import ROI, as_roi
 
@@ -52,8 +54,13 @@ def _load_tiff_stack(path: str) -> np.ndarray:
     return np.asarray(chisurf.core.fio.image.imread(path))
 
 
-class ICSReader(ExperimentReader):
-    """Reader producing a spatiotemporal image-correlation carpet."""
+class ICSReader(ExperimentReader, WindowsPreflightMixin):
+    """Reader producing a spatiotemporal image-correlation carpet.
+
+    A TTTR stack read through micro-time ranges is checked against the measurement's excitation
+    pulses (the shared excitation-window pre-flight): the line goes to the curve's
+    ``meta_data['warnings']`` and the log, and the reader form offers the detected gates.
+    """
 
     name: str = "Image correlation (RICS/STICS/TICS/iMSD)"
     operation_type = "image_analysis"
@@ -216,6 +223,34 @@ class ICSReader(ExperimentReader):
     def frame_duration_ms(self, value: float) -> None:
         self.frame_duration = float(value) if float(value) > 0.0 else None
 
+    # -- the excitation-window pre-flight ------------------------------------------------ #
+    @property
+    def windows_check(self):
+        """The check of the micro-time ranges against the last TTTR read (``None``: none)."""
+        return self.__dict__.get("_windows_check")
+
+    @windows_check.setter
+    def windows_check(self, value) -> None:
+        self.__dict__["_windows_check"] = value
+
+    def preflight_setup(self) -> dict:
+        """The micro-time ranges as the gate of one detector on the channels read (no PIE
+        windows: the ranges select photons, they are not windows of an analysis)."""
+        ranges = [[int(r[0]), int(r[1])] for r in (self.micro_time_ranges or []) if len(r) >= 2]
+        chs = getattr(self, "_channels_read", None) or tuple(
+            self.channel_numbers or [int(self.channel)]
+        )
+        if not ranges:
+            return {}
+        detector = {"chs": list(chs), "micro_time_ranges": ranges}
+        return {"windows": {}, "detectors": {"ics": detector}}
+
+    def take_preflight_setup(self, setup: dict) -> None:
+        """Read through the gate detected in the data from now on (the next read applies it)."""
+        det = (setup.get("detectors") or {}).get("ics") or {}
+        if det.get("micro_time_ranges"):
+            self.micro_time_ranges = [[int(a), int(b)] for a, b in det["micro_time_ranges"]]
+
     def view_spec(self):
         """Return the declarative editor spec for ICS reader settings."""
         from chisurf.core.dataspec import load_view_spec
@@ -314,6 +349,7 @@ class ICSReader(ExperimentReader):
             Stack of shape ``(n_frames, ny, nx)``, or ``None`` when the file
             could not be interpreted as an image stack.
         """
+        self.windows_check = None  # the check is of the stack read now
         suffix = fn.suffix.lower()
         if suffix in (".tif", ".tiff"):
             arr = np.asarray(_load_tiff_stack(fn.as_posix()))
@@ -351,6 +387,11 @@ class ICSReader(ExperimentReader):
                 mtr_arg = [(int(a), int(b)) for (a, b) in mtr_norm]
             except Exception:
                 mtr_arg = None
+
+        # The ranges gate the photons in the data's channels: held against its excitation pulses.
+        self._channels_read = tuple(int(c) for c in channels)
+        if mtr_arg:
+            self.run_windows_preflight(tttr_all)
 
         kwargs = dict(tttr_data=tttr_all, channels=list(channels), fill=True)
         if mtr_arg:
@@ -487,6 +528,13 @@ class ICSReader(ExperimentReader):
             }
         )
 
+        window_warning = self.windows_check_text() if mtr_norm is not None else ""
+        if window_warning:
+            logging.warning("ICS %s: %s", fn.name, window_warning)
+            meta_all_warnings = [window_warning]
+        else:
+            meta_all_warnings = []
+
         n_lags, ny, nx = carpet.shape
         from chisurf.core.experiments.ics.data import carpet_coordinates
 
@@ -498,6 +546,8 @@ class ICSReader(ExperimentReader):
             "coordinates": carpet_coordinates(meta_ics),
             # Instrument numbers a model may name but not fit.
             "parameter_defaults": {"pxl_size": float(timing.pixel_size_nm)},
+            # The excitation-window pre-flight of the micro-time ranges the stack was read with.
+            "warnings": meta_all_warnings,
             # Experiment-agnostic grid description so GUI components can reason
             # about the layout of the flattened carpet without knowing about ICS.
             "grid": {
