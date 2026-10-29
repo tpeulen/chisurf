@@ -4,6 +4,24 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## `from_setup` reads `tttr_reading.micro_time_resolution` as ns; the setup editor writes ps (found 2026-10-29)
+
+status: open — owner: tttrlib streaming (`modules/streaming/include/Streaming.i:367`) and the
+Record stand-in `chisurf/plugins/core/acq/live/analyzer.py` (`from_setup`), which copies it.
+When `micro_time_resolution` is not passed, both multiply the setup's value by 1e-9, while the
+setup editor (`core/setup_channel_definition.read_tttr`) stores picoseconds (`* 1e12`): a 50 ps
+setup becomes 50 ns channels. Record always passes the device resolution, so the live run is
+unaffected; the window check (`chisurf.core.fluorescence.excitation.setup_window_resolution_s`)
+reads ps. Fix in tttrlib (ps, as the editor writes) and mirror it in the stand-in.
+
+## Two burst-run naming tests red with the uncommitted burst_container change in the tree (found 2026-10-29)
+
+status: open — not this lane's: `burst_selection/tests/test_run_picker.py` (3) and
+`alex_suite/tests/test_step_apps.py::test_titration_takes_burst_runs_from_the_workspace` expect run
+names `countrate_All 0.1000#60` / `runBursts#1` and get `sliding_window_All 0.1500#60`, with
+another session's uncommitted edits to `core/fio/fluorescence/burst_container.py`,
+`core/fio/analysis_path.py` and `burst_selection/api/io.py` in the working tree.
+
 ## Code ahead of the pins: relock before the release cut (found 2026-10-26)
 
 status: open — owner: release cut (the lock moves only then, by convention).

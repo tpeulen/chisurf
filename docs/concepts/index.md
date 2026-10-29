@@ -68,6 +68,7 @@ frap
 intensity_traces
 smfret_bursts
 fret_check
+excitation_windows
 us_alex
 accurate_fret
 burst_2cde

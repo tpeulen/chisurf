@@ -5,6 +5,7 @@
 * [Data IO](data-io.md) - File loading, TTTR/photon readers, format registry, and slow-storage staging.
 * [Image IO](image-io.md) - The one seam for reading and writing image files, and the axis labels that say whether a stack's pages are frames or colours.
 * [Burst companion files](burst-companions.md) - The one contract every burst-analysis plugin follows when writing results beside the bursts, so a folder merges into one table without misaligning.
+* [Excitation windows](excitation-windows.md) - PIE pulses and µs-ALEX alternation found in the data; one check of a setup's windows that Record, the setup editor and burst selection call before using them.
 * [Fluorescence domain](fluorescence-domain.md) - Shared fluorescence math and algorithms used by models and plugins.
 * [Fitting engine](fitting.md) - Fit/FitGroup, weighted residuals, global analysis, error analysis, and sampling.
 * [Graph objective](graph-objective.md) - The seam in `minimizer.py` that builds the whole fitting objective in C++ when a model can be expressed as an Expression → ChiSquared → Minimizer pipeline, and falls back to a Python-residual director when it cannot.
