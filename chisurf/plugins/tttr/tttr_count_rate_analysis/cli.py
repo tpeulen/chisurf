@@ -18,7 +18,12 @@ from chisurf.core.data_io.detector_setups import load_detector_setups
 
 
 def calculate_count_rates(
-    tttr_files: list[str], channels: dict[str, list[dict[str, Any]]], verbose: bool = False
+    tttr_files: list[str],
+    channels: dict[str, list[dict[str, Any]]],
+    verbose: bool = False,
+    *,
+    setup: dict[str, Any] | None = None,
+    warnings: list[str] | None = None,
 ) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, int]], dict[str, float]]:
     """Calculate count rates for all files and channels.
 
@@ -26,6 +31,11 @@ def calculate_count_rates(
         tttr_files: List of paths to TTTR files
         channels: Dictionary of channel definitions
         verbose: Whether to print verbose output
+        setup: The detector setup the channels come from; when given, its PIE windows and
+            detector gates are held against each file's excitation pulses (the shared
+            excitation-window pre-flight) before the photons are counted
+        warnings: Receives one ``"<file>: <line>"`` per file whose windows or gates do not
+            match its data (nothing is changed: the counts use the setup as given)
 
     Returns:
         Tuple containing:
@@ -56,6 +66,12 @@ def calculate_count_rates(
         try:
             # Load TTTR file
             tttr = tttrlib.TTTR(file_path)
+            if setup is not None and warnings is not None:
+                from .windows import window_warning
+
+                line = window_warning(tttr, setup)
+                if line:
+                    warnings.append(f"{os.path.basename(file_path)}: {line}")
 
             # Get macro time resolution (in seconds)
             header = tttr.header
@@ -316,7 +332,10 @@ def analyze(files, setup_file, setup_name, output, verbose):
         click.echo(f"Processing {len(files)} files...")
 
     # Calculate count rates
-    count_rates, n_photons, measurement_times = calculate_count_rates(files, channels, verbose)
+    warnings: list[str] = []
+    count_rates, n_photons, measurement_times = calculate_count_rates(
+        files, channels, verbose, setup=setup_data, warnings=warnings
+    )
 
     # Print summary
     all_channels = set()
@@ -333,6 +352,8 @@ def analyze(files, setup_file, setup_name, output, verbose):
         mean_rate = np.mean(rates) / 1000.0  # Convert to kHz
         std_rate = np.std(rates) / 1000.0  # Convert to kHz
         click.echo(f"  {channel}: {mean_rate:.2f} ± {std_rate:.2f} kHz")
+    for line in warnings:
+        click.echo(line, err=True)
 
     # Save results if output file is specified
     if output:

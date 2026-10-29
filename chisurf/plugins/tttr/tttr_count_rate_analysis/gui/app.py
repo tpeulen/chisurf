@@ -21,7 +21,7 @@ import numpy as np
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
-from emtk.view_form import FormState, draw_form
+from emtk.view_form import FormState, draw_form, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
@@ -79,6 +79,17 @@ RESULTS_TABLE = {
 }
 
 
+def _panel(spec: dict, title: str) -> dict:
+    """The panel titled *title* anywhere in *spec* (an empty one when there is none)."""
+    for section in spec.get("sections", []):
+        if section.get("title") == title:
+            return section
+        found = _panel(section, title)
+        if found.get("sections"):
+            return found
+    return {"sections": []}
+
+
 def setup_to_channels(setup: dict) -> dict:
     """Convert a saved detector setup into the model's channel-definition map.
 
@@ -129,6 +140,10 @@ class CountRateGui(TourTarget):
         self.plot_signature: tuple[int, int, float] | None = None
         self.selected_file: str | None = None
         self.results_form = FormState()
+        self.check_form = FormState()
+        spec = json.loads(Path(__file__).with_name("count_rate.view.json").read_text("utf-8"))
+        #: The excitation-window check under the channel definition (declared in the view spec).
+        self.check_sections = _panel(spec, "Excitation windows check")["sections"]
 
         layout = Split(
             "h",
@@ -370,6 +385,12 @@ class CountRateGui(TourTarget):
         self.remember("channel_list")
         im.end_disabled()
 
+    def _draw_windows_check(self) -> None:
+        """The shared excitation-window pre-flight: its line and the *Use detected windows* offer."""
+        if getattr(self.tool, "windows_check", None) is None:
+            return
+        draw_sections(self.check_sections, self.tool, self.check_form)
+
     # ── the plot ──────────────────────────────────────────────────────────
 
     def _draw_plot(self, box: tuple[float, float, float, float]) -> None:
@@ -435,6 +456,7 @@ class CountRateGui(TourTarget):
                 self.on_save()
         self.remember("save")
         im.end_disabled()
+        self._draw_windows_check()
         im.separator()
 
         rows = m.results_rows()

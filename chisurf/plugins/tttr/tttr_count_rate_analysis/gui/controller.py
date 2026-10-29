@@ -17,17 +17,20 @@ from emtk.i18n import tr
 
 from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
 from chisurf.core.fio.staging import TTTR_EXTENSIONS, open_tttr
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin, windows_message
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
 
+from ..windows import preflight_setup, window_check
 from .app import CountRateApp, setup_to_channels
 from .view_model import CountRateViewModel
 
 
-class CountRateController:
+class CountRateController(WindowsPreflightMixin):
     def __init__(self, reader=None, setups=None):
         self._model = CountRateViewModel()
+        self.windows_check = None
         self.reader = reader
         self._setups = deepcopy(setups or {})
         self.setups_ready = setups is not None
@@ -206,6 +209,7 @@ class CountRateController:
         channels = deepcopy(self.channels())
         model.channels_provider = lambda: channels
         setup = deepcopy(self.channel_editor.model.get_settings())
+        model.setup = preflight_setup(setup)
         reading = setup_lut_open_kwargs(setup)
         timing = setup.get("tttr_reading") or {}
         if timing.get("override_timing") and float(timing.get("macro_time_resolution", 0) or 0) > 0:
@@ -231,7 +235,8 @@ class CountRateController:
         def publish(result):
             self._model = result
             self._model.channels_provider = self.channels
-            self.message = f"Analyzed {len(result.files)} files."
+            self.windows_check = _worst_check(result.window_checks)
+            self.message = f"Analyzed {len(result.files)} files." + _warning_text(result.warnings)
 
         def work():
             model.compute(cancel_cb=self.job.cancelled.is_set, progress_cb=progress)
@@ -243,7 +248,31 @@ class CountRateController:
     def clear(self):
         self.job.stop()
         self._model.clear()
+        self.windows_check = None
         self.progress = (0, 0)
+
+    # -- the excitation windows against the data (the shared pre-flight) ---------------------- #
+    def preflight_setup(self) -> dict:
+        """The windows, detectors and reading routine the count rates use."""
+        return preflight_setup(self.channel_editor.model.get_settings())
+
+    def take_preflight_setup(self, setup: dict) -> None:
+        """The user took the detected windows (and gates, and their channel width): they become the
+        detector definition of the next Calculate. The saved setup file is not changed."""
+        full = deepcopy(self.channel_editor.model.get_settings())
+        full.pop("channels", None)
+        for key in ("windows", "detectors", "tttr_reading"):
+            if setup.get(key):
+                full[key] = deepcopy(setup[key])
+        self.use_setup(full, self.selected_setup or "Custom setup")
+        self.message = "Windows from the data: " + ", ".join(
+            f"{k} {v[0]}–{v[1]}" for k, v in full.get("windows", {}).items()
+        ) + ". Press Calculate."
+
+    def run_windows_preflight(self, tttr):
+        """Check the detector definition against *tttr*; the line for the warnings (``None``: fine)."""
+        self.windows_check = window_check(tttr, self.preflight_setup())
+        return windows_message(self.windows_check)
 
     def save_dialog(self):
         if self._model.can_save():
@@ -315,6 +344,7 @@ class CountRateController:
     def restore_state(self, state):
         self.job.stop()
         self._model.clear()
+        self.windows_check = None
         self._model.files = list(state.get("files", []))
         self._setups = deepcopy(state.get("setups", {}))
         self.selected_setup = str(state.get("selected_setup", ""))
@@ -324,6 +354,22 @@ class CountRateController:
         self._model._meas_times = dict(state.get("measurement_times", {}))
         self._model._channel_order = list(state.get("channel_order", []))
         self.adopt_editor_definition(self._setups.get(self.selected_setup, {}), self.selected_setup)
+
+
+def _worst_check(checks: dict):
+    """The check the tool shows: the first file whose windows do not match, else the first note."""
+    found = [c for c in checks.values() if c is not None]
+    return next((c for c in found if c.mismatch), next(iter(found), None))
+
+
+def _warning_text(lines: list[str]) -> str:
+    """The pre-flight in the status line: which files it has something to say about (the line
+    itself is shown under the results, with the offer)."""
+    if not lines:
+        return ""
+    names = ", ".join(line.split(": ", 1)[0] for line in lines[:3])
+    more = f" and {len(lines) - 3} more" if len(lines) > 3 else ""
+    return f" Excitation-window check: see Results per channel ({names}{more})."
 
 
 class _StandaloneApp(CountRateApp):

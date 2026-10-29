@@ -39,6 +39,12 @@ class CountRateViewModel:
         self.macro_resolution_override: float | None = None
         #: Callable returning the DetectorWizardPage channels map (set by the GUI).
         self.channels_provider: Callable[[], dict] | None = None
+        #: The detector setup the channels come from; when set, :meth:`compute` holds its PIE
+        #: windows and gates against every file (the shared excitation-window pre-flight).
+        self.setup: dict | None = None
+        #: The pre-flight of each computed file (``None``: nothing to say), and its lines.
+        self.window_checks: dict[str, object] = {}
+        self.warnings: list[str] = []
 
         # Results (populated by :meth:`compute`).
         self._per_file: dict[str, dict[str, float]] = {}
@@ -84,6 +90,8 @@ class CountRateViewModel:
         self._per_file_photons = {}
         self._meas_times = {}
         self._channel_order = []
+        self.window_checks = {}
+        self.warnings = []
         self.notify("files")
 
     # ── compute ────────────────────────────────────────────────────────
@@ -113,6 +121,8 @@ class CountRateViewModel:
         per_file: dict[str, dict[str, float]] = {}
         per_file_photons: dict[str, dict[str, int]] = {}
         meas_times: dict[str, float] = {}
+        window_checks: dict[str, object] = {}
+        warnings: list[str] = []
 
         for index, path in enumerate(self.files):
             if callable(cancel_cb) and cancel_cb():
@@ -120,6 +130,15 @@ class CountRateViewModel:
             if callable(progress_cb):
                 progress_cb(index, len(self.files))
             tttr = (self.loader or tttrlib.TTTR)(path)
+            if self.setup is not None:
+                from chisurf.core.fluorescence.excitation import windows_message
+
+                from ..windows import window_check
+
+                window_checks[path] = window_check(tttr, self.setup)
+                line = windows_message(window_checks[path])
+                if line:
+                    warnings.append(f"{os.path.basename(path)}: {line}")
             mtr = (
                 self.macro_resolution_override
                 if self.macro_resolution_override is not None
@@ -150,6 +169,8 @@ class CountRateViewModel:
         self._per_file_photons = per_file_photons
         self._meas_times = meas_times
         self._channel_order = list(channels.keys())
+        self.window_checks = window_checks
+        self.warnings = warnings
         self.notify("computed")
 
     @staticmethod
