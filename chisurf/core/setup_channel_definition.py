@@ -97,18 +97,9 @@ class ChannelDefinition:
         ) * max(1, int(reading.get("micro_time_binning", 1)))
         reading["excitation_period"] = float(reading.get("macro_time_resolution", 0))
         result["setup_name"] = self.current_name
-        result["channels"] = {
-            f"{window}_{detector}": [
-                {
-                    "window_range": window_range,
-                    "detector_chs": info.get("chs", []),
-                    "micro_time_range": gate,
-                }
-                for gate in info.get("micro_time_ranges", [])
-            ]
-            for window, window_range in result["windows"].items()
-            for detector, info in result["detectors"].items()
-        }
+        from chisurf.core.fluorescence.excitation import channel_map
+
+        result["channels"] = channel_map(result)
         return result
 
     def rename_detector(self, old, new):
