@@ -39,7 +39,7 @@ from chisurf.plugins.emtk_layout import (
 )
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
-from .model import HistogramModel
+from .model import HistogramModel, vv_vh_channels
 
 HERE = Path(__file__).parent
 FORMATS = ["Auto", "PTU", "HT3", "SPC-130", "SPC-600_256", "SPC-600_4096", "PTO"]
@@ -139,8 +139,7 @@ class HistogramFields:
                 overrides = model.filetype, model.binning, model.g_factor
                 app.editor.load_definition(settings)
                 if detector is None:
-                    model.parallel = routing[::2] if resolved else routing
-                    model.perpendicular = routing[1::2] if resolved else []
+                    model.parallel, model.perpendicular = vv_vh_channels({"chs": routing}, resolved)
                 model.filetype, model.binning, model.g_factor = overrides
                 model.update_output_filename()
         elif name == "dt_ns":

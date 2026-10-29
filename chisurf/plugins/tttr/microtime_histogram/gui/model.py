@@ -129,6 +129,15 @@ def gap_selection(selected, macro_times, gap_ticks, invert=False):
     return out
 
 
+def vv_vh_channels(detector: dict, polarized: bool) -> tuple[list[int], list[int]]:
+    """The VV and VH routing channels of *detector* (:func:`polarization_channels`; a channel is
+    never both in a histogram); without polarization every channel is VV."""
+    if not polarized:
+        return list(detector.get("chs") or []), []
+    parallel, perpendicular = polarization_channels(detector)
+    return parallel, [c for c in perpendicular if c not in parallel]
+
+
 class HistogramModel:
     def __init__(self):
         self.files = []
@@ -190,14 +199,8 @@ class HistogramModel:
     def select_detector(self, name):
         self.detector = name
         config = self.setup.get("detectors", {}).get(name, {})
-        routing = list(config.get("chs") or [])
-        parallel, perpendicular = polarization_channels(config)
-        if parallel or perpendicular:
-            # a channel is parallel or perpendicular in a histogram, never both
-            self.parallel = parallel if self.polarized else routing
-            self.perpendicular = (
-                [c for c in perpendicular if c not in parallel] if self.polarized else []
-            )
+        if config.get("chs") or config.get("ch_p") or config.get("ch_s"):
+            self.parallel, self.perpendicular = vv_vh_channels(config, self.polarized)
         if config.get("g_factor") is not None:
             self.g_factor = float(config["g_factor"])
         self.original_histograms = {}
