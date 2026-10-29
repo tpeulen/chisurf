@@ -223,7 +223,12 @@ window outside the range, a pulse in no window, a boundary inside a pulse, two p
 window -- a warning appears under **Experiment setup** with **Update windows** (the next run uses
 the detected ones; this run is recorded whole and can be re-analysed) and **Keep** (asked again
 only when the decays show another pulse pattern). Nothing changes silently and the run goes on.
-One pulse only is an info line: a donor-only sample or not PIE, windows not checked.
+One pulse only is an info line: a donor-only sample or not PIE, windows not checked. The detectors'
+micro-time gates are converted and checked with the windows (a gate that hides a pulse is
+offered opened to the whole range). A **µs-ALEX** run is checked on its first photons' macro
+times: the alternation period and the laser windows; *Update windows* takes both. Where the
+source cannot provide macro times the line reads *ALEX windows not checked live; checked when the
+run is analysed*.
 
 **From a measurement…** takes the windows of an earlier FRET measurement of the workspace: its
 pulses are detected and shown against the current windows, and taken (converted to this device's

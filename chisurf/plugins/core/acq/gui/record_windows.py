@@ -110,12 +110,15 @@ class WindowCheckMixin:
             self.window_check_text = tr("Windows kept although they do not match the data.")
         else:
             self.window_check_level = "warning"
-            self.window_check_text = tr("⚠ The windows do not match the decays: {why}").format(
+            self.window_check_text = tr("⚠ The windows do not match the data: {why}").format(
                 why=check.summary
             )
+        unit = tr(" ticks") if det.domain == "macro" else ""
         self.window_check_detail = "\n".join(
-            [f"[{i.severity}] {i.message}" for i in check.issues]
-            + [tr("Detected: ") + ", ".join(f"{k} {v[0]}–{v[1]}"
+            # the first finding is the warning line itself
+            [f"[{i.severity}] {i.message}" for i in check.issues
+             if i.message not in self.window_check_text]
+            + [tr("Detected: ") + ", ".join(f"{k} {v[0]}–{v[1]}{unit}"
                                            for k, v in check.proposal.items())]
         )
 

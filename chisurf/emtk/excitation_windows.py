@@ -214,8 +214,8 @@ class WindowsReview:
             self.status_text = tr("The windows match the data.") + " " + det.message
         else:
             self.status_text = tr("The windows do not match the data: ") + c.summary
-        lines = [f"[{i.severity}] {i.message}" for i in c.issues if i.code not in
-                 ("single_pulse", "unclear")]
+        lines = [f"[{i.severity}] {i.message}" for i in c.issues
+                 if i.code not in ("single_pulse", "unclear") and i.message not in self.status_text]
         lines += det.notes
         self.detail_text = "\n".join(lines)
         self._rows = []
