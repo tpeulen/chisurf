@@ -19,6 +19,70 @@ must add. Where CMC's bundle documents something, this page links it instead of 
 
 ## Where to pick this up (acquisition journeys, 2026-10-27)
 
+**2026-10-29 MT200 and video handoff:** After the experiment stopped the PC was
+rebooted; a fresh direct `HH_OpenDevice(0)` still returned -2 (device busy).
+Windows device restart did not clear it either. The prior log showed USB command
+failure followed by device-not-open. The cause is not established; repeat the
+direct open and short count test after the HydraHarp is physically power-cycled
+or its USB is reconnected. Local libphacq changes reject false-success opens,
+failed settings and failed starts; they have not been deployed. Record's displayed
+hardware rates are frozen during a run, so displayed zeros alone do not prove an
+empty stream.
+
+**2026-10-29 evening, HH400 -2 root cause (zcode continuation):** the "busy" was
+real once: a leftover Record process (`python -m chisurf --app acq`, PID 13704)
+held `\Device\Pqusb-0` and both `pqusb0_busy` mutexes — every earlier vendor-DLL
+probe ran beside it (kill it and the mutex disappears). But after killing it, with
+no handles and no mutex (verified by handle64 and a fresh CreateMutex probe), and
+after a genuine `pnputil /restart-device`, `HH_OpenDevice` **still returns -2** --
+from snAPI's hhlib64 and from SymPhoTime's own HHSPT64_V2 (V1: -1), while a raw
+exclusive `CreateFile` on `\\.\Pqusb-0` succeeds. So the -2 is the vendor library's
+own verdict, not the kernel's (disassembly: -2 is one specific open-helper status,
+not only the busy mutex; the mutex does not exist). snAPI 1.2.5 is the latest
+published, so there is no upgrade to try. **The vendor-DLL lane is dead on this
+machine** (owner: "in snapi it never worked"; SymPhoTime opens the same unit
+fine). Constraints from the owner: the machine must keep working with SymPhoTime
+*and* phacq; a driver may be installed, but not one that permanently displaces
+SymPhoTime's. Path prepared in libphacq (source only, **not deployed**, the
+Windows branch is compile-untested here): `PqDriver::open/enumerate` construct
+`Hh400Device` over `PhacqSysTransport` for PID 0009, `phacq.inf` lists the HH400,
+and `phacq_init.py.in` prefers the native driver when it sees a unit (snAPI
+otherwise). To use it: build the Windows wheel, install phacq.sys, rebind the
+HH400 (`pnputil /add-driver phacq.inf /install`) — the unit is then unavailable to
+SymPhoTime **until its own driver is reinstalled**, so a per-session rebind script
+is the only way one unit serves both; that trade is the owner's call. Alternative
+lane: ask PicoQuant why HH_OpenDevice returns DEVICE_BUSY on an HH400 USB3
+(VID_0E0D PID_0009, serial 1032692) with nothing holding the unit; the probes are
+in `C:\phacq-setup\hh_*_probe*.py`, and a ProcMon capture of a *working*
+SymPhoTime open (owner-launched, laser safety!) diffed against the python probe
+would pin the difference.
+
+Record has a general live video panel with a Matrix Vision SDK adapter and an
+optional OpenCV adapter. The MT200 has a MATRIX VISION mvSIGMA/mvDELTA PCI frame
+grabber (Windows class FrameGrabber); the earlier camera-only inventory missed it.
+The scoped panel was deployed with originals backed up in
+`C:\phacq-setup\video-backup-20261029`. The installed panel received 57 distinct
+768×576 frames in four seconds from `mv:0`; images were dim, so backreflection
+itself remains unverified. Restart Record, select Matrix Vision and adjust preview
+gain.
+
+**2026-10-29 evening, video without OpenCV (zcode continuation):** a
+`.tif`/`.tiff` recording path writes every captured frame as one page of a
+streaming multi-page TIFF through the image seam — tttrlib grew `imappend`
+(append one grayscale or RGB page, BigTIFF when it creates the file) behind
+`chisurf.core.fio.image.append` — with the timestamps sidecar unchanged; any
+other suffix stays a video file through OpenCV (the default output is now
+`capture.tif`, and the MT200 has no OpenCV). Sources stay abstract: `source_for()`
+resolves a registered `prefix:` SDK adapter (`mv:` today; another card — Matrox,
+say — is one adapter class plus one `SDK_ADAPTERS` entry) and falls through to
+OpenCV for camera indices, paths and URLs; the panel names no card. The preview
+moved out of the Acquisition fold stack into its own **Camera** dock (main
+region), visible in every mode including the simulator, brought forward when a
+source delivers its first frame. Video and its timestamp sidecar remain external
+files, not embedded in the photon project. A blocked driver read can keep a
+source open until it returns; a finalizer exceeding the two-second shutdown wait
+can leave an incomplete file.
+
 The Record tool's acquisitions are driven end to end through the emtk shell by
 `test/e2e/test_acq_journeys.py` (one process per leg, verdict JSON + a PNG per step in
 `test/e2e/acq_journeys/<leg>/`); 9 legs pass on `ssh home` at 2026-10-27 (image scan → FRC + 13 imaging

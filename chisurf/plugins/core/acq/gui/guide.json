@@ -202,6 +202,13 @@
       "target": {
         "name": "survey_map"
       }
+    },
+    {
+      "title": "The camera",
+      "text": "The <b>Camera</b> dock previews a camera or capture card next to the plots -- in every mode, including the simulator, because it watches the sample, not the photons. Enter a camera index, a Matrix Vision device (mv:0) or a file, press <b>Connect</b>, and judge the coverslip distance from the backreflection; <b>Preview gain</b> brightens a dim feed without touching recordings. Recording to a name ending in .tif or .tiff writes every frame to a multi-page TIFF; any other name needs the optional OpenCV package.",
+      "target": {
+        "name": "video_panel"
+      }
     }
   ]
 }

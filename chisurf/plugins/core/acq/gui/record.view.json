@@ -1852,6 +1852,15 @@
     },
     {
       "type": "panel",
+      "title": "Video",
+      "dock": "video",
+      "description": "Preview and record a selected camera, capture card, video file or stream independently of photon acquisition. The Camera dock is available in every mode, including the simulator.",
+      "sections": [
+        {"type": "custom", "key": "video_panel", "description": "Video source, live preview and recording."}
+      ]
+    },
+    {
+      "type": "panel",
       "title": "Quality",
       "dock": "quality",
       "sections": [

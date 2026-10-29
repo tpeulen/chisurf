@@ -1,0 +1,34 @@
+{
+  "title": "Video",
+  "simple_sections": [
+    {"type": "custom", "key": "video_frame", "description": "Live preview from the selected source."},
+    {"type": "button_row", "buttons": [
+      {"action": "record", "label": "⏺", "description": "Record every frame to a multi-page TIFF beside the photon data."},
+      {"action": "stop_recording", "label": "⏹", "description": "Finish the recording; the preview stays on."}
+    ]},
+    {"type": "info", "source": "status"}
+  ],
+  "sections": [
+    {"type": "custom", "key": "video_frame", "description": "Live preview from the selected source."},
+    {"type": "value", "attr": "address", "kind": "str", "label": "Source",
+     "description": "Camera index (for example 0), Matrix Vision device (mv:0), a video file, or a supported stream URL. The selected source is opened only when Connect is pressed."},
+    {"type": "button_row", "buttons": [
+      {"action": "discover", "label": "Discover", "description": "List operating-system video devices without opening them. Device names do not determine OpenCV indices."},
+      {"action": "use_matrix_vision", "label": "Matrix Vision", "description": "Select the first Matrix Vision SDK capture device."},
+      {"action": "connect", "label": "Connect", "description": "Open the selected video source."},
+      {"action": "disconnect", "label": "Disconnect", "description": "Stop capture and close the source."}
+    ]},
+    {"type": "info", "source": "discovered"},
+    {"type": "info", "source": "status"},
+    {"type": "value", "attr": "display_gain", "kind": "float", "label": "Preview gain", "minimum": 0.1, "maximum": 20.0, "step": 0.1,
+     "description": "Brighten the live preview to inspect dim backreflection. Recorded image data is unchanged."},
+    {"type": "value", "attr": "output", "kind": "str", "label": "Recording file",
+     "description": "New file for recorded frames. A name ending in .tif or .tiff records a multi-page TIFF: every captured frame becomes one page, needing no OpenCV. Any other name records a video file through the optional OpenCV package. Existing files are never overwritten; frame timestamps are saved alongside."},
+    {"type": "value", "attr": "fps", "kind": "float", "label": "AVI FPS", "minimum": 0.1, "maximum": 240.0, "step": 1.0,
+     "description": "Playback frame rate of an AVI or other video-file recording. A TIFF recording stores every captured frame with its own capture time, so this does not apply to it."},
+    {"type": "button_row", "buttons": [
+      {"action": "record", "label": "⏺ Record", "description": "Record video frames and timestamps to a new file."},
+      {"action": "stop_recording", "label": "⏹ Stop", "description": "Finish the video recording while keeping the preview open."}
+    ]}
+  ]
+}

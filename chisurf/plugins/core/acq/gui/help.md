@@ -264,3 +264,35 @@ photons dataset with its bursts as a run below it, readable by ndXplorer and eve
 `.cs.pto` at the next save, which the autosave makes at once; *Link* keeps only the path. The status
 line says what happened; *Saved* names the file (the full path is its tooltip) and **Show file**
 opens its folder.
+
+## Video
+
+The **Camera** dock previews a selected camera or capture card, video file, or
+supported stream URL, next to the plots and in every mode -- including the
+simulator, because it watches the sample, not the photons. The dock comes
+forward when a connected source delivers its first frame. Enter a camera index
+such as `0`, a Matrix Vision SDK device such as `mv:0`, or the path or URL, and
+choose Connect. The Matrix Vision source uses the installed mvIMPACT Acquire
+driver and supports monochrome frames; other capture cards can be added the
+same way (one adapter, registered by address prefix). Camera indices, files and
+streams go through the optional OpenCV Python package. Discover lists
+operating-system video devices without opening them; the list does not
+establish the OpenCV camera index. Devices are opened only when selected and
+connected.
+
+Enter a new recording path, then choose Record. A name ending in `.tif` or
+`.tiff` records a multi-page TIFF: every captured frame becomes one page,
+written as it arrives, needing no OpenCV anywhere. Any other name records a
+video file through OpenCV at the playback frame rate, dropping or repeating
+frames as needed for constant-rate playback. Stop recording finishes the file
+while leaving the preview open. Each frame's host monotonic capture time is
+written to an adjacent `.timestamps.csv` file, with wall-clock and monotonic
+anchors. Video runs independently of photon acquisition and is not
+automatically embedded in the project. The sidecar records the active photon PTU
+path and changes of photon run during video recording. Neither an existing
+recording nor an existing sidecar is overwritten. If a device driver blocks
+indefinitely while reading, stopping the recording still finalizes the output,
+but the source cannot reconnect until that read returns. A capture gap longer
+than 30 seconds stops recording with an error instead of an unbounded number of
+repeated frames. Closing Record waits up to two seconds for video finalization;
+if it is still pending the output may be incomplete.

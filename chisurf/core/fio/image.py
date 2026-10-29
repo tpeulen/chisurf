@@ -42,7 +42,7 @@ import pathlib
 
 import numpy as np
 
-__all__ = ["TIFF_SUFFIXES", "imread", "imwrite", "metadata", "read_labelled"]
+__all__ = ["TIFF_SUFFIXES", "append", "imread", "imwrite", "metadata", "read_labelled"]
 
 #: Suffixes this module reads and writes. TIFF and its instrument dialects only.
 TIFF_SUFFIXES = frozenset({".tif", ".tiff", ".ome.tif", ".ome.tiff", ".lsm", ".stk"})
@@ -191,3 +191,30 @@ def imwrite(
         resolution=resolution,
         metadata=metadata,
     )
+
+
+def append(path, page, *, compression: str = "none") -> None:
+    """Append one page to a TIFF file, creating the file when it does not exist.
+
+    A streaming recording stores each frame as it arrives instead of holding the
+    whole stack for :func:`imwrite`: *page* is a 2-D grayscale image or an
+    ``(h, w, 3)`` RGB image, written as its own TIFF page. A file created by
+    appending is BigTIFF (a recording must not hit classic TIFF's 4 GiB offset
+    limit); an existing file is appended to in its own format, and pages must
+    share the file's pixel type. Pages carry no ImageJ description, so the
+    stack reads back as unlabelled pages; RGB pages need a reader that supports
+    them (:func:`imread` is single-channel by design).
+
+    Parameters
+    ----------
+    path : str or os.PathLike
+        TIFF file to append to.
+    page : array_like
+        One 2-D grayscale or ``(h, w, 3)`` RGB page.
+    compression : str, optional
+        ``"none"`` (default), ``"lzw"``, ``"packbits"`` or ``"deflate"``.
+    """
+    import tttrlib
+
+    _check_suffix(path)
+    tttrlib.imappend(path, np.asarray(page), compression=compression)

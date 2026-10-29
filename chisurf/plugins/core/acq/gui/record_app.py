@@ -1296,6 +1296,7 @@ DOCKS = (
     ("analysis", "Analysis", "settings"),
     ("plot_hist", "Histogram", "main"),
     ("plot_image", "Image", "main"),
+    ("video", "Camera", "main"),
     ("quality", "Quality", "side"),
     ("points", "Points", "side"),
     ("plot_trace", "Trace", "bottom_left"),
@@ -1521,6 +1522,21 @@ class RecordApp(ImApp):
         from emtk.docking import DockManager
 
         self.model = model or RecordModel()
+        from chisurf.plugins.core.acq.gui.video_panel import VideoPanel
+
+        self.video = VideoPanel()
+        self.video.photon_context = lambda: str(self.model.saved_path or "") if self.model.running else ""
+        self.video.output = str(self.model.output_dir / self.video.output)
+        video_spec = json.loads((HERE / "video.view.json").read_text(encoding="utf-8"))
+        #: Advanced shows every control; simple mode shows the video, the record
+        #: buttons and the status -- the camera is for watching, not configuring
+        self.video_sections = video_spec["sections"]
+        self.video_sections_simple = video_spec["simple_sections"]
+        self.video_form = FormState()
+        self.video_form.custom["video_frame"] = self._draw_video_frame
+        self._video_frame = None
+        self._video_gain = None
+        self._video_texture = None
         self.sections = json.loads((HERE / "record.view.json").read_text(encoding="utf-8"))[
             "sections"
         ]
@@ -1542,6 +1558,7 @@ class RecordApp(ImApp):
             ("shutter_settings", self._draw_shutter_settings),
             ("scanner_settings", self._draw_scanner_settings),
             ("survey_map", self._draw_survey_map),
+            ("video_panel", self._draw_video_panel),
         ):
             self.form.custom[key] = draw
         #: the generated device / laser forms: their own form state, their spec per form
@@ -1562,6 +1579,7 @@ class RecordApp(ImApp):
         for key, title, region in DOCKS:
             self.docks.add_window(key, tr(title), self._dock_drawer(key), dock=region)
         self._mode_shown = None
+        self._video_seen = False
         #: which dock draws each control (attr, action, custom key): a tour step on a control
         #: of a tab in the back brings that tab forward
         self.control_dock = self._map_controls()
@@ -1614,7 +1632,7 @@ class RecordApp(ImApp):
     def _dock_drawer(self, dock: str):
         def draw(box) -> None:
             panels = self._panels(dock)
-            single = len(panels) == 1 and dock.startswith(("plot_", "quality"))
+            single = len(panels) == 1 and dock.startswith(("plot_", "quality", "video"))
             if single:
                 draw_sections(panels[0]["sections"], self.model, self.form, titles=False)
             else:
@@ -1637,6 +1655,17 @@ class RecordApp(ImApp):
             self.docks.show("plot_hist")
             self.docks.hide("plot_image")
             self.docks.hide("points")
+
+    def _sync_docks_to_video(self) -> None:
+        """The camera dock comes forward once a connected source delivers frames, in every
+        mode: the preview judges the coverslip distance while photons come from anywhere
+        (a device or the simulator)."""
+        if self.video.frame is None:
+            self._video_seen = False
+            return
+        if not self._video_seen:
+            self._video_seen = True
+            self.focus_dock("video")
 
     def reset_layout(self) -> None:
         """Every dock back where the tool puts it, the stored layout forgotten."""
@@ -1851,6 +1880,37 @@ class RecordApp(ImApp):
         bottom = im.get_cursor_screen_pos()
         state.rects["live_view"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
 
+    def _draw_video_panel(self, section, model: RecordModel, state: FormState, width: float) -> None:
+        top = im.get_cursor_screen_pos()
+        sections = self.video_sections if model.advanced else self.video_sections_simple
+        draw_sections(sections, self.video, self.video_form, titles=False)
+        bottom = im.get_cursor_screen_pos()
+        state.rects["video_panel"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
+
+    def _draw_video_frame(self, section, model, state: FormState, width: float) -> None:
+        from emtk import Texture
+
+        frame = self.video.frame
+        if frame is None:
+            im.text_wrapped(tr("Connect a video source to see its preview."))
+            return
+        gain = float(self.video.display_gain)
+        if frame is not self._video_frame or gain != self._video_gain:
+            rgb = frame.image
+            rgba = np.empty((*rgb.shape[:2], 4), dtype=np.uint8)
+            rgba[:, :, :3] = np.clip(rgb.astype(np.float32) * gain, 0, 255).astype(np.uint8)
+            rgba[:, :, 3] = 255
+            if (self._video_texture is None or self._video_texture.width != rgb.shape[1]
+                    or self._video_texture.height != rgb.shape[0]):
+                self._video_texture = Texture(rgb.shape[1], rgb.shape[0], rgba.tobytes())
+            else:
+                self._video_texture.set_rows(0, rgba.tobytes())
+            self._video_frame = frame
+            self._video_gain = gain
+        h, w = frame.image.shape[:2]
+        size = min(float(width), 640.0)
+        im.image(self._video_texture, (size, size * h / w))
+
     def _draw_image(self, section, model: RecordModel, state: FormState, width: float) -> None:
         snap = model.image_snapshot
         images = (snap or {}).get("images") or {}
@@ -2023,6 +2083,7 @@ class RecordApp(ImApp):
         box = (*vp.pos, *vp.size)
         self.form.rects.clear()
         self._sync_docks_to_mode()
+        self._sync_docks_to_video()
         self._follow_tour()
         self._run_bar(box)
         self.docks.draw((box[0], box[1] + RUN_BAR_H, box[2], max(100.0, box[3] - RUN_BAR_H)))
@@ -2101,9 +2162,14 @@ class RecordApp(ImApp):
             "settings_address",
             "advanced",
         ) + tuple(f"scan_{name}" for name in RecordModel._SCAN_FIELDS)
-        return {k: getattr(self.model, k) for k in keys}
+        saved = {k: getattr(self.model, k) for k in keys}
+        saved["video"] = {k: getattr(self.video, k) for k in ("address", "output", "fps", "display_gain")}
+        return saved
 
     def restore_settings(self, settings: dict[str, Any]) -> None:
+        for key, value in (settings or {}).get("video", {}).items():
+            if key in ("address", "output", "fps", "display_gain"):
+                setattr(self.video, key, value)
         for key, value in (settings or {}).items():
             if hasattr(self.model, key) and not key.startswith("_"):
                 setattr(self.model, key, value)
@@ -2113,6 +2179,7 @@ class RecordApp(ImApp):
             self.model.settings_chosen()
 
     def close(self) -> None:
+        self.video.close()
         self.model.close()
 
 

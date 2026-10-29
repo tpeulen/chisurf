@@ -110,7 +110,7 @@ The window is one emtk surface since 2026-09-23 (below). Open, in order:
 | `core/database_connector` | Core:Database Connector | Source/user DB resolution, migration, backup/reset, FLR CIF import/export. |
 | `core/project_browser` | Tools:Open Project | Browse, save, restore, export/import projects via MMFDB with version control. |
 | `core/updater` | Setup:Updates & Packages | Update checker/installer and conda package manager (panels inside Settings). |
-| `core/acq` | Main:Tools:Acquisition | The Record tool: single-molecule acquisition from TCSPC hardware (through phacq) or the built-in tttrlib photon simulator — push-based, see [below](#acquisition-is-a-stream). |
+| `core/acq` | Main:Tools:Acquisition | The Record tool: single-molecule acquisition from TCSPC hardware (through phacq) or the built-in tttrlib photon simulator — push-based, see [below](#acquisition-is-a-stream) — plus a Camera dock (any mode, simulator included) that previews and records a capture card or camera to a streaming multi-page TIFF without OpenCV. |
 | `core/batch_analysis` | Main:Tools:Batch-Analysis | Apply one template fit to many datasets/files and export consolidated results. |
 | `core/globalview` | Main:Tools:Global View | Interactive network graph of parameter relationships across fits — see [below](#global-view-the-parameter-network). |
 | `core/help` | Help:Documentation | Documentation browser and editor (Markdown + the reStructuredText user manual), with human-review sign-off tracking. |
