@@ -312,4 +312,5 @@ def check_setup(
     return check_windows(
         windows, detection, windows_resolution_s=windows_resolution_s, histogram=histogram,
         gates=gates, histograms=dict(histograms) if histograms else None,
+        gate_channels=setup_detectors(s),
     )

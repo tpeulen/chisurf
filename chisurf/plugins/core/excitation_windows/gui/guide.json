@@ -3,9 +3,9 @@
   "steps": [
     {
       "title": "Start with an example",
-      "text": "<b>Example</b> writes a simulated two-colour PIE measurement (32 ps channels, donor pulse at 2 ns, acceptor pulse at 52 ns) into the workspace and detects its windows. Your own measurements come from the workspace list above it.",
+      "text": "<b>Load example</b> writes a simulated two-colour PIE measurement (32 ps channels, donor pulse at 2 ns, acceptor pulse at 52 ns) into the workspace and detects its windows. Your own measurements come from the workspace list above it.",
       "target": {"name": "load_example"},
-      "await": {"hint": "Press Example."}
+      "await": {"hint": "Press Load example."}
     },
     {
       "title": "What the data shows",

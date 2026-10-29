@@ -20,6 +20,8 @@ __all__ = ["WindowsPreflightMixin", "apply_check", "windows_message", "windows_p
 
 #: Findings about detector gates only.
 _GATE_CODES = {"gate_outside_range", "gate_misses_pulse", "gate_empty"}
+#: Findings that may concern gates as much as windows.
+_EITHER_CODES = {"resolution_mismatch", "single_pulse", "unclear"}
 #: Photons the pre-flight reads: the shape of the decays, not the whole file.
 PREFLIGHT_PHOTONS = 1_000_000
 
@@ -77,9 +79,15 @@ def windows_message(check: WindowCheck | None) -> str | None:
         return None
     if not check.mismatch:
         return None
-    proposal = ", ".join(f"{k} {v[0]}–{v[1]}" for k, v in check.proposal.items())
-    what = ("PIE windows" if {i.code for i in check.issues} - _GATE_CODES
-            else "Detector gates")
+    found = check.proposal or check.detection.windows
+    proposal = ", ".join(f"{k} {v[0]}–{v[1]}" for k, v in found.items())
+    fixed = {d: g for d, g in check.proposal_gates.items() if g != check.gates.get(d)}
+    if fixed:
+        proposal += ("; " if proposal else "") + "gates " + ", ".join(
+            f"{d} " + " ".join(f"{a}–{b}" for a, b in g) for d, g in fixed.items())
+    codes = {i.code for i in check.issues}
+    what = ("Detector gates" if codes & _GATE_CODES and not codes - _GATE_CODES - _EITHER_CODES
+            or (not check.windows and check.gates) else "PIE windows")
     return (f"{what} do not match the data: {check.summary} Detected windows: {proposal} "
             "(Excitation Windows / setup editor: Auto-detect).")
 
@@ -89,14 +97,17 @@ def apply_check(setup: Mapping, check: WindowCheck) -> dict:
     they are in -- what *Use detected windows* writes everywhere. Unchanged when nothing is
     proposed (one pulse, unclear)."""
     out = dict(setup)
-    if not check.proposal:
+    if not check.proposal and not (check.mismatch and check.proposal_gates):
         return out
     det = check.detection
     if det.domain == "macro":
         out["alex_windows"] = {k: list(v) for k, v in check.proposal.items()}
         out["alex_period_s"] = det.n_channels * det.resolution_s
         return out
-    out["windows"] = {k: [int(v[0]), int(v[1])] for k, v in check.proposal.items()}
+    if check.proposal:
+        out["windows"] = {k: [int(v[0]), int(v[1])] for k, v in check.proposal.items()}
+    elif check.windows:  # a gate-only fix keeps the windows, in the data's channels
+        out["windows"] = {k: [int(v[0]), int(v[1])] for k, v in check.windows.items()}
     if check.proposal_gates:
         detectors = {k: dict(v) for k, v in (out.get("detectors") or {}).items()}
         for name, ranges in check.proposal_gates.items():
@@ -156,12 +167,12 @@ class WindowsPreflightMixin:
     def windows_check_offer(self) -> bool:
         """The windows do not match and detected ones can be taken."""
         c = self.windows_check
-        return bool(c is not None and c.mismatch and c.proposal)
+        return bool(c is not None and c.mismatch and (c.proposal or c.proposal_gates))
 
     def use_detected_windows(self) -> bool:
         """Take the detected windows (and gates, and their channel width) into the tool's setup."""
         c = self.windows_check
-        if c is None or not c.proposal:
+        if c is None or not (c.proposal or (c.mismatch and c.proposal_gates)):
             return False
         self.take_preflight_setup(apply_check(self.preflight_setup(), c))
         self.windows_check = None

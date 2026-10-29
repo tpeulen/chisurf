@@ -75,13 +75,6 @@ def test_gates_that_hold_the_pulses_say_nothing(demo, tmp_path):
     assert window_warnings(_prep(demo, streams, tmp_path)) == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="the shared gate check (excitation/check.py _check_gates) reports the canonical PIE "
-    "split -- red gated to prompt, yellow to delayed, both on routing 1 -- as gates that miss a "
-    "pulse; flips to a pass when the check accepts a pulse another detector on the same channels "
-    "holds",
-)
 def test_the_canonical_pie_split_of_the_acceptor_says_nothing(demo, tmp_path):
     _manifest(tmp_path, PROMPT_DELAYED)
     streams = [

@@ -93,7 +93,7 @@ class LiveWindowCheck:
         self._checked_at = 0
 
     def update(self, snapshot: dict, windows: dict, micro_res_s: float, n_micro: int,
-               gates: dict | None = None) -> bool:
+               gates: dict | None = None, gate_channels: dict | None = None) -> bool:
         """Look at the decays of *snapshot*; ``True`` when :attr:`check` changed.
 
         *windows* are the run's windows (and *gates* its detectors' micro-time gates) in device
@@ -110,7 +110,7 @@ class LiveWindowCheck:
         coarse = detect_pie_windows(hists, bin_s, n_channels=n_bins)
         det = coarse.rescaled(float(micro_res_s), int(n_micro))
         sig = _signature(det, max(2, int(n_micro) // 100))
-        self.check = check_windows(windows, det, gates=gates)
+        self.check = check_windows(windows, det, gates=gates, gate_channels=gate_channels)
         if sig != self._signature:
             self._signature = sig
         self.kept = sig == self._kept_signature

@@ -76,6 +76,7 @@ def check_windows(
     gates: dict | None = None,
     histograms: dict | None = None,
     alex_period_ticks: float | None = None,
+    gate_channels: dict | None = None,
 ) -> WindowCheck:
     """Check *windows* against *detection* (what the data shows).
 
@@ -98,6 +99,10 @@ def check_windows(
         that holds almost none of its detector's photons.
     histograms : dict, optional
         Per-detector photons per channel (the names :attr:`Pulse.excites` uses), for the gates.
+    gate_channels : dict, optional
+        ``{detector: routing channels}``. Detectors that share channels and split the micro time
+        between them by their gates (PIE's ``red`` / ``yellow`` on one acceptor detector) hold a
+        pulse together: a pulse outside one detector's gate is fine when a sibling's gate holds it.
     alex_period_ticks : float, optional
         µs-ALEX: the alternation period the windows were made for, in macro-time ticks. A period
         off the detected one by more than 0.5 % is reported (the windows then fold another
@@ -173,7 +178,8 @@ def check_windows(
                             name,
                         )
                     )
-    proposal_gates = _check_gates(gate, detection, histograms, issues, unit) if gate else {}
+    proposal_gates = (_check_gates(gate, detection, histograms, issues, unit, gate_channels)
+                      if gate else {})
     if (detection.domain == "macro" and detection.alternating and alex_period_ticks
             and abs(float(alex_period_ticks) / n - 1.0) > 0.005):
         issues.append(Issue(
@@ -186,6 +192,8 @@ def check_windows(
     if not detection.alternating:
         code = "single_pulse" if detection.kind == "single" else "unclear"
         issues.append(Issue(code, "info", detection.message + " Windows not checked."))
+        return _verdict(issues, detection, win, {}, gate, proposal_gates)
+    if not win and gate:  # a gate-only consumer (imaging, MFD streams): its gates are the check
         return _verdict(issues, detection, win, {}, gate, proposal_gates)
     if not win:
         issues.append(
@@ -257,11 +265,12 @@ def check_windows(
     return _verdict(issues, detection, win, dict(detection.windows), gate, proposal_gates)
 
 
-def _check_gates(gates, detection, histograms, issues, unit) -> dict:
+def _check_gates(gates, detection, histograms, issues, unit, channels=None) -> dict:
     """Findings on the detectors' gates; returns the gates to propose (a broken gate opened to the
     whole range, the others as they are)."""
     n = int(detection.n_channels)
-    proposal = {d: [list(r) for r in rs] for d, rs in gates.items()}
+    # the gates to propose: as they are, an end past the data clipped to its range
+    proposal = {d: [[r[0], min(r[1], n) if n else r[1]] for r in rs] for d, rs in gates.items()}
     broken: set[str] = set()
     for d, ranges in gates.items():
         if n and all(lo >= n for lo, _ in ranges):
@@ -271,8 +280,14 @@ def _check_gates(gates, detection, histograms, issues, unit) -> dict:
             ))
             broken.add(d)
             continue
+        mine = set((channels or {}).get(d) or [])
+        siblings = [o for o in gates if o != d and mine
+                    and mine & set((channels or {}).get(o) or [])]
         for p in detection.pulses:
-            if d in p.excites and not any(lo <= p.peak < hi for lo, hi in ranges):
+            held = any(lo <= p.peak < hi for lo, hi in ranges) or any(
+                lo <= p.peak < hi for o in siblings for lo, hi in gates[o]
+            )
+            if d in p.excites and not held:
                 issues.append(Issue(
                     "gate_misses_pulse", "warning",
                     f"The gate of detector {d} ({_fmt(ranges)}) leaves out the "
@@ -281,7 +296,7 @@ def _check_gates(gates, detection, histograms, issues, unit) -> dict:
                 broken.add(d)
                 break
         h = (histograms or {}).get(d)
-        if h is not None and d not in broken:
+        if h is not None and d not in broken and not siblings:
             h = np.asarray(h, dtype=float).ravel()
             total = float(h.sum())
             inside = sum(float(h[max(lo, 0):max(min(hi, h.size), 0)].sum()) for lo, hi in ranges)

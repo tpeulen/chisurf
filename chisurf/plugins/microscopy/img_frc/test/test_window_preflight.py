@@ -81,11 +81,6 @@ def test_gates_of_another_instrument_are_reported_in_the_result(scan):
     assert result.to_dict()["warnings"] == result.warnings
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="windows={} (gates only) still reports 'no windows' on PIE data in the shared check "
-    "(excitation/check.py check_windows); flips to a pass when gates alone are checked",
-)
 def test_gates_that_hold_the_pulses_say_nothing(scan):
     assert core.window_warnings(str(scan), MATCHING) == []
 

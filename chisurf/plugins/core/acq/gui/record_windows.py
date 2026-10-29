@@ -57,10 +57,11 @@ class WindowCheckMixin:
             self._alex_poll(session, exp, info)
             return
         windows = dict(exp.setup.get("windows") or {})
-        from chisurf.core.fluorescence.excitation import setup_gates
+        from chisurf.core.fluorescence.excitation import setup_detectors, setup_gates
 
         if not self.live_windows.update(snap, windows, info.micro_res_s, info.n_micro,
-                                        gates=setup_gates(exp.setup)):
+                                        gates=setup_gates(exp.setup),
+                                        gate_channels=setup_detectors(exp.setup)):
             return
         self._show_check()
 

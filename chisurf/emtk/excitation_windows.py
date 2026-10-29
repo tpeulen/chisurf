@@ -135,7 +135,8 @@ class WindowsReview:
     def enabled(self, name: str) -> bool:
         """Which buttons can be pressed (the form asks)."""
         if name == "accept":
-            return bool(self.check is not None and self.check.proposal)
+            c = self.check
+            return bool(c is not None and (c.proposal or (c.mismatch and c.proposal_gates)))
         if name == "detect":
             return bool(self.measurement)
         return True

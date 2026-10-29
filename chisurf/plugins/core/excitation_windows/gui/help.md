@@ -23,7 +23,7 @@ needs -- and checks the windows a detector setup already has against the data.
 | **Setup to check** | A detector setup of the workspace. Its windows are converted to the data's channel width (its *Microtime res.*) and checked. |
 | **Measurement** | A photon stream of the workspace; drop a TTTR file on ChiSurf to add one. |
 | **Detect** | Detects the windows of the picked measurement and checks the setup's. |
-| **Example** | A simulated PIE measurement whose answer is known. |
+| **Load example** | A simulated PIE measurement whose answer is known. |
 | **Use detected windows** | Saves the setup with the detected windows into the workspace. |
 | **Keep current windows** | Changes nothing. |
 

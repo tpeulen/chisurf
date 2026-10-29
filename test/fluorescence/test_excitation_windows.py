@@ -294,7 +294,7 @@ def test_detector_gates_are_converted_and_checked():
     assert "gate_misses_pulse" in codes and c.mismatch
     assert c.gates["red"] == [[0, 938]] and c.gates["green"] == [[0, 6398]]
     assert c.proposal_gates["red"] == [[0, 3125]]
-    assert c.proposal_gates["green"] == [[0, 6398]]  # a gate that works is kept
+    assert c.proposal_gates["green"] == [[0, 3125]]  # a gate that works is kept, clipped to the data
     fixed = apply_check(setup, c)
     assert fixed["detectors"]["red"]["micro_time_ranges"] == [[0, 3125]]
     assert fixed["tttr_reading"]["micro_time_resolution"] == pytest.approx(32.0)
@@ -308,3 +308,18 @@ def test_a_gate_beyond_the_range_is_an_error_even_for_donor_only():
     c = check_windows({}, r, gates={"green": [[4000, 5000]]}, histograms=h)
     assert c.status == "error" and c.issues[0].code == "gate_outside_range"
     assert not c.proposal  # one pulse: nothing to offer for the windows
+
+
+def test_gates_only_and_the_pie_split_of_the_acceptor_say_nothing():
+    """A gate-only consumer (no windows) with gates that hold the pulses, and PIE's standard
+    split of one acceptor detector into red (prompt) and yellow (delayed) by gates."""
+    h = pie_histograms()
+    r = detect_pie_windows(h, 32e-12)
+    c = check_windows({}, r, gates={"green": [[0, 3125]], "red": [[0, 3125]]}, histograms=h)
+    assert c.status == "ok", c.issues
+    split = {"green": [[0, 1612]], "red": [[0, 1612]], "yellow": [[1613, 3124]]}
+    chans = {"green": [0], "red": [1], "yellow": [1]}
+    hists = {"green": h["green"], "red": h["red"], "yellow": h["red"]}
+    r2 = detect_pie_windows(hists, 32e-12)
+    c = check_windows(r2.windows, r2, gates=split, histograms=hists, gate_channels=chans)
+    assert c.status == "ok", [i.message for i in c.issues]
