@@ -70,8 +70,9 @@ def test_setup_combo_lists_the_saved_setups_and_picking_one_sets_donor_and_accep
     assert gui.editor.model.current_name == "lab_alex"
     assert (gui.donor_detector, gui.acceptor_detector) == ("green", "red")
     assert model.donor_channels == [0, 8] and model.acceptor_channels == [1, 9]
-    assert model.donor_micro_time_ranges == [(0, 2000)] and model.acceptor_micro_time_ranges == [
-        (100, 4000)
+    # the setup's gates [0, 2000) and [100, 4000) as BVA's inclusive ranges
+    assert model.donor_micro_time_ranges == [(0, 1999)] and model.acceptor_micro_time_ranges == [
+        (100, 3999)
     ]
     assert model.file_type == "PTU"
     assert {"green", "red"} <= set(draw(app).strings)
@@ -83,7 +84,7 @@ def test_donor_and_acceptor_combos_offer_the_detectors_of_the_setup_and_assign_t
     pick(app, "bva_setup", "lab_three")
     assert (app.bva_gui.donor_detector, app.bva_gui.acceptor_detector) == ("det_a", "det_b")
     pick(app, "donor_detector", "det_c")
-    assert model.donor_channels == [4, 5] and model.donor_micro_time_ranges == [(10, 20), (30, 40)]
+    assert model.donor_channels == [4, 5] and model.donor_micro_time_ranges == [(10, 19), (30, 39)]
     pick(app, "acceptor_detector", "det_a")
     assert model.acceptor_channels == [2]
     # the choice feeds the analysis settings, not only the model fields

@@ -91,7 +91,7 @@ def compute(
         variant=settings.variant,
     )
     from chisurf.plugins.burst.burst_2cde.core.computation import applied_streams
-    from chisurf.plugins.burst.burst_bva.core.windows import stream_detectors, window_warnings
+    from chisurf.core.fluorescence.burst.streams import stream_detectors, window_warnings
 
     streams = applied_streams(
         variant,

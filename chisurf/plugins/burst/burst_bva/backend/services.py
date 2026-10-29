@@ -73,8 +73,9 @@ def compute_bva_handler(
 ) -> dict[str, Any]:
     """Run BVA analysis from explicit parameters or a workflow handoff."""
     try:
+        from chisurf.core.fluorescence.burst.streams import window_warnings
+
         from ..core.computation import compute_bva, read_burst_analysis, write_bva_container
-        from ..core.windows import window_warnings
 
         resolved_folder = _resolve_analysis_folder(
             analysis_folder=analysis_folder,
@@ -164,58 +165,29 @@ def _settings_from_workflow(
     settings: dict[str, Any] | None,
     workflow_context: dict[str, Any] | None,
 ) -> BvaSettings:
-    """Build BVA settings, deriving detector channels from workflow context."""
+    """BVA settings: explicit ones, else the workflow setup's FRET pair
+    (:func:`~chisurf.core.fluorescence.burst.streams.fret_pair_from_workflow`)."""
     if settings:
         return BvaSettings(**settings)
+    from chisurf.core.fluorescence.burst.streams import fret_pair_from_workflow
 
-    channel_settings: dict[str, Any] = {}
-    if workflow_context:
-        channel_settings = workflow_context.get("channel_settings") or {}
-    detectors = channel_settings.get("detectors") or {}
-    tttr_reading = channel_settings.get("tttr_reading") or {}
-    detector_values = list(detectors.values())
-
-    kwargs: dict[str, Any] = {}
-    if detector_values:
-        donor = detector_values[0]
-        kwargs["donor_channels"] = list(donor.get("chs", [0, 8]))
-        kwargs["donor_micro_time_ranges"] = _ranges(donor.get("micro_time_ranges", [(0, 32768)]))
-    if len(detector_values) > 1:
-        acceptor = detector_values[1]
-        kwargs["acceptor_channels"] = list(acceptor.get("chs", [1, 9]))
-        kwargs["acceptor_micro_time_ranges"] = _ranges(
-            acceptor.get("micro_time_ranges", [(0, 32768)])
-        )
-    if tttr_reading.get("file_type"):
-        kwargs["file_type"] = str(tttr_reading["file_type"])
-    return BvaSettings(**kwargs)
+    return BvaSettings(**fret_pair_from_workflow(workflow_context)["settings"])
 
 
 def _preflight_detectors(cfg: BvaSettings, workflow_context: dict[str, Any] | None) -> dict:
     """The donor and acceptor streams BVA applies, with the workflow setup's detectors that share
-    their routing channels (the setup's first two detectors are the pair, as in
-    :func:`_settings_from_workflow`)."""
-    from ..core.windows import preflight_detectors
+    their routing channels."""
+    from chisurf.core.fluorescence.burst.streams import fret_pair_from_workflow, preflight_detectors
 
-    detectors = ((workflow_context or {}).get("channel_settings") or {}).get("detectors") or {}
-    names = list(detectors)[:2]
-    donor, acceptor = (names + ["donor", "acceptor"][len(names):])[:2]
+    pair = fret_pair_from_workflow(workflow_context)
+    donor, acceptor = pair["names"]
     return preflight_detectors(
         {
             donor: (cfg.donor_channels, cfg.donor_micro_time_ranges),
             acceptor: (cfg.acceptor_channels, cfg.acceptor_micro_time_ranges),
         },
-        detectors,
+        pair["detectors"],
     )
-
-
-def _ranges(value: Any) -> list[tuple[int, int]]:
-    """Normalize JSON/list micro-time ranges to tuples."""
-    ranges: list[tuple[int, int]] = []
-    for item in value or []:
-        if len(item) >= 2:
-            ranges.append((int(item[0]), int(item[1])))
-    return ranges or [(0, 32768)]
 
 
 def _service_error(message: str) -> dict[str, Any]:

@@ -27,8 +27,9 @@ def test_prepare_workflow_uses_context_folder_and_channels(tmp_path) -> None:
     assert result["analysis_folder"] == str(burst_folder)
     assert result["settings"]["donor_channels"] == [8, 0]
     assert result["settings"]["acceptor_channels"] == [9, 1]
-    assert result["settings"]["donor_micro_time_ranges"] == [[0, 100]]
-    assert result["settings"]["acceptor_micro_time_ranges"] == [[100, 200]]
+    # the setup's gates [0, 100) and [100, 200) as BVA's inclusive ranges
+    assert result["settings"]["donor_micro_time_ranges"] == [[0, 99]]
+    assert result["settings"]["acceptor_micro_time_ranges"] == [[100, 199]]
 
 
 def test_bva_services_register_workflow_prepare() -> None:

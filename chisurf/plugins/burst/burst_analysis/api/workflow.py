@@ -188,12 +188,15 @@ class Setup:
         Returns
         -------
         dict
-            ``{name: {"chs": [...], "micro_time_ranges": [[lo, hi], ...]}}``.
+            ``{name: {"chs": [...], "micro_time_ranges": [[lo, hi), ...]}}`` -- setup gates,
+            half-open: the detectors' inclusive :attr:`Detector.microtime_ranges` converted.
         """
+        from chisurf.core.fluorescence.excitation import gates_from_inclusive
+
         return {
             d.name: {
                 "chs": list(d.routing_channels),
-                "micro_time_ranges": [list(r) for r in d.microtime_ranges],
+                "micro_time_ranges": gates_from_inclusive(d.microtime_ranges),
             }
             for d in self.detectors
         }
@@ -689,19 +692,9 @@ class Bursts:
         list of str
             One line per measurement whose ranges do not hold its excitation pulses.
         """
-        from chisurf.plugins.burst.burst_bva.core.windows import (
-            preflight_detectors,
-            to_setup_gates,
-            window_warnings,
-        )
+        from chisurf.core.fluorescence.burst.streams import preflight_detectors, window_warnings
 
-        detectors = preflight_detectors(
-            streams,
-            {
-                name: {**d, "micro_time_ranges": to_setup_gates(d["micro_time_ranges"])}
-                for name, d in self.setup.summary_detectors().items()
-            },
-        )
+        detectors = preflight_detectors(streams, self.setup.summary_detectors())
         key = repr(sorted(detectors.items()))
         if key not in self._window_checks:
             self._window_checks[key] = window_warnings(self._tttrs, detectors)

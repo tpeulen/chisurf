@@ -14,10 +14,13 @@ import numpy as np
 
 from chisurf.core.datastore import numeric_column, row_count
 from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
-from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
+from chisurf.core.fluorescence.burst import streams as burst_streams
+from chisurf.core.fluorescence.excitation import (
+    WindowsPreflightMixin,
+    gates_to_inclusive,
+)
 from chisurf.core.runtime import analysis_cache
 from chisurf.plugins.burst.burst_bva.core import computation as core
-from chisurf.plugins.burst.burst_bva.core import windows
 
 ALGORITHM_VERSION = 1
 logger = logging.getLogger(__name__)
@@ -151,7 +154,9 @@ class BvaViewModel(WindowsPreflightMixin):
             if role in found:
                 d = found[role]
                 setattr(self, f"{role}_channels_text", ",".join(str(c) for c in d.get("chs", [])))
-                setattr(self, f"{role}_micro_time_ranges", d.get("micro_time_ranges", [(0, 32768)]))
+                # the setup's gates are [start, stop); BVA applies inclusive ranges
+                setattr(self, f"{role}_micro_time_ranges",
+                        gates_to_inclusive(d.get("micro_time_ranges")) or [burst_streams.FULL_MICRO_TIME])
         file_type = (settings.get("tttr_reading") or {}).get("file_type")
         if file_type:
             self.file_type = file_type
@@ -181,7 +186,7 @@ class BvaViewModel(WindowsPreflightMixin):
         setup's detectors that share their routing channels."""
         donor, acceptor = self.pair_names
         return {
-            "detectors": windows.preflight_detectors(
+            "detectors": burst_streams.preflight_detectors(
                 {
                     donor: (self.donor_channels, self.donor_micro_time_ranges),
                     acceptor: (self.acceptor_channels, self.acceptor_micro_time_ranges),
@@ -197,7 +202,7 @@ class BvaViewModel(WindowsPreflightMixin):
         for role, name in zip(("donor", "acceptor"), self.pair_names):
             gates = (detectors.get(name) or {}).get("micro_time_ranges")
             if gates:
-                setattr(self, f"{role}_micro_time_ranges", windows.from_setup_gates(gates))
+                setattr(self, f"{role}_micro_time_ranges", gates_to_inclusive(gates))
         self.windows_warnings, self._checked = [], None
         self.status_text = "Micro-time ranges from the data: " + "; ".join(
             f"{role} " + ", ".join(f"{lo}:{hi}" for lo, hi in getattr(self, f"{role}_micro_time_ranges"))
@@ -212,14 +217,14 @@ class BvaViewModel(WindowsPreflightMixin):
         key = repr(sorted(detectors.items()))
         if self._checked is not None and self._checked[0] == key:
             return self._checked
-        return key, windows.window_checks(dict(tttrs or {}), detectors)
+        return key, burst_streams.window_checks(dict(tttrs or {}), detectors)
 
     def set_window_checks(self, checked: tuple[str, dict] | None) -> None:
         """Show *checked*: the first measurement whose ranges do not match (else the first note)."""
         self._checked = checked
         checks = dict((checked or ("", {}))[1])
         detectors = self.preflight_setup()["detectors"]
-        self.windows_warnings = windows.window_warnings({}, detectors, checks=checks)
+        self.windows_warnings = burst_streams.window_warnings({}, detectors, checks=checks)
         found = [c for c in checks.values() if c is not None]
         self.windows_check = next((c for c in found if c.mismatch), next(iter(found), None))
 

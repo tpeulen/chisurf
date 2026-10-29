@@ -172,43 +172,27 @@ def _settings_from_workflow(
     settings: dict[str, Any] | None,
     workflow_context: dict[str, Any] | None,
 ) -> TwoCdeSettings:
-    """Build 2CDE settings, deriving detector channels from workflow context."""
+    """2CDE settings: explicit ones, else the workflow setup's FRET pair
+    (:func:`~chisurf.core.fluorescence.burst.streams.fret_pair_from_workflow`)."""
     if settings:
         return TwoCdeSettings(**settings)
+    from chisurf.core.fluorescence.burst.streams import fret_pair_from_workflow
 
-    channel_settings: dict[str, Any] = {}
-    if workflow_context:
-        channel_settings = workflow_context.get("channel_settings") or {}
-    detectors = channel_settings.get("detectors") or {}
-    tttr_reading = channel_settings.get("tttr_reading") or {}
-    detector_values = list(detectors.values())
-
-    kwargs: dict[str, Any] = {}
-    if detector_values:
-        donor = detector_values[0]
-        kwargs["donor_channels"] = list(donor.get("chs", [0, 8]))
-        kwargs["donor_micro_time_ranges"] = _ranges(donor.get("micro_time_ranges", [(0, 32768)]))
-    if len(detector_values) > 1:
-        acceptor = detector_values[1]
-        kwargs["acceptor_channels"] = list(acceptor.get("chs", [1, 9]))
-        kwargs["acceptor_micro_time_ranges"] = _ranges(
-            acceptor.get("micro_time_ranges", [(0, 32768)])
-        )
-    if tttr_reading.get("file_type"):
-        kwargs["file_type"] = str(tttr_reading["file_type"])
-    return TwoCdeSettings(**kwargs)
+    return TwoCdeSettings(**fret_pair_from_workflow(workflow_context)["settings"])
 
 
 def _window_warnings(tttrs: dict, cfg: TwoCdeSettings, workflow_context: dict | None) -> list[str]:
     """The excitation-window pre-flight of the streams 2CDE applies, with the workflow setup's
-    detectors that share their routing channels (its first two detectors are the pair, as in
-    :func:`_settings_from_workflow`)."""
-    from chisurf.plugins.burst.burst_bva.core.windows import preflight_detectors, window_warnings
+    detectors that share their routing channels."""
+    from chisurf.core.fluorescence.burst.streams import (
+        fret_pair_from_workflow,
+        preflight_detectors,
+        window_warnings,
+    )
 
     from ..core.computation import applied_streams
 
-    detectors = ((workflow_context or {}).get("channel_settings") or {}).get("detectors") or {}
-    names = list(detectors)[:2]
+    pair = fret_pair_from_workflow(workflow_context)
     streams = applied_streams(
         cfg.variant,
         cfg.donor_channels,
@@ -217,18 +201,9 @@ def _window_warnings(tttrs: dict, cfg: TwoCdeSettings, workflow_context: dict | 
         cfg.acceptor_micro_time_ranges,
         cfg.acceptor_excitation_channels or None,
         cfg.acceptor_excitation_micro_time_ranges or None,
-        names=(names + ["donor", "acceptor"][len(names):])[:2],
+        names=pair["names"],
     )
-    return window_warnings(tttrs, preflight_detectors(streams, detectors))
-
-
-def _ranges(value: Any) -> list[tuple[int, int]]:
-    """Normalize JSON/list micro-time ranges to tuples."""
-    ranges: list[tuple[int, int]] = []
-    for item in value or []:
-        if len(item) >= 2:
-            ranges.append((int(item[0]), int(item[1])))
-    return ranges or [(0, 32768)]
+    return window_warnings(tttrs, preflight_detectors(streams, pair["detectors"]))
 
 
 def _service_error(message: str) -> dict[str, Any]:

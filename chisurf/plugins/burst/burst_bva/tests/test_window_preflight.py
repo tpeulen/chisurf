@@ -13,7 +13,7 @@ import pytest
 
 tttrlib = pytest.importorskip("tttrlib")
 
-from chisurf.plugins.burst.burst_bva.core import windows  # noqa: E402
+from chisurf.core.fluorescence.burst import streams  # noqa: E402
 from chisurf.plugins.burst.burst_bva.tests import pie_folder  # noqa: E402
 from chisurf.plugins.burst.burst_bva.tests.pie_folder import (  # noqa: E402
     DELAYED,
@@ -40,32 +40,41 @@ def donor_only(tmp_path_factory):
 
 
 def _pair(donor, acceptor):
-    return windows.stream_detectors({"donor": ([0], [donor]), "acceptor": ([1], [acceptor])})
+    return streams.stream_detectors({"donor": ([0], [donor]), "acceptor": ([1], [acceptor])})
 
 
 def test_inclusive_ranges_are_checked_as_the_channels_they_keep():
-    assert windows.to_setup_gates([(50, 1612)]) == [[50, 1613]]
-    assert windows.from_setup_gates([[50, 1613]]) == [(50, 1612)]
-    assert windows.from_setup_gates(windows.to_setup_gates([PROMPT, DELAYED])) == [PROMPT, DELAYED]
+    assert streams.stream_detectors({"d": ([0], [(50, 1612)])}) == {
+        "d": {"chs": [0], "micro_time_ranges": [[50, 1613]]}}
+
+
+def test_the_workflow_setup_is_read_into_inclusive_ranges():
+    pair = streams.fret_pair_from_workflow({"channel_settings": {"detectors": {
+        "green": {"chs": [0], "micro_time_ranges": [[0, 1613]]},
+        "red": {"chs": [1], "micro_time_ranges": []},
+    }}})
+    assert pair["names"] == ("green", "red")
+    assert pair["settings"]["donor_micro_time_ranges"] == [(0, 1612)]
+    assert pair["settings"]["acceptor_micro_time_ranges"] == [FULL]
 
 
 def test_ranges_of_another_instrument_warn(demo):
-    lines = windows.window_warnings(demo, _pair(WRONG_DONOR, FULL))
+    lines = streams.window_warnings(demo, _pair(WRONG_DONOR, FULL))
     assert len(lines) == 1 and "do not match the data" in lines[0], lines
     assert "donor" in lines[0] and "1613" in lines[0]  # the detected windows are named
 
 
 def test_ranges_that_hold_the_pulses_say_nothing(demo):
-    assert windows.window_warnings(demo, _pair(FULL, FULL)) == []
+    assert streams.window_warnings(demo, _pair(FULL, FULL)) == []
     # ALEX-2CDE streams: every photon after donor excitation, the acceptor's after acceptor
     # excitation -- one routing channel split by micro time
-    alex = windows.stream_detectors({"dex": ([0, 1], [PROMPT]), "aex": ([1], [DELAYED])})
-    assert windows.window_warnings(demo, alex) == []
+    alex = streams.stream_detectors({"dex": ([0, 1], [PROMPT]), "aex": ([1], [DELAYED])})
+    assert streams.window_warnings(demo, alex) == []
 
 
 def test_the_pie_split_of_the_setup_is_understood(demo):
     """FRET pair gated to the prompt pulse, the setup's yellow detector holding the delayed one."""
-    detectors = windows.preflight_detectors(
+    detectors = streams.preflight_detectors(
         {"green": ([0], [PROMPT]), "red": ([1], [PROMPT])},
         {
             "green": {"chs": [0], "micro_time_ranges": [[0, 1613]]},
@@ -75,21 +84,21 @@ def test_the_pie_split_of_the_setup_is_understood(demo):
         },
     )
     assert set(detectors) == {"green", "red", "yellow"}
-    assert windows.window_warnings(demo, detectors) == []
+    assert streams.window_warnings(demo, detectors) == []
 
 
 def test_a_fret_pair_gated_to_the_prompt_pulse_says_nothing(demo):
-    assert windows.window_warnings(demo, _pair(PROMPT, PROMPT)) == []
+    assert streams.window_warnings(demo, _pair(PROMPT, PROMPT)) == []
 
 
 def test_ungated_streams_are_not_checked(demo):
-    assert windows.window_warnings(demo, windows.stream_detectors(
+    assert streams.window_warnings(demo, streams.stream_detectors(
         {"donor": ([0], []), "acceptor": ([1], [])})) == []
 
 
 def test_a_donor_only_measurement_gives_no_false_warning(donor_only):
-    assert windows.window_warnings(donor_only, _pair(PROMPT, FULL)) == []
-    assert windows.window_warnings(donor_only, _pair(FULL, FULL)) == []
+    assert streams.window_warnings(donor_only, _pair(PROMPT, FULL)) == []
+    assert streams.window_warnings(donor_only, _pair(FULL, FULL)) == []
 
 
 def test_the_rpc_result_carries_the_warning(folder):

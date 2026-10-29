@@ -89,7 +89,7 @@ def compute(
         number_of_photons_per_slice=settings.number_of_photons_per_slice,
     )
 
-    from chisurf.plugins.burst.burst_bva.core.windows import stream_detectors, window_warnings
+    from chisurf.core.fluorescence.burst.streams import stream_detectors, window_warnings
 
     for line in window_warnings(
         tttrs,
