@@ -440,6 +440,8 @@ class ColocViewModel:
         )
         if self._metrics.get("warning"):
             self.results_text += f"\n⚠ {self._metrics['warning']}"
+        for line in out.get("warnings") or []:
+            self.results_text += f"\n⚠ {line}"
         self.notify("run")
         return True
 

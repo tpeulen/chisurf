@@ -100,6 +100,24 @@
           "description": "Bring any map or plot tab forward, also when the row of tabs is wider than the window."
         },
         {
+          "type": "info",
+          "source": "windows_check_text",
+          "hidden_when": {"attr": "windows_check_quiet", "equals": true},
+          "description": "The excitation-window check of the photon stream, made when Run is pressed: the detector windows' micro-time gates (from the Detectors tab or the Imaging Tools setup step) do not hold the measurement's excitation pulses (another TAC range or PIE delay), so a gated window images the wrong excitation or nothing. The gates detected in the data are named."
+        },
+        {
+          "type": "button_row",
+          "hidden_when": {"attr": "windows_check_offer", "equals": false},
+          "description": "Take the gates detected in the data.",
+          "buttons": [
+            {
+              "action": "use_detected_windows",
+              "label": "Use detected windows",
+              "description": "Fill the detector windows through the gates detected in this measurement (a broken gate is opened to the whole micro-time range) and compute the maps again. The shared Setup is not changed."
+            }
+          ]
+        },
+        {
           "type": "choice",
           "attr": "display_window",
           "label": "Detector window",

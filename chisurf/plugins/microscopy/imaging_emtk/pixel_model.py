@@ -13,6 +13,8 @@ import pathlib
 import threading
 from typing import TYPE_CHECKING, Any
 
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
+
 from .model_base import EmtkModelMixin
 
 if TYPE_CHECKING:
@@ -27,7 +29,7 @@ PHOTON_FILE_FILTER = "Photon streams (*.ptu *.pto *.ht3 *.pt3 *.spc);;All files 
 HDF5_FILE_FILTER = "Imaging HDF5 (*.h5 *.hdf5);;All files (*)"
 
 
-class PixelModelMixin(EmtkModelMixin, _Host):
+class PixelModelMixin(WindowsPreflightMixin, EmtkModelMixin, _Host):
     """Actions, worker bodies and hub adapters of a per-pixel map tool.
 
     Class attributes a tool sets
@@ -41,6 +43,8 @@ class PixelModelMixin(EmtkModelMixin, _Host):
     """
 
     TOOL_NAME = "Pixel maps"
+    #: The detector gates held against the photon stream (the shared excitation-window pre-flight).
+    windows_check: Any = None
     HDF5_CREATES = False
     #: extra events a run announces (the tour waits for them)
     ndx_requested: bool = False
@@ -118,6 +122,8 @@ class PixelModelMixin(EmtkModelMixin, _Host):
             self._last_signature = None
             if path != self.filename:
                 self.pipeline_hdf5 = ""
+        if path != self.filename:
+            self.windows_check = None  # the check was of the previous file
         self.filename = path
         self.results_text = f"{pathlib.Path(path).name} selected."
         self.status_line = "File selected. Press Run to compute the maps."
@@ -157,6 +163,7 @@ class PixelModelMixin(EmtkModelMixin, _Host):
             self.results_text = f"{100 * float(fraction):.0f} % {text}"
             self.notify("progress")
 
+        self.check_windows()
         ok = self.compute(progress)
         if self.cancel_event.is_set():
             raise RuntimeError(f"{self.TOOL_NAME} calculation cancelled.")
@@ -165,8 +172,52 @@ class PixelModelMixin(EmtkModelMixin, _Host):
         if not self._columns:
             raise RuntimeError("No detector-window maps were produced.")
         self.after_compute()
-        self.status_line = ""
+        self.status_line = self._windows_status()
         self.notify("run")
+
+    # -- the excitation-window pre-flight ------------------------------------------------- #
+    def check_windows(self) -> str | None:
+        """Hold the detector windows' micro-time gates against the photon stream about to be
+        imaged; the warning, or ``None`` (no gates, an image file, or gates that hold the pulses).
+
+        Remembered per file and gates, so a second Run reads nothing.
+        """
+        from ..imaging_common.windows import gate_check
+
+        try:
+            self.windows_check = gate_check(self.filename, self._windows())
+        except Exception:  # noqa: BLE001 - a check that cannot run says nothing
+            self.windows_check = None
+        return self.windows_check_text() or None
+
+    def _windows_status(self) -> str:
+        """The pre-flight's headline for the status line (the info line says the whole of it)."""
+        text = self.windows_check_text()
+        return f"{text.split(':')[0]} (see Settings)." if text else ""
+
+    def preflight_setup(self) -> dict:
+        """The gates the windows are filled through, in the data's channels (no PIE windows: they
+        do not shape an image)."""
+        from ..imaging_common.windows import gated_detectors
+
+        return {"windows": {}, "detectors": gated_detectors(self._windows())}
+
+    def take_preflight_setup(self, setup: dict) -> None:
+        """Fill the windows through the detected gates from now on and compute again (the hub's
+        shared Setup is not changed)."""
+        from ..imaging_common.windows import take_gates
+
+        self.detectors = take_gates(self._windows(), setup)
+        gates = "; ".join(
+            f"{name} " + ", ".join(f"{a}–{b}" for a, b in d.get("micro_time_ranges") or [])
+            for name, d in self.detectors.items()
+            if d.get("micro_time_ranges")
+        )
+        self.status_line = f"Detector gates from the data: {gates}. Computing {self.TOOL_NAME}..."
+        self.notify("gates")  # the window shows the taken gates in its Detectors editor
+        if self.filename:
+            self.cancel_event.clear()
+            self.run_job("compute_job")
 
     def after_compute(self) -> None:
         """A tool's own follow-up on the worker (N&B: the cross maps)."""
@@ -328,7 +379,10 @@ class PixelModelMixin(EmtkModelMixin, _Host):
             self.pipeline_hdf5 = str(payload["hdf5"])
 
     def apply_setup_settings(self, payload: dict) -> None:
+        """Adopt the hub's detector windows; the gate check of the old ones goes (Run checks
+        again)."""
         super().apply_setup_settings(payload)
+        self.windows_check = None
         self.status_line = self.status_line or ""
 
     def window_rows(self) -> list[dict]:

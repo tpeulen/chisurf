@@ -94,7 +94,19 @@
         {
           "type": "info",
           "source": "summary_text",
-          "description": "The loaded image, the pair of channels and the Pearson coefficient; a warning of the analysis when there is one."
+          "description": "The loaded image, the pair of channels and the Pearson coefficient; a warning of the analysis when there is one -- also the excitation-window check of a photon stream filled through a setup's gated windows: their micro-time gates do not hold the measurement's excitation pulses (another TAC range or PIE delay), and the gates detected in the data are named."
+        },
+        {
+          "type": "button_row",
+          "hidden_when": {"attr": "windows_check_offer", "equals": false},
+          "description": "Take the gates detected in the data.",
+          "buttons": [
+            {
+              "action": "use_detected_windows",
+              "label": "Use detected windows",
+              "description": "Fill the two channels through the gates detected in this measurement (a broken gate is opened to the whole micro-time range) and compute again. The saved setup is not changed."
+            }
+          ]
         },
         {
           "type": "choice",

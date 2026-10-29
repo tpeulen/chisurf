@@ -105,11 +105,16 @@ def compute_colocalization(
     -------
     dict
         ``{"metrics", "result", "stack", "image_a", "image_b", "channel_names",
-        "shape"}`` — the scalar coefficients, the full
+        "shape", "warnings"}`` — the scalar coefficients, the full
         :class:`~chisurf.core.fluorescence.imaging.colocalization.ColocalizationResult`,
-        and the loaded stack for display.
+        the loaded stack for display, and the excitation-window pre-flight of gated detector
+        windows (one line when their micro-time gates do not hold the measurement's pulses).
     """
     stack = load_image_stack(filename, windows=windows, channel_axis=channel_axis)
+    from chisurf.plugins.microscopy.imaging_common.windows import gate_warnings
+
+    # A photon stream filled through gated detector windows: the gates held against its pulses.
+    warnings = gate_warnings(filename, windows) if windows else []
     if stack.n_channels < 2:
         raise ValueError(
             f"{filename} has only {stack.n_channels} channel(s); colocalization needs two"
@@ -157,6 +162,7 @@ def compute_colocalization(
         "image_b": result.image_b,
         "channel_names": list(stack.channel_names),
         "shape": tuple(np.asarray(image_a).shape),
+        "warnings": warnings,
     }
 
 

@@ -185,6 +185,8 @@ class PixelToolApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
         if event == "view":
             if self.model.view_tab in self.windows:
                 self.docks.focus(self.model.view_tab)
+        elif event == "gates":  # Use detected windows: the Detectors editor shows the taken gates
+            self._sync_editor()
         elif event == "ndx":
             self.model.ndx_requested = False
             self.open_ndx()

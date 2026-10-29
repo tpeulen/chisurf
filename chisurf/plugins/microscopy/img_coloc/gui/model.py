@@ -13,6 +13,7 @@ from typing import Any
 
 import numpy as np
 
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
 from chisurf.core.roi import RectangleROI, RegionCollection
 
 from ...imaging_emtk.model_base import EmtkModelMixin
@@ -23,7 +24,7 @@ IMAGE_FILE_FILTER = (
 )
 
 
-class ColocModel(EmtkModelMixin, ColocViewModel):
+class ColocModel(WindowsPreflightMixin, EmtkModelMixin, ColocViewModel):
     """Two-channel colocalization plus the state of the emtk window."""
 
     SETTINGS = (
@@ -94,7 +95,18 @@ class ColocModel(EmtkModelMixin, ColocViewModel):
                 return False
             self.status_line = "Computing colocalization..."
             return bool(self.run_job("compute_job"))
-        return ColocViewModel.compute(self, progress)
+        ok = ColocViewModel.compute(self, progress)
+        if not self._direct:  # headless: the worker body checks on its own
+            self.check_windows()
+            if ok:
+                self.status_line = self._windows_status()
+        return ok
+
+    def set_filename(self, path: str) -> None:
+        """Adopt a new source file; the gate check of the previous one goes."""
+        if str(path or "") != self.filename:
+            self.windows_check = None
+        ColocViewModel.set_filename(self, path)
 
     def compute_job(self) -> None:
         self._direct = True
@@ -102,8 +114,49 @@ class ColocModel(EmtkModelMixin, ColocViewModel):
             ok = ColocViewModel.compute(self, progress=self._progress)
         finally:
             self._direct = False
-        self.status_line = "" if ok else self.results_text
+        self.check_windows()
+        self.status_line = self._windows_status() if ok else self.results_text
         self.notify("computed")
+
+    # -- the excitation-window pre-flight ------------------------------------------------------ #
+    def _gated_windows(self) -> dict:
+        """The detector windows the channels are filled through (a photon stream only)."""
+        return self.detectors if (self.detectors and self._uses_windows()) else {}
+
+    def check_windows(self) -> str | None:
+        """Hold the windows' micro-time gates against the photon stream (remembered: the compute
+        has just made the same check); the warning, or ``None``."""
+        from ...imaging_common.windows import gate_check
+
+        try:
+            self.windows_check = gate_check(self.filename, self._gated_windows())
+        except Exception:  # noqa: BLE001 - a check that cannot run says nothing
+            self.windows_check = None
+        return self.windows_check_text() or None
+
+    def _windows_status(self) -> str:
+        """The pre-flight's headline for the status line (the info line says the whole of it)."""
+        text = self.windows_check_text()
+        return f"{text.split(':')[0]} (see Settings)." if text else ""
+
+    def preflight_setup(self) -> dict:
+        """The gates the channels are filled through, in the data's channels."""
+        from ...imaging_common.windows import gated_detectors
+
+        return {"windows": {}, "detectors": gated_detectors(self._gated_windows())}
+
+    def take_preflight_setup(self, setup: dict) -> None:
+        """Fill the channels through the detected gates and compute again (the saved setup and
+        the channel pair are kept)."""
+        from ...imaging_common.windows import take_gates
+
+        self.detectors = take_gates(self.detectors, setup)
+        self._stack = None
+        self._result = None
+        self.status_line = "Detector gates from the data taken. Computing colocalization..."
+        self.notify("gates")  # the window shows the taken gates in its Detectors editor
+        if self.filename:
+            self.compute()
 
     def run_coloc(self) -> None:
         """Compute the selected channel pair (the Qt Run)."""
