@@ -112,6 +112,10 @@ class PdaSectionsModel(PdaReaderSettings):
         self.status = tr("{n} entries added.").format(n=added)
         if self.auto_load and callable(getattr(self.host, "load_files", None)):
             self.load()
+        warning = self.windows_check_text()
+        if warning:
+            # the info line under the list says the whole of it
+            self.status += " -- " + warning.split(":")[0] + " (see above)"
         return True
 
 

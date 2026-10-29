@@ -21,6 +21,7 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from chisurf.core.experiments.pda2c import inputs
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
 
 #: How many detector rows a form can show (three colours).
 MAX_ROWS = 3
@@ -83,8 +84,12 @@ def _row_property(kind: str, row: int) -> property:
     )
 
 
-class PdaReaderSettings:
+class PdaReaderSettings(WindowsPreflightMixin):
     """Bind a settings form to a :class:`~chisurf.core.experiments.pda2c.Pda2cReader`.
+
+    At three colours the two windows are the PIE excitation periods; a measurement added to the
+    file list is checked against them (the shared excitation-window pre-flight), and *Use detected
+    windows* writes the periods detected in it onto the reader.
 
     Parameters
     ----------
@@ -106,6 +111,7 @@ class PdaReaderSettings:
         routines: list[str] | None = None,
     ) -> None:
         self.reader = reader
+        self.windows_check = None
         if setups is None:
             setups, saved_last = _saved_setups()
             last_used = saved_last if last_used is None else last_used
@@ -392,7 +398,7 @@ class PdaReaderSettings:
             How many entries were added.
         """
         present = {row["path"] for row in self.reader.files}
-        added = 0
+        added, first = 0, ""
         for path in paths or ():
             text = str(path)
             if text in present or not inputs.accepts_path(text, self._accepted):
@@ -400,7 +406,37 @@ class PdaReaderSettings:
             self.reader.files.append({"use": True, "path": text})
             present.add(text)
             added += 1
+            first = first or text
+        if added:
+            self.check_windows(first)
         return added
+
+    # -- the excitation-window pre-flight -------------------------------------- #
+    def check_windows(self, path: str) -> str | None:
+        """Check the excitation periods against the measurement *path* stands for (three colours).
+
+        A burst table or folder stands for the measurement it names. Returns the warning (or the
+        donor-only note); ``None`` when the periods hold the pulses, at two colours (where the
+        windows are not applied to the photons), or when there is no measurement to read.
+        """
+        self.windows_check = None
+        if not self.three_colours:
+            return None
+        try:
+            files = list(self.reader.resolve_inputs(str(path)).tttr_files)
+        except Exception:  # noqa: BLE001 - nothing to read: nothing to check
+            return None
+        if not files:
+            return None
+        return self.run_windows_preflight(files[0])
+
+    def preflight_setup(self) -> dict:
+        """The excitation periods and detectors the three-colour read counts photons with."""
+        return self.reader.preflight_setup()
+
+    def take_preflight_setup(self, setup: dict) -> None:
+        """Write the detected excitation periods onto the reader (earliest first)."""
+        self.reader.take_windows(setup.get("windows") or {})
 
     def set_use(self, path: str, use: bool) -> None:
         """Tick or untick *path*: only ticked entries are read."""

@@ -18,7 +18,7 @@ heavy I/O and :mod:`tttrlib` calls are only shown in skipped doctests.
 from __future__ import annotations
 
 import pathlib
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 import numpy as np
 import tttrlib
@@ -343,6 +343,55 @@ class Pda2cReader(ExperimentReader):
             (list(channels), self._micro_time_range(index))
             for index, channels in enumerate(self.channels[:2])
         ]
+
+    def preflight_setup(self) -> dict:
+        """The excitation periods and detectors as a setup the excitation-window check reads.
+
+        Only at three colours: there the two windows are the PIE excitation periods
+        :meth:`burst_count_table` counts photons in. At two colours the S1S2 histogram is built
+        from the routing channels alone -- its windows are recorded, not applied -- so there is
+        nothing to check (an empty setup).
+        """
+        if int(getattr(self, "n_colors", 2)) < 3:
+            return {}
+        names = ("blue excitation", "green excitation")
+        # The reader's windows are inclusive; a setup's are [start, stop).
+        windows = {
+            name: [int(lo), int(hi) + 1]
+            for name, (lo, hi) in zip(names, (self._micro_time_range(0), self._micro_time_range(1)))
+        }
+        detectors = {
+            colour: {"chs": [int(c) for c in chs]}
+            for colour, chs in zip(("blue", "green", "red"), list(self.channels)[:3])
+            if chs
+        }
+        return {"windows": windows, "detectors": detectors}
+
+    def take_windows(self, windows: Mapping) -> None:
+        """Use *windows* (``{name: [start, stop)}``) as the two excitation periods, earliest first."""
+        ordered = sorted((int(v[0]), int(v[1])) for v in dict(windows).values())[:2]
+        if len(ordered) == 2:
+            self.micro_time_ranges = [[lo, hi - 1] for lo, hi in ordered]
+
+    def windows_warning(self, tttr) -> str | None:
+        """The excitation-window pre-flight of the PIE excitation periods against *tttr*.
+
+        Returns
+        -------
+        str or None
+            The warning (or the donor-only note); ``None`` when the periods hold the pulses, or
+            at two colours.
+        """
+        setup = self.preflight_setup()
+        if not setup:
+            return None
+        from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
+
+        try:
+            return windows_message(windows_preflight(tttr, None, setup=setup))
+        except Exception:  # noqa: BLE001 - a check that cannot run says nothing
+            logging.debug("PDA: excitation-window check failed", exc_info=True)
+            return None
 
     def _three_color_curve(
         self,
@@ -828,6 +877,9 @@ class Pda2cReader(ExperimentReader):
             multi = len(configs) > 1
 
             if int(getattr(self, "n_colors", 2)) >= 3:
+                window_warning = self.windows_warning(t)
+                if window_warning:
+                    logging.warning("PDA3c: %s", window_warning)
                 # Three-colour setups take the burst-table path: PDA3c fits a
                 # per-burst photon partition, not an S1S2 histogram, so there is
                 # nothing to build a 2D grid from. Same file reading, same burst
@@ -848,6 +900,8 @@ class Pda2cReader(ExperimentReader):
                         tttr_header_json=tttr_header_json,
                         source_filenames=source_filenames,
                     )
+                    if window_warning:
+                        data.meta_data["warnings"] = [window_warning]
                     data_group.append(data)
                     logging.info("PDA3c: %s -> %d bursts", name, int(blue.shape[0]))
                 return data_group
