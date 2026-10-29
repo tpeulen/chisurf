@@ -210,3 +210,37 @@ def test_the_spiral_starts_where_the_last_image_was_not_where_the_stage_parked(t
     assert model._start_position() == (50.0, 50.0)          # no image yet: the stage
     model.survey_centre = "area"
     assert model._start_position() is None
+
+
+def test_the_scanner_learns_once_per_survey_by_default(tmp_path):
+    """A survey's tiles share one raster: the PI scanner learns on the first tile and only
+    re-checks its line triggers on the next ones; a single image learns as always."""
+    phacq = pytest.importorskip("phacq")
+    from chisurf.plugins.core.acq.gui.record_survey import LEARNING
+    from chisurf.plugins.core.acq.live.points import PiScanner
+    from chisurf.plugins.core.acq.live.scanner import ScanSettings
+
+    try:
+        dev = phacq.DriverRegistry.instance().driver("pi").open("sim:")
+        dev.get_parameter("learned")
+    except Exception:  # noqa: BLE001 - a phacq without the option
+        pytest.skip("this phacq has no learning option")
+    scanner = PiScanner(device=dev, learn_s=0.2)
+    scanner.learning = LEARNING["recheck"]
+    for x0 in (10.0, 16.4, 22.8):
+        scanner.configure(ScanSettings(x0_um=x0, y0_um=10.0, area_x_um=6.4, area_y_um=6.4,
+                                       pixels_x=32, pixels_y=8, dwell_ms=0.1))
+        scanner.start()
+        while dev.measuring():
+            pass
+        scanner.stop()
+    assert dev.get_parameter("learned") == 1
+    scanner.learning = LEARNING["every"]
+    scanner.configure(ScanSettings(x0_um=29.2, y0_um=10.0, area_x_um=6.4, area_y_um=6.4,
+                                   pixels_x=32, pixels_y=8, dwell_ms=0.1))
+    scanner.start()
+    while dev.measuring():
+        pass
+    scanner.stop()
+    assert dev.get_parameter("learned") == 2
+    scanner.close()

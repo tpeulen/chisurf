@@ -233,8 +233,8 @@ for row in m.point_rows():
 until **Stop**, a stop condition (tiles, molecules, minutes; in Advanced also a
 number of empty tiles in a row) or the whole area is done -- by default the
 scanner's whole range (0–100 µm on the E-725, from its driver). Tiles are the
-Scan panel's Width × Height, visited in an **outward spiral** from the stage's
-position, where you focused (a coverslip is rarely flat; the nearest tiles are
+Scan panel's Width × Height, visited in an **outward spiral** from the centre of
+the last image, where you focused (a coverslip is rarely flat; the nearest tiles are
 the best focused), or in serpentine rows. Tiles with fewer than *Min molecules*
 are logged and passed, failed tiles too. An *Edge guard* leaves spots near a
 tile's edge to the neighbour that sees them whole and a molecule measured once is
@@ -244,6 +244,12 @@ One table of all molecules (`survey_molecules.table`: tile, stage position, the
 per-molecule results) is stored with the first tile's image after every tile, so
 a stopped survey keeps what it measured. From Python: `m.survey_start()`, then
 `m.wait_survey()`; `m.survey_table()` is the table.
+
+**Scanner learning.** The scanner learns its pattern (linearization, line triggers) before an
+image -- 5 s on the MT200 -- and all tiles share one raster. *First tile, re-check line triggers*
+(the default) learns once and re-measures only the line triggers per tile; *First tile only* reuses
+everything; *Every tile* learns each time, as a single image does (phacq's pi driver setting
+`learning` 0/1/2).
 
 ```{figure} figures/65_survey_running.png
 :name: fig-65-survey-running

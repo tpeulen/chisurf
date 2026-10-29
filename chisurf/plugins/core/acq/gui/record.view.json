@@ -1590,6 +1590,13 @@
             },
             {
               "type": "choice",
+              "attr": "survey_learning",
+              "label": "Scanner learning",
+              "options_source": "survey_learning_options",
+              "description": "The scanner learns its pattern (linearization and line triggers) before an image; that is learn_s (5 s on the MT200) per tile. All tiles of a survey have the same raster, so it can learn once: First tile only reuses everything for the next tiles; First tile, re-check line triggers (default) also re-measures the line triggers per tile in one recorded period (well under a second). Every tile learns each time, as for a single image."
+            },
+            {
+              "type": "choice",
               "attr": "survey_order",
               "label": "Order",
               "options_source": "survey_order_options",
@@ -1608,7 +1615,7 @@
                 "attr": "advanced",
                 "equals": "false"
               },
-              "description": "Where the spiral starts: where the stage is (the spot you focused and imaged last; default) or the area's centre."
+              "description": "Where the spiral starts: where you focused -- the centre of the last image (default; the scanner parks at the stage centre after every image, so its position is not the focus) -- or the area's centre."
             },
             {
               "type": "value",

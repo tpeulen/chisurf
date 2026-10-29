@@ -93,8 +93,9 @@ fails is logged and passed, never the end of the survey.
 
 - **Area:** *Whole piezo range* (default: the scanner's travel as its driver states it, 0–100 µm on
   the E-725) or a *Custom area*; every tile and every move is kept inside the range.
-- **Order** (Advanced): an **outward spiral** from where you focused -- the tile under the stage's
-  position (*Spiral centre*: or the area's centre), then ring after ring. A coverslip is rarely
+- **Order** (Advanced): an **outward spiral** from where you focused -- the centre of the
+  last image (the scanner parks at the stage centre after every image, so its position is not the
+  focus; *Spiral centre*: or the area's centre), then ring after ring. A coverslip is rarely
   flat, so the tiles nearest the focused spot, the best focused, are measured first. *Serpentine*
   rows on request.
 - **Tile overlap** and the **Edge guard** (Advanced, pixels): a spot nearer a tile's edge than the
@@ -106,6 +107,11 @@ fails is logged and passed, never the end of the survey.
   focus.
 - **Re-image after measuring** (Advanced): image each tile again after its molecules were measured,
   to see what bleached.
+- **Scanner learning**: the scanner learns its pattern (linearization, line triggers) before an
+  image -- 5 s on the MT200 -- and every tile has the same raster. *First tile, re-check line
+  triggers* (default) learns once and re-measures only the line triggers per tile (one recorded
+  period, well under a second); *First tile only* reuses everything; *Every tile* learns each
+  time, as a single image does. Change it if the line edges of later tiles look shifted.
 
 The shutters open once when the survey starts and close once when it ends or is stopped; the laser
 is never switched. Every tile image and every molecule's recording enters Datasets as in a single

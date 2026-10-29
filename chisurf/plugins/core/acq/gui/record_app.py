@@ -2010,6 +2010,7 @@ class RecordApp(ImApp):
             "survey_h_um",
             "survey_overlap_um",
             "survey_order",
+            "survey_learning",
             "survey_centre",
             "survey_guard_px",
             "survey_min_molecules",

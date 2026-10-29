@@ -62,6 +62,9 @@ class PiScanner(ScannerBackend):
         self.learn_s = learn_s
         self.turn_ms = turn_ms
         self.scan = ScanSettings()
+        #: When the controller learns the pattern (the driver's ``learning``): 0 before every
+        #: image, 1 once per raster size, 2 once and re-check the line triggers per image.
+        self.learning = 0
 
     def configure(self, scan: ScanSettings) -> list[str]:
         problems = scan.validate()
@@ -81,6 +84,11 @@ class PiScanner(ScannerBackend):
             if value is not None:
                 d.set_parameter(name, float(value))
         notes = []
+        try:
+            d.set_parameter("learning", float(self.learning))
+        except Exception:  # noqa: BLE001 - a phacq without the option learns every image
+            if self.learning:
+                notes.append("this phacq learns before every image")
         if scan.z_planes > 1:
             notes.append("the E-725 has no z axis here: one plane is scanned")
         return notes

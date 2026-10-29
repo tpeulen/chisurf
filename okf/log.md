@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-29
+
+- 2026-10-29: Survey: Scanner learning option (first tile, re-check line triggers by default; first tile only; every tile) -> phacq pi learning 0/1/2; the spiral centre is the last image (the scanner parks at the stage centre).
+
 ## 2026-10-28
 
 - acq: the T3 macro step comes from the device's macro_sync_divider when it has one (HydraHarp 400 counts every sync whatever its divider, measured on the unit), else the sync divider; first live HydraHarp 400 recording through the Record session (phacq, macOS).

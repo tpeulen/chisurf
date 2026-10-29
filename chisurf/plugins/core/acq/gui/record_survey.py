@@ -25,6 +25,10 @@ from emtk.i18n import tr
 _log = logging.getLogger(__name__)
 
 
+#: Survey learning choice -> the pi driver's ``learning`` setting.
+LEARNING = {"every": 0, "first": 1, "recheck": 2}
+
+
 class SurveyMixin:
     """Survey options, the tile loop (stepped from ``poll``) and its results."""
 
@@ -42,6 +46,9 @@ class SurveyMixin:
         self.survey_max_minutes = 0.0
         self.survey_max_empty = 0
         self.survey_reimage = False
+        #: The scanner's learning during a survey: every tile alike in size, so by default it
+        #: learns on the first tile and re-checks the line triggers on the others.
+        self.survey_learning = "recheck"
         #: the running survey's state (``None``: no survey)
         self._survey: dict | None = None
         self._survey_sample = None
@@ -58,6 +65,14 @@ class SurveyMixin:
 
     def survey_order_options(self) -> list:
         return [("spiral", tr("Spiral out from the start")), ("serpentine", tr("Serpentine rows"))]
+
+    def survey_learning_options(self) -> list:
+        return [("every", tr("Every tile (slowest)")), ("first", tr("First tile only")),
+                ("recheck", tr("First tile, re-check line triggers"))]
+
+    def _set_scanner_learning(self, mode: int) -> None:
+        if self.scanner is not None and hasattr(self.scanner, "learning"):
+            self.scanner.learning = int(mode)
 
     def survey_centre_options(self) -> list:
         return [("stage", tr("Where I focused (the last image)")), ("area", tr("The area's centre"))]
@@ -155,6 +170,7 @@ class SurveyMixin:
                         "tile": None, "empty_run": 0, "origin": (self.scan_x0_um,
                                                                  self.scan_y0_um),
                         "container": None, "taken": []}
+        self._set_scanner_learning(LEARNING.get(str(self.survey_learning), 2))
         # once for the whole survey (a tile's run leaves them alone while a survey runs)
         self._shutters_at_start()
         self._survey_note(tr("Survey of {n} tile(s) started.").format(n=len(tiles)))
@@ -312,6 +328,7 @@ class SurveyMixin:
             if t.state == "current":
                 t.state = "done" if t.measured else "pending"
         self._survey_store()
+        self._set_scanner_learning(0)   # a single image learns as always
         self._shutters_at_end()
         self._preview_key = self._preview_key_now()  # the overview keeps the survey's tiles
         done = sum(1 for t in self.survey_tiles if t.state in ("done", "empty"))
