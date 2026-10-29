@@ -1,0 +1,959 @@
+"""µs-ALEX: the alternation period, the detector roles and the excitation windows, from the photons.
+
+Pure numpy over the photon stream (macro times, routing channels) or its folded phase (the micro time
+after ``TTTR.alex_to_microtime``). These functions are the ALEX half of
+:mod:`chisurf.core.fluorescence.excitation`; the ALEX Creator and ALEX Suite plugins call them.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+
+__all__ = [
+    "MIN_PERIOD_CONFIDENCE",
+    "alex_stream_masks",
+    "auto_alex_windows",
+    "auto_excitation_regions",
+    "detect_alex_channels",
+    "detect_alex_period",
+    "measure_alex_period",
+    "validate_alex_period",
+]
+
+
+def validate_alex_period(value) -> int:
+    """Return a finite integer period representable by the uint16 micro-time domain."""
+    try:
+        period = float(value)
+    except (ValueError, TypeError, OverflowError):
+        raise ValueError("ALEX period must be a finite integer between 1 and 65536.") from None
+    if (
+        isinstance(value, (bool, np.bool_))
+        or not np.isfinite(period)
+        or not period.is_integer()
+        or not 1 <= period <= 65536
+    ):
+        raise ValueError("ALEX period must be a finite integer between 1 and 65536.")
+    return int(period)
+
+
+def _contiguous_runs(mask: np.ndarray) -> list[tuple[int, int]]:
+    """Return ``(start, stop_inclusive)`` runs of ``True`` on a circular array.
+
+    The array is treated as periodic, so a run may wrap past the last index back
+    to index 0 (returned as ``start > stop``).
+    """
+    mask = np.asarray(mask, dtype=bool)
+    n = len(mask)
+    if n == 0 or not mask.any():
+        return []
+    if mask.all():
+        return [(0, n - 1)]
+    # Rotate so index 0 is a False bin; this turns wrap-around runs into normal
+    # ones, then map indices back.
+    offset = int(np.argmin(mask))
+    rolled = np.roll(mask, -offset)
+    runs = []
+    i = 0
+    while i < n:
+        if rolled[i]:
+            j = i
+            while j < n and rolled[j]:
+                j += 1
+            runs.append(((i + offset) % n, (j - 1 + offset) % n))
+            i = j
+        else:
+            i += 1
+    return runs
+
+
+def _run_length(run: tuple[int, int], n: int) -> int:
+    """Length of a (possibly wrapping) run of bins."""
+    start, stop = run
+    return (stop - start + 1) if start <= stop else (n - start + stop + 1)
+
+
+def _composition_score(counts: np.ndarray) -> np.ndarray:
+    """Return twice the multinomial log likelihood at the measured composition."""
+    totals = counts.sum(axis=-1, keepdims=True)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        terms = np.where(counts > 0, counts * np.log(counts / np.maximum(totals, 1)), 0)
+    return 2 * terms.sum(axis=-1)
+
+
+def _phase_segments(hist: np.ndarray, minimum: int, penalty: float) -> list[tuple[int, int]]:
+    """Fit constant detector compositions with penalized, bounded change points."""
+    cumulative = np.vstack((np.zeros(hist.shape[1]), np.cumsum(hist, axis=0)))
+    length = hist.shape[0]
+    scores = np.full(length + 1, -np.inf)
+    scores[0] = penalty
+    previous = np.zeros(length + 1, dtype=int)
+    for stop in range(minimum, length + 1):
+        starts = np.arange(stop - minimum + 1)
+        segment = cumulative[stop] - cumulative[starts]
+        candidate = scores[starts] + _composition_score(segment) - penalty
+        best = int(np.argmax(candidate))
+        scores[stop], previous[stop] = candidate[best], starts[best]
+    if not np.isfinite(scores[-1]):
+        raise ValueError("an occupied phase region is too narrow to resolve; reduce the bin width")
+    segments = []
+    stop = length
+    while stop:
+        start = int(previous[stop])
+        segments.append((start, stop))
+        stop = start
+    return segments[::-1]
+
+
+def auto_excitation_regions(
+    micro_times,
+    routing_channels,
+    *,
+    alex_period: int,
+    channel_groups=None,
+    n_bins: int = 200,
+    guard: float = 0.06,
+    min_region_bins: int = 3,
+) -> dict:
+    """Infer every resolved periodic excitation phase without assigning laser colours.
+
+    Dark gaps separate occupied regions. Within an occupied region, changes of
+    detector composition locate excitation boundaries even when total intensity
+    stays constant. A multinomial change-point fit uses every detector group and
+    penalizes each extra region by six times its model dimension times log photon
+    count. Intensity variation within a phase is therefore not mistaken for a
+    new laser. Regions describe measured emission phases; wavelength identities
+    and indistinguishable lasers cannot be inferred from photon arrival alone.
+
+    Parameters
+    ----------
+    micro_times, routing_channels : array_like
+        Folded phases and corresponding photon routing channels; never modified.
+    alex_period : int
+        Phase period in macro-time units, already known or measured separately.
+    channel_groups : sequence of sequence of int, optional
+        Physical detection bands, optionally combining polarization channels.
+        Every observed channel must occur in exactly one group. By default each
+        observed channel is used separately; none is selected by popularity.
+    n_bins : int
+        Equal-width phase histogram bins. This sets boundary resolution.
+    guard : float
+        Fraction trimmed from each edge of each region, in the circular phase.
+    min_region_bins : int
+        Smallest resolvable region width. Narrow occupied regions cause an error.
+
+    Returns
+    -------
+    dict
+        ``regions`` contains phase-ordered dictionaries with ``name``, ``start``,
+        ``stop``, ``wraps``, increasing half-open ``ranges``, ``photon_count`` and
+        per-group ``detector_counts``. A wrapped region has start greater than
+        stop and two ranges; it is never returned as an inverted selection.
+        ``phase_hist``, ``phase_edges``, ``detector_hist`` (groups by bins) and
+        ``detector_channels`` retain the complete measured histogram. Each region
+        carries a ``composition_deviance`` and ``composition_dof`` testing its
+        constant detector composition. ``ambiguous`` marks a rejected constant
+        composition at a conservative six-standard-deviation threshold. These
+        transition/heterogeneity candidates remain in ``regions`` and are also
+        named in ``warnings``; they are never silently called additional lasers.
+
+    Raises
+    ------
+    ValueError
+        Invalid phases/grouping, insufficient photons, or no resolved alternation.
+    """
+    phase, rc = np.asarray(micro_times), np.asarray(routing_channels)
+    period, bins, minimum = validate_alex_period(alex_period), int(n_bins), int(min_region_bins)
+    if period < 1 or bins < 6 or minimum < 1 or 2 * minimum > bins:
+        raise ValueError(
+            "period, bin count and minimum region width must be positive and resolvable"
+        )
+    if not 0 <= guard < 0.5:
+        raise ValueError("the guard must lie between zero and one half")
+    if phase.ndim != 1 or rc.ndim != 1 or phase.shape != rc.shape:
+        raise ValueError(
+            "phase and routing channel arrays must be equally sized one-dimensional arrays"
+        )
+    if phase.size < 100 or not np.isfinite(phase).all() or np.any((phase < 0) | (phase >= period)):
+        raise ValueError("too few photons or invalid folded phases to resolve excitation regions")
+    present = sorted(int(channel) for channel in np.unique(rc))
+    groups = (
+        [[channel] for channel in present]
+        if channel_groups is None
+        else [[int(channel) for channel in group] for group in channel_groups]
+    )
+    flat = [channel for group in groups for channel in group]
+    if not groups or any(not group for group in groups) or len(set(flat)) != len(flat):
+        raise ValueError("detector channel groups must be nonempty and cannot overlap")
+    if not set(present).issubset(flat):
+        raise ValueError("detector channel groups must include every observed routing channel")
+    edges = np.linspace(0, period, bins + 1)
+    histogram = np.array(
+        [np.histogram(phase[np.isin(rc, group)], bins=edges)[0] for group in groups]
+    )
+    counts = histogram.sum(axis=0)
+    penalty = 6.0 * max(len(groups), 1) * np.log(phase.size)
+    runs = _contiguous_runs(counts > 0)
+    if (counts > 0).all():
+        # Cut the circle at the strongest composition change, then merge the
+        # endpoints again if the arbitrary cut divided a single measured phase.
+        across = []
+        for boundary in range(bins):
+            left = histogram[:, (np.arange(boundary - minimum, boundary) % bins)].sum(axis=1)
+            right = histogram[:, (np.arange(boundary, boundary + minimum) % bins)].sum(axis=1)
+            across.append(
+                float(
+                    _composition_score(left)
+                    + _composition_score(right)
+                    - _composition_score(left + right)
+                )
+            )
+        offset = int(np.argmax(across))
+        rotated = np.roll(histogram, -offset, axis=1).T
+        segments = _phase_segments(rotated, minimum, penalty)
+        if len(segments) > 1:
+            first, last = segments[0], segments[-1]
+            a, b = rotated[slice(*first)].sum(axis=0), rotated[slice(*last)].sum(axis=0)
+            contrast = float(
+                _composition_score(a) + _composition_score(b) - _composition_score(a + b)
+            )
+            if contrast < penalty:
+                segments = segments[1:-1] + [(last[0], bins + first[1])]
+        runs = [((start + offset) % bins, (stop - 1 + offset) % bins) for start, stop in segments]
+    else:
+        split = []
+        for start, stop in runs:
+            indices: np.ndarray = (start + np.arange(_run_length((start, stop), bins))) % bins
+            for a, b in _phase_segments(histogram[:, indices].T, minimum, penalty):
+                split.append(((start + a) % bins, (start + b - 1) % bins))
+        runs = split
+    if len(runs) < 2:
+        raise ValueError("no statistically resolved excitation alternation; use manual regions")
+    regions: list[dict] = []
+    warnings: list[str] = []
+    for start_bin, stop_bin in sorted(runs):
+        indices = (start_bin + np.arange(_run_length((start_bin, stop_bin), bins))) % bins
+        profile = histogram[:, indices].T
+        deviance = max(
+            0.0, float(_composition_score(profile).sum() - _composition_score(profile.sum(axis=0)))
+        )
+        dof = max(0, (len(indices) - 1) * (len(groups) - 1))
+        ambiguous = dof > 0 and deviance > dof + 6 * np.sqrt(2 * dof)
+        width = _run_length((start_bin, stop_bin), bins) * period / bins
+        phase_start = (start_bin * period / bins + guard * width) % period
+        # Normalize the trimmed start before adding the remaining circular span:
+        # trimming may move both endpoints past zero and remove the wrap entirely.
+        normalized_stop = phase_start + (1 - 2 * guard) * width
+        wraps = normalized_stop > period
+        phase_stop = normalized_stop % period if wraps else normalized_stop
+        ranges = (
+            [[phase_start, float(period)], [0.0, phase_stop]]
+            if wraps
+            else [[phase_start, phase_stop]]
+        )
+        selected = np.zeros(phase.size, dtype=bool)
+        for lo, hi in ranges:
+            selected |= (phase >= lo) & (phase < hi)
+        detector_counts = [int(np.count_nonzero(selected & np.isin(rc, group))) for group in groups]
+        if sum(detector_counts) < 30:
+            raise ValueError(
+                "an excitation region has too few photons to resolve; use manual regions"
+            )
+        regions.append(
+            {
+                "name": f"excitation_{len(regions) + 1}",
+                "start": float(phase_start),
+                "stop": float(phase_stop),
+                "wraps": bool(wraps),
+                "ranges": ranges,
+                "photon_count": sum(detector_counts),
+                "detector_counts": detector_counts,
+                "composition_deviance": deviance,
+                "composition_dof": dof,
+                "ambiguous": bool(ambiguous),
+            }
+        )
+        if ambiguous:
+            warnings.append(
+                f"{regions[-1]['name']} is not a constant detector-composition plateau; "
+                "it may be a switching transition or heterogeneous phase, not a laser"
+            )
+    return {
+        "regions": regions,
+        "phase_hist": counts,
+        "phase_edges": edges,
+        "detector_hist": histogram,
+        "detector_channels": groups,
+        "warnings": warnings,
+    }
+
+
+def auto_alex_windows(
+    micro_times,
+    routing_channels,
+    *,
+    donor_channels,
+    acceptor_channels,
+    alex_period: int,
+    n_bins: int = 200,
+    guard: float = 0.06,
+    occupancy: float = 0.35,
+) -> dict:
+    """Detect the green/red ALEX excitation windows from the folded phase.
+
+    Micro-second ALEX encodes the laser alternation in the macro-time; after
+    :func:`apply_alex` the micro-time is the phase within ``alex_period``. The
+    two laser-on periods show up as two occupied plateaus in the phase histogram,
+    separated by the rise/fall gaps where no laser is fully on. This locates the
+    two largest plateaus, trims a ``guard`` fraction off each edge to discard the
+    laser rise/fall transition photons (some photon loss is expected and
+    intended), and labels the donor-brighter window ``"green"`` (donor
+    excitation) and the other ``"red"`` (acceptor excitation).
+
+    Parameters
+    ----------
+    micro_times : array_like
+        Folded ALEX phase per photon (``tttr.micro_times`` after
+        :func:`apply_alex`).
+    routing_channels : array_like
+        Detector routing channel per photon.
+    donor_channels, acceptor_channels : sequence of int
+        Routing channels of the donor ("green") and acceptor ("red") detectors.
+    alex_period : int
+        Alternation period in macro-time units (the folding period).
+    n_bins : int
+        Number of phase bins used to build the occupancy histogram.
+    guard : float
+        Fraction of each detected window width trimmed from *both* edges to skip
+        the laser rise/fall. ``0`` keeps the raw plateau edges.
+    occupancy : float
+        A bin counts as "laser on" when it holds more than ``occupancy`` times
+        the 75th-percentile of the non-empty bins.
+
+    Returns
+    -------
+    dict
+        ``{"green": (lo, hi), "red": (lo, hi), "phase_hist": counts,
+        "phase_edges": edges}`` with window bounds in macro-time units.
+
+    Raises
+    ------
+    ValueError
+        If two laser plateaus cannot be found (e.g. continuous-wave data with a
+        single, fully-occupied period).
+    """
+    phase = np.asarray(micro_times)
+    rc = np.asarray(routing_channels)
+    period = int(alex_period)
+    edges = np.linspace(0, period, n_bins + 1)
+    counts, _ = np.histogram(phase, bins=edges)
+    donor_counts, _ = np.histogram(phase[np.isin(rc, list(donor_channels))], bins=edges)
+    acceptor_counts, _ = np.histogram(phase[np.isin(rc, list(acceptor_channels))], bins=edges)
+
+    nonzero = counts[counts > 0]
+    if nonzero.size == 0:
+        raise ValueError("no photons to detect ALEX windows from")
+
+    # Dark bins first: on synthetic or heavily gated data the laser-off phase
+    # holds no photons at all, and such a bin belongs to neither window. On real
+    # data there are none -- which is the whole reason the split below is made
+    # on the detector ratio and not on occupancy.
+    lit = counts > occupancy * np.percentile(nonzero, 75)
+    if lit.sum() < 4:
+        raise ValueError(
+            "too few occupied phase bins to detect ALEX windows from; "
+            "the period or the binning is wrong"
+        )
+
+    # The split is a *ratio*, not a plateau. Real µs-ALEX has no laser-off gap
+    # to find: both lasers keep the sample emitting, so the total phase
+    # histogram is nearly flat and an occupancy threshold sees one window
+    # covering the whole period. What does alternate, sharply, is which detector
+    # the photons land on -- so the acceptor's share of each phase bin is a
+    # square wave even when the intensity is not.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        share = acceptor_counts / np.maximum(donor_counts + acceptor_counts, 1)
+    lit_share = share[lit]
+    low, high = np.percentile(lit_share, 10), np.percentile(lit_share, 90)
+    # An alternation has to stand out of the counting noise, not out of a
+    # fixed number. A bin's share is binomial, so with n photons per bin its
+    # 10-90 spread is about 2.6 standard deviations of sqrt(p(1-p)/n) with no
+    # alternation at all -- 0.13 at 100 photons, which a fixed 0.05 read as
+    # alternating, so continuous-wave data passed as ALEX. Six standard
+    # deviations keeps the genuine square wave (spread 0.3 and up) and refuses
+    # noise; the 0.05 floor still refuses a flat share measured very precisely.
+    mean_share = float(np.clip(np.mean(lit_share), 0.0, 1.0))
+    photons_per_bin = float(np.median((donor_counts + acceptor_counts)[lit]))
+    noise = np.sqrt(mean_share * (1.0 - mean_share) / max(photons_per_bin, 1.0))
+    if high - low < max(0.05, 6.0 * noise):
+        raise ValueError(
+            "the acceptor's share of the phase bins does not alternate "
+            f"(spread {high - low:.3f}); the data may be continuous-wave, the "
+            "period wrong, or both detectors assigned to the same colour"
+        )
+    # Hysteresis, not a midpoint. Between the two laser windows is a phase where
+    # neither laser is fully on and the ratio sits *between* the two levels; a
+    # midpoint threshold assigns that band to whichever side it happens to fall,
+    # which merges it into one window and can wrap that window past phase zero.
+    # Requiring a bin to be clearly on one side leaves the transition in neither,
+    # which is what it is.
+    span = high - low
+    donor_lit = lit & (share <= low + 0.25 * span)
+    acceptor_lit = lit & (share >= high - 0.25 * span)
+
+    runs = []
+    for name, mask in (("donor", donor_lit), ("acceptor", acceptor_lit)):
+        candidates = _contiguous_runs(mask)
+        if not candidates:
+            raise ValueError(
+                f"the {name}-excitation window is empty; check the "
+                "donor/acceptor channel assignment"
+            )
+        runs.append(max(candidates, key=lambda r: _run_length(r, n_bins)))
+
+    windows = []
+    for start, stop in runs:
+        if start > stop:
+            # A window that straddles phase zero cannot be written as one
+            # micro-time range, and every consumer downstream takes [lo, hi].
+            # The remedy is a period shift, which is what `apply_alex` takes.
+            raise ValueError(
+                f"an excitation window wraps past phase 0 "
+                f"(bins {start}..{stop} of {n_bins}); fold with a period shift "
+                f"of about {int(edges[start])} so both windows are contiguous"
+            )
+        lo = float(edges[start])
+        hi = float(edges[stop + 1]) if stop + 1 < len(edges) else float(period)
+        margin = guard * (hi - lo)
+        windows.append((lo + margin, hi - margin))
+
+    def donor_density(win: tuple[float, float]) -> float:
+        lo, hi = win
+        sel = (phase >= lo) & (phase < hi) & np.isin(rc, list(donor_channels))
+        return sel.sum() / max(hi - lo, 1.0)
+
+    windows.sort(key=donor_density, reverse=True)
+    return {
+        "green": windows[0],
+        "red": windows[1],
+        "phase_hist": counts,
+        "phase_edges": edges,
+    }
+
+
+#: Phase bins used to score a trial period. Enough to resolve the alternation's
+#: square wave, few enough that the histogram is cheap.
+_PHASE_BINS = 32
+
+
+#: Ratio of the second spectrum's bin width to the first (see `detect_alex_period`).
+_GOLDEN = (1.0 + 5.0**0.5) / 2.0
+
+
+def _signed_spectrum(t, sign, width: int, min_period: int, max_period: int, span: int) -> dict:
+    """Power spectrum of the signed photon stream binned at ``width``, and its in-band peak.
+
+    Parameters
+    ----------
+    t, sign : ndarray
+        Photon times relative to the first photon, and +1 (donor) / -1 (acceptor).
+    width : int
+        Bin width in macro-time units.
+    min_period, max_period : int
+        The searched band of periods.
+    span : int
+        Length of the analysed record in macro-time units.
+
+    Returns
+    -------
+    dict
+        ``width``, ``record`` (binned length), ``coarse`` (peak period, possibly
+        an alias), ``confidence`` (peak over band median), ``power`` and
+        ``periods`` over the band.
+
+    Raises
+    ------
+    ValueError
+        If no FFT period falls inside the band.
+    """
+    n_bins = int(span // width) + 1
+    signal = np.bincount(t // width, weights=sign, minlength=n_bins)
+    signal -= signal.mean()
+    power = np.abs(np.fft.rfft(signal)) ** 2
+    # k = 0 is the (already removed) mean; period = total length / k.
+    k = np.arange(power.size)
+    record = n_bins * width
+    with np.errstate(divide="ignore"):
+        periods = np.where(k > 0, record / np.maximum(k, 1), np.inf)
+    band = (periods >= min_period) & (periods <= max_period)
+    if not band.any():
+        raise ValueError(
+            f"no candidate period between {min_period} and {max_period} "
+            f"macro-time units in a {span}-unit span"
+        )
+    band_power = np.where(band, power, 0.0)
+    peak = int(np.argmax(band_power))
+    median = float(np.median(power[band])) or 1.0
+    return {
+        "width": int(width),
+        "record": int(record),
+        "coarse": float(periods[peak]),
+        "confidence": float(band_power[peak] / median),
+        "power": power[band],
+        "periods": periods[band],
+    }
+
+
+def detect_alex_period(
+    macro_times,
+    routing_channels,
+    *,
+    donor_channels,
+    acceptor_channels,
+    min_period: int = 64,
+    max_period: int | None = None,
+    n_photons: int = 2_000_000,
+    max_bins: int = 1 << 22,
+    scan_photons: int = 150_000,
+    min_confidence: float | None = None,
+) -> dict:
+    """Find the µs-ALEX alternation period from the photon stream itself.
+
+    The period is a hardware setting nobody wants to type in, and typing it
+    wrong is silent: the folded phase is then a smear with no plateaus, the
+    windows land on nothing, and the analysis proceeds with a stoichiometry
+    histogram that has one peak instead of three.
+
+    What makes it findable is that the *donor and acceptor detectors alternate*.
+    Assign +1 to every donor photon and −1 to every acceptor photon, bin that
+    signed stream in macro time, and the alternation is a single sharp line in
+    its power spectrum — much sharper than in either detector's own intensity,
+    which is modulated by the sample as well as by the lasers. The peak
+    frequency gives the period; a short integer scan around it fixes the exact
+    macro-time count, which is what :func:`apply_alex` needs.
+
+    Parameters
+    ----------
+    macro_times, routing_channels : array_like
+        The photon stream (``tttr.macro_times``, ``tttr.routing_channels``).
+    donor_channels, acceptor_channels : sequence of int
+        Routing channels of the two detection colours.
+    min_period : int
+        Smallest period to consider, in macro-time units. Also sets the
+        binning: the signal is binned at ``min_period / 16``.
+    max_period : int, optional
+        Largest period to consider. Defaults to a fiftieth of the analysed
+        span, so at least 50 alternation cycles are seen.
+    n_photons : int
+        Photons from the start of the file used for the estimate.
+    max_bins : int
+        Cap on the FFT length; the bin width is widened if the span needs more.
+        Do not lower it without reading the note in the body: it sets how many
+        times per period the alternation is sampled.
+    scan_photons : int
+        Photons used by the *survey* half of the integer scan, thinned by stride
+        from the full span. The period's resolution comes from the length of the
+        record rather than the number of photons in it, so this only has to be
+        enough to rank candidates; the winner is then re-scored on every photon.
+    min_confidence : float, optional
+        Stop after the spectrum when its line stands out less than this (no alternation): the
+        integer scan over every alias is the whole cost on a stream that does not alternate,
+        and its answer would be refused anyway. The coarse period is returned.
+
+    Returns
+    -------
+    dict
+        ``{"period": int, "confidence": float, "power": ndarray,
+        "periods": ndarray}`` — ``confidence`` is the peak power divided by the
+        median power of the searched band, so ``< 5`` means "no clear
+        alternation, this is probably not µs-ALEX".
+
+    Raises
+    ------
+    ValueError
+        If there are too few photons in the two detector groups to look at.
+    """
+    macro = np.asarray(macro_times)
+    rc = np.asarray(routing_channels)
+    is_donor = np.isin(rc, list(donor_channels))
+    is_acceptor = np.isin(rc, list(acceptor_channels))
+    keep = is_donor | is_acceptor
+    if keep.sum() < 1000:
+        raise ValueError(
+            "fewer than 1000 photons in the donor/acceptor channels — check the "
+            "channel assignment before detecting the ALEX period"
+        )
+    idx = np.flatnonzero(keep)[: int(n_photons)]
+    t = macro[idx].astype(np.int64)
+    t = t - t[0]
+    sign = np.where(is_donor[idx], 1.0, -1.0)
+
+    span = int(t[-1]) + 1
+    if max_period is None:
+        max_period = max(int(span // 50), min_period * 2)
+
+    # `bin_width` is set by `max_bins`, so it grows with the *length* of the
+    # record while the period is a fixed hardware setting: a 300 s file at
+    # 12.5 ns is binned at 5722 units against a period of 8000, below Nyquist.
+    # The long span is not optional -- the line's power grows with the number of
+    # cycles seen, and binning finely over a short leading slice instead was
+    # tried and reverted (524 cycles lost to low-frequency drift and returned
+    # 78400 for a period of 8000). So the spectrum is allowed to alias, and the
+    # alias is unfolded below rather than avoided here.
+    #
+    # Two bin widths, because a boxcar bin that is a whole number of periods
+    # wide integrates every cycle to the same value: the line, and every
+    # harmonic, cancels exactly. The second width is the first times the golden
+    # ratio, which no whole number of periods can make an integer again for
+    # both (and is never near one for small multiples). Each spectrum offers its
+    # own aliases; the photons judge the union.
+    width = max(1, int(min_period // 16), -(-span // max_bins))
+    widths = (width, max(width + 1, int(round(width * _GOLDEN))))
+    spectra = [_signed_spectrum(t, sign, w, min_period, max_period, span) for w in widths]
+    # The reported spectrum is the one where the line stands out more; a null
+    # in the other is exactly the case the second width is there for.
+    main = max(spectra, key=lambda spec: spec["confidence"])
+    coarse = main["coarse"]
+    if min_confidence is not None and main["confidence"] < min_confidence:
+        return {
+            "period": int(round(coarse)),
+            "confidence": float(main["confidence"]),
+            "power": main["power"],
+            "periods": main["periods"],
+        }
+
+    # Unfold the alias. Binning samples the stream every `bin_width`, so a line
+    # at the true frequency f appears at |f - n / bin_width| for some integer n,
+    # and the peak alone cannot say which n. Every n that puts the period inside
+    # [min_period, max_period] is a candidate; when `bin_width` is under half of
+    # `min_period` only n = 0 survives and this is the plain spectral estimate.
+    # The candidates are not ranked by the spectrum (boxcar binning attenuates
+    # each by a different sinc) but by the photons themselves, below.
+    #
+    # Their positions are sharp: the peak frequency is known to an FFT bin,
+    # 1 / record, so a candidate period P is known to P**2 / record -- a
+    # fraction of a unit on any file long enough to alias.
+    centres = {}
+    for spec in spectra:
+        f_alias = 1.0 / spec["coarse"]
+        f_sample = 1.0 / spec["width"]
+        for n in range(int(spec["width"] // max(min_period, 1)) + 2):
+            for f in (n * f_sample - f_alias, n * f_sample + f_alias):
+                if f > 0 and min_period <= 1.0 / f <= max_period:
+                    reach = int(np.ceil(1.0 / (f * f * spec["record"]) + 0.5))
+                    key = int(round(1.0 / f))
+                    centres[key] = max(centres.get(key, 0), reach)
+
+    def _modulation(times, weights, candidate: int) -> float:
+        """Total power of the folded phase histogram at one trial period."""
+        phase = (times % candidate) * _PHASE_BINS // candidate
+        counts = np.bincount(phase, weights=weights, minlength=_PHASE_BINS)
+        return float(np.sum(counts[:_PHASE_BINS] ** 2))
+
+    # `apply_alex` folds on an integer, and being one unit out over 10^5 cycles
+    # walks the phase right across a laser window. So finish on the photons:
+    # scan the integers around each candidate and keep the one whose folded
+    # phase is most modulated.
+    #
+    # In two passes, because one pass over every photon per candidate was the
+    # whole cost of detection -- 322 candidates x a modulo over 2 M photons =
+    # 4.3 s of a 4.6 s detection. The period's *resolution* comes from the
+    # length of the record, not from how many photons are in it, so the survey
+    # pass reads a thinned stream that still spans the whole measurement and the
+    # refinement pass reads all of it over the handful of candidates that
+    # survive. Same scoring function, same answer, ~20x less arithmetic.
+    #
+    # Thinned by stride, which keeps the full span (and so the full period
+    # resolution) while cutting the arithmetic. Photon arrival is Poisson, so a
+    # stride in *index* is not periodic in *time* and cannot alias with the
+    # alternation the scan is looking for.
+    stride = max(1, t.size // int(scan_photons))
+    survey_t, survey_sign = t[::stride], sign[::stride]
+
+    aliased = any(2 * spec["width"] >= min_period for spec in spectra)
+    if not aliased:
+        # Unaliased: the estimate gets the wide +-2 % scan it always had.
+        lo = max(min_period, int(coarse * 0.98))
+        hi = min(max_period, int(coarse * 1.02) + 1)
+        step = max(1, (hi - lo) // 400)
+        trials = list(range(lo, hi + 1, step))
+    else:
+        # A few hundred aliases, each a few integers wide. Screen them on a
+        # sparser stream first -- the true one stands out by orders of magnitude
+        # (it is the only one whose fold is coherent), so a fifth of the survey
+        # ranks them -- and give the survey proper only the best few.
+        step = 1
+        screen_t, screen_sign = survey_t[::5], survey_sign[::5]
+        ranked = []
+        for centre, reach in centres.items():
+            lo = max(min_period, centre - reach)
+            hi = min(max_period, centre + reach)
+            ints = range(lo, hi + 1)
+            score = max(_modulation(screen_t, screen_sign, c) for c in ints)
+            ranked.append((score, ints))
+        ranked.sort(key=lambda item: item[0], reverse=True)
+        trials = sorted({c for _, ints in ranked[:4] for c in ints})
+
+    best, best_score = int(round(coarse)), -np.inf
+    for candidate in trials:
+        score = _modulation(survey_t, survey_sign, candidate)
+        if score > best_score:
+            best, best_score = candidate, score
+
+    # Refine on every photon, over the survey's own step either side -- the
+    # survey winner is only known to within `step`, and the thinning makes the
+    # scores noisier, so the true integer can sit a unit or two away.
+    fine_lo = max(min_period, best - step - 2)
+    fine_hi = min(max_period, best + step + 2)
+    best_score = -np.inf
+    for candidate in range(fine_lo, fine_hi + 1):
+        score = _modulation(t, sign, candidate)
+        if score > best_score:
+            best, best_score = candidate, score
+
+    return {
+        "period": int(best),
+        "confidence": float(main["confidence"]),
+        "power": main["power"],
+        "periods": main["periods"],
+    }
+
+
+def detect_alex_channels(
+    micro_times,
+    routing_channels,
+    *,
+    alex_period: int,
+    channels=None,
+    channel_groups=None,
+    n_bins: int = 200,
+) -> dict:
+    """Work out which detector is the donor and which the acceptor.
+
+    This is the old "channel flip" checkbox, decided from the data. One physical
+    fact settles it: **under acceptor excitation the donor detector sees
+    essentially nothing**, because the donor is not excited and does not accept
+    energy. Nothing else about the sample matters — not the FRET efficiency, not
+    the labelling fractions, not the laser powers.
+
+    So: fold the phase, split the period into its two halves by the detector
+    ratio (label-free, so this does not presuppose the answer), and count each
+    detector in each half. The half in which one detector is nearly dark is the
+    **acceptor-excitation** window, and the detector that is dark there is the
+    **donor**.
+
+    Getting this wrong is the error nothing downstream reports: a swapped
+    assignment produces a complete, plausible analysis with *E* reflected about
+    ½ and no fit statistic that says so.
+
+    Parameters
+    ----------
+    micro_times, routing_channels : array_like
+        The folded stream (after :func:`apply_alex`).
+    alex_period : int
+        The alternation period the stream was folded on.
+    channels : sequence of int, optional
+        The two routing channels to consider. Defaults to all observed channels,
+        and rejects more than two instead of silently dropping populated channels.
+    channel_groups : sequence of two sequences of int, optional
+        Two physical detector bands, each optionally including polarization
+        channels. Mutually exclusive with ``channels``; every observed channel
+        must occur in exactly one group.
+    n_bins : int
+        Phase bins used for the split.
+
+    Returns
+    -------
+    dict
+        ``{"donor": [ch], "acceptor": [ch], "contrast": float}``. ``contrast``
+        is how dark the donor is under acceptor excitation, as a ratio of its
+        own donor-excitation rate — below ~0.3 the call is clear, near 1 it is
+        not a two-colour ALEX measurement.
+
+    Raises
+    ------
+    ValueError
+        If fewer than two channels carry photons, or the phase does not split.
+    """
+    phase = np.asarray(micro_times)
+    rc = np.asarray(routing_channels)
+    if channel_groups is not None:
+        if channels is not None or len(channel_groups) != 2:
+            raise ValueError("give either two channels or two detector channel groups")
+        groups = [[int(channel) for channel in group] for group in channel_groups]
+        flat = [channel for group in groups for channel in group]
+        if any(not group for group in groups) or len(flat) != len(set(flat)):
+            raise ValueError("detector channel groups must be nonempty and cannot overlap")
+        if not set(np.unique(rc)).issubset(flat):
+            raise ValueError("detector channel groups must include every observed routing channel")
+    elif channels is None:
+        present = np.unique(rc)
+        if present.size < 2:
+            raise ValueError(f"only channel {present.tolist()} carries photons; ALEX needs two")
+        if present.size > 2:
+            raise ValueError(
+                "binary channel assignment needs exactly two detectors; "
+                "use auto_excitation_regions with channel_groups for multicolor data"
+            )
+        channels = sorted(int(channel) for channel in present)
+        groups = [[channel] for channel in channels]
+    else:
+        if len(channels) != 2:
+            raise ValueError("binary channel assignment needs exactly two detector channels")
+        groups = [[int(channel)] for channel in channels]
+    a, b = 0, 1
+
+    period = int(alex_period)
+    edges = np.linspace(0, period, n_bins + 1)
+    hist_a, _ = np.histogram(phase[np.isin(rc, groups[a])], bins=edges)
+    hist_b, _ = np.histogram(phase[np.isin(rc, groups[b])], bins=edges)
+    total = hist_a + hist_b
+    lit = total > 0.35 * np.percentile(total[total > 0], 75) if (total > 0).any() else total > 0
+    if lit.sum() < 4:
+        raise ValueError("too few occupied phase bins to assign the channels")
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        share = hist_a / np.maximum(total, 1)
+    low, high = np.percentile(share[lit], 10), np.percentile(share[lit], 90)
+    if high - low < 0.05:
+        raise ValueError(
+            f"the detector ratio does not alternate across the period "
+            f"(spread {high - low:.3f}); this is not two-colour ALEX data, or "
+            "the period is wrong"
+        )
+    first = lit & (share > 0.5 * (low + high))
+    second = lit & ~first
+
+    # Rates, not counts: the two windows need not be the same width.
+    def rate(hist, mask):
+        return float(hist[mask].sum()) / max(int(mask.sum()), 1)
+
+    rates = {
+        (a, "first"): rate(hist_a, first),
+        (b, "first"): rate(hist_b, first),
+        (a, "second"): rate(hist_a, second),
+        (b, "second"): rate(hist_b, second),
+    }
+    # For each candidate donor, how dark it is in the window where it is darkest,
+    # relative to the other window. The real donor is the one that goes dark.
+    best, best_contrast = None, np.inf
+    for donor, acceptor in ((a, b), (b, a)):
+        bright = max(rates[(donor, "first")], rates[(donor, "second")])
+        dark = min(rates[(donor, "first")], rates[(donor, "second")])
+        contrast = dark / bright if bright > 0 else np.inf
+        if contrast < best_contrast:
+            best, best_contrast = (donor, acceptor), contrast
+    if best is None:
+        raise ValueError("no populated detector group to assign as donor or acceptor")
+    donor, acceptor = best
+    return {
+        "donor": groups[donor],
+        "acceptor": groups[acceptor],
+        "contrast": float(best_contrast),
+    }
+
+
+#: Alternation contrast (spectral peak over the band median) below which a measured period is refused: a stream
+#: that does not alternate still has a largest noise peak. Alternating data comes back in the thousands; the ALEX
+#: Suite's arrival detection uses the same threshold.
+MIN_PERIOD_CONFIDENCE = 50.0
+
+
+def measure_alex_period(
+    macro_times,
+    routing_channels,
+    *,
+    channel_groups=None,
+    min_confidence: float = MIN_PERIOD_CONFIDENCE,
+    min_period: int = 64,
+    max_period: int | None = None,
+) -> dict:
+    """Measure the µs-ALEX alternation period of an unfolded photon stream.
+
+    The detector assignment only flips the sign of the alternating signal that
+    :func:`detect_alex_period` analyses, so any two detection bands work: the two
+    busiest detector groups (``channel_groups``) or, without groups, the two
+    busiest routing channels.
+
+    Parameters
+    ----------
+    macro_times, routing_channels : array_like
+        The raw photon stream; never modified.
+    channel_groups : sequence of sequence of int, optional
+        Physical detection bands, as for :func:`auto_excitation_regions`.
+    min_confidence : float
+        Refuse a period whose alternation contrast is below this.
+    min_period, max_period : int, optional
+        The range of periods searched, in macro-time units (as :func:`detect_alex_period`). A
+        bounded range keeps slow intensity drifts (diffusion, bursts) out of a stream that does
+        not alternate.
+
+    Returns
+    -------
+    dict
+        ``{"period": int, "confidence": float, "channels": [[...], [...]]}``,
+        the two bands that were compared.
+
+    Raises
+    ------
+    ValueError
+        Fewer than two detection bands carry photons, or the stream does not
+        alternate clearly (contrast below ``min_confidence``).
+    """
+    rc = np.asarray(routing_channels)
+    present, counts = np.unique(rc, return_counts=True)
+    if channel_groups:
+        groups = [sorted({int(c) for c in group}) for group in channel_groups]
+        totals = [int(counts[np.isin(present, group)].sum()) for group in groups]
+    else:
+        groups = [[int(c)] for c in present]
+        totals = [int(n) for n in counts]
+    busy = [groups[i] for i in np.argsort(totals)[::-1] if totals[i] > 0][:2]
+    if len(busy) < 2:
+        raise ValueError(
+            "an ALEX period is measured from two detection bands; only one carries photons"
+        )
+    busy.sort()
+    detected = detect_alex_period(
+        macro_times, rc, donor_channels=busy[0], acceptor_channels=busy[1],
+        min_confidence=min_confidence, min_period=min_period, max_period=max_period,
+    )
+    confidence = float(detected["confidence"])
+    if confidence < min_confidence:
+        raise ValueError(
+            f"no clear laser alternation (contrast {confidence:.0f}x, expected > "
+            f"{min_confidence:.0f}x): not µs-ALEX data, or the detector groups are wrong"
+        )
+    return {"period": int(detected["period"]), "confidence": confidence, "channels": busy}
+
+
+def alex_stream_masks(
+    micro_times,
+    routing_channels,
+    windows: dict,
+    *,
+    donor_channels,
+    acceptor_channels,
+) -> dict:
+    """Boolean per-photon masks for the four ALEX streams.
+
+    ``windows`` is the mapping returned by :func:`auto_alex_windows` (only the
+    ``"green"``/``"red"`` bounds are used). Returns ``{"DD", "DA", "AA", "AD"}``
+    masks for donor-emission/donor-excitation, acceptor-emission/donor-excitation
+    (FRET), acceptor-emission/acceptor-excitation and acceptor-excitation/
+    donor-emission respectively. Photons in the guard bands fall in no mask.
+    """
+    phase = np.asarray(micro_times)
+    rc = np.asarray(routing_channels)
+    g_lo, g_hi = windows["green"]
+    r_lo, r_hi = windows["red"]
+    green = (phase >= g_lo) & (phase < g_hi)
+    red = (phase >= r_lo) & (phase < r_hi)
+    is_donor = np.isin(rc, list(donor_channels))
+    is_acceptor = np.isin(rc, list(acceptor_channels))
+    return {
+        "DD": green & is_donor,
+        "DA": green & is_acceptor,
+        "AA": red & is_acceptor,
+        "AD": red & is_donor,
+    }

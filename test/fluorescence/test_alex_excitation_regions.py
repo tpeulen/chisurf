@@ -5,7 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.tttr.ptu_alex_creator import core
+from chisurf.core.fluorescence.excitation import alex as core
+from chisurf.plugins.tttr.ptu_alex_creator.core import apply_alex, load
 
 
 def phase_stream(windows, *, period=8000, grouped=False, seed=41):
@@ -84,7 +85,7 @@ def test_invalid_fold_period_fails_before_mutating_arrays_or_header(value):
     )
     before = stream.micro_times.copy(), stream.macro_times.copy(), stream.header.json
     with pytest.raises(ValueError, match="period"):
-        core.apply_alex(stream, value, -23)
+        apply_alex(stream, value, -23)
     np.testing.assert_array_equal(stream.micro_times, before[0])
     np.testing.assert_array_equal(stream.macro_times, before[1])
     assert stream.header.json == before[2]
@@ -105,7 +106,7 @@ def test_maximum_phase_period_and_negative_shift_are_valid():
         False,
         0,
     )
-    core.apply_alex(stream, 65536, -23)
+    apply_alex(stream, 65536, -23)
     np.testing.assert_array_equal(stream.micro_times, [30, 36])
 
 
@@ -248,7 +249,7 @@ def test_real_switching_transition_candidates_are_explicit_and_never_discarded()
 
     if not REAL_FILE.is_file():
         pytest.skip("real calibration measurement unavailable")
-    folded = core.apply_alex(core.load(str(REAL_FILE), "SM"), 8000, 0)
+    folded = apply_alex(load(str(REAL_FILE), "SM"), 8000, 0)
     result = core.auto_excitation_regions(
         folded.micro_times, folded.routing_channels, alex_period=8000
     )
