@@ -116,6 +116,8 @@ class CountRateViewModel:
         reason = self.can_compute()
         if reason is not None:
             raise ValueError(reason)
+        from ..cli import count_photons
+
         channels = self._channels()
 
         per_file: dict[str, dict[str, float]] = {}
@@ -133,7 +135,7 @@ class CountRateViewModel:
             if self.setup is not None:
                 from chisurf.core.fluorescence.excitation import windows_message
 
-                from ..windows import window_check
+                from ..cli import window_check
 
                 window_checks[path] = window_check(tttr, self.setup)
                 line = windows_message(window_checks[path])
@@ -153,10 +155,9 @@ class CountRateViewModel:
                 crs: list[float] = []
                 nps: list[int] = []
                 for info in infos:
-                    tf = tttr.get_tttr_by_channel(info["detector_chs"])
-                    tf = self._apply_range(tf, info.get("micro_time_range"))
-                    tf = self._apply_range(tf, info.get("window_range"))
-                    n = len(tf.macro_times)
+                    n = count_photons(
+                        np.asarray(tttr.get_tttr_by_channel(info["detector_chs"]).micro_times), info
+                    )
                     nps.append(n)
                     if meas_time > 0:
                         crs.append(n / meas_time)
@@ -172,15 +173,6 @@ class CountRateViewModel:
         self.window_checks = window_checks
         self.warnings = warnings
         self.notify("computed")
-
-    @staticmethod
-    def _apply_range(tf, rng):
-        """Select the sub-set of *tf* whose micro-times fall within *rng*."""
-        if not rng:
-            return tf
-        micro = tf.micro_times
-        mask = (micro >= rng[0]) & (micro <= rng[1])
-        return tf.get_tttr_by_selection(np.where(mask)[0].astype(np.int32))
 
     # ── AutoForm accessors ─────────────────────────────────────────────
     def results_rows(self) -> list[dict]:

@@ -13,10 +13,8 @@ import numpy as np
 import pytest
 import tttrlib
 
-from chisurf.plugins.tttr.tttr_count_rate_analysis.cli import (
-    calculate_count_rates,
-    get_channels_from_setup,
-)
+from chisurf.core.fluorescence.excitation import channel_map
+from chisurf.plugins.tttr.tttr_count_rate_analysis.cli import calculate_count_rates
 from chisurf.plugins.tttr.tttr_count_rate_analysis.demo import make_demo
 
 
@@ -31,7 +29,8 @@ def example(tmp_path_factory):
             "acceptor": {"chs": [1], "micro_time_ranges": [[0, 4095]]},
         },
     }
-    rates, counts, times = calculate_count_rates([str(path)], get_channels_from_setup(setup))
+    channels = channel_map(setup, ungated_means_all=True, per_detector_without_windows=True)
+    rates, counts, times = calculate_count_rates([str(path)], channels)
     return path, rates[str(path)], counts[str(path)], times[str(path)]
 
 

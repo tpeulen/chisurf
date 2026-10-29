@@ -90,33 +90,6 @@ def _panel(spec: dict, title: str) -> dict:
     return {"sections": []}
 
 
-def setup_to_channels(setup: dict) -> dict:
-    """Convert a saved detector setup into the model's channel-definition map.
-
-    One entry per detector of the setup, each gating its routing channels by
-    the detector's micro-time windows — the shape
-    :meth:`CountRateViewModel.compute` consumes.
-    """
-    if setup.get("channels") and not setup.get("detectors"):
-        from copy import deepcopy
-
-        return deepcopy(setup["channels"])
-    channels: dict = {}
-    windows = setup.get("windows") or {"": None}
-    for window_name, window in windows.items():
-        for name, detector in (setup.get("detectors") or {}).items():
-            infos = []
-            for gate in detector.get("micro_time_ranges") or [None]:
-                info = {
-                    "detector_chs": list(detector.get("chs") or []),
-                    "micro_time_range": gate,
-                    "window_range": window,
-                }
-                infos.append(info)
-            channels[f"{window_name}_{name}" if window_name else name] = infos
-    return channels
-
-
 class CountRateGui(TourTarget):
     """EMTK GUI for the count-rate analysis."""
 
@@ -506,4 +479,4 @@ class CountRateApp(ImApp):
         self.count_rate_gui.draw()
 
 
-__all__ = ["CountRateApp", "WINDOW_BG", "setup_to_channels"]
+__all__ = ["CountRateApp", "WINDOW_BG"]

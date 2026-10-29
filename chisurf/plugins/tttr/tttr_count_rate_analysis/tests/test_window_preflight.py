@@ -13,10 +13,11 @@ import pytest
 
 pytest.importorskip("tttrlib")
 
+from chisurf.core.fluorescence.excitation import channel_map, windows_message  # noqa: E402
 from chisurf.plugins.core.excitation_windows import demo as pie  # noqa: E402
 from chisurf.plugins.tttr.tttr_count_rate_analysis.cli import (  # noqa: E402
     calculate_count_rates,
-    get_channels_from_setup,
+    window_check,
 )
 
 GATES = {"green": {"chs": [0], "micro_time_ranges": [[0, 4095]]},
@@ -52,8 +53,8 @@ def donor_only(tmp_path_factory):
 
 def _warnings(path, setup) -> list[str]:
     warnings: list[str] = []
-    calculate_count_rates([str(path)], get_channels_from_setup(setup), setup=setup,
-                          warnings=warnings)
+    channels = channel_map(setup, ungated_means_all=True, per_detector_without_windows=True)
+    calculate_count_rates([str(path)], channels, setup=setup, warnings=warnings)
     return warnings
 
 
@@ -88,14 +89,13 @@ def test_the_cli_prints_the_warning(demo, tmp_path):
 
 
 def test_a_setup_without_windows_is_checked_for_its_gates_only(demo):
-    from chisurf.plugins.tttr.tttr_count_rate_analysis.windows import window_warning
-
     per_detector = {"detectors": MATCHING["detectors"], "windows": {}}
-    assert window_warning(str(demo), per_detector) is None  # "no windows" is not a finding
+    # "no windows" is not a finding
+    assert windows_message(window_check(str(demo), per_detector)) is None
     narrow = {"detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 3125]]},
                             "red": {"chs": [1], "micro_time_ranges": [[1700, 3000]]}},
               "windows": {}}
-    line = window_warning(str(demo), narrow)
+    line = windows_message(window_check(str(demo), narrow))
     assert line and line.startswith("Detector gates do not match"), line
 
 

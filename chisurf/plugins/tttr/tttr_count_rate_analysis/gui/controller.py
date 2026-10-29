@@ -17,13 +17,18 @@ from emtk.i18n import tr
 
 from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
 from chisurf.core.fio.staging import TTTR_EXTENSIONS, open_tttr
-from chisurf.core.fluorescence.excitation import WindowsPreflightMixin, windows_message
+from chisurf.core.fluorescence.excitation import (
+    WindowsPreflightMixin,
+    channel_map,
+    format_ranges,
+    windows_message,
+)
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
 
-from ..windows import preflight_setup, window_check
-from .app import CountRateApp, setup_to_channels
+from ..cli import window_check
+from .app import CountRateApp
 from .view_model import CountRateViewModel
 
 
@@ -74,7 +79,11 @@ class CountRateController(WindowsPreflightMixin):
         self.setups_ready = True
 
     def channels(self):
-        return setup_to_channels(self.channel_editor.model.get_settings())
+        return channel_map(
+            self.channel_editor.model.get_settings(),
+            ungated_means_all=True,
+            per_detector_without_windows=True,
+        )
 
     def adopt_editor_definition(self, setup, name=""):
         from chisurf.core.setup_channel_definition import ChannelDefinition
@@ -133,7 +142,7 @@ class CountRateController(WindowsPreflightMixin):
     def apply_setup(self):
         try:
             setup = json.loads(self.setup_editor)
-            if not setup_to_channels(setup):
+            if not channel_map(setup, ungated_means_all=True, per_detector_without_windows=True):
                 raise ValueError("Define at least one detector channel.")
             name = self.selected_setup or "Custom setup"
             self._setups[name] = setup
@@ -209,7 +218,7 @@ class CountRateController(WindowsPreflightMixin):
         channels = deepcopy(self.channels())
         model.channels_provider = lambda: channels
         setup = deepcopy(self.channel_editor.model.get_settings())
-        model.setup = preflight_setup(setup)
+        model.setup = setup
         reading = setup_lut_open_kwargs(setup)
         timing = setup.get("tttr_reading") or {}
         if timing.get("override_timing") and float(timing.get("macro_time_resolution", 0) or 0) > 0:
@@ -254,7 +263,7 @@ class CountRateController(WindowsPreflightMixin):
     # -- the excitation windows against the data (the shared pre-flight) ---------------------- #
     def preflight_setup(self) -> dict:
         """The windows, detectors and reading routine the count rates use."""
-        return preflight_setup(self.channel_editor.model.get_settings())
+        return deepcopy(self.channel_editor.model.get_settings())
 
     def take_preflight_setup(self, setup: dict) -> None:
         """The user took the detected windows (and gates, and their channel width): they become the
@@ -265,9 +274,8 @@ class CountRateController(WindowsPreflightMixin):
             if setup.get(key):
                 full[key] = deepcopy(setup[key])
         self.use_setup(full, self.selected_setup or "Custom setup")
-        self.message = "Windows from the data: " + ", ".join(
-            f"{k} {v[0]}–{v[1]}" for k, v in full.get("windows", {}).items()
-        ) + ". Press Calculate."
+        windows = format_ranges(full.get("windows"))
+        self.message = f"Windows from the data: {windows}. Press Calculate."
 
     def run_windows_preflight(self, tttr):
         """Check the detector definition against *tttr*; the line for the warnings (``None``: fine)."""

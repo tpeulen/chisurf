@@ -15,6 +15,43 @@ import tttrlib
 
 from chisurf.core.cli.support import DidYouMeanGroup
 from chisurf.core.data_io.detector_setups import load_detector_setups
+from chisurf.core.fluorescence.excitation import (
+    channel_map,
+    gate_check,
+    gate_setup,
+    micro_mask,
+    windows_message,
+    windows_preflight,
+)
+
+
+def count_photons(micro: np.ndarray, info: dict[str, Any]) -> int:
+    """Photons of a channel entry: micro times inside its gate and its window (both half-open
+    ``[start, stop)``; ``None`` keeps every photon)."""
+    gate, window = info.get("micro_time_range"), info.get("window_range")
+    keep = micro_mask(micro, [gate] if gate else None)
+    keep &= micro_mask(micro, [window] if window else None)
+    return int(np.count_nonzero(keep))
+
+
+def window_check(tttr: Any, setup: dict[str, Any] | None):
+    """The excitation-window pre-flight of the count rates (``None``: nothing to say).
+
+    The counts apply the windows and gates as channels of the data, so they are checked that way
+    (:func:`~chisurf.core.fluorescence.excitation.gate_setup`: no channel width); an open window
+    (``all: None``) counts every photon and has nothing to check, and a setup without range
+    windows is checked for its gates only.
+    """
+    windows = {
+        str(k): v for k, v in ((setup or {}).get("windows") or {}).items()
+        if isinstance(v, (list, tuple)) and len(v) == 2 and None not in v
+    }
+    if not windows:
+        return gate_check(tttr, setup)
+    try:
+        return windows_preflight(tttr, windows, setup=gate_setup(setup))
+    except Exception:  # noqa: BLE001 - a check that cannot run says nothing
+        return None
 
 
 def calculate_count_rates(
@@ -67,9 +104,7 @@ def calculate_count_rates(
             # Load TTTR file
             tttr = tttrlib.TTTR(file_path)
             if setup is not None and warnings is not None:
-                from .windows import window_warning
-
-                line = window_warning(tttr, setup)
+                line = windows_message(window_check(tttr, setup))
                 if line:
                     warnings.append(f"{os.path.basename(file_path)}: {line}")
 
@@ -90,36 +125,11 @@ def calculate_count_rates(
                 channel_n_photons = []
 
                 for channel_info in channel_info_list:
-                    # Extract channel parameters
-                    window_range = channel_info["window_range"]
-                    detector_chs = channel_info["detector_chs"]
-                    micro_time_range = channel_info["micro_time_range"]
-
-                    # Filter TTTR data by detector channels
-                    tttr_filtered = tttr.get_tttr_by_channel(detector_chs)
-
-                    # Filter by micro time range if specified
-                    if micro_time_range:
-                        micro_times = tttr_filtered.micro_times
-                        micro_mask = (micro_times >= micro_time_range[0]) & (
-                            micro_times <= micro_time_range[1]
-                        )
-                        # Convert int64 indices to int32 to avoid TypeError
-                        selection_indices = np.where(micro_mask)[0].astype(np.int32)
-                        tttr_filtered = tttr_filtered.get_tttr_by_selection(selection_indices)
-
-                    # Filter by macro time window if specified
-                    if window_range:
-                        micro_times = tttr_filtered.micro_times
-                        macro_mask = (micro_times >= window_range[0]) & (
-                            micro_times <= window_range[1]
-                        )
-                        # Convert int64 indices to int32 to avoid TypeError
-                        selection_indices = np.where(macro_mask)[0].astype(np.int32)
-                        tttr_filtered = tttr_filtered.get_tttr_by_selection(selection_indices)
-
+                    micro = np.asarray(
+                        tttr.get_tttr_by_channel(channel_info["detector_chs"]).micro_times
+                    )
                     # Calculate count rate (photons per second)
-                    n_photons_channel = len(tttr_filtered.macro_times)
+                    n_photons_channel = count_photons(micro, channel_info)
                     channel_n_photons.append(n_photons_channel)
 
                     if measurement_time > 0:
@@ -147,31 +157,6 @@ def calculate_count_rates(
             click.echo(f"Error processing {file_path}: {str(e)}", err=True)
 
     return count_rates, n_photons, measurement_times
-
-
-def get_channels_from_setup(setup_data: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
-    """Extract channel definitions from setup data.
-
-    Args:
-        setup_data: Dictionary containing windows, detectors, and tttr_reading settings
-
-    Returns:
-        Dictionary mapping channel names to lists of channel info dictionaries
-    """
-    channels: dict[str, list[dict[str, Any]]] = {}
-    windows = setup_data.get("windows", {})
-    detectors = setup_data.get("detectors", {})
-
-    for wname, wrange in windows.items():
-        for dname, dinfo in detectors.items():
-            cname = f"{wname}_{dname}"
-            channels[cname] = []
-            for mtr in dinfo["micro_time_ranges"]:
-                channels[cname].append(
-                    {"window_range": wrange, "detector_chs": dinfo["chs"], "micro_time_range": mtr}
-                )
-
-    return channels
 
 
 def save_results_as_txt(
@@ -324,7 +309,9 @@ def analyze(files, setup_file, setup_name, output, verbose):
         return
 
     # Get channels from setup
-    channels = get_channels_from_setup(setup_data)
+    # one channel per window × detector; an ungated detector counts all its photons, a setup
+    # without windows one channel per detector
+    channels = channel_map(setup_data, ungated_means_all=True, per_detector_without_windows=True)
 
     if verbose:
         click.echo(f"Using setup: {setup_name}")

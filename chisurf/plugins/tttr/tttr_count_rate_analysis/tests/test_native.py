@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.app import setup_to_channels
+from chisurf.core.fluorescence.excitation import channel_map
 from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller import create_app
 
 
@@ -34,7 +34,7 @@ SETUP = {
 
 
 def test_native_windows_and_detector_gates_are_preserved(tmp_path):
-    assert set(setup_to_channels(SETUP)) == {"early_green", "late_green"}
+    assert set(channel_map(SETUP)) == {"early_green", "late_green"}
     path = tmp_path / "one.ptu"
     path.write_bytes(b"x")
     app = create_app(reader=lambda _: PhotonStream(), setups={"instrument": SETUP})
@@ -43,8 +43,10 @@ def test_native_windows_and_detector_gates_are_preserved(tmp_path):
     app.tool.job.future.result(timeout=5)
     app.tool.job.poll()
     rows = app.tool._model.results_rows()
+    # windows and gates are half-open [start, stop): early [0, 2) ∩ gate [1, 4) holds
+    # micro time 1, late [3, 5) holds 3
     assert [(r["channel"], r["photons"], r["mean_khz"]) for r in rows] == [
-        ("early_green", 2, 0.002),
+        ("early_green", 1, 0.001),
         ("late_green", 1, 0.001),
     ]
     output = tmp_path / "rates.tsv"
@@ -130,10 +132,7 @@ def test_native_success_status_does_not_cover_scientific_docks(tmp_path):
 
 def test_native_rebuilds_cached_channels_after_definition_edits():
     setup = {**SETUP, "channels": {"stale": []}}
-    assert set(setup_to_channels(setup)) == {"early_green", "late_green"}
-    assert setup_to_channels({"channels": {"explicit": [{"detector_chs": [0]}]}}) == {
-        "explicit": [{"detector_chs": [0]}]
-    }
+    assert set(channel_map(setup)) == {"early_green", "late_green"}
 
 
 def test_native_settings_exclude_results_and_restore_control_definitions():
@@ -190,7 +189,7 @@ def test_native_count_plot_pads_markers_and_handles_empty_input_queue(tmp_path, 
 
     monkeypatch.setattr(implot, "setup_axes_limits", limits)
     app.draw(PilPainter(1100, 750), 0, 0, 1100, 750)
-    assert calls[0][3] > 0.002
+    assert calls[0][3] > 0.001  # padded above the highest rate
     app.tool._model.files = []
     app.draw(PilPainter(1100, 750), 0, 0, 1100, 750)
     app.close()
