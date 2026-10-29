@@ -250,6 +250,8 @@ def fuse(
     for stem, counts in result["per_measurement"].items():
         click.echo(f"  {stem}: {counts['bursts_before']} -> {counts['bursts_after']}")
     click.echo(f"Written to {result['output_folder']}")
+    for warning in result.get("warnings") or []:
+        click.echo(f"Warning: {warning}", err=True)
 
 
 if __name__ == "__main__":  # pragma: no cover

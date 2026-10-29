@@ -445,6 +445,99 @@ def _merged_intervals(
     return intervals, kept
 
 
+# ── the excitation windows against the photons (the shared pre-flight) ─────────
+
+
+def window_warning(tttr, name: str, windows, detectors) -> str | None:
+    """The shared excitation-window pre-flight on one measurement, as a line for the run's warnings.
+
+    The fused bursts are regenerated from the photons with *windows* exactly as given (raw
+    micro-time channels of the measurement), so they are checked as they are applied: a mismatch
+    is reported, never corrected here. A donor-only measurement gives a note instead.
+
+    Returns
+    -------
+    str or None
+        ``"<name>: <message>"``, or ``None`` when the windows hold the pulses (or nothing could be
+        checked).
+    """
+    from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
+
+    try:
+        message = windows_message(
+            windows_preflight(tttr, dict(windows or {}), detectors=dict(detectors or {}))
+        )
+    except Exception:  # noqa: BLE001 - a check that cannot run says nothing
+        logger.debug("burst fusion: window pre-flight failed for %s", name, exc_info=True)
+        return None
+    return f"{name}: {message}" if message else None
+
+
+def preflight_source(
+    analysis: FusionAnalysis,
+    detectors: dict[str, Any] | None = None,
+    windows: dict[str, Any] | None = None,
+    data_folder=None,
+) -> dict[str, Any] | None:
+    """The first measurement the writer would regenerate, opened, with the definition it would use.
+
+    Resolved as :func:`write_fused_runs` / :func:`write_fused_analysis` resolve it (explicit
+    arguments, else a legacy folder's reading manifest), so the GUI can run the window pre-flight
+    before anything is written.
+
+    Returns
+    -------
+    dict or None
+        ``name``, ``tttr``, ``detectors``, ``windows``; ``None`` when no measurement can be opened
+        (no raw data, no detector definition).
+    """
+    from chisurf.core.fio.staging import open_tttr
+
+    try:
+        for measurement in analysis.measurements:
+            frame = measurement.source
+            if row_count(frame) == 0:
+                continue
+            if analysis.sources:
+                address = analysis.sources.get(measurement.stem)
+                if not address:
+                    continue
+                from chisurf.core.fio.analysis_path import split_container_path
+
+                container, _run = split_container_path(address)
+                return {
+                    "name": container.name,
+                    "tttr": open_tttr(str(container)),
+                    "detectors": dict(detectors or {}),
+                    "windows": dict(windows or {}),
+                }
+            source_name = str(np.asarray(frame["First File"])[0])
+            det, win, _resolution, container = _detector_definition(
+                analysis, source_name, detectors, windows
+            )
+            data_dir = (
+                pathlib.Path(data_folder) if data_folder else pathlib.Path(analysis.folder).parent
+            )
+            path = data_dir / source_name
+            if not path.exists():
+                return None
+            return {
+                "name": source_name,
+                "tttr": open_tttr(path, container or _file_type(analysis)),
+                "detectors": dict(det),
+                "windows": dict(win),
+            }
+    except Exception:  # noqa: BLE001 - nothing to check against
+        logger.debug("burst fusion: no measurement for the window pre-flight", exc_info=True)
+    return None
+
+
+def _file_type(analysis: FusionAnalysis) -> str | None:
+    """The TTTR container type the settings name (``None``: detect it from the file)."""
+    file_type = analysis.settings.file_type
+    return None if not file_type or file_type.lower() == "auto" else file_type
+
+
 def write_fused_analysis(
     analysis: FusionAnalysis,
     output_folder=None,
@@ -483,6 +576,7 @@ def write_fused_analysis(
     written: list[str] = []
     per_measurement: dict[str, dict[str, int]] = {}
     sources: list[dict[str, Any]] = []
+    warnings: list[str] = []
 
     for measurement in analysis.measurements:
         frame = measurement.source
@@ -498,12 +592,10 @@ def write_fused_analysis(
                 f"raw measurement {path} not found — the fused burst table is "
                 "regenerated from the photons, so the source data must be readable"
             )
-        routine = container or (
-            None
-            if not analysis.settings.file_type or analysis.settings.file_type.lower() == "auto"
-            else analysis.settings.file_type
-        )
-        tttr = open_tttr(path, routine)
+        tttr = open_tttr(path, container or _file_type(analysis))
+        warning = window_warning(tttr, source_name, win, det)
+        if warning:
+            warnings.append(warning)
 
         intervals, kept = _merged_intervals(frame, measurement.labels, len(tttr))
         fused = generate_burst_dataframe(
@@ -580,6 +672,7 @@ def write_fused_analysis(
         "tau_max_s": float(analysis.window.tau_max_s),
         "tau_used_s": float(analysis.tau_used_s),
         "resolved": bool(analysis.window.resolved),
+        "warnings": warnings,
     }
 
 
@@ -852,6 +945,7 @@ def write_fused_runs(
     parameters = analysis.settings.to_dict()
     runs: list[str] = []
     per_measurement: dict[str, dict[str, int]] = {}
+    warnings: list[str] = []
     for measurement in analysis.measurements:
         frame = measurement.source
         address = analysis.sources.get(measurement.stem)
@@ -859,6 +953,9 @@ def write_fused_runs(
             continue
         container, source_run = split_container_path(address)
         tttr = open_tttr(str(container))
+        warning = window_warning(tttr, container.name, windows, detectors)
+        if warning:
+            warnings.append(warning)
         intervals, kept = _merged_intervals(frame, measurement.labels, len(tttr))
         first_file = (
             str(np.asarray(frame["First File"])[0])
@@ -935,6 +1032,7 @@ def write_fused_runs(
         "tau_max_s": float(analysis.window.tau_max_s),
         "tau_used_s": float(analysis.tau_used_s),
         "resolved": bool(analysis.window.resolved),
+        "warnings": warnings,
     }
 
 

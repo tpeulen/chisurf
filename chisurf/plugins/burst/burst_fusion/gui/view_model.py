@@ -26,6 +26,7 @@ from typing import Any
 import numpy as np
 
 from chisurf.core.datastore import column_names, concat_stores, numeric_column, row_count
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
 
 from ..api.models import FusionAnalysis
 
@@ -40,7 +41,7 @@ _AFTER = "#1f77b4"
 _MARK = "#d62728"
 
 
-class FusionViewModel:
+class FusionViewModel(WindowsPreflightMixin):
     """State and logic of the Burst Fusion tool (no Qt)."""
 
     def view_spec(self):
@@ -63,6 +64,11 @@ class FusionViewModel:
         #: Without it the fused folder falls back to the source folder's manifest.
         self.detectors: dict[str, Any] = {}
         self.windows: dict[str, Any] = {}
+        #: The definition the writer will regenerate the bursts with (the given one, or a legacy
+        #: folder's recorded one), as resolved for the window pre-flight; ``None`` before.
+        self._preflight_definition: dict[str, Any] | None = None
+        #: The shared window check on the first measurement of the run (``None`` before one).
+        self.windows_check = None
         #: Called with the written folder so an embedding workflow can point its
         #: downstream steps at the fused bursts instead of the original ones.
         self.folder_written: Callable[[str], None] | None = None
@@ -244,6 +250,8 @@ class FusionViewModel:
         self._analysis = None
         self._emitted = None
         self._written = ""
+        self.windows_check = None
+        self._preflight_definition = None
         self._status = "Press Estimate to compute the same-molecule probability."
         self.notify("folder")
 
@@ -285,6 +293,7 @@ class FusionViewModel:
         )
         self._analysis = analysis
         self._emitted = None
+        self.check_windows(analysis)
         stats = analysis.statistics
         self._status = (
             f"{stats['n_bursts_before']} -> {stats['n_bursts_after']} bursts; "
@@ -329,6 +338,8 @@ class FusionViewModel:
             self._written = str(result["output_folder"])
             self._emitted = self._read_written(result.get("bur_files") or [])
         self._status = f"Fused bursts written to {self._written}"
+        for warning in result.get("warnings") or []:
+            self._status += f" Warning: {warning}"
         logger.info("Burst fusion: %s", self._status)
         if callable(self.folder_written):
             try:
@@ -337,6 +348,55 @@ class FusionViewModel:
                 logger.warning("burst fusion: folder handoff failed", exc_info=True)
         self.notify("written")
         return self._written
+
+    # ── the excitation windows against the photons (the shared pre-flight) ──
+    def check_windows(self, analysis: FusionAnalysis | None = None) -> str | None:
+        """Hold the windows the fused bursts will be regenerated with against the first
+        measurement's micro time; the line for the status (``None``: fine or nothing to check)."""
+        from ..core.fusion import preflight_source
+
+        analysis = analysis if analysis is not None else self._analysis
+        source = (
+            preflight_source(
+                analysis, detectors=self.detectors or None, windows=self.windows or None
+            )
+            if analysis is not None
+            else None
+        )
+        if source is None:
+            self.windows_check = None
+            self._preflight_definition = None
+            return None
+        self._preflight_definition = {
+            "detectors": source["detectors"],
+            "windows": source["windows"],
+        }
+        return self.run_windows_preflight(source["tttr"])
+
+    def preflight_setup(self) -> dict:
+        """The definition the writer uses, for the shared window pre-flight.
+
+        No channel width is given: the writer applies the windows as raw channels of the
+        measurement, so that is how they are checked.
+        """
+        definition = self._preflight_definition or {
+            "detectors": self.detectors,
+            "windows": self.windows,
+        }
+        return {
+            "detectors": dict(definition.get("detectors") or {}),
+            "windows": dict(definition.get("windows") or {}),
+        }
+
+    def take_preflight_setup(self, setup: dict) -> None:
+        """Regenerate the fused bursts with the detected windows (and opened gates)."""
+        self.detectors = dict(setup.get("detectors") or {})
+        self.windows = {k: [int(v[0]), int(v[1])] for k, v in (setup.get("windows") or {}).items()}
+        self._preflight_definition = {"detectors": self.detectors, "windows": self.windows}
+        self._status = "Windows from the data: " + ", ".join(
+            f"{k} {v[0]}–{v[1]}" for k, v in self.windows.items()
+        )
+        self.notify("changed")
 
     def _read_runs(self, runs) -> list | None:
         """Read the fused runs back the way every burst tool reads a run (the plots show them)."""
@@ -417,8 +477,14 @@ class FusionViewModel:
     def status_text(self) -> str:
         """Status for the info block, with the demo's truth when one is loaded."""
         demo = self._demo_line()
+        # The verdict itself is the info line under this block; the status names it, once.
+        windows = (
+            f"<br/>Warning: {self.windows_check_text().split(':', 1)[0]} -- see below."
+            if self.windows_check_offer
+            else ""
+        )
         if self._analysis is None:
-            return demo + f"<i>{self._status}</i>"
+            return demo + f"<i>{self._status}</i>" + windows
         window = self._analysis.window
         stats = self._analysis.statistics
         lines = [
@@ -442,7 +508,9 @@ class FusionViewModel:
         )
         if self._written:
             lines.append(f"Written to <code>{self._written}</code>")
-        return demo + "<br/>".join(lines)
+        elif self._status.startswith("Windows from the data"):
+            lines.append(self._status)
+        return demo + "<br/>".join(lines) + windows
 
     def _demo_line(self) -> str:
         """Return the loaded demo's declared truth, or an empty string for real data.

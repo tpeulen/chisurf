@@ -73,6 +73,23 @@
               "description": "What the current threshold implies and what the last run produced."
             },
             {
+              "type": "info",
+              "source": "windows_check_text",
+              "hidden_when": {"attr": "windows_check_quiet", "equals": true},
+              "description": "The PIE windows the fused bursts are regenerated with, held against the excitation pulses the first measurement shows (the check every PIE analysis runs; Estimate runs it): a warning when a window misses a pulse, cuts one, mixes two or lies outside the data, or a detector gate hides a pulse; a note when only one pulse is seen (donor-only or not PIE)."
+            },
+            {
+              "type": "button_row",
+              "hidden_when": {"attr": "windows_check_offer", "equals": false},
+              "buttons": [
+                {
+                  "label": "Use detected windows",
+                  "action": "use_detected_windows",
+                  "description": "Regenerate the fused bursts with the windows (and detector gates) detected from this measurement's micro-time decays instead of the given ones; they replace the detector definitions below. The saved setup is not changed: save it in the setup editor (Auto-detect) to keep them."
+                }
+              ]
+            },
+            {
               "type": "table",
               "title": "Summary",
               "source": "summary_rows",

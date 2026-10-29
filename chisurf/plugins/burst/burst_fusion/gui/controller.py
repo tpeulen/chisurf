@@ -23,6 +23,10 @@ class FusionController:
         self.channel_text = json.dumps(
             {"detectors": model.detectors, "windows": model.windows}, indent=2
         )
+        #: The definition the editor text was last written from (see :meth:`sync_channel_text`).
+        self._shown_definition = copy.deepcopy(
+            {"detectors": model.detectors, "windows": model.windows}
+        )
 
     def adopt_run(self, address) -> bool:
         """Take the burst run *address* (from the workspace) as the bursts to fuse."""
@@ -144,7 +148,11 @@ class FusionController:
             if not channels or any(not isinstance(ch, int) or ch < 0 for ch in channels):
                 raise ValueError(f"{name}: provide nonnegative routing channels in chs.")
         self.model.detectors, self.model.windows = detectors, windows
+        # The window check was made against the previous definition.
+        self.model.windows_check = None
+        self.model._preflight_definition = None
         self.channel_text = json.dumps(data, indent=2)
+        self._shown_definition = copy.deepcopy({"detectors": detectors, "windows": windows})
         self.status = "Detector and PIE window definitions applied."
 
     def save_settings(self, path):
@@ -213,6 +221,14 @@ class FusionController:
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-fusion-file")
         self._dialog_window.show()
 
+    def sync_channel_text(self) -> None:
+        """Rewrite the editor text when the model's definition changed elsewhere (*Use detected
+        windows*, a workflow's setup); a draft typed against an unchanged definition is kept."""
+        definition = {"detectors": self.model.detectors, "windows": self.model.windows}
+        if definition != self._shown_definition:
+            self.channel_text = json.dumps(definition, indent=2)
+            self._shown_definition = copy.deepcopy(definition)
+
     def draw_controls(self, remember=None, draw_input=None):
         """The Input section (the workspace's burst runs), the TTTR file type and the detector
         definitions."""
@@ -220,6 +236,7 @@ class FusionController:
 
         from chisurf.plugins.emtk_layout import TEXT_WIDTH
 
+        self.sync_channel_text()
         im.begin_disabled(self.running)
         if callable(draw_input):
             draw_input()

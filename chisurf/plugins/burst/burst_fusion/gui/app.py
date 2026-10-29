@@ -539,6 +539,8 @@ class BurstFusionApp(ImApp):
     def set_channel_settings(self, settings):
         self.model.detectors = dict(settings.get("detectors") or {})
         self.model.windows = dict(settings.get("windows") or {})
+        self.model.windows_check = None
+        self.model._preflight_definition = None
         import json
 
         self.controller.channel_text = json.dumps(
