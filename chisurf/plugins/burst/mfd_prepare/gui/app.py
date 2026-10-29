@@ -86,6 +86,13 @@ class MfdPreparePanel:
     def has_result(self) -> bool:
         return bool(self.m.result)
 
+    def windows_check_text(self) -> str:
+        return self.m.windows_check_text()
+
+    @property
+    def windows_check_quiet(self) -> bool:
+        return self.m.windows_check_quiet
+
     # tables
     def detector_columns(self):
         return [

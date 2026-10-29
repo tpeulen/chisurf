@@ -26,6 +26,8 @@ class MfdPrepareModel:
         self.error: str = ""
         self.status_text: str = ""
         self.prepared_folder: str = ""
+        #: The excitation-window pre-flight of the last preparation (one line per measurement).
+        self.window_warnings: list[str] = []
         self._observers: list = []
 
     # -- observers (SnapshotJob reads the model through these) ----------------------------------------- #
@@ -50,6 +52,7 @@ class MfdPrepareModel:
     def prepare(self) -> None:
         """Run the preparation (blocking; the app runs it through a ``SnapshotJob``) and fill the report and result."""
         self.error = ""
+        self.window_warnings = []
         if not self.folder:
             self.report = "Pick a burst run in the Input section first."
             self.result = {}
@@ -71,9 +74,11 @@ class MfdPrepareModel:
                 payload = result.get("result", result)
                 self.report = payload.get("report", json.dumps(payload, indent=2, default=str))
                 self.result = payload
+                self.window_warnings = [str(w) for w in payload.get("warnings") or []]
             else:
                 self.report = result.get("report", json.dumps(result, indent=2, default=str))
                 self.result = result
+                self.window_warnings = [str(w) for w in result.get("warnings") or []]
         except Exception as exc:  # noqa: BLE001 - shown in the report, as the Qt tool did
             self.report = f"Error: {exc}"
             self.error = str(exc)
@@ -89,6 +94,23 @@ class MfdPrepareModel:
                 else "Done."
             )
         )
+        if self.window_warnings and not self.error:
+            # the info line below says the whole of it
+            self.status_text += " -- " + self.window_warnings[0].split(":")[0] + " (see below)"
+
+    # -- the excitation-window pre-flight ------------------------------------------------------------- #
+    def windows_check_text(self) -> str:
+        """The pre-flight's verdict on the run's detector gates (empty when they hold the pulses).
+
+        Reported only: the gates are those the bursts were selected with, so the fix is in the
+        setup and a new burst search, not here.
+        """
+        return "\n".join(self.window_warnings)
+
+    @property
+    def windows_check_quiet(self) -> bool:
+        """Nothing to say about the gates."""
+        return not self.window_warnings
 
     # -- what the window shows ------------------------------------------------------------------------- #
     @property

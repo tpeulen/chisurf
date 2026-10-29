@@ -8,6 +8,12 @@
       "description": "What the tool did last."
     },
     {
+      "type": "info",
+      "source": "windows_check_text",
+      "hidden_when": {"attr": "windows_check_quiet", "equals": true},
+      "description": "The excitation-window check of the measurement: the detectors' micro-time gates (and the run's PIE windows) do not hold its excitation pulses, with the windows detected in the data. The bursts were selected with these gates, so correct the setup (Excitation Windows or the setup editor's Auto-detect) and search the bursts again."
+    },
+    {
       "description": "Detectors found in the data and their roles.",
       "type": "panel",
       "title": "Detectors",

@@ -47,6 +47,9 @@ class PrepareResult:
     summary: dict[str, Any] = field(default_factory=dict)
     sources: dict[str, Any] = field(default_factory=dict)
     error: str = ""
+    #: The excitation-window pre-flight: one line per measurement whose detector gates or PIE
+    #: windows do not hold its excitation pulses.
+    warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -61,4 +64,5 @@ class PrepareResult:
             "summary": self.summary,
             "sources": self.sources,
             "error": self.error,
+            "warnings": list(self.warnings),
         }
