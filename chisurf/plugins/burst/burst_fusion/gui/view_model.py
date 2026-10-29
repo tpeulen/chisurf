@@ -26,7 +26,7 @@ from typing import Any
 import numpy as np
 
 from chisurf.core.datastore import column_names, concat_stores, numeric_column, row_count
-from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin, format_ranges
 
 from ..api.models import FusionAnalysis
 
@@ -393,9 +393,7 @@ class FusionViewModel(WindowsPreflightMixin):
         self.detectors = dict(setup.get("detectors") or {})
         self.windows = {k: [int(v[0]), int(v[1])] for k, v in (setup.get("windows") or {}).items()}
         self._preflight_definition = {"detectors": self.detectors, "windows": self.windows}
-        self._status = "Windows from the data: " + ", ".join(
-            f"{k} {v[0]}–{v[1]}" for k, v in self.windows.items()
-        )
+        self._status = "Windows from the data: " + format_ranges(self.windows)
         self.notify("changed")
 
     def _read_runs(self, runs) -> list | None:

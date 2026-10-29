@@ -36,7 +36,7 @@ from chisurf.core.datastore import (
     rows_from_table,
     store_from_rows,
 )
-from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin, format_ranges
 from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
 
 from ..api.models import (
@@ -1332,9 +1332,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         self.window_resolution_s = float(res) * 1e-12 if res else None
         if self.window not in (ALL, *self.windows):
             self.window = ALL
-        self.status_text = "Windows from the data: " + ", ".join(
-            f"{k} {v[0]}–{v[1]}" for k, v in self.windows.items()
-        )
+        self.status_text = "Windows from the data: " + format_ranges(self.windows)
         self.settings_changed()
 
     def _check_windows(self, tttr) -> None:
