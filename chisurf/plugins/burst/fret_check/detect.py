@@ -179,76 +179,46 @@ def _find_alternation(hist, n_bins):
     return donor_bins, acceptor_bins, donor_channels
 
 
-def find_alex_period(data, channels, bin_s: float = 5e-6, max_bins: int = 1 << 22):
+def find_alex_period(data, channels):
     """The µsALEX period in macro-time ticks, or ``None``.
 
     Some files keep the alternation only in the macro time (no micro time, or
-    a micro time unrelated to it). The count rate of the detectors then
-    oscillates at the alternation frequency: the strongest peak of the binned
-    count rate's spectrum between 1 and 50 kHz, at least 30x the median, gives
-    the period. It is refined to the integer number of ticks whose fold
-    has the deepest contrast.
+    a micro time unrelated to it). The shared µs-ALEX period measurement
+    (:func:`chisurf.core.fluorescence.excitation.alex.measure_alex_period`) on the
+    signal *channels*, in the alternation periods µs-ALEX uses
+    (:data:`~chisurf.core.fluorescence.excitation.measure.ALEX_PERIOD_RANGE_S`);
+    ``None`` when the stream does not alternate.
     """
+    from chisurf.core.fluorescence.excitation import alex  # noqa: PLC0415
+    from chisurf.core.fluorescence.excitation.measure import ALEX_PERIOD_RANGE_S  # noqa: PLC0415
+
     res = float(data.header.macro_time_resolution)
-    macro = np.asarray(data.macro_times).astype(np.int64)
-    routing = np.asarray(data.routing_channels)
-    if macro.size < 10_000 or res <= 0:
+    if len(data) < 10_000 or res <= 0:
         return None
-    best = None
-    for c in channels:
-        t = macro[routing == c]
-        if t.size < 10_000:
-            continue
-        idx = ((t - t[0]) * res / bin_s).astype(np.int64)
-        idx = idx[idx < max_bins]
-        counts = np.bincount(idx).astype(float)
-        if counts.size < 1024:
-            continue
-        spec = np.abs(np.fft.rfft(counts - counts.mean()))
-        freq = np.fft.rfftfreq(counts.size, bin_s)
-        band = (freq > 1e3) & (freq < min(5e4, 0.4 / bin_s))
-        if not band.any():
-            continue
-        k = np.flatnonzero(band)[np.argmax(spec[band])]
-        ratio = spec[k] / max(np.median(spec[band]), 1e-12)
-        if ratio > 30 and (best is None or ratio > best[1]):
-            best = (freq[k], ratio)
-    if best is None:
+    try:
+        return int(alex.measure_alex_period(
+            np.asarray(data.macro_times).astype(np.int64), np.asarray(data.routing_channels),
+            channel_groups=[[int(c)] for c in channels],
+            min_period=max(16, int(ALEX_PERIOD_RANGE_S[0] / res)),
+            max_period=max(64, int(ALEX_PERIOD_RANGE_S[1] / res)),
+        )["period"])
+    except ValueError:
         return None
-    period = 1.0 / (best[0] * res)
-    # Refine: the fold contrast, per channel -- the channels' sum can be flat
-    # when both excitations give the same total intensity.
-    n_sample = min(macro.size, 2_000_000)
-    sample, sample_ch = macro[:n_sample], routing[:n_sample]
-    lo, hi = int(period * 0.995), int(np.ceil(period * 1.005))
-    candidates = range(max(2, lo), hi + 1)
-
-    def contrast(P):
-        total = 0.0
-        for c in channels:
-            h = np.bincount((sample[sample_ch == c] % P) * 64 // P, minlength=64).astype(float)
-            total += h.std() / max(h.mean(), 1e-12)
-        return total
-
-    return int(max(candidates, key=contrast))
 
 
 def with_phase(data, period: int):
-    """A TTTR whose micro time is the alternation phase ``macro % period``.
+    """A copy of *data* whose micro time is the alternation phase ``macro % period``
+    (tttrlib's ``alex_to_microtime``), in macro-time ticks.
 
     Everything downstream (windows, streams, ALEX-2CDE) then reads µsALEX
     exactly like nsALEX/PIE.
     """
     import tttrlib  # noqa: PLC0415
 
-    macro = np.asarray(data.macro_times).astype(np.uint64)
-    phase = (macro % np.uint64(period)).astype(np.uint16) if period < 65536 else None
-    if phase is None:
+    if period >= 65536:
         raise ValueError(f"alternation period {period} ticks too long for a 16 bit micro time")
-    out = tttrlib.TTTR(
-        macro, phase, np.asarray(data.routing_channels), np.asarray(data.event_types)
-    )
-    out.header.set_macro_time_resolution(float(data.header.macro_time_resolution))
+    out = tttrlib.TTTR(data)
+    out.alex_to_microtime(int(period), 0)
     out.header.set_micro_time_resolution(float(data.header.macro_time_resolution))
     return out
 
