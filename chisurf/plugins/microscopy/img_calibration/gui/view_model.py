@@ -246,10 +246,11 @@ class CalibrationViewModel:
         if cached is not None:
             return cached
 
-        from chisurf.core.fluorescence.imaging import calibration_histograms, detector_ps_channels
+        from chisurf.core.fluorescence.excitation import polarization_channels
+        from chisurf.core.fluorescence.imaging import calibration_histograms
 
         det = self.display_detector
-        ch_p, ch_s = detector_ps_channels(self.detectors[det])
+        ch_p, ch_s = polarization_channels(self.detectors[det])
         chs = self.detectors[det].get("chs", [0]) or [0]
         result = calibration_histograms(self.filename, chs, ch_p, ch_s, list(key[2]))
         self._hist_cache[key] = result

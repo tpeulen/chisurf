@@ -141,16 +141,16 @@ class ColocModel(WindowsPreflightMixin, EmtkModelMixin, ColocViewModel):
 
     def preflight_setup(self) -> dict:
         """The gates the channels are filled through, in the data's channels."""
-        from ...imaging_common.windows import gated_detectors
+        from chisurf.core.fluorescence.excitation import gate_setup
 
-        return {"windows": {}, "detectors": gated_detectors(self._gated_windows())}
+        return gate_setup({"detectors": self._gated_windows()})
 
     def take_preflight_setup(self, setup: dict) -> None:
         """Fill the channels through the detected gates and compute again (the saved setup and
         the channel pair are kept)."""
-        from ...imaging_common.windows import take_gates
+        from chisurf.core.fluorescence.excitation import merge_gates, setup_gates
 
-        self.detectors = take_gates(self.detectors, setup)
+        self.detectors = merge_gates(self.detectors, setup_gates(setup))
         self._stack = None
         self._result = None
         self.status_line = "Detector gates from the data taken. Computing colocalization..."

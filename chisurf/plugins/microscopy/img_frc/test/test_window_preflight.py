@@ -4,7 +4,8 @@ The measurement is a confocal scan of the FRC demo object whose photons carry th
 the simulated PIE demo of Excitation Windows (32 ps, 3125 channels, pulses at 2 and 52 ns), donor
 on routing 0 and acceptor on routing 5. Gates made for another instrument give the warning in the
 result, the CLI and the window (which offers the detected windows); gates that hold the pulses give
-none; a donor-only scan gives the note.
+none. The result's check is the imaging tools' gate check (``imaging_common.windows.gate_check``,
+whose ungated, image-file and donor-only cases ``imaging_common/test`` covers).
 """
 
 from __future__ import annotations
@@ -82,25 +83,7 @@ def test_gates_of_another_instrument_are_reported_in_the_result(scan):
 
 
 def test_gates_that_hold_the_pulses_say_nothing(scan):
-    assert core.window_warnings(str(scan), MATCHING) == []
-
-
-def test_gates_that_hold_the_pulses_say_nothing_with_the_setups_windows(scan):
-    windows = {"prompt": [50, 1613], "delayed": [1613, 3125]}
-    assert core.window_warnings(str(scan), MATCHING, windows) == []
-
-
-def test_ungated_detectors_and_images_are_not_checked(scan, tmp_path):
-    from chisurf.plugins.microscopy.img_frc.demo import make_demo
-
-    assert core.window_warnings(str(scan), {"green": {"chs": [DONOR]}}) == []
-    assert core.window_warnings(str(make_demo(tmp_path)), WRONG) == []
-
-
-def test_a_donor_only_scan_gives_the_note(tmp_path):
-    path = pie_scan(tmp_path / "donor_only.ptu", donor_only=True)
-    warnings = core.window_warnings(str(path), WRONG, {"prompt": [0, 2048], "delayed": [2048, 4095]})
-    assert len(warnings) == 1 and "One excitation pulse" in warnings[0], warnings
+    assert core.analyse(str(scan), windows=MATCHING).warnings == []
 
 
 def test_the_cli_prints_the_warning(scan):

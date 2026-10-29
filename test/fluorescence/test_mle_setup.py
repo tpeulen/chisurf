@@ -101,11 +101,11 @@ class TestPolarisationSplit:
         assert setup.channels_perpendicular == [0, 1]
 
     def test_matches_the_imaging_convention(self):
-        """Agree with pixel_maps.detector_ps_channels, the other split in chisurf."""
-        from chisurf.core.fluorescence.imaging.pixel_maps import detector_ps_channels
+        """Agree with the setup's reading (excitation.polarization_channels)."""
+        from chisurf.core.fluorescence.excitation import polarization_channels
 
         det = {"chs": [8, 0, 3]}
-        expected_p, expected_s = detector_ps_channels(det)
+        expected_p, expected_s = polarization_channels(det)
         setup = parse_detector_setup({"detectors": {"g": det}})
         assert list(setup.channels_parallel) == list(expected_p)
         assert list(setup.channels_perpendicular) == list(expected_s)

@@ -14,7 +14,8 @@ import pytest
 
 pytest.importorskip("tttrlib")
 
-from chisurf.plugins.microscopy.imaging_common import windows  # noqa: E402
+from chisurf.core.fluorescence.excitation import windows_message  # noqa: E402
+from chisurf.plugins.microscopy.imaging_common.windows import gate_check  # noqa: E402
 from chisurf.plugins.microscopy.img_frc.test.test_window_preflight import (  # noqa: E402
     MATCHING,
     WRONG,
@@ -24,38 +25,31 @@ from chisurf.plugins.microscopy.img_frc.test.test_window_preflight import (  # n
 DONOR_PEAK = 2e-9 / 32e-12  # the donor pulse, in channels
 
 
+def gate_line(filename, detectors):
+    """The pre-flight line an imaging tool reports for its windows (``None``: nothing)."""
+    return windows_message(gate_check(filename, detectors))
+
+
 @pytest.fixture(scope="module")
 def scan(tmp_path_factory):
     return str(pie_scan(tmp_path_factory.mktemp("scan") / "pie_scan.ptu"))
 
 
 def test_gates_of_another_instrument_warn(scan):
-    lines = windows.gate_warnings(scan, WRONG)
-    assert len(lines) == 1 and lines[0].startswith("Detector gates do not match the data")
+    assert gate_line(scan, WRONG).startswith("Detector gates do not match the data")
 
 
 def test_gates_that_hold_the_pulses_and_ungated_windows_say_nothing(scan):
-    assert windows.gate_warnings(scan, MATCHING) == []
-    assert windows.gate_warnings(scan, {"green": {"chs": [0], "micro_time_ranges": []}}) == []
+    assert gate_line(scan, MATCHING) is None
+    assert gate_line(scan, {"green": {"chs": [0], "micro_time_ranges": []}}) is None
 
 
 def test_a_donor_only_scan_and_an_image_file_say_nothing(tmp_path):
     from chisurf.plugins.microscopy.img_frc.demo import make_demo
 
     donor = str(pie_scan(tmp_path / "donor_only.ptu", donor_only=True))
-    assert windows.gate_warnings(donor, MATCHING) == []
-    assert windows.gate_warnings(str(make_demo(tmp_path)), WRONG) == []
-
-
-def test_taking_gates_keeps_the_calibration_of_a_window():
-    detectors = {"green": {"chs": [0], "micro_time_ranges": [(2048, 4095)], "irf": ["irf.ptu"]}}
-    taken = windows.take_gates(
-        detectors, {"detectors": {"green": {"micro_time_ranges": [[0, 3125]]}}}
-    )
-    assert taken["green"]["micro_time_ranges"] == [(0, 3125)]
-    assert taken["green"]["irf"] == ["irf.ptu"] and detectors["green"]["micro_time_ranges"] == [
-        (2048, 4095)
-    ]
+    assert gate_line(donor, MATCHING) is None
+    assert gate_line(str(make_demo(tmp_path)), WRONG) is None
 
 
 @pytest.mark.parametrize(

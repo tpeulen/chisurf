@@ -19,6 +19,8 @@ from __future__ import annotations
 import dataclasses
 import typing
 
+from chisurf.core.fluorescence.excitation import polarization_channels
+
 
 @dataclasses.dataclass
 class DetectorSetup:
@@ -99,29 +101,16 @@ def parse_detector_setup(payload: typing.Mapping | None) -> DetectorSetup:
         if not isinstance(det, typing.Mapping):
             continue
 
-        # Parallel/perpendicular follows the *interleaved* convention: the
-        # detector's ``chs`` list alternates VV, VH, VV, VH, … so the split is by
-        # POSITION IN THE LIST, not by whether the channel number is even.
-        #
-        # This used to test ``ich % 2 == 0``. The two agree only when the channel
-        # numbers happen to be consecutive from an even start; for a detector
-        # such as ``chs = [8, 0, 3]`` parity gives parallel ``[8, 0]`` whereas
-        # the interleaving actually recorded is parallel ``[8, 3]``. The
-        # docstring already described the interleaved rule, and the imaging path
-        # (``pixel_maps.detector_ps_channels``) and the micro-time histogram
-        # wizard both use ``chs[::2]`` / ``chs[1::2]`` — so this was the odd one
-        # out, silently swapping VV and VH channels in the MLE fits.
+        # Parallel/perpendicular: the setup's reading (explicit ``ch_p``/``ch_s``, else ``chs``
+        # interleaved VV, VH, VV, ... by position in the list, not by channel parity).
         chs = [int(ch) for ch in (det.get("chs", []) or [])]
-        explicit_p = [int(ch) for ch in (det.get("ch_p") or [])]
-        explicit_s = [int(ch) for ch in (det.get("ch_s") or [])]
         if not result.polarization_resolved:
             # Not polarisation-resolved: one unpolarised stream, no VV/VH split.
             parallel, perpendicular = chs, []
-        elif explicit_p or explicit_s:
-            # An explicit assignment always wins, as in detector_ps_channels.
-            parallel, perpendicular = explicit_p, explicit_s
         else:
-            parallel, perpendicular = chs[::2], chs[1::2]
+            parallel, perpendicular = polarization_channels(det)
+            if perpendicular == parallel:
+                perpendicular = []  # one channel carries both: no VV/VH split to fit
 
         for ich in chs:
             if ich not in result.channels:

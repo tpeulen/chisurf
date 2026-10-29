@@ -198,21 +198,17 @@ class PixelModelMixin(WindowsPreflightMixin, EmtkModelMixin, _Host):
     def preflight_setup(self) -> dict:
         """The gates the windows are filled through, in the data's channels (no PIE windows: they
         do not shape an image)."""
-        from ..imaging_common.windows import gated_detectors
+        from chisurf.core.fluorescence.excitation import gate_setup
 
-        return {"windows": {}, "detectors": gated_detectors(self._windows())}
+        return gate_setup({"detectors": self._windows()})
 
     def take_preflight_setup(self, setup: dict) -> None:
         """Fill the windows through the detected gates from now on and compute again (the hub's
         shared Setup is not changed)."""
-        from ..imaging_common.windows import take_gates
+        from chisurf.core.fluorescence.excitation import format_ranges, merge_gates, setup_gates
 
-        self.detectors = take_gates(self._windows(), setup)
-        gates = "; ".join(
-            f"{name} " + ", ".join(f"{a}–{b}" for a, b in d.get("micro_time_ranges") or [])
-            for name, d in self.detectors.items()
-            if d.get("micro_time_ranges")
-        )
+        self.detectors = merge_gates(self._windows(), setup_gates(setup))
+        gates = format_ranges(setup_gates({"detectors": self.detectors}))
         self.status_line = f"Detector gates from the data: {gates}. Computing {self.TOOL_NAME}..."
         self.notify("gates")  # the window shows the taken gates in its Detectors editor
         if self.filename:

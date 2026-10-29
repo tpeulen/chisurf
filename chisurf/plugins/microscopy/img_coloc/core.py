@@ -111,10 +111,12 @@ def compute_colocalization(
         windows (one line when their micro-time gates do not hold the measurement's pulses).
     """
     stack = load_image_stack(filename, windows=windows, channel_axis=channel_axis)
-    from chisurf.plugins.microscopy.imaging_common.windows import gate_warnings
+    from chisurf.core.fluorescence.excitation import windows_message
+    from chisurf.plugins.microscopy.imaging_common.windows import gate_check
 
     # A photon stream filled through gated detector windows: the gates held against its pulses.
-    warnings = gate_warnings(filename, windows) if windows else []
+    line = windows_message(gate_check(filename, windows))
+    warnings = [line] if line else []
     if stack.n_channels < 2:
         raise ValueError(
             f"{filename} has only {stack.n_channels} channel(s); colocalization needs two"

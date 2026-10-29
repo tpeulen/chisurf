@@ -154,43 +154,6 @@ def _stack(filename: str, channels=None, windows=None, axis_order: str = "auto")
     )
 
 
-def window_warnings(filename: str, windows=None, setup_windows=None) -> list[str]:
-    """The excitation-window pre-flight on the detector gates a photon stream is binned through.
-
-    A named detector (``{"chs": [...], "micro_time_ranges": [...]}``) fills its image only with
-    photons inside its micro-time gates, so gates made for another instrument (another TAC range,
-    another PIE delay) quietly image the wrong excitation or nothing. The gates are applied in the
-    data's own channels, so they are checked in them. Empty for an image file, for ungated
-    detectors, and when the measurement fits.
-
-    Parameters
-    ----------
-    filename : str
-        The acquisition.
-    windows : dict, optional
-        The named detectors the stream is filled through.
-    setup_windows : dict, optional
-        The setup's PIE windows (``{name: [start, stop]}``), checked with the gates.
-
-    Returns
-    -------
-    list of str
-    """
-    from chisurf.core.fluorescence.imaging.image_source import is_photon_stream
-
-    gated = {
-        str(k): dict(v) for k, v in dict(windows or {}).items() if (v or {}).get("micro_time_ranges")
-    }
-    if not gated or not is_photon_stream(str(filename)):
-        return []
-    from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
-
-    message = windows_message(
-        windows_preflight(str(filename), dict(setup_windows or {}), detectors=dict(windows))
-    )
-    return [message] if message else []
-
-
 def halves(
     filename: str,
     *,
@@ -336,10 +299,15 @@ def analyse(
     )
     if not pixel_size_nm:
         pixel_size_nm = header_pixel_size_nm(filename)
-    warnings = window_warnings(filename, windows)
+    # The detector gates the stream is binned through, held against its excitation pulses.
+    from chisurf.core.fluorescence.excitation import windows_message
+    from chisurf.plugins.microscopy.imaging_common.windows import gate_check
+
+    checked = [("", filename)]
     if second_filename and split == "two_files":
-        warnings += [f"{pathlib.Path(second_filename).name}: {w}"
-                     for w in window_warnings(second_filename, windows)]
+        checked.append((f"{pathlib.Path(second_filename).name}: ", second_filename))
+    warnings = [prefix + line for prefix, path in checked
+                if (line := windows_message(gate_check(path, windows)))]
     curve = frc_mod.frc_curve(half_1, half_2, bin_width=bin_width, pixel_size=pixel_size_nm)
     result = frc_mod.resolve(curve, criterion, smooth=smooth)
     return FrcAnalysis(
@@ -435,7 +403,6 @@ __all__ = [
     "header_pixel_size_nm",
     "no_crossing_reason",
     "NO_CROSSING_TEXT",
-    "window_warnings",
     "write_csv",
 ]
 

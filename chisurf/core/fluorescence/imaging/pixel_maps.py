@@ -160,11 +160,13 @@ def prefill_windows(filename: str, windows: dict) -> None:
     Builds the fills needed by the Intensity (``ch_p``/``ch_s``) and N&B/phasor
     (``chs``) steps, so that when the user advances the maps are already cached.
     """
+    from chisurf.core.fluorescence.excitation import polarization_channels
+
     seen: set = set()
     for det in windows.values():
         mtr = det.get("micro_time_ranges") or []
         channel_sets = [det.get("chs", [0]) or [0]]
-        ch_p, ch_s = detector_ps_channels(det)
+        ch_p, ch_s = polarization_channels(det)
         if ch_p:
             channel_sets.append(ch_p)
         if ch_s:
@@ -427,12 +429,16 @@ def build_clsm_windowed(tttr: Any, channels, micro_time_ranges=None) -> Any:
     channels : sequence of int
         The window's detector channels.
     micro_time_ranges : sequence of (int, int), optional
-        Raw micro-time ranges; empty/None keeps the full micro-time axis.
+        The window's gates as a setup holds them, half-open ``[start, stop)`` raw micro-time
+        channels (``CLSMImage.fill`` takes inclusive ranges: converted here); empty/None keeps the
+        full micro-time axis.
     """
     import tttrlib
 
+    from chisurf.core.fluorescence.excitation import gates_to_inclusive
+
     chs = list(channels) if channels else [0]
-    mtr = [tuple(int(v) for v in r) for r in (micro_time_ranges or [])]
+    mtr = gates_to_inclusive(micro_time_ranges)
     # Build the marker geometry unfilled (cheap), then fill exactly once with the
     # channel + micro-time selection. Filling twice (fill=True then a gated
     # refill) roughly doubled the per-window cost.
@@ -461,22 +467,24 @@ def windows_from_payload(payload: dict) -> dict[str, dict]:
     """Extract detector windows from a setup payload.
 
     Reads the shared detector-setup payload (``payload['detectors']``) produced by
-    the step-0 detector wizard. Each entry keeps ``chs`` plus the parallel /
-    perpendicular channels (``ch_p``/``ch_s``, for polarization-resolved counts)
-    and ``micro_time_ranges``. Returns an empty dict when no detectors are set.
+    the step-0 detector wizard: per detector with routing channels its ``chs``, the
+    explicit parallel / perpendicular channels (``ch_p``/``ch_s``, for
+    polarization-resolved counts) and its half-open ``micro_time_ranges`` gates as tuples.
+    Returns an empty dict when no detectors are set.
     """
-    dets = (payload or {}).get("detectors") or {}
-    out: dict[str, dict] = {}
-    for name, det in dets.items():
-        if not isinstance(det, dict):
-            continue
-        out[str(name)] = {
-            "chs": list(det.get("chs", []) or []),
-            "ch_p": list(det.get("ch_p", []) or []),
-            "ch_s": list(det.get("ch_s", []) or []),
-            "micro_time_ranges": [tuple(r) for r in (det.get("micro_time_ranges") or [])],
+    from chisurf.core.fluorescence.excitation import setup_detectors, setup_gates
+
+    dets = {str(k): v for k, v in ((payload or {}).get("detectors") or {}).items()}
+    gates = setup_gates(payload)
+    return {
+        name: {
+            "chs": chs,
+            "ch_p": [int(c) for c in dets[name].get("ch_p") or []],
+            "ch_s": [int(c) for c in dets[name].get("ch_s") or []],
+            "micro_time_ranges": [tuple(g) for g in gates.get(name, [])],
         }
-    return out
+        for name, chs in setup_detectors(payload).items()
+    }
 
 
 def shift_wrap(arr: Any, shift: float) -> np.ndarray:
@@ -570,22 +578,6 @@ def prepare_irf(
         background_vv=background_vv,
         background_vh=background_vh,
     )
-
-
-def detector_ps_channels(det: dict) -> tuple[list[int], list[int]]:
-    """Return a detector's ``(parallel, perpendicular)`` channels.
-
-    Uses explicit ``ch_p``/``ch_s`` when present, else splits ``chs`` the same
-    way the pixel-MLE does (even indices → parallel, odd → perpendicular).
-    """
-    ch_p = [int(x) for x in (det.get("ch_p") or [])]
-    ch_s = [int(x) for x in (det.get("ch_s") or [])]
-    if ch_p or ch_s:
-        return ch_p, ch_s
-    chs = [int(x) for x in (det.get("chs") or [])]
-    if not chs:
-        return [], []
-    return chs[::2], (chs[1::2] if len(chs) > 1 else chs)
 
 
 def total_line_durations(clsm: Any) -> tuple[np.ndarray, int]:
