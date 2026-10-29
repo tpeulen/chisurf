@@ -1,0 +1,32 @@
+{
+  "_comment": "Guided tour of Excitation Windows. Targets are item_rects names of the app and of the shared review panel.",
+  "steps": [
+    {
+      "title": "Start with an example",
+      "text": "<b>Example</b> writes a simulated two-colour PIE measurement (32 ps channels, donor pulse at 2 ns, acceptor pulse at 52 ns) into the workspace and detects its windows. Your own measurements come from the workspace list above it.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press Example."}
+    },
+    {
+      "title": "What the data shows",
+      "text": "The plot shows the micro-time decay of every detector. Each excitation pulse is a rising edge; the detected window edges are drawn in orange, the current ones in grey.",
+      "target": {"name": "windows_plot"}
+    },
+    {
+      "title": "Detected and current windows",
+      "text": "The table lists each window: the current one (from the setup, converted to the data's channel width), the detected one in channels and nanoseconds, and which excitation it holds. <i>prompt</i> is the donor's pulse, <i>delayed</i> the acceptor's.",
+      "target": {"name": "data_table"}
+    },
+    {
+      "title": "Check a setup",
+      "text": "Pick a detector setup to hold its windows against the data. A setup made for another TCSPC (another channel width or range) is converted and flagged; a window that misses a pulse, cuts one or mixes two is reported.",
+      "target": {"name": "setup_input"}
+    },
+    {
+      "title": "You decide",
+      "text": "<b>Use detected windows</b> saves the setup with the detected windows into the workspace; nothing changes before. A donor-only measurement shows one pulse only: windows cannot be placed from it, and the button stays off.",
+      "target": {"name": "accept"},
+      "await": {"hint": "Press Use detected windows, or skip."}
+    }
+  ]
+}

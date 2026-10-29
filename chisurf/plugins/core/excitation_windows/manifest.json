@@ -1,0 +1,55 @@
+{
+  "id": "excitation_windows",
+  "version": "1.0.0",
+  "display_name": "Setup:Excitation Windows",
+  "description": "Detect the PIE pulses (micro time) or µs-ALEX alternation (macro time) of a measurement, propose prompt/delayed windows, and check a setup's windows against the data.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Setup",
+    "TTTR"
+  ],
+  "icon": "⏱",
+  "statefulness": {
+    "enabled": false,
+    "window": {
+      "enabled": false
+    }
+  },
+  "accepts": [
+    {
+      "name": "measurement",
+      "summary": "A photon stream whose excitation pulses (PIE) or alternation (µs-ALEX) are detected.",
+      "receive": "chisurf.plugins.core.excitation_windows.gui.app:receive_measurement",
+      "required": ["measurement"],
+      "from_workspace": {"kinds": ["photons"], "many": false, "key": "measurement"}
+    },
+    {
+      "name": "setup",
+      "summary": "A detector setup whose windows are checked against the measurement.",
+      "receive": "chisurf.plugins.core.excitation_windows.gui.app:receive_setup",
+      "required": ["setup"],
+      "from_workspace": {"kinds": ["setup"], "many": false, "key": "setup"}
+    }
+  ],
+  "entrypoints": {
+    "cli": "windows=chisurf.plugins.core.excitation_windows.cli.main:cli",
+    "services": "chisurf.plugins.core.excitation_windows.backend.services:register_services",
+    "emtk": "chisurf.plugins.core.excitation_windows.gui.app:make_app"
+  },
+  "rpc_methods": [
+    {
+      "name": "excitation_windows.detect",
+      "summary": "Detect the excitation scheme of a measurement (pie / alex / single / unclear) and propose windows.",
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "excitation_windows.check",
+      "summary": "Check a setup's windows against a measurement: issues with severity and a proposal.",
+      "long_running": false,
+      "cancelable": false
+    }
+  ]
+}

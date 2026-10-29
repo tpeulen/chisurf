@@ -10,7 +10,7 @@
     },
     {
       "title": "One page, four sections",
-      "text": "Below the Setup row the page has four folding sections. <b>TTTR Reading routine</b> takes timing from a measurement; <b>Detectors</b> and <b>PIE Windows</b> hold the routing channels and the micro-time ranges; <b>LUT handling</b> the linearization tables. Click a header to fold it; nothing changes until you edit a cell (double-click, type, Enter).",
+      "text": "Below the Setup row the page has four folding sections. <b>TTTR Reading routine</b> takes timing from a measurement; <b>Detectors</b> and <b>PIE Windows</b> hold the routing channels and the micro-time ranges; <b>LUT handling</b> the linearization tables. Click a header to fold it; nothing changes until you edit a cell (double-click, type, Enter). Under <b>PIE Windows</b>, <b>Auto-detect</b> finds the windows from the excitation pulses of a measurement you read, shows them against the current ones, and changes nothing until you take them.",
       "target": {
         "name": "section_detectors"
       }

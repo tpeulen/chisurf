@@ -1,0 +1,59 @@
+{
+  "window": {"width": 760, "height": 640},
+  "description": "Detect the excitation windows of a measurement and compare them with the current ones; nothing changes until Use detected windows is pressed.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Measurement",
+      "description": "The photon stream the windows are detected from: a photons row of the Datasets workspace (drop a TTTR file on ChiSurf to add one).",
+      "sections": [
+        {"type": "custom", "key": "measurement_input", "description": "Pick the measurement in the workspace list; it is read and its windows detected."},
+        {"type": "info", "source": "source_text", "description": "Which measurement (or live decay) the detection used."},
+        {
+          "type": "button_row",
+          "buttons": [
+            {"label": "Detect", "action": "detect", "role": "primary", "icon": "🔍", "description": "Find the excitation pulses (PIE: rising edges in the micro-time decays) or the µs-ALEX alternation (macro time) and propose windows."},
+            {"label": "Example", "action": "load_example", "icon": "🧪", "description": "Write a simulated two-colour PIE measurement (32 ps channels, pulses at 2 and 52 ns) into the workspace and detect its windows."}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Result",
+      "description": "What the data shows, how the current windows compare, and the proposal.",
+      "sections": [
+        {"type": "info", "source": "status_text", "description": "The verdict: PIE / µs-ALEX found, one pulse only (donor-only or not PIE), or unclear; and whether the current windows match."},
+        {"type": "info", "source": "detail_text", "description": "Each finding of the check (a window outside the range, a pulse no window holds, a boundary cutting a pulse, a window mixing two pulses, a channel-width mismatch)."},
+        {"type": "custom", "key": "windows_plot", "description": "The micro-time decays (log counts) with the current window edges (grey) and the detected ones (orange)."},
+        {
+          "type": "custom",
+          "key": "data_table",
+          "description": "Current and proposed windows side by side, in channels and nanoseconds, with the excitation each window holds.",
+          "options": {
+            "source": "window_rows",
+            "row_key": "window",
+            "editable": false,
+            "height": 96,
+            "fit_columns": true,
+            "min_column_width": 60,
+            "columns": [
+              {"key": "window", "title": "Window", "width": 80, "tooltip": "Window name: prompt (donor excitation), delayed (acceptor excitation), or one per pulse."},
+              {"key": "current", "title": "Current", "width": 110, "tooltip": "The window as the setup has it, in the data's channels (converted when the setup gives another channel width)."},
+              {"key": "proposed", "title": "Detected", "width": 110, "tooltip": "The detected window, in the data's channels: from a little before its pulse rises to where the next window starts."},
+              {"key": "ns", "title": "Detected (ns)", "width": 120, "tooltip": "The detected window in nanoseconds from the start of the range."},
+              {"key": "excites", "title": "Excitation", "width": 140, "tooltip": "Which excitation the window holds and which detectors see light in it."}
+            ]
+          }
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {"label": "Use detected windows", "action": "accept", "role": "primary", "description": "Replace the windows by the detected ones (and record the channel width they are in). Offered only when the data shows two or more excitations."},
+            {"label": "Keep current windows", "action": "keep", "description": "Close without changing anything."}
+          ]
+        }
+      ]
+    }
+  ]
+}

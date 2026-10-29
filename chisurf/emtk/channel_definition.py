@@ -439,6 +439,10 @@ class ChannelDefinitionWidget:
         self.help_window = DialogWindow(
             mark("Help - Detector Setup"), size=(620.0, 420.0), key="channel_help"
         )
+        from chisurf.emtk.excitation_windows import WindowsReviewDialog
+
+        #: The Auto-detect windows review (a floating window over the page).
+        self.windows_review = WindowsReviewDialog(key="channel_definition_windows")
         self.preview_window = DialogWindow(
             mark("Micro-time Decay Preview"), size=(700.0, 450.0), key="channel_preview"
         )
@@ -1316,6 +1320,30 @@ class ChannelDefinitionWidget:
         self.model.changed()
         self._refresh_rows()
 
+    def auto_detect_windows(self):
+        """Open the windows review on the measurement that was read (or one picked there)."""
+        from chisurf.emtk.excitation_windows import WindowsReview
+
+        review = WindowsReview(self.model.data, on_accept=self._take_detected_windows)
+        if self.model.preview_path:
+            review.set_measurement(self.model.preview_path)
+        self.windows_review.show(review)
+
+    def _take_detected_windows(self, windows, detection):
+        """The user took the detected windows: they and the channel width they are in."""
+        if detection.domain == "macro":
+            self.model.data["alex_windows"] = {k: list(v) for k, v in windows.items()}
+            self.model.data["alex_period_s"] = detection.n_channels * detection.resolution_s
+        else:
+            self.model.data["windows"] = {k: [int(v[0]), int(v[1])] for k, v in windows.items()}
+            reading = self.model.data.setdefault("tttr_reading", {})
+            reading["micro_time_resolution"] = detection.resolution_s * 1e12
+        self.model.changed()
+        self._refresh_rows()
+        self.status = tr("Windows from the measurement: {windows}").format(
+            windows=", ".join(f"{k} {v[0]}–{v[1]}" for k, v in windows.items())
+        )
+
     def _remove_detector(self, record):
         self.model.data["detectors"].pop(record["id"], None)
         self.optical = None
@@ -1716,13 +1744,27 @@ class ChannelDefinitionWidget:
             im.align_text_to_frame_padding()
             im.text(tr("PIE Windows"))
             im.same_line(self._width(tr("PIE Windows")))
-            width = max(im.get_content_region_avail()[0], 40.0)
-            if im.button(tr("Add") + "##add_window", (width, 0.0)):
+            room = max(im.get_content_region_avail()[0], 80.0)
+            spacing = im.get_style().item_inner_spacing[0]
+            if im.button(tr("Add") + "##add_window", ((room - spacing) / 2, 0.0)):
                 self.add_window()
                 self._used("add_window")
             self._item(
                 "add_window",
                 tr("Add a PIE window (0:2048) with a free name; rename and edit it in the table."),
+            )
+            im.same_line(0.0, spacing)
+            if im.button(tr("Auto-detect") + "##auto_windows", ((room - spacing) / 2, 0.0)):
+                self.auto_detect_windows()
+                self._used("auto_detect_windows")
+            self._item(
+                "auto_detect_windows",
+                tr(
+                    "Detect the PIE windows from a measurement: the excitation pulses are found in "
+                    "its micro-time decays and shown against the current windows; you decide "
+                    "whether to take them. A donor-only measurement shows one pulse and changes "
+                    "nothing."
+                ),
             )
         # In a narrow host the name column says "Name" and the button "Del", so all four columns fit.
         self._compact = im.get_content_region_avail()[0] < 520.0
@@ -2386,6 +2428,7 @@ class ChannelDefinitionWidget:
         self._draw_question(frame)
         self._draw_window(self.help_window, frame, self._help_body)
         self._draw_window(self.preview_window, frame, self._preview_body)
+        self.windows_review.draw(frame)
         self._draw_window(self.lut_window, frame, self._lut_tools_body)
         self._draw_window(self.shift_window, frame, self._shift_body)
         self._draw_window(self.optical_window, frame, self._optical_controls)

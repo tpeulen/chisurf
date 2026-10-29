@@ -27,7 +27,11 @@ window to read it, a `.json` file to switch to that setups library.
   (ps)*, *Microtime binning* and the read-only *Eff. microtime (ps)*. *Plot* opens the decay of every
   routing channel with the PIE windows and detector gates on top; drag the lines to move them.
 * **PIE Windows** (folded at first): the excitation windows in TAC channels, one row each; *Add*
-  appends a window.
+  appends a window. *Auto-detect* finds the excitation pulses in the measurement you read (or one
+  picked from the workspace), shows the detected windows against these, and writes them -- with
+  the channel width they are in, as *Microtime res.* -- only when you press *Use detected windows*.
+  A donor-only measurement shows one pulse and changes nothing. Method:
+  [Excitation windows](docs/concepts/excitation_windows.md).
 * **Detectors**: one row per detector with its routing channels, micro-time ranges, G factor, l1,
   l2 and the channel range the G factor is calculated from; *Calc G* calculates it from the loaded
   decays, *Delete* removes the detector, *Add* appends one. *Polarization resolved* says that
