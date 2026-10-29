@@ -12,6 +12,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from chisurf.core.fluorescence.excitation import alex
 from chisurf.plugins.tttr.demo_lib import ACCEPTOR_GATE, DONOR_GATE
 from chisurf.plugins.tttr.ptu_alex_creator import core
 from chisurf.plugins.tttr.ptu_alex_creator.demo import make_demo
@@ -23,7 +24,7 @@ def example(tmp_path_factory):
     path = make_demo(tmp_path_factory.mktemp("alex-creator-demo"))
     tttr = core.load(str(path))
     folded = core.apply_alex(tttr, alex_period=8000, period_shift=0)
-    regions = core.auto_excitation_regions(
+    regions = alex.auto_excitation_regions(
         np.asarray(folded.micro_times),
         np.asarray(folded.routing_channels),
         alex_period=8000,

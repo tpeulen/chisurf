@@ -17,7 +17,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 import tttrlib
-from emtk import keys
 
 from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear
 from chisurf.plugins.tttr.ptu_alex_creator import core

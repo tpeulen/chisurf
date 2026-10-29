@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import logging
 import pathlib
-import tempfile
 
 import numpy as np
 
@@ -59,7 +58,7 @@ def alex_to_pto(
         the ``.sm`` files the old ALEX-Suite worked on.
     alex_period : int
         Alternation period in macro-time units (see
-        :func:`~chisurf.plugins.tttr.ptu_alex_creator.core.detect_alex_period`).
+        :func:`~chisurf.core.fluorescence.excitation.alex.detect_alex_period`).
     period_shift : int
         Phase offset applied before folding.
     out_dir : str or pathlib.Path, optional
@@ -122,7 +121,7 @@ def detect_and_convert(
     donor_channels, acceptor_channels : sequence of int, optional
         Routing channels of the two detectors. ``None`` (the default) works them
         out from the data — see
-        :func:`~chisurf.plugins.tttr.ptu_alex_creator.core.detect_alex_channels`,
+        :func:`~chisurf.core.fluorescence.excitation.alex.detect_alex_channels`,
         which is the old "channel flip" checkbox decided by physics. Detecting
         rather than asking matters because a swapped assignment is the error
         nothing downstream reports: *E* comes out reflected about ½ and every
@@ -161,6 +160,7 @@ def detect_and_convert(
         If no paths were given, or the stream does not alternate clearly enough
         to be µs-ALEX data.
     """
+    from chisurf.core.fluorescence.excitation import alex
     from chisurf.plugins.tttr.ptu_alex_creator import core
 
     paths = [pathlib.Path(p) for p in paths]
@@ -185,7 +185,7 @@ def detect_and_convert(
         busiest = sorted(int(present[i]) for i in np.argsort(counts)[::-1][:2])
         donor_channels, acceptor_channels = [busiest[0]], [busiest[1]]
 
-    detected = core.detect_alex_period(
+    detected = alex.detect_alex_period(
         tttr.macro_times,
         tttr.routing_channels,
         donor_channels=donor_channels,
@@ -209,7 +209,7 @@ def detect_and_convert(
     folded = core.apply_alex(tttr, period, 0)
     contrast = None
     if auto:
-        assignment = core.detect_alex_channels(
+        assignment = alex.detect_alex_channels(
             folded.micro_times,
             folded.routing_channels,
             alex_period=period,
@@ -223,7 +223,7 @@ def detect_and_convert(
             f"{acceptor_channels[0]} (the donor is {contrast:.0%} as bright "
             "under acceptor excitation)"
         )
-    windows = core.auto_alex_windows(
+    windows = alex.auto_alex_windows(
         folded.micro_times,
         folded.routing_channels,
         donor_channels=donor_channels,

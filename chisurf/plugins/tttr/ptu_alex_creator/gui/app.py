@@ -24,6 +24,7 @@ from emtk.i18n import get_locale, tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.core.fio.staging import TTTR_FILE_FILTER
+from chisurf.core.fluorescence.excitation import alex
 from chisurf.core.settings.path_utils import get_path
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.i18n import install
@@ -205,7 +206,7 @@ class AlexApp(TourTarget, ImApp):
                 setattr(self.model, key, values[key])
         m = self.model
         try:
-            m.alex_period = core.validate_alex_period(m.alex_period)
+            m.alex_period = alex.validate_alex_period(m.alex_period)
         except ValueError:
             m.alex_period = 8000
             self.error(
@@ -270,7 +271,7 @@ class AlexApp(TourTarget, ImApp):
         folded = core.apply_alex(core.load(path, kind), period, shift)
         histogram = np.bincount(folded.micro_times, minlength=period)[:period]
         try:
-            detection = core.auto_excitation_regions(
+            detection = alex.auto_excitation_regions(
                 folded.micro_times,
                 folded.routing_channels,
                 alex_period=period,
@@ -364,7 +365,7 @@ class AlexApp(TourTarget, ImApp):
         macro, routing = tttr.macro_times, tttr.routing_channels
 
         def work():
-            return core.measure_alex_period(macro, routing, channel_groups=groups)
+            return alex.measure_alex_period(macro, routing, channel_groups=groups)
 
         def publish(found):
             if path != self.loaded_path:

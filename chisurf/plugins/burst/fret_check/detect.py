@@ -25,6 +25,8 @@ import pathlib
 
 import numpy as np
 
+from chisurf.core.fluorescence.excitation import rising_edges
+
 __all__ = [
     "Experiment",
     "Window",
@@ -127,19 +129,6 @@ def _micro_histograms(micro, routing, channels, n_micro):
     return hist, scale
 
 
-def _onsets(h: np.ndarray, frac: float = 0.15) -> list[int]:
-    """Bins where *h* rises steeply -- an excitation pulse (circular).
-
-    The shared edge search of :func:`chisurf.core.fluorescence.excitation.rising_edges`: a rise
-    of a sizeable fraction of the channel's range, well above Poisson noise, held over two bins.
-    A decay never rises, so a single-pulse measurement has one onset per channel however fast
-    its fluorescence decays.
-    """
-    from chisurf.core.fluorescence.excitation import rising_edges  # noqa: PLC0415
-
-    return [b for b, _ in rising_edges(h, frac=frac)]
-
-
 def _find_alternation(hist, n_bins):
     """Two excitations: ``(donor_bins, acceptor_bins, donor_channels)`` or ``None``.
 
@@ -151,7 +140,7 @@ def _find_alternation(hist, n_bins):
     channels = [c for c in hist if hist[c].sum() > 0]
     if len(channels) < 2:
         return None
-    onsets = {c: _onsets(hist[c]) for c in channels}
+    onsets = {c: [b for b, _ in rising_edges(hist[c])] for c in channels}
     distinct: list[int] = []
     for o in sorted(o for os_ in onsets.values() for o in os_):
         if not distinct or o - distinct[-1] > 2:

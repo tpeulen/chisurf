@@ -14,16 +14,7 @@ import pathlib
 import numpy as np
 import tttrlib
 
-from chisurf.core.fluorescence.excitation.alex import (  # noqa: F401 - the detection lives in core
-    MIN_PERIOD_CONFIDENCE,
-    alex_stream_masks,
-    auto_alex_windows,
-    auto_excitation_regions,
-    detect_alex_channels,
-    detect_alex_period,
-    measure_alex_period,
-    validate_alex_period,
-)
+from chisurf.core.fluorescence.excitation.alex import validate_alex_period
 
 #: container name → (file-extension stem, record-type id, container id).
 CONTAINER_INFO: dict[str, tuple[str, int, int]] = {
@@ -259,15 +250,7 @@ __all__ = [
     "default_output_name",
     "load",
     "apply_alex",
-    "validate_alex_period",
     "alex_histogram",
-    "auto_alex_windows",
-    "auto_excitation_regions",
-    "detect_alex_period",
-    "detect_alex_channels",
-    "measure_alex_period",
-    "MIN_PERIOD_CONFIDENCE",
-    "alex_stream_masks",
     "convert_file",
     "merge_files",
 ]

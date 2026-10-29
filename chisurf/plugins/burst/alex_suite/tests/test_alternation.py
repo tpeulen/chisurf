@@ -12,7 +12,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.tttr.ptu_alex_creator.core import (
+from chisurf.core.fluorescence.excitation.alex import (
     auto_alex_windows,
     detect_alex_period,
 )
@@ -283,7 +283,7 @@ def test_the_channel_assignment_of_a_real_measurement_is_worked_out(folded_real)
     under acceptor excitation, and here it drops to a few per cent of its
     donor-excitation rate.
     """
-    from chisurf.plugins.tttr.ptu_alex_creator.core import detect_alex_channels
+    from chisurf.core.fluorescence.excitation.alex import detect_alex_channels
 
     assignment = detect_alex_channels(
         folded_real.micro_times, folded_real.routing_channels, alex_period=REAL_PERIOD

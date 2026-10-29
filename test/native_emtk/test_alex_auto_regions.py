@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 import tttrlib
 
+from chisurf.core.fluorescence.excitation import alex
 from chisurf.plugins.emtk_test_input import CTRL, Driver
 from chisurf.plugins.tttr.ptu_alex_creator import core
 from chisurf.plugins.tttr.ptu_alex_creator.gui.app import AlexApp
@@ -78,7 +79,7 @@ def test_loading_detects_every_macrotime_phase_without_touching_source(ui, tmp_p
     assert ui.app.model.region_error == ""
     source = core.load(str(path))
     expected = core.apply_alex(core.load(str(path)), 8000, 0)
-    detected = core.auto_excitation_regions(
+    detected = alex.auto_excitation_regions(
         expected.micro_times, expected.routing_channels, alex_period=8000
     )
     assert [(row["start"], row["stop"], row["ranges"]) for row in ui.app.model.regions] == [

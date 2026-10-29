@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.core.fluorescence.excitation import alex as core
+from chisurf.core.fluorescence.excitation import alex
 from chisurf.plugins.tttr.ptu_alex_creator.core import apply_alex, load
 
 
@@ -34,7 +34,7 @@ def test_every_excitation_phase_is_retained(size, gaps):
     edges = np.round(np.linspace(0, 8000, size + 1) ** 1.05 / 8000**0.05 / 40) * 40
     windows = [(edges[i] + (80 if gaps else 0), edges[i + 1]) for i in range(size)]
     phase, rc = phase_stream(windows)
-    result = core.auto_excitation_regions(phase, rc, alex_period=8000, guard=0)
+    result = alex.auto_excitation_regions(phase, rc, alex_period=8000, guard=0)
     assert len(result["regions"]) == size
     for region, (lo, hi) in zip(result["regions"], windows):
         assert abs(region["start"] - lo) <= 80
@@ -47,7 +47,7 @@ def test_wrapped_phase_is_one_region_with_two_reachable_ranges():
     """Crossing zero neither loses a region nor creates an inverted selection."""
     windows = [(7200, 1200), (1600, 3200), (3600, 6800)]
     phase, rc = phase_stream(windows)
-    result = core.auto_excitation_regions(phase, rc, alex_period=8000)
+    result = alex.auto_excitation_regions(phase, rc, alex_period=8000)
     assert len(result["regions"]) == 3
     wrapped = [region for region in result["regions"] if region["wraps"]]
     assert len(wrapped) == 1
@@ -60,7 +60,7 @@ def test_wrapped_phase_is_one_region_with_two_reachable_ranges():
 def test_guard_can_trim_a_wrapped_run_to_one_nonwrapping_range():
     """Trimming across zero cannot cause unrelated phases to enter the candidate mask."""
     phase, rc = phase_stream([(7920, 2000), (2400, 4000), (4400, 7200)])
-    result = core.auto_excitation_regions(phase, rc, alex_period=8000, guard=0.06)
+    result = alex.auto_excitation_regions(phase, rc, alex_period=8000, guard=0.06)
     region = next(row for row in result["regions"] if row["start"] < 100)
     assert not region["wraps"]
     np.testing.assert_allclose(region["ranges"], [[44.8, 1875.2]])
@@ -93,8 +93,8 @@ def test_invalid_fold_period_fails_before_mutating_arrays_or_header(value):
 
 def test_maximum_phase_period_and_negative_shift_are_valid():
     """The full65536-bin phase domain and signed shifts remain supported."""
-    assert core.validate_alex_period(65536) == 65536
-    assert core.validate_alex_period(65536.0) == 65536
+    assert alex.validate_alex_period(65536) == 65536
+    assert alex.validate_alex_period(65536.0) == 65536
     import tttrlib
 
     stream = tttrlib.TTTR()
@@ -137,7 +137,7 @@ def test_polarization_groups_use_every_channel_without_changing_inputs():
     phase, rc = phase_stream([(0, 1600), (1600, 4000), (4000, 8000)], grouped=True)
     original = phase.copy(), rc.copy()
     phase.flags.writeable = rc.flags.writeable = False
-    result = core.auto_excitation_regions(
+    result = alex.auto_excitation_regions(
         phase, rc, alex_period=8000, channel_groups=[[0, 1], [2, 3], [4, 5]]
     )
     assert len(result["regions"]) == 3
@@ -154,14 +154,14 @@ def test_missing_or_overlapping_channel_groups_are_rejected():
     phase, rc = phase_stream([(0, 2400), (2400, 4800), (4800, 8000)])
     for groups in ([[0], [1]], [[0, 1], [1, 2]]):
         with pytest.raises(ValueError, match="channel"):
-            core.auto_excitation_regions(phase, rc, alex_period=8000, channel_groups=groups)
+            alex.auto_excitation_regions(phase, rc, alex_period=8000, channel_groups=groups)
 
 
 def test_non_alternating_noise_has_no_excitation_regions():
     """Counting noise must not be advertised as a laser phase boundary."""
     rng = np.random.default_rng(43)
     with pytest.raises(ValueError, match="alternation|region"):
-        core.auto_excitation_regions(
+        alex.auto_excitation_regions(
             rng.uniform(0, 8000, 100000), rng.integers(0, 4, 100000), alex_period=8000
         )
 
@@ -172,7 +172,7 @@ def test_intensity_variation_without_composition_changes_is_ambiguous():
     rng = np.random.default_rng(47)
     rc = rng.choice(3, rc.size, p=[0.6, 0.3, 0.1])
     with pytest.raises(ValueError, match="alternation"):
-        core.auto_excitation_regions(phase, rc, alex_period=8000)
+        alex.auto_excitation_regions(phase, rc, alex_period=8000)
 
 
 @pytest.mark.parametrize("kwargs", [{"alex_period": 0}, {"guard": 0.5}, {"n_bins": 2}])
@@ -180,13 +180,13 @@ def test_invalid_inference_settings_are_rejected(kwargs):
     """Invalid resolution and guard settings fail before producing regions."""
     phase, rc = phase_stream([(200, 3600), (4400, 7600)])
     with pytest.raises(ValueError):
-        core.auto_excitation_regions(phase, rc, **({"alex_period": 8000} | kwargs))
+        alex.auto_excitation_regions(phase, rc, **({"alex_period": 8000} | kwargs))
 
 
 def test_single_detector_can_resolve_separated_excitation_regions():
     """Laser-off gaps retain their information even with one detector."""
     phase, rc = phase_stream([(200, 2400), (2800, 4800), (5200, 7600)])
-    result = core.auto_excitation_regions(phase, np.zeros_like(rc), alex_period=8000)
+    result = alex.auto_excitation_regions(phase, np.zeros_like(rc), alex_period=8000)
     assert len(result["regions"]) == 3
 
 
@@ -194,7 +194,7 @@ def test_binary_assignment_does_not_silently_drop_extra_detectors():
     """The legacy binary helper clearly rejects a genuinely multicolor stream."""
     phase, rc = phase_stream([(0, 2400), (2400, 4800), (4800, 8000)])
     with pytest.raises(ValueError, match="two|multi"):
-        core.detect_alex_channels(phase, rc, alex_period=8000)
+        alex.detect_alex_channels(phase, rc, alex_period=8000)
 
 
 def test_detection_leaves_tttr_arrays_and_header_untouched():
@@ -217,7 +217,7 @@ def test_detection_leaves_tttr_arrays_and_header_untouched():
         for name in ("macro_times", "micro_times", "routing_channels", "event_types")
     ]
     header = stream.header.json
-    core.auto_excitation_regions(stream.micro_times, stream.routing_channels, alex_period=8000)
+    alex.auto_excitation_regions(stream.micro_times, stream.routing_channels, alex_period=8000)
     assert stream.header.json == header
     for name, array in zip(
         ("macro_times", "micro_times", "routing_channels", "event_types"), before
@@ -228,11 +228,11 @@ def test_detection_leaves_tttr_arrays_and_header_untouched():
 def test_binary_assignment_preserves_two_physical_polarized_detector_groups():
     """Four routing channels still form a valid, explicitly grouped binary input."""
     phase, rc = phase_stream([(200, 3600), (4400, 7600)], grouped=True)
-    assignment = core.detect_alex_channels(
+    assignment = alex.detect_alex_channels(
         phase, rc, alex_period=8000, channel_groups=[[0, 1], [2, 3]]
     )
     assert sorted(assignment["donor"] + assignment["acceptor"]) == [0, 1, 2, 3]
-    windows = core.auto_alex_windows(
+    windows = alex.auto_alex_windows(
         phase,
         rc,
         alex_period=8000,
@@ -250,7 +250,7 @@ def test_real_switching_transition_candidates_are_explicit_and_never_discarded()
     if not REAL_FILE.is_file():
         pytest.skip("real calibration measurement unavailable")
     folded = apply_alex(load(str(REAL_FILE), "SM"), 8000, 0)
-    result = core.auto_excitation_regions(
+    result = alex.auto_excitation_regions(
         folded.micro_times, folded.routing_channels, alex_period=8000
     )
     assert result["phase_hist"].sum() == len(folded.micro_times)

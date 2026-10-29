@@ -8,8 +8,8 @@ Exercises the full chisurf smFRET path on Shimon Weiss lab single-molecule ``.sm
   ``TTTR.alex_to_microtime`` — micro-second ALEX encodes the green/red laser
   alternation in the macro-time, folded into a synthetic micro-time;
 * **auto-detect** the green/red windows from the folded-phase distribution with
-  :func:`...core.auto_alex_windows` (guard bands drop the laser rise/fall), gate
-  each burst into the DD / DA / AA streams via :func:`...core.alex_stream_masks`;
+  :func:`chisurf.core.fluorescence.excitation.alex.auto_alex_windows` (guard bands drop the laser rise/fall), gate
+  each burst into the DD / DA / AA streams via :func:`chisurf.core.fluorescence.excitation.alex.alex_stream_masks`;
 * turn the per-burst counts into ``E``/``S`` with
   ``tttrlib.apparent_es`` / ``tttrlib.corrected_es``.
 
@@ -43,11 +43,13 @@ tttrlib = pytest.importorskip("tttrlib")
 
 from tttrlib import apparent_es, corrected_es
 
+from chisurf.core.fluorescence.excitation.alex import (  # noqa: E402
+    alex_stream_masks,
+    auto_alex_windows,
+)
 from chisurf.plugins.tttr.ptu_alex_creator.core import (  # noqa: E402
     CONTAINER_INFO,
-    alex_stream_masks,
     apply_alex,
-    auto_alex_windows,
     load,
 )
 

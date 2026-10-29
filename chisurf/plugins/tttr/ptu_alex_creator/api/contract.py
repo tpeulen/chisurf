@@ -10,6 +10,8 @@ from __future__ import annotations
 import pathlib
 from typing import Any
 
+from chisurf.core.fluorescence.excitation import alex
+
 from .. import core
 from .container import CONTAINER_FORMAT
 from .models import AlexRequest, AlexResult
@@ -35,7 +37,7 @@ def request_from_payload(payload: dict[str, Any]) -> AlexRequest:
     payload = payload or {}
     return AlexRequest(
         files=[str(f) for f in (payload.get("files") or [])],
-        alex_period=core.validate_alex_period(payload.get("alex_period", 8000)),
+        alex_period=alex.validate_alex_period(payload.get("alex_period", 8000)),
         period_shift=int(payload.get("period_shift", 0)),
         output_format=str(payload.get("output_format", "PTU")),
         input_format=str(payload.get("input_format", "Auto")),
