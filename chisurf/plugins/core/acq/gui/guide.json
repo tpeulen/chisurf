@@ -61,7 +61,7 @@
     },
     {
       "title": "Decays",
-      "text": "The micro-time decays of each detector with the excitation windows marked -- a window in the wrong place shows here first.",
+      "text": "The micro-time decays of each detector over the micro-time channels, with the excitation windows marked. During the run Record finds the excitation pulses in these decays: when the windows do not hold them, the detected edges are drawn in orange and the Experiment setup panel offers <b>Update windows</b> or <b>Keep</b> -- you decide; the run goes on.",
       "target": {
         "name": "live_decays"
       }

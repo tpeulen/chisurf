@@ -849,6 +849,54 @@
           "description": "The setup as read: detectors, windows and whether E and S are corrected. Hover for the details."
         },
         {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "From a measurement…",
+              "action": "windows_from_measurement",
+              "description": "Take the excitation windows of an earlier FRET measurement: pick it in the workspace, its PIE pulses (or µs-ALEX alternation) are detected and shown against the current windows, and you decide. The windows are converted to this device's channels."
+            }
+          ]
+        },
+        {
+          "type": "info",
+          "source": "window_check_text",
+          "hidden_when": {
+            "attr": "window_check_quiet",
+            "equals": true
+          },
+          "description": "During a run the live decays are checked against the windows: a warning when they do not match (a window outside the range, a pulse no window holds, a boundary inside a pulse, a window mixing two pulses), an info line when only one pulse is seen (donor-only or not PIE). Hover the details below."
+        },
+        {
+          "type": "info",
+          "source": "window_check_detail",
+          "hidden_when": {
+            "attr": "window_check_asking",
+            "equals": false
+          },
+          "description": "What the check found and the windows it detected (in this device's micro-time channels)."
+        },
+        {
+          "type": "button_row",
+          "hidden_when": {
+            "attr": "window_check_asking",
+            "equals": false
+          },
+          "buttons": [
+            {
+              "label": "Update windows",
+              "action": "update_windows_from_check",
+              "role": "primary",
+              "description": "Take the detected windows. The next run uses them; this run is recorded whole and can be re-analysed with them."
+            },
+            {
+              "label": "Keep",
+              "action": "keep_windows",
+              "description": "Keep the windows as they are. The check asks again only when the decays show another pulse pattern."
+            }
+          ]
+        },
+        {
           "type": "value",
           "attr": "alex_period_us",
           "label": "Alternation period (µs)",

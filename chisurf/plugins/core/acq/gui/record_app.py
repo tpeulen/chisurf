@@ -38,6 +38,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.core.acq.gui.record_points import ScanPointsMixin
 from chisurf.plugins.core.acq.gui.record_settings import SETTINGS_SETUP, LaserSettingsMixin
 from chisurf.plugins.core.acq.gui.record_survey import SurveyMixin, draw_survey_map
+from chisurf.plugins.core.acq.gui.record_windows import WindowCheckMixin
 from chisurf.plugins.core.acq.live import devices
 from chisurf.plugins.core.acq.live.analyzer import PRESETS
 from chisurf.plugins.core.acq.live.fcs import (
@@ -60,6 +61,7 @@ from chisurf.plugins.core.acq.live.scanner import (
     ScanSettings,
 )
 from chisurf.plugins.core.acq.live.session import RecordSession
+from chisurf.plugins.core.acq.live.window_check import convert_setup_windows
 from chisurf.plugins.core.acq.live.setups import (
     PRESET_LABELS,
     BurstParameters,
@@ -95,7 +97,7 @@ def _workspace(kind: str) -> list[Any]:
     return workspace_datasets(kind)
 
 
-class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
+class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin, WindowCheckMixin):
     """The state behind ``record.view.json``.
 
     Parameters
@@ -181,6 +183,7 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
         self._device_sent: dict[str, Any] = {}
         # -- the laser and the acquisition settings file (record_settings) --------------------
         self._init_laser_settings()
+        self._init_window_check()
         # -- the scanner, the picked points and their measurements (record_points) ------------
         self._init_scan_points()
         # -- the survey: tile after tile, picked and measured (record_survey) -------------------
@@ -602,8 +605,14 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
             return self.sim_scheme
         return "pie"
 
-    def make_experiment(self, n_micro: int) -> Experiment:
-        """The setup (workspace row or the type's default) read with the chosen preset."""
+    def make_experiment(self, n_micro: int, micro_res_s: float | None = None) -> Experiment:
+        """The setup (workspace row or the type's default) read with the chosen preset.
+
+        With *micro_res_s* (the device's channel width) a setup whose windows were defined at
+        another resolution or binning (its ``tttr_reading.micro_time_resolution``) has them
+        converted to the device's channels -- the same nanoseconds -- instead of applied as raw
+        channel numbers of another instrument.
+        """
         burst = BurstParameters(
             int(self.min_photons), int(self.window_photons), float(self.window_time_ms) / 1e3
         )
@@ -611,7 +620,8 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
             preset = self.preset if self.preset != AUTO_PRESET else self._default_preset()
             setup, name = default_setup(preset, n_micro), f"default {preset}"
             if self.window_override and preset in ("pie", "three_color_pie"):
-                setup, name = self.windows_patched(setup), f"{name}, windows from the laser"
+                label = getattr(self, "window_override_label", "") or "windows from the laser"
+                setup, name = self.windows_patched(setup), f"{name}, {label}"
             realism = self.realism()
             if self.source_kind == "simulator" and not realism.ideal:
                 # the simulated instrument is calibrated: its factors give corrected E and S
@@ -623,6 +633,9 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
                 from chisurf.plugins.tttr.workspace_io import read_setup
 
                 setup, name = read_setup(self.setup_address), Path(self.setup_address).name
+            if micro_res_s:
+                setup, note = convert_setup_windows(setup, float(micro_res_s))
+                name = f"{name}, {note}" if note else name
             setup = self.windows_patched(setup)
             preset = self.preset if self.preset != AUTO_PRESET else infer_preset(setup)
         return Experiment(
@@ -635,16 +648,23 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
 
     def setup_summary(self) -> tuple[str, str]:
         """A few words on the setup, and its details for the tooltip."""
-        n_micro = 400 if self.session is None else self.session.source.info.n_micro
+        if self.session is None:
+            try:
+                n_micro, res = self._clock()
+            except Exception:  # noqa: BLE001 - a device that cannot report: no conversion
+                n_micro, res = 400, None
+        else:
+            n_micro, res = self.session.source.info.n_micro, self.session.source.info.micro_res_s
         try:
-            exp = self.make_experiment(n_micro)
+            exp = self.make_experiment(n_micro, res)
         except Exception as exc:  # noqa: BLE001 - shown, the run refuses to start
             return tr("Setup cannot be used"), str(exc)
         label = tr(PRESET_LABELS[exp.preset]).split(" (")[0]
         corrected = (
             tr("corrected") if (exp.factors() and exp.preset in ("pie", "alex")) else tr("raw")
         )
-        windows = f" · {tr('laser windows')}" if self.window_override else ""
+        source = getattr(self, "window_override_label", "") or tr("laser windows")
+        windows = f" · {source}" if self.window_override else ""
         return f"{label} · {corrected}{windows}", exp.describe()
 
     # -- actions ---------------------------------------------------------------------------------
@@ -675,6 +695,9 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
         if mine is not None:
             return mine
         mine = self.survey_enabled(action)
+        if mine is not None:
+            return mine
+        mine = self.window_check_enabled(action)
         if mine is not None:
             return mine
         if action == "start":
@@ -746,7 +769,7 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
             if self.source_kind == "device" and self.device is not None:
                 self.apply_device_settings(self.device, self.make_experiment(1))
             source = self.make_source()
-            experiment = self.make_experiment(source.info.n_micro)
+            experiment = self.make_experiment(source.info.n_micro, source.info.micro_res_s)
         except Exception as exc:  # noqa: BLE001 - the user picks something else
             self.status_text = tr("Cannot start")
             self.status_detail = str(exc)
@@ -780,6 +803,7 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
             return False
         self._registered = False
         self.snapshot = None
+        self.window_check_reset()
         self.plot_choice = ""
         self.status_text = tr("Recording…")
         self.status_detail = str(self.saved_path)
@@ -957,6 +981,7 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
         """Take a snapshot at the display rate; register the run once it ended; advance a
         survey."""
         self._poll_runs(force)
+        self.window_check_poll()
         self.survey_step()
 
     def _poll_runs(self, force: bool = False) -> None:
@@ -1176,7 +1201,19 @@ def _to_pixels(x: np.ndarray, y: np.ndarray, columns: float, how: str = "max"):
     return xs, reduced
 
 
-def _plot_decays(snap: dict, exp: Experiment | None, size) -> None:
+#: Detected window edges on the decays (where the data says the windows should be).
+_DETECTED_EDGE = (1.0, 0.55, 0.1, 1.0)
+
+
+def _plot_decays(snap: dict, exp: Experiment | None, size, n_micro: int = 0,
+                 detected: dict | None = None) -> None:
+    """The live decays per detector over the micro-time channels, with the run's window edges
+    and -- when they do not match -- the detected ones.
+
+    The analyzer histograms the micro times in ``len(decay)`` bins over the device's *n_micro*
+    channels, so a bin is ``n_micro / len(decay)`` channels wide: the x axis is in channels, the
+    unit the windows are in, or a window edge lands that factor away from its pulse.
+    """
     from emtk import implot
 
     decays = snap.get("decays") or {}
@@ -1188,13 +1225,18 @@ def _plot_decays(snap: dict, exp: Experiment | None, size) -> None:
             y = np.asarray(decays[name], dtype=float)
             if y.size == 0:
                 continue
+            width = float(n_micro) / y.size if n_micro else 1.0
             implot.set_next_line_style(_COLOURS[k % len(_COLOURS)])
-            xs, ys = _to_pixels(np.arange(y.size, dtype=float), y, size[0] / 2, "mean")
+            xs, ys = _to_pixels((np.arange(y.size) + 0.5) * width, y, size[0] / 2, "mean")
             implot.plot_line(name, xs, np.maximum(ys, 0.5))
         windows = (exp.setup.get("windows") or {}) if exp is not None else {}
         if windows:
             edges = sorted({float(v) for r in windows.values() for v in r})
             implot.plot_inf_lines(tr("windows"), np.asarray(edges, dtype=float))
+        if detected:
+            edges = sorted({float(v) for r in detected.values() for v in r})
+            implot.set_next_line_style(_DETECTED_EDGE)
+            implot.plot_inf_lines(tr("detected"), np.asarray(edges, dtype=float))
         implot.end_plot()
 
 
@@ -1898,7 +1940,10 @@ class RecordApp(ImApp):
             self._placeholder(state, "live_decays", tr("Decays appear during a run."), width)
             return
         exp = model.session.experiment if model.session is not None else None
-        _plot_decays(snap, exp, self._avail())
+        n_micro = model.session.source.info.n_micro if model.session is not None else 0
+        check = model.live_windows.check
+        detected = check.proposal if (check is not None and check.mismatch) else None
+        _plot_decays(snap, exp, self._avail(), n_micro, detected)
         bottom = im.get_cursor_screen_pos()
         state.rects["live_decays"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
 
@@ -1952,6 +1997,21 @@ class RecordApp(ImApp):
         elif result is False or pressed == "close":
             self.save_dialog = None
 
+    # -- the windows review (From a measurement…) ---------------------------------------------------
+    def _draw_windows_review(self, box) -> None:
+        review = self.model.windows_review_requested
+        if review is not None:
+            from chisurf.emtk.excitation_windows import WindowsReviewDialog
+
+            self.model.windows_review_requested = None
+            if getattr(self, "windows_review", None) is None:
+                self.windows_review = WindowsReviewDialog(
+                    tr("Windows from a measurement"), key="record_windows"
+                )
+            self.windows_review.show(review)
+        if getattr(self, "windows_review", None) is not None:
+            self.windows_review.draw(box)
+
     # -- one frame ---------------------------------------------------------------------------------
     def render(self) -> None:
         self.model.poll()
@@ -1965,6 +2025,7 @@ class RecordApp(ImApp):
         self._run_bar(box)
         self.docks.draw((box[0], box[1] + RUN_BAR_H, box[2], max(100.0, box[3] - RUN_BAR_H)))
         self._draw_save_dialog(box)
+        self._draw_windows_review(box)
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
 

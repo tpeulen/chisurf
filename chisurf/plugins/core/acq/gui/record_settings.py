@@ -402,6 +402,7 @@ class LaserSettingsMixin:
             self.status_detail = tr("Enable a head with pulses in the sequencer, then Apply.")
             return False
         self.window_override = dict(patch["windows"])
+        self.window_override_label = tr("windows from the laser")
         self.status_text = tr("Windows from the laser")
         self.status_detail = ", ".join(f"{k} {v[0]}–{v[1]}" for k, v in patch["windows"].items())
         return True
@@ -410,6 +411,7 @@ class LaserSettingsMixin:
         if not self.proposed_windows:
             return False
         self.window_override = dict(self.proposed_windows)
+        self.window_override_label = tr("windows from the measurement")
         self.status_text = tr("Windows from the measurement")
         self.status_detail = ", ".join(
             f"{k} {v[0]}–{v[1]}" for k, v in self.window_override.items()
@@ -417,10 +419,14 @@ class LaserSettingsMixin:
         return True
 
     def windows_patched(self, setup: dict) -> dict:
-        """*setup* with :attr:`window_override` merged into its windows."""
+        """*setup* with its windows replaced by :attr:`window_override` (device channels).
+
+        Replaced, not merged: windows taken from the laser or the data are the whole set (a
+        detection may name them ``pulse1``... where the setup had ``prompt``/``delayed``).
+        """
         if not self.window_override:
             return setup
-        return {**setup, "windows": {**(setup.get("windows") or {}), **self.window_override}}
+        return {**setup, "windows": dict(self.window_override)}
 
     # -- settings files ----------------------------------------------------------------------------
     def settings_options(self) -> list:

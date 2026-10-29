@@ -211,6 +211,26 @@ setup describes):
 
 **Histogram** above the plots picks which one is shown; a 2-D histogram comes with both marginals.
 
+## Excitation windows: checked against the data
+
+The setup's windows are micro-time channels of the resolution the setup declares (*Microtime res.*
+in the setup editor); a setup made on another TCSPC or binning has them **converted** to this
+device's channels when the run starts (the setup summary says so).
+
+During a run Record finds the excitation pulses in the live decays (after 5000 photons, and again
+whenever the count has doubled) and holds the windows against them. When they do not match -- a
+window outside the range, a pulse in no window, a boundary inside a pulse, two pulses in one
+window -- a warning appears under **Experiment setup** with **Update windows** (the next run uses
+the detected ones; this run is recorded whole and can be re-analysed) and **Keep** (asked again
+only when the decays show another pulse pattern). Nothing changes silently and the run goes on.
+One pulse only is an info line: a donor-only sample or not PIE, windows not checked.
+
+**From a measurement…** takes the windows of an earlier FRET measurement of the workspace: its
+pulses are detected and shown against the current windows, and taken (converted to this device's
+channels) when you press *Use detected windows*. Method:
+[Excitation windows](docs/concepts/excitation_windows.md); workflow:
+[Detecting and checking excitation windows](docs/guides/115_excitation_windows.md).
+
 ## What is computed, live
 
 1. Every photon is counted in its streams: each detector, and each detector in each excitation window
