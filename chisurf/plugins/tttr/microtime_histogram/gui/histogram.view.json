@@ -101,7 +101,7 @@
           "attr": "window",
           "label": "Excitation window",
           "options_source": "window_options",
-          "description": "Apply this inclusive excitation micro-time gate, or include all windows."
+          "description": "Apply this excitation micro-time window (half-open: start included, stop excluded), or include all windows."
         },
         {
           "type": "choice",

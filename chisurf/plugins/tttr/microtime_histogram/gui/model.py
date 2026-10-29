@@ -18,6 +18,11 @@ from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
 from chisurf.core.fio.address import container_of
 from chisurf.core.fio.pto import SUFFIX as PTO_SUFFIX
 from chisurf.core.fio.staging import TTTR_EXTENSIONS, open_tttr
+from chisurf.core.fluorescence.excitation import (
+    micro_mask,
+    polarization_channels,
+    setup_window_resolution_s,
+)
 
 
 def _column_label(column) -> str:
@@ -186,9 +191,13 @@ class HistogramModel:
         self.detector = name
         config = self.setup.get("detectors", {}).get(name, {})
         routing = list(config.get("chs") or [])
-        if routing:
-            self.parallel = routing[::2] if self.polarized else routing
-            self.perpendicular = routing[1::2] if self.polarized else []
+        parallel, perpendicular = polarization_channels(config)
+        if parallel or perpendicular:
+            # a channel is parallel or perpendicular in a histogram, never both
+            self.parallel = parallel if self.polarized else routing
+            self.perpendicular = (
+                [c for c in perpendicular if c not in parallel] if self.polarized else []
+            )
         if config.get("g_factor") is not None:
             self.g_factor = float(config["g_factor"])
         self.original_histograms = {}
@@ -334,17 +343,11 @@ class HistogramModel:
                     continue
                 mask &= burst_mask(len(micro), bursts[key])
             gates = config.get("micro_time_ranges") or []
-            if gates:
-                gate_mask = np.zeros(len(micro), dtype=bool)
-                for gate in gates:
-                    if gate is None:
-                        gate_mask[:] = True
-                    else:
-                        gate_mask |= (micro >= int(gate[0])) & (micro <= int(gate[1]))
-                mask &= gate_mask
+            if gates and None not in gates:  # a None gate holds every photon
+                mask &= micro_mask(micro, gates)
             window = self.setup.get("windows", {}).get(self.window)
             if window is not None:
-                mask &= (micro >= int(window[0])) & (micro <= int(window[1]))
+                mask &= micro_mask(micro, [window])
             binned = micro // int(self.binning)
             n_raw = int(stream.header.get_effective_number_of_micro_time_channels())
             bins = max(1, (n_raw + self.binning - 1) // self.binning)
@@ -363,21 +366,13 @@ class HistogramModel:
                 indices = binned[selected]
                 y.append(np.bincount(indices, minlength=bins))
             histograms[str(path)] = {"parallel": y[0], "perpendicular": y[1]}
-            timing = self.setup.get("tttr_reading") or {}
+            # the file's channel width, or the setup's when it overrides the timing or the file
+            # does not say
             dt = float(getattr(stream.header, "micro_time_resolution", 0) or 0) * 1e9 * self.binning
-            if (
-                timing.get("override_timing")
-                and float(timing.get("micro_time_resolution", 0) or 0) > 0
-            ):
-                dt = float(timing["micro_time_resolution"]) * 1e-3 * self.binning
-            if dt <= 0:
-                dt = (
-                    float(
-                        (self.setup.get("tttr_reading") or {}).get("micro_time_resolution", 0) or 0
-                    )
-                    * 1e-3
-                    * self.binning
-                )
+            setup_s = setup_window_resolution_s(self.setup)
+            override = (self.setup.get("tttr_reading") or {}).get("override_timing")
+            if setup_s and (override or dt <= 0):
+                dt = setup_s * 1e9 * self.binning
             if dt > 0 and not self.dt_manual:
                 if resolution is not None and not np.isclose(dt, resolution):
                     raise ValueError("Selected files have incompatible micro-time resolutions.")

@@ -47,7 +47,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Excitation window | `window` | choice |  | choices: `window_options` | Apply this inclusive excitation micro-time gate, or include all windows. |
+| Excitation window | `window` | choice |  | choices: `window_options` | Apply this excitation micro-time window (half-open: start included, stop excluded), or include all windows. |
 | TTTR format | `filetype` | choice |  | choices: `format_options` | Container reader override; Auto uses the file header (headerless SPC data needs its subtype). |
 | Binning | `binning` | choice |  | choices: 1, 2, 4, 8, 16, 32 | Group this many adjacent micro-time bins. |
 | Inter-photon filter | `gap_filter` | bool |  |  | Keep only photons whose next selected photon follows within the gap below: the photons of bursts. With Invert, keep the isolated photons between them instead: a background decay from the same measurement. |

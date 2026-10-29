@@ -88,7 +88,7 @@ def test_burst_selection_and_detector_excitation_gates(tmp_path):
     model.set_setup(
         {
             "detectors": {"green": {"chs": [0, 1], "micro_time_ranges": [[1, 2]]}},
-            "windows": {"excitation": [1, 1]},
+            "windows": {"excitation": [1, 2]},  # half-open: channel 1
         }
     )
     model.window = "excitation"

@@ -25,7 +25,7 @@ column.
   the G-factor; *Parallel* / *Perpendicular* can be edited. Switching *Polarization resolved* merges or splits the current
   ordered routes and synchronizes the working detector definition, retaining the time step, G-factor and shifts.
   Without polarization resolution the export contains one selected stream, with no VH photons appended.
-- **Reading and gates** — *Excitation window* applies an inclusive micro-time gate, *Binning* groups adjacent bins.
+- **Reading and gates** — *Excitation window* applies a half-open micro-time window `[start, stop)` (the setup's windows and gates), *Binning* groups adjacent bins.
 - **Time step, G-factor and shifts** — *dt* is read from the file header (typing a value keeps it); the shifts pad or
   clip the VV / VH histogram (the photon Micro-time Shifter instead wraps modulo the TAC period).
 

@@ -18,9 +18,10 @@ only the photons of selected bursts ({ref}`concept-tcspc-lifetime` explains what
 
 - **Detector and channels.** A detector of the setup is a list of routing channels, interleaved parallel, perpendicular,
   parallel, ... when the detector is polarization resolved; the histogram of the even entries is the **VV** (parallel)
-  decay $I_\parallel(t)$, that of the odd ones the **VH** (perpendicular) decay $I_\perp(t)$. Without polarization
+  decay $I_\parallel(t)$, that of the odd ones the **VH** (perpendicular) decay $I_\perp(t)$ (a detector that names
+  its channels as `ch_p` / `ch_s` uses those). Without polarization
   resolution the selected detector channels form one stream.
-- **Excitation window.** A micro-time gate $[t_a, t_b]$ (inclusive) keeps the photons excited by one pulse of an
+- **Excitation window.** A micro-time window $[t_a, t_b)$ (half-open, as the setup's windows and detector gates) keeps the photons excited by one pulse of an
   alternating scheme (PIE / nsALEX).
 - **Bursts.** A burst-index file lists inclusive photon-index ranges; only photons inside any range are used and
   overlapping ranges count a photon once.
