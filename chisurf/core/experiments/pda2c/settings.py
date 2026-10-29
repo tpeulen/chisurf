@@ -20,8 +20,10 @@ import pathlib
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+from tttrlib import ranges_to_inclusive
+
 from chisurf.core.experiments.pda2c import inputs
-from chisurf.core.fluorescence.excitation import WindowsPreflightMixin, gates_to_inclusive
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
 
 #: How many detector rows a form can show (three colours).
 MAX_ROWS = 3
@@ -257,7 +259,7 @@ class PdaReaderSettings(WindowsPreflightMixin):
                 while len(windows) <= row:
                     windows.append([])
                 # the setup's gates are [start, stop); the reader's windows inclusive
-                windows[row] = [list(r) for r in gates_to_inclusive(info.get("micro_time_ranges"))]
+                windows[row] = [list(r) for r in ranges_to_inclusive(info.get("micro_time_ranges"))]
         self.reader.channels = channels
         if n == 2:
             self.reader.micro_time_ranges = windows

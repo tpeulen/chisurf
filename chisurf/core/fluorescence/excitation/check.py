@@ -38,14 +38,13 @@ Findings (:class:`~.result.Issue` codes):
 from __future__ import annotations
 
 import numpy as np
+from tttrlib import rescale_micro_time_ranges
 
 from .result import (
     SEVERITIES,
     ExcitationWindows,
     Issue,
     WindowCheck,
-    rescale_gates,
-    rescale_windows,
 )
 
 __all__ = ["check_windows"]
@@ -120,7 +119,7 @@ def check_windows(
     gate = {str(d): [[int(r[0]), int(r[1])] for r in (rs or [])]
             for d, rs in (gates or {}).items() if rs}
     if gate and windows_resolution_s and res > 0 and abs(windows_resolution_s / res - 1) > 0.01:
-        gate = rescale_gates(gate, windows_resolution_s, res)
+        gate = rescale_micro_time_ranges(gate, windows_resolution_s, res)
         if not win:
             issues.append(Issue(
                 "resolution_mismatch", "warning",
@@ -130,7 +129,7 @@ def check_windows(
     if win and windows_resolution_s and res > 0:
         ratio = float(windows_resolution_s) / res
         if abs(ratio - 1.0) > 0.01:
-            conv = rescale_windows(win, windows_resolution_s, res)
+            conv = rescale_micro_time_ranges(win, windows_resolution_s, res)
             issues.append(
                 Issue(
                     "resolution_mismatch",

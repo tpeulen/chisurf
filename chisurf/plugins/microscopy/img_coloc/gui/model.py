@@ -148,7 +148,9 @@ class ColocModel(WindowsPreflightMixin, EmtkModelMixin, ColocViewModel):
     def take_preflight_setup(self, setup: dict) -> None:
         """Fill the channels through the detected gates and compute again (the saved setup and
         the channel pair are kept)."""
-        from chisurf.core.fluorescence.excitation import merge_gates, setup_gates
+        from tttrlib import setup_gates
+
+        from chisurf.core.fluorescence.excitation import merge_gates
 
         self.detectors = merge_gates(self.detectors, setup_gates(setup))
         self._stack = None

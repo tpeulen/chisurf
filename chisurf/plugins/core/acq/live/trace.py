@@ -16,8 +16,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-
-from chisurf.core.fluorescence.excitation import micro_mask
+from tttrlib import micro_time_mask
 
 __all__ = ["LiveTrace", "TraceStream", "trace_streams"]
 
@@ -192,7 +191,7 @@ class LiveTrace:
         for k, s in enumerate(self.streams):
             sel = np.isin(channel, s.channels)
             if s.window is not None:
-                sel &= micro_mask(micro, [s.window])
+                sel &= micro_time_mask(micro, [s.window])
             if s.phase is not None and phase is not None:
                 sel &= phase == s.phase
             if np.any(sel):

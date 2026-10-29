@@ -8,9 +8,9 @@ import pathlib
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+from tttrlib import ranges_to_inclusive
 
 from chisurf.core.datastore import column_names
-from chisurf.core.fluorescence.excitation import gates_to_inclusive
 
 from ..api.contract import (
     METHOD_COMPUTE,
@@ -708,7 +708,7 @@ def _settings_from_workflow(
                     name=str(name),
                     channels=[int(c) for c in det.get("chs", [])],
                     # the setup's gates are [start, stop); a stream's ranges inclusive
-                    micro_time_ranges=gates_to_inclusive(det.get("micro_time_ranges")),
+                    micro_time_ranges=ranges_to_inclusive(det.get("micro_time_ranges")),
                 )
             )
         tttr_reading = channel_settings.get("tttr_reading") or {}

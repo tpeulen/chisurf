@@ -11,14 +11,13 @@ from __future__ import annotations
 
 import logging
 
-import numpy as np
 import pytest
 
 pytest.importorskip("tttrlib")
 
 from chisurf.core.experiments.pda2c import Pda2cReader  # noqa: E402
 from chisurf.core.experiments.pda2c.settings import PdaReaderSettings  # noqa: E402
-from chisurf.plugins.core.excitation_windows.demo import make_demo  # noqa: E402
+from chisurf.core.fluorescence.simulation.pie_demo import make_demo  # noqa: E402
 
 WRONG = [[0, 2047], [2048, 4095]]
 MATCHING = [[50, 1612], [1613, 3124]]
@@ -31,15 +30,9 @@ def demo(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def donor_only(tmp_path_factory):
-    from chisurf.plugins.core.excitation_windows import demo as d
-    from chisurf.plugins.tttr import demo_lib
-
-    macro, micro, routing = d.photon_stream(n_photons=100_000)
-    keep = ~((routing == 1) & (micro.astype(float) * d.RESOLUTION_S * 1e9 > 51.0))
+    from chisurf.core.fluorescence.simulation import pie_demo as d
     path = tmp_path_factory.mktemp("donly") / "donor_only.ptu"
-    cfg = demo_lib.config(macro_resolution_s=d.MACRO_S, micro_resolution_s=d.RESOLUTION_S,
-                          n_micro=d.N_MICRO)
-    demo_lib.write_ptu(path, cfg, macro[keep], micro[keep], np.asarray(routing)[keep])
+    d.make_demo(path.parent, donor_only=True, name=path.name, n_photons=100_000)
     return path
 
 

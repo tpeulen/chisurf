@@ -5,9 +5,9 @@ streams by routing channel *and* micro-time range. The engines (``tttrlib.BVA`` 
 ``tttrlib.TwoCDE`` / ``BurstFeature``, :class:`~chisurf.core.fluorescence.burst.photons.StreamDef`)
 keep a photon when ``start <= micro_time <= stop`` -- their ranges are **inclusive**. A setup's
 detector gates (``detectors.*.micro_time_ranges``) are ``[start, stop)``. The two meet here, once:
-a setup is read into engine ranges with :func:`~chisurf.core.fluorescence.excitation.gates_to_inclusive`
+a setup is read into engine ranges with :func:`~chisurf.core.fluorescence.tttrlib.ranges_to_inclusive`
 (:func:`fret_pair_from_workflow`), and engine streams are checked as setup gates with
-:func:`~chisurf.core.fluorescence.excitation.gates_from_inclusive` (:func:`stream_detectors`) --
+:func:`~chisurf.core.fluorescence.tttrlib.ranges_from_inclusive` (:func:`stream_detectors`) --
 exactly the channels the engine keeps.
 
 The streams are checked as detector gates against the excitation pulses each measurement shows
@@ -24,12 +24,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from chisurf.core.fluorescence.excitation import (
-    gates_from_inclusive,
-    gates_to_inclusive,
-    windows_message,
-    windows_preflight,
-)
+from tttrlib import ranges_from_inclusive, ranges_to_inclusive
+
+from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
 
 __all__ = [
     "FULL_MICRO_TIME",
@@ -73,7 +70,7 @@ def fret_pair_from_workflow(workflow_context: Mapping | None) -> dict[str, Any]:
         det = detectors[name]
         settings[f"{role}_channels"] = [int(c) for c in det.get("chs", default)]
         settings[f"{role}_micro_time_ranges"] = (
-            gates_to_inclusive(det.get("micro_time_ranges")) or [FULL_MICRO_TIME]
+            ranges_to_inclusive(det.get("micro_time_ranges")) or [FULL_MICRO_TIME]
         )
     if reading.get("file_type"):
         settings["file_type"] = str(reading["file_type"])
@@ -100,7 +97,7 @@ def stream_detectors(
         ``{name: {"chs": [...], "micro_time_ranges": [[start, stop), ...]}}``.
     """
     return {
-        str(name): {"chs": [int(c) for c in chs], "micro_time_ranges": gates_from_inclusive(ranges)}
+        str(name): {"chs": [int(c) for c in chs], "micro_time_ranges": ranges_from_inclusive(ranges)}
         for name, (chs, ranges) in streams.items()
     }
 

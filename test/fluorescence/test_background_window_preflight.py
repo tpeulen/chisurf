@@ -11,7 +11,6 @@ false warning, and without a list nothing is checked.
 
 from __future__ import annotations
 
-import numpy as np
 import pytest
 
 tttrlib = pytest.importorskip("tttrlib")
@@ -31,22 +30,16 @@ WRONG = {
 
 @pytest.fixture(scope="module")
 def demo(tmp_path_factory):
-    from chisurf.plugins.core.excitation_windows.demo import make_demo
+    from chisurf.core.fluorescence.simulation.pie_demo import make_demo
 
     return tttrlib.TTTR(str(make_demo(tmp_path_factory.mktemp("demo"))))
 
 
 @pytest.fixture(scope="module")
 def donor_only(tmp_path_factory):
-    from chisurf.plugins.core.excitation_windows import demo as d
-    from chisurf.plugins.tttr import demo_lib
-
-    macro, micro, routing = d.photon_stream(n_photons=100_000)
-    keep = ~((routing == 1) & (micro.astype(float) * d.RESOLUTION_S * 1e9 > 51.0))
+    from chisurf.core.fluorescence.simulation import pie_demo as d
     path = tmp_path_factory.mktemp("donly") / "donor_only.ptu"
-    cfg = demo_lib.config(macro_resolution_s=d.MACRO_S, micro_resolution_s=d.RESOLUTION_S,
-                          n_micro=d.N_MICRO)
-    demo_lib.write_ptu(path, cfg, macro[keep], micro[keep], np.asarray(routing)[keep])
+    d.make_demo(path.parent, donor_only=True, name=path.name, n_photons=100_000)
     return tttrlib.TTTR(str(path))
 
 

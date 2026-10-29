@@ -205,7 +205,9 @@ class PixelModelMixin(WindowsPreflightMixin, EmtkModelMixin, _Host):
     def take_preflight_setup(self, setup: dict) -> None:
         """Fill the windows through the detected gates from now on and compute again (the hub's
         shared Setup is not changed)."""
-        from chisurf.core.fluorescence.excitation import format_ranges, merge_gates, setup_gates
+        from tttrlib import setup_gates
+
+        from chisurf.core.fluorescence.excitation import format_ranges, merge_gates
 
         self.detectors = merge_gates(self._windows(), setup_gates(setup))
         gates = format_ranges(setup_gates({"detectors": self.detectors}))

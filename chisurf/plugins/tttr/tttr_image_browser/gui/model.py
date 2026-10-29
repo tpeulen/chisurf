@@ -19,11 +19,11 @@ from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
+from tttrlib import setup_gates
 
 from chisurf.core.fluorescence.excitation import (
     WindowsPreflightMixin,
     format_ranges,
-    setup_gates,
     windows_message,
 )
 from chisurf.plugins.microscopy.imaging_emtk.model_base import EmtkModelMixin

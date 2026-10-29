@@ -10,9 +10,8 @@ Record tool, the setup editor and the burst / PIE analyses all call before they 
 * :func:`check_windows`, :func:`check_setup` -- existing windows held against a detection;
 * :func:`windows_preflight`, :func:`windows_message` -- what an analysis runs before it uses
   windows, and the one line it reports;
-* :func:`rescale_windows` -- windows from one channel width (TAC range, binning) to another;
-* :mod:`.setup` -- reading a setup (:func:`channel_map`, :func:`polarization_channels`), the
-  range dialects (:func:`gates_to_inclusive`, :func:`micro_mask`), the gate-only check.
+* :mod:`.setup` -- the gate-only check and gate merging. Reading a setup (detectors, gates,
+  windows, units, range dialects, rescaling, masks) is tttrlib's ``ChannelSetup``.
 
 Method and assumptions: ``docs/concepts/excitation_windows.md``.
 """
@@ -23,9 +22,6 @@ from .measure import (
     detect_alex_windows,
     detect_windows,
     histograms_from_tttr,
-    setup_detectors,
-    setup_gates,
-    setup_window_resolution_s,
 )
 from .pie import detect_pie_windows, rising_edges
 from .preflight import (
@@ -39,34 +35,22 @@ from .result import (
     Issue,
     Pulse,
     WindowCheck,
-    rescale_gates,
-    rescale_windows,
 )
 from .setup import (
     GATE_CODES,
-    channel_map,
     format_ranges,
     gate_check,
     gate_setup,
-    gates_from_inclusive,
-    gates_to_inclusive,
     merge_gates,
-    micro_mask,
-    polarization_channels,
     remembered_gate_check,
 )
 
 __all__ = [
     "GATE_CODES",
-    "channel_map",
     "format_ranges",
     "gate_check",
     "gate_setup",
-    "gates_from_inclusive",
-    "gates_to_inclusive",
     "merge_gates",
-    "micro_mask",
-    "polarization_channels",
     "remembered_gate_check",
     "ExcitationWindows",
     "Issue",
@@ -80,12 +64,7 @@ __all__ = [
     "detect_pie_windows",
     "detect_windows",
     "histograms_from_tttr",
-    "rescale_gates",
-    "rescale_windows",
     "rising_edges",
-    "setup_detectors",
-    "setup_gates",
-    "setup_window_resolution_s",
     "windows_message",
     "windows_preflight",
 ]

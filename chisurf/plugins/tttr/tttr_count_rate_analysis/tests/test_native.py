@@ -6,8 +6,8 @@ import sys
 from types import SimpleNamespace
 
 import numpy as np
+from tttrlib import setup_channel_map
 
-from chisurf.core.fluorescence.excitation import channel_map
 from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller import create_app
 
 
@@ -34,7 +34,7 @@ SETUP = {
 
 
 def test_native_windows_and_detector_gates_are_preserved(tmp_path):
-    assert set(channel_map(SETUP)) == {"early_green", "late_green"}
+    assert set(setup_channel_map(SETUP)) == {"early_green", "late_green"}
     path = tmp_path / "one.ptu"
     path.write_bytes(b"x")
     app = create_app(reader=lambda _: PhotonStream(), setups={"instrument": SETUP})
@@ -132,7 +132,7 @@ def test_native_success_status_does_not_cover_scientific_docks(tmp_path):
 
 def test_native_rebuilds_cached_channels_after_definition_edits():
     setup = {**SETUP, "channels": {"stale": []}}
-    assert set(channel_map(setup)) == {"early_green", "late_green"}
+    assert set(setup_channel_map(setup)) == {"early_green", "late_green"}
 
 
 def test_native_settings_exclude_results_and_restore_control_definitions():

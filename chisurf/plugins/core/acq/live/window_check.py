@@ -34,14 +34,13 @@ def convert_setup_windows(setup: dict, micro_res_s: float) -> tuple[dict, str]:
     32 ps / 3125-channel data); converted, they cover the same nanoseconds. The returned setup
     declares the device's resolution, so converting twice changes nothing.
     """
-    from chisurf.core.fluorescence.excitation import (
-        rescale_gates,
-        rescale_windows,
+    from tttrlib import (
+        rescale_micro_time_ranges,
         setup_gates,
-        setup_window_resolution_s,
+        setup_micro_time_resolution,
     )
 
-    declared = setup_window_resolution_s(setup)
+    declared = setup_micro_time_resolution(setup)
     windows = setup.get("windows") or {}
     gates = setup_gates(setup)
     if not (windows or gates) or not declared or not micro_res_s:
@@ -50,9 +49,9 @@ def convert_setup_windows(setup: dict, micro_res_s: float) -> tuple[dict, str]:
         return setup, ""
     out = dict(setup)
     if windows:
-        out["windows"] = rescale_windows(windows, declared, micro_res_s)
+        out["windows"] = rescale_micro_time_ranges(windows, declared, micro_res_s)
     if gates:
-        conv = rescale_gates(gates, declared, micro_res_s)
+        conv = rescale_micro_time_ranges(gates, declared, micro_res_s)
         out["detectors"] = {
             k: ({**v, "micro_time_ranges": conv[k]} if k in conv else v)
             for k, v in (setup.get("detectors") or {}).items()

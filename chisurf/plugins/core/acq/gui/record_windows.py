@@ -57,7 +57,7 @@ class WindowCheckMixin:
             self._alex_poll(session, exp, info)
             return
         windows = dict(exp.setup.get("windows") or {})
-        from chisurf.core.fluorescence.excitation import setup_detectors, setup_gates
+        from tttrlib import setup_detectors, setup_gates
 
         if not self.live_windows.update(snap, windows, info.micro_res_s, info.n_micro,
                                         gates=setup_gates(exp.setup),
@@ -68,7 +68,7 @@ class WindowCheckMixin:
     def _alex_poll(self, session, exp, info) -> None:
         """µs-ALEX: the period and windows from the run's macro times (when the session keeps
         them), else say that the check waits for the analysis."""
-        from chisurf.core.fluorescence.excitation import setup_detectors
+        from tttrlib import setup_detectors
 
         get = getattr(session, "alex_photons", None)
         if get is None or not exp.alex_period_s:
@@ -194,13 +194,15 @@ class WindowCheckMixin:
                 self._take_alex(detection, windows)
                 return
             # the measurement's channels, in this device's: the same nanoseconds
-            from chisurf.core.fluorescence.excitation import rescale_gates, rescale_windows
+            from tttrlib import (
+                rescale_micro_time_ranges,
+            )
 
             src = detection.resolution_s
             gates = check.proposal_gates if check is not None else {}
             if res:
-                windows = rescale_windows(windows, src, res)
-                gates = rescale_gates(gates, src, res)
+                windows = rescale_micro_time_ranges(windows, src, res)
+                gates = rescale_micro_time_ranges(gates, src, res)
             self._take_windows(windows, res or src, gates)
 
         self.windows_review_requested = WindowsReview(setup, on_accept=accepted)

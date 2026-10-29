@@ -12,8 +12,7 @@ from __future__ import annotations
 
 import numpy as np
 import tttrlib
-
-from chisurf.core.fluorescence.excitation import micro_mask
+from tttrlib import micro_time_mask
 
 __all__ = ["PRESETS", "analyze_offline", "make_analyzer"]
 
@@ -51,7 +50,7 @@ def analyze_offline(tttr, setup: dict, preset: str, *, min_photons=20, window_ph
         d = detectors[det]
         m = np.isin(ch, d.get("chs", []))
         if win is not None:
-            m &= micro_mask(micro, [windows[win]])
+            m &= micro_time_mask(micro, [windows[win]])
         return m
 
     cum = {}

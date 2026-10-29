@@ -8,13 +8,14 @@ offers the detected windows after Calculate and the user takes them.
 
 from __future__ import annotations
 
-import numpy as np
 import pytest
 
 pytest.importorskip("tttrlib")
 
-from chisurf.core.fluorescence.excitation import channel_map, windows_message  # noqa: E402
-from chisurf.plugins.core.excitation_windows import demo as pie  # noqa: E402
+from tttrlib import setup_channel_map
+
+from chisurf.core.fluorescence.excitation import windows_message  # noqa: E402
+from chisurf.core.fluorescence.simulation import pie_demo as pie  # noqa: E402
 from chisurf.plugins.tttr.tttr_count_rate_analysis.cli import (  # noqa: E402
     calculate_count_rates,
     window_check,
@@ -39,21 +40,14 @@ def demo(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def donor_only(tmp_path_factory):
-    from chisurf.plugins.tttr import demo_lib
-
-    macro, micro, routing = pie.photon_stream(n_photons=100_000)
-    t_ns = micro.astype(float) * pie.RESOLUTION_S * 1e9
-    keep = ~((routing == 1) & (t_ns > 51.0))  # no acceptor pulse
     path = tmp_path_factory.mktemp("donly") / "donly.ptu"
-    cfg = demo_lib.config(macro_resolution_s=pie.MACRO_S, micro_resolution_s=pie.RESOLUTION_S,
-                          n_micro=pie.N_MICRO)
-    demo_lib.write_ptu(path, cfg, macro[keep], micro[keep], np.asarray(routing)[keep])
+    pie.make_demo(path.parent, donor_only=True, name=path.name, n_photons=100_000)
     return path
 
 
 def _warnings(path, setup) -> list[str]:
     warnings: list[str] = []
-    channels = channel_map(setup, ungated_means_all=True, per_detector_without_windows=True)
+    channels = setup_channel_map(setup, ungated_means_all=True, per_detector_without_windows=True)
     calculate_count_rates([str(path)], channels, setup=setup, warnings=warnings)
     return warnings
 

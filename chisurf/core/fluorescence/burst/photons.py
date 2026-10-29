@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import tttrlib
+from tttrlib import micro_time_mask
 
 from chisurf.core.datastore import (
     column_names,
@@ -34,7 +35,6 @@ from chisurf.core.datastore import (
     row_count,
     take_columns,
 )
-from chisurf.core.fluorescence.excitation import micro_mask
 
 __all__ = [
     "PhotonMeta",
@@ -129,7 +129,7 @@ def stream_index_arrays(
     for s_i in range(len(streams) - 1, -1, -1):
         s = streams[s_i]
         mask = np.isin(channels, np.asarray(s.channels, dtype=channels.dtype))
-        idx[mask & micro_mask(micro_times, s.micro_time_ranges, inclusive=True)] = s_i
+        idx[mask & micro_time_mask(micro_times, s.micro_time_ranges, inclusive=True)] = s_i
     return idx
 
 

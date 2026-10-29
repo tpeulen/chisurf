@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from tttrlib import rescale_micro_time_ranges
 
 from chisurf.core.fluorescence.excitation import (
     ExcitationWindows,
@@ -18,7 +19,6 @@ from chisurf.core.fluorescence.excitation import (
     check_windows,
     detect_pie_windows,
     detect_windows,
-    rescale_windows,
 )
 
 
@@ -173,7 +173,7 @@ def test_setup_of_another_resolution_is_converted_not_misapplied():
     assert c.issues[0].code == "resolution_mismatch"
     assert c.windows["prompt"] == [0, 3200]
     # the same windows, right for the data but given in 50 ps channels: only converted
-    good = rescale_windows(r.windows, 32e-12, 50e-12)
+    good = rescale_micro_time_ranges(r.windows, 32e-12, 50e-12)
     c = check_windows(good, r, windows_resolution_s=50e-12)
     assert [i.code for i in c.issues] == ["resolution_mismatch"]
     for k in r.windows:
@@ -278,11 +278,13 @@ def test_simulated_donor_only_measurement_is_single():
 
 
 def test_detector_gates_are_converted_and_checked():
-    from chisurf.core.fluorescence.excitation import apply_check, rescale_gates
+    from tttrlib import rescale_micro_time_ranges
+
+    from chisurf.core.fluorescence.excitation import apply_check
 
     h = pie_histograms()
     r = detect_pie_windows(h, 32e-12)
-    good = rescale_windows(r.windows, 32e-12, 50e-12)
+    good = rescale_micro_time_ranges(r.windows, 32e-12, 50e-12)
     setup = {
         "windows": good,
         "detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 4095]]},
@@ -299,7 +301,7 @@ def test_detector_gates_are_converted_and_checked():
     assert fixed["detectors"]["red"]["micro_time_ranges"] == [[0, 3125]]
     assert fixed["tttr_reading"]["micro_time_resolution"] == pytest.approx(32.0)
     assert check_setup(fixed, detection=r, histograms=h).status == "ok"
-    assert rescale_gates({"a": [[0, 2048]]}, 50e-12, 32e-12) == {"a": [[0, 3200]]}
+    assert rescale_micro_time_ranges({"a": [[0, 2048]]}, 50e-12, 32e-12) == {"a": [[0, 3200]]}
 
 
 def test_a_gate_beyond_the_range_is_an_error_even_for_donor_only():

@@ -4,8 +4,7 @@ import logging
 from typing import Any
 
 import numpy as np
-
-from chisurf.core.fluorescence.excitation import micro_mask
+from tttrlib import micro_time_mask
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +74,7 @@ def _compute_handler(
         channels = channels or [0, 2]
         mask = np.isin(tttr.routing_channels, channels)
         bin_t = bin_time_us * 1e-6
-        masks_mt = micro_mask(tttr.micro_times, [(micro_time_min, micro_time_max)], inclusive=True)
+        masks_mt = micro_time_mask(tttr.micro_times, [(micro_time_min, micro_time_max)], inclusive=True)
         combined_mask = mask & masks_mt
         times = tttr.macro_times[combined_mask] * tttr.header.macro_time_resolution
         t_max = times.max()

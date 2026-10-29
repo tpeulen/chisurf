@@ -34,7 +34,7 @@ MATCHING = {
 
 def pie_scan(path: Path, *, donor_only: bool = False) -> Path:
     """Write a 4-frame 64x64 confocal PIE scan of the FRC demo object to *path* (PTU)."""
-    from chisurf.plugins.core.excitation_windows import demo as d
+    from chisurf.core.fluorescence.simulation import pie_demo as d
     from chisurf.plugins.microscopy import demo_stack
     from chisurf.plugins.microscopy.img_pixel_nb.demo import counts_to_tttr
 

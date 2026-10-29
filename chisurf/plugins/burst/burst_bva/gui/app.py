@@ -20,7 +20,7 @@ from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_form, draw_sections
 
 from chisurf.core.fluorescence.burst.streams import FULL_MICRO_TIME
-from chisurf.core.fluorescence.excitation import gates_from_inclusive, gates_to_inclusive
+from tttrlib import ranges_from_inclusive, ranges_to_inclusive
 from chisurf.core.plugin.workspace_input import (
     WorkspaceInputMixin,
     input_section,
@@ -28,7 +28,7 @@ from chisurf.core.plugin.workspace_input import (
     spec_for,
 )
 from chisurf.emtk.advanced import advanced_mode
-from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import (
     action_caption,
     action_tooltip,
@@ -217,7 +217,7 @@ class BurstBvaGui:
             detectors[role] = {
                 "chs": list(getattr(self.model, f"{role}_channels")),
                 # the model holds BVA's inclusive ranges, the editor setup gates [start, stop)
-                "micro_time_ranges": gates_from_inclusive(
+                "micro_time_ranges": ranges_from_inclusive(
                     getattr(self.model, f"{role}_micro_time_ranges")
                 ),
                 "g_factor": 1.0,
@@ -298,7 +298,7 @@ class BurstBvaGui:
             if det is None:
                 continue
             chs = ",".join(str(c) for c in det.get("chs", []))
-            ranges = gates_to_inclusive(det.get("micro_time_ranges")) or [FULL_MICRO_TIME]
+            ranges = ranges_to_inclusive(det.get("micro_time_ranges")) or [FULL_MICRO_TIME]
             setattr(self.model, f"{role}_channels_text", chs)
             setattr(self.model, f"{role}_micro_time_ranges", ranges)
             self._microtime_text.pop(role, None)

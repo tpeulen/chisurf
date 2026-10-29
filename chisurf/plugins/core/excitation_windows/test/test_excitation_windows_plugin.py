@@ -9,8 +9,12 @@ from click.testing import CliRunner
 
 pytest.importorskip("tttrlib")
 
+from chisurf.core.fluorescence.simulation.pie_demo import (  # noqa: E402
+    TRUTH,
+    make_demo,
+    wrong_setup,
+)
 from chisurf.plugins.core.excitation_windows import api  # noqa: E402
-from chisurf.plugins.core.excitation_windows.demo import TRUTH, make_demo, wrong_setup  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -94,19 +98,11 @@ def test_the_tool_draws_and_accept_saves_a_setup(demo, tmp_path, monkeypatch):
 
 
 def test_a_donor_only_measurement_offers_nothing(tmp_path):
-    import numpy as np
 
+    from chisurf.core.fluorescence.simulation import pie_demo as d
     from chisurf.emtk.excitation_windows import WindowsReview
-    from chisurf.plugins.core.excitation_windows import demo as d
-    from chisurf.plugins.tttr import demo_lib
-
-    macro, micro, routing = d.photon_stream(n_photons=100_000)
-    t_ns = micro.astype(float) * d.RESOLUTION_S * 1e9
-    keep = ~((routing == 1) & (t_ns > 51.0))  # no acceptor pulse
     path = tmp_path / "donly.ptu"
-    cfg = demo_lib.config(macro_resolution_s=d.MACRO_S, micro_resolution_s=d.RESOLUTION_S,
-                          n_micro=d.N_MICRO)
-    demo_lib.write_ptu(path, cfg, macro[keep], micro[keep], np.asarray(routing)[keep])
+    d.make_demo(path.parent, donor_only=True, name=path.name, n_photons=100_000)
     review = WindowsReview(wrong_setup(), workspace=False)
     review.set_measurement(str(path))
     assert review.detection.kind == "single"

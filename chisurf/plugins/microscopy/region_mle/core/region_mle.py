@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from tttrlib import micro_time_mask
 
 from chisurf.core.datastore import (
     as_store,
@@ -32,7 +33,6 @@ from chisurf.core.datastore import (
     store_from_rows,
     take_columns,
 )
-from chisurf.core.fluorescence.excitation import micro_mask
 from chisurf.core.fluorescence.mle import (
     Fit2x,
     Fit2xModel,
@@ -610,7 +610,7 @@ def _microtime_component(
     raw_start, raw_stop = start * binning, stop * binning
     mt = tttr.micro_times
     ch = tttr.routing_channels
-    mask = micro_mask(mt, [(raw_start, raw_stop)]) & np.isin(ch, list(channels))
+    mask = micro_time_mask(mt, [(raw_start, raw_stop)]) & np.isin(ch, list(channels))
     sub = tttr[np.where(mask)[0]]
     hist, _ = sub.get_microtime_histogram(binning, minlength=int(raw_stop))
     hist = np.asarray(hist, dtype=np.float64)

@@ -13,16 +13,16 @@ from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
+from tttrlib import (
+    micro_time_mask,
+    polarization_channels,
+    setup_micro_time_resolution,
+)
 
 from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
 from chisurf.core.fio.address import container_of
 from chisurf.core.fio.pto import SUFFIX as PTO_SUFFIX
 from chisurf.core.fio.staging import TTTR_EXTENSIONS, open_tttr
-from chisurf.core.fluorescence.excitation import (
-    micro_mask,
-    polarization_channels,
-    setup_window_resolution_s,
-)
 
 
 def _column_label(column) -> str:
@@ -347,10 +347,10 @@ class HistogramModel:
                 mask &= burst_mask(len(micro), bursts[key])
             gates = config.get("micro_time_ranges") or []
             if gates and None not in gates:  # a None gate holds every photon
-                mask &= micro_mask(micro, gates)
+                mask &= micro_time_mask(micro, gates)
             window = self.setup.get("windows", {}).get(self.window)
             if window is not None:
-                mask &= micro_mask(micro, [window])
+                mask &= micro_time_mask(micro, [window])
             binned = micro // int(self.binning)
             n_raw = int(stream.header.get_effective_number_of_micro_time_channels())
             bins = max(1, (n_raw + self.binning - 1) // self.binning)
@@ -372,7 +372,7 @@ class HistogramModel:
             # the file's channel width, or the setup's when it overrides the timing or the file
             # does not say
             dt = float(getattr(stream.header, "micro_time_resolution", 0) or 0) * 1e9 * self.binning
-            setup_s = setup_window_resolution_s(self.setup)
+            setup_s = setup_micro_time_resolution(self.setup)
             override = (self.setup.get("tttr_reading") or {}).get("override_timing")
             if setup_s and (override or dt <= 0):
                 dt = setup_s * 1e9 * self.binning

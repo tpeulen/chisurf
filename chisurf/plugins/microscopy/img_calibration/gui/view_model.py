@@ -246,7 +246,8 @@ class CalibrationViewModel:
         if cached is not None:
             return cached
 
-        from chisurf.core.fluorescence.excitation import polarization_channels
+        from tttrlib import polarization_channels
+
         from chisurf.core.fluorescence.imaging import calibration_histograms
 
         det = self.display_detector

@@ -33,6 +33,7 @@ import pathlib
 
 import numpy as np
 import tttrlib
+from tttrlib import micro_time_mask
 
 from chisurf.core.datastore import (
     column_names,
@@ -43,7 +44,6 @@ from chisurf.core.datastore import (
     store_from_arrays,
     write_csv_table,
 )
-from chisurf.core.fluorescence.excitation import micro_mask
 
 #: Sentinel written for a per-detector column a burst has no photons in. Matches
 #: the ``-1.0`` the duration and rate columns already use, so a reader that
@@ -415,7 +415,7 @@ def generate_burst_dataframe(
     det_global = {}
     for d, info in detectors.items():
         chm = np.isin(rout, info["chs"])
-        det_global[d] = chm & micro_mask(micro, info["micro_time_ranges"])
+        det_global[d] = chm & micro_time_mask(micro, info["micro_time_ranges"])
 
     win_global = {w: (micro >= r0) & (micro < r1) for w, (r0, r1) in windows.items()}
 

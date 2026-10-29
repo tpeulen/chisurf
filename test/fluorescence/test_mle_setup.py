@@ -8,6 +8,7 @@ correction handling are pinned here rather than in any single consumer.
 harness, whereas the parser is shared by every MLE consumer.)
 """
 
+
 import pathlib
 
 import utils
@@ -101,8 +102,8 @@ class TestPolarisationSplit:
         assert setup.channels_perpendicular == [0, 1]
 
     def test_matches_the_imaging_convention(self):
-        """Agree with the setup's reading (excitation.polarization_channels)."""
-        from chisurf.core.fluorescence.excitation import polarization_channels
+        """Agree with the setup's reading (tttrlib.polarization_channels)."""
+        from tttrlib import polarization_channels
 
         det = {"chs": [8, 0, 3]}
         expected_p, expected_s = polarization_channels(det)

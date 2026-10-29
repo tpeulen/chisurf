@@ -12,8 +12,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 import numpy as np
-
-from chisurf.core.fluorescence.excitation import setup_window_resolution_s
+from tttrlib import setup_micro_time_resolution
 
 # -----------------------------
 # Data model
@@ -143,7 +142,7 @@ def load_tttr_with_tttrlib(path: str, setup=None) -> TTTRData:
     if reading.get("override_timing"):
         if float(reading.get("macro_time_resolution", 0)) > 0:
             macro_unit_s = float(reading["macro_time_resolution"]) * 1e-9
-        micro_unit_s = setup_window_resolution_s(setup) or micro_unit_s
+        micro_unit_s = setup_micro_time_resolution(setup) or micro_unit_s
     return TTTRData(
         routing=routing,
         macro_ticks=macro,

@@ -41,6 +41,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
+from tttrlib import micro_time_mask, ranges_to_inclusive
 
 from chisurf.core.datastore import column_names, row_count, take_where
 from chisurf.core.fio.fluorescence.burst import DETECTOR_SENTINEL
@@ -56,7 +57,6 @@ from chisurf.core.fluorescence.burst.photons import (
     stream_index_arrays,
     streams_from_dicts,
 )
-from chisurf.core.fluorescence.excitation import gates_to_inclusive, micro_mask
 
 __all__ = [
     "BurstPreparation",
@@ -727,7 +727,7 @@ def _streams_from_manifest(
                 name=name,
                 channels=[int(c) for c in entry.get("chs", entry.get("channels", []))],
                 # the manifest's gates are [start, stop); StreamDef ranges inclusive
-                micro_time_ranges=gates_to_inclusive(entry.get("micro_time_ranges")),
+                micro_time_ranges=ranges_to_inclusive(entry.get("micro_time_ranges")),
             )
         )
     return out
@@ -849,7 +849,7 @@ def infer_streams(
             hi = int(last[row]) + stop_offset
             mask = np.isin(routing[lo:hi], channels)
             if window is not None:
-                mask &= micro_mask(micro[lo:hi], [window])
+                mask &= micro_time_mask(micro[lo:hi], [window])
             out[i] = int(mask.sum())
         return out
 
@@ -865,7 +865,7 @@ def infer_streams(
                         channels=list(channels),
                         # StreamDef windows are inclusive; the writer's are
                         # half-open, so the upper bound moves by one.
-                        micro_time_ranges=([] if window is None else gates_to_inclusive([window])),
+                        micro_time_ranges=([] if window is None else ranges_to_inclusive([window])),
                     )
                     break
             if found is not None:
@@ -991,7 +991,7 @@ def _detector_masks(
     for s, stream in enumerate(streams):
         if not stream.channels:
             continue
-        out[s] = np.isin(channels, np.asarray(stream.channels, dtype=channels.dtype)) & micro_mask(
+        out[s] = np.isin(channels, np.asarray(stream.channels, dtype=channels.dtype)) & micro_time_mask(
             micro_times, stream.micro_time_ranges, inclusive=True)
     return out
 

@@ -539,9 +539,9 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         self.windows = copy.deepcopy(settings.get("windows") or {})
         reading = settings.get("tttr_reading") or {}
         self.file_type = diag_mod.normalize_filetype(reading.get("file_type"))
-        from chisurf.core.fluorescence.excitation import setup_window_resolution_s
+        from tttrlib import setup_micro_time_resolution
 
-        self.window_resolution_s = setup_window_resolution_s(settings)
+        self.window_resolution_s = setup_micro_time_resolution(settings)
         self.windows_check = None
         name = str(settings.get("setup_name") or settings.get("name") or "")
         if name:

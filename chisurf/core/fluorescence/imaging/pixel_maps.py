@@ -160,7 +160,7 @@ def prefill_windows(filename: str, windows: dict) -> None:
     Builds the fills needed by the Intensity (``ch_p``/``ch_s``) and N&B/phasor
     (``chs``) steps, so that when the user advances the maps are already cached.
     """
-    from chisurf.core.fluorescence.excitation import polarization_channels
+    from tttrlib import polarization_channels
 
     seen: set = set()
     for det in windows.values():
@@ -434,11 +434,10 @@ def build_clsm_windowed(tttr: Any, channels, micro_time_ranges=None) -> Any:
         full micro-time axis.
     """
     import tttrlib
-
-    from chisurf.core.fluorescence.excitation import gates_to_inclusive
+    from tttrlib import ranges_to_inclusive
 
     chs = list(channels) if channels else [0]
-    mtr = gates_to_inclusive(micro_time_ranges)
+    mtr = ranges_to_inclusive(micro_time_ranges)
     # Build the marker geometry unfilled (cheap), then fill exactly once with the
     # channel + micro-time selection. Filling twice (fill=True then a gated
     # refill) roughly doubled the per-window cost.
@@ -472,7 +471,10 @@ def windows_from_payload(payload: dict) -> dict[str, dict]:
     polarization-resolved counts) and its half-open ``micro_time_ranges`` gates as tuples.
     Returns an empty dict when no detectors are set.
     """
-    from chisurf.core.fluorescence.excitation import setup_detectors, setup_gates
+    from tttrlib import (
+        setup_detectors,
+        setup_gates,
+    )
 
     dets = {str(k): v for k, v in ((payload or {}).get("detectors") or {}).items()}
     gates = setup_gates(payload)

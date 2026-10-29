@@ -11,14 +11,12 @@ import pathlib
 from typing import Any, Callable
 
 import numpy as np
+from tttrlib import ranges_to_inclusive
 
 from chisurf.core.datastore import numeric_column, row_count
 from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
 from chisurf.core.fluorescence.burst import streams as burst_streams
-from chisurf.core.fluorescence.excitation import (
-    WindowsPreflightMixin,
-    gates_to_inclusive,
-)
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
 from chisurf.core.runtime import analysis_cache
 from chisurf.plugins.burst.burst_bva.core import computation as core
 
@@ -156,7 +154,7 @@ class BvaViewModel(WindowsPreflightMixin):
                 setattr(self, f"{role}_channels_text", ",".join(str(c) for c in d.get("chs", [])))
                 # the setup's gates are [start, stop); BVA applies inclusive ranges
                 setattr(self, f"{role}_micro_time_ranges",
-                        gates_to_inclusive(d.get("micro_time_ranges")) or [burst_streams.FULL_MICRO_TIME])
+                        ranges_to_inclusive(d.get("micro_time_ranges")) or [burst_streams.FULL_MICRO_TIME])
         file_type = (settings.get("tttr_reading") or {}).get("file_type")
         if file_type:
             self.file_type = file_type
@@ -202,7 +200,7 @@ class BvaViewModel(WindowsPreflightMixin):
         for role, name in zip(("donor", "acceptor"), self.pair_names):
             gates = (detectors.get(name) or {}).get("micro_time_ranges")
             if gates:
-                setattr(self, f"{role}_micro_time_ranges", gates_to_inclusive(gates))
+                setattr(self, f"{role}_micro_time_ranges", ranges_to_inclusive(gates))
         self.windows_warnings, self._checked = [], None
         self.status_text = "Micro-time ranges from the data: " + "; ".join(
             f"{role} " + ", ".join(f"{lo}:{hi}" for lo, hi in getattr(self, f"{role}_micro_time_ranges"))

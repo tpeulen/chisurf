@@ -19,7 +19,7 @@ from __future__ import annotations
 import dataclasses
 import typing
 
-from chisurf.core.fluorescence.excitation import polarization_channels
+from tttrlib import polarization_channels
 
 
 @dataclasses.dataclass

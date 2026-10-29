@@ -18,11 +18,8 @@ import tttrlib
 import chisurf.core.data
 import chisurf.core.fio.image
 from chisurf.core.experiments.core.reader import ExperimentReader
-from chisurf.core.fluorescence.excitation import (
-    WindowsPreflightMixin,
-    gates_to_inclusive,
-    setup_gates,
-)
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
+from tttrlib import ranges_to_inclusive, setup_gates
 from chisurf.core.fluorescence.imaging.drift import correct_drift
 from chisurf.core.roi import ROI, as_roi
 
@@ -387,7 +384,7 @@ class ICSReader(ExperimentReader, WindowsPreflightMixin):
         self._seed_timing_from_header(tttr_all)
 
         # The ranges are setup gates, half-open [start, stop); CLSMImage takes inclusive ranges.
-        mtr_arg = gates_to_inclusive(mtr_norm) if mtr_norm else None
+        mtr_arg = ranges_to_inclusive(mtr_norm) if mtr_norm else None
 
         # The ranges gate the photons in the data's channels: held against its excitation pulses.
         self._channels_read = tuple(int(c) for c in channels)

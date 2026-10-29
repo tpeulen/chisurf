@@ -97,9 +97,9 @@ class ChannelDefinition:
         ) * max(1, int(reading.get("micro_time_binning", 1)))
         reading["excitation_period"] = float(reading.get("macro_time_resolution", 0))
         result["setup_name"] = self.current_name
-        from chisurf.core.fluorescence.excitation import channel_map
+        from tttrlib import setup_channel_map
 
-        result["channels"] = channel_map(result)
+        result["channels"] = setup_channel_map(result)
         return result
 
     def rename_detector(self, old, new):

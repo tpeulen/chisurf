@@ -12,7 +12,7 @@ import pytest
 pytest.importorskip("tttrlib")
 
 from chisurf.plugins.burst.burst_selection.api.selection import analyze_file  # noqa: E402
-from chisurf.plugins.core.excitation_windows.demo import make_demo  # noqa: E402
+from chisurf.core.fluorescence.simulation.pie_demo import make_demo  # noqa: E402
 
 DETECTORS = {"green": {"chs": [0], "micro_time_ranges": []},
              "red": {"chs": [1], "micro_time_ranges": []}}

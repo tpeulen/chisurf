@@ -14,12 +14,12 @@ from emtk import im
 from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
+from tttrlib import setup_channel_map
 
 from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
 from chisurf.core.fio.staging import TTTR_EXTENSIONS, open_tttr
 from chisurf.core.fluorescence.excitation import (
     WindowsPreflightMixin,
-    channel_map,
     format_ranges,
     windows_message,
 )
@@ -79,7 +79,7 @@ class CountRateController(WindowsPreflightMixin):
         self.setups_ready = True
 
     def channels(self):
-        return channel_map(
+        return setup_channel_map(
             self.channel_editor.model.get_settings(),
             ungated_means_all=True,
             per_detector_without_windows=True,
@@ -142,7 +142,7 @@ class CountRateController(WindowsPreflightMixin):
     def apply_setup(self):
         try:
             setup = json.loads(self.setup_editor)
-            if not channel_map(setup, ungated_means_all=True, per_detector_without_windows=True):
+            if not setup_channel_map(setup, ungated_means_all=True, per_detector_without_windows=True):
                 raise ValueError("Define at least one detector channel.")
             name = self.selected_setup or "Custom setup"
             self._setups[name] = setup

@@ -36,7 +36,7 @@ UNGATED = {"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}}
 
 @pytest.fixture(scope="module")
 def pie(tmp_path_factory):
-    from chisurf.plugins.core.excitation_windows.demo import make_demo
+    from chisurf.core.fluorescence.simulation.pie_demo import make_demo
 
     return make_demo(tmp_path_factory.mktemp("pie"))
 
@@ -44,19 +44,9 @@ def pie(tmp_path_factory):
 @pytest.fixture(scope="module")
 def donor_only(tmp_path_factory):
     """The demo's photons without the acceptor-excited ones (one pulse)."""
-    from chisurf.plugins.core.excitation_windows import demo as d
-    from chisurf.plugins.tttr import demo_lib
-
-    macro, micro, routing = d.photon_stream()
-    keep = micro.astype(float) * d.RESOLUTION_S < 51e-9
+    from chisurf.core.fluorescence.simulation import pie_demo as d
     path = tmp_path_factory.mktemp("donor") / "donor_only.ptu"
-    cfg = demo_lib.config(
-        macro_resolution_s=d.MACRO_S,
-        micro_resolution_s=d.RESOLUTION_S,
-        n_micro=d.N_MICRO,
-        seed=d.SEED,
-    )
-    demo_lib.write_ptu(path, cfg, macro[keep], micro[keep], routing[keep])
+    d.make_demo(path.parent, donor_only=True, name=path.name)
     return path
 
 

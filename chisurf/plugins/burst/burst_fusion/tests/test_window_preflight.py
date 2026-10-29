@@ -46,24 +46,16 @@ def _burst_run(ptu, out_dir) -> str:
 
 @pytest.fixture
 def pie_run(tmp_path):
-    from chisurf.plugins.core.excitation_windows.demo import make_demo
+    from chisurf.core.fluorescence.simulation.pie_demo import make_demo
 
     return _burst_run(make_demo(tmp_path / "data"), tmp_path / "analysis")
 
 
 @pytest.fixture
 def donor_only_run(tmp_path):
-    from chisurf.plugins.core.excitation_windows import demo as d
-    from chisurf.plugins.tttr import demo_lib
-
-    macro, micro, routing = d.photon_stream(n_photons=100_000)
-    routing = np.asarray(routing)
-    keep = ~((routing == 1) & (micro.astype(float) * d.RESOLUTION_S > 51e-9))  # no acceptor pulse
+    from chisurf.core.fluorescence.simulation import pie_demo as d
     path = tmp_path / "data" / "donor_only.ptu"
-    path.parent.mkdir(parents=True)
-    cfg = demo_lib.config(macro_resolution_s=d.MACRO_S, micro_resolution_s=d.RESOLUTION_S,
-                          n_micro=d.N_MICRO)
-    demo_lib.write_ptu(path, cfg, macro[keep], micro[keep], routing[keep])
+    d.make_demo(path.parent, donor_only=True, name=path.name, n_photons=100_000)
     return _burst_run(path, tmp_path / "analysis")
 
 

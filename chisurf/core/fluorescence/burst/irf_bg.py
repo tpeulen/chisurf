@@ -35,12 +35,12 @@ from typing import Any
 
 import numpy as np
 import tttrlib
+from tttrlib import micro_time_mask
 
 from chisurf.core.fluorescence.burst.background import (
     estimate_background_from_interphoton_times,
 )
 from chisurf.core.fluorescence.burst.burst import burst_filter
-from chisurf.core.fluorescence.excitation import micro_mask
 from chisurf.core.fluorescence.tcspc.irf import detect_rising_edge
 
 __all__ = [
@@ -359,7 +359,7 @@ def extract_irf_background(
     for name, det in detectors.items():
         chs = np.asarray(det.get("chs", []), dtype=int)
         ch_mask = np.isin(rout, chs) if chs.size else np.zeros_like(keep)
-        times = macro[ch_mask & keep & micro_mask(micro, det.get("micro_time_ranges"))]
+        times = macro[ch_mask & keep & micro_time_mask(micro, det.get("micro_time_ranges"))]
         gaps[name] = (
             np.diff(times.astype(np.float64)) * dt_scale_ms if times.size >= 2 else np.empty(0)
         )

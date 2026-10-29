@@ -191,12 +191,12 @@ class Setup:
             ``{name: {"chs": [...], "micro_time_ranges": [[lo, hi), ...]}}`` -- setup gates,
             half-open: the detectors' inclusive :attr:`Detector.microtime_ranges` converted.
         """
-        from chisurf.core.fluorescence.excitation import gates_from_inclusive
+        from tttrlib import ranges_from_inclusive
 
         return {
             d.name: {
                 "chs": list(d.routing_channels),
-                "micro_time_ranges": gates_from_inclusive(d.microtime_ranges),
+                "micro_time_ranges": ranges_from_inclusive(d.microtime_ranges),
             }
             for d in self.detectors
         }

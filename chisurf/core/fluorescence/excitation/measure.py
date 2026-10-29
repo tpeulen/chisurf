@@ -9,7 +9,7 @@
 
 A *setup* is the shared channel definition (``detectors``, ``windows``, ``tttr_reading``).
 Its windows are raw micro-time channels of the resolution in ``tttr_reading.micro_time_resolution``
-(ps); :func:`setup_window_resolution_s` reads it so a different TAC range or binning is converted,
+(ps); ``tttrlib.setup_micro_time_resolution`` reads it so a different TAC range or binning is converted,
 not silently misapplied.
 """
 
@@ -20,6 +20,7 @@ from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
+import tttrlib
 
 from .check import check_windows
 from .pie import detect_pie_windows
@@ -30,9 +31,6 @@ __all__ = [
     "detect_alex_windows",
     "detect_windows",
     "histograms_from_tttr",
-    "setup_detectors",
-    "setup_gates",
-    "setup_window_resolution_s",
 ]
 
 #: A routing channel with less than this share of the photons is a marker or crosstalk line.
@@ -50,27 +48,6 @@ def _unwrap(setup: Mapping | None) -> dict:
     if not isinstance(setup, Mapping):
         return {}
     return dict(setup.get("data", setup))
-
-
-def setup_detectors(setup: Mapping | None) -> dict[str, list[int]]:
-    """``{detector: routing channels}`` of a setup (empty when it names none)."""
-    det = _unwrap(setup).get("detectors") or {}
-    return {
-        str(k): [int(c) for c in (v.get("chs") or [])]
-        for k, v in det.items()
-        if isinstance(v, Mapping) and v.get("chs")
-    }
-
-
-def setup_window_resolution_s(setup: Mapping | None) -> float | None:
-    """The channel width a setup's windows are in (``tttr_reading.micro_time_resolution``, ps),
-    in seconds; ``None`` when the setup does not say."""
-    reading = _unwrap(setup).get("tttr_reading") or {}
-    try:
-        ps = float(reading.get("micro_time_resolution") or 0.0)
-    except (TypeError, ValueError):
-        return None
-    return ps * 1e-12 if ps > 0 else None
 
 
 def _load(data: Any):
@@ -229,7 +206,7 @@ def detect_windows(
         Photons read from the start of the measurement.
     """
     tttr = _load(data)
-    det = detectors or setup_detectors(setup) or None
+    det = detectors or tttrlib.setup_detectors(setup) or None
     if kind in ("auto", "pie"):
         hists, res, n = histograms_from_tttr(tttr, det, max_photons=max_photons)
         pie = detect_pie_windows(hists, res, n_channels=n) if n > 8 else ExcitationWindows(
@@ -251,17 +228,6 @@ def detect_windows(
     if pie.kind == "unclear":  # a single pulse needs no word on µs-ALEX
         pie.notes.append(alex.message)
     return pie
-
-
-def setup_gates(setup: Mapping | None) -> dict[str, list[list[int]]]:
-    """``{detector: [[start, stop], ...]}`` -- the micro-time gates of a setup's detectors (those
-    that have any)."""
-    det = _unwrap(setup).get("detectors") or {}
-    return {
-        str(k): [[int(r[0]), int(r[1])] for r in (v.get("micro_time_ranges") or [])]
-        for k, v in det.items()
-        if isinstance(v, Mapping) and v.get("micro_time_ranges")
-    }
 
 
 def check_setup(
@@ -291,7 +257,7 @@ def check_setup(
         Per-detector photons per channel, for the gates (read from *data* when given).
     windows_resolution_s : float, optional
         The channel width of the setup's windows and gates; default
-        :func:`setup_window_resolution_s`.
+        ``tttrlib.setup_micro_time_resolution``.
     """
     s = _unwrap(setup)
     if detection is None:
@@ -300,17 +266,17 @@ def check_setup(
         tttr = _load(data)
         detection = detect_windows(tttr, setup=s)
         if histograms is None and detection.domain == "micro":
-            histograms, _, _ = histograms_from_tttr(tttr, setup_detectors(s) or None)
+            histograms, _, _ = histograms_from_tttr(tttr, tttrlib.setup_detectors(s) or None)
     if histogram is None and histograms:
         histogram = np.sum([np.asarray(h, float) for h in histograms.values()], axis=0)
     if windows_resolution_s is None and detection.domain == "micro":
-        windows_resolution_s = setup_window_resolution_s(s)
+        windows_resolution_s = tttrlib.setup_micro_time_resolution(s)
     windows = s.get("windows") or {}
-    gates = setup_gates(s) if detection.domain == "micro" else {}
+    gates = tttrlib.setup_gates(s) if detection.domain == "micro" else {}
     if detection.domain == "macro":
         windows = s.get("alex_windows") or {}
     return check_windows(
         windows, detection, windows_resolution_s=windows_resolution_s, histogram=histogram,
         gates=gates, histograms=dict(histograms) if histograms else None,
-        gate_channels=setup_detectors(s),
+        gate_channels=tttrlib.setup_detectors(s),
     )

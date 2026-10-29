@@ -22,6 +22,11 @@ from collections.abc import Mapping, Sequence
 
 import numpy as np
 import tttrlib
+from tttrlib import (
+    micro_time_mask,
+    ranges_from_inclusive,
+    ranges_to_inclusive,
+)
 
 import chisurf.core.base
 import chisurf.core.curve
@@ -32,11 +37,6 @@ import chisurf.core.fluorescence.tcspc
 import chisurf.core.settings
 from chisurf import logging, typing
 from chisurf.core.experiments.core.reader import ExperimentReader
-from chisurf.core.fluorescence.excitation import (
-    gates_from_inclusive,
-    gates_to_inclusive,
-    micro_mask,
-)
 
 from .index_map import build_idx_map
 from .inputs import (
@@ -361,7 +361,7 @@ class Pda2cReader(ExperimentReader):
             return {}
         names = ("blue excitation", "green excitation")
         # The reader's windows are inclusive; a setup's are [start, stop).
-        windows = dict(zip(names, gates_from_inclusive(
+        windows = dict(zip(names, ranges_from_inclusive(
             (self._micro_time_range(0), self._micro_time_range(1)))))
         detectors = {
             colour: {"chs": [int(c) for c in chs]}
@@ -374,7 +374,7 @@ class Pda2cReader(ExperimentReader):
         """Use *windows* (``{name: [start, stop)}``) as the two excitation periods, earliest first."""
         ordered = sorted((int(v[0]), int(v[1])) for v in dict(windows).values())[:2]
         if len(ordered) == 2:
-            self.micro_time_ranges = [list(r) for r in gates_to_inclusive(ordered)]
+            self.micro_time_ranges = [list(r) for r in ranges_to_inclusive(ordered)]
 
     def windows_warning(self, tttr) -> str | None:
         """The excitation-window pre-flight of the PIE excitation periods against *tttr*.
@@ -510,7 +510,7 @@ class Pda2cReader(ExperimentReader):
 
         counts = np.zeros((starts.size, len(windows)), dtype=float)
         for index, (channels, (low, high)) in enumerate(windows):
-            mask = np.isin(routing, channels) & micro_mask(micro, [(low, high)], inclusive=True)
+            mask = np.isin(routing, channels) & micro_time_mask(micro, [(low, high)], inclusive=True)
             cumulative = np.concatenate(([0], np.cumsum(mask, dtype=np.int64)))
             # The ranges are INCLUSIVE of ``stop``: measured on real data, every
             # window spans at least ``minimum_time_window_length`` only when the

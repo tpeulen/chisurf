@@ -15,8 +15,7 @@ from typing import Any
 
 import numpy as np
 import tttrlib
-
-from chisurf.core.fluorescence.excitation import micro_mask
+from tttrlib import micro_time_mask
 
 
 @dataclass
@@ -359,7 +358,7 @@ def estimate_background_from_bursts(
         mask = np.isin(rout, chs)
 
         # Optional micro-time windowing (the setup's [start, stop) gates)
-        mask &= micro_mask(micro, det_info.get("micro_time_ranges"))
+        mask &= micro_time_mask(micro, det_info.get("micro_time_ranges"))
 
         times = macro[mask]
         if times.size < 2:
@@ -402,7 +401,7 @@ def _detector_interphoton_times(tttr, det_info, dt_scale):
     chs = np.asarray(det_info.get("chs", []), dtype=int)
     if chs.size == 0:
         return np.empty(0)
-    mask = np.isin(rout, chs) & micro_mask(micro, det_info.get("micro_time_ranges"))
+    mask = np.isin(rout, chs) & micro_time_mask(micro, det_info.get("micro_time_ranges"))
     times = macro[mask]
     if times.size < 2:
         return np.empty(0)

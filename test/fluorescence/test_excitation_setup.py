@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import numpy as np
-
-from chisurf.core.fluorescence.excitation import (
-    channel_map,
-    format_ranges,
-    gates_from_inclusive,
-    gates_to_inclusive,
-    merge_gates,
-    micro_mask,
+from tttrlib import (
+    micro_time_mask,
     polarization_channels,
+    ranges_from_inclusive,
+    ranges_to_inclusive,
+    setup_channel_map,
 )
+
+from chisurf.core.fluorescence.excitation import format_ranges, merge_gates
 
 SETUP = {
     "windows": {"prompt": [0, 2048], "delayed": [2048, 4096]},
@@ -22,25 +21,25 @@ SETUP = {
 
 
 def test_channel_map_is_window_by_detector_with_its_gates():
-    m = channel_map(SETUP)
+    m = setup_channel_map(SETUP)
     assert set(m) == {"prompt_green", "prompt_red", "delayed_green", "delayed_red"}
     assert m["prompt_green"] == [{"window_range": [0, 2048], "detector_chs": [0, 8],
                                   "micro_time_range": [0, 4096]}]
     assert m["prompt_red"] == []
-    assert channel_map(SETUP, ungated_means_all=True)["prompt_red"][0]["micro_time_range"] is None
-    per = channel_map({"detectors": SETUP["detectors"]}, per_detector_without_windows=True,
+    assert setup_channel_map(SETUP, ungated_means_all=True)["prompt_red"][0]["micro_time_range"] is None
+    per = setup_channel_map({"detectors": SETUP["detectors"]}, per_detector_without_windows=True,
                       ungated_means_all=True)
     assert set(per) == {"green", "red"} and per["red"][0]["window_range"] is None
-    assert channel_map({"data": SETUP}) == m
+    assert setup_channel_map({"data": SETUP}) == m
 
 
 def test_range_dialects_round_trip_and_masks_agree():
-    assert gates_to_inclusive([[0, 2048]]) == [(0, 2047)]
-    assert gates_from_inclusive([(0, 2047)]) == [[0, 2048]]
+    assert ranges_to_inclusive([[0, 2048]]) == [(0, 2047)]
+    assert ranges_from_inclusive([(0, 2047)]) == [[0, 2048]]
     micro = np.arange(10)
-    assert micro_mask(micro, [[2, 5]]).nonzero()[0].tolist() == [2, 3, 4]
-    assert micro_mask(micro, [(2, 4)], inclusive=True).tolist() == micro_mask(micro, [[2, 5]]).tolist()
-    assert micro_mask(micro, None).all()
+    assert micro_time_mask(micro, [[2, 5]]).nonzero()[0].tolist() == [2, 3, 4]
+    assert micro_time_mask(micro, [(2, 4)], inclusive=True).tolist() == micro_time_mask(micro, [[2, 5]]).tolist()
+    assert micro_time_mask(micro, None).all()
 
 
 def test_polarization_merge_and_format():

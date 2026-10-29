@@ -135,11 +135,9 @@ def load_trace(
     are held against the file's excitation pulses (the shared excitation-window pre-flight,
     remembered per file and gates): ``warnings`` carries its line.
     """
-    from chisurf.core.fluorescence.excitation import (
-        remembered_gate_check,
-        setup_gates,
-        windows_message,
-    )
+    from tttrlib import setup_gates
+
+    from chisurf.core.fluorescence.excitation import remembered_gate_check, windows_message
 
     file_path = pathlib.Path(path)
     folder = pathlib.Path(cache_folder) if cache_folder else file_path.parent

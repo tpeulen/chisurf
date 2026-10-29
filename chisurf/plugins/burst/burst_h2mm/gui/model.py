@@ -16,11 +16,9 @@ import pathlib
 import threading
 from typing import Any, Callable
 
-from chisurf.core.fluorescence.excitation import (
-    WindowsPreflightMixin,
-    format_ranges,
-    gates_to_inclusive,
-)
+from tttrlib import ranges_to_inclusive
+
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin, format_ranges
 from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
 
 from ..api.models import H2mmSettings, StreamSettings
@@ -196,7 +194,7 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
             name=name or "stream",
             channels=[int(c) for c in info.get("chs", [])],
             # the setup's gates are [start, stop); a stream's ranges inclusive
-            micro_time_ranges=gates_to_inclusive(info.get("micro_time_ranges")),
+            micro_time_ranges=ranges_to_inclusive(info.get("micro_time_ranges")),
         )
 
     def streams(self) -> list[StreamSettings]:

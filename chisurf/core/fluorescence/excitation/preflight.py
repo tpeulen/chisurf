@@ -13,7 +13,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from .measure import check_setup, detect_windows, histograms_from_tttr, setup_detectors
+from tttrlib import setup_detectors
+
+from .measure import (
+    check_setup,
+    detect_windows,
+    histograms_from_tttr,
+)
 from .result import WindowCheck
 
 __all__ = ["WindowsPreflightMixin", "apply_check", "windows_message", "windows_preflight"]

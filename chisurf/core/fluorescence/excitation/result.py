@@ -8,7 +8,7 @@ One result shape for both alternation schemes:
   period (``n_channels`` macro-time ticks of ``resolution_s``).
 
 Windows are half-open channel ranges ``[start, stop)`` in the units of the data they were detected
-from, so :meth:`ExcitationWindows.windows_ns` and :func:`rescale_windows` carry them to another
+from, so :meth:`ExcitationWindows.windows_ns` and ``tttrlib.rescale_micro_time_ranges`` carry them to another
 resolution or binning instead of silently mismatching.
 """
 
@@ -17,13 +17,13 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
+import tttrlib
+
 __all__ = [
     "ExcitationWindows",
     "Issue",
     "Pulse",
     "WindowCheck",
-    "rescale_gates",
-    "rescale_windows",
 ]
 
 #: Outcomes of a detection.
@@ -124,7 +124,7 @@ class ExcitationWindows:
 
     def windows_at(self, resolution_s: float) -> dict[str, list[int]]:
         """The windows in channels of another *resolution_s* (another binning of the same TAC)."""
-        return rescale_windows(self.windows, self.resolution_s, resolution_s)
+        return tttrlib.rescale_micro_time_ranges(self.windows, self.resolution_s, resolution_s)
 
     def rescaled(self, resolution_s: float, n_channels: int | None = None) -> ExcitationWindows:
         """The same detection in channels of *resolution_s* (e.g. found on a coarse decay of 1024
@@ -249,28 +249,3 @@ class WindowCheck:
         }
 
 
-def rescale_gates(
-    gates: dict, from_resolution_s: float, to_resolution_s: float
-) -> dict[str, list[list[int]]]:
-    """Detector gates ``{detector: [[start, stop], ...]}`` in channels of another width (as
-    :func:`rescale_windows`)."""
-    f = (float(from_resolution_s) / float(to_resolution_s)
-         if from_resolution_s and to_resolution_s else 1.0)
-    return {
-        str(d): [[int(round(r[0] * f)), int(round(r[1] * f))] for r in (ranges or [])]
-        for d, ranges in (gates or {}).items()
-    }
-
-
-def rescale_windows(
-    windows: dict, from_resolution_s: float, to_resolution_s: float
-) -> dict[str, list[int]]:
-    """Windows given in channels of *from_resolution_s*, in channels of *to_resolution_s*.
-
-    The same time span, re-expressed: a window ``[0, 2048)`` of 50 ps channels is ``[0, 3200)``
-    of 32 ps channels. Bounds are rounded to the nearest channel.
-    """
-    if not from_resolution_s or not to_resolution_s:
-        return {k: [int(v[0]), int(v[1])] for k, v in windows.items()}
-    f = float(from_resolution_s) / float(to_resolution_s)
-    return {k: [int(round(v[0] * f)), int(round(v[1] * f))] for k, v in windows.items()}

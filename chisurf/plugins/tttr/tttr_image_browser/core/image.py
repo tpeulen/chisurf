@@ -9,14 +9,10 @@ import pathlib
 from typing import Any
 
 import numpy as np
+from tttrlib import setup_channel_map, setup_gates
 
 from chisurf.core.fio.staging import open_tttr
-from chisurf.core.fluorescence.excitation import (
-    channel_map,
-    remembered_gate_check,
-    setup_gates,
-    windows_message,
-)
+from chisurf.core.fluorescence.excitation import remembered_gate_check, windows_message
 
 try:
     import tttrlib
@@ -492,7 +488,7 @@ def load_image(
 
     # The windows × detectors map, falling back to a single default image when it is empty.
     try:
-        channels_map = channel_map(setup_settings)
+        channels_map = setup_channel_map(setup_settings)
         if not channels_map:
             channels_map = {
                 "Image": [
@@ -560,7 +556,7 @@ def save_tiff_stacks(
         reading_routine = reading.get("file_type") or None
 
     try:
-        channels_map = channel_map(setup_settings)  # windows × detectors
+        channels_map = setup_channel_map(setup_settings)  # windows × detectors
         if not channels_map:
             channels_map = {
                 "Image": [

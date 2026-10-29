@@ -5,7 +5,6 @@ This module provides a CLI for the Count Rate Analysis functionality,
 allowing users to analyze TTTR files from the command line.
 """
 
-import json
 import os
 from typing import Any
 
@@ -16,21 +15,20 @@ import tttrlib
 from chisurf.core.cli.support import DidYouMeanGroup
 from chisurf.core.data_io.detector_setups import load_detector_setups
 from chisurf.core.fluorescence.excitation import (
-    channel_map,
     gate_check,
     gate_setup,
-    micro_mask,
     windows_message,
     windows_preflight,
 )
+from tttrlib import micro_time_mask, setup_channel_map
 
 
 def count_photons(micro: np.ndarray, info: dict[str, Any]) -> int:
     """Photons of a channel entry: micro times inside its gate and its window (both half-open
     ``[start, stop)``; ``None`` keeps every photon)."""
     gate, window = info.get("micro_time_range"), info.get("window_range")
-    keep = micro_mask(micro, [gate] if gate else None)
-    keep &= micro_mask(micro, [window] if window else None)
+    keep = micro_time_mask(micro, [gate] if gate else None)
+    keep &= micro_time_mask(micro, [window] if window else None)
     return int(np.count_nonzero(keep))
 
 
@@ -311,7 +309,7 @@ def analyze(files, setup_file, setup_name, output, verbose):
     # Get channels from setup
     # one channel per window × detector; an ungated detector counts all its photons, a setup
     # without windows one channel per detector
-    channels = channel_map(setup_data, ungated_means_all=True, per_detector_without_windows=True)
+    channels = setup_channel_map(setup_data, ungated_means_all=True, per_detector_without_windows=True)
 
     if verbose:
         click.echo(f"Using setup: {setup_name}")

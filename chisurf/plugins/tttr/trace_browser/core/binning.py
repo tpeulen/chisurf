@@ -20,8 +20,7 @@ import pathlib
 from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
-
-from chisurf.core.fluorescence.excitation import micro_mask
+from tttrlib import micro_time_mask
 
 try:  # pragma: no cover - exercised implicitly
     import tttrlib
@@ -151,7 +150,7 @@ def bin_trace(
             if ranges:
                 if micro is None:
                     micro = np.asarray(obj.micro_times)
-                mask &= micro_mask(micro, ranges)
+                mask &= micro_time_mask(micro, ranges)
             traces.append(_bin_macro_times(macro[mask], cpb))
             labels.append(str(name))
     else:

@@ -21,8 +21,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-
-from chisurf.core.fluorescence.excitation import micro_mask
+from tttrlib import micro_time_mask
 
 from .scanner import ScanSettings, marker_bit, scan_from_tags
 from .session import RecordSession, quality_record
@@ -217,7 +216,7 @@ class LiveImage:
             : self.nx
         ]
         for name, (lo, hi) in self.windows.items():
-            sel = micro_mask(micro, [(lo, hi)])
+            sel = micro_time_mask(micro, [(lo, hi)])
             if np.any(sel):
                 self.window_counts[name][y] += np.bincount(x[sel], minlength=self.nx)[: self.nx]
         pixel_s = (stop - start) * self.clock / self.nx

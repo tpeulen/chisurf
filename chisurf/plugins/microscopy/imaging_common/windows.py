@@ -16,7 +16,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from chisurf.core.fluorescence.excitation import remembered_gate_check, setup_gates
+from tttrlib import setup_gates
+
+from chisurf.core.fluorescence.excitation import remembered_gate_check
 
 __all__ = ["gate_check"]
 

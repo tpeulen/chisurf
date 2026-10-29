@@ -5,10 +5,10 @@ from collections.abc import Sequence
 
 import numpy as np
 import tttrlib
+from tttrlib import micro_time_mask
 
 import chisurf.core.data
 from chisurf.core.experiments.core.reader import ExperimentReader
-from chisurf.core.fluorescence.excitation import micro_mask
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "pch.view.json"
 
@@ -195,7 +195,7 @@ class PCHReader(ExperimentReader):
         # Micro-time window
         if micro_time_range is not None:
             try:
-                mask &= micro_mask(tttr.micro_times, [micro_time_range], inclusive=True)
+                mask &= micro_time_mask(tttr.micro_times, [micro_time_range], inclusive=True)
             except Exception:
                 pass
 

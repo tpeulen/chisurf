@@ -1123,7 +1123,9 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
     def take_preflight_setup(self, setup: dict) -> None:
         """Bin through the detected gates from now on: the trace is loaded again and the setup
         page shows them (the saved setup is not changed until it is saved there)."""
-        from chisurf.core.fluorescence.excitation import format_ranges, merge_gates, setup_gates
+        from tttrlib import setup_gates
+
+        from chisurf.core.fluorescence.excitation import format_ranges, merge_gates
 
         settings = dict(self.setup_settings or {})
         settings["detectors"] = merge_gates(settings.get("detectors") or {}, setup_gates(setup))
