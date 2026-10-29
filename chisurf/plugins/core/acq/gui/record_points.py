@@ -69,6 +69,12 @@ class ScanPointsMixin:
         self._handled_points = 0
         self._sequence_finished = True
         self.molecules_saved = ""
+        #: the spot finder run the last Auto-pick used (``workflow``, ``settings_hash``)
+        self._last_pick: dict = {}
+        #: what a point picked now belongs to in a survey (``survey_id``, ``tile``, its origin)
+        self._point_context: dict = {}
+        #: extra header tags of the next recording (a survey tile's)
+        self._run_tags: dict = {}
         # -- the image the points are picked on ---------------------------------------------------
         #: the last scan's snapshot (its maps stay while points are measured)
         self.image_snapshot: dict | None = None
@@ -163,8 +169,19 @@ class ScanPointsMixin:
     # -- picking ---------------------------------------------------------------------------------
     def add_point(self, x_um: float, y_um: float, origin: str = "click",
                   brightness: float | None = None) -> dict:
+        """A point at stage *(x_um, y_um)*, with what traces it back: the image it was picked on
+        (file, dataset uid, raster, pixel), how it was picked, the survey and tile."""
+        scan = self.image_scan or self.scan_settings()
+        px, py = self.image_um_to_pixel(x_um, y_um)
         row = {"index": self._next_point, "x_um": float(x_um), "y_um": float(y_um),
-               "origin": origin, "brightness": brightness, "status": ""}
+               "origin": origin, "brightness": brightness, "status": "",
+               "pixel_x": px, "pixel_y": py, "image_x0_um": float(scan.x0_um),
+               "image_y0_um": float(scan.y0_um), "image_pixel_um": float(scan.pixel_um[0]),
+               "image": Path(str(self.image_ptu)).name if self.image_ptu else "",
+               "image_uid": str(self.image_uid or "")}
+        if origin == "auto":
+            row.update(self._last_pick)
+        row.update(self._point_context)
         self._next_point += 1
         self.points.append(row)
         self._points_summary()
@@ -294,6 +311,10 @@ class ScanPointsMixin:
         known = SpotFinderSettings.__dataclass_fields__
         settings = SpotFinderSettings(**{k: v for k, v in flow["settings"].items() if k in known},
                                       workflow=AUTOPICK_WORKFLOW)
+        from chisurf.plugins.core.acq.live.provenance import settings_hash
+
+        self._last_pick = {"workflow": AUTOPICK_WORKFLOW,
+                           "settings_hash": settings_hash(flow["settings"])}
         result = detect(np.asarray(image, float), settings)
         if not result.n_regions:
             return [], 0
@@ -404,8 +425,11 @@ class ScanPointsMixin:
         for p in self.points:
             p["status"] = tr("waiting")
             self.molecules.pop(p["index"], None)
+        from chisurf.plugins.core.acq.live.provenance import point_tags
+
         self.sequence = PointSequence(
             scanner, source, scan, out_dir=recording_dir(self.output_dir), name=name,
+            point_tags=[point_tags(p) for p in self.points],
             until_bleached=bool(self.until_bleached),
             bleach=lambda: BleachDetector(background_kcps=background),
             session_kwargs={"experiment": experiment, "settings": self._run_settings(),
@@ -450,6 +474,7 @@ class ScanPointsMixin:
                                                for t in self._analysis_threads):
             self._sequence_finished = True
             self._run_shutters(False)
+            self._record_points()
             if not self.survey_active:  # a survey stores one table for all its tiles
                 self._store_molecules()
             stopped = len(results) < n
@@ -477,6 +502,9 @@ class ScanPointsMixin:
             except Exception:  # noqa: BLE001 - the file is on disk either way
                 _log.exception("registering point %s", result.index)
         ptu = result.run.ptu if result.run is not None else None
+        row["ptu"] = str(ptu) if ptu else ""
+        row["dataset_uid"] = str(getattr(result.run, "dataset_uid", "") or "")
+        row["reached_x_um"], row["reached_y_um"] = (float(v) for v in result.position)
         if ptu is None or not Path(ptu).exists():
             return
         from chisurf.plugins.core.acq.live.molecules import analyse_point
@@ -494,6 +522,20 @@ class ScanPointsMixin:
         self._analysis_threads.append(thread)
         thread.start()
 
+    def _record_points(self) -> None:
+        """Into the project: each measured point's record (and its molecule) in its own
+        container, the image's list of its points (``live.provenance``)."""
+        from chisurf.plugins.core.acq.live import provenance
+
+        measured = [p for p in self.points if p.get("dataset_uid")]
+        try:
+            for p in measured:
+                provenance.write_point_record(p, self.molecules.get(p["index"]))
+            if measured:
+                provenance.write_image_points(self.image_ptu, self.image_uid, measured)
+        except Exception:  # noqa: BLE001 - the recordings and their headers carry it anyway
+            _log.exception("recording the points' provenance")
+
     def wait_points(self, timeout: float = 120.0) -> None:
         """Wait for a point sequence and its analyses (scripts and tests); poll once at the end."""
         end = time.monotonic() + timeout
@@ -503,14 +545,28 @@ class ScanPointsMixin:
                 break
             time.sleep(0.02)
 
+    def molecule_table(self, points: list[dict]) -> tuple[dict, dict]:
+        """The per-molecule table of *points* (measured ones), each row naming its point
+        recording and its image (``point_dataset`` / ``image_dataset`` index the lookup lists
+        returned as the second item, which go into the record's settings)."""
+        from chisurf.plugins.core.acq.live.molecules import molecule_rows
+        from chisurf.plugins.core.acq.live.provenance import lookup
+
+        table = molecule_rows([self.molecules[p["index"]] for p in points])
+        refs = [{"point_uid": p.get("dataset_uid"), "point_name": Path(str(p.get("ptu", ""))).name,
+                 "image_uid": p.get("image_uid"), "image_name": p.get("image")} for p in points]
+        point_sets, table["point_dataset"] = lookup(refs, "point")
+        image_sets, table["image_dataset"] = lookup(refs, "image")
+        return table, {"point_datasets": point_sets, "image_datasets": image_sets}
+
     def _store_molecules(self) -> None:
         """The per-molecule table into the image's container (beside its other imaging results),
         when the image is a dataset of the project."""
-        from chisurf.plugins.core.acq.live.molecules import molecule_rows
+        from chisurf.plugins.core.acq.live.provenance import MOLECULE_UNITS, _put
 
-        results = [self.molecules[p["index"]] for p in self.points if p["index"] in self.molecules]
+        points = [p for p in self.points if p["index"] in self.molecules]
         self.molecules_saved = ""
-        if not results:
+        if not points:
             return
         source, uid = self.image_ptu, self.image_uid
         if source is None or not uid:
@@ -518,22 +574,16 @@ class ScanPointsMixin:
                                       "project.")
             return
         try:
-            from chisurf.core.fio.fluorescence.imaging_container import write_imaging_table
-            from chisurf.core.project.analysis import container_dir
-
-            container = write_imaging_table(
-                str(source), molecule_rows(results), name="molecules.table",
-                artifact_kind="analysis_result", operation_type="analysis", row_grain="molecule",
+            table, lookups = self.molecule_table(points)
+            container = _put(
+                str(source), uid, "molecules.table", table, artifact_kind="analysis_result",
+                operation_type="trace_segmentation", row_grain="molecule",
                 parameters={"analysis": "point_traces", "autopick": AUTOPICK_WORKFLOW,
                             "point_time_s": float(self.point_time_s),
-                            "until_bleached": bool(self.until_bleached)},
-                units={"x_um": "micrometres", "y_um": "micrometres", "photons": "photons",
-                       "bleach_s": "seconds", "on_s": "seconds", "lifetime_ns": "nanoseconds",
-                       "brightest_khz": "kilohertz", "efficiency": "dimensionless",
-                       "stoichiometry": "dimensionless"},
-                out_dir=container_dir(uid))
+                            "until_bleached": bool(self.until_bleached), **lookups},
+                units=MOLECULE_UNITS)
             self.molecules_saved = tr("{n} molecule(s) stored with the image: {where}").format(
-                n=len(results), where=Path(container).name)
+                n=len(points), where=Path(container).name)
         except Exception as exc:  # noqa: BLE001 - shown; the recordings are kept
             _log.exception("storing the molecules")
             self.molecules_saved = tr("Molecules not stored: {e}").format(e=exc)

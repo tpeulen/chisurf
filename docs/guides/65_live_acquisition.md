@@ -268,6 +268,34 @@ time.
 The survey done: every tile visited, 26 molecules measured.
 ```
 
+### Provenance: from a point back to its image and survey, and forward
+
+Every image, tile image and point recording is a dataset of the project, and
+each traces both ways, in its file and in the project's provenance:
+
+| Where | What it records |
+|---|---|
+| point PTU header | `ChiSurf_Point_SourceImage` / `…SourceImageUID` (the image), `…PixelX/Y` and `…ImageX0_um/Y0_um/Pixel_um` (pixel and raster: pixel ↔ stage), `…Origin` (`auto` / `click`), `…PickWorkflow` + `…PickSettingsHash`, `…Brightness`, `ChiSurf_Point_X/Y_um` (aimed at) and `…Reached_X/Y_um` (the stage's answer), `ChiSurf_Survey_ID` / `…Tile` / `…TileX0/Y0_um`; SymPhoTime's `ImgHdr_*` point tags as before |
+| tile image PTU header | `ChiSurf_Survey_ID`, `…Tile`, `…Tiles`, `…TileX0/Y0_um`, `ChiSurf_Scanner_LearningMode`, `ChiSurf_Scanner_LearnedBefore` |
+| point's container | `point` (`point_measurement`, the image as an external reference), `molecule` (`trace_segmentation`) |
+| image's container | `points` (`point_selection`: every point picked on it, each row naming its recording), `molecules.table` |
+| tile image's container | `survey_tile` (`survey`, grouped in the survey; the learning count after the tile) |
+| first tile's container | `survey_tiles` (every tile, its state and its image), `survey_molecules.table` |
+
+The containers are embedded in the `.cs.pto`, so the record travels with the
+project. Strings a numeric table cannot hold (dataset uids, file names) are lookup
+lists in a record's settings, indexed by its `point_dataset` / `image_dataset`
+column.
+
+```python
+from chisurf.plugins.core.acq.live import provenance
+
+back = provenance.backtrace("rec/points_20261029_101500_p003.ptu")
+back["image"], back["pixel"], back["survey_id"], back["tile"]
+provenance.points_of(back["image_uid"])      # the image's points, each with its dataset
+provenance.survey_of(back["image_uid"])      # the survey the tile image belongs to
+```
+
 To run the scan on the real instrument, load an MT200 profile (it connects the
 HydraHarp, the Sepia II, the shutters and the E-725), set **Source** to *TCSPC
 device and scanner* and press **Start**.

@@ -167,6 +167,7 @@ class SurveyMixin:
         self.survey_rows, self.survey_log, self.survey_saved = [], [], ""
         self.clear_points()
         self._survey = {"next": 0, "phase": "next", "t0": time.monotonic(), "abort": False,
+                        "id": time.strftime("survey_%Y%m%d_%H%M%S"),
                         "tile": None, "empty_run": 0, "origin": (self.scan_x0_um,
                                                                  self.scan_y0_um),
                         "container": None, "taken": []}
@@ -209,6 +210,7 @@ class SurveyMixin:
                 result = self.session.result if self.session is not None else None
                 if sv["container"] is None and result is not None and self.image_uid:
                     sv["container"] = (self.image_ptu, self.image_uid)
+                self._record_tile(tile)
                 if sv["abort"]:
                     tile.state = "done" if tile.measured else "pending"
                     return self._survey_finish(tr("stopped"))
@@ -221,7 +223,13 @@ class SurveyMixin:
             if self.sequence is None or self.points_running or not self._sequence_finished:
                 return
             self._survey_collect(tile)
-            if self.survey_reimage and not sv["abort"] and self.start():
+            if self.survey_reimage and not sv["abort"]:
+                self._tag_tile(tile)
+                started = self.start()
+                self._run_tags = {}
+            else:
+                started = False
+            if started:
                 sv["phase"] = "reimage"
             else:
                 sv["phase"] = "next"
@@ -279,7 +287,7 @@ class SurveyMixin:
             if m is None:
                 continue
             measured += 1
-            self.survey_rows.append({"tile": tile.index, "molecule": m})
+            self.survey_rows.append({"tile": tile.index, "molecule": m, "point": dict(p)})
         tile.measured = measured
         tile.state = "done"
         self._survey_note(tr("Tile {i}: {k} molecule(s) measured.").format(
@@ -312,7 +320,10 @@ class SurveyMixin:
             sv["tile"] = tile
             tile.state = "current"
             self.scan_x0_um, self.scan_y0_um = tile.x0_um, tile.y0_um
-            if self.start():
+            self._tag_tile(tile)
+            started = self.start()
+            self._run_tags = {}
+            if started:
                 sv["phase"] = "image"
                 return
             tile.state, tile.note = "failed", self.status_detail
@@ -320,14 +331,51 @@ class SurveyMixin:
                                                                  e=self.status_detail))
         return self._survey_finish(tr("area done"))
 
+    def _tile_info(self, tile) -> dict:
+        return {"survey_id": self._survey["id"], "tile": tile.index,
+                "tile_x0_um": tile.x0_um, "tile_y0_um": tile.y0_um}
+
+    def _learned(self) -> int | None:
+        """How many times the scanner has learned a pattern (libphacq pi ``learned``)."""
+        try:
+            return int(self.scanner.device.get_parameter("learned"))
+        except Exception:  # noqa: BLE001 - no scanner, or a driver without the count
+            return None
+
+    def _tag_tile(self, tile) -> None:
+        """The next recording is this tile's: its header names the survey, the tile, its origin
+        and the scanner's learning; the points picked on it name them too."""
+        from chisurf.plugins.core.acq.live.provenance import tile_tags
+
+        info = self._tile_info(tile)
+        self._point_context = dict(info)
+        self._run_tags = tile_tags(info, tiles=len(self.survey_tiles),
+                                   learning=str(self.survey_learning) if self.scanner else "",
+                                   learned_before=self._learned())
+
+    def _record_tile(self, tile) -> None:
+        """The tile's image is a dataset: record it in the survey (its container names the
+        survey; the survey's list names the image)."""
+        from chisurf.plugins.core.acq.live.provenance import write_survey_tile
+
+        tile.image_uid = str(self.image_uid or "")
+        tile.image_name = Path(str(self.image_ptu)).name if self.image_ptu else ""
+        try:
+            write_survey_tile(self.image_ptu, tile.image_uid, self._tile_info(tile),
+                              tiles=len(self.survey_tiles), state="imaged",
+                              learned_after=self._learned())
+        except Exception:  # noqa: BLE001 - the header carries it anyway
+            _log.exception("recording tile %s", tile.index)
+
     def _survey_finish(self, reason: str) -> None:
         sv = self._survey
         self._survey = None
+        self._point_context, self._run_tags = {}, {}
         self._survey_sample = None
         for t in self.survey_tiles:
             if t.state == "current":
                 t.state = "done" if t.measured else "pending"
-        self._survey_store()
+        self._survey_store(sv)
         self._set_scanner_learning(0)   # a single image learns as always
         self._shutters_at_end()
         self._preview_key = self._preview_key_now()  # the overview keeps the survey's tiles
@@ -360,39 +408,63 @@ class SurveyMixin:
 
     # -- results -----------------------------------------------------------------------------------
     def survey_table(self) -> dict[str, np.ndarray]:
-        """All molecules of the survey: the per-molecule table with the tile of each."""
+        """All molecules of the survey: the per-molecule table with the tile of each, its point
+        recording and its image (``point_dataset`` / ``image_dataset`` index
+        :meth:`survey_lookups`)."""
         from chisurf.plugins.core.acq.live.molecules import molecule_rows
+        from chisurf.plugins.core.acq.live.provenance import lookup
 
         rows = molecule_rows([r["molecule"] for r in self.survey_rows])
         rows["tile"] = np.asarray([r["tile"] for r in self.survey_rows], np.int64)
+        refs = self._survey_refs()
+        rows["point_dataset"] = lookup(refs, "point")[1]
+        rows["image_dataset"] = lookup(refs, "image")[1]
         return rows
 
-    def _survey_store(self) -> None:
-        """The survey's table with the first tile's image (rewritten after every tile)."""
-        sv = self._survey or {}
+    def _survey_refs(self) -> list[dict]:
+        out = []
+        for r in self.survey_rows:
+            p = r.get("point") or {}
+            out.append({"point_uid": p.get("dataset_uid"),
+                        "point_name": Path(str(p.get("ptu", ""))).name,
+                        "image_uid": p.get("image_uid"), "image_name": p.get("image")})
+        return out
+
+    def survey_lookups(self) -> dict:
+        """The datasets the survey table's ``point_dataset`` / ``image_dataset`` columns index."""
+        from chisurf.plugins.core.acq.live.provenance import lookup
+
+        refs = self._survey_refs()
+        return {"point_datasets": lookup(refs, "point")[0],
+                "image_datasets": lookup(refs, "image")[0]}
+
+    def _survey_store(self, sv: dict | None = None) -> None:
+        """The survey with its first tile's image (rewritten after every tile): the table of
+        all molecules and the list of all tiles with their images."""
+        from chisurf.plugins.core.acq.live import provenance
+
+        sv = sv or self._survey or {}
         container = sv.get("container") or getattr(self, "_survey_container", None)
         if sv.get("container"):
             self._survey_container = sv["container"]
-        if not self.survey_rows or container is None:
+        if container is None:
             return
         source, uid = container
+        area = self.survey_area()
+        parameters = {"analysis": "survey", "area_um": list(area),
+                      "tile_um": [float(self.scan_area_x_um), float(self.scan_area_y_um)],
+                      "overlap_um": float(self.survey_overlap_um), "order": self.survey_order}
         try:
-            from chisurf.core.fio.fluorescence.imaging_container import write_imaging_table
-            from chisurf.core.project.analysis import container_dir
-
-            area = self.survey_area()
-            path = write_imaging_table(
-                str(source), self.survey_table(), name="survey_molecules.table",
-                artifact_kind="analysis_result", operation_type="analysis", row_grain="molecule",
-                parameters={"analysis": "survey", "area_um": list(area),
-                            "tile_um": [float(self.scan_area_x_um), float(self.scan_area_y_um)],
-                            "overlap_um": float(self.survey_overlap_um),
-                            "order": self.survey_order},
-                units={"x_um": "micrometres", "y_um": "micrometres", "bleach_s": "seconds",
-                       "on_s": "seconds", "lifetime_ns": "nanoseconds",
-                       "brightest_khz": "kilohertz", "photons": "photons",
-                       "efficiency": "dimensionless", "stoichiometry": "dimensionless"},
-                out_dir=container_dir(uid))
+            provenance.write_survey_tiles(source, uid, str(sv.get("id", "")), self.survey_tiles,
+                                          parameters)
+            if not self.survey_rows:
+                return
+            path = provenance._put(
+                str(source), uid, "survey_molecules.table", self.survey_table(),
+                artifact_kind="analysis_result", operation_type="survey", row_grain="molecule",
+                parameters={**parameters, "survey_id": str(sv.get("id", "")),
+                            **self.survey_lookups()},
+                units=provenance.MOLECULE_UNITS)
             self.survey_saved = tr("{n} molecule(s) stored with the first tile: {where}").format(
                 n=len(self.survey_rows), where=Path(path).name)
         except Exception as exc:  # noqa: BLE001 - shown; the recordings are kept

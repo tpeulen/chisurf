@@ -846,7 +846,8 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
             name=name,
             embed=self.recording_store == "embed",
             settings=None if replay else self._run_settings(),
-            header_tags=None if replay else self.run_header_tags(),
+            # a survey tile's own tags (survey, tile, learning) on top
+            header_tags=None if replay else {**self.run_header_tags(), **self._run_tags},
         )
         try:
             self.session.start()

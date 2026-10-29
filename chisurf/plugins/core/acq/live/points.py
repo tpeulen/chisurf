@@ -310,13 +310,18 @@ class PointSequence:
         Passed to each :class:`PointRecordSession` (``experiment``, ``settings``, ``embed``).
     on_point : callable, optional
         Called with each :class:`PointResult` as it finishes (worker thread).
+    point_tags : list of dict, optional
+        Extra PTU header tags per point (the image it was picked on, its pixel, how it was
+        picked, the survey and tile): what lets a recording be traced back on its own. The
+        position the stage reached is added to each (``ChiSurf_Point_Reached_X_um`` / ``_Y_um``).
     """
 
     def __init__(self, scanner, source, scan: ScanSettings, *, out_dir=None, name: str = "points",
                  until_bleached: bool = False,
                  bleach: Callable[[], BleachDetector] | None = None,
                  session_kwargs: dict | None = None,
-                 on_point: Callable[[PointResult], None] | None = None):
+                 on_point: Callable[[PointResult], None] | None = None,
+                 point_tags: list[dict] | None = None):
         if not scan.is_points:
             raise ValueError("a point sequence needs points")
         self.scanner = scanner
@@ -328,6 +333,7 @@ class PointSequence:
         self.bleach = bleach or BleachDetector
         self.session_kwargs = dict(session_kwargs or {})
         self.on_point = on_point
+        self.point_tags = list(point_tags or [])
         self.results: list[PointResult] = []
         self.current: PointRecordSession | None = None
         self.error = ""
@@ -381,10 +387,15 @@ class PointSequence:
                 position = self.scanner.move_to(float(x), float(y))
                 ptu = self.out_dir / f"{self.name}_p{i:03d}.ptu" if self.out_dir else None
                 detector = self.bleach() if self.until_bleached else None
+                kwargs = dict(self.session_kwargs)
+                tags = {**dict(kwargs.pop("header_tags", None) or {}),
+                        **(self.point_tags[i] if i < len(self.point_tags) else {}),
+                        "ChiSurf_Point_Reached_X_um": float(position[0]),
+                        "ChiSurf_Point_Reached_Y_um": float(position[1])}
                 session = PointRecordSession(
                     self.source, point=(x, y), index=i, bleach=detector,
                     duration_s=self.scan.point_ms * 1e-3, ptu_path=ptu,
-                    name=f"{self.name}_p{i:03d}", **self.session_kwargs)
+                    name=f"{self.name}_p{i:03d}", header_tags=tags, **kwargs)
                 self.current = session
                 session.start()
                 run = session.wait()

@@ -121,6 +121,28 @@ first tile's image and rewritten after every tile, so a stopped survey keeps its
 empty, red failed) and the measured molecules; the line above it the tile, the molecules, the time
 so far and the time left; the log is the tooltip of the line under the map.
 
+## Provenance: every measurement traces back
+
+Every image, tile image and point recording is a dataset of the project, and each can be followed
+both ways -- in its own file and in the project:
+
+- **A point's file** names the image it was picked on (file name and dataset uid), the pixel and
+  the image's raster (corner and pixel size, so pixel ↔ stage is reproducible), how it was picked
+  (*auto*: the spot finder workflow and a hash of its settings; or *click*) and the spot's
+  brightness, the stage position aimed at and the one reached, and, in a survey, the survey and
+  tile (`ChiSurf_Point_*`, `ChiSurf_Survey_*` header tags; SymPhoTime's point tags are kept).
+- **A tile image's file** names its survey, the tile, the number of tiles, the tile's corner and
+  the scanner's learning.
+- **In the project** each dataset's container records how it came to be: a point's *point*
+  record (picked and measured, the image as an external reference) and its *molecule* row, an
+  image's *points* list naming every point recording, a tile's membership of its survey, and the
+  survey's list of tiles with their images. The molecule tables name each molecule's point
+  recording and image.
+
+From Python, `chisurf.plugins.core.acq.live.provenance.backtrace(ptu)` returns a point's image,
+pixel, pick, survey and settings; `points_of(image)` an image's points; `survey_of(image)` a tile's
+survey.
+
 ## Sources
 
 | Source | What it is |
