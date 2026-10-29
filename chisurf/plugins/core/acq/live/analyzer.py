@@ -681,7 +681,13 @@ class StreamingBurstAnalyzer:
         if macro_time_resolution is None:
             macro_time_resolution = float(reading.get("macro_time_resolution", 0.0)) * 1e-9
         if micro_time_resolution is None:
-            micro_time_resolution = float(reading.get("micro_time_resolution", 0.0)) * 1e-9
+            # ps, as the setup editor writes it (tttrlib's from_setup reads it the same way;
+            # an explicit "micro_time_resolution_unit": "ns" reads ns)
+            unit = str(reading.get("micro_time_resolution_unit", "ps")).lower()
+            scale = {"ps": 1e-12, "ns": 1e-9, "s": 1.0}.get(unit)
+            if scale is None:
+                raise ValueError(f"micro_time_resolution_unit {unit!r}: one of ps, ns, s")
+            micro_time_resolution = float(reading.get("micro_time_resolution", 0.0)) * scale
         a = cls(float(macro_time_resolution), float(micro_time_resolution))
         detectors = dict(setup.get("detectors") or {})
         for name, d in detectors.items():

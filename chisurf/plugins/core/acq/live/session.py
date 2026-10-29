@@ -63,6 +63,10 @@ class RunResult:
 _TY_BOOL = 0x00000008
 
 
+#: Photons a µs-ALEX run keeps for its live window check.
+ALEX_SAMPLE_PHOTONS = 2_000_000
+
+
 def _tag_type(value) -> int:
     """The PicoQuant tag type of a typed header value."""
     if isinstance(value, bool):
@@ -162,6 +166,10 @@ class RecordSession:
         #: total photons per whole second of the run (the checker's stability trace)
         self._per_second = np.zeros(0, dtype=np.int64)
         self._first_macro: int | None = None
+        #: µs-ALEX: the first photons' macro times and channels, for the live window check (the
+        #: alternation is in the macro time, which the analyzer's decays do not carry)
+        self._alex_parts: list[tuple[np.ndarray, np.ndarray]] = []
+        self._alex_count = 0
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -213,6 +221,19 @@ class RecordSession:
         if self.trace is not None:
             self.trace.push(photons.macro, photons.micro, photons.channel)
         self._count_seconds(photons.macro, self.source.info.macro_clock_s)
+        if self.experiment.preset == "alex" and self._alex_count < ALEX_SAMPLE_PHOTONS:
+            self._alex_parts.append((np.array(photons.macro, copy=True),
+                                     np.array(photons.channel, copy=True)))
+            self._alex_count += len(photons.macro)
+
+    def alex_photons(self) -> tuple[np.ndarray, np.ndarray]:
+        """µs-ALEX runs: ``(macro times, routing channels)`` of the first photons (up to
+        :data:`ALEX_SAMPLE_PHOTONS`) -- what the live window check folds; empty otherwise."""
+        with self._lock:
+            parts = list(self._alex_parts)
+        if not parts:
+            return np.zeros(0, np.uint64), np.zeros(0, np.int8)
+        return (np.concatenate([p[0] for p in parts]), np.concatenate([p[1] for p in parts]))
 
     # -- control --------------------------------------------------------------------------------
     @property

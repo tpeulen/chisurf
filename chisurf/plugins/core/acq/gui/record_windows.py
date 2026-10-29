@@ -8,6 +8,9 @@
   detected ones -- for the next run; the photons of this one are recorded whole and can be
   re-analysed) and **Keep**. Nothing changes silently, and the run is not interrupted. One pulse
   only is an info line: a donor-only sample or not PIE, windows not checked.
+* **µs-ALEX** runs keep their first photons' macro times (the session's ``alex_photons``) and
+  the period and laser windows are checked on them; a session that cannot say so gives the info
+  line "ALEX windows not checked live; checked when the run is analysed".
 * **From a measurement…** opens the shared windows review on a measurement of the workspace (an
   earlier FRET recording), so its windows -- detected from its decays -- become this run's.
 """
@@ -31,6 +34,8 @@ class WindowCheckMixin:
         self.window_check_detail = ""
         #: ``"warning"`` (offer Update / Keep), ``"info"`` or ``""`` -- what the panel shows
         self.window_check_level = ""
+        #: µs-ALEX laser windows taken from the data (seconds of the cycle; ``None``: halves)
+        self.alex_windows_override: dict | None = None
         #: the review dialog the view hosts for *From a measurement…* (the view draws it)
         self.windows_review_requested = None
 
@@ -47,11 +52,39 @@ class WindowCheckMixin:
         if session is None or not snap or getattr(self, "mode", "") not in ("point", ""):
             return
         exp = session.experiment
-        if exp.preset == "alex":  # the alternation is in the macro time: not in these decays
-            return
         info = session.source.info
+        if exp.preset == "alex":  # the alternation is in the macro time: not in these decays
+            self._alex_poll(session, exp, info)
+            return
         windows = dict(exp.setup.get("windows") or {})
-        if not self.live_windows.update(snap, windows, info.micro_res_s, info.n_micro):
+        from chisurf.core.fluorescence.excitation import setup_gates
+
+        if not self.live_windows.update(snap, windows, info.micro_res_s, info.n_micro,
+                                        gates=setup_gates(exp.setup)):
+            return
+        self._show_check()
+
+    def _alex_poll(self, session, exp, info) -> None:
+        """µs-ALEX: the period and windows from the run's macro times (when the session keeps
+        them), else say that the check waits for the analysis."""
+        from chisurf.core.fluorescence.excitation import setup_detectors
+
+        get = getattr(session, "alex_photons", None)
+        if get is None or not exp.alex_period_s:
+            self.window_check_level = "info"
+            self.window_check_text = tr(
+                "ALEX windows not checked live; checked when the run is analysed."
+            )
+            return
+        macro, channels = get()
+        if not self.live_windows.update_alex(
+            macro, channels, info.macro_clock_s, exp.alex_period_s,
+            windows_s=getattr(exp, "alex_windows_s", None),
+            detectors=setup_detectors(exp.setup) or None,
+        ):
+            if self.live_windows.check is None:
+                self.window_check_level = "info"
+                self.window_check_text = tr("ALEX windows: waiting for photons to check them.")
             return
         self._show_check()
 
@@ -101,7 +134,11 @@ class WindowCheckMixin:
         check = self.live_windows.check
         if check is None or not check.proposal:
             return False
-        self._take_windows(dict(check.proposal), check.detection.resolution_s)
+        det = check.detection
+        if det.domain == "macro":
+            self._take_alex(det, dict(check.proposal))
+        else:
+            self._take_windows(dict(check.proposal), det.resolution_s, check.proposal_gates)
         self.live_windows.keep()
         self.window_check_level = "info"
         self.window_check_text = tr(
@@ -115,9 +152,21 @@ class WindowCheckMixin:
         self.live_windows.keep()
         self._show_check()
 
-    def _take_windows(self, windows: dict, resolution_s: float) -> None:
-        """The windows replace the setup's (in channels of *resolution_s*, the device's)."""
+    def _take_alex(self, detection: Any, windows: dict) -> None:
+        """µs-ALEX: the detected period and the laser windows (phase ticks -> seconds)."""
+        tick = detection.resolution_s
+        self.alex_period_us = detection.n_channels * tick * 1e6
+        self.alex_windows_override = {k: (v[0] * tick, v[1] * tick) for k, v in windows.items()}
+        self.status_text = tr("ALEX period and windows from the data")
+        self.status_detail = f"{self.alex_period_us:.2f} µs; " + ", ".join(
+            f"{k} {v[0] * 1e6:.1f}–{v[1] * 1e6:.1f} µs" for k, v in self.alex_windows_override.items()
+        )
+
+    def _take_windows(self, windows: dict, resolution_s: float, gates: dict | None = None) -> None:
+        """The windows (and detector gates) replace the setup's (in channels of *resolution_s*,
+        the device's)."""
         self.window_override = {k: [int(v[0]), int(v[1])] for k, v in windows.items()}
+        self.gate_override = {k: [list(r) for r in v] for k, v in (gates or {}).items()}
         self.window_override_resolution_s = float(resolution_s)
         self.window_override_label = tr("windows from the data")
         self.status_text = tr("Windows from the data")
@@ -136,15 +185,19 @@ class WindowCheckMixin:
         except Exception:  # noqa: BLE001 - a setup that cannot be read: review without it
             setup = {}
 
-        def accepted(windows: dict, detection: Any) -> None:
+        def accepted(windows: dict, detection: Any, check: Any = None) -> None:
             if detection.domain == "macro":
-                self.alex_period_us = detection.n_channels * detection.resolution_s * 1e6
-                self.status_text = tr("ALEX period from the measurement")
-                self.status_detail = f"{self.alex_period_us:.2f} µs"
+                self._take_alex(detection, windows)
                 return
             # the measurement's channels, in this device's: the same nanoseconds
-            conv = detection.rescaled(res, n_micro).windows if res else windows
-            self._take_windows(conv, res or detection.resolution_s)
+            from chisurf.core.fluorescence.excitation import rescale_gates, rescale_windows
+
+            src = detection.resolution_s
+            gates = check.proposal_gates if check is not None else {}
+            if res:
+                windows = rescale_windows(windows, src, res)
+                gates = rescale_gates(gates, src, res)
+            self._take_windows(windows, res or src, gates)
 
         self.windows_review_requested = WindowsReview(setup, on_accept=accepted)
         return True

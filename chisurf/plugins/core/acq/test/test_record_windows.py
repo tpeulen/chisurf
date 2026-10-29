@@ -136,3 +136,93 @@ def test_keep_leaves_the_windows(model):
     model.keep_windows()
     assert not model.window_check_asking and model.window_check_level == "info"
     assert model.window_override is None
+
+
+# -- µs-ALEX: the alternation is in the macro time ------------------------------------------------
+
+
+class _Info:
+    macro_clock_s = 12.5e-9
+    micro_res_s = 1e-9
+    n_micro = 1
+
+
+class _AlexSession:
+    """What the check reads of a µs-ALEX run: the experiment, the clock, the first photons."""
+
+    def __init__(self, experiment, macro=None, channels=None):
+        self.experiment = experiment
+        self.source = type("S", (), {"info": _Info()})()
+        if macro is not None:
+            self.alex_photons = lambda: (macro, channels)
+
+
+@pytest.fixture(scope="module")
+def alex_stream(tmp_path_factory):
+    tttrlib = pytest.importorskip("tttrlib")
+    from chisurf.core.fluorescence.simulation.alex_sm import simulate_alex_sm
+
+    path = tmp_path_factory.mktemp("alex") / "alex.sm"
+    simulate_alex_sm(path, [{"E": 0.3, "S": 0.5, "n": 400}, {"E": 0.8, "S": 0.5, "n": 400}])
+    t = tttrlib.TTTR(str(path))
+    return np.asarray(t.macro_times), np.asarray(t.routing_channels)
+
+
+def test_an_alex_run_with_the_wrong_period_warns_and_update_takes_period_and_windows(
+        tmp_path, alex_stream):
+    from chisurf.plugins.core.acq.gui.record_app import RecordModel
+    from chisurf.plugins.core.acq.live.setups import Experiment
+
+    m = RecordModel(output_dir=tmp_path, realtime=False)
+    setup = {"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}}
+    exp = Experiment(setup, "alex", alex_period_s=60e-6)  # the stream alternates every 100 µs
+    m.session, m.snapshot = _AlexSession(exp, *alex_stream), {"bursts": 0}
+    m.window_check_poll()
+    assert m.window_check_asking, m.window_check_text
+    assert any(i.code == "alex_period_mismatch" for i in m.live_windows.check.issues)
+    assert m.update_windows_from_check()
+    assert m.alex_period_us == pytest.approx(100.0, rel=1e-3)
+    m.session = None
+    m.preset = "alex"
+    assert m.make_experiment(1).alex_windows_s["delayed"][0] > 50e-6
+
+
+def test_an_alex_run_without_macro_times_says_so(tmp_path):
+    from chisurf.plugins.core.acq.gui.record_app import RecordModel
+    from chisurf.plugins.core.acq.live.setups import Experiment
+
+    m = RecordModel(output_dir=tmp_path, realtime=False)
+    exp = Experiment({"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}}, "alex",
+                     alex_period_s=100e-6)
+    m.session, m.snapshot = _AlexSession(exp), {"bursts": 0}
+    m.window_check_poll()
+    assert m.window_check_level == "info"
+    assert "not checked live" in m.window_check_text
+
+
+def test_detector_gates_of_another_resolution_are_converted_with_the_windows():
+    setup = {**SPC130, "detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 4095]]},
+                                     "red": {"chs": [1]}}}
+    out, note = convert_setup_windows(setup, RES)
+    assert out["detectors"]["green"]["micro_time_ranges"] == [[0, 6398]]
+    assert "detector gates" in note
+
+
+def test_a_gate_that_hides_the_acceptor_pulse_is_flagged_live():
+    live = LiveWindowCheck()
+    windows = {"prompt": [40, 1600], "delayed": [1600, 3125]}
+    live.update(_decays(), windows, RES, N, gates={"red": [[0, 1500]]})
+    assert live.asking
+    assert live.check.proposal_gates["red"] == [[0, N]]
+
+
+def test_the_stand_in_reads_the_setup_micro_time_in_ps():
+    """The setup editor writes ``tttr_reading.micro_time_resolution`` in ps (tttrlib's
+    ``from_setup`` reads it so too since the unit fix; Record passes it explicitly either way)."""
+    from chisurf.plugins.core.acq.live.analyzer import StreamingBurstAnalyzer
+
+    setup = {**SPC130, "tttr_reading": {"macro_time_resolution": 12.5,
+                                        "micro_time_resolution": 32.0}}
+    a = StreamingBurstAnalyzer.from_setup(setup, "pie")
+    assert a.micro_time_resolution() == pytest.approx(32e-12)
+    assert a.macro_time_resolution() == pytest.approx(12.5e-9)

@@ -67,6 +67,8 @@ class LaserSettingsMixin:
         self.laser_detail = ""
         #: windows that replace the Experiment setup's (from the laser, or from a measurement)
         self.window_override: dict | None = None
+        #: detector micro-time gates taken with the windows (device channels; ``{}``: the setup's)
+        self.gate_override: dict = {}
         self.proposed_windows: dict | None = None
         self.settings_address = ""
         self.settings_setup: dict | None = None
@@ -426,7 +428,14 @@ class LaserSettingsMixin:
         """
         if not self.window_override:
             return setup
-        return {**setup, "windows": dict(self.window_override)}
+        out = {**setup, "windows": dict(self.window_override)}
+        gates = getattr(self, "gate_override", None) or {}
+        if gates:
+            out["detectors"] = {
+                k: ({**v, "micro_time_ranges": [list(r) for r in gates[k]]} if k in gates else v)
+                for k, v in (setup.get("detectors") or {}).items()
+            }
+        return out
 
     # -- settings files ----------------------------------------------------------------------------
     def settings_options(self) -> list:

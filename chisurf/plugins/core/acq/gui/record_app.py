@@ -644,6 +644,8 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin, WindowCheckM
             burst,
             name=name,
             alex_period_s=float(self.alex_period_us) * 1e-6 if preset == "alex" else None,
+            alex_windows_s=(getattr(self, "alex_windows_override", None)
+                            if preset == "alex" else None),
         )
 
     def setup_summary(self) -> tuple[str, str]:

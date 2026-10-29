@@ -102,6 +102,8 @@ class Experiment:
     burst: BurstParameters = field(default_factory=BurstParameters)
     name: str = ""
     alex_period_s: float | None = None
+    #: µs-ALEX laser windows ``{name: (start, stop)}`` in seconds of the cycle (``None``: halves)
+    alex_windows_s: dict | None = None
     donor: str = "green"
     acceptor: str = "red"
     prompt: str = "prompt"
@@ -153,6 +155,7 @@ class Experiment:
             delay=self.delay,
             factors=self.factors() if self.preset in ("pie", "alex") else None,
             alex_period=self.alex_period_s,
+            alex_windows=self.alex_windows_s if self.preset == "alex" else None,
             trace=(0.1, 600),
             decays=(min(int(n_micro), 1024), int(n_micro), False),
         )
