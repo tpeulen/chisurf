@@ -57,6 +57,9 @@ def windows_preflight(
     if tttr_reading is not None:
         s["tttr_reading"] = dict(tttr_reading)
     try:
+        from .measure import _load  # noqa: PLC0415 - a path is read once for both steps
+
+        tttr = _load(tttr)
         det = detect_windows(tttr, setup=s, kind="pie", max_photons=PREFLIGHT_PHOTONS)
     except Exception:  # noqa: BLE001 - a stream that cannot be histogrammed: nothing to say
         return None
@@ -72,6 +75,16 @@ def windows_message(check: WindowCheck | None) -> str | None:
     if check is None:
         return None
     det = check.detection
+    codes = {i.code for i in check.issues}
+    if not det.alternating and check.mismatch and codes & _GATE_CODES:
+        # one pulse (or none), but a gate that sees nothing of it: say so, whatever the scheme
+        fixed = {d: g for d, g in check.proposal_gates.items() if g != check.gates.get(d)}
+        gates = ", ".join(f"{d} " + " ".join(f"{a}–{b}" for a, b in g) for d, g in fixed.items())
+        first = next(i.message for i in check.issues if i.code in _GATE_CODES)
+        return (f"Detector gates do not match the data: {first}"
+                + (f" Detected gates: {gates}." if gates else "")
+                + (" One excitation pulse in the micro time (donor-only or not PIE): the PIE "
+                   "windows were not checked." if det.kind == "single" and check.windows else ""))
     if not det.alternating:
         if det.kind == "single" and check.windows:
             return ("One excitation pulse in the micro time (donor-only or not PIE): the PIE "
@@ -85,7 +98,6 @@ def windows_message(check: WindowCheck | None) -> str | None:
     if fixed:
         proposal += ("; " if proposal else "") + "gates " + ", ".join(
             f"{d} " + " ".join(f"{a}–{b}" for a, b in g) for d, g in fixed.items())
-    codes = {i.code for i in check.issues}
     what = ("Detector gates" if codes & _GATE_CODES and not codes - _GATE_CODES - _EITHER_CODES
             or (not check.windows and check.gates) else "PIE windows")
     return (f"{what} do not match the data: {check.summary} Detected windows: {proposal} "

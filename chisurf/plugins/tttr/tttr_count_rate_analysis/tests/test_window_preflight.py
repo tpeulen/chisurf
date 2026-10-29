@@ -93,7 +93,7 @@ def test_a_setup_without_windows_is_checked_for_its_gates_only(demo):
     per_detector = {"detectors": MATCHING["detectors"], "windows": {}}
     assert window_warning(str(demo), per_detector) is None  # "no windows" is not a finding
     narrow = {"detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 3125]]},
-                            "red": {"chs": [1], "micro_time_ranges": [[0, 1000]]}},
+                            "red": {"chs": [1], "micro_time_ranges": [[1700, 3000]]}},
               "windows": {}}
     line = window_warning(str(demo), narrow)
     assert line and line.startswith("Detector gates do not match"), line

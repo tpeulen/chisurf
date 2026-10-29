@@ -20,7 +20,7 @@ from chisurf.plugins.tttr.tttr_image_browser.core.windows import gate_warnings  
 #: The red detector's gate stops before the acceptor pulse (52 ns = channel 1625).
 NARROW = {**pie.wrong_setup(),
           "detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 1000]]},
-                        "red": {"chs": [1], "micro_time_ranges": [[0, 1000]]}}}
+                        "red": {"chs": [1], "micro_time_ranges": [[1700, 3000]]}}}
 #: Gates over the whole period; the (wrong) PIE windows of the demo's other instrument stay.
 WIDE = {**pie.wrong_setup(),
         "detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 3125]]},
@@ -58,8 +58,11 @@ def test_gates_that_hold_the_pulses_say_nothing_whatever_the_windows(demo):
 
 
 def test_a_donor_only_file_says_nothing_about_windows_it_does_not_use(donor_only):
-    # one pulse: the shared note is about PIE windows, which the browser does not check
-    assert gate_warnings(donor_only, NARROW) == []
+    # one pulse, and gates that hold it: the shared note is about PIE windows, which the browser
+    # does not check
+    holding = {**NARROW, "detectors": {**NARROW["detectors"],
+                                       "red": {"chs": [1], "micro_time_ranges": [[0, 1000]]}}}
+    assert gate_warnings(donor_only, holding) == []
 
 
 def test_a_setup_without_gates_is_not_checked(demo):

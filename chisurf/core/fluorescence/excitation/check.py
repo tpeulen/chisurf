@@ -27,8 +27,9 @@ Findings (:class:`~.result.Issue` codes):
 ``alex_period_mismatch`` (warning)
     µs-ALEX: the windows were made for another alternation period.
 ``gate_outside_range`` (error), ``gate_misses_pulse`` / ``gate_empty`` (warning)
-    A detector's micro-time gate starts beyond the data, hides a pulse the detector sees, or
-    holds almost none of its photons; the gate is proposed opened to the whole range.
+    A detector's micro-time gate starts beyond the data, holds none of the excitations the
+    detector sees (a gate keeping one of them on purpose is fine), or holds almost none of its
+    photons; the gate is proposed opened to the whole range.
 ``single_pulse`` / ``unclear`` (info)
     One excitation pulse (donor-only sample, or not PIE) or no clear pulse: nothing is checked
     against pulses; nothing is proposed.
@@ -95,8 +96,8 @@ def check_windows(
     gates : dict, optional
         The detectors' micro-time gates ``{detector: [[start, stop], ...]}`` (a setup's
         ``detectors.*.micro_time_ranges``), in the same channels as *windows*: converted with them,
-        and checked -- a gate beyond the range, a gate that hides a pulse its detector sees, a gate
-        that holds almost none of its detector's photons.
+        and checked -- a gate beyond the range, a gate that holds none of the pulses its detector
+        sees, a gate that holds almost none of its detector's photons.
     histograms : dict, optional
         Per-detector photons per channel (the names :attr:`Pulse.excites` uses), for the gates.
     gate_channels : dict, optional
@@ -283,18 +284,21 @@ def _check_gates(gates, detection, histograms, issues, unit, channels=None) -> d
         mine = set((channels or {}).get(d) or [])
         siblings = [o for o in gates if o != d and mine
                     and mine & set((channels or {}).get(o) or [])]
-        for p in detection.pulses:
-            held = any(lo <= p.peak < hi for lo, hi in ranges) or any(
-                lo <= p.peak < hi for o in siblings for lo, hi in gates[o]
-            )
-            if d in p.excites and not held:
-                issues.append(Issue(
-                    "gate_misses_pulse", "warning",
-                    f"The gate of detector {d} ({_fmt(ranges)}) leaves out the "
-                    f"{(p.role + ' ') if p.role else ''}excitation it sees (peak at {p.peak}).",
-                ))
-                broken.add(d)
-                break
+        # A gate that keeps one excitation on purpose (BVA / FRET-2CDE gate the acceptor to the
+        # prompt pulse; ALEX-2CDE streams; red/yellow split one detector) is fine: only a gate
+        # that holds none of the excitations its detector sees -- here or in a sibling's gate on
+        # the same channels -- is wrong.
+        seen = [p for p in detection.pulses if d in p.excites]
+        held = [p for p in seen if any(lo <= p.peak < hi for lo, hi in ranges)
+                or any(lo <= p.peak < hi for o in siblings for lo, hi in gates[o])]
+        if seen and not held:
+            peaks = ", ".join(str(p.peak) for p in seen)
+            issues.append(Issue(
+                "gate_misses_pulse", "warning",
+                f"The gate of detector {d} ({_fmt(ranges)}) leaves out every excitation it sees "
+                f"(peaks at {peaks}).",
+            ))
+            broken.add(d)
         h = (histograms or {}).get(d)
         if h is not None and d not in broken and not siblings:
             h = np.asarray(h, dtype=float).ravel()

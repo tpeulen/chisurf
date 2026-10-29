@@ -47,13 +47,6 @@ def test_a_range_that_holds_the_pulse_and_no_range_say_nothing(scan, tmp_path):
     assert _read(donor, [[0, 1612]])[1]["warnings"] == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="a detector that sees one pulse (the donor channel alone) and a gate leaving it out: "
-    "check_setup finds gate_misses_pulse and offers the gate, but windows_message says nothing "
-    "for a non-alternating detection (excitation/preflight.py), so the offer stands without its "
-    "line; flips to a pass when the message names a gate that misses the only pulse",
-)
 def test_a_gate_that_misses_the_only_pulse_a_detector_sees_warns(scan):
     reader, meta = _read(scan, [[2048, 4095]], channels=(0,))
     assert reader.windows_check_offer

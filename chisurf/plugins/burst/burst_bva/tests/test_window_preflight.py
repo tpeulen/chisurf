@@ -78,14 +78,6 @@ def test_the_pie_split_of_the_setup_is_understood(demo):
     assert windows.window_warnings(demo, detectors) == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="the shared gate check (excitation/check.py _check_gates) reports a FRET acceptor gated "
-    "to the donor-excitation pulse -- BVA's standard PIE gating -- as a gate that leaves out the "
-    "acceptor excitation it sees, unless a sibling detector on the same channels holds that pulse "
-    "(the CLI and explicit settings carry no setup to supply one); flips to a pass when the check "
-    "accepts a gate that deliberately keeps one excitation",
-)
 def test_a_fret_pair_gated_to_the_prompt_pulse_says_nothing(demo):
     assert windows.window_warnings(demo, _pair(PROMPT, PROMPT)) == []
 

@@ -286,13 +286,13 @@ def test_detector_gates_are_converted_and_checked():
     setup = {
         "windows": good,
         "detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 4095]]},
-                      "red": {"chs": [1], "micro_time_ranges": [[0, 600]]}},  # hides 52 ns
+                      "red": {"chs": [1], "micro_time_ranges": [[1100, 2000]]}},  # holds neither pulse
         "tttr_reading": {"micro_time_resolution": 50.0},
     }
     c = check_setup(setup, detection=r, histograms=h)
     codes = [i.code for i in c.issues]
     assert "gate_misses_pulse" in codes and c.mismatch
-    assert c.gates["red"] == [[0, 938]] and c.gates["green"] == [[0, 6398]]
+    assert c.gates["red"] == [[1719, 3125]] and c.gates["green"] == [[0, 6398]]
     assert c.proposal_gates["red"] == [[0, 3125]]
     assert c.proposal_gates["green"] == [[0, 3125]]  # a gate that works is kept, clipped to the data
     fixed = apply_check(setup, c)
@@ -323,3 +323,20 @@ def test_gates_only_and_the_pie_split_of_the_acceptor_say_nothing():
     r2 = detect_pie_windows(hists, 32e-12)
     c = check_windows(r2.windows, r2, gates=split, histograms=hists, gate_channels=chans)
     assert c.status == "ok", [i.message for i in c.issues]
+
+
+def test_a_gate_that_keeps_one_excitation_on_purpose_says_nothing():
+    """BVA / FRET-2CDE gate the acceptor to the prompt pulse: fine, no sibling needed."""
+    h = pie_histograms()
+    r = detect_pie_windows(h, 32e-12)
+    c = check_windows(r.windows, r, gates={"red": [[50, 1613]]}, histograms=h)
+    assert not any(i.code.startswith("gate") for i in c.issues), c.issues
+
+
+def test_a_gate_missing_the_only_pulse_is_worded():
+    from chisurf.core.fluorescence.excitation import windows_message
+
+    h = pie_histograms(donor_only=True)
+    r = detect_pie_windows(h, 32e-12)
+    c = check_windows({}, r, gates={"green": [[1700, 3000]]}, histograms=h)
+    assert c.mismatch and "Detector gates do not match" in windows_message(c)

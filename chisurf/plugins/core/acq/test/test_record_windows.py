@@ -208,10 +208,10 @@ def test_detector_gates_of_another_resolution_are_converted_with_the_windows():
     assert "detector gates" in note
 
 
-def test_a_gate_that_hides_the_acceptor_pulse_is_flagged_live():
+def test_a_gate_that_holds_no_pulse_is_flagged_live():
     live = LiveWindowCheck()
     windows = {"prompt": [40, 1600], "delayed": [1600, 3125]}
-    live.update(_decays(), windows, RES, N, gates={"red": [[0, 1500]]})
+    live.update(_decays(), windows, RES, N, gates={"red": [[1700, 3000]]})
     assert live.asking
     assert live.check.proposal_gates["red"] == [[0, N]]
 
