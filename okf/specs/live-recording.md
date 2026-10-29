@@ -33,18 +33,21 @@ no tttrlib), never all at once on the laptop. Open front, in order:
    Points dock, `PointSequence` with per-molecule trace analysis (`live/molecules.py`: shared HMM via
    `IntensityTraceModel`, steps, bleach time, E, tau) and the molecules table in the image's container.
    phacq reaches the real E-725 on Windows through PI's GCS library (read-only check: POS? 50.002/50.000).
-   Still to check on the instrument (needs the owner's go for laser/sample safety), in this order:
-   (a) the E-725's trigger outputs 1/2 arrive on HydraHarp marker inputs 1/2, rising edge, and fire only
-   during the image, not while learning -- take one 64x64 mono scan with markers and count lines;
+   Measured on the instrument 2026-10-29 (no light, piezo only; libphacq docs/pi_e725_scanner.md):
+   line triggers reach HydraHarp markers 3/4, falling (SymPhoTime's ImgHdr_LineStart 3/Stop 4), one
+   pair per line -- declared in the settings file's scanner.line_markers, never in code; the previous
+   image's triggers fired during learning (fixed in libphacq 4c80b37, TWC before learning); a point
+   move returns in 0.22 s within 6 nm and settles below 3 nm (no extra settle needed); per tile
+   (16 x 64 px) 8.2 s learning every tile, 3.1 s re-checking triggers, 2.7 s learning once.
+   Still to check (needs light, the owner's go for laser/sample safety):
    (b) axis orientation and sign: image x = stage x (fast), rows = stage y increasing -- click a bright
    spot and check the point measurement lands on it (a wrong sign shows as near-zero counts);
-   (c) point-move settle: libphacq waits ~0.2 s plus a second MOV, SymPhoTime gaps ~1.5 s per point and
-   streamed ~11 s per point although 3 s were set -- compare;
-   (d) Frames > 1 re-learn every frame (slow); find whether SymPhoTime learns once. z planes > 1 are
+   (b2) whether the DDL learned at one place holds across the field: one tile imaged with learning
+   "every tile" and "first tile only" -- compare line edges;
+   (d) Frames > 1 re-learn every frame unless the learning option says otherwise; z planes > 1 are
    not supported on this path.
-   (e) Survey (93c16f583, Points > Survey: outward spiral from the last image, empty tiles passed):
-   measure the real per-tile overhead (park, MOV to the next tile, learn_s = 5 s every tile) on a
-   3x3 survey; if learning dominates, learn once per raster size and reuse. Focus drift across the
+   (e) Survey (93c16f583, Points > Survey: outward spiral from the last image, empty tiles passed;
+   Scanner learning option, default: learn on the first tile, re-check triggers after). Focus drift across the
    100 um field is only caught by "stop after N empty tiles" -- no z/focus lock yet.
    Known: the shared HMM logs "not converging" during the BIC scan (tests silence it); a dim neighbour
    still shining after the main bleach counts as a step.
