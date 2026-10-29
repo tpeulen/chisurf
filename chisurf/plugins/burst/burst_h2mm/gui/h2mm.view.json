@@ -28,6 +28,32 @@
           "label": "Aex detector",
           "options_source": "aex_options",
           "description": "Optional third stream (usALEX / PIE): acceptor photons under acceptor excitation. Gives every state a stoichiometry."
+        },
+        {
+          "type": "panel",
+          "title": "Excitation windows check",
+          "hidden_when": {"attr": "windows_check_quiet", "equals": true},
+          "description": "The stream detectors' micro-time gates held against the excitation pulses of the measurements the last fit read; shown only when there is something to say.",
+          "sections": [
+            {
+              "type": "info",
+              "source": "windows_check_text",
+              "hidden_when": {"attr": "windows_check_quiet", "equals": true},
+              "description": "The stream detectors' micro-time gates held against the excitation pulses of the measurements the last fit read (the check every PIE analysis runs): a warning when a gate leaves out a pulse its detector sees, holds almost none of its photons or lies beyond the data's channels; detectors on one routing channel split by their gates (prompt red, delayed yellow) are understood. The fit is not changed by it."
+            },
+            {
+              "type": "button_row",
+              "hidden_when": {"attr": "windows_check_offer", "equals": false},
+              "description": "The offer of the detected gates, shown when a stream detector's gates do not match the data.",
+              "buttons": [
+                {
+                  "label": "Use detected windows",
+                  "action": "use_detected_windows",
+                  "description": "Take the micro-time gates detected from the measurement's decays into the detector definition this window fits with, then press Run. The burst selection is not changed, and the saved detector setup file is not written."
+                }
+              ]
+            }
+          ]
         }
       ]
     },

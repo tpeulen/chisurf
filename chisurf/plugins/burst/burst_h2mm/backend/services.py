@@ -72,6 +72,7 @@ def run_analysis(
     files: list[str] | None = None,
     pattern: str = "*.bur",
     progress=None,
+    window_check: bool = True,
 ) -> tuple[H2mmResult, H2mmAnalysisBundle]:
     """Load bursts, fit H2MM models, and build a serialisable result.
 
@@ -88,6 +89,10 @@ def run_analysis(
     progress : callable, optional
         Forwarded to :func:`~..core.analysis.analyze` — called after each
         state-count fit for progress bars / live plots.
+    window_check : bool
+        Run the excitation-window pre-flight on the streams' micro-time ranges
+        (:func:`stream_window_warnings`) into ``result.warnings``. A caller that
+        checks its own setup (the window) passes ``False``.
 
     Returns
     -------
@@ -181,6 +186,8 @@ def run_analysis(
     )
 
     result = _result_from_analysis(ana, settings)
+    if window_check:
+        result.warnings = stream_window_warnings(tttrs, stream_defs)
     bundle = H2mmAnalysisBundle(analysis=ana, data=data, settings=settings)
     bundle.meta = meta
     bundle.burst_df = df
@@ -189,6 +196,50 @@ def run_analysis(
     bundle.tttrs = tttrs
     bundle.micro_time_ns = _micro_resolution(tttrs) * 1e9
     return result, bundle
+
+
+def stream_window_warnings(tttrs, stream_defs) -> list[str]:
+    """The excitation-window pre-flight of the streams' micro-time ranges.
+
+    A :class:`~..core.photons.StreamDef` keeps a photon when ``start <= micro_time <= stop``
+    (inclusive); the shared check reads ``[start, stop)`` gates, so a stream is checked as
+    ``[start, stop + 1)`` -- the channels it keeps. Streams on one routing channel split by
+    micro time (PIE's prompt red and delayed yellow) are checked together. Ungated streams take
+    every photon and are not checked.
+
+    Parameters
+    ----------
+    tttrs : mapping
+        ``{name: tttrlib.TTTR}`` -- the measurements the bursts are read from.
+    stream_defs : sequence of StreamDef
+
+    Returns
+    -------
+    list of str
+        One line per measurement whose ranges do not hold its excitation pulses (prefixed with
+        its name when there are several); empty when they do.
+    """
+    detectors = {
+        str(s.name): {
+            "chs": [int(c) for c in s.channels],
+            "micro_time_ranges": [[int(lo), int(hi) + 1] for lo, hi in s.micro_time_ranges],
+        }
+        for s in stream_defs
+    }
+    if not any(d["micro_time_ranges"] for d in detectors.values()):
+        return []
+    from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
+
+    out: list[str] = []
+    for key, tttr in dict(tttrs or {}).items():
+        try:
+            message = windows_message(windows_preflight(tttr, {}, detectors=detectors))
+        except Exception:  # noqa: BLE001 - a stream that cannot be checked says nothing
+            logger.debug("window pre-flight failed for %s", key, exc_info=True)
+            continue
+        if message:
+            out.append(message if len(tttrs) == 1 else f"{pathlib.Path(str(key)).name}: {message}")
+    return out
 
 
 def _load_surrogates(settings: H2mmSettings) -> dict[int, SurrogateModel] | None:

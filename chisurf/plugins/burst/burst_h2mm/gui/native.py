@@ -121,6 +121,7 @@ class H2mmNativeApp(TourTarget, ImApp):
         self.editor = ChannelDefinitionWidget(
             self.model.setup, on_changed=self.model.set_setup, host_app=self
         )
+        self.model._observers.append(self._model_event)
         self.help_window = EmTkHelpWindow(
             title="Photon-by-Photon HMM (H2MM) - Help & Reference",
             resource=HERE / "help.md",
@@ -473,6 +474,11 @@ class H2mmNativeApp(TourTarget, ImApp):
             fields = group_by_width(fields, toggles_join=False)
         draw_sections(fields, target, self.form)
         im.end_disabled()
+
+    def _model_event(self, event: str) -> None:
+        """*Use detected windows* changed the gates: the detector editor shows the new definition."""
+        if event == "detected_windows":
+            self.editor.model.data = copy.deepcopy(self.model.setup)
 
     def _detectors(self, box=None) -> None:
         self.remember("detectors", box)

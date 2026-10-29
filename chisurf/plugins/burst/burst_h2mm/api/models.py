@@ -212,6 +212,9 @@ class H2mmResult:
         Files written by the analysis.
     settings_applied : dict
         The settings that were used.
+    warnings : list of str
+        The excitation-window pre-flight of the streams' micro-time ranges: one line per
+        measurement whose ranges do not hold its excitation pulses.
     """
 
     n_states: int = 0
@@ -237,6 +240,7 @@ class H2mmResult:
     base_time_s: float = 1.0
     output_paths: dict = field(default_factory=dict)
     settings_applied: dict = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Return the result as a JSON-compatible dictionary."""

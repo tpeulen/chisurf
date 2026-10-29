@@ -16,6 +16,7 @@ import pathlib
 import threading
 from typing import Any, Callable
 
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
 from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
 
 from ..api.models import H2mmSettings, StreamSettings
@@ -71,8 +72,14 @@ def parse_channels(text: str) -> list[int]:
     return out
 
 
-class H2mmViewModel(RunPickerMixin):
-    """State and actions of the photon-by-photon HMM tool (no Qt, no emtk)."""
+class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
+    """State and actions of the photon-by-photon HMM tool (no Qt, no emtk).
+
+    The excitation-window pre-flight (:class:`WindowsPreflightMixin`) holds the stream detectors'
+    micro-time gates against the excitation pulses of the measurements a fit reads; *Use detected
+    windows* takes the detected gates into the detector definition (the burst table does not
+    depend on them: the next fit reproduces the analysis with them).
+    """
 
     def __init__(self) -> None:
         self._observers: list[Callable[[str], None]] = []
@@ -139,6 +146,8 @@ class H2mmViewModel(RunPickerMixin):
         self.uncertainty: Any = None
         self.status_text: str = "Ready"
         self.running: bool = False
+        #: The excitation-window pre-flight of the last fit (the first measurement with a finding).
+        self.windows_check = None
 
     # -- observers ------------------------------------------------------------------------------------------- #
     def notify(self, event: str = "updated") -> None:
@@ -192,6 +201,46 @@ class H2mmViewModel(RunPickerMixin):
         if self.aex and self.aex != NO_AEX and self.aex in self.setup.get("detectors", {}):
             streams.append(self._stream(self.aex))
         return streams
+
+    # -- the excitation windows against the data (the shared pre-flight) ---------------------- #
+    def preflight_setup(self) -> dict:
+        """The detectors the fit reads as streams, with the setup's detectors that share their
+        routing channels (PIE's prompt/delayed split of one detector), in the setup's own gates."""
+        detectors = self.setup.get("detectors") or {}
+        used = [s.name for s in self.streams() if s.name in detectors]
+        chs = {int(c) for n in used for c in (detectors[n].get("chs") or [])}
+        keep = {
+            n: copy.deepcopy(d) for n, d in detectors.items()
+            if n in used or chs & {int(c) for c in (d.get("chs") or [])}
+        }
+        return {"detectors": keep, "tttr_reading": copy.deepcopy(self.setup.get("tttr_reading") or {})}
+
+    def take_preflight_setup(self, setup: dict) -> None:
+        """The user took the detected gates: they become the detectors' gates of the next fit."""
+        full = copy.deepcopy(self.setup)
+        detectors = full.setdefault("detectors", {})
+        for name, det in (setup.get("detectors") or {}).items():
+            if name in detectors:
+                detectors[name]["micro_time_ranges"] = copy.deepcopy(det.get("micro_time_ranges"))
+        self.set_setup(full)
+        self.status_text = "Detector gates from the data: " + "; ".join(
+            f"{n} " + ", ".join(f"{a}–{b}" for a, b in (d.get("micro_time_ranges") or []))
+            for n, d in (setup.get("detectors") or {}).items()
+        ) + ". Press Run."
+        self.notify("detected_windows")
+
+    def check_windows(self, tttrs) -> str | None:
+        """Check the stream gates against every measurement in *tttrs*; keep the first finding
+        and return its line (``None``: the gates hold the pulses, or nothing is gated)."""
+        self.windows_check = None
+        detectors = self.preflight_setup()["detectors"]
+        if not any(d.get("micro_time_ranges") for d in detectors.values()):
+            return None
+        for key, tttr in dict(tttrs or {}).items():
+            message = self.run_windows_preflight(tttr)
+            if message:
+                return message if len(tttrs) == 1 else f"{pathlib.Path(str(key)).name}: {message}"
+        return None
 
     def build_settings(self) -> H2mmSettings:
         """The backend settings these fields describe (what ``H2mmTool._gather_settings`` builds from its widgets)."""
@@ -354,8 +403,11 @@ class H2mmViewModel(RunPickerMixin):
             self.notify("progress")
 
         result, bundle = run_analysis(
-            settings, analysis_folder=self.input_path(), progress=progress
+            settings, analysis_folder=self.input_path(), progress=progress, window_check=False
         )
+        message = self.check_windows(bundle.tttrs)
+        if message:
+            result.warnings = [message]
         if getattr(settings, "write_photons", True):
             try:
                 from chisurf.core.project.analysis import is_derived
@@ -388,6 +440,8 @@ class H2mmViewModel(RunPickerMixin):
             self.status_text += " - occupancy " + ", ".join(
                 f"{x:.3f}" for x in result.posterior_populations
             )
+        if message:
+            self.status_text += " - see the excitation-window check under Data"
         self.notify("result")
 
     def restart(self) -> None:

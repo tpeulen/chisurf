@@ -132,6 +132,8 @@ def compute(
 
     click.echo(f"Reading bursts from {analysis_folder} (engine={engine}) ...")
     result, bundle = run_analysis(settings, analysis_folder=analysis_folder, pattern=pattern)
+    for line in result.warnings:
+        click.echo(f"warning: {line}", err=True)
 
     click.echo(
         f"Analysed {result.n_bursts} bursts / {result.n_photons} photons; "
