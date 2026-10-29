@@ -12,6 +12,8 @@ import numpy as np
 
 from chisurf.core.fio.staging import open_tttr
 
+from .windows import gate_warnings, has_gates
+
 try:
     import tttrlib
 except Exception:
@@ -396,12 +398,14 @@ def render_mosaic_array(
     channels_map: dict[str, list[dict]],
     reading_routine: str | None,
     max_side: int = 512,
+    tttr_obj: Any = None,
 ) -> tuple[np.ndarray, list[str], int, int, int, int] | None:
-    """Render the mosaic array without Qt dependencies."""
+    """Render the mosaic array without Qt dependencies (*tttr_obj*: the file, already open)."""
     if tttrlib is None:
         return None
     try:
-        tttr_obj = open_tttr(path, reading_routine)
+        if tttr_obj is None:
+            tttr_obj = open_tttr(path, reading_routine)
         if not is_clsm_compatible(tttr_obj, path):
             return None
     except Exception:
@@ -536,12 +540,20 @@ def load_image(
         }
 
     # Try cache first
+    tttr_obj = None
     cached = load_mosaic_cache(file_path, channels_map, reading_routine)
     if cached is not None:
         mosaic, labels, cols, rows, tile_w, tile_h = cached
     else:
-        # Precompute
-        rendered = render_mosaic_array(file_path, channels_map, reading_routine, max_side=max_side)
+        # Precompute (the file opened once, for the mosaic and the gate check)
+        if tttrlib is not None and has_gates(setup_settings):
+            try:
+                tttr_obj = open_tttr(file_path, reading_routine)
+            except Exception:
+                tttr_obj = None
+        rendered = render_mosaic_array(
+            file_path, channels_map, reading_routine, max_side=max_side, tttr_obj=tttr_obj
+        )
         if rendered is None:
             return None
         mosaic, labels, cols, rows, tile_w, tile_h = rendered
@@ -555,6 +567,8 @@ def load_image(
         "labels": labels,
         "cols": cols,
         "rows": rows,
+        # the detector gates held against the file's excitation pulses (the shared pre-flight)
+        "warnings": gate_warnings(file_path, setup_settings, tttr_obj, reading_routine),
     }
 
 

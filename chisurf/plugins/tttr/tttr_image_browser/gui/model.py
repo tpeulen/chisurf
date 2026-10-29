@@ -20,6 +20,7 @@ from typing import Any
 
 import numpy as np
 
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin, windows_message
 from chisurf.plugins.microscopy.imaging_emtk.model_base import EmtkModelMixin
 
 from .client import TTTRImageBrowserClient
@@ -61,19 +62,27 @@ class MosaicLoader:
         self._client = client
         self.path: str | None = None
         self.result: dict | None = None
+        #: The detector gates of the setup held against the file (the shared pre-flight).
+        self.check: Any = None
 
     def load(self, path: str, setup_settings: dict | None, folder: str | None) -> None:
-        """Load (or read from the on-disk cache) the mosaic of *path*."""
-        self.path, self.result = path, None
+        """Load (or read from the on-disk cache) the mosaic of *path*, and check the setup's
+        detector gates against it (remembered: the load has just read the file for it)."""
+        from ..core.windows import remembered_check
+
+        self.path, self.result, self.check = path, None, None
         self.result = self._client.load_image(
             path, setup_settings=setup_settings, max_side=MAX_SIDE, cache_folder=folder
         )
+        if self.result is not None:
+            routine = ((setup_settings or {}).get("tttr_reading") or {}).get("file_type") or None
+            self.check = remembered_check(path, setup_settings, reading_routine=routine)
 
     def notify(self, _event: str = "") -> None:
         """Snapshot workers announce progress here; nothing listens."""
 
 
-class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
+class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel, WindowsPreflightMixin):
     """State and actions of the native browser (no Qt)."""
 
     SETTINGS = (
@@ -106,6 +115,8 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
         self.setup_name = ""
         self.last_written: list[str] = []
         self._failed: dict[str, str] = {}
+        #: The gate check of each loaded file (the shared excitation-window pre-flight).
+        self._window_checks: dict[str, Any] = {}
 
     # ------------------------------------------------------------------ choices
     def rating_filter_choices(self) -> list[str]:
@@ -352,7 +363,7 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
             return None
         loader = MosaicLoader(self._client)
         loader.load(path, self.setup_settings, self.current_folder)
-        return self.store_mosaic(path, loader.result)
+        return self.store_mosaic(path, loader.result, check=loader.check)
 
     def _mosaic(self) -> dict | None:
         """The cached mosaic of the current file; the draw loop never reads a photon file."""
@@ -362,8 +373,10 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
         """Make the mosaic of the current file now (headless use; the app does this on a worker)."""
         return self.mosaic_for(self.current_file) if self.current_file else None
 
-    def store_mosaic(self, path: str, result: dict | None) -> dict | None:
-        """Keep the mosaic a loader produced (``None``: remember that the file has none)."""
+    def store_mosaic(self, path: str, result: dict | None, check: Any = None) -> dict | None:
+        """Keep the mosaic a loader produced (``None``: remember that the file has none), with
+        the gate check the loader made of it; its line goes to the status line."""
+        self._window_checks[path] = check
         if result is None:
             self._failed[path] = (
                 "no image could be reconstructed (check the file type and the detector setup)"
@@ -378,8 +391,60 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
         }
         self._mosaic_cache[path] = entry
         self._failed.pop(path, None)
+        warnings = list(result.get("warnings") or [])
+        if warnings and path == self.current_file:  # the whole line stands above the mosaic
+            self.status_line = f"{pathlib.Path(path).name}: {warnings[0].split(': ', 1)[0]}."
         self.notify("image")
         return entry
+
+    # ------------------------------------------------------------------ the gates against the data
+    @property
+    def windows_check(self) -> Any:
+        """The gate check of the file shown (``None`` before its mosaic was loaded)."""
+        checks = getattr(self, "_window_checks", {})
+        return checks.get(self.current_file) if self.current_file else None
+
+    @windows_check.setter
+    def windows_check(self, value: Any) -> None:
+        if self.current_file:
+            self._window_checks[self.current_file] = value
+
+    def apply_setup_settings(self, payload: dict) -> None:
+        """Adopt a detector setup: the mosaics, and the gate checks made with the old one, go."""
+        if payload:
+            self._window_checks = {}
+        super().apply_setup_settings(payload)
+
+    def preflight_setup(self) -> dict:
+        """The detector setup the tiles follow (its gates are what the check holds)."""
+        return dict(self.setup_settings or {})
+
+    def take_preflight_setup(self, setup: dict) -> None:
+        """The user took the detected gates (and windows, and their channel width): the tiles are
+        made again with them and the setup editor shows them. The saved setup is not changed."""
+        from chisurf.core.setup_channel_definition import ChannelDefinition
+
+        name = (self.setup_settings or {}).get("setup_name", "")
+        settings = {k: v for k, v in setup.items() if k != "channels"}
+        try:
+            settings = ChannelDefinition(settings).get_settings()  # the tiles' combinations again
+        except Exception:  # noqa: BLE001 - a partial setup keeps its own keys
+            pass
+        settings["setup_name"] = name
+        self.apply_setup_settings(settings)
+        self.requests.append("setup")
+        gates = "; ".join(
+            f"{d} " + ", ".join(f"{a}–{b}" for a, b in v.get("micro_time_ranges") or [])
+            for d, v in (settings.get("detectors") or {}).items()
+        )
+        self.status_line = f"Detector gates from the data: {gates}"
+
+    def run_windows_preflight(self, tttr: Any) -> str | None:
+        """Check the setup's detector gates against *tttr*; the line (``None``: fine)."""
+        from ..core.windows import gate_check
+
+        self.windows_check = gate_check(tttr, self.preflight_setup())
+        return windows_message(self.windows_check)
 
     def wanted_image(self) -> str | None:
         """The current file when its mosaic is neither cached nor known to be missing (the app loads it)."""

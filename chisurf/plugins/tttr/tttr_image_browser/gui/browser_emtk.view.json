@@ -1,6 +1,6 @@
 {
   "window": {"width": 1200, "height": 800},
-  "_comment": "TTTR Image Browser, emtk version. Three windows of gui/app.py: 'toolbar' (the Qt toolbar: Clear, Caches, Export, TIFF, DOCX, Next, Subfolders, Help), 'files' (the Qt left column: rating filter, file list with filter box, rating, info, annotation) and 'display' (the controls of the Qt image dock: colormap, levels). The image, its level histogram and the annotation box are drawn by gui/app.py (a plot and a text editor cannot be a spec). Every attr / call / action is a method or attribute of gui/model.py.",
+  "_comment": "TTTR Image Browser, emtk version. The windows of gui/app.py: 'toolbar' (the Qt toolbar: Clear, Caches, Export, TIFF, DOCX, Next, Subfolders, Help), 'files' (the Qt left column: rating filter, file list with filter box, rating, info, annotation), 'display' (the controls of the Qt image dock: colormap, levels) and 'check' (the detector gates held against the file shown, drawn under 'display' above the mosaic). The image, its level histogram and the annotation box are drawn by gui/app.py (a plot and a text editor cannot be a spec). Every attr / call / action is a method or attribute of gui/model.py.",
   "title": "TTTR Image Browser",
   "sections": [
     {
@@ -210,6 +210,16 @@
           "title": "Annotation",
           "description": "A note for the file shown. It is saved at once beside the data in .image_browser_meta.json."
         }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Gate check",
+      "window": "check",
+      "description": "The detector setup's micro-time gates held against the excitation pulses of the file shown, above its mosaic.",
+      "sections": [
+        {"type": "info", "source": "windows_check_text", "hidden_when": {"attr": "windows_check_quiet", "equals": true}, "description": "The detector setup's micro-time gates held against the excitation pulses of the file shown (the check every PIE analysis runs): a warning when a gate, taken as channels of the data as the tiles take it, lies outside the data, hides a pulse its detector sees or holds almost none of its photons. The setup's PIE windows do not shape a tile and are not checked here."},
+        {"type": "button_row", "hidden_when": {"attr": "windows_check_offer", "equals": false}, "description": "The offer of the detected gates, shown when the setup's gates do not match the file.", "buttons": [{"label": "Use detected windows", "action": "use_detected_windows", "description": "Make the tiles with the gates (and windows, in the data's channel width) detected from this file's micro-time decays instead of the setup's; the mosaics are made again and the Detector setup tab shows the new values. The saved setup file is not changed."}]}
       ]
     },
     {

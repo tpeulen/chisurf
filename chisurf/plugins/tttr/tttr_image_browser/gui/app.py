@@ -299,7 +299,7 @@ class TTTRImageBrowserApp(ImApp):
                     model.store_mosaic(path, None)
                     model._failed[path] = f"failed ({self.load_job.error})"
                 else:
-                    model.store_mosaic(path, self.loader.result)
+                    model.store_mosaic(path, self.loader.result, check=self.loader.check)
         want = model.wanted_image()
         if want and not self.load_job.busy and not self.job.busy and not self._queue:
             self.load_job.start("load", want, model.setup_settings, model.current_folder)
@@ -314,6 +314,8 @@ class TTTRImageBrowserApp(ImApp):
                 self.load_example()
             elif request == "next":
                 self.next_step()
+            elif request == "setup":  # the model took detected gates: the editor shows them
+                self._new_editor(model.setup_settings)
 
     def animating(self) -> bool:
         return bool(
@@ -553,6 +555,10 @@ class TTTRImageBrowserApp(ImApp):
         model = self.model
         im.begin_disabled(model.current_image() is None or bool(model.busy))
         draw_sections(self.panels["display"]["sections"], model, self.form, 1, True, False)
+        im.end_disabled()
+        # the shared excitation-window pre-flight of the file shown: its gates against its pulses
+        im.begin_disabled(bool(model.busy))
+        draw_sections(self.panels["check"]["sections"], model, self.form, 1, True, False)
         im.end_disabled()
         array = model.current_image()
         avail_w, avail_h = (float(v) for v in im.get_content_region_avail())

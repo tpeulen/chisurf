@@ -32,9 +32,21 @@ def list_cmd(folder: Path, recursive: bool):
 @click.option(
     "--max-side", default=512, show_default=True, type=int, help="Max dimensions of the mosaic."
 )
-def load_cmd(path: Path, max_side: int):
+@click.option(
+    "--setup",
+    "setup_file",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Detector setup JSON (one setup, or a file of named setups: the first): one tile per "
+    "detector, its gates checked against the file's excitation pulses.",
+)
+def load_cmd(path: Path, max_side: int, setup_file: Path | None):
     """Load and print image mosaic metadata."""
-    data = load_image(str(path), max_side=max_side)
+    setup = None
+    if setup_file is not None:
+        from chisurf.plugins.tttr.workspace_io import read_setup
+
+        setup = read_setup(str(setup_file))
+    data = load_image(str(path), setup_settings=setup, max_side=max_side)
     if data is None:
         click.echo(f"Failed to load image from {path}", err=True)
         return
@@ -48,10 +60,13 @@ def load_cmd(path: Path, max_side: int):
                 "labels": data["labels"],
                 "cols": data["cols"],
                 "rows": data["rows"],
+                "warnings": data.get("warnings", []),
             },
             indent=2,
         )
     )
+    for line in data.get("warnings", []):
+        click.echo(line, err=True)
 
 
 @cli.command("export-tiff")

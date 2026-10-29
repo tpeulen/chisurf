@@ -598,6 +598,7 @@ def test_every_spec_key_exists_on_the_model():
     assert {s["window"] for s in json.loads(SPEC.read_text())["sections"]} == {
         "toolbar",
         "files",
+        "check",
         "display",
     }
 
