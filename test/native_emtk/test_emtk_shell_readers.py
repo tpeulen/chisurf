@@ -112,7 +112,8 @@ def test_the_detector_cascade_writes_the_detector_onto_the_reader(
     cascade.channels = "5; 6"
     assert cascade.channels == "5, 6"
     if hasattr(reader, "micro_time_range"):
-        assert tuple(reader.micro_time_range) == (0, 4095)
+        # the setup's gate [0, 4095) is the reader's inclusive window 0..4094
+        assert tuple(reader.micro_time_range) == (0, 4094)
     app.close()
 
 

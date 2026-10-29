@@ -8,6 +8,7 @@ import tttrlib
 
 import chisurf.core.data
 from chisurf.core.experiments.core.reader import ExperimentReader
+from chisurf.core.fluorescence.excitation import micro_mask
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "pch.view.json"
 
@@ -193,10 +194,8 @@ class PCHReader(ExperimentReader):
 
         # Micro-time window
         if micro_time_range is not None:
-            mt_min, mt_max = micro_time_range
             try:
-                mt = np.asarray(tttr.micro_times)
-                mask &= (mt >= int(mt_min)) & (mt <= int(mt_max))
+                mask &= micro_mask(tttr.micro_times, [micro_time_range], inclusive=True)
             except Exception:
                 pass
 

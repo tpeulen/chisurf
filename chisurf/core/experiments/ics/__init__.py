@@ -18,7 +18,11 @@ import tttrlib
 import chisurf.core.data
 import chisurf.core.fio.image
 from chisurf.core.experiments.core.reader import ExperimentReader
-from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
+from chisurf.core.fluorescence.excitation import (
+    WindowsPreflightMixin,
+    gates_to_inclusive,
+    setup_gates,
+)
 from chisurf.core.fluorescence.imaging.drift import correct_drift
 from chisurf.core.roi import ROI, as_roi
 
@@ -134,7 +138,8 @@ class ICSReader(ExperimentReader, WindowsPreflightMixin):
             diffusive decorrelation, so uncorrected drift inflates the fitted
             diffusion coefficient at exactly the long lags.
         micro_time_ranges : list, optional
-            Micro-time ranges for photon selection.
+            Micro-time ranges for photon selection, half-open ``[start, stop)`` raw channels
+            (a detector setup's gates).
         """
         super().__init__(*args, **kwargs)
         self.name = name
@@ -247,9 +252,9 @@ class ICSReader(ExperimentReader, WindowsPreflightMixin):
 
     def take_preflight_setup(self, setup: dict) -> None:
         """Read through the gate detected in the data from now on (the next read applies it)."""
-        det = (setup.get("detectors") or {}).get("ics") or {}
-        if det.get("micro_time_ranges"):
-            self.micro_time_ranges = [[int(a), int(b)] for a, b in det["micro_time_ranges"]]
+        gates = setup_gates(setup).get("ics")
+        if gates:
+            self.micro_time_ranges = gates
 
     def view_spec(self):
         """Return the declarative editor spec for ICS reader settings."""
@@ -381,12 +386,8 @@ class ICSReader(ExperimentReader, WindowsPreflightMixin):
 
         self._seed_timing_from_header(tttr_all)
 
-        mtr_arg = None
-        if mtr_norm is not None:
-            try:
-                mtr_arg = [(int(a), int(b)) for (a, b) in mtr_norm]
-            except Exception:
-                mtr_arg = None
+        # The ranges are setup gates, half-open [start, stop); CLSMImage takes inclusive ranges.
+        mtr_arg = gates_to_inclusive(mtr_norm) if mtr_norm else None
 
         # The ranges gate the photons in the data's channels: held against its excitation pulses.
         self._channels_read = tuple(int(c) for c in channels)

@@ -22,6 +22,7 @@ from typing import Any
 import numpy as np
 from emtk.view_form import FormState, draw_sections
 
+from chisurf.core.fluorescence.excitation import gates_to_inclusive
 from chisurf.core.support.i18n import tr
 
 #: The custom section keys :func:`register` draws natively.
@@ -233,7 +234,8 @@ class DetectorCascade:
                 if isinstance(first, dict):
                     first = first.get("range", first.get("values", first))
                 if isinstance(first, (list, tuple)) and len(first) >= 2:
-                    reader.micro_time_range = (int(first[0]), int(first[1]))
+                    # the setup's gate is half-open; the reader's window is inclusive
+                    reader.micro_time_range = gates_to_inclusive([first])[0]
         reader.detector_setup = self._setup
         reader.detector_name = self._detector
         reader.channel_luts = {int(k): v for k, v in (setup.get("channel_luts") or {}).items()}
