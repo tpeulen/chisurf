@@ -84,7 +84,8 @@ def test_the_setup_fills_the_rows_and_the_routine():
     settings = PdaReaderSettings(reader, setups=SETUPS, routines=["PTU", "SPC-130"])
     assert settings.setup == "Confocal"
     assert reader.channels == [[0, 2], [1, 3]]
-    assert reader.micro_time_ranges == [[[0, 4095]], [[100, 3000]]]
+    # the setup's gates [0, 4095) and [100, 3000) as the reader's inclusive windows
+    assert reader.micro_time_ranges == [[[0, 4094]], [[100, 2999]]]
     assert reader.reading_routine == "SPC-130"
     settings.detector_0 = "red"
     assert reader.channels[0] == [1, 3]
