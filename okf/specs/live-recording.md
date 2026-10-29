@@ -29,38 +29,27 @@ failed settings and failed starts; they have not been deployed. Record's display
 hardware rates are frozen during a run, so displayed zeros alone do not prove an
 empty stream.
 
-**2026-10-29 evening, HH400 -2 root cause (zcode continuation):** the "busy" was
-real once: a leftover Record process (`python -m chisurf --app acq`, PID 13704)
-held `\Device\Pqusb-0` and both `pqusb0_busy` mutexes — every earlier vendor-DLL
-probe ran beside it (kill it and the mutex disappears). But after killing it, with
-no handles and no mutex (verified by handle64 and a fresh CreateMutex probe), and
-after a genuine `pnputil /restart-device`, `HH_OpenDevice` **still returns -2** --
-from snAPI's hhlib64 and from SymPhoTime's own HHSPT64_V2 (V1: -1), while a raw
-exclusive `CreateFile` on `\\.\Pqusb-0` succeeds. So the -2 is the vendor library's
-own verdict, not the kernel's (disassembly: -2 is one specific open-helper status,
-not only the busy mutex; the mutex does not exist). snAPI 1.2.5 is the latest
-published, so there is no upgrade to try. **The vendor-DLL lane is dead on this
-machine** (owner: "in snapi it never worked"; SymPhoTime opens the same unit
-fine). Constraints from the owner: the machine must keep working with SymPhoTime
-*and* phacq; a driver may be installed, but not one that permanently displaces
-SymPhoTime's — so phacq speaks **PicoQuant's PQUSB64 driver directly**, like
-SymPhoTime does. Two implementations, both in libphacq (committed): a C++
-`PqusbTransport` and — the deployable one — **`phacq/pqusb.py`, a pure-Python
-ctypes backend carrying the whole HH400 protocol** (identify from the EEPROMs,
-FPGA upload, link lock, calibration, T3, markers; no build needed, ships as
-.py). Contract pinned live on the unit: open share-read; control read 0x222044
-verified (register 0x800D answered); bulk 0x222059 **reads verified** (10-byte
-head {u8 0, u16 pipe 0x0002, u8, u8, u16, u16 length}, out buffer filled);
-write payload rides the out buffer, shape accepted, transfer pending the pipe
-reset/abort decode (hhlib's pipe-config call: 0xA0/0xE600, dispatch table
-hhlib64+0x220600). Unit profile staged and sha256-verified at
-`C:\Users\Mess-Admin\AppData\Local\phacq\hh400` (from
-peulen.xyz/downloads/phacq-firmware, recorded from s/n 1032692 itself on
-2026-10-28 — a fresh SymPhoTime capture is therefore NOT blocking). NEXT: pin
-the write path (or Ghidra on hhlib64), wire pqusb into phacq's driver
-selection, then identify → initialize T3 → measure through Record on the
-MT200. Probes: `C:\phacq-setup\pqusb_*probe*.py`, `pqusb_bulk2.py`,
-`pqusb_chain.py` (one variant per process, watchdogged).
+**2026-10-30, HH400: SOLVED, measuring natively (zcode continuation).**
+`phacq.pqusb` (libphacq fdf88c1, pure Python, deployed to the MT200's phacq
+as .py files) drives SymPhoTime's own `HHSPT64_V2.dll` through the classic
+HH_* API -- PQUSB64 underneath, nothing installed, SymPhoTime untouched, and
+session-0 safe: the year of "HH_ERROR_DEVICE_BUSY (-2) with nothing holding
+the unit" was a **session-0 bug** (the HH libraries create
+`Global\\pqusbN_busy` and then `pqusbN_busy` -- the *same kernel object* in
+session 0, so every SSH/service process reads the benign
+ERROR_ALREADY_EXISTS as busy; interactive sessions never see it, which is why
+SymPhoTime always worked and every agent-launched attempt "never worked").
+snAPI's own hhlib64 is additionally USB2-only (rejects PID 0x0009 after the
+descriptor roundtrip -- proven by rewriting the PID through an IAT hook: open
+succeeds, initialize stops at -34). pqusb clears the mutex error by patching
+V2's CreateMutexA import (IAT slot 0x1a058). Verified twice from session 0:
+open 1032692 → initialize T3 → calibrate → sync 39.99976 MHz → StartMeas 0 →
+100+ T3 records per second-long run → clean close; through phacq's registry
+and chisurf's device seam (attached_devices/open_device). **Record on the
+MT200 now lists and measures the HH400** -- start it and connect. The full
+story, including the traced PQUSB64 IOCTL protocol for a future C++
+transport: libphacq docs/hydraharp400.md "Windows (the MT200)". Open: an
+owner-confirmed GUI run; video deploy needs the Windows tttrlib wheel (VM).
 
 Record has a general live video panel with a Matrix Vision SDK adapter and an
 optional OpenCV adapter. The MT200 has a MATRIX VISION mvSIGMA/mvDELTA PCI frame
