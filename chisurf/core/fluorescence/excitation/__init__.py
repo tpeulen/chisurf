@@ -10,7 +10,9 @@ Record tool, the setup editor and the burst / PIE analyses all call before they 
 * :func:`check_windows`, :func:`check_setup` -- existing windows held against a detection;
 * :func:`windows_preflight`, :func:`windows_message` -- what an analysis runs before it uses
   windows, and the one line it reports;
-* :func:`rescale_windows` -- windows from one channel width (TAC range, binning) to another.
+* :func:`rescale_windows` -- windows from one channel width (TAC range, binning) to another;
+* :mod:`.setup` -- reading a setup (:func:`channel_map`, :func:`polarization_channels`), the
+  range dialects (:func:`gates_to_inclusive`, :func:`micro_mask`), the gate-only check.
 
 Method and assumptions: ``docs/concepts/excitation_windows.md``.
 """
@@ -40,8 +42,32 @@ from .result import (
     rescale_gates,
     rescale_windows,
 )
+from .setup import (
+    GATE_CODES,
+    channel_map,
+    format_ranges,
+    gate_check,
+    gate_setup,
+    gates_from_inclusive,
+    gates_to_inclusive,
+    merge_gates,
+    micro_mask,
+    polarization_channels,
+    remembered_gate_check,
+)
 
 __all__ = [
+    "GATE_CODES",
+    "channel_map",
+    "format_ranges",
+    "gate_check",
+    "gate_setup",
+    "gates_from_inclusive",
+    "gates_to_inclusive",
+    "merge_gates",
+    "micro_mask",
+    "polarization_channels",
+    "remembered_gate_check",
     "ExcitationWindows",
     "Issue",
     "Pulse",

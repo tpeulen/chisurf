@@ -18,8 +18,8 @@ from .result import WindowCheck
 
 __all__ = ["WindowsPreflightMixin", "apply_check", "windows_message", "windows_preflight"]
 
-#: Findings about detector gates only.
-_GATE_CODES = {"gate_outside_range", "gate_misses_pulse", "gate_empty"}
+from .setup import GATE_CODES as _GATE_CODES  # noqa: E402 - one definition
+
 #: Findings that may concern gates as much as windows.
 _EITHER_CODES = {"resolution_mismatch", "single_pulse", "unclear"}
 #: Photons the pre-flight reads: the shape of the decays, not the whole file.
