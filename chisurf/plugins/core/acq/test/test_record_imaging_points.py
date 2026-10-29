@@ -166,7 +166,9 @@ def test_a_real_scan_path_fake_tcspc_and_the_pi_simulator(tmp_path):
     model.device = dev
     model._device_form_from_device()
     assert not model.enabled("start")  # a real scan needs the scanner
+    # the fake unit's raster markers are its inputs 1 and 2 (the MT200's are 3 and 4, falling)
     assert model.connect_scanner({"driver": "pi", "address": "sim:",
+                                  "line_markers": {"start": 1, "stop": 2, "edge": "rising"},
                                   "settings": {"learn_s": 0.5}})
     assert model.enabled("start")
     model.set_scan({"pixels_x": 32, "pixels_y": 16, "area_x_um": 3.2, "area_y_um": 1.6,
@@ -198,8 +200,9 @@ def test_a_real_scan_path_fake_tcspc_and_the_pi_simulator(tmp_path):
 
 def test_the_scanner_comes_from_the_settings_file(tmp_path):
     _phacq_with("pi")
-    doc = settings_file.new_settings(name="scan", scanner={"driver": "pi", "address": "sim:",
-                                                           "settings": {"learn_s": 2.0}})
+    doc = settings_file.new_settings(name="scan", scanner={
+        "driver": "pi", "address": "sim:", "settings": {"learn_s": 2.0},
+        "line_markers": {"start": 3, "stop": 4, "edge": "falling"}})
     assert settings_file.validate(doc) == []
     bad = settings_file.new_settings(scanner={"driver": "galvo", "settings": {"learn_s": -1}})
     problems = " ".join(settings_file.validate(bad))
@@ -283,3 +286,28 @@ def test_picking_on_the_image_and_the_screens(tmp_path):
         assert len(model.points) == n - 1
     finally:
         app.close()
+
+
+def test_the_line_markers_come_from_the_settings_file():
+    """Which marker inputs carry the scanner's line triggers is the instrument's cabling: the
+    settings file declares it (the MT200 profiles: 3 and 4, falling), nothing is assumed."""
+    import json
+    from pathlib import Path
+
+    from chisurf.plugins.core.acq.live import settings_file
+    from chisurf.plugins.core.acq.live.scanning import line_markers, scanner_scan
+    from chisurf.plugins.core.acq.live.scanner import ScanSettings
+
+    profiles = Path(settings_file.__file__).resolve().parents[1] / "profiles"
+    for path in sorted(profiles.glob("mt200_*.json")):
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        assert line_markers(doc["scanner"]) == {"start": 3, "stop": 4, "edge": "falling"}
+    scan = scanner_scan(ScanSettings(), {"start": 3, "stop": 4, "edge": "falling"})
+    assert (scan.line_start_marker, scan.line_stop_marker, scan.frame_marker) == (3, 4, 0)
+    for bad in ({}, {"line_markers": {"start": 3, "stop": 3, "edge": "falling"}},
+                {"line_markers": {"start": 3, "stop": 5, "edge": "falling"}},
+                {"line_markers": {"start": 3, "stop": 4, "edge": "both"}}):
+        with pytest.raises(ValueError):
+            line_markers(bad)
+    problems = settings_file.validate({"scanner": {"driver": "pi", "address": ""}})
+    assert any("line_markers" in p for p in problems)

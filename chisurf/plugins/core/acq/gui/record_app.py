@@ -515,15 +515,20 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
             raise SourceUnavailable("; ".join(problems))
         if self.source_kind == "device":
             # the device records the scanner's line markers; the scanner rasters (live.scanning)
-            from chisurf.plugins.core.acq.live.scanning import ScannedSource, scanner_scan
+            from chisurf.plugins.core.acq.live.scanning import (
+                ScannedSource, line_markers, scanner_scan)
 
             if self.device is None:
                 raise SourceUnavailable(tr("Connect the device first."))
             if self.scanner is None:
                 raise SourceUnavailable(tr("Connect the scanner first (a settings file with a "
                                            "scanner section connects it)."))
+            try:
+                markers = line_markers(self.scanner_section)
+            except ValueError as exc:
+                raise SourceUnavailable(str(exc)) from exc
             return ScannedSource(devices.DeviceSource(self.device), self.scanner,
-                                 scanner_scan(scan))
+                                 scanner_scan(scan, markers))
         return ImageSimSource(
             scan, self.imaging_sample(), self.realism(), speed=float(self.speed),
             realtime=self.realtime
@@ -821,10 +826,15 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
         replay = self.source_kind == "replay"
         real = self.source_kind == "device"
         if real:
-            from chisurf.plugins.core.acq.live.scanning import scanner_scan
+            from chisurf.plugins.core.acq.live.scanning import line_markers, scanner_scan
 
-            scan = scanner_scan(scan)
-            note = self._enable_line_markers(scan)
+            try:
+                markers = line_markers(self.scanner_section)
+            except ValueError as exc:
+                self.status_text, self.status_detail = tr("Cannot start"), str(exc)
+                return False
+            scan = scanner_scan(scan, markers)
+            note = self._enable_line_markers(scan, rising=markers["edge"] == "rising")
             if note:
                 self.status_text, self.status_detail = tr("Cannot start"), note
                 return False
@@ -883,18 +893,23 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin):
             stem = f"{name}_{k}"
         return stem
 
-    def _enable_line_markers(self, scan) -> str:
+    def _enable_line_markers(self, scan, rising: bool) -> str:
         """The device's marker inputs of the scan's line markers switched on (a HydraHarp 400
-        starts with every marker input off); a note when the device cannot."""
+        starts with every marker input off), on the edge the settings file declares; a note when
+        the device cannot."""
         values = dict(self.device.settings())
         if "marker_enable" not in values:
             return ""
         bits = (1 << (scan.line_start_marker - 1)) | (1 << (scan.line_stop_marker - 1))
-        wanted = int(values["marker_enable"]) | bits
-        if wanted == int(values["marker_enable"]):
+        change = {"marker_enable": int(values["marker_enable"]) | bits}
+        if "marker_edges" in values:
+            edges = int(values["marker_edges"])
+            change["marker_edges"] = edges | bits if rising else edges & ~bits
+        change = {k: v for k, v in change.items() if int(values[k]) != v}
+        if not change:
             return ""
-        notes = devices.apply_settings(self.device, {"marker_enable": wanted})
-        self.device_values["marker_enable"] = wanted
+        notes = devices.apply_settings(self.device, change)
+        self.device_values.update(change)
         return "; ".join(notes)
 
     def _run_settings(self) -> dict | None:

@@ -33,9 +33,11 @@ PIE setup). The **Scan** section sets pixels, area, the image's corner on the st
   recorded, and the image equals the one the imaging tools build from the file.
 - **TCSPC device and scanner** -- the real instrument: the TCSPC device records while the sample
   scanner rasters. On the MT200 the scanner is the PI E-725 piezo stage, driven through libphacq's
-  `pi` driver as SymPhoTime drives it (learning, then the image); its trigger outputs 1 and 2 mark
-  each line's start and stop on the HydraHarp's marker inputs 1 and 2 (switched on at Start), so the
-  image is built from the photon stream alone. The E-725 sends no frame marker: frames are counted
+  `pi` driver as SymPhoTime drives it (learning, then the image); its line triggers mark
+  each line's start and stop on HydraHarp marker inputs, which Start switches on. Which inputs and
+  which edge is the instrument's cabling, so the settings file's **scanner.line_markers** declares it
+  (the MT200 profiles: start 3, stop 4, falling edge, as SymPhoTime records them); without it an image
+  does not start. So the image is built from the photon stream alone. The E-725 sends no frame marker: frames are counted
   in lines, each frame is one raster. A settings file's **scanner** section names it and loading
   the file connects it (`{"driver": "pi", "address": ""}`: the first E-725 -- on Windows through PI's own USB driver; `tcp:<host>` over
   the network; `sim:` libphacq's simulator); **Scan › Scanner** shows it, its stage position and, in

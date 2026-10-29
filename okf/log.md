@@ -4,6 +4,7 @@
 
 - 2026-10-29: Survey: Scanner learning option (first tile, re-check line triggers by default; first tile only; every tile) -> phacq pi learning 0/1/2; the spiral centre is the last image (the scanner parks at the stage centre).
 - Record provenance: every point PTU names its image (file + dataset uid), pixel and raster, pick (auto: spot finder workflow + settings hash; click), brightness, aimed and reached stage position, survey and tile; tile image PTUs name survey, tile, count, origin and the scanner's learning. In the project each container records it (live/provenance.py): point (point_measurement, image as external reference), molecule (trace_segmentation), the image's points list (point_selection), survey_tile (grouped_in) and survey_tiles; molecule tables index their point/image datasets via lookup lists in the settings. backtrace / points_of / survey_of round-trip, also after save and reopen. mmfdb 2af26ab adds the terms point_list, tile_list, point_selection, point_measurement, trace_segmentation, survey. Containers written as sidecars (no PTU copy).
+- 2026-10-29: Record: the scanner's line markers are declared in the settings file (scanner.line_markers {start, stop, edge}); the MT200 profiles: 3, 4, falling -- measured on the instrument and what SymPhoTime's image PTUs record; a scanner section without them is refused.
 
 ## 2026-10-28
 

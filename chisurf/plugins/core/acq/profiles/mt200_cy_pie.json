@@ -128,6 +128,11 @@
   "scanner": {
     "driver": "pi",
     "address": "",
+    "line_markers": {
+      "start": 3,
+      "stop": 4,
+      "edge": "falling"
+    },
     "note": "The MT200's PI E-725 piezo stage through libphacq's pi driver: \"\" opens the first E-725 (on Windows through PI's own USB driver and GCS library, which the unit stays bound to; on macOS and Linux over libusb); \"sim:\" is the simulator. Learning 5 s and a 20 ms turnaround are SymPhoTime's \"fast\" scans (libphacq docs/pi_e725_scanner.md).",
     "settings": {
       "learn_s": 5.0,

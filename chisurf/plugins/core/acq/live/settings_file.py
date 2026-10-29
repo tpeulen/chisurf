@@ -23,7 +23,9 @@ simulator -- in plain JSON that a person can read and edit::
       "run": {"duration_s": 600, "name": "sample_{date}", "project_data": "link"},
       "scan": {"pixels_x": 64, "pixels_y": 64, "area_x_um": 16, "area_y_um": 16, "dwell_ms": 0.1,
                "frames": 1, "bidirectional": false, "z_planes": 1},
-      "scanner": {"driver": "pi", "address": "", "settings": {"learn_s": 5, "turn_ms": 20}},
+      "scanner": {"driver": "pi", "address": "",
+                  "line_markers": {"start": 3, "stop": 4, "edge": "falling"},
+                  "settings": {"learn_s": 5, "turn_ms": 20}},
       "simulator": {}
     }
 
@@ -197,6 +199,14 @@ def validate(doc: Any) -> list[str]:
             p.append("scanner.address: expected a string (\"\" = the first E-725 on USB)")
         if "settings" in scanner and not isinstance(scanner["settings"], dict):
             p.append("scanner.settings: expected an object {setting: value}")
+        # which TCSPC marker inputs the scanner's line triggers are cabled to, and their edge:
+        # the instrument's, declared here (the MT200: 3 start, 4 stop, falling, as SymPhoTime)
+        from .scanning import line_markers
+
+        try:
+            line_markers(scanner)
+        except ValueError as exc:
+            p.append(str(exc))
         for key, (lo, hi) in (("learn_s", (0, 600)), ("turn_ms", (1, 500)),
                               ("flyback_ms", (5, 2000))):
             value = (scanner.get("settings") or {}).get(key) \

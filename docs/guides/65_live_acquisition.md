@@ -152,11 +152,22 @@ range, and the file's header takes the sync rate measured when it closes.
 
 In **Image** mode Record scans like SymPhoTime does. With the source **TCSPC
 device and scanner** the device records while the scanner rasters: the E-725's
-trigger outputs mark each line's start (output 1) and stop (output 2) on the
-HydraHarp's marker inputs 1 and 2, which Start switches on, so the image is built
-from the photon stream alone and the recording carries SymPhoTime's `ImgHdr_*`
-tags (`ImgHdr_LineStart` 1, `ImgHdr_LineStop` 2, no `ImgHdr_Frame`: the E-725
-sends no frame marker, a frame is its lines). The raster -- pixels, area, the
+line triggers mark each line's start and stop on HydraHarp marker inputs, which
+Start switches on, so the image is built from the photon stream alone and the
+recording carries SymPhoTime's `ImgHdr_*` tags (no `ImgHdr_Frame`: the E-725
+sends no frame marker, a frame is its lines). Which marker inputs and which edge
+is the instrument's cabling, declared in the settings file, never assumed:
+
+```json
+"scanner": {"driver": "pi", "address": "",
+            "line_markers": {"start": 3, "stop": 4, "edge": "falling"},
+            "settings": {"learn_s": 5, "turn_ms": 20}}
+```
+
+The MT200 profiles carry these values -- what SymPhoTime's image files record
+(`ImgHdr_LineStart` 3, `ImgHdr_LineStop` 4, falling edge) and what a phacq
+recording on the instrument showed (one marker 3 and one marker 4 per line). A
+scanner section without `line_markers` is refused. The raster -- pixels, area, the
 corner on the stage, dwell time, frames, bidirectional -- is the **Scan** panel's;
 the scanner's own learning time and line turnaround are in **Scan › Scanner**
 (Advanced). Without hardware the **Simulator (scan)** scans a simulated sample:

@@ -10,7 +10,9 @@ built from that stream alone (:class:`~.imaging.LiveImage`), exactly as from a r
   for seconds), and stops the device once the last frame is done.
 * :func:`open_scanner` -- the scanner a settings file's ``scanner`` section names
   (``{"driver": "pi", "address": ""}``; ``"sim:"`` is libphacq's simulator).
-* :func:`scanner_scan` -- a scan as this scanner runs it (no frame marker; line markers 1 and 2).
+* :func:`line_markers` -- the marker inputs and edge of the scanner's line triggers, as the settings
+  file's ``scanner.line_markers`` declares them (the cabling is the instrument's, not the code's);
+* :func:`scanner_scan` -- a scan as this scanner runs it (no frame marker; the declared line markers).
 """
 
 from __future__ import annotations
@@ -26,12 +28,14 @@ from .sources import PhotonSource
 
 _log = logging.getLogger(__name__)
 
-__all__ = ["SCANNER_DRIVERS", "ScannedSource", "open_scanner", "scanner_scan"]
+__all__ = ["EDGES", "SCANNER_DRIVERS", "ScannedSource", "line_markers", "open_scanner",
+           "scanner_scan"]
+
+#: The edges a line marker may react to.
+EDGES = ("falling", "rising")
 
 #: Scanner drivers a settings file may name.
 SCANNER_DRIVERS = ("pi",)
-#: The E-725's trigger outputs as SymPhoTime cables them: output 1 line start, output 2 line stop.
-PI_LINE_START, PI_LINE_STOP = 1, 2
 #: The scanner's own settings the form shows; the raster itself comes from the Scan panel.
 SCAN_PANEL_KEYS = ("x0_um", "y0_um", "width_um", "pixels_x", "lines", "line_pitch_um", "dwell_ms",
                    "bidirectional", "target_x_um", "target_y_um", "move_to_target")
@@ -60,11 +64,32 @@ def open_scanner(section: dict) -> ScannerBackend:
     return scanner
 
 
-def scanner_scan(scan: ScanSettings) -> ScanSettings:
-    """*scan* as the E-725 runs it: line markers 1 and 2, no frame marker (frames are counted in
-    lines), one plane."""
-    return replace(scan, line_start_marker=PI_LINE_START, line_stop_marker=PI_LINE_STOP,
-                   frame_marker=0, z_planes=1, points=[])
+def line_markers(section: dict | None) -> dict:
+    """The scanner's line markers as the settings file's ``scanner.line_markers`` declares them:
+    ``{"start": n, "stop": n, "edge": "falling" | "rising"}`` (marker inputs 1-4 of the TCSPC
+    unit). Raises ``ValueError`` when the file declares none or a bad one -- which input the
+    scanner's triggers are cabled to is the instrument's, so nothing is assumed."""
+    markers = (section or {}).get("line_markers")
+    if not isinstance(markers, dict):
+        raise ValueError("the settings file's scanner section declares no line_markers "
+                         '(e.g. {"start": 3, "stop": 4, "edge": "falling"})')
+    try:
+        start, stop = int(markers["start"]), int(markers["stop"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("scanner.line_markers: start and stop are marker inputs 1-4") from exc
+    edge = str(markers.get("edge", ""))
+    if not (1 <= start <= 4 and 1 <= stop <= 4) or start == stop:
+        raise ValueError("scanner.line_markers: start and stop are two different inputs 1-4")
+    if edge not in EDGES:
+        raise ValueError(f"scanner.line_markers.edge: one of {EDGES}")
+    return {"start": start, "stop": stop, "edge": edge}
+
+
+def scanner_scan(scan: ScanSettings, markers: dict) -> ScanSettings:
+    """*scan* as the E-725 runs it: the line markers *markers* declares (:func:`line_markers`),
+    no frame marker (frames are counted in lines), one plane."""
+    return replace(scan, line_start_marker=int(markers["start"]),
+                   line_stop_marker=int(markers["stop"]), frame_marker=0, z_planes=1, points=[])
 
 
 class ScannedSource(PhotonSource):
