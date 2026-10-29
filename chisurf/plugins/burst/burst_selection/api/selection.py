@@ -635,6 +635,11 @@ def analyze_file(
             output_paths={},
             output_paths_by_file={normalized_path: {}},
         )
+    # The shared pre-flight of every PIE analysis: do the windows hold the excitation pulses
+    # this measurement shows? Reported, never corrected here -- the user decides.
+    from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
+
+    window_warning = windows_message(windows_preflight(tttr, windows, detectors=detectors))
     selected = apply_photon_filters(
         tttr,
         analysis_settings.photon_filter,
@@ -732,6 +737,7 @@ def analyze_file(
         },
         output_paths=output_paths,
         output_paths_by_file={normalized_path: dict(output_paths)},
+        warnings=[f"{Path(path).name}: {window_warning}"] if window_warning else [],
     )
 
 
@@ -799,6 +805,7 @@ def analyze_request(
     )
     batch_macro_time_resolution: float | None = None
     total_files = len(request.files)
+    warnings: list[str] = []
 
     for file_index, path in enumerate(request.files):
         result = analyze_file(
@@ -840,6 +847,7 @@ def analyze_request(
             analysis_path = f"{container}/{run}" if run else container
             output_paths.setdefault("output_folder", analysis_path)
             output_paths_by_file.setdefault(str(path), {})["output_folder"] = analysis_path
+        warnings.extend(result.warnings or [])
         metadata["n_bursts"] += int(result.metadata.get("n_bursts", 0))
         metadata["n_selected"] += int(result.metadata.get("n_selected", 0))
         metadata["n_photons"] += int(result.metadata.get("n_photons", 0))
@@ -864,4 +872,5 @@ def analyze_request(
         output_paths=output_paths,
         output_paths_by_file=output_paths_by_file,
         metadata=metadata,
+        warnings=warnings,
     )
