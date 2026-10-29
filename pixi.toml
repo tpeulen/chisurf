@@ -332,8 +332,7 @@ PATH = "%VCPKG_INSTALLATION_ROOT%\\installed\\x64-windows\\bin;%PATH%"
      "build_tools/build_tttrlib.py",
      "modules/tttrlib/pyproject.toml",
      "modules/tttrlib/CMakeLists.txt",
-     "modules/tttrlib/src/**",
-     "modules/tttrlib/include/**",
+     "modules/tttrlib/modules/**",
      "modules/tttrlib/ext/**",
  ] }
      build-extensions = { depends-on = [
