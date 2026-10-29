@@ -6,13 +6,40 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## `from_setup` reads `tttr_reading.micro_time_resolution` as ns; the setup editor writes ps (found 2026-10-29)
 
-status: open — owner: tttrlib streaming (`modules/streaming/include/Streaming.i:367`) and the
+status: **resolved 2026-10-29** — tttrlib e44ba1f23 (`from_setup` reads ps, with
+`micro_time_resolution_unit` for ns/s), then 2634e77b7 (the reading lives in `ChannelSetup.py`,
+`setup_micro_time_resolution`); Record's stand-in copy of the analyzer was deleted (ef1833c40). Was: owner: tttrlib streaming (`modules/streaming/include/Streaming.i:367`) and the
 Record stand-in `chisurf/plugins/core/acq/live/analyzer.py` (`from_setup`), which copies it.
 When `micro_time_resolution` is not passed, both multiply the setup's value by 1e-9, while the
 setup editor (`core/setup_channel_definition.read_tttr`) stores picoseconds (`* 1e12`): a 50 ps
 setup becomes 50 ns channels. Record always passes the device resolution, so the live run is
 unaffected; the window check (`chisurf.core.fluorescence.excitation.setup_window_resolution_s`)
 reads ps. Fix in tttrlib (ps, as the editor writes) and mirror it in the stand-in.
+
+## Tools that apply setup windows as raw channels ignore the setup's channel width (found 2026-10-29)
+
+status: open — owner: each tool. Count rate (`tttr_count_rate_analysis`), the image browser,
+burst selection, BID→Analysis and burst fusion apply `windows` / `micro_time_ranges` as channel
+numbers of the measurement whatever `tttr_reading.micro_time_resolution` says; only Record
+converts (`convert_setup_windows`). Their pre-flight therefore checks the ranges unconverted (what
+is really counted) and *Use detected windows* writes the data's channel width. Converting in the
+tools would make a 50 ps setup work on 32 ps data without a prompt -- a behaviour change, not done.
+
+## Test noise seen while wiring the window pre-flight (found 2026-10-29)
+
+status: open — not caused by it: `bid_to_analysis/test/test_native.py::test_native_conversion_outputs_and_original_provenance`
+failed once in a long combined run and passes alone; `test/native_emtk/test_burst_fusion_window_contract.py::test_real_fragment_demo_worker_maps_and_curves_survive_views`
+is stopped by resource_guard at ~4.2 GB (also with the check disabled); `test_i18n_extraction`
+lacks de/fr catalogue sources for the new view.json/help strings (the `.ts` files were out of this
+lane's scope); `test_package_data_covers_shipped_files::test_the_known_uncovered_list_does_not_rot`
+(`.icns`/`.ico`/`.ini` no longer gaps).
+
+## `TTTRMask.select_microtime_ranges` dropped the first channel of every range (found 2026-10-29)
+
+status: **resolved 2026-10-29** — tttrlib 2634e77b7: ranges were open at both ends (`(2, 5)` kept 3,
+4); half-open now (2, 3, 4). Callers whose counts move by one channel at a range start: burst
+selection's photon filter (`api/selection.py`), the FCS correlator (`correlator_model.py`,
+`filter_model.py`).
 
 ## Two burst-run naming tests red with the uncommitted burst_container change in the tree (found 2026-10-29)
 
@@ -2618,11 +2645,12 @@ window/calibration deliverable; preserve physical shift units and sign.
 
 status: open
 
-Burst-table detector counts explicitly use half-open windows in
-core/fio/fluorescence/burst.py::_micro_time_mask. Burst FCS now reuses that
-contract. StreamDef assignment in core/fluorescence/burst/photons.py includes
-both endpoints, while legacy full-stream FCS calls the SDK's intentionally
-open-endpoint TTTRMask API. The bounded Burst FCS repair does not prove these
+Burst-table detector counts explicitly use half-open windows
+(`tttrlib.micro_time_mask`, since 2026-10-29; was `burst.py::_micro_time_mask`). Burst FCS reuses
+that contract. StreamDef assignment in core/fluorescence/burst/photons.py includes both
+endpoints (inclusive, converted from setup gates with `tttrlib.ranges_to_inclusive`); legacy
+full-stream FCS calls TTTRMask, which was open at both ends and is half-open since tttrlib
+2634e77b7. The bounded Burst FCS repair does not prove these
 other paths agree. Cross-analysis comparisons at an exact boundary require
 an explicit convention audit and independent photon-count regressions in their
 owning paths before changing them; do not globally change the SDK mask or

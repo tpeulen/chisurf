@@ -92,17 +92,25 @@ are phases of the period in macro-time ticks; ``prompt`` is the donor laser.
 | one window holds two pulses (its photons mix the excitations) | warning |
 | ``prompt`` holds the acceptor's pulse and ``delayed`` the donor's | warning |
 | a window holds < 0.5 % of the photons | warning |
+| µs-ALEX windows made for another alternation period (off by > 0.5 %) | warning |
+| a detector's micro-time gate starts beyond the data (the detector sees nothing) | error |
+| a detector's gate hides a pulse that detector sees | warning |
+| a detector's gate holds < 5 % of its photons | warning |
 | one pulse / unclear: nothing checked against pulses | info |
 
 A warning or an error is a **mismatch**; the check then offers the detected windows (or, when
-only the channel width was off, the converted ones). It never applies them: the user decides.
+only the channel width was off, the converted ones) and, for a detector whose gate is broken, the
+whole range as its gate. It never applies them: the user decides (`apply_check` writes windows,
+gates and their channel width into a setup).
 
 ## 4. Windows carry their channel width
 
-A setup's windows are raw micro-time channels of the resolution in its
-``tttr_reading.micro_time_resolution`` (ps). The same nanoseconds are a different number of
+A setup's windows **and its detectors' micro-time gates** (``micro_time_ranges``) are raw
+micro-time channels of the resolution in its ``tttr_reading.micro_time_resolution`` — in
+**picoseconds**, as the setup editor writes it (tttrlib's `StreamingBurstAnalyzer.from_setup`
+reads it in ps too; ``micro_time_resolution_unit: "ns"`` marks a setup written in ns). The same nanoseconds are a different number of
 channels at another resolution or binning, so every consumer converts
-(`rescale_windows`) instead of applying another instrument's channel numbers: a window
+(`tttrlib.rescale_micro_time_ranges`) instead of applying another instrument's channel numbers: a window
 ``[0, 2048)`` of 50 ps channels is ``[0, 3200)`` of 32 ps channels. Detected windows are stored
 with the resolution they were found at.
 
@@ -112,6 +120,14 @@ delayed 2048–4095). Unconverted, the windows cut the 3125 channels in the wron
 Decays dock also drew its 1024-bin decay against bin numbers while the windows were in channels,
 so window edges and pulses could not be compared by eye.
 
+**Where it lives.** Reading a setup -- detectors, gates, windows, their channel width, the window x
+detector stream map, the half-open/inclusive range dialects, rescaling, the photon mask -- is
+tttrlib's (`tttrlib.setup_detectors`, `setup_gates`, `setup_micro_time_resolution`,
+`setup_channel_map`, `ranges_to_inclusive`, `rescale_micro_time_ranges`, `micro_time_mask`): one
+reader for tttrlib's `StreamingBurstAnalyzer.from_setup`, ChiSurf and ndXplorer. The pulse and
+ALEX detection and the check are ChiSurf's (`chisurf.core.fluorescence.excitation`), used by every
+tool through one pre-flight.
+
 ## 5. Assumptions and limits
 
 * Pulses are separated by more than 1.5 ns and the IRF rises within a few coarse bins.
@@ -119,7 +135,8 @@ so window edges and pulses could not be compared by eye.
 * Detector roles need two detectors with one dark under some pulse. With one detector, or no
   acceptor in the sample, which pulse excites the donor is unknown: ``prompt`` is the first.
 * µs-ALEX needs enough alternation cycles and two detection bands; periods outside 2 µs–2 ms are
-  not searched. In the Record tool the live check covers the micro time only.
+  not searched. In the Record tool a µs-ALEX run keeps its first 2 M photons' macro times for the
+  live check; a source that cannot provide them gets an info line instead.
 * Very low count rates: below 1000 photons nothing is decided; the Record tool waits for 5000
   photons and looks again whenever the count has doubled.
 

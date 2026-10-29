@@ -19,7 +19,7 @@ the user decides.
 ## 1. Check a setup against a measurement (Excitation Windows)
 
 Open **Setup › Excitation Windows**. Pick the measurement in the workspace list (drop a TTTR file
-on ChiSurf to add it) — or press **Example** for a simulated PIE measurement whose answer is
+on ChiSurf to add it) — or press **Load example** for a simulated PIE measurement whose answer is
 known — and, above it, the detector setup to check.
 
 ```{figure} figures/115_excitation_windows_check.png
@@ -67,8 +67,23 @@ pulse seen — donor-only or not PIE; windows not checked*. The **Decays** dock 
 over micro-time channels with the run's window edges and, on a mismatch, the detected ones in
 orange.
 
-A setup whose windows were defined at another channel width (its *Microtime res.*) has them
-converted to the device's channels when the run starts — the setup summary says so.
+A setup whose windows were defined at another channel width (its *Microtime res.*) has them —
+and its detectors' micro-time gates — converted to the device's channels when the run starts; the
+setup summary says so. The detector gates are checked with the windows: a gate that hides a pulse
+its detector sees is reported and *Update windows* opens it to the whole range.
+
+A **µs-ALEX** run keeps its first photons' macro times; the alternation period and the laser
+windows are detected from them and held against the run's (*Alternation period* and the two
+halves, or windows taken earlier). *Update windows* takes the detected period and windows. Where
+the source cannot provide the macro times the panel says *ALEX windows not checked live; checked
+when the run is analysed*.
+
+```{figure} figures/115_excitation_windows_record_alex.png
+:width: 100%
+
+A µs-ALEX stream alternating every 100 µs, recorded with *Alternation period* 60 µs: the
+warning names both periods and offers the detected period and laser windows.
+```
 
 ```{figure} figures/115_excitation_windows_record.png
 :width: 100%
@@ -96,7 +111,31 @@ Burst selection on the demo with the SPC-130 setup: the warning under the micro-
 choice, with the detected windows on offer.
 ```
 
-## 5. Headless: `csc windows`
+## 5. Every other tool that uses windows or detector gates
+
+All of them run the same pre-flight (`windows_preflight`) on the measurement they open and say
+it the same way: one line in the tool's status / warnings / CLI stderr, and — where the tool holds
+the setup and its result does not already depend on the ranges — **Use detected windows**, which
+takes the detected windows and opens a detector gate that sees none of its pulses. A gate that
+keeps one excitation on purpose (BVA's acceptor gated to the prompt pulse, PIE's red/yellow split
+of one detector) is fine.
+
+| Tool | What is checked | Offer |
+|---|---|---|
+| Burst selection | windows + gates of the previewed / every searched file | yes |
+| Burst fusion, BID → Analysis | windows + gates of each measurement | yes |
+| BVA, 2CDE, burst workflow, H2MM | the streams' micro-time ranges | BVA, H2MM windows |
+| MFD Prepare | the gates the bursts were selected with | report only (the bursts depend on them) |
+| Background estimate | its gate masks (when asked for warnings) | — |
+| Count rate, image browser, trace browser | windows / detector gates of the file shown | yes |
+| Pixel tools (intensity, micro time, phasor, N&B), colocalisation, FRC, ICS | detector gates of the image stream | yes |
+| PDA (three colours) | the excitation periods per colour | yes |
+| fret_check, ALEX Suite / Creator | their own detection is this one | — |
+
+Not window consumers: two-colour PDA (channels only), PDA's time windows (photons/duration),
+img_calibration (full micro time), ndXplorer (reads `.bur` columns, not photons).
+
+## 6. Headless: `csc windows`
 
 ```bash
 csc windows detect run.ptu                 # kind, windows in channels and ns, notes
@@ -108,7 +147,7 @@ csc windows check run.ptu --setup my.setup.json --write fixed.setup.json
 RPC: `excitation_windows.detect` (`path`, `setup`, `kind`) and `excitation_windows.check`
 (`path`, `setup`).
 
-## 6. Python
+## 7. Python
 
 ```python
 from chisurf.core.fluorescence.excitation import (
@@ -122,6 +161,11 @@ report.mismatch, report.summary, report.proposal
 
 # from histograms you already have (one per detector)
 det = detect_pie_windows({"green": h_green, "red": h_red}, resolution_s=32e-12)
+
+# reading a setup is tttrlib's
+import tttrlib
+tttrlib.setup_windows(setup), tttrlib.setup_gates(setup), tttrlib.setup_micro_time_resolution(setup)
+tttrlib.rescale_micro_time_ranges(setup["windows"], 50e-12, 32e-12)   # another TAC / binning
 
 # what an analysis runs before it uses windows
 print(windows_message(windows_preflight(tttr, setup["windows"], detectors=setup["detectors"])))
