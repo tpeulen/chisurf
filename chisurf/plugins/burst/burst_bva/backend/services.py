@@ -74,6 +74,7 @@ def compute_bva_handler(
     """Run BVA analysis from explicit parameters or a workflow handoff."""
     try:
         from ..core.computation import compute_bva, read_burst_analysis, write_bva_container
+        from ..core.windows import window_warnings
 
         resolved_folder = _resolve_analysis_folder(
             analysis_folder=analysis_folder,
@@ -96,6 +97,8 @@ def compute_bva_handler(
             number_of_photons_per_slice=bva_settings.number_of_photons_per_slice,
         )
 
+        warnings = window_warnings(tttrs, _preflight_detectors(bva_settings, workflow_context))
+
         output_paths: dict[str, str] = {}
         if write_output:
             containers = write_bva_container(
@@ -112,6 +115,7 @@ def compute_bva_handler(
             n_bursts_valid=valid,
             output_paths=output_paths,
             settings_applied=asdict(bva_settings),
+            warnings=warnings,
         )
         payload = to_jsonable(result)
         payload["analysis_folder"] = str(resolved_folder)
@@ -185,6 +189,24 @@ def _settings_from_workflow(
     if tttr_reading.get("file_type"):
         kwargs["file_type"] = str(tttr_reading["file_type"])
     return BvaSettings(**kwargs)
+
+
+def _preflight_detectors(cfg: BvaSettings, workflow_context: dict[str, Any] | None) -> dict:
+    """The donor and acceptor streams BVA applies, with the workflow setup's detectors that share
+    their routing channels (the setup's first two detectors are the pair, as in
+    :func:`_settings_from_workflow`)."""
+    from ..core.windows import preflight_detectors
+
+    detectors = ((workflow_context or {}).get("channel_settings") or {}).get("detectors") or {}
+    names = list(detectors)[:2]
+    donor, acceptor = (names + ["donor", "acceptor"][len(names):])[:2]
+    return preflight_detectors(
+        {
+            donor: (cfg.donor_channels, cfg.donor_micro_time_ranges),
+            acceptor: (cfg.acceptor_channels, cfg.acceptor_micro_time_ranges),
+        },
+        detectors,
+    )
 
 
 def _ranges(value: Any) -> list[tuple[int, int]]:

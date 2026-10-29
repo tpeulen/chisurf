@@ -38,6 +38,8 @@ from chisurf.plugins.emtk_layout import (
 from .view_model import BvaViewModel
 
 PLUGIN = Path(__file__).resolve().parents[1]
+#: The excitation-window check under the Input section (an AutoForm spec of its own).
+CHECK_SPEC = Path(__file__).resolve().with_name("windows_check.view.json")
 
 __all__ = ["BurstBvaApp", "BurstBvaGui", "WINDOW_BG", "receive_bursts"]
 
@@ -149,6 +151,9 @@ class BurstBvaGui:
         self.input_spec = _input_spec()
         self.input_form = FormState(on_used=self.track)
         self._microtime_text: dict[str, str] = {}
+        #: The excitation-window check under the Input section (declared in windows_check.view.json).
+        self.check_sections = json.loads(CHECK_SPEC.read_text(encoding="utf-8"))["sections"]
+        self.check_form = FormState(on_used=self.track)
         #: The shared detector editor (``chisurf.emtk.channel_definition``) and the detectors picked from it.
         self.editor: Any = None
         self.donor_detector = ""
@@ -283,6 +288,8 @@ class BurstBvaGui:
     def _assign_pair(self, settings: dict) -> None:
         """Take the picked detectors' channels and micro-time gates, and the file type, into the model."""
         detectors = (settings or {}).get("detectors") or {}
+        self.model.setup_detectors = {str(k): dict(v) for k, v in detectors.items()}
+        self.model.pair_names = (self.donor_detector or "donor", self.acceptor_detector or "acceptor")
         for role, name in (("donor", self.donor_detector), ("acceptor", self.acceptor_detector)):
             det = detectors.get(name)
             if det is None:
@@ -322,6 +329,7 @@ class BurstBvaGui:
             im.spacing()
             self._draw_input()
             im.spacing()
+            self._draw_windows_check()
 
             # The settings tabs scroll inside the pane: an emtk window has no scrollbar, and the channel
             # and detector editors are taller than the window.
@@ -684,6 +692,14 @@ class BurstBvaGui:
         self.remember("file_type")
         if changed:
             self.model.set_file_type(ft)
+
+    def _draw_windows_check(self) -> None:
+        """The shared excitation-window pre-flight of the last run: its line and the offer."""
+        if self.model.windows_check_quiet:
+            return
+        draw_sections(self.check_sections, self.model, self.check_form)
+        self.remember("windows_check")
+        im.spacing()
 
     def _draw_status(self) -> None:
         """Status readout."""

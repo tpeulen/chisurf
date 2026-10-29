@@ -90,6 +90,19 @@ def compute(
         kernel=settings.kernel,
         variant=settings.variant,
     )
+    from chisurf.plugins.burst.burst_2cde.core.computation import applied_streams
+    from chisurf.plugins.burst.burst_bva.core.windows import stream_detectors, window_warnings
+
+    streams = applied_streams(
+        variant,
+        settings.donor_channels,
+        settings.donor_micro_time_ranges,
+        settings.acceptor_channels,
+        settings.acceptor_micro_time_ranges,
+    )
+    for line in window_warnings(tttrs, stream_detectors(streams)):
+        click.echo(f"warning: {line}", err=True)
+
     column = column_for_variant(variant)
     valid = int(np.isfinite(numeric_column(df_v, column)).sum())
     click.echo(f"Valid bursts: {valid} / {row_count(df_v)} total")

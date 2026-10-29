@@ -14,15 +14,23 @@ import numpy as np
 
 from chisurf.core.datastore import numeric_column, row_count
 from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
 from chisurf.core.runtime import analysis_cache
 from chisurf.plugins.burst.burst_bva.core import computation as core
+from chisurf.plugins.burst.burst_bva.core import windows
 
 ALGORITHM_VERSION = 1
 logger = logging.getLogger(__name__)
 
 
-class BvaViewModel:
-    """Toolkit-free view model for BVA analysis."""
+class BvaViewModel(WindowsPreflightMixin):
+    """Toolkit-free view model for BVA analysis.
+
+    The excitation-window pre-flight (:class:`WindowsPreflightMixin`) holds the donor and acceptor
+    micro-time ranges against the excitation pulses of the measurements each run reads; *Use
+    detected windows* takes the detected gates into the ranges (the burst table does not depend
+    on them, so the next run reproduces the analysis with them).
+    """
 
     def __init__(self) -> None:
         self.data_folder: pathlib.Path | None = None
@@ -42,6 +50,16 @@ class BvaViewModel:
         self.acceptor_channels_text: str = "1,9"
         self.donor_micro_time_ranges: list[tuple[int, int]] = [(0, 32768)]
         self.acceptor_micro_time_ranges: list[tuple[int, int]] = [(0, 32768)]
+        #: The setup the pair was picked from (``{name: {chs, micro_time_ranges}}``) and the names
+        #: of the donor and acceptor detectors in it: its detectors on the same routing channels
+        #: are checked with the pair (PIE's prompt/delayed split of one detector).
+        self.setup_detectors: dict[str, dict] = {}
+        self.pair_names: tuple[str, str] = ("donor", "acceptor")
+
+        # The excitation-window pre-flight of the last run (one line per measurement).
+        self.windows_check = None
+        self.windows_warnings: list[str] = []
+        self._checked: tuple[str, dict] | None = None
 
         # State and results
         self.df: Any | None = None
@@ -102,6 +120,7 @@ class BvaViewModel:
         folder change, the next run computed the new folder's BVA on the old bursts.
         """
         self.burst_df = self.tttrs = self.df = None
+        self.windows_check, self.windows_warnings, self._checked = None, [], None
 
     def set_folder(self, folder: str | pathlib.Path | None) -> None:
         if folder is None or not str(folder).strip():
@@ -120,6 +139,14 @@ class BvaViewModel:
 
         settings = dict(settings or {})
         found = fret_detectors(settings)
+        detectors = dict(settings.get("detectors") or {})
+        self.setup_detectors = {str(k): dict(v) for k, v in detectors.items() if isinstance(v, dict)}
+        names = list(self.pair_names)
+        for i, role in enumerate(("donor", "acceptor")):
+            if role in found:
+                names[i] = next((n for n, d in self.setup_detectors.items() if d == found[role]),
+                                names[i])
+        self.pair_names = (names[0], names[1])
         for role in ("donor", "acceptor"):
             if role in found:
                 d = found[role]
@@ -147,6 +174,61 @@ class BvaViewModel:
             "number_of_photons_per_slice": int(self.photons_per_slice),
             "file_type": self.file_type.strip(),
         }
+
+    # -- the excitation windows against the data (the shared pre-flight) ---------------------- #
+    def preflight_setup(self) -> dict:
+        """The detectors BVA applies: the donor and acceptor streams as setup gates, with the
+        setup's detectors that share their routing channels."""
+        donor, acceptor = self.pair_names
+        return {
+            "detectors": windows.preflight_detectors(
+                {
+                    donor: (self.donor_channels, self.donor_micro_time_ranges),
+                    acceptor: (self.acceptor_channels, self.acceptor_micro_time_ranges),
+                },
+                self.setup_detectors,
+            )
+        }
+
+    def take_preflight_setup(self, setup: dict) -> None:
+        """The user took the detected gates: they become the donor and acceptor ranges of the
+        next run (inclusive, as BVA applies them)."""
+        detectors = setup.get("detectors") or {}
+        for role, name in zip(("donor", "acceptor"), self.pair_names):
+            gates = (detectors.get(name) or {}).get("micro_time_ranges")
+            if gates:
+                setattr(self, f"{role}_micro_time_ranges", windows.from_setup_gates(gates))
+        self.windows_warnings, self._checked = [], None
+        self.status_text = "Micro-time ranges from the data: " + "; ".join(
+            f"{role} " + ", ".join(f"{lo}:{hi}" for lo, hi in getattr(self, f"{role}_micro_time_ranges"))
+            for role in ("donor", "acceptor")
+        ) + "."
+        self.notify("channel")
+
+    def check_windows(self, tttrs: Any) -> tuple[str, dict]:
+        """The pre-flight of the current ranges on every measurement in *tttrs*: ``(key,
+        checks)`` for :meth:`set_window_checks` (not repeated while the ranges are unchanged)."""
+        detectors = self.preflight_setup()["detectors"]
+        key = repr(sorted(detectors.items()))
+        if self._checked is not None and self._checked[0] == key:
+            return self._checked
+        return key, windows.window_checks(dict(tttrs or {}), detectors)
+
+    def set_window_checks(self, checked: tuple[str, dict] | None) -> None:
+        """Show *checked*: the first measurement whose ranges do not match (else the first note)."""
+        self._checked = checked
+        checks = dict((checked or ("", {}))[1])
+        detectors = self.preflight_setup()["detectors"]
+        self.windows_warnings = windows.window_warnings({}, detectors, checks=checks)
+        found = [c for c in checks.values() if c is not None]
+        self.windows_check = next((c for c in found if c.mismatch), next(iter(found), None))
+
+    def windows_check_text(self) -> str:
+        """The verdict line, naming the measurement when several were read."""
+        if not self.windows_warnings:
+            return super().windows_check_text()
+        more = len(self.windows_warnings) - 1
+        return self.windows_warnings[0] + (f" (+{more} more measurement(s))" if more > 0 else "")
 
     def fingerprint_params(self, settings: dict[str, Any]) -> dict[str, Any]:
         params = dict(settings)
@@ -179,6 +261,8 @@ class BvaViewModel:
         x, _ = self.valid_bursts(df_v)
         total = row_count(df_v)
         self.status_text = f"Done – {x.size} bursts with Std > 0 on {total} total"
+        if self.windows_warnings:
+            self.status_text += " – see the excitation-window check above"
         self.notify("result")
 
     @staticmethod

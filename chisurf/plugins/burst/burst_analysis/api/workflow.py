@@ -232,10 +232,14 @@ class Bva:
         Per-burst table with ``Proximity Ratio Mean`` / ``Proximity Ratio Std``.
     photons_per_slice : int
         Photons per sub-burst slice used for the shot-noise static line.
+    warnings : list of str
+        The excitation-window pre-flight of the donor and acceptor micro-time ranges: one line
+        per measurement whose ranges do not hold its excitation pulses.
     """
 
     table: Any
     photons_per_slice: int
+    warnings: list[str] = field(default_factory=list)
 
     @property
     def mean_proximity_ratio(self) -> float:
@@ -298,10 +302,13 @@ class TwoCde:
         Per-burst table with a ``FRET-2CDE`` or ``ALEX-2CDE`` column.
     variant : str
         ``"fret"`` or ``"alex"``.
+    warnings : list of str
+        The excitation-window pre-flight of the two streams' micro-time ranges.
     """
 
     table: Any
     variant: str = "fret"
+    warnings: list[str] = field(default_factory=list)
 
     @property
     def column(self) -> str:
@@ -450,6 +457,8 @@ class H2mm:
         Compute engine and model-selection criterion used.
     analysis : object
         The full underlying :class:`H2mmAnalysis` for advanced use.
+    warnings : list of str
+        The excitation-window pre-flight of the detectors' micro-time gates (the streams).
     """
 
     fret: np.ndarray
@@ -458,6 +467,7 @@ class H2mm:
     engine: str
     criterion: str
     analysis: Any
+    warnings: list[str] = field(default_factory=list)
 
     @property
     def scan(self):
@@ -661,6 +671,41 @@ class Bursts:
     setup: Setup
     _tttrs: dict[str, Any] = field(repr=False, default_factory=dict)
     _search: dict[str, Any] = field(repr=False, default_factory=dict)
+    _window_checks: dict[Any, list[str]] = field(repr=False, default_factory=dict)
+
+    def window_warnings(self, streams: dict[str, tuple[Sequence[int], Sequence]]) -> list[str]:
+        """The excitation-window pre-flight of the micro-time ranges an analysis applies.
+
+        Parameters
+        ----------
+        streams : dict
+            ``{detector name: (routing channels, inclusive micro-time ranges)}`` -- the streams
+            the analysis splits the photons into. The setup's other detectors on the same
+            routing channels are checked with them (PIE's prompt/delayed split of one
+            detector). Checked once per stream set; ungated streams are not checked.
+
+        Returns
+        -------
+        list of str
+            One line per measurement whose ranges do not hold its excitation pulses.
+        """
+        from chisurf.plugins.burst.burst_bva.core.windows import (
+            preflight_detectors,
+            to_setup_gates,
+            window_warnings,
+        )
+
+        detectors = preflight_detectors(
+            streams,
+            {
+                name: {**d, "micro_time_ranges": to_setup_gates(d["micro_time_ranges"])}
+                for name, d in self.setup.summary_detectors().items()
+            },
+        )
+        key = repr(sorted(detectors.items()))
+        if key not in self._window_checks:
+            self._window_checks[key] = window_warnings(self._tttrs, detectors)
+        return list(self._window_checks[key])
 
     def irf_background(
         self,
@@ -775,7 +820,13 @@ class Bursts:
             acceptor_micro_time_ranges=a.bva_ranges(),
             number_of_photons_per_slice=photons_per_slice,
         )
-        return Bva(table=table, photons_per_slice=photons_per_slice)
+        warnings = self.window_warnings(
+            {
+                donor_name: (d.routing_channels, d.bva_ranges()),
+                acceptor_name: (a.routing_channels, a.bva_ranges()),
+            }
+        )
+        return Bva(table=table, photons_per_slice=photons_per_slice, warnings=warnings)
 
     def two_cde(
         self,
@@ -825,7 +876,21 @@ class Bursts:
             kernel=kernel,
             variant=variant,
         )
-        return TwoCde(table=table, variant=variant)
+        from chisurf.plugins.burst.burst_2cde.core.computation import applied_streams
+
+        streams = applied_streams(
+            variant,
+            d.routing_channels,
+            d.bva_ranges(),
+            a.routing_channels,
+            a.bva_ranges(),
+            list(aex.routing_channels) if aex else None,
+            aex.bva_ranges() if aex else None,
+            names=(donor_name, acceptor_name),
+        )
+        if aex is not None and "acceptor excitation" in streams:  # the setup's own name
+            streams[aex.name] = streams.pop("acceptor excitation")
+        return TwoCde(table=table, variant=variant, warnings=self.window_warnings(streams))
 
     def recurrence(
         self,
@@ -940,6 +1005,9 @@ class Bursts:
             engine=engine,
             criterion=criterion,
             analysis=result,
+            warnings=self.window_warnings(
+                {d.name: (d.routing_channels, d.microtime_ranges) for d in self.setup.detectors}
+            ),
         )
 
 

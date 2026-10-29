@@ -124,6 +124,7 @@ class BvaController:
         ):  # read once; reused until the folder or file type changes
             burst_df, tttrs = core.read_burst_analysis(folder, file_type, pattern="bi4_bur")
         self.set_value(0)
+        checked = self.model.check_windows(tttrs)  # the ranges against the excitation pulses
         result = core.compute_bva(burst_df, tttrs, **settings, progress_window=self)
         self.set_value(0)
         note = ""
@@ -149,7 +150,7 @@ class BvaController:
                 outputs=[Path(p) for p in written],
                 tool="bva",
             )
-        return burst_df, tttrs, result, note
+        return burst_df, tttrs, result, note, checked
 
     def stop(self):
         """Cancel the running computation; it will not start by itself again."""
@@ -164,8 +165,9 @@ class BvaController:
             return
         future, self._future = self._future, None
         try:
-            burst_df, tttrs, result, note = future.result()
+            burst_df, tttrs, result, note, checked = future.result()
             self.set_value(0)
+            self.model.set_window_checks(checked)
             self.model.set_result(burst_df, tttrs, result)
             self.model.status_text += note
             self._cache.remember(self._fingerprint)

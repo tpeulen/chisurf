@@ -55,6 +55,38 @@ def column_for_variant(variant: str) -> str:
 # layout: First File / First Photon / Last Photon columns).
 
 
+def applied_streams(
+    variant: str,
+    donor_channels: Sequence[int],
+    donor_micro_time_ranges: Sequence[tuple[int, int]],
+    acceptor_channels: Sequence[int],
+    acceptor_micro_time_ranges: Sequence[tuple[int, int]],
+    acceptor_excitation_channels: Sequence[int] | None = None,
+    acceptor_excitation_micro_time_ranges: Sequence[tuple[int, int]] | None = None,
+    names: Sequence[str] = ("donor", "acceptor"),
+) -> dict[str, tuple[list[int], list[tuple[int, int]]]]:
+    """The two streams :func:`compute_2cde` splits the photons into, ``{name: (channels,
+    inclusive ranges)}`` -- what the excitation-window pre-flight checks.
+
+    FRET-2CDE reads the donor and the acceptor stream; ALEX-2CDE the donor-excitation stream (the
+    donor arguments) and the acceptor-excitation stream (the acceptor-excitation arguments, or the
+    acceptor ones when they are ``None``). *names* name the donor and acceptor stream (the setup's
+    detector names when the streams came from one).
+    """
+    donor, acceptor = list(names)[:2]
+    streams = {donor: (list(donor_channels), _to_pairs(donor_micro_time_ranges))}
+    if variant == "alex":
+        chs = acceptor_channels if acceptor_excitation_channels is None else (
+            acceptor_excitation_channels)
+        mtr = acceptor_micro_time_ranges if acceptor_excitation_micro_time_ranges is None else (
+            acceptor_excitation_micro_time_ranges)
+        name = acceptor if acceptor_excitation_channels is None else "acceptor excitation"
+        streams[name] = (list(chs), _to_pairs(mtr))
+    else:
+        streams[acceptor] = (list(acceptor_channels), _to_pairs(acceptor_micro_time_ranges))
+    return streams
+
+
 def _to_pairs(ranges) -> list[tuple[int, int]]:
     return [(int(a), int(b)) for a, b in ranges]
 

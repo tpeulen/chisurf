@@ -62,6 +62,9 @@ class TwoCdeResult:
         Paths written by the analysis.
     settings_applied : dict
         The settings that were used.
+    warnings : list of str
+        The excitation-window pre-flight: one line per measurement whose micro-time ranges do
+        not hold its excitation pulses (empty when they do, or nothing is gated).
     """
 
     files: list[str]
@@ -69,6 +72,7 @@ class TwoCdeResult:
     n_bursts_valid: int = 0
     output_paths: dict[str, str] = field(default_factory=dict)
     settings_applied: dict[str, Any] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

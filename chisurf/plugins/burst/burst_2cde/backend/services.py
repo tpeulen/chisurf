@@ -104,6 +104,8 @@ def compute_2cde_handler(
             variant=cfg.variant,
         )
 
+        warnings = _window_warnings(tttrs, cfg, workflow_context)
+
         column = column_for_variant(cfg.variant)
         output_paths: dict[str, str] = {}
         if write_output:
@@ -122,6 +124,7 @@ def compute_2cde_handler(
             n_bursts_valid=valid,
             output_paths=output_paths,
             settings_applied=asdict(cfg),
+            warnings=warnings,
         )
         payload = to_jsonable(result)
         payload["analysis_folder"] = str(resolved_folder)
@@ -194,6 +197,29 @@ def _settings_from_workflow(
     if tttr_reading.get("file_type"):
         kwargs["file_type"] = str(tttr_reading["file_type"])
     return TwoCdeSettings(**kwargs)
+
+
+def _window_warnings(tttrs: dict, cfg: TwoCdeSettings, workflow_context: dict | None) -> list[str]:
+    """The excitation-window pre-flight of the streams 2CDE applies, with the workflow setup's
+    detectors that share their routing channels (its first two detectors are the pair, as in
+    :func:`_settings_from_workflow`)."""
+    from chisurf.plugins.burst.burst_bva.core.windows import preflight_detectors, window_warnings
+
+    from ..core.computation import applied_streams
+
+    detectors = ((workflow_context or {}).get("channel_settings") or {}).get("detectors") or {}
+    names = list(detectors)[:2]
+    streams = applied_streams(
+        cfg.variant,
+        cfg.donor_channels,
+        cfg.donor_micro_time_ranges,
+        cfg.acceptor_channels,
+        cfg.acceptor_micro_time_ranges,
+        cfg.acceptor_excitation_channels or None,
+        cfg.acceptor_excitation_micro_time_ranges or None,
+        names=(names + ["donor", "acceptor"][len(names):])[:2],
+    )
+    return window_warnings(tttrs, preflight_detectors(streams, detectors))
 
 
 def _ranges(value: Any) -> list[tuple[int, int]]:

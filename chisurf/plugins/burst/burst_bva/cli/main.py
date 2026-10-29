@@ -89,6 +89,19 @@ def compute(
         number_of_photons_per_slice=settings.number_of_photons_per_slice,
     )
 
+    from chisurf.plugins.burst.burst_bva.core.windows import stream_detectors, window_warnings
+
+    for line in window_warnings(
+        tttrs,
+        stream_detectors(
+            {
+                "donor": (settings.donor_channels, settings.donor_micro_time_ranges),
+                "acceptor": (settings.acceptor_channels, settings.acceptor_micro_time_ranges),
+            }
+        ),
+    ):
+        click.echo(f"warning: {line}", err=True)
+
     n_valid = int((numeric_column(df_v, "Proximity Ratio Std") > 0.0).sum())
     click.echo(f"Valid bursts (Std > 0): {n_valid} / {row_count(df_v)} total")
 
