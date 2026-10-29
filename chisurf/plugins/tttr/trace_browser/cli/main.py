@@ -32,12 +32,32 @@ def list(folder: Path, recursive: bool):
 @click.option(
     "--window-ms", default=10.0, show_default=True, type=float, help="Trace bin width in ms."
 )
-def load(path: Path, window_ms: float):
+@click.option(
+    "--setup",
+    "setup_file",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Detector setup JSON (one setup, or a file of named setups: the first): one trace per "
+    "detector, its micro-time gates checked against the file's excitation pulses.",
+)
+def load(path: Path, window_ms: float, setup_file: Path | None):
     """Load and print binned trace metadata."""
-    data = load_trace(str(path), time_window_ms=window_ms)
+    setup = None
+    if setup_file is not None:
+        from chisurf.plugins.tttr.workspace_io import read_setup
+
+        setup = read_setup(str(setup_file))
+    data = load_trace(str(path), time_window_ms=window_ms, setup_settings=setup)
     counts = data["counts"]
     shape = [len(counts), len(counts[0]) if counts else 0]
-    click.echo(json.dumps({"path": str(path), "shape": shape, "labels": data["labels"]}, indent=2))
+    warnings = data.get("warnings", [])
+    click.echo(
+        json.dumps(
+            {"path": str(path), "shape": shape, "labels": data["labels"], "warnings": warnings},
+            indent=2,
+        )
+    )
+    for line in warnings:
+        click.echo(f"warning: {line}", err=True)
 
 
 @cli.command("export-csv")

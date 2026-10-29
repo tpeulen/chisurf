@@ -38,6 +38,7 @@ from typing import Any
 
 import numpy as np
 
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
 from chisurf.core.plugin.workspace_input import WorkspaceInputMixin
 from chisurf.plugins.tttr.trace_browser.core import metadata as _metadata
 from chisurf.plugins.tttr.trace_browser.core import trace as _trace
@@ -137,7 +138,7 @@ def get_tttr_supported_exts() -> list[str]:
     return norm
 
 
-class TraceBrowserModel(WorkspaceInputMixin):
+class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
     """State and actions of the Trace Browser.
 
     Parameters
@@ -225,6 +226,11 @@ class TraceBrowserModel(WorkspaceInputMixin):
         #: ``callable(path) -> bool`` replacing the CLSM image probe (tests, hosts).
         self.image_probe: Callable[[pathlib.Path], bool] | None = None
         self._trace_mem_cache: dict[tuple[pathlib.Path, str], tuple] = {}
+        #: The detector gates held against each loaded file (the shared excitation-window
+        #: pre-flight), by path; the one of the shown file is :attr:`windows_check`.
+        self._window_checks: dict[str, Any] = {}
+        #: Set when *Use detected windows* changed the setup; the app shows it in the editor.
+        self.setup_taken = False
         self._is_image_cache: dict[pathlib.Path, bool] = {}
 
     # ── observers (SnapshotJob) ───────────────────────────────────────
@@ -260,6 +266,7 @@ class TraceBrowserModel(WorkspaceInputMixin):
         """
         self.setup_settings = settings
         self.setup_filetype = filetype
+        self._window_checks = {}  # made with the old gates
         chs: list[int] = []
         for det in (settings or {}).get("detectors", {}).values():
             for c in det.get("chs", []):
@@ -407,6 +414,9 @@ class TraceBrowserModel(WorkspaceInputMixin):
         if self.busy:
             return "Working..."
         text = self.error_text or self.trace_error or self.status_text
+        check = self.windows_check_text()
+        if check and not self.error_text and not self.trace_error:
+            text = f"{text}   |   {check.split(':')[0]} (see below)"
         background = self.background_text
         return f"{text}   |   {background}" if background else text
 
@@ -1014,7 +1024,7 @@ class TraceBrowserModel(WorkspaceInputMixin):
         )
 
     def compute_trace_cached(
-        self, path: pathlib.Path, window_ms: float | None = None
+        self, path: pathlib.Path, window_ms: float | None = None, check_windows: bool = False
     ) -> tuple[np.ndarray, np.ndarray, list[str]]:
         """Return ``(time_axis, counts, labels)`` of *path*: memory cache, disk cache, compute.
 
@@ -1033,6 +1043,7 @@ class TraceBrowserModel(WorkspaceInputMixin):
             setup_settings=self.setup_settings,
             selected_channels=self.selected_channels,
             cache_folder=self._cache_folder(),
+            check_windows=check_windows,
         )
         result = (
             np.asarray(data["time_axis"], dtype=float),
@@ -1062,12 +1073,70 @@ class TraceBrowserModel(WorkspaceInputMixin):
             cache_folder=self._cache_folder(),
         )
         if trace is not None:
-            return (
+            result = (
                 np.asarray(trace.get("time_axis", []), dtype=float),
                 np.asarray(trace.get("counts", []), dtype=float),
                 [str(label) for label in trace.get("labels", [])],
             )
-        return self.compute_trace_cached(path, window_ms)
+        else:
+            result = self.compute_trace_cached(path, window_ms, check_windows=True)
+        self.check_gates(path)
+        return result
+
+    # ── the detector gates against the file ───────────────────────────
+    def check_gates(self, path: str | pathlib.Path) -> Any:
+        """Hold the setup's detector gates against *path* (remembered per file and gates).
+
+        A detector with ``micro_time_ranges`` counts only the photons inside them, so gates made
+        for another instrument (another TAC range or PIE delay) make a trace of the wrong
+        excitation or none. The gates are data channels, as the binner applies them.
+        """
+        from chisurf.plugins.tttr.tttr_image_browser.core.windows import remembered_check
+
+        try:
+            check = remembered_check(path, self.setup_settings, reading_routine=self.setup_filetype)
+        except Exception:  # noqa: BLE001 - a check that cannot run says nothing
+            check = None
+        self._window_checks[str(pathlib.Path(path))] = check
+        return check
+
+    @property
+    def windows_check(self) -> Any:
+        """The gate check of the file shown (``None`` before its trace was loaded)."""
+        if self.current_file is None:
+            return None
+        return getattr(self, "_window_checks", {}).get(str(pathlib.Path(self.current_file)))
+
+    @windows_check.setter
+    def windows_check(self, value: Any) -> None:
+        if self.current_file is not None:
+            self._window_checks[str(pathlib.Path(self.current_file))] = value
+
+    def preflight_setup(self) -> dict:
+        """The detector setup the traces are binned with (its gates are what the check holds)."""
+        from chisurf.plugins.tttr.tttr_image_browser.core.windows import gate_setup
+
+        return gate_setup(self.setup_settings)
+
+    def take_preflight_setup(self, setup: dict) -> None:
+        """Bin through the detected gates from now on: the trace is loaded again and the setup
+        page shows them (the saved setup is not changed until it is saved there)."""
+        settings = dict(self.setup_settings or {})
+        detectors = {k: dict(v) for k, v in (settings.get("detectors") or {}).items()}
+        for name, det in (setup.get("detectors") or {}).items():
+            if name in detectors and "micro_time_ranges" in det:
+                detectors[name]["micro_time_ranges"] = [list(r) for r in det["micro_time_ranges"]]
+        settings["detectors"] = detectors
+        self.apply_setup(settings, self.setup_filetype)
+        self.setup_taken = True
+        self.trace = None  # the shown trace was binned through the old gates
+        gates = "; ".join(
+            f"{d} " + ", ".join(f"{a}–{b}" for a, b in v.get("micro_time_ranges") or [])
+            for d, v in detectors.items()
+            if v.get("micro_time_ranges")
+        )
+        self.status_text = f"Detector gates from the data: {gates}"
+        self.notify("trace")
 
     def show_file(self, path: str | pathlib.Path) -> bool:
         """Load the trace of *path* into :attr:`trace` and make it the current file.

@@ -102,6 +102,20 @@
       "description": "How many files were found in the folder and how many pass the filter, or what went wrong."
     },
     {
+      "type": "info", "source": "windows_check_text",
+      "hidden_when": {"attr": "windows_check_quiet", "equals": true},
+      "description": "The excitation-window check of the file shown: the setup's detector gates (micro-time ranges) do not hold the measurement's excitation pulses (another TAC range or PIE delay), so a gated detector counts the wrong excitation or nothing. The windows and gates detected in the data are named."
+    },
+    {
+      "type": "button_row",
+      "hidden_when": {"attr": "windows_check_offer", "equals": false},
+      "description": "Take the gates detected in the data.",
+      "buttons": [
+        {"action": "use_detected_windows", "label": "Use detected windows",
+         "description": "Bin the traces through the gates detected in this measurement (a broken gate is opened to the whole micro-time range): the trace is loaded again and the setup page shows the gates. The saved setup is not changed until you save it there."}
+      ]
+    },
+    {
       "type": "custom", "key": "data_table", "title": "Files",
       "description": "One row per listed file. Click a row to select it (Select all selects every row); double click a rating or a note to edit it. Ratings and notes are saved beside the data in the folder's .trace_browser_meta.json.",
       "options": {

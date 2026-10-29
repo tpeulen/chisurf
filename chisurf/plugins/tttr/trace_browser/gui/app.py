@@ -476,6 +476,20 @@ class TraceBrowserApp(ImApp):
             return True
         return False
 
+    def _take_setup(self) -> None:
+        """*Use detected windows* changed the setup: the setup page shows the taken gates, so a
+        later Continue keeps them."""
+        if not self.model.setup_taken or self.editor is None:
+            return
+        self.model.setup_taken = False
+        try:
+            settings = json.loads(json.dumps(self.model.setup_settings, default=_plain))
+            self.editor.load_definition(settings)
+        except Exception:  # noqa: BLE001 - an editor that cannot take it keeps its own setup
+            import logging
+
+            logging.getLogger(__name__).debug("setup editor refresh failed", exc_info=True)
+
     # -- actions ---------------------------------------------------------------
     def _used(self, name: str) -> None:
         """Tell the tour a form control was used; Load example counts once its files are listed."""
@@ -513,6 +527,7 @@ class TraceBrowserApp(ImApp):
 
     # -- one frame -------------------------------------------------------------
     def render(self) -> None:
+        self._take_setup()
         self._pump_jobs()
         self._pump_trace()
         self._pump_precompute()

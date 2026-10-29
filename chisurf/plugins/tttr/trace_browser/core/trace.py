@@ -126,11 +126,25 @@ def load_trace(
     setup_settings: dict[str, Any] | None = None,
     selected_channels: list[int] | None = None,
     cache_folder: str | None = None,
+    check_windows: bool = True,
 ) -> dict[str, Any]:
-    """Load and bin a TTTR trace into JSON-safe arrays."""
+    """Load and bin a TTTR trace into JSON-safe arrays.
+
+    A detector with micro-time gates (``micro_time_ranges``) counts only the photons inside them
+    (in the data's channels, :func:`..core.binning.bin_trace`), so with *check_windows* the gates
+    are held against the file's excitation pulses (the shared excitation-window pre-flight,
+    remembered per file and gates): ``warnings`` carries its line.
+    """
+    from chisurf.plugins.tttr.tttr_image_browser.core.windows import gate_warnings, has_gates
+
     file_path = pathlib.Path(path)
     folder = pathlib.Path(cache_folder) if cache_folder else file_path.parent
     window_ms = float(time_window_ms)
+    gated = bool(check_windows and has_gates(setup_settings))
+    routine = ((setup_settings or {}).get("tttr_reading") or {}).get("file_type") or None
+    if routine and str(routine).lower() == "auto":
+        routine = None
+    tttr_obj = None
     cached = load_cached(file_path, folder, window_ms, setup_settings, selected_channels)
     if cached is not None:
         time_axis, counts, labels = cached
@@ -140,8 +154,15 @@ def load_trace(
 
         time_window_s = window_ms / 1000.0
         if isinstance(setup_settings, dict) and "detectors" in setup_settings:
+            if gated:  # the file opened once, for the trace and the gate check
+                try:
+                    from chisurf.core.fio.staging import open_tttr
+
+                    tttr_obj = open_tttr(file_path)  # as the binner opens it (auto-detect)
+                except Exception:  # noqa: BLE001 - the binner reports an unreadable file
+                    tttr_obj = None
             time_axis, counts, labels = bin_trace(
-                file_path,
+                tttr_obj if tttr_obj is not None else file_path,
                 time_window_s,
                 detectors=setup_settings.get("detectors") or {},
                 channels=selected_channels,
@@ -172,4 +193,7 @@ def load_trace(
         "counts": result.counts,
         "labels": result.labels,
         "time_window_ms": result.time_window_ms,
+        "warnings": (
+            gate_warnings(file_path, setup_settings, tttr_obj, routine) if gated else []
+        ),
     }

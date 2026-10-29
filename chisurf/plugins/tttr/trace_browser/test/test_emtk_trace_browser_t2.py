@@ -193,9 +193,10 @@ def test_every_spec_key_exists_on_the_model():
             for call in ("selected_call", "edited_call"):
                 assert callable(getattr(model, options[call])), options[call]
             seen["table"] += 1
-    assert seen == {"attr": 8, "call": 3, "action": 14, "table": 1}, (  # Open… -> the Input
+    assert seen == {"attr": 9, "call": 3, "action": 15, "table": 1}, (  # Open… -> the Input
         seen
-    )  # T3b: Precompute, Stop, the toggle; T4: eight export, delete and hand-off buttons; Load example
+    )  # T3b: Precompute, Stop, the toggle; T4: eight export, delete and hand-off buttons; Load example;
+    # the gate check: its info line and Use detected windows
     assert callable(model.enabled) and model.enabled("clear") is True
     model.busy = True
     assert model.enabled("clear") is False
@@ -622,9 +623,10 @@ def test_every_control_has_a_tooltip(data_dir):
             assert column.get("description"), column
             count += 1
         count += 1
-    assert count == 18, (
+    assert count == 20, (
         count
-    )  # 1 form + 12 sections, 1 table + 4 columns (T3b: a button row, a toggle; T4: two button rows)
+    )  # 1 form + 14 sections, 1 table + 4 columns (T3b: a button row, a toggle; T4: two button rows;
+    # the gate check: an info line and a button row)
 
 
 # 14. no Qt, no chisurf.gui
