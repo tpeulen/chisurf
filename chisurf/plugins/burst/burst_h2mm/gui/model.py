@@ -16,7 +16,11 @@ import pathlib
 import threading
 from typing import Any, Callable
 
-from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
+from chisurf.core.fluorescence.excitation import (
+    WindowsPreflightMixin,
+    format_ranges,
+    gates_to_inclusive,
+)
 from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
 
 from ..api.models import H2mmSettings, StreamSettings
@@ -188,11 +192,11 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
 
     def _stream(self, name: str) -> StreamSettings:
         info = (self.setup.get("detectors") or {}).get(name, {})
-        ranges = [(int(a), int(b)) for a, b in info.get("micro_time_ranges", [])]
         return StreamSettings(
             name=name or "stream",
             channels=[int(c) for c in info.get("chs", [])],
-            micro_time_ranges=ranges,
+            # the setup's gates are [start, stop); a stream's ranges inclusive
+            micro_time_ranges=gates_to_inclusive(info.get("micro_time_ranges")),
         )
 
     def streams(self) -> list[StreamSettings]:
@@ -206,14 +210,13 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
     def preflight_setup(self) -> dict:
         """The detectors the fit reads as streams, with the setup's detectors that share their
         routing channels (PIE's prompt/delayed split of one detector), in the setup's own gates."""
+        from chisurf.core.fluorescence.burst.streams import preflight_detectors
+
         detectors = self.setup.get("detectors") or {}
-        used = [s.name for s in self.streams() if s.name in detectors]
-        chs = {int(c) for n in used for c in (detectors[n].get("chs") or [])}
-        keep = {
-            n: copy.deepcopy(d) for n, d in detectors.items()
-            if n in used or chs & {int(c) for c in (d.get("chs") or [])}
-        }
-        return {"detectors": keep, "tttr_reading": copy.deepcopy(self.setup.get("tttr_reading") or {})}
+        streams = {s.name: (s.channels, s.micro_time_ranges)
+                   for s in self.streams() if s.name in detectors}
+        return {"detectors": preflight_detectors(streams, detectors),
+                "tttr_reading": copy.deepcopy(self.setup.get("tttr_reading") or {})}
 
     def take_preflight_setup(self, setup: dict) -> None:
         """The user took the detected gates: they become the detectors' gates of the next fit."""
@@ -223,9 +226,9 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
             if name in detectors:
                 detectors[name]["micro_time_ranges"] = copy.deepcopy(det.get("micro_time_ranges"))
         self.set_setup(full)
-        self.status_text = "Detector gates from the data: " + "; ".join(
-            f"{n} " + ", ".join(f"{a}–{b}" for a, b in (d.get("micro_time_ranges") or []))
-            for n, d in (setup.get("detectors") or {}).items()
+        self.status_text = "Detector gates from the data: " + format_ranges(
+            {n: d["micro_time_ranges"] for n, d in (setup.get("detectors") or {}).items()
+             if d.get("micro_time_ranges")}
         ) + ". Press Run."
         self.notify("detected_windows")
 

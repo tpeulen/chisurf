@@ -17,10 +17,11 @@ import pytest
 tttrlib = pytest.importorskip("tttrlib")
 
 from chisurf.plugins.burst.burst_bva.tests import pie_folder  # noqa: E402
-from chisurf.plugins.burst.burst_h2mm.backend.services import (  # noqa: E402
-    run_analysis,
-    stream_window_warnings,
+from chisurf.core.fluorescence.burst.streams import (  # noqa: E402
+    stream_detectors,
+    window_warnings,
 )
+from chisurf.plugins.burst.burst_h2mm.backend.services import run_analysis  # noqa: E402
 from chisurf.plugins.burst.burst_h2mm.core.photons import StreamDef  # noqa: E402
 
 PIE = [
@@ -29,6 +30,11 @@ PIE = [
     StreamDef("yellow", [1], [(1613, 3124)]),
 ]
 WRONG = [StreamDef("green", [0], [(2048, 4094)]), StreamDef("red", [1], [(0, 2047)])]
+
+
+def stream_window_warnings(tttrs, stream_defs):
+    return window_warnings(tttrs, stream_detectors(
+        {s.name: (s.channels, s.micro_time_ranges) for s in stream_defs}))
 
 
 @pytest.fixture(scope="module")
