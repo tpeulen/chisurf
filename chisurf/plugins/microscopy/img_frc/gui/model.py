@@ -10,6 +10,8 @@ import pathlib
 
 import numpy as np
 
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
+
 from ...imaging_emtk.model_base import EmtkModelMixin
 from .. import core as _core
 from .view_model import FrcViewModel
@@ -20,7 +22,7 @@ IMAGE_FILE_FILTER = (
 )
 
 
-class FrcModel(EmtkModelMixin, FrcViewModel):
+class FrcModel(WindowsPreflightMixin, EmtkModelMixin, FrcViewModel):
     """The FRC measurement plus the state of its emtk window."""
 
     SETTINGS = (
@@ -37,6 +39,9 @@ class FrcModel(EmtkModelMixin, FrcViewModel):
         FrcViewModel.__init__(self, client)
         self.status_line = ""
         self._pending_path = ""
+        #: The Setup's PIE windows, checked with the detector gates.
+        self.setup_windows: dict = {}
+        self.windows_check = None
 
     # -- choices --------------------------------------------------------------- #
     def split_choices(self) -> list[str]:
@@ -95,6 +100,37 @@ class FrcModel(EmtkModelMixin, FrcViewModel):
         self.set_filename(self._pending_path)
         self._normalise_channel()
         self.status_line = self.status
+        self._check_windows()
+        self.status_line += self._windows_status()
+
+    # -- the excitation-window pre-flight ------------------------------------------------------- #
+    def _check_windows(self) -> str | None:
+        """Check the detector gates against the photon stream just read; the warning, or None."""
+        from chisurf.core.fluorescence.imaging.image_source import is_photon_stream
+
+        gated = any((d or {}).get("micro_time_ranges") for d in (self.detectors or {}).values())
+        if not (gated and self.filename and is_photon_stream(self.filename)):
+            self.windows_check = None
+            return None
+        return self.run_windows_preflight(self.filename)
+
+    def _windows_status(self) -> str:
+        """The pre-flight's headline for the status line (the info line below says the whole of it)."""
+        text = self.windows_check_text()
+        return f" -- {text.split(':')[0]} (see below)" if text else ""
+
+    def preflight_setup(self) -> dict:
+        """The gates the stream is binned through (in the data's channels) and the Setup's windows."""
+        return {"windows": dict(self.setup_windows or {}), "detectors": dict(self.detectors or {})}
+
+    def take_preflight_setup(self, setup: dict) -> None:
+        """Bin through the detected gates from now on and read the file again (the Setup is unchanged)."""
+        self.detectors = {k: dict(v) for k, v in (setup.get("detectors") or {}).items()}
+        self.setup_windows = dict(setup.get("windows") or {})
+        if self.filename:
+            self._pending_path = self.filename
+            self.status_line = "Reading the image with the detected windows..."
+            self.run_job("load_job")
 
     def _normalise_channel(self) -> None:
         """The channel is an index until the user picks a name: show its name, which measures the same frames."""
@@ -126,6 +162,8 @@ class FrcModel(EmtkModelMixin, FrcViewModel):
         """The worker body: measure; the status line carries the model's own message (the Qt bar said only "Measurement failed")."""
         ok = bool(self.compute(progress=self._progress))
         self.status_line = self.status
+        if ok:
+            self.status_line += self._windows_status()
         if ok:
             self.notify("computed")
 
@@ -183,6 +221,7 @@ class FrcModel(EmtkModelMixin, FrcViewModel):
             return
         if windows:
             self.detectors = windows
+            self.setup_windows = dict((payload or {}).get("windows") or {})
             if self.filename:
                 self._pending_path = self.filename
                 self.run_job("load_job")

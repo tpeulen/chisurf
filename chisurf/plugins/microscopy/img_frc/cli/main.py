@@ -143,6 +143,8 @@ def cli(
         return
 
     unit = result["unit"]
+    for warning in result.get("warnings") or []:
+        click.echo(f"warning: {warning}", err=True)
     click.echo(f"{result['source']} ({result['kind']}, {result['n_frames']} frames)")
     click.echo(f"channels: {', '.join(result['channel_names'])}")
     if not result["crossed"]:

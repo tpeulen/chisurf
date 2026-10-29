@@ -73,6 +73,9 @@ class FrcAnalysis:
         File (or files) the halves came from.
     n_frames : int
         Frames in the source stack.
+    warnings : list of str
+        The excitation-window pre-flight of a photon stream filled through gated detectors: one
+        line when the gates do not hold the measurement's excitation pulses.
     """
 
     frequency: np.ndarray
@@ -90,6 +93,7 @@ class FrcAnalysis:
     kind: str
     source: str
     n_frames: int
+    warnings: list[str] = dataclasses.field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-safe summary (curves included, images not).
@@ -113,6 +117,7 @@ class FrcAnalysis:
             "kind": self.kind,
             "source": self.source,
             "n_frames": int(self.n_frames),
+            "warnings": list(self.warnings),
         }
 
 
@@ -147,6 +152,43 @@ def _stack(filename: str, channels=None, windows=None, axis_order: str = "auto")
         windows=windows,
         channel_axis=channel_axis_for(axis_order),
     )
+
+
+def window_warnings(filename: str, windows=None, setup_windows=None) -> list[str]:
+    """The excitation-window pre-flight on the detector gates a photon stream is binned through.
+
+    A named detector (``{"chs": [...], "micro_time_ranges": [...]}``) fills its image only with
+    photons inside its micro-time gates, so gates made for another instrument (another TAC range,
+    another PIE delay) quietly image the wrong excitation or nothing. The gates are applied in the
+    data's own channels, so they are checked in them. Empty for an image file, for ungated
+    detectors, and when the measurement fits.
+
+    Parameters
+    ----------
+    filename : str
+        The acquisition.
+    windows : dict, optional
+        The named detectors the stream is filled through.
+    setup_windows : dict, optional
+        The setup's PIE windows (``{name: [start, stop]}``), checked with the gates.
+
+    Returns
+    -------
+    list of str
+    """
+    from chisurf.core.fluorescence.imaging.image_source import is_photon_stream
+
+    gated = {
+        str(k): dict(v) for k, v in dict(windows or {}).items() if (v or {}).get("micro_time_ranges")
+    }
+    if not gated or not is_photon_stream(str(filename)):
+        return []
+    from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
+
+    message = windows_message(
+        windows_preflight(str(filename), dict(setup_windows or {}), detectors=dict(windows))
+    )
+    return [message] if message else []
 
 
 def halves(
@@ -294,6 +336,10 @@ def analyse(
     )
     if not pixel_size_nm:
         pixel_size_nm = header_pixel_size_nm(filename)
+    warnings = window_warnings(filename, windows)
+    if second_filename and split == "two_files":
+        warnings += [f"{pathlib.Path(second_filename).name}: {w}"
+                     for w in window_warnings(second_filename, windows)]
     curve = frc_mod.frc_curve(half_1, half_2, bin_width=bin_width, pixel_size=pixel_size_nm)
     result = frc_mod.resolve(curve, criterion, smooth=smooth)
     return FrcAnalysis(
@@ -312,6 +358,7 @@ def analyse(
         kind=info["kind"],
         source=info["source"],
         n_frames=info["n_frames"],
+        warnings=warnings,
     )
 
 
@@ -388,6 +435,7 @@ __all__ = [
     "header_pixel_size_nm",
     "no_crossing_reason",
     "NO_CROSSING_TEXT",
+    "window_warnings",
     "write_csv",
 ]
 
