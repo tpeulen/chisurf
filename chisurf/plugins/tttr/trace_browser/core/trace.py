@@ -135,12 +135,16 @@ def load_trace(
     are held against the file's excitation pulses (the shared excitation-window pre-flight,
     remembered per file and gates): ``warnings`` carries its line.
     """
-    from chisurf.plugins.tttr.tttr_image_browser.core.windows import gate_warnings, has_gates
+    from chisurf.core.fluorescence.excitation import (
+        remembered_gate_check,
+        setup_gates,
+        windows_message,
+    )
 
     file_path = pathlib.Path(path)
     folder = pathlib.Path(cache_folder) if cache_folder else file_path.parent
     window_ms = float(time_window_ms)
-    gated = bool(check_windows and has_gates(setup_settings))
+    gated = bool(check_windows and setup_gates(setup_settings))
     routine = ((setup_settings or {}).get("tttr_reading") or {}).get("file_type") or None
     if routine and str(routine).lower() == "auto":
         routine = None
@@ -181,6 +185,9 @@ def load_trace(
             counts,
             labels,
         )
+    # the gates held against the file's excitation pulses (remembered per file and gates)
+    line = (windows_message(remembered_gate_check(file_path, setup_settings, tttr_obj, routine))
+            if gated else None)
     result = TraceLoadResult(
         path=str(file_path),
         time_axis=np.asarray(time_axis).tolist(),
@@ -193,7 +200,5 @@ def load_trace(
         "counts": result.counts,
         "labels": result.labels,
         "time_window_ms": result.time_window_ms,
-        "warnings": (
-            gate_warnings(file_path, setup_settings, tttr_obj, routine) if gated else []
-        ),
+        "warnings": [line] if line else [],
     }

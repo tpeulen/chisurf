@@ -20,7 +20,12 @@ from typing import Any
 
 import numpy as np
 
-from chisurf.core.fluorescence.excitation import WindowsPreflightMixin, windows_message
+from chisurf.core.fluorescence.excitation import (
+    WindowsPreflightMixin,
+    format_ranges,
+    setup_gates,
+    windows_message,
+)
 from chisurf.plugins.microscopy.imaging_emtk.model_base import EmtkModelMixin
 
 from .client import TTTRImageBrowserClient
@@ -68,7 +73,7 @@ class MosaicLoader:
     def load(self, path: str, setup_settings: dict | None, folder: str | None) -> None:
         """Load (or read from the on-disk cache) the mosaic of *path*, and check the setup's
         detector gates against it (remembered: the load has just read the file for it)."""
-        from ..core.windows import remembered_check
+        from chisurf.core.fluorescence.excitation import remembered_gate_check
 
         self.path, self.result, self.check = path, None, None
         self.result = self._client.load_image(
@@ -76,7 +81,7 @@ class MosaicLoader:
         )
         if self.result is not None:
             routine = ((setup_settings or {}).get("tttr_reading") or {}).get("file_type") or None
-            self.check = remembered_check(path, setup_settings, reading_routine=routine)
+            self.check = remembered_gate_check(path, setup_settings, reading_routine=routine)
 
     def notify(self, _event: str = "") -> None:
         """Snapshot workers announce progress here; nothing listens."""
@@ -433,15 +438,11 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel, WindowsPreflightM
         settings["setup_name"] = name
         self.apply_setup_settings(settings)
         self.requests.append("setup")
-        gates = "; ".join(
-            f"{d} " + ", ".join(f"{a}–{b}" for a, b in v.get("micro_time_ranges") or [])
-            for d, v in (settings.get("detectors") or {}).items()
-        )
-        self.status_line = f"Detector gates from the data: {gates}"
+        self.status_line = f"Detector gates from the data: {format_ranges(setup_gates(settings))}"
 
     def run_windows_preflight(self, tttr: Any) -> str | None:
         """Check the setup's detector gates against *tttr*; the line (``None``: fine)."""
-        from ..core.windows import gate_check
+        from chisurf.core.fluorescence.excitation import gate_check
 
         self.windows_check = gate_check(tttr, self.preflight_setup())
         return windows_message(self.windows_check)

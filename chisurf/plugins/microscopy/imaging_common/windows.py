@@ -5,7 +5,8 @@ channels inside its micro-time gates (``micro_time_ranges``; ``build_clsm_window
 are applied in the data's own channels, and the setup's PIE windows do not shape an image. So
 only the gates are held against the excitation pulses of the photon stream (the check every PIE
 analysis runs, :mod:`chisurf.core.fluorescence.excitation`) -- the same gate-only check, with the
-same per-file memory, as the image browser's (:mod:`chisurf.plugins.tttr.tttr_image_browser.core.windows`).
+same per-file memory, as the image browser's
+(:func:`chisurf.core.fluorescence.excitation.remembered_gate_check`).
 
 Nothing is checked for an image file (TIFF, camera) or for detectors without gates.
 """
@@ -52,9 +53,9 @@ def gate_check(filename: str, detectors: Mapping | None) -> Any:
 
     if not is_photon_stream(str(filename)):
         return None
-    from chisurf.plugins.tttr.tttr_image_browser.core.windows import remembered_check
+    from chisurf.core.fluorescence.excitation import remembered_gate_check
 
-    return remembered_check(str(filename), {"detectors": gated})
+    return remembered_gate_check(str(filename), {"detectors": gated})
 
 
 def gate_warnings(filename: str, detectors: Mapping | None) -> list[str]:

@@ -1091,10 +1091,12 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
         for another instrument (another TAC range or PIE delay) make a trace of the wrong
         excitation or none. The gates are data channels, as the binner applies them.
         """
-        from chisurf.plugins.tttr.tttr_image_browser.core.windows import remembered_check
+        from chisurf.core.fluorescence.excitation import remembered_gate_check
 
         try:
-            check = remembered_check(path, self.setup_settings, reading_routine=self.setup_filetype)
+            check = remembered_gate_check(
+                path, self.setup_settings, reading_routine=self.setup_filetype
+            )
         except Exception:  # noqa: BLE001 - a check that cannot run says nothing
             check = None
         self._window_checks[str(pathlib.Path(path))] = check
@@ -1114,28 +1116,21 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
 
     def preflight_setup(self) -> dict:
         """The detector setup the traces are binned with (its gates are what the check holds)."""
-        from chisurf.plugins.tttr.tttr_image_browser.core.windows import gate_setup
+        from chisurf.core.fluorescence.excitation import gate_setup
 
         return gate_setup(self.setup_settings)
 
     def take_preflight_setup(self, setup: dict) -> None:
         """Bin through the detected gates from now on: the trace is loaded again and the setup
         page shows them (the saved setup is not changed until it is saved there)."""
+        from chisurf.core.fluorescence.excitation import format_ranges, merge_gates, setup_gates
+
         settings = dict(self.setup_settings or {})
-        detectors = {k: dict(v) for k, v in (settings.get("detectors") or {}).items()}
-        for name, det in (setup.get("detectors") or {}).items():
-            if name in detectors and "micro_time_ranges" in det:
-                detectors[name]["micro_time_ranges"] = [list(r) for r in det["micro_time_ranges"]]
-        settings["detectors"] = detectors
+        settings["detectors"] = merge_gates(settings.get("detectors") or {}, setup_gates(setup))
         self.apply_setup(settings, self.setup_filetype)
         self.setup_taken = True
         self.trace = None  # the shown trace was binned through the old gates
-        gates = "; ".join(
-            f"{d} " + ", ".join(f"{a}–{b}" for a, b in v.get("micro_time_ranges") or [])
-            for d, v in detectors.items()
-            if v.get("micro_time_ranges")
-        )
-        self.status_text = f"Detector gates from the data: {gates}"
+        self.status_text = f"Detector gates from the data: {format_ranges(setup_gates(settings))}"
         self.notify("trace")
 
     def show_file(self, path: str | pathlib.Path) -> bool:

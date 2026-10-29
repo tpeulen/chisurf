@@ -14,8 +14,11 @@ import pytest
 
 pytest.importorskip("tttrlib")
 
+from chisurf.core.fluorescence.excitation import (  # noqa: E402
+    remembered_gate_check,
+    windows_message,
+)
 from chisurf.plugins.core.excitation_windows import demo as pie  # noqa: E402
-from chisurf.plugins.tttr.tttr_image_browser.core.windows import gate_warnings  # noqa: E402
 
 #: The red detector's gate stops before the acceptor pulse (52 ns = channel 1625).
 NARROW = {**pie.wrong_setup(),
@@ -25,6 +28,12 @@ NARROW = {**pie.wrong_setup(),
 WIDE = {**pie.wrong_setup(),
         "detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 3125]]},
                       "red": {"chs": [1], "micro_time_ranges": [[0, 3125]]}}}
+
+
+def gate_warnings(path, setup):
+    """The browser's line for *path* (as a mosaic load reports it)."""
+    line = windows_message(remembered_gate_check(path, setup))
+    return [line] if line else []
 
 
 @pytest.fixture(scope="module")
