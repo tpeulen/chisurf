@@ -24,6 +24,11 @@ Findings (:class:`~.result.Issue` codes):
     ``prompt`` holds the acceptor-excitation pulse and ``delayed`` the donor's.
 ``window_empty`` (warning)
     A window holds almost no photons.
+``alex_period_mismatch`` (warning)
+    µs-ALEX: the windows were made for another alternation period.
+``gate_outside_range`` (error), ``gate_misses_pulse`` / ``gate_empty`` (warning)
+    A detector's micro-time gate starts beyond the data, hides a pulse the detector sees, or
+    holds almost none of its photons; the gate is proposed opened to the whole range.
 ``single_pulse`` / ``unclear`` (info)
     One excitation pulse (donor-only sample, or not PIE) or no clear pulse: nothing is checked
     against pulses; nothing is proposed.
@@ -33,7 +38,14 @@ from __future__ import annotations
 
 import numpy as np
 
-from .result import SEVERITIES, ExcitationWindows, Issue, WindowCheck, rescale_windows
+from .result import (
+    SEVERITIES,
+    ExcitationWindows,
+    Issue,
+    WindowCheck,
+    rescale_gates,
+    rescale_windows,
+)
 
 __all__ = ["check_windows"]
 
@@ -61,6 +73,9 @@ def check_windows(
     *,
     windows_resolution_s: float | None = None,
     histogram: np.ndarray | None = None,
+    gates: dict | None = None,
+    histograms: dict | None = None,
+    alex_period_ticks: float | None = None,
 ) -> WindowCheck:
     """Check *windows* against *detection* (what the data shows).
 
@@ -76,6 +91,17 @@ def check_windows(
         windows are converted (and that is reported).
     histogram : array, optional
         Photons per channel of the data (all detectors), for the empty-window check.
+    gates : dict, optional
+        The detectors' micro-time gates ``{detector: [[start, stop], ...]}`` (a setup's
+        ``detectors.*.micro_time_ranges``), in the same channels as *windows*: converted with them,
+        and checked -- a gate beyond the range, a gate that hides a pulse its detector sees, a gate
+        that holds almost none of its detector's photons.
+    histograms : dict, optional
+        Per-detector photons per channel (the names :attr:`Pulse.excites` uses), for the gates.
+    alex_period_ticks : float, optional
+        µs-ALEX: the alternation period the windows were made for, in macro-time ticks. A period
+        off the detected one by more than 0.5 % is reported (the windows then fold another
+        cycle) and the detected period and windows are proposed.
 
     Returns
     -------
@@ -85,6 +111,16 @@ def check_windows(
     res, n = float(detection.resolution_s), int(detection.n_channels)
     win = {str(k): [int(v[0]), int(v[1])] for k, v in (windows or {}).items()}
     unit = "phase ticks" if detection.domain == "macro" else "micro-time channels"
+    gate = {str(d): [[int(r[0]), int(r[1])] for r in (rs or [])]
+            for d, rs in (gates or {}).items() if rs}
+    if gate and windows_resolution_s and res > 0 and abs(windows_resolution_s / res - 1) > 0.01:
+        gate = rescale_gates(gate, windows_resolution_s, res)
+        if not win:
+            issues.append(Issue(
+                "resolution_mismatch", "warning",
+                f"The detector gates are in {windows_resolution_s * 1e12:.4g} ps channels, the "
+                f"data in {res * 1e12:.4g} ps: converted.",
+            ))
     if win and windows_resolution_s and res > 0:
         ratio = float(windows_resolution_s) / res
         if abs(ratio - 1.0) > 0.01:
@@ -137,10 +173,20 @@ def check_windows(
                             name,
                         )
                     )
+    proposal_gates = _check_gates(gate, detection, histograms, issues, unit) if gate else {}
+    if (detection.domain == "macro" and detection.alternating and alex_period_ticks
+            and abs(float(alex_period_ticks) / n - 1.0) > 0.005):
+        issues.append(Issue(
+            "alex_period_mismatch", "warning",
+            f"The alternation period is {n} ticks ({n * res * 1e6:.2f} µs), the setup's "
+            f"{float(alex_period_ticks):.0f} ({float(alex_period_ticks) * res * 1e6:.2f} µs): its "
+            "windows fold another cycle.",
+        ))
+        return _verdict(issues, detection, win, dict(detection.windows), gate, proposal_gates)
     if not detection.alternating:
         code = "single_pulse" if detection.kind == "single" else "unclear"
         issues.append(Issue(code, "info", detection.message + " Windows not checked."))
-        return _verdict(issues, detection, win, {})
+        return _verdict(issues, detection, win, {}, gate, proposal_gates)
     if not win:
         issues.append(
             Issue(
@@ -150,7 +196,7 @@ def check_windows(
                 "excitations) but there are no windows.",
             )
         )
-        return _verdict(issues, detection, win, dict(detection.windows))
+        return _verdict(issues, detection, win, dict(detection.windows), gate, proposal_gates)
     for p in detection.pulses:
         label = (p.role + " " if p.role else "") + "excitation"
         where = f"{p.rise} ({p.rise * res * 1e9:.1f} ns)"
@@ -208,16 +254,69 @@ def check_windows(
                     "prompt holds the acceptor-excitation pulse and delayed the donor's: swapped.",
                 )
             )
-    return _verdict(issues, detection, win, dict(detection.windows))
+    return _verdict(issues, detection, win, dict(detection.windows), gate, proposal_gates)
 
 
-def _verdict(issues, detection, win, proposal) -> WindowCheck:
+def _check_gates(gates, detection, histograms, issues, unit) -> dict:
+    """Findings on the detectors' gates; returns the gates to propose (a broken gate opened to the
+    whole range, the others as they are)."""
+    n = int(detection.n_channels)
+    proposal = {d: [list(r) for r in rs] for d, rs in gates.items()}
+    broken: set[str] = set()
+    for d, ranges in gates.items():
+        if n and all(lo >= n for lo, _ in ranges):
+            issues.append(Issue(
+                "gate_outside_range", "error",
+                f"The gate of detector {d} starts beyond the data's {n} {unit}: it sees nothing.",
+            ))
+            broken.add(d)
+            continue
+        for p in detection.pulses:
+            if d in p.excites and not any(lo <= p.peak < hi for lo, hi in ranges):
+                issues.append(Issue(
+                    "gate_misses_pulse", "warning",
+                    f"The gate of detector {d} ({_fmt(ranges)}) leaves out the "
+                    f"{(p.role + ' ') if p.role else ''}excitation it sees (peak at {p.peak}).",
+                ))
+                broken.add(d)
+                break
+        h = (histograms or {}).get(d)
+        if h is not None and d not in broken:
+            h = np.asarray(h, dtype=float).ravel()
+            total = float(h.sum())
+            inside = sum(float(h[max(lo, 0):max(min(hi, h.size), 0)].sum()) for lo, hi in ranges)
+            if total > 0 and inside / total < 0.05:
+                issues.append(Issue(
+                    "gate_empty", "warning",
+                    f"The gate of detector {d} ({_fmt(ranges)}) holds "
+                    f"{100 * inside / total:.2g} % of its photons.",
+                ))
+                broken.add(d)
+    for d in broken:
+        proposal[d] = [[0, n]]
+    return proposal
+
+
+def _fmt(ranges) -> str:
+    return ", ".join(f"{lo}–{hi}" for lo, hi in ranges)
+
+
+def _verdict(issues, detection, win, proposal, gates=None, proposal_gates=None) -> WindowCheck:
     """The worst severity, and what to offer: the detected windows when the windows do not hold the
     pulses, the converted windows when only their channel width was off."""
     worst = max((SEVERITIES.index(i.severity) for i in issues), default=0)
     status = SEVERITIES[worst]
+    codes = {i.code for i in issues}
     if not detection.alternating:
         proposal = {}
-    elif {i.code for i in issues} == {"resolution_mismatch"}:
+    elif codes == {"resolution_mismatch"} or (
+        win and not codes & _WINDOW_CODES and codes
+    ):
         proposal = dict(win)
-    return WindowCheck(status, issues, detection, win, proposal)
+    return WindowCheck(status, issues, detection, win, proposal, dict(gates or {}),
+                       dict(proposal_gates or {}) if (codes - {"single_pulse", "unclear"}) else {})
+
+
+#: Findings about the windows themselves (the others are about gates or the channel width).
+_WINDOW_CODES = {"alex_period_mismatch", "outside_range", "no_windows", "pulse_uncovered", "window_cuts_pulse",
+                 "window_mixes_pulses", "windows_swapped", "window_empty"}

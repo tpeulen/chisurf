@@ -31,6 +31,7 @@ __all__ = [
     "detect_windows",
     "histograms_from_tttr",
     "setup_detectors",
+    "setup_gates",
     "setup_window_resolution_s",
 ]
 
@@ -252,29 +253,44 @@ def detect_windows(
     return pie
 
 
+def setup_gates(setup: Mapping | None) -> dict[str, list[list[int]]]:
+    """``{detector: [[start, stop], ...]}`` -- the micro-time gates of a setup's detectors (those
+    that have any)."""
+    det = _unwrap(setup).get("detectors") or {}
+    return {
+        str(k): [[int(r[0]), int(r[1])] for r in (v.get("micro_time_ranges") or [])]
+        for k, v in det.items()
+        if isinstance(v, Mapping) and v.get("micro_time_ranges")
+    }
+
+
 def check_setup(
     setup: Mapping,
     data: Any = None,
     *,
     detection: ExcitationWindows | None = None,
     histogram: np.ndarray | None = None,
+    histograms: Mapping[str, np.ndarray] | None = None,
     windows_resolution_s: float | None = None,
 ) -> WindowCheck:
-    """Check an Experiment setup's windows against a measurement -- the shared pre-flight of every
-    PIE / ALEX analysis.
+    """Check an Experiment setup's windows and detector gates against a measurement -- the shared
+    pre-flight of every PIE / ALEX analysis.
 
     Parameters
     ----------
     setup : mapping
-        The Experiment setup (``windows``, ``detectors``, ``tttr_reading``).
+        The Experiment setup (``windows``, ``detectors`` with their ``micro_time_ranges``,
+        ``tttr_reading``).
     data : tttrlib.TTTR or path, optional
         The measurement; not needed when *detection* is given.
     detection : ExcitationWindows, optional
         A detection already made (e.g. from live decays).
     histogram : array, optional
         All photons per channel, for the empty-window check (read from *data* when given).
+    histograms : mapping, optional
+        Per-detector photons per channel, for the gates (read from *data* when given).
     windows_resolution_s : float, optional
-        The channel width of the setup's windows; default
+        The channel width of the setup's windows and gates; default
         :func:`setup_window_resolution_s`.
     """
     s = _unwrap(setup)
@@ -283,14 +299,17 @@ def check_setup(
             raise ValueError("check_setup needs the measurement or a detection")
         tttr = _load(data)
         detection = detect_windows(tttr, setup=s)
-        if histogram is None and detection.domain == "micro":
-            hists, _, _ = histograms_from_tttr(tttr, setup_detectors(s) or None)
-            histogram = np.sum(list(hists.values()), axis=0) if hists else None
+        if histograms is None and detection.domain == "micro":
+            histograms, _, _ = histograms_from_tttr(tttr, setup_detectors(s) or None)
+    if histogram is None and histograms:
+        histogram = np.sum([np.asarray(h, float) for h in histograms.values()], axis=0)
     if windows_resolution_s is None and detection.domain == "micro":
         windows_resolution_s = setup_window_resolution_s(s)
     windows = s.get("windows") or {}
+    gates = setup_gates(s) if detection.domain == "micro" else {}
     if detection.domain == "macro":
         windows = s.get("alex_windows") or {}
     return check_windows(
-        windows, detection, windows_resolution_s=windows_resolution_s, histogram=histogram
+        windows, detection, windows_resolution_s=windows_resolution_s, histogram=histogram,
+        gates=gates, histograms=dict(histograms) if histograms else None,
     )

@@ -22,6 +22,7 @@ __all__ = [
     "Issue",
     "Pulse",
     "WindowCheck",
+    "rescale_gates",
     "rescale_windows",
 ]
 
@@ -203,6 +204,12 @@ class WindowCheck:
         The windows checked, in the data's channels (converted when their resolution was given).
     proposal : dict
         The detected windows in the data's channels (empty when nothing can be proposed).
+    gates : dict
+        The detectors' micro-time gates checked (``{detector: [[start, stop), ...]}``), in the
+        data's channels.
+    proposal_gates : dict
+        Gates to take with :attr:`proposal`: the converted ones, a gate that hid a pulse or held
+        no photons replaced by the whole range.
     """
 
     status: str
@@ -210,6 +217,8 @@ class WindowCheck:
     detection: ExcitationWindows
     windows: dict[str, list[int]] = dataclasses.field(default_factory=dict)
     proposal: dict[str, list[int]] = dataclasses.field(default_factory=dict)
+    gates: dict[str, list[list[int]]] = dataclasses.field(default_factory=dict)
+    proposal_gates: dict[str, list[list[int]]] = dataclasses.field(default_factory=dict)
 
     @property
     def mismatch(self) -> bool:
@@ -235,7 +244,22 @@ class WindowCheck:
             "detection": self.detection.to_dict(),
             "windows": self.windows,
             "proposal": self.proposal,
+            "gates": self.gates,
+            "proposal_gates": self.proposal_gates,
         }
+
+
+def rescale_gates(
+    gates: dict, from_resolution_s: float, to_resolution_s: float
+) -> dict[str, list[list[int]]]:
+    """Detector gates ``{detector: [[start, stop], ...]}`` in channels of another width (as
+    :func:`rescale_windows`)."""
+    f = (float(from_resolution_s) / float(to_resolution_s)
+         if from_resolution_s and to_resolution_s else 1.0)
+    return {
+        str(d): [[int(round(r[0] * f)), int(round(r[1] * f))] for r in (ranges or [])]
+        for d, ranges in (gates or {}).items()
+    }
 
 
 def rescale_windows(

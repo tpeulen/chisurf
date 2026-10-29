@@ -69,7 +69,7 @@ class ExcitationWindowsApp(ImApp):
         self.review.set_setup(load_setup(self.setup_address))
         self.setup_text = tr("Setup: {name}").format(name=Path(self.setup_address).name)
 
-    def _accepted(self, windows: dict, detection) -> None:
+    def _accepted(self, windows: dict, detection, check=None) -> None:
         from chisurf.core.settings import get_path
         from chisurf.plugins.core.excitation_windows.api import apply_to_setup
         from chisurf.plugins.tttr.workspace_io import add_setup
@@ -84,7 +84,10 @@ class ExcitationWindowsApp(ImApp):
                 groups = {"green": chs(detection.donor_detectors),
                           "red": chs(detection.acceptor_detectors)}
             setup = {**setup, "detectors": {k: {"chs": v} for k, v in groups.items() if v}}
-        fixed = apply_to_setup(setup, {"proposal": windows, "detection": detection.to_dict()})
+        fixed = apply_to_setup(setup, {
+            "proposal": windows, "detection": detection.to_dict(),
+            "proposal_gates": check.proposal_gates if check is not None else {},
+        })
         stem = Path(self.setup_address or self.review.measurement or "measurement").stem
         path = get_path("settings") / "excitation_windows" / f"{stem}.windows.setup.json"
         address = add_setup(path, fixed)

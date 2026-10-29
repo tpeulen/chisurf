@@ -35,8 +35,8 @@ from chisurf.core.datastore import (
     row_count,
     rows_from_table,
     store_from_rows,
-    write_csv_table,
 )
+from chisurf.core.fluorescence.excitation import WindowsPreflightMixin
 from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
 
 from ..api.models import (
@@ -333,7 +333,7 @@ class GmmSettings:
         self._model.gmm_settings[name] = type(DEFAULT_GMM_SETTINGS[name])(value)
 
 
-class BurstSelectionModel(RunPickerMixin):
+class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
     """Files, detector setup, filter and search settings, results and plot data of Burst Selection."""
 
     #: The run picker lists the runs of the container of the file on show.
@@ -1315,53 +1315,31 @@ class BurstSelectionModel(RunPickerMixin):
         )
 
     # -- the excitation windows against the data (the shared pre-flight) --------------------------------- #
-    def _check_windows(self, tttr) -> None:
-        """Hold the PIE windows against the micro time of the previewed measurement."""
-        from chisurf.core.fluorescence.excitation import windows_preflight
-
+    def preflight_setup(self) -> dict:
+        """The setup the search uses, for the shared window pre-flight."""
         reading = (
             {"micro_time_resolution": self.window_resolution_s * 1e12}
-            if self.window_resolution_s else None
+            if self.window_resolution_s else {}
         )
-        try:
-            self.windows_check = windows_preflight(
-                tttr, self.windows, detectors=self.detectors, tttr_reading=reading
-            )
-        except Exception:  # noqa: BLE001 - a check that cannot run says nothing
-            self.windows_check = None
+        return {"windows": self.windows, "detectors": self.detectors, "tttr_reading": reading}
 
-    def windows_check_text(self) -> str:
-        """The verdict line under the window choice (empty when the windows hold the pulses)."""
-        from chisurf.core.fluorescence.excitation import windows_message
-
-        return windows_message(self.windows_check) or ""
-
-    @property
-    def windows_check_quiet(self) -> bool:
-        """Nothing to say about the windows."""
-        return not self.windows_check_text()
-
-    @property
-    def windows_check_offer(self) -> bool:
-        """The windows do not match and detected ones can be taken."""
-        c = self.windows_check
-        return bool(c is not None and c.mismatch and c.proposal)
-
-    def use_detected_windows(self) -> bool:
-        """Take the detected windows (in the measurement's channels) for the search."""
-        c = self.windows_check
-        if c is None or not c.proposal:
-            return False
-        self.windows = {k: [int(v[0]), int(v[1])] for k, v in c.proposal.items()}
-        self.window_resolution_s = c.detection.resolution_s
+    def take_preflight_setup(self, setup: dict) -> None:
+        """The user took the detected windows (and gates) for the search; the saved setup is
+        not changed."""
+        self.windows = copy.deepcopy(setup.get("windows") or {})
+        self.detectors = copy.deepcopy(setup.get("detectors") or self.detectors)
+        res = (setup.get("tttr_reading") or {}).get("micro_time_resolution")
+        self.window_resolution_s = float(res) * 1e-12 if res else None
         if self.window not in (ALL, *self.windows):
             self.window = ALL
-        self.windows_check = None
         self.status_text = "Windows from the data: " + ", ".join(
             f"{k} {v[0]}–{v[1]}" for k, v in self.windows.items()
         )
         self.settings_changed()
-        return True
+
+    def _check_windows(self, tttr) -> None:
+        """Hold the PIE windows and detector gates against the previewed measurement."""
+        self.run_windows_preflight(tttr)
 
     def timeline_span(self) -> float:
         """Length of the active file in seconds (0 before its diagnostics are loaded)."""

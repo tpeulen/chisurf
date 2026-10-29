@@ -22,26 +22,43 @@ from .measure import (
     detect_windows,
     histograms_from_tttr,
     setup_detectors,
+    setup_gates,
     setup_window_resolution_s,
 )
 from .pie import detect_pie_windows, rising_edges
-from .preflight import windows_message, windows_preflight
-from .result import ExcitationWindows, Issue, Pulse, WindowCheck, rescale_windows
+from .preflight import (
+    WindowsPreflightMixin,
+    apply_check,
+    windows_message,
+    windows_preflight,
+)
+from .result import (
+    ExcitationWindows,
+    Issue,
+    Pulse,
+    WindowCheck,
+    rescale_gates,
+    rescale_windows,
+)
 
 __all__ = [
     "ExcitationWindows",
     "Issue",
     "Pulse",
     "WindowCheck",
+    "WindowsPreflightMixin",
+    "apply_check",
     "check_setup",
     "check_windows",
     "detect_alex_windows",
     "detect_pie_windows",
     "detect_windows",
     "histograms_from_tttr",
+    "rescale_gates",
     "rescale_windows",
     "rising_edges",
     "setup_detectors",
+    "setup_gates",
     "setup_window_resolution_s",
     "windows_message",
     "windows_preflight",

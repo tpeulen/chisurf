@@ -1329,9 +1329,17 @@ class ChannelDefinitionWidget:
             review.set_measurement(self.model.preview_path)
         self.windows_review.show(review)
 
-    def _take_detected_windows(self, windows, detection):
-        """The user took the detected windows: they and the channel width they are in."""
-        if detection.domain == "macro":
+    def _take_detected_windows(self, windows, detection, check=None):
+        """The user took the detected windows: they, the detector gates the check proposes, and
+        the channel width they are in."""
+        from chisurf.core.fluorescence.excitation import apply_check
+
+        if check is not None:
+            fixed = apply_check(self.model.data, check)
+            for key in ("windows", "detectors", "tttr_reading", "alex_windows", "alex_period_s"):
+                if key in fixed:
+                    self.model.data[key] = fixed[key]
+        elif detection.domain == "macro":
             self.model.data["alex_windows"] = {k: list(v) for k, v in windows.items()}
             self.model.data["alex_period_s"] = detection.n_channels * detection.resolution_s
         else:

@@ -57,8 +57,10 @@ class WindowsReview:
     setup : mapping, optional
         The setup whose windows are reviewed (``windows``, ``detectors``, ``tttr_reading``).
     on_accept : callable, optional
-        ``on_accept(windows, detection)`` when the user takes the detected windows; *windows*
-        are in the measurement's channels (``detection.resolution_s``).
+        ``on_accept(windows, detection, check)`` when the user takes the detected windows;
+        *windows* are in the measurement's channels (``detection.resolution_s``); *check* also
+        carries the detector gates to take (``check.proposal_gates``, see
+        :func:`chisurf.core.fluorescence.excitation.apply_check`).
     on_keep : callable, optional
         Called when the user closes without changing anything.
     workspace : bool
@@ -69,7 +71,7 @@ class WindowsReview:
         self,
         setup: Mapping | None = None,
         *,
-        on_accept: Callable[[dict, ExcitationWindows], Any] | None = None,
+        on_accept: Callable[[dict, ExcitationWindows, WindowCheck], Any] | None = None,
         on_keep: Callable[[], Any] | None = None,
         workspace: bool = True,
     ) -> None:
@@ -177,7 +179,7 @@ class WindowsReview:
         if not self.enabled("accept"):
             return False
         if self.on_accept is not None:
-            self.on_accept(dict(self.check.proposal), self.check.detection)
+            self.on_accept(dict(self.check.proposal), self.check.detection, self.check)
         self.done = "accepted"
         return True
 
@@ -201,7 +203,10 @@ class WindowsReview:
         hist = None
         if self.histograms and det.domain == "micro":
             hist = np.sum([np.asarray(h, float) for h in self.histograms.values()], axis=0)
-        self.check = check_setup(self.setup, detection=det, histogram=hist)
+        self.check = check_setup(
+            self.setup, detection=det, histogram=hist,
+            histograms=self.histograms if det.domain == "micro" else None,
+        )
         c = self.check
         if not det.alternating:
             self.status_text = det.message
@@ -236,6 +241,17 @@ class WindowsReview:
                     "excites": (
                         (f"{p.role}: " if p.role else "") + ", ".join(p.excites) if p else "—"
                     ),
+                }
+            )
+        for name, ranges in c.gates.items():
+            new = c.proposal_gates.get(name)
+            rows.append(
+                {
+                    "window": f"gate {name}",
+                    "current": ", ".join(f"{a}–{b}" for a, b in ranges),
+                    "proposed": ", ".join(f"{a}–{b}" for a, b in new) if new else "—",
+                    "ns": ", ".join(f"{a * f:.2f}–{b * f:.2f}" for a, b in new) if new else "—",
+                    "excites": tr("detector gate"),
                 }
             )
         self._rows = rows

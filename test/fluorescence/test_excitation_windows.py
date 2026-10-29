@@ -272,3 +272,39 @@ def test_simulated_donor_only_measurement_is_single():
     sc = next(s for s in sim.SCENARIOS if s.name.startswith("1c"))
     r = detect_windows(sim.simulate(sc), kind="pie")
     assert r.kind == "single"
+
+
+# -- detector gates --------------------------------------------------------------------------------
+
+
+def test_detector_gates_are_converted_and_checked():
+    from chisurf.core.fluorescence.excitation import apply_check, rescale_gates
+
+    h = pie_histograms()
+    r = detect_pie_windows(h, 32e-12)
+    good = rescale_windows(r.windows, 32e-12, 50e-12)
+    setup = {
+        "windows": good,
+        "detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 4095]]},
+                      "red": {"chs": [1], "micro_time_ranges": [[0, 600]]}},  # hides 52 ns
+        "tttr_reading": {"micro_time_resolution": 50.0},
+    }
+    c = check_setup(setup, detection=r, histograms=h)
+    codes = [i.code for i in c.issues]
+    assert "gate_misses_pulse" in codes and c.mismatch
+    assert c.gates["red"] == [[0, 938]] and c.gates["green"] == [[0, 6398]]
+    assert c.proposal_gates["red"] == [[0, 3125]]
+    assert c.proposal_gates["green"] == [[0, 6398]]  # a gate that works is kept
+    fixed = apply_check(setup, c)
+    assert fixed["detectors"]["red"]["micro_time_ranges"] == [[0, 3125]]
+    assert fixed["tttr_reading"]["micro_time_resolution"] == pytest.approx(32.0)
+    assert check_setup(fixed, detection=r, histograms=h).status == "ok"
+    assert rescale_gates({"a": [[0, 2048]]}, 50e-12, 32e-12) == {"a": [[0, 3200]]}
+
+
+def test_a_gate_beyond_the_range_is_an_error_even_for_donor_only():
+    h = pie_histograms(donor_only=True)
+    r = detect_pie_windows(h, 32e-12)
+    c = check_windows({}, r, gates={"green": [[4000, 5000]]}, histograms=h)
+    assert c.status == "error" and c.issues[0].code == "gate_outside_range"
+    assert not c.proposal  # one pulse: nothing to offer for the windows

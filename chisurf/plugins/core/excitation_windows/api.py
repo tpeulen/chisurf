@@ -58,8 +58,9 @@ def check(measurement: Any, setup: Mapping | str | None) -> dict:
 
 
 def apply_to_setup(setup: Mapping, result: Mapping) -> dict:
-    """*setup* with the windows of a :func:`detect` / :func:`check` result: the windows, and the
-    channel width they are in (``tttr_reading.micro_time_resolution``, ps). A ``single`` or
+    """*setup* with the windows of a :func:`detect` / :func:`check` result: the windows, the
+    detector gates a check proposes, and the channel width they are in
+    (``tttr_reading.micro_time_resolution``, ps). A ``single`` or
     ``unclear`` result changes nothing."""
     det = result.get("detection", result)
     windows = result.get("proposal") if "proposal" in result else det.get("windows")
@@ -71,6 +72,13 @@ def apply_to_setup(setup: Mapping, result: Mapping) -> dict:
         out["alex_period_s"] = float(det["n_channels"]) * float(det["resolution_s"])
         return out
     out["windows"] = {k: list(v) for k, v in windows.items()}
+    gates = result.get("proposal_gates") or {}
+    if gates:
+        detectors = {k: dict(v) for k, v in (out.get("detectors") or {}).items()}
+        for name, ranges in gates.items():
+            if name in detectors:
+                detectors[name]["micro_time_ranges"] = [list(r) for r in ranges]
+        out["detectors"] = detectors
     reading = dict(out.get("tttr_reading") or {})
     reading["micro_time_resolution"] = float(det["resolution_s"]) * 1e12
     out["tttr_reading"] = reading
