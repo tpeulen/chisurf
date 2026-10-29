@@ -43,19 +43,24 @@ published, so there is no upgrade to try. **The vendor-DLL lane is dead on this
 machine** (owner: "in snapi it never worked"; SymPhoTime opens the same unit
 fine). Constraints from the owner: the machine must keep working with SymPhoTime
 *and* phacq; a driver may be installed, but not one that permanently displaces
-SymPhoTime's. Path prepared in libphacq (source only, **not deployed**, the
-Windows branch is compile-untested here): `PqDriver::open/enumerate` construct
-`Hh400Device` over `PhacqSysTransport` for PID 0009, `phacq.inf` lists the HH400,
-and `phacq_init.py.in` prefers the native driver when it sees a unit (snAPI
-otherwise). To use it: build the Windows wheel, install phacq.sys, rebind the
-HH400 (`pnputil /add-driver phacq.inf /install`) — the unit is then unavailable to
-SymPhoTime **until its own driver is reinstalled**, so a per-session rebind script
-is the only way one unit serves both; that trade is the owner's call. Alternative
-lane: ask PicoQuant why HH_OpenDevice returns DEVICE_BUSY on an HH400 USB3
-(VID_0E0D PID_0009, serial 1032692) with nothing holding the unit; the probes are
-in `C:\phacq-setup\hh_*_probe*.py`, and a ProcMon capture of a *working*
-SymPhoTime open (owner-launched, laser safety!) diffed against the python probe
-would pin the difference.
+SymPhoTime's — so phacq speaks **PicoQuant's PQUSB64 driver directly**, like
+SymPhoTime does. Two implementations, both in libphacq (committed): a C++
+`PqusbTransport` and — the deployable one — **`phacq/pqusb.py`, a pure-Python
+ctypes backend carrying the whole HH400 protocol** (identify from the EEPROMs,
+FPGA upload, link lock, calibration, T3, markers; no build needed, ships as
+.py). Contract pinned live on the unit: open share-read; control read 0x222044
+verified (register 0x800D answered); bulk 0x222059 **reads verified** (10-byte
+head {u8 0, u16 pipe 0x0002, u8, u8, u16, u16 length}, out buffer filled);
+write payload rides the out buffer, shape accepted, transfer pending the pipe
+reset/abort decode (hhlib's pipe-config call: 0xA0/0xE600, dispatch table
+hhlib64+0x220600). Unit profile staged and sha256-verified at
+`C:\Users\Mess-Admin\AppData\Local\phacq\hh400` (from
+peulen.xyz/downloads/phacq-firmware, recorded from s/n 1032692 itself on
+2026-10-28 — a fresh SymPhoTime capture is therefore NOT blocking). NEXT: pin
+the write path (or Ghidra on hhlib64), wire pqusb into phacq's driver
+selection, then identify → initialize T3 → measure through Record on the
+MT200. Probes: `C:\phacq-setup\pqusb_*probe*.py`, `pqusb_bulk2.py`,
+`pqusb_chain.py` (one variant per process, watchdogged).
 
 Record has a general live video panel with a Matrix Vision SDK adapter and an
 optional OpenCV adapter. The MT200 has a MATRIX VISION mvSIGMA/mvDELTA PCI frame
