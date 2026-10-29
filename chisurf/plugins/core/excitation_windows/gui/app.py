@@ -18,7 +18,7 @@ from emtk.docking import DockManager, Region
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
-from chisurf.emtk.excitation_windows import WindowsReview
+from chisurf.emtk.excitation_windows import WindowsReview, WorkspaceInputSection
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button, action_caption
 
@@ -32,17 +32,16 @@ class ExcitationWindowsApp(ImApp):
     window_size = (820, 820)
 
     def __init__(self, setup: dict | None = None, workspace: bool = True) -> None:
-        self.review = WindowsReview(setup, on_accept=self._accepted, workspace=workspace)
+        self.review = WindowsReview(setup, on_accept=self._accepted, workspace=workspace,
+                                    example=load_demo)
         self.setup_address = ""
         self.setup_text = tr("No setup: the windows are only detected (pick a setup to check it).")
         self.saved_text = ""
         self.setup_input = None
         if workspace:
             try:
-                from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
-
-                self.setup_input = NamedWorkspaceInput("excitation_windows", "setup", self,
-                                                       height=40)
+                self.setup_input = WorkspaceInputSection("excitation_windows", "setup", self,
+                                                         height=40)
             except Exception:  # noqa: BLE001 - a bare host: no setup list
                 self.setup_input = None
         self.form = FormState()
@@ -108,7 +107,7 @@ class ExcitationWindowsApp(ImApp):
         self._draw_strip()
         if self.setup_input is not None:
             im.text(tr("Setup to check"))
-            draw_form(self.setup_input.spec, self.setup_input, self.setup_input.form)
+            draw_form(self.setup_input.spec, self.setup_input.model, self.setup_input.form)
             rect = self.setup_input.form.rects.get("workspace_input_rows")
             if rect:
                 self.item_rects["setup_input"] = rect
@@ -170,6 +169,21 @@ def receive_setup(app: ExcitationWindowsApp, payload: dict) -> bool:
         raise ValueError("nothing picked")
     app.take_setup(str(values[0]))
     return True
+
+
+def load_demo(review: WindowsReview) -> None:
+    """*Load example*: write the simulated PIE measurement into the workspace and hand it to
+    *review* (its receive hook, as a pick would)."""
+    from chisurf.core.plugin.workspace_input import register_result
+
+    from ..demo import make_demo
+
+    path = make_demo()
+    try:
+        register_result(str(path), kind="photons", name=path.name)
+    except Exception:  # noqa: BLE001 - the review still gets the file
+        pass
+    review.set_measurement(str(path))
 
 
 def make_app(**kwargs: Any) -> ExcitationWindowsApp:

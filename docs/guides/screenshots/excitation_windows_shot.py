@@ -27,7 +27,7 @@ def tool() -> None:
     """The Excitation Windows tool checking the SPC-130 setup against the demo."""
     from emtk.export import save_png
 
-    from chisurf.plugins.core.excitation_windows.demo import make_demo, wrong_setup
+    from chisurf.core.fluorescence.simulation.pie_demo import make_demo, wrong_setup
     from chisurf.plugins.core.excitation_windows.gui.app import make_app
 
     app = make_app(setup=wrong_setup())
@@ -40,7 +40,7 @@ def setup_editor() -> None:
     """The setup editor's Auto-detect on the demo, the setup still holding the SPC-130 windows."""
     from emtk.export import save_png
 
-    from chisurf.plugins.core.excitation_windows.demo import make_demo, wrong_setup
+    from chisurf.core.fluorescence.simulation.pie_demo import make_demo, wrong_setup
     from chisurf.plugins.core.setup_channel_definition.gui.app import make_app
 
     settings = wrong_setup()

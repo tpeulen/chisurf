@@ -26,6 +26,7 @@ from typing import Any
 
 import numpy as np
 from emtk.i18n import tr
+from tttrlib import setup_detectors
 
 from chisurf.core.fluorescence.excitation import (
     ExcitationWindows,
@@ -33,10 +34,9 @@ from chisurf.core.fluorescence.excitation import (
     check_setup,
     detect_windows,
     histograms_from_tttr,
-    setup_detectors,
 )
 
-__all__ = ["SPEC_PATH", "WindowsReview", "WindowsReviewDialog"]
+__all__ = ["SPEC_PATH", "WindowsReview", "WindowsReviewDialog", "WorkspaceInputSection"]
 
 _log = logging.getLogger(__name__)
 
@@ -64,7 +64,11 @@ class WindowsReview:
     on_keep : callable, optional
         Called when the user closes without changing anything.
     workspace : bool
-        Offer the workspace's photons rows to pick the measurement from.
+        Offer the workspace's photons rows to pick the measurement from (the Excitation Windows
+        plugin's ``measurement`` input: a pick is handed to its receive hook with this review).
+    example : callable, optional
+        ``example(review)`` writes a demo measurement and hands it to *review* (*Load example*;
+        hidden without one). The host that owns a demo passes it -- this panel imports no plugin.
     """
 
     def __init__(
@@ -74,6 +78,7 @@ class WindowsReview:
         on_accept: Callable[[dict, ExcitationWindows, WindowCheck], Any] | None = None,
         on_keep: Callable[[], Any] | None = None,
         workspace: bool = True,
+        example: Callable[[WindowsReview], Any] | None = None,
     ) -> None:
         from emtk.view_form import FormState
 
@@ -92,13 +97,11 @@ class WindowsReview:
         self.check: WindowCheck | None = None
         #: ``"accepted"`` / ``"kept"`` once the user decided (a dialog host closes then).
         self.done = ""
+        self.example = example
         self.input = None
         if workspace:
             try:
-                from chisurf.plugins.tttr.workspace_io import NamedWorkspaceInput
-
-                self.input = NamedWorkspaceInput("excitation_windows", "measurement", self,
-                                                 height=56)
+                self.input = WorkspaceInputSection("excitation_windows", "photons", self)
             except Exception:  # noqa: BLE001 - no workspace (a test, a bare host): data is given
                 _log.debug("no workspace input for the windows review", exc_info=True)
         self._rows: list[dict] = []
@@ -190,13 +193,15 @@ class WindowsReview:
             self.on_keep()
         self.done = "kept"
 
-    def load_example(self) -> None:
-        """Write the simulated PIE example into the workspace and detect it."""
-        from chisurf.plugins.core.excitation_windows.demo import make_demo
-        from chisurf.plugins.core.excitation_windows.gui.app import receive_measurement
-        from chisurf.plugins.tttr.workspace_io import example_into_workspace
+    @property
+    def no_example(self) -> bool:
+        """No demo to load (hides *Load example*)."""
+        return self.example is None
 
-        example_into_workspace(make_demo(), receive_measurement, self, key="measurement")
+    def load_example(self) -> None:
+        """Hand the host's demo measurement to this review (see *example*)."""
+        if self.example is not None:
+            self.example(self)
 
     # -- what the form shows --------------------------------------------------------------------
     def _judge(self, det: ExcitationWindows) -> None:
@@ -272,7 +277,7 @@ class WindowsReview:
         if self.input is None:
             im.text_wrapped(tr("Drop a measurement on ChiSurf to add it to the workspace."))
             return
-        draw_form(self.input.spec, self.input, self.input.form)
+        draw_form(self.input.spec, self.input.model, self.input.form)
         rect = self.input.form.rects.get("workspace_input_rows")
         if rect:
             state.rects["measurement_input"] = rect
@@ -315,6 +320,35 @@ def _display(y: np.ndarray, points: int = 400) -> tuple[np.ndarray, np.ndarray]:
     if k == 1 or n == 0:
         return np.arange(y.size, dtype=float), y
     return np.arange(n // k) * k + 0.5 * k, y[:n].reshape(-1, k).sum(axis=1)
+
+
+class WorkspaceInputSection:
+    """An Input section over the Datasets workspace: the rows of *kind* that plugin *plugin*
+    accepts, a pick handed to that plugin's receive hook with *app* -- built from the core
+    workspace-input contract, so no plugin module is imported."""
+
+    def __init__(self, plugin: str, kind: str, app: Any, height: float = 56.0) -> None:
+        from emtk.view_form import FormState
+
+        from chisurf.core.plugin.workspace_input import WorkspaceInputMixin, input_section, spec_for
+        from chisurf.emtk.plugins import manifests
+
+        found = spec_for(manifests().get(plugin), kind=kind)
+        if found is None:
+            raise LookupError(f"plugin {plugin!r} declares no {kind} input")
+
+        class _Model(WorkspaceInputMixin):
+            workspace_input_plugin = plugin
+            workspace_input_kind = kind
+
+        self.model = _Model()
+        self.model.workspace_input_app = app
+        section = input_section(found[1], title="")
+        for part in section.get("sections", []):
+            if (part.get("options") or {}).get("source") == "workspace_input_rows":
+                part["options"]["height"] = height
+        self.spec = {"sections": [section]}
+        self.form = FormState()
 
 
 class WindowsReviewDialog:
