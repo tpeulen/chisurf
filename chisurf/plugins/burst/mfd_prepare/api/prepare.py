@@ -94,15 +94,11 @@ def window_warnings(prep) -> list[str]:
     -------
     list of str
     """
-    streams = list(getattr(prep, "streams", ()) or ())
-    detectors = {
-        str(s.name): {
-            "chs": [int(c) for c in s.channels],
-            # StreamDef ranges are inclusive, setup gates are [start, stop).
-            "micro_time_ranges": [[int(lo), int(hi) + 1] for lo, hi in s.micro_time_ranges],
-        }
-        for s in streams
-    }
+    from chisurf.core.fluorescence.burst.streams import stream_detectors, window_warnings
+
+    detectors = stream_detectors(
+        {s.name: (s.channels, s.micro_time_ranges) for s in getattr(prep, "streams", ()) or ()}
+    )
     if not any(d["micro_time_ranges"] for d in detectors.values()):
         return []
     try:
@@ -110,15 +106,7 @@ def window_warnings(prep) -> list[str]:
     except Exception:  # noqa: BLE001 - photons that cannot be opened: nothing to check
         logger.debug("window pre-flight: photons not opened", exc_info=True)
         return []
-    from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
-
-    windows = _recorded_windows(prep)
-    out: list[str] = []
-    for key, tttr in tttrs.items():
-        message = windows_message(windows_preflight(tttr, windows, detectors=detectors))
-        if message:
-            out.append(message if len(tttrs) == 1 else f"{key}: {message}")
-    return out
+    return window_warnings(tttrs, detectors, windows=_recorded_windows(prep))
 
 
 def _photon_streams(prep) -> dict:

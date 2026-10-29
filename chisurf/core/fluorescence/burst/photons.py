@@ -34,6 +34,7 @@ from chisurf.core.datastore import (
     row_count,
     take_columns,
 )
+from chisurf.core.fluorescence.excitation import micro_mask
 
 __all__ = [
     "PhotonMeta",
@@ -128,12 +129,7 @@ def stream_index_arrays(
     for s_i in range(len(streams) - 1, -1, -1):
         s = streams[s_i]
         mask = np.isin(channels, np.asarray(s.channels, dtype=channels.dtype))
-        if s.micro_time_ranges:
-            mt_mask = np.zeros(channels.shape[0], dtype=bool)
-            for lo, hi in s.micro_time_ranges:
-                mt_mask |= (micro_times >= lo) & (micro_times <= hi)
-            mask &= mt_mask
-        idx[mask] = s_i
+        idx[mask & micro_mask(micro_times, s.micro_time_ranges, inclusive=True)] = s_i
     return idx
 
 

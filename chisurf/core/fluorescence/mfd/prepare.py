@@ -56,6 +56,7 @@ from chisurf.core.fluorescence.burst.photons import (
     stream_index_arrays,
     streams_from_dicts,
 )
+from chisurf.core.fluorescence.excitation import gates_to_inclusive, micro_mask
 
 __all__ = [
     "BurstPreparation",
@@ -725,9 +726,8 @@ def _streams_from_manifest(
             StreamDef(
                 name=name,
                 channels=[int(c) for c in entry.get("chs", entry.get("channels", []))],
-                micro_time_ranges=[
-                    (int(a), int(b)) for a, b in (entry.get("micro_time_ranges") or [])
-                ],
+                # the manifest's gates are [start, stop); StreamDef ranges inclusive
+                micro_time_ranges=gates_to_inclusive(entry.get("micro_time_ranges")),
             )
         )
     return out
@@ -849,8 +849,7 @@ def infer_streams(
             hi = int(last[row]) + stop_offset
             mask = np.isin(routing[lo:hi], channels)
             if window is not None:
-                slice_micro = micro[lo:hi]
-                mask &= (slice_micro >= window[0]) & (slice_micro < window[1])
+                mask &= micro_mask(micro[lo:hi], [window])
             out[i] = int(mask.sum())
         return out
 
@@ -866,7 +865,7 @@ def infer_streams(
                         channels=list(channels),
                         # StreamDef windows are inclusive; the writer's are
                         # half-open, so the upper bound moves by one.
-                        micro_time_ranges=([] if window is None else [(window[0], window[1] - 1)]),
+                        micro_time_ranges=([] if window is None else gates_to_inclusive([window])),
                     )
                     break
             if found is not None:
@@ -992,13 +991,8 @@ def _detector_masks(
     for s, stream in enumerate(streams):
         if not stream.channels:
             continue
-        mask = np.isin(channels, np.asarray(stream.channels, dtype=channels.dtype))
-        if stream.micro_time_ranges:
-            windowed = np.zeros_like(mask)
-            for lo, hi in stream.micro_time_ranges:
-                windowed |= (micro_times >= lo) & (micro_times <= hi)
-            mask &= windowed
-        out[s] = mask
+        out[s] = np.isin(channels, np.asarray(stream.channels, dtype=channels.dtype)) & micro_mask(
+            micro_times, stream.micro_time_ranges, inclusive=True)
     return out
 
 
