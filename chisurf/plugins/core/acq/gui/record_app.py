@@ -1887,7 +1887,7 @@ class RecordApp(ImApp):
         bottom = im.get_cursor_screen_pos()
         state.rects["video_panel"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
 
-    def _draw_video_frame(self, section, model, state: FormState, width: float) -> None:
+    def _draw_video_frame(self, section, model: RecordModel, state: FormState, width: float) -> None:
         from emtk import Texture
 
         frame = self.video.frame
@@ -1895,6 +1895,12 @@ class RecordApp(ImApp):
             im.text_wrapped(tr("Connect a video source to see its preview."))
             return
         gain = float(self.video.display_gain)
+        if not self.model.advanced:
+            # a backreflection feed is dim (mean ~10 of 255 measured on the
+            # MT200): stretch it for display alone, so the camera is usable in
+            # simple mode where there is no gain control. Recordings stay raw.
+            top = float(np.percentile(frame.image, 99.5)) or 1.0
+            gain = max(gain, min(20.0, 240.0 / top))
         if frame is not self._video_frame or gain != self._video_gain:
             rgb = frame.image
             rgba = np.empty((*rgb.shape[:2], 4), dtype=np.uint8)

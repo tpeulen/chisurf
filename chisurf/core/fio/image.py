@@ -217,4 +217,8 @@ def append(path, page, *, compression: str = "none") -> None:
     import tttrlib
 
     _check_suffix(path)
+    if not hasattr(tttrlib, "imappend"):
+        raise RuntimeError(
+            "this tttrlib build has no imappend -- update the tttrlib package "
+            "(the streaming TIFF append needs tttrlib with imappend)")
     tttrlib.imappend(path, np.asarray(page), compression=compression)
