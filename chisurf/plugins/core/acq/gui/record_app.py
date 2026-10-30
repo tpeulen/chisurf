@@ -378,6 +378,9 @@ class RecordModel(LaserSettingsMixin, ScanPointsMixin, SurveyMixin, WindowCheckM
         try:
             dev = devices.open_device(entry)
         except Exception as exc:  # noqa: BLE001 - busy, no permission, unsupported model
+            import traceback
+
+            traceback.print_exc()  # the launcher log carries it (acquisition.log)
             self.device_text = tr("Cannot connect: {e}").format(e=exc)
             return False
         self.device = dev
