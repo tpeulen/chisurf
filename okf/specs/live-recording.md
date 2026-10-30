@@ -60,6 +60,20 @@ The scoped panel was deployed with originals backed up in
 itself remains unverified. Restart Record, select Matrix Vision and adjust preview
 gain.
 
+**2026-10-30, camera on the MT200 (deployed).** The Camera dock change set
+is now deployed to the MT200's source tree (`C:\phacq\src\chisurf`, the
+tree the PhAcq shortcut runs). The feed was never broken: mv:0 delivers
+768×576 frames at mean 10/255 -- black on screen, which read as "not
+working". Simple mode now auto-stretches the preview for display only
+(recordings stay raw); Advanced keeps the manual gain. Verified with the
+live camera: connect, dock focused in main, preview bright spots at 255.
+**TIFF recording on the MT200 remains gated on the tttrlib wheel** (its
+installed 0.27.0 predates imappend; the status line says so explicitly
+now). Building that wheel needs the Parallels "Windows 11" VM started by
+hand once (prlctl needs a Pro licence) -- then push the wheel and
+recording works with no further changes. The deployed record_app carries
+a connect-error traceback logger to `C:\phacq\connect_error.log`.
+
 **2026-10-29 evening, video without OpenCV (zcode continuation):** a
 `.tif`/`.tiff` recording path writes every captured frame as one page of a
 streaming multi-page TIFF through the image seam — tttrlib grew `imappend`
