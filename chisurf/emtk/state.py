@@ -7,6 +7,7 @@ construction; callers can disable it when loading isolated test controls.
 from __future__ import annotations
 
 import math
+from pathlib import Path
 import re
 import sys
 
@@ -57,8 +58,63 @@ def _window_position(pos, screen=None):
     return x, y
 
 
-def attach_native_state(plugin_id: str, app):
-    """Bind preferences, dock layouts and window geometry to a newly loaded app."""
+#: Data a tool works on (measurements, burst containers, decays, images, structures): what a
+#: reopened tool must not come back with. Settings files (yaml, json, css, db) are not data.
+DATA_SUFFIXES = (
+    ".ptu", ".pto", ".spc", ".set", ".ht3", ".ht2", ".pt3", ".pt2", ".t3r", ".t2r", ".phu", ".sptw",
+    ".sm", ".hdf", ".h5", ".hdf5", ".bur", ".bv4", ".br4", ".bg4", ".by4", ".dat", ".csv", ".txt",
+    ".cor", ".fcs", ".npy", ".npz", ".tif", ".tiff", ".pdb", ".cif", ".mmcif", ".xyz", ".mrc",
+    ".bin", ".asc", ".sdt", ".lsm", ".czi",
+)
+
+
+def is_data_reference(value) -> bool:
+    """Whether *value* names a data file: a path (or ``kind:path`` address, ``mmfdb://`` link)
+    ending in a data format."""
+    if isinstance(value, Path):
+        value = str(value)
+    if not isinstance(value, str):
+        return False
+    text = value.strip()
+    if text.startswith("mmfdb://"):
+        return True
+    if "/" not in text and "\\" not in text:
+        return False  # ".pto" as an output-format choice is a setting, not a file
+    return text.rstrip("/\\").lower().endswith(DATA_SUFFIXES)
+
+
+def strip_data_files(state):
+    """*state* without its data files: settings stay, every reference to a measurement goes.
+
+    A data path as a value is dropped (its key removed), from a list it is filtered out, and a list
+    entry that is a record naming one (``{"path": ".../x.ptu", ...}``) goes with it.
+    """
+    if isinstance(state, dict):
+        out = {}
+        for key, value in state.items():
+            if is_data_reference(value):
+                continue
+            out[key] = strip_data_files(value)
+        return out
+    if isinstance(state, list):
+        kept = []
+        for item in state:
+            if is_data_reference(item):
+                continue
+            if isinstance(item, dict) and any(is_data_reference(v) for v in item.values()):
+                continue
+            kept.append(strip_data_files(item))
+        return kept
+    return state
+
+
+def attach_native_state(plugin_id: str, app, *, restore_files: bool = True):
+    """Bind preferences, dock layouts and window geometry to a newly loaded app.
+
+    With *restore_files* ``False`` (a tool opened inside the ChiSurf window) its settings come back
+    but not its data: closed and opened again, a tool has no files, runs or results of the last
+    opening (:func:`strip_data_files`).
+    """
     if getattr(app, "_native_state_bound", False):
         return app
     app._native_state_bound = True
@@ -84,6 +140,8 @@ def attach_native_state(plugin_id: str, app):
     restore = getattr(app, "restore_settings", None)
     if callable(restore):
         settings = load_settings(plugin_id)
+        if settings and not restore_files:
+            settings = strip_data_files(settings)
         if settings:
             restore(settings)
     size = window.get("size")

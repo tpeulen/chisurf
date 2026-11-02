@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region
 
@@ -46,3 +48,33 @@ def test_native_state_calls_explicit_model_preference_hooks(tmp_path, monkeypatc
     app.close()
     assert closed == [True]
     assert load_settings("preferences") == {"zoom": 2.0}
+
+
+def test_a_tool_opened_in_the_shell_gets_its_settings_back_but_not_its_files(tmp_path, monkeypatch):
+    """Closed and opened again inside ChiSurf: the settings return, the data files do not."""
+    from chisurf.emtk.state import strip_data_files
+
+    monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path))
+    saved = {
+        "setup_name": "RVZ-MH150",
+        "output_format": ".pto",
+        "style": {"current_file": "/u/.chisurf/styles/dark.css"},
+        "data_root": "/data/records",
+        "workflow": {"raw_files": ["/data/m1.ptu", "/data/m2.ptu"], "burst_folder": "/data/m1.pto"},
+        "batch": [{"name": "a", "path": "/data/a.dat"}, {"name": "b"}],
+        "input": "photons:/data/m1.ptu",
+        "link": "mmfdb://store/x",
+    }
+    assert strip_data_files(saved) == {
+        "setup_name": "RVZ-MH150",
+        "output_format": ".pto",
+        "style": {"current_file": "/u/.chisurf/styles/dark.css"},
+        "data_root": "/data/records",
+        "workflow": {"raw_files": []},
+        "batch": [{"name": "b"}],
+    }
+    save_settings("tool", saved)
+    restored = []
+    app = SimpleNamespace(restore_settings=restored.append, export_settings=lambda: saved)
+    attach_native_state("tool", app, restore_files=False)
+    assert restored == [strip_data_files(saved)]

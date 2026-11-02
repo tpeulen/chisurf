@@ -236,7 +236,9 @@ def _is_focused(docks: DockManager, key: str) -> bool:
 def _default_loader(plugin_id: str) -> Any:
     from chisurf.emtk.plugins import load_plugin
 
-    return load_plugin(plugin_id)
+    # A tool opened in the ChiSurf window keeps its settings but starts without data: closed and
+    # opened again, it does not come back with the files, runs or results of its last opening.
+    return load_plugin(plugin_id, restore_files=False)
 
 
 class ShellDockManager(DockManager):
@@ -2276,6 +2278,15 @@ class EmtkShellApp(ImApp):
         hosted.box = (x, y, max(1.0, w), max(1.0, h))
         if hosted.app is not None:
             self.host_child(hosted.key, hosted.key, hosted.app, hosted.box)
+            # A tool that works for longer than a moment waits behind a blur with a progress bar.
+            overlay = hosted.extra.get("busy")
+            if overlay is None:
+                from chisurf.emtk.busy_overlay import BusyOverlay
+
+                overlay = hosted.extra["busy"] = BusyOverlay()
+            if overlay.update(hosted.app) or overlay.since is not None:
+                overlay.draw(im.get_current_context().p, hosted.box)
+                self.request_frame()  # the bar moves while the tool works
         elif hosted.error:
             im.text_wrapped(tr("The tool could not be opened."))
             im.text_wrapped(hosted.error)
@@ -2391,6 +2402,9 @@ class EmtkShellApp(ImApp):
         elif not self._menu_open:
             self._focus = None
         super().pointer_press(x, y, button, modifiers, clicks)
+        if self._busy_overlay_took(target, x, y):
+            self._capture = None
+            return
         child, (ox, oy) = self._child(target)
         from emtk.native import input_trace
 
@@ -2399,6 +2413,12 @@ class EmtkShellApp(ImApp):
         )
         if child is not None:
             child.pointer_press(x - ox, y - oy, button, modifiers, clicks)
+
+    def _busy_overlay_took(self, child_id: str | None, x: float, y: float) -> bool:
+        """A press on a tool that waits behind its busy overlay is the overlay's (Stop, or nothing)."""
+        hosted = next((h for h in self.hosted.values() if h.key == child_id), None) if child_id else None
+        overlay = hosted.extra.get("busy") if hosted is not None else None
+        return bool(overlay is not None and overlay.press(x, y))
 
     def pointer_release(self, x, y, button, modifiers=0):
         super().pointer_release(x, y, button, modifiers)

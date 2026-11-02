@@ -25,6 +25,18 @@ def manifests(root: str | Path | None = None) -> dict[str, dict]:
     return _read_manifests(Path(root))
 
 
+def manifest(plugin_id: str) -> dict | None:
+    """One shipped plugin's manifest (a fresh copy), without copying every other manifest.
+
+    :func:`manifests` deep-copies the whole catalogue (~50 ms): fine once, not from a frame.
+    """
+    global _shipped
+    if _shipped is None:
+        manifests()
+    entry = _shipped.get(plugin_id) if _shipped is not None else None
+    return copy.deepcopy(entry) if entry is not None else None
+
+
 def _read_manifests(root: Path) -> dict[str, dict]:
     found = {}
     for path in sorted(root.rglob("manifest.json")):
@@ -56,8 +68,13 @@ def load_plugin(
     locale: str | None = None,
     root: str | Path | None = None,
     persist: bool = True,
+    restore_files: bool = True,
 ):
-    """Construct a declared EMTK control, preserving source identities in translation."""
+    """Construct a declared EMTK control, preserving source identities in translation.
+
+    *restore_files* ``False``: the settings of the last opening come back, its data files do not
+    (the shell opens every tool without the files it had).
+    """
     from .frame_modules import import_frame_modules
     from .i18n import install
 
@@ -77,7 +94,7 @@ def load_plugin(
     if persist:
         from .state import attach_native_state
 
-        attach_native_state(plugin_id, app)
+        attach_native_state(plugin_id, app, restore_files=restore_files)
     return app
 
 
