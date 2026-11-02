@@ -69,6 +69,19 @@ timestamp: '2026-07-05T00:00:00Z'
     BVA/2CDE until MLE was fitted (MLE ~3.1 s, but the owner wants them parallel). Open: MLE's
     fit pool (all cores) now shares the cores with the two task processes; the hub's warm-up
     starts the 2 task processes at hub creation (also in tests).
+    **Round 4 (owner: "continue"), committed:** hub start-up -- first frames 0.7-1.6 s + 0.5 s ->
+    0.3 + 0.38 + 0.04 s (scratch `startup.py`: create_app + draw, per-frame times; profile one
+    frame with `startup2.py`): manifest walk pruned (`chisurf/emtk/plugins.py`, same 129 ids),
+    emtk `icons.preload()` (emtk f5c3027) from the warm-up, warm-up in two stages
+    (`WARM_LATER_S`). **Next, each blocked by a file another lane holds:** the search's remaining
+    1.15 s in the GUI is spread over `windows_preflight` 0.19 s (`excitation/preflight.py`,
+    `measure.py`: cache per reading + record), `tttr.macro_times` fetched 4x (0.1 s, a copy each
+    time) and the dT arrays 0.11 s (`selection.py`), the span cumsums 0.16 s (`fio/fluorescence/
+    burst.py`). **`>>` right after adding a 300 MB file** still waits for ptolib's SHA-256 of the
+    link (1.5 s, scalar C++ at ~200 MB/s, `thirdparty/ptolib/src/ptolib.cpp` `sha256_file`):
+    either hardware SHA2 (ARMv8/SHA-NI) there or an `add_link` that takes a caller's digest
+    (`hashlib` does it in 0.15 s; `pto._sha256_of_path` already computes and caches it) -- a
+    tttrlib rebuild, so it waits for the owner and a build slot on the board.
     Tried and reverted: workers returning column arrays instead of rows (no gain). Next: the GUI's
     `_finish` rebuilds a store from the rows (pass the table through, `gui/model.py` is shared);
     `_to_mle` still spends 0.45 s on the UI thread (`set_setup` + `burst_indices`); H2MM is now
