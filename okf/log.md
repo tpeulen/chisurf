@@ -11,6 +11,7 @@
 - Burst summary (generate_burst_dataframe) computed for all bursts at once (prefix sums + searchsorted), identical output, 0.56 -> 0.22 s for 12.5k bursts; guard test/core/test_burst_summary_vectorised.py. H2MM dwells/transitions vectorised (15 s -> <1 s, identical). Burst GS writes its container on the worker (UI freeze 3.8 s -> 0.66 s).
 - H2MM records only into the .pto: per-burst states, dwells, per-photon states ('h2mm states', Photon/State) and per-state decays as tables of its run; no h2mm/ folder, no HDF5 anywhere (photon_hdf5/photon_csv options and write_hdf5 removed); loose CSV only via Export / CLI --output. Burst MLE split by state (step 8) reads the container's states (burst_states.container_state_array) -- before, containers were never split.
 - H2MM 71 -> 32 s on 2.5M photons / 12k bursts: dwell table vectorised (27 s -> <0.1 s, bit-identical; in uncommitted burst_h2mm/core/export.py), restarts of a state count on threads (committed). H2MM Output tooltips say what a run records (.pto) and what Export adds.
+- PIE setup proposal: green/red gated on prompt + yellow on delayed (the lab layout); PIE simulator gets a 1.5 ns instrument delay (pulse edges wrapped, windows were detected reversed); MLE auto IRF/background restricted to each detector's gate (a gated acceptor took the other laser's pulse as IRF; fits ran to 32 ns).
 
 ## 2026-10-29
 

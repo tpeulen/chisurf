@@ -28,11 +28,14 @@ timestamp: '2026-07-05T00:00:00Z'
    already parallel -- the remaining lever is in tttrlib's EM itself); **GS** fit ~11 s (~400
    likelihood evaluations of 25 ms: analytic gradients would cut them); the container embed of
    the raw PTU (~0.6 s/150 MB, by design).
-   **Open, analysis:** a detector without a PIE gate (red, ungated) mixes FRET-sensitised and
-   direct-excitation photons; its MLE lifetimes then sit at the period (32 / 16 ns on the sim).
-   The setup proposal (`ChannelDefinition.propose_from_tttr`) should propose per-detector gates
-   for PIE data (donor: prompt, acceptor: prompt for FRET + a separate delayed detector), or MLE
-   should refuse an ungated detector on PIE data.
+   **Resolved:** ungated PIE acceptor (proposal now gates green/red on prompt + yellow on
+   delayed; MLE auto IRF/background are taken inside each detector's gate -- red no longer fits
+   to the 32 ns period). **Open, analysis:** on the simulator the MLE lifetimes read ~20% low
+   (green/red 0.67-0.69 / 2.8-3.2 ns vs truth 0.9 / 3.3; scratch `proposal_walk.py`): the
+   simulator has no scattered light, so the auto "IRF" from non-burst photons is fluorescence
+   whose peak sits ~0.2 ns after the pulse (bin 13 vs 11.7 at binning 16). Give the simulator a
+   scatter/IRF component (realism already models an IRF for the rig source) or fit with a measured
+   IRF before reading anything into the bias.
    Known: H2MM over-fits states on sim data (500k dwells at 3 states); the simulated
    long-lifetime population fits ~6% low (pulse at the period end, rising edge outside the gate).
 1. Open: **rate-only PIE burst tables mis-ratio E/S** — the top blocker: 923 of 2980 sm-DNA bursts drop out of the
