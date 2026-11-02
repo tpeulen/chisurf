@@ -70,11 +70,12 @@ The **Filter settings** tab holds:
 |---|---|---|
 | **Search** | Sliding window | The search: Sliding window, Cumulative (CUSUM / SPRT), Kalman (rate change), Bayesian changepoint (BOCPD), Coincident (multi-detector), Max-tree (threshold-free), Bayesian Blocks (optimal segmentation). Its parameters appear below the choice. |
 | **Sliding window** → **Min photons (L)**, **Photons per window**, **Window duration (T)** | 20, 10, 0.0005 s | A burst is where `m` consecutive photons fall inside `T`, at least `L` photons long. |
+| **Cumulative (CUSUM / SPRT)** → **Min photons (L)**, **Background rate**, **Signal/background ratio** | 20, 0 kcps, 4 | A sequential likelihood-ratio test between the background rate and a rate that many times higher. The search runs on **every photon of the stream**, so the background is the total over all detectors. The line below the fields gives it, measured on the file, and each detector's share (on `DNA13bp_3.ptu`: 3.53 kcps; green 1.58, red 2.00). **0** uses that measured total. Typing one detector's rate instead makes nearly the whole trace look like signal: a few giant "bursts" instead of real ones. The background is estimated from the gaps between photons: the longest 10 % of the gaps are background, since bursts only add short gaps. One over their mean excess is the rate, which is right within 2 % even with 80 % of the photons in bursts. |
 | **Save as setup default** | — | Stores the burst parameters as the selected detector setup's defaults. |
 | **Channel selection** → **Detector**, **Micro-time window** | All | Detector and PIE-window gate applied before the search. |
 | **Macro time interval** | upper bound 0.15 ms, merge gap 3 | Accepted inter-photon times dT (**Use min dT** / **Use max dT**); gaps of up to **Merge gap** photons are bridged (**Fill gaps**). |
 | **Filter** → **Filter on** / **Invert**, **Min photons**, **Count-rate photons** | on / off, 60, 5 | Apply the search; **Invert** keeps the photons it rejects. |
-| **Display** | window 10 s | The visible window of the active file (**Window start**, **Window length**), the plot bin widths (**MCS bin width**, **Decay coarsening**, **Burst bins**) and **Pool all files**. |
+| **Display** | window 10 s | The count-rate trace is in kHz. The visible window of the active file (**Window start**, **Window length**), the plot bin widths (**MCS bin width**, **Decay coarsening**, **Burst bins**) and **Pool all files**. |
 
 The **Burst Selection** tab lists the inputs and says where results go. The destination
 follows the input: vendor files get a `bi4_bur/` folder beside them

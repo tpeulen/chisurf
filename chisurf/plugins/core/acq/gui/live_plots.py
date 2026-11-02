@@ -324,7 +324,7 @@ class LivePlots:
             "live_count_rate": (
                 "rate",
                 "Macro time (s)",
-                "Count rate (cps)",
+                "Count rate (kHz)",  # count rates read in kHz; the series stay in counts/s
                 False,
                 self.rate_log_y,
             ),
@@ -354,8 +354,10 @@ class LivePlots:
                 implot.setup_axis_limits(
                     implot.AXIS_Y1, self.mcs_y_min, self.mcs_y_max, implot.COND_ALWAYS
                 )
+            scale = 1e-3 if key == "rate" else 1.0  # counts/s -> kHz
             for label, x, y in series:
                 if len(x) and len(y):
+                    y = np.asarray(y, dtype=float) * scale
                     if logy:
                         y = np.where(y > 0, y, np.nan)
                     implot.plot_line(label, x, y)
@@ -363,7 +365,7 @@ class LivePlots:
                 for index, mean in self.mean_lines.items():
                     implot.plot_inf_lines(
                         f"mean {self._rate_label(index)}",
-                        [mean],
+                        [float(mean) * scale],
                         flags=implot.INF_LINES_FLAGS_HORIZONTAL,
                     )
             implot.end_plot()

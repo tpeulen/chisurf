@@ -11,10 +11,12 @@ change, as the Qt tool does.
 from __future__ import annotations
 
 import copy
+import json
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
+import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
@@ -638,24 +640,64 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         return essential, [p for p in params if p.get("attr") not in names]
 
     def _background_hint(self) -> None:
-        """CUSUM/SPRT with background 0: say what the search will use (the time-binned estimate)."""
+        """CUSUM/SPRT: the background the search sees -- every photon of the stream, so the sum over
+        the detectors -- and each detector's share, so a typed rate is the right one."""
         m = self.model
-        if str(m.algorithm) != "cusum_sprt" or float(getattr(m.search, "background_cps", 0) or 0) > 0:
+        if str(m.algorithm) != "cusum_sprt":
             return
         tttr = (m.diagnostic or {}).get("tttr")
+        typed = float(getattr(m.search, "background_cps", 0) or 0)
         if tttr is None:
-            im.text_disabled(tr("Background 0: estimated per file from the data."))
+            if typed <= 0:
+                im.text_disabled(tr("Background 0: estimated per file from the data."))
             return
-        key = id(tttr)
+        detectors = {
+            str(name): [int(c) for c in (d or {}).get("chs", [])]
+            for name, d in (m.detectors or {}).items()
+            if (d or {}).get("chs")
+        }
+        key = (id(tttr), len(tttr), json.dumps(detectors, sort_keys=True))
         if getattr(self, "_background_key", None) != key:
-            from chisurf.core.fluorescence.burst.tttrlib_search import estimate_background_cps
-
-            self._background_key, self._background_cps = key, estimate_background_cps(tttr)
-        im.text_disabled(tr("Background 0: estimated per file, {:.2f} kcps in this one.").format(
-            self._background_cps / 1e3))
+            self._background_key, self._background = key, None
+            self._estimate_background(tttr, detectors, key)
+        found = self._background
+        if found is None:
+            im.text_disabled(tr("Estimating the background ..."))
+            ctx = get_current_context()
+            ctx.request_frame_at(ctx.io.now + 0.1)  # the estimate lands in a thread: look again
+            return
+        total, parts = found
+        shares = ", ".join(f"{name} {cps / 1e3:.2f}" for name, cps in parts.items())
+        if typed <= 0:
+            text = tr("Background 0: estimated from the data, {:.2f} kcps (all photons; {}).").format(
+                total / 1e3, shares)
+        else:
+            text = tr("Data: {:.2f} kcps over all photons the search sees ({}).").format(
+                total / 1e3, shares)
+        im.push_text_wrap_pos(0.0)  # at the panel's edge: the shares make it a long line
+        im.text_disabled(text)
+        im.pop_text_wrap_pos()
         im.set_item_tooltip(tr(
-            "The median count rate in time bins of 1 ms (longer for sparse data): the rate between "
-            "bursts. Type a rate to use that instead."))
+            "The search runs on every photon of the stream, so its background is the sum over the "
+            "detectors -- type that total, not one detector's rate. Estimated from the gaps between "
+            "photons: the long gaps are the background's (bursts add short ones)."))
+
+    def _estimate_background(self, tttr, detectors: dict, key) -> None:
+        """The total and per-detector background of *tttr*, in a thread (0.1-0.3 s each on 300 MB)."""
+        import threading
+
+        from chisurf.core.fluorescence.burst.tttrlib_search import estimate_background_cps
+
+        def work() -> None:
+            try:
+                parts = {name: estimate_background_cps(tttr, chs) for name, chs in detectors.items()}
+                found = (estimate_background_cps(tttr), parts)
+            except Exception:  # noqa: BLE001 - no hint rather than a broken panel
+                found = None
+            if getattr(self, "_background_key", None) == key:
+                self._background = found
+
+        threading.Thread(target=work, name="background-estimate", daemon=True).start()
 
     def _detectors(self, box=None) -> None:
         self.remember("detectors", box)
@@ -686,11 +728,11 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             )
             return
         if implot.begin_plot(f"Count rate ({m.trace_bin_ms:g} ms bins)", (-1, -1)):
-            implot.setup_axes("Time in the window (s)", "Count rate (Hz)")
-            if "all" in curves:
-                implot.plot_line(tr("All photons"), *curves["all"])
-            if "selected" in curves:
-                implot.plot_line(tr("Selected photons"), *curves["selected"])
+            implot.setup_axes("Time in the window (s)", "Count rate (kHz)")  # count rates read in kHz
+            for key, name in (("all", tr("All photons")), ("selected", tr("Selected photons"))):
+                if key in curves:
+                    x, y = curves[key]
+                    implot.plot_line(name, x, np.asarray(y, dtype=float) / 1e3)
             implot.end_plot()
 
     def _dt(self, box=None) -> None:

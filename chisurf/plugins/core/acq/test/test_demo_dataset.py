@@ -110,7 +110,8 @@ def test_count_rate_page_draws_the_rate_and_a_mean_line_on_request(monkeypatch, 
         ds.live.set_mean_0()
         page.update()
         assert [label for _y, label in lines] == [f"mean {ds.live._rate_label(0)}"]
-        assert lines[0][0] == pytest.approx(float(ds.live.series["rate"][0][2].mean()))
+        # the page draws count rates in kHz; the series stay in counts/s
+        assert lines[0][0] == pytest.approx(float(ds.live.series["rate"][0][2].mean()) / 1e3)
         ds.live.rate_log_y = True
         assert page.is_log(ds.live) == (False, True)
         ds.live.clear_mean_lines()

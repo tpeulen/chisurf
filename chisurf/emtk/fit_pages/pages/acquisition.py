@@ -44,6 +44,8 @@ class _LivePage(Plot):
     panel_title = ""
     x_label = ""
     y_label = ""
+    #: the series' values are multiplied by this for display (counts/s -> kHz)
+    y_scale = 1.0
     #: draw points instead of a line (a series whose x repeats)
     points = False
 
@@ -94,7 +96,7 @@ class _LivePage(Plot):
             if not (len(x) and len(y)):
                 continue
             n = min(len(x), len(y))
-            x, y = x[:n], y[:n]
+            x, y = x[:n], y[:n] * self.y_scale
             if logy:
                 y = np.where(y > 0, y, np.nan)
             if logx:
@@ -183,7 +185,8 @@ class CountRatePage(_LivePage):
     series_key = "rate"
     panel_title = "Count rate"
     x_label = "Macro time (s)"
-    y_label = "Count rate (cps)"
+    y_label = "Count rate (kHz)"
+    y_scale = 1e-3  # count rates read in kHz
 
     def is_log(self, live):
         """Logarithmic count-rate axis when set."""
@@ -195,7 +198,7 @@ class CountRatePage(_LivePage):
         live = self.live()
         for index, mean in sorted(live.mean_lines.items()):
             self.panel.hline(
-                float(mean),
+                float(mean) * self.y_scale,
                 pen=S.to_pen((200, 200, 200), width=1.0),
                 label=f"mean {live._rate_label(index)}",
             )
