@@ -99,6 +99,38 @@ def _state_suffix(state):
     return "" if state is None else f" S{int(state)}"
 
 
+def tail_lifetime(counts: np.ndarray, dt: float) -> float:
+    """Maximum-likelihood lifetime of an exponential seen over a truncated window.
+
+    *counts* are the photons per bin from the tail start to the window's end, *dt* the bin width
+    (ns). The likelihood of a decay truncated to ``[0, T]`` has its maximum where the photons' mean
+    time equals ``tau - T / (exp(T / tau) - 1)``; that mean rises monotonically with tau towards
+    ``T / 2``, so a bisection finds it. NaN for fewer than two photons or a flat window.
+    """
+    counts = np.asarray(counts, dtype=np.float64)
+    n = counts.sum()
+    if n < 2 or counts.size < 2 or dt <= 0:
+        return float("nan")
+    t = (np.arange(counts.size) + 0.5) * dt
+    T = counts.size * dt
+    mean = float((counts * t).sum() / n)
+    if mean >= 0.5 * T * 0.999:
+        return float("nan")  # no decay in the window
+
+    def mean_of(tau):
+        r = T / tau
+        return tau - T / np.expm1(r) if r < 700 else tau
+
+    lo, hi = 1e-4, 1e4
+    for _ in range(80):
+        mid = np.sqrt(lo * hi)
+        if mean_of(mid) < mean:
+            lo = mid
+        else:
+            hi = mid
+    return float(np.sqrt(lo * hi))
+
+
 def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None, extras=None):
     """One result row, laid out by the fitted model.
 
@@ -129,6 +161,9 @@ def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None, ex
         except (TypeError, IndexError):
             return float("nan")
 
+    # the tail fit's parameters are (tail start, tau1, tau2): its lifetime is the second
+    tau_index = 1 if cfg.get("model") == "tail" else 0
+
     extras = extras or {}
 
     sfx = _state_suffix(state)
@@ -148,7 +183,7 @@ def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None, ex
         {
             f"Number of Photons (fit window){sfx} ({color})": cp_sum + cs_sum,
             two_istar_key: two_istar,
-            f"Tau{sfx} ({color})": g(0),
+            f"Tau{sfx} ({color})": g(tau_index),
             f"BIFL scatter?{sfx} ({color})": int(cfg["BIFL_scatter"]),
             f"2I*: P+2S?{sfx} ({color})": int(cfg["p2s_twoIstar"]),
         }
@@ -319,7 +354,7 @@ def process_one_file_worker(args):
         prev_ranges = {}  # det -> (vv_s0,vv_s1,vh_s0,vh_s1)
         for det in det_order:
             cfg = perdet_cfg[det]
-            fitters[det] = _build_fitter(cfg)
+            fitters[det] = None if cfg.get("model") == "tail" else _build_fitter(cfg)
             n = int(cfg["half_len"])
             half_len[det] = n
             decay_buf[det] = np.zeros(2 * n, dtype=np.float64)
@@ -407,6 +442,20 @@ def process_one_file_worker(args):
                     x0 = cfg["x0"]
                     if state is not None:
                         x0 = (cfg.get("state_x0") or {}).get(state, x0)
+                    if fitters[det] is None:
+                        # the tail fit: from the tail start (after the decay's peak) to the
+                        # window's end, both polarisations summed
+                        start = min(max(int(cfg.get("tail_bin", s0)), s0), s1)
+                        tail = cp_u32[start:s1].astype(np.float64)
+                        if not cfg.get("mirror"):
+                            tail = tail + cs_u32[start:s1]
+                        tau = tail_lifetime(tail, float(cfg["dt"]))
+                        x = np.array([float(start), tau, np.nan])
+                        rec.update(
+                            _record(fname, det, color, cfg, x, float("nan"), cp_sum, cs_sum,
+                                    state=state)
+                        )
+                        continue
                     res = fitters[det](
                         data=d,
                         initial_values=x0,

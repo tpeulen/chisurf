@@ -125,9 +125,13 @@ def header_time_ns(tttr: Any, binning: int) -> tuple[float, float] | None:
     if tttr is None:
         return None
     try:
+        from chisurf.core.fio.micro_time import channels_per_period
+
         h = tttr.header
         micro_s = float(h.micro_time_resolution)
-        n_chan = float(h.number_of_micro_time_channels)
+        # one excitation period -- not the TDC range the header names (32768 on a MultiHarp: a
+        # 2.6 us "period" at 80 ps, where the laser runs at 40 ns)
+        n_chan = float(channels_per_period(tttr))
     except Exception:
         return None
     if not (micro_s > 0.0 and n_chan > 0.0):
@@ -193,8 +197,11 @@ def vv_vh_histogram(
         tp, ts = photons(detector_chs[::2]), photons(detector_chs[1::2])
     else:
         tp = ts = photons(detector_chs)
-    cp = tp.get_microtime_histogram(binning)[0].astype(np.float64, copy=False)
-    cs_hist = ts.get_microtime_histogram(binning)[0].astype(np.float64, copy=False)
+    from chisurf.core.fio.micro_time import channels_per_period, period_histogram
+
+    period = channels_per_period(tttr)  # one excitation period, whatever the header's TDC range
+    cp = period_histogram(tp, binning, period=period)
+    cs_hist = period_histogram(ts, binning, period=period)
     if apply_vh_shift and shift != 0:
         cs_hist = np.roll(cs_hist, shift)
     if apply_vh_shift:
@@ -315,7 +322,9 @@ def irf_fwhm_channels(tttr: Any, chs: list[int], burst_idx: np.ndarray) -> int |
     if tttr is None or not chs or np.asarray(burst_idx).size == 0:
         return None
     try:
-        n_full = int(tttr.header.number_of_micro_time_channels)
+        from chisurf.core.fio.micro_time import channels_per_period
+
+        n_full = int(channels_per_period(tttr))
     except Exception:
         return None
     if n_full <= 0:
@@ -379,7 +388,9 @@ def select_binning(
         np.isin(np.asarray(tttr.routing_channels)[burst_idx], np.asarray(chs, dtype=int)).sum()
     )
     try:
-        n_full = int(tttr.header.number_of_micro_time_channels)
+        from chisurf.core.fio.micro_time import channels_per_period
+
+        n_full = int(channels_per_period(tttr))
     except Exception:
         return None
     if counts <= 0 or n_full <= 0:
@@ -626,16 +637,11 @@ def burst_histogram(
     pchs = chs[::2]
     schs = chs[1::2] if len(chs) > 1 else chs
     sb, eb = micro_time_range
-    cp = (
-        burst[np.where(np.isin(burst.routing_channels, pchs))[0]]
-        .get_microtime_histogram(binning)[0]
-        .astype(np.float64, copy=False)
-    )
-    cs_hist = (
-        burst[np.where(np.isin(burst.routing_channels, schs))[0]]
-        .get_microtime_histogram(binning)[0]
-        .astype(np.float64, copy=False)
-    )
+    from chisurf.core.fio.micro_time import channels_per_period, period_histogram
+
+    period = channels_per_period(burst)
+    cp = period_histogram(burst[np.where(np.isin(burst.routing_channels, pchs))[0]], binning, period=period)
+    cs_hist = period_histogram(burst[np.where(np.isin(burst.routing_channels, schs))[0]], binning, period=period)
     if sb > 0:
         cp[:sb] = 0
         cs_hist[:sb] = 0
@@ -800,6 +806,31 @@ def fit_result_names(model: str) -> tuple[str, ...]:
     properties = fit_models()[model].get("results_schema", {}).get("properties", {})
     return tuple(name for name in properties if name == "selected_index")
 
+
+
+def _tail_start_bin(rc_full, mt_bins, bursts, chs, sb, eb) -> int:
+    """First bin of a tail fit: one after the peak of the detector's decay pooled over the
+    bursts' photons (in the window ``[sb, eb)``)."""
+    chs = np.asarray(list(chs), dtype=int)
+    if not len(bursts) or chs.size == 0 or eb <= sb:
+        return int(sb)
+    first = np.asarray([int(a) for a, _b in bursts], dtype=np.int64)
+    last = np.asarray([int(b) for _a, b in bursts], dtype=np.int64)
+    lengths = last - first + 1
+    keep = lengths > 0
+    first, lengths = first[keep], lengths[keep]
+    if not lengths.size:
+        return int(sb)
+    starts = np.repeat(first - np.concatenate(([0], np.cumsum(lengths)[:-1])), lengths)
+    idx = np.arange(int(lengths.sum())) + starts
+    idx = idx[idx < len(rc_full)]
+    sel = np.isin(np.asarray(rc_full)[idx], chs)
+    micro = np.asarray(mt_bins)[idx][sel].astype(np.int64)
+    micro = micro[(micro >= sb) & (micro < eb)]
+    if not micro.size:
+        return int(sb)
+    hist = np.bincount(micro - int(sb), minlength=int(eb - sb))
+    return int(sb) + int(np.argmax(hist)) + 1
 
 class LazyTTTRs(collections.abc.MutableMapping):
     """Canonical physical path -> lazily read TTTR; legacy stems resolve only when unique."""
@@ -1022,9 +1053,15 @@ class MleSession:
             self.det_settings[det] = copy.deepcopy(self.template)
         return self.det_settings[det]
 
-    def set_model(self, name: str) -> None:
-        """Select one validated model for all detectors, retaining each model's edits."""
+    def set_model(self, name: str, det: str | None = None) -> None:
+        """Select the model of detector *det* (every detector when ``None``), keeping each model's edits."""
         validate_fit_model(name)
+        if det is not None:
+            settings = self.settings_of(det)
+            if settings.model != name:
+                settings.model = name
+                self.outcome = None
+            return
         if self.template.model == name and all(
             st.model == name for st in self.det_settings.values()
         ):
@@ -1033,6 +1070,27 @@ class MleSession:
         for settings in self.det_settings.values():
             settings.model = name
         self.outcome = None
+
+    def default_models(self) -> dict[str, str]:
+        """The model each detector starts with, from its role in the setup.
+
+        The first detector is the donor: ``fit23`` (polarisation-resolved when it has a parallel
+        and a perpendicular channel). A detector gated on a later PIE window (the acceptor under
+        its own laser, "yellow") is ``fit23`` too. Any other detector sees the acceptor's
+        sensitised emission -- a rise from the donor, then the acceptor's decay -- where a
+        deconvolution with the IRF does not apply: the tail fit.
+        """
+        windows = [list(map(int, w)) for w in (self.definition.get("windows") or {}).values()
+                   if isinstance(w, (list, tuple)) and len(w) >= 2]
+        first_window = min(windows, key=lambda w: w[0]) if windows else None
+        out = {}
+        for index, (name, info) in enumerate(self.detectors.items()):
+            gates = [r for r in (info.get("micro_time_ranges") or []) if len(r) >= 2]
+            later_window = bool(
+                first_window and gates and int(gates[0][0]) >= int(first_window[1]) - 1
+            )
+            out[name] = "fit23" if index == 0 or later_window else TAIL_MODEL
+        return out
 
     def set_binning(self, binning: int) -> None:
         """The micro-time binning is global: every detector's histograms and IRF share it."""
@@ -1053,8 +1111,15 @@ class MleSession:
         """Keep the complete portable setup, including undeclared future metadata."""
         self.definition = copy.deepcopy(settings)
         reading = settings.get("tttr_reading") or {}
+        new = [d for d in (settings.get("detectors") or {}) if d not in self.det_settings]
         self.set_detectors(settings.get("detectors", self.detectors), reading.get("file_type"))
         self.tttrs.set_setup(self.definition)
+        # a detector seen for the first time starts with the model its role calls for; a model the
+        # user chose stays
+        defaults = self.default_models()
+        for det in new:
+            if det in defaults:
+                self.settings_of(det).model = defaults[det]
 
     def definition_payload(self) -> dict:
         """Return the portable setup with the current authoritative detector and reader state."""
@@ -1631,15 +1696,19 @@ class MleSession:
 
         if self.df_bursts is None or not len(self.tttrs):
             raise ValueError("No burst data loaded.")
-        if self.settings.model == TAIL_MODEL:
-            raise ValueError(
-                "The tail fit previews the current decay; choose a Fit2x model to fit every burst."
-            )
         det_order = list(self.detectors)
         binning = int(self.settings.micro_time_binning)
         configs = {det: self.batch_config(det) for det in det_order}
+        # one polarisation's histogram length: the IRF's -- or, for a model without one (the tail
+        # fit), one excitation period of the measurement at this binning
+        from chisurf.core.fio.micro_time import channels_per_period
+
+        first_tttr = self.current_tttr()
+        period_bins = (
+            -(-channels_per_period(first_tttr) // max(1, binning)) if first_tttr is not None else 1
+        )
         for det, cfg in configs.items():
-            cfg["half_len"] = max(1, cfg["irf"].size // 2)
+            cfg["half_len"] = max(1, cfg["irf"].size // 2) if cfg["irf"].size else max(1, period_bins)
         rc_max_seen = max(
             (int(np.max(info["chs"])) for info in self.detectors.values() if info.get("chs")),
             default=0,
@@ -1737,6 +1806,12 @@ class MleSession:
                     if schs.size:
                         lut[schs] = 1
                     perdet[det] = dict(configs[det], class_lut=lut, mirror=mirror)
+                    if configs[det].get("model") == TAIL_MODEL:
+                        # where this detector's tail starts: after the peak of its decay, pooled
+                        # over every burst photon of the file (a burst alone is too thin)
+                        perdet[det]["tail_bin"] = _tail_start_bin(
+                            rc_full, mt_bins, bursts, chs, configs[det]["sb"], configs[det]["eb"]
+                        )
                     timing = self.timing_ns(tttr, binning)
                     if timing[0] is not None and timing[1] is not None:
                         perdet[det]["dt"], perdet[det]["period"] = timing

@@ -706,7 +706,9 @@ class MleViewModel(RunPickerMixin):
         engine.validate_fit_model(name)
         if self.fit_model == name:
             return
-        self.session.set_model(name)
+        # the detector on screen: each detector has its own model (donor fit23, the acceptor's
+        # sensitised emission a tail fit, ...)
+        self.session.set_model(name, det=self.session.current_detector)
         self.refit()
         self.notify("settings")
 
@@ -909,6 +911,37 @@ class MleViewModel(RunPickerMixin):
                 else f"tau = {self.tau_result:.3f} ns (2I* = {self.two_istar:.3f})"
             )
         self.notify("fit")
+
+    def prepare_patterns(self, analysed=()) -> None:
+        """IRF and background without asking: the buffer and scatter measurements beside the
+        analysed files (or a folder up) for every detector, the rest estimated from the photons
+        outside the bursts. What the pipeline does when the bursts arrive."""
+        from chisurf.core.fio.reference_files import find_reference_measurements
+
+        try:
+            found = find_reference_measurements(analysed) if analysed else {"irf": [], "bg": []}
+            used = []
+            for kind in ("irf", "bg"):
+                if not found[kind]:
+                    continue
+                for det in list(self.session.detectors):
+                    try:
+                        self.session.set_pattern_files(kind, det, list(found[kind]))
+                    except Exception:  # noqa: BLE001 - a reference this detector cannot read
+                        continue
+                used.append(f"{'IRF' if kind == 'irf' else 'background'}: "
+                            + ", ".join(p.name for p in found[kind]))
+            if self.session.current_tttr() is not None:
+                self.session.auto_extract()  # fills what no measured file gave
+                self.auto_patterns = True
+            self.status_text = (
+                "Measured " + "; ".join(used) + ". " if used else
+                "No buffer / scatter measurement beside the data: IRF and background estimated "
+                "from the photons outside the bursts. "
+            ) + (self.session.status or "")
+            self.notify("fit")
+        finally:
+            self._release_snapshot()
 
     def auto_extract(self) -> None:
         """One click: binning, IRF and background from the non-burst photons, fit window, fit."""

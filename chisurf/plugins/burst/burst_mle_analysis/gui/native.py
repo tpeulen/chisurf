@@ -174,6 +174,14 @@ class MleNativeApp(TourTarget, ImApp):
         self.model.status_text = "Estimating IRF and background ..."
         self.job.start("auto_extract")
 
+    def prepare(self, analysed) -> bool:
+        """Get the step ready without a click (the pipeline, when the bursts arrive): measured
+        buffer / scatter beside the data, else IRF and background from the non-burst photons."""
+        if self.job.busy:
+            return False
+        self.model.status_text = "Looking for buffer and scatter measurements, preparing IRF and background ..."
+        return bool(self.job.start("prepare_patterns", [str(p) for p in analysed]))
+
     def fit_bursts(self, force: bool = False) -> None:
         """Fit every burst; ``force`` (Restart) fits again even when nothing changed."""
         if self.model.session.df_bursts is None:
@@ -290,9 +298,15 @@ class MleNativeApp(TourTarget, ImApp):
 
     def _controls(self, box=None) -> None:
         running = self.job.busy
-        im.begin_disabled(running)
-        self._draw_input("bursts")
-        im.end_disabled()
+        if getattr(self, "pipeline", False):
+            # In the pipeline the bursts are Burst Selection's: no Input to pick from.
+            files = self.model.session.bur_files
+            im.text(f"Bursts: {Path(str(files[0])).name if files else 'none yet'} from Burst Selection")
+            im.set_item_tooltip("The bursts of step 2; run another search there to fit other bursts.")
+        else:
+            im.begin_disabled(running)
+            self._draw_input("bursts")
+            im.end_disabled()
         has_data = self.model.session.df_bursts is not None
         has_results = bool(self.model.burst_results)
         ready, _n = self.model.input_status()

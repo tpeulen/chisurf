@@ -176,23 +176,10 @@ def gaussian_prompt(prompt: np.ndarray, shape: float = 0.0) -> np.ndarray:
 
 
 def _micro_time_channels_per_period(tttr: tttrlib.TTTR) -> int:
-    """Return the number of micro-time channels in one laser period.
+    """The micro-time channels of one laser period (:func:`chisurf.core.fio.micro_time.channels_per_period`)."""
+    from chisurf.core.fio.micro_time import channels_per_period
 
-    The header's ``number_of_micro_time_channels`` is the TAC/ADC range, usually
-    larger than one laser period; the physically meaningful length is
-    ``macro_time_resolution / micro_time_resolution`` (macro ticks are the laser
-    sync), capped at the ADC range. Falls back to the ADC range.
-    """
-    header = tttr.header
-    adc = int(getattr(header, "number_of_micro_time_channels", 0) or 0)
-    micro_res = float(getattr(header, "micro_time_resolution", 0.0) or 0.0)
-    macro_res = float(getattr(header, "macro_time_resolution", 0.0) or 0.0)
-    if micro_res > 0.0 and macro_res > 0.0:
-        n = int(round(macro_res / micro_res))
-        if adc > 0:
-            n = min(n, adc)
-        return max(1, n)
-    return max(1, adc or 1)
+    return channels_per_period(tttr)
 
 
 @dataclass
@@ -511,6 +498,9 @@ def extract_mle_irf_background(
     non_burst = tttr[keep_idx] if keep_idx.size else tttr[np.array([], dtype=int)]
 
     binning = max(1, int(micro_time_binning))
+    from chisurf.core.fio.micro_time import channels_per_period, period_histogram
+
+    period = channels_per_period(tttr)
     q = float(np.clip(baseline_quantile, 0.0, 1.0))
     model = str(irf_model).lower()
     experimental = model in ("experimental", "raw")
@@ -529,7 +519,8 @@ def extract_mle_irf_background(
         rout = np.asarray(non_burst.routing_channel)
         sel = channel_mask(rout, channels)
         sub = non_burst[np.where(sel)[0]]
-        hist = np.asarray(sub.get_microtime_histogram(binning)[0], dtype=np.float64)
+        # one excitation period of the measurement (not the TDC range its header names)
+        hist = period_histogram(sub, binning, period=period)
         ranges = [r for r in (gates or []) if r is not None and len(r) >= 2]
         inside = np.ones(hist.size, dtype=bool)
         if ranges and hist.size:

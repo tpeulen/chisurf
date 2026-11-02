@@ -224,6 +224,7 @@ class BurstAnalysisHubApp(ToolHubApp):
         from chisurf.plugins.burst.burst_mle_analysis.gui.native import create_app
 
         app = create_app()
+        app.pipeline = True  # the bursts come from Burst Selection: no Input of its own
         app.model.split_by_state = bool(split_by_state)
         return app
 
@@ -457,6 +458,14 @@ class BurstAnalysisHubApp(ToolHubApp):
         patterns = self.context.irf_background_patterns
         if patterns and self._changed(role, "patterns", id(patterns)):
             self._patterns_to_mle(child, patterns)
+        elif (
+            child.model.session.bur_files
+            and self.context.raw_files
+            and self._changed(role, "prepared", str(self.context.burst_folder))
+        ):
+            prepare = getattr(child, "prepare", None)
+            if callable(prepare):
+                prepare(self.context.raw_files)  # measured buffer / scatter, else estimated
 
     _to_segment_mle = _to_mle
 

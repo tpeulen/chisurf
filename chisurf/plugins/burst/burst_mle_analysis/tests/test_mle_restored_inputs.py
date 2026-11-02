@@ -184,8 +184,24 @@ def test_the_tail_fit_is_offered_and_recovers_the_planted_lifetime(inputs):
     assert outcome.names == ["tail_start", "tau1", "tau2"]
     assert outcome.x[1] == pytest.approx(TRUE_TAU, rel=0.05)
     assert outcome.curves.irf is None, "the tail fit deconvolves no IRF"
-    with pytest.raises(ValueError, match="tail fit previews"):
-        session.run_batch()
+    # the batch fits every burst's tail too (a truncated-exponential MLE per burst)
+    rows = session.run_batch()
+    taus = np.array([r.get("Tau (synthetic)", np.nan) for r in rows], dtype=float)
+    taus = taus[np.isfinite(taus)]
+    assert taus.size > 0
+    assert np.median(taus) == pytest.approx(TRUE_TAU, rel=0.25)
+
+
+def test_the_tail_lifetime_of_a_truncated_exponential():
+    from chisurf.plugins.burst.burst_mle_analysis._mp_worker import tail_lifetime
+
+    rng = np.random.default_rng(1)
+    dt, n_bins, tau = 0.1, 100, 2.5  # window of 10 ns
+    t = rng.exponential(tau, 200_000)
+    counts = np.bincount((t[t < dt * n_bins] / dt).astype(int), minlength=n_bins)
+    assert tail_lifetime(counts, dt) == pytest.approx(tau, rel=0.02)
+    assert np.isnan(tail_lifetime(np.ones(50), dt))  # flat: no decay
+    assert np.isnan(tail_lifetime(np.array([1.0]), dt))
 
 
 # -- IRF model --------------------------------------------------------------------------------------------------- #
