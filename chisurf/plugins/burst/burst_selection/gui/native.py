@@ -58,6 +58,9 @@ ESSENTIAL_SEARCH_PARAMETERS = {
 
 #: Toolbar buttons a pipeline step does not show: its files are step 1's, and the legacy exports
 #: (flrCIF and its metadata) live in File > Data > Legacy Export.
+#: The histogram's feature when the chosen one does not exist for the setup's detectors.
+FALLBACK_FEATURE = "Duration (ms)"
+
 PIPELINE_HIDDEN_BUTTONS = frozenset({"load_example", "toolAction_clear", "export_cif", "metadata"})
 
 if TYPE_CHECKING:
@@ -869,6 +872,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             )
             return
         centres, counts, width = hist
+        note = getattr(self, "_feature_note", "")
+        if note:
+            im.text_disabled(note)
         title = f"{m.hist_feature}: {int(counts.sum())} bursts in the visible window"
         if implot.begin_plot(title + "##histogram", (-1, -112 if m.gmm_rows() else -1)):
             implot.setup_axes(m.hist_feature, "Bursts")
@@ -911,6 +917,16 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         if frame is None:
             return None, 0
         n_all = diag_mod.histogram_data_from_frame(frame, m.hist_feature).size
+        if n_all == 0 and m.hist_feature != FALLBACK_FEATURE:
+            # the feature does not exist for these detectors (Proximity Ratio needs a green and a
+            # red one; a setup proposed from a file names them ch0, ch1, ...): a feature every run has
+            if diag_mod.histogram_data_from_frame(frame, FALLBACK_FEATURE).size:
+                self._feature_note = (
+                    f"{m.hist_feature} is not defined for these detectors: showing {FALLBACK_FEATURE}."
+                )
+                m.hist_feature = FALLBACK_FEATURE
+                self._hist_feature_seen = FALLBACK_FEATURE
+                n_all = diag_mod.histogram_data_from_frame(frame, m.hist_feature).size
         active = getattr(m, "active_file", None)
         window = diag_mod.rows_in_window(
             frame, float(m.window_start_s), float(m.window_length_s),

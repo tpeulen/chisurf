@@ -141,3 +141,35 @@ def test_a_fitted_mixture_keeps_its_legend_off_the_histogram(tmp_path, monkeypat
         assert labels["Gaussian 1"][0] > max(ticks), "the legend lies over the histogram"
     finally:
         app.close()
+
+
+def test_a_feature_the_detectors_do_not_have_falls_back_to_duration(tmp_path, monkeypatch):
+    """Proximity Ratio needs a green and a red detector; a setup proposed from a file names them by
+    channel. The histogram showed nothing; it now shows Duration and says why."""
+    from chisurf.plugins.emtk_test_input import Driver
+
+    monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
+    monkeypatch.setenv("MMFDB_SETTINGS_DIR", str(tmp_path / "mmfdb"))
+    monkeypatch.setenv("MMFDB_DATABASE_PATH", str(tmp_path / "mmfdb.sqlite"))
+    (tmp_path / "settings").mkdir()
+    (tmp_path / "mmfdb").mkdir()
+    shutil.copy(DATA / "m000.spc", tmp_path / "m000.spc")
+    from chisurf.plugins.burst.burst_selection.gui.native import FALLBACK_FEATURE, create_app
+
+    by_channel = dict(SETUP)
+    by_channel["detectors"] = {f"ch{c}": {"chs": [c]} for c in (0, 1, 8, 9)}
+    app = create_app(restore=False)
+    try:
+        app.apply_setup(by_channel, "by channel")
+        drv = Driver(app, (1400, 860))
+        assert feed(drv.app, tmp_path / "m000.spc")
+        app.model.run()
+        app.model.load_diagnostics()
+        app.model.hist_feature = "Proximity Ratio"
+        app.docks.focus("histogram")
+        strings = drv.draw(2).strings
+        assert app.model.hist_feature == FALLBACK_FEATURE
+        assert any("is not defined for these detectors" in x for x in strings), strings
+        assert any(x.startswith(f"{FALLBACK_FEATURE}: ") for x in strings), strings
+    finally:
+        app.close()
