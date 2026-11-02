@@ -74,3 +74,37 @@ def test_a_handed_in_definition_keeps_every_stored_setup_selectable(store, prepa
     assert app.selected_setup_name() == ""
     assert sorted(app.model.data["detectors"]) == ["ch0", "ch1", "ch2", "ch3"]
     assert app.select_setup("RVZMT150") and app.selected_setup_name() == "RVZMT150"
+
+
+def test_photons_handed_to_the_hub_take_the_last_used_setup_not_a_proposal(store, monkeypatch):
+    """"Open in… Burst Analysis" opens the Data step before step 0 ever drew: the file's photons must
+    still get the library's last used setup (RVZMT150), not detectors proposed from its header."""
+    from chisurf.plugins.burst.burst_analysis.gui.native import create_app
+
+    def no_proposal(*args, **kwargs):
+        raise AssertionError("a setup was proposed from the file although the library has one")
+
+    monkeypatch.setattr(ChannelDefinition, "open_tttr", no_proposal)
+    hub = create_app()
+    hub.context.raw_files = ["DNA13bp_3.ptu"]
+    hub._propose_setup_from_first_file()
+    assert hub.setup_model.current_name == "RVZMT150"
+    assert hub.context.setup_name == "RVZMT150"
+    assert sorted(hub.context.channel_settings["detectors"]) == ["G|G", "R|G"]
+
+
+def test_without_a_stored_setup_the_hub_proposes_one_from_the_file(monkeypatch):
+    from chisurf.plugins.burst.burst_analysis.gui.native import create_app
+
+    monkeypatch.setattr(
+        ChannelDefinition, "read_setups_payload", lambda self: {"setups": {}, "last_used": ""}
+    )
+    proposed = []
+    monkeypatch.setattr(
+        ChannelDefinition, "open_tttr", lambda self, *a, **k: proposed.append(a) or 1 / 0
+    )
+    hub = create_app()
+    hub.context.raw_files = ["DNA13bp_3.ptu"]
+    hub._propose_setup_from_first_file()
+    assert proposed  # the file was asked (and its failure reported, not raised)
+    assert hub.setup_model.current_name in ("", None)

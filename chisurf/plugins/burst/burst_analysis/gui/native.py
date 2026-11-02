@@ -353,11 +353,30 @@ class BurstAnalysisHubApp(ToolHubApp):
         threading.Thread(target=work, name="burst-containers", daemon=True).start()
 
     def _propose_setup_from_first_file(self) -> None:
-        """No setup chosen or defined yet: propose detectors and excitation windows from the first
-        file (editable in step 0, saveable to the Settings library), so a PTU can be analysed at once."""
+        """No setup chosen or defined yet: open the setup the library says was used last; only a
+        library without one gets detectors and excitation windows proposed from the first file
+        (editable in step 0, saveable to the Settings library), so a PTU can be analysed at once.
+
+        Photons handed in from the Datasets workspace ("Open in…") open the Data step before step 0
+        ever drew, so step 0 had not opened the last used setup yet -- the proposal used to win."""
         model = self.setup_model
         files = self.context.raw_files
         if model.data.get("detectors") or not files:
+            return
+        try:
+            model.refresh_setups()
+            name = model.open_last_used()
+        except Exception:  # noqa: BLE001 - the library is unreachable: propose from the file
+            name = ""
+        if name:
+            model.changed()
+            # step 0 may not exist yet: the workflow's context takes the setup from the shared model
+            self.context.channel_settings = model.get_settings()
+            self.context.setup_name = model.current_name
+            setup = self.children.get("setup")
+            if setup is not None:
+                setup.open_last_used = False  # opened already: step 0 lists the library, keeps this
+            self.status = f"Setup {name} (last used) for {Path(files[0]).name}."
             return
         try:
             tttr = model.open_tttr(files[0], raw=True, auto=True)
