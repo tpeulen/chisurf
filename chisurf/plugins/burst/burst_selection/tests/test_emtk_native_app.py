@@ -159,7 +159,7 @@ def test_typed_settings_reach_the_model(app):
     drv.type_into_name("min_photons", "61")
     drv.draw(1)
     assert app.model.min_photons == 61
-    drv.type_into_name("m", "12")
+    drv.type_into_name("search.m", "12")  # the search's own parameters are their own form
     drv.draw(1)
     assert app.model.parameters["m"] == 12
     assert app.model.analysis_settings().photon_filter.tttrlib_search.parameters["m"] == 12
@@ -169,10 +169,23 @@ def test_algorithm_switch_regenerates_the_parameter_form(app):
     drv = Driver(app, (1200, 800))
     drv.click_text("Filter settings")
     drv.draw(2)
-    assert "T" in app.form.rects
+    assert "T" in app.search_form.rects
     app.model.algorithm_choice = "maxtree"
     drv.draw(2)
-    assert "delta" in app.form.rects and "max_variation" in app.form.rects
+    assert "delta" in app.search_form.rects and "max_variation" in app.search_form.rects
+
+
+def test_a_search_parameter_named_like_a_filter_field_is_its_own_field(app):
+    """CUSUM's min_photons beside the burst size cut: one keystroke typed into both ("00")."""
+    drv = Driver(app, (1200, 800))
+    drv.click_text("Filter settings")
+    app.model.algorithm_choice = "cusum_sprt"
+    drv.draw(3)
+    cut = app.model.min_photons
+    drv.type_into_name("search.min_photons", "7")
+    assert app.model.parameters["min_photons"] == 7 and app.model.min_photons == cut
+    drv.type_into_name("min_photons", "33")
+    assert app.model.min_photons == 33 and app.model.parameters["min_photons"] == 7
 
 
 def test_metadata_dialog_and_flrcif_export(app, files, tmp_path):

@@ -110,6 +110,12 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self.model.sources = self.sources  # the model writes each file into its dataset's container
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.form = FormState()
+        # The search's own parameters get their own forms (their own widget ids and edit buffers):
+        # a search parameter named like a filter field -- CUSUM's min_photons beside the burst
+        # size cut -- shared one id with it, so every keystroke typed into both ("00") and
+        # select-all went to the other one.
+        self.search_form = FormState()
+        self.inner_search_form = FormState()
         spec = load_view_spec(str(HERE / "native.view.json"))
         self.window_size = window_size(spec, (1100, 720))
         cap_widths(spec["sections"])
@@ -169,6 +175,8 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             wait_for_controls=True,
         )
         self.form.on_used = self._used
+        self.search_form.on_used = self._used
+        self.inner_search_form.on_used = self._used
         self.on_used = self.tour.notify_used
         self.editor.on_used = self.tour.notify_used
         self.docks = DockManager(
@@ -552,10 +560,13 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         draw_sections(self.search_sections, target, self.form)
         self.remember("search", None)
         if params:
-            draw_sections(params, m.search, self.form)
+            draw_sections(params, m.search, self.search_form)
         if nested:
             im.text(tr("Per-group search parameters"))
-            draw_sections(nested, m.inner_search, self.form)
+            draw_sections(nested, m.inner_search, self.inner_search_form)
+        for prefix, form in (("search", self.search_form), ("inner_search", self.inner_search_form)):
+            for name, rect in form.rects.items():
+                self.item_rects[f"{prefix}.{name}"] = tuple(rect)
         if im.button(tr("Save as setup default")):
             self.track("save_defaults")
             try:
