@@ -374,6 +374,7 @@
       "type": "panel",
       "title": "H2MM states",
       "collapsed": false,
+      "hidden_when": {"attr": "advanced", "equals": false},
       "description": "Split the fit by the per-photon states of an H2MM run of the same burst folder.",
       "sections": [
         {

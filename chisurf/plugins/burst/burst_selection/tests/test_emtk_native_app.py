@@ -31,7 +31,6 @@ WINDOWS = (
     "Inter-photon time",
     "Micro-time decay",
     "Burst duration",
-    "Scatter",
     "Bursts",
     "Summary",
 )
@@ -234,7 +233,7 @@ def test_every_control_has_a_tooltip(app, files):
     app.model.add_paths(files)
     app.model.load_diagnostics()
     missing = set()
-    for key in ("files", "settings", "detectors", "summary", "histogram", "scatter", "table"):
+    for key in ("files", "settings", "detectors", "summary", "histogram", "table"):
         app.docks.focus(key)
         missing |= set(emtk_inventory(app)["controls_without_tooltip"])
     assert sorted(missing) == []

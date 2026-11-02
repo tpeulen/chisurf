@@ -126,7 +126,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self.display_sections = _sections(spec, "Display")
         self.hist_sections = _sections(spec, "Histogram")
         self.gmm_table = _sections(spec, "GMM")
-        self.scatter_sections = _sections(spec, "Scatter")
         self.burst_table = _sections(spec, "Bursts")
         self.summary_table = _sections(spec, "Summary")
         self.gmm_settings_sections = _sections(spec, "GMM settings")
@@ -198,7 +197,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         add("decay", "Micro-time decay", self._decay, dock="plots_a", closable=False)
         add("duration", "Burst duration", self._duration, dock="plots_a", closable=False)
         add("histogram", "Histogram", self._histogram, dock="plots_b", closable=False)
-        add("scatter", "Scatter", self._scatter, dock="plots_b", closable=False)
         add("table", "Bursts", self._bursts, dock="plots_b", closable=False)
         super().__init__(gui=self._render)
 
@@ -260,6 +258,19 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             return False
         self.job.start("run")
         return True
+
+    def set_advanced(self, advanced: bool) -> None:
+        """The pipeline's Simple / Advanced mode: Simple shows only the essential inputs -- the
+        detector setup is step 0's, the burst table is for the expert -- Advanced shows them."""
+        for key in ("detectors", "table"):
+            if key not in self.docks.windows:
+                continue
+            if advanced:
+                self.docks.show(key)
+            else:
+                self.docks.hide(key)
+        if not advanced:
+            self.docks.focus("files")
 
     def use_files(self, paths, uids=()) -> bool:
         """Make the files exactly *paths* (in order) -- the pipeline's hand-off from Data Selection.
@@ -749,21 +760,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             implot.end_plot()
         if m.gmm_rows():
             draw_sections(self.gmm_table, m, self.form)
-
-    def _scatter(self, box=None) -> None:
-        self.remember("scatter", box)
-        m = self.model
-        draw_sections(self.scatter_sections, m, self.form)
-        xy = m.scatter()
-        if xy is None:
-            self._empty(
-                "No burst table yet: the scatter of two burst features appears after a run or a preview."
-            )
-            return
-        if implot.begin_plot(f"{m.scatter_y} vs {m.scatter_x}", (-1, -1)):
-            implot.setup_axes(m.scatter_x, m.scatter_y)
-            implot.plot_scatter(f"Bursts ({len(xy[0])})", xy[0], xy[1], size=2.5)
-            implot.end_plot()
 
     def _bursts(self, box=None) -> None:
         self.remember("bursts", box)

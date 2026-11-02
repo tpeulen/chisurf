@@ -59,6 +59,7 @@ STEPS: list[dict[str, Any]] = [
         "icon": "🔗",
         "role": "fusion",
         "plugin": "burst/burst_fusion",
+        "advanced": True,
         # Walking the pipeline must not fuse: only the step's own Fuse button hands a fused folder downstream.
         "optional": True,
         "description": "Optional: merge bursts the same molecule produced (recurrence P_same) into a new burst "
@@ -69,6 +70,8 @@ STEPS: list[dict[str, Any]] = [
         "icon": "📊",
         "role": "bva",
         "plugin": "burst/burst_bva",
+        # Simple: not shown, run with its defaults once the bursts are there
+        "background": True,
         "description": "Burst-level feature: burst variance analysis of the selected bursts.",
     },
     {
@@ -76,6 +79,7 @@ STEPS: list[dict[str, Any]] = [
         "icon": "📊",
         "role": "two_cde",
         "plugin": "burst/burst_2cde",
+        "background": True,
         "description": "Burst-level feature: the FRET-2CDE / ALEX-2CDE burst-dynamics filter.",
     },
     {
@@ -83,22 +87,16 @@ STEPS: list[dict[str, Any]] = [
         "icon": "🎯",
         "role": "mle",
         "plugin": "burst/burst_mle_analysis",
-        "description": "Burst-level feature: one maximum-likelihood lifetime per burst.",
+        "description": "Burst-level feature: one maximum-likelihood lifetime per burst (Advanced: also "
+        "per H2MM state of each burst, after step 7).",
     },
     {
         "name": "7. Burst segmentation (H2MM)",
         "icon": "🔀",
         "role": "h2mm",
         "plugin": "burst/burst_h2mm",
+        "advanced": True,
         "description": "Cut each burst into segments: photon-by-photon HMM (H2MM) assigns every photon a state.",
-    },
-    {
-        "name": "8. Burst segment MLE",
-        "icon": "🎯",
-        "role": "segment_mle",
-        "plugin": "burst/burst_mle_analysis",
-        "description": "Segment-level: the same MLE fit once per burst and H2MM state, written as Tau S0 / "
-        "Tau S1 ... beside the burst-level lifetime.",
     },
     {"name": "Side tools", "separator": True},
     {
@@ -169,7 +167,6 @@ class BurstAnalysisHubApp(ToolHubApp):
             "data": self._make_data,
             "selection": self._make_selection,
             "mle": lambda: self._make_mle(split_by_state=False),
-            "segment_mle": lambda: self._make_mle(split_by_state=True),
             "irf_bg": self._make_irf_bg,
         }
         panels = [
@@ -314,6 +311,7 @@ class BurstAnalysisHubApp(ToolHubApp):
         )
         # A fresh burst search supersedes any fusion of the previous one.
         self._fusion_source = self._fused_folder = None
+        folder = None
         if sources:
             # One measurement, one container: the first is what the status line names,
             # and every step reads the rest the same way. The legacy tree (when the
@@ -329,6 +327,8 @@ class BurstAnalysisHubApp(ToolHubApp):
         if folder is not None:
             self.status = f"Bursts for the later steps: {folder}"
         self._apply_downstream(skip=("data", "selection"))
+        if folder is not None:
+            self._run_in_background()
         self.wants_frame = True
 
     def _on_fused_folder(self, folder: str) -> None:
@@ -554,20 +554,68 @@ class BurstAnalysisHubApp(ToolHubApp):
             controller.add_files([str(p) for p in self.context.raw_files])
 
     # -- the rail ------------------------------------------------------------------------------------------ #
-    def badge(self, role: str) -> str:
-        """What a rail row shows behind its name: done, how many files, ready to analyse (the Qt shell's badges)."""
+    def step_done(self, role: str) -> bool:
+        """Whether a step has done its work (its rail row gets a check)."""
         ctx = self.context
+        child = self.children.get(role)
+        model = getattr(child, "model", None)
         if role == "setup":
-            return "✓" if ctx.setup_name else ""
+            return bool(ctx.setup_name or (ctx.channel_settings or {}).get("detectors"))
         if role == "data":
-            return f"({len(ctx.raw_files)})" if ctx.raw_files else ""
+            return bool(ctx.raw_files)
         if role == "selection":
-            if ctx.bur_files:
-                return f"({len(ctx.bur_files)})"
-            return "✓" if ctx.burst_folder else ""
-        if role in ("bva", "two_cde", "mle", "h2mm", "segment_mle"):
-            return "•" if ctx.burst_folder else ""
+            return ctx.burst_folder is not None or bool(ctx.bur_files)
+        if role == "fusion":
+            return self._fused_folder is not None
+        if role in ("bva", "two_cde"):
+            return getattr(model, "df", None) is not None
+        if role == "mle":
+            return bool(getattr(model, "burst_results", None))
+        if role == "h2mm":
+            return getattr(model, "result", None) is not None
+        return False
+
+    def badge(self, role: str) -> str:
+        """What a rail row shows behind its name: a check once the step is done (the number of files of
+        the data step), a dot where a step could run now."""
+        ctx = self.context
+        if role == "data" and ctx.raw_files:
+            return f"✓ ({len(ctx.raw_files)})"
+        if self.step_done(role):
+            return "✓"
+        if role in ("bva", "two_cde", "mle", "h2mm") and ctx.burst_folder:
+            return "•"
         return ""
+
+    def finish_ready(self) -> bool:
+        """The last required step (Burst MLE) has its lifetimes."""
+        return self.step_done("mle")
+
+    def finish_message(self) -> str:
+        return (
+            "Close Burst Analysis? The bursts and every result are kept in the measurements' "
+            "containers of the project."
+        )
+
+    def _run_in_background(self) -> None:
+        """Simple mode: the steps not shown (BVA, 2CDE) run with their defaults once the bursts are
+        there, so their results exist for the browser and the export."""
+        if self.advanced:
+            return
+        for role in ("bva", "two_cde"):
+            if self.step_done(role):
+                continue
+            try:
+                child = self.ensure_child(role)
+                if child is None:
+                    continue
+                self.on_select(role, child)
+                controller = getattr(child, "controller", None)
+                run = getattr(controller, "run", None)
+                if callable(run) and not getattr(controller, "running", False):
+                    run(force=True, explicit=False)
+            except Exception as exc:  # noqa: BLE001 - a background check must not stop the pipeline
+                self.status = f"{role}: {type(exc).__name__}: {exc}"
 
     def summary(self, width: float = 1200.0) -> str:
         """The status line: the setup, the files and the bursts the later steps read (shorter when narrow, so it
@@ -618,6 +666,20 @@ class BurstAnalysisHubApp(ToolHubApp):
             from emtk import im
 
             self.status = self._summary_shown = self.summary(float(im.get_main_viewport().size[0]))
+        # A step that runs without being shown (BVA, 2CDE in Simple) is never drawn, so its own
+        # frame never collects its result: the hub polls it until it is done.
+        for role, child in list(self.children.items()):
+            if role == self.selected:
+                continue
+            controller = getattr(child, "controller", None)
+            if controller is not None and getattr(controller, "running", False):
+                poll = getattr(controller, "poll", None)
+                if callable(poll):
+                    try:
+                        poll()
+                    except Exception as exc:  # noqa: BLE001 - shown in the status line
+                        self.status = f"{role}: {type(exc).__name__}: {exc}"
+                self.wants_frame = True
         for panel in self.tools:
             base = self._base_names.get(panel["role"], panel["name"])
             badge = self.badge(panel["role"])

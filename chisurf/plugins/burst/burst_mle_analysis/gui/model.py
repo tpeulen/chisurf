@@ -105,6 +105,8 @@ class MleViewModel(RunPickerMixin):
         self._snapshot_running = threading.Event()
         self.status_text = "Add burst tables (.pto) to begin."
         self.burst_results: list[dict] = []
+        #: The pipeline's mode (standalone: everything shown); Simple hides the H2MM split.
+        self.advanced = True
         #: Fingerprint of the request :attr:`burst_results` answers (``None``: nothing held, or stopped/failed).
         self.held_fingerprint: str | None = None
         #: ``True`` after a run was skipped as unchanged: the view highlights **Restart**.

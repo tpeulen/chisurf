@@ -266,6 +266,28 @@ class MleNativeApp(TourTarget, ImApp):
         for key, rect in form.rects.items():
             self.item_rects[prefix + key] = tuple(rect)
 
+    def set_advanced(self, advanced: bool) -> None:
+        """The pipeline's Simple / Advanced mode. Simple: no detector setup (step 0's), no tables,
+        no split by H2MM state; Advanced: all of them, the tables and the setup as tabs behind the
+        fit (not shown by default, so not computed)."""
+        self.model.advanced = bool(advanced)
+        if not advanced and self.model.split_by_state:
+            try:
+                self.model.split_by_state = False
+            except Exception:  # noqa: BLE001 - a running job keeps its setting
+                pass
+        for key in ("detectors", "results"):
+            if key not in self.docks.windows:
+                continue
+            if advanced:
+                self.docks.show(key)
+            else:
+                self.docks.hide(key)
+        self.docks.focus("controls")
+        self.docks.focus("decay")
+        if "lifetimes" in self.docks.windows:
+            self.docks.focus("lifetimes")
+
     def _controls(self, box=None) -> None:
         running = self.job.busy
         im.begin_disabled(running)

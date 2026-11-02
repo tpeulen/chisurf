@@ -80,8 +80,9 @@ def settle(drv, timeout=240.0) -> None:
 
 def walk_to_bursts(hub, files) -> Driver:
     """Setup 'probe', Next, hand the photon streams over (as the Datasets workspace does), Next, Next
-    (runs the search): the bursts are in the context."""
+    (runs the search): the bursts are in the context. Advanced: every step is on the rail."""
     drv = Driver(hub, (1200, 800))
+    hub.set_advanced(True)
     drv.draw(3)
     hub.children["setup"].select_setup("probe")
     drv.draw(2)
@@ -101,28 +102,21 @@ def walk_to_bursts(hub, files) -> Driver:
     return drv
 
 
-def test_the_rail_is_the_legacy_panel_table():
-    """Same steps, same order, same names and roles as the retired Qt shell's BURST_PANELS (qt_reference.json)."""
+def test_the_rail_is_simple_unless_advanced(hub):
+    """Simple: the required steps (setup, data, burst selection, MLE) and the side tools; BVA and
+    2CDE run unseen, Fusion and H2MM are Advanced; one MLE step (its split by H2MM state is a
+    switch of that step, in Advanced)."""
     from chisurf.plugins.burst.burst_analysis.gui.native import STEPS
 
-    recorded = json.loads(
-        (Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8")
-    )
-    native = [
-        (p["role"], p["name"], bool(p.get("optional"))) for p in STEPS if not p.get("separator")
-    ]
-    legacy = [
-        (p["role"], p["name"], bool(p.get("optional")))
-        for p in recorded["BURST_PANELS"]
-        if not p.get("separator")
-    ]
-    assert native == legacy
-    assert recorded["initial_role"] == "setup"
-    roles = [p.get("role") for p in recorded["BURST_PANELS"]]
-    # Segmentation precedes the fit that consumes it; fusion precedes every measuring step.
-    assert roles.index("h2mm") < roles.index("segment_mle")
-    for measured in ("bva", "two_cde", "mle", "h2mm", "segment_mle"):
-        assert roles.index("fusion") < roles.index(measured)
+    roles = [p["role"] for p in STEPS if not p.get("separator")]
+    assert "segment_mle" not in roles
+    pipeline = roles[: roles.index("h2mm") + 1]
+    assert pipeline == ["setup", "data", "selection", "fusion", "bva", "two_cde", "mle", "h2mm"]
+    assert hub.shown_roles()[:4] == ["setup", "data", "selection", "mle"]
+    hub.set_advanced(True)
+    assert hub.shown_roles()[: len(pipeline)] == pipeline
+    hub.set_advanced(False)
+    assert "fusion" not in hub.shown_roles() and "bva" not in hub.shown_roles()
 
 
 def test_every_step_opens_and_draws_empty(hub):
@@ -145,14 +139,13 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
     assert [p.name for p in ctx.raw_files] == ["m000.spc", "m001.spc"]
     assert ctx.burst_folder is not None and ctx.burst_folder.name == "m000.pto"
     assert [p.name for p in ctx.bur_files] == ["m000.pto", "m001.pto"]
-    assert "2. Burst Selection (2)" in [p["name"] for p in hub.tools]  # the rail's badge
+    assert "2. Burst Selection ✓" in [p["name"] for p in hub.tools]  # the rail checks the step
 
     for role in (
         "bva",
         "two_cde",
         "mle",
         "h2mm",
-        "segment_mle",
         "browser",
         "accurate_fret",
         "burst_fcs",
@@ -178,10 +171,9 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
         "0,1",
         "SPC-130",
     )
-    for role, split in (("mle", False), ("segment_mle", True)):
-        assert c[role].model.n_bursts == 198, (hub.status, c[role].model.status_text)
-        assert c[role].model.detector_names() == ["green", "red"]
-        assert c[role].model.split_by_state is split
+    assert c["mle"].model.n_bursts == 198, (hub.status, c["mle"].model.status_text)
+    assert c["mle"].model.detector_names() == ["green", "red"]
+    assert c["mle"].model.split_by_state is False
     assert Path(c["h2mm"].model.data_folder) == run
     assert c["browser"].model.table is not None
     # ... and the container readers: accurate FRET reads the newest run of m000.pto
@@ -232,11 +224,10 @@ def test_a_fused_run_redirects_the_later_steps(hub, files):
     assert hub.context.burst_folder.name == "m000.pto"
 
 
-def test_send_to_mle_reaches_both_mle_steps(hub, files):
+def test_send_to_mle_reaches_the_mle_step(hub, files):
     drv = walk_to_bursts(hub, files)
-    for role in ("mle", "segment_mle"):
-        hub.select(role)
-        drv.draw(2)
+    hub.select("mle")
+    drv.draw(2)
     n = (
         hub.children["mle"].model.session.decay.size
         if hub.children["mle"].model.session.decay is not None
@@ -244,10 +235,9 @@ def test_send_to_mle_reaches_both_mle_steps(hub, files):
     )
     patterns = {"green": {"irf": np.ones(n), "bg": np.full(n, 0.5)}}
     assert hub.apply_irf_background_to_mle(patterns) == 1
-    for role in ("mle", "segment_mle"):
-        session = hub.children[role].model.session
-        np.testing.assert_array_equal(session.irf_np["green"], np.ones(n))
-        np.testing.assert_array_equal(session.bg_np["green"], np.full(n, 0.5))
+    session = hub.children["mle"].model.session
+    np.testing.assert_array_equal(session.irf_np["green"], np.ones(n))
+    np.testing.assert_array_equal(session.bg_np["green"], np.full(n, 0.5))
     assert hub.context.irf_background_patterns == patterns
 
 

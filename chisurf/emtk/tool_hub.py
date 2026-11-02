@@ -134,6 +134,16 @@ class ToolHubApp(ImApp):
         self.panels = [_with_icon(_with_maturity(dict(p))) for p in panels]
         self.tools = [p for p in self.panels if not p.get("separator")]
         self.selected = initial or (self.tools[0]["role"] if self.tools else None)
+        #: Simple (False) or Advanced (True): a panel marked ``"advanced"`` (a step only an expert
+        #: needs) or ``"background"`` (a step that runs with its defaults without being shown) is
+        #: in the rail only in Advanced; every tool hears the mode (``set_advanced``) and shows
+        #: only its essential inputs in Simple.
+        self.advanced = False
+        #: Set by Finish (after the user confirmed): the shell closes the hub.
+        self.close_requested = False
+        from emtk.message_dialog import MessageDialogs
+
+        self.dialogs = MessageDialogs(wake=lambda: self.request_frame())
         self.children: dict[str, Any] = {}
         self.routes: dict[str, str] = {}
         self.errors: dict[str, str] = {}
@@ -162,6 +172,56 @@ class ToolHubApp(ImApp):
             wait_for_controls=True,
         )
         super().__init__(self.render, continuous=False)
+
+    # ── Simple / Advanced ─────────────────────────────────────────────────
+
+    @property
+    def has_modes(self) -> bool:
+        """Whether any panel differs between Simple and Advanced (else no switch is shown)."""
+        return any(p.get("advanced") or p.get("background") for p in self.tools)
+
+    def shown(self, panel: dict) -> bool:
+        """Whether *panel* is in the rail (and on Back / Next) in the current mode."""
+        return self.advanced or not (panel.get("advanced") or panel.get("background"))
+
+    def shown_roles(self) -> list[str]:
+        return [p["role"] for p in self.tools if self.shown(p)]
+
+    def set_advanced(self, value: bool) -> None:
+        """Switch Simple / Advanced: the rail, and every tool's own view (``set_advanced``)."""
+        self.advanced = bool(value)
+        for child in list(self.children.values()):
+            self._tell_mode(child)
+        if self.selected not in self.shown_roles() and self.shown_roles():
+            self.select(self.shown_roles()[0], by_user=False)
+        self.request_frame()
+
+    def _tell_mode(self, child: Any) -> None:
+        hook = getattr(child, "set_advanced", None)
+        if callable(hook):
+            try:
+                hook(self.advanced)
+            except Exception:  # noqa: BLE001 - a tool's view must not break the hub
+                pass
+
+    # ── Finish ────────────────────────────────────────────────────────────
+
+    def finish_ready(self) -> bool:
+        """Whether the last mandatory step is done (a workflow hub says; a hub of tools never is)."""
+        return False
+
+    def finish_message(self) -> str:
+        return tr("Close this workflow? Its results are kept.")
+
+    def finish(self) -> None:
+        """Ask, then close the hub (the shell closes a tool that requests it)."""
+
+        def answered(yes):
+            if yes:
+                self.close_requested = True
+                self.request_frame()
+
+        self.dialogs.confirm(tr("Finish"), self.finish_message(), on_answer=answered)
 
     # ── what a workflow hub overrides ─────────────────────────────────────
 
@@ -222,6 +282,7 @@ class ToolHubApp(ImApp):
             self.errors[role] = error
             return
         self.children[role] = child
+        self._tell_mode(child)
         if role in self.uses_setup:
             try:
                 self._host_setup(role, child)
@@ -356,7 +417,7 @@ class ToolHubApp(ImApp):
         """Back / Next: the neighbouring tool that can be opened (Back also stops a fast-forward)."""
         if delta < 0:
             self._ff_queue, self._pending_next = [], False
-        roles = [p["role"] for p in self.tools]
+        roles = self.shown_roles()
         index = roles.index(self.selected) if self.selected in roles else 0
         index += delta
         while 0 <= index < len(roles) and not self.panel_enabled(roles[index]):
@@ -407,7 +468,7 @@ class ToolHubApp(ImApp):
                 continue
             if panel["role"] == self.selected:
                 started = True
-            if started and self.panel_enabled(panel["role"]):
+            if started and self.panel_enabled(panel["role"]) and self.shown(panel):
                 queue.append(panel["role"])
         self._ff_queue = queue
         self._ff_total = len(queue)
@@ -433,7 +494,7 @@ class ToolHubApp(ImApp):
             self.wants_frame = True
 
     def _neighbour(self, delta: int) -> bool:
-        roles = [p["role"] for p in self.tools]
+        roles = self.shown_roles()
         index = (roles.index(self.selected) if self.selected in roles else 0) + delta
         while 0 <= index < len(roles):
             if self.panel_enabled(roles[index]):
@@ -532,6 +593,18 @@ class ToolHubApp(ImApp):
             if action_button("guide"):
                 self.tour.start()
             self.item_rects["guide"] = im.get_item_rect()
+            if self.has_modes:
+                changed, value = im.checkbox(tr("Advanced") + "##hub_mode", self.advanced)
+                if changed:
+                    self.set_advanced(value)
+                self.item_rects["mode"] = im.get_item_rect()
+                im.set_item_tooltip(
+                    tr(
+                        "Simple: only the essential steps and inputs (the setup of step 0 covers the "
+                        "detectors; checks run with their defaults in the background). Advanced: every "
+                        "step, every setting."
+                    )
+                )
             # The rail scrolls under the search field: more tools than the window is tall (a small
             # window, the interface magnified) stay reachable, and the field stays in sight.
             _, self.filter = im.begin_filtered_list(
@@ -550,7 +623,7 @@ class ToolHubApp(ImApp):
                         else:
                             im.separator()
                     continue
-                if panel["role"] not in matching:
+                if panel["role"] not in matching or not self.shown(panel):
                     continue
                 enabled = self.panel_enabled(panel["role"])
                 im.begin_disabled(not enabled)
@@ -609,7 +682,7 @@ class ToolHubApp(ImApp):
         if im.begin(
             f"{self.title} status", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
         ):
-            buttons_x = max(120.0, width - left - 230.0)
+            buttons_x = max(120.0, width - left - (300.0 if self.finish_ready() else 230.0))
             # The status keeps to the room left of Back / >> / Next (cut, whole text as tooltip):
             # it must not run under the buttons, however long a step's message is.
             im.text_ellipsis(tr(self.status), buttons_x - 2.0 * im.get_style().item_spacing[0])
@@ -639,6 +712,12 @@ class ToolHubApp(ImApp):
             self.item_rects["next"] = im.get_item_rect()
             im.set_item_tooltip(tr("Run this step (where it has a run), then go to the next one."))
             im.end_disabled()
+            if self.finish_ready():
+                im.same_line()
+                if im.button(tr("Finish")):
+                    self.finish()
+                self.item_rects["finish"] = im.get_item_rect()
+                im.set_item_tooltip(tr("Every required step is done: close this workflow (asks first)."))
         im.end()
         if self.child:
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
@@ -658,6 +737,7 @@ class ToolHubApp(ImApp):
         if self._pending_next or self._ff_queue:
             self._advance()
         self.help.draw((0, 0, width, height))
+        self.dialogs.draw((0, 0, width, height))
         if self.child_help:
             self.child_help.draw((0, 0, width, height))
         self.tour.draw(width, height)
@@ -771,7 +851,7 @@ class ToolHubApp(ImApp):
             export = getattr(child, "export_settings", None) or getattr(child, "export_state", None)
             if callable(export):
                 children[role] = export()
-        state = {"selected": self.selected, "children": children}
+        state = {"selected": self.selected, "children": children, "advanced": self.advanced}
         if self.uses_setup:
             state["setup"] = json.loads(
                 json.dumps(self.setup_model.get_settings(), default=lambda value: value.tolist())
@@ -779,6 +859,7 @@ class ToolHubApp(ImApp):
         return state
 
     def restore_settings(self, state):
+        self.advanced = bool((state or {}).get("advanced", self.advanced))
         if self.uses_setup and isinstance((state or {}).get("setup"), dict):
             from chisurf.core.setup_channel_definition import ChannelDefinition
 

@@ -330,6 +330,16 @@ class H2mmNativeApp(TourTarget, ImApp):
             self._measured = True
         return self.settings_sections
 
+    def set_advanced(self, advanced: bool) -> None:
+        """The pipeline's mode: the detector setup is step 0's -- a tab behind the settings in
+        Advanced (not shown by default), not there in Simple."""
+        if "detectors" in self.docks.windows:
+            if advanced:
+                self.docks.show("detectors")
+            else:
+                self.docks.hide("detectors")
+        self.docks.focus("controls")
+
     def _controls(self, box=None) -> None:
         running = self.job.busy
         im.begin_disabled(running)

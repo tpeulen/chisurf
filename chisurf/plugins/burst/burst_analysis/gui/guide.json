@@ -37,39 +37,25 @@
       }
     },
     {
-      "title": "3 — optional, and it must come before the measurements",
-      "text": "A molecule that leaves the focus and comes straight back was one molecule, but the search saw two bursts. Fusion merges them.<br/><br/>It is the only later step that changes <b>what a burst is</b>, which is why it sits ahead of everything that measures one: a feature computed on the un-fused bursts has one row per un-fused burst and cannot be carried across. Walking past this step only previews it — nothing is fused until you press its own Fuse button.",
+      "title": "3 — one lifetime per burst",
+      "text": "Burst MLE fits one fluorescence lifetime per burst and detector, with the detectors of step 0 — no setup to repeat here. It is the last required step: once its lifetimes are there, <b>Finish</b> appears beside Next.<br/><br/>BVA and 2CDE — does a burst's FRET efficiency stay steady while it crosses? — run on their own with their defaults as soon as the bursts are there.",
       "target": {
-        "panel": "Burst Fusion"
-      }
-    },
-    {
-      "title": "4–6 — one number per burst",
-      "text": "BVA asks whether a burst's FRET efficiency was <i>steady</i> while it crossed; 2CDE asks the same question from the photon arrival times; MLE fits one fluorescence lifetime per burst.<br/><br/>All three answer <b>on average, over the whole crossing</b>. Hold that thought for two steps.",
-      "target": {
-        "panel": "Burst BVA"
+        "panel": "Burst MLE"
       },
       "await": {
-        "hint": "Select <b>4. Burst BVA</b>."
+        "hint": "Select <b>Burst MLE</b>."
       }
     },
     {
-      "title": "7 — cutting the burst open",
-      "text": "H2MM assigns <b>every photon</b> a state, so a burst is no longer one measurement but a sequence of them. This is where a molecule that switched conformation mid-crossing stops being an averaged blur.",
+      "title": "Advanced",
+      "text": "<b>Advanced</b> shows every step and every setting: Burst Fusion (merging the bursts of one molecule that left and came back), BVA and 2CDE with their plots, H2MM (a state for every photon) and the split of the MLE by H2MM state, and each tool's detector setup and tables.",
       "target": {
-        "panel": "Burst segmentation"
-      }
-    },
-    {
-      "title": "8 — and the same fit, one level down",
-      "text": "The MLE from step 6, run once per burst <i>and state</i>, written as <code>Tau S0</code>, <code>Tau S1</code> … beside the burst-level lifetime.<br/><br/>The comparison is the payoff: a burst that visited two states has <b>one blurred lifetime at step 6 and two sharp ones here</b>. If they agree, the burst was in one state throughout.",
-      "target": {
-        "panel": "Burst segment MLE"
+        "name": "mode"
       }
     },
     {
       "title": "Next runs the step, >> runs the rest",
-      "text": "<b>Next</b> runs the open step where it has a run (Burst Selection searches) and moves on once it has finished. <b>&gt;&gt;</b> walks every remaining pipeline step in order, waiting for each; pressed again it stops after the current one. Fusion is never run by walking past it.<br/><br/>The line beside them says which setup, how many files and which burst folder the later steps read.",
+      "text": "<b>Next</b> runs the open step where it has a run (Burst Selection searches) and moves on once it has finished. <b>&gt;&gt;</b> walks every remaining pipeline step in order, waiting for each; pressed again it stops after the current one. Fusion (Advanced) is never run by walking past it. Once the last required step is done, <b>Finish</b> closes the workflow (it asks first).<br/><br/>The line beside them says which setup, how many files and which burst folder the later steps read.",
       "target": {
         "name": "next"
       }
