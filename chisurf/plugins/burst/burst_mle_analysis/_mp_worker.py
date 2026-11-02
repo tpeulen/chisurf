@@ -488,3 +488,8 @@ def process_one_file_worker(args):
         if st_sh is not None:
             st_sh.close()
         mt_sh.close()
+
+
+def warm() -> None:
+    """Load the fit's imports in a fresh worker, so the first real chunk does not pay for them."""
+    from chisurf.core.fluorescence.mle.fit2x import Fit2x  # noqa: F401

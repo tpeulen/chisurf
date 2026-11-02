@@ -140,6 +140,23 @@ search runs (linking the photon file means hashing it), not after it.
 On a 12 M-photon, 311 MB PTU file one search takes 2.1 s. Four such files take
 5.7 s in parallel and 7.4 s one after the other.
 
+The standard pipeline (Simple mode: files in, fast-forward) goes from files to
+fitted burst lifetimes in about 6 s on that file, and no single frame of the
+window takes longer than about 0.25 s. Four things make that possible:
+
+- Each step's work starts ahead of time:
+  - the photon file is read in the background as soon as Data Selection has it;
+  - the modules the steps need are loaded in the background when the window
+    opens;
+  - Burst MLE takes the new bursts in its background job, with its setup and
+    its IRF and background prepared in the same job.
+- The burst fit splits each measurement's bursts into chunks and spreads them
+  over every core. Its worker processes stay alive between fits and are
+  started while MLE prepares.
+- Fast-forward runs Burst MLE's fit as well: once the preparation is done, the
+  fit starts.
+- The photon file is read once for the whole pipeline (see above).
+
 ## Result
 
 A simulated photon stream (diffuse background with occasional bright transits)

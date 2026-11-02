@@ -148,6 +148,12 @@ Select **Fit model** before running the preview or batch:
 | Fit25 | `tau1`, `tau2`, `tau3`, `tau4`, `gamma` | Four editable, fixed candidate lifetimes; the result reports the winning `selected_index` (0-based). |
 | Tail fit (multi-exp) | `tail_start`, `tau1`, `tau2` | Sum of exponentials fitted to the tail of the VV+VH decay from channel `tail_start`; no IRF is deconvolved, so it needs only a background. A preview of the current decay: it is not offered for **Fit bursts**. |
 
+**Fit bursts** splits each measurement's bursts into chunks of at least 200 and
+fits them on every core but one; the rows come back in burst order, the same
+as a fit on one core. The worker processes stay alive between fits. In the
+pipeline they start while the IRF and background are being prepared, so the
+5231 bursts of a 311 MB PTU fit in about 0.3 s.
+
 Double-click **Start** to edit a value; use **Fixed** to hold a fitted parameter.
 Each model retains its own edits when you switch away and back, including in
 saved settings. Fit25 candidate lifetimes remain fixed inputs; `r0` is supplied

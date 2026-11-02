@@ -14,6 +14,7 @@ shell (``gui/tool.py``), one method per step. Nothing here imports Qt.
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -156,6 +157,20 @@ STEPS: list[dict[str, Any]] = [
 MLE_ROLES = ("mle", "segment_mle")
 
 
+def _warm_steps() -> None:
+    """Import and read once what the pipeline's steps need when they open (0.6 s in all)."""
+    for warm in (
+        lambda: __import__("chisurf.core.registry.catalog", fromlist=["registry"]).registry(),
+        lambda: tr("Burst Selection"),
+        lambda: __import__("chisurf.plugins.burst.burst_selection.gui.native"),
+        lambda: __import__("chisurf.plugins.burst.burst_mle_analysis.gui.native"),
+    ):
+        try:
+            warm()
+        except Exception:  # noqa: BLE001 - the step loads it itself when it opens
+            pass
+
+
 def _signature(value: Any) -> str:
     return json.dumps(value, sort_keys=True, default=str)
 
@@ -165,6 +180,11 @@ class BurstAnalysisHubApp(ToolHubApp):
 
     def __init__(self, title: str = "Burst Analysis", steps: list[dict] | None = None) -> None:
         self.context = BurstWorkflowContext()
+        #: MLE steps whose hand-over was still running when the context changed again
+        self._resync: set[str] = set()
+        # What the steps load on first open (the search registry imports IMP.bff, the translations,
+        # the MLE step's modules): loaded now, in the background, not as the step opens.
+        threading.Thread(target=_warm_steps, name="burst-warm", daemon=True).start()
         self._fusion_source: Path | None = None
         self._fused_folder: Path | None = None
         #: ``{(role, what): signature}`` of what each step was last handed, so an unchanged hand-off is not
@@ -273,6 +293,12 @@ class BurstAnalysisHubApp(ToolHubApp):
         if data is None:
             return
         self.context.raw_files = list(data.model.paths())
+        if self.context.raw_files:
+            # Every step reads these photons: read them now, in the background, while the user
+            # is still on this step (the search, its check and its preview then find them read).
+            from chisurf.core.fio.staging import prefetch_tttr
+
+            prefetch_tttr(self.context.raw_files)
         self._propose_setup_from_first_file()
         self.context.raw_mmfdb_artifacts = data.model.mmfdb_payload()
         self._apply_downstream(skip=("setup", "data"))
@@ -468,21 +494,33 @@ class BurstAnalysisHubApp(ToolHubApp):
     def _to_mle(self, child) -> None:
         role = child_role(self, child)
         bursts = [str(p) for p in self.context.bur_files or ()]
-        if bursts and (
+        settings = self.context.channel_settings
+        patterns = self.context.irf_background_patterns
+        take = getattr(child, "take_bursts", None)
+        if bursts and callable(take) and (
             not child.model.session.bur_files or self._changed(role, "bursts", bursts)
         ):
             # A new search is a new analysis: the step drops the previous bursts and their
             # lifetimes and takes the new run (``m.pto/<run> (2)``) -- never fits stale bursts.
+            # In the step's background job, setup and IRF / background preparation included.
             self._handed[(role, "bursts")] = _signature(bursts)
-            if child.model.session.bur_files:
-                child.model.clear_files()
-            child.model.add_files(self.context.bur_files)
+            if settings:
+                self._handed[(role, "setup")] = _signature(settings)
+            prepare_from = ()
+            if not patterns and self.context.raw_files:
+                self._handed[(role, "prepared")] = _signature(str(self.context.burst_folder))
+                prepare_from = self.context.raw_files  # measured buffer / scatter, else estimated
+            take(self.context.bur_files, settings, prepare_from)
+            if patterns:
+                self._resync.add(role)  # the patterns go in once the bursts are there
+            return
+        if getattr(child, "pending", False):
+            self._resync.add(role)  # the hand-over is running: what changed meanwhile follows it
+            return
         # The workflow's setup is the authority: a container may carry the setup of
         # the search that wrote it, so this goes to the session AFTER the files.
-        settings = self.context.channel_settings
         if settings and self._changed(role, "setup", settings):
             child.model.set_setup(settings)
-        patterns = self.context.irf_background_patterns
         if patterns and self._changed(role, "patterns", id(patterns)):
             self._patterns_to_mle(child, patterns)
         elif (
@@ -738,9 +776,15 @@ class BurstAnalysisHubApp(ToolHubApp):
             # MLE prepares the new bursts (references, IRF / background) as soon as they come,
             # also while another step is on screen; its job's poll is all its frame does with it.
             job = getattr(child, "job", None) if role in MLE_ROLES else None
-            if job is not None and getattr(job, "busy", False):
+            if job is not None and (getattr(child, "pending", False) or role in self._resync):
                 try:
                     job.poll()
+                    waiting = getattr(child, "_fit_if_waiting", None)
+                    if callable(waiting):
+                        waiting()  # the next queued job, or the fit Next asked for
+                    if role in self._resync and not getattr(child, "pending", False):
+                        self._resync.discard(role)
+                        self._to_mle(child)
                 except Exception as exc:  # noqa: BLE001 - shown in the status line
                     self.status = f"{role}: {type(exc).__name__}: {exc}"
                 self.wants_frame = True

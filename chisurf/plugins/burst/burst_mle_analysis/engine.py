@@ -100,13 +100,18 @@ def burst_photon_indices(df_bursts: Any, current_filename: str) -> list[int]:
     """Photon indices of every burst of the file *current_filename* (a ``.bur`` file), merged and ascending."""
     if not current_filename or df_bursts is None:
         return []
-    if "stem" not in column_names(df_bursts):
-        first_file_vals = np.asarray(df_bursts["First File"], dtype=object)
-        df_bursts["stem"] = [
-            re.split(r"[\\/]", str(v))[-1].rsplit(".", 1)[0] for v in first_file_vals
-        ]
+    # Read only: the table is shared with the fit's snapshot (computing the stems into a column of
+    # it made every job copy the whole table first).
+    if "stem" in column_names(df_bursts):
+        stems = np.asarray(df_bursts["stem"], dtype=object)
+    else:
+        files = np.asarray(df_bursts["First File"], dtype=object)
+        names, inverse = np.unique(files.astype(str), return_inverse=True)
+        stems = np.asarray(
+            [re.split(r"[\\/]", str(v))[-1].rsplit(".", 1)[0] for v in names], dtype=object
+        )[inverse]
     curr_stem = _burst_file_stem(current_filename)
-    mask = np.asarray(df_bursts["stem"], dtype=object) == curr_stem
+    mask = stems == curr_stem
     if not mask.any():
         return []
     starts = numeric_column(df_bursts, "First Photon")[mask].astype(np.int32)
@@ -832,6 +837,97 @@ def _tail_start_bin(rc_full, mt_bins, bursts, chs, sb, eb) -> int:
     hist = np.bincount(micro - int(sb), minlength=int(eb - sb))
     return int(sb) + int(np.argmax(hist)) + 1
 
+
+class _Memo(dict):
+    """A memo a copy of its owner starts without (it holds photon streams, which do not copy)."""
+
+    def __deepcopy__(self, memo):
+        return _Memo()
+
+    def __copy__(self):
+        return _Memo()
+
+    def __reduce__(self):
+        return (_Memo, ())
+
+
+# -- the fit pool ------------------------------------------------------------------------------------ #
+#: The worker processes of the burst fit, kept between fits: spawning them (a Python start and the
+#: fit imports each) cost about a second per fit, longer than fitting a measurement's bursts.
+_FIT_POOL: Any = None
+_FIT_POOL_WORKERS = 0
+#: Bursts per chunk at least: a smaller job is all overhead.
+MIN_CHUNK_BURSTS = 200
+
+
+def fit_workers() -> int:
+    """Worker processes of the burst fit: every core but one (the UI's)."""
+    import os
+
+    return max(1, (os.cpu_count() or 2) - 1)
+
+
+def fit_pool(workers: int | None = None):
+    """The kept pool of *workers* fit processes, started on first use."""
+    import multiprocessing as mp
+    from concurrent.futures import ProcessPoolExecutor
+
+    global _FIT_POOL, _FIT_POOL_WORKERS
+    workers = int(workers or fit_workers())
+    if _FIT_POOL is None or _FIT_POOL_WORKERS != workers:
+        _drop_fit_pool()
+        _FIT_POOL = ProcessPoolExecutor(max_workers=workers, mp_context=mp.get_context("spawn"))
+        _FIT_POOL_WORKERS = workers
+        import atexit
+
+        atexit.register(_drop_fit_pool)
+    return _FIT_POOL
+
+
+def warm_fit_pool() -> None:
+    """Start the fit processes now (in the background), so the first fit does not wait for them."""
+    from ._mp_worker import warm
+
+    pool = fit_pool()
+    for _ in range(_FIT_POOL_WORKERS):
+        pool.submit(warm)
+
+
+def warm_fit_pool_quietly() -> None:
+    """:func:`warm_fit_pool` for a background thread: a failure only means the fit starts them."""
+    try:
+        warm_fit_pool()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _drop_fit_pool() -> None:
+    global _FIT_POOL, _FIT_POOL_WORKERS
+    pool, _FIT_POOL, _FIT_POOL_WORKERS = _FIT_POOL, None, 0
+    if pool is not None:
+        pool.shutdown(wait=False, cancel_futures=True)
+
+
+def _chop_jobs(jobs: list[tuple], workers: int) -> list[tuple]:
+    """*jobs* (one per file) with each file's bursts split into chunks, in burst order.
+
+    About four chunks per worker over all files, so a slow chunk does not hold the batch; never
+    below :data:`MIN_CHUNK_BURSTS` bursts a chunk.
+    """
+    total = sum(len(job[1]) for job in jobs)
+    if not total:
+        return jobs
+    size = max(MIN_CHUNK_BURSTS, -(-total // max(1, 4 * int(workers))))
+    chopped: list[tuple] = []
+    for job in jobs:
+        bursts = list(job[1])
+        if len(bursts) <= size:
+            chopped.append(job)
+            continue
+        for start in range(0, len(bursts), size):
+            chopped.append((job[0], bursts[start : start + size], *job[2:]))
+    return chopped
+
 class LazyTTTRs(collections.abc.MutableMapping):
     """Canonical physical path -> lazily read TTTR; legacy stems resolve only when unique."""
 
@@ -1178,8 +1274,36 @@ class MleSession:
     def current_filename(self) -> str:
         return str(self.bur_files[self.current_index]) if self.bur_files else ""
 
+    def _memo(self, name: str, compute):
+        """*compute()*, kept until the bursts, the selected file or the loaded measurements change.
+
+        The preview, the setup and the fit each ask for the selected file's photons and burst
+        coverage; every answer went through the burst table's text columns (and a list of millions
+        of photon indices) again -- 0.4 s on the UI thread per hand-over.
+        """
+        df = self.df_bursts
+        key = (
+            id(df),
+            row_count(df) if df is not None else 0,
+            str(self.current_filename),
+            id(self.tttrs),
+            tuple(self.tttrs.paths) if hasattr(self.tttrs, "paths") else len(self.tttrs or ()),
+            # a new reading (a LUT, another setup's correction) is another photon stream
+            repr(getattr(self.tttrs, "_read_signature", None)),
+        )
+        memo = self.__dict__.setdefault("_memo_cache", _Memo())
+        if memo.get("key") != key:
+            memo.clear()
+            memo["key"] = key
+        if name not in memo:
+            memo[name] = compute()
+        return memo[name]
+
     def current_tttr(self):
         """The TTTR behind the selected burst file (``None`` when nothing is loaded)."""
+        return self._memo("current_tttr", self._current_tttr)
+
+    def _current_tttr(self):
         if self.df_bursts is None or not self.tttrs:
             return None
         df = self.df_bursts
@@ -1197,6 +1321,9 @@ class MleSession:
 
     def burst_indices(self) -> list[int]:
         """Return inclusive burst coverage of the complete selected BUR identity."""
+        return self._memo("burst_indices", self._burst_indices)
+
+    def _burst_indices(self) -> list[int]:
         table = self.df_bursts
         if table is not None and "_burst_path" in column_names(table) and self.current_filename:
             selected = str(Path(self.current_filename).resolve())
@@ -1689,7 +1816,8 @@ class MleSession:
         """
         import multiprocessing as mp
         import os
-        from concurrent.futures import ProcessPoolExecutor, as_completed
+        from concurrent.futures import as_completed
+        from concurrent.futures.process import BrokenProcessPool
         from multiprocessing import shared_memory
 
         from ._mp_worker import process_one_file_worker
@@ -1832,7 +1960,10 @@ class MleSession:
                     )
                 )
             ctx = mp.get_context("spawn")
-            workers = max_workers or max(1, min(os.cpu_count() or 8, len(jobs)) - 1)
+            workers = max_workers or fit_workers()
+            # A file's bursts are independent: chopped into chunks, every core fits (one job per file
+            # left one measurement -- the usual case -- on one core).
+            jobs = _chop_jobs(jobs, workers)
             results: list[dict] = []
             total = int(row_count(self.df_bursts))
             done = 0
@@ -1853,24 +1984,30 @@ class MleSession:
                     int(self.settings.shift or 0),
                     should_stop=should_stop,
                 )
-            with ProcessPoolExecutor(max_workers=workers, mp_context=ctx) as ex:
-                futures = {ex.submit(process_one_file_worker, j): str(j[0]) for j in jobs}
-                for fut in as_completed(futures):
-                    if should_stop is not None and should_stop():
-                        for pending in futures:
-                            pending.cancel()
-                        raise InterruptedError("The burst fit was stopped.")
-                    try:
-                        out, n = fut.result()
-                    except (
-                        Exception
-                    ) as exc:  # a whole file failed: name it rather than export a short table
-                        self.status = f"{futures[fut]} failed: {exc}"
-                        out, n = [], 0
-                    results.extend(out)
-                    done += n
-                    if progress is not None:
-                        progress(min(done, total), total)
+            ex = fit_pool(workers)
+            futures = {ex.submit(process_one_file_worker, j): i for i, j in enumerate(jobs)}
+            # in job order (files, then their chunks in burst order), whichever chunk finished first
+            by_job: list[list[dict]] = [[] for _ in jobs]
+            for fut in as_completed(futures):
+                if should_stop is not None and should_stop():
+                    for pending in futures:
+                        pending.cancel()
+                    raise InterruptedError("The burst fit was stopped.")
+                index = futures[fut]
+                try:
+                    out, n = fut.result()
+                except BrokenProcessPool:
+                    _drop_fit_pool()
+                    raise
+                except Exception as exc:  # a chunk failed: name the file rather than export a short table
+                    self.status = f"{jobs[index][0]} failed: {exc}"
+                    out, n = [], 0
+                by_job[index] = out
+                done += n
+                if progress is not None:
+                    progress(min(done, total), total)
+            for out in by_job:
+                results.extend(out)
         finally:
             for block in blocks:
                 try:

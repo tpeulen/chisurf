@@ -443,10 +443,27 @@ def is_measurement(path: str | Path) -> bool:
     -------
     bool
     """
+    # Asked every frame by a run picker; reading the header cost 0.09 s. The answer holds while
+    # the file is the same file.
     try:
-        return bool(_tttrlib().is_pto_file(str(path)))
-    except Exception:
+        info = os.stat(path)
+    except OSError:
         return False
+    key = (os.fspath(path), info.st_ino, info.st_size, info.st_mtime_ns)
+    answer = _IS_MEASUREMENT.get(key)
+    if answer is None:
+        try:
+            answer = bool(_tttrlib().is_pto_file(str(path)))
+        except Exception:
+            answer = False
+        if len(_IS_MEASUREMENT) > 1024:
+            _IS_MEASUREMENT.clear()
+        _IS_MEASUREMENT[key] = answer
+    return answer
+
+
+#: :func:`is_measurement` by (path, inode, size, mtime).
+_IS_MEASUREMENT: dict[tuple, bool] = {}
 
 
 def _payload_bytes(store: Any) -> int:

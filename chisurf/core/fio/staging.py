@@ -38,6 +38,7 @@ import logging
 import os
 import shutil
 import tempfile
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from time import perf_counter
@@ -574,19 +575,67 @@ def open_tttr(
         if cached is not None:
             return cached
 
-    with staged_source(path, progress_cb=progress_cb, cancel_cb=cancel_cb, **stage_kwargs) as local:
-        spec = _tttrlib_source(local, selector)
-        if container is None:
-            tttr = tttrlib.TTTR(spec)
-        else:
-            tttr = tttrlib.TTTR(spec, container)
+    def read():
+        with staged_source(
+            path, progress_cb=progress_cb, cancel_cb=cancel_cb, **stage_kwargs
+        ) as local:
+            spec = _tttrlib_source(local, selector)
+            if container is None:
+                tttr = tttrlib.TTTR(spec)
+            else:
+                tttr = tttrlib.TTTR(spec, container)
+        apply_setup_lut(
+            tttr, channel_luts, channel_shifts, apply_lut=bool(apply_lut), lut_seed=lut_seed
+        )
+        return tttr
 
-    apply_setup_lut(
-        tttr, channel_luts, channel_shifts, apply_lut=bool(apply_lut), lut_seed=lut_seed
-    )
-    if key is not None:
+    if key is None:
+        return read()
+    # One read per file at a time: a caller asking while another reads it (the pipeline reads a
+    # file ahead in the background) waits for that read instead of reading it a second time.
+    with _reading_lock(key):
+        cached = _cache_get(key)
+        if cached is not None:
+            return cached
+        tttr = read()
         _cache_store(key, tttr)
     return tttr
+
+
+#: key -> the lock of the read in progress
+_READING: dict[tuple, threading.Lock] = {}
+_READING_GUARD = threading.Lock()
+
+
+@contextlib.contextmanager
+def _reading_lock(key):
+    with _READING_GUARD:
+        lock = _READING.setdefault(key, threading.Lock())
+    with lock:
+        try:
+            yield
+        finally:
+            with _READING_GUARD:
+                _READING.pop(key, None)
+
+
+def prefetch_tttr(paths, **kwargs) -> threading.Thread:
+    """Read *paths* into the shared cache in a background thread (what the steps after will ask for).
+
+    The next step's own :func:`open_tttr` then finds the reading there, or waits for it rather
+    than reading the file again -- on the UI thread, where a 300 MB file froze the window 0.25 s.
+    """
+
+    def work() -> None:
+        for path in paths:
+            try:
+                open_tttr(str(path), **kwargs)
+            except Exception:  # noqa: BLE001 - the step reading it reports why
+                pass
+
+    thread = threading.Thread(target=work, name="tttr-prefetch", daemon=True)
+    thread.start()
+    return thread
 
 
 # ── one open per measurement ─────────────────────────────────────────────────

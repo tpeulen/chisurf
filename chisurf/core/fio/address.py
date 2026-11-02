@@ -74,6 +74,15 @@ def split_address(address) -> tuple[pathlib.Path | None, str | None]:
     (None, None)
     """
     parts = _parts(address)
+    # Nothing lies below a file, so a path has at most one prefix that is a file: the first
+    # component with a suffix (``m.pto``) is tried first -- one stat where walking down from the
+    # root took one per component, and a run picker asks every frame.
+    for index, part in enumerate(parts, start=1):
+        if pathlib.PurePath(part).suffix:
+            candidate = pathlib.Path(*parts[:index])
+            if candidate.is_file():
+                return candidate, SEPARATOR.join(parts[index:])
+            break
     for index in range(1, len(parts) + 1):
         candidate = pathlib.Path(*parts[:index])
         if candidate.is_file():

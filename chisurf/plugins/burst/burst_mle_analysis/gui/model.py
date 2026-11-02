@@ -150,16 +150,10 @@ class MleViewModel(RunPickerMixin):
                 tttrs._cache = dict(value._cache)
                 tttrs.read_kwargs = copy.deepcopy(value.read_kwargs)
                 setattr(session, key, tttrs)
-            elif key == "df_bursts" and value is not None:
-                from chisurf.core.datastore import column_names, store_from_arrays
-
-                setattr(
-                    session,
-                    key,
-                    store_from_arrays(
-                        {name: np.asarray(value[name]).copy() for name in column_names(value)}
-                    ),
-                )
+            elif key == "df_bursts":
+                # Shared, not copied: no job writes into the burst table (a new table replaces it),
+                # and copying it column by column cost 0.27 s on the UI thread at every job start.
+                setattr(session, key, value)
             else:
                 setattr(session, key, copy.deepcopy(value))
         session.tttrs.paths = session.tttr_paths
@@ -412,6 +406,18 @@ class MleViewModel(RunPickerMixin):
         self.session.decay = None
         self.session.outcome = None
         self.notify("files")
+
+    def take_bursts(self, paths, settings: dict | None = None, prepare_from=()) -> None:
+        """The pipeline's hand-over, as one background job: the new bursts replace the old (and
+        their lifetimes), the workflow's setup goes on top (after the files: a container may carry
+        the setup of the search that wrote it), then the IRF and background are prepared."""
+        if self.session.bur_files:
+            self.clear_files()
+        self.add_files(paths)
+        if settings:
+            self.set_setup(settings)
+        if prepare_from:
+            self.prepare_patterns(prepare_from)
 
     def clear_files(self) -> None:
         self.remove_file("")

@@ -180,7 +180,62 @@ class MleNativeApp(TourTarget, ImApp):
         if self.job.busy:
             return False
         self.model.status_text = "Looking for buffer and scatter measurements, preparing IRF and background ..."
+        # The fit's worker processes start meanwhile, off the UI thread (spawning them takes ~0.3 s):
+        # the fit then does not wait for them.
+        import threading
+
+        threading.Thread(target=engine.warm_fit_pool_quietly, name="mle-warm", daemon=True).start()
         return bool(self.job.start("prepare_patterns", [str(p) for p in analysed]))
+
+    def take_bursts(self, paths, settings: dict | None = None, prepare_from=()) -> None:
+        """The pipeline hands new bursts over: read, set up and prepared in the background (reading a
+        run and its photons on the UI thread froze the window as the step opened)."""
+        self.model.status_text = "Taking the bursts, preparing IRF and background ..."
+        if prepare_from:
+            # the fit's worker processes start meanwhile, off the UI thread
+            import threading
+
+            threading.Thread(target=engine.warm_fit_pool_quietly, name="mle-warm", daemon=True).start()
+        self._queue_job(
+            "take_bursts", [str(p) for p in paths], settings, [str(p) for p in prepare_from or ()]
+        )
+
+    def _queue_job(self, method: str, *args) -> None:
+        """Start *method* as the job, or after the job that is running."""
+        queued = self.__dict__.setdefault("_queued_jobs", [])
+        if self.job.busy or queued:
+            queued.append((method, args))
+        else:
+            self.job.start(method, *args)
+
+    @property
+    def pending(self) -> bool:
+        """A job runs or waits: the hub's Next waits for it."""
+        return bool(self.job.busy or self.__dict__.get("_queued_jobs"))
+
+    def run_step(self) -> bool:
+        """The workflow hub's Next / fast-forward: fit the bursts -- once the hand-over and the IRF
+        and background the pipeline prepares in the background are there."""
+        if self.pending:
+            self._fit_when_ready = True
+            return True
+        if self.model.session.df_bursts is None:
+            return False
+        self.fit_bursts()
+        return bool(self.job.busy)
+
+    def _fit_if_waiting(self) -> None:
+        """Start the next queued job, then the fit :meth:`run_step` asked for, once each is due."""
+        if self.job.busy:
+            return
+        queued = self.__dict__.get("_queued_jobs")
+        if queued:
+            method, args = queued.pop(0)
+            self.job.start(method, *args)
+            return
+        if getattr(self, "_fit_when_ready", False):
+            self._fit_when_ready = False
+            self.fit_bursts()
 
     def fit_bursts(self, force: bool = False) -> None:
         """Fit every burst; ``force`` (Restart) fits again even when nothing changed."""
@@ -647,6 +702,7 @@ class MleNativeApp(TourTarget, ImApp):
 
     def _render(self) -> None:
         changed = self.job.poll()
+        self._fit_if_waiting()
         self._sync_editor_read_only()
         if not self.job.busy:
             self.editor.poll()
