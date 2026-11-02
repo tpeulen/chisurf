@@ -125,7 +125,9 @@ class BurstSetupSelectionApp(SetupStepApp):
             self.page.select_setup(name)
         except ValueError:
             return False
-        self.autoload = False  # a setup chosen by the workflow wins over "open the last used one"
+        # a setup chosen by the workflow wins over "open the last used one"; the stored setups are
+        # still listed on the first frame, so every one of them stays selectable
+        self.open_last_used = False
         return True
 
     def load_data_into_tables(self, settings: dict) -> None:
@@ -136,7 +138,7 @@ class BurstSetupSelectionApp(SetupStepApp):
             return
         if settings.get("detectors") or settings.get("windows"):
             self.page.load_definition(copy.deepcopy(settings))
-            self.autoload = False
+            self.open_last_used = False
 
     # -- frame --------------------------------------------------------------------------------------------- #
     def _render(self) -> None:
@@ -228,7 +230,7 @@ class BurstSetupSelectionApp(SetupStepApp):
             state.get("channel_definition"), dict
         ):
             self.page.load_definition(state["channel_definition"])
-            self.autoload = False
+            self.open_last_used = False
 
     def close(self) -> None:
         self.page.close()
