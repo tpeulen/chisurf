@@ -42,7 +42,9 @@ timestamp: '2026-07-05T00:00:00Z'
    (`burst_selection/gui/model.py`), and with it the dT plot as a line (2026-11-02: geometric mean dT per
    bin of photons, ~1500 bins, NaN breaks the selected line between bursts; frame 186 -> 71 ms on
    DNA13bp_3; `_dt_curves` + `DT_PLOT_BINS` in model.py, axis/empty text in `gui/native.py`, test
-   `test_the_dt_curves_are_lines_of_few_points_for_a_large_measurement`). All verified: H2MM+MLE suites 278 passed; summary identical
+   `test_the_dt_curves_are_lines_of_few_points_for_a_large_measurement`; then display-only smoothing: running
+   geometric mean over `dt_smooth_photons` (Display "dT smoothing", default 50; the search and the dT
+   filter read raw dT), 800 points, `native.view.json`, test `test_the_dt_smoothing_is_for_the_eye_only`). All verified: H2MM+MLE suites 278 passed; summary identical
    to the old implementation on sim PIE and BH SPC data.
    **Speed now** (sim 600 s PIE, 12k bursts, scratch `time_steps.py` with `KEEP_SETTINGS`):
    search 2.8 s (28M photons 3.4-3.6 s), BVA 0.3 s, 2CDE 0.5 s, Accurate FRET 1.0 s, MLE batch
