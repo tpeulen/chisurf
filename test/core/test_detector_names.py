@@ -20,20 +20,6 @@ def test_historic_names_are_aliases():
     assert dn.emission("red") == "R" and dn.emission("my APD") is None
 
 
-def test_columns_translate_both_ways_for_the_legacy_export():
-    pairs = {
-        "Number of Photons (G|G)": "Number of Photons (green)",
-        "G|G Count Rate (KHz)": "Green Count Rate (KHz)",
-        "R|G Count Rate (KHz)": "Red Count Rate (KHz)",
-        "Tau (R|R)": "Tau (yellow)",
-        "S prompt R|G (kHz) | 0-2048": "S prompt red (kHz) | 0-2048",
-        "Duration (ms)": "Duration (ms)",
-    }
-    for new, old in pairs.items():
-        assert dn.legacy_column(new) == old
-        assert dn.column(old) == new
-
-
 def test_labels_and_file_names():
     assert dn.label("G|G") == "G|G" and dn.label("green") == "Green"
     assert dn.slug("R|G") == "R-G"
@@ -82,5 +68,5 @@ def test_roles_by_name_alias_or_word():
     ]
     assert dn.detector_of_role(["red", "green"], "donor") == "green"
     assert dn.column_detector("Number of Photons (R|G)") == "R|G"
-    assert dn.column_detector("Green Count Rate (KHz)") == "G|G"
+    assert dn.column_detector("R|G Count Rate (KHz)") == "R|G"
     assert dn.column_detector("Duration (ms)") is None

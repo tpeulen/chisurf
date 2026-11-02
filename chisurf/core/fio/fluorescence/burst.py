@@ -351,6 +351,8 @@ def generate_burst_dataframe(
     # (the general rule -- analysis I/O drifts in settings, not in code).
     # This function instantiates the declared families over the detector
     # setup and fills each column from its `source` quantity.
+    from chisurf.core.fluorescence import detector_names as dn
+
     declaration = burst_feature_declaration()
     cols = []  # header, in declared order
     fills = []  # one (scope, source, instance-key) per column
@@ -366,7 +368,7 @@ def generate_burst_dataframe(
         elif scope == "detector":
             for d in detectors:
                 for template, source in entries:
-                    cols.append(template.format(detector=d, Detector=str(d).capitalize()))
+                    cols.append(template.format(detector=d, Detector=dn.label(d)))
                     fills.append((scope, source, d))
         elif scope == "window_detector":
             for w, (r0, r1) in windows.items():
@@ -374,7 +376,7 @@ def generate_burst_dataframe(
                     for template, source in entries:
                         cols.append(
                             template.format(
-                                window=w, detector=d, Detector=str(d).capitalize(), r0=r0, r1=r1
+                                window=w, detector=d, Detector=dn.label(d), r0=r0, r1=r1
                             )
                         )
                         fills.append((scope, source, (w, d)))

@@ -7,10 +7,9 @@ excitation (the acceptor directly excited, PIE / ALEX). The colours, in waveleng
 blue ``B``, green ``G``, yellow ``Y`` and red ``R`` -- enough for three-colour FRET (``B|B``,
 ``G|B``, ``R|B``, ``G|G``, ``R|G``, ``R|R``).
 
-The historic names are read as aliases (:data:`LEGACY`): ``green`` is ``G|G``, ``red`` is
-``R|G``, ``yellow`` is ``R|R``, ``blue`` is ``B|B``. New setups, containers and tables carry the
-new names; the legacy burstwise export writes the old ones (:func:`legacy_column`), which the
-tools reading those folders expect.
+Every setup, container, table and export carries these names. A saved setup with the historic
+names is converted once when the store is read (:data:`LEGACY`: ``green`` is ``G|G``, ``red`` is
+``R|G``, ``yellow`` is ``R|R``, ``blue`` is ``B|B``); old burst files are not translated.
 
 ``|`` cannot be part of a Windows file name: where a detector names a file, :func:`slug` gives
 ``G-G``.
@@ -48,10 +47,8 @@ ACCEPTOR = "R|G"
 ACCEPTOR_DIRECT = "R|R"
 TWO_COLOUR = (DONOR, ACCEPTOR, ACCEPTOR_DIRECT)
 
-#: Historic name -> name. Read wherever a detector name is read; written by the legacy export.
+#: Historic name -> name: the one-time conversion of saved setups (:func:`canonical`).
 LEGACY: dict[str, str] = {"green": DONOR, "red": ACCEPTOR, "yellow": ACCEPTOR_DIRECT, "blue": "B|B"}
-#: Name -> historic name (the legacy burstwise export).
-TO_LEGACY: dict[str, str] = {new: old for old, new in LEGACY.items()}
 
 _NAME = re.compile(r"^([BGYR])\|([BGYR])$")
 
@@ -136,9 +133,9 @@ _IN_COLUMN = re.compile(r"\(([^()]+)\)")
 
 
 def column_detector(column_name: str) -> str | None:
-    """The detector a burst-table column belongs to (``Number of Photons (R|G)`` -> ``R|G``;
-    ``Green Count Rate (KHz)`` -> ``G|G``), or ``None``."""
-    text = column(str(column_name))
+    """The detector a burst-table column belongs to (``Number of Photons (R|G)`` -> ``R|G``,
+    ``R|G Count Rate (KHz)`` -> ``R|G``), or ``None``."""
+    text = str(column_name)
     for found in _IN_COLUMN.findall(text):
         if _NAME.match(found) or found.lower() in LEGACY:
             return canonical(found)
@@ -158,28 +155,6 @@ def label(detector: str) -> str:
     return text if _NAME.match(text) else text.capitalize()
 
 
-def legacy_column(column: str) -> str:
-    """*column* as the legacy burstwise tables name it: ``Number of Photons (G|G)`` ->
-    ``Number of Photons (green)``, ``G|G Count Rate (KHz)`` -> ``Green Count Rate (KHz)``."""
-    out = str(column)
-    for new, old in TO_LEGACY.items():
-        out = out.replace(f"({new})", f"({old})")
-        if out.startswith(f"{new} "):
-            out = old.capitalize() + out[len(new):]
-        out = out.replace(f" {new} ", f" {old} ")
-    return out
-
-
-def column(legacy: str) -> str:
-    """A legacy table's *legacy* column under the names: the inverse of :func:`legacy_column`."""
-    out = str(legacy)
-    for old, new in LEGACY.items():
-        out = re.sub(rf"\({old}\)", f"({new})", out, flags=re.IGNORECASE)
-        out = re.sub(rf"^{old}(?= )", new, out, flags=re.IGNORECASE)
-        out = re.sub(rf"(?<= ){old}(?= )", new, out)
-    return out
-
-
 __all__ = [
     "ACCEPTOR",
     "ACCEPTOR_DIRECT",
@@ -188,11 +163,9 @@ __all__ = [
     "DONOR",
     "LEGACY",
     "SEPARATOR",
-    "TO_LEGACY",
     "TWO_COLOUR",
     "canonical",
     "canonical_detectors",
-    "column",
     "column_detector",
     "detector_of_role",
     "emission",
@@ -200,7 +173,6 @@ __all__ = [
     "find",
     "is_default",
     "label",
-    "legacy_column",
     "name",
     "role",
     "slug",
