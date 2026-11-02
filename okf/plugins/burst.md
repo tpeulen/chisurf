@@ -9,6 +9,33 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**Next, in order (2026-11-02, after the detector-name round):**
+1. **No HDF5 anywhere** (owner: "no HDF5! csv at most; better deprecate, only an exporter at most").
+   Results live in the `.pto` container; loose files only through an explicit exporter, CSV at most.
+   Still writing HDF5: `chisurf/core/datastore.py`, `plugins/microscopy/{img_pixel_intensity/gui/view_model,
+   imaging_common/base,imaging_emtk/pixel_model,imaging_emtk/pixel_app,imaging_emtk/pixel_checks}.py`,
+   ndX `export/hdf5_export.py` + `io/reader.py`. Another lane already drops `burst_h2mm.core.export.write_hdf5`
+   (uncommitted, with `docs/guides/34_exporting_burst_data.md`).
+2. **VV / VH instead of par / per** across chisurf, ndX and tttrlib (C++ names too), no legacy support.
+3. **Ranges as `a:b`** (not `a-b` / `a–b`): column templates (`S prompt G|G (photons) | 616-3784`),
+   messages, parsed text fields. Trap: ndX `--select` is `param:min-max` -- the separator changes too.
+4. **Rename leftovers held back** because the lines sit inside other lanes' uncommitted rewrites:
+   `core/fio/fluorescence/burst.py`, `burst_fusion/gui/view_model.py`, `burst_bva/tests/test_window_preflight.py`,
+   `burst_h2mm/core/export.py` (the `Mean Microtime` loop). Commit them with those lanes' work.
+5. **Regenerate** `docs/reference/plugins/*.md` (`pixi run -e docs docs-plugins`),
+   `docs/concepts/flrcif_vocabulary.md` (mmfdb `95b58db` renamed the burst columns) and
+   `docs/reference/figures.md`; re-capture the channel-definition screenshot (still green/red).
+6. **tttrlib rebuild** pending owner OK: `8c606c8c4` (guess_burst_columns, registry defaults G|G/R|G,
+   cmd_sm) only takes effect after a build. `StreamingBurstAnalyzer.from_setup` still defaults to
+   green/red in C++ (acq overrides it).
+
+Detector names (done 2026-11-02): `G|G` donor, `R|G` FRET acceptor, `R|R` acceptor direct
+(`chisurf/core/fluorescence/detector_names.py`; chisurf `22bf897e4`, ndX `3d37421`, mmfdb `95b58db`,
+tttrlib `8c606c8c4`). How the commit was cut from a shared tree: compose HEAD + only the rename hunks
+(zero-context hunks applied at their HEAD positions, never `git apply --unidiff-zero` of a subset --
+skipped hunks shift line numbers and corrupt the file), lint the composed tree against HEAD (F821/F401),
+run its tests, then stage the composed blobs with `git update-index --cacheinfo`.
+
 **Owner worklist 2026-11-02 (burst pipeline UX round; verbatim intent, in order of the request):**
 - [x] W1 Simple / Advanced mode for the whole pipeline. Simple shows only essential inputs: nothing
   an earlier step already covers (the Detector setup tabs of Burst Selection, Burst MLE, H2MM -- step

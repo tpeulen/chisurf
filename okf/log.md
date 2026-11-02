@@ -20,6 +20,7 @@
 - 2026-11-02 burst pipeline round 3: BVA/2CDE computed in task processes while MLE is set up; analysis container made ahead (search 3.2 -> 1.15 s); MLE prep without list round trips; burst_analysis tests isolate the workspace + analysis session (fixed BVA/2CDE order-dependent failures). See okf/plugins/burst.md item 00.
 - 2026-11-02 burst pipeline round 4: hub opens in ~1.2 s (manifest walk pruned, emtk icons.preload from a staged warm-up). Next targets recorded in okf/plugins/burst.md item 00 (search pieces in other lanes' files; ptolib SHA-256 of the link).
 - 2026-11-02 evening: CUSUM background from the inter-photon gap tail + per-detector hint (fixes 'no bursts' with a typed per-detector rate); count rates in kHz; flicker causes fixed in emtk (atlas load race a0e5c34, glyph cache eviction 287c7a0) and the Datasets dock refresh on the UI thread. See okf/plugins/burst.md item 00.
+- 2026-11-02 Detector names G|G / R|G / R|R replace green / red / yellow across chisurf (22bf897e4), ndX (3d37421), mmfdb burst-column vocabulary (95b58db) and tttrlib source (8c606c8c4, rebuild pending); image browser tile labels and TIFF names fixed for the bar in a detector name; 0. Setup Selection lists every stored setup when the hub hands in a definition (f34ca1f25). Next: no HDF5 (exporter, CSV at most), VV/VH, ranges a:b -- see okf/plugins/burst.md Where to pick this up.
 
 ## 2026-10-29
 
