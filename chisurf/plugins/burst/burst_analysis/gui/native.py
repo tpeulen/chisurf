@@ -158,9 +158,23 @@ STEPS: list[dict[str, Any]] = [
 MLE_ROLES = ("mle", "segment_mle")
 
 
+#: Seconds the second stage of the warm-up waits: its imports hold the interpreter in long stretches,
+#: and the window's first frames need it for themselves.
+WARM_LATER_S = 1.0
+
+
 def _warm_steps() -> None:
-    """Import and read once what the pipeline's steps need when they open (0.6 s in all)."""
-    for warm in (
+    """Import and read once what the pipeline's steps need when they open, in two stages: what the
+    first frames draw at once (icons, the plugin catalogue, the session API), the steps' own modules
+    and the task processes after :data:`WARM_LATER_S` -- before the user can have dropped a file."""
+    import time
+
+    first = (
+        lambda: getattr(__import__("emtk.icons", fromlist=["preload"]), "preload", lambda: None)(),
+        lambda: __import__("chisurf.emtk.plugins", fromlist=["manifests"]).manifests(),
+        lambda: __import__("chisurf.core.api"),  # the workspace tables' session API
+    )
+    later = (
         lambda: __import__("chisurf.core.registry.catalog", fromlist=["registry"]).registry(),
         lambda: tr("Burst Selection"),
         lambda: __import__("chisurf.plugins.burst.burst_selection.gui.native"),
@@ -169,7 +183,10 @@ def _warm_steps() -> None:
         lambda: __import__(
             "chisurf.plugins.burst.burst_analysis.gui.background_tasks", fromlist=["warm"]
         ).warm(),
-    ):
+    )
+    for index, warm in enumerate((*first, *later)):
+        if index == len(first):
+            time.sleep(WARM_LATER_S)
         try:
             warm()
         except Exception:  # noqa: BLE001 - the step loads it itself when it opens

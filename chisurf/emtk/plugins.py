@@ -37,9 +37,29 @@ def manifest(plugin_id: str) -> dict | None:
     return copy.deepcopy(entry) if entry is not None else None
 
 
+#: Folders that hold no plugin manifest: walking them (test data, caches) was most of the cost of
+#: the first frame of a hub (0.6 s under load), which reads the catalogue for one manifest.
+_NOT_PLUGINS = frozenset(
+    {"__pycache__", "tests", "test", "data", "docs", "node_modules", "build", "dist"}
+)
+
+
+def _manifest_paths(root: Path) -> list[Path]:
+    import os
+
+    found = []
+    for folder, dirs, files in os.walk(root):
+        dirs[:] = [
+            d for d in dirs if d not in _NOT_PLUGINS and not d.startswith(".") and "cookiecutter" not in d
+        ]
+        if "manifest.json" in files:
+            found.append(Path(folder) / "manifest.json")
+    return sorted(found)
+
+
 def _read_manifests(root: Path) -> dict[str, dict]:
     found = {}
-    for path in sorted(root.rglob("manifest.json")):
+    for path in _manifest_paths(root):
         if "cookiecutter" in str(path):
             continue
         data = json.loads(path.read_text(encoding="utf-8"))
