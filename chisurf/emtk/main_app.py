@@ -409,21 +409,44 @@ class ShellDockManager(DockManager):
 
 
 
-def _watch_containers(docks: Any) -> None:
-    """Refresh *docks*' dataset list after every analysis-container write (held weakly)."""
+def _watch_containers(docks: Any, app: Any = None) -> None:
+    """Refresh *docks*' dataset list after every analysis-container write (held weakly).
+
+    A container is written on the writer's thread (a search's job, a step's worker); the dock is
+    the UI thread's. The listener only marks the list stale and wakes the window
+    (``app.request_frame`` is thread-safe); the window rebuilds it in its next frame
+    (:func:`_refresh_stale_datasets`). Rebuilt on the writer's thread, the dock changed under a
+    frame that was drawing it, and no frame was asked for: flicker, and runs that appeared only
+    once the mouse moved.
+    """
     import weakref
 
     from chisurf.core.project.analysis import on_container_changed
 
     ref = weakref.ref(docks)
+    app_ref = weakref.ref(app) if app is not None else None
 
     def changed(_path: Any = None) -> None:
         live = ref()
-        if live is not None:
-            live.refresh()
+        if live is None:
+            return
+        owner = app_ref() if app_ref is not None else None
+        if owner is None:
+            live.refresh()  # no window to wait for (a headless shell)
+            return
+        live._datasets_stale = True
+        owner.request_frame()
 
     docks._container_listener = changed  # the listener lives as long as the docks
     on_container_changed(changed)
+
+
+def _refresh_stale_datasets(docks: Any) -> None:
+    """The dataset list a container write marked stale, rebuilt now, on the UI thread."""
+    if getattr(docks, "_datasets_stale", False):
+        docks._datasets_stale = False
+        docks.refresh()
+
 
 class EmtkShellApp(ImApp):
     """The ChiSurf main window: menu bar, Tools / Log docks and every opened plugin as a dock window.
@@ -624,7 +647,7 @@ class EmtkShellApp(ImApp):
         # A burst run, an MLE / BVA / 2CDE / H2MM table written into a project container: the
         # workspace lists it at once (analysis.container_changed), and the Datasets dock reads its
         # rows again -- a run added in process publishes no server event of its own.
-        _watch_containers(self.data)
+        _watch_containers(self.data, self)
         self.project = ShellProject(self)
         from chisurf.emtk.post_show import PostShow
 
@@ -1134,6 +1157,7 @@ class EmtkShellApp(ImApp):
         self.project.draw((0.0, 0.0, width, height))
 
     def render(self) -> None:
+        _refresh_stale_datasets(self.data)
         width, height = im.get_main_viewport().size
         hosted = self._tool_only_hosted()
         if hosted is not None or self._tool_only:
