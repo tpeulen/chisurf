@@ -415,7 +415,9 @@ def generate_burst_dataframe(
     det_global = {}
     for d, info in detectors.items():
         chm = np.isin(rout, info["chs"])
-        det_global[d] = chm & micro_time_mask(micro, info["micro_time_ranges"])
+        # an ungated detector may come without the key (a setup carried into the data's channels
+        # writes it only for detectors that have gates): no gates, all its photons
+        det_global[d] = chm & micro_time_mask(micro, info.get("micro_time_ranges") or [])
 
     win_global = {w: (micro >= r0) & (micro < r1) for w, (r0, r1) in windows.items()}
 
