@@ -246,6 +246,8 @@ def pool_states_worker(args):
                     cp, cs = _hist2_split_core_classlut(
                         mt_sel, rc_sel, cfg["class_lut"], int(cfg["half_len"])
                     )
+                    if cfg.get("mirror"):
+                        cs = cp
                     pooled[det][state, 0] += cp
                     pooled[det][state, 1] += cs
         return pooled
@@ -353,8 +355,16 @@ def process_one_file_worker(args):
                         floor = int(cfg.get("state_min_photons") or cfg["min_photons"])
 
                     cp_u32, cs_u32 = _hist2_split_core_classlut(mt_sel, rc_sel, cfg["class_lut"], n)
-                    cp_sum = int(cp_u32.sum())
-                    cs_sum = int(cs_u32.sum())
+                    if cfg.get("mirror"):
+                        cs_u32 = cp_u32
+                    # Photons inside the detector's gates: what the fit sees and the counts report.
+                    s0, s1 = max(0, int(cfg["sb"])), min(n, int(cfg["eb"]))
+                    t0 = max(0, int(cfg.get("vh_sb", cfg["sb"])))
+                    t1 = min(n, int(cfg.get("vh_eb", cfg["eb"])))
+                    cp_sum = int(cp_u32[s0:s1].sum()) if s1 > s0 else 0
+                    cs_sum = int(cs_u32[t0:t1].sum()) if t1 > t0 else 0
+                    if cfg.get("mirror"):
+                        cs_sum = 0  # the same photons twice: counted once
 
                     if (cp_sum + cs_sum) < floor:
                         rec.update(
@@ -372,11 +382,7 @@ def process_one_file_worker(args):
                         )
                         continue
 
-                    # Write only the fit window, zeroing the previous burst's.
-                    sb = int(cfg["sb"])
-                    eb = int(cfg["eb"])
-                    s0 = max(0, sb)
-                    s1 = min(n, eb)
+                    # Write only the fit windows (VV, VH: the detector's gates), zeroing the previous burst's.
                     d = decay_buf[det]
                     pv_vv0, pv_vv1, pv_vh0, pv_vh1 = prev_ranges[det]
                     if pv_vv1 > pv_vv0:
@@ -385,11 +391,12 @@ def process_one_file_worker(args):
                         d[n + pv_vh0 : n + pv_vh1] = 0.0
                     if s1 > s0:
                         d[s0:s1] = cp_u32[s0:s1]
+                    if t1 > t0:
                         if do_shift:
-                            _copy_shifted(cs_u32, d, n, s0, s1, do_shift, n)
+                            _copy_shifted(cs_u32, d, n, t0, t1, do_shift, n)
                         else:
-                            d[n + s0 : n + s1] = cs_u32[s0:s1]
-                    prev_ranges[det] = (s0, s1, s0, s1)
+                            d[n + t0 : n + t1] = cs_u32[t0:t1]
+                    prev_ranges[det] = (s0, s1, t0, t1)
 
                     # A state's fit starts from that state's *pooled* lifetime
                     # when one was fitted (see ``pool_states_worker``): the

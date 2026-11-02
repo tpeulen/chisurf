@@ -267,9 +267,33 @@ class BurstAnalysisHubApp(ToolHubApp):
         if data is None:
             return
         self.context.raw_files = list(data.model.paths())
+        self._propose_setup_from_first_file()
         self.context.raw_mmfdb_artifacts = data.model.mmfdb_payload()
         self._apply_downstream(skip=("setup", "data"))
         self.wants_frame = True
+
+    def _propose_setup_from_first_file(self) -> None:
+        """No setup chosen or defined yet: propose detectors and excitation windows from the first
+        file (editable in step 0, saveable to the Settings library), so a PTU can be analysed at once."""
+        model = self.setup_model
+        files = self.context.raw_files
+        if model.data.get("detectors") or not files:
+            return
+        try:
+            tttr = model.open_tttr(files[0], raw=True, auto=True)
+            names = model.propose_from_tttr(tttr)
+            header = tttr.get_header()
+            reading = model.data["tttr_reading"]
+            reading["macro_time_resolution"] = float(header.macro_time_resolution) * 1e9
+            reading["micro_time_resolution"] = float(header.micro_time_resolution) * 1e12
+        except Exception as exc:  # noqa: BLE001 - the user still can define the setup by hand
+            self.status = f"No setup could be proposed from {Path(files[0]).name}: {exc}"
+            return
+        model.changed()
+        self.status = (
+            f"Setup proposed from {Path(files[0]).name}: detectors {', '.join(names)}; "
+            "review it in step 0 and save it to the library."
+        )
 
     def _selection_done(self, model) -> None:
         """Burst Selection finished a run: its output becomes the bursts every later step reads."""
@@ -585,6 +609,9 @@ class BurstAnalysisHubApp(ToolHubApp):
         super().restore_settings(state)
         self.context.channel_settings = self.setup_model.get_settings()
         self.context.setup_name = self.setup_model.current_name
+        if not self.context.raw_files and not self.context.bur_files and self.selected != "setup":
+            # restored without its data (the shell's reopen): the workflow starts at its first step
+            self.select("setup", by_user=False)
 
     def render(self):
         if self.status == getattr(self, "_summary_shown", None) or self.status == "Ready":

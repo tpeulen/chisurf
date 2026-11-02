@@ -18,12 +18,35 @@ CONFIG = store.SetupTypeConfig(
 )
 
 
+#: The order the user gave detectors and windows: the store's JSON sorts keys, the order is meaning
+#: (step 0's first detector is the donor everywhere downstream).
+ORDER_KEY = "_order"
+
+
+def _with_order(data):
+    data = dict(data)
+    data[ORDER_KEY] = {
+        key: list((data.get(key) or {}).keys()) for key in ("detectors", "windows")
+    }
+    return data
+
+
+def _restore_order(data):
+    order = data.pop(ORDER_KEY, None) or {}
+    for key, names in order.items():
+        items = data.get(key)
+        if isinstance(items, dict):
+            ranked = [n for n in names if n in items] + [n for n in items if n not in names]
+            data[key] = {n: items[n] for n in ranked}
+    return data
+
+
 def _save_row(db, name, data, user_id=None, is_public=None):
     store.save_setup_row(
         db,
         CONFIG,
         name,
-        data,
+        _with_order(data),
         user_id=user_id,
         is_public=is_public,
         detectors=data.get("detectors") or {},
@@ -35,7 +58,7 @@ def _save_row(db, name, data, user_id=None, is_public=None):
 
 def _row_data(row, db):
     configuration = store.json_loads(row.get("configuration_json"))
-    data = copy.deepcopy(configuration.get("setup_data") or configuration)
+    data = _restore_order(copy.deepcopy(configuration.get("setup_data") or configuration))
     if row.get("is_public") is not None:
         data["_is_public"] = bool(row["is_public"])
     if row.get("created_by_user_id") is not None:
@@ -415,6 +438,8 @@ class ChannelDefinition:
             for ch in tttr.get_used_routing_channels()
         }
         self.preview_path = str(path)
+        if not self.data.get("detectors"):
+            self.propose_from_tttr(tttr)
         self.data["_raw_microtime_per_channel_decay"] = {
             "file_path": str(path),
             "channels": {str(ch): counts.tolist() for ch, counts in self.raw_preview.items()},
@@ -424,6 +449,39 @@ class ChannelDefinition:
             "channels": {str(ch): counts.tolist() for ch, counts in self.preview.items()},
         }
         self.changed()
+
+    def propose_from_tttr(self, tttr):
+        """Fill an empty definition from a measurement: one detector per used routing channel (two
+        channels: green, red) and the excitation windows / detector gates the shared pre-flight finds.
+
+        A proposal, never a silent overwrite: it only runs on a definition without detectors, and
+        every field stays editable. Returns the proposed detector names.
+        """
+        from chisurf.core.fluorescence.excitation import apply_check, check_setup, detect_windows
+
+        channels = sorted(int(c) for c in tttr.get_used_routing_channels())
+        names = ["green", "red"] if len(channels) == 2 else [f"ch{c}" for c in channels]
+        draft = {
+            "detectors": {
+                n: {"chs": [c], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0}
+                for n, c in zip(names, channels)
+            },
+            "windows": {},
+            "tttr_reading": dict(self.data.get("tttr_reading") or {}),
+        }
+        try:
+            detection = detect_windows(tttr, setup=draft)
+            draft = apply_check(draft, check_setup(draft, tttr, detection=detection))
+        except Exception:  # noqa: BLE001 - detectors alone are still a useful start
+            pass
+        self.data["detectors"] = draft["detectors"]
+        for key in ("windows", "alex_windows", "alex_period_s"):
+            if draft.get(key):
+                self.data[key] = draft[key]
+        reading = self.data["tttr_reading"]
+        if draft["tttr_reading"].get("micro_time_resolution"):
+            reading["micro_time_resolution"] = draft["tttr_reading"]["micro_time_resolution"]
+        return list(draft["detectors"])
 
     def assign_lut(self, channel, path):
         from chisurf.plugins.tttr.tttr_lut_tools.api.io import load_lut_file

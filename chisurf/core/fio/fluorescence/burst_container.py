@@ -245,9 +245,33 @@ def open_measurement(
     from chisurf.core.fio.pto import Measurement, is_measurement
 
     target = container_for(source, out_dir)
+    if is_measurement(target) and _stale(source, target):
+        # The instrument file was written after its container (re-recorded, replaced): the container's
+        # photons are another measurement's. Keep it aside, never analyse it as this file.
+        import logging
+        import time
+
+        aside = target.with_name(f"{target.stem}.stale-{time.strftime('%Y%m%d-%H%M%S')}{target.suffix}")
+        target.rename(aside)
+        logging.getLogger(__name__).warning(
+            "%s is newer than its container; the old container was moved to %s", source, aside.name
+        )
     if is_measurement(target):
         return Measurement.open(target, writable=True)
     return Measurement.create(source, out_dir=out_dir, raw_data=raw_data)
+
+
+def _stale(source: str | Path, target: Path) -> bool:
+    """Whether instrument file *source* was modified after container *target* was last written."""
+    source = Path(source)
+    if source.resolve() == target.resolve() or not source.is_file():
+        return False
+    try:
+        written = max(p.stat().st_mtime for p in [target, *target.rglob("*")]) if target.is_dir() \
+            else target.stat().st_mtime
+        return source.stat().st_mtime > written
+    except OSError:
+        return False
 
 
 def analysis_run(
@@ -452,7 +476,14 @@ def write_burst_artifact(
             target_row_column=target_row_column,
             units=units_for(table, units),
         )
-        return str(m.path)
+        written = str(m.path)
+    # Every container write ends here, so this is the one place that tells the workspace: a
+    # companion table (BVA, 2CDE, H2MM, MLE, background) or a run shows under its recording at
+    # once, whichever tool wrote it.
+    from chisurf.core.project.analysis import container_changed
+
+    container_changed(written)
+    return written
 
 
 def resolve_source(name: str | Path, search_from: str | Path | None = None) -> Path:

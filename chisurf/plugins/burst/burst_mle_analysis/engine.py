@@ -152,19 +152,21 @@ def effective_timing_ns(
 
 
 def window_bins(
-    detector_ranges: Any, micro_time_range: tuple[int, int], binning: int
+    detector_ranges: Any, micro_time_range: tuple[int, int], binning: int, n_channels: int = 1
 ) -> tuple[int, int, int, int]:
     """Per-polarisation ``(vv_start, vv_stop, vh_start, vh_stop)`` in binned channels.
 
-    The detector's own raw micro-time ranges (two of them: VV, VH) win; otherwise the global window applies to both.
+    ``micro_time_ranges`` mean what they mean in the step-0 setup: the detector's gates, for all of its
+    channels. The first gate bounds both polarisations (a fit window is contiguous); without gates the
+    global window applies. *n_channels* is accepted for call-site symmetry and not used.
     """
     sb, eb = micro_time_range
-    out = (sb, eb, sb, eb)
-    if detector_ranges and len(detector_ranges) >= 2:
-        b = max(1, int(binning))
-        raw_vv, raw_vh = detector_ranges[0], detector_ranges[1]
-        out = (int(raw_vv[0] // b), int(raw_vv[1] // b), int(raw_vh[0] // b), int(raw_vh[1] // b))
-    return out
+    ranges = [r for r in (detector_ranges or []) if r is not None and len(r) >= 2]
+    if not ranges:
+        return (sb, eb, sb, eb)
+    b = max(1, int(binning))
+    lo, hi = int(ranges[0][0] // b), int(ranges[0][1] // b)
+    return (lo, hi, lo, hi)
 
 
 def vv_vh_histogram(
@@ -180,7 +182,9 @@ def vv_vh_histogram(
     apply_vh_shift: bool = True,
 ) -> np.ndarray:
     """The VV | VH micro-time histogram of *tttr* (one row of the wizard's ``make_vv_vh``)."""
-    vv_sb, vv_eb, vh_sb, vh_eb = window_bins(detector_ranges, micro_time_range, binning)
+    vv_sb, vv_eb, vh_sb, vh_eb = window_bins(
+        detector_ranges, micro_time_range, binning, len(detector_chs)
+    )
 
     def photons(chs):
         return tttr[np.where(np.isin(tttr.routing_channels, chs))[0]]
@@ -1183,6 +1187,7 @@ class MleSession:
             self.detector.get("micro_time_ranges"),
             self.micro_time_range,
             self.settings.micro_time_binning,
+            len(self.detector.get("chs", [])),
         )
 
     # -- decay ------------------------------------------------------------------------------------------------- #
@@ -1512,9 +1517,15 @@ class MleSession:
         raw_bg = np.asarray(self.bg_np.get(det, np.array([])), dtype=float)
         bg = process_background(raw_bg, st.shift, irf) if raw_bg.size else raw_bg
         names, x0, fixed = st.parameter_state()
+        # The setup's detector gates (step 0's PIE windows) bound the fit as they bound the preview decay.
+        vv_sb, vv_eb, vh_sb, vh_eb = window_bins(
+            info.get("micro_time_ranges"), (sb, eb), st.micro_time_binning, len(info.get("chs", []))
+        )
         return {
-            "sb": int(sb),
-            "eb": int(eb),
+            "sb": int(vv_sb),
+            "eb": int(vv_eb),
+            "vh_sb": int(vh_sb),
+            "vh_eb": int(vh_eb),
             "dt": float(dt),
             "period": float(period),
             "g_factor": float(info.get("g_factor", 1.0)),
@@ -1666,14 +1677,17 @@ class MleSession:
                 perdet = {}
                 for det in det_order:
                     chs = self.detectors[det].get("chs", [])
-                    pchs = np.asarray(chs[::2] if len(chs) >= 2 else chs, dtype=int)
-                    schs = np.asarray(chs[1::2] if len(chs) >= 2 else chs, dtype=int)
+                    # A one-channel detector has no polarisation: its photons are both halves (as in
+                    # vv_vh_histogram, the preview), not all VH with an empty VV.
+                    mirror = len(chs) < 2
+                    pchs = np.asarray(chs if mirror else chs[::2], dtype=int)
+                    schs = np.asarray([] if mirror else chs[1::2], dtype=int)
                     lut = np.full(rc_max + 1, -1, dtype=np.int8)
                     if pchs.size:
                         lut[pchs] = 0
                     if schs.size:
                         lut[schs] = 1
-                    perdet[det] = dict(configs[det], class_lut=lut)
+                    perdet[det] = dict(configs[det], class_lut=lut, mirror=mirror)
                     timing = self.timing_ns(tttr, binning)
                     if timing[0] is not None and timing[1] is not None:
                         perdet[det]["dt"], perdet[det]["period"] = timing

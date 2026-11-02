@@ -280,7 +280,10 @@ def test_settings_round_trip(hub):
     again = create_app()
     try:
         again.restore_settings(state)
-        assert again.selected == "bva"
+        # restored without data (no files: the shell reopens tools without them) the workflow
+        # starts at its first step; its setup is restored
+        assert again.selected == "setup"
+        assert again.context.setup_name == hub.context.setup_name
     finally:
         again.close()
 
