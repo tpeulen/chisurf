@@ -123,6 +123,10 @@ def _marker(panel: dict) -> str:
 class ToolHubApp(ImApp):
     """The rail, the destination header, the selected child and a status bar with Back / Next."""
 
+    #: Whether a restored session drops an unsaved (unnamed) shared setup, so the setup library's
+    #: last used one opens instead; a named setup is always restored.
+    library_setup_wins = False
+
     def __init__(
         self,
         title: str,
@@ -911,10 +915,20 @@ class ToolHubApp(ImApp):
 
     def restore_settings(self, state):
         self.advanced = bool((state or {}).get("advanced", self.advanced))
-        if self.uses_setup and isinstance((state or {}).get("setup"), dict):
+        setup_state = (state or {}).get("setup") if self.uses_setup else None
+        dropped_setup = False
+        if (
+            isinstance(setup_state, dict)
+            and self.library_setup_wins
+            and not str(setup_state.get("setup_name") or "")
+        ):
+            # An unsaved working copy (e.g. detectors proposed from a file) does not outlive the
+            # session: the library's last used setup opens instead, and every stored one is listed.
+            setup_state, dropped_setup = None, True
+        if isinstance(setup_state, dict):
             from chisurf.core.setup_channel_definition import ChannelDefinition
 
-            restored = ChannelDefinition(state["setup"])
+            restored = ChannelDefinition(setup_state)
             self.setup_model.data = restored.data
             self.setup_model.current_name = restored.current_name
             self._shared_setup_changed(self.setup_model.get_settings())
@@ -928,11 +942,14 @@ class ToolHubApp(ImApp):
                 if callable(restore):
                     if (
                         role == "setup"
-                        and isinstance((state or {}).get("setup"), dict)
+                        and (isinstance(setup_state, dict) or dropped_setup)
                         and getattr(child, "model", None) is self.setup_model
                     ):
                         child.page.restore_state(data.get("page", data))
-                        child.autoload = False
+                        # The store is still listed on the step's first frame (every stored setup
+                        # stays selectable); only "open the last used one" yields to a restored setup.
+                        if isinstance(setup_state, dict) and hasattr(child, "open_last_used"):
+                            child.open_last_used = False
                         continue
                     # A child may restore in place, not only assign a new model.
                     # Detach it so saved child state cannot corrupt hub authority.

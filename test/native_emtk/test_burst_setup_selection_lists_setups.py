@@ -108,3 +108,33 @@ def test_without_a_stored_setup_the_hub_proposes_one_from_the_file(monkeypatch):
     hub._propose_setup_from_first_file()
     assert proposed  # the file was asked (and its failure reported, not raised)
     assert hub.setup_model.current_name in ("", None)
+
+
+def test_a_restored_unsaved_setup_yields_to_the_last_used_one(store):
+    """A session saved with an unsaved definition (ch0..ch3 proposed from a PTU) used to come back on
+    every start and hide the library: the hub now opens the last used setup instead."""
+    from chisurf.plugins.burst.burst_analysis.gui.native import create_app
+
+    hub = create_app()
+    hub.restore_settings(
+        {
+            "selected": "setup",
+            "setup": dict(WORKING, setup_name=""),
+            "children": {"setup": {"setup_name": "", "channel_definition": WORKING, "page": {}}},
+            "workflow": {"channel_settings": dict(WORKING), "setup_name": ""},
+        }
+    )
+    setup = hub.children["setup"]
+    assert "ch0" not in (hub.setup_model.data.get("detectors") or {})
+    assert setup.open_last_used and setup.autoload  # step 0 lists the store and opens RVZMT150
+
+
+def test_a_restored_named_setup_is_kept(store):
+    from chisurf.plugins.burst.burst_analysis.gui.native import create_app
+
+    hub = create_app()
+    named = dict(STORED["TP_20261031 DNA PIE"], setup_name="TP_20261031 DNA PIE")
+    hub.restore_settings({"selected": "setup", "setup": named, "children": {"setup": {"page": {}}}})
+    setup = hub.children["setup"]
+    assert hub.setup_model.current_name == "TP_20261031 DNA PIE"
+    assert not setup.open_last_used and setup.autoload  # kept, and the store is still listed

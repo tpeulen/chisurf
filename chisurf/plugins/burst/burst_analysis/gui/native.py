@@ -207,6 +207,9 @@ def _signature(value: Any) -> str:
 class BurstAnalysisHubApp(ToolHubApp):
     """The burst workflow on the shared native hub; the steps share one :class:`BurstWorkflowContext`."""
 
+    #: An unsaved setup (one proposed from a file) is not restored: the library's last used opens.
+    library_setup_wins = True
+
     def __init__(self, title: str = "Burst Analysis", steps: list[dict] | None = None) -> None:
         self.context = BurstWorkflowContext()
         #: MLE steps whose hand-over was still running when the context changed again
@@ -826,6 +829,9 @@ class BurstAnalysisHubApp(ToolHubApp):
         self._fusion_source = Path(state["fusion_source"]) if state.get("fusion_source") else None
         self._fused_folder = Path(state["fused_folder"]) if state.get("fused_folder") else None
         super().restore_settings(state)
+        if self.context.raw_files:
+            # files restored, an unsaved setup not: the library's last used one (else a proposal)
+            self._propose_setup_from_first_file()
         self.context.channel_settings = self.setup_model.get_settings()
         self.context.setup_name = self.setup_model.current_name
         if not self.context.raw_files and not self.context.bur_files and self.selected != "setup":
