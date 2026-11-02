@@ -30,6 +30,25 @@ timestamp: '2026-07-05T00:00:00Z'
   (emtk default now: every editable int/float is a spin box -- uncommitted in emtk/view_form.py).
 - [x] W12 Finish button once the last mandatory step is done; Finish closes the pipeline after asking.
 
+00. Burst Selection speed (2026-11-02, owner: "faster, chopping and parallel; keep burst photons in
+    memory, cache bursts"). Measured on `DNA13bp_3.ptu` (12 M photons, 311 MB) with
+    `analyze_request` timed per part (scratch `req_parts.py`: wrap `S.<fn>` with a timer). Before:
+    7.5 s, of which the search itself was 0.35 s -- table->rows 1.5, rows->table 1.3, container
+    write 3.1 (1.5 of it ptolib's SHA-256 of the linked raw file, only when a container is new).
+    **So chopping one file's search was not done: the search is 5 % of the step.**
+    Committed: one photon read per pipeline (7 -> 1; open_tttr keyed on the linked raw file, MLE
+    takes the shared reading), 4x faster row<->store converters. **Held in `burst_selection/api/
+    selection.py` (another lane's uncommitted windows hunks)**: parallel per-file search
+    (`_search_workers`, spawn pool, merged in file order, >= 32 MB/file, `CHISURF_BURST_WORKERS`),
+    the container made in a thread while the search runs (hash is outside the GIL), the search's
+    own table written (`result._table`, popped before pickling); test
+    `test/plugins/burst_selection/test_parallel_search.py` (untracked, commit with it). With them:
+    2.1 s per file; 4 files 7.4 s sequential / 5.7 s parallel -- 4 concurrent searches take 3.5 s
+    each (memory bandwidth), so the laptop is near its limit; the home box should scale further.
+    Tried and reverted: workers returning column arrays instead of rows (no gain). Next: the GUI's
+    `_finish` rebuilds a store from the rows (pass the table through, `gui/model.py` is shared);
+    `_to_mle` still spends 0.45 s on the UI thread (`set_setup` + `burst_indices`); H2MM is now
+    the slowest step (14 s): warm start from the previous run's model + `patience` in Simple.
 0. Open (2026-11-02, second round): **uncommitted, shared with another lane -- commit when that lane lands.**
    These carry this round's work but also another lane's uncommitted hunks, so they were not
    committed (committing part of them leaves HEAD inconsistent): H2MM container-only output
