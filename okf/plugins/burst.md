@@ -45,6 +45,20 @@ timestamp: '2026-07-05T00:00:00Z'
     `test/plugins/burst_selection/test_parallel_search.py` (untracked, commit with it). With them:
     2.1 s per file; 4 files 7.4 s sequential / 5.7 s parallel -- 4 concurrent searches take 3.5 s
     each (memory bandwidth), so the laptop is near its limit; the home box should scale further.
+    **Round 2 (owner: "the standard pipeline needs to be blazing fast, incl GUI"), committed:**
+    measured with scratch `std_pipe.py` (Simple, setup + file in, click `>>`, draw every 16 ms,
+    record frames > 100 ms) -- profile slow frames per frame, and **note that cProfile then
+    inflates the frames of background threads; re-time without it** (tttrlib releases the GIL:
+    a 212 ms read leaves the UI at most 6 ms behind). Found: `>>` never fitted MLE (no
+    `run_step`); MLE fitted one job per file (one core); MLE's hand-over ran on the UI thread and
+    every job start copied the burst table (0.27 s); Selection's Next read the file on the UI
+    thread (`blocked_reason`, in the shared `gui/model.py` -- worked around by the hub's prefetch);
+    the run picker re-stat'ed every path prefix and re-read the container header every frame.
+    Result: files -> fitted lifetimes 8.8 s -> 6.0 s, worst frame 0.8 s -> ~0.24 s. Open: a
+    first cold run of the new `>>` test once ended "Add burst files first" (not reproduced in 6
+    runs, incl. cold bytecode; the test prints `mle.job.error` -- suspect an import race of the
+    hub's warm-up thread with MLE's job thread); hub start-up ~1.4 s (setup step icon atlas PNG
+    decode 0.4-0.7 s + IMP.bff import); the search in the GUI is ~3.2 s vs 2.1 s headless.
     Tried and reverted: workers returning column arrays instead of rows (no gain). Next: the GUI's
     `_finish` rebuilds a store from the rows (pass the table through, `gui/model.py` is shared);
     `_to_mle` still spends 0.45 s on the UI thread (`set_setup` + `burst_indices`); H2MM is now
