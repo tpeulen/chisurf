@@ -885,9 +885,9 @@ class LazyTTTRs(collections.abc.MutableMapping):
             file_type = self.file_type
             if not file_type or str(file_type).lower() == "auto":
                 file_type = None
-            self._cache[physical] = open_tttr(
-                self.paths[key], file_type, cache=False, **self.read_kwargs
-            )
+            # The shared reading (read-only here): the burst search and every other step already
+            # hold these photons, and a private read cost 0.3 s per 300 MB on the UI thread.
+            self._cache[physical] = open_tttr(self.paths[key], file_type, **self.read_kwargs)
         return self._cache[physical]
 
     def __setitem__(self, key, value) -> None:

@@ -523,6 +523,36 @@ def test_an_empty_row_list_is_an_empty_table(tmp_path):
     assert store_from_rows([]).n_rows() == 0
 
 
+def test_rows_keep_each_kind_and_python_scalars_both_ways():
+    """Burst results cross rows <-> store several times per search, so the fast column-wise
+    paths must give what the per-cell ones did: an int stays an int, a bool a bool, a
+    missing cell a mask, and every row value a plain Python scalar.
+    """
+    from chisurf.core.datastore import rows_from_table
+
+    rows = [
+        {"n": 1, "f": 0.5, "ok": True, "s": "a", "k": np.int32(3)},
+        {"n": 2, "f": 1.5, "ok": False, "s": "b", "k": np.int64(4), "late": 7},
+        {"n": None, "f": 2.5, "ok": None, "s": None, "k": 5},
+    ]
+    store = store_from_rows(rows)
+    assert store["n"].numpy().dtype == np.int64 and not store["n"].valid(2)
+    assert store["ok"].numpy().dtype == bool and not store["ok"].valid(2)
+    assert store["k"].numpy().dtype == np.int64 and store["k"].valid(2)
+    assert not store["late"].valid(0) and store["late"].valid(1)
+    back = rows_from_table({"n": np.array([1, 2]), "f": np.array([0.5, np.nan]),
+                            "o": np.array([np.float32(1.0), "x"], dtype=object)})
+    assert back == [{"n": 1, "f": 0.5, "o": 1.0}, {"n": 2, "f": back[1]["f"], "o": "x"}]
+    assert np.isnan(back[1]["f"])
+    assert all(type(v) in (int, float, str) for row in back for v in row.values())
+
+
+def test_a_mixed_bool_and_int_column_is_float_as_before():
+    """bool is an int to Python; a column holding both is neither kind."""
+    store = store_from_rows([{"a": True}, {"a": 3}])
+    assert store["a"].numpy().dtype == np.float64
+
+
 # ── the columnar reader, with the fallback instrumented ──────────────────
 
 

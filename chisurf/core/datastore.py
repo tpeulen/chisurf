@@ -623,14 +623,19 @@ def rows_from_table(table: Any) -> list[dict[str, Any]]:
     list of dict
     """
     names = column_names(table)
-    columns = [np.asarray(table[name]) for name in names]
-    return [
-        {
-            name: column[i].item() if hasattr(column[i], "item") else column[i]
-            for name, column in zip(names, columns)
-        }
-        for i in range(row_count(table))
-    ]
+    n = row_count(table)
+    # Column-wise ``tolist()`` turns a whole numeric column into Python scalars in C, where a
+    # per-cell ``.item()`` cost ~1.5 s on a 58 000-burst table; object columns may still hold
+    # NumPy scalars, which are unwrapped one by one as before.
+    columns = []
+    for name in names:
+        column = np.asarray(table[name])
+        if column.dtype == object:
+            column = [v.item() if hasattr(v, "item") else v for v in column]
+        else:
+            column = column.tolist()
+        columns.append(column[:n])
+    return [dict(zip(names, values)) for values in zip(*columns)] if names else [{} for _ in range(n)]
 
 
 def store_from_rows(rows: Sequence[Mapping[str, Any]], columns: Sequence[str] | None = None) -> Any:
@@ -675,34 +680,37 @@ def store_from_rows(rows: Sequence[Mapping[str, Any]], columns: Sequence[str] | 
         return store
     for name in names:
         raw = [row.get(name) for row in rows]
-        # A key a row lacks and a key whose value is None are the same thing
-        # here: not measured. The old expression masked only the first, and the
-        # second silently became 0.
-        present = np.array([v is not None for v in raw], dtype=bool)
-        if any(isinstance(v, str) for v in raw if v is not None):
+        # One pass over the value types decides the column kind (the per-value ``isinstance``
+        # scans cost ~1.3 s on a 58 000-burst table). A key a row lacks and a key whose value
+        # is None are the same thing here: not measured.
+        types = set(map(type, raw))
+        missing = type(None) in types
+        types.discard(type(None))
+        present = (
+            np.array([v is not None for v in raw], dtype=bool)
+            if missing
+            else np.ones(len(raw), dtype=bool)
+        )
+        if any(issubclass(t, str) for t in types):
             values = np.array(["" if v is None else str(v) for v in raw], dtype=object)
-        elif all(isinstance(v, (bool, np.bool_)) for v in raw if v is not None) and any(
-            v is not None for v in raw
-        ):
-            # Checked before the int branch: bool is a subclass of int in
-            # Python, and the int branch already excludes it (`not
-            # isinstance(v, bool)`) -- without this branch a bool column fell
-            # through to the float branch below instead, losing the dtype a
-            # checkbox delegate keys off.
+        elif types and all(issubclass(t, (bool, np.bool_)) for t in types):
+            # Checked before the int branch: bool is a subclass of int in Python. A checkbox
+            # delegate keys off the bool dtype.
             values = np.array([False if v is None else bool(v) for v in raw], dtype=bool)
-        elif all(
-            isinstance(v, (bool, int)) and not isinstance(v, bool) or isinstance(v, np.integer)
-            for v in raw
-            if v is not None
-        ) and any(v is not None for v in raw):
-            # An integer column stays one. Forcing float here is not cosmetic:
-            # these rows are written straight out as text, and "10" becoming
-            # "10.0" changes a shipped file format that other programs parse.
-            values = np.array([0 if v is None else int(v) for v in raw], dtype=np.int64)
+        elif types and all(
+            issubclass(t, np.integer) or (issubclass(t, int) and not issubclass(t, bool))
+            for t in types
+        ):
+            # An integer column stays one. Forcing float here is not cosmetic: these rows are
+            # written straight out as text, and "10" becoming "10.0" changes a shipped file
+            # format that other programs parse.
+            values = np.array([0 if v is None else int(v) for v in raw] if missing else raw,
+                              dtype=np.int64)
         else:
-            values = np.array([np.nan if v is None else v for v in raw], dtype=float)
+            values = np.array([np.nan if v is None else v for v in raw] if missing else raw,
+                              dtype=float)
         store.add(name, values)
-        if not present.all():
+        if missing:
             column = store[store.n_columns() - 1]
             column.set_mask(np.ascontiguousarray(present, dtype=np.uint8))
     store.set_n_rows(len(rows))

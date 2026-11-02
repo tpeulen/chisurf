@@ -41,3 +41,33 @@ def test_a_link_made_from_var_is_read_from_private_var(tmp_path):
         assert _follow_link(written_from, link) == photons
     finally:
         photons.unlink()
+
+
+def test_every_step_shares_one_read_of_the_linked_photons(tmp_path):
+    """Each burst step writes into the analysis container; the photons it links do not change.
+
+    The read cache was keyed on the container's mtime, so every step re-read the whole photon
+    file (0.3 s for 300 MB, once per step). It is keyed on the linked file now.
+    """
+    import shutil
+
+    from chisurf.core.fio.fluorescence.burst_container import open_measurement
+    from chisurf.core.fio.staging import open_tttr
+
+    data = (
+        Path(__file__).resolve().parents[2]
+        / "chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/m000.spc"
+    )
+    photons = tmp_path / "raw" / "m000.spc"
+    photons.parent.mkdir()
+    shutil.copy(data, photons)
+    with open_measurement(photons, tmp_path / "analysis", raw_data="sidecar"):
+        pass
+    container = tmp_path / "analysis" / "m000.pto"
+    first = open_tttr(str(container))
+    assert len(first) > 0
+    stamp = container.stat().st_mtime_ns + 5_000_000_000
+    os.utime(container, ns=(stamp, stamp))  # a step wrote its result into the container
+    assert open_tttr(str(container)) is first
+    assert open_tttr(str(photons)) is first  # and the raw file is the same reading
+    assert open_tttr(str(photons), "SPC-130") is first  # naming the type the file has, too

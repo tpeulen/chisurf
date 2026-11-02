@@ -368,10 +368,30 @@ def staged_source(
             shutil.rmtree(local.parent, ignore_errors=True)
 
 
+#: ``(container, mtime, size) -> linked photon file``: opening the container to ask costs ~60 ms,
+#: and every burst step asks again for the same container.
+_SIDECAR_LINKS: dict[tuple, Path | None] = {}
+
+
 def _sidecar_photons(local: Path) -> Path | None:
     """The photon file a sidecar ``.pto`` links (``None``: not a container, or it embeds them)."""
-    if Path(local).suffix.lower() != ".pto" or not Path(local).exists():
+    if Path(local).suffix.lower() != ".pto":
         return None
+    try:
+        info = Path(local).stat()
+    except OSError:
+        return None
+    key = (str(Path(local).resolve()), info.st_mtime_ns, info.st_size)
+    if key not in _SIDECAR_LINKS:
+        if len(_SIDECAR_LINKS) > 256:
+            _SIDECAR_LINKS.clear()
+        _SIDECAR_LINKS[key] = _read_sidecar_link(Path(local))
+    linked = _SIDECAR_LINKS[key]
+    return linked if linked is not None and linked.exists() else None
+
+
+def _read_sidecar_link(local: Path) -> Path | None:
+    """:func:`_sidecar_photons` without the memo."""
     try:
         from chisurf.core.fio.pto import Measurement, is_measurement
 
@@ -532,21 +552,29 @@ def open_tttr(
     # never shared. That is the whole cache off, in the one configuration the
     # workflow always runs in.
     corrected = bool(apply_lut and channel_luts) or bool(channel_shifts)
+    # An analysis container of the project links its photons rather than embedding them:
+    # tttrlib reads the linked file (a container without photons is no stream). The read is
+    # *that* file's, and so is the cache key -- every burst step writes its results into the
+    # container, and a key on the container's mtime re-read the unchanged photons once per step.
+    linked = _sidecar_photons(path) if not selector else None
+    if linked is not None:
+        path, container = linked, None
     key = None
     if cache and not corrected:
         key = _cache_key(
-            path, selector, container, channel_luts, channel_shifts, apply_lut, lut_seed
+            path,
+            selector,
+            container if container is not None or selector else _detected_container(path),
+            channel_luts,
+            channel_shifts,
+            apply_lut,
+            lut_seed,
         )
         cached = _cache_get(key)
         if cached is not None:
             return cached
 
     with staged_source(path, progress_cb=progress_cb, cancel_cb=cancel_cb, **stage_kwargs) as local:
-        linked = _sidecar_photons(local) if not selector else None
-        if linked is not None:
-            # An analysis container of the project links its photons rather than embedding
-            # them: tttrlib reads the linked file (a container without photons is no stream).
-            local, container = linked, None
         spec = _tttrlib_source(local, selector)
         if container is None:
             tttr = tttrlib.TTTR(spec)
@@ -585,6 +613,22 @@ _TTTR_CACHE: collections.OrderedDict[tuple, object] = collections.OrderedDict()
 #: record count suggests — so a budget expressed in photons was quietly worth
 #: 2.2 GB. This is a GUI process; half a gigabyte is already generous.
 _TTTR_CACHE_BYTES = 512 * 1024 * 1024
+
+
+def _detected_container(path) -> str | None:
+    """The container type tttrlib detects in *path* (a header read), for the cache key only.
+
+    A read that names the type ("PTU") and one that lets tttrlib detect it are the same
+    reading; keyed apart, the burst search re-read the file its own preview had just read.
+    """
+    import tttrlib
+
+    try:
+        index = int(tttrlib.inferTTTRFileType(str(path)))
+    except Exception:  # noqa: BLE001 - undetectable: keyed as asked
+        return None
+    names = supported_container_types()
+    return names[index] if 0 <= index < len(names) else None
 
 
 def _cache_key(path, selector, container, channel_luts, channel_shifts, apply_lut, lut_seed):
