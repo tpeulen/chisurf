@@ -67,6 +67,14 @@ def _kind_and_source(dto: dict) -> dict:
     found = KINDS.get(kind)
     address = str(dto.get("filename") or "")
     name = address.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1] if address else ""
+    if address and kind == "bursts":
+        # A run of an analysis container (``…/m.pto/<run>``): its source is the container the
+        # search wrote -- the row's name is already the run -- not the run once more.
+        from chisurf.core.fio.analysis_path import split_container_path
+
+        container, _run = split_container_path(address)
+        if container is not None:
+            name = container.name
     if address.startswith("mmfdb://"):
         name = f"MMFDB {name.split('?', 1)[0]}"  # an object of an MMFDB database, by its id
     tooltip = address
