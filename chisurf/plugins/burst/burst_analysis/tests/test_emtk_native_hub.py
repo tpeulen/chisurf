@@ -332,3 +332,19 @@ print('QT-FREE OK')
         [sys.executable, "-c", script], cwd=repo, env=env, capture_output=True, text=True
     )
     assert done.returncode == 0 and "QT-FREE OK" in done.stdout, (done.stdout + done.stderr)[-3000:]
+
+
+def test_the_pipeline_selection_shows_no_legacy_exports(hub):
+    """On the pipeline Burst Selection writes .pto only: no zipped folders, no flrCIF export, no
+    example or Clear (its files are step 1's) -- File > Data > Legacy Export has the legacy formats."""
+    drv = Driver(hub, (1400, 900))
+    hub.select("selection")
+    drv.draw(3)
+    selection = hub.children["selection"]
+    shown = set(selection.item_rects) | set(selection.form.rects)
+    for key in ("export_cif", "metadata", "load_example", "toolAction_clear", "zip_output", "remove_folder"):
+        assert key not in shown, key
+    assert "toolAction_run" in shown and "mmfdb_output" in shown
+    selection.model.zip_output = selection.model.remove_folder = True
+    selection.run()
+    assert not selection.model.zip_output and not selection.model.remove_folder

@@ -126,12 +126,14 @@
         {
           "type": "toggle",
           "attr": "zip_output",
+          "hidden_when": {"attr": "files_from_pipeline", "equals": true},
           "label": "Zip output",
           "description": "Zip the companion folder after the run (vendor files only; a .pto has no folder)."
         },
         {
           "type": "toggle",
           "attr": "remove_folder",
+          "hidden_when": {"attr": "files_from_pipeline", "equals": true},
           "label": "Remove folder",
           "description": "Delete the unzipped companion folder once it is zipped."
         },

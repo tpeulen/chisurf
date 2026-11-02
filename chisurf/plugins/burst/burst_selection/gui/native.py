@@ -40,6 +40,10 @@ from chisurf.plugins.emtk_layout import (
 
 from .model import BurstSelectionModel
 
+#: Toolbar buttons a pipeline step does not show: its files are step 1's, and the legacy exports
+#: (flrCIF and its metadata) live in File > Data > Legacy Export.
+PIPELINE_HIDDEN_BUTTONS = frozenset({"load_example", "toolAction_clear", "export_cif", "metadata"})
+
 if TYPE_CHECKING:
     from emtk.dialog_window import DialogWindow
     from emtk.file_dialog import FileDialog
@@ -252,6 +256,8 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
 
     def run(self, force: bool = False) -> bool:
         """Run (or, with *force*, Restart) the search over every file; ``False`` when it did not start."""
+        if self.pipeline:  # the pipeline writes .pto only; zipped folders are Legacy Export's
+            self.model.zip_output = self.model.remove_folder = False
         why = self.model.prepare_run(force=force)
         if why is not None:
             self.model.status_text = why
@@ -463,8 +469,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         has_files = bool(m.files)
         has_result = m.has_processed
         shown = m.display_frame is not None
-        pressed = button_row(
-            [
+        buttons = [
                 {
                     "label": action_caption("example"),
                     "key": "load_example",
@@ -535,9 +540,12 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                     "key": "help",
                     "tip": action_tooltip("help"),
                 },
-            ],
-            remember=self.remember,
-        )
+            ]
+        if self.pipeline:
+            # Not on the pipeline: its files are step 1's (no example, no Clear), and the legacy
+            # exports (flrCIF + its metadata, zipped folders) are File > Data > Legacy Export's.
+            buttons = [b for b in buttons if b["key"] not in PIPELINE_HIDDEN_BUTTONS]
+        pressed = button_row(buttons, remember=self.remember)
         if pressed == "load_example":
             self.load_example()
         elif pressed:
