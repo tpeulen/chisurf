@@ -246,7 +246,7 @@
         {
           "type": "value",
           "attr": "shift_sp",
-          "label": "VV sub-bin shift",
+          "label": "VV sub-bin shift [bin]",
           "kind": "float",
           "description": "Fractional shift of the parallel IRF (interpolated).",
           "decimals": 3,
@@ -256,7 +256,7 @@
         {
           "type": "value",
           "attr": "shift_ss",
-          "label": "VH sub-bin shift",
+          "label": "VH sub-bin shift [bin]",
           "kind": "float",
           "description": "Fractional shift of the perpendicular IRF (interpolated).",
           "decimals": 3,
@@ -266,7 +266,7 @@
         {
           "type": "value",
           "attr": "irf_start",
-          "label": "IRF start",
+          "label": "IRF start [bin]",
           "kind": "int",
           "description": "First IRF bin kept; earlier bins are zeroed. -1 keeps all.",
           "minimum": -1,
@@ -275,7 +275,7 @@
         {
           "type": "value",
           "attr": "irf_stop",
-          "label": "IRF stop",
+          "label": "IRF stop [bin]",
           "kind": "int",
           "description": "Last IRF bin kept; later bins are zeroed. -1 keeps all.",
           "minimum": -1,

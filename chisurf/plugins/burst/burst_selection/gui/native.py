@@ -24,6 +24,7 @@ from emtk.view_form import FormState, draw_form, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
+from chisurf.emtk.display_units import ScaledParameters, scaled_sections
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.plugins.core.metadata_editor.core import flrcif_schema
@@ -568,8 +569,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         m = self.model
         busy = self.running
         target = copy.copy(m) if busy else m  # edits during a run go nowhere
-        params = m.search_sections()
-        nested = m.nested_sections()
+        # times the searches keep in seconds are shown in µs / ms / s (0.5 ms, not 0.0005)
+        params, factors = scaled_sections(m.search_sections(), m.search_schema())
+        nested, nested_factors = scaled_sections(m.nested_sections(), m.nested_schema())
         static = self.search_sections + self.filter_sections + self.display_sections
         if not self.labels.ready:
             self.labels.measure([f["label"] for f in labelled(static + params + nested)])
@@ -579,10 +581,10 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         draw_sections(self.search_sections, target, self.form)
         self.remember("search", None)
         if params:
-            draw_sections(params, m.search, self.search_form)
+            draw_sections(params, ScaledParameters(m.search, factors), self.search_form)
         if nested:
             im.text(tr("Per-group search parameters"))
-            draw_sections(nested, m.inner_search, self.inner_search_form)
+            draw_sections(nested, ScaledParameters(m.inner_search, nested_factors), self.inner_search_form)
         for prefix, form in (("search", self.search_form), ("inner_search", self.inner_search_form)):
             for name, rect in form.rects.items():
                 self.item_rects[f"{prefix}.{name}"] = tuple(rect)
