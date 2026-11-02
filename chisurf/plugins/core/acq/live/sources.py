@@ -171,6 +171,8 @@ _LASER_PERIOD_NS = 32.0
 _MICRO_RES_NS = 0.008
 _N_MICRO = int(round(_LASER_PERIOD_NS / _MICRO_RES_NS))  # 4000 channels per period
 _HALF = _N_MICRO // 2
+#: The instrument delay of a simulated pulse: 1.5 ns, in micro-time channels.
+_PULSE_DELAY_CHANNELS = int(round(1.5 / _MICRO_RES_NS))
 
 
 #: Excitation schemes the simulator measures.
@@ -328,7 +330,10 @@ class SimulatedPieSource(PhotonSource):
         t_ms = window * _DT_MS + arrival
         macro = np.floor(t_ms / _MACRO_TICK_MS).astype(np.uint64)
         macro += np.uint64(int(round(segment * self.segment_s * 1000.0 / _MACRO_TICK_MS)))
-        raw_micro = np.asarray(ph["micro_time"])[keep].astype(np.int64)
+        # A real TCSPC channel sees each pulse after the cable/electronics delay, so the pulse
+        # (and its IRF's leading edge) lies inside its window; without it the leading edge wrapped
+        # to the end of the period and the window detection named the pulses the wrong way round.
+        raw_micro = np.asarray(ph["micro_time"])[keep].astype(np.int64) + _PULSE_DELAY_CHANNELS
         if self.scheme == "pie":
             # The laser of a window alternates every dt (alex_period = 2 dt): odd windows are red.
             red = (window % 2) == 1

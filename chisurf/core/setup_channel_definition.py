@@ -474,6 +474,18 @@ class ChannelDefinition:
             draft = apply_check(draft, check_setup(draft, tttr, detection=detection))
         except Exception:  # noqa: BLE001 - detectors alone are still a useful start
             pass
+        windows = draft.get("windows") or {}
+        if len(names) == 2 and {"prompt", "delayed"} <= set(windows):
+            # Two-colour PIE, laid out as the lab's PIE setups are: donor and acceptor gated on the
+            # prompt (donor-excited) window, and the acceptor channels again, gated on the delayed
+            # window, as the directly excited "yellow" detector. An ungated acceptor mixes
+            # FRET-sensitised and directly excited photons, and every per-detector analysis of it
+            # (lifetimes, BVA) is then meaningless.
+            prompt, delayed = list(windows["prompt"]), list(windows["delayed"])
+            green, red = draft["detectors"]["green"], draft["detectors"]["red"]
+            green["micro_time_ranges"] = [prompt]
+            red["micro_time_ranges"] = [prompt]
+            draft["detectors"]["yellow"] = {**red, "chs": list(red["chs"]), "micro_time_ranges": [delayed]}
         self.data["detectors"] = draft["detectors"]
         for key in ("windows", "alex_windows", "alex_period_s"):
             if draft.get(key):
@@ -481,7 +493,7 @@ class ChannelDefinition:
         reading = self.data["tttr_reading"]
         if draft["tttr_reading"].get("micro_time_resolution"):
             reading["micro_time_resolution"] = draft["tttr_reading"]["micro_time_resolution"]
-        return list(draft["detectors"])
+        return list(self.data["detectors"])
 
     def assign_lut(self, channel, path):
         from chisurf.plugins.tttr.tttr_lut_tools.api.io import load_lut_file
