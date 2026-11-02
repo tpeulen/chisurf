@@ -29,6 +29,7 @@ from chisurf.core.datastore import (
     set_constant,
     take_where,
 )
+from chisurf.core.fluorescence.channels import channel_mask
 from chisurf.core.support.i18n import tr
 
 from .fit_display import DecayCurves, TailFitResult, decay_curves
@@ -96,7 +97,9 @@ def read_burst_container(path: Any) -> tuple[Any, Path]:
     return table, container
 
 
-def burst_photon_indices(df_bursts: Any, current_filename: str) -> list[int]:
+
+
+def burst_photon_indices(df_bursts: Any, current_filename: str, *, as_array: bool = False):
     """Photon indices of every burst of the file *current_filename* (a ``.bur`` file), merged and ascending."""
     if not current_filename or df_bursts is None:
         return []
@@ -122,7 +125,8 @@ def burst_photon_indices(df_bursts: Any, current_filename: str) -> list[int]:
     )
     events = np.bincount(idxs, weights, minlength=idxs.max() + 1)
     coverage = np.cumsum(events)[:-1] > 0
-    return np.nonzero(coverage)[0].tolist()
+    found = np.nonzero(coverage)[0]
+    return found if as_array else found.tolist()
 
 
 def header_time_ns(tttr: Any, binning: int) -> tuple[float, float] | None:
@@ -196,7 +200,7 @@ def vv_vh_histogram(
     )
 
     def photons(chs):
-        return tttr[np.where(np.isin(tttr.routing_channels, chs))[0]]
+        return tttr[np.where(channel_mask(tttr.routing_channels, chs))[0]]
 
     if len(detector_chs) >= 2:
         tp, ts = photons(detector_chs[::2]), photons(detector_chs[1::2])
@@ -336,7 +340,7 @@ def irf_fwhm_channels(tttr: Any, chs: list[int], burst_idx: np.ndarray) -> int |
         return None
     non_burst = np.ones(len(tttr), dtype=bool)
     non_burst[np.asarray(burst_idx, dtype=int)] = False
-    sel = non_burst & np.isin(np.asarray(tttr.routing_channels), np.asarray(chs, dtype=int))
+    sel = non_burst & channel_mask(tttr.routing_channels, chs)
     micro = np.asarray(tttr.micro_times)[sel]
     micro = micro[(micro >= 0) & (micro < n_full)]
     if micro.size == 0:
@@ -390,7 +394,7 @@ def select_binning(
     if tttr is None or not chs or burst_idx.size == 0:
         return None
     counts = int(
-        np.isin(np.asarray(tttr.routing_channels)[burst_idx], np.asarray(chs, dtype=int)).sum()
+        channel_mask(np.asarray(tttr.routing_channels)[burst_idx], chs).sum()
     )
     try:
         from chisurf.core.fio.micro_time import channels_per_period
@@ -645,8 +649,8 @@ def burst_histogram(
     from chisurf.core.fio.micro_time import channels_per_period, period_histogram
 
     period = channels_per_period(burst)
-    cp = period_histogram(burst[np.where(np.isin(burst.routing_channels, pchs))[0]], binning, period=period)
-    cs_hist = period_histogram(burst[np.where(np.isin(burst.routing_channels, schs))[0]], binning, period=period)
+    cp = period_histogram(burst[np.where(channel_mask(burst.routing_channels, pchs))[0]], binning, period=period)
+    cs_hist = period_histogram(burst[np.where(channel_mask(burst.routing_channels, schs))[0]], binning, period=period)
     if sb > 0:
         cp[:sb] = 0
         cs_hist[:sb] = 0
@@ -829,7 +833,7 @@ def _tail_start_bin(rc_full, mt_bins, bursts, chs, sb, eb) -> int:
     starts = np.repeat(first - np.concatenate(([0], np.cumsum(lengths)[:-1])), lengths)
     idx = np.arange(int(lengths.sum())) + starts
     idx = idx[idx < len(rc_full)]
-    sel = np.isin(np.asarray(rc_full)[idx], chs)
+    sel = channel_mask(np.asarray(rc_full)[idx], chs)
     micro = np.asarray(mt_bins)[idx][sel].astype(np.int64)
     micro = micro[(micro >= sb) & (micro < eb)]
     if not micro.size:
@@ -1321,14 +1325,24 @@ class MleSession:
 
     def burst_indices(self) -> list[int]:
         """Return inclusive burst coverage of the complete selected BUR identity."""
-        return self._memo("burst_indices", self._burst_indices)
+        return self._memo("burst_indices", lambda: self.burst_index_array().tolist())
 
-    def _burst_indices(self) -> list[int]:
+    def burst_index_array(self) -> np.ndarray:
+        """:meth:`burst_indices` as an array (read only, shared): the steps that index photons with
+        it took a list of millions of indices and made an array of it again, each of them."""
+        return self._memo("burst_index_array", self._burst_index_array)
+
+    def _burst_index_array(self) -> np.ndarray:
+        idx = np.asarray(self._burst_indices(), dtype=np.int64)
+        idx.flags.writeable = False
+        return idx
+
+    def _burst_indices(self):
         table = self.df_bursts
         if table is not None and "_burst_path" in column_names(table) and self.current_filename:
             selected = str(Path(self.current_filename).resolve())
             table = take_where(table, np.asarray(table["_burst_path"], dtype=object) == selected)
-        return burst_photon_indices(table, self.current_filename)
+        return burst_photon_indices(table, self.current_filename, as_array=True)
 
     def measurement_files(self) -> dict[str, Path]:
         """Associate each loaded physical measurement with its exact selected burst table."""
@@ -1436,11 +1450,12 @@ class MleSession:
         """The decay of every burst photon of the current file and detector (``decay_of_current_file``)."""
         tttr = self.current_tttr()
         chs = self.detector.get("chs", [])
-        idx = np.asarray(self.burst_indices(), dtype=int)
+        idx = self.burst_index_array()
         if tttr is None or not chs or idx.size == 0:
             return None
         rows = vv_vh_histogram(
-            tttr[idx],
+            # the burst photons, cut once per file (the decay is rebuilt for every setting)
+            self._memo("burst_tttr", lambda: tttr[idx]),
             chs,
             self.micro_time_range,
             self.settings.micro_time_binning,
@@ -1457,7 +1472,7 @@ class MleSession:
         return select_binning(
             tttr,
             self.detector.get("chs", []),
-            np.asarray(self.burst_indices(), dtype=int),
+            self.burst_index_array(),
             BINNING_CHOICES,
         )
 
@@ -1466,7 +1481,7 @@ class MleSession:
         from chisurf.core.fluorescence.burst import extract_mle_irf_background
 
         tttr = self.current_tttr()
-        idx = np.asarray(self.burst_indices(), dtype=int)
+        idx = self.burst_index_array()
         in_burst = np.zeros(len(tttr), dtype=bool)
         in_burst[idx] = True
         patterns = extract_mle_irf_background(
@@ -1571,7 +1586,7 @@ class MleSession:
         if tttr is None:
             self.status = "Load bursts first: no data to extract an IRF from"
             return
-        if not self.burst_indices():
+        if not self.burst_index_array().size:
             self.status = "No burst photons found for the selected file"
             return
         pick = self.auto_binning()

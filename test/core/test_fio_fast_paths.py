@@ -47,3 +47,28 @@ def test_is_measurement_follows_a_rewritten_file(tmp_path):
     os.utime(container, ns=(stamp, stamp))
     assert not is_measurement(container)
     assert not is_measurement(tmp_path / "nothing.pto")
+
+
+def test_a_container_made_ahead_is_the_one_the_search_writes_into(tmp_path):
+    """The pipeline makes the container while the file waits in Data Selection; a writer asking
+    meanwhile waits for it instead of making a second one."""
+    import threading
+
+    from chisurf.core.fio.fluorescence.burst_container import ensure_container, open_measurement
+
+    photons = tmp_path / "m000.spc"
+    shutil.copy(DATA, photons)
+    out = tmp_path / "analysis"
+    made = {}
+    ahead = threading.Thread(
+        target=lambda: made.setdefault("path", ensure_container(photons, out, raw_data="sidecar"))
+    )
+    ahead.start()
+    with open_measurement(photons, out, raw_data="sidecar"):
+        pass
+    ahead.join()
+    assert made["path"] == out / "m000.pto" and is_measurement(made["path"])
+    assert sorted(p.name for p in out.iterdir()) == ["m000.pto"]
+    stamp = made["path"].stat().st_mtime_ns
+    assert ensure_container(photons, out, raw_data="sidecar") == made["path"]
+    assert made["path"].stat().st_mtime_ns == stamp  # an existing container is left alone

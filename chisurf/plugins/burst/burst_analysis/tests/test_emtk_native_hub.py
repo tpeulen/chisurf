@@ -385,11 +385,16 @@ def test_fast_forward_runs_the_simple_pipeline_to_fitted_lifetimes(hub, files):
     drv.draw(2)
     drv.click(hub.item_rects["fast_forward"])
     end = time.monotonic() + 240
-    while time.monotonic() < end and not hub.step_done("mle"):
+    roles = ("mle", "bva", "two_cde")  # BVA and 2CDE: task processes of their own, meanwhile
+    while time.monotonic() < end and not all(hub.step_done(r) for r in roles):
         drv.draw(1)
         time.sleep(0.02)
     settle(drv)
     mle = hub.children["mle"]
+    for role in ("bva", "two_cde"):
+        child = hub.children[role]
+        assert hub.step_done(role), (role, child.model.status_text)
+        assert "background" in child.model.status_text or "failed" not in child.model.status_text
     assert hub.step_done("selection") and hub.step_done("mle"), (hub.status, mle.model.status_text, mle.job.error)
     assert mle.model.n_bursts == 198
     assert len(mle.model.burst_results) == 198 * 2  # a row per burst and detector

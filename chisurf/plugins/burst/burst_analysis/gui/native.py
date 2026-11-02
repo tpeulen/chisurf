@@ -14,6 +14,7 @@ shell (``gui/tool.py``), one method per step. Nothing here imports Qt.
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from pathlib import Path
 from typing import Any
@@ -164,6 +165,10 @@ def _warm_steps() -> None:
         lambda: tr("Burst Selection"),
         lambda: __import__("chisurf.plugins.burst.burst_selection.gui.native"),
         lambda: __import__("chisurf.plugins.burst.burst_mle_analysis.gui.native"),
+        # BVA's and 2CDE's task processes, started now rather than when the bursts arrive
+        lambda: __import__(
+            "chisurf.plugins.burst.burst_analysis.gui.background_tasks", fromlist=["warm"]
+        ).warm(),
     ):
         try:
             warm()
@@ -299,10 +304,29 @@ class BurstAnalysisHubApp(ToolHubApp):
             from chisurf.core.fio.staging import prefetch_tttr
 
             prefetch_tttr(self.context.raw_files)
+            self._prepare_containers(data)
         self._propose_setup_from_first_file()
         self.context.raw_mmfdb_artifacts = data.model.mmfdb_payload()
         self._apply_downstream(skip=("setup", "data"))
         self.wants_frame = True
+
+    def _prepare_containers(self, data) -> None:
+        """Make each file's analysis container in the project now, in the background: linking the
+        photons hashes the whole file (1.5 s for 300 MB), which the first search waited for."""
+        sources = getattr(getattr(data, "model", None), "sources", None) or {}
+        files = [str(p) for p in self.context.raw_files]
+
+        def work() -> None:
+            from chisurf.core.fio.fluorescence.burst_container import ensure_container
+            from chisurf.core.project.analysis import container_dir
+
+            for path in files:
+                try:
+                    ensure_container(path, container_dir(sources.get(path, "")), raw_data="sidecar")
+                except Exception:  # noqa: BLE001 - the search makes it, and says why it cannot
+                    pass
+
+        threading.Thread(target=work, name="burst-containers", daemon=True).start()
 
     def _propose_setup_from_first_file(self) -> None:
         """No setup chosen or defined yet: propose detectors and excitation windows from the first
@@ -363,6 +387,8 @@ class BurstAnalysisHubApp(ToolHubApp):
             self.status = f"Bursts for the later steps: {folder}"
         self._apply_downstream(skip=("data", "selection"))
         if folder is not None:
+            # at once, each in a process of its own (background_tasks): while the user sets up Burst
+            # MLE, without taking the interpreter from it or from the window
             self._run_in_background()
         self.wants_frame = True
 
@@ -701,9 +727,18 @@ class BurstAnalysisHubApp(ToolHubApp):
                     continue
                 self.on_select(role, child)
                 controller = getattr(child, "controller", None)
-                run = getattr(controller, "run", None)
-                if callable(run) and not getattr(controller, "running", False):
-                    run(force=True, explicit=False)
+                if controller is None or getattr(controller, "running", False):
+                    continue
+                from . import background_tasks
+
+                start = background_tasks.start_bva if role == "bva" else background_tasks.start_two_cde
+                try:
+                    started = start(controller)
+                except Exception:  # noqa: BLE001 - computed by the step itself instead
+                    logging.getLogger(__name__).exception("%s: no background task", role)
+                    started = False
+                if not started:
+                    controller.run(force=True, explicit=False)
             except Exception as exc:  # noqa: BLE001 - a background check must not stop the pipeline
                 self.status = f"{role}: {type(exc).__name__}: {exc}"
 

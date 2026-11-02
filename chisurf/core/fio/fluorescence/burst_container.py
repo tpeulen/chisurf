@@ -15,8 +15,10 @@ finer or coarser than the bursts is ordinary rather than impossible. See
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
+import threading
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -223,6 +225,7 @@ def open_measurement(
     out_dir: str | Path | None = None,
     *,
     raw_data: str = "embed",
+    _ahead: bool = False,
 ) -> Any:
     """Open the container for *source*, creating it from the instrument file.
 
@@ -257,9 +260,43 @@ def open_measurement(
         logging.getLogger(__name__).warning(
             "%s is newer than its container; the old container was moved to %s", source, aside.name
         )
+    if not _ahead:
+        with _creating(target):  # a container being made ahead (ensure_container) is waited for
+            pass
     if is_measurement(target):
         return Measurement.open(target, writable=True)
     return Measurement.create(source, out_dir=out_dir, raw_data=raw_data)
+
+
+#: target container -> the lock held while :func:`ensure_container` makes it
+_CREATING: dict[str, threading.Lock] = {}
+_CREATING_GUARD = threading.Lock()
+
+
+@contextlib.contextmanager
+def _creating(target: Path):
+    with _CREATING_GUARD:
+        lock = _CREATING.setdefault(str(target), threading.Lock())
+    with lock:
+        yield
+
+
+def ensure_container(source: str | Path, out_dir: str | Path | None = None, *, raw_data: str = "embed") -> Path:
+    """Make *source*'s container now if it does not exist yet; its path.
+
+    Creating one hashes (``"sidecar"``) or copies (``"embed"``) the whole photon file -- 1.5 s for
+    300 MB -- so the pipeline makes it while the file waits in Data Selection, not when the search
+    has finished. A writer opening the container meanwhile waits for it rather than making a
+    second one.
+    """
+    from chisurf.core.fio.pto import is_measurement
+
+    target = container_for(source, out_dir)
+    with _creating(target):
+        if not is_measurement(target):
+            with open_measurement(source, out_dir, raw_data=raw_data, _ahead=True):
+                pass
+    return target
 
 
 def new_run_name(

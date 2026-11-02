@@ -155,6 +155,13 @@ window takes longer than about 0.25 s. Four things make that possible:
   started while MLE prepares.
 - Fast-forward runs Burst MLE's fit as well: once the preparation is done, the
   fit starts.
+- The project's analysis container is created while the file sits in Data
+  Selection. Linking the photons hashes the whole file (1.5 s for 300 MB), and
+  the first search used to wait for that.
+- In Simple mode, BVA and 2CDE start as soon as the bursts are there, each in
+  a worker process of its own, so they compute while you set up Burst MLE. They
+  write into the container exactly what the step computes itself, and the step
+  then shows the result.
 - The photon file is read once for the whole pipeline (see above).
 
 ## Result
