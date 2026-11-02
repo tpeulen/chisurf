@@ -27,21 +27,43 @@ def channels_per_period(tttr: Any) -> int:
     if header is None:
         return 1
     adc = int(getattr(header, "number_of_micro_time_channels", 0) or 0)
+    micro = float(getattr(header, "micro_time_resolution", 0.0) or 0.0)
     effective = 0
-    get = getattr(header, "get_effective_number_of_micro_time_channels", None)
+    # The laser's sync rate is the period itself, when the file names it (PicoQuant's
+    # TTResult_SyncRate): a macro clock need not be the sync (ChiSurf's recordings tick at 9.77 ns
+    # with a 32 ns laser), so it is the first answer.
+    sync = _sync_rate(header)
+    if sync > 0.0 and micro > 0.0:
+        effective = int(round(1.0 / (sync * micro)))
+    get = getattr(header, "get_effective_number_of_micro_time_channels", None) if effective <= 0 else None
     if callable(get):
         try:
             effective = int(get())
         except Exception:  # noqa: BLE001 - an old tttrlib: compute it below
             effective = 0
     if effective <= 0:
-        micro = float(getattr(header, "micro_time_resolution", 0.0) or 0.0)
         macro = float(getattr(header, "macro_time_resolution", 0.0) or 0.0)
         if micro > 0.0 and macro > 0.0:
             effective = int(round(macro / micro))
     if effective > 0 and adc > 0:
         effective = min(effective, adc)
     return max(1, effective or adc or 1)
+
+
+def _sync_rate(header: Any) -> float:
+    """The header's ``TTResult_SyncRate`` (Hz), 0 when it has none."""
+    get = getattr(header, "tag", None)
+    if not callable(get):
+        return 0.0
+    try:
+        tag = get("TTResult_SyncRate")
+    except Exception:  # noqa: BLE001 - no such tag
+        return 0.0
+    value = tag.get("value") if isinstance(tag, dict) else tag
+    try:
+        return max(0.0, float(value))
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def period_histogram(tttr: Any, binning: int = 1, *, period: int | None = None) -> np.ndarray:

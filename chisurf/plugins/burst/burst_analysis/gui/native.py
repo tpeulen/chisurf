@@ -387,6 +387,17 @@ class BurstAnalysisHubApp(ToolHubApp):
             except Exception as exc:  # noqa: BLE001 - one step's hand-off must not stop the others'
                 self.status = f"{role}: {type(exc).__name__}: {exc}"
 
+    def _adopt(self, role, child, route, error):
+        super()._adopt(role, child, route, error)
+        # every step of the pipeline takes its input from the step before: no Input of its own
+        made = self.children.get(role)
+        for target in (made, *(getattr(made, a, None) for a in ("bva_gui", "two_cde_gui", "gui"))):
+            if target is not None:
+                try:
+                    target.pipeline = True
+                except Exception:  # noqa: BLE001 - a tool without attributes stays as it is
+                    pass
+
     def on_select(self, role: str, child) -> None:
         handler = getattr(self, f"_to_{role}", None)
         if callable(handler):
