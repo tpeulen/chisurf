@@ -9,6 +9,27 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**Owner worklist 2026-11-02 (burst pipeline UX round; verbatim intent, in order of the request):**
+- [x] W1 Simple / Advanced mode for the whole pipeline. Simple shows only essential inputs: nothing
+  an earlier step already covers (the Detector setup tabs of Burst Selection, Burst MLE, H2MM -- step
+  0 covers them); Advanced shows them.
+- [x] W2 Burst Selection: no scatter plot; the burst table only in Advanced.
+- [x] W3 Rail: a finished step shows a check (bursts selected, ...).
+- [x] W4 Burst Fusion and H2MM: Advanced only (hidden by default).
+- [x] W5 (BVA / 2CDE heatmaps + pipeline input lines are in `burst_bva/gui/app.py`, `burst_2cde/gui/app.py`: uncommitted, those files carry another lane's lines; headless frames 8-10 ms on 5231 bursts -- the slowness was a polygon per burst marker in the GPU window) BVA and 2CDE: run with defaults in Simple too, but shown only in Advanced; BVA plot as a
+  histogram, not circles; BVA / 2CDE UI is very slow -- profile and fix.
+- [x] W6 Burst MLE fool-proof: find buffer (background) and scatter (IRF) measurements in the folder
+  of the analysed files or its parent; no detector setup unless Advanced; micro-time window always
+  runs to 32k although not filled -- check on `/Volumes/USBKEY/TP_20261031_DNA_KHM.sptw/DNA13bp_3.ptu`.
+- [x] W7 Burst MLE tables (burst / lifetime): not in Simple, hidden by default in Advanced.
+- [x] W8 Fit model selection per detector (fit23, tail fit, fit24, ...); defaults: green fit23
+  polarisation-resolved, red tail fit (acceptor sensitised emission), yellow fit23.
+- [x] W9 Burst segment MLE == Burst MLE: one step with a "split by H2MM state" checkbox (Advanced).
+- [x] W10 Docks not shown are not computed (no cycles for hidden plots).
+- [~] W11 (partly: every editable number is a spin box -- emtk default, uncommitted in emtk/view_form.py; every pipeline step drops its own Input table; a two-column n_col layout of H2MM's settings was tried and reverted: emtk sizes number fields by their maximum, so the columns came out ragged) Nicer widget arrangement (H2MM settings column looked ugly); spin boxes for numbers
+  (emtk default now: every editable int/float is a spin box -- uncommitted in emtk/view_form.py).
+- [x] W12 Finish button once the last mandatory step is done; Finish closes the pipeline after asking.
+
 0. Open (2026-11-02, second round): **uncommitted, shared with another lane -- commit when that lane lands.**
    These carry this round's work but also another lane's uncommitted hunks, so they were not
    committed (committing part of them leaves HEAD inconsistent): H2MM container-only output
