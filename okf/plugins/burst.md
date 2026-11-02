@@ -39,7 +39,8 @@ timestamp: '2026-07-05T00:00:00Z'
    burst summary (`core/fio/fluorescence/burst.py` + `test/core/test_burst_summary_vectorised.py`);
    LUT `channel_mask` in `core/fluorescence/burst/{photons,background}.py`; Record's library-setup
    chooser + PTU header (`acq/gui/record_app.py`, `acq/live/session.py`); Burst Selection caches
-   (`burst_selection/gui/model.py`). The dT plot stays raw per-photon dT (owner, 2026-11-02: a binned
+   (`burst_selection/gui/model.py`); BVA's Min window length in ms (`burst_bva/gui/app.py` via
+   `ScaledParameters`, test typed value 50 ms in `test_emtk_bva_clicks.py`; 2026-11-02). The dT plot stays raw per-photon dT (owner, 2026-11-02: a binned
    mean line and display smoothing were tried and reverted -- "the original interphoton was still best"). All verified: H2MM+MLE suites 278 passed; summary identical
    to the old implementation on sim PIE and BH SPC data.
    **Speed now** (sim 600 s PIE, 12k bursts, scratch `time_steps.py` with `KEEP_SETTINGS`):
