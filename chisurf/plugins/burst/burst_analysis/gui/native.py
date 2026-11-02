@@ -221,7 +221,7 @@ class BurstAnalysisHubApp(ToolHubApp):
     def _make_selection(self):
         from chisurf.plugins.burst.burst_selection.gui.native import create_app
 
-        return create_app(on_run_done=self._selection_done)
+        return create_app(on_run_done=self._selection_done, pipeline=True)
 
     def _make_mle(self, split_by_state: bool):
         from chisurf.plugins.burst.burst_mle_analysis.gui.native import create_app
@@ -403,16 +403,16 @@ class BurstAnalysisHubApp(ToolHubApp):
             child.select_setup(name)
 
     def _to_selection(self, child) -> None:
-        if self.context.raw_files and not child.model.files:
-            data = self.children.get("data")
-            sources = getattr(getattr(data, "model", None), "sources", None) or {}
-            uids = [sources.get(str(p), "") for p in self.context.raw_files]
-            take = getattr(child, "take_photons", None)
-            if callable(take) and any(uids):
-                # Each file's runs go into its workspace dataset's analysis container.
-                take([str(p) for p in self.context.raw_files], uids)
-            else:
-                child.model.add_paths(self.context.raw_files)
+        """All files of 1. Data Selection, kept identical to it (added, removed, reordered)."""
+        data = self.children.get("data")
+        sources = getattr(getattr(data, "model", None), "sources", None) or {}
+        paths = [str(p) for p in self.context.raw_files]
+        uids = [sources.get(p, "") for p in paths]
+        use = getattr(child, "use_files", None)
+        if callable(use):
+            use(paths, uids)  # each file's runs go into its workspace dataset's analysis container
+        elif paths and not child.model.files:
+            child.model.add_paths(self.context.raw_files)
 
     def _to_fusion(self, child) -> None:
         settings = self.context.channel_settings

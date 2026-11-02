@@ -95,7 +95,13 @@ def test_a_setup_made_in_settings_is_chosen_in_the_hub_and_in_record(env, ptu, t
         hub.close()
 
     record = RecordModel(output_dir=tmp_path)
-    assert ("library:lab_pie", "Setup: lab_pie") in record.setup_options()
+    # the library is read off the UI thread: the row appears once that read has landed
+    import time
+
+    end = time.monotonic() + 10
+    while ("library:lab_pie", "Setup: lab_pie") not in record.setup_options():
+        assert time.monotonic() < end, record.setup_options()
+        time.sleep(0.05)
     record.setup_address = "library:lab_pie"
     exp = record.make_experiment(4096, 8e-12)
     assert set(exp.setup["detectors"]) == {"green", "red", "yellow"} and exp.preset == "pie"

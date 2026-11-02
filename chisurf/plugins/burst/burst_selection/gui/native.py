@@ -83,11 +83,18 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         *,
         on_run_done: Callable[[BurstSelectionModel], None] | None = None,
         restore: bool = True,
+        pipeline: bool = False,
     ) -> None:
         self.model = model or BurstSelectionModel()
         self.example_folder: Path | None = None  # None: the plugin's demo cache
+        #: A step of the Burst Analysis pipeline: the files are step 1's (Data Selection), all of
+        #: them, handed over by the hub (:meth:`use_files`); this step has no Input of its own.
+        self.pipeline = bool(pipeline)
+        self.model.files_from_pipeline = self.pipeline  # rows are not removed here then
         if model is None and restore:
             self.model.restore()
+            if self.pipeline:
+                self.model.files.clear()  # the settings are restored, the files are step 1's
         self.on_run_done = on_run_done
         self.job = SnapshotJob(self.model)
         # The Input section: the workspace's photon streams (manifest ``accepts`` ``photons``).
@@ -244,6 +251,23 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             self.model.status_text = why
             return False
         self.job.start("run")
+        return True
+
+    def use_files(self, paths, uids=()) -> bool:
+        """Make the files exactly *paths* (in order) -- the pipeline's hand-off from Data Selection.
+
+        Returns whether the list changed; a change drops the results of the files that left.
+        """
+        wanted = [Path(p).resolve() for p in paths]
+        if wanted == [Path(p).resolve() for p in self.model.files]:
+            return False
+        for index in reversed(range(len(self.model.files))):
+            if Path(self.model.files[index]).resolve() not in wanted:
+                self.model.remove_index(index)
+        self.take_photons([str(p) for p in wanted], uids)
+        order = {p: i for i, p in enumerate(wanted)}
+        self.model.files.sort(key=lambda p: order.get(Path(p).resolve(), len(order)))
+        self.model.notify("files")
         return True
 
     def take_photons(self, paths, uids=()) -> int:
@@ -405,11 +429,16 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
     def _files(self, box=None) -> None:
         m = self.model
         busy = self.running
-        im.begin_disabled(busy)
-        self.input.workspace_input_on_used = self.track
         self.input_form.rects.clear()
-        draw_form(self.input_spec, self.input, self.input_form)
-        im.end_disabled()
+        if self.pipeline:
+            # In the pipeline the files are step 1's, all of them: no Input to pick from.
+            im.text(f"Files: all {len(m.files)} from 1. Data Selection")
+            im.set_item_tooltip("Add or remove files in step 1 (Data Selection); this step searches all of them.")
+        else:
+            im.begin_disabled(busy)
+            self.input.workspace_input_on_used = self.track
+            draw_form(self.input_spec, self.input, self.input_form)
+            im.end_disabled()
         for name, rect in self.input_form.rects.items():
             self.item_rects[name] = tuple(rect)
         has_files = bool(m.files)
@@ -420,8 +449,10 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                 {
                     "label": action_caption("example"),
                     "key": "load_example",
-                    "enabled": not busy,
-                    "tip": "Add a simulated photon stream with 12 planted bursts and select its detectors.",
+                    "enabled": not busy and not self.pipeline,
+                    "tip": "Add a simulated photon stream with 12 planted bursts and select its detectors."
+                    if not self.pipeline
+                    else "In the pipeline the files come from 1. Data Selection.",
                 },
                 {
                     "label": action_caption("run"),
@@ -440,8 +471,10 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                 {
                     "label": "Clear",
                     "key": "toolAction_clear",
-                    "enabled": has_files and not busy,
-                    "tip": "Remove every file and result (the settings stay).",
+                    "enabled": has_files and not busy and not self.pipeline,
+                    "tip": "Remove every file and result (the settings stay)."
+                    if not self.pipeline
+                    else "In the pipeline the files are step 1's: remove them in 1. Data Selection.",
                 },
                 {
                     "label": "Refresh plots",
