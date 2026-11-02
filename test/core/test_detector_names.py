@@ -74,3 +74,13 @@ def test_the_editor_adds_a_detector_by_its_default_name():
     assert "G|G" not in page.unused_detector_names() and page.unused_detector_names()[0] == "B|B"
     page.add_detector("R|G")
     assert list(page.model.data["detectors"]) == ["G|G", "R|G"]
+
+
+def test_roles_by_name_alias_or_word():
+    assert [dn.role(n) for n in ("G|G", "R|G", "R|R", "green", "red", "yellow", "my donor", "ch3")] == [
+        "donor", "acceptor", "acceptor_direct", "donor", "acceptor", "acceptor_direct", "donor", None,
+    ]
+    assert dn.detector_of_role(["red", "green"], "donor") == "green"
+    assert dn.column_detector("Number of Photons (R|G)") == "R|G"
+    assert dn.column_detector("Green Count Rate (KHz)") == "G|G"
+    assert dn.column_detector("Duration (ms)") is None

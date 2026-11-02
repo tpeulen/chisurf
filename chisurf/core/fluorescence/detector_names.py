@@ -104,6 +104,48 @@ def find(detectors: Iterable[str], wanted: str) -> str | None:
     return None
 
 
+#: The FRET roles of a two-colour PIE setup, by name.
+ROLES: dict[str, str] = {DONOR: "donor", ACCEPTOR: "acceptor", ACCEPTOR_DIRECT: "acceptor_direct"}
+
+
+def role(detector: str) -> str | None:
+    """``"donor"``, ``"acceptor"`` (FRET-sensitised) or ``"acceptor_direct"`` -- the part
+    *detector* plays in two-colour FRET -- or ``None``. By name (``G|G``, ``R|G``, ``R|R`` and their
+    historic aliases), else by a ``donor`` / ``acceptor`` in a custom name."""
+    found = ROLES.get(canonical(detector))
+    if found is not None:
+        return found
+    lowered = str(detector).lower()
+    if "donor" in lowered:
+        return "donor"
+    if "acceptor" in lowered:
+        return "acceptor"
+    return None
+
+
+def detector_of_role(detectors: Iterable[str], wanted: str) -> str | None:
+    """The detector of *detectors* that plays *wanted* (``"donor"``, ``"acceptor"``,
+    ``"acceptor_direct"``), in the spelling *detectors* uses, or ``None``."""
+    for detector in detectors:
+        if role(detector) == wanted:
+            return detector
+    return None
+
+
+_IN_COLUMN = re.compile(r"\(([^()]+)\)")
+
+
+def column_detector(column_name: str) -> str | None:
+    """The detector a burst-table column belongs to (``Number of Photons (R|G)`` -> ``R|G``;
+    ``Green Count Rate (KHz)`` -> ``G|G``), or ``None``."""
+    text = column(str(column_name))
+    for found in _IN_COLUMN.findall(text):
+        if _NAME.match(found) or found.lower() in LEGACY:
+            return canonical(found)
+    head = text.split(" ", 1)[0]
+    return head if _NAME.match(head) else None
+
+
 def slug(detector: str) -> str:
     """*detector* as part of a file name: ``|`` is not allowed on Windows (``G|G`` -> ``G-G``)."""
     return str(detector).replace(SEPARATOR, "-")
@@ -151,6 +193,8 @@ __all__ = [
     "canonical",
     "canonical_detectors",
     "column",
+    "column_detector",
+    "detector_of_role",
     "emission",
     "excitation",
     "find",
@@ -158,5 +202,6 @@ __all__ = [
     "label",
     "legacy_column",
     "name",
+    "role",
     "slug",
 ]
