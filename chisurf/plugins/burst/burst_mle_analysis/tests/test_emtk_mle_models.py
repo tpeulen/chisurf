@@ -235,7 +235,8 @@ def test_auto_binning_uses_the_declared_choices_and_photon_counts():
         stream, [8, 0, 3], everything, choices, target_counts_per_bin=target, irf_oversample=0
     )
     assert pick(200) == 16
-    assert pick(100000) == 128
+    # however sparse, the binning keeps lifetime resolution: >= MIN_BINS_PER_PERIOD bins per period
+    assert pick(100000) == 4096 // engine.MIN_BINS_PER_PERIOD
 
 
 def test_the_native_app_freezes_its_inputs_while_a_job_runs(hermetic_env):

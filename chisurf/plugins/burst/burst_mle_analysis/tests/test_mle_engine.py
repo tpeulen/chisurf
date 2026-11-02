@@ -220,3 +220,27 @@ def test_session_settings_round_trip():
         other.settings_of("red").micro_time_stop == 99 and other.template.micro_time_binning == 16
     )
     assert other.file_type == "SPC-130" and list(other.detectors) == ["green", "red"]
+
+
+def test_the_irf_width_is_the_peak_not_the_span_between_pulses():
+    """Two PIE pulses (or a pulse and its wrapped decay) used to read as one IRF thousands of
+    channels wide; the binning chosen from it left ~15 bins per period and sparse bursts fitted
+    to tau ~ 0."""
+    hist = np.zeros(4000)
+    hist[3990:4000] = 12.0
+    hist[0:5] = 11.0  # the pulse wraps round the period's end
+    hist[2000:2010] = 10.0  # the second PIE pulse
+    assert engine.peak_fwhm_channels(hist) == 15
+
+
+def test_the_automatic_binning_keeps_lifetime_resolution(monkeypatch):
+    class Header:
+        number_of_micro_time_channels = 4096
+
+    class Tttr:
+        header = Header()
+        routing_channels = np.zeros(200, dtype=np.int8)
+
+    monkeypatch.setattr(engine, "irf_fwhm_channels", lambda *a: 4000)  # a hopeless IRF estimate
+    pick = engine.select_binning(Tttr(), [0], np.arange(20), engine.BINNING_CHOICES)
+    assert 4096 // pick >= engine.MIN_BINS_PER_PERIOD

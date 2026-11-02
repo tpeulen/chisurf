@@ -328,13 +328,35 @@ def irf_fwhm_channels(tttr: Any, chs: list[int], burst_idx: np.ndarray) -> int |
     if micro.size == 0:
         return None
     hist = np.bincount(micro, minlength=n_full)[:n_full].astype(float)
-    pk = hist.max()
-    if pk <= 0:
+    return peak_fwhm_channels(hist)
+
+
+def peak_fwhm_channels(hist: np.ndarray) -> int | None:
+    """Width (channels) of the contiguous run above half maximum around the histogram's peak.
+
+    The run may wrap round the period's end (a pulse at its last channels decays into the first).
+    Measuring from the first to the last channel above half maximum anywhere -- as this did --
+    spans the gap between two PIE pulses, or a pulse and its wrapped decay: the "IRF" came out
+    thousands of channels wide, and the binning chosen from it left ~15 bins per period, so sparse
+    bursts fitted to tau ~ 0.
+    """
+    hist = np.asarray(hist, dtype=float)
+    n = hist.size
+    if n == 0:
         return None
-    above = np.where(hist >= 0.5 * pk)[0]
-    if above.size == 0:
+    peak = int(np.argmax(hist))
+    half = 0.5 * hist[peak]
+    if half <= 0:
         return None
-    return int(above[-1] - above[0] + 1)
+    width = 1
+    for step in (-1, 1):
+        i = peak
+        for _ in range(n - 1):
+            i = (i + step) % n
+            if hist[i] < half or width >= n:
+                break
+            width += 1
+    return int(min(width, n))
 
 
 def select_binning(
@@ -366,11 +388,19 @@ def select_binning(
     fwhm = irf_fwhm_channels(tttr, chs, burst_idx)
     need_irf = (fwhm / irf_oversample) if (fwhm and irf_oversample > 0) else 0.0
     need = max(need_stat, need_irf)
+    # Lifetimes need resolution: never fewer than MIN_BINS_PER_PERIOD bins across the laser period,
+    # whatever the statistics ask for (a sparse decay is the fit's job, not the binning's).
+    coarsest = max(1, n_full // MIN_BINS_PER_PERIOD)
     ordered = sorted(int(c) for c in choices)
-    for c in ordered:
+    allowed = [c for c in ordered if c <= coarsest] or ordered[:1]
+    for c in allowed:
         if c >= need:
             return c
-    return ordered[-1]
+    return allowed[-1]
+
+
+#: The coarsest automatic binning keeps at least this many micro-time bins per laser period.
+MIN_BINS_PER_PERIOD = 64
 
 
 def burst_result_columns(color: str, model: str, param_names) -> list:
