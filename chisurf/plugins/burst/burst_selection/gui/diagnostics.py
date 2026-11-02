@@ -227,3 +227,26 @@ __all__ = [
     "setup_summary",
     "trace_rate_hz",
 ]
+
+
+def rows_in_window(frame, start_s: float, length_s: float, file_name: str | None = None):
+    """The bursts of *frame* whose mean macro time lies in the window ``[start_s, start_s +
+    length_s)`` (of *file_name*, where the frame pools several files): what the trace above shows.
+
+    Returns *frame* unchanged where it has no ``Mean Macro Time (ms)`` column."""
+    from chisurf.core.datastore import column_names, take_where
+
+    rows = burst_rows_for_display(frame)
+    names = column_names(rows)
+    if "Mean Macro Time (ms)" not in names:
+        return rows
+    t_s = numeric_column(rows, "Mean Macro Time (ms)") / 1e3
+    keep = np.isfinite(t_s) & (t_s >= float(start_s)) & (t_s < float(start_s) + float(length_s))
+    if file_name and "First File" in names:
+        files = np.asarray(rows["First File"], dtype=object).astype(str)
+        stems = np.char.rpartition(np.char.rpartition(files, "/")[:, 2], ".")[:, 0]
+        wanted = file_name.rsplit(".", 1)[0]
+        same = (stems == wanted) | (files == file_name)
+        if same.any():
+            keep &= same
+    return take_where(rows, keep)

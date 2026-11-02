@@ -217,7 +217,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         add("trace", "Count rate", self._trace, dock="plots_a", closable=False)
         add("dt", "Inter-photon time", self._dt, dock="plots_a", closable=False)
         add("decay", "Micro-time decay", self._decay, dock="plots_a", closable=False)
-        add("duration", "Burst duration", self._duration, dock="plots_a", closable=False)
         add("histogram", "Histogram", self._histogram, dock="plots_b", closable=False)
         add("table", "Bursts", self._bursts, dock="plots_b", closable=False)
         super().__init__(gui=self._render)
@@ -818,30 +817,13 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                 implot.plot_line(tr("Selected photons"), *curves["selected"])
             implot.end_plot()
 
-    def _duration(self, box=None) -> None:
-        self.remember("duration", box)
-        m = self.model
-        if not m.show_selected_photons:
-            self._empty("Selected photons are hidden (Display): burst durations are not drawn.")
-            return
-        hist = m.duration_histogram()
-        if hist is None:
-            self._empty("No bursts in the visible window: their duration histogram appears here.")
-            return
-        centres, counts, width = hist
-        # Above the plot: the plot fills the rest of the dock, so a line drawn after it fell outside the panel and
-        # nothing said that these are the bursts of the visible window, not of the file.
-        im.text(f"Total bursts in the window: {int(counts.sum())}")
-        if implot.begin_plot("Burst duration", (-1, -1)):
-            implot.setup_axes("Burst duration (ms)", "Bursts")
-            implot.plot_bars("Bursts", centres, counts, bar_size=width * 0.9)
-            implot.end_plot()
-
     def _histogram(self, box=None) -> None:
         self.remember("histogram", box)
         m = self.model
         simple = self.pipeline and not getattr(m, "advanced", True)
-        if not simple:  # Simple: the histogram alone; its feature, range and GMM are Advanced
+        if simple:  # Simple: which feature; bins, range and GMM are Advanced
+            draw_sections(self._feature_sections(), m, self.form)
+        else:
             draw_sections(self.hist_sections, m, self.form)
         pressed = None if simple else button_row(
             [
@@ -876,14 +858,19 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                 m.status_text = f"GMM fitting failed: {exc}"
         elif pressed == "gmm_settings":
             self.open_panel("gmm")
-        hist = m.histogram()
+        if getattr(self, "_hist_feature_seen", None) not in (None, m.hist_feature):
+            m.auto_range()  # a new feature: the old one's range (0-1 for E) shows none of it
+        self._hist_feature_seen = m.hist_feature
+        hist, n_all = self._window_histogram()
         if hist is None:
             self._empty(
-                "No burst table yet: the histogram of the chosen feature appears after a run or a preview."
+                "No bursts in the visible window: the histogram of the chosen feature shows the bursts "
+                "of the window the count-rate trace shows (after a run or a preview)."
             )
             return
         centres, counts, width = hist
-        if implot.begin_plot(f"Histogram of {m.hist_feature}", (-1, -112 if m.gmm_rows() else -1)):
+        title = f"{m.hist_feature}: {int(counts.sum())} bursts in the visible window"
+        if implot.begin_plot(title + "##histogram", (-1, -112 if m.gmm_rows() else -1)):
             implot.setup_axes(m.hist_feature, "Bursts")
             if (m.gmm_result or {}).get("x") is not None:
                 # Beside the plot: inside, five entries covered the peaks of a histogram the GMM table leaves short.
@@ -893,12 +880,52 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             implot.plot_bars("Bursts", centres, counts, bar_size=width * 0.9)
             gmm = m.gmm_result or {}
             if gmm.get("x") is not None:
-                implot.plot_line("GMM fit", gmm["x"], gmm["total"])
+                # fitted to every burst: scaled to the window's share of them
+                share = float(counts.sum()) / max(float(n_all), 1.0)
+                implot.plot_line("GMM fit", gmm["x"], np.asarray(gmm["total"]) * share)
                 for i, comp in enumerate(gmm["components"]):
-                    implot.plot_line(f"Gaussian {i + 1}", gmm["x"], comp)
+                    implot.plot_line(f"Gaussian {i + 1}", gmm["x"], np.asarray(comp) * share)
             implot.end_plot()
         if m.gmm_rows():
             draw_sections(self.gmm_table, m, self.form)
+
+    def _feature_sections(self) -> list:
+        """The histogram's feature choice alone (Simple)."""
+        def pick(sections):
+            out = []
+            for sec in sections:
+                if sec.get("attr") == "hist_feature":
+                    out.append(sec)
+                out.extend(pick(sec.get("sections", [])))
+            return out
+
+        return pick(self.hist_sections)
+
+    def _window_histogram(self):
+        """``((centres, counts, width), n bursts in all)`` of the chosen feature over the bursts of
+        the visible window -- the bursts the count-rate trace shows -- or ``(None, n)``."""
+        from . import diagnostics as diag_mod
+
+        m = self.model
+        frame = m.display_frame
+        if frame is None:
+            return None, 0
+        n_all = diag_mod.histogram_data_from_frame(frame, m.hist_feature).size
+        active = getattr(m, "active_file", None)
+        window = diag_mod.rows_in_window(
+            frame, float(m.window_start_s), float(m.window_length_s),
+            Path(active).name if active is not None else None,
+        )
+        data = diag_mod.histogram_data_from_frame(window, m.hist_feature)
+        if data.size == 0:
+            return None, n_all
+        lo, hi = m.histogram_range(data)
+        if not np.any((data >= lo) & (data <= hi)):
+            # a range set for another feature (0-1 for E, then Duration chosen) shows none of it
+            lo, hi = float(np.min(data)), float(np.max(data))
+            lo, hi = (lo - 0.5, hi + 0.5) if lo == hi else (lo, hi)
+        counts, edges = np.histogram(data, bins=max(1, int(m.hist_bins)), range=(lo, hi))
+        return ((edges[:-1] + edges[1:]) / 2.0, counts.astype(float), float(edges[1] - edges[0])), n_all
 
     def _bursts(self, box=None) -> None:
         self.remember("bursts", box)

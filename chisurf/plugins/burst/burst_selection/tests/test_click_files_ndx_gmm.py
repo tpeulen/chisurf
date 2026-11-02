@@ -77,7 +77,7 @@ def test_clear_removes_files_and_results_but_keeps_settings(app, files):  # noqa
     assert app.model.display_frame is None and app.model.status_text.startswith("Cleared")
     assert app.model.min_photons == 37  # the settings stay
     shown = texts(drv.draw())
-    assert "Cleared. Add TTTR files to begin." in shown and "No burst table yet" in shown
+    assert "Cleared. Add TTTR files to begin." in shown and "No bursts in the visible window" in shown
     # with nothing listed, Run is disabled and pressing it starts no search
     drv.click_name("toolAction_run")
     drv.draw(2)

@@ -30,7 +30,6 @@ SETUP = {
 WINDOWS = (
     "Inter-photon time",
     "Micro-time decay",
-    "Burst duration",
     "Bursts",
     "Summary",
 )
@@ -119,7 +118,7 @@ def test_empty_app_draws_no_data_and_says_so(monkeypatch, files):
                 shown += texts(drv.draw())
         assert spy.calls == []
         assert "No count-rate trace" in shown
-        assert "No burst table yet" in shown
+        assert "No bursts in the visible window" in shown
         assert "No search yet" in shown
     finally:
         window.close()

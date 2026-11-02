@@ -59,6 +59,16 @@ def _pipeline_drop(section: dict) -> bool:
     return section.get("type") == "custom" and options.get("source") == "file_rows"
 
 
+def _without_attrs(section: dict, attrs: set) -> dict:
+    """*section* with no field (at any depth) bound to one of *attrs*."""
+    if not isinstance(section.get("sections"), list):
+        return section
+    return dict(
+        section,
+        sections=[_without_attrs(s, attrs) for s in section["sections"] if s.get("attr") not in attrs],
+    )
+
+
 def pipeline_sections(sections: list) -> list:
     """*sections* for the pipeline step: without :func:`_pipeline_drop`'s parts; the files panel,
     left with the fit model alone, is called that."""
@@ -353,7 +363,16 @@ class MleNativeApp(TourTarget, ImApp):
             if getattr(self, "_pipeline_sections", None) is None:
                 self._pipeline_sections = pipeline_sections(self.sections)
             if self._simple():
-                return [x for x in self._pipeline_sections if x.get("title") == "Lifetime model"]
+                # the model, which detector, its fit window and the start values: enough to bring
+                # the fit onto the decay before every burst is fitted; H2MM states are Advanced
+                keep = ("Lifetime model", "Detector and window", "Fit parameters")
+                if getattr(self, "_simple_sections", None) is None:
+                    self._simple_sections = [
+                        _without_attrs(x, {"current_file"})  # one measurement per run here
+                        for x in self._pipeline_sections
+                        if x.get("title") in keep
+                    ]
+                return self._simple_sections
             return self._pipeline_sections
         return self.sections
 
@@ -538,7 +557,8 @@ class MleNativeApp(TourTarget, ImApp):
         if simple:
             # no buttons: the IRF and background are prepared when the bursts arrive and Next (or >>)
             # fits; Stop while a fit runs
-            buttons = [b for b in buttons if b["key"] == "Stop"] if running else []
+            keep = {"toolAction_restart"} | ({"Stop"} if running else set())  # Refit: try values
+            buttons = [b for b in buttons if b["key"] in keep]
         pressed = button_row(buttons, remember=self.remember) if buttons else None
         if pressed == "toolAction_run":
             self.track("toolAction_run")

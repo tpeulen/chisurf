@@ -67,9 +67,10 @@ def test_the_bursts_table_lists_photon_indices_in_full(tmp_path, monkeypatch):
     assert firsts[4] > 10_000 and np.all(np.diff(firsts) > 0)
 
 
-def test_the_duration_tab_says_its_bursts_are_the_windows(tmp_path, monkeypatch):
-    """*Burst duration* histograms the bursts of the visible window; the line saying so was drawn below the plot,
-    which fills the dock, so it was never on screen."""
+def test_the_histogram_is_of_the_bursts_in_the_visible_window(tmp_path, monkeypatch):
+    """The histogram (which replaced the *Burst duration* tab: Duration is one of its features)
+    shows the bursts of the window the count-rate trace shows, and says so with their number."""
+    from chisurf.plugins.burst.burst_selection.gui import diagnostics as diag
     from chisurf.plugins.emtk_test_input import Driver
 
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
@@ -83,20 +84,23 @@ def test_the_duration_tab_says_its_bursts_are_the_windows(tmp_path, monkeypatch)
     app = create_app(restore=False)
     try:
         app.apply_setup(SETUP, "sm dna")
-        size = (1400, 860)
-        drv = Driver(app, size)
+        drv = Driver(app, (1400, 860))
         assert feed(drv.app, tmp_path / "m000.spc")
         app.model.run()
         app.model.load_diagnostics()
-        drv.draw(2)
-        drv.click_text("Burst duration")
-        painter = drv.draw(2)
-        hits = [t for t in painter.texts if t[5].startswith("Total bursts in the window")]
-        assert hits, "the window's burst count is not drawn"
-        y = hits[-1][1]
-        # The plot fills the dock to its bottom edge: only a line above its title is inside the panel.
-        titles = [t[1] for t in painter.texts if t[5] == "Burst duration (ms)"]
-        assert titles and 0 <= y < min(titles), (y, titles)
+        app.model.hist_feature = "Duration (ms)"
+        app.docks.focus("histogram")
+        strings = drv.draw(2).strings
+        assert "Burst duration" not in strings  # no tab of its own
+        window = diag.rows_in_window(
+            app.model.display_frame, app.model.window_start_s, app.model.window_length_s, "m000.spc"
+        )
+        n = diag.histogram_data_from_frame(window, "Duration (ms)").size
+        everything = diag.histogram_data_from_frame(app.model.display_frame, "Duration (ms)").size
+        assert 0 < n < everything
+        assert f"Duration (ms): {n} bursts in the visible window" in strings, [
+            x for x in strings if "bursts" in x or "Histogram" in x
+        ]
     finally:
         app.close()
 

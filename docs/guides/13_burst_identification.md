@@ -75,7 +75,7 @@ The **Filter settings** tab holds:
 | **Channel selection** → **Detector**, **Micro-time window** | All | Detector and PIE-window gate applied before the search. |
 | **Macro time interval** | upper bound 0.15 ms, merge gap 3 | Accepted inter-photon times dT (**Use min dT** / **Use max dT**); gaps of up to **Merge gap** photons are bridged (**Fill gaps**). |
 | **Filter** → **Filter on** / **Invert**, **Min photons**, **Count-rate photons** | on / off, 60, 5 | Apply the search; **Invert** keeps the photons it rejects. |
-| **Display** | window 10 s | The count-rate trace is in kHz. The visible window of the active file (**Window start**, **Window length**), the plot bin widths (**MCS bin width**, **Decay coarsening**, **Burst bins**) and **Pool all files**. |
+| **Display** | window 10 s | The count-rate trace is in kHz. The **histogram** shows the bursts of the visible window (its title gives their number); burst duration is one of its features, so there is no separate duration tab. A range set for another feature resets to the data. The visible window of the active file (**Window start**, **Window length**), the plot bin widths (**MCS bin width**, **Decay coarsening**, **Burst bins**) and **Pool all files**. |
 
 The **Burst Selection** tab lists the inputs and says where results go. The destination
 follows the input: vendor files get a `bi4_bur/` folder beside them
