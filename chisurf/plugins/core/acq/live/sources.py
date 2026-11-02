@@ -276,7 +276,15 @@ class SimulatedPieSource(PhotonSource):
                 }
             )
         n = len(species)
-        bg_pattern = [1.0] * (_HALF if pie else _N_MICRO)
+        # Half of the background is scattered excitation light: it follows the pulse (an IRF-shaped
+        # peak at the start of the window), the rest is flat (dark counts, ambient light). Without
+        # the scatter the photons outside the bursts held no IRF, and an IRF estimated from them
+        # was fluorescence peaking after the pulse.
+        n_pattern = _HALF if pie else _N_MICRO
+        k = np.arange(n_pattern)
+        sigma = 0.06 / _MICRO_RES_NS
+        scatter = np.exp(-0.5 * (k / sigma) ** 2)  # at the pulse, where the fluorescence starts
+        bg_pattern = (0.5 / n_pattern + 0.5 * scatter / scatter.sum()).tolist()
         green_focus = {
             "type": "gaussian3d",
             "w0": 0.3,
